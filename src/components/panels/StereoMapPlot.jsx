@@ -450,7 +450,6 @@ export function StereoMapPlot({
       };
     }
     const colors = resolveColors(themeColors, paletteKey);
-    const borderColor = themeColors.grid;
     const { fillOpacity, strokeWidthCss } = geometryStyleRef.current;
     const { dpr, width, height } = sizeRef.current;
     const lineWidth = strokeWidthCss * dpr;
@@ -475,7 +474,6 @@ export function StereoMapPlot({
       rgbToCss(colors.warn),
       rgbToCss(colors.bad),
       rgbToCss(colors.good),
-      borderColor,
       fillOpacity,
       lineWidth,
       hashNumArray(bandCentersHz),
@@ -490,16 +488,8 @@ export function StereoMapPlot({
 
     ctx.clearRect(0, 0, width, height);
 
-    // Baseline grid line at value=0.
+    // No line is drawn at zero, but the runs still fill down to it.
     const baselineY = yFor(0, range) * scaleY;
-    ctx.save();
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = Math.max(1, dpr);
-    ctx.beginPath();
-    ctx.moveTo(0, baselineY);
-    ctx.lineTo(width, baselineY);
-    ctx.stroke();
-    ctx.restore();
 
     const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range);
     ctx.lineWidth = lineWidth;

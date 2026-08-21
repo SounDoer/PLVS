@@ -297,8 +297,8 @@ describe("StereoMapPanel", () => {
 
     // Two valid bands (0 and 1) with an invalid band (2) between them and the grid edge means the
     // curve cannot be one unbroken run: it must render as a single segment (band0-band1), not a
-    // curve spanning all three bands. One grid-line stroke plus exactly one segment stroke/fill.
-    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    // curve spanning all three bands. Exactly one segment stroke/fill.
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
     expect(ctx.fill).toHaveBeenCalledTimes(1);
   });
 
@@ -402,8 +402,8 @@ describe("StereoMapPanel", () => {
       })
     );
     const ctxC = ctxByCanvas.get(containerC.querySelector("canvas"));
-    // Pair 2:3 has no live row (pending) and no Hold slab for this key: only the grid-line stroke.
-    expect(ctxC.stroke).toHaveBeenCalledTimes(1);
+    // Pair 2:3 has no live row (pending) and no Hold slab for this key: nothing is stroked.
+    expect(ctxC.stroke).toHaveBeenCalledTimes(0);
   });
 
   it("shows the current value, energy, and Hold on hover", () => {
@@ -479,10 +479,10 @@ describe("StereoMapPanel", () => {
     );
 
     // The panel's own key (pair 2:3) has no entry in stereoMapResultsByKey, so it must render an
-    // empty chart (grid line only, no curve) rather than the pair 0:1 data sitting under a
+    // empty chart (nothing stroked) rather than the pair 0:1 data sitting under a
     // different key.
     expect(ctx.fill).not.toHaveBeenCalled();
-    expect(ctx.stroke).toHaveBeenCalledTimes(1);
+    expect(ctx.stroke).toHaveBeenCalledTimes(0);
   });
 
   it("shows the over-cap empty state when its request is over the active cap", () => {

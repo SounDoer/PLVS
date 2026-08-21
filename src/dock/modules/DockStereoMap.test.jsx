@@ -164,13 +164,13 @@ describe("DockStereoMap", () => {
     });
   });
 
-  it("renders the current curve, baseline, and fill for the keyed live result", () => {
+  it("renders the current curve and fill for the keyed live result", () => {
     const ctx = mockCanvas();
     const { container } = renderWith({ result: primitiveRow() });
     const plot = container.querySelector('[data-stereo-map-plot="position"]');
     expect(plot).toBeTruthy();
-    // Grid line (1 stroke) plus at least one curve segment (fill + stroke).
-    expect(ctx.stroke.mock.calls.length).toBeGreaterThan(1);
+    // At least one curve segment (fill + stroke); nothing draws a line at zero.
+    expect(ctx.stroke.mock.calls.length).toBeGreaterThan(0);
     expect(ctx.fill).toHaveBeenCalled();
   });
 
