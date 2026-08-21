@@ -36,6 +36,11 @@ const BASE_PROPS = {
   resetChannelLabels: vi.fn(),
 };
 
+function hexToRgb(hex) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return `rgb(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255})`;
+}
+
 describe("SettingsPanel", () => {
   it("renders core controls when open in system mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
@@ -239,6 +244,26 @@ describe("SettingsPanel", () => {
     expect(content.className).toContain("w-auto");
     expect(content.className).toContain("max-w-72");
     expect(content.className).not.toMatch(/(?:^|\s)w-72(?:\s|$)/);
+  });
+
+  it("previews all six core colors, including two that share a value", () => {
+    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+
+    const dark = BUILTIN_THEMES_V2["plvs-dark"].core;
+    const row = screen.getByRole("button", { name: "Dark" });
+    const painted = Array.from(
+      row.querySelectorAll("[style*='background-color'], [style*='color']")
+    )
+      .map((node) => node.style.backgroundColor || node.style.color)
+      .filter(Boolean);
+
+    // interfaceAccent and primaryData are the same hex here: the old strip merged
+    // them into one wider band, so both have to appear as separate marks.
+    expect(painted.filter((c) => c === hexToRgb(dark.interfaceAccent))).toHaveLength(2);
+    for (const key of ["workspace", "surface", "text", "secondaryData"]) {
+      expect(painted).toContain(hexToRgb(dark[key]));
+    }
   });
 
   it("leads the appearance section with Interface Size", () => {
