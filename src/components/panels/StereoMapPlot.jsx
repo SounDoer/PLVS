@@ -445,14 +445,13 @@ export function StereoMapPlot({
     if (!geometryStyleRef.current) {
       const style = getComputedStyle(canvas);
       geometryStyleRef.current = {
-        gridOpacity: parseFloat(style.getPropertyValue("--ui-spectrum-grid-opacity")) || 0.08,
         fillOpacity: parseFloat(style.getPropertyValue("--ui-spectrum-fill-top-opacity")) || 0.18,
         strokeWidthCss: parseFloat(style.getPropertyValue("--ui-spectrum-stroke-width")) || 2,
       };
     }
     const colors = resolveColors(themeColors, paletteKey);
     const borderColor = themeColors.grid;
-    const { gridOpacity, fillOpacity, strokeWidthCss } = geometryStyleRef.current;
+    const { fillOpacity, strokeWidthCss } = geometryStyleRef.current;
     const { dpr, width, height } = sizeRef.current;
     const lineWidth = strokeWidthCss * dpr;
 
@@ -477,7 +476,6 @@ export function StereoMapPlot({
       rgbToCss(colors.bad),
       rgbToCss(colors.good),
       borderColor,
-      gridOpacity,
       fillOpacity,
       lineWidth,
       hashNumArray(bandCentersHz),
@@ -496,7 +494,6 @@ export function StereoMapPlot({
     const baselineY = yFor(0, range) * scaleY;
     ctx.save();
     ctx.strokeStyle = borderColor;
-    ctx.globalAlpha = gridOpacity;
     ctx.lineWidth = Math.max(1, dpr);
     ctx.beginPath();
     ctx.moveTo(0, baselineY);

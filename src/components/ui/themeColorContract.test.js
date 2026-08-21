@@ -61,6 +61,18 @@ describe("theme color contract", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("paints grid lines at the colour the theme resolved for them", () => {
+    // Six modules resolve their grid from one role, but each used to dim it again
+    // on the way to the canvas -- 0.3 and 0.16 in the 3D floor, 0.08 borrowed
+    // from the spectrum's token for the stereo map's baseline. A second strength
+    // is a second role now (data.gridSubtle), not an alpha in a draw call.
+    const offenders = Object.entries(appSources())
+      .filter(([, source]) => /--ui-spectrum-grid-opacity|stroke="var\(--border\)"/.test(source))
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
   it("uses the destructive foreground token for destructive badges", () => {
     const classes = badgeVariants({ variant: "destructive" });
 

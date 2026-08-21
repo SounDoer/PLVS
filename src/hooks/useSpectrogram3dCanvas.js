@@ -251,10 +251,9 @@ function buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx) {
 
 const FLOOR_DIVISIONS = 4;
 
-function drawFloor(ctx, proj, ink, dpr) {
+function drawFloor(ctx, proj, grid, gridSubtle, dpr) {
   ctx.save();
-  ctx.strokeStyle = ink;
-  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = grid;
   ctx.lineWidth = dpr;
 
   const corner = (t, f) => projectPoint(t, f, 0, proj);
@@ -272,7 +271,7 @@ function drawFloor(ctx, proj, ink, dpr) {
   ctx.closePath();
   ctx.stroke();
 
-  ctx.globalAlpha = 0.16;
+  ctx.strokeStyle = gridSubtle;
   ctx.beginPath();
   for (let i = 1; i < FLOOR_DIVISIONS; i++) {
     const k = i / FLOOR_DIVISIONS;
@@ -577,6 +576,7 @@ export function useSpectrogram3dCanvas({
       const foreground = p.themeColors?.surfaceInk ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.surfaceInk;
       const gridColor = p.themeColors?.grid ?? ink;
       const axisLabelColor = p.themeColors?.axisLabel ?? gridColor;
+      const gridSubtleColor = p.themeColors?.gridSubtle ?? gridColor;
       const selection = p.themeColors?.selection ?? ink;
       const heightPx = proj.heightScale * view.heightGain;
 
@@ -589,7 +589,7 @@ export function useSpectrogram3dCanvas({
       const selectedStrokePx = 2 * dpr * strokeCss;
 
       if (p.floor) {
-        drawFloor(ctx, proj, gridColor, dpr);
+        drawFloor(ctx, proj, gridColor, gridSubtleColor, dpr);
         drawAxisLabels(ctx, proj, axisLabelColor, dpr);
       }
 

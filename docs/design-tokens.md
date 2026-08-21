@@ -57,6 +57,24 @@ The rule: **if a box's job is to hold text, size it in units that scale with tha
 Heights are the looser half of this: a control at `h-6` still holds 17px text, since flex centring
 plus visible overflow degrades quietly rather than clipping. Widths do not — they clip.
 
+## Grid Lines
+
+Every module's grid resolves from one role, and the panel paints it at full strength. There is no
+second multiplier anywhere: a grid that should read lighter takes the lighter role, not an alpha.
+
+| Role              | Dark      | Used by                                                        |
+| ----------------- | --------- | -------------------------------------------------------------- |
+| `data.grid`       | `#282828` | Waveform zero line, loudness history, spectrum, vectorscope, stereo map baseline, 3D floor frame |
+| `data.gridSubtle` | `#1e1e1e` | Subdivisions inside a grid — today only the 3D spectrogram floor |
+
+Dimming in the draw call is what this replaces. Five panels each carried their own constant — `0.3`
+and `0.16` hardcoded in the 3D floor, `0.08` for the stereo map baseline read from the *spectrum's*
+opacity token, and a spectrum grid drawn straight from `--border` at `0.08` for an effective alpha
+around `0.007`. None of it was visible to the theme, so none of it moved when a theme did.
+
+A contract test in `src/components/ui/themeColorContract.test.js` rejects the two shapes that
+brought it back: a reference to `--ui-spectrum-grid-opacity`, and a grid stroked from `--border`.
+
 ## Highlight States
 
 Two states, never mixed.

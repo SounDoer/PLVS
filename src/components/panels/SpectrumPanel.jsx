@@ -789,10 +789,9 @@ export function SpectrumPanel({ compact = false }) {
                         x2={1000}
                         y1={spectrumDbToYViewBox(v, spectrumRange)}
                         y2={spectrumDbToYViewBox(v, spectrumRange)}
-                        stroke="var(--border)"
+                        stroke="var(--ui-spectrum-grid)"
                         strokeWidth={1}
                         vectorEffect="non-scaling-stroke"
-                        style={{ strokeOpacity: "var(--ui-spectrum-grid-opacity)" }}
                       />
                     ))}
                     {spectrumFreqTicks.map(({ v: f }) => {
@@ -805,10 +804,9 @@ export function SpectrumPanel({ compact = false }) {
                           x2={x}
                           y1={0}
                           y2={260}
-                          stroke="var(--border)"
+                          stroke="var(--ui-spectrum-grid)"
                           strokeWidth={1}
                           vectorEffect="non-scaling-stroke"
-                          style={{ strokeOpacity: "var(--ui-spectrum-grid-opacity)" }}
                         />
                       );
                     })}

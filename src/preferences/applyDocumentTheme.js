@@ -41,8 +41,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-shell-pad", `${shell.paddingRem.base}rem`);
   setCssVar("--ui-shell-gap", `${shell.gapRem.base}rem`);
 
-  setCssVar("--ui-spectrum-grid-opacity", String(prefs.modules.spectrum.gridOpacity ?? 0.08));
-
   setCssVar("--ui-min-h-peak", `${heightsRem.peakModuleMin}rem`);
   setCssVar("--ui-min-h-history", `${heightsRem.historyModuleMin}rem`);
   setCssVar("--ui-min-h-spectrum", `${heightsRem.spectrumModuleMin}rem`);

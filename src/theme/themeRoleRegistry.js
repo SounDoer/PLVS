@@ -18,6 +18,7 @@ const KNOWN_RECIPES = new Set([
   "snapshot",
   "selection",
   "grid",
+  "grid-subtle",
   "frequency-neutral",
   "centroid",
   "effect-scrim",
@@ -319,6 +320,12 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "grid",
     dependencies: ["interface.border.default", "core.surface"],
   }),
+  role("data.gridSubtle", {
+    kind: "color",
+    family: "data",
+    recipe: "grid-subtle",
+    dependencies: ["interface.border.default", "core.surface"],
+  }),
   role("data.annotation", {
     kind: "color",
     family: "data",
@@ -524,6 +531,16 @@ function moduleRoles() {
       "data.grid",
       "identity",
       { canvas: ["spectrogram.grid"] },
+      primaryRefs
+    ),
+    // The 3D floor's subdivisions, which sit under its frame.
+    moduleColor(
+      "spectrogram.gridSubtle",
+      "Spectrogram",
+      "Grid Subdivisions",
+      "data.gridSubtle",
+      "identity",
+      { canvas: ["spectrogram.gridSubtle"] },
       primaryRefs
     ),
     // Axis labels are text, not rules: they need the contrast of the DOM axis

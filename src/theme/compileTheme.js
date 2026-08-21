@@ -73,6 +73,10 @@ const RECIPES = {
   snapshot: ([source], context) => transformHex(source, SNAP[context.colorScheme]),
   selection: ([source], context) => transformHex(source, SNAP[context.colorScheme]),
   grid: ([border, surface]) => mixHex(surface, colorOf(border), 0.08),
+  // Half a step. Subdivisions inside a grid read below its frame; expressing
+  // that as a second colour keeps it in the theme, where it can be seen and
+  // overridden, instead of as a globalAlpha buried in a draw call.
+  "grid-subtle": ([border, surface]) => mixHex(surface, colorOf(border), 0.04),
   // The waveform paints hue to mean frequency and falls back to this for silence
   // and noise, so the fallback has to carry no hue at all: averaging the three
   // frequency colors leaves a tint (pink, on a light theme) that reads as a
