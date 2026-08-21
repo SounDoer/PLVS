@@ -241,6 +241,16 @@ describe("SettingsPanel", () => {
     expect(content.className).not.toMatch(/(?:^|\s)w-72(?:\s|$)/);
   });
 
+  it("leads the appearance section with Interface Size", () => {
+    render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
+
+    const rows = Array.from(document.querySelectorAll("[data-settings-row]"));
+    const index = (label) => rows.findIndex((row) => row.textContent.startsWith(label));
+
+    expect(index("Interface Size")).toBeGreaterThanOrEqual(0);
+    expect(index("Interface Size")).toBeLessThan(index("Appearance"));
+  });
+
   it("keeps the row name out of the action tooltips", () => {
     render(
       <SettingsPanel

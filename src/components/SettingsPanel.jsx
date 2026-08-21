@@ -357,6 +357,27 @@ export function SettingsPanel({
 
                 {/* Appearance */}
                 <SettingsSection>
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="Interface Size"
+                        tip="Adjusts text and related interface icons. Dock is unaffected."
+                      />
+                    }
+                  >
+                    <Select value={interfaceSize} onValueChange={setInterfaceSize}>
+                      <SelectTrigger aria-label="Interface Size" className={SELECT_TRIGGER_CLASS}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                        {INTERFACE_SIZE_OPTIONS.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SettingsRow>
                   {themeControlsDisabled ? (
                     <span className="px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       Finish editing the current theme before changing theme settings.
@@ -378,27 +399,6 @@ export function SettingsPanel({
                       <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
                         <SelectItem value="system">Follow System</SelectItem>
                         <SelectItem value="fixed">Fixed Theme</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingsRow>
-                  <SettingsRow
-                    labelNode={
-                      <SettingsLabelWithTip
-                        label="Interface Size"
-                        tip="Adjusts text and related interface icons. Dock is unaffected."
-                      />
-                    }
-                  >
-                    <Select value={interfaceSize} onValueChange={setInterfaceSize}>
-                      <SelectTrigger aria-label="Interface Size" className={SELECT_TRIGGER_CLASS}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
-                        {INTERFACE_SIZE_OPTIONS.map((option) => (
-                          <SelectItem key={option.id} value={option.id}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
                       </SelectContent>
                     </Select>
                   </SettingsRow>
