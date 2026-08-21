@@ -45,7 +45,7 @@ jobs:
         run: npm run build
 
       - name: Build Tauri bundle (NSIS + release binary for portable)
-        run: npm run desktop:release-nsis
+        run: npm run desktop:dev-nsis
 
       - name: Smoke test Windows installer
         run: npm run desktop:verify-windows-installer
