@@ -201,15 +201,6 @@ export function PalettesPage({ draft, onColor, onStop, onStops, onApplyPreset })
         onColor={onColor}
         onApplyPreset={onApplyPreset}
       />
-      <SimplePalette
-        title="Interface"
-        description="Destructive controls. Separate from the meters' critical so one can move without the other."
-        kind="interface"
-        palette={draft.palettes.interface}
-        colors={INTERFACE_COLORS}
-        onColor={onColor}
-        onApplyPreset={onApplyPreset}
-      />
       <IntensityPalette
         palette={draft.palettes.intensity}
         onStop={onStop}
@@ -222,6 +213,15 @@ export function PalettesPage({ draft, onColor, onStop, onStops, onApplyPreset })
         kind="frequency"
         palette={draft.palettes.frequency}
         colors={FREQUENCY_COLORS}
+        onColor={onColor}
+        onApplyPreset={onApplyPreset}
+      />
+      <SimplePalette
+        title="Interface"
+        description="Destructive controls. Separate from the meters' critical so one can move without the other."
+        kind="interface"
+        palette={draft.palettes.interface}
+        colors={INTERFACE_COLORS}
         onColor={onColor}
         onApplyPreset={onApplyPreset}
       />
