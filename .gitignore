@@ -33,5 +33,8 @@ soak-*.jsonl
 # Claude Code local settings
 .claude/
 
+# Codex worktrees
+.codex/worktrees/
+
 # Superpowers brainstorming artifacts
 .superpowers/
