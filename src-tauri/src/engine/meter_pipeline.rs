@@ -2990,7 +2990,9 @@ mod tests {
     let tokens: Vec<_> = path.split_whitespace().collect();
     assert_eq!(tokens.len() % 3, 0, "invalid SVG token count: {path}");
     tokens
-      .chunks_exact(3)
+      .as_chunks::<3>()
+      .0
+      .iter()
       .map(|chunk| {
         assert!(matches!(chunk[0], "M" | "L"), "invalid SVG command");
         (
