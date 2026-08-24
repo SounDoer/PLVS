@@ -495,3 +495,28 @@ export function normalizePanelControls(raw) {
   }
   return normalized;
 }
+
+const ROW_BY_KEY = new Map();
+const RANGE_ROW_BY_MIN_KEY = new Map();
+for (const row of CONTROLS) {
+  if (row.key) ROW_BY_KEY.set(row.key, row);
+  else RANGE_ROW_BY_MIN_KEY.set(row.minKey, row);
+}
+
+/**
+ * Repairs one control's value by its own row. For surfaces that store the same control under a
+ * different key -- the Dock does -- so that the repair rule lives in one place even where the key
+ * names do not match.
+ */
+export function normalizePanelControlValue(key, value) {
+  const row = ROW_BY_KEY.get(key);
+  if (!row) throw new Error(`Unknown panel control: ${key}`);
+  return normalizeRow(row, { [key]: value })[key];
+}
+
+/** The range counterpart of normalizePanelControlValue, keyed by the range's min key. */
+export function normalizePanelControlRange(minKey, rawMin, rawMax) {
+  const row = RANGE_ROW_BY_MIN_KEY.get(minKey);
+  if (!row) throw new Error(`Unknown panel control range: ${minKey}`);
+  return normalizeRow(row, { [row.minKey]: rawMin, [row.maxKey]: rawMax });
+}

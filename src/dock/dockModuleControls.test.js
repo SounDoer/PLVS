@@ -114,8 +114,11 @@ describe("normalizeDockControlsByModuleId", () => {
       maxHold: true,
       minFreq: 20,
       maxFreq: 20000,
-      minDb: -96,
-      maxDb: -12,
+      // A stored range narrower than the control's minimum span is opened up around the bound the
+      // caller supplied, not reset to the default range: the Dock reads the same row as the
+      // Workspace panel, and that is the row's rule.
+      minDb: -30,
+      maxDb: -18,
     });
     expect(controls.waveform).toEqual({
       frequencyColor: false,

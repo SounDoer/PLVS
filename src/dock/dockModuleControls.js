@@ -1,23 +1,13 @@
-import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import {
   DEFAULT_PANEL_CONTROLS,
-  LOUDNESS_HISTORY_LAYER_OPTIONS,
-  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
-  VECTORSCOPE_MODE_OPTIONS,
+  normalizePanelControlRange,
+  normalizePanelControlValue,
 } from "../lib/panelControls.js";
-import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
 
-const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
-const SPECTRUM_OCTAVE_SMOOTHING_IDS = new Set(
-  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.map((option) => option.id)
-);
-const LOUDNESS_HISTORY_LAYER_IDS = new Set(
-  LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
-);
-const LEVEL_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
+/// The Dock's own readout selector: three states where the Workspace panel has two independent
+/// toggles, because the strip has room for one control, not two. No Workspace equivalent, so no
+/// row in the control table.
 const LEVEL_READOUTS = new Set(["live", "truePeakMax", "playbackMax"]);
-const VECTORSCOPE_MODES = new Set(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id));
-const STEREO_MAP_MODES_SET = new Set(Object.values(STEREO_MAP_MODES));
 const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",
   loudness: "loudness",
@@ -97,99 +87,39 @@ export const DOCK_CONTROL_MODULE_IDS = Object.freeze(
   Object.keys(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID)
 );
 
-function finite(value) {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function clamp(value, min, max, fallback) {
-  return finite(value) ? Math.min(max, Math.max(min, value)) : fallback;
-}
-
 function bool(value, fallback) {
   return typeof value === "boolean" ? value : fallback;
 }
 
-function pair(raw, fallback) {
-  if (finite(raw?.x) && finite(raw?.y) && raw.x >= 0 && raw.y >= 0 && raw.x !== raw.y) {
-    return { x: Math.floor(raw.x), y: Math.floor(raw.y) };
+/// The Dock adds two constraints the Workspace panels leave to clampPanelControls: the indices
+/// must be non-negative and distinct. A Dock module has no later clamp against the device's
+/// channel count, so a degenerate pair would reach the analysis request as-is.
+function dockPair(raw, fallback) {
+  const value = normalizePanelControlValue("vectorscopePair", raw);
+  if (value.x >= 0 && value.y >= 0 && value.x !== value.y) {
+    return { x: Math.floor(value.x), y: Math.floor(value.y) };
   }
   return { ...fallback };
 }
 
-function channel(raw, fallback) {
-  if (raw?.type === "single" && finite(raw.ch) && raw.ch >= 0) {
-    return { type: "single", ch: Math.floor(raw.ch) };
+/// Same two extra constraints as dockPair, over the channel selection's pair form.
+function dockChannel(raw, fallback) {
+  const value = normalizePanelControlValue("spectrumChannel", raw);
+  if (value.type === "single") {
+    return value.ch >= 0 ? { type: "single", ch: Math.floor(value.ch) } : { ...fallback };
   }
-  if (
-    raw?.type === "pair" &&
-    finite(raw.x) &&
-    finite(raw.y) &&
-    raw.x >= 0 &&
-    raw.y >= 0 &&
-    raw.x !== raw.y
-  ) {
-    return { type: "pair", x: Math.floor(raw.x), y: Math.floor(raw.y) };
+  if (value.x >= 0 && value.y >= 0 && value.x !== value.y) {
+    return { type: "pair", x: Math.floor(value.x), y: Math.floor(value.y) };
   }
   return { ...fallback };
-}
-
-function linearRange(rawMin, rawMax, fallbackMin, fallbackMax, absMin, absMax, minSpan) {
-  let min = clamp(rawMin, absMin, absMax, fallbackMin);
-  let max = clamp(rawMax, absMin, absMax, fallbackMax);
-  if (max - min < minSpan) {
-    min = fallbackMin;
-    max = fallbackMax;
-  }
-  return { min, max };
-}
-
-function logRange(rawMin, rawMax, fallbackMin, fallbackMax) {
-  let min = clamp(rawMin, 20, 20000, fallbackMin);
-  let max = clamp(rawMax, 20, 20000, fallbackMax);
-  if (max <= min || Math.log2(max / min) < 1) {
-    min = fallbackMin;
-    max = fallbackMax;
-  }
-  return { min, max };
-}
-
-/// M/S Ratio's Y range has no minimum span, only the design's "must include 0 dB" constraint —
-/// mirrors panelControls.js's normalizeStereoMapMsRatioYRange for the Dock's independent control.
-function msRatioRange(rawMin, rawMax, fallbackMin, fallbackMax) {
-  let min = clamp(rawMin, -96, 48, fallbackMin);
-  let max = clamp(rawMax, -96, 48, fallbackMax);
-  if (min > 0) min = 0;
-  if (max < 0) max = 0;
-  return { min, max };
 }
 
 export function normalizeDockStatsVisibleIds(raw) {
-  const fallback = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.statsVisibleIds;
-  if (!Array.isArray(raw)) return [...fallback];
-  const ids = [];
-  for (const id of raw) {
-    if (STATS_CANONICAL_ORDER.includes(id) && !ids.includes(id)) ids.push(id);
-  }
-  return ids;
+  return normalizePanelControlValue("statsVisibleIds", raw);
 }
 
 export function normalizeDockStatsOrder(raw) {
-  const ordered = [];
-  if (Array.isArray(raw)) {
-    for (const id of raw) {
-      if (STATS_CANONICAL_ORDER.includes(id) && !ordered.includes(id)) ordered.push(id);
-    }
-  }
-  for (const id of DEFAULT_DOCK_STATS_ORDER) {
-    if (!ordered.includes(id)) ordered.push(id);
-  }
-  return ordered;
-}
-
-function normalizeDockLoudnessLayerIds(raw) {
-  const fallback = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.loudness.loudnessHistoryVisibleLayerIds;
-  if (!Array.isArray(raw)) return [...fallback];
-  return raw.filter((id, index) => LOUDNESS_HISTORY_LAYER_IDS.has(id) && raw.indexOf(id) === index);
+  return normalizePanelControlValue("statsOrder", raw);
 }
 
 export function normalizeDockModuleControls(moduleId, raw) {
@@ -198,7 +128,7 @@ export function normalizeDockModuleControls(moduleId, raw) {
 
   switch (moduleId) {
     case "level": {
-      const mode = LEVEL_MODES.has(raw?.mode) ? raw.mode : defaults.mode;
+      const mode = normalizePanelControlValue("levelMeterMode", raw?.mode);
       const legacyReadout = raw?.readout === "peak" ? "live" : raw?.readout;
       let readout = LEVEL_READOUTS.has(legacyReadout) ? legacyReadout : defaults.readout;
       if (mode === "peak" && readout === "playbackMax") readout = "live";
@@ -210,61 +140,57 @@ export function normalizeDockModuleControls(moduleId, raw) {
       };
     }
     case "loudness": {
-      const range = linearRange(
+      const range = normalizePanelControlRange(
+        "loudnessYMinDb",
         raw?.loudnessYMinDb,
-        raw?.loudnessYMaxDb,
-        defaults.loudnessYMinDb,
-        defaults.loudnessYMaxDb,
-        -64,
-        0,
-        12
+        raw?.loudnessYMaxDb
       );
       return {
         showReadouts: bool(raw?.showReadouts, defaults.showReadouts),
-        loudnessHistoryVisibleLayerIds: normalizeDockLoudnessLayerIds(
+        loudnessHistoryVisibleLayerIds: normalizePanelControlValue(
+          "loudnessHistoryVisibleLayerIds",
           raw?.loudnessHistoryVisibleLayerIds
         ),
-        loudnessYMinDb: range.min,
-        loudnessYMaxDb: range.max,
+        loudnessYMinDb: range.loudnessYMinDb,
+        loudnessYMaxDb: range.loudnessYMaxDb,
       };
     }
     case "spectrum": {
-      const range = linearRange(
-        raw?.minDb,
-        raw?.maxDb,
-        defaults.minDb,
-        defaults.maxDb,
-        -120,
-        0,
-        12
-      );
-      const freqRange = logRange(raw?.minFreq, raw?.maxFreq, defaults.minFreq, defaults.maxFreq);
+      const range = normalizePanelControlRange("spectrumYMinDb", raw?.minDb, raw?.maxDb);
+      const freqRange = normalizePanelControlRange("spectrumXMinFreq", raw?.minFreq, raw?.maxFreq);
       return {
-        channel: channel(raw?.channel, defaults.channel),
-        view: SPECTRUM_VIEWS.has(raw?.view) ? raw.view : defaults.view,
+        channel: dockChannel(raw?.channel, defaults.channel),
+        view: normalizePanelControlValue("spectrumView", raw?.view),
         speedPercent: Math.round(
-          clamp(raw?.speedPercent ?? raw?.smoothingPercent, 0, 100, defaults.speedPercent)
+          normalizePanelControlValue(
+            "spectrumSpeedPercent",
+            raw?.speedPercent ?? raw?.smoothingPercent
+          )
         ),
-        octaveSmoothing: SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw?.octaveSmoothing)
-          ? raw.octaveSmoothing
-          : defaults.octaveSmoothing,
-        tiltDbPerOctave: clamp(raw?.tiltDbPerOctave, 0, 6, defaults.tiltDbPerOctave),
-        maxHold: bool(raw?.maxHold ?? raw?.peakHold, defaults.maxHold),
-        minFreq: freqRange.min,
-        maxFreq: freqRange.max,
-        minDb: range.min,
-        maxDb: range.max,
+        octaveSmoothing: normalizePanelControlValue(
+          "spectrumOctaveSmoothing",
+          raw?.octaveSmoothing
+        ),
+        tiltDbPerOctave: normalizePanelControlValue(
+          "spectrumTiltDbPerOctave",
+          raw?.tiltDbPerOctave
+        ),
+        maxHold: normalizePanelControlValue("spectrumMaxHold", raw?.maxHold ?? raw?.peakHold),
+        minFreq: freqRange.spectrumXMinFreq,
+        maxFreq: freqRange.spectrumXMaxFreq,
+        minDb: range.spectrumYMinDb,
+        maxDb: range.spectrumYMaxDb,
       };
     }
     case "correlation":
       return {
-        pair: pair(raw?.pair, defaults.pair),
-        mode: VECTORSCOPE_MODES.has(raw?.mode) ? raw.mode : defaults.mode,
-        // polarLevelMaxHold was polarLevelPeakHold; read the old key as a fallback so presets
-        // saved before the rename keep their value (see panelControls.js's parallel comment).
-        polarLevelMaxHold: bool(
-          raw?.polarLevelMaxHold ?? raw?.polarLevelPeakHold,
-          defaults.polarLevelMaxHold
+        pair: dockPair(raw?.pair, defaults.pair),
+        mode: normalizePanelControlValue("vectorscopeMode", raw?.mode),
+        // polarLevelMaxHold was polarLevelPeakHold under the Dock's own key names; the row in
+        // panelControls.js carries the same rename for the Workspace key.
+        polarLevelMaxHold: normalizePanelControlValue(
+          "vectorscopePolarLevelMaxHold",
+          raw?.polarLevelMaxHold ?? raw?.polarLevelPeakHold
         ),
       };
     case "stats":
@@ -273,49 +199,53 @@ export function normalizeDockModuleControls(moduleId, raw) {
         statsOrder: normalizeDockStatsOrder(raw?.statsOrder),
       };
     case "spectrogram": {
-      const freqRange = logRange(raw?.minFreq, raw?.maxFreq, defaults.minFreq, defaults.maxFreq);
+      const freqRange = normalizePanelControlRange(
+        "spectrogramYMinFreq",
+        raw?.minFreq,
+        raw?.maxFreq
+      );
       return {
-        channel: channel(raw?.channel, defaults.channel),
-        minFreq: freqRange.min,
-        maxFreq: freqRange.max,
+        channel: dockChannel(raw?.channel, defaults.channel),
+        minFreq: freqRange.spectrogramYMinFreq,
+        maxFreq: freqRange.spectrogramYMaxFreq,
       };
     }
     case "stereoMap": {
-      const freqRange = logRange(raw?.minFreq, raw?.maxFreq, defaults.minFreq, defaults.maxFreq);
-      const msRatio = msRatioRange(
+      const freqRange = normalizePanelControlRange("stereoMapXMinFreq", raw?.minFreq, raw?.maxFreq);
+      const msRatio = normalizePanelControlRange(
+        "stereoMapMsRatioYMinDb",
         raw?.msRatioMinDb,
-        raw?.msRatioMaxDb,
-        defaults.msRatioMinDb,
-        defaults.msRatioMaxDb
+        raw?.msRatioMaxDb
       );
       return {
-        pair: pair(raw?.pair, defaults.pair),
-        mode: STEREO_MAP_MODES_SET.has(raw?.mode) ? raw.mode : defaults.mode,
-        hold: bool(raw?.hold, defaults.hold),
-        speedPercent: Math.round(clamp(raw?.speedPercent, 0, 100, defaults.speedPercent)),
-        octaveSmoothing: SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw?.octaveSmoothing)
-          ? raw.octaveSmoothing
-          : defaults.octaveSmoothing,
-        minFreq: freqRange.min,
-        maxFreq: freqRange.max,
-        monoLossMinDb: clamp(raw?.monoLossMinDb, -60, -6, defaults.monoLossMinDb),
-        msRatioMinDb: msRatio.min,
-        msRatioMaxDb: msRatio.max,
+        pair: dockPair(raw?.pair, defaults.pair),
+        mode: normalizePanelControlValue("stereoMapMode", raw?.mode),
+        hold: normalizePanelControlValue("stereoMapHold", raw?.hold),
+        speedPercent: Math.round(
+          normalizePanelControlValue("stereoMapSpeedPercent", raw?.speedPercent)
+        ),
+        octaveSmoothing: normalizePanelControlValue(
+          "stereoMapOctaveSmoothing",
+          raw?.octaveSmoothing
+        ),
+        minFreq: freqRange.stereoMapXMinFreq,
+        maxFreq: freqRange.stereoMapXMaxFreq,
+        monoLossMinDb: normalizePanelControlValue("stereoMapMonoLossYMinDb", raw?.monoLossMinDb),
+        msRatioMinDb: msRatio.stereoMapMsRatioYMinDb,
+        msRatioMaxDb: msRatio.stereoMapMsRatioYMaxDb,
       };
     }
     case "waveform": {
-      const lowMidSplitHz = Math.round(
-        clamp(raw?.lowMidSplitHz, 20, 20000, defaults.lowMidSplitHz)
+      const splits = normalizePanelControlRange(
+        "waveformLowMidSplitHz",
+        raw?.lowMidSplitHz,
+        raw?.midHighSplitHz
       );
-      const midHighSplitHz = Math.round(
-        clamp(raw?.midHighSplitHz, 20, 20000, defaults.midHighSplitHz)
-      );
-      const validOrder = lowMidSplitHz < midHighSplitHz;
       return {
-        frequencyColor: bool(raw?.frequencyColor, defaults.frequencyColor),
-        lowMidSplitHz: validOrder ? lowMidSplitHz : defaults.lowMidSplitHz,
-        midHighSplitHz: validOrder ? midHighSplitHz : defaults.midHighSplitHz,
-        centroid: bool(raw?.centroid, defaults.centroid),
+        frequencyColor: normalizePanelControlValue("waveformFrequencyColor", raw?.frequencyColor),
+        lowMidSplitHz: splits.waveformLowMidSplitHz,
+        midHighSplitHz: splits.waveformMidHighSplitHz,
+        centroid: normalizePanelControlValue("waveformCentroid", raw?.centroid),
       };
     }
     default:
