@@ -24,7 +24,7 @@ It can also work offline in **file mode**: drop in a local audio file and scrub 
 
 Installed builds also include **`plvs-cli`** for agents, support workflows, and terminal automation. It can verify the installed runtime, probe media tracks, analyze files against user-defined QC thresholds, capture live delivery metrics, batch multiple analyses, and render saved JSON as Markdown without launching the desktop UI. See [CLI](docs/cli.md) for the full reference.
 
-It combines seven metering panels in a single desktop app:
+It combines eight metering panels in a single desktop app:
 
 | Panel           | What it shows                                                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -34,6 +34,7 @@ It combines seven metering panels in a single desktop app:
 | **Spectrum**    | FFT-based real-time analyzer with per-band dBFS                                                                          |
 | **Spectrogram** | Scrolling time-frequency waterfall                                                                                       |
 | **Vectorscope** | Stereo phase / correlation with configurable channel pairs                                                               |
+| **Stereo Map**  | Per-frequency stereo image across the spectrum — Position, Correlation, Mono Loss, or M/S Ratio                          |
 | **Waveform**    | Per-channel DAW-style amplitude envelope over the session history                                                        |
 
 PLVS **does not process, route, or modify audio**. It's a monitor — it watches your signal and gets out of the way.
@@ -51,6 +52,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 - **Configurable loudness reference** — set a target LUFS value overlaid on the loudness chart.
 - **Dialogue-gated loudness** _(optional)_ — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by a selectable on-device voice-activity-detection engine (see [Acknowledgements](#acknowledgements)); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
 - **Flexible layout & theming** — drag dividers, resize panels, open multiple instances of the same meter, and switch between presets from the toolbar. Includes a theme editor and several built-in themes, plus transparent-window and per-panel opacity controls.
+- **Views & dock mode** — pare the window down for monitoring: **Compact Panels**, **Hide Chrome**, **Auto-hide Controls**, and a **Dock** mode that parks a slim, always-on-top strip against the top or bottom edge of the screen.
 - **System integration** — system tray, always-on-top window pinning, open-at-login, and customizable global keyboard shortcuts.
 - **Privacy-first** — audio stays on device. No telemetry, no accounts, no network calls except update checks.
 
@@ -154,8 +156,10 @@ npm run build          # build frontend to dist/
 npm run desktop:build  # local Tauri release build, without updater artifacts
 npm run desktop:release-nsis  # Windows NSIS installer
 npm run desktop:release-dmg   # macOS DMG
-npm run check          # full pre-merge check (format + lint + test + build)
-npm run rust:check     # Rust: fmt + clippy + test
+npm run check          # full pre-merge gate (version + format + lint + test + build + Rust)
+npm run rust:check     # Rust only: fmt + clippy + test (already part of check)
+npm run smoke:file-analysis   # file-mode analysis smoke test
+npm run soak:capture          # 4h capture soak; the only check that surfaces leaks and metric drift
 ```
 
 ### Tech Stack
