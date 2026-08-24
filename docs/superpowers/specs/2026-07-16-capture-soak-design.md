@@ -179,7 +179,7 @@ droppedChunks 0.
 
 ## First Measurements (90 s, 2026-07-17)
 
-A short run on known-good code, pending a real four-hour baseline:
+A short run on known-good code, taken before any four-hour baseline existed:
 
 ```
 Samples        : 18 (7 after the 60 s warmup)
@@ -200,7 +200,8 @@ This makes `max - min` the wrong statistic: it **conflates convergence (expected
 monotone, front-loaded) with drift (a defect)**. It is kept for now because it is
 honest about what it measures and no data yet justifies anything cleverer.
 
-**Consequences to settle with a real run, not by tuning:**
+**Consequences to settle with a real run, not by tuning** (graded in the next
+section):
 
 - `DRIFT_LIMIT_DB = 0.01` has only ~3.7× headroom over the 90 s figure.
 - Over four hours the settled window spans t=60..14400, and the early samples
@@ -210,10 +211,48 @@ honest about what it measures and no data yet justifies anything cleverer.
   halves), **not** a widened threshold. Widening it to fit an observation is how a
   check stops being one.
 
+## Four-Hour Baselines
+
+Two full runs on known-good code, same Windows rig, same synthesized signal:
+
+| Date | Occasion | Samples | Spread after warmup | Dropped | RSS |
+| --- | --- | --- | --- | --- | --- |
+| 2026-07-27 | rubato 2.0 migration (PR #200) | 1440 | **0.0086 dB** | 0 | 8.5 -> 7.9 MB |
+| 2026-08-21 | v0.14.0, spectral-waveform work in `dsp` / `engine` | 1440 | **0.0033 dB** | 0 | 9.1 -> 9.2 MB |
+
+Grading the three predictions above: the spread is indeed larger at four hours
+than at 90 s, but only sometimes and by no reliable factor — 3.2x on the first
+run, 1.2x on the second. Neither run crossed the limit, so `DRIFT_LIMIT_DB =
+0.01` survives contact with real data and needs no change. The headroom it
+leaves, however, is not a fixed quantity.
+
+**One run is not a baseline.** Same rig, same duration, same healthy code, and
+the two figures sit a factor of 2.6 apart. After the first run it was tempting
+to read 0.0086 as *the* number and conclude the threshold was uncomfortably
+tight at ~13% margin; the second run says that was a sample of one dressed up as
+a property of the system. Treat anything up to ~0.009 dB as the known-good band,
+and treat the band — not the most recent number — as the baseline.
+
+The corollary cuts the other way, and matters more: **a low spread is not
+evidence that a change is clean.** 0.0033 dB on the release that reworked `dsp`
+and `engine` is consistent with those changes being harmless, and equally
+consistent with a run that landed at the quiet end of a band this wide. What the
+soak rules out is the failure it was built for — RSS in the hundreds of MB,
+dropped chunks, a value that walks — not a subtle regression hiding inside the
+variance.
+
+RSS behaves as the criterion predicts and needs no sharpening: the two runs move
+0.6 MB down and 0.1 MB up, both noise against the ~3.5 MB `SummaryMeter`
+accumulates by design over four hours, and both three orders of magnitude below
+the leak this check exists to catch.
+
+None of this justifies replacing `max - min` yet, but the reason has changed. It
+was "no data"; it is now "no failing case". Two clean runs give nothing to design
+a better statistic against.
+
 ## Follow-on
 
-- Run a real four-hour soak on known-good code and record the post-warmup spread
-  and RSS start/end here. Until that exists, `DRIFT_LIMIT_DB` is a guess with a
-  known risk of false-alarming, which is the one part of this spec that is not yet
-  honest.
+- If a future run exceeds 0.01 dB on otherwise healthy output, the fix remains a
+  longer warmup or a trend-based statistic — **not** a widened threshold. Two
+  clean runs are not a mandate to loosen anything.
 - **macOS** — unreachable from this rig; still unverified.
