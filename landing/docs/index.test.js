@@ -44,7 +44,7 @@ describe("docs page content", () => {
     expect(html).toContain("WASAPI loopback");
   });
 
-  test("lists all seven meter panels", () => {
+  test("lists all eight meter panels", () => {
     for (const panel of [
       "Level Meter",
       "Loudness",
@@ -52,6 +52,7 @@ describe("docs page content", () => {
       "Spectrum",
       "Spectrogram",
       "Vectorscope",
+      "Stereo Map",
       "Waveform",
     ]) {
       expect(html).toContain(panel);
