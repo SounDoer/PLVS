@@ -54,14 +54,14 @@ export function deriveClampedPanelControls(
     } else if (moduleId === "stereo-map") {
       const pair = controls.stereoMapPair;
       const next = clampVectorscopePairToAvailable(
-        { x: pair.first, y: pair.second },
+        { x: pair.x, y: pair.y },
         channelCount,
         peakLabelContext
       );
-      if (next.x !== pair.first || next.y !== pair.second) {
+      if (next.x !== pair.x || next.y !== pair.y) {
         updates.push({
           panelId,
-          panelControls: { ...controls, stereoMapPair: { first: next.x, second: next.y } },
+          panelControls: { ...controls, stereoMapPair: { x: next.x, y: next.y } },
         });
       }
     }

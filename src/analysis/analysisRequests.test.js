@@ -22,7 +22,7 @@ function state({ panelsById, panelOrder = Object.keys(panelsById), panelControls
 
 function stereoMapControls(first, second, overrides = {}) {
   return {
-    stereoMapPair: { first, second },
+    stereoMapPair: { x: first, y: second },
     stereoMapSpeedPercent: 25,
     stereoMapOctaveSmoothing: "1/12",
     ...overrides,
@@ -111,7 +111,7 @@ describe("analysisRequests", () => {
 
   it("excludes every Stereo Map display-only control from the request key", () => {
     const measurementControls = {
-      stereoMapPair: { first: 2, second: 3 },
+      stereoMapPair: { x: 2, y: 3 },
       stereoMapSpeedPercent: 50,
       stereoMapOctaveSmoothing: "1/6",
     };

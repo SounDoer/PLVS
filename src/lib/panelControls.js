@@ -107,12 +107,16 @@ const KINDS = {
     return ((value % 360) + 360) % 360;
   },
 
-  /** A channel-index pair. `members` names the two fields, which differ per control. */
+  /**
+   * A channel-index pair `{ x, y }`. `legacyMembers` names the fields a control used to store the
+   * pair under, for the same reason `legacyKeys` exists one level up.
+   */
   pair(row, raw) {
     const value = readStored(raw, row);
-    const [first, second] = row.members;
-    if (value && isNumber(value[first]) && isNumber(value[second])) {
-      return { [first]: value[first], [second]: value[second] };
+    if (value && isNumber(value.x) && isNumber(value.y)) return { x: value.x, y: value.y };
+    const [legacyX, legacyY] = row.legacyMembers ?? [];
+    if (value && isNumber(value[legacyX]) && isNumber(value[legacyY])) {
+      return { x: value[legacyX], y: value[legacyY] };
     }
     return { ...row.default };
   },
@@ -185,7 +189,6 @@ const CONTROLS = [
   {
     key: "vectorscopePair",
     kind: "pair",
-    members: ["x", "y"],
     default: { x: 0, y: 1 },
   },
   {
@@ -387,14 +390,15 @@ const CONTROLS = [
     default: STEREO_MAP_MODES.POSITION,
   },
   {
-    /// Shape matches `stereoMapRequestKeyFromControls`'s `{ first, second }` channel-index pair,
-    /// not Vectorscope's `{ x, y }` pair. Only shape/type is validated here; clamping to the pair
-    /// actually available for the current channel count happens in clampPanelControls.js, same
-    /// split as vectorscopePair.
+    /// Stored as `{ x, y }` like every other channel-index pair. It was `{ first, second }` until
+    /// the Dock and the panel were put on one set of keys; the analysis request payload still
+    /// says `{ first, second }`, because that shape belongs to the Rust request type, not here.
+    /// Only shape/type is validated at this point; clamping to the pair actually available for
+    /// the current channel count happens in clampPanelControls.js, same split as vectorscopePair.
     key: "stereoMapPair",
     kind: "pair",
-    members: ["first", "second"],
-    default: { first: 0, second: 1 },
+    legacyMembers: ["first", "second"],
+    default: { x: 0, y: 1 },
   },
   { key: "stereoMapHold", kind: "boolean", default: false },
   { key: "stereoMapSpeedPercent", kind: "number", min: 0, max: 100, default: 50 },

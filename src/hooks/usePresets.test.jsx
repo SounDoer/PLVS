@@ -448,7 +448,7 @@ describe("usePresets", () => {
     );
     const stereoMapControls = {
       stereoMapMode: "msRatioDb",
-      stereoMapPair: { first: 0, second: 1 },
+      stereoMapPair: { x: 0, y: 1 },
       stereoMapHold: true,
       stereoMapSpeedPercent: 60,
       stereoMapOctaveSmoothing: "1/6",

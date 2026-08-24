@@ -744,7 +744,7 @@ function vectorscopeKeyFromPair(pair) {
 }
 
 function stereoMapKeyFromPair(pair) {
-  return pair ? `${pair.first}-${pair.second}` : "";
+  return pair ? `${pair.x}-${pair.y}` : "";
 }
 
 const STEREO_MAP_MODE_OPTIONS = [
@@ -1769,7 +1769,7 @@ export function PanelSettingsContent({
               onChange={(key) => {
                 const opt = stereoMapPairOptions.find((o) => o.key === key);
                 if (opt) {
-                  const nextPair = { first: opt.x, second: opt.y };
+                  const nextPair = { x: opt.x, y: opt.y };
                   onPanelControlsChange(
                     normalizePanelControls({ ...normalizedPanelControls, stereoMapPair: nextPair })
                   );

@@ -1,4 +1,8 @@
-import { normalizePanelControls, SPECTRUM_OCTAVE_SMOOTHING_OPTIONS } from "../lib/panelControls.js";
+import {
+  normalizePanelControlValue,
+  normalizePanelControls,
+  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+} from "../lib/panelControls.js";
 import { getPanelControls } from "../workspace/panelControlInstances.js";
 import { resolvePanelModuleId } from "../workspace/panelInstances.js";
 
@@ -6,7 +10,7 @@ export const MAX_SPECTRUM_REQUESTS = 4;
 export const MAX_VECTORSCOPE_REQUESTS = 4;
 export const MAX_STEREO_MAP_REQUESTS = 4;
 
-const DEFAULT_STEREO_MAP_PAIR = { first: 0, second: 1 };
+const DEFAULT_STEREO_MAP_PAIR = { x: 0, y: 1 };
 const DEFAULT_STEREO_MAP_SMOOTHING = "1/12";
 const MAX_ANALYSIS_CHANNEL_INDEX = 63;
 
@@ -53,15 +57,17 @@ export function vectorscopeRequestKeyFromControls(panelControls) {
 }
 
 function stereoMapMeasurementControlsFromControls(panelControls) {
-  const rawPair = panelControls?.stereoMapPair;
+  // Through the row, so a pair stored in the older { first, second } shape is read the same way
+  // a stored panel record would read it.
+  const rawPair = normalizePanelControlValue("stereoMapPair", panelControls?.stereoMapPair);
   const pairIsValid =
-    Number.isInteger(rawPair?.first) &&
-    Number.isInteger(rawPair?.second) &&
-    rawPair.first >= 0 &&
-    rawPair.first <= MAX_ANALYSIS_CHANNEL_INDEX &&
-    rawPair.second >= 0 &&
-    rawPair.second <= MAX_ANALYSIS_CHANNEL_INDEX &&
-    rawPair.first !== rawPair.second;
+    Number.isInteger(rawPair?.x) &&
+    Number.isInteger(rawPair?.y) &&
+    rawPair.x >= 0 &&
+    rawPair.x <= MAX_ANALYSIS_CHANNEL_INDEX &&
+    rawPair.y >= 0 &&
+    rawPair.y <= MAX_ANALYSIS_CHANNEL_INDEX &&
+    rawPair.x !== rawPair.y;
   const pair = pairIsValid ? rawPair : DEFAULT_STEREO_MAP_PAIR;
   const speedPercent = Math.round(
     normalizePanelControls({
@@ -82,7 +88,7 @@ function stereoMapMeasurementControlsFromControls(panelControls) {
 export function stereoMapRequestKeyFromControls(panelControls) {
   const { pair, speedPercent, smoothingToken } =
     stereoMapMeasurementControlsFromControls(panelControls);
-  return `stereoMap:pair:${pair.first}:${pair.second}:sp${speedPercent}:sm${smoothingToken}`;
+  return `stereoMap:pair:${pair.x}:${pair.y}:sp${speedPercent}:sm${smoothingToken}`;
 }
 
 function pushRequest(map, key, panelId, payload) {
@@ -144,12 +150,13 @@ export function deriveAnalysisRequests(
     const pairAvailable =
       Number.isInteger(channelCount) &&
       channelCount >= 2 &&
-      measurement.pair.first < channelCount &&
-      measurement.pair.second < channelCount;
+      measurement.pair.x < channelCount &&
+      measurement.pair.y < channelCount;
     if (!pairAvailable) return;
     const key = stereoMapRequestKeyFromControls(controls);
     pushRequest(stereoMapByKey, key, panelId, {
-      pair: measurement.pair,
+      // The Rust request type names the pair { first, second }; the stored control is { x, y }.
+      pair: { first: measurement.pair.x, second: measurement.pair.y },
       speedPercent: measurement.speedPercent,
       octaveSmoothing: measurement.octaveSmoothing,
     });

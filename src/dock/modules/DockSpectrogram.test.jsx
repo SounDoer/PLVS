@@ -40,9 +40,9 @@ describe("DockSpectrogram", () => {
   it("uses a responsive 1x canvas and the shared normal-panel painter", () => {
     const controls = {
       panelId: "spectrogram-1",
-      channel: { type: "pair", x: 0, y: 1 },
-      minFreq: 100,
-      maxFreq: 8000,
+      spectrumChannel: { type: "pair", x: 0, y: 1 },
+      spectrogramYMinFreq: 100,
+      spectrogramYMaxFreq: 8000,
       dockHistoryWindowSec: 60,
     };
     const snaps = makeSnaps([
@@ -71,7 +71,7 @@ describe("DockSpectrogram", () => {
   });
 
   it("renders an empty responsive canvas without history", () => {
-    const controls = { channel: { type: "pair", x: 0, y: 1 }, dockHistoryWindowSec: 60 };
+    const controls = { spectrumChannel: { type: "pair", x: 0, y: 1 }, dockHistoryWindowSec: 60 };
     const { container } = renderWith({ controls, snaps: makeSnaps([]) });
     const args = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0];
 

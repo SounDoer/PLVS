@@ -13,7 +13,7 @@ describe("normalizeDockControlsByModuleId", () => {
   it("shares normal defaults for every overlapping Dock control", () => {
     const controls = normalizeDockControlsByModuleId();
 
-    expect(controls.level.mode).toBe(DEFAULT_PANEL_CONTROLS.levelMeterMode);
+    expect(controls.level.levelMeterMode).toBe(DEFAULT_PANEL_CONTROLS.levelMeterMode);
     expect(controls.loudness).toMatchObject({
       loudnessYMinDb: DEFAULT_PANEL_CONTROLS.loudnessYMinDb,
       loudnessYMaxDb: DEFAULT_PANEL_CONTROLS.loudnessYMaxDb,
@@ -22,34 +22,34 @@ describe("normalizeDockControlsByModuleId", () => {
       DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
     );
     expect(controls.spectrum).toMatchObject({
-      channel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
-      view: DEFAULT_PANEL_CONTROLS.spectrumView,
-      speedPercent: DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent,
-      octaveSmoothing: DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing,
-      tiltDbPerOctave: DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
-      maxHold: DEFAULT_PANEL_CONTROLS.spectrumMaxHold,
-      minFreq: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
-      maxFreq: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
-      minDb: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
-      maxDb: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
+      spectrumChannel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
+      spectrumView: DEFAULT_PANEL_CONTROLS.spectrumView,
+      spectrumSpeedPercent: DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent,
+      spectrumOctaveSmoothing: DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing,
+      spectrumTiltDbPerOctave: DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
+      spectrumMaxHold: DEFAULT_PANEL_CONTROLS.spectrumMaxHold,
+      spectrumXMinFreq: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
+      spectrumXMaxFreq: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
+      spectrumYMinDb: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
+      spectrumYMaxDb: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
     });
     expect(controls.correlation).toMatchObject({
-      pair: DEFAULT_PANEL_CONTROLS.vectorscopePair,
-      mode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
-      polarLevelMaxHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold,
+      vectorscopePair: DEFAULT_PANEL_CONTROLS.vectorscopePair,
+      vectorscopeMode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
+      vectorscopePolarLevelMaxHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold,
     });
     expect(controls.spectrogram).toMatchObject({
-      channel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
-      minFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
-      maxFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
+      spectrumChannel: DEFAULT_PANEL_CONTROLS.spectrumChannel,
+      spectrogramYMinFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
+      spectrogramYMaxFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
     });
 
     expect(controls.loudness.loudnessHistoryVisibleLayerIds).not.toBe(
       DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
     );
-    expect(controls.spectrum.channel).not.toBe(DEFAULT_PANEL_CONTROLS.spectrumChannel);
-    expect(controls.correlation.pair).not.toBe(DEFAULT_PANEL_CONTROLS.vectorscopePair);
-    expect(controls.spectrogram.channel).not.toBe(DEFAULT_PANEL_CONTROLS.spectrumChannel);
+    expect(controls.spectrum.spectrumChannel).not.toBe(DEFAULT_PANEL_CONTROLS.spectrumChannel);
+    expect(controls.correlation.vectorscopePair).not.toBe(DEFAULT_PANEL_CONTROLS.vectorscopePair);
+    expect(controls.spectrogram.spectrumChannel).not.toBe(DEFAULT_PANEL_CONTROLS.spectrumChannel);
   });
 
   it("shares the normal Stats default order and visible metrics", () => {
@@ -61,15 +61,17 @@ describe("normalizeDockControlsByModuleId", () => {
   });
 
   it("detects defaults after normalization", () => {
-    expect(isDefaultDockModuleControls("level", { mode: "peak" })).toBe(true);
-    expect(isDefaultDockModuleControls("level", { mode: "rms" })).toBe(false);
+    expect(isDefaultDockModuleControls("level", { levelMeterMode: "peak" })).toBe(true);
+    expect(isDefaultDockModuleControls("level", { levelMeterMode: "rms" })).toBe(false);
   });
 
   it("returns cloned defaults for junk input", () => {
     const controls = normalizeDockControlsByModuleId(null);
     expect(controls.spectrum).toEqual(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum);
     expect(controls.spectrum).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum);
-    expect(controls.spectrum.channel).not.toBe(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum.channel);
+    expect(controls.spectrum.spectrumChannel).not.toBe(
+      DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum.spectrumChannel
+    );
     expect(controls.stats.statsVisibleIds).not.toBe(
       DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stats.statsVisibleIds
     );
@@ -106,25 +108,25 @@ describe("normalizeDockControlsByModuleId", () => {
       loudnessYMaxDb: -12,
     });
     expect(controls.spectrum).toMatchObject({
-      channel: { type: "single", ch: 3 },
-      view: "ms",
-      speedPercent: 100,
-      octaveSmoothing: "1/6",
-      tiltDbPerOctave: 0,
-      maxHold: true,
-      minFreq: 20,
-      maxFreq: 20000,
+      spectrumChannel: { type: "single", ch: 3 },
+      spectrumView: "ms",
+      spectrumSpeedPercent: 100,
+      spectrumOctaveSmoothing: "1/6",
+      spectrumTiltDbPerOctave: 0,
+      spectrumMaxHold: true,
+      spectrumXMinFreq: 20,
+      spectrumXMaxFreq: 20000,
       // A stored range narrower than the control's minimum span is opened up around the bound the
       // caller supplied, not reset to the default range: the Dock reads the same row as the
       // Workspace panel, and that is the row's rule.
-      minDb: -30,
-      maxDb: -18,
+      spectrumYMinDb: -30,
+      spectrumYMaxDb: -18,
     });
     expect(controls.waveform).toEqual({
-      frequencyColor: false,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      centroid: false,
+      waveformFrequencyColor: false,
+      waveformLowMidSplitHz: 200,
+      waveformMidHighSplitHz: 2000,
+      waveformCentroid: false,
     });
   });
 
@@ -152,9 +154,9 @@ describe("normalizeDockControlsByModuleId", () => {
     }).spectrum;
 
     expect(controls).toMatchObject({
-      speedPercent: 72,
-      octaveSmoothing: "off",
-      maxHold: true,
+      spectrumSpeedPercent: 72,
+      spectrumOctaveSmoothing: "off",
+      spectrumMaxHold: true,
     });
     expect(controls).not.toHaveProperty("smoothingPercent");
     expect(controls).not.toHaveProperty("peakHold");
@@ -173,9 +175,9 @@ describe("Stereo Map Dock control family", () => {
     const controls = normalizeDockControlsByModuleId();
     const next = updateDockModuleControls(controls, "stereoMap", {
       ...controls.stereoMap,
-      pair: { x: 2, y: 3 },
+      stereoMapPair: { x: 2, y: 3 },
     });
-    expect(next.stereoMap.pair).toEqual({ x: 2, y: 3 });
+    expect(next.stereoMap.stereoMapPair).toEqual({ x: 2, y: 3 });
     expect(next.correlation).toBe(controls.correlation);
     expect(next.spectrum).toBe(controls.spectrum);
   });
@@ -191,13 +193,13 @@ describe("normalizeDockModuleControls", () => {
 
   it("defaults Level to live Peak and migrates legacy readouts", () => {
     expect(normalizeDockModuleControls("level", {})).toEqual({
-      mode: "peak",
+      levelMeterMode: "peak",
       readout: "live",
       showLabels: true,
     });
     expect(normalizeDockModuleControls("level", { readout: "peak" }).readout).toBe("live");
     expect(normalizeDockModuleControls("level", { readout: "truePeakMax" })).toMatchObject({
-      mode: "peak",
+      levelMeterMode: "peak",
       readout: "truePeakMax",
     });
     expect(normalizeDockModuleControls("level", { showChannelLabels: false }).showLabels).toBe(
@@ -207,18 +209,19 @@ describe("normalizeDockModuleControls", () => {
 
   it("keeps detector-specific Level readouts valid", () => {
     expect(
-      normalizeDockModuleControls("level", { mode: "rms", readout: "playbackMax" })
-    ).toMatchObject({ mode: "rms", readout: "playbackMax" });
+      normalizeDockModuleControls("level", { levelMeterMode: "rms", readout: "playbackMax" })
+    ).toMatchObject({ levelMeterMode: "rms", readout: "playbackMax" });
     expect(
-      normalizeDockModuleControls("level", { mode: "shortTerm", readout: "truePeakMax" }).readout
+      normalizeDockModuleControls("level", { levelMeterMode: "shortTerm", readout: "truePeakMax" })
+        .readout
     ).toBe("live");
   });
 
   it("rejects invalid channel pairs and normalizes unlimited Stats visibility and order", () => {
-    expect(normalizeDockModuleControls("correlation", { pair: { x: 2, y: 2 } }).pair).toEqual({
-      x: 0,
-      y: 1,
-    });
+    expect(
+      normalizeDockModuleControls("correlation", { vectorscopePair: { x: 2, y: 2 } })
+        .vectorscopePair
+    ).toEqual({ x: 0, y: 1 });
     const stats = normalizeDockModuleControls("stats", {
       statsVisibleIds: ["truePeak", "ghost", "lra", "truePeak", "integrated", "psr", "plr"],
       statsOrder: ["plr", "psr", "ghost", "plr", "integrated"],
@@ -231,30 +234,30 @@ describe("normalizeDockModuleControls", () => {
   it("normalizes Vectorscope display controls", () => {
     expect(
       normalizeDockModuleControls("correlation", {
-        pair: { x: 2, y: 3 },
-        mode: "polarLevel",
-        polarLevelMaxHold: true,
+        vectorscopePair: { x: 2, y: 3 },
+        vectorscopeMode: "polarLevel",
+        vectorscopePolarLevelMaxHold: true,
       })
     ).toEqual({
-      pair: { x: 2, y: 3 },
-      mode: "polarLevel",
-      polarLevelMaxHold: true,
+      vectorscopePair: { x: 2, y: 3 },
+      vectorscopeMode: "polarLevel",
+      vectorscopePolarLevelMaxHold: true,
     });
     expect(
       normalizeDockModuleControls("correlation", {
-        mode: "unknown",
-        polarLevelMaxHold: "yes",
+        vectorscopeMode: "unknown",
+        vectorscopePolarLevelMaxHold: "yes",
       })
-    ).toMatchObject({ mode: "lissajous", polarLevelMaxHold: false });
+    ).toMatchObject({ vectorscopeMode: "lissajous", vectorscopePolarLevelMaxHold: false });
   });
 
   it("reads the legacy polarLevelPeakHold key as a fallback", () => {
     expect(
       normalizeDockModuleControls("correlation", {
-        mode: "polarLevel",
+        vectorscopeMode: "polarLevel",
         polarLevelPeakHold: true,
       })
-    ).toMatchObject({ polarLevelMaxHold: true });
+    ).toMatchObject({ vectorscopePolarLevelMaxHold: true });
   });
 
   it("returns null for modules without controls", () => {
@@ -263,30 +266,30 @@ describe("normalizeDockModuleControls", () => {
 
   it("normalizes Dock Waveform spectral controls", () => {
     expect(normalizeDockModuleControls("waveform", {})).toEqual({
-      frequencyColor: false,
-      lowMidSplitHz: 200,
-      midHighSplitHz: 2000,
-      centroid: false,
+      waveformFrequencyColor: false,
+      waveformLowMidSplitHz: 200,
+      waveformMidHighSplitHz: 2000,
+      waveformCentroid: false,
     });
     expect(
       normalizeDockModuleControls("waveform", {
-        frequencyColor: true,
-        lowMidSplitHz: 315.4,
-        midHighSplitHz: 4100.2,
-        centroid: true,
+        waveformFrequencyColor: true,
+        waveformLowMidSplitHz: 315.4,
+        waveformMidHighSplitHz: 4100.2,
+        waveformCentroid: true,
       })
     ).toEqual({
-      frequencyColor: true,
-      lowMidSplitHz: 315,
-      midHighSplitHz: 4100,
-      centroid: true,
+      waveformFrequencyColor: true,
+      waveformLowMidSplitHz: 315,
+      waveformMidHighSplitHz: 4100,
+      waveformCentroid: true,
     });
     expect(
       normalizeDockModuleControls("waveform", {
-        lowMidSplitHz: 5000,
-        midHighSplitHz: 1000,
+        waveformLowMidSplitHz: 5000,
+        waveformMidHighSplitHz: 1000,
       })
-    ).toMatchObject({ lowMidSplitHz: 200, midHighSplitHz: 2000 });
+    ).toMatchObject({ waveformLowMidSplitHz: 200, waveformMidHighSplitHz: 2000 });
   });
 
   it("normalizes Stereo Map controls independently from Workspace panel control names", () => {
@@ -294,56 +297,60 @@ describe("normalizeDockModuleControls", () => {
     // panel's "stereoMap*"-prefixed fields in lib/panelControls.js) — one instance's toggles must
     // never bleed into the other's normalized shape.
     expect(normalizeDockModuleControls("stereoMap", {})).toEqual({
-      pair: { x: 0, y: 1 },
-      mode: "position",
-      hold: false,
-      speedPercent: 50,
-      octaveSmoothing: "1/12",
-      minFreq: 20,
-      maxFreq: 20000,
-      monoLossMinDb: -24,
-      msRatioMinDb: -48,
-      msRatioMaxDb: 24,
+      stereoMapPair: { x: 0, y: 1 },
+      stereoMapMode: "position",
+      stereoMapHold: false,
+      stereoMapSpeedPercent: 50,
+      stereoMapOctaveSmoothing: "1/12",
+      stereoMapXMinFreq: 20,
+      stereoMapXMaxFreq: 20000,
+      stereoMapMonoLossYMinDb: -24,
+      stereoMapMsRatioYMinDb: -48,
+      stereoMapMsRatioYMaxDb: 24,
     });
     expect(
       normalizeDockModuleControls("stereoMap", {
-        pair: { x: 2, y: 3 },
-        mode: "correlation",
-        hold: true,
-        speedPercent: 80,
-        octaveSmoothing: "1/3",
-        minFreq: 40,
-        maxFreq: 16000,
-        monoLossMinDb: -30,
-        msRatioMinDb: -20,
-        msRatioMaxDb: 10,
+        stereoMapPair: { x: 2, y: 3 },
+        stereoMapMode: "correlation",
+        stereoMapHold: true,
+        stereoMapSpeedPercent: 80,
+        stereoMapOctaveSmoothing: "1/3",
+        stereoMapXMinFreq: 40,
+        stereoMapXMaxFreq: 16000,
+        stereoMapMonoLossYMinDb: -30,
+        stereoMapMsRatioYMinDb: -20,
+        stereoMapMsRatioYMaxDb: 10,
       })
     ).toEqual({
-      pair: { x: 2, y: 3 },
-      mode: "correlation",
-      hold: true,
-      speedPercent: 80,
-      octaveSmoothing: "1/3",
-      minFreq: 40,
-      maxFreq: 16000,
-      monoLossMinDb: -30,
-      msRatioMinDb: -20,
-      msRatioMaxDb: 10,
+      stereoMapPair: { x: 2, y: 3 },
+      stereoMapMode: "correlation",
+      stereoMapHold: true,
+      stereoMapSpeedPercent: 80,
+      stereoMapOctaveSmoothing: "1/3",
+      stereoMapXMinFreq: 40,
+      stereoMapXMaxFreq: 16000,
+      stereoMapMonoLossYMinDb: -30,
+      stereoMapMsRatioYMinDb: -20,
+      stereoMapMsRatioYMaxDb: 10,
     });
   });
 
   it("rejects an invalid Stereo Map channel pair and unknown mode", () => {
-    expect(normalizeDockModuleControls("stereoMap", { pair: { x: 2, y: 2 } }).pair).toEqual({
-      x: 0,
-      y: 1,
-    });
-    expect(normalizeDockModuleControls("stereoMap", { mode: "unknown" }).mode).toBe("position");
+    expect(
+      normalizeDockModuleControls("stereoMap", { stereoMapPair: { x: 2, y: 2 } }).stereoMapPair
+    ).toEqual({ x: 0, y: 1 });
+    expect(
+      normalizeDockModuleControls("stereoMap", { stereoMapMode: "unknown" }).stereoMapMode
+    ).toBe("position");
   });
 
   it("keeps Stereo Map's M/S Ratio Y range straddling zero", () => {
     expect(
-      normalizeDockModuleControls("stereoMap", { msRatioMinDb: 10, msRatioMaxDb: -10 })
-    ).toMatchObject({ msRatioMinDb: 0, msRatioMaxDb: 0 });
+      normalizeDockModuleControls("stereoMap", {
+        stereoMapMsRatioYMinDb: 10,
+        stereoMapMsRatioYMaxDb: -10,
+      })
+    ).toMatchObject({ stereoMapMsRatioYMinDb: 0, stereoMapMsRatioYMaxDb: 0 });
   });
 });
 

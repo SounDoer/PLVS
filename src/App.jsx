@@ -917,13 +917,14 @@ function AppContent() {
     for (const panel of dockLayout.panels) {
       if (panel.moduleId !== "vectorscope") continue;
       const controls = dockLayout.controlsByPanelId[panel.id];
+      const pair = controls?.vectorscopePair;
       const nextPair = clampVectorscopePairToAvailable(
-        controls?.pair,
+        pair,
         channelCount >= 2 ? channelCount : 2,
         peakLabelContext
       );
-      if (nextPair.x === controls?.pair?.x && nextPair.y === controls?.pair?.y) continue;
-      dockLayout.setPanelControls(panel.id, { ...controls, pair: nextPair });
+      if (nextPair.x === pair?.x && nextPair.y === pair?.y) continue;
+      dockLayout.setPanelControls(panel.id, { ...controls, vectorscopePair: nextPair });
     }
   }, [
     channelCount,
@@ -937,13 +938,14 @@ function AppContent() {
     for (const panel of dockLayout.panels) {
       if (panel.moduleId !== "stereo-map") continue;
       const controls = dockLayout.controlsByPanelId[panel.id];
+      const pair = controls?.stereoMapPair;
       const nextPair = clampVectorscopePairToAvailable(
-        controls?.pair,
+        pair,
         channelCount >= 2 ? channelCount : 2,
         peakLabelContext
       );
-      if (nextPair.x === controls?.pair?.x && nextPair.y === controls?.pair?.y) continue;
-      dockLayout.setPanelControls(panel.id, { ...controls, pair: nextPair });
+      if (nextPair.x === pair?.x && nextPair.y === pair?.y) continue;
+      dockLayout.setPanelControls(panel.id, { ...controls, stereoMapPair: nextPair });
     }
   }, [
     channelCount,
@@ -957,20 +959,16 @@ function AppContent() {
     for (const panel of dockLayout.panels) {
       if (panel.moduleId !== "spectrum" && panel.moduleId !== "spectrogram") continue;
       const controls = dockLayout.controlsByPanelId[panel.id];
-      const nextChannel = clampSpectrumChannelToAvailable(
-        controls?.channel,
-        spectrumChannelOptions
-      );
+      const channel = controls?.spectrumChannel;
+      const nextChannel = clampSpectrumChannelToAvailable(channel, spectrumChannelOptions);
       const currentKey =
-        controls?.channel?.type === "single"
-          ? `s-${controls.channel.ch}`
-          : `p-${controls?.channel?.x ?? 0}-${controls?.channel?.y ?? 1}`;
+        channel?.type === "single" ? `s-${channel.ch}` : `p-${channel?.x ?? 0}-${channel?.y ?? 1}`;
       const nextKey =
         nextChannel.type === "single"
           ? `s-${nextChannel.ch}`
           : `p-${nextChannel.x}-${nextChannel.y}`;
       if (currentKey === nextKey) continue;
-      dockLayout.setPanelControls(panel.id, { ...controls, channel: nextChannel });
+      dockLayout.setPanelControls(panel.id, { ...controls, spectrumChannel: nextChannel });
     }
   }, [
     dockLayout.controlsByPanelId,

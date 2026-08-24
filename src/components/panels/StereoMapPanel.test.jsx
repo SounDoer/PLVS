@@ -52,7 +52,7 @@ function baseAudioData(overrides = {}) {
     selectedOffset: -1,
     channelCount: 2,
     peakLabelContext: {},
-    panelControls: { stereoMapPair: { first: 0, second: 1 } },
+    panelControls: { stereoMapPair: { x: 0, y: 1 } },
     displayAudio: { stereoMapResultsByKey: { [KEY]: primitiveRow() } },
     ...overrides,
   };
@@ -205,7 +205,7 @@ describe("StereoMapPanel", () => {
     const { container } = renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.CORRELATION,
         },
       })
@@ -220,7 +220,7 @@ describe("StereoMapPanel", () => {
       baseAudioData({
         peakLabelContext: {},
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.POSITION,
         },
       })
@@ -237,7 +237,7 @@ describe("StereoMapPanel", () => {
     renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.CORRELATION,
         },
       })
@@ -251,7 +251,7 @@ describe("StereoMapPanel", () => {
     renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.MONO_LOSS_DB,
           stereoMapMonoLossYMinDb: -24,
         },
@@ -266,7 +266,7 @@ describe("StereoMapPanel", () => {
     renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.MS_RATIO_DB,
           stereoMapMsRatioYMinDb: -48,
           stereoMapMsRatioYMaxDb: 24,
@@ -283,7 +283,7 @@ describe("StereoMapPanel", () => {
     renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.POSITION,
         },
       })
@@ -322,7 +322,7 @@ describe("StereoMapPanel", () => {
     const audioData = baseAudioData({
       getStereoMapHistoryForKey,
       panelControls: {
-        stereoMapPair: { first: 0, second: 1 },
+        stereoMapPair: { x: 0, y: 1 },
         stereoMapMode: STEREO_MAP_MODES.CORRELATION,
         stereoMapHold: false,
       },
@@ -340,7 +340,7 @@ describe("StereoMapPanel", () => {
           <PanelInstanceProvider
             value={{
               panelControls: {
-                stereoMapPair: { first: 0, second: 1 },
+                stereoMapPair: { x: 0, y: 1 },
                 stereoMapMode: STEREO_MAP_MODES.CORRELATION,
                 stereoMapHold: true,
               },
@@ -371,7 +371,7 @@ describe("StereoMapPanel", () => {
     });
     const getStereoMapHistoryForKey = (key) => (key === KEY ? slab : null);
     const sharedControls = {
-      stereoMapPair: { first: 0, second: 1 },
+      stereoMapPair: { x: 0, y: 1 },
       stereoMapMode: STEREO_MAP_MODES.POSITION,
       stereoMapHold: true,
     };
@@ -398,7 +398,7 @@ describe("StereoMapPanel", () => {
     const { container: containerC } = renderPanel(
       baseAudioData({
         getStereoMapHistoryForKey,
-        panelControls: { ...sharedControls, stereoMapPair: { first: 2, second: 3 } },
+        panelControls: { ...sharedControls, stereoMapPair: { x: 2, y: 3 } },
       })
     );
     const ctxC = ctxByCanvas.get(containerC.querySelector("canvas"));
@@ -410,7 +410,7 @@ describe("StereoMapPanel", () => {
     const { container } = renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.POSITION,
           stereoMapHold: true,
         },
@@ -435,7 +435,7 @@ describe("StereoMapPanel", () => {
     const { container } = renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.MS_RATIO_DB,
           stereoMapMsRatioYMinDb: -48,
           stereoMapMsRatioYMaxDb: 24,
@@ -473,7 +473,7 @@ describe("StereoMapPanel", () => {
     const ctx = mockCanvas();
     renderPanel(
       baseAudioData({
-        panelControls: { stereoMapPair: { first: 2, second: 3 } },
+        panelControls: { stereoMapPair: { x: 2, y: 3 } },
         displayAudio: { stereoMapResultsByKey: { [KEY]: primitiveRow() } },
       })
     );
@@ -506,7 +506,7 @@ describe("StereoMapPanel", () => {
     const ctx = mockCanvas();
     const { rerender } = renderPanel(
       baseAudioData({
-        panelControls: { stereoMapPair: { first: 0, second: 1 } },
+        panelControls: { stereoMapPair: { x: 0, y: 1 } },
       })
     );
     expect(ctx.fill).toHaveBeenCalled();
@@ -522,9 +522,7 @@ describe("StereoMapPanel", () => {
         }}
       >
         <HistoryDataProvider value={{ selectedOffset: -1 }}>
-          <PanelInstanceProvider
-            value={{ panelControls: { stereoMapPair: { first: 2, second: 3 } } }}
-          >
+          <PanelInstanceProvider value={{ panelControls: { stereoMapPair: { x: 2, y: 3 } } }}>
             <StereoMapPanel />
           </PanelInstanceProvider>
         </HistoryDataProvider>
@@ -541,7 +539,7 @@ describe("StereoMapPanel", () => {
     const { rerender } = renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapMode: STEREO_MAP_MODES.POSITION,
         },
       })
@@ -554,7 +552,7 @@ describe("StereoMapPanel", () => {
           <PanelInstanceProvider
             value={{
               panelControls: {
-                stereoMapPair: { first: 0, second: 1 },
+                stereoMapPair: { x: 0, y: 1 },
                 stereoMapMode: STEREO_MAP_MODES.MS_RATIO_DB,
               },
             }}
@@ -573,7 +571,7 @@ describe("StereoMapPanel", () => {
     renderPanel(
       baseAudioData({
         panelControls: {
-          stereoMapPair: { first: 0, second: 1 },
+          stereoMapPair: { x: 0, y: 1 },
           stereoMapXMinFreq: 20,
           stereoMapXMaxFreq: 20000,
         },

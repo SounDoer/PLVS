@@ -80,19 +80,19 @@ describe("deriveClampedPanelControls", () => {
 
   it("clamps a stereo map panel's out-of-range pair, reusing the Vectorscope pair fallback", () => {
     const state = makeState([
-      { id: "sm", moduleId: "stereo-map", controls: { stereoMapPair: { first: 0, second: 4 } } },
+      { id: "sm", moduleId: "stereo-map", controls: { stereoMapPair: { x: 0, y: 4 } } },
     ]);
 
     const updates = deriveClampedPanelControls(state, STEREO_CTX);
 
     expect(updates).toHaveLength(1);
     expect(updates[0].panelId).toBe("sm");
-    expect(updates[0].panelControls.stereoMapPair).toEqual({ first: 0, second: 1 });
+    expect(updates[0].panelControls.stereoMapPair).toEqual({ x: 0, y: 1 });
   });
 
   it("leaves a stereo map panel's in-range pair untouched", () => {
     const state = makeState([
-      { id: "sm", moduleId: "stereo-map", controls: { stereoMapPair: { first: 0, second: 1 } } },
+      { id: "sm", moduleId: "stereo-map", controls: { stereoMapPair: { x: 0, y: 1 } } },
     ]);
 
     expect(deriveClampedPanelControls(state, STEREO_CTX)).toEqual([]);

@@ -88,7 +88,7 @@ describe("app runtime derivations", () => {
 
   it("keeps Stereo Map backend requests byte-equivalent across display-only changes", () => {
     const measurementControls = {
-      stereoMapPair: { first: 0, second: 1 },
+      stereoMapPair: { x: 0, y: 1 },
       stereoMapSpeedPercent: 50,
       stereoMapOctaveSmoothing: "1/6",
     };

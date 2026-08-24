@@ -22,7 +22,7 @@ function renderSpectrum(controls, result) {
 
 describe("DockSpectrum", () => {
   it("renders a themed live fill and both live outlines", () => {
-    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum, view: "lr" };
+    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum, spectrumView: "lr" };
     const { container } = renderSpectrum(controls, {
       path: "M 0 130 L 1000 200",
       pathB: "M 0 150 L 1000 180",
@@ -38,7 +38,7 @@ describe("DockSpectrum", () => {
   });
 
   it("keeps live outline stroke widths independent from SVG scaling", () => {
-    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum, view: "lr" };
+    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum, spectrumView: "lr" };
     const { container } = renderSpectrum(controls, {
       path: "M 0 130 L 1000 200",
       pathB: "M 0 150 L 1000 180",
@@ -53,8 +53,8 @@ describe("DockSpectrum", () => {
   it("fills to both peak contours while keeping the live outlines on top", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
-      view: "lr",
-      maxHold: true,
+      spectrumView: "lr",
+      spectrumMaxHold: true,
     };
     const { container } = renderSpectrum(controls, {
       path: "M 0 140 L 1000 190",
@@ -74,10 +74,10 @@ describe("DockSpectrum", () => {
   it("applies the configured display ranges to reconstructed paths", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
-      minFreq: 100,
-      maxFreq: 1000,
-      minDb: -60,
-      maxDb: 0,
+      spectrumXMinFreq: 100,
+      spectrumXMaxFreq: 1000,
+      spectrumYMinDb: -60,
+      spectrumYMaxDb: 0,
     };
     const { container } = renderSpectrum(controls, {
       bandCentersHz: [100, 1000],

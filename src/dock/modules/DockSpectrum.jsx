@@ -25,17 +25,17 @@ export function DockSpectrum({ controls }) {
   const primaryGradientId = `dock-spectrum-primary-${gradientId}`;
   const secondaryGradientId = `dock-spectrum-secondary-${gradientId}`;
   const range = {
-    minHz: controls?.minFreq,
-    maxHz: controls?.maxFreq,
-    yMinDb: controls?.minDb,
-    yMaxDb: controls?.maxDb,
+    minHz: controls?.spectrumXMinFreq,
+    maxHz: controls?.spectrumXMaxFreq,
+    yMinDb: controls?.spectrumYMinDb,
+    yMaxDb: controls?.spectrumYMaxDb,
   };
   const livePath = spectrumPath(result, "smoothDb", "path", range);
   const livePathB = spectrumPath(result, "smoothDbB", "pathB", range);
   const peakPath = spectrumPath(result, "peakDb", "peakPath", range);
   const peakPathB = spectrumPath(result, "peakDbB", "peakPathB", range);
-  const primaryAreaPath = areaPath(controls?.maxHold && peakPath ? peakPath : livePath);
-  const secondaryAreaPath = controls?.maxHold ? areaPath(peakPathB) : "";
+  const primaryAreaPath = areaPath(controls?.spectrumMaxHold && peakPath ? peakPath : livePath);
+  const secondaryAreaPath = controls?.spectrumMaxHold ? areaPath(peakPathB) : "";
 
   return (
     <div className="h-full min-w-0 flex-1 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]">

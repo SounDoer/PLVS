@@ -80,7 +80,7 @@ function SettingsBody({
   onChange,
 }) {
   if (moduleId === "level") {
-    const isPeak = controls.mode === "peak";
+    const isPeak = controls.levelMeterMode === "peak";
     const readoutOptions = isPeak
       ? [
           { value: "live", label: "Live" },
@@ -95,12 +95,12 @@ function SettingsBody({
         <SettingsRow label="Mode">
           <SelectField
             label="Level mode"
-            value={controls.mode}
+            value={controls.levelMeterMode}
             options={LEVEL_METER_MODE_OPTIONS.map(({ id, label }) => ({ value: id, label }))}
-            onChange={(mode) =>
+            onChange={(levelMeterMode) =>
               onChange({
                 ...controls,
-                mode,
+                levelMeterMode,
                 readout: "live",
               })
             }
@@ -155,16 +155,16 @@ function SettingsBody({
     }));
     const channelOptions = runtimeOptions ?? CHANNEL_OPTIONS;
     const showChannel = channelCount == null ? true : channelCount > 2 && channelOptions.length > 0;
-    const showView = channelOptions.length > 0 && controls.channel?.type === "pair";
+    const showView = channelOptions.length > 0 && controls.spectrumChannel?.type === "pair";
     return (
       <>
         {showChannel ? (
           <SettingsRow label="Channel">
             <SelectField
               label="Spectrum channel"
-              value={channelValue(controls.channel)}
+              value={channelValue(controls.spectrumChannel)}
               options={channelOptions}
-              onChange={(value) => onChange({ ...controls, channel: parseChannel(value) })}
+              onChange={(value) => onChange({ ...controls, spectrumChannel: parseChannel(value) })}
             />
           </SettingsRow>
         ) : null}
@@ -172,32 +172,40 @@ function SettingsBody({
           <SettingsRow label="View">
             <SelectField
               label="Spectrum view"
-              value={controls.view}
+              value={controls.spectrumView}
               options={[
                 { value: "combined", label: "Combined" },
                 { value: "lr", label: "L / R" },
                 { value: "ms", label: "M / S" },
               ]}
-              onChange={(view) => onChange({ ...controls, view })}
+              onChange={(spectrumView) => onChange({ ...controls, spectrumView })}
             />
           </SettingsRow>
         ) : null}
         <SpectrumDisplaySettingsRows
           showPeakLabels={false}
-          maxHold={controls.maxHold}
-          speedPercent={controls.speedPercent}
-          octaveSmoothing={controls.octaveSmoothing}
-          tiltDbPerOctave={controls.tiltDbPerOctave}
-          xMinFreq={controls.minFreq}
-          xMaxFreq={controls.maxFreq}
-          yMinDb={controls.minDb}
-          yMaxDb={controls.maxDb}
-          onMaxHoldChange={(maxHold) => onChange({ ...controls, maxHold })}
-          onSpeedChange={(speedPercent) => onChange({ ...controls, speedPercent })}
-          onOctaveSmoothingChange={(octaveSmoothing) => onChange({ ...controls, octaveSmoothing })}
-          onTiltChange={(tiltDbPerOctave) => onChange({ ...controls, tiltDbPerOctave })}
-          onXRangeChange={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
-          onYRangeChange={(minDb, maxDb) => onChange({ ...controls, minDb, maxDb })}
+          maxHold={controls.spectrumMaxHold}
+          speedPercent={controls.spectrumSpeedPercent}
+          octaveSmoothing={controls.spectrumOctaveSmoothing}
+          tiltDbPerOctave={controls.spectrumTiltDbPerOctave}
+          xMinFreq={controls.spectrumXMinFreq}
+          xMaxFreq={controls.spectrumXMaxFreq}
+          yMinDb={controls.spectrumYMinDb}
+          yMaxDb={controls.spectrumYMaxDb}
+          onMaxHoldChange={(spectrumMaxHold) => onChange({ ...controls, spectrumMaxHold })}
+          onSpeedChange={(spectrumSpeedPercent) => onChange({ ...controls, spectrumSpeedPercent })}
+          onOctaveSmoothingChange={(spectrumOctaveSmoothing) =>
+            onChange({ ...controls, spectrumOctaveSmoothing })
+          }
+          onTiltChange={(spectrumTiltDbPerOctave) =>
+            onChange({ ...controls, spectrumTiltDbPerOctave })
+          }
+          onXRangeChange={(spectrumXMinFreq, spectrumXMaxFreq) =>
+            onChange({ ...controls, spectrumXMinFreq, spectrumXMaxFreq })
+          }
+          onYRangeChange={(spectrumYMinDb, spectrumYMaxDb) =>
+            onChange({ ...controls, spectrumYMinDb, spectrumYMaxDb })
+          }
         />
       </>
     );
@@ -211,15 +219,15 @@ function SettingsBody({
             group: option.group,
           }))
         : [{ value: "0-1", label: "L/R" }];
-    const pairValue = `${controls.pair?.x ?? 0}-${controls.pair?.y ?? 1}`;
+    const pairValue = `${controls.vectorscopePair?.x ?? 0}-${controls.vectorscopePair?.y ?? 1}`;
     return (
       <>
         <SettingsRow label="Mode">
           <SelectField
             label="Vectorscope mode"
-            value={controls.mode}
+            value={controls.vectorscopeMode}
             options={VECTORSCOPE_MODE_OPTIONS.map(({ id, label }) => ({ value: id, label }))}
-            onChange={(mode) => onChange({ ...controls, mode })}
+            onChange={(vectorscopeMode) => onChange({ ...controls, vectorscopeMode })}
           />
         </SettingsRow>
         <SettingsRow label="Channel Pair">
@@ -229,16 +237,19 @@ function SettingsBody({
             options={pairOptions}
             onChange={(value) => {
               const selected = vectorscopeOptions?.find((option) => option.key === value);
-              if (selected) onChange({ ...controls, pair: { x: selected.x, y: selected.y } });
+              if (selected)
+                onChange({ ...controls, vectorscopePair: { x: selected.x, y: selected.y } });
             }}
           />
         </SettingsRow>
-        {controls.mode === "polarLevel" ? (
+        {controls.vectorscopeMode === "polarLevel" ? (
           <SettingsRow label="Max Hold">
             <SettingsSwitch
               aria-label="Vectorscope max hold"
-              checked={controls.polarLevelMaxHold}
-              onCheckedChange={(polarLevelMaxHold) => onChange({ ...controls, polarLevelMaxHold })}
+              checked={controls.vectorscopePolarLevelMaxHold}
+              onCheckedChange={(vectorscopePolarLevelMaxHold) =>
+                onChange({ ...controls, vectorscopePolarLevelMaxHold })
+              }
             />
           </SettingsRow>
         ) : null}
@@ -266,14 +277,20 @@ function SettingsBody({
   if (moduleId === "waveform") {
     return (
       <WaveformSettingsRows
-        frequencyColor={controls.frequencyColor}
-        lowMidSplitHz={controls.lowMidSplitHz}
-        midHighSplitHz={controls.midHighSplitHz}
-        centroid={controls.centroid}
-        onFrequencyColorChange={(frequencyColor) => onChange({ ...controls, frequencyColor })}
-        onLowMidSplitChange={(lowMidSplitHz) => onChange({ ...controls, lowMidSplitHz })}
-        onMidHighSplitChange={(midHighSplitHz) => onChange({ ...controls, midHighSplitHz })}
-        onCentroidChange={(centroid) => onChange({ ...controls, centroid })}
+        frequencyColor={controls.waveformFrequencyColor}
+        lowMidSplitHz={controls.waveformLowMidSplitHz}
+        midHighSplitHz={controls.waveformMidHighSplitHz}
+        centroid={controls.waveformCentroid}
+        onFrequencyColorChange={(waveformFrequencyColor) =>
+          onChange({ ...controls, waveformFrequencyColor })
+        }
+        onLowMidSplitChange={(waveformLowMidSplitHz) =>
+          onChange({ ...controls, waveformLowMidSplitHz })
+        }
+        onMidHighSplitChange={(waveformMidHighSplitHz) =>
+          onChange({ ...controls, waveformMidHighSplitHz })
+        }
+        onCentroidChange={(waveformCentroid) => onChange({ ...controls, waveformCentroid })}
       />
     );
   }
@@ -286,17 +303,17 @@ function SettingsBody({
             group: option.group,
           }))
         : [{ value: "0-1", label: "L/R" }];
-    const pairValue = `${controls.pair?.x ?? 0}-${controls.pair?.y ?? 1}`;
-    const isMonoLoss = controls.mode === STEREO_MAP_MODES.MONO_LOSS_DB;
-    const isMsRatio = controls.mode === STEREO_MAP_MODES.MS_RATIO_DB;
+    const pairValue = `${controls.stereoMapPair?.x ?? 0}-${controls.stereoMapPair?.y ?? 1}`;
+    const isMonoLoss = controls.stereoMapMode === STEREO_MAP_MODES.MONO_LOSS_DB;
+    const isMsRatio = controls.stereoMapMode === STEREO_MAP_MODES.MS_RATIO_DB;
     return (
       <>
         <SettingsRow label="Mode">
           <SelectField
             label="Stereo Map mode"
-            value={controls.mode}
+            value={controls.stereoMapMode}
             options={STEREO_MAP_MODE_OPTIONS.map(({ id, label }) => ({ value: id, label }))}
-            onChange={(mode) => onChange({ ...controls, mode })}
+            onChange={(stereoMapMode) => onChange({ ...controls, stereoMapMode })}
           />
         </SettingsRow>
         <SettingsRow label="Channel Pair">
@@ -306,15 +323,16 @@ function SettingsBody({
             options={pairOptions}
             onChange={(value) => {
               const selected = vectorscopeOptions?.find((option) => option.key === value);
-              if (selected) onChange({ ...controls, pair: { x: selected.x, y: selected.y } });
+              if (selected)
+                onChange({ ...controls, stereoMapPair: { x: selected.x, y: selected.y } });
             }}
           />
         </SettingsRow>
         <SettingsRow label="Max Hold">
           <SettingsSwitch
             aria-label="Stereo Map max hold"
-            checked={controls.hold}
-            onCheckedChange={(hold) => onChange({ ...controls, hold })}
+            checked={controls.stereoMapHold}
+            onCheckedChange={(stereoMapHold) => onChange({ ...controls, stereoMapHold })}
           />
         </SettingsRow>
         <SettingsRow label="Speed">
@@ -323,9 +341,9 @@ function SettingsBody({
             min={0}
             max={100}
             step={1}
-            value={controls.speedPercent}
+            value={controls.stereoMapSpeedPercent}
             formatValue={(value) => `${value.toFixed(0)}%`}
-            onCommit={(speedPercent) => onChange({ ...controls, speedPercent })}
+            onCommit={(stereoMapSpeedPercent) => onChange({ ...controls, stereoMapSpeedPercent })}
           />
         </SettingsRow>
         <SettingsRow
@@ -334,21 +352,25 @@ function SettingsBody({
         >
           <SelectField
             label="Stereo Map smoothing"
-            value={controls.octaveSmoothing}
+            value={controls.stereoMapOctaveSmoothing}
             options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.map(({ id, label }) => ({
               value: id,
               label,
             }))}
-            onChange={(octaveSmoothing) => onChange({ ...controls, octaveSmoothing })}
+            onChange={(stereoMapOctaveSmoothing) =>
+              onChange({ ...controls, stereoMapOctaveSmoothing })
+            }
           />
         </SettingsRow>
         <SettingsRow label="Frequency Range">
           <SettingsRangeInput
             minAriaLabel="stereo map frequency range min"
             maxAriaLabel="stereo map frequency range max"
-            minValue={controls.minFreq}
-            maxValue={controls.maxFreq}
-            onCommit={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
+            minValue={controls.stereoMapXMinFreq}
+            maxValue={controls.stereoMapXMaxFreq}
+            onCommit={(stereoMapXMinFreq, stereoMapXMaxFreq) =>
+              onChange({ ...controls, stereoMapXMinFreq, stereoMapXMaxFreq })
+            }
           />
         </SettingsRow>
         {isMonoLoss ? (
@@ -356,9 +378,11 @@ function SettingsBody({
             <SettingsRangeInput
               minAriaLabel="stereo map mono loss level range min"
               maxAriaLabel="stereo map mono loss level range max"
-              minValue={controls.monoLossMinDb}
+              minValue={controls.stereoMapMonoLossYMinDb}
               maxValue={0}
-              onCommit={(monoLossMinDb) => onChange({ ...controls, monoLossMinDb })}
+              onCommit={(stereoMapMonoLossYMinDb) =>
+                onChange({ ...controls, stereoMapMonoLossYMinDb })
+              }
             />
           </SettingsRow>
         ) : null}
@@ -367,10 +391,10 @@ function SettingsBody({
             <SettingsRangeInput
               minAriaLabel="stereo map m/s ratio level range min"
               maxAriaLabel="stereo map m/s ratio level range max"
-              minValue={controls.msRatioMinDb}
-              maxValue={controls.msRatioMaxDb}
-              onCommit={(msRatioMinDb, msRatioMaxDb) =>
-                onChange({ ...controls, msRatioMinDb, msRatioMaxDb })
+              minValue={controls.stereoMapMsRatioYMinDb}
+              maxValue={controls.stereoMapMsRatioYMaxDb}
+              onCommit={(stereoMapMsRatioYMinDb, stereoMapMsRatioYMaxDb) =>
+                onChange({ ...controls, stereoMapMsRatioYMinDb, stereoMapMsRatioYMaxDb })
               }
             />
           </SettingsRow>
@@ -391,9 +415,9 @@ function SettingsBody({
           <SettingsRow label="Channel">
             <SelectField
               label="Spectrogram channel"
-              value={channelValue(controls.channel)}
+              value={channelValue(controls.spectrumChannel)}
               options={channelOptions}
-              onChange={(value) => onChange({ ...controls, channel: parseChannel(value) })}
+              onChange={(value) => onChange({ ...controls, spectrumChannel: parseChannel(value) })}
             />
           </SettingsRow>
         ) : null}
@@ -401,9 +425,11 @@ function SettingsBody({
           <SettingsRangeInput
             minAriaLabel="spectrogram frequency range min"
             maxAriaLabel="spectrogram frequency range max"
-            minValue={controls.minFreq}
-            maxValue={controls.maxFreq}
-            onCommit={(minFreq, maxFreq) => onChange({ ...controls, minFreq, maxFreq })}
+            minValue={controls.spectrogramYMinFreq}
+            maxValue={controls.spectrogramYMaxFreq}
+            onCommit={(spectrogramYMinFreq, spectrogramYMaxFreq) =>
+              onChange({ ...controls, spectrogramYMinFreq, spectrogramYMaxFreq })
+            }
           />
         </SettingsRow>
       </>

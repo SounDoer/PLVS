@@ -64,11 +64,11 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const [contentWidth, setContentWidth] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const normalizedControls = normalizeDockModuleControls("correlation", controls);
-  const pair = normalizedControls.pair;
-  const mode = normalizedControls.mode;
+  const pair = normalizedControls.vectorscopePair;
+  const mode = normalizedControls.vectorscopeMode;
   const isLissajous = mode === "lissajous";
   const [maxHoldResetKey, setMaxHoldResetKey] = useState(0);
-  const canResetMaxHold = mode === "polarLevel" && normalizedControls.polarLevelMaxHold;
+  const canResetMaxHold = mode === "polarLevel" && normalizedControls.vectorscopePolarLevelMaxHold;
   const key = dockVectorscopeKey(normalizedControls);
   const result = displayAudio?.vectorscopeResultsByKey?.[key];
   const pairX = Number.isFinite(result?.pairX) ? result.pairX : pair.x;
@@ -193,7 +193,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 firstLabel={firstLabel}
                 secondLabel={secondLabel}
                 showLabels={false}
-                maxHoldEnabled={normalizedControls.polarLevelMaxHold}
+                maxHoldEnabled={normalizedControls.vectorscopePolarLevelMaxHold}
                 maxHoldResetKey={maxHoldResetKey}
                 resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
                 identityKey={key}

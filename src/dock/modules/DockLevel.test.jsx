@@ -38,7 +38,7 @@ describe("DockLevel", () => {
         hasTpMaxValue: true,
         onResetTpMax,
       },
-      { mode: "peak", readout: "truePeakMax", showLabels: true },
+      { levelMeterMode: "peak", readout: "truePeakMax", showLabels: true },
       "compact"
     );
     expect(screen.getByText("-3.2").className).toContain("var(--ui-dock-fs-value)");
@@ -68,7 +68,7 @@ describe("DockLevel", () => {
         displayAudio: { peakDb: [-12, -9.5], tpMax: -3.2 },
         hasTpMaxValue: true,
       },
-      { mode: "peak", readout: "truePeakMax", showLabels: true },
+      { levelMeterMode: "peak", readout: "truePeakMax", showLabels: true },
       "expanded"
     );
 
@@ -88,7 +88,7 @@ describe("DockLevel", () => {
   it("renders RMS from the per-channel RMS values", () => {
     renderWith(
       { displayAudio: { peakDb: [-6, -5], rmsDb: [-22.4, -18.1] } },
-      { mode: "rms", readout: "live", showLabels: false }
+      { levelMeterMode: "rms", readout: "live", showLabels: false }
     );
     expect(screen.getAllByTestId("dock-level-bar")).toHaveLength(2);
     expect(
@@ -99,7 +99,7 @@ describe("DockLevel", () => {
   });
 
   it("keeps RMS playback maxima per channel while bars stay live", async () => {
-    const controls = { mode: "rms", readout: "playbackMax", showLabels: true };
+    const controls = { levelMeterMode: "rms", readout: "playbackMax", showLabels: true };
     const { rerender } = renderWith(
       { displayAudio: { peakDb: [-6, -5], rmsDb: [-12, -18] } },
       controls
@@ -131,10 +131,10 @@ describe("DockLevel", () => {
   it.each([
     ["momentary", "momentary", -20.3, "M"],
     ["shortTerm", "shortTerm", -18.7, "ST"],
-  ])("renders the %s scalar meter", (mode, field, value, label) => {
+  ])("renders the %s scalar meter", (levelMeterMode, field, value, label) => {
     renderWith(
       { displayAudio: { peakDb: [-8, -7], [field]: value } },
-      { mode, readout: "live", showLabels: true }
+      { levelMeterMode, readout: "live", showLabels: true }
     );
     expect(screen.getAllByTestId("dock-level-bar")).toHaveLength(1);
     expect(screen.getByText(String(value))).toBeTruthy();
@@ -144,7 +144,7 @@ describe("DockLevel", () => {
   it("separates the scalar mode from its playback-max source", async () => {
     renderWith(
       { displayAudio: { peakDb: [-8, -7], momentary: -20.3 } },
-      { mode: "momentary", readout: "playbackMax", showLabels: true }
+      { levelMeterMode: "momentary", readout: "playbackMax", showLabels: true }
     );
 
     expect(screen.getByText("M")).toBeTruthy();

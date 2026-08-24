@@ -137,7 +137,7 @@ describe("panelControls", () => {
       dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
       stereoMapMode: "position",
-      stereoMapPair: { first: 0, second: 1 },
+      stereoMapPair: { x: 0, y: 1 },
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
       stereoMapOctaveSmoothing: "1/12",
@@ -265,7 +265,7 @@ describe("panelControls", () => {
       dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["ref"],
       stereoMapMode: "position",
-      stereoMapPair: { first: 0, second: 1 },
+      stereoMapPair: { x: 0, y: 1 },
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
       stereoMapOctaveSmoothing: "1/12",
@@ -496,7 +496,7 @@ describe("stereo map panel controls normalization", () => {
   it("defaults to Position, the Vectorscope pair fallback, Hold off, and 1/12 oct smoothing", () => {
     const result = normalizePanelControls({});
     expect(result.stereoMapMode).toBe("position");
-    expect(result.stereoMapPair).toEqual({ first: 0, second: 1 });
+    expect(result.stereoMapPair).toEqual({ x: 0, y: 1 });
     expect(result.stereoMapHold).toBe(false);
     expect(result.stereoMapSpeedPercent).toBe(50);
     expect(result.stereoMapOctaveSmoothing).toBe("1/12");
@@ -519,27 +519,28 @@ describe("stereo map panel controls normalization", () => {
     expect(normalizePanelControls({ stereoMapMode: null }).stereoMapMode).toBe("position");
   });
 
-  it("normalizes a valid stereoMapPair, using {first, second} rather than Vectorscope's {x, y}", () => {
-    expect(
-      normalizePanelControls({ stereoMapPair: { first: 2, second: 4 } }).stereoMapPair
-    ).toEqual({ first: 2, second: 4 });
+  it("normalizes a valid stereoMapPair, using {x, y} like every other channel pair", () => {
+    expect(normalizePanelControls({ stereoMapPair: { x: 2, y: 4 } }).stereoMapPair).toEqual({
+      x: 2,
+      y: 4,
+    });
   });
 
-  it("falls back to the default pair for a malformed or legacy stereoMapPair", () => {
-    expect(normalizePanelControls({ stereoMapPair: { x: 2, y: 4 } }).stereoMapPair).toEqual({
-      first: 0,
-      second: 1,
-    });
+  it("reads a pair stored in the older {first, second} shape", () => {
+    expect(
+      normalizePanelControls({ stereoMapPair: { first: 2, second: 4 } }).stereoMapPair
+    ).toEqual({ x: 2, y: 4 });
+  });
+
+  it("falls back to the default pair for a malformed stereoMapPair", () => {
     expect(
       normalizePanelControls({ stereoMapPair: { first: 2, second: "bad" } }).stereoMapPair
-    ).toEqual({
-      first: 0,
-      second: 1,
+    ).toEqual({ x: 0, y: 1 });
+    expect(normalizePanelControls({ stereoMapPair: { x: 2, y: "bad" } }).stereoMapPair).toEqual({
+      x: 0,
+      y: 1,
     });
-    expect(normalizePanelControls({ stereoMapPair: null }).stereoMapPair).toEqual({
-      first: 0,
-      second: 1,
-    });
+    expect(normalizePanelControls({ stereoMapPair: null }).stereoMapPair).toEqual({ x: 0, y: 1 });
   });
 
   it("normalizes the Hold toggle", () => {
@@ -607,7 +608,7 @@ describe("stereo map panel controls normalization", () => {
   it("round-trips through normalization without drifting (preset save/apply idempotence)", () => {
     const once = normalizePanelControls({
       stereoMapMode: "msRatioDb",
-      stereoMapPair: { first: 2, second: 5 },
+      stereoMapPair: { x: 2, y: 5 },
       stereoMapHold: true,
       stereoMapSpeedPercent: 60,
       stereoMapOctaveSmoothing: "1/6",

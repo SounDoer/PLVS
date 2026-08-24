@@ -50,7 +50,7 @@ describe("analysis request key format (shared fixture)", () => {
 
           expect(
             stereoMapRequestKeyFromControls({
-              stereoMapPair: { first: pair.first, second: pair.second },
+              stereoMapPair: { x: pair.first, y: pair.second },
               stereoMapSpeedPercent: speedPercent,
               stereoMapOctaveSmoothing: smoothing.value,
             })

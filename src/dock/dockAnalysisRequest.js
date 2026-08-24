@@ -12,30 +12,14 @@ import {
 } from "./dockModuleControls.js";
 import { dockModuleIdForPanelModuleId } from "./dockLayout.js";
 
-function spectrumPanelControls(raw) {
-  const controls = normalizeDockModuleControls("spectrum", raw);
-  return {
-    spectrumChannel: controls.channel,
-    spectrumView: controls.view,
-    spectrumSpeedPercent: controls.speedPercent,
-    spectrumTiltDbPerOctave: controls.tiltDbPerOctave,
-    spectrumOctaveSmoothing: controls.octaveSmoothing,
-  };
-}
-
 export function dockSpectrumKey(controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum) {
-  return spectrumRequestKeyFromControls(spectrumPanelControls(controls));
+  return spectrumRequestKeyFromControls(normalizeDockModuleControls("spectrum", controls));
 }
 
 export const DOCK_SPECTRUM_KEY = dockSpectrumKey();
 
-function vectorscopePanelControls(raw) {
-  const controls = normalizeDockModuleControls("correlation", raw);
-  return { vectorscopePair: controls.pair };
-}
-
 export function dockVectorscopeKey(controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation) {
-  return vectorscopeRequestKeyFromControls(vectorscopePanelControls(controls));
+  return vectorscopeRequestKeyFromControls(normalizeDockModuleControls("correlation", controls));
 }
 
 export const DOCK_VECTORSCOPE_KEY = dockVectorscopeKey();
@@ -45,11 +29,11 @@ function dockSpectrumRequest(raw, panelId = "dock:spectrum") {
   return {
     key: dockSpectrumKey(controls),
     panelIds: [panelId],
-    channel: controls.channel,
-    view: controls.channel?.type === "single" ? "combined" : controls.view,
-    speedPercent: Math.round(controls.speedPercent),
-    tiltDbPerOctave: Math.round(controls.tiltDbPerOctave * 100) / 100,
-    octaveSmoothing: controls.octaveSmoothing,
+    channel: controls.spectrumChannel,
+    view: controls.spectrumChannel?.type === "single" ? "combined" : controls.spectrumView,
+    speedPercent: Math.round(controls.spectrumSpeedPercent),
+    tiltDbPerOctave: Math.round(controls.spectrumTiltDbPerOctave * 100) / 100,
+    octaveSmoothing: controls.spectrumOctaveSmoothing,
   };
 }
 
@@ -58,7 +42,7 @@ function dockVectorscopeRequest(raw, panelId = "dock:vectorscope") {
   return {
     key: dockVectorscopeKey(controls),
     panelIds: [panelId],
-    pair: controls.pair,
+    pair: controls.vectorscopePair,
   };
 }
 
@@ -136,17 +120,8 @@ export function mergeDockVectorscopeRequest(derived, active) {
   };
 }
 
-function stereoMapPanelControls(raw) {
-  const controls = normalizeDockModuleControls("stereoMap", raw);
-  return {
-    stereoMapPair: { first: controls.pair.x, second: controls.pair.y },
-    stereoMapSpeedPercent: controls.speedPercent,
-    stereoMapOctaveSmoothing: controls.octaveSmoothing,
-  };
-}
-
 export function dockStereoMapKey(controls = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap) {
-  return stereoMapRequestKeyFromControls(stereoMapPanelControls(controls));
+  return stereoMapRequestKeyFromControls(normalizeDockModuleControls("stereoMap", controls));
 }
 
 export const DOCK_STEREO_MAP_KEY = dockStereoMapKey();
@@ -156,9 +131,11 @@ function dockStereoMapRequest(raw, panelId = "dock:stereoMap") {
   return {
     key: dockStereoMapKey(controls),
     panelIds: [panelId],
-    pair: { first: controls.pair.x, second: controls.pair.y },
-    speedPercent: Math.round(controls.speedPercent),
-    octaveSmoothing: controls.octaveSmoothing,
+    // The request payload keeps the Rust type's { first, second } pair; the stored control is
+    // { x, y } like every other channel pair.
+    pair: { first: controls.stereoMapPair.x, second: controls.stereoMapPair.y },
+    speedPercent: Math.round(controls.stereoMapSpeedPercent),
+    octaveSmoothing: controls.stereoMapOctaveSmoothing,
   };
 }
 
@@ -207,7 +184,7 @@ export function mergeDockAnalysisRequests(derived, active) {
     const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
     if (dockModuleId !== "waveform") return false;
     const controls = normalizeDockModuleControls("waveform", panel.controls);
-    return controls.frequencyColor || controls.centroid;
+    return controls.waveformFrequencyColor || controls.waveformCentroid;
   });
   return dockNeedsSpectralWaveform && !merged.spectralWaveform
     ? { ...merged, spectralWaveform: true }

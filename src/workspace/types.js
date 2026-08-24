@@ -31,7 +31,7 @@
  *   statsOrder: string[],
  *   loudnessHistoryVisibleLayerIds: string[],
  *   stereoMapMode: 'position' | 'correlation' | 'monoLossDb' | 'msRatioDb',
- *   stereoMapPair: { first: number, second: number },
+ *   stereoMapPair: { x: number, y: number },
  *   stereoMapHold: boolean,
  *   stereoMapSpeedPercent: number,
  *   stereoMapOctaveSmoothing: string,

@@ -371,7 +371,7 @@ describe("panel instances", () => {
       "stereo-map": {
         ...DEFAULT_PANEL_CONTROLS,
         stereoMapMode: "correlation",
-        stereoMapPair: { first: 0, second: 1 },
+        stereoMapPair: { x: 0, y: 1 },
       },
     };
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
@@ -382,7 +382,7 @@ describe("panel instances", () => {
     expect(next.tree).toBe(tree);
     expect(next.panelsById["stereo-map"]).toEqual({ id: "stereo-map", moduleId: "stereo-map" });
     expect(next.panelControlsById["stereo-map"].stereoMapMode).toBe("correlation");
-    expect(next.panelControlsById["stereo-map"].stereoMapPair).toEqual({ first: 0, second: 1 });
+    expect(next.panelControlsById["stereo-map"].stereoMapPair).toEqual({ x: 0, y: 1 });
   });
 
   it("renames and clears custom panel titles", () => {

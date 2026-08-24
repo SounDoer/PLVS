@@ -47,8 +47,8 @@ export function DockSpectrogram({ controls }) {
     selectedOffset: -1,
     frozenSnaps: null,
     colormapLut,
-    minHz: controls?.minFreq ?? 20,
-    maxHz: controls?.maxFreq ?? 20_000,
+    minHz: controls?.spectrogramYMinFreq ?? 20,
+    maxHz: controls?.spectrogramYMaxFreq ?? 20_000,
   });
 
   return (

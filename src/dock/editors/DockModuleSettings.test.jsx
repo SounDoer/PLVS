@@ -39,14 +39,14 @@ describe("DockModuleSettings", () => {
   it("uses the shared Waveform controls in Dock settings", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.waveform,
-      frequencyColor: true,
+      waveformFrequencyColor: true,
     };
     const onChange = renderSettings("waveform", { controls });
 
     expect(screen.getByLabelText("waveform low mid split").value).toBe("200");
     expect(screen.getByLabelText("waveform mid high split").value).toBe("2000");
     fireEvent.click(screen.getByLabelText("waveform centroid"));
-    expect(onChange).toHaveBeenCalledWith({ ...controls, centroid: true });
+    expect(onChange).toHaveBeenCalledWith({ ...controls, waveformCentroid: true });
   });
 
   it("emits a complete updated controls object", () => {
@@ -54,7 +54,7 @@ describe("DockModuleSettings", () => {
     fireEvent.click(screen.getByLabelText("Level mode"));
     fireEvent.click(screen.getByRole("option", { name: "RMS" }));
     expect(onChange).toHaveBeenCalledWith({
-      mode: "rms",
+      levelMeterMode: "rms",
       readout: "live",
       showLabels: true,
     });
@@ -109,7 +109,7 @@ describe("DockModuleSettings", () => {
     fireEvent.click(screen.getByRole("option", { name: "Ls/Rs" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,
-      pair: { x: 2, y: 3 },
+      vectorscopePair: { x: 2, y: 3 },
     });
   });
 
@@ -124,18 +124,21 @@ describe("DockModuleSettings", () => {
 
     fireEvent.click(screen.getByLabelText("Vectorscope mode"));
     fireEvent.click(screen.getByRole("option", { name: "Polar Level" }));
-    expect(onChange).toHaveBeenCalledWith({ ...controls, mode: "polarLevel" });
+    expect(onChange).toHaveBeenCalledWith({ ...controls, vectorscopeMode: "polarLevel" });
   });
 
   it("toggles Max hold in Polar Level mode", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,
-      mode: "polarLevel",
+      vectorscopeMode: "polarLevel",
     };
     const onChange = renderSettings("correlation", { controls });
 
     fireEvent.click(screen.getByLabelText("Vectorscope max hold"));
-    expect(onChange).toHaveBeenCalledWith({ ...controls, polarLevelMaxHold: true });
+    expect(onChange).toHaveBeenCalledWith({
+      ...controls,
+      vectorscopePolarLevelMaxHold: true,
+    });
   });
 
   it("uses runtime Spectrum channels and only shows View for a pair", () => {
@@ -150,7 +153,7 @@ describe("DockModuleSettings", () => {
     fireEvent.click(screen.getByRole("option", { name: "C" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
-      channel: { type: "single", ch: 2 },
+      spectrumChannel: { type: "single", ch: 2 },
     });
   });
 
@@ -174,7 +177,7 @@ describe("DockModuleSettings", () => {
     renderSettings("spectrum", {
       controls: {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
-        channel: { type: "single", ch: 2 },
+        spectrumChannel: { type: "single", ch: 2 },
       },
       spectrumOptions: [{ key: "s-2", label: "C", sel: { type: "single", ch: 2 } }],
       channelCount: 6,
@@ -245,7 +248,7 @@ describe("DockModuleSettings", () => {
     fireEvent.click(screen.getByRole("option", { name: "C" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrogram,
-      channel: { type: "single", ch: 2 },
+      spectrumChannel: { type: "single", ch: 2 },
     });
   });
 

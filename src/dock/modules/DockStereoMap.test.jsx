@@ -9,7 +9,11 @@ import { DEFAULT_DOCK_MODULES, DOCK_PANEL_MODULE_IDS } from "../dockLayout.js";
 import { dockStereoMapKey } from "../dockAnalysisRequest.js";
 import { DockStereoMap } from "./DockStereoMap.jsx";
 
-const controls = { pair: { x: 0, y: 1 }, mode: STEREO_MAP_MODES.POSITION, hold: false };
+const controls = {
+  stereoMapPair: { x: 0, y: 1 },
+  stereoMapMode: STEREO_MAP_MODES.POSITION,
+  stereoMapHold: false,
+};
 const key = dockStereoMapKey(controls);
 
 // StereoMapPlot renders on <canvas> (see StereoMapPlot.jsx); jsdom has no real canvas
@@ -180,7 +184,7 @@ describe("DockStereoMap", () => {
 
     const { container } = renderWith({
       result: primitiveRow(),
-      selectedControls: { ...controls, mode: STEREO_MAP_MODES.CORRELATION },
+      selectedControls: { ...controls, stereoMapMode: STEREO_MAP_MODES.CORRELATION },
     });
     expect(container.querySelector('[data-testid="dock-stereo-map-pair-labels"]')).toBeNull();
   });
@@ -201,7 +205,11 @@ describe("DockStereoMap", () => {
     const ctxWithoutHold = mockCanvas();
     renderWith({
       result: primitiveRow(),
-      selectedControls: { ...controls, mode: STEREO_MAP_MODES.CORRELATION, hold: false },
+      selectedControls: {
+        ...controls,
+        stereoMapMode: STEREO_MAP_MODES.CORRELATION,
+        stereoMapHold: false,
+      },
       historyData: { getStereoMapHistoryForKey },
     });
     // Hold is always stroked in the primary token, distinct from Correlation's Bad/Warn/Good
@@ -211,7 +219,11 @@ describe("DockStereoMap", () => {
     const ctxWithHold = mockCanvas();
     renderWith({
       result: primitiveRow(),
-      selectedControls: { ...controls, mode: STEREO_MAP_MODES.CORRELATION, hold: true },
+      selectedControls: {
+        ...controls,
+        stereoMapMode: STEREO_MAP_MODES.CORRELATION,
+        stereoMapHold: true,
+      },
       historyData: { getStereoMapHistoryForKey },
     });
     expect(ctxWithHold.strokedColors).toContain(STEREO_MAP_PRIMARY_CSS);
@@ -233,7 +245,7 @@ describe("DockStereoMap", () => {
 
     const { container: dockContainer } = renderWith({
       result: primitiveRow(),
-      selectedControls: { ...controls, hold: true },
+      selectedControls: { ...controls, stereoMapHold: true },
       historyData: { getStereoMapHistoryForKey },
     });
 
@@ -241,7 +253,7 @@ describe("DockStereoMap", () => {
     // private per-instance accumulator: both consumers of this key must see the identical points.
     const expectedHold = slab.liveHoldValues()[STEREO_MAP_MODES.POSITION];
     const dockCtx = ctxByCanvas.get(dockContainer.querySelector("canvas"));
-    // Position mode draws the maximum outline (second-to-last stroke) then the minimum (last).
+    // Position stereoMapMode draws the maximum outline (second-to-last stroke) then the minimum (last).
     expect(dockCtx.strokedPaths.at(-2)).toBeTruthy();
     expect(expectedHold.maximum.some((v) => v !== null)).toBe(true);
   });

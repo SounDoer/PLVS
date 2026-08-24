@@ -590,9 +590,9 @@ describe("PanelSettingsContent", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "stereo map channel" }));
     fireEvent.click(screen.getByRole("option", { name: "L/C" }));
-    expect(props.onStereoMapPairChange).toHaveBeenCalledWith({ first: 0, second: 2 });
+    expect(props.onStereoMapPairChange).toHaveBeenCalledWith({ x: 0, y: 2 });
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ stereoMapPair: { first: 0, second: 2 } })
+      expect.objectContaining({ stereoMapPair: { x: 0, y: 2 } })
     );
 
     fireEvent.click(screen.getByRole("switch", { name: "stereo map max hold" }));

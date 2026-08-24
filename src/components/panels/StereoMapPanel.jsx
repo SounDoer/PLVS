@@ -163,8 +163,8 @@ export function StereoMapPanel() {
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const channelLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
-  const firstIndex = Number.isFinite(pair?.first) ? Math.max(0, Math.floor(pair.first)) : 0;
-  const secondIndex = Number.isFinite(pair?.second) ? Math.max(0, Math.floor(pair.second)) : 1;
+  const firstIndex = Number.isFinite(pair?.x) ? Math.max(0, Math.floor(pair.x)) : 0;
+  const secondIndex = Number.isFinite(pair?.y) ? Math.max(0, Math.floor(pair.y)) : 1;
   const firstLabel = channelLabels[firstIndex] ?? `Ch ${firstIndex + 1}`;
   const secondLabel = channelLabels[secondIndex] ?? `Ch ${secondIndex + 1}`;
 

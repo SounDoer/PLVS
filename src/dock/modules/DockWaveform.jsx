@@ -309,10 +309,10 @@ export function DockWaveform({ controls }) {
         ...envelope,
         ...spectralMetrics,
         channelCount,
-        frequencyColor: controls?.frequencyColor ?? false,
-        lowMidSplitHz: controls?.lowMidSplitHz ?? 200,
-        midHighSplitHz: controls?.midHighSplitHz ?? 2000,
-        centroid: controls?.centroid ?? false,
+        frequencyColor: controls?.waveformFrequencyColor ?? false,
+        lowMidSplitHz: controls?.waveformLowMidSplitHz ?? 200,
+        midHighSplitHz: controls?.waveformMidHighSplitHz ?? 2000,
+        centroid: controls?.waveformCentroid ?? false,
         themeColors,
       });
     });

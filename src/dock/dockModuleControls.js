@@ -1,7 +1,7 @@
 import {
   DEFAULT_PANEL_CONTROLS,
-  normalizePanelControlRange,
   normalizePanelControlValue,
+  normalizePanelControls,
 } from "../lib/panelControls.js";
 
 /// The Dock's own readout selector: three states where the Workspace panel has two independent
@@ -20,68 +20,120 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   "stereo-map": "stereoMap",
 });
 
-const DEFAULT_DOCK_STATS_VISIBLE_IDS = DEFAULT_PANEL_CONTROLS.statsVisibleIds;
-const DEFAULT_DOCK_STATS_ORDER = DEFAULT_PANEL_CONTROLS.statsOrder;
-
-export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze({
-  level: Object.freeze({
-    mode: DEFAULT_PANEL_CONTROLS.levelMeterMode,
-    readout: "live",
-    showLabels: true,
-  }),
-  loudness: Object.freeze({
-    showReadouts: true,
-    loudnessHistoryVisibleLayerIds: Object.freeze([
-      ...DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds,
-    ]),
-    loudnessYMinDb: DEFAULT_PANEL_CONTROLS.loudnessYMinDb,
-    loudnessYMaxDb: DEFAULT_PANEL_CONTROLS.loudnessYMaxDb,
-  }),
-  spectrum: Object.freeze({
-    channel: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.spectrumChannel }),
-    view: DEFAULT_PANEL_CONTROLS.spectrumView,
-    speedPercent: DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent,
-    octaveSmoothing: DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing,
-    tiltDbPerOctave: DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
-    maxHold: DEFAULT_PANEL_CONTROLS.spectrumMaxHold,
-    minFreq: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
-    maxFreq: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
-    minDb: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
-    maxDb: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
-  }),
-  correlation: Object.freeze({
-    pair: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.vectorscopePair }),
-    mode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
-    polarLevelMaxHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold,
-  }),
-  stats: Object.freeze({
-    statsVisibleIds: Object.freeze([...DEFAULT_DOCK_STATS_VISIBLE_IDS]),
-    statsOrder: Object.freeze([...DEFAULT_DOCK_STATS_ORDER]),
-  }),
-  spectrogram: Object.freeze({
-    channel: Object.freeze({ ...DEFAULT_PANEL_CONTROLS.spectrumChannel }),
-    minFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
-    maxFreq: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
-  }),
-  stereoMap: Object.freeze({
-    pair: Object.freeze({ x: 0, y: 1 }),
-    mode: DEFAULT_PANEL_CONTROLS.stereoMapMode,
-    hold: DEFAULT_PANEL_CONTROLS.stereoMapHold,
-    speedPercent: DEFAULT_PANEL_CONTROLS.stereoMapSpeedPercent,
-    octaveSmoothing: DEFAULT_PANEL_CONTROLS.stereoMapOctaveSmoothing,
-    minFreq: DEFAULT_PANEL_CONTROLS.stereoMapXMinFreq,
-    maxFreq: DEFAULT_PANEL_CONTROLS.stereoMapXMaxFreq,
-    monoLossMinDb: DEFAULT_PANEL_CONTROLS.stereoMapMonoLossYMinDb,
-    msRatioMinDb: DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMinDb,
-    msRatioMaxDb: DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMaxDb,
-  }),
-  waveform: Object.freeze({
-    frequencyColor: DEFAULT_PANEL_CONTROLS.waveformFrequencyColor,
-    lowMidSplitHz: DEFAULT_PANEL_CONTROLS.waveformLowMidSplitHz,
-    midHighSplitHz: DEFAULT_PANEL_CONTROLS.waveformMidHighSplitHz,
-    centroid: DEFAULT_PANEL_CONTROLS.waveformCentroid,
-  }),
+/**
+ * Which panel controls each Dock module carries. The Dock stores them under the panel's own keys
+ * and repairs them with the panel's rows, so a control has one name and one rule across both
+ * surfaces; only the subset differs, because the strip shows less than the panel does.
+ */
+const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
+  level: ["levelMeterMode"],
+  loudness: ["loudnessHistoryVisibleLayerIds", "loudnessYMinDb", "loudnessYMaxDb"],
+  spectrum: [
+    "spectrumChannel",
+    "spectrumView",
+    "spectrumSpeedPercent",
+    "spectrumOctaveSmoothing",
+    "spectrumTiltDbPerOctave",
+    "spectrumMaxHold",
+    "spectrumXMinFreq",
+    "spectrumXMaxFreq",
+    "spectrumYMinDb",
+    "spectrumYMaxDb",
+  ],
+  correlation: ["vectorscopePair", "vectorscopeMode", "vectorscopePolarLevelMaxHold"],
+  stats: ["statsVisibleIds", "statsOrder"],
+  spectrogram: ["spectrumChannel", "spectrogramYMinFreq", "spectrogramYMaxFreq"],
+  stereoMap: [
+    "stereoMapPair",
+    "stereoMapMode",
+    "stereoMapHold",
+    "stereoMapSpeedPercent",
+    "stereoMapOctaveSmoothing",
+    "stereoMapXMinFreq",
+    "stereoMapXMaxFreq",
+    "stereoMapMonoLossYMinDb",
+    "stereoMapMsRatioYMinDb",
+    "stereoMapMsRatioYMaxDb",
+  ],
+  waveform: [
+    "waveformFrequencyColor",
+    "waveformLowMidSplitHz",
+    "waveformMidHighSplitHz",
+    "waveformCentroid",
+  ],
 });
+
+/// The short, module-scoped keys the Dock stored these controls under before it was put on the
+/// panel's names. Read as fallbacks, exactly like the renames inside a panel control's own row:
+/// normalizing rewrites the key, so a stored layout upgrades itself the first time it is read.
+const LEGACY_DOCK_KEYS = Object.freeze({
+  level: { levelMeterMode: ["mode"] },
+  spectrum: {
+    spectrumChannel: ["channel"],
+    spectrumView: ["view"],
+    spectrumSpeedPercent: ["speedPercent", "smoothingPercent"],
+    spectrumOctaveSmoothing: ["octaveSmoothing"],
+    spectrumTiltDbPerOctave: ["tiltDbPerOctave"],
+    spectrumMaxHold: ["maxHold", "peakHold"],
+    spectrumXMinFreq: ["minFreq"],
+    spectrumXMaxFreq: ["maxFreq"],
+    spectrumYMinDb: ["minDb"],
+    spectrumYMaxDb: ["maxDb"],
+  },
+  correlation: {
+    vectorscopePair: ["pair"],
+    vectorscopeMode: ["mode"],
+    vectorscopePolarLevelMaxHold: ["polarLevelMaxHold", "polarLevelPeakHold"],
+  },
+  spectrogram: {
+    spectrumChannel: ["channel"],
+    spectrogramYMinFreq: ["minFreq"],
+    spectrogramYMaxFreq: ["maxFreq"],
+  },
+  stereoMap: {
+    stereoMapPair: ["pair"],
+    stereoMapMode: ["mode"],
+    stereoMapHold: ["hold"],
+    stereoMapSpeedPercent: ["speedPercent"],
+    stereoMapOctaveSmoothing: ["octaveSmoothing"],
+    stereoMapXMinFreq: ["minFreq"],
+    stereoMapXMaxFreq: ["maxFreq"],
+    stereoMapMonoLossYMinDb: ["monoLossMinDb"],
+    stereoMapMsRatioYMinDb: ["msRatioMinDb"],
+    stereoMapMsRatioYMaxDb: ["msRatioMaxDb"],
+  },
+  waveform: {
+    waveformFrequencyColor: ["frequencyColor"],
+    waveformLowMidSplitHz: ["lowMidSplitHz"],
+    waveformMidHighSplitHz: ["midHighSplitHz"],
+    waveformCentroid: ["centroid"],
+  },
+});
+
+/// Controls the strip has and the panels do not, so they have no row to read.
+const DOCK_ONLY_DEFAULTS = Object.freeze({
+  level: Object.freeze({ readout: "live", showLabels: true }),
+  loudness: Object.freeze({ showReadouts: true }),
+});
+
+function pickDefaults(moduleId) {
+  const controls = {};
+  for (const key of DOCK_MODULE_CONTROL_KEYS[moduleId]) {
+    const value = DEFAULT_PANEL_CONTROLS[key];
+    controls[key] = Array.isArray(value)
+      ? Object.freeze([...value])
+      : value && typeof value === "object"
+        ? Object.freeze({ ...value })
+        : value;
+  }
+  return Object.freeze({ ...controls, ...DOCK_ONLY_DEFAULTS[moduleId] });
+}
+
+export const DEFAULT_DOCK_CONTROLS_BY_MODULE_ID = Object.freeze(
+  Object.fromEntries(
+    Object.keys(DOCK_MODULE_CONTROL_KEYS).map((moduleId) => [moduleId, pickDefaults(moduleId)])
+  )
+);
 
 export const DOCK_CONTROL_MODULE_IDS = Object.freeze(
   Object.keys(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID)
@@ -94,8 +146,7 @@ function bool(value, fallback) {
 /// The Dock adds two constraints the Workspace panels leave to clampPanelControls: the indices
 /// must be non-negative and distinct. A Dock module has no later clamp against the device's
 /// channel count, so a degenerate pair would reach the analysis request as-is.
-function dockPair(raw, fallback) {
-  const value = normalizePanelControlValue("vectorscopePair", raw);
+function dockPair(value, fallback) {
   if (value.x >= 0 && value.y >= 0 && value.x !== value.y) {
     return { x: Math.floor(value.x), y: Math.floor(value.y) };
   }
@@ -103,8 +154,7 @@ function dockPair(raw, fallback) {
 }
 
 /// Same two extra constraints as dockPair, over the channel selection's pair form.
-function dockChannel(raw, fallback) {
-  const value = normalizePanelControlValue("spectrumChannel", raw);
+function dockChannel(value, fallback) {
   if (value.type === "single") {
     return value.ch >= 0 ? { type: "single", ch: Math.floor(value.ch) } : { ...fallback };
   }
@@ -114,6 +164,16 @@ function dockChannel(raw, fallback) {
   return { ...fallback };
 }
 
+/// Applied after a control's row has repaired it, where the Dock needs the value narrower than
+/// the panel does.
+const DOCK_TIGHTENED = Object.freeze({
+  spectrumChannel: dockChannel,
+  vectorscopePair: dockPair,
+  stereoMapPair: dockPair,
+  spectrumSpeedPercent: (value) => Math.round(value),
+  stereoMapSpeedPercent: (value) => Math.round(value),
+});
+
 export function normalizeDockStatsVisibleIds(raw) {
   return normalizePanelControlValue("statsVisibleIds", raw);
 }
@@ -122,135 +182,42 @@ export function normalizeDockStatsOrder(raw) {
   return normalizePanelControlValue("statsOrder", raw);
 }
 
+/// The Dock's readout selector is coupled to the meter mode: two of its three states only exist
+/// for one mode each, so a stored pairing that no longer applies falls back to the live readout.
+function normalizeDockLevelReadout(raw, mode, fallback) {
+  const legacy = raw?.readout === "peak" ? "live" : raw?.readout;
+  const readout = LEVEL_READOUTS.has(legacy) ? legacy : fallback;
+  if (mode === "peak" && readout === "playbackMax") return "live";
+  if (mode !== "peak" && readout === "truePeakMax") return "live";
+  return readout;
+}
+
+function withPanelKeys(moduleId, raw) {
+  const source = { ...raw };
+  for (const [key, legacyKeys] of Object.entries(LEGACY_DOCK_KEYS[moduleId] ?? {})) {
+    for (const legacyKey of legacyKeys) source[key] = source[key] ?? raw?.[legacyKey];
+  }
+  return source;
+}
+
 export function normalizeDockModuleControls(moduleId, raw) {
   const defaults = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId];
   if (!defaults) return null;
 
-  switch (moduleId) {
-    case "level": {
-      const mode = normalizePanelControlValue("levelMeterMode", raw?.mode);
-      const legacyReadout = raw?.readout === "peak" ? "live" : raw?.readout;
-      let readout = LEVEL_READOUTS.has(legacyReadout) ? legacyReadout : defaults.readout;
-      if (mode === "peak" && readout === "playbackMax") readout = "live";
-      if (mode !== "peak" && readout === "truePeakMax") readout = "live";
-      return {
-        mode,
-        readout,
-        showLabels: bool(raw?.showLabels, bool(raw?.showChannelLabels, defaults.showLabels)),
-      };
-    }
-    case "loudness": {
-      const range = normalizePanelControlRange(
-        "loudnessYMinDb",
-        raw?.loudnessYMinDb,
-        raw?.loudnessYMaxDb
-      );
-      return {
-        showReadouts: bool(raw?.showReadouts, defaults.showReadouts),
-        loudnessHistoryVisibleLayerIds: normalizePanelControlValue(
-          "loudnessHistoryVisibleLayerIds",
-          raw?.loudnessHistoryVisibleLayerIds
-        ),
-        loudnessYMinDb: range.loudnessYMinDb,
-        loudnessYMaxDb: range.loudnessYMaxDb,
-      };
-    }
-    case "spectrum": {
-      const range = normalizePanelControlRange("spectrumYMinDb", raw?.minDb, raw?.maxDb);
-      const freqRange = normalizePanelControlRange("spectrumXMinFreq", raw?.minFreq, raw?.maxFreq);
-      return {
-        channel: dockChannel(raw?.channel, defaults.channel),
-        view: normalizePanelControlValue("spectrumView", raw?.view),
-        speedPercent: Math.round(
-          normalizePanelControlValue(
-            "spectrumSpeedPercent",
-            raw?.speedPercent ?? raw?.smoothingPercent
-          )
-        ),
-        octaveSmoothing: normalizePanelControlValue(
-          "spectrumOctaveSmoothing",
-          raw?.octaveSmoothing
-        ),
-        tiltDbPerOctave: normalizePanelControlValue(
-          "spectrumTiltDbPerOctave",
-          raw?.tiltDbPerOctave
-        ),
-        maxHold: normalizePanelControlValue("spectrumMaxHold", raw?.maxHold ?? raw?.peakHold),
-        minFreq: freqRange.spectrumXMinFreq,
-        maxFreq: freqRange.spectrumXMaxFreq,
-        minDb: range.spectrumYMinDb,
-        maxDb: range.spectrumYMaxDb,
-      };
-    }
-    case "correlation":
-      return {
-        pair: dockPair(raw?.pair, defaults.pair),
-        mode: normalizePanelControlValue("vectorscopeMode", raw?.mode),
-        // polarLevelMaxHold was polarLevelPeakHold under the Dock's own key names; the row in
-        // panelControls.js carries the same rename for the Workspace key.
-        polarLevelMaxHold: normalizePanelControlValue(
-          "vectorscopePolarLevelMaxHold",
-          raw?.polarLevelMaxHold ?? raw?.polarLevelPeakHold
-        ),
-      };
-    case "stats":
-      return {
-        statsVisibleIds: normalizeDockStatsVisibleIds(raw?.statsVisibleIds),
-        statsOrder: normalizeDockStatsOrder(raw?.statsOrder),
-      };
-    case "spectrogram": {
-      const freqRange = normalizePanelControlRange(
-        "spectrogramYMinFreq",
-        raw?.minFreq,
-        raw?.maxFreq
-      );
-      return {
-        channel: dockChannel(raw?.channel, defaults.channel),
-        minFreq: freqRange.spectrogramYMinFreq,
-        maxFreq: freqRange.spectrogramYMaxFreq,
-      };
-    }
-    case "stereoMap": {
-      const freqRange = normalizePanelControlRange("stereoMapXMinFreq", raw?.minFreq, raw?.maxFreq);
-      const msRatio = normalizePanelControlRange(
-        "stereoMapMsRatioYMinDb",
-        raw?.msRatioMinDb,
-        raw?.msRatioMaxDb
-      );
-      return {
-        pair: dockPair(raw?.pair, defaults.pair),
-        mode: normalizePanelControlValue("stereoMapMode", raw?.mode),
-        hold: normalizePanelControlValue("stereoMapHold", raw?.hold),
-        speedPercent: Math.round(
-          normalizePanelControlValue("stereoMapSpeedPercent", raw?.speedPercent)
-        ),
-        octaveSmoothing: normalizePanelControlValue(
-          "stereoMapOctaveSmoothing",
-          raw?.octaveSmoothing
-        ),
-        minFreq: freqRange.stereoMapXMinFreq,
-        maxFreq: freqRange.stereoMapXMaxFreq,
-        monoLossMinDb: normalizePanelControlValue("stereoMapMonoLossYMinDb", raw?.monoLossMinDb),
-        msRatioMinDb: msRatio.stereoMapMsRatioYMinDb,
-        msRatioMaxDb: msRatio.stereoMapMsRatioYMaxDb,
-      };
-    }
-    case "waveform": {
-      const splits = normalizePanelControlRange(
-        "waveformLowMidSplitHz",
-        raw?.lowMidSplitHz,
-        raw?.midHighSplitHz
-      );
-      return {
-        frequencyColor: normalizePanelControlValue("waveformFrequencyColor", raw?.frequencyColor),
-        lowMidSplitHz: splits.waveformLowMidSplitHz,
-        midHighSplitHz: splits.waveformMidHighSplitHz,
-        centroid: normalizePanelControlValue("waveformCentroid", raw?.centroid),
-      };
-    }
-    default:
-      return null;
+  const repaired = normalizePanelControls(withPanelKeys(moduleId, raw));
+  const controls = {};
+  for (const key of DOCK_MODULE_CONTROL_KEYS[moduleId]) {
+    const tighten = DOCK_TIGHTENED[key];
+    controls[key] = tighten ? tighten(repaired[key], defaults[key]) : repaired[key];
   }
+  if (moduleId === "level") {
+    controls.readout = normalizeDockLevelReadout(raw, controls.levelMeterMode, defaults.readout);
+    controls.showLabels = bool(raw?.showLabels, bool(raw?.showChannelLabels, defaults.showLabels));
+  }
+  if (moduleId === "loudness") {
+    controls.showReadouts = bool(raw?.showReadouts, defaults.showReadouts);
+  }
+  return controls;
 }
 
 export function isDefaultDockModuleControls(moduleId, controls) {

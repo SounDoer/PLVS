@@ -181,7 +181,7 @@ function ReadoutRegion({
 /** Compact Peak/RMS/Loudness meter for the Dock strip. */
 export function DockLevel({ controls = {}, heightMode = "standard" }) {
   const { displayAudio, peakLabelContext, hasTpMaxValue, onResetTpMax } = useFrameData();
-  const mode = MODE_META[controls.mode] ? controls.mode : "peak";
+  const mode = MODE_META[controls.levelMeterMode] ? controls.levelMeterMode : "peak";
   const meta = MODE_META[mode];
   const peakFamily = mode === "peak" || mode === "rms";
   const readout = controls.readout ?? "live";

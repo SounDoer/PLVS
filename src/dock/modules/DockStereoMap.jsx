@@ -7,10 +7,13 @@ import { normalizeDockModuleControls } from "../dockModuleControls.js";
 
 function rangeForMode(mode, controls) {
   if (mode === STEREO_MAP_MODES.MONO_LOSS_DB) {
-    return { lowerBound: controls.monoLossMinDb, upperBound: 0 };
+    return { lowerBound: controls.stereoMapMonoLossYMinDb, upperBound: 0 };
   }
   if (mode === STEREO_MAP_MODES.MS_RATIO_DB) {
-    return { lowerBound: controls.msRatioMinDb, upperBound: controls.msRatioMaxDb };
+    return {
+      lowerBound: controls.stereoMapMsRatioYMinDb,
+      upperBound: controls.stereoMapMsRatioYMaxDb,
+    };
   }
   // Position and Correlation always show their complete normalized range, same as the Workspace
   // panel — Dock has no zoom, so there is nothing to restrict it further.
@@ -27,8 +30,8 @@ export function DockStereoMap({ controls = {} }) {
   const { displayAudio, channelCount = 0, peakLabelContext } = useFrameData();
   const historyData = useHistoryData();
   const normalizedControls = normalizeDockModuleControls("stereoMap", controls);
-  const mode = normalizedControls.mode;
-  const pair = normalizedControls.pair;
+  const mode = normalizedControls.stereoMapMode;
+  const pair = normalizedControls.stereoMapPair;
   // channelCount is 0 before capture has reported real device info (see appRuntimeDerivations.js) —
   // that's "not started yet", not a mono device, and must not suppress results the same way.
   const isMono = Number.isFinite(channelCount) && channelCount > 0 && channelCount < 2;
@@ -67,10 +70,10 @@ export function DockStereoMap({ controls = {} }) {
           bandCentersHz={bandCentersHz}
           points={points}
           holdValues={holdValues}
-          holdVisible={normalizedControls.hold}
+          holdVisible={normalizedControls.stereoMapHold}
           range={range}
-          xMinHz={normalizedControls.minFreq}
-          xMaxHz={normalizedControls.maxFreq}
+          xMinHz={normalizedControls.stereoMapXMinFreq}
+          xMaxHz={normalizedControls.stereoMapXMaxFreq}
           paletteKey="live"
         />
         {showPairLabels ? (
