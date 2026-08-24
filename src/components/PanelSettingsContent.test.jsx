@@ -293,6 +293,32 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("level meter range max").value).toBe("3");
   });
 
+  it("commits the RMS range to the level keys the Level Meter panel reads", () => {
+    // RMS reads the Peak-family range, so it has to write that same pair. Committing to the
+    // loudness pair instead left the edit invisible on the meter and quietly moved the range
+    // Momentary and Short-term use.
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "rms" }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText("level meter range min"), {
+      target: { value: "-40" },
+    });
+    fireEvent.blur(screen.getByLabelText("level meter range min"));
+
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterMode: "rms",
+      levelMeterYMinDb: -40,
+      levelMeterYMaxDb: 3,
+    });
+  });
+
   it("commits the Level Meter range for the active mode", () => {
     const onPanelControlsChange = vi.fn();
     const { rerender } = render(

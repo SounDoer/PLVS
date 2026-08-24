@@ -1111,8 +1111,12 @@ export function PanelSettingsContent({
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);
-    const isPeakMode = normalizedPanelControls.levelMeterMode === "peak";
-    const isPeakFamilyMode = isPeakMode || normalizedPanelControls.levelMeterMode === "rms";
+    // Peak and RMS both measure level and share one stored range; Momentary and Short-term
+    // measure loudness and share the other. Which pair the row reads and which pair it writes
+    // must be the same question, and it is the same question LevelMeterPanel asks.
+    const isPeakFamilyMode =
+      normalizedPanelControls.levelMeterMode === "peak" ||
+      normalizedPanelControls.levelMeterMode === "rms";
     const levelMeterYMinDb = isPeakFamilyMode
       ? normalizedPanelControls.levelMeterYMinDb
       : normalizedPanelControls.loudnessYMinDb;
@@ -1127,9 +1131,8 @@ export function PanelSettingsContent({
           controls={normalizedPanelControls}
           onChange={onPanelControlsChange}
         />
-        {/* Not a table row: the range is read from the Peak-family keys but written to the
-            Loudness keys outside Peak mode, so one row would have to name two different pairs.
-            Kept as written, including that asymmetry -- see the note in the review. */}
+        {/* Not a table row: it names one of two stored ranges depending on the mode, so a single
+            row would have to carry two pairs of keys. */}
         <SettingsRow label="Level Range">
           <SettingsRangeInput
             minAriaLabel="level meter range min"
@@ -1140,7 +1143,7 @@ export function PanelSettingsContent({
               onPanelControlsChange(
                 normalizePanelControls({
                   ...normalizedPanelControls,
-                  ...(isPeakMode
+                  ...(isPeakFamilyMode
                     ? { levelMeterYMinDb: newMin, levelMeterYMaxDb: newMax }
                     : { loudnessYMinDb: newMin, loudnessYMaxDb: newMax }),
                 })
