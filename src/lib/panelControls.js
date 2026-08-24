@@ -45,172 +45,14 @@ export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
   { id: "1/3", label: "1/3 oct", keyToken: "3" },
 ];
 
-export const DEFAULT_PANEL_CONTROLS = {
-  levelMeterMode: "peak",
-  levelMeterPlaybackMax: false,
-  levelMeterValueMarker: false,
-  levelMeterTpMaxMarker: false,
-  vectorscopePair: { x: 0, y: 1 },
-  vectorscopeMode: "lissajous",
-  vectorscopePolarLevelMaxHold: false,
-  spectrumChannel: { type: "pair", x: 0, y: 1 },
-  spectrumView: "combined",
-  spectrumMaxHold: false,
-  spectrumPeakLabels: false,
-  spectrumSpeedPercent: 25,
-  spectrumTiltDbPerOctave: 3,
-  spectrumOctaveSmoothing: "off",
-  spectrumXMinFreq: 20,
-  spectrumXMaxFreq: 20000,
-  spectrumYMaxDb: -12,
-  spectrumYMinDb: -96,
-  spectrogramYMinFreq: 20,
-  spectrogramYMaxFreq: 20000,
-  spectrogramDbFloor: SPECTROGRAM_DB_MIN,
-  spectrogramMode: "heatmap",
-  spectrogram3dColorize: true,
-  spectrogram3dHeightGain: 1,
-  spectrogram3dAzimuthDeg: 135,
-  spectrogram3dElevationDeg: 60,
-  // Surfaced as "Grid": it draws the floor grid, and "Floor" sat one row below "dB Floor" with no
-  // relation to it. The key keeps the old name -- it is persisted, and renaming it would need a
-  // migration to buy nothing a reader of this line does not already get.
-  spectrogram3dFloor: true,
-  loudnessYMinDb: -64,
-  loudnessYMaxDb: 0,
-  levelMeterYMinDb: -60,
-  levelMeterYMaxDb: 3,
-  statsVisibleIds: [
-    "momentary",
-    "shortTerm",
-    "integrated",
-    "momentaryMax",
-    "shortTermMax",
-    "lra",
-    "psr",
-    "plr",
-  ],
-  statsOrder: [...STATS_CANONICAL_ORDER],
-  dialogueVadEngine: DEFAULT_DIALOGUE_VAD_ENGINE,
-  loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
-  stereoMapMode: STEREO_MAP_MODES.POSITION,
-  stereoMapPair: { first: 0, second: 1 },
-  stereoMapHold: false,
-  stereoMapSpeedPercent: 50,
-  stereoMapOctaveSmoothing: "1/12",
-  stereoMapXMinFreq: 20,
-  stereoMapXMaxFreq: 20000,
-  stereoMapMonoLossYMinDb: -24,
-  stereoMapMsRatioYMinDb: -48,
-  stereoMapMsRatioYMaxDb: 24,
-  waveformFrequencyColor: false,
-  waveformLowMidSplitHz: 200,
-  waveformMidHighSplitHz: 2000,
-  waveformCentroid: false,
-};
+const SPECTRUM_VIEW_IDS = ["combined", "lr", "ms"];
 
-const STATS_IDS = new Set(STATS_OPTIONS.map((option) => option.id));
-const LOUDNESS_HISTORY_LAYER_IDS = new Set(
-  LOUDNESS_HISTORY_LAYER_OPTIONS.map((option) => option.id)
-);
-const LEVEL_METER_MODE_IDS = new Set(LEVEL_METER_MODE_OPTIONS.map((option) => option.id));
-const VECTORSCOPE_MODE_IDS = new Set(VECTORSCOPE_MODE_OPTIONS.map((option) => option.id));
-const SPECTROGRAM_MODE_IDS = new Set(SPECTROGRAM_MODE_OPTIONS.map((option) => option.id));
-const STEREO_MAP_MODE_IDS = new Set(Object.values(STEREO_MAP_MODES));
+function ids(options) {
+  return options.map((option) => option.id);
+}
 
 function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
-}
-
-function normalizePair(raw, fallback) {
-  if (raw && isNumber(raw.x) && isNumber(raw.y)) {
-    return { x: raw.x, y: raw.y };
-  }
-  return { ...fallback };
-}
-
-function normalizeSpectrumChannel(raw) {
-  if (raw?.type === "single" && isNumber(raw.ch)) {
-    return { type: "single", ch: raw.ch };
-  }
-  if (raw?.type === "pair" && isNumber(raw.x) && isNumber(raw.y)) {
-    return { type: "pair", x: raw.x, y: raw.y };
-  }
-  return { ...DEFAULT_PANEL_CONTROLS.spectrumChannel };
-}
-
-const SPECTRUM_VIEWS = new Set(["combined", "lr", "ms"]);
-function normalizeSpectrumView(raw) {
-  return SPECTRUM_VIEWS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.spectrumView;
-}
-
-const SPECTRUM_OCTAVE_SMOOTHING_IDS = new Set(
-  SPECTRUM_OCTAVE_SMOOTHING_OPTIONS.map((option) => option.id)
-);
-function normalizeSpectrumOctaveSmoothing(raw) {
-  return SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw)
-    ? raw
-    : DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing;
-}
-
-function normalizeSpectrumPeakLabels(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumPeakLabels;
-}
-
-function normalizeSpectrumMaxHold(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrumMaxHold;
-}
-
-function normalizeSpectrogramDbFloor(raw) {
-  return clampNumber(raw, -96, -12, DEFAULT_PANEL_CONTROLS.spectrogramDbFloor);
-}
-
-function normalizeSpectrogramMode(raw) {
-  return SPECTROGRAM_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.spectrogramMode;
-}
-
-function normalizeSpectrogram3dColorize(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrogram3dColorize;
-}
-
-// Ranges come from the projection, which is the thing that actually has an opinion about them; see
-// the export there for why they are not restated.
-function normalizeSpectrogram3dHeightGain(raw) {
-  return clampNumber(
-    raw,
-    HEIGHT_GAIN_MIN,
-    HEIGHT_GAIN_MAX,
-    DEFAULT_PANEL_CONTROLS.spectrogram3dHeightGain
-  );
-}
-
-/** Azimuth wraps rather than clamping — spinning past 360 during a drag is legitimate. */
-function normalizeSpectrogram3dAzimuthDeg(raw) {
-  if (!isNumber(raw)) return DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg;
-  return ((raw % 360) + 360) % 360;
-}
-
-/** Clamped at both ends; the projection's own doc says why those two ends. */
-function normalizeSpectrogram3dElevationDeg(raw) {
-  return clampNumber(
-    raw,
-    ELEVATION_MIN_DEG,
-    ELEVATION_MAX_DEG,
-    DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg
-  );
-}
-
-function normalizeSpectrogram3dFloor(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.spectrogram3dFloor;
-}
-
-/// spectrumMaxHold was spectrumPeakHold until "peak" was needed for the frequency axis — a peak
-/// in a spectrum is a bump in the curve, which is what Peak labels marks; this control is the
-/// time axis. Presets from before the rename still carry the old key, so read it as a fallback
-/// rather than snapping them back to the default. `??` and not `||`: a stored `false` is a real
-/// value, not an absent one.
-function readSpectrumMaxHoldRaw(raw) {
-  return raw?.spectrumMaxHold ?? raw?.spectrumPeakHold;
 }
 
 function clampNumber(raw, min, max, fallback) {
@@ -218,318 +60,438 @@ function clampNumber(raw, min, max, fallback) {
   return Math.min(max, Math.max(min, raw));
 }
 
-function normalizeSpectrumSpeedPercent(raw) {
-  return clampNumber(raw, 0, 100, DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent);
+// ---------------------------------------------------------------------------
+// The control table
+//
+// One row per persisted control: its default, the rule that repairs a stored
+// value, and any key it used to be stored under. Everything that has an opinion
+// about a control's range says it here and only here -- the dock and the panel
+// axes read the row rather than restating the numbers, which is what they used
+// to do (three copies of `-120, 0, 12` for the Spectrum dB range alone).
+//
+// `kind` picks the repair rule from KINDS below; a row that needs something no
+// kind covers carries its own `normalize`. Row order is the key order of both
+// DEFAULT_PANEL_CONTROLS and normalizePanelControls' output.
+// ---------------------------------------------------------------------------
+
+/** Reads a control's stored value, falling back to the keys it used to live under. */
+function readStored(raw, row) {
+  let value = raw?.[row.key];
+  for (const legacyKey of row.legacyKeys ?? []) {
+    value = value ?? raw?.[legacyKey];
+  }
+  return value;
 }
 
-function normalizeSpectrumTiltDbPerOctave(raw) {
-  return clampNumber(raw, 0, 6, DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave);
-}
+const KINDS = {
+  /** One of a fixed id list; anything else falls back to the default. */
+  enum(row, raw) {
+    const value = readStored(raw, row);
+    return row.options.includes(value) ? value : row.default;
+  },
 
-function normalizeLinearRange({ rawMin, rawMax, defaultMin, defaultMax, absMin, absMax, minSpan }) {
-  let min = Math.round(clampNumber(rawMin, absMin, absMax, defaultMin));
-  let max = Math.round(clampNumber(rawMax, absMin, absMax, defaultMax));
-  if (max - min < minSpan) {
+  boolean(row, raw) {
+    const value = readStored(raw, row);
+    return typeof value === "boolean" ? value : row.default;
+  },
+
+  number(row, raw) {
+    const value = clampNumber(readStored(raw, row), row.min, row.max, row.default);
+    return row.round ? Math.round(value) : value;
+  },
+
+  /** Wraps into [0, 360) rather than clamping -- spinning past 360 in a drag is legitimate. */
+  degrees(row, raw) {
+    const value = readStored(raw, row);
+    if (!isNumber(value)) return row.default;
+    return ((value % 360) + 360) % 360;
+  },
+
+  /** A channel-index pair. `members` names the two fields, which differ per control. */
+  pair(row, raw) {
+    const value = readStored(raw, row);
+    const [first, second] = row.members;
+    if (value && isNumber(value[first]) && isNumber(value[second])) {
+      return { [first]: value[first], [second]: value[second] };
+    }
+    return { ...row.default };
+  },
+
+  /** A subset of known ids, deduped, unknown ids dropped, order as stored. */
+  idList(row, raw) {
+    const value = readStored(raw, row);
+    if (!Array.isArray(value)) return [...row.default];
+    const normalized = [];
+    for (const id of value) {
+      if (row.options.includes(id) && !normalized.includes(id)) normalized.push(id);
+    }
+    return normalized;
+  },
+
+  /** Every known id exactly once: stored order first, then the template backfills the rest. */
+  orderedIdList(row, raw) {
+    const value = readStored(raw, row);
+    const ordered = [];
+    if (Array.isArray(value)) {
+      for (const id of value) {
+        if (row.options.includes(id) && !ordered.includes(id)) ordered.push(id);
+      }
+    }
+    for (const id of row.options) {
+      if (!ordered.includes(id)) ordered.push(id);
+    }
+    return ordered;
+  },
+};
+
+/**
+ * Repairs a min/max pair together: each bound clamps to the row's absolute limits, then the pair
+ * is opened up to the row's minimum span. Which bound moves depends on which one the caller
+ * actually supplied -- a stored max with no min means the min is the one to move.
+ */
+function normalizeRange(row, raw) {
+  const rawMin = readStored(raw, { key: row.minKey, legacyKeys: row.minLegacyKeys });
+  const rawMax = readStored(raw, { key: row.maxKey, legacyKeys: row.maxLegacyKeys });
+  const log = row.kind === "logRange";
+  const round = (value) => (log ? value : Math.round(value));
+  const openUp = (value) => (log ? value * 2 ** row.minSpan : value + row.minSpan);
+  const openDown = (value) => (log ? value / 2 ** row.minSpan : value - row.minSpan);
+  const tooNarrow = (min, max) =>
+    log ? max <= min || Math.log2(max / min) < row.minSpan : max - min < row.minSpan;
+
+  let min = round(clampNumber(rawMin, row.absMin, row.absMax, row.defaultMin));
+  let max = round(clampNumber(rawMax, row.absMin, row.absMax, row.defaultMax));
+  if (tooNarrow(min, max)) {
     if (isNumber(rawMax) && !isNumber(rawMin)) {
-      min = Math.max(absMin, max - minSpan);
+      min = Math.max(row.absMin, openDown(max));
     } else {
-      max = Math.min(absMax, min + minSpan);
-      if (max - min < minSpan) min = Math.max(absMin, max - minSpan);
+      max = Math.min(row.absMax, openUp(min));
+      if (tooNarrow(min, max)) min = Math.max(row.absMin, openDown(max));
     }
   }
-  return { min, max };
+  return { [row.minKey]: min, [row.maxKey]: max };
 }
 
-function normalizeLogRange({ rawMin, rawMax, defaultMin, defaultMax, absMin, absMax, minOctaves }) {
-  let min = clampNumber(rawMin, absMin, absMax, defaultMin);
-  let max = clampNumber(rawMax, absMin, absMax, defaultMax);
-  if (max <= min || Math.log2(max / min) < minOctaves) {
-    if (isNumber(rawMax) && !isNumber(rawMin)) {
-      min = Math.max(absMin, max / 2 ** minOctaves);
-    } else {
-      max = Math.min(absMax, min * 2 ** minOctaves);
-      if (Math.log2(max / min) < minOctaves) min = Math.max(absMin, max / 2 ** minOctaves);
-    }
-  }
-  return { min, max };
-}
-
-function normalizeSpectrumYRange(raw) {
-  const rawMax = raw?.spectrumYMaxDb;
-  const migratedMin =
-    isNumber(raw?.spectrumYMinDb) || !isNumber(raw?.spectrumYRangeDb)
-      ? raw?.spectrumYMinDb
-      : clampNumber(rawMax, -120, 0, DEFAULT_PANEL_CONTROLS.spectrumYMaxDb) -
-        clampNumber(raw.spectrumYRangeDb, 12, 126, 84);
-  return normalizeLinearRange({
-    rawMin: migratedMin,
-    rawMax,
-    defaultMin: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
-    defaultMax: DEFAULT_PANEL_CONTROLS.spectrumYMaxDb,
+const CONTROLS = [
+  {
+    key: "levelMeterMode",
+    kind: "enum",
+    options: ids(LEVEL_METER_MODE_OPTIONS),
+    default: "peak",
+  },
+  { key: "levelMeterPlaybackMax", kind: "boolean", default: false },
+  { key: "levelMeterValueMarker", kind: "boolean", default: false },
+  { key: "levelMeterTpMaxMarker", kind: "boolean", default: false },
+  {
+    key: "vectorscopePair",
+    kind: "pair",
+    members: ["x", "y"],
+    default: { x: 0, y: 1 },
+  },
+  {
+    key: "vectorscopeMode",
+    kind: "enum",
+    options: ids(VECTORSCOPE_MODE_OPTIONS),
+    default: "lissajous",
+  },
+  {
+    /// vectorscopePolarLevelMaxHold was vectorscopePolarLevelPeakHold: this hold never decays
+    /// (it's a running maximum cleared only by reset/Global Clear), unlike Spectrum's decaying
+    /// "Max Decay", so "peak" was misleading here. Presets from before the rename still carry the
+    /// old key, so read it as a fallback rather than snapping them back to the default. The
+    /// fallback is `??` and not `||`: a stored `false` is a real value, not an absent one.
+    key: "vectorscopePolarLevelMaxHold",
+    kind: "boolean",
+    default: false,
+    legacyKeys: ["vectorscopePolarLevelPeakHold"],
+  },
+  {
+    key: "spectrumChannel",
+    default: { type: "pair", x: 0, y: 1 },
+    normalize(row, raw) {
+      const value = readStored(raw, row);
+      if (value?.type === "single" && isNumber(value.ch)) return { type: "single", ch: value.ch };
+      if (value?.type === "pair" && isNumber(value.x) && isNumber(value.y)) {
+        return { type: "pair", x: value.x, y: value.y };
+      }
+      return { ...row.default };
+    },
+  },
+  { key: "spectrumView", kind: "enum", options: SPECTRUM_VIEW_IDS, default: "combined" },
+  {
+    /// spectrumMaxHold was spectrumPeakHold until "peak" was needed for the frequency axis -- a
+    /// peak in a spectrum is a bump in the curve, which is what Peak labels marks; this control is
+    /// the time axis. Presets from before the rename still carry the old key.
+    key: "spectrumMaxHold",
+    kind: "boolean",
+    default: false,
+    legacyKeys: ["spectrumPeakHold"],
+  },
+  { key: "spectrumPeakLabels", kind: "boolean", default: false },
+  {
+    /// spectrumSpeedPercent was named spectrumSmoothingPercent until the frequency-smoothing
+    /// control arrived and needed the "smoothing" name. Presets written before the rename still
+    /// carry the old key; normalizing rewrites it, so this only has to survive one load per
+    /// stored preset.
+    key: "spectrumSpeedPercent",
+    kind: "number",
+    min: 0,
+    max: 100,
+    default: 25,
+    legacyKeys: ["spectrumSmoothingPercent"],
+  },
+  { key: "spectrumTiltDbPerOctave", kind: "number", min: 0, max: 6, default: 3 },
+  {
+    key: "spectrumOctaveSmoothing",
+    kind: "enum",
+    options: ids(SPECTRUM_OCTAVE_SMOOTHING_OPTIONS),
+    default: "off",
+  },
+  {
+    kind: "logRange",
+    minKey: "spectrumXMinFreq",
+    maxKey: "spectrumXMaxFreq",
+    defaultMin: 20,
+    defaultMax: 20000,
+    absMin: 20,
+    absMax: 20000,
+    minSpan: 1,
+  },
+  {
+    kind: "linearRange",
+    minKey: "spectrumYMinDb",
+    maxKey: "spectrumYMaxDb",
+    defaultMin: -96,
+    defaultMax: -12,
     absMin: -120,
     absMax: 0,
     minSpan: 12,
-  });
-}
-
-function normalizeLevelMeterMode(raw) {
-  return LEVEL_METER_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.levelMeterMode;
-}
-
-function normalizeLevelMeterValueMarker(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterValueMarker;
-}
-
-function normalizeLevelMeterPlaybackMax(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterPlaybackMax;
-}
-
-function normalizeLevelMeterTpMaxMarker(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.levelMeterTpMaxMarker;
-}
-
-function normalizeVectorscopeMode(raw) {
-  return VECTORSCOPE_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.vectorscopeMode;
-}
-
-function normalizeVectorscopePolarLevelMaxHold(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold;
-}
-
-/// vectorscopePolarLevelMaxHold was vectorscopePolarLevelPeakHold: this hold never decays (it's a
-/// running maximum cleared only by reset/Global Clear), unlike Spectrum's decaying "Max Decay",
-/// so "peak" was misleading here. Presets from before the rename still carry the old key, so read
-/// it as a fallback rather than snapping them back to the default. `??` and not `||`: a stored
-/// `false` is a real value, not an absent one.
-function readVectorscopePolarLevelMaxHoldRaw(raw) {
-  return raw?.vectorscopePolarLevelMaxHold ?? raw?.vectorscopePolarLevelPeakHold;
-}
-
-function normalizeStereoMapMode(raw) {
-  return STEREO_MAP_MODE_IDS.has(raw) ? raw : DEFAULT_PANEL_CONTROLS.stereoMapMode;
-}
-
-/// Shape matches `stereoMapRequestKeyFromControls`'s `{ first, second }` channel-index pair, not
-/// Vectorscope's `{ x, y }` pair. Only shape/type is validated here; clamping to the pair actually
-/// available for the current channel count happens in clampPanelControls.js, same split as
-/// vectorscopePair.
-function normalizeStereoMapPair(raw, fallback) {
-  if (raw && isNumber(raw.first) && isNumber(raw.second)) {
-    return { first: raw.first, second: raw.second };
-  }
-  return { ...fallback };
-}
-
-function normalizeStereoMapHold(raw) {
-  return typeof raw === "boolean" ? raw : DEFAULT_PANEL_CONTROLS.stereoMapHold;
-}
-
-function normalizeStereoMapSpeedPercent(raw) {
-  return clampNumber(raw, 0, 100, DEFAULT_PANEL_CONTROLS.stereoMapSpeedPercent);
-}
-
-function normalizeStereoMapOctaveSmoothing(raw) {
-  return SPECTRUM_OCTAVE_SMOOTHING_IDS.has(raw)
-    ? raw
-    : DEFAULT_PANEL_CONTROLS.stereoMapOctaveSmoothing;
-}
-
-function normalizeStereoMapMonoLossYMinDb(raw) {
-  return clampNumber(raw, -60, -6, DEFAULT_PANEL_CONTROLS.stereoMapMonoLossYMinDb);
-}
-
-/// M/S Ratio's Y range has no minimum span, only the design's "must include 0 dB" constraint: each
-/// bound clamps to the panel's absolute limits independently, then a bound that ends up on the
-/// wrong side of zero snaps to zero rather than being repaired against the other bound.
-function normalizeStereoMapMsRatioYRange(raw) {
-  let min = clampNumber(
-    raw?.stereoMapMsRatioYMinDb,
-    -96,
-    48,
-    DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMinDb
-  );
-  let max = clampNumber(
-    raw?.stereoMapMsRatioYMaxDb,
-    -96,
-    48,
-    DEFAULT_PANEL_CONTROLS.stereoMapMsRatioYMaxDb
-  );
-  if (min > 0) min = 0;
-  if (max < 0) max = 0;
-  return { min, max };
-}
-
-function normalizeKnownIds(raw, knownIds, fallback) {
-  if (!Array.isArray(raw)) return [...fallback];
-
-  const normalized = [];
-  for (const id of raw) {
-    if (knownIds.has(id) && !normalized.includes(id)) {
-      normalized.push(id);
-    }
-  }
-  return normalized;
-}
-
-function normalizeWaveformSplits(raw) {
-  const lowMid = Math.round(
-    clampNumber(raw?.waveformLowMidSplitHz, 20, 20000, DEFAULT_PANEL_CONTROLS.waveformLowMidSplitHz)
-  );
-  const midHigh = Math.round(
-    clampNumber(
-      raw?.waveformMidHighSplitHz,
-      20,
-      20000,
-      DEFAULT_PANEL_CONTROLS.waveformMidHighSplitHz
-    )
-  );
-  return lowMid < midHigh
-    ? { lowMid, midHigh }
-    : {
-        lowMid: DEFAULT_PANEL_CONTROLS.waveformLowMidSplitHz,
-        midHigh: DEFAULT_PANEL_CONTROLS.waveformMidHighSplitHz,
-      };
-}
-
-function normalizeOrder(raw, orderTemplate) {
-  const known = new Set(orderTemplate);
-  const ordered = [];
-  if (Array.isArray(raw)) {
-    for (const id of raw) {
-      if (known.has(id) && !ordered.includes(id)) {
-        ordered.push(id);
+    /// The min was once stored as a span below the max (`spectrumYRangeDb`) rather than as an
+    /// absolute bound. Convert before the shared range repair sees it.
+    readMin(raw) {
+      if (isNumber(raw?.spectrumYMinDb) || !isNumber(raw?.spectrumYRangeDb)) {
+        return raw?.spectrumYMinDb;
       }
-    }
-  }
-  for (const id of orderTemplate) {
-    if (!ordered.includes(id)) {
-      ordered.push(id);
-    }
-  }
-  return ordered;
-}
-
-export function normalizePanelControls(raw) {
-  const waveformSplits = normalizeWaveformSplits(raw);
-  const spectrumXRange = normalizeLogRange({
-    rawMin: raw?.spectrumXMinFreq,
-    rawMax: raw?.spectrumXMaxFreq,
-    defaultMin: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
-    defaultMax: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
+      return (
+        clampNumber(raw?.spectrumYMaxDb, -120, 0, -12) -
+        clampNumber(raw.spectrumYRangeDb, 12, 126, 84)
+      );
+    },
+  },
+  {
+    kind: "logRange",
+    minKey: "spectrogramYMinFreq",
+    maxKey: "spectrogramYMaxFreq",
+    defaultMin: 20,
+    defaultMax: 20000,
     absMin: 20,
     absMax: 20000,
-    minOctaves: 1,
-  });
-  const spectrumYRange = normalizeSpectrumYRange(raw);
-  const spectrogramYRange = normalizeLogRange({
-    rawMin: raw?.spectrogramYMinFreq,
-    rawMax: raw?.spectrogramYMaxFreq,
-    defaultMin: DEFAULT_PANEL_CONTROLS.spectrogramYMinFreq,
-    defaultMax: DEFAULT_PANEL_CONTROLS.spectrogramYMaxFreq,
-    absMin: 20,
-    absMax: 20000,
-    minOctaves: 1,
-  });
-  const loudnessYRange = normalizeLinearRange({
-    rawMin: raw?.loudnessYMinDb,
-    rawMax: raw?.loudnessYMaxDb,
-    defaultMin: DEFAULT_PANEL_CONTROLS.loudnessYMinDb,
-    defaultMax: DEFAULT_PANEL_CONTROLS.loudnessYMaxDb,
+    minSpan: 1,
+  },
+  {
+    key: "spectrogramDbFloor",
+    kind: "number",
+    min: -96,
+    max: -12,
+    default: SPECTROGRAM_DB_MIN,
+  },
+  {
+    key: "spectrogramMode",
+    kind: "enum",
+    options: ids(SPECTROGRAM_MODE_OPTIONS),
+    default: "heatmap",
+  },
+  { key: "spectrogram3dColorize", kind: "boolean", default: true },
+  {
+    // Ranges come from the projection, which is the thing that actually has an opinion about
+    // them; see the export there for why they are not restated.
+    key: "spectrogram3dHeightGain",
+    kind: "number",
+    min: HEIGHT_GAIN_MIN,
+    max: HEIGHT_GAIN_MAX,
+    default: 1,
+  },
+  { key: "spectrogram3dAzimuthDeg", kind: "degrees", default: 135 },
+  {
+    /// Clamped at both ends; the projection's own doc says why those two ends.
+    key: "spectrogram3dElevationDeg",
+    kind: "number",
+    min: ELEVATION_MIN_DEG,
+    max: ELEVATION_MAX_DEG,
+    default: 60,
+  },
+  {
+    // Surfaced as "Grid": it draws the floor grid, and "Floor" sat one row below "dB Floor" with
+    // no relation to it. The key keeps the old name -- it is persisted, and renaming it would
+    // need a migration to buy nothing a reader of this line does not already get.
+    key: "spectrogram3dFloor",
+    kind: "boolean",
+    default: true,
+  },
+  {
+    kind: "linearRange",
+    minKey: "loudnessYMinDb",
+    maxKey: "loudnessYMaxDb",
+    defaultMin: -64,
+    defaultMax: 0,
     absMin: -64,
     absMax: 0,
     minSpan: 12,
-  });
-  const levelMeterYRange = normalizeLinearRange({
-    rawMin: raw?.levelMeterYMinDb,
-    rawMax: raw?.levelMeterYMaxDb,
-    defaultMin: DEFAULT_PANEL_CONTROLS.levelMeterYMinDb,
-    defaultMax: DEFAULT_PANEL_CONTROLS.levelMeterYMaxDb,
+  },
+  {
+    kind: "linearRange",
+    minKey: "levelMeterYMinDb",
+    maxKey: "levelMeterYMaxDb",
+    defaultMin: -60,
+    defaultMax: 3,
     absMin: -60,
     absMax: 3,
     minSpan: 12,
-  });
-  const stereoMapXRange = normalizeLogRange({
-    rawMin: raw?.stereoMapXMinFreq,
-    rawMax: raw?.stereoMapXMaxFreq,
-    defaultMin: DEFAULT_PANEL_CONTROLS.stereoMapXMinFreq,
-    defaultMax: DEFAULT_PANEL_CONTROLS.stereoMapXMaxFreq,
+  },
+  {
+    key: "statsVisibleIds",
+    kind: "idList",
+    options: ids(STATS_OPTIONS),
+    default: [
+      "momentary",
+      "shortTerm",
+      "integrated",
+      "momentaryMax",
+      "shortTermMax",
+      "lra",
+      "psr",
+      "plr",
+    ],
+  },
+  {
+    key: "statsOrder",
+    kind: "orderedIdList",
+    options: [...STATS_CANONICAL_ORDER],
+    default: [...STATS_CANONICAL_ORDER],
+  },
+  {
+    key: "dialogueVadEngine",
+    default: DEFAULT_DIALOGUE_VAD_ENGINE,
+    normalize: (row, raw) => normalizeDialogueVadEngine(readStored(raw, row)),
+  },
+  {
+    key: "loudnessHistoryVisibleLayerIds",
+    kind: "idList",
+    options: ids(LOUDNESS_HISTORY_LAYER_OPTIONS),
+    default: ["momentary", "shortTerm", "ref"],
+  },
+  {
+    key: "stereoMapMode",
+    kind: "enum",
+    options: Object.values(STEREO_MAP_MODES),
+    default: STEREO_MAP_MODES.POSITION,
+  },
+  {
+    /// Shape matches `stereoMapRequestKeyFromControls`'s `{ first, second }` channel-index pair,
+    /// not Vectorscope's `{ x, y }` pair. Only shape/type is validated here; clamping to the pair
+    /// actually available for the current channel count happens in clampPanelControls.js, same
+    /// split as vectorscopePair.
+    key: "stereoMapPair",
+    kind: "pair",
+    members: ["first", "second"],
+    default: { first: 0, second: 1 },
+  },
+  { key: "stereoMapHold", kind: "boolean", default: false },
+  { key: "stereoMapSpeedPercent", kind: "number", min: 0, max: 100, default: 50 },
+  {
+    key: "stereoMapOctaveSmoothing",
+    kind: "enum",
+    options: ids(SPECTRUM_OCTAVE_SMOOTHING_OPTIONS),
+    default: "1/12",
+  },
+  {
+    kind: "logRange",
+    minKey: "stereoMapXMinFreq",
+    maxKey: "stereoMapXMaxFreq",
+    defaultMin: 20,
+    defaultMax: 20000,
     absMin: 20,
     absMax: 20000,
-    minOctaves: 1,
-  });
-  const stereoMapMsRatioYRange = normalizeStereoMapMsRatioYRange(raw);
-  return {
-    levelMeterMode: normalizeLevelMeterMode(raw?.levelMeterMode),
-    levelMeterPlaybackMax: normalizeLevelMeterPlaybackMax(raw?.levelMeterPlaybackMax),
-    levelMeterValueMarker: normalizeLevelMeterValueMarker(raw?.levelMeterValueMarker),
-    levelMeterTpMaxMarker: normalizeLevelMeterTpMaxMarker(raw?.levelMeterTpMaxMarker),
-    vectorscopePair: normalizePair(raw?.vectorscopePair, DEFAULT_PANEL_CONTROLS.vectorscopePair),
-    vectorscopeMode: normalizeVectorscopeMode(raw?.vectorscopeMode),
-    vectorscopePolarLevelMaxHold: normalizeVectorscopePolarLevelMaxHold(
-      readVectorscopePolarLevelMaxHoldRaw(raw)
-    ),
-    spectrumChannel: normalizeSpectrumChannel(raw?.spectrumChannel),
-    spectrumView: normalizeSpectrumView(raw?.spectrumView),
-    spectrumMaxHold: normalizeSpectrumMaxHold(readSpectrumMaxHoldRaw(raw)),
-    spectrumPeakLabels: normalizeSpectrumPeakLabels(raw?.spectrumPeakLabels),
-    // spectrumSpeedPercent was named spectrumSmoothingPercent until the frequency-smoothing
-    // control arrived and needed the "smoothing" name. Presets written before the rename still
-    // carry the old key; read it as a fallback so they keep their value instead of silently
-    // snapping back to the default. Normalizing rewrites the key, so this only has to survive
-    // one load per stored preset.
-    spectrumSpeedPercent: normalizeSpectrumSpeedPercent(
-      raw?.spectrumSpeedPercent ?? raw?.spectrumSmoothingPercent
-    ),
-    spectrumTiltDbPerOctave: normalizeSpectrumTiltDbPerOctave(raw?.spectrumTiltDbPerOctave),
-    spectrumOctaveSmoothing: normalizeSpectrumOctaveSmoothing(raw?.spectrumOctaveSmoothing),
-    spectrumXMinFreq: spectrumXRange.min,
-    spectrumXMaxFreq: spectrumXRange.max,
-    spectrumYMaxDb: spectrumYRange.max,
-    spectrumYMinDb: spectrumYRange.min,
-    spectrogramYMinFreq: spectrogramYRange.min,
-    spectrogramYMaxFreq: spectrogramYRange.max,
-    spectrogramDbFloor: normalizeSpectrogramDbFloor(raw?.spectrogramDbFloor),
-    spectrogramMode: normalizeSpectrogramMode(raw?.spectrogramMode),
-    spectrogram3dColorize: normalizeSpectrogram3dColorize(raw?.spectrogram3dColorize),
-    spectrogram3dHeightGain: normalizeSpectrogram3dHeightGain(raw?.spectrogram3dHeightGain),
-    spectrogram3dAzimuthDeg: normalizeSpectrogram3dAzimuthDeg(raw?.spectrogram3dAzimuthDeg),
-    spectrogram3dElevationDeg: normalizeSpectrogram3dElevationDeg(raw?.spectrogram3dElevationDeg),
-    spectrogram3dFloor: normalizeSpectrogram3dFloor(raw?.spectrogram3dFloor),
-    loudnessYMinDb: loudnessYRange.min,
-    loudnessYMaxDb: loudnessYRange.max,
-    levelMeterYMinDb: levelMeterYRange.min,
-    levelMeterYMaxDb: levelMeterYRange.max,
-    statsVisibleIds: normalizeKnownIds(
-      raw?.statsVisibleIds,
-      STATS_IDS,
-      DEFAULT_PANEL_CONTROLS.statsVisibleIds
-    ),
-    statsOrder: normalizeOrder(raw?.statsOrder, STATS_CANONICAL_ORDER),
-    dialogueVadEngine: normalizeDialogueVadEngine(raw?.dialogueVadEngine),
-    loudnessHistoryVisibleLayerIds: normalizeKnownIds(
-      raw?.loudnessHistoryVisibleLayerIds,
-      LOUDNESS_HISTORY_LAYER_IDS,
-      DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
-    ),
-    stereoMapMode: normalizeStereoMapMode(raw?.stereoMapMode),
-    stereoMapPair: normalizeStereoMapPair(raw?.stereoMapPair, DEFAULT_PANEL_CONTROLS.stereoMapPair),
-    stereoMapHold: normalizeStereoMapHold(raw?.stereoMapHold),
-    stereoMapSpeedPercent: normalizeStereoMapSpeedPercent(raw?.stereoMapSpeedPercent),
-    stereoMapOctaveSmoothing: normalizeStereoMapOctaveSmoothing(raw?.stereoMapOctaveSmoothing),
-    stereoMapXMinFreq: stereoMapXRange.min,
-    stereoMapXMaxFreq: stereoMapXRange.max,
-    stereoMapMonoLossYMinDb: normalizeStereoMapMonoLossYMinDb(raw?.stereoMapMonoLossYMinDb),
-    stereoMapMsRatioYMinDb: stereoMapMsRatioYRange.min,
-    stereoMapMsRatioYMaxDb: stereoMapMsRatioYRange.max,
-    waveformFrequencyColor:
-      typeof raw?.waveformFrequencyColor === "boolean"
-        ? raw.waveformFrequencyColor
-        : DEFAULT_PANEL_CONTROLS.waveformFrequencyColor,
-    waveformLowMidSplitHz: waveformSplits.lowMid,
-    waveformMidHighSplitHz: waveformSplits.midHigh,
-    waveformCentroid:
-      typeof raw?.waveformCentroid === "boolean"
-        ? raw.waveformCentroid
-        : DEFAULT_PANEL_CONTROLS.waveformCentroid,
-  };
+    minSpan: 1,
+  },
+  { key: "stereoMapMonoLossYMinDb", kind: "number", min: -60, max: -6, default: -24 },
+  {
+    /// M/S Ratio's Y range has no minimum span, only the design's "must include 0 dB" constraint:
+    /// each bound clamps to the panel's absolute limits independently, then a bound that ends up
+    /// on the wrong side of zero snaps to zero rather than being repaired against the other bound.
+    minKey: "stereoMapMsRatioYMinDb",
+    maxKey: "stereoMapMsRatioYMaxDb",
+    defaultMin: -48,
+    defaultMax: 24,
+    absMin: -96,
+    absMax: 48,
+    normalize(row, raw) {
+      let min = clampNumber(raw?.[row.minKey], row.absMin, row.absMax, row.defaultMin);
+      let max = clampNumber(raw?.[row.maxKey], row.absMin, row.absMax, row.defaultMax);
+      if (min > 0) min = 0;
+      if (max < 0) max = 0;
+      return { [row.minKey]: min, [row.maxKey]: max };
+    },
+  },
+  { key: "waveformFrequencyColor", kind: "boolean", default: false },
+  {
+    /// The two splits are repaired as a unit: a stored pair that is out of order is not repaired
+    /// bound by bound, both fall back to their defaults.
+    minKey: "waveformLowMidSplitHz",
+    maxKey: "waveformMidHighSplitHz",
+    defaultMin: 200,
+    defaultMax: 2000,
+    absMin: 20,
+    absMax: 20000,
+    normalize(row, raw) {
+      const lowMid = Math.round(
+        clampNumber(raw?.[row.minKey], row.absMin, row.absMax, row.defaultMin)
+      );
+      const midHigh = Math.round(
+        clampNumber(raw?.[row.maxKey], row.absMin, row.absMax, row.defaultMax)
+      );
+      return lowMid < midHigh
+        ? { [row.minKey]: lowMid, [row.maxKey]: midHigh }
+        : { [row.minKey]: row.defaultMin, [row.maxKey]: row.defaultMax };
+    },
+  },
+  { key: "waveformCentroid", kind: "boolean", default: false },
+];
+
+/** A row's contribution to a normalized record: `{ key: value }`, or both bounds for a range. */
+function normalizeRow(row, raw) {
+  const source = row.readMin ? { ...raw, [row.minKey]: row.readMin(raw) } : raw;
+  if (row.normalize) {
+    const value = row.normalize(row, source);
+    return row.key ? { [row.key]: value } : value;
+  }
+  if (row.minKey) return normalizeRange(row, source);
+  return { [row.key]: KINDS[row.kind](row, source) };
+}
+
+function buildDefaults() {
+  const defaults = {};
+  for (const row of CONTROLS) {
+    if (row.key) {
+      defaults[row.key] = Array.isArray(row.default)
+        ? [...row.default]
+        : row.default && typeof row.default === "object"
+          ? { ...row.default }
+          : row.default;
+      continue;
+    }
+    defaults[row.minKey] = row.defaultMin;
+    defaults[row.maxKey] = row.defaultMax;
+  }
+  return defaults;
+}
+
+export const DEFAULT_PANEL_CONTROLS = buildDefaults();
+
+export function normalizePanelControls(raw) {
+  const normalized = {};
+  for (const row of CONTROLS) {
+    Object.assign(normalized, normalizeRow(row, raw));
+  }
+  return normalized;
 }
