@@ -47,6 +47,18 @@ export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
 
 const SPECTRUM_VIEW_IDS = ["combined", "lr", "ms"];
 
+export const STEREO_MAP_MODE_OPTIONS = [
+  { id: STEREO_MAP_MODES.POSITION, label: "Position" },
+  { id: STEREO_MAP_MODES.CORRELATION, label: "Correlation" },
+  { id: STEREO_MAP_MODES.MONO_LOSS_DB, label: "Mono Loss" },
+  { id: STEREO_MAP_MODES.MS_RATIO_DB, label: "M/S Ratio" },
+];
+
+/// Every 3D-only row shares this condition; the 2D heatmap has no camera.
+function is3dSpectrogram(controls) {
+  return controls.spectrogramMode !== "heatmap";
+}
+
 function ids(options) {
   return options.map((option) => option.id);
 }
@@ -182,10 +194,52 @@ const CONTROLS = [
     kind: "enum",
     options: ids(LEVEL_METER_MODE_OPTIONS),
     default: "peak",
+    ui: {
+      tab: "levelMeter",
+      label: "Mode",
+      widget: "select",
+      ariaLabel: "level meter mode",
+      options: LEVEL_METER_MODE_OPTIONS,
+    },
   },
-  { key: "levelMeterPlaybackMax", kind: "boolean", default: false },
-  { key: "levelMeterValueMarker", kind: "boolean", default: false },
-  { key: "levelMeterTpMaxMarker", kind: "boolean", default: false },
+  {
+    key: "levelMeterPlaybackMax",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "levelMeter",
+      label: "Playback Max",
+      widget: "switch",
+      ariaLabel: "level meter playback max",
+      tooltip: "Show the latest playback max as the readout while the bar stays live.",
+      showWhen: (controls) => controls.levelMeterMode !== "peak",
+    },
+  },
+  {
+    key: "levelMeterValueMarker",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "levelMeter",
+      label: "Floating Value",
+      widget: "switch",
+      ariaLabel: "level meter floating value",
+      showWhen: (controls) =>
+        controls.levelMeterMode === "momentary" || controls.levelMeterMode === "shortTerm",
+    },
+  },
+  {
+    key: "levelMeterTpMaxMarker",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "levelMeter",
+      label: "TP Max",
+      widget: "switch",
+      ariaLabel: "level meter TP Max",
+      showWhen: (controls) => controls.levelMeterMode === "peak",
+    },
+  },
   {
     key: "vectorscopePair",
     kind: "pair",
@@ -249,6 +303,16 @@ const CONTROLS = [
     kind: "enum",
     options: ids(SPECTRUM_OCTAVE_SMOOTHING_OPTIONS),
     default: "off",
+    // Shared with the Spectrum tab, which renders it through SpectrumDisplaySettingsRows; the
+    // Spectrogram tab places it here and supplies its own widget.
+    ui: {
+      tab: "spectrogram",
+      label: "Smoothing",
+      widget: "custom",
+      order: 20,
+      tooltip:
+        "Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D.",
+    },
   },
   {
     kind: "logRange",
@@ -290,6 +354,13 @@ const CONTROLS = [
     absMin: 20,
     absMax: 20000,
     minSpan: 1,
+    ui: {
+      tab: "spectrogram",
+      label: "Frequency Range",
+      widget: "range",
+      ariaLabel: "spectrogram frequency range",
+      order: 40,
+    },
   },
   {
     key: "spectrogramDbFloor",
@@ -297,14 +368,47 @@ const CONTROLS = [
     min: -96,
     max: -12,
     default: SPECTROGRAM_DB_MIN,
+    ui: {
+      tab: "spectrogram",
+      label: "dB Floor",
+      widget: "slider",
+      ariaLabel: "spectrogram db floor",
+      order: 30,
+      step: 1,
+      format: (value) => `${value.toFixed(0)} dB`,
+      tooltip:
+        "Raises the bottom of the display range so the loud part of the signal gets the resolution instead of the noise floor. Applies in both 2D and 3D.",
+    },
   },
   {
     key: "spectrogramMode",
     kind: "enum",
     options: ids(SPECTROGRAM_MODE_OPTIONS),
     default: "heatmap",
+    ui: {
+      tab: "spectrogram",
+      label: "Mode",
+      widget: "select",
+      ariaLabel: "spectrogram mode",
+      order: 10,
+      options: SPECTROGRAM_MODE_OPTIONS,
+      tooltip:
+        "3D is a presentation view of the waterfall surface. There is no hover readout in 3D -- switch back to 2D Heatmap to read exact values.",
+    },
   },
-  { key: "spectrogram3dColorize", kind: "boolean", default: true },
+  {
+    key: "spectrogram3dColorize",
+    kind: "boolean",
+    default: true,
+    ui: {
+      tab: "spectrogram",
+      label: "Colorize",
+      widget: "switch",
+      ariaLabel: "spectrogram 3d colorize",
+      order: 80,
+      showWhen: is3dSpectrogram,
+    },
+  },
   {
     // Ranges come from the projection, which is the thing that actually has an opinion about
     // them; see the export there for why they are not restated.
@@ -313,8 +417,37 @@ const CONTROLS = [
     min: HEIGHT_GAIN_MIN,
     max: HEIGHT_GAIN_MAX,
     default: 1,
+    ui: {
+      tab: "spectrogram",
+      label: "Height Scale",
+      widget: "slider",
+      ariaLabel: "spectrogram 3d height scale",
+      order: 70,
+      step: 0.05,
+      format: (value) => `${value.toFixed(2)}x`,
+      showWhen: is3dSpectrogram,
+    },
   },
-  { key: "spectrogram3dAzimuthDeg", kind: "degrees", default: 135 },
+  {
+    key: "spectrogram3dAzimuthDeg",
+    kind: "degrees",
+    default: 135,
+    ui: {
+      tab: "spectrogram",
+      label: "Azimuth",
+      widget: "slider",
+      ariaLabel: "spectrogram 3d azimuth",
+      order: 60,
+      // The slider stops one degree short of a full turn; the row itself wraps, so 359 and 0 are
+      // neighbours rather than the two ends of a range.
+      min: 0,
+      max: 359,
+      step: 1,
+      format: (value) => `${value.toFixed(0)}\u00b0`,
+      resettable: true,
+      showWhen: is3dSpectrogram,
+    },
+  },
   {
     /// Clamped at both ends; the projection's own doc says why those two ends.
     key: "spectrogram3dElevationDeg",
@@ -322,6 +455,17 @@ const CONTROLS = [
     min: ELEVATION_MIN_DEG,
     max: ELEVATION_MAX_DEG,
     default: 60,
+    ui: {
+      tab: "spectrogram",
+      label: "Elevation",
+      widget: "slider",
+      ariaLabel: "spectrogram 3d elevation",
+      order: 50,
+      step: 1,
+      format: (value) => `${value.toFixed(0)}\u00b0`,
+      resettable: true,
+      showWhen: is3dSpectrogram,
+    },
   },
   {
     // Surfaced as "Grid": it draws the floor grid, and "Floor" sat one row below "dB Floor" with
@@ -330,6 +474,14 @@ const CONTROLS = [
     key: "spectrogram3dFloor",
     kind: "boolean",
     default: true,
+    ui: {
+      tab: "spectrogram",
+      label: "Grid",
+      widget: "switch",
+      ariaLabel: "spectrogram 3d grid",
+      order: 90,
+      showWhen: is3dSpectrogram,
+    },
   },
   {
     kind: "linearRange",
@@ -388,6 +540,13 @@ const CONTROLS = [
     kind: "enum",
     options: Object.values(STEREO_MAP_MODES),
     default: STEREO_MAP_MODES.POSITION,
+    ui: {
+      tab: "stereo-map",
+      label: "Mode",
+      widget: "select",
+      ariaLabel: "stereo map mode",
+      options: STEREO_MAP_MODE_OPTIONS,
+    },
   },
   {
     /// Stored as `{ x, y }` like every other channel-index pair. It was `{ first, second }` until
@@ -399,14 +558,51 @@ const CONTROLS = [
     kind: "pair",
     legacyMembers: ["first", "second"],
     default: { x: 0, y: 1 },
+    // The widget is supplied by the settings surface, because the options are the channel pairs
+    // the current device offers, not anything the table knows. The row still owns where the
+    // control sits among the others.
+    ui: { tab: "stereo-map", label: "Channel Pair", widget: "custom" },
   },
-  { key: "stereoMapHold", kind: "boolean", default: false },
-  { key: "stereoMapSpeedPercent", kind: "number", min: 0, max: 100, default: 50 },
+  {
+    key: "stereoMapHold",
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "stereo-map",
+      label: "Max Hold",
+      widget: "switch",
+      ariaLabel: "stereo map max hold",
+    },
+  },
+  {
+    key: "stereoMapSpeedPercent",
+    kind: "number",
+    min: 0,
+    max: 100,
+    default: 50,
+    ui: {
+      tab: "stereo-map",
+      label: "Speed",
+      widget: "slider",
+      ariaLabel: "stereo map speed",
+      step: 1,
+      format: (value) => `${value.toFixed(0)}%`,
+    },
+  },
   {
     key: "stereoMapOctaveSmoothing",
     kind: "enum",
     options: ids(SPECTRUM_OCTAVE_SMOOTHING_OPTIONS),
     default: "1/12",
+    ui: {
+      tab: "stereo-map",
+      label: "Smoothing",
+      widget: "choiceSelect",
+      ariaLabel: "stereo map octave smoothing",
+      options: SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+      tooltip:
+        "Averages the primitives across frequency before deriving Mode values. Speed smooths over time; this smooths over frequency.",
+    },
   },
   {
     kind: "logRange",
@@ -417,8 +613,29 @@ const CONTROLS = [
     absMin: 20,
     absMax: 20000,
     minSpan: 1,
+    ui: {
+      tab: "stereo-map",
+      label: "Frequency Range",
+      widget: "range",
+      ariaLabel: "stereo map frequency range",
+    },
   },
-  { key: "stereoMapMonoLossYMinDb", kind: "number", min: -60, max: -6, default: -24 },
+  {
+    key: "stereoMapMonoLossYMinDb",
+    kind: "number",
+    min: -60,
+    max: -6,
+    default: -24,
+    ui: {
+      tab: "stereo-map",
+      label: "Level Range",
+      widget: "rangeMin",
+      ariaLabel: "stereo map mono loss level range",
+      // Mono Loss is a loss, so the upper bound is fixed at 0 dB; only the floor is editable.
+      fixedMax: 0,
+      showWhen: (controls) => controls.stereoMapMode === STEREO_MAP_MODES.MONO_LOSS_DB,
+    },
+  },
   {
     /// M/S Ratio's Y range has no minimum span, only the design's "must include 0 dB" constraint:
     /// each bound clamps to the panel's absolute limits independently, then a bound that ends up
@@ -429,6 +646,13 @@ const CONTROLS = [
     defaultMax: 24,
     absMin: -96,
     absMax: 48,
+    ui: {
+      tab: "stereo-map",
+      label: "Level Range",
+      widget: "range",
+      ariaLabel: "stereo map m/s ratio level range",
+      showWhen: (controls) => controls.stereoMapMode === STEREO_MAP_MODES.MS_RATIO_DB,
+    },
     normalize(row, raw) {
       let min = clampNumber(raw?.[row.minKey], row.absMin, row.absMax, row.defaultMin);
       let max = clampNumber(raw?.[row.maxKey], row.absMin, row.absMax, row.defaultMax);
@@ -498,6 +722,17 @@ export function normalizePanelControls(raw) {
     Object.assign(normalized, normalizeRow(row, raw));
   }
   return normalized;
+}
+
+/**
+ * The rows one settings tab renders, in table order. A row carries its own label, widget and
+ * visibility rule, so a new control appears in the settings panel by being added to the table --
+ * there is no second list of controls to keep in step.
+ */
+export function panelControlUiRows(tab) {
+  return CONTROLS.filter((row) => row.ui?.tab === tab).sort(
+    (a, b) => (a.ui.order ?? 0) - (b.ui.order ?? 0)
+  );
 }
 
 const ROW_BY_KEY = new Map();

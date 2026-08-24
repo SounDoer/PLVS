@@ -10,10 +10,11 @@ import {
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTROGRAM_MODE_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+  STEREO_MAP_MODE_OPTIONS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
+  panelControlUiRows,
 } from "@/lib/panelControls.js";
-import { STEREO_MAP_MODES } from "@/math/stereoMapMath.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
@@ -747,13 +748,6 @@ function stereoMapKeyFromPair(pair) {
   return pair ? `${pair.x}-${pair.y}` : "";
 }
 
-const STEREO_MAP_MODE_OPTIONS = [
-  { id: STEREO_MAP_MODES.POSITION, label: "Position" },
-  { id: STEREO_MAP_MODES.CORRELATION, label: "Correlation" },
-  { id: STEREO_MAP_MODES.MONO_LOSS_DB, label: "Mono Loss" },
-  { id: STEREO_MAP_MODES.MS_RATIO_DB, label: "M/S Ratio" },
-];
-
 function toggleId(ids, id) {
   if (ids.includes(id)) {
     return ids.filter((currentId) => currentId !== id);
@@ -964,6 +958,124 @@ export function SpectrumDisplaySettingsRows({
   );
 }
 
+/**
+ * Renders the rows one tab owns straight from the control table: the row carries its label,
+ * tooltip, widget and visibility rule, and the value and its repair rule come from the same row.
+ * Adding a control to the table is what puts it on screen.
+ *
+ * One `openKey` for the whole group rather than a piece of state per select: only one popover can
+ * be open at a time anyway, and a per-row flag would have to be declared next to the widget, which
+ * is exactly the second list this is removing.
+ */
+function PanelControlRows({ tab, controls, onChange, slots = {} }) {
+  const [openKey, setOpenKey] = useState(null);
+  const commit = (changes) => onChange(normalizePanelControls({ ...controls, ...changes }));
+
+  return panelControlUiRows(tab)
+    .filter((row) => !row.ui.showWhen || row.ui.showWhen(controls))
+    .filter((row) => row.ui.widget !== "custom" || slots[row.key])
+    .map((row) => {
+      const { ui } = row;
+      const rowKey = row.key ?? row.minKey;
+      if (ui.widget === "custom") {
+        return (
+          <SettingsRow key={rowKey} label={ui.label} tooltip={ui.tooltip}>
+            {slots[row.key]}
+          </SettingsRow>
+        );
+      }
+      const action = ui.resettable ? (
+        <SettingsResetButton
+          ariaLabel={`reset ${ui.ariaLabel}`}
+          atDefault={controls[row.key] === DEFAULT_PANEL_CONTROLS[row.key]}
+          onReset={() => commit({ [row.key]: DEFAULT_PANEL_CONTROLS[row.key] })}
+        />
+      ) : null;
+
+      return (
+        <SettingsRow key={rowKey} label={ui.label} tooltip={ui.tooltip} action={action}>
+          {renderPanelControlWidget(row, controls, commit, openKey, setOpenKey)}
+        </SettingsRow>
+      );
+    });
+}
+
+function renderPanelControlWidget(row, controls, commit, openKey, setOpenKey) {
+  const { ui } = row;
+  const rowKey = row.key ?? row.minKey;
+  const open = openKey === rowKey;
+  const onOpenChange = (next) => setOpenKey(next ? rowKey : null);
+
+  if (ui.widget === "switch") {
+    return (
+      <SettingsSwitch
+        aria-label={ui.ariaLabel}
+        checked={controls[row.key]}
+        onCheckedChange={(checked) => commit({ [row.key]: checked })}
+      />
+    );
+  }
+  if (ui.widget === "select") {
+    const selected = ui.options.find((option) => option.id === controls[row.key]) ?? ui.options[0];
+    return (
+      <SettingsSelect
+        label={selected.label}
+        ariaLabel={ui.ariaLabel}
+        options={ui.options}
+        value={selected.id}
+        open={open}
+        onOpenChange={onOpenChange}
+        onChange={(id) => commit({ [row.key]: id })}
+      />
+    );
+  }
+  if (ui.widget === "choiceSelect") {
+    return (
+      <SettingsChoiceSelect
+        ariaLabel={ui.ariaLabel}
+        options={ui.options}
+        value={controls[row.key]}
+        open={open}
+        onOpenChange={onOpenChange}
+        onChange={(id) => commit({ [row.key]: id })}
+      />
+    );
+  }
+  if (ui.widget === "slider") {
+    return (
+      <SettingsSlider
+        ariaLabel={ui.ariaLabel}
+        min={ui.min ?? row.min}
+        max={ui.max ?? row.max}
+        step={ui.step}
+        value={controls[row.key]}
+        formatValue={ui.format}
+        onCommit={(value) => commit({ [row.key]: value })}
+      />
+    );
+  }
+  if (ui.widget === "rangeMin") {
+    return (
+      <SettingsRangeInput
+        minAriaLabel={`${ui.ariaLabel} min`}
+        maxAriaLabel={`${ui.ariaLabel} max`}
+        minValue={controls[row.key]}
+        maxValue={ui.fixedMax}
+        onCommit={(newMin) => commit({ [row.key]: newMin })}
+      />
+    );
+  }
+  return (
+    <SettingsRangeInput
+      minAriaLabel={`${ui.ariaLabel} min`}
+      maxAriaLabel={`${ui.ariaLabel} max`}
+      minValue={controls[row.minKey]}
+      maxValue={controls[row.maxKey]}
+      onCommit={(newMin, newMax) => commit({ [row.minKey]: newMin, [row.maxKey]: newMax })}
+    />
+  );
+}
+
 export function PanelSettingsContent({
   activeTab,
   channelCount = 0,
@@ -987,34 +1099,20 @@ export function PanelSettingsContent({
   panelControls,
   onPanelControlsChange,
 }) {
-  const [levelMeterModeOpen, setLevelMeterModeOpen] = useState(false);
   const [spectrumChannelOpen, setSpectrumChannelOpen] = useState(false);
   const [spectrumViewOpen, setSpectrumViewOpen] = useState(false);
   const [vectorscopeChannelOpen, setVectorscopeChannelOpen] = useState(false);
   const [vectorscopeModeOpen, setVectorscopeModeOpen] = useState(false);
   const [stereoMapPairOpen, setStereoMapPairOpen] = useState(false);
-  const [stereoMapModeOpen, setStereoMapModeOpen] = useState(false);
-  const [stereoMapSmoothingOpen, setStereoMapSmoothingOpen] = useState(false);
   const [spectrogramSmoothingOpen, setSpectrogramSmoothingOpen] = useState(false);
-  const [spectrogramModeOpen, setSpectrogramModeOpen] = useState(false);
   const [vadOpen, setVadOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);
-    const selectedMode =
-      LEVEL_METER_MODE_OPTIONS.find(
-        (option) => option.id === normalizedPanelControls.levelMeterMode
-      ) ?? LEVEL_METER_MODE_OPTIONS[0];
-    const showPlaybackMaxToggle =
-      selectedMode.id === "rms" ||
-      selectedMode.id === "momentary" ||
-      selectedMode.id === "shortTerm";
-    const showValueMarkerToggle =
-      selectedMode.id === "momentary" || selectedMode.id === "shortTerm";
-    const isPeakMode = selectedMode.id === "peak";
-    const isPeakFamilyMode = selectedMode.id === "peak" || selectedMode.id === "rms";
+    const isPeakMode = normalizedPanelControls.levelMeterMode === "peak";
+    const isPeakFamilyMode = isPeakMode || normalizedPanelControls.levelMeterMode === "rms";
     const levelMeterYMinDb = isPeakFamilyMode
       ? normalizedPanelControls.levelMeterYMinDb
       : normalizedPanelControls.loudnessYMinDb;
@@ -1024,77 +1122,14 @@ export function PanelSettingsContent({
 
     return (
       <SettingsGroup title="Level Meter">
-        <SettingsRow label="Mode">
-          <SettingsSelect
-            label={selectedMode.label}
-            ariaLabel="level meter mode"
-            options={LEVEL_METER_MODE_OPTIONS}
-            value={selectedMode.id}
-            open={levelMeterModeOpen}
-            onOpenChange={setLevelMeterModeOpen}
-            onChange={(levelMeterMode) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  levelMeterMode,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
-        {showPlaybackMaxToggle ? (
-          <>
-            <SettingsRow
-              label="Playback Max"
-              tooltip="Show the latest playback max as the readout while the bar stays live."
-            >
-              <SettingsSwitch
-                aria-label="level meter playback max"
-                checked={normalizedPanelControls.levelMeterPlaybackMax}
-                onCheckedChange={(checked) => {
-                  onPanelControlsChange(
-                    normalizePanelControls({
-                      ...normalizedPanelControls,
-                      levelMeterPlaybackMax: checked,
-                    })
-                  );
-                }}
-              />
-            </SettingsRow>
-            {showValueMarkerToggle ? (
-              <SettingsRow label="Floating Value">
-                <SettingsSwitch
-                  aria-label="level meter floating value"
-                  checked={normalizedPanelControls.levelMeterValueMarker}
-                  onCheckedChange={(checked) => {
-                    onPanelControlsChange(
-                      normalizePanelControls({
-                        ...normalizedPanelControls,
-                        levelMeterValueMarker: checked,
-                      })
-                    );
-                  }}
-                />
-              </SettingsRow>
-            ) : null}
-          </>
-        ) : null}
-        {isPeakMode ? (
-          <SettingsRow label="TP Max">
-            <SettingsSwitch
-              aria-label="level meter TP Max"
-              checked={normalizedPanelControls.levelMeterTpMaxMarker}
-              onCheckedChange={(checked) => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    levelMeterTpMaxMarker: checked,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
-        ) : null}
+        <PanelControlRows
+          tab="levelMeter"
+          controls={normalizedPanelControls}
+          onChange={onPanelControlsChange}
+        />
+        {/* Not a table row: the range is read from the Peak-family keys but written to the
+            Loudness keys outside Peak mode, so one row would have to name two different pairs.
+            Kept as written, including that asymmetry -- see the note in the review. */}
         <SettingsRow label="Level Range">
           <SettingsRangeInput
             minAriaLabel="level meter range min"
@@ -1415,218 +1450,30 @@ export function PanelSettingsContent({
           }}
         />
         {showSpectrogramRange ? (
-          <>
-            <SettingsRow
-              label="Mode"
-              tooltip="3D is a presentation view of the waterfall surface. There is no hover readout in 3D — switch back to 2D Heatmap to read exact values."
-            >
-              <SettingsSelect
-                label={
-                  (
-                    SPECTROGRAM_MODE_OPTIONS.find(
-                      (option) => option.id === normalizedPanelControls.spectrogramMode
-                    ) ?? SPECTROGRAM_MODE_OPTIONS[0]
-                  ).label
-                }
-                ariaLabel="spectrogram mode"
-                options={SPECTROGRAM_MODE_OPTIONS}
-                value={normalizedPanelControls.spectrogramMode}
-                open={spectrogramModeOpen}
-                onOpenChange={setSpectrogramModeOpen}
-                onChange={(spectrogramMode) => {
-                  onPanelControlsChange?.(
-                    normalizePanelControls({
-                      ...normalizedPanelControls,
-                      spectrogramMode,
-                    })
-                  );
-                }}
-              />
-            </SettingsRow>
-            <SettingsRow
-              label="Smoothing"
-              tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Applies in both 2D and 3D."
-            >
-              <SettingsChoiceSelect
-                ariaLabel="spectrogram octave smoothing"
-                options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
-                value={normalizedPanelControls.spectrumOctaveSmoothing}
-                open={spectrogramSmoothingOpen}
-                onOpenChange={setSpectrogramSmoothingOpen}
-                onChange={(spectrumOctaveSmoothing) => {
-                  onPanelControlsChange?.(
-                    normalizePanelControls({
-                      ...normalizedPanelControls,
-                      spectrumOctaveSmoothing,
-                    })
-                  );
-                }}
-              />
-            </SettingsRow>
-            <SettingsRow
-              label="dB Floor"
-              tooltip="Raises the bottom of the display range so the loud part of the signal gets the resolution instead of the noise floor. Applies in both 2D and 3D."
-            >
-              <SettingsSlider
-                ariaLabel="spectrogram db floor"
-                min={-96}
-                max={-12}
-                step={1}
-                value={normalizedPanelControls.spectrogramDbFloor}
-                formatValue={(value) => `${value.toFixed(0)} dB`}
-                onCommit={(value) => {
-                  onPanelControlsChange?.(
-                    normalizePanelControls({
-                      ...normalizedPanelControls,
-                      spectrogramDbFloor: value,
-                    })
-                  );
-                }}
-              />
-            </SettingsRow>
-            <SettingsRow label="Frequency Range">
-              <SettingsRangeInput
-                minAriaLabel="spectrogram frequency range min"
-                maxAriaLabel="spectrogram frequency range max"
-                minValue={normalizedPanelControls.spectrogramYMinFreq}
-                maxValue={normalizedPanelControls.spectrogramYMaxFreq}
-                onCommit={(newMin, newMax) => {
-                  onPanelControlsChange?.(
-                    normalizePanelControls({
-                      ...normalizedPanelControls,
-                      spectrogramYMinFreq: newMin,
-                      spectrogramYMaxFreq: newMax,
-                    })
-                  );
-                }}
-              />
-            </SettingsRow>
-            {normalizedPanelControls.spectrogramMode !== "heatmap" ? (
-              <>
-                <SettingsRow
-                  label="Elevation"
-                  action={
-                    <SettingsResetButton
-                      ariaLabel="reset spectrogram 3d elevation"
-                      atDefault={
-                        normalizedPanelControls.spectrogram3dElevationDeg ===
-                        DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg
-                      }
-                      onReset={() => {
-                        onPanelControlsChange?.(
-                          normalizePanelControls({
-                            ...normalizedPanelControls,
-                            spectrogram3dElevationDeg:
-                              DEFAULT_PANEL_CONTROLS.spectrogram3dElevationDeg,
-                          })
-                        );
-                      }}
-                    />
-                  }
-                >
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d elevation"
-                    min={5}
-                    max={85}
-                    step={1}
-                    value={normalizedPanelControls.spectrogram3dElevationDeg}
-                    formatValue={(value) => `${value.toFixed(0)}°`}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dElevationDeg: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-                <SettingsRow
-                  label="Azimuth"
-                  action={
-                    <SettingsResetButton
-                      ariaLabel="reset spectrogram 3d azimuth"
-                      atDefault={
-                        normalizedPanelControls.spectrogram3dAzimuthDeg ===
-                        DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg
-                      }
-                      onReset={() => {
-                        onPanelControlsChange?.(
-                          normalizePanelControls({
-                            ...normalizedPanelControls,
-                            spectrogram3dAzimuthDeg: DEFAULT_PANEL_CONTROLS.spectrogram3dAzimuthDeg,
-                          })
-                        );
-                      }}
-                    />
-                  }
-                >
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d azimuth"
-                    min={0}
-                    max={359}
-                    step={1}
-                    value={normalizedPanelControls.spectrogram3dAzimuthDeg}
-                    formatValue={(value) => `${value.toFixed(0)}°`}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dAzimuthDeg: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-                <SettingsRow label="Height Scale">
-                  <SettingsSlider
-                    ariaLabel="spectrogram 3d height scale"
-                    min={0.3}
-                    max={3}
-                    step={0.05}
-                    value={normalizedPanelControls.spectrogram3dHeightGain}
-                    formatValue={(value) => `${value.toFixed(2)}x`}
-                    onCommit={(value) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dHeightGain: value,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-                <SettingsRow label="Colorize">
-                  <SettingsSwitch
-                    aria-label="spectrogram 3d colorize"
-                    checked={normalizedPanelControls.spectrogram3dColorize}
-                    onCheckedChange={(checked) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dColorize: checked,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-                <SettingsRow label="Grid">
-                  <SettingsSwitch
-                    aria-label="spectrogram 3d grid"
-                    checked={normalizedPanelControls.spectrogram3dFloor}
-                    onCheckedChange={(checked) => {
-                      onPanelControlsChange?.(
-                        normalizePanelControls({
-                          ...normalizedPanelControls,
-                          spectrogram3dFloor: checked,
-                        })
-                      );
-                    }}
-                  />
-                </SettingsRow>
-              </>
-            ) : null}
-          </>
+          <PanelControlRows
+            tab="spectrogram"
+            controls={normalizedPanelControls}
+            onChange={onPanelControlsChange}
+            slots={{
+              spectrumOctaveSmoothing: (
+                <SettingsChoiceSelect
+                  ariaLabel="spectrogram octave smoothing"
+                  options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
+                  value={normalizedPanelControls.spectrumOctaveSmoothing}
+                  open={spectrogramSmoothingOpen}
+                  onOpenChange={setSpectrogramSmoothingOpen}
+                  onChange={(spectrumOctaveSmoothing) => {
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        spectrumOctaveSmoothing,
+                      })
+                    );
+                  }}
+                />
+              ),
+            }}
+          />
         ) : null}
       </SettingsGroup>
     );
@@ -1723,10 +1570,6 @@ export function PanelSettingsContent({
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);
-    const selectedMode =
-      STEREO_MAP_MODE_OPTIONS.find(
-        (option) => option.id === normalizedPanelControls.stereoMapMode
-      ) ?? STEREO_MAP_MODE_OPTIONS[0];
     const showPair = stereoMapPairOptions.length > 0;
     const effectiveStereoMapPairValueKey =
       stereoMapKeyFromPair(normalizedPanelControls.stereoMapPair) || stereoMapPairValueKey;
@@ -1736,152 +1579,40 @@ export function PanelSettingsContent({
     const pairLabel = matchedOption
       ? selectedOption.label
       : stereoMapPairDisplayLabel || selectedOption?.label;
-    const isMonoLoss = selectedMode.id === STEREO_MAP_MODES.MONO_LOSS_DB;
-    const isMsRatio = selectedMode.id === STEREO_MAP_MODES.MS_RATIO_DB;
 
     return (
       <SettingsGroup title="Stereo Map">
-        <SettingsRow label="Mode">
-          <SettingsSelect
-            label={selectedMode.label}
-            ariaLabel="stereo map mode"
-            options={STEREO_MAP_MODE_OPTIONS}
-            value={selectedMode.id}
-            open={stereoMapModeOpen}
-            onOpenChange={setStereoMapModeOpen}
-            onChange={(stereoMapMode) => {
-              onPanelControlsChange(
-                normalizePanelControls({ ...normalizedPanelControls, stereoMapMode })
-              );
-            }}
-          />
-        </SettingsRow>
-        {showPair ? (
-          <SettingsRow label="Channel Pair">
-            <SettingsSelect
-              label={pairLabel}
-              ariaLabel="stereo map channel"
-              options={stereoMapPairOptions}
-              value={selectedOption.key}
-              open={stereoMapPairOpen}
-              onOpenChange={setStereoMapPairOpen}
-              collapsedGroups={["All pairs"]}
-              onChange={(key) => {
-                const opt = stereoMapPairOptions.find((o) => o.key === key);
-                if (opt) {
-                  const nextPair = { x: opt.x, y: opt.y };
-                  onPanelControlsChange(
-                    normalizePanelControls({ ...normalizedPanelControls, stereoMapPair: nextPair })
-                  );
-                  onStereoMapPairChange?.(nextPair);
-                }
-              }}
-            />
-          </SettingsRow>
-        ) : null}
-        <SettingsRow label="Max Hold">
-          <SettingsSwitch
-            aria-label="stereo map max hold"
-            checked={normalizedPanelControls.stereoMapHold}
-            onCheckedChange={(stereoMapHold) => {
-              onPanelControlsChange(
-                normalizePanelControls({ ...normalizedPanelControls, stereoMapHold })
-              );
-            }}
-          />
-        </SettingsRow>
-        <SettingsRow label="Speed">
-          <SettingsSlider
-            ariaLabel="stereo map speed"
-            min={0}
-            max={100}
-            step={1}
-            value={normalizedPanelControls.stereoMapSpeedPercent}
-            formatValue={(value) => `${value.toFixed(0)}%`}
-            onCommit={(value) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  stereoMapSpeedPercent: value,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
-        <SettingsRow
-          label="Smoothing"
-          tooltip="Averages the primitives across frequency before deriving Mode values. Speed smooths over time; this smooths over frequency."
-        >
-          <SettingsChoiceSelect
-            ariaLabel="stereo map octave smoothing"
-            options={SPECTRUM_OCTAVE_SMOOTHING_OPTIONS}
-            value={normalizedPanelControls.stereoMapOctaveSmoothing}
-            open={stereoMapSmoothingOpen}
-            onOpenChange={setStereoMapSmoothingOpen}
-            onChange={(stereoMapOctaveSmoothing) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  stereoMapOctaveSmoothing,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
-        <SettingsRow label="Frequency Range">
-          <SettingsRangeInput
-            minAriaLabel="stereo map frequency range min"
-            maxAriaLabel="stereo map frequency range max"
-            minValue={normalizedPanelControls.stereoMapXMinFreq}
-            maxValue={normalizedPanelControls.stereoMapXMaxFreq}
-            onCommit={(newMin, newMax) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  stereoMapXMinFreq: newMin,
-                  stereoMapXMaxFreq: newMax,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
-        {isMonoLoss ? (
-          <SettingsRow label="Level Range">
-            <SettingsRangeInput
-              minAriaLabel="stereo map mono loss level range min"
-              maxAriaLabel="stereo map mono loss level range max"
-              minValue={normalizedPanelControls.stereoMapMonoLossYMinDb}
-              maxValue={0}
-              onCommit={(newMin) => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    stereoMapMonoLossYMinDb: newMin,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
-        ) : null}
-        {isMsRatio ? (
-          <SettingsRow label="Level Range">
-            <SettingsRangeInput
-              minAriaLabel="stereo map m/s ratio level range min"
-              maxAriaLabel="stereo map m/s ratio level range max"
-              minValue={normalizedPanelControls.stereoMapMsRatioYMinDb}
-              maxValue={normalizedPanelControls.stereoMapMsRatioYMaxDb}
-              onCommit={(newMin, newMax) => {
-                onPanelControlsChange(
-                  normalizePanelControls({
-                    ...normalizedPanelControls,
-                    stereoMapMsRatioYMinDb: newMin,
-                    stereoMapMsRatioYMaxDb: newMax,
-                  })
-                );
-              }}
-            />
-          </SettingsRow>
-        ) : null}
+        <PanelControlRows
+          tab="stereo-map"
+          controls={normalizedPanelControls}
+          onChange={onPanelControlsChange}
+          slots={{
+            stereoMapPair: showPair ? (
+              <SettingsSelect
+                label={pairLabel}
+                ariaLabel="stereo map channel"
+                options={stereoMapPairOptions}
+                value={selectedOption.key}
+                open={stereoMapPairOpen}
+                onOpenChange={setStereoMapPairOpen}
+                collapsedGroups={["All pairs"]}
+                onChange={(key) => {
+                  const opt = stereoMapPairOptions.find((o) => o.key === key);
+                  if (opt) {
+                    const nextPair = { x: opt.x, y: opt.y };
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        stereoMapPair: nextPair,
+                      })
+                    );
+                    onStereoMapPairChange?.(nextPair);
+                  }
+                }}
+              />
+            ) : null,
+          }}
+        />
       </SettingsGroup>
     );
   }
