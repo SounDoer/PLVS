@@ -85,7 +85,8 @@ describe("panelControls", () => {
       vectorscopePolarLevelMaxHold: false,
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
-      spectrumMaxHold: false,
+      spectrumMaxDecay: false,
+      spectrumMaxHoldTrace: false,
       spectrumPeakLabels: false,
       spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
@@ -238,7 +239,8 @@ describe("panelControls", () => {
       vectorscopePolarLevelMaxHold: false,
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
-      spectrumMaxHold: false,
+      spectrumMaxDecay: false,
+      spectrumMaxHoldTrace: false,
       spectrumPeakLabels: false,
       spectrumSpeedPercent: 25,
       spectrumTiltDbPerOctave: 3,
@@ -392,17 +394,17 @@ describe("spectrumView normalization", () => {
   });
 });
 
-describe("spectrumMaxHold normalization", () => {
+describe("spectrumMaxDecay normalization", () => {
   it("defaults to false", () => {
-    expect(normalizePanelControls({}).spectrumMaxHold).toBe(false);
-    expect(DEFAULT_PANEL_CONTROLS.spectrumMaxHold).toBe(false);
+    expect(normalizePanelControls({}).spectrumMaxDecay).toBe(false);
+    expect(DEFAULT_PANEL_CONTROLS.spectrumMaxDecay).toBe(false);
   });
   it("keeps booleans", () => {
-    expect(normalizePanelControls({ spectrumMaxHold: true }).spectrumMaxHold).toBe(true);
-    expect(normalizePanelControls({ spectrumMaxHold: false }).spectrumMaxHold).toBe(false);
+    expect(normalizePanelControls({ spectrumMaxDecay: true }).spectrumMaxDecay).toBe(true);
+    expect(normalizePanelControls({ spectrumMaxDecay: false }).spectrumMaxDecay).toBe(false);
   });
   it("falls back on non-boolean", () => {
-    expect(normalizePanelControls({ spectrumMaxHold: "yes" }).spectrumMaxHold).toBe(false);
+    expect(normalizePanelControls({ spectrumMaxDecay: "yes" }).spectrumMaxDecay).toBe(false);
   });
 });
 
@@ -432,13 +434,29 @@ describe("spectrum display controls normalization", () => {
     expect(normalizePanelControls({ spectrumPeakLabels: "yes" }).spectrumPeakLabels).toBe(false);
   });
 
-  it("reads spectrumMaxHold from presets written under the old peak hold key", () => {
-    expect(normalizePanelControls({ spectrumPeakHold: true }).spectrumMaxHold).toBe(true);
+  it("reads the old spectrumMaxHold key as Max Decay without switching on Max Hold", () => {
+    const controls = normalizePanelControls({ spectrumMaxHold: true });
+
+    expect(controls.spectrumMaxDecay).toBe(true);
+    expect(controls.spectrumMaxHoldTrace).toBe(false);
+    expect(controls).not.toHaveProperty("spectrumMaxHold");
+  });
+
+  it("defaults Max Hold off and normalizes non-booleans", () => {
+    expect(normalizePanelControls({}).spectrumMaxHoldTrace).toBe(false);
+    expect(normalizePanelControls({ spectrumMaxHoldTrace: true }).spectrumMaxHoldTrace).toBe(true);
+    expect(normalizePanelControls({ spectrumMaxHoldTrace: "yes" }).spectrumMaxHoldTrace).toBe(
+      false
+    );
+  });
+
+  it("reads Max Decay from presets written under the old peak hold key", () => {
+    expect(normalizePanelControls({ spectrumPeakHold: true }).spectrumMaxDecay).toBe(true);
     // A stored `false` is a real value: `??` must not mistake it for an absent key.
-    expect(normalizePanelControls({ spectrumPeakHold: false }).spectrumMaxHold).toBe(false);
+    expect(normalizePanelControls({ spectrumPeakHold: false }).spectrumMaxDecay).toBe(false);
     // The new key wins when a preset somehow carries both.
     expect(
-      normalizePanelControls({ spectrumMaxHold: false, spectrumPeakHold: true }).spectrumMaxHold
+      normalizePanelControls({ spectrumMaxDecay: false, spectrumPeakHold: true }).spectrumMaxDecay
     ).toBe(false);
   });
 

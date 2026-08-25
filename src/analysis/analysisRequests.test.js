@@ -91,8 +91,8 @@ describe("analysisRequests", () => {
 
   it("does not include max hold in the spectrum request key", () => {
     expect(
-      spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumMaxHold: false })
-    ).toBe(spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumMaxHold: true }));
+      spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumMaxDecay: false })
+    ).toBe(spectrumRequestKeyFromControls({ ...DEFAULT_PANEL_CONTROLS, spectrumMaxDecay: true }));
   });
 
   it("does not include Y-axis display controls in the spectrum request key", () => {

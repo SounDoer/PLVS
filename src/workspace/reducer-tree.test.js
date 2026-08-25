@@ -793,7 +793,7 @@ describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
       vectorscopePair: { x: 0, y: 1 },
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
-      spectrumMaxHold: false,
+      spectrumMaxDecay: false,
       statsVisibleIds: [],
       statsOrder: STATS_CANONICAL_ORDER,
       loudnessHistoryVisibleLayerIds: [],

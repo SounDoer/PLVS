@@ -27,7 +27,7 @@ describe("normalizeDockControlsByModuleId", () => {
       spectrumSpeedPercent: DEFAULT_PANEL_CONTROLS.spectrumSpeedPercent,
       spectrumOctaveSmoothing: DEFAULT_PANEL_CONTROLS.spectrumOctaveSmoothing,
       spectrumTiltDbPerOctave: DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
-      spectrumMaxHold: DEFAULT_PANEL_CONTROLS.spectrumMaxHold,
+      spectrumMaxDecay: DEFAULT_PANEL_CONTROLS.spectrumMaxDecay,
       spectrumXMinFreq: DEFAULT_PANEL_CONTROLS.spectrumXMinFreq,
       spectrumXMaxFreq: DEFAULT_PANEL_CONTROLS.spectrumXMaxFreq,
       spectrumYMinDb: DEFAULT_PANEL_CONTROLS.spectrumYMinDb,
@@ -113,7 +113,7 @@ describe("normalizeDockControlsByModuleId", () => {
       spectrumSpeedPercent: 100,
       spectrumOctaveSmoothing: "1/6",
       spectrumTiltDbPerOctave: 0,
-      spectrumMaxHold: true,
+      spectrumMaxDecay: true,
       spectrumXMinFreq: 20,
       spectrumXMaxFreq: 20000,
       // A stored range narrower than the control's minimum span is opened up around the bound the
@@ -156,7 +156,7 @@ describe("normalizeDockControlsByModuleId", () => {
     expect(controls).toMatchObject({
       spectrumSpeedPercent: 72,
       spectrumOctaveSmoothing: "off",
-      spectrumMaxHold: true,
+      spectrumMaxDecay: true,
     });
     expect(controls).not.toHaveProperty("smoothingPercent");
     expect(controls).not.toHaveProperty("peakHold");
@@ -258,6 +258,20 @@ describe("normalizeDockModuleControls", () => {
         polarLevelPeakHold: true,
       })
     ).toMatchObject({ vectorscopePolarLevelMaxHold: true });
+  });
+
+  it("reads the Dock's short Max Decay names onto the renamed key", () => {
+    expect(normalizeDockModuleControls("spectrum", { maxHold: true }).spectrumMaxDecay).toBe(true);
+    expect(normalizeDockModuleControls("spectrum", { peakHold: true }).spectrumMaxDecay).toBe(true);
+    expect(normalizeDockModuleControls("spectrum", { maxHold: true }).spectrumMaxHoldTrace).toBe(
+      false
+    );
+  });
+
+  it("carries Max Hold in the Dock Spectrum subset", () => {
+    expect(
+      normalizeDockModuleControls("spectrum", { spectrumMaxHoldTrace: true }).spectrumMaxHoldTrace
+    ).toBe(true);
   });
 
   it("returns null for modules without controls", () => {

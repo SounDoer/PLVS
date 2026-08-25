@@ -856,7 +856,8 @@ export function SpectrumDisplaySettingsRows({
   showPeak = true,
   showPeakLabels = showPeak,
   showDisplay = true,
-  maxHold,
+  maxDecay,
+  maxHoldTrace,
   peakLabels,
   speedPercent,
   octaveSmoothing,
@@ -865,7 +866,8 @@ export function SpectrumDisplaySettingsRows({
   xMaxFreq,
   yMinDb,
   yMaxDb,
-  onMaxHoldChange,
+  onMaxDecayChange,
+  onMaxHoldTraceChange,
   onPeakLabelsChange,
   onSpeedChange,
   onOctaveSmoothingChange,
@@ -877,18 +879,33 @@ export function SpectrumDisplaySettingsRows({
   return (
     <>
       {showPeak ? (
-        <SettingsRow label="Max Decay">
-          <SettingsSwitch
-            aria-label="spectrum max decay"
-            checked={maxHold}
-            onCheckedChange={onMaxHoldChange}
-          />
-        </SettingsRow>
+        <>
+          <SettingsRow
+            label="Max Decay"
+            tooltip="Holds each band's peak briefly, then lets it fall. Shows the last few seconds."
+          >
+            <SettingsSwitch
+              aria-label="spectrum max decay"
+              checked={maxDecay}
+              onCheckedChange={onMaxDecayChange}
+            />
+          </SettingsRow>
+          <SettingsRow
+            label="Max Hold"
+            tooltip="Keeps the highest level each band has reached since it was switched on. Click the held line to clear it."
+          >
+            <SettingsSwitch
+              aria-label="spectrum max hold"
+              checked={maxHoldTrace}
+              onCheckedChange={onMaxHoldTraceChange}
+            />
+          </SettingsRow>
+        </>
       ) : null}
       {showPeakLabels ? (
         <SettingsRow
           label="Peak Labels"
-          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max Decay is the time axis; this is the frequency axis."
+          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max Decay and Max Hold are the time axis; this is the frequency axis."
         >
           <SettingsSwitch
             aria-label="spectrum peak labels"
@@ -1090,8 +1107,8 @@ export function PanelSettingsContent({
   spectrumView = "combined",
   spectrumViewLegend = null,
   onSpectrumViewChange,
-  spectrumMaxHold = false,
-  onSpectrumMaxHoldToggle,
+  spectrumMaxDecay = false,
+  onSpectrumMaxDecayToggle,
   stereoMapPairOptions = [],
   stereoMapPairValueKey = "",
   stereoMapPairDisplayLabel = "",
@@ -1293,9 +1310,9 @@ export function PanelSettingsContent({
     const effectiveSpectrumView = hasPanelControls
       ? normalizedPanelControls.spectrumView
       : spectrumView;
-    const effectiveSpectrumMaxHold = hasPanelControls
-      ? normalizedPanelControls.spectrumMaxHold
-      : spectrumMaxHold;
+    const effectiveSpectrumMaxDecay = hasPanelControls
+      ? normalizedPanelControls.spectrumMaxDecay
+      : spectrumMaxDecay;
     const effectiveSpeedPercent = normalizedPanelControls.spectrumSpeedPercent;
     const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
     const effectiveYMaxDb = normalizedPanelControls.spectrumYMaxDb;
@@ -1312,7 +1329,7 @@ export function PanelSettingsContent({
       spectrumViewApplies(sel) &&
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
-    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxHoldToggle === "function";
+    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxDecayToggle === "function";
     const showDisplayControls =
       activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
     const showSpectrogramRange =
@@ -1383,7 +1400,8 @@ export function PanelSettingsContent({
         <SpectrumDisplaySettingsRows
           showPeak={showPeak}
           showDisplay={showDisplayControls}
-          maxHold={effectiveSpectrumMaxHold}
+          maxDecay={effectiveSpectrumMaxDecay}
+          maxHoldTrace={normalizedPanelControls.spectrumMaxHoldTrace}
           peakLabels={normalizedPanelControls.spectrumPeakLabels}
           speedPercent={effectiveSpeedPercent}
           octaveSmoothing={normalizedPanelControls.spectrumOctaveSmoothing}
@@ -1392,14 +1410,22 @@ export function PanelSettingsContent({
           xMaxFreq={normalizedPanelControls.spectrumXMaxFreq}
           yMinDb={effectiveYMinDb}
           yMaxDb={effectiveYMaxDb}
-          onMaxHoldChange={(checked) => {
+          onMaxDecayChange={(checked) => {
             onPanelControlsChange?.(
               normalizePanelControls({
                 ...normalizedPanelControls,
-                spectrumMaxHold: checked,
+                spectrumMaxDecay: checked,
               })
             );
-            onSpectrumMaxHoldToggle?.();
+            onSpectrumMaxDecayToggle?.();
+          }}
+          onMaxHoldTraceChange={(checked) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({
+                ...normalizedPanelControls,
+                spectrumMaxHoldTrace: checked,
+              })
+            );
           }}
           onPeakLabelsChange={(checked) => {
             onPanelControlsChange?.(

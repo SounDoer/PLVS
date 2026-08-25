@@ -276,13 +276,26 @@ const CONTROLS = [
   },
   { key: "spectrumView", kind: "enum", options: SPECTRUM_VIEW_IDS, default: "combined" },
   {
-    /// spectrumMaxHold was spectrumPeakHold until "peak" was needed for the frequency axis -- a
-    /// peak in a spectrum is a bump in the curve, which is what Peak labels marks; this control is
-    /// the time axis. Presets from before the rename still carry the old key.
-    key: "spectrumMaxHold",
+    /// spectrumMaxDecay was spectrumMaxHold, and spectrumPeakHold before that. The settings label
+    /// has always read "Max Decay": this is the engine's decaying peak envelope. Now that a real
+    /// cumulative Max Hold exists beside it, a key reading spectrumMaxHold for the decaying one
+    /// would mislead every later reader.
+    ///
+    /// spectrumMaxHold is read here and nowhere else -- it is never reused for the new control. A
+    /// stored `true` means the user had Max Decay on, and must not switch on a feature they have
+    /// never seen.
+    key: "spectrumMaxDecay",
     kind: "boolean",
     default: false,
-    legacyKeys: ["spectrumPeakHold"],
+    legacyKeys: ["spectrumMaxHold", "spectrumPeakHold"],
+  },
+  {
+    /// The cumulative hold: the maximum each band has reached since it was switched on or last
+    /// cleared, accumulated in the frontend and drawn as an outline. See
+    /// docs/superpowers/specs/2026-08-25-spectrum-max-hold-design.md.
+    key: "spectrumMaxHoldTrace",
+    kind: "boolean",
+    default: false,
   },
   { key: "spectrumPeakLabels", kind: "boolean", default: false },
   {

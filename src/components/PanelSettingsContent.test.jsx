@@ -1047,7 +1047,7 @@ describe("PanelSettingsContent", () => {
   });
 
   it("shows Max Decay as a switch on spectrum and reflects + flips state", () => {
-    const onSpectrumMaxHoldToggle = vi.fn();
+    const onSpectrumMaxDecayToggle = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -1056,14 +1056,14 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxHold={true}
-        onSpectrumMaxHoldToggle={onSpectrumMaxHoldToggle}
+        spectrumMaxDecay={true}
+        onSpectrumMaxDecayToggle={onSpectrumMaxDecayToggle}
       />
     );
     const btn = screen.getByRole("switch", { name: "spectrum max decay" });
     expect(btn.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(btn);
-    expect(onSpectrumMaxHoldToggle).toHaveBeenCalledTimes(1);
+    expect(onSpectrumMaxDecayToggle).toHaveBeenCalledTimes(1);
   });
 
   it("shows compact spectrum display controls after Max Decay", () => {
@@ -1075,8 +1075,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxHold={true}
-        onSpectrumMaxHoldToggle={vi.fn()}
+        spectrumMaxDecay={true}
+        onSpectrumMaxDecayToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
@@ -1131,8 +1131,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxHold={false}
-        onSpectrumMaxHoldToggle={vi.fn()}
+        spectrumMaxDecay={false}
+        onSpectrumMaxDecayToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
@@ -1164,8 +1164,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxHold={false}
-        onSpectrumMaxHoldToggle={vi.fn()}
+        spectrumMaxDecay={false}
+        onSpectrumMaxDecayToggle={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -1229,8 +1229,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxHold={false}
-        onSpectrumMaxHoldToggle={vi.fn()}
+        spectrumMaxDecay={false}
+        onSpectrumMaxDecayToggle={vi.fn()}
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           spectrumXMinFreq: 20.000001,
@@ -1255,8 +1255,8 @@ describe("PanelSettingsContent", () => {
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
         spectrumValueKey="p-0-1"
-        spectrumMaxHold={false}
-        onSpectrumMaxHoldToggle={vi.fn()}
+        spectrumMaxDecay={false}
+        onSpectrumMaxDecayToggle={vi.fn()}
       />
     );
     expect(screen.queryByLabelText("spectrum max decay")).toBeNull();
