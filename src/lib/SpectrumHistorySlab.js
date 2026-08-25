@@ -1,9 +1,10 @@
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 import {
-  chunkIdForSequence,
+  ChunkedHistorySlab,
+  FrozenChunkedHistory,
+  baseChunk,
   chunkOffsetForSequence,
-  findChunkForSequence,
-} from "./historyChunkMath.js";
+} from "./ChunkedHistorySlab.js";
 
 const EMPTY_F32 = new Float32Array(0);
 
@@ -32,47 +33,43 @@ function copySecondaryRow(target, offset, bandCount, values) {
   }
 }
 
-function createChunk(sequenceStart, bands, bandCount) {
+function chunkSchema(bands, bandCount) {
   return {
-    sequenceStart,
-    rowCapacity: VISUAL_HISTORY_CHUNK_ROWS,
-    rowCount: 0,
-    sealed: false,
-    maxInternalTimestampDeltaMs: -Infinity,
-    bands,
-    timestamps: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-    dbA: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
-    dbB: null,
-    hasB: null,
+    name: "SpectrumHistorySlab",
+    createChunk: (sequenceStart) => ({
+      ...baseChunk(sequenceStart),
+      rowCapacity: VISUAL_HISTORY_CHUNK_ROWS,
+      // The widest gap between two consecutive rows inside this chunk, so a gap query can skip a
+      // chunk whole instead of walking its rows.
+      maxInternalTimestampDeltaMs: -Infinity,
+      bands,
+      dbA: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
+      // The second curve is allocated only once a row actually carries one: most sessions are
+      // combined-channel and would otherwise pay for a second grid they never fill.
+      dbB: null,
+      hasB: null,
+    }),
+    cloneChunk: (chunk) => ({
+      sequenceStart: chunk.sequenceStart,
+      rowCapacity: chunk.rowCapacity,
+      rowCount: chunk.rowCount,
+      sealed: true,
+      maxInternalTimestampDeltaMs: chunk.maxInternalTimestampDeltaMs,
+      bands: chunk.bands,
+      timestamps: chunk.timestamps.slice(),
+      dbA: chunk.dbA.slice(),
+      dbB: chunk.dbB?.slice() ?? null,
+      hasB: chunk.hasB?.slice() ?? null,
+    }),
+    payloadBytes: (chunk) =>
+      chunk.timestamps.byteLength +
+      chunk.dbA.byteLength +
+      (chunk.dbB?.byteLength ?? 0) +
+      (chunk.hasB?.byteLength ?? 0),
   };
 }
 
-function cloneChunk(chunk) {
-  return {
-    sequenceStart: chunk.sequenceStart,
-    rowCapacity: chunk.rowCapacity,
-    rowCount: chunk.rowCount,
-    sealed: true,
-    maxInternalTimestampDeltaMs: chunk.maxInternalTimestampDeltaMs,
-    bands: chunk.bands,
-    timestamps: chunk.timestamps.slice(),
-    dbA: chunk.dbA.slice(),
-    dbB: chunk.dbB?.slice() ?? null,
-    hasB: chunk.hasB?.slice() ?? null,
-  };
-}
-
-function chunkPayloadBytes(chunk) {
-  return (
-    chunk.timestamps.byteLength +
-    chunk.dbA.byteLength +
-    (chunk.dbB?.byteLength ?? 0) +
-    (chunk.hasB?.byteLength ?? 0)
-  );
-}
-
-function rowFromChunk(chunk, sequence, bandCount, bands, copyRows) {
-  const row = chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
+function rowFrom(chunk, row, bandCount, bands, copyRows) {
   const offset = row * bandCount;
   const dbList = chunk.dbA.subarray(offset, offset + bandCount);
   const dbListB =
@@ -83,6 +80,10 @@ function rowFromChunk(chunk, sequence, bandCount, bands, copyRows) {
     dbListB: copyRows && dbListB.length ? Float32Array.from(dbListB) : dbListB,
     timestampMs: chunk.timestamps[row],
   };
+}
+
+function readableTimestamp(timestampMs) {
+  return Number.isFinite(timestampMs) ? timestampMs : NaN;
 }
 
 function emptyGapQueryStats() {
@@ -97,10 +98,6 @@ function appendGapIfNeeded(out, previousTimestampMs, nextTimestampMs, maxGapMs) 
   ) {
     out.push({ previousTimestampMs, nextTimestampMs });
   }
-}
-
-function readableTimestamp(timestampMs) {
-  return Number.isFinite(timestampMs) ? timestampMs : NaN;
 }
 
 function timestampGapBoundariesInChunks(
@@ -148,11 +145,9 @@ function timestampGapBoundariesInChunks(
     const scanLastSequence = Math.min(lastSequence, chunkLastSequence);
     if (scanFirstSequence < scanLastSequence && chunk.maxInternalTimestampDeltaMs > maxGapMs) {
       stats.rowsScanned += scanLastSequence - scanFirstSequence + 1;
-      let previousTimestampMs =
-        chunk.timestamps[chunkOffsetForSequence(scanFirstSequence, VISUAL_HISTORY_CHUNK_ROWS)];
+      let previousTimestampMs = chunk.timestamps[chunkOffsetForSequence(scanFirstSequence)];
       for (let sequence = scanFirstSequence + 1; sequence <= scanLastSequence; sequence += 1) {
-        const nextTimestampMs =
-          chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
+        const nextTimestampMs = chunk.timestamps[chunkOffsetForSequence(sequence)];
         appendGapIfNeeded(out, previousTimestampMs, nextTimestampMs, maxGapMs);
         previousTimestampMs = nextTimestampMs;
       }
@@ -163,27 +158,14 @@ function timestampGapBoundariesInChunks(
   return { boundaries: out, stats };
 }
 
-export class SpectrumHistorySlab {
+export class SpectrumHistorySlab extends ChunkedHistorySlab {
   constructor(capacity, bands) {
-    if (capacity <= 0) throw new RangeError("SpectrumHistorySlab capacity must be > 0");
-    this._cap = capacity;
-    this._bands = bands ?? [];
-    this._bandCount = this._bands.length;
-    this._chunks = [];
-    this._firstChunkId = 0;
-    this._startSequence = 0;
-    this._nextSequence = 0;
-    this._version = 0;
+    const grid = bands ?? [];
+    super(capacity, chunkSchema(grid, grid.length));
+    this._bands = grid;
+    this._bandCount = grid.length;
     this._hasSecondary = false;
     this._lastGapQueryStats = emptyGapQueryStats();
-  }
-
-  get capacity() {
-    return this._cap;
-  }
-
-  get length() {
-    return this._nextSequence - this._startSequence;
   }
 
   get bandCount() {
@@ -198,17 +180,8 @@ export class SpectrumHistorySlab {
     return this._hasSecondary;
   }
 
-  get version() {
-    return this._version;
-  }
-
   timestampAt(index) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return NaN;
-    const chunk = this._chunkForSequence(sequence);
-    return readableTimestamp(
-      chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)]
-    );
+    return readableTimestamp(super.timestampAt(index));
   }
 
   timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
@@ -228,45 +201,6 @@ export class SpectrumHistorySlab {
     return { ...this._lastGapQueryStats };
   }
 
-  rowAt(index) {
-    return this.at(index);
-  }
-
-  freeze() {
-    const startSequence = this._startSequence;
-    const endSequence = this._nextSequence;
-    const chunks = [];
-    let sharedSealedChunks = 0;
-    let copiedTailRows = 0;
-    let copiedTailBytes = 0;
-
-    for (const chunk of this._chunks) {
-      const chunkEnd = chunk.sequenceStart + chunk.rowCount;
-      if (chunkEnd <= startSequence || chunk.sequenceStart >= endSequence) continue;
-      if (chunk.sealed) {
-        chunks.push(chunk);
-        sharedSealedChunks += 1;
-      } else {
-        const copied = cloneChunk(chunk);
-        chunks.push(copied);
-        copiedTailRows =
-          Math.min(chunkEnd, endSequence) - Math.max(chunk.sequenceStart, startSequence);
-        copiedTailBytes = chunkPayloadBytes(copied);
-      }
-    }
-
-    return new FrozenSpectrumHistory({
-      bands: this._bands,
-      bandCount: this._bandCount,
-      chunks,
-      startSequence,
-      endSequence,
-      sharedSealedChunks,
-      copiedTailRows,
-      copiedTailBytes,
-    });
-  }
-
   matchesBands(bands) {
     return sameBands(this._bands, bands ?? []);
   }
@@ -275,58 +209,40 @@ export class SpectrumHistorySlab {
     if (!this.matchesBands(bands)) {
       throw new RangeError("SpectrumHistorySlab cannot store rows with a different band grid");
     }
-    const sequence = this._nextSequence;
-    let active = this._chunks[this._chunks.length - 1];
-    if (!active || active.sealed) {
-      active = createChunk(sequence, this._bands, this._bandCount);
-      if (this._chunks.length === 0) {
-        this._firstChunkId = chunkIdForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
+
+    this.appendRow(timestampMs, (chunk, row) => {
+      const offset = row * this._bandCount;
+      if (row > 0) {
+        const previousTimestampMs = chunk.timestamps[row - 1];
+        const storedTimestampMs = chunk.timestamps[row];
+        const deltaMs =
+          Number.isFinite(previousTimestampMs) && Number.isFinite(storedTimestampMs)
+            ? storedTimestampMs - previousTimestampMs
+            : Infinity;
+        chunk.maxInternalTimestampDeltaMs = Math.max(chunk.maxInternalTimestampDeltaMs, deltaMs);
       }
-      this._chunks.push(active);
-    }
+      copyPrimaryRow(chunk.dbA, offset, this._bandCount, dbList);
 
-    const row = chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
-    const offset = row * this._bandCount;
-    const storedTimestampMs = Number.isFinite(timestampMs) ? timestampMs : -Infinity;
-    active.timestamps[row] = storedTimestampMs;
-    if (row > 0) {
-      const previousTimestampMs = active.timestamps[row - 1];
-      const deltaMs =
-        Number.isFinite(previousTimestampMs) && Number.isFinite(storedTimestampMs)
-          ? storedTimestampMs - previousTimestampMs
-          : Infinity;
-      active.maxInternalTimestampDeltaMs = Math.max(active.maxInternalTimestampDeltaMs, deltaMs);
-    }
-    copyPrimaryRow(active.dbA, offset, this._bandCount, dbList);
-
-    if (dbListB?.length) {
-      if (!active.dbB) {
-        active.dbB = new Float32Array(active.rowCapacity * this._bandCount);
-        active.hasB = new Uint8Array(active.rowCapacity);
+      if (dbListB?.length) {
+        if (!chunk.dbB) {
+          chunk.dbB = new Float32Array(chunk.rowCapacity * this._bandCount);
+          chunk.hasB = new Uint8Array(chunk.rowCapacity);
+        }
+        copySecondaryRow(chunk.dbB, offset, this._bandCount, dbListB);
+        chunk.hasB[row] = 1;
+        this._hasSecondary = true;
       }
-      copySecondaryRow(active.dbB, offset, this._bandCount, dbListB);
-      active.hasB[row] = 1;
-      this._hasSecondary = true;
-    }
-
-    active.rowCount += 1;
-    active.sealed = active.rowCount === active.rowCapacity;
-    this._nextSequence += 1;
-    this._startSequence = Math.max(this._startSequence, this._nextSequence - this._cap);
-    this._dropExpiredChunks();
-    this._version += 1;
+    });
   }
 
   at(index, { copyRows = false } = {}) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return undefined;
-    return rowFromChunk(
-      this._chunkForSequence(sequence),
-      sequence,
-      this._bandCount,
-      this._bands,
-      copyRows
-    );
+    const found = this.chunkAt(index);
+    if (!found) return undefined;
+    return rowFrom(found.chunk, found.row, this._bandCount, this._bands, copyRows);
+  }
+
+  rowAt(index) {
+    return this.at(index);
   }
 
   toArray(options) {
@@ -337,92 +253,31 @@ export class SpectrumHistorySlab {
     return out;
   }
 
+  freeze() {
+    return new FrozenSpectrumHistory({
+      bands: this._bands,
+      bandCount: this._bandCount,
+      ...this.freezeChunks(),
+    });
+  }
+
   clear() {
-    this._chunks = [];
-    const offset = chunkOffsetForSequence(this._nextSequence, VISUAL_HISTORY_CHUNK_ROWS);
-    if (offset !== 0) this._nextSequence += VISUAL_HISTORY_CHUNK_ROWS - offset;
-    this._startSequence = this._nextSequence;
-    this._firstChunkId = chunkIdForSequence(this._nextSequence, VISUAL_HISTORY_CHUNK_ROWS);
+    super.clear();
     this._hasSecondary = false;
     this._lastGapQueryStats = emptyGapQueryStats();
   }
-
-  storageStats() {
-    return {
-      chunkCount: this._chunks.length,
-      retainedRows: this.length,
-      sharedSealedChunks: 0,
-      copiedTailRows: 0,
-      copiedTailBytes: 0,
-    };
-  }
-
-  _sequenceAt(index) {
-    if (index < 0 || index >= this.length) return null;
-    return this._startSequence + index;
-  }
-
-  _chunkForSequence(sequence) {
-    return findChunkForSequence(
-      this._chunks,
-      this._firstChunkId,
-      sequence,
-      VISUAL_HISTORY_CHUNK_ROWS
-    );
-  }
-
-  _dropExpiredChunks() {
-    while (
-      this._chunks.length > 0 &&
-      this._chunks[0].sequenceStart + this._chunks[0].rowCount <= this._startSequence
-    ) {
-      this._chunks.shift();
-      this._firstChunkId += 1;
-    }
-  }
 }
 
-export class FrozenSpectrumHistory {
-  constructor({
-    bands,
-    bandCount,
-    chunks,
-    startSequence,
-    endSequence,
-    sharedSealedChunks,
-    copiedTailRows,
-    copiedTailBytes,
-  }) {
+export class FrozenSpectrumHistory extends FrozenChunkedHistory {
+  constructor({ bands, bandCount, ...storage }) {
+    super(storage);
     this._bands = bands ?? [];
     this._bandCount = bandCount;
-    this._chunks = chunks;
-    this._startSequence = startSequence;
-    this._endSequence = endSequence;
-    this._firstChunkId =
-      chunks.length > 0
-        ? chunkIdForSequence(chunks[0].sequenceStart, VISUAL_HISTORY_CHUNK_ROWS)
-        : 0;
-    this._sharedSealedChunks = sharedSealedChunks;
-    this._copiedTailRows = copiedTailRows;
-    this._copiedTailBytes = copiedTailBytes;
     this._lastGapQueryStats = emptyGapQueryStats();
   }
 
-  get length() {
-    return this._endSequence - this._startSequence;
-  }
-
-  get version() {
-    return 0;
-  }
-
   timestampAt(index) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return NaN;
-    const chunk = this._chunkForSequence(sequence);
-    return readableTimestamp(
-      chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)]
-    );
+    return readableTimestamp(super.timestampAt(index));
   }
 
   timestampGapBoundaries(startIndex, endIndex, maxGapMs) {
@@ -443,39 +298,9 @@ export class FrozenSpectrumHistory {
   }
 
   rowAt(index) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return undefined;
-    return rowFromChunk(
-      this._chunkForSequence(sequence),
-      sequence,
-      this._bandCount,
-      this._bands,
-      false
-    );
-  }
-
-  storageStats() {
-    return {
-      chunkCount: this._chunks.length,
-      retainedRows: this.length,
-      sharedSealedChunks: this._sharedSealedChunks,
-      copiedTailRows: this._copiedTailRows,
-      copiedTailBytes: this._copiedTailBytes,
-    };
-  }
-
-  _sequenceAt(index) {
-    if (index < 0 || index >= this.length) return null;
-    return this._startSequence + index;
-  }
-
-  _chunkForSequence(sequence) {
-    return findChunkForSequence(
-      this._chunks,
-      this._firstChunkId,
-      sequence,
-      VISUAL_HISTORY_CHUNK_ROWS
-    );
+    const found = this.chunkAt(index);
+    if (!found) return undefined;
+    return rowFrom(found.chunk, found.row, this._bandCount, this._bands, false);
   }
 }
 
