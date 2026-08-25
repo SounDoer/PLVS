@@ -65,6 +65,7 @@ export const SPECTRUM_HELP = [
       "Left hold - Slow the trace",
       "Click - Capture snapshot",
       "Double-click - Return to live",
+      "Click held line - Clear Max Hold",
     ],
   },
   {

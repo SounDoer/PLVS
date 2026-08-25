@@ -9,6 +9,7 @@ import {
   PanelInstanceProvider,
 } from "../../workspace/AudioDataContext.jsx";
 import { SpectrumPanel } from "./SpectrumPanel.jsx";
+import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 
 vi.mock("framer-motion", () => ({
   useReducedMotion: () => true,
@@ -678,5 +679,126 @@ describe("SpectrumPanel", () => {
         span.className.includes("-translate-y-1/2")
       )
     ).toBe(true);
+  });
+});
+
+describe("SpectrumPanel Max Hold", () => {
+  const LR_KEY = spectrumRequestKeyFromControls({ spectrumView: "lr" });
+
+  function heldPath(container, plane) {
+    return container.querySelector(`[data-spectrum-max-hold="${plane}"]`)?.getAttribute("d");
+  }
+
+  function livePath(container, plane) {
+    return container.querySelector(`[data-spectrum-live="${plane}"]`)?.getAttribute("d");
+  }
+
+  it("draws a held line from the accumulated hold, not from the frame's decaying peak", () => {
+    const audioData = liveAudioData(
+      liveResult({ bandCentersHz: [100, 1000], smoothDb: [-30, -50], peakDb: [-10, -10] }),
+      { panelControls: { spectrumMaxHoldTrace: true } }
+    );
+    const { container, rerender } = renderPanel(audioData);
+    rerender(
+      spectrumPanelTree(
+        liveAudioData(
+          liveResult({ bandCentersHz: [100, 1000], smoothDb: [-40, -20], peakDb: [-10, -10] }),
+          { panelControls: { spectrumMaxHoldTrace: true } }
+        )
+      )
+    );
+
+    // The hold is the max of the two smoothed frames, so it follows neither frame on its own.
+    expect(heldPath(container, "primary")).toBeTruthy();
+    expect(heldPath(container, "primary")).not.toBe(livePath(container, "primary"));
+  });
+
+  it("draws one held line in Combined view and two in L/R", () => {
+    const combined = renderPanel(
+      liveAudioData(liveResult({ bandCentersHz: [100, 1000], smoothDb: [-30, -50] }), {
+        panelControls: { spectrumMaxHoldTrace: true },
+      })
+    );
+    expect(combined.container.querySelectorAll("[data-spectrum-max-hold]")).toHaveLength(1);
+    combined.unmount();
+
+    const lr = renderPanel({
+      selectedOffset: -1,
+      panelControls: { spectrumMaxHoldTrace: true, spectrumView: "lr" },
+      displayAudio: {
+        spectrumResultsByKey: {
+          [LR_KEY]: liveResult({
+            bandCentersHz: [100, 1000],
+            smoothDb: [-30, -50],
+            smoothDbB: [-35, -55],
+          }),
+        },
+      },
+    });
+    expect(lr.container.querySelectorAll("[data-spectrum-max-hold]")).toHaveLength(2);
+  });
+
+  it("clears both held lines on a click and does not capture a snapshot", () => {
+    const captureCurrentSnapshot = vi.fn();
+    const audioData = {
+      selectedOffset: -1,
+      totalSamples: 10,
+      captureCurrentSnapshot,
+      panelControls: { spectrumMaxHoldTrace: true, spectrumView: "lr" },
+      displayAudio: {
+        spectrumResultsByKey: {
+          [LR_KEY]: liveResult({
+            bandCentersHz: [100, 1000],
+            smoothDb: [-30, -50],
+            smoothDbB: [-35, -55],
+          }),
+        },
+      },
+    };
+    const { container, rerender } = renderPanel(audioData);
+    const louder = {
+      ...audioData,
+      displayAudio: {
+        spectrumResultsByKey: {
+          [LR_KEY]: liveResult({
+            bandCentersHz: [100, 1000],
+            smoothDb: [-40, -20],
+            smoothDbB: [-45, -25],
+          }),
+        },
+      },
+    };
+    rerender(spectrumPanelTree(louder));
+
+    fireEvent.click(container.querySelector('[data-spectrum-max-hold-hit="primary"]'));
+    rerender(spectrumPanelTree(louder));
+
+    expect(captureCurrentSnapshot).not.toHaveBeenCalled();
+    // Cleared, so the hold holds only the newest frame and tracks the live curve.
+    expect(heldPath(container, "primary")).toBe(livePath(container, "primary"));
+    expect(heldPath(container, "secondary")).toBe(livePath(container, "secondary"));
+  });
+
+  it("has no held line or hit path while Max Hold is off", () => {
+    const { container } = renderPanel(
+      liveAudioData(liveResult({ bandCentersHz: [100, 1000], smoothDb: [-30, -50] }), {
+        panelControls: { spectrumMaxHoldTrace: false },
+      })
+    );
+
+    expect(container.querySelector("[data-spectrum-max-hold]")).toBeNull();
+    expect(container.querySelector("[data-spectrum-max-hold-hit]")).toBeNull();
+  });
+
+  it("keeps drawing the Max Decay fill while Max Hold is on", () => {
+    const { container } = renderPanel(
+      liveAudioData(
+        liveResult({ bandCentersHz: [100, 1000], smoothDb: [-30, -50], peakDb: [-10, -20] }),
+        { panelControls: { spectrumMaxDecay: true, spectrumMaxHoldTrace: true } }
+      )
+    );
+
+    expect(container.querySelector('[data-spectrum-max-decay="primary"]')).toBeTruthy();
+    expect(container.querySelector('[data-spectrum-max-hold="primary"]')).toBeTruthy();
   });
 });

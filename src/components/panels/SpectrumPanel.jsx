@@ -7,6 +7,7 @@ import {
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
+import { accumulateSpectrumMaxHold } from "../../math/spectrumMaxHold.js";
 import {
   buildSpectrumSvgFromBandsAndDb,
   findSpectrumPeakCandidates,
@@ -112,6 +113,7 @@ export function SpectrumPanel({ compact = false }) {
   );
   const [holdSmoothingActive, setHoldSmoothingActive] = useState(false);
   const spectrumMaxDecay = normalizedPanelControls.spectrumMaxDecay;
+  const maxHoldEnabled = normalizedPanelControls.spectrumMaxHoldTrace;
   const spectrumPeakLabels = normalizedPanelControls.spectrumPeakLabels;
   const spectrumRange = {
     minHz: normalizedPanelControls.spectrumXMinFreq,
@@ -168,6 +170,12 @@ export function SpectrumPanel({ compact = false }) {
     spectrumXAxis.axisPx
   );
   const holdDisplaySpectrumResultRef = useRef(null);
+  // A new analysis key means a new band grid, and a hold from one grid means nothing on
+  // another; the clear key and the switch itself start a new hold the same way.
+  const maxHoldIdentityRef = useRef(null);
+  const maxHoldRef = useRef(null);
+  const maxHoldRefB = useRef(null);
+  const [maxHoldClearKey, setMaxHoldClearKey] = useState(0);
   const spectrumPeakTrackRef = useRef([]);
   const spectrumPeakDetectDbRef = useRef(null);
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
@@ -234,6 +242,36 @@ export function SpectrumPanel({ compact = false }) {
     panelSpectrumPeakDb = [];
     panelSpectrumPeakDbB = [];
   }
+  // The hold folds the smoothed curve this panel is about to draw, which is also what the visual
+  // history stores, so the live hold and the snapshot reconstruction fold the same numbers.
+  // Folding during render is safe under a double render: a maximum absorbs the same row twice.
+  // Reset during render, not in an effect: an effect runs after this render has already folded a
+  // frame in, so on mount it would throw away the first frame and leave the hold trailing by one.
+  const maxHoldIdentity = `${spectrumKey}|${maxHoldClearKey}|${maxHoldEnabled}`;
+  if (maxHoldIdentityRef.current !== maxHoldIdentity) {
+    maxHoldIdentityRef.current = maxHoldIdentity;
+    maxHoldRef.current = null;
+    maxHoldRefB.current = null;
+  }
+  if (!maxHoldEnabled || isSnapshot) {
+    maxHoldRef.current = null;
+    maxHoldRefB.current = null;
+  } else if (panelSpectrumData?.dbList?.length) {
+    maxHoldRef.current = accumulateSpectrumMaxHold(maxHoldRef.current, panelSpectrumData.dbList);
+    maxHoldRefB.current = panelSpectrumData.dbListB?.length
+      ? accumulateSpectrumMaxHold(maxHoldRefB.current, panelSpectrumData.dbListB)
+      : null;
+  }
+
+  // Live only: in a snapshot the held line is reconstructed from history, so there is nothing here
+  // to clear.
+  const clearMaxHoldOnClick = maxHoldEnabled && !isSnapshot;
+  const onMaxHoldClearClick = useCallback((event) => {
+    // The chart's own click captures a snapshot; this click is not that one.
+    event.stopPropagation();
+    setMaxHoldClearKey((key) => key + 1);
+  }, []);
+
   // Peaks are read off the curve as displayed and only within the visible range, so what gets
   // labelled follows what is on screen — including when the user zooms in on one band. That is
   // also why this lives here rather than in the bank: the backend has no idea what is visible.
@@ -610,6 +648,17 @@ export function SpectrumPanel({ compact = false }) {
   const displayPanelSpectrumPeakPathB =
     buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDbB, spectrumRange) ||
     panelSpectrumPeakPathB;
+  const snapshotMaxHold = isSnapshot ? snapResolved?.maxHold : null;
+  const maxHoldDb = isSnapshot ? snapshotMaxHold?.dbList : maxHoldRef.current;
+  const maxHoldDbB = isSnapshot ? snapshotMaxHold?.dbListB : maxHoldRefB.current;
+  const displaySpectrumMaxHoldPath =
+    maxHoldEnabled && maxHoldDb?.length
+      ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDb, spectrumRange)
+      : "";
+  const displaySpectrumMaxHoldPathB =
+    maxHoldEnabled && maxHoldDbB?.length
+      ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDbB, spectrumRange)
+      : "";
   // Peak-hold renders as a filled area up to the peak contour (the live curve stays a solid line
   // on top). When peak hold is off, the fill follows the live curve as before.
   const peakFillActive = spectrumMaxDecay && !!displayPanelSpectrumPeakPath;
@@ -791,6 +840,7 @@ export function SpectrumPanel({ compact = false }) {
                         transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
                       >
                         <path
+                          data-spectrum-max-decay="primary"
                           d={displaySpectrumAreaPath}
                           fill={
                             selectedOffset >= 0
@@ -800,6 +850,7 @@ export function SpectrumPanel({ compact = false }) {
                         />
                         {displaySpectrumAreaPathB ? (
                           <path
+                            data-spectrum-max-decay="secondary"
                             d={displaySpectrumAreaPathB}
                             fill={
                               selectedOffset >= 0
@@ -809,6 +860,7 @@ export function SpectrumPanel({ compact = false }) {
                           />
                         ) : null}
                         <path
+                          data-spectrum-live="primary"
                           d={displayPanelSpectrumPath}
                           fill="none"
                           stroke={
@@ -823,6 +875,7 @@ export function SpectrumPanel({ compact = false }) {
                         />
                         {displayPanelSpectrumPathB ? (
                           <path
+                            data-spectrum-live="secondary"
                             d={displayPanelSpectrumPathB}
                             fill="none"
                             stroke={
@@ -835,6 +888,70 @@ export function SpectrumPanel({ compact = false }) {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
+                        ) : null}
+                        {/* After the live curves: both carry the same stroke colour, and a plain
+                            colour query should still land on the live one. */}
+                        {displaySpectrumMaxHoldPath ? (
+                          <>
+                            <path
+                              data-spectrum-max-hold="primary"
+                              d={displaySpectrumMaxHoldPath}
+                              fill="none"
+                              stroke={
+                                selectedOffset >= 0
+                                  ? "var(--ui-spectrum-primary-snap)"
+                                  : "var(--ui-spectrum-primary)"
+                              }
+                              strokeOpacity="0.7"
+                              strokeWidth="var(--ui-spectrum-stroke-width)"
+                              vectorEffect="non-scaling-stroke"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            {clearMaxHoldOnClick ? (
+                              <path
+                                data-spectrum-max-hold-hit="primary"
+                                d={displaySpectrumMaxHoldPath}
+                                fill="none"
+                                stroke="transparent"
+                                strokeWidth="10"
+                                vectorEffect="non-scaling-stroke"
+                                style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                                onClick={onMaxHoldClearClick}
+                              />
+                            ) : null}
+                          </>
+                        ) : null}
+                        {displaySpectrumMaxHoldPathB ? (
+                          <>
+                            <path
+                              data-spectrum-max-hold="secondary"
+                              d={displaySpectrumMaxHoldPathB}
+                              fill="none"
+                              stroke={
+                                selectedOffset >= 0
+                                  ? "var(--ui-spectrum-secondary-snap)"
+                                  : "var(--ui-spectrum-secondary)"
+                              }
+                              strokeOpacity="0.7"
+                              strokeWidth="var(--ui-spectrum-stroke-width)"
+                              vectorEffect="non-scaling-stroke"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            {clearMaxHoldOnClick ? (
+                              <path
+                                data-spectrum-max-hold-hit="secondary"
+                                d={displaySpectrumMaxHoldPathB}
+                                fill="none"
+                                stroke="transparent"
+                                strokeWidth="10"
+                                vectorEffect="non-scaling-stroke"
+                                style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                                onClick={onMaxHoldClearClick}
+                              />
+                            ) : null}
+                          </>
                         ) : null}
                       </motion.g>
                     </AnimatePresence>
