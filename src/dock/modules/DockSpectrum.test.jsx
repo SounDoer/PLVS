@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { FrameDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { dockSpectrumKey } from "../dockAnalysisRequest.js";
@@ -48,6 +48,72 @@ describe("DockSpectrum", () => {
     expect(outlines).toHaveLength(2);
     expect(outlines[0].getAttribute("vector-effect")).toBe("non-scaling-stroke");
     expect(outlines[1].getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
+  it("draws a held outline when Max Hold is on", () => {
+    const controls = {
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
+      spectrumMaxHoldTrace: true,
+    };
+    const { container } = renderSpectrum(controls, {
+      bandCentersHz: [100, 1000],
+      smoothDb: [-30, -50],
+    });
+
+    expect(container.querySelector("[data-dock-spectrum-max-hold]")).toBeTruthy();
+  });
+
+  it("draws no held outline when Max Hold is off", () => {
+    const controls = {
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
+      spectrumMaxHoldTrace: false,
+    };
+    const { container } = renderSpectrum(controls, {
+      bandCentersHz: [100, 1000],
+      smoothDb: [-30, -50],
+    });
+
+    expect(container.querySelector("[data-dock-spectrum-max-hold]")).toBeNull();
+    expect(container.querySelector("[data-max-hold-reset]")).toBeNull();
+  });
+
+  it("clears the hold when the module is clicked", () => {
+    const controls = {
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
+      spectrumMaxHoldTrace: true,
+    };
+    const { container, rerender } = renderSpectrum(controls, {
+      bandCentersHz: [100, 1000],
+      smoothDb: [-30, -50],
+    });
+    const louder = (
+      <FrameDataProvider
+        value={{
+          displayAudio: {
+            spectrumResultsByKey: {
+              [dockSpectrumKey(controls)]: { bandCentersHz: [100, 1000], smoothDb: [-40, -20] },
+            },
+          },
+        }}
+      >
+        <DockSpectrum controls={controls} />
+      </FrameDataProvider>
+    );
+    rerender(louder);
+    const heldAfterTwoFrames = container
+      .querySelector("[data-dock-spectrum-max-hold]")
+      .getAttribute("d");
+
+    fireEvent.click(container.querySelector("[data-max-hold-reset]"));
+    rerender(louder);
+
+    const heldAfterClear = container
+      .querySelector("[data-dock-spectrum-max-hold]")
+      .getAttribute("d");
+    expect(heldAfterClear).not.toBe(heldAfterTwoFrames);
+    expect(heldAfterClear).toBe(
+      container.querySelector("[data-dock-spectrum-live]").getAttribute("d")
+    );
   });
 
   it("fills to both peak contours while keeping the live outlines on top", () => {
