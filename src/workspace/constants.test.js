@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { DEFAULT_PANELS_BY_ID, DEFAULT_WORKSPACE_STATE, ALL_MODULE_IDS } from "./constants.js";
 import { MODULE_REGISTRY } from "./registry.jsx";
+import { MODULE_CATALOG } from "./moduleCatalog.js";
 
 describe("workspace module ids", () => {
   it("covers all default modules", () => {
@@ -44,6 +45,24 @@ describe("module registry labels", () => {
   it("keeps the levelMeter module id and labels it as Level Meter", () => {
     expect(MODULE_REGISTRY.levelMeter.id).toBe("levelMeter");
     expect(MODULE_REGISTRY.levelMeter.title).toBe("Level Meter");
+  });
+});
+
+describe("catalog / registry contract", () => {
+  // A module's identity lives in moduleCatalog.js and its React half in registry.jsx, so its id is
+  // written twice. Neither omission throws: a catalog-only module renders a titled but empty panel,
+  // and a registry-only one spreads `undefined`, losing its id and title so hasKnownModulesOnly
+  // silently drops every preset that references it. Fail here instead.
+  it("registers exactly the catalog's modules, in the same order", () => {
+    expect(Object.keys(MODULE_REGISTRY)).toEqual(Object.keys(MODULE_CATALOG));
+  });
+
+  it("carries the catalog fields plus the React pair on every entry", () => {
+    for (const [id, entry] of Object.entries(MODULE_REGISTRY)) {
+      expect(entry).toMatchObject(MODULE_CATALOG[id]);
+      expect(entry.Component).toBeTypeOf("function");
+      expect(entry.Icon).toBeDefined();
+    }
   });
 });
 
