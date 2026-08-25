@@ -9,6 +9,7 @@ import {
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTROGRAM_MODE_OPTIONS,
+  SPECTRUM_MAX_MODE_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   STEREO_MAP_MODE_OPTIONS,
   VECTORSCOPE_MODE_OPTIONS,
@@ -856,8 +857,7 @@ export function SpectrumDisplaySettingsRows({
   showPeak = true,
   showPeakLabels = showPeak,
   showDisplay = true,
-  maxDecay,
-  maxHoldTrace,
+  maxMode,
   peakLabels,
   speedPercent,
   octaveSmoothing,
@@ -866,8 +866,7 @@ export function SpectrumDisplaySettingsRows({
   xMaxFreq,
   yMinDb,
   yMaxDb,
-  onMaxDecayChange,
-  onMaxHoldTraceChange,
+  onMaxModeChange,
   onPeakLabelsChange,
   onSpeedChange,
   onOctaveSmoothingChange,
@@ -876,36 +875,34 @@ export function SpectrumDisplaySettingsRows({
   onYRangeChange,
 }) {
   const [smoothingOpen, setSmoothingOpen] = useState(false);
+  const [maxModeOpen, setMaxModeOpen] = useState(false);
   return (
     <>
       {showPeak ? (
-        <>
-          <SettingsRow
-            label="Max Decay"
-            tooltip="Holds each band's peak briefly, then lets it fall. Shows the last few seconds."
-          >
-            <SettingsSwitch
-              aria-label="spectrum max decay"
-              checked={maxDecay}
-              onCheckedChange={onMaxDecayChange}
-            />
-          </SettingsRow>
-          <SettingsRow
-            label="Max Hold"
-            tooltip="Keeps the highest level each band has reached since it was switched on. Click the held line to clear it."
-          >
-            <SettingsSwitch
-              aria-label="spectrum max hold"
-              checked={maxHoldTrace}
-              onCheckedChange={onMaxHoldTraceChange}
-            />
-          </SettingsRow>
-        </>
+        <SettingsRow
+          label="Max"
+          tooltip="What the filled area shows. Decay holds each band's peak briefly, then lets it fall. Hold keeps the highest level since it was selected — click the edge of the fill to clear it."
+        >
+          <SettingsSelect
+            label={
+              (
+                SPECTRUM_MAX_MODE_OPTIONS.find((option) => option.id === maxMode) ??
+                SPECTRUM_MAX_MODE_OPTIONS[0]
+              ).label
+            }
+            ariaLabel="spectrum max mode"
+            options={SPECTRUM_MAX_MODE_OPTIONS}
+            value={maxMode}
+            open={maxModeOpen}
+            onOpenChange={setMaxModeOpen}
+            onChange={onMaxModeChange}
+          />
+        </SettingsRow>
       ) : null}
       {showPeakLabels ? (
         <SettingsRow
           label="Peak Labels"
-          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max Decay and Max Hold are the time axis; this is the frequency axis."
+          tooltip="Names the frequency of the most prominent peaks in the curve, so there is a readout without hovering. Max is the time axis; this is the frequency axis."
         >
           <SettingsSwitch
             aria-label="spectrum peak labels"
@@ -1107,8 +1104,8 @@ export function PanelSettingsContent({
   spectrumView = "combined",
   spectrumViewLegend = null,
   onSpectrumViewChange,
-  spectrumMaxDecay = false,
-  onSpectrumMaxDecayToggle,
+  spectrumMaxMode = "off",
+  onSpectrumMaxModeChange,
   stereoMapPairOptions = [],
   stereoMapPairValueKey = "",
   stereoMapPairDisplayLabel = "",
@@ -1310,9 +1307,9 @@ export function PanelSettingsContent({
     const effectiveSpectrumView = hasPanelControls
       ? normalizedPanelControls.spectrumView
       : spectrumView;
-    const effectiveSpectrumMaxDecay = hasPanelControls
-      ? normalizedPanelControls.spectrumMaxDecay
-      : spectrumMaxDecay;
+    const effectiveSpectrumMaxMode = hasPanelControls
+      ? normalizedPanelControls.spectrumMaxMode
+      : spectrumMaxMode;
     const effectiveSpeedPercent = normalizedPanelControls.spectrumSpeedPercent;
     const effectiveTiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
     const effectiveYMaxDb = normalizedPanelControls.spectrumYMaxDb;
@@ -1329,7 +1326,7 @@ export function PanelSettingsContent({
       spectrumViewApplies(sel) &&
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
-    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxDecayToggle === "function";
+    const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxModeChange === "function";
     const showDisplayControls =
       activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
     const showSpectrogramRange =
@@ -1400,8 +1397,7 @@ export function PanelSettingsContent({
         <SpectrumDisplaySettingsRows
           showPeak={showPeak}
           showDisplay={showDisplayControls}
-          maxDecay={effectiveSpectrumMaxDecay}
-          maxHoldTrace={normalizedPanelControls.spectrumMaxHoldTrace}
+          maxMode={effectiveSpectrumMaxMode}
           peakLabels={normalizedPanelControls.spectrumPeakLabels}
           speedPercent={effectiveSpeedPercent}
           octaveSmoothing={normalizedPanelControls.spectrumOctaveSmoothing}
@@ -1410,22 +1406,11 @@ export function PanelSettingsContent({
           xMaxFreq={normalizedPanelControls.spectrumXMaxFreq}
           yMinDb={effectiveYMinDb}
           yMaxDb={effectiveYMaxDb}
-          onMaxDecayChange={(checked) => {
+          onMaxModeChange={(spectrumMaxMode) => {
             onPanelControlsChange?.(
-              normalizePanelControls({
-                ...normalizedPanelControls,
-                spectrumMaxDecay: checked,
-              })
+              normalizePanelControls({ ...normalizedPanelControls, spectrumMaxMode })
             );
-            onSpectrumMaxDecayToggle?.();
-          }}
-          onMaxHoldTraceChange={(checked) => {
-            onPanelControlsChange?.(
-              normalizePanelControls({
-                ...normalizedPanelControls,
-                spectrumMaxHoldTrace: checked,
-              })
-            );
+            onSpectrumMaxModeChange?.(spectrumMaxMode);
           }}
           onPeakLabelsChange={(checked) => {
             onPanelControlsChange?.(

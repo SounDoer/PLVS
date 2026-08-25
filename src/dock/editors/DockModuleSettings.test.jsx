@@ -202,7 +202,7 @@ describe("DockModuleSettings", () => {
   it("matches the normal Spectrum settings order", () => {
     renderSettings("spectrum");
 
-    const peakRow = screen.getByText("Max Decay").closest("div.grid");
+    const peakRow = screen.getByText("Max").closest("div.grid");
     const speedRow = screen.getByText("Speed").closest("div.grid");
     const smoothingRow = screen.getByText("Smoothing").closest("div.grid");
     expect(peakRow.compareDocumentPosition(speedRow) & 4).toBeTruthy();

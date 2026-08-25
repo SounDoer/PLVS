@@ -5,96 +5,90 @@
 
 ## Summary
 
-Add a cumulative **Max Hold** to the Spectrum panel and the Dock Spectrum module, alongside the
-existing decaying envelope, which stays exactly as it is.
+The Spectrum's filled area gains a second reading. **Max** is one control with three values:
 
-The two are different instruments and both stay available:
+| Max   | The fill's upper edge is                                                    |
+| ----- | --------------------------------------------------------------------------- |
+| Off   | the live curve, as before                                                   |
+| Decay | the engine's peak envelope: holds 1.5 s, then falls 8 dB/s                  |
+| Hold  | the maximum since Hold was selected or cleared, accumulated in the frontend |
 
-|               | Max Decay (existing)                     | Max Hold (new)                                  |
-| ------------- | ---------------------------------------- | ----------------------------------------------- |
-| What it shows | the peak of the last few seconds         | the maximum since it was switched on or cleared |
-| Behaviour     | holds 1.5 s, then falls 8 dB/s           | never falls                                     |
-| Computed in   | Rust, per frame, with the smoothing pass | the frontend, per panel                         |
-| Drawn as      | filled area                              | thin outline, one per curve                     |
-| Cleared by    | itself, by decaying                      | clicking the line                               |
-| In snapshot   | absent                                   | reconstructed at the selected row               |
+Decay is the behaviour that shipped; Hold is new. They are one choice rather than two switches
+because they are two readings of the same fill.
 
-Nothing about Max Decay changes: same Rust envelope, same filled area, same behaviour. Only its
-persisted key is renamed, for the reason below.
+## Revision, 2026-08-25
+
+This design was first written as "replace Decay with Hold", then as "add Hold as a second control
+drawn as a thin outline". Both are superseded. The outline version was built and tried on a real
+device: with L/R or M/S selected the chart carried six shapes — two live curves, two decay fills,
+two held lines — and the reading was lost among them.
+
+What survives from that build: the hold arithmetic, the snapshot prefix table, the accumulation in
+the panel and the Dock, and the stroke-only click target. What went: the held line as a separate
+mark, and the second switch.
 
 ## Product decisions
 
-### Naming
-
-The persisted key `spectrumMaxHold` currently holds the **decaying** control, whose settings label
-has always read "Max Decay". Leaving it there would mean `spectrumMaxHold` means Max Decay and
-some other key means Max Hold, which every later reader has to learn the hard way.
-
-- The existing control moves to **`spectrumMaxDecay`**, with `spectrumMaxHold` and `spectrumPeakHold`
-  as legacy names on that row. Stored workspaces and presets keep their value and rewrite
-  themselves on first load, the same way earlier renames in this table work.
-- The new control is **`spectrumMaxHoldTrace`**, labelled **Max Hold**, default off.
-- `spectrumMaxHold` is retired as a name: it is never reused for the new control. A stored
-  `spectrumMaxHold: true` means the user had Max Decay on, and must not silently switch on a
-  feature they have never seen.
-- The Dock's own legacy short names (`maxHold`, `peakHold`) move with the row to
-  `spectrumMaxDecay`.
-
 ### Behaviour
 
-- Max Hold is the per-band maximum of the smoothed curve since the control was switched on or last
-  cleared. It never decays.
-- It applies to both curves. In L/R and M/S views the panel draws **two** held lines, one per
-  curve; in Combined view, one.
-- It is cleared by: clicking either held line, switching the control off, and a change of analysis
+- Hold is the per-band maximum of the smoothed curve since Hold was selected or last cleared. It
+  never decays.
+- It applies to both curves: in L/R and M/S each fill holds its own curve.
+- It is cleared by clicking the upper edge of a fill, by leaving Hold, and by a change of analysis
   key. The panel resets on a changed key rather than on a changed band count — two grids can share
   a count and mean different things.
-- In snapshot mode the held lines show the hold **as it stood at the selected row**, reconstructed
-  from the retained history.
-- Max Decay and Max Hold are independent switches and can both be on. The chart then carries the
-  live curve, the decay fill and the hold outline — doubled in L/R and M/S. Whether that is too
-  busy is a judgement for a real device; no limit is built.
+- In snapshot mode the fill shows the hold **as it stood at the selected row**, reconstructed from
+  the retained history. Decay has no snapshot reading and draws no fill there, as before.
+- Only one reading at a time. Nothing draws a hold and a decay together.
 
-### Appearance
+### The control
 
-Thin outlines in the curves' own colours — `--ui-spectrum-primary` and `--ui-spectrum-secondary`,
-and their `-snap` variants in snapshot mode — matching how the Vectorscope's Polar Level hold
-draws with the trace colour. Reduced opacity if the line competes with the live curve. No new
-theme role: adding one to Theme V2 costs more than this line is worth.
+One row, one persisted key:
+
+```text
+Max        [Decay ▾]        off | decay | hold
+```
+
+`SettingsSelect`, the widget every other mode row in the app already uses (Level Meter, Spectrogram
+and Stereo Map all name their mode this way). Inline segmented chips would read well here but do
+not exist in this codebase, and one control does not justify a new widget family.
+
+Off is a value of the mode rather than a switch in front of it: the three states are one choice in
+the user's head, not two. The cost is that leaving Hold for Off forgets which mode was selected —
+one click to restore, and not worth a second key that could hold a meaningless combination.
+
+The persisted key is **`spectrumMaxMode`**. The switches it replaces are read as legacy input on
+that row: `spectrumMaxDecay`, `spectrumMaxHold` and `spectrumPeakHold` all mean `decay`,
+`spectrumMaxHoldTrace` means `hold`, and Decay wins if a stored record somehow carries both —
+Decay is the one users have actually been running. The Dock's short names, `maxHold` and
+`peakHold`, map onto `spectrumMaxDecay` so one migration serves both surfaces.
 
 ### Clear gesture
 
-Clicking either held line clears **both**. One switch, one hold, one clear; clearing half of it
-would leave the user unsure whether the gesture worked.
+Clicking the upper edge of a fill clears the hold — both fills at once in L/R and M/S. One switch,
+one hold, one clear.
 
-The Spectrum chart's plain left click is already taken — it captures a snapshot, and double click
-returns to live — so the target is the line itself, following the Level Meter idiom the help
-already states as `Click marker - Reset TP Max`. Three requirements:
+The Spectrum chart's plain left click is already taken: it captures a snapshot, and double click
+returns to live. So the target is the edge, not the area:
 
-- Each line gets a dedicated invisible hit path: `fill="none"`, a widened transparent stroke
-  (~10 px), `pointerEvents="stroke"`. Nothing else about the hold is clickable.
-- The handler stops the click reaching the chart's snapshot handler, through the existing
-  `suppressChartClickRef` mechanism or `stopPropagation`.
-- The hit paths exist only while Max Hold is on and the panel is live. In snapshot mode the lines
-  come from history and there is nothing to clear.
+- The hit target is a dedicated invisible path along the fill's contour: `fill="none"`, a widened
+  transparent stroke (~10 px), `pointerEvents="stroke"`. The filled area itself stays
+  `pointerEvents="none"`; a clickable fill would turn most of the chart into a clear button and
+  swallow snapshot clicks.
+- The handler stops the click reaching the chart's snapshot handler.
+- The hit path exists only in Hold mode, and only while the panel is live.
 
-Cursor feedback on hover marks the line as a control.
-
-**Known risk, accepted:** where a held line lies over the point the user wants to click, the
-~10 px strip takes a click meant for the snapshot capture. If that annoys in practice the
-fallbacks are Ctrl-click or a button in the settings row. Neither is built now.
+**Known risk, accepted:** where the edge lies over the point the user wants to click, the ~10 px
+strip takes a click meant for the snapshot capture. Fallbacks if that annoys in use: Ctrl-click, or
+a reset button on the settings row. Neither is built now.
 
 ### Dock
 
-The Dock Spectrum module gets the same control, the same live hold and the same click-to-clear,
-mirroring the Dock Vectorscope module, which already carries its own Max Hold and clears it on
-click. Without it the panel would hold while the strip beside it did not.
+The Dock Spectrum module carries the same mode and the same hold. It has no snapshot, so its fill
+is the live hold or nothing.
 
-The Dock has no snapshot mode, so only the live half applies there.
-
-**Open to revisit after seeing it:** the Dock strip is only tens of pixels tall, and a thin line
-over a filled area may be unreadable there. If it is, dropping the Dock half is a clean revert of
-one commit.
+The clear is on the module rather than on the edge, matching the Dock Vectorscope module: in a
+strip tens of pixels tall a contour is not a click target.
 
 ## Architecture
 
@@ -134,11 +128,13 @@ spectrumMaxHoldAt(built, index) -> { dbList, dbListB }
 
 **`SpectrumPanel.jsx`**
 
-- Live: accumulate the frame's `smoothDb` and `smoothDbB` into refs while Max Hold is on; clear on
-  click, on the control going off, and on an analysis-key change.
+- Live: accumulate the frame's `smoothDb` and `smoothDbB` into refs while Hold is selected; clear
+  on click, on leaving Hold, and on an analysis-key change. The accumulation resets during render
+  rather than in an effect: an effect runs after the render that already folded a frame in, so on
+  mount it would discard the first frame and leave the hold trailing by one.
 - Snapshot: ask `useSnapshot` for the hold at the selected row.
-- Draw each held plane through the existing `buildSpectrumPathFromData(data, values, range)` call,
-  as a stroked path, plus its invisible hit path. The Max Decay fill is untouched.
+- The mode picks the fill's contour — the hold, the engine's peak, or the live curve — and the
+  existing fill rendering takes it from there.
 
 **`useSnapshot.js`**
 
@@ -149,11 +145,11 @@ nothing.
 
 **`DockSpectrum.jsx`**
 
-The same live accumulation and click-to-clear, mirroring `DockVectorscope`.
+The same live accumulation and mode-driven fill, with the clear on the module.
 
 **Settings**
 
-`SpectrumDisplaySettingsRows` is shared by the panel and the Dock, so the new toggle is added once
+`SpectrumDisplaySettingsRows` is shared by the panel and the Dock, so the Max row is written once
 and appears in both.
 
 ### Snapshot cost
@@ -180,38 +176,33 @@ stay in the frame payload and stay in use.
 
 ## Testing
 
-- **`spectrumMaxHold.test.js`**: accumulation, including non-finite input and a first frame;
-  reuse of the previous buffer when the band count matches and a fresh buffer when it does not;
-  table lookups compared against a naive row-by-row fold at bucket boundaries, inside a bucket, at
-  index 0 and at the last row; a history whose rows carry no second curve; an empty history.
-- **`panelControls.test.js`**: a stored `spectrumMaxHold` reads as `spectrumMaxDecay`; it does
-  **not** switch on `spectrumMaxHoldTrace`; `spectrumPeakHold` still reaches Max Decay through the
-  older alias.
-- **`dockModuleControls.test.js`**: the Dock's `maxHold` / `peakHold` short names reach
-  `spectrumMaxDecay`.
-- **`SpectrumPanel.test.jsx`**: held lines come from the accumulated hold, not from the frame's
-  `peakDb`; two lines in L/R and M/S, one in Combined; clicking a line clears both; the click does
-  not capture a snapshot; switching the control off clears the hold; no hit paths in snapshot mode
-  or while the control is off; Max Decay still draws its fill with Max Hold on.
-- **`useSnapshot.test.jsx`**: the hold at the selected row matches the naive fold; the table is
-  built once per frozen history; nothing is built when no panel asks.
-- **`DockSpectrum.test.jsx`**: the held line and the click-to-clear, mirroring the existing
-  `DockVectorscope` tests.
+- **`spectrumMaxHold.test.js`**: accumulation, including non-finite input and a first frame; reuse
+  of the previous buffer when the band count matches and a fresh buffer when it does not; table
+  lookups compared against a naive row-by-row fold at bucket boundaries, inside a bucket, at index
+  0 and at the last row; a history whose rows carry no second curve; an empty history.
+- **`panelControls.test.js`**: every mode id survives; an unknown value falls back to off; each
+  replaced switch maps to its mode; Decay wins when both are stored; the replaced keys are gone
+  from the normalized record.
+- **`dockModuleControls.test.js`**: the Dock's short names reach the mode; the Dock Spectrum subset
+  carries it.
+- **`SpectrumPanel.test.jsx`**: the fill's edge is the hold in Hold, the engine's peak in Decay and
+  the live curve with Max off, each checked against the path the band values produce; both fills
+  hold in L/R; clicking an edge clears both without capturing a snapshot; the clear target exists
+  only in Hold.
+- **`useSnapshot.test.jsx`**: the hold at the selected row matches the naive fold, and nothing is
+  built when no panel asks.
+- **`DockSpectrum.test.jsx`**: the fill follows the hold; the clear target exists only in Hold;
+  clicking the module clears.
 
 ## Commits
 
-1. `src/math/spectrumMaxHold.js` and its tests. Nothing wired; pure addition.
-2. Controls: rename the existing row to `spectrumMaxDecay` with its legacy names, add the
-   `spectrumMaxHoldTrace` row, add the settings toggle. The toggle draws nothing yet.
-3. `SpectrumPanel`: live hold, the held lines, the click-to-clear.
-4. Snapshot reconstruction through `useSnapshot`.
-5. The Dock Spectrum module.
-
-Each commit passes `npm run check` on its own.
+The outline design shipped in five commits (c8c01cf8, 5ed71a93, e88f1bd5, 14330bcf, 392f1341).
+This revision replaces the rendering and merges the controls on top of them, keeping the hold
+arithmetic and the snapshot reconstruction those commits introduced.
 
 ## Out of scope
 
-- Any change to Max Decay's behaviour, its Rust envelope, or its filled rendering.
-- A new theme role for the held line.
-- Peak Labels, which are found on the live smoothed curve and never read either hold.
+- Any change to Decay's behaviour or its Rust envelope.
+- A new theme role: the fill keeps the colours it already has.
+- Peak Labels, which are found on the live smoothed curve and never read the fill.
 - The Vectorscope and Stereo Map holds.

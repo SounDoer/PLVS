@@ -34,8 +34,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
     "spectrumSpeedPercent",
     "spectrumOctaveSmoothing",
     "spectrumTiltDbPerOctave",
-    "spectrumMaxDecay",
-    "spectrumMaxHoldTrace",
+    "spectrumMaxMode",
     "spectrumXMinFreq",
     "spectrumXMaxFreq",
     "spectrumYMinDb",
@@ -72,10 +71,13 @@ const LEGACY_DOCK_KEYS = Object.freeze({
   spectrum: {
     spectrumChannel: ["channel"],
     spectrumView: ["view"],
+    // Not a key in the record any more: the Max mode row reads spectrumMaxDecay as one of the
+    // switches it replaced, so mapping the Dock's short names onto it lets one migration serve
+    // both surfaces.
+    spectrumMaxDecay: ["maxHold", "peakHold"],
     spectrumSpeedPercent: ["speedPercent", "smoothingPercent"],
     spectrumOctaveSmoothing: ["octaveSmoothing"],
     spectrumTiltDbPerOctave: ["tiltDbPerOctave"],
-    spectrumMaxDecay: ["maxHold", "peakHold"],
     spectrumXMinFreq: ["minFreq"],
     spectrumXMaxFreq: ["maxFreq"],
     spectrumYMinDb: ["minDb"],

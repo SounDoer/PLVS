@@ -50,48 +50,19 @@ describe("DockSpectrum", () => {
     expect(outlines[1].getAttribute("vector-effect")).toBe("non-scaling-stroke");
   });
 
-  it("draws a held outline when Max Hold is on", () => {
-    const controls = {
-      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
-      spectrumMaxHoldTrace: true,
-    };
-    const { container } = renderSpectrum(controls, {
-      bandCentersHz: [100, 1000],
-      smoothDb: [-30, -50],
-    });
+  const BANDS = [100, 1000];
 
-    expect(container.querySelector("[data-dock-spectrum-max-hold]")).toBeTruthy();
-  });
+  function holdControls(mode) {
+    return { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum, spectrumMaxMode: mode };
+  }
 
-  it("draws no held outline when Max Hold is off", () => {
-    const controls = {
-      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
-      spectrumMaxHoldTrace: false,
-    };
-    const { container } = renderSpectrum(controls, {
-      bandCentersHz: [100, 1000],
-      smoothDb: [-30, -50],
-    });
-
-    expect(container.querySelector("[data-dock-spectrum-max-hold]")).toBeNull();
-    expect(container.querySelector("[data-max-hold-reset]")).toBeNull();
-  });
-
-  it("clears the hold when the module is clicked", () => {
-    const controls = {
-      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
-      spectrumMaxHoldTrace: true,
-    };
-    const { container, rerender } = renderSpectrum(controls, {
-      bandCentersHz: [100, 1000],
-      smoothDb: [-30, -50],
-    });
-    const louder = (
+  function frame(controls, smoothDb) {
+    return (
       <FrameDataProvider
         value={{
           displayAudio: {
             spectrumResultsByKey: {
-              [dockSpectrumKey(controls)]: { bandCentersHz: [100, 1000], smoothDb: [-40, -20] },
+              [dockSpectrumKey(controls)]: { bandCentersHz: BANDS, smoothDb, peakDb: [-10, -10] },
             },
           },
         }}
@@ -99,28 +70,57 @@ describe("DockSpectrum", () => {
         <DockSpectrum controls={controls} />
       </FrameDataProvider>
     );
-    rerender(louder);
-    const heldAfterTwoFrames = container
-      .querySelector("[data-dock-spectrum-max-hold]")
-      .getAttribute("d");
+  }
+
+  function fillEdge(container) {
+    return container.querySelector("svg > path[fill^='url']")?.getAttribute("d");
+  }
+
+  it("fills to the cumulative hold in Hold mode", () => {
+    const controls = holdControls("hold");
+    const { container, rerender } = render(frame(controls, [-30, -50]));
+    rerender(frame(controls, [-40, -20]));
+
+    const held = fillEdge(container);
+    // The maximum of the two frames: higher than either frame is on its own at both bands.
+    expect(held).not.toBe(fillEdge(render(frame(controls, [-40, -20])).container));
+  });
+
+  it("offers the clear target only in Hold mode", () => {
+    expect(
+      render(frame(holdControls("hold"), [-30, -50])).container.querySelector(
+        "[data-max-hold-reset]"
+      )
+    ).toBeTruthy();
+    expect(
+      render(frame(holdControls("decay"), [-30, -50])).container.querySelector(
+        "[data-max-hold-reset]"
+      )
+    ).toBeNull();
+    expect(
+      render(frame(holdControls("off"), [-30, -50])).container.querySelector(
+        "[data-max-hold-reset]"
+      )
+    ).toBeNull();
+  });
+
+  it("clears the hold when the module is clicked", () => {
+    const controls = holdControls("hold");
+    const { container, rerender } = render(frame(controls, [-30, -50]));
+    rerender(frame(controls, [-40, -20]));
+    const heldAfterTwoFrames = fillEdge(container);
 
     fireEvent.click(container.querySelector("[data-max-hold-reset]"));
-    rerender(louder);
+    rerender(frame(controls, [-40, -20]));
 
-    const heldAfterClear = container
-      .querySelector("[data-dock-spectrum-max-hold]")
-      .getAttribute("d");
-    expect(heldAfterClear).not.toBe(heldAfterTwoFrames);
-    expect(heldAfterClear).toBe(
-      container.querySelector("[data-dock-spectrum-live]").getAttribute("d")
-    );
+    expect(fillEdge(container)).not.toBe(heldAfterTwoFrames);
   });
 
   it("fills to both peak contours while keeping the live outlines on top", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrum,
       spectrumView: "lr",
-      spectrumMaxDecay: true,
+      spectrumMaxMode: "decay",
     };
     const { container } = renderSpectrum(controls, {
       path: "M 0 140 L 1000 190",

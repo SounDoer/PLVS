@@ -22,7 +22,7 @@
  *   vectorscopePolarLevelMaxHold: boolean,
  *   spectrumChannel: { type: 'pair', x: number, y: number } | { type: 'single', ch: number },
  *   spectrumView: string,
- *   spectrumMaxDecay: boolean,
+ *   spectrumMaxMode: "off"|"decay"|"hold",
  *   levelMeterMode: string,
  *   levelMeterPlaybackMax: boolean,
  *   levelMeterValueMarker: boolean,

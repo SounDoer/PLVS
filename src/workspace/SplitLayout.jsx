@@ -374,8 +374,8 @@ function FullscreenOverlay() {
             spectrumView={chromeData?.spectrumView ?? "combined"}
             spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
             onSpectrumViewChange={noop}
-            spectrumMaxDecay={chromeData?.spectrumMaxDecay ?? false}
-            onSpectrumMaxDecayToggle={noop}
+            spectrumMaxMode={chromeData?.spectrumMaxMode ?? "off"}
+            onSpectrumMaxModeChange={noop}
             panelControls={panelControls}
             onPanelControlsChange={onPanelControlsChange}
             onPanelControlsReset={onPanelControlsReset}

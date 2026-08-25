@@ -58,7 +58,7 @@ describe("useDockLayout", () => {
         spectrumSpeedPercent: 25,
         spectrumOctaveSmoothing: "off",
         spectrumTiltDbPerOctave: 3,
-        spectrumMaxDecay: false,
+        spectrumMaxMode: "off",
         spectrumXMinFreq: 20,
         spectrumXMaxFreq: 20000,
         spectrumYMinDb: -96,

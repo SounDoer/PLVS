@@ -1046,8 +1046,8 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram channel")).toBeTruthy();
   });
 
-  it("shows Max Decay as a switch on spectrum and reflects + flips state", () => {
-    const onSpectrumMaxDecayToggle = vi.fn();
+  it("shows Max as one mode on spectrum, reflecting and changing the selection", () => {
+    const onSpectrumMaxModeChange = vi.fn();
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -1056,17 +1056,20 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxDecay={true}
-        onSpectrumMaxDecayToggle={onSpectrumMaxDecayToggle}
+        spectrumMaxMode="decay"
+        onSpectrumMaxModeChange={onSpectrumMaxModeChange}
       />
     );
-    const btn = screen.getByRole("switch", { name: "spectrum max decay" });
-    expect(btn.getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(btn);
-    expect(onSpectrumMaxDecayToggle).toHaveBeenCalledTimes(1);
+
+    const trigger = screen.getByLabelText("spectrum max mode");
+    expect(trigger.textContent).toContain("Decay");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("option", { name: "Hold" }));
+
+    expect(onSpectrumMaxModeChange).toHaveBeenCalledWith("hold");
   });
 
-  it("shows compact spectrum display controls after Max Decay", () => {
+  it("shows compact spectrum display controls after Max", () => {
     render(
       <PanelSettingsContent
         activeTab="spectrum"
@@ -1075,14 +1078,14 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxDecay={true}
-        onSpectrumMaxDecayToggle={vi.fn()}
+        spectrumMaxMode="decay"
+        onSpectrumMaxModeChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
     );
 
-    const peak = screen.getByText("Max Decay");
+    const peak = screen.getByText("Max");
     const speed = screen.getByText("Speed");
     const tilt = screen.getByText("Tilt");
     const smoothing = screen.getByText("Smoothing");
@@ -1131,8 +1134,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxDecay={false}
-        onSpectrumMaxDecayToggle={vi.fn()}
+        spectrumMaxMode="off"
+        onSpectrumMaxModeChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
       />
@@ -1164,8 +1167,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxDecay={false}
-        onSpectrumMaxDecayToggle={vi.fn()}
+        spectrumMaxMode="off"
+        onSpectrumMaxModeChange={vi.fn()}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
       />
@@ -1229,8 +1232,8 @@ describe("PanelSettingsContent", () => {
         spectrumValueKey="p-0-1"
         spectrumView="combined"
         onSpectrumViewChange={vi.fn()}
-        spectrumMaxDecay={false}
-        onSpectrumMaxDecayToggle={vi.fn()}
+        spectrumMaxMode="off"
+        onSpectrumMaxModeChange={vi.fn()}
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
           spectrumXMinFreq: 20.000001,
@@ -1255,8 +1258,8 @@ describe("PanelSettingsContent", () => {
         channelCount={6}
         spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
         spectrumValueKey="p-0-1"
-        spectrumMaxDecay={false}
-        onSpectrumMaxDecayToggle={vi.fn()}
+        spectrumMaxMode="off"
+        onSpectrumMaxModeChange={vi.fn()}
       />
     );
     expect(screen.queryByLabelText("spectrum max decay")).toBeNull();

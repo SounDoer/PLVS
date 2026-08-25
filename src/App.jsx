@@ -542,7 +542,7 @@ function AppContent() {
   const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
-  const spectrumMaxDecayUi = normalizedPanelControls.spectrumMaxDecay;
+  const spectrumMaxModeUi = normalizedPanelControls.spectrumMaxMode;
 
   const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
 
@@ -1011,8 +1011,8 @@ function AppContent() {
     updatePanelControls((current) => ({ ...current, spectrumView: view }));
   };
 
-  const onSpectrumMaxDecayToggle = () => {
-    updatePanelControls((current) => ({ ...current, spectrumMaxDecay: !spectrumMaxDecayUi }));
+  const onSpectrumMaxModeChange = (spectrumMaxMode) => {
+    updatePanelControls((current) => ({ ...current, spectrumMaxMode }));
   };
 
   const {
@@ -1332,7 +1332,7 @@ function AppContent() {
       spectrumDisplayLabel,
       spectrumView: spectrumViewUi,
       spectrumViewLegend: spectrumViewLegendValue,
-      spectrumMaxDecay: spectrumMaxDecayUi,
+      spectrumMaxMode: spectrumMaxModeUi,
       analysisStatusByPanelId,
     }),
     [
@@ -1346,7 +1346,7 @@ function AppContent() {
       spectrumDisplayLabel,
       spectrumViewUi,
       spectrumViewLegendValue,
-      spectrumMaxDecayUi,
+      spectrumMaxModeUi,
       analysisStatusByPanelId,
     ]
   );

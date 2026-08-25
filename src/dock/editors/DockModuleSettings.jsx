@@ -184,8 +184,7 @@ function SettingsBody({
         ) : null}
         <SpectrumDisplaySettingsRows
           showPeakLabels={false}
-          maxDecay={controls.spectrumMaxDecay}
-          maxHoldTrace={controls.spectrumMaxHoldTrace}
+          maxMode={controls.spectrumMaxMode}
           speedPercent={controls.spectrumSpeedPercent}
           octaveSmoothing={controls.spectrumOctaveSmoothing}
           tiltDbPerOctave={controls.spectrumTiltDbPerOctave}
@@ -193,10 +192,7 @@ function SettingsBody({
           xMaxFreq={controls.spectrumXMaxFreq}
           yMinDb={controls.spectrumYMinDb}
           yMaxDb={controls.spectrumYMaxDb}
-          onMaxDecayChange={(spectrumMaxDecay) => onChange({ ...controls, spectrumMaxDecay })}
-          onMaxHoldTraceChange={(spectrumMaxHoldTrace) =>
-            onChange({ ...controls, spectrumMaxHoldTrace })
-          }
+          onMaxModeChange={(spectrumMaxMode) => onChange({ ...controls, spectrumMaxMode })}
           onSpeedChange={(spectrumSpeedPercent) => onChange({ ...controls, spectrumSpeedPercent })}
           onOctaveSmoothingChange={(spectrumOctaveSmoothing) =>
             onChange({ ...controls, spectrumOctaveSmoothing })

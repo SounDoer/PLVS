@@ -47,6 +47,15 @@ export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
 
 const SPECTRUM_VIEW_IDS = ["combined", "lr", "ms"];
 
+/// What the Spectrum's filled area shows. Off draws the fill under the live curve.
+export const SPECTRUM_MAX_MODE_OPTIONS = [
+  { id: "off", label: "Off" },
+  { id: "decay", label: "Decay" },
+  { id: "hold", label: "Hold" },
+];
+
+const SPECTRUM_MAX_MODE_IDS = ids(SPECTRUM_MAX_MODE_OPTIONS);
+
 export const STEREO_MAP_MODE_OPTIONS = [
   { id: STEREO_MAP_MODES.POSITION, label: "Position" },
   { id: STEREO_MAP_MODES.CORRELATION, label: "Correlation" },
@@ -276,26 +285,29 @@ const CONTROLS = [
   },
   { key: "spectrumView", kind: "enum", options: SPECTRUM_VIEW_IDS, default: "combined" },
   {
-    /// spectrumMaxDecay was spectrumMaxHold, and spectrumPeakHold before that. The settings label
-    /// has always read "Max Decay": this is the engine's decaying peak envelope. Now that a real
-    /// cumulative Max Hold exists beside it, a key reading spectrumMaxHold for the decaying one
-    /// would mislead every later reader.
+    /// What the filled area under the curve shows. Decay is the engine's peak envelope, which
+    /// holds briefly and then falls; Hold is the maximum since the mode was selected or cleared,
+    /// accumulated in the frontend. They are one choice rather than two switches because they are
+    /// two readings of the same fill: drawing both at once produced three overlapping shapes per
+    /// curve, doubled in L/R and M/S.
     ///
-    /// spectrumMaxHold is read here and nowhere else -- it is never reused for the new control. A
-    /// stored `true` means the user had Max Decay on, and must not switch on a feature they have
-    /// never seen.
-    key: "spectrumMaxDecay",
-    kind: "boolean",
-    default: false,
-    legacyKeys: ["spectrumMaxHold", "spectrumPeakHold"],
-  },
-  {
-    /// The cumulative hold: the maximum each band has reached since it was switched on or last
-    /// cleared, accumulated in the frontend and drawn as an outline. See
-    /// docs/superpowers/specs/2026-08-25-spectrum-max-hold-design.md.
-    key: "spectrumMaxHoldTrace",
-    kind: "boolean",
-    default: false,
+    /// The older keys are read here and nowhere else. Decay wins when a stored record carries
+    /// both, because Decay is the one users have actually been running.
+    key: "spectrumMaxMode",
+    default: "off",
+    normalize(row, raw) {
+      const stored = raw?.spectrumMaxMode;
+      if (SPECTRUM_MAX_MODE_IDS.includes(stored)) return stored;
+      if (
+        raw?.spectrumMaxDecay === true ||
+        raw?.spectrumMaxHold === true ||
+        raw?.spectrumPeakHold === true
+      ) {
+        return "decay";
+      }
+      if (raw?.spectrumMaxHoldTrace === true) return "hold";
+      return row.default;
+    },
   },
   { key: "spectrumPeakLabels", kind: "boolean", default: false },
   {

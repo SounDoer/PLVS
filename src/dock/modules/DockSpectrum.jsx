@@ -23,7 +23,8 @@ export function DockSpectrum({ controls }) {
   const { displayAudio } = useFrameData();
   const key = dockSpectrumKey(controls);
   const result = displayAudio?.spectrumResultsByKey?.[key];
-  const maxHoldEnabled = controls?.spectrumMaxHoldTrace === true;
+  const maxMode = controls?.spectrumMaxMode ?? "off";
+  const maxHoldEnabled = maxMode === "hold";
   const maxHoldIdentityRef = useRef(null);
   const maxHoldRef = useRef(null);
   const [maxHoldClearKey, setMaxHoldClearKey] = useState(0);
@@ -53,8 +54,8 @@ export function DockSpectrum({ controls }) {
   const livePathB = spectrumPath(result, "smoothDbB", "pathB", range);
   const peakPath = spectrumPath(result, "peakDb", "peakPath", range);
   const peakPathB = spectrumPath(result, "peakDbB", "peakPathB", range);
-  // The strip draws the primary curve's hold only: there is no room for a second held line, and
-  // the Dock has no snapshot, so this is the live hold or nothing.
+  // The Dock has no snapshot, so the hold is the live one or nothing. Only the primary curve
+  // carries it: the strip draws the secondary fill from the engine's peak either way.
   const maxHoldPath =
     maxHoldEnabled && maxHoldRef.current
       ? buildSpectrumSvgFromBandsAndDb(
@@ -63,8 +64,9 @@ export function DockSpectrum({ controls }) {
           range
         )
       : "";
-  const primaryAreaPath = areaPath(controls?.spectrumMaxDecay && peakPath ? peakPath : livePath);
-  const secondaryAreaPath = controls?.spectrumMaxDecay ? areaPath(peakPathB) : "";
+  const maxContourPath = maxHoldEnabled ? maxHoldPath : peakPath;
+  const primaryAreaPath = areaPath(maxMode !== "off" && maxContourPath ? maxContourPath : livePath);
+  const secondaryAreaPath = maxMode !== "off" ? areaPath(peakPathB) : "";
 
   return (
     <div
@@ -116,19 +118,6 @@ export function DockSpectrum({ controls }) {
             d={livePath}
             fill="none"
             stroke="var(--ui-spectrum-primary)"
-            strokeWidth="var(--ui-spectrum-stroke-width)"
-            vectorEffect="non-scaling-stroke"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ) : null}
-        {maxHoldPath ? (
-          <path
-            data-dock-spectrum-max-hold=""
-            d={maxHoldPath}
-            fill="none"
-            stroke="var(--ui-spectrum-primary)"
-            strokeOpacity="0.7"
             strokeWidth="var(--ui-spectrum-stroke-width)"
             vectorEffect="non-scaling-stroke"
             strokeLinecap="round"
