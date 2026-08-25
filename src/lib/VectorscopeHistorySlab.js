@@ -1,51 +1,39 @@
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
-import {
-  chunkIdForSequence,
-  chunkOffsetForSequence,
-  findChunkForSequence,
-} from "./historyChunkMath.js";
+import { ChunkedHistorySlab, FrozenChunkedHistory, baseChunk } from "./ChunkedHistorySlab.js";
 
-function createChunk(sequenceStart, pairValueCount) {
+function chunkSchema(pairValueCount) {
   return {
-    sequenceStart,
-    rowCount: 0,
-    sealed: false,
-    timestamps: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-    pairs: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * pairValueCount),
-    correlation: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-    sideToMidDb: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-    midEnergy: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-    sideEnergy: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
+    name: "VectorscopeHistorySlab",
+    createChunk: (sequenceStart) => ({
+      ...baseChunk(sequenceStart),
+      pairs: new Float32Array(VISUAL_HISTORY_CHUNK_ROWS * pairValueCount),
+      correlation: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
+      sideToMidDb: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
+      midEnergy: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
+      sideEnergy: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
+    }),
+    cloneChunk: (chunk) => ({
+      sequenceStart: chunk.sequenceStart,
+      rowCount: chunk.rowCount,
+      sealed: true,
+      timestamps: chunk.timestamps.slice(),
+      pairs: chunk.pairs.slice(),
+      correlation: chunk.correlation.slice(),
+      sideToMidDb: chunk.sideToMidDb.slice(),
+      midEnergy: chunk.midEnergy.slice(),
+      sideEnergy: chunk.sideEnergy.slice(),
+    }),
+    payloadBytes: (chunk) =>
+      chunk.timestamps.byteLength +
+      chunk.pairs.byteLength +
+      chunk.correlation.byteLength +
+      chunk.sideToMidDb.byteLength +
+      chunk.midEnergy.byteLength +
+      chunk.sideEnergy.byteLength,
   };
 }
 
-function cloneChunk(chunk) {
-  return {
-    sequenceStart: chunk.sequenceStart,
-    rowCount: chunk.rowCount,
-    sealed: true,
-    timestamps: chunk.timestamps.slice(),
-    pairs: chunk.pairs.slice(),
-    correlation: chunk.correlation.slice(),
-    sideToMidDb: chunk.sideToMidDb.slice(),
-    midEnergy: chunk.midEnergy.slice(),
-    sideEnergy: chunk.sideEnergy.slice(),
-  };
-}
-
-function chunkPayloadBytes(chunk) {
-  return (
-    chunk.timestamps.byteLength +
-    chunk.pairs.byteLength +
-    chunk.correlation.byteLength +
-    chunk.sideToMidDb.byteLength +
-    chunk.midEnergy.byteLength +
-    chunk.sideEnergy.byteLength
-  );
-}
-
-function rowFromChunk(chunk, sequence, pairValueCount, copyRows) {
-  const row = chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
+function rowFrom(chunk, row, pairValueCount, copyRows) {
   const offset = row * pairValueCount;
   const pairs = chunk.pairs.subarray(offset, offset + pairValueCount);
   return {
@@ -58,42 +46,17 @@ function rowFromChunk(chunk, sequence, pairValueCount, copyRows) {
   };
 }
 
-export class VectorscopeHistorySlab {
+export class VectorscopeHistorySlab extends ChunkedHistorySlab {
   constructor(capacity, pairValueCount) {
-    if (capacity <= 0) throw new RangeError("VectorscopeHistorySlab capacity must be > 0");
     if (pairValueCount <= 0) {
       throw new RangeError("VectorscopeHistorySlab pairValueCount must be > 0");
     }
-    this._cap = capacity;
+    super(capacity, chunkSchema(pairValueCount));
     this._pairValueCount = pairValueCount;
-    this._chunks = [];
-    this._firstChunkId = 0;
-    this._startSequence = 0;
-    this._nextSequence = 0;
-    this._version = 0;
-  }
-
-  get capacity() {
-    return this._cap;
-  }
-
-  get length() {
-    return this._nextSequence - this._startSequence;
   }
 
   get pairValueCount() {
     return this._pairValueCount;
-  }
-
-  get version() {
-    return this._version;
-  }
-
-  timestampAt(index) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return NaN;
-    const chunk = this._chunkForSequence(sequence);
-    return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
   }
 
   matchesPairValueCount(pairValueCount) {
@@ -106,36 +69,19 @@ export class VectorscopeHistorySlab {
       throw new RangeError("VectorscopeHistorySlab cannot store rows with a different pair count");
     }
 
-    const sequence = this._nextSequence;
-    let active = this._chunks[this._chunks.length - 1];
-    if (!active || active.sealed) {
-      active = createChunk(sequence, this._pairValueCount);
-      if (this._chunks.length === 0) {
-        this._firstChunkId = chunkIdForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
-      }
-      this._chunks.push(active);
-    }
-
-    const row = chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS);
-    const offset = row * this._pairValueCount;
-    active.timestamps[row] = Number.isFinite(timestampMs) ? timestampMs : -Infinity;
-    active.pairs.set(pairs, offset);
-    active.correlation[row] = Number.isFinite(correlation) ? correlation : -Infinity;
-    active.sideToMidDb[row] = Number.isFinite(sideToMidDb) ? sideToMidDb : -Infinity;
-    active.midEnergy[row] = Number.isFinite(midEnergy) ? midEnergy : 0;
-    active.sideEnergy[row] = Number.isFinite(sideEnergy) ? sideEnergy : 0;
-    active.rowCount += 1;
-    active.sealed = active.rowCount === VISUAL_HISTORY_CHUNK_ROWS;
-    this._nextSequence += 1;
-    this._startSequence = Math.max(this._startSequence, this._nextSequence - this._cap);
-    this._dropExpiredChunks();
-    this._version += 1;
+    this.appendRow(timestampMs, (chunk, row) => {
+      chunk.pairs.set(pairs, row * this._pairValueCount);
+      chunk.correlation[row] = Number.isFinite(correlation) ? correlation : -Infinity;
+      chunk.sideToMidDb[row] = Number.isFinite(sideToMidDb) ? sideToMidDb : -Infinity;
+      chunk.midEnergy[row] = Number.isFinite(midEnergy) ? midEnergy : 0;
+      chunk.sideEnergy[row] = Number.isFinite(sideEnergy) ? sideEnergy : 0;
+    });
   }
 
   at(index, { copyRows = false } = {}) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return undefined;
-    return rowFromChunk(this._chunkForSequence(sequence), sequence, this._pairValueCount, copyRows);
+    const found = this.chunkAt(index);
+    if (!found) return undefined;
+    return rowFrom(found.chunk, found.row, this._pairValueCount, copyRows);
   }
 
   rowAt(index, options) {
@@ -151,147 +97,22 @@ export class VectorscopeHistorySlab {
   }
 
   freeze() {
-    const startSequence = this._startSequence;
-    const endSequence = this._nextSequence;
-    const chunks = [];
-    let sharedSealedChunks = 0;
-    let copiedTailRows = 0;
-    let copiedTailBytes = 0;
-
-    for (const chunk of this._chunks) {
-      const chunkEnd = chunk.sequenceStart + chunk.rowCount;
-      if (chunkEnd <= startSequence || chunk.sequenceStart >= endSequence) continue;
-      if (chunk.sealed) {
-        chunks.push(chunk);
-        sharedSealedChunks += 1;
-      } else {
-        const copied = cloneChunk(chunk);
-        chunks.push(copied);
-        copiedTailRows =
-          Math.min(chunkEnd, endSequence) - Math.max(chunk.sequenceStart, startSequence);
-        copiedTailBytes = chunkPayloadBytes(copied);
-      }
-    }
-
     return new FrozenVectorscopeHistory({
       pairValueCount: this._pairValueCount,
-      chunks,
-      startSequence,
-      endSequence,
-      sharedSealedChunks,
-      copiedTailRows,
-      copiedTailBytes,
+      ...this.freezeChunks(),
     });
-  }
-
-  clear() {
-    this._chunks = [];
-    const offset = chunkOffsetForSequence(this._nextSequence, VISUAL_HISTORY_CHUNK_ROWS);
-    if (offset !== 0) this._nextSequence += VISUAL_HISTORY_CHUNK_ROWS - offset;
-    this._startSequence = this._nextSequence;
-    this._firstChunkId = chunkIdForSequence(this._nextSequence, VISUAL_HISTORY_CHUNK_ROWS);
-  }
-
-  storageStats() {
-    return {
-      chunkCount: this._chunks.length,
-      retainedRows: this.length,
-      sharedSealedChunks: 0,
-      copiedTailRows: 0,
-      copiedTailBytes: 0,
-    };
-  }
-
-  _sequenceAt(index) {
-    if (index < 0 || index >= this.length) return null;
-    return this._startSequence + index;
-  }
-
-  _chunkForSequence(sequence) {
-    return findChunkForSequence(
-      this._chunks,
-      this._firstChunkId,
-      sequence,
-      VISUAL_HISTORY_CHUNK_ROWS
-    );
-  }
-
-  _dropExpiredChunks() {
-    while (
-      this._chunks.length > 0 &&
-      this._chunks[0].sequenceStart + this._chunks[0].rowCount <= this._startSequence
-    ) {
-      this._chunks.shift();
-      this._firstChunkId += 1;
-    }
   }
 }
 
-export class FrozenVectorscopeHistory {
-  constructor({
-    pairValueCount,
-    chunks,
-    startSequence,
-    endSequence,
-    sharedSealedChunks,
-    copiedTailRows,
-    copiedTailBytes,
-  }) {
+export class FrozenVectorscopeHistory extends FrozenChunkedHistory {
+  constructor({ pairValueCount, ...storage }) {
+    super(storage);
     this._pairValueCount = pairValueCount;
-    this._chunks = chunks;
-    this._startSequence = startSequence;
-    this._endSequence = endSequence;
-    this._firstChunkId =
-      chunks.length > 0
-        ? chunkIdForSequence(chunks[0].sequenceStart, VISUAL_HISTORY_CHUNK_ROWS)
-        : 0;
-    this._sharedSealedChunks = sharedSealedChunks;
-    this._copiedTailRows = copiedTailRows;
-    this._copiedTailBytes = copiedTailBytes;
-  }
-
-  get length() {
-    return this._endSequence - this._startSequence;
-  }
-
-  get version() {
-    return 0;
-  }
-
-  timestampAt(index) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return NaN;
-    const chunk = this._chunkForSequence(sequence);
-    return chunk.timestamps[chunkOffsetForSequence(sequence, VISUAL_HISTORY_CHUNK_ROWS)];
   }
 
   rowAt(index) {
-    const sequence = this._sequenceAt(index);
-    if (sequence == null) return undefined;
-    return rowFromChunk(this._chunkForSequence(sequence), sequence, this._pairValueCount, false);
-  }
-
-  storageStats() {
-    return {
-      chunkCount: this._chunks.length,
-      retainedRows: this.length,
-      sharedSealedChunks: this._sharedSealedChunks,
-      copiedTailRows: this._copiedTailRows,
-      copiedTailBytes: this._copiedTailBytes,
-    };
-  }
-
-  _sequenceAt(index) {
-    if (index < 0 || index >= this.length) return null;
-    return this._startSequence + index;
-  }
-
-  _chunkForSequence(sequence) {
-    return findChunkForSequence(
-      this._chunks,
-      this._firstChunkId,
-      sequence,
-      VISUAL_HISTORY_CHUNK_ROWS
-    );
+    const found = this.chunkAt(index);
+    if (!found) return undefined;
+    return rowFrom(found.chunk, found.row, this._pairValueCount, false);
   }
 }
