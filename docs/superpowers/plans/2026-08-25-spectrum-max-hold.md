@@ -2,6 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Superseded after execution.** All five tasks shipped, then the design changed on the evidence
+> of a real device: Max Decay and Max Hold became one `Max` mode over one fill, and the held line
+> was removed. See the Revision section of
+> `docs/superpowers/specs/2026-08-25-spectrum-max-hold-design.md`. Tasks 1 and 4 still describe what
+> is in the tree; Tasks 2, 3 and 5 describe the two-control version that no longer exists.
+
 **Goal:** Add a cumulative Max Hold to the Spectrum panel and the Dock Spectrum module, drawn as a thin outline per curve and cleared by clicking it, leaving the existing decaying envelope (Max Decay) untouched.
 
 **Architecture:** The hold is a per-panel Float32Array of per-band maxima, accumulated in the frontend from each frame's smoothed curve. In snapshot mode it is reconstructed from the frozen history through a bucketed prefix table, the same shape the Vectorscope's Polar Level hold already uses. Rust is not involved: Max Decay keeps using the engine's envelope exactly as today.
