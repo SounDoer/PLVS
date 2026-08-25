@@ -24,7 +24,9 @@ for the selected row.
   since the last reset. It never decays.
 - Turning the control off and on again starts a new hold.
 - A change of band grid — different channel selection, different octave smoothing, a new analysis
-  key — resets the hold. A held curve from one grid means nothing on another.
+  key — resets the hold. A held curve from one grid means nothing on another. The panel resets on
+  a changed analysis key rather than only on a changed band count: two grids can share a count and
+  mean different things.
 - In snapshot mode the held curve is the hold **as it stood at the selected row**, reconstructed
   from the retained history.
 
