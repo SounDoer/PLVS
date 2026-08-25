@@ -15,11 +15,8 @@ import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
 import { resolvePanelHelpItems } from "../components/panels/chartHelp.js";
 import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
-import {
-  resolvePanelDefinition,
-  resolvePanelDisplayName,
-  resolvePanelModuleId,
-} from "./panelInstances.js";
+import { resolvePanelDisplayName, resolvePanelModuleId } from "./panelInstances.js";
+import { resolvePanelDefinition } from "./registry.jsx";
 import { getPanelControls } from "./panelControlInstances.js";
 
 const SPLIT_DIVIDER_SIZE_REM = 0.375;

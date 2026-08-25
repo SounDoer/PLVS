@@ -1,4 +1,7 @@
-import { MODULE_REGISTRY } from "./registry.jsx";
+// Catalog, not registry: these helpers only need module identity and titles, and this file is
+// imported by logic-only modules that must not pull in the panel components. The one lookup that
+// does need them, resolvePanelDefinition, lives in registry.jsx.
+import { MODULE_CATALOG } from "./moduleCatalog.js";
 
 export function createPanelId(moduleId, panelsById = {}) {
   if (!panelsById[moduleId]) return moduleId;
@@ -27,11 +30,6 @@ export function resolvePanelModuleId(state, panelId) {
   return state.panelsById?.[panelId]?.moduleId ?? null;
 }
 
-export function resolvePanelDefinition(state, panelId) {
-  const moduleId = resolvePanelModuleId(state, panelId);
-  return moduleId ? MODULE_REGISTRY[moduleId] : null;
-}
-
 function unnamedPanelIdsForModule(state, moduleId) {
   return (state.panelOrder ?? []).filter((id) => {
     const panel = state.panelsById?.[id];
@@ -42,7 +40,7 @@ function unnamedPanelIdsForModule(state, moduleId) {
 export function hasKnownModulesOnly(stateLike) {
   const panelsById = stateLike?.panelsById;
   if (!panelsById || typeof panelsById !== "object") return true;
-  return Object.values(panelsById).every((panel) => Boolean(MODULE_REGISTRY[panel?.moduleId]));
+  return Object.values(panelsById).every((panel) => Boolean(MODULE_CATALOG[panel?.moduleId]));
 }
 
 export function resolvePanelDisplayName(state, panelId) {
@@ -52,7 +50,7 @@ export function resolvePanelDisplayName(state, panelId) {
   const customTitle = trimCustomTitle(panel.customTitle);
   if (customTitle) return customTitle;
 
-  const baseTitle = MODULE_REGISTRY[panel.moduleId]?.title ?? panel.moduleId;
+  const baseTitle = MODULE_CATALOG[panel.moduleId]?.title ?? panel.moduleId;
   const unnamedIds = unnamedPanelIdsForModule(state, panel.moduleId);
   if (unnamedIds.length <= 1) return baseTitle;
 

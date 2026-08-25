@@ -11,9 +11,9 @@ import { PanelSettingsHeader } from "@/components/PanelSettingsHeader.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { cn } from "@/lib/utils";
 import { useDrag } from "./DragContext.jsx";
-import { MODULE_REGISTRY } from "./registry.jsx";
+import { MODULE_REGISTRY, resolvePanelDefinition } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
-import { resolvePanelDefinition, resolvePanelDisplayName } from "./panelInstances.js";
+import { resolvePanelDisplayName } from "./panelInstances.js";
 
 function PanelRow({ panelId }) {
   const { state, removePanel, renamePanel, setHoveredPanelId } = useWorkspaceStore();

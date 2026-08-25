@@ -16,75 +16,27 @@ import { SpectrumPanel } from "../components/panels/SpectrumPanel";
 import { SpectrogramPanel } from "../components/panels/SpectrogramPanel";
 import { WaveformPanel } from "../components/panels/WaveformPanel";
 import { StereoMapPanel } from "../components/panels/StereoMapPanel";
-
-/** 拖动 clamp 用的最小尺寸——保证 tab icon 可见，其余内容允许被裁。 */
-const MIN_PANEL_WIDTH = 32;
-const MIN_PANEL_HEIGHT = 36;
+import { MODULE_CATALOG } from "./moduleCatalog.js";
+import { resolvePanelModuleId } from "./panelInstances.js";
 
 /** @type {Record<import('./types.js').ModuleId, { id: string, title: string, minWidth: number, minHeight: number, Component: React.FC<{compact?: boolean}>, Icon: React.FC }>} */
 export const MODULE_REGISTRY = {
-  levelMeter: {
-    id: "levelMeter",
-    title: "Level Meter",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: LevelMeterPanel,
-    Icon: BarChart2,
-  },
-  loudness: {
-    id: "loudness",
-    title: "Loudness",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: LoudnessPanel,
-    Icon: Activity,
-  },
-  stats: {
-    id: "stats",
-    title: "Stats",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: StatsPanel,
-    Icon: List,
-  },
-  vectorscope: {
-    id: "vectorscope",
-    title: "Vectorscope",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: VectorscopePanel,
-    Icon: Crosshair,
-  },
-  spectrum: {
-    id: "spectrum",
-    title: "Spectrum",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: SpectrumPanel,
-    Icon: AudioLines,
-  },
-  spectrogram: {
-    id: "spectrogram",
-    title: "Spectrogram",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: SpectrogramPanel,
-    Icon: Layers,
-  },
-  waveform: {
-    id: "waveform",
-    title: "Waveform",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: WaveformPanel,
-    Icon: AudioWaveform,
-  },
-  "stereo-map": {
-    id: "stereo-map",
-    title: "Stereo Map",
-    minWidth: MIN_PANEL_WIDTH,
-    minHeight: MIN_PANEL_HEIGHT,
-    Component: StereoMapPanel,
-    Icon: Radar,
-  },
+  levelMeter: { ...MODULE_CATALOG.levelMeter, Component: LevelMeterPanel, Icon: BarChart2 },
+  loudness: { ...MODULE_CATALOG.loudness, Component: LoudnessPanel, Icon: Activity },
+  stats: { ...MODULE_CATALOG.stats, Component: StatsPanel, Icon: List },
+  vectorscope: { ...MODULE_CATALOG.vectorscope, Component: VectorscopePanel, Icon: Crosshair },
+  spectrum: { ...MODULE_CATALOG.spectrum, Component: SpectrumPanel, Icon: AudioLines },
+  spectrogram: { ...MODULE_CATALOG.spectrogram, Component: SpectrogramPanel, Icon: Layers },
+  waveform: { ...MODULE_CATALOG.waveform, Component: WaveformPanel, Icon: AudioWaveform },
+  "stereo-map": { ...MODULE_CATALOG["stereo-map"], Component: StereoMapPanel, Icon: Radar },
 };
+
+/**
+ * The one panel lookup that needs the React half of a module. It lives here rather than beside its
+ * siblings in `panelInstances.js` so that file stays free of the panel components — an import there
+ * is paid by every logic-only module that touches panel state.
+ */
+export function resolvePanelDefinition(state, panelId) {
+  const moduleId = resolvePanelModuleId(state, panelId);
+  return moduleId ? MODULE_REGISTRY[moduleId] : null;
+}
