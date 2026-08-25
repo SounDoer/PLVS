@@ -10,14 +10,14 @@ existing decaying envelope, which stays exactly as it is.
 
 The two are different instruments and both stay available:
 
-| | Max Decay (existing) | Max Hold (new) |
-| --- | --- | --- |
-| What it shows | the peak of the last few seconds | the maximum since it was switched on or cleared |
-| Behaviour | holds 1.5 s, then falls 8 dB/s | never falls |
-| Computed in | Rust, per frame, with the smoothing pass | the frontend, per panel |
-| Drawn as | filled area | thin outline, one per curve |
-| Cleared by | itself, by decaying | clicking the line |
-| In snapshot | absent | reconstructed at the selected row |
+|               | Max Decay (existing)                     | Max Hold (new)                                  |
+| ------------- | ---------------------------------------- | ----------------------------------------------- |
+| What it shows | the peak of the last few seconds         | the maximum since it was switched on or cleared |
+| Behaviour     | holds 1.5 s, then falls 8 dB/s           | never falls                                     |
+| Computed in   | Rust, per frame, with the smoothing pass | the frontend, per panel                         |
+| Drawn as      | filled area                              | thin outline, one per curve                     |
+| Cleared by    | itself, by decaying                      | clicking the line                               |
+| In snapshot   | absent                                   | reconstructed at the selected row               |
 
 Nothing about Max Decay changes: same Rust envelope, same filled area, same behaviour. Only its
 persisted key is renamed, for the reason below.
