@@ -183,7 +183,9 @@ export function SpectrumPanel({ compact = false }) {
   const isSnapshot = selectedOffset >= 0;
   // In snapshot mode each panel reads history for its own request key; in live mode it reads the
   // request-keyed live result.
-  const snapResolved = isSnapshot ? resolveSpectrumSnapshotForKey?.(spectrumKey) : null;
+  const snapResolved = isSnapshot
+    ? resolveSpectrumSnapshotForKey?.(spectrumKey, { withMaxHold: maxHoldEnabled })
+    : null;
   const snapshotMissing = snapResolved?.missing === true;
   const rawLiveSpectrumResult = isSnapshot
     ? null

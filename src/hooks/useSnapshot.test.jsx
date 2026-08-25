@@ -216,7 +216,42 @@ describe("useSnapshot", () => {
       path: "",
       pathB: "",
       data: null,
+      maxHold: null,
     });
+  });
+
+  it("reconstructs the spectrum Max Hold at the selected row", () => {
+    const rows = [
+      { timestampMs: 1000, bands: [{ fCenter: 100 }, { fCenter: 1000 }], dbList: [-30, -50] },
+      { timestampMs: 1100, bands: [{ fCenter: 100 }, { fCenter: 1000 }], dbList: [-40, -20] },
+      { timestampMs: 1200, bands: [{ fCenter: 100 }, { fCenter: 1000 }], dbList: [-35, -60] },
+    ];
+    const samples = {
+      loudness: [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }],
+      corr: [0.1, 0.2, 0.3],
+      audio: [{ correlation: 0.1 }, { correlation: 0.2 }, { correlation: 0.3 }],
+    };
+    const intake = createIntake(samples);
+    intake.snapshotVisualSpectrumByKey = () => ({
+      "spectrum:single:2:combined": {
+        length: rows.length,
+        timestampAt: (index) => rows[index].timestampMs,
+        rowAt: (index) => rows[index],
+      },
+    });
+
+    // selectedOffset is seconds back from live, so one sample back selects the middle row.
+    const { result } = renderHook(() =>
+      useSnapshot({ selectedOffset: 0.1, sampleSec: 0.1, intake, audio: { correlation: 0 } })
+    );
+
+    const withoutHold = result.current.resolveSpectrumSnapshotForKey("spectrum:single:2:combined");
+    expect(withoutHold.maxHold).toBeNull();
+
+    const withHold = result.current.resolveSpectrumSnapshotForKey("spectrum:single:2:combined", {
+      withMaxHold: true,
+    });
+    expect(Array.from(withHold.maxHold.dbList)).toEqual([-30, -20]);
   });
 
   it("returns vectorscope snapshot signal presence from stored pairs", () => {

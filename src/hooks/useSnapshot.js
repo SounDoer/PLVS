@@ -2,11 +2,15 @@ import { useCallback, useMemo, useRef } from "react";
 import { VISUAL_HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { buildVectorscopeSvgFromPairs } from "../math/vectorscopeMath.js";
 import { buildPolarLevelMaxHoldTable, polarLevelMaxHoldAt } from "../math/vectorscopePolarMath.js";
+import { buildSpectrumMaxHoldTable, spectrumMaxHoldAt } from "../math/spectrumMaxHold.js";
 import { buildSpectrumSvgFromBandsAndDb } from "../math/spectrumMath.js";
 import { deriveStereoMapRow } from "../math/stereoMapMath.js";
 import { resolveSnapshot, resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
 
 const VECTORSCOPE_SIGNAL_FLOOR = 10 ** (-90 / 20);
+
+/** 40 s of visual rows per bucket. See spectrumMaxHoldFor. */
+const SPECTRUM_MAX_HOLD_BUCKET_ROWS = 1000;
 
 function vectorscopePairsHaveSignal(pairs) {
   if (!pairs?.length) return false;
@@ -109,13 +113,30 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   // whole snapshot session, so the O(samples) table build runs once per key; scrubbing then costs a
   // single lookup. Keyed by the view object so a new snapshot session drops the old table via GC.
   const maxHoldTableCacheRef = useRef(new WeakMap());
+  const spectrumMaxHoldTableCacheRef = useRef(new WeakMap());
+  // Spectrum Max Hold in snapshot mode folds the frozen history up to the selected row (see
+  // spectrumMaxHold). One bucket per 40 s of rows: the table stays small enough to keep while a
+  // query replays at most a bucket. Built only when a panel with Max Hold on asks, so scrubbing
+  // without the feature never pays for it.
+  const spectrumMaxHoldFor = useCallback((entries, index) => {
+    if (!entries || index < 0) return null;
+    const cache = spectrumMaxHoldTableCacheRef.current;
+    let table = cache.get(entries);
+    if (!table) {
+      table = buildSpectrumMaxHoldTable(entries, SPECTRUM_MAX_HOLD_BUCKET_ROWS);
+      cache.set(entries, table);
+    }
+    return spectrumMaxHoldAt(table, index);
+  }, []);
   const resolveSpectrumSnapshotForKey = useCallback(
-    (key) => {
+    (key, { withMaxHold = false } = {}) => {
       const entries = snapSource?.spectrumByKey?.[key];
-      const cache = snapSource ? resultCacheForKey(keyedResultCache.spectrum, key, entries) : null;
-      if (cache?.has(resolved.targetTimestampMs)) {
-        return cache.get(resolved.targetTimestampMs);
-      }
+      const targetCache = snapSource
+        ? resultCacheForKey(keyedResultCache.spectrum, key, entries)
+        : null;
+      let optionCache = targetCache?.get(resolved.targetTimestampMs);
+      if (optionCache?.has(withMaxHold)) return optionCache.get(withMaxHold);
+
       const { index, missing } = resolveKeyedVisualIndex(
         entries,
         resolved.targetTimestampMs,
@@ -123,7 +144,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       );
       let result;
       if (missing) {
-        result = { missing: true, path: "", pathB: "", data: null };
+        result = { missing: true, path: "", pathB: "", data: null, maxHold: null };
       } else {
         const snap = entries.rowAt(index);
         const centers = (snap.bands ?? []).map((b) => b.fCenter);
@@ -134,12 +155,25 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
           path: dbList.length ? buildSpectrumSvgFromBandsAndDb(centers, dbList) : "",
           pathB: dbListB.length ? buildSpectrumSvgFromBandsAndDb(centers, dbListB) : "",
           data: { bands: snap.bands ?? [], dbList, dbListB },
+          maxHold: withMaxHold ? spectrumMaxHoldFor(entries, index) : null,
         };
       }
-      cache?.set(resolved.targetTimestampMs, result);
+      if (targetCache) {
+        if (!optionCache) {
+          optionCache = new Map();
+          targetCache.set(resolved.targetTimestampMs, optionCache);
+        }
+        optionCache.set(withMaxHold, result);
+      }
       return result;
     },
-    [keyToleranceMs, keyedResultCache.spectrum, resolved.targetTimestampMs, snapSource]
+    [
+      keyToleranceMs,
+      keyedResultCache.spectrum,
+      resolved.targetTimestampMs,
+      snapSource,
+      spectrumMaxHoldFor,
+    ]
   );
   // Polar Level Max hold in snapshot mode is reconstructed from the frozen history up to the
   // selected row (see vectorscopePolarMath). Only built when a Polar Level panel with Max hold on
