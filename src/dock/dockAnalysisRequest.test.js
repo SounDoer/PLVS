@@ -4,6 +4,7 @@ import {
   MAX_STEREO_MAP_REQUESTS,
   MAX_VECTORSCOPE_REQUESTS,
   deriveAnalysisRequests,
+  deriveRetainedAnalysisKeys,
 } from "../analysis/analysisRequests.js";
 import {
   DOCK_SPECTRUM_KEY,
@@ -333,5 +334,82 @@ describe("dock merge over-cap bookkeeping", () => {
       `k${MAX_VECTORSCOPE_REQUESTS - 1}`
     );
     expect(merged.statusByPanelId[`p${MAX_VECTORSCOPE_REQUESTS - 1}`]).toBe("overCap");
+  });
+});
+
+describe("subset invariant: every dock-merged computed key is retained", () => {
+  // Dock-inclusive counterpart of the invariant test in analysisRequests.test.js. Lives here
+  // because it needs mergeDockAnalysisRequests / mergeDockRetainedKeys, which live in this module;
+  // deriveAnalysisRequests / deriveRetainedAnalysisKeys alone are covered over there.
+  function leaf(ids) {
+    return { type: "leaf", tabs: ids, activeTab: ids[0] };
+  }
+
+  function workspaceState() {
+    const panelsById = {
+      spectrum: { id: "spectrum", moduleId: "spectrum" },
+      vectorscope: { id: "vectorscope", moduleId: "vectorscope" },
+      map: { id: "map", moduleId: "stereo-map" },
+    };
+    const panelOrder = Object.keys(panelsById);
+    return {
+      tree: leaf(panelOrder),
+      panelsById,
+      panelOrder,
+      panelControlsById: {
+        map: {
+          stereoMapPair: { x: 0, y: 1 },
+          stereoMapSpeedPercent: 25,
+          stereoMapOctaveSmoothing: "1/12",
+        },
+      },
+    };
+  }
+
+  const dockPanels = [
+    {
+      panelId: "dock-spectrum",
+      moduleId: "spectrum",
+      controls: { spectrumChannel: { type: "single", ch: 3 } },
+    },
+    {
+      panelId: "dock-vec",
+      moduleId: "vectorscope",
+      controls: { vectorscopePair: { x: 2, y: 3 } },
+    },
+    {
+      panelId: "dock-map",
+      moduleId: "stereo-map",
+      controls: {
+        stereoMapPair: { x: 4, y: 5 },
+        stereoMapSpeedPercent: 25,
+        stereoMapOctaveSmoothing: "1/12",
+      },
+    },
+  ];
+
+  const FAMILIES = [
+    { requestField: "spectrumRequests", retainedField: "spectrum" },
+    { requestField: "vectorscopeRequests", retainedField: "vectorscope" },
+    { requestField: "stereoMapRequests", retainedField: "stereoMap" },
+  ];
+
+  it("keeps every dock-merged computed key inside the dock-merged retained set", () => {
+    const workspace = workspaceState();
+    const requested = mergeDockAnalysisRequests(
+      deriveAnalysisRequests(workspace, { channelCount: 6 }),
+      dockPanels
+    );
+    const retained = mergeDockRetainedKeys(deriveRetainedAnalysisKeys(workspace), dockPanels);
+
+    for (const { requestField, retainedField } of FAMILIES) {
+      const requestedKeys = requested[requestField].map((request) => request.key);
+      expect(requestedKeys.length).toBeGreaterThan(0);
+      const missing = requestedKeys.filter((key) => !retained[retainedField].has(key));
+      expect(
+        missing,
+        `${requestField} key(s) missing from retained.${retainedField}: ${JSON.stringify(missing)}`
+      ).toEqual([]);
+    }
   });
 });

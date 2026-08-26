@@ -526,4 +526,47 @@ describe("analysisRequests", () => {
       expect(retained.vectorscope.size).toBe(0);
     });
   });
+
+  describe("subset invariant: every computed key is retained", () => {
+    // The load-bearing property of the whole eviction feature: deriveAnalysisRequests' output must
+    // always be a subset of deriveRetainedAnalysisKeys' output, for every request-producing module.
+    // If a key Rust is actively computing is ever missing from the retained set, FrameIntake's
+    // sweep deletes that slab every grace period -- silently, with no error and no failing test
+    // other than this one.
+    const FAMILIES = [
+      { requestField: "spectrumRequests", retainedField: "spectrum" },
+      { requestField: "vectorscopeRequests", retainedField: "vectorscope" },
+      { requestField: "stereoMapRequests", retainedField: "stereoMap" },
+    ];
+
+    it("keeps every computed key inside the retained set", () => {
+      const workspace = state({
+        panelsById: {
+          spectrum: { id: "spectrum", moduleId: "spectrum" },
+          spectrogram: { id: "spectrogram", moduleId: "spectrogram" },
+          vectorscope: { id: "vectorscope", moduleId: "vectorscope" },
+          map: { id: "map", moduleId: "stereo-map" },
+        },
+        panelControlsById: {
+          spectrum: DEFAULT_PANEL_CONTROLS,
+          spectrogram: { ...DEFAULT_PANEL_CONTROLS, spectrumChannel: { type: "single", ch: 2 } },
+          vectorscope: { ...DEFAULT_PANEL_CONTROLS, vectorscopePair: { x: 1, y: 2 } },
+          map: stereoMapControls(0, 1),
+        },
+      });
+
+      const requested = deriveAnalysisRequests(workspace, { channelCount: 2 });
+      const retained = deriveRetainedAnalysisKeys(workspace);
+
+      for (const { requestField, retainedField } of FAMILIES) {
+        const requestedKeys = requested[requestField].map((request) => request.key);
+        expect(requestedKeys.length).toBeGreaterThan(0);
+        const missing = requestedKeys.filter((key) => !retained[retainedField].has(key));
+        expect(
+          missing,
+          `${requestField} key(s) missing from retained.${retainedField}: ${JSON.stringify(missing)}`
+        ).toEqual([]);
+      }
+    });
+  });
 });
