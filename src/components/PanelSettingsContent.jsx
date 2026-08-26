@@ -60,7 +60,7 @@ export function SettingsGroup({ children }) {
   return <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5">{children}</div>;
 }
 
-export function SettingsRow({ label, tooltip, action, children }) {
+export function SettingsRow({ label, tooltip, action, controlAction, children }) {
   return (
     <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
       <span className="group relative flex h-6 items-center gap-1 whitespace-nowrap font-medium text-muted-foreground">
@@ -75,7 +75,10 @@ export function SettingsRow({ label, tooltip, action, children }) {
           </span>
         ) : null}
       </span>
-      <div className="flex min-h-6 min-w-0 items-center justify-end">{children}</div>
+      <div className="flex min-h-6 min-w-0 items-center justify-end gap-2">
+        {controlAction}
+        {children}
+      </div>
     </div>
   );
 }
@@ -236,7 +239,7 @@ export function AxisLinkToggle({ kindId, label, localKeys }) {
       aria-pressed={viewport.linked}
       onClick={() => viewport.setLinked(!viewport.linked)}
       className={cn(
-        "rounded-xs outline-none transition-colors",
+        "flex shrink-0 items-center justify-center rounded-xs outline-none transition-colors",
         viewport.linked ? "text-foreground" : "text-muted-foreground/50 hover:text-foreground"
       )}
     >
@@ -254,6 +257,29 @@ export function RangeRowLinkToggle({ moduleId, minKey, label }) {
       kindId={kindId}
       label={`link ${label.toLowerCase()}`}
       localKeys={AXIS_VIEWPORTS[kindId].members[moduleId]}
+    />
+  );
+}
+
+function AxisViewportRangeInput({
+  moduleId,
+  minKey,
+  minAriaLabel,
+  maxAriaLabel,
+  controls,
+  onLocalCommit,
+}) {
+  const kindId = axisKindForRangeRow(moduleId, minKey);
+  const localKeys = AXIS_VIEWPORTS[kindId].members[moduleId];
+  const viewport = useAxisViewport(kindId, localKeys);
+
+  return (
+    <SettingsRangeInput
+      minAriaLabel={minAriaLabel}
+      maxAriaLabel={maxAriaLabel}
+      minValue={viewport.linkable ? viewport.min : controls[localKeys.minKey]}
+      maxValue={viewport.linkable ? viewport.max : controls[localKeys.maxKey]}
+      onCommit={viewport.linkable ? viewport.setRange : onLocalCommit}
     />
   );
 }
@@ -1094,7 +1120,7 @@ export function SpectrumDisplaySettingsRows({
           </SettingsRow>
           <SettingsRow
             label="Frequency Range"
-            action={
+            controlAction={
               <RangeRowLinkToggle
                 moduleId="spectrum"
                 minKey="spectrumXMinFreq"
@@ -1102,12 +1128,13 @@ export function SpectrumDisplaySettingsRows({
               />
             }
           >
-            <SettingsRangeInput
+            <AxisViewportRangeInput
+              moduleId="spectrum"
+              minKey="spectrumXMinFreq"
               minAriaLabel="spectrum frequency range min"
               maxAriaLabel="spectrum frequency range max"
-              minValue={xMinFreq}
-              maxValue={xMaxFreq}
-              onCommit={onXRangeChange}
+              controls={{ spectrumXMinFreq: xMinFreq, spectrumXMaxFreq: xMaxFreq }}
+              onLocalCommit={onXRangeChange}
             />
           </SettingsRow>
           <SettingsRow label="Level Range">
@@ -1157,19 +1184,26 @@ function PanelControlRows({ tab, controls, onChange, slots = {} }) {
           atDefault={controls[row.key] === DEFAULT_PANEL_CONTROLS[row.key]}
           onReset={() => commit({ [row.key]: DEFAULT_PANEL_CONTROLS[row.key] })}
         />
-      ) : (
+      ) : null;
+      const controlAction = ui.resettable ? null : (
         <RangeRowLinkToggle moduleId={tab} minKey={row.minKey} label={ui.label} />
       );
 
       return (
-        <SettingsRow key={rowKey} label={ui.label} tooltip={ui.tooltip} action={action}>
-          {renderPanelControlWidget(row, controls, commit, openKey, setOpenKey)}
+        <SettingsRow
+          key={rowKey}
+          label={ui.label}
+          tooltip={ui.tooltip}
+          action={action}
+          controlAction={controlAction}
+        >
+          {renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKey)}
         </SettingsRow>
       );
     });
 }
 
-function renderPanelControlWidget(row, controls, commit, openKey, setOpenKey) {
+function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKey) {
   const { ui } = row;
   const rowKey = row.key ?? row.minKey;
   const open = openKey === rowKey;
@@ -1232,6 +1266,18 @@ function renderPanelControlWidget(row, controls, commit, openKey, setOpenKey) {
         minValue={controls[row.key]}
         maxValue={ui.fixedMax}
         onCommit={(newMin) => commit({ [row.key]: newMin })}
+      />
+    );
+  }
+  if (axisKindForRangeRow(tab, row.minKey)) {
+    return (
+      <AxisViewportRangeInput
+        moduleId={tab}
+        minKey={row.minKey}
+        minAriaLabel={`${ui.ariaLabel} min`}
+        maxAriaLabel={`${ui.ariaLabel} max`}
+        controls={controls}
+        onLocalCommit={(newMin, newMax) => commit({ [row.minKey]: newMin, [row.maxKey]: newMax })}
       />
     );
   }

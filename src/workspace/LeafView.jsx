@@ -330,31 +330,33 @@ export function LeafView({ node, path, style }) {
           ))}
 
           <div className={PANEL_HEADER_ACTIONS}>
-            <PanelSettingsMenu
-              activeTab={activeModuleId}
-              panelTitle={activeTab ? resolvePanelDisplayName(state, activeTab) : undefined}
-              channelCount={chromeData?.channelCount ?? 0}
-              vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
-              vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
-              vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
-              onVectorscopeChange={noop}
-              stereoMapPairOptions={chromeData?.stereoMapPairOptions ?? []}
-              stereoMapPairValueKey={chromeData?.stereoMapPairValueKey ?? ""}
-              stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}
-              onStereoMapPairChange={noop}
-              spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
-              spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
-              spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
-              onSpectrumChange={noop}
-              spectrumView={chromeData?.spectrumView ?? "combined"}
-              spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
-              onSpectrumViewChange={noop}
-              spectrumMaxMode={chromeData?.spectrumMaxMode ?? "off"}
-              onSpectrumMaxModeChange={noop}
-              panelControls={panelControls}
-              onPanelControlsChange={onPanelControlsChange}
-              onPanelControlsReset={onPanelControlsReset}
-            />
+            <PanelInstanceProvider value={panelInstanceData}>
+              <PanelSettingsMenu
+                activeTab={activeModuleId}
+                panelTitle={activeTab ? resolvePanelDisplayName(state, activeTab) : undefined}
+                channelCount={chromeData?.channelCount ?? 0}
+                vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
+                vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
+                vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
+                onVectorscopeChange={noop}
+                stereoMapPairOptions={chromeData?.stereoMapPairOptions ?? []}
+                stereoMapPairValueKey={chromeData?.stereoMapPairValueKey ?? ""}
+                stereoMapPairDisplayLabel={chromeData?.stereoMapPairDisplayLabel ?? ""}
+                onStereoMapPairChange={noop}
+                spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
+                spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
+                spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
+                onSpectrumChange={noop}
+                spectrumView={chromeData?.spectrumView ?? "combined"}
+                spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
+                onSpectrumViewChange={noop}
+                spectrumMaxMode={chromeData?.spectrumMaxMode ?? "off"}
+                onSpectrumMaxModeChange={noop}
+                panelControls={panelControls}
+                onPanelControlsChange={onPanelControlsChange}
+                onPanelControlsReset={onPanelControlsReset}
+              />
+            </PanelInstanceProvider>
             {helpItems ? <HelpPopover items={helpItems} /> : null}
             <HoverTip
               tip={

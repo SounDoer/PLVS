@@ -100,6 +100,18 @@ export function WorkspaceProvider({ children }) {
         markPresetDirty();
         bound.resetPanelControlsForPanel(...args);
       },
+      setAxisViewport: (...args) => {
+        markPresetDirty();
+        bound.setAxisViewport(...args);
+      },
+      joinAxisViewport: (...args) => {
+        markPresetDirty();
+        bound.joinAxisViewport(...args);
+      },
+      leaveAxisViewport: (...args) => {
+        markPresetDirty();
+        bound.leaveAxisViewport(...args);
+      },
       resetWorkspace: (...args) => {
         markPresetDirty();
         bound.resetWorkspace(...args);

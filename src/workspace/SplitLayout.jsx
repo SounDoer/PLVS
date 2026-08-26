@@ -368,27 +368,29 @@ function FullscreenOverlay() {
       <div className={PANEL_HEADER_BAR}>
         <PanelTitleGroup icon={def.Icon} title={resolvePanelDisplayName(state, fullscreenId)} />
         <div className={PANEL_HEADER_ACTIONS}>
-          <PanelSettingsMenu
-            activeTab={fullscreenModuleId}
-            panelTitle={resolvePanelDisplayName(state, fullscreenId)}
-            channelCount={chromeData?.channelCount ?? 0}
-            vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
-            vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
-            vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
-            onVectorscopeChange={noop}
-            spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
-            spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
-            spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
-            onSpectrumChange={noop}
-            spectrumView={chromeData?.spectrumView ?? "combined"}
-            spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
-            onSpectrumViewChange={noop}
-            spectrumMaxMode={chromeData?.spectrumMaxMode ?? "off"}
-            onSpectrumMaxModeChange={noop}
-            panelControls={panelControls}
-            onPanelControlsChange={onPanelControlsChange}
-            onPanelControlsReset={onPanelControlsReset}
-          />
+          <PanelInstanceProvider value={panelInstanceData}>
+            <PanelSettingsMenu
+              activeTab={fullscreenModuleId}
+              panelTitle={resolvePanelDisplayName(state, fullscreenId)}
+              channelCount={chromeData?.channelCount ?? 0}
+              vectorscopeOptions={chromeData?.vectorscopePairOptions ?? []}
+              vectorscopeValueKey={chromeData?.vectorscopeValueKey ?? ""}
+              vectorscopeDisplayLabel={chromeData?.vectorscopeDisplayLabel ?? ""}
+              onVectorscopeChange={noop}
+              spectrumOptions={chromeData?.spectrumChannelOptions ?? []}
+              spectrumValueKey={chromeData?.spectrumValueKey ?? ""}
+              spectrumDisplayLabel={chromeData?.spectrumDisplayLabel ?? ""}
+              onSpectrumChange={noop}
+              spectrumView={chromeData?.spectrumView ?? "combined"}
+              spectrumViewLegend={chromeData?.spectrumViewLegend ?? null}
+              onSpectrumViewChange={noop}
+              spectrumMaxMode={chromeData?.spectrumMaxMode ?? "off"}
+              onSpectrumMaxModeChange={noop}
+              panelControls={panelControls}
+              onPanelControlsChange={onPanelControlsChange}
+              onPanelControlsReset={onPanelControlsReset}
+            />
+          </PanelInstanceProvider>
           {helpItems ? <HelpPopover items={helpItems} /> : null}
           <HoverTip
             tip={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}

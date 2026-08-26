@@ -94,6 +94,26 @@ function renderWithInstance(ui, instance) {
 }
 
 describe("PanelSettingsContent frequency link toggle", () => {
+  it.each([
+    ["spectrum", "spectrum frequency range"],
+    ["spectrogram", "spectrogram frequency range"],
+    ["stereo-map", "stereo map frequency range"],
+  ])("shows the shared frequency range in the %s settings", (activeTab, ariaLabel) => {
+    renderWithInstance(
+      <PanelSettingsContent
+        activeTab={activeTab}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />,
+      axisViewportInstance({
+        axisViewports: { frequency: { min: 200, max: 5000, linked: true } },
+      })
+    );
+
+    expect(screen.getByLabelText(`${ariaLabel} min`).value).toBe("200");
+    expect(screen.getByLabelText(`${ariaLabel} max`).value).toBe("5000");
+  });
+
   it.each([["spectrum"], ["spectrogram"], ["stereo-map"]])(
     "offers the toggle on the %s panel, which shares the frequency axis",
     (activeTab) => {
@@ -1816,6 +1836,52 @@ describe("PanelSettingsContent", () => {
 
     const layers = render(<PanelSettingsContent activeTab="loudness" />);
     expect(layers.container.firstChild).toBeNull();
+  });
+
+  it("shows the frequency link control in a workspace panel's settings menu", () => {
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders value={{ panelControls: DEFAULT_PANEL_CONTROLS }}>
+            <LeafView
+              node={{ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" }}
+              path={[]}
+            />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+
+    expect(screen.getByRole("button", { name: "link frequency range" })).toBeTruthy();
+  });
+
+  it("shows the frequency link control in a fullscreen panel's settings menu", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+        panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+        panelOrder: ["spectrum"],
+        panelControlsById: { spectrum: DEFAULT_PANEL_CONTROLS },
+      })
+    );
+
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders value={{ panelControls: DEFAULT_PANEL_CONTROLS }}>
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Panel settings" }).at(-1));
+
+    expect(screen.getByRole("button", { name: "link frequency range" })).toBeTruthy();
   });
 
   it("passes audio panel control changes through LeafView to the header controls", () => {
