@@ -173,8 +173,12 @@ const KINDS = {
  * Repairs a min/max pair together: each bound clamps to the row's absolute limits, then the pair
  * is opened up to the row's minimum span. Which bound moves depends on which one the caller
  * actually supplied -- a stored max with no min means the min is the one to move.
+ *
+ * Exported for `workspace/axisViewports.js`, which repairs the shared viewport a linked group
+ * navigates. That value and the dormant local one it stands in for must not drift apart, and the
+ * only way to guarantee that is for both to come out of this function.
  */
-function normalizeRange(row, raw) {
+export function normalizeRange(row, raw) {
   const rawMin = readStored(raw, { key: row.minKey, legacyKeys: row.minLegacyKeys });
   const rawMax = readStored(raw, { key: row.maxKey, legacyKeys: row.maxLegacyKeys });
   const log = row.kind === "logRange";
