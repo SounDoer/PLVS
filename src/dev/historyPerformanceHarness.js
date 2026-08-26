@@ -4,7 +4,9 @@ const SCALAR_CADENCE_MS = 100;
 const VISUAL_CADENCE_MS = 40;
 const DEFAULT_SPECTRUM_KEY = "spectrum:pair:0:1:combined:sp25:tilt300:smoff";
 const DEFAULT_VECTORSCOPE_KEY = "vectorscope:pair:0:1";
-const DEFAULT_STEREO_MAP_KEY = "stereoMap:pair:0:1:sp25:sm12";
+// Speed 50 matches the Stereo Map panel's actual default (panelControls.js's stereoMapSpeedPercent
+// default is 50, not 25 like Spectrum's) -- this key would not match a default panel otherwise.
+const DEFAULT_STEREO_MAP_KEY = "stereoMap:pair:0:1:sp50:sm12";
 
 function defaultScheduler() {
   const requestIdle =
@@ -122,8 +124,27 @@ function visualPayload(fullVisual) {
   };
 }
 
-function keyedEntries(keys, fallbackKey, value) {
-  return Object.fromEntries((keys?.length ? keys : [fallbackKey]).map((key) => [key, value]));
+// Keys not derived from a real workspace (deriveRetainedAnalysisKeys) are not in the retained set,
+// so the visual-history sweep evicts them a grace period in and that family's measurement silently
+// reports on an empty slab thereafter. Warn once per family instead of lying quietly -- this
+// harness is the tool used to validate the eviction fix itself, so a hobbled run should be loud.
+const warnedEmptyKeyFamilies = new Set();
+
+function keyedEntries(keys, fallbackKey, value, familyLabel) {
+  if (!keys?.length) {
+    if (!warnedEmptyKeyFamilies.has(familyLabel)) {
+      warnedEmptyKeyFamilies.add(familyLabel);
+      console.warn(
+        `[historyPerformanceHarness] no ${familyLabel}Keys supplied; synthesizing under the ` +
+          `default key "${fallbackKey}". Unless a real ${familyLabel} panel with matching ` +
+          `controls is open, that key is not in the retained set and the visual-history sweep ` +
+          `will evict it after the grace period -- pass ${familyLabel}Keys derived from a real ` +
+          `workspace to measure this family accurately.`
+      );
+    }
+    return { [fallbackKey]: value };
+  }
+  return Object.fromEntries(keys.map((key) => [key, value]));
 }
 
 function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys, stereoMapKeys) {
@@ -131,23 +152,38 @@ function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys, stereoMa
     timestampMs,
     waveformMin: [],
     waveformMax: [],
-    spectrumByKey: keyedEntries(spectrumKeys, DEFAULT_SPECTRUM_KEY, {
-      bandCentersHz: payload.bandCentersHz,
-      smoothDb: payload.smoothDb,
-    }),
-    vectorscopeByKey: keyedEntries(vectorscopeKeys, DEFAULT_VECTORSCOPE_KEY, {
-      pairs: payload.pairs,
-      correlation: 0.75,
-      sideToMidDb: -8,
-      midEnergy: 0.5,
-      sideEnergy: 0.2,
-    }),
-    stereoMapByKey: keyedEntries(stereoMapKeys, DEFAULT_STEREO_MAP_KEY, {
-      bandCentersHz: payload.stereoMapBandCentersHz,
-      pl: payload.stereoMapPl,
-      pr: payload.stereoMapPr,
-      c: payload.stereoMapC,
-    }),
+    spectrumByKey: keyedEntries(
+      spectrumKeys,
+      DEFAULT_SPECTRUM_KEY,
+      {
+        bandCentersHz: payload.bandCentersHz,
+        smoothDb: payload.smoothDb,
+      },
+      "spectrum"
+    ),
+    vectorscopeByKey: keyedEntries(
+      vectorscopeKeys,
+      DEFAULT_VECTORSCOPE_KEY,
+      {
+        pairs: payload.pairs,
+        correlation: 0.75,
+        sideToMidDb: -8,
+        midEnergy: 0.5,
+        sideEnergy: 0.2,
+      },
+      "vectorscope"
+    ),
+    stereoMapByKey: keyedEntries(
+      stereoMapKeys,
+      DEFAULT_STEREO_MAP_KEY,
+      {
+        bandCentersHz: payload.stereoMapBandCentersHz,
+        pl: payload.stereoMapPl,
+        pr: payload.stereoMapPr,
+        c: payload.stereoMapC,
+      },
+      "stereoMap"
+    ),
   };
 }
 
