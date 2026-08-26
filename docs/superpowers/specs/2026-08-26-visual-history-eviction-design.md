@@ -23,8 +23,15 @@ Ruled out by measurement before designing anything, so the fix stays aimed at th
 - **The chunked-storage refactor is behaviour-preserving.** The same soak run against `v0.14.0`
   produces line-for-line identical memory and per-frame cost.
 - **Per-frame ingest cost does not drift.** ~0.24 ms whether the window is empty or full.
-- **Live display never reads a slab.** `SpectrumPanel.jsx:189` reads the live result; only
-  snapshot scrubbing resolves against history. Eviction therefore cannot affect live metering.
+- **Live display never reads a slab — for Spectrum.** `SpectrumPanel.jsx:189` reads the live
+  result; only snapshot scrubbing resolves against history. Three other live paths do read the
+  slab, though: `StereoMapPanel.jsx:258` and `DockStereoMap.jsx:54` call `liveHoldValues()` on it
+  for Max Hold, and `VectorscopePanel.jsx:219` / `DockVectorscope.jsx:97` hand it to polar
+  peak-hold. So Rule 2 evicting an open-but-unfed panel's slab does have a visible effect: that
+  panel's Max Hold / polar peak-hold goes from frozen-stale to empty. This is still acceptable —
+  it only happens after a full retention window with no data, at which point the held values were
+  built entirely from rows already outside that window, i.e. from data the retention setting says
+  should no longer be shown.
 
 The 4.68 GB seen in the field is mostly the _designed_ footprint of a four-hour retention with this
 panel set (~8.8 GB at a full window). That is a separate conversation about the retention setting;
