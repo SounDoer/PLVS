@@ -344,6 +344,7 @@ function SettingsBody({
             value={controls.stereoMapSpeedPercent}
             formatValue={(value) => `${value.toFixed(0)}%`}
             onCommit={(stereoMapSpeedPercent) => onChange({ ...controls, stereoMapSpeedPercent })}
+            commitOnRelease
           />
         </SettingsRow>
         <SettingsRow

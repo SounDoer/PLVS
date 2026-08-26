@@ -141,6 +141,23 @@ describe("DockModuleSettings", () => {
     });
   });
 
+  it("commits the dock Stereo Map speed on release, not on every change", () => {
+    const onChange = renderSettings("stereoMap", { channelCount: 2 });
+
+    // The dock renders its own Stereo Map speed row rather than going through the control table,
+    // so the key-churn guard has to be wired here too -- see SettingsSlider's commitOnRelease note.
+    const speed = screen.getByLabelText("Stereo Map speed");
+    fireEvent.change(speed, { target: { value: "80" } });
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(speed);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap,
+      stereoMapSpeedPercent: 80,
+    });
+  });
+
   it("uses runtime Spectrum channels and only shows View for a pair", () => {
     const spectrumOptions = [
       { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },

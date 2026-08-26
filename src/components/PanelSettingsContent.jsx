@@ -115,7 +115,16 @@ function rangePercent(value, min, max) {
   return Math.max(0, Math.min(100, ((value - min) / span) * 100));
 }
 
-export function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, onCommit }) {
+export function SettingsSlider({
+  ariaLabel,
+  value,
+  min,
+  max,
+  step,
+  formatValue,
+  onCommit,
+  commitOnRelease = false,
+}) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [draftValue, setDraftValue] = useState(value);
   const displayValue = formatValue(draftValue);
@@ -129,11 +138,34 @@ export function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, 
   // fires change for each value including the final one, so there is nothing left to commit on
   // pointer-up. Every other drag gesture in the app (chart pan, axis rails, 3D rotation) already
   // commits per pointer move; the sliders were the odd ones out.
+  //
+  // `commitOnRelease` is the exception, and it is not a matter of taste. A few control values are
+  // part of an analysis request key (`spectrumRequestKeyFromControls` and friends), and the visual
+  // history is stored one slab per key. Committing those per pointer move mints a key for every
+  // intermediate value a drag passes through, and FrameIntake keeps a slab for every key it has
+  // ever seen -- measured at roughly 750 MB stranded by a single two-second drag at a four-hour
+  // retention. The four gestures compared above are all key-neutral, which is why they can afford
+  // to commit continuously and these cannot.
   const commit = (nextValue) => {
     const next = Number(nextValue);
     setDraftValue(next);
     onCommit(next);
   };
+
+  const handleChange = (nextValue) => {
+    const next = Number(nextValue);
+    setDraftValue(next);
+    if (!commitOnRelease) onCommit(next);
+  };
+
+  // Pointer-up covers dragging; key-up covers arrow keys, where holding one auto-repeats change
+  // events and releases once.
+  const releaseHandlers = commitOnRelease
+    ? {
+        onPointerUp: (event) => commit(event.currentTarget.value),
+        onKeyUp: (event) => commit(event.currentTarget.value),
+      }
+    : null;
 
   return (
     <div className="relative flex min-w-0 items-center justify-end">
@@ -149,7 +181,8 @@ export function SettingsSlider({ ariaLabel, value, min, max, step, formatValue, 
         onMouseLeave={() => setTooltipOpen(false)}
         onFocus={() => setTooltipOpen(true)}
         onBlur={() => setTooltipOpen(false)}
-        onChange={(event) => commit(event.target.value)}
+        onChange={(event) => handleChange(event.target.value)}
+        {...releaseHandlers}
         className="plvs-range w-16 opacity-75 transition-opacity hover:opacity-100 focus-visible:opacity-100"
         style={{ "--range-pct": `${draftPercent}%` }}
       />
@@ -922,6 +955,7 @@ export function SpectrumDisplaySettingsRows({
               value={speedPercent}
               formatValue={(value) => `${value.toFixed(0)}%`}
               onCommit={onSpeedChange}
+              commitOnRelease
             />
           </SettingsRow>
           <SettingsRow label="Tilt">
@@ -933,6 +967,12 @@ export function SpectrumDisplaySettingsRows({
               value={tiltDbPerOctave}
               formatValue={(value) => `${value.toFixed(2)} dB/oct`}
               onCommit={onTiltChange}
+              // Interim. Tilt is a per-band constant offset applied in the Rust post-process, so it
+              // sits in the request key and churns slabs like the speed sliders do. It is the one
+              // key component that does not have to be there: moving it to the render side takes it
+              // out of the key entirely, and then this flag comes off and the curve tracks the thumb
+              // again.
+              commitOnRelease
             />
           </SettingsRow>
           <SettingsRow
@@ -1065,6 +1105,7 @@ function renderPanelControlWidget(row, controls, commit, openKey, setOpenKey) {
         value={controls[row.key]}
         formatValue={ui.format}
         onCommit={(value) => commit({ [row.key]: value })}
+        commitOnRelease={ui.commitOnRelease === true}
       />
     );
   }

@@ -612,6 +612,8 @@ const CONTROLS = [
       ariaLabel: "stereo map speed",
       step: 1,
       format: (value) => `${value.toFixed(0)}%`,
+      // In the Stereo Map request key -- see SettingsSlider's commitOnRelease note.
+      commitOnRelease: true,
     },
   },
   {

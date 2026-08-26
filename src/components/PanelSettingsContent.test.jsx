@@ -633,6 +633,62 @@ describe("PanelSettingsContent", () => {
     );
   });
 
+  it("commits the stereo map speed on release, not on every change", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        stereoMapPairValueKey="0-1"
+        stereoMapPairDisplayLabel="L/R"
+        onStereoMapPairChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    // Speed is part of the Stereo Map analysis request key. A drag that committed every
+    // intermediate value would mint a request key per step, and every abandoned key keeps a whole
+    // history slab alive for the rest of the session.
+    const speed = screen.getByLabelText("stereo map speed");
+    fireEvent.change(speed, { target: { value: "70" } });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(speed);
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapSpeedPercent: 70 })
+    );
+  });
+
+  it("commits the stereo map speed on keyboard release", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        stereoMapPairValueKey="0-1"
+        stereoMapPairDisplayLabel="L/R"
+        onStereoMapPairChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    // Holding an arrow key auto-repeats change events and fires one keyup at the end, so a
+    // keyboard adjustment commits once -- the pointer path is not the only way to reach a slider.
+    const speed = screen.getByLabelText("stereo map speed");
+    fireEvent.change(speed, { target: { value: "51" } });
+    fireEvent.change(speed, { target: { value: "52" } });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+
+    fireEvent.keyUp(speed);
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapSpeedPercent: 52 })
+    );
+  });
+
   it("orders stereo map Mode before Channel pair before Max hold", () => {
     const { container } = render(
       <PanelSettingsContent
@@ -1174,19 +1230,27 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    // Sliders commit on every change rather than on release, so the chart tracks the thumb while
-    // dragging. This deliberately replaces the previous commit-on-pointer-up behaviour: every other
-    // drag gesture in the app already commits per pointer move, and the render cost of doing so was
-    // measured at roughly 3.4 ms per repaint at the largest panel size.
+    // Speed is part of the Spectrum analysis request key, so every intermediate value a drag
+    // passes through would mint a request key of its own and strand a whole history slab. It
+    // commits on release; the thumb and tooltip still track the drag.
     const speed = screen.getByLabelText("spectrum speed");
     fireEvent.change(speed, { target: { value: "42" } });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+    fireEvent.pointerUp(speed);
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
       spectrumSpeedPercent: 42,
     });
 
+    // Tilt is in the key as well, so it commits on release too. This is interim: tilt is a
+    // per-band constant offset that belongs on the render side, and once it is out of the key it
+    // goes back to committing per change so the curve tracks the thumb.
     const tilt = screen.getByLabelText("spectrum tilt");
     fireEvent.change(tilt, { target: { value: "1.25" } });
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerUp(tilt);
     expect(onPanelControlsChange).toHaveBeenCalledTimes(2);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
