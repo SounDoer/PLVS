@@ -1,5 +1,5 @@
 import { FREQUENCY_VIEWPORT } from "../math/axisInteractionMath.js";
-import { normalizeRange } from "../lib/panelControls.js";
+import { normalizeRange } from "../lib/rangeNormalization.js";
 
 /**
  * One entry per linkable axis kind. A kind is a *quantity* — panels sharing it are grouped by what
@@ -62,4 +62,20 @@ export function writeLocalRange(kindId, moduleId, { min, max }) {
   const keys = localRangeKeys(kindId, moduleId);
   if (!keys) return {};
   return { [keys.minKey]: min, [keys.maxKey]: max };
+}
+
+/**
+ * Repairs the whole `axisViewports` map. Payloads written before a kind existed get its default,
+ * and a kind that has since been removed is dropped rather than carried forever -- the table above
+ * is the only list of what exists.
+ *
+ * @returns {Record<string, { min: number, max: number }>}
+ */
+export function normalizeAxisViewportsState(raw) {
+  return Object.fromEntries(
+    Object.keys(AXIS_VIEWPORTS).map((kindId) => [
+      kindId,
+      normalizeAxisViewport(kindId, raw?.[kindId]),
+    ])
+  );
 }

@@ -17,6 +17,7 @@ describe("workspace state shape", () => {
   it("DEFAULT_WORKSPACE_STATE has the lean persisted shape", () => {
     expect(Object.keys(DEFAULT_WORKSPACE_STATE).sort()).toEqual(
       [
+        "axisViewports",
         "fullscreenId",
         "panelControlsById",
         "panelOrder",

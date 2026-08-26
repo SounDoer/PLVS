@@ -150,6 +150,7 @@ describe("panelControls", () => {
       waveformLowMidSplitHz: 200,
       waveformMidHighSplitHz: 2000,
       waveformCentroid: false,
+      linkFrequencyViewport: true,
     });
   });
 
@@ -278,6 +279,7 @@ describe("panelControls", () => {
       waveformLowMidSplitHz: 200,
       waveformMidHighSplitHz: 2000,
       waveformCentroid: false,
+      linkFrequencyViewport: true,
     });
   });
 

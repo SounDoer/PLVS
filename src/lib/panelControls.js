@@ -8,6 +8,8 @@ import {
   HEIGHT_GAIN_MIN,
 } from "../math/spectrogram3dProjection.js";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
+import { AXIS_VIEWPORTS } from "../workspace/axisViewports.js";
+import { clampNumber, isNumber, normalizeRange, readStored } from "./rangeNormalization.js";
 
 export const LOUDNESS_HISTORY_LAYER_OPTIONS = [
   { id: "momentary", label: "Momentary" },
@@ -72,15 +74,6 @@ function ids(options) {
   return options.map((option) => option.id);
 }
 
-function isNumber(value) {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function clampNumber(raw, min, max, fallback) {
-  if (!isNumber(raw)) return fallback;
-  return Math.min(max, Math.max(min, raw));
-}
-
 // ---------------------------------------------------------------------------
 // The control table
 //
@@ -94,15 +87,6 @@ function clampNumber(raw, min, max, fallback) {
 // kind covers carries its own `normalize`. Row order is the key order of both
 // DEFAULT_PANEL_CONTROLS and normalizePanelControls' output.
 // ---------------------------------------------------------------------------
-
-/** Reads a control's stored value, falling back to the keys it used to live under. */
-function readStored(raw, row) {
-  let value = raw?.[row.key];
-  for (const legacyKey of row.legacyKeys ?? []) {
-    value = value ?? raw?.[legacyKey];
-  }
-  return value;
-}
 
 const KINDS = {
   /** One of a fixed id list; anything else falls back to the default. */
@@ -169,37 +153,14 @@ const KINDS = {
   },
 };
 
-/**
- * Repairs a min/max pair together: each bound clamps to the row's absolute limits, then the pair
- * is opened up to the row's minimum span. Which bound moves depends on which one the caller
- * actually supplied -- a stored max with no min means the min is the one to move.
- *
- * Exported for `workspace/axisViewports.js`, which repairs the shared viewport a linked group
- * navigates. That value and the dormant local one it stands in for must not drift apart, and the
- * only way to guarantee that is for both to come out of this function.
- */
-export function normalizeRange(row, raw) {
-  const rawMin = readStored(raw, { key: row.minKey, legacyKeys: row.minLegacyKeys });
-  const rawMax = readStored(raw, { key: row.maxKey, legacyKeys: row.maxLegacyKeys });
-  const log = row.kind === "logRange";
-  const round = (value) => (log ? value : Math.round(value));
-  const openUp = (value) => (log ? value * 2 ** row.minSpan : value + row.minSpan);
-  const openDown = (value) => (log ? value / 2 ** row.minSpan : value - row.minSpan);
-  const tooNarrow = (min, max) =>
-    log ? max <= min || Math.log2(max / min) < row.minSpan : max - min < row.minSpan;
-
-  let min = round(clampNumber(rawMin, row.absMin, row.absMax, row.defaultMin));
-  let max = round(clampNumber(rawMax, row.absMin, row.absMax, row.defaultMax));
-  if (tooNarrow(min, max)) {
-    if (isNumber(rawMax) && !isNumber(rawMin)) {
-      min = Math.max(row.absMin, openDown(max));
-    } else {
-      max = Math.min(row.absMax, openUp(min));
-      if (tooNarrow(min, max)) min = Math.max(row.absMin, openDown(max));
-    }
-  }
-  return { [row.minKey]: min, [row.maxKey]: max };
-}
+// One membership flag per linkable axis kind, defaulting to linked. Panel controls are one flat
+// shape shared by every module -- a spectrum keeps a `waveformCentroid` it never reads — so these
+// live alongside the rest rather than being gated by module.
+const AXIS_LINK_CONTROLS = Object.values(AXIS_VIEWPORTS).map((kind) => ({
+  key: kind.linkKey,
+  kind: "boolean",
+  default: true,
+}));
 
 const CONTROLS = [
   {
@@ -715,6 +676,7 @@ const CONTROLS = [
     },
   },
   { key: "waveformCentroid", kind: "boolean", default: false },
+  ...AXIS_LINK_CONTROLS,
 ];
 
 /** A row's contribution to a normalized record: `{ key: value }`, or both bounds for a range. */

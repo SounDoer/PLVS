@@ -1,6 +1,7 @@
 /** @import { TreeNode, ModuleId, WorkspaceState } from './types.js' */
 import { createPanel } from "./panelInstances.js";
 import { normalizePanelControlsById } from "./panelControlInstances.js";
+import { normalizeAxisViewportsState } from "./axisViewports.js";
 
 /** @type {ModuleId[]} */
 export const ALL_MODULE_IDS = [
@@ -68,4 +69,5 @@ export const DEFAULT_WORKSPACE_STATE = {
   fullscreenId: null,
   panelControlsById: DEFAULT_PANEL_CONTROLS_BY_ID,
   pinnedPanelsById: {},
+  axisViewports: normalizeAxisViewportsState(),
 };

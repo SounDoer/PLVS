@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useState } f
 import { bindWorkspaceActions, normalizePinnedPanelsById, workspaceReducer } from "./reducer.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { normalizePanelControlsById } from "./panelControlInstances.js";
+import { normalizeAxisViewportsState } from "./axisViewports.js";
 import { hasKnownModulesOnly } from "./panelInstances.js";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
 
@@ -15,6 +16,7 @@ function ownedWorkspaceState(state) {
     fullscreenId: state.fullscreenId,
     panelControlsById: state.panelControlsById,
     pinnedPanelsById: state.pinnedPanelsById,
+    axisViewports: state.axisViewports,
   };
 }
 
@@ -45,6 +47,7 @@ function initState() {
     panelOrder: parsed.panelOrder,
     panelControlsById: normalizePanelControlsById(parsed.panelsById, parsed.panelControlsById),
     pinnedPanelsById: normalizePinnedPanelsById(parsed.panelsById, parsed.pinnedPanelsById),
+    axisViewports: normalizeAxisViewportsState(parsed.axisViewports),
     fullscreenId: null, // transient view state: never restored across launches
   };
 }
