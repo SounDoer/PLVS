@@ -713,6 +713,7 @@ function AppContent() {
   historyPerformanceRequestKeysRef.current = {
     spectrumKeys: analysisRequests.spectrum.map((request) => request.key),
     vectorscopeKeys: analysisRequests.vectorscope.map((request) => request.key),
+    stereoMapKeys: analysisRequests.stereoMap.map((request) => request.key),
   };
 
   useEffect(() => {
