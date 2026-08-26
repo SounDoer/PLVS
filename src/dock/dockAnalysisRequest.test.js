@@ -13,6 +13,7 @@ import {
   dockStereoMapKey,
   dockVectorscopeKey,
   mergeDockAnalysisRequests,
+  mergeDockRetainedKeys,
   mergeDockSpectrumRequest,
 } from "./dockAnalysisRequest.js";
 
@@ -222,5 +223,47 @@ describe("mergeDockAnalysisRequests", () => {
     ]);
     expect(merged.stereoMapRequests).toHaveLength(MAX_STEREO_MAP_REQUESTS);
     expect(merged.stereoMapRequests.at(-1)?.key).toBe("stereoMap:pair:8:9:sp50:sm12");
+  });
+});
+
+describe("mergeDockRetainedKeys", () => {
+  const EMPTY_RETAINED = { spectrum: new Set(), vectorscope: new Set(), stereoMap: new Set() };
+
+  it("is a no-op without dock panels", () => {
+    expect(mergeDockRetainedKeys(EMPTY_RETAINED, [])).toBe(EMPTY_RETAINED);
+    expect(mergeDockRetainedKeys(EMPTY_RETAINED, undefined)).toBe(EMPTY_RETAINED);
+  });
+
+  it("adds a key for each dock module family", () => {
+    const merged = mergeDockRetainedKeys(EMPTY_RETAINED, [
+      { panelId: "spectrum", moduleId: "spectrum", controls: {} },
+      { panelId: "vectorscope", moduleId: "vectorscope", controls: {} },
+      { panelId: "stereoMap", moduleId: "stereo-map", controls: {} },
+      { panelId: "level", moduleId: "levelMeter", controls: {} },
+    ]);
+    expect(merged.spectrum).toContain(dockSpectrumKey({}));
+    expect(merged.vectorscope).toContain(dockVectorscopeKey({}));
+    expect(merged.stereoMap).toContain(dockStereoMapKey({}));
+  });
+
+  it("keeps the workspace keys and does not mutate the input", () => {
+    const retained = {
+      spectrum: new Set(["panel-key"]),
+      vectorscope: new Set(),
+      stereoMap: new Set(),
+    };
+    const merged = mergeDockRetainedKeys(retained, [
+      { panelId: "spectrum", moduleId: "spectrum", controls: {} },
+    ]);
+    expect(merged.spectrum).toContain("panel-key");
+    expect(merged.spectrum.size).toBe(2);
+    expect(retained.spectrum.size).toBe(1);
+  });
+
+  it("puts a dock Spectrogram module in the Spectrum family", () => {
+    const merged = mergeDockRetainedKeys(EMPTY_RETAINED, [
+      { panelId: "spectrogram", moduleId: "spectrogram", controls: {} },
+    ]);
+    expect(merged.spectrum.size).toBe(1);
   });
 });

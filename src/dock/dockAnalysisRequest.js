@@ -174,6 +174,33 @@ export function mergeDockStereoMapRequest(derived, active) {
   };
 }
 
+/**
+ * Adds the dock modules' keys to the retained set. Layered on top of the analysis half the same
+ * way `mergeDockAnalysisRequests` is, so the dock keeps depending on analysis and not the reverse.
+ *
+ * Dock keys are retained whether or not the dock is currently showing: `AppShell` renders the
+ * strip or the panels, never both, so whichever is hidden comes back intact.
+ */
+export function mergeDockRetainedKeys(retained, dockPanels) {
+  if (!Array.isArray(dockPanels) || dockPanels.length === 0) return retained;
+  const spectrum = new Set(retained.spectrum);
+  const vectorscope = new Set(retained.vectorscope);
+  const stereoMap = new Set(retained.stereoMap);
+
+  for (const panel of dockPanels) {
+    const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
+    if (dockModuleId === "spectrum" || dockModuleId === "spectrogram") {
+      spectrum.add(dockSpectrumKey(panel.controls));
+    } else if (dockModuleId === "correlation") {
+      vectorscope.add(dockVectorscopeKey(panel.controls));
+    } else if (dockModuleId === "stereoMap") {
+      stereoMap.add(dockStereoMapKey(panel.controls));
+    }
+  }
+
+  return { spectrum, vectorscope, stereoMap };
+}
+
 export function mergeDockAnalysisRequests(derived, active) {
   const merged = mergeDockVectorscopeRequest(
     mergeDockStereoMapRequest(mergeDockSpectrumRequest(derived, active), active),
