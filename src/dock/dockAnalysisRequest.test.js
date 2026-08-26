@@ -15,6 +15,8 @@ import {
   mergeDockAnalysisRequests,
   mergeDockRetainedKeys,
   mergeDockSpectrumRequest,
+  mergeDockStereoMapRequest,
+  mergeDockVectorscopeRequest,
 } from "./dockAnalysisRequest.js";
 
 const EMPTY_DERIVED = deriveAnalysisRequests({ tree: null, panelsById: {}, panelOrder: [] });
@@ -310,5 +312,26 @@ describe("dock merge over-cap bookkeeping", () => {
     const merged = mergeDockSpectrumRequest(EMPTY_DERIVED, true);
     expect(merged.overCapSpectrumRequests).toHaveLength(0);
     expect(merged.statusByPanelId).toBe(EMPTY_DERIVED.statusByPanelId);
+  });
+
+  const filled = (n) =>
+    Array.from({ length: n }, (_, i) => ({ key: `k${i}`, panelIds: [`p${i}`] }));
+
+  it("records the panel requests the dock squeezed out, per family: stereoMap", () => {
+    const derived = { ...EMPTY_DERIVED, stereoMapRequests: filled(MAX_STEREO_MAP_REQUESTS) };
+    const merged = mergeDockStereoMapRequest(derived, true);
+    expect(merged.overCapStereoMapRequests.map((r) => r.key)).toContain(
+      `k${MAX_STEREO_MAP_REQUESTS - 1}`
+    );
+    expect(merged.statusByPanelId[`p${MAX_STEREO_MAP_REQUESTS - 1}`]).toBe("overCap");
+  });
+
+  it("records the panel requests the dock squeezed out, per family: vectorscope", () => {
+    const derived = { ...EMPTY_DERIVED, vectorscopeRequests: filled(MAX_VECTORSCOPE_REQUESTS) };
+    const merged = mergeDockVectorscopeRequest(derived, true);
+    expect(merged.overCapVectorscopeRequests.map((r) => r.key)).toContain(
+      `k${MAX_VECTORSCOPE_REQUESTS - 1}`
+    );
+    expect(merged.statusByPanelId[`p${MAX_VECTORSCOPE_REQUESTS - 1}`]).toBe("overCap");
   });
 });

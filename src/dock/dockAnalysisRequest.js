@@ -50,11 +50,16 @@ function dockVectorscopeRequest(raw, panelId = "dock:vectorscope") {
  * Every request that does not reach the merged set is recorded, so the request set stops claiming
  * a panel is active while nothing computes it. Both halves matter: panel requests the dock
  * squeezed out, and dock requests the final cap could not fit.
+ *
+ * Returns a patch meant to be spread after `...derived`; empty when nothing was dropped. Dropped
+ * dock requests get an `"overCap"` entry in `statusByPanelId`, but dock requests that fit are
+ * never marked `"active"`, so the map is not a complete picture of dock ids either way.
  */
-function recordDropped(derived, before, merged, overCapField) {
+function recordDropped(derived, candidates, merged, overCapField) {
   const mergedKeys = new Set(merged.map((request) => request.key));
-  const dropped = before.filter((request) => !mergedKeys.has(request.key));
-  if (dropped.length === 0) return { [overCapField]: derived[overCapField] };
+  const dropped = candidates.filter((request) => !mergedKeys.has(request.key));
+  // No patch when nothing was dropped, so the caller keeps `derived`'s own status map by reference.
+  if (dropped.length === 0) return {};
   const statusByPanelId = { ...derived.statusByPanelId };
   for (const request of dropped) {
     for (const panelId of request.panelIds) statusByPanelId[panelId] = "overCap";
