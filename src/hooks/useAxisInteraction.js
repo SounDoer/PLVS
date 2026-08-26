@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  computeLinearPan,
-  computeLinearZoom,
-  computeLogPan,
-  computeLogZoom,
-  pixelToLinearValue,
-  pixelToLogValue,
-  ACTIVE_PULSE_MS,
+  anchorFromPointer,
+  panRange,
+  zoomRange,
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../math/axisInteractionMath";
+import { useAxisActivePulse } from "./useAxisActivePulse";
 import { useAxisSize } from "./useAxisSize";
 
 export function useAxisInteraction({
@@ -27,28 +24,17 @@ export function useAxisInteraction({
   const { axisRef, axisPx } = useAxisSize(axis);
   const dragRef = useRef(null);
   const moveCleanupRef = useRef(null);
-  const activeTimerRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isActive, setIsActive] = useState(false);
+  const {
+    active: isActive,
+    pulse: pulseActive,
+    hold: holdActive,
+    release: releaseActive,
+  } = useAxisActivePulse();
   const cursorStyle = axis === "y" ? "ns-resize" : "ew-resize";
 
-  const pulseActive = useCallback(() => {
-    setIsActive(true);
-    if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
-    activeTimerRef.current = window.setTimeout(() => {
-      activeTimerRef.current = null;
-      setIsActive(false);
-    }, ACTIVE_PULSE_MS);
-  }, []);
-
-  useEffect(
-    () => () => {
-      moveCleanupRef.current?.();
-      if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
-    },
-    []
-  );
+  useEffect(() => () => moveCleanupRef.current?.(), []);
 
   const onWheel = useCallback(
     (e) => {
@@ -56,32 +42,24 @@ export function useAxisInteraction({
       const el = axisRef.current;
       if (!el || typeof onRangeChange !== "function") return;
       const rect = el.getBoundingClientRect();
-      const isY = axis === "y";
-      const size = Math.max(1, isY ? rect.height : rect.width);
-      const rawPx = isY ? e.clientY - rect.top : e.clientX - rect.left;
-      const px = isY ? rawPx : size - rawPx;
-
-      const factor = e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR;
-      const next =
-        scale === "log"
-          ? computeLogZoom({
-              min,
-              max,
-              absMin,
-              absMax,
-              minOctaves: minSpan,
-              anchor: pixelToLogValue(px, size, min, max),
-              factor,
-            })
-          : computeLinearZoom({
-              min,
-              max,
-              absMin,
-              absMax,
-              minSpan,
-              anchor: pixelToLinearValue(px, size, min, max),
-              factor,
-            });
+      const next = zoomRange({
+        min,
+        max,
+        absMin,
+        absMax,
+        minSpan,
+        scale,
+        anchor: anchorFromPointer({
+          rect,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          axis,
+          scale,
+          min,
+          max,
+        }),
+        factor: e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR,
+      });
       onRangeChange(next.min, next.max);
       pulseActive();
     },
@@ -99,8 +77,7 @@ export function useAxisInteraction({
         startMax: max,
       };
       setIsDragging(true);
-      if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
-      setIsActive(true);
+      holdActive();
 
       const onMouseMove = (moveEvent) => {
         const drag = dragRef.current;
@@ -111,31 +88,22 @@ export function useAxisInteraction({
         const currentPx = isY ? moveEvent.clientY : moveEvent.clientX;
         const rawDelta = currentPx - drag.startPx;
         const deltaPx = isY ? rawDelta : -rawDelta;
-        const next =
-          scale === "log"
-            ? computeLogPan({
-                min: drag.startMin,
-                max: drag.startMax,
-                absMin,
-                absMax,
-                deltaPx,
-                axisPx: size,
-              })
-            : computeLinearPan({
-                min: drag.startMin,
-                max: drag.startMax,
-                absMin,
-                absMax,
-                deltaPx,
-                axisPx: size,
-              });
+        const next = panRange({
+          min: drag.startMin,
+          max: drag.startMax,
+          absMin,
+          absMax,
+          deltaPx,
+          axisPx: size,
+          scale,
+        });
         onRangeChange(next.min, next.max);
       };
 
       const cleanup = () => {
         dragRef.current = null;
         setIsDragging(false);
-        setIsActive(false);
+        releaseActive();
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", cleanup);
         moveCleanupRef.current = null;
@@ -145,7 +113,7 @@ export function useAxisInteraction({
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", cleanup);
     },
-    [absMax, absMin, axis, axisRef, max, min, onRangeChange, scale]
+    [absMax, absMin, axis, axisRef, holdActive, max, min, onRangeChange, releaseActive, scale]
   );
 
   const onDoubleClick = useCallback(

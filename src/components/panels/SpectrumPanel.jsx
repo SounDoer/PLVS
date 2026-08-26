@@ -19,6 +19,7 @@ import {
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
+import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -33,17 +34,20 @@ import {
   spectrumDbToYViewBox,
 } from "../../config/scales";
 import {
-  computeLinearPan,
-  computeLinearZoom,
-  computeLogPan,
-  computeLogZoom,
-  pixelToLinearValue,
-  pixelToLogValue,
-  ACTIVE_PULSE_MS,
+  anchorFromPointer,
+  panRange,
+  zoomRange,
+  FREQUENCY_VIEWPORT,
   WHEEL_PAN_SCALE,
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
+
+// Shared by the axis rails and the plot area, which edit the same two ranges. The y rail resets to
+// -96 rather than to absMin -- a default, not a bound, so it stays out of this.
+const SPECTRUM_Y_VIEWPORT = { absMin: -120, absMax: 0, minSpan: 12, scale: "linear" };
+// Identity is what matters here: useAxisActivePulse rebuilds its callbacks when this changes.
+const NO_AXIS_ACTIVE = { x: false, y: false };
 
 const HOLD_SMOOTHING_DELAY_MS = 300;
 const HOLD_SMOOTHING_CANCEL_PX = 4;
@@ -131,12 +135,9 @@ export function SpectrumPanel({ compact = false }) {
     axis: "y",
     min: normalizedPanelControls.spectrumYMinDb,
     max: normalizedPanelControls.spectrumYMaxDb,
-    absMin: -120,
-    absMax: 0,
+    ...SPECTRUM_Y_VIEWPORT,
     defaultMin: -96,
     defaultMax: 0,
-    minSpan: 12,
-    scale: "linear",
     onRangeChange: useCallback(
       (newMin, newMax) =>
         updatePanelControlsRange({ spectrumYMinDb: newMin, spectrumYMaxDb: newMax }),
@@ -147,12 +148,9 @@ export function SpectrumPanel({ compact = false }) {
     axis: "x",
     min: normalizedPanelControls.spectrumXMinFreq,
     max: normalizedPanelControls.spectrumXMaxFreq,
-    absMin: 20,
-    absMax: 20000,
-    defaultMin: 20,
-    defaultMax: 20000,
-    minSpan: 1,
-    scale: "log",
+    ...FREQUENCY_VIEWPORT,
+    defaultMin: FREQUENCY_VIEWPORT.absMin,
+    defaultMax: FREQUENCY_VIEWPORT.absMax,
     onRangeChange: useCallback(
       (newMin, newMax) =>
         updatePanelControlsRange({ spectrumXMinFreq: newMin, spectrumXMaxFreq: newMax }),
@@ -333,9 +331,7 @@ export function SpectrumPanel({ compact = false }) {
   const holdSmoothingPointerRef = useRef(null);
   const holdSmoothingActiveRef = useRef(false);
   const chartHoverRef = useRef(false);
-  const chartActiveTimerRef = useRef(null);
   const suppressChartClickRef = useRef(false);
-  const [chartAxisActive, setChartAxisActive] = useState({ x: false, y: false });
   const [chartCtrlHover, setChartCtrlHover] = useState(false);
   const [chartDragging, setChartDragging] = useState(false);
   useEffect(() => {
@@ -353,12 +349,6 @@ export function SpectrumPanel({ compact = false }) {
       window.removeEventListener("blur", clearCtrlHover);
     };
   }, []);
-  useEffect(
-    () => () => {
-      if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-    },
-    []
-  );
   const clearPendingHoldSmoothing = useCallback(() => {
     if (holdSmoothingTimerRef.current != null) {
       window.clearTimeout(holdSmoothingTimerRef.current);
@@ -400,34 +390,25 @@ export function SpectrumPanel({ compact = false }) {
     },
     [clearPendingHoldSmoothing, historyChartInteractive, selectedOffset]
   );
-  const pulseChartAxis = useCallback((axes) => {
-    setChartAxisActive({
-      x: Boolean(axes?.x),
-      y: Boolean(axes?.y),
-    });
-    if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-    chartActiveTimerRef.current = window.setTimeout(() => {
-      chartActiveTimerRef.current = null;
-      setChartAxisActive({ x: false, y: false });
-    }, ACTIVE_PULSE_MS);
-  }, []);
+  const { active: chartAxisActive, pulse: pulseAxes } = useAxisActivePulse(NO_AXIS_ACTIVE);
+  const pulseChartAxis = useCallback(
+    (axes) => pulseAxes({ x: Boolean(axes?.x), y: Boolean(axes?.y) }),
+    [pulseAxes]
+  );
   const zoomSpectrumXFromChart = useCallback(
     (e, factor) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const width = Math.max(1, rect.width);
-      const px = width - Math.max(0, Math.min(width, e.clientX - rect.left));
-      const next = computeLogZoom({
+      const next = zoomRange({
         min: normalizedPanelControls.spectrumXMinFreq,
         max: normalizedPanelControls.spectrumXMaxFreq,
-        absMin: 20,
-        absMax: 20000,
-        minOctaves: 1,
-        anchor: pixelToLogValue(
-          px,
-          width,
-          normalizedPanelControls.spectrumXMinFreq,
-          normalizedPanelControls.spectrumXMaxFreq
-        ),
+        ...FREQUENCY_VIEWPORT,
+        anchor: anchorFromPointer({
+          rect: e.currentTarget.getBoundingClientRect(),
+          clientX: e.clientX,
+          axis: "x",
+          scale: FREQUENCY_VIEWPORT.scale,
+          min: normalizedPanelControls.spectrumXMinFreq,
+          max: normalizedPanelControls.spectrumXMaxFreq,
+        }),
         factor,
       });
       updatePanelControlsRange({ spectrumXMinFreq: next.min, spectrumXMaxFreq: next.max });
@@ -442,21 +423,18 @@ export function SpectrumPanel({ compact = false }) {
   );
   const zoomSpectrumYFromChart = useCallback(
     (e, factor) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const height = Math.max(1, rect.height);
-      const px = Math.max(0, Math.min(height, e.clientY - rect.top));
-      const next = computeLinearZoom({
+      const next = zoomRange({
         min: normalizedPanelControls.spectrumYMinDb,
         max: normalizedPanelControls.spectrumYMaxDb,
-        absMin: -120,
-        absMax: 0,
-        minSpan: 12,
-        anchor: pixelToLinearValue(
-          px,
-          height,
-          normalizedPanelControls.spectrumYMinDb,
-          normalizedPanelControls.spectrumYMaxDb
-        ),
+        ...SPECTRUM_Y_VIEWPORT,
+        anchor: anchorFromPointer({
+          rect: e.currentTarget.getBoundingClientRect(),
+          clientY: e.clientY,
+          axis: "y",
+          scale: SPECTRUM_Y_VIEWPORT.scale,
+          min: normalizedPanelControls.spectrumYMinDb,
+          max: normalizedPanelControls.spectrumYMaxDb,
+        }),
         factor,
       });
       updatePanelControlsRange({ spectrumYMinDb: next.min, spectrumYMaxDb: next.max });
@@ -471,11 +449,10 @@ export function SpectrumPanel({ compact = false }) {
   );
   const panSpectrumXFromChart = useCallback(
     (rect, deltaPx, startRange = normalizedPanelControls) => {
-      const next = computeLogPan({
+      const next = panRange({
         min: startRange.spectrumXMinFreq,
         max: startRange.spectrumXMaxFreq,
-        absMin: 20,
-        absMax: 20000,
+        ...FREQUENCY_VIEWPORT,
         deltaPx,
         axisPx: Math.max(1, rect.width),
       });
@@ -485,11 +462,10 @@ export function SpectrumPanel({ compact = false }) {
   );
   const panSpectrumYFromChart = useCallback(
     (rect, deltaPx, startRange = normalizedPanelControls) => {
-      const next = computeLinearPan({
+      const next = panRange({
         min: startRange.spectrumYMinDb,
         max: startRange.spectrumYMaxDb,
-        absMin: -120,
-        absMax: 0,
+        ...SPECTRUM_Y_VIEWPORT,
         deltaPx,
         axisPx: Math.max(1, rect.height),
       });

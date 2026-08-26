@@ -5,17 +5,20 @@ import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { loudnessTraceGradientStops } from "@/lib/loudnessTraceColor.js";
 import { RuleGradient } from "./LoudnessRuleGradient.jsx";
 import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
+import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import {
-  computeLinearPan,
-  computeLinearZoom,
-  pixelToLinearValue,
-  ACTIVE_PULSE_MS,
+  anchorFromPointer,
+  panRange,
+  zoomRange,
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
+
+// Both the y axis rail and the plot area edit this range, so the bounds live in one place.
+const LOUDNESS_Y_VIEWPORT = { absMin: -64, absMax: 0, minSpan: 12, scale: "linear" };
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
@@ -73,30 +76,17 @@ export function LoudnessHistoryChart({
     axis: "y",
     min: loudnessYMinDb,
     max: loudnessYMaxDb,
-    absMin: -64,
-    absMax: 0,
-    defaultMin: -64,
-    defaultMax: 0,
-    minSpan: 12,
-    scale: "linear",
+    ...LOUDNESS_Y_VIEWPORT,
+    defaultMin: LOUDNESS_Y_VIEWPORT.absMin,
+    defaultMax: LOUDNESS_Y_VIEWPORT.absMax,
     onRangeChange: onLoudnessYRangeChange,
   });
-  const chartActiveTimerRef = useRef(null);
-  const [chartYAxisActive, setChartYAxisActive] = useState(false);
-  const pulseChartYAxis = useCallback(() => {
-    setChartYAxisActive(true);
-    if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-    chartActiveTimerRef.current = window.setTimeout(() => {
-      chartActiveTimerRef.current = null;
-      setChartYAxisActive(false);
-    }, ACTIVE_PULSE_MS);
-  }, []);
-  useEffect(
-    () => () => {
-      if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-    },
-    []
-  );
+  const {
+    active: chartYAxisActive,
+    pulse: pulseChartYAxis,
+    hold: holdChartYAxis,
+    release: releaseChartYAxis,
+  } = useAxisActivePulse();
   const onChartWheel = useCallback(
     (e) => {
       if (!e.ctrlKey || typeof onLoudnessYRangeChange !== "function") {
@@ -105,15 +95,18 @@ export function LoudnessHistoryChart({
       }
       e.preventDefault();
       const rect = e.currentTarget.getBoundingClientRect();
-      const height = Math.max(1, rect.height);
-      const px = Math.max(0, Math.min(height, e.clientY - rect.top));
-      const next = computeLinearZoom({
+      const next = zoomRange({
         min: loudnessYMinDb,
         max: loudnessYMaxDb,
-        absMin: -64,
-        absMax: 0,
-        minSpan: 12,
-        anchor: pixelToLinearValue(px, height, loudnessYMinDb, loudnessYMaxDb),
+        ...LOUDNESS_Y_VIEWPORT,
+        anchor: anchorFromPointer({
+          rect,
+          clientY: e.clientY,
+          axis: "y",
+          scale: LOUDNESS_Y_VIEWPORT.scale,
+          min: loudnessYMinDb,
+          max: loudnessYMaxDb,
+        }),
         factor: e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR,
       });
       onLoudnessYRangeChange(next.min, next.max);
@@ -168,12 +161,11 @@ export function LoudnessHistoryChart({
           max: loudnessYMaxDb,
         };
         setChartDragging(true);
-        if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-        setChartYAxisActive(true);
+        holdChartYAxis();
       }
       onHistoryPointerDown?.(e);
     },
-    [loudnessYMaxDb, loudnessYMinDb, onHistoryPointerDown, onLoudnessYRangeChange]
+    [holdChartYAxis, loudnessYMaxDb, loudnessYMinDb, onHistoryPointerDown, onLoudnessYRangeChange]
   );
 
   const onChartPointerMove = useCallback(
@@ -183,31 +175,30 @@ export function LoudnessHistoryChart({
       const drag = chartYDragRef.current;
       if (drag && typeof onLoudnessYRangeChange === "function") {
         const rect = e.currentTarget.getBoundingClientRect();
-        const next = computeLinearPan({
+        const next = panRange({
           min: drag.min,
           max: drag.max,
-          absMin: -64,
-          absMax: 0,
+          ...LOUDNESS_Y_VIEWPORT,
           deltaPx: e.clientY - drag.startY,
           axisPx: Math.max(1, rect.height),
         });
         onLoudnessYRangeChange(next.min, next.max);
-        setChartYAxisActive(true);
+        holdChartYAxis();
         return;
       }
       onHistoryHoverMove?.(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
     },
-    [onHistoryHoverMove, onHistoryPointerMove, onLoudnessYRangeChange]
+    [holdChartYAxis, onHistoryHoverMove, onHistoryPointerMove, onLoudnessYRangeChange]
   );
 
   const onChartPointerUp = useCallback(
     (e) => {
       chartYDragRef.current = null;
       setChartDragging(false);
-      setChartYAxisActive(false);
+      releaseChartYAxis();
       onHistoryPointerUp?.(e);
     },
-    [onHistoryPointerUp]
+    [onHistoryPointerUp, releaseChartYAxis]
   );
 
   return (

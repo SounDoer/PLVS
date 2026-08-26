@@ -34,9 +34,10 @@ import {
   rangedFromTopFrac,
 } from "../../config/scales";
 import {
-  computeLogPan,
-  computeLogZoom,
-  pixelToLogValue,
+  anchorFromPointer,
+  panRange,
+  zoomRange,
+  FREQUENCY_VIEWPORT,
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
@@ -145,12 +146,9 @@ export function StereoMapPanel() {
     axis: "x",
     min: normalizedPanelControls.stereoMapXMinFreq,
     max: normalizedPanelControls.stereoMapXMaxFreq,
-    absMin: 20,
-    absMax: 20000,
-    defaultMin: 20,
-    defaultMax: 20000,
-    minSpan: 1,
-    scale: "log",
+    ...FREQUENCY_VIEWPORT,
+    defaultMin: FREQUENCY_VIEWPORT.absMin,
+    defaultMax: FREQUENCY_VIEWPORT.absMax,
     onRangeChange: useCallback(
       (newMin, newMax) =>
         updatePanelControlsRange({ stereoMapXMinFreq: newMin, stereoMapXMaxFreq: newMax }),
@@ -250,16 +248,18 @@ export function StereoMapPanel() {
 
   const zoomStereoMapXFromChart = useCallback(
     (e, factor) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const width = Math.max(1, rect.width);
-      const px = width - Math.max(0, Math.min(width, e.clientX - rect.left));
-      const next = computeLogZoom({
+      const next = zoomRange({
         min: xMinHz,
         max: xMaxHz,
-        absMin: 20,
-        absMax: 20000,
-        minOctaves: 1,
-        anchor: pixelToLogValue(px, width, xMinHz, xMaxHz),
+        ...FREQUENCY_VIEWPORT,
+        anchor: anchorFromPointer({
+          rect: e.currentTarget.getBoundingClientRect(),
+          clientX: e.clientX,
+          axis: "x",
+          scale: FREQUENCY_VIEWPORT.scale,
+          min: xMinHz,
+          max: xMaxHz,
+        }),
         factor,
       });
       updatePanelControlsRange({ stereoMapXMinFreq: next.min, stereoMapXMaxFreq: next.max });
@@ -268,11 +268,10 @@ export function StereoMapPanel() {
   );
 
   const panStereoMapXFromChart = useCallback((rect, deltaPx, startRange) => {
-    const next = computeLogPan({
+    const next = panRange({
       min: startRange.stereoMapXMinFreq,
       max: startRange.stereoMapXMaxFreq,
-      absMin: 20,
-      absMax: 20000,
+      ...FREQUENCY_VIEWPORT,
       deltaPx,
       axisPx: Math.max(1, rect.width),
     });

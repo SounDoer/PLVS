@@ -10,14 +10,16 @@ import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
+import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import {
+  anchorFromPointer,
   computeLogPan,
-  computeLogZoom,
-  pixelToLogValue,
-  ACTIVE_PULSE_MS,
+  panRange,
+  zoomRange,
+  FREQUENCY_VIEWPORT,
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
@@ -96,12 +98,9 @@ export function SpectrogramPanel({ compact = false }) {
     axis: "y",
     min: normalizedPanelControls.spectrogramYMinFreq,
     max: normalizedPanelControls.spectrogramYMaxFreq,
-    absMin: 20,
-    absMax: 20000,
-    defaultMin: 20,
-    defaultMax: 20000,
-    minSpan: 1,
-    scale: "log",
+    ...FREQUENCY_VIEWPORT,
+    defaultMin: FREQUENCY_VIEWPORT.absMin,
+    defaultMax: FREQUENCY_VIEWPORT.absMax,
     onRangeChange: useCallback(
       (newMin, newMax) => {
         onPanelControlsChange?.(
@@ -115,22 +114,12 @@ export function SpectrogramPanel({ compact = false }) {
       [normalizedPanelControls, onPanelControlsChange]
     ),
   });
-  const chartActiveTimerRef = useRef(null);
-  const [chartYAxisActive, setChartYAxisActive] = useState(false);
-  const pulseChartYAxis = useCallback(() => {
-    setChartYAxisActive(true);
-    if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-    chartActiveTimerRef.current = window.setTimeout(() => {
-      chartActiveTimerRef.current = null;
-      setChartYAxisActive(false);
-    }, ACTIVE_PULSE_MS);
-  }, []);
-  useEffect(
-    () => () => {
-      if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-    },
-    []
-  );
+  const {
+    active: chartYAxisActive,
+    pulse: pulseChartYAxis,
+    hold: holdChartYAxis,
+    release: releaseChartYAxis,
+  } = useAxisActivePulse();
   // Turns a pointer event into the floor-plane coordinate it lands on. Every handler below was
   // written against the 2D projection, where the horizontal screen axis is time and the vertical
   // one is frequency; under the rotated 3D floor neither holds, so interaction has to go through
@@ -207,22 +196,19 @@ export function SpectrogramPanel({ compact = false }) {
           normalizedPanelControls.spectrogramYMaxFreq
         );
       } else {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const height = Math.max(1, rect.height);
-        const px = Math.max(0, Math.min(height, e.clientY - rect.top));
-        anchor = pixelToLogValue(
-          px,
-          height,
-          normalizedPanelControls.spectrogramYMinFreq,
-          normalizedPanelControls.spectrogramYMaxFreq
-        );
+        anchor = anchorFromPointer({
+          rect: e.currentTarget.getBoundingClientRect(),
+          clientY: e.clientY,
+          axis: "y",
+          scale: FREQUENCY_VIEWPORT.scale,
+          min: normalizedPanelControls.spectrogramYMinFreq,
+          max: normalizedPanelControls.spectrogramYMaxFreq,
+        });
       }
-      const next = computeLogZoom({
+      const next = zoomRange({
         min: normalizedPanelControls.spectrogramYMinFreq,
         max: normalizedPanelControls.spectrogramYMaxFreq,
-        absMin: 20,
-        absMax: 20000,
-        minOctaves: 1,
+        ...FREQUENCY_VIEWPORT,
         anchor,
         factor: e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR,
       });
@@ -437,13 +423,13 @@ export function SpectrogramPanel({ compact = false }) {
           max: normalizedPanelControls.spectrogramYMaxFreq,
         };
         setChartDragging(true);
-        if (chartActiveTimerRef.current != null) window.clearTimeout(chartActiveTimerRef.current);
-        setChartYAxisActive(true);
+        holdChartYAxis();
       }
       onHistoryPointerDown?.(toTimeProxyEvent(e, floor));
     },
     [
       cursorToFloor,
+      holdChartYAxis,
       is3d,
       normalizedPanelControls.spectrogram3dAzimuthDeg,
       normalizedPanelControls.spectrogram3dElevationDeg,
@@ -480,18 +466,17 @@ export function SpectrogramPanel({ compact = false }) {
           next = computeLogPan({
             min: drag.min,
             max: drag.max,
-            absMin: 20,
-            absMax: 20000,
+            absMin: FREQUENCY_VIEWPORT.absMin,
+            absMax: FREQUENCY_VIEWPORT.absMax,
             deltaPx: floor.fFrac - drag.startFFrac,
             axisPx: 1,
           });
         } else {
           const rect = e.currentTarget.getBoundingClientRect();
-          next = computeLogPan({
+          next = panRange({
             min: drag.min,
             max: drag.max,
-            absMin: 20,
-            absMax: 20000,
+            ...FREQUENCY_VIEWPORT,
             deltaPx: e.clientY - drag.startY,
             axisPx: Math.max(1, rect.height),
           });
@@ -503,13 +488,14 @@ export function SpectrogramPanel({ compact = false }) {
             spectrogramYMaxFreq: next.max,
           })
         );
-        setChartYAxisActive(true);
+        holdChartYAxis();
         return;
       }
       onSpectrogramHoverMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
     },
     [
       cursorToFloor,
+      holdChartYAxis,
       is3d,
       normalizedPanelControls,
       onHistoryPointerMove,
@@ -524,7 +510,7 @@ export function SpectrogramPanel({ compact = false }) {
       rotateDragRef.current = null;
       chartYDragRef.current = null;
       setChartDragging(false);
-      setChartYAxisActive(false);
+      releaseChartYAxis();
 
       if (is3d && e.button === 2) {
         const moved =
@@ -553,7 +539,7 @@ export function SpectrogramPanel({ compact = false }) {
 
       onHistoryPointerUp?.(e);
     },
-    [is3d, normalizedPanelControls, onHistoryPointerUp, onPanelControlsChange]
+    [is3d, normalizedPanelControls, onHistoryPointerUp, onPanelControlsChange, releaseChartYAxis]
   );
 
   if (isOverCap) {

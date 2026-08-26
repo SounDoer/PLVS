@@ -93,3 +93,35 @@ export function pixelToLogValue(px, axisPx, min, max) {
   const frac = 1 - Math.max(0, Math.min(axisPx, px)) / Math.max(1, axisPx);
   return 2 ** (Math.log2(min) + frac * (Math.log2(max) - Math.log2(min)));
 }
+
+// Every editable frequency axis in the app spans the same range with the same floor: the spectrum's
+// and stereo map's X, the spectrogram's Y. Each used to spell the three numbers out at both its
+// axis rail and its plot area, so a panel could disagree with itself.
+export const FREQUENCY_VIEWPORT = { absMin: 20, absMax: 20000, minSpan: 1, scale: "log" };
+
+// The three helpers below exist because axis rails and plot areas differ only in which element the
+// pointer is over -- the range arithmetic behind both is identical, and was copied five times.
+
+// Reads the value under the pointer. X axes are mirrored: they read left-to-right, while
+// pixelTo*Value measures its fraction from the far end.
+export function anchorFromPointer({ rect, clientX, clientY, axis, scale, min, max }) {
+  const isY = axis === "y";
+  const size = Math.max(1, isY ? rect.height : rect.width);
+  const raw = isY ? clientY - rect.top : clientX - rect.left;
+  const px = isY ? raw : size - raw;
+  return scale === "log"
+    ? pixelToLogValue(px, size, min, max)
+    : pixelToLinearValue(px, size, min, max);
+}
+
+export function zoomRange({ min, max, absMin, absMax, minSpan, scale, anchor, factor }) {
+  return scale === "log"
+    ? computeLogZoom({ min, max, absMin, absMax, minOctaves: minSpan, anchor, factor })
+    : computeLinearZoom({ min, max, absMin, absMax, minSpan, anchor, factor });
+}
+
+export function panRange({ min, max, absMin, absMax, deltaPx, axisPx, scale }) {
+  return scale === "log"
+    ? computeLogPan({ min, max, absMin, absMax, deltaPx, axisPx })
+    : computeLinearPan({ min, max, absMin, absMax, deltaPx, axisPx });
+}
