@@ -33,7 +33,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        run: rustup toolchain install --no-self-update
 
       - name: Install dependencies
         run: npm ci

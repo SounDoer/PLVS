@@ -58,9 +58,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
+        run: rustup toolchain install --no-self-update
 
       - name: Install Linux dependencies (Tauri / WebKit / audio)
         run: |
@@ -92,9 +90,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
+        run: rustup toolchain install --no-self-update
 
       # The Windows config declares the ffmpeg/ffprobe externalBin, so the crate will not compile
       # without them present. Node is preinstalled on GitHub runners.

@@ -121,7 +121,7 @@ impl WaveformAccumulator {
 }
 
 fn reset_pairs(pairs: &mut [f32]) {
-  for pair in pairs.chunks_exact_mut(2) {
+  for pair in pairs.as_chunks_mut::<2>().0 {
     pair[0] = f32::INFINITY;
     pair[1] = f32::NEG_INFINITY;
   }
