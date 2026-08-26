@@ -7,6 +7,13 @@ import {
 import { createPanel, trimCustomTitle } from "./panelInstances.js";
 import { findLeafWithTab, insertLeaf, removeTab, updateNode } from "./treeUtils.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
+import {
+  AXIS_VIEWPORTS,
+  countLinkedParticipants,
+  normalizeAxisViewport,
+  readLocalRange,
+  writeLocalRange,
+} from "./axisViewports.js";
 
 // A freshly added panel takes a modest slice of the existing layout instead of an even 50/50
 // split, so the whole pre-existing tree doesn't collapse to half its size on every add.
@@ -398,6 +405,67 @@ export function workspaceReducer(state, action) {
       };
     }
 
+    // Joining and leaving each change two things at once -- a membership flag and a range. Doing
+    // them as one action is the point: a render between the two halves would show a panel that
+    // claims to be linked while still drawing its own range, or the reverse.
+    case "SET_AXIS_VIEWPORT": {
+      const { kindId, range } = action.payload;
+      if (!AXIS_VIEWPORTS[kindId]) return state;
+      return {
+        ...state,
+        axisViewports: {
+          ...state.axisViewports,
+          [kindId]: normalizeAxisViewport(kindId, range),
+        },
+      };
+    }
+
+    case "JOIN_AXIS_VIEWPORT": {
+      const { kindId, panelId } = action.payload;
+      const descriptor = AXIS_VIEWPORTS[kindId];
+      const moduleId = state.panelsById[panelId]?.moduleId;
+      if (!descriptor?.members[moduleId]) return state;
+
+      // A group that already exists keeps its range and the joiner adopts it; the first panel in
+      // seeds it from its own. Reading the count with the joiner excluded is what makes re-forming
+      // a group after everyone left start from a live value rather than the dormant one.
+      const hasGroup = countLinkedParticipants(state, kindId, panelId) > 0;
+      const controls = state.panelControlsById[panelId];
+      const seed = hasGroup
+        ? state.axisViewports?.[kindId]
+        : readLocalRange(kindId, moduleId, controls);
+
+      return {
+        ...state,
+        axisViewports: {
+          ...state.axisViewports,
+          [kindId]: normalizeAxisViewport(kindId, seed),
+        },
+        panelControlsById: updatePanelControlsById(state.panelControlsById, panelId, {
+          ...controls,
+          [descriptor.linkKey]: true,
+        }),
+      };
+    }
+
+    case "LEAVE_AXIS_VIEWPORT": {
+      const { kindId, panelId } = action.payload;
+      const descriptor = AXIS_VIEWPORTS[kindId];
+      const moduleId = state.panelsById[panelId]?.moduleId;
+      if (!descriptor?.members[moduleId]) return state;
+
+      // The panel keeps what it was showing, so unlinking is invisible until the next gesture.
+      const parting = normalizeAxisViewport(kindId, state.axisViewports?.[kindId]);
+      return {
+        ...state,
+        panelControlsById: updatePanelControlsById(state.panelControlsById, panelId, {
+          ...state.panelControlsById[panelId],
+          ...writeLocalRange(kindId, moduleId, parting),
+          [descriptor.linkKey]: false,
+        }),
+      };
+    }
+
     case "RESET_WORKSPACE":
       return { ...DEFAULT_WORKSPACE_STATE };
 
@@ -437,6 +505,12 @@ export function bindWorkspaceActions(dispatch) {
       dispatch({ type: "RESET_PANEL_CONTROLS_FOR_PANEL", payload: { id } }),
     setPanelControls: (panelControls) =>
       dispatch({ type: "SET_PANEL_CONTROLS", payload: { panelControls } }),
+    setAxisViewport: (kindId, range) =>
+      dispatch({ type: "SET_AXIS_VIEWPORT", payload: { kindId, range } }),
+    joinAxisViewport: (kindId, panelId) =>
+      dispatch({ type: "JOIN_AXIS_VIEWPORT", payload: { kindId, panelId } }),
+    leaveAxisViewport: (kindId, panelId) =>
+      dispatch({ type: "LEAVE_AXIS_VIEWPORT", payload: { kindId, panelId } }),
     resetWorkspace: () => dispatch({ type: "RESET_WORKSPACE" }),
   };
 }

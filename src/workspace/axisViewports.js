@@ -79,3 +79,37 @@ export function normalizeAxisViewportsState(raw) {
     ])
   );
 }
+
+/**
+ * How many panels are currently navigating a kind's shared viewport. Membership is derived, never
+ * stored: a panel counts when its module is a member of the kind and its flag is on. Pass
+ * `excludePanelId` to ask the question as it will stand once that panel has left.
+ */
+export function countLinkedParticipants(state, kindId, excludePanelId) {
+  const descriptor = AXIS_VIEWPORTS[kindId];
+  if (!descriptor) return 0;
+  return Object.keys(state?.panelsById ?? {}).filter((panelId) => {
+    if (panelId === excludePanelId) return false;
+    const moduleId = state.panelsById[panelId]?.moduleId;
+    if (!descriptor.members[moduleId]) return false;
+    return state.panelControlsById?.[panelId]?.[descriptor.linkKey] === true;
+  }).length;
+}
+
+/**
+ * The range a panel should actually render, and whether it came from the group. This is the only
+ * question a panel asks: it never learns where the value is stored.
+ *
+ * @returns {{ min: number, max: number, linked: boolean } | null} null for a panel outside the kind
+ */
+export function resolveAxisViewport(state, panelId, kindId) {
+  const descriptor = AXIS_VIEWPORTS[kindId];
+  const moduleId = state?.panelsById?.[panelId]?.moduleId;
+  if (!descriptor?.members[moduleId]) return null;
+
+  const controls = state.panelControlsById?.[panelId];
+  if (controls?.[descriptor.linkKey] === true) {
+    return { ...normalizeAxisViewport(kindId, state.axisViewports?.[kindId]), linked: true };
+  }
+  return { ...readLocalRange(kindId, moduleId, controls), linked: false };
+}
