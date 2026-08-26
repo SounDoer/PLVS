@@ -90,6 +90,12 @@ a leak, but at four-hour retention one such Spectrum slab is 1.38 GB.
 It is not "change back within three seconds and your history returns" — that promise was dropped
 above, and nothing should be written down that invites users to rely on it.
 
+`nowMs` here is the normalized visual timestamp, i.e. media time, not wall-clock time. During file
+analysis a single `visualHistBatch` can advance media time well past 3 s inside one synchronous
+`applyFrame`, so the margin collapses to roughly zero in that path. That is harmless — the
+dangerous ordering this grace period guards against is closed elsewhere — and dropping an abandoned
+key faster there is the intended outcome, not a bug.
+
 ### Where the retained key set comes from
 
 **Not** from the request list handed to Rust. That list answers "what should the engine compute
@@ -125,7 +131,10 @@ Workspace panels and dock modules are both retained regardless of the current `d
   avoids a cycle.
 - `src/lib/FrameIntake.js` — add `setRetainedVisualKeys(keysByFamily, windowMs)` and a private
   sweep run at the end of `pushVisualHistRow`.
-- `src/App.jsx` — memoize the retained key set and push it into the intake.
+- `src/App.jsx` — memoize the retained key set and push it into every ingesting intake
+  (`useIntakeRouting`'s `ingestingIntakes`: live + file-analysis), not just `intakeRef.current`.
+- `src/hooks/useIntakeRouting.js` — exposes `ingestingIntakes`, the set of intakes `App.jsx` calls
+  `setRetainedVisualKeys` on.
 
 `deriveRetainedAnalysisKeys` must not reach `workspace/registry.jsx`. `analysisRequests.js` already
 imports `panelInstances.js` and `panelControlInstances.js` only, which is the safe side of the trap
