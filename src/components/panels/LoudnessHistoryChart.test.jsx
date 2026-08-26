@@ -47,16 +47,25 @@ const baseProps = {
   onHistoryHoverLeave: vi.fn(),
 };
 
-function renderChart(loudnessHistoryVisibleLayerIds) {
+function renderChart(loudnessHistoryVisibleLayerIds, overrides = {}) {
   return render(
     <LoudnessHistoryChart
       {...baseProps}
       loudnessHistoryVisibleLayerIds={loudnessHistoryVisibleLayerIds}
+      {...overrides}
     />
   );
 }
 
 describe("LoudnessHistoryChart", () => {
+  it("shows which edge contains a selected sample outside this panel's window", () => {
+    renderChart(["momentary"], { selectionEdge: "left" });
+
+    expect(screen.getByTestId("timeline-selection-edge-hint").getAttribute("data-direction")).toBe(
+      "left"
+    );
+  });
+
   it("renders the momentary path with a plain stroke and draws the reference line when ref is on", () => {
     const { container } = renderChart(["momentary", "ref"]);
 

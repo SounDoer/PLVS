@@ -188,6 +188,29 @@ Capture and restore shared viewport, membership and dormant local values, applie
 
 Move `clampedWindowSec`, `effectiveOffsetSec`, `effectiveOffsetSamples`, `visibleSamples`, `historyTimeTicks`, `historyTimeAxisHandlers`, `historyTimeAxisActive`, the four `onHistory*` handlers and the HUD trio from a single computation in `App.jsx` into per-instance state for each timeline panel. This is the bulk of the phase; expand it into sub-tasks before starting.
 
+#### Task 10a: Separate global history inputs from panel-local viewport output
+
+- Keep the raw shared `historyWindowSec` / `historyOffsetSec` pair temporarily in
+  `useLoudnessHistory`; Task 11 replaces its storage through the axis adapter.
+- Extract the render-time clamp, selection-line placement and time-tick construction into a
+  panel-instance hook fed by global history inputs plus an effective viewport.
+- Cover live/file clamping and selection placement with hook tests before moving callers.
+
+#### Task 10b: Give each timeline mount its own interaction and HUD lifecycle
+
+- Move `useHistoryInteraction` and the HUD hold/timer state into the panel-instance hook.
+- Build the hook in both normal leaves and the fullscreen overlay, and expose its result through
+  the existing panel instance boundary so panel bodies and their Settings menu read the same data.
+- Keep non-timeline panels and Dock on the global history data path.
+
+#### Task 10c: Remove the App-owned derived cluster
+
+- Migrate Loudness, Spectrogram, Waveform and their Time Range rows to the localized value without
+  changing their public `useHistoryData()` consumption seam.
+- Remove the derived viewport, interaction handlers and HUD fields from `App.jsx`; retain only raw
+  history/source inputs and globally meaningful selection/snapshot data.
+- Run focused panel/settings tests, then the complete frontend test suite before starting Task 11.
+
 ### Task 11: Add time as the second axis kind
 
 Descriptor, membership flag, and the same adapter. If Phase 2's mechanism was built correctly this is mostly configuration.

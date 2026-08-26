@@ -10,6 +10,7 @@ import {
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.jsx";
+import { usePanelHistoryData } from "../hooks/usePanelHistoryData.js";
 import { usePanelAxisViewports } from "./axisViewportHooks.js";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
@@ -166,11 +167,13 @@ export function LeafView({ node, path, style }) {
   const slotPinnedTitle = slotPinnedId ? resolvePanelDisplayName(state, slotPinnedId) : "";
   const pathAttr = JSON.stringify(path);
   const axisViewportData = usePanelAxisViewports(activeTab);
+  const panelHistoryData = usePanelHistoryData(activeModuleId, axisViewportData);
   const panelInstanceData = useMemo(
     () => ({
       panelControls,
       onPanelControlsChange: activeTab ? onPanelControlsChange : undefined,
       ...axisViewportData,
+      historyData: panelHistoryData,
       analysisStatus: chromeData?.analysisStatusByPanelId?.[activeTab],
       panelVisible: !state.fullscreenId,
     }),
@@ -180,6 +183,7 @@ export function LeafView({ node, path, style }) {
       chromeData?.analysisStatusByPanelId,
       onPanelControlsChange,
       panelControls,
+      panelHistoryData,
       state.fullscreenId,
     ]
   );

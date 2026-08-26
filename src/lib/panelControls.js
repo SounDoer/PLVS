@@ -676,6 +676,20 @@ const CONTROLS = [
     },
   },
   { key: "waveformCentroid", kind: "boolean", default: false },
+  {
+    key: "historyWindowSec",
+    kind: "number",
+    min: AXIS_VIEWPORTS.time.minWindowSec,
+    max: Number.MAX_SAFE_INTEGER,
+    default: AXIS_VIEWPORTS.time.defaultWindowSec,
+  },
+  {
+    key: "historyOffsetSec",
+    kind: "number",
+    min: 0,
+    max: Number.MAX_SAFE_INTEGER,
+    default: 0,
+  },
   ...AXIS_LINK_CONTROLS,
 ];
 

@@ -40,6 +40,10 @@
  *   stereoMapMonoLossYMinDb: number,
  *   stereoMapMsRatioYMinDb: number,
  *   stereoMapMsRatioYMaxDb: number,
+ *   historyWindowSec: number,
+ *   historyOffsetSec: number,
+ *   linkFrequencyViewport: boolean,
+ *   linkTimeViewport: boolean,
  * }} PanelControls
  *
  * @typedef {{
@@ -49,6 +53,10 @@
  *   fullscreenId: PanelId | null,
  *   panelControlsById: Record<PanelId, PanelControls>,
  *   pinnedPanelsById: Record<PanelId, PinnedPanelSize>,
+ *   axisViewports: {
+ *     frequency: { min: number, max: number },
+ *     time: { windowSec: number, offsetSec: number },
+ *   },
  * }} WorkspaceState
  *
  * @typedef {{
@@ -60,6 +68,10 @@
  *   panelOrder: PanelId[],
  *   panelControlsById: Record<PanelId, PanelControls>,
  *   pinnedPanelsById?: Record<PanelId, PinnedPanelSize>,
+ *   axisViewports?: {
+ *     frequency: { min: number, max: number },
+ *     time: { windowSec: number, offsetSec: number },
+ *   },
  *   dock?: {
  *     enabled: boolean,
  *     edge: 'top' | 'bottom',

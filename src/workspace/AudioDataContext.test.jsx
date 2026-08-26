@@ -89,6 +89,22 @@ describe("panel instance data seam", () => {
     expect(result.current.displayAudio).toBeUndefined();
   });
 
+  it("lets a panel instance override only its history view", () => {
+    const globalHistory = { selectedOffset: 5, clampedWindowSec: 30 };
+    const panelHistory = { ...globalHistory, clampedWindowSec: 10 };
+    const wrapper = ({ children }) => (
+      <PanelDataProviders historyData={globalHistory}>
+        <PanelInstanceProvider value={{ historyData: panelHistory }}>
+          {children}
+        </PanelInstanceProvider>
+      </PanelDataProviders>
+    );
+
+    const { result } = renderHook(() => useHistoryData(), { wrapper });
+
+    expect(result.current).toBe(panelHistory);
+  });
+
   it("supplies low-frequency workspace chrome independently", () => {
     const chrome = { compactPanels: true, channelCount: 6 };
     const wrapper = ({ children }) => (

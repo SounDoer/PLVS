@@ -23,7 +23,9 @@ export function HistoryDataProvider({ value, children }) {
 }
 
 export function useHistoryData() {
-  return useContext(HistoryDataContext);
+  const globalHistoryData = useContext(HistoryDataContext);
+  const panelInstanceData = useContext(PanelInstanceContext);
+  return panelInstanceData?.historyData ?? globalHistoryData;
 }
 
 export function MetricsDataProvider({ value, children }) {

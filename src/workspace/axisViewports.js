@@ -1,5 +1,7 @@
 import { FREQUENCY_VIEWPORT } from "../math/axisInteractionMath.js";
-import { normalizeRange } from "../lib/rangeNormalization.js";
+import { HISTORY_MIN_WINDOW_SEC } from "../math/historyMath.js";
+import { UI_PREFERENCES } from "../uiPreferences.js";
+import { isNumber, normalizeRange } from "../lib/rangeNormalization.js";
 
 /**
  * One entry per linkable axis kind. A kind is a *quantity* — panels sharing it are grouped by what
@@ -25,10 +27,31 @@ export const AXIS_VIEWPORTS = {
     absMin: FREQUENCY_VIEWPORT.absMin,
     absMax: FREQUENCY_VIEWPORT.absMax,
     minSpan: FREQUENCY_VIEWPORT.minSpan,
+    localFields: { min: "minKey", max: "maxKey" },
     members: {
       spectrum: { minKey: "spectrumXMinFreq", maxKey: "spectrumXMaxFreq" },
       spectrogram: { minKey: "spectrogramYMinFreq", maxKey: "spectrogramYMaxFreq" },
       "stereo-map": { minKey: "stereoMapXMinFreq", maxKey: "stereoMapXMaxFreq" },
+    },
+  },
+  time: {
+    id: "time",
+    linkKey: "linkTimeViewport",
+    defaultWindowSec: UI_PREFERENCES.modules.loudness.history.defaultWindowSec,
+    minWindowSec: HISTORY_MIN_WINDOW_SEC,
+    localFields: { windowSec: "windowSecKey", offsetSec: "offsetSecKey" },
+    members: {
+      loudness: { windowSecKey: "historyWindowSec", offsetSecKey: "historyOffsetSec" },
+      spectrogram: { windowSecKey: "historyWindowSec", offsetSecKey: "historyOffsetSec" },
+      waveform: { windowSecKey: "historyWindowSec", offsetSecKey: "historyOffsetSec" },
+    },
+    normalize(raw) {
+      return {
+        windowSec: isNumber(raw?.windowSec)
+          ? Math.max(HISTORY_MIN_WINDOW_SEC, raw.windowSec)
+          : UI_PREFERENCES.modules.loudness.history.defaultWindowSec,
+        offsetSec: isNumber(raw?.offsetSec) ? Math.max(0, raw.offsetSec) : 0,
+      };
     },
   },
 };
@@ -42,6 +65,7 @@ export function axisKindsForModule(moduleId) {
 export function normalizeAxisViewport(kindId, raw) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   if (!descriptor) return null;
+  if (descriptor.normalize) return descriptor.normalize(raw);
   return normalizeRange(descriptor, raw ?? {});
 }
 
@@ -52,16 +76,28 @@ export function localRangeKeys(kindId, moduleId) {
 
 /** @returns {{ min: number, max: number } | null} a member's dormant local range */
 export function readLocalRange(kindId, moduleId, panelControls) {
+  const descriptor = AXIS_VIEWPORTS[kindId];
   const keys = localRangeKeys(kindId, moduleId);
-  if (!keys) return null;
-  return { min: panelControls?.[keys.minKey], max: panelControls?.[keys.maxKey] };
+  if (!descriptor || !keys) return null;
+  return Object.fromEntries(
+    Object.entries(descriptor.localFields).map(([viewportKey, memberKey]) => [
+      viewportKey,
+      panelControls?.[keys[memberKey]],
+    ])
+  );
 }
 
 /** @returns {object} a panel-controls patch putting a range under a member's own keys */
-export function writeLocalRange(kindId, moduleId, { min, max }) {
+export function writeLocalRange(kindId, moduleId, viewport) {
+  const descriptor = AXIS_VIEWPORTS[kindId];
   const keys = localRangeKeys(kindId, moduleId);
-  if (!keys) return {};
-  return { [keys.minKey]: min, [keys.maxKey]: max };
+  if (!descriptor || !keys) return {};
+  return Object.fromEntries(
+    Object.entries(descriptor.localFields).map(([viewportKey, memberKey]) => [
+      keys[memberKey],
+      viewport[viewportKey],
+    ])
+  );
 }
 
 /**

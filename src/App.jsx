@@ -12,8 +12,7 @@ import {
 } from "./runtime/appRuntimeDerivations.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { normalizePanelControls } from "./lib/panelControls.js";
-import { HISTORY_MIN_WINDOW_SEC } from "./math/historyMath";
-import { useHistoryInteraction } from "./hooks/useHistoryInteraction";
+import { normalizeAxisViewport } from "./workspace/axisViewports.js";
 import {
   useLoudnessHistory,
   HIST_SAMPLE_SEC,
@@ -124,7 +123,37 @@ export default function App() {
 }
 
 function AppContent() {
-  const { state: workspaceState, setPanelControlsForPanel } = useWorkspaceStore();
+  const { state: workspaceState, setPanelControlsForPanel, setAxisViewport } = useWorkspaceStore();
+  const sharedTimeViewport = useMemo(
+    () => normalizeAxisViewport("time", workspaceState.axisViewports?.time),
+    [workspaceState.axisViewports?.time]
+  );
+  const sharedTimeViewportRef = useRef(sharedTimeViewport);
+  useEffect(() => {
+    sharedTimeViewportRef.current = sharedTimeViewport;
+  }, [sharedTimeViewport]);
+  const setHistoryWindowSec = useCallback(
+    (nextWindowSec) => {
+      const current = sharedTimeViewportRef.current;
+      const windowSec =
+        typeof nextWindowSec === "function" ? nextWindowSec(current.windowSec) : nextWindowSec;
+      const next = { ...current, windowSec };
+      sharedTimeViewportRef.current = next;
+      setAxisViewport("time", next);
+    },
+    [setAxisViewport]
+  );
+  const setHistoryOffsetSec = useCallback(
+    (nextOffsetSec) => {
+      const current = sharedTimeViewportRef.current;
+      const offsetSec =
+        typeof nextOffsetSec === "function" ? nextOffsetSec(current.offsetSec) : nextOffsetSec;
+      const next = { ...current, offsetSec };
+      sharedTimeViewportRef.current = next;
+      setAxisViewport("time", next);
+    },
+    [setAxisViewport]
+  );
   useAppGlobalEffects();
   const {
     sourceMode,
@@ -562,32 +591,12 @@ function AppContent() {
     audio,
   });
 
-  const {
-    setHistoryWindowSec,
-    setHistoryOffsetSec,
-    setHistoryHudUntilTs,
-    setHistoryHudHold,
-    historyChartInteractive,
-    totalSamples,
-    clampedWindowSec,
-    visibleSamples,
-    maxOffsetSamples,
-    effectiveOffsetSamples,
-    effectiveOffsetSec,
-    showSelLine,
-    selLineX,
-    isHistoryHudVisible,
-    historyTimeTicks,
-    statsMetrics,
-  } = useLoudnessHistory({
+  const { historyChartInteractive, totalSamples, statsMetrics } = useLoudnessHistory({
     histSourceList,
     hasHistoryData,
     running,
     displayAudio,
     referenceLufs,
-    selectedOffset,
-    sourceMode,
-    historyMaxWindowSec: historyRetentionSec,
   });
 
   const hasTpMaxValue = Number.isFinite(displayAudio?.tpMax);
@@ -606,7 +615,7 @@ function AppContent() {
       : targetTimestampMs;
 
   // Once a file's duration is known (probe metadata while analyzing, or the final summary), fit the
-  // loudness-history window to the whole file and reset scrub so the full analyzed curve shows over
+  // shared time window to the whole file and reset scrub so the full analyzed curve shows over
   // an absolute media-time axis. selectedOffset is intentionally not a dependency so user scrubbing
   // afterwards is preserved; getHistoryViewport clamps the window to [MIN, MAX].
   useEffect(() => {
@@ -625,15 +634,9 @@ function AppContent() {
     if (previousHistoryRetentionSecRef.current === historyRetentionSec) return;
     previousHistoryRetentionSecRef.current = historyRetentionSec;
     setSelectedOffset(-1);
-    setHistoryOffsetSec(0);
-    setHistoryWindowSec((current) =>
-      Math.min(
-        current,
-        historyRetentionSec,
-        UI_PREFERENCES.modules.loudness.history.defaultWindowSec
-      )
-    );
-  }, [historyRetentionSec, setHistoryOffsetSec, setHistoryWindowSec, setSelectedOffset]);
+    // Each panel clamps the persisted viewport against the new retention at render time. Keep the
+    // stored shared and dormant local values intact so increasing retention can reveal them again.
+  }, [historyRetentionSec, setSelectedOffset]);
 
   const latestTimestampMs = useMemo(() => {
     const last =
@@ -965,38 +968,10 @@ function AppContent() {
     }
   }, [dockControlsByPanelId, dockPanels, setDockPanelControls, spectrumChannelOptions]);
 
-  const {
-    showHistoryHud,
-    holdHistoryHud,
-    onHistoryPointerDown,
-    onHistoryPointerMove,
-    onHistoryPointerUp,
-    onHistoryWheel,
-    isTimeAxisActive,
-    historyTimeAxisHandlers,
-  } = useHistoryInteraction({
-    enabled: historyChartInteractive,
-    sampleSec: HIST_SAMPLE_SEC,
-    minWindowSec: HISTORY_MIN_WINDOW_SEC,
-    maxWindowSec: historyRetentionSec,
-    defaultWindowSec: UI_PREFERENCES.modules.loudness.history.defaultWindowSec,
-    totalSamples,
-    visibleSamples,
-    maxOffsetSamples,
-    effectiveOffsetSamples,
-    effectiveOffsetSec,
-    setSelectedOffset,
-    setHistoryOffsetSec,
-    setHistoryWindowSec,
-    setHistoryHudUntilTs,
-    setHistoryHudHold,
-  });
-
   const captureCurrentSnapshot = useCallback(() => {
     if (!historyChartInteractive || totalSamples <= 0) return;
     setSelectedOffset(0);
-    showHistoryHud(1600);
-  }, [historyChartInteractive, totalSamples, setSelectedOffset, showHistoryHud]);
+  }, [historyChartInteractive, totalSamples, setSelectedOffset]);
 
   const resetTpMax = async () => {
     if (isTauri()) {
@@ -1323,6 +1298,8 @@ function AppContent() {
     // rather than the stored window, because those are what the axis labels are built from.
     sourceMode,
     historyMaxWindowSec: historyRetentionSec,
+    historyWindowSec: sharedTimeViewport.windowSec,
+    historyOffsetSec: sharedTimeViewport.offsetSec,
     setHistoryWindowSec,
     setHistoryOffsetSec,
     running,
@@ -1331,25 +1308,9 @@ function AppContent() {
     shortTermRules: loudnessTraceRules.shortTerm,
     hasHistoryData,
     historyChartInteractive,
-    showSelLine,
-    selLineX,
-    isHistoryHudVisible,
-    clampedWindowSec,
-    effectiveOffsetSec,
-    historyTimeTicks,
-    holdHistoryHud,
-    showHistoryHud,
-    onHistoryWheel,
-    onHistoryPointerDown,
-    onHistoryPointerMove,
-    onHistoryPointerUp,
-    historyTimeAxisHandlers,
-    historyTimeAxisActive: isTimeAxisActive,
     captureCurrentSnapshot,
     frequencyMarkerRef,
     frequencyMarkerIndex,
-    effectiveOffsetSamples,
-    visibleSamples,
     totalSamples,
     histSourceList,
     loudnessDisplayIndex,

@@ -36,6 +36,7 @@ import { useChartHover } from "../../hooks/useChartHover";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeSpectrogramHoverPoint } from "../../math/hoverMath";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
+import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
 import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { selectSpectrogramCanvasTheme } from "../../theme/themeCanvasSelectors.js";
@@ -68,6 +69,7 @@ export function SpectrogramPanel() {
     selectedOffset,
     setSelectedOffset,
     showSelLine,
+    selectionEdge,
     selLineX,
     totalSamples,
     histSourceList,
@@ -668,6 +670,7 @@ export function SpectrogramPanel() {
                 </svg>
               ) : null}
               <TimelineLatestEdgeHint active={(effectiveOffsetSamples ?? 0) > 0} />
+              <TimelineSelectionEdgeHint direction={selectionEdge} />
               {spectrogramHover && (
                 <div className="pointer-events-none absolute inset-0">
                   {/* Vertical crosshair */}

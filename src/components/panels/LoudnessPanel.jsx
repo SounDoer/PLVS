@@ -31,6 +31,7 @@ export function LoudnessPanel() {
     historyTimeAxisActive,
     selectedOffset,
     showSelLine,
+    selectionEdge,
     selLineX,
     historyTimeTicks,
     effectiveOffsetSec,
@@ -209,6 +210,7 @@ export function LoudnessPanel() {
           displayHistoryPathST={displayHistoryPathSTForRange}
           selectedOffset={selectedOffset}
           showSelLine={showSelLine}
+          selectionEdge={selectionEdge}
           selLineX={selLineX}
           historyHover={historyHover}
           historyTimeTicks={historyTimeTicks}

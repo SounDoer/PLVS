@@ -156,7 +156,10 @@ describe("PanelSettingsContent frequency link toggle", () => {
       axisViewportInstance()
     );
 
-    expect(screen.getByLabelText("link frequency range").getAttribute("aria-pressed")).toBe("true");
+    const toggle = screen.getByLabelText("link frequency range");
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.mouseEnter(toggle);
+    expect(screen.getByText("Unlink Frequency Range").getAttribute("role")).toBe("tooltip");
   });
 
   it("leaves the group when pressed while linked", () => {
@@ -190,6 +193,8 @@ describe("PanelSettingsContent frequency link toggle", () => {
     const toggle = screen.getByLabelText("link frequency range");
 
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.mouseEnter(toggle);
+    expect(screen.getByText("Link Frequency Range").getAttribute("role")).toBe("tooltip");
     fireEvent.click(toggle);
 
     expect(instance.setAxisViewportLinked).toHaveBeenCalledWith("frequency", true);
@@ -208,6 +213,33 @@ describe("PanelSettingsContent frequency link toggle", () => {
 
     expect(screen.queryByLabelText("link frequency range")).toBeNull();
   });
+});
+
+describe("PanelSettingsContent time link toggle", () => {
+  it.each([["loudness"], ["spectrogram"], ["waveform"]])(
+    "shows the time membership control in %s settings",
+    (activeTab) => {
+      const setAxisViewportLinked = vi.fn();
+      renderWithInstance(
+        <PanelSettingsContent
+          activeTab={activeTab}
+          panelControls={DEFAULT_PANEL_CONTROLS}
+          onPanelControlsChange={vi.fn()}
+        />,
+        axisViewportInstance({
+          axisViewports: { time: { windowSec: 60, offsetSec: 0, linked: true } },
+          setAxisViewportLinked,
+        })
+      );
+
+      const toggle = screen.getByRole("button", { name: "link time range" });
+      expect(toggle.getAttribute("aria-pressed")).toBe("true");
+      fireEvent.mouseEnter(toggle);
+      expect(screen.getByText("Unlink Time Range").getAttribute("role")).toBe("tooltip");
+      fireEvent.click(toggle);
+      expect(setAxisViewportLinked).toHaveBeenCalledWith("time", false);
+    }
+  );
 });
 
 describe("PanelSettingsContent time range row", () => {
@@ -1882,6 +1914,72 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Panel settings" }).at(-1));
 
     expect(screen.getByRole("button", { name: "link frequency range" })).toBeTruthy();
+  });
+
+  it("shows the time link control in a workspace timeline panel's settings menu", () => {
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              ...historyDataWithViewport(),
+              histSourceList: [],
+              selectedOffset: -1,
+              setSelectedOffset: vi.fn(),
+              running: false,
+              hasHistoryData: false,
+              referenceLufs: -23,
+            }}
+          >
+            <LeafView
+              node={{ type: "leaf", tabs: ["loudness"], activeTab: "loudness" }}
+              path={[]}
+            />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+
+    expect(screen.getByRole("button", { name: "link time range" })).toBeTruthy();
+  });
+
+  it("shows the time link control in a fullscreen timeline panel's settings menu", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: { type: "leaf", tabs: ["loudness"], activeTab: "loudness" },
+        panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
+        panelOrder: ["loudness"],
+        panelControlsById: { loudness: DEFAULT_PANEL_CONTROLS },
+      })
+    );
+
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={vi.fn()}>
+          <TestPanelDataProviders
+            value={{
+              ...historyDataWithViewport(),
+              histSourceList: [],
+              selectedOffset: -1,
+              setSelectedOffset: vi.fn(),
+              running: false,
+              hasHistoryData: false,
+              referenceLufs: -23,
+            }}
+          >
+            <SplitLayout />
+          </TestPanelDataProviders>
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Panel settings" }).at(-1));
+
+    expect(screen.getByRole("button", { name: "link time range" })).toBeTruthy();
   });
 
   it("passes audio panel control changes through LeafView to the header controls", () => {

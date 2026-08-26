@@ -25,13 +25,13 @@ export function usePanelAxisViewports(panelId) {
     return Object.keys(resolved).length > 0 ? resolved : null;
   }, [panelId, state]);
 
-  const setAxisViewportRange = useCallback(
-    (kindId, min, max) => {
+  const setAxisViewportValue = useCallback(
+    (kindId, nextViewport) => {
       if (!panelId) return;
       // While linked the gesture moves the group; while not, it moves this panel's own control.
       // Which one is not the panel's business, which is why it goes through here.
       if (axisViewports?.[kindId]?.linked) {
-        setAxisViewport(kindId, { min, max });
+        setAxisViewport(kindId, nextViewport);
         return;
       }
       const moduleId = state.panelsById?.[panelId]?.moduleId;
@@ -39,11 +39,16 @@ export function usePanelAxisViewports(panelId) {
         panelId,
         normalizePanelControls({
           ...state.panelControlsById?.[panelId],
-          ...writeLocalRange(kindId, moduleId, { min, max }),
+          ...writeLocalRange(kindId, moduleId, nextViewport),
         })
       );
     },
     [axisViewports, panelId, setAxisViewport, setPanelControlsForPanel, state]
+  );
+
+  const setAxisViewportRange = useCallback(
+    (kindId, min, max) => setAxisViewportValue(kindId, { min, max }),
+    [setAxisViewportValue]
   );
 
   const setAxisViewportLinked = useCallback(
@@ -56,8 +61,13 @@ export function usePanelAxisViewports(panelId) {
   );
 
   return useMemo(
-    () => ({ axisViewports, setAxisViewportRange, setAxisViewportLinked }),
-    [axisViewports, setAxisViewportLinked, setAxisViewportRange]
+    () => ({
+      axisViewports,
+      setAxisViewportValue,
+      setAxisViewportRange,
+      setAxisViewportLinked,
+    }),
+    [axisViewports, setAxisViewportLinked, setAxisViewportRange, setAxisViewportValue]
   );
 }
 
@@ -113,5 +123,24 @@ export function useAxisViewport(kindId, localKeys) {
       setLinked,
     }),
     [max, min, setLinked, setRange, viewport]
+  );
+}
+
+/** The membership-only view used by controls that do not edit a min/max range directly. */
+export function useAxisViewportLink(kindId) {
+  const instance = usePanelInstanceData();
+  const viewport = instance?.axisViewports?.[kindId] ?? null;
+  const setLinked = useCallback(
+    (linked) => instance?.setAxisViewportLinked?.(kindId, linked),
+    [instance, kindId]
+  );
+
+  return useMemo(
+    () => ({
+      linked: viewport?.linked ?? false,
+      linkable: viewport != null,
+      setLinked,
+    }),
+    [setLinked, viewport]
   );
 }

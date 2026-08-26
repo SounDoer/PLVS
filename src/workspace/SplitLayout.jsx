@@ -10,6 +10,7 @@ import {
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { LeafView } from "./LeafView.jsx";
 import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.jsx";
+import { usePanelHistoryData } from "../hooks/usePanelHistoryData.js";
 import { usePanelAxisViewports } from "./axisViewportHooks.js";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
@@ -337,11 +338,13 @@ function FullscreenOverlay() {
     resetPanelControlsForPanel(fullscreenId);
   }, [fullscreenId, resetPanelControlsForPanel]);
   const axisViewportData = usePanelAxisViewports(fullscreenId);
+  const panelHistoryData = usePanelHistoryData(fullscreenModuleId, axisViewportData);
   const panelInstanceData = useMemo(
     () => ({
       panelControls,
       onPanelControlsChange: fullscreenId ? onPanelControlsChange : undefined,
       ...axisViewportData,
+      historyData: panelHistoryData,
       analysisStatus: chromeData?.analysisStatusByPanelId?.[fullscreenId],
       panelVisible: true,
     }),
@@ -351,6 +354,7 @@ function FullscreenOverlay() {
       fullscreenId,
       onPanelControlsChange,
       panelControls,
+      panelHistoryData,
     ]
   );
 

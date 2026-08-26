@@ -9,12 +9,14 @@ describe("the shared viewport in workspace state", () => {
   it("starts at the full range", () => {
     expect(DEFAULT_WORKSPACE_STATE.axisViewports).toEqual({
       frequency: { min: 20, max: 20000 },
+      time: { windowSec: 60, offsetSec: 0 },
     });
   });
 
   it("supplies every kind when a payload predates the feature", () => {
     expect(normalizeAxisViewportsState(undefined)).toEqual({
       frequency: { min: 20, max: 20000 },
+      time: { windowSec: 60, offsetSec: 0 },
     });
   });
 
@@ -31,6 +33,7 @@ describe("the shared viewport in workspace state", () => {
   it("keeps a valid stored value", () => {
     expect(normalizeAxisViewportsState({ frequency: { min: 200, max: 5000 } })).toEqual({
       frequency: { min: 200, max: 5000 },
+      time: { windowSec: 60, offsetSec: 0 },
     });
   });
 
@@ -40,13 +43,16 @@ describe("the shared viewport in workspace state", () => {
       loudnessOfTheAncients: { min: 0, max: 1 },
     });
 
-    expect(Object.keys(normalized)).toEqual(["frequency"]);
+    expect(Object.keys(normalized)).toEqual(["frequency", "time"]);
   });
 });
 
 describe("membership on panel controls", () => {
   it("defaults to linked", () => {
     expect(normalizePanelControls(DEFAULT_PANEL_CONTROLS).linkFrequencyViewport).toBe(true);
+    expect(normalizePanelControls(DEFAULT_PANEL_CONTROLS).linkTimeViewport).toBe(true);
+    expect(normalizePanelControls(DEFAULT_PANEL_CONTROLS).historyWindowSec).toBe(60);
+    expect(normalizePanelControls(DEFAULT_PANEL_CONTROLS).historyOffsetSec).toBe(0);
   });
 
   it("links a panel whose stored controls predate the feature", () => {

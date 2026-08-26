@@ -9,6 +9,7 @@ import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
+import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
 import {
   anchorFromPointer,
   panRange,
@@ -48,6 +49,7 @@ export function LoudnessHistoryChart({
   displayHistoryPathST,
   selectedOffset,
   showSelLine,
+  selectionEdge,
   selLineX,
   historyHover,
   historyTimeTicks,
@@ -318,6 +320,7 @@ export function LoudnessHistoryChart({
         {/* Overlays: hover crosshair and inspect HUD */}
         <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
           <TimelineLatestEdgeHint active={showLatestEdgeHint} />
+          <TimelineSelectionEdgeHint direction={selectionEdge} />
           {!hasSelectedLayer ? (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-[length:var(--ui-fs-axis)] text-muted-foreground">
               No layers selected

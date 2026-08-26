@@ -31,6 +31,14 @@ const unlinkedSpectrogram = (min, max) => ({
   moduleId: "spectrogram",
   controls: { linkFrequencyViewport: false, spectrogramYMinFreq: min, spectrogramYMaxFreq: max },
 });
+const timelinePanel = (moduleId, linked, windowSec = 60, offsetSec = 0) => ({
+  moduleId,
+  controls: {
+    linkTimeViewport: linked,
+    historyWindowSec: windowSec,
+    historyOffsetSec: offsetSec,
+  },
+});
 
 describe("countLinkedParticipants", () => {
   it("counts only members of the kind that are linked", () => {
@@ -224,5 +232,57 @@ describe("resolveAxisViewport", () => {
 
     expect(state.panelControlsById.a[minKey]).toBe(200);
     expect(state.panelControlsById.a[maxKey]).toBe(5000);
+  });
+});
+
+describe("time viewport", () => {
+  it("normalizes a shared time viewport without applying the dynamic retention maximum", () => {
+    const next = workspaceReducer(stateWith({ a: timelinePanel("loudness", true) }), {
+      type: "SET_AXIS_VIEWPORT",
+      payload: { kindId: "time", range: { windowSec: 7200, offsetSec: -10 } },
+    });
+
+    expect(next.axisViewports.time).toEqual({ windowSec: 7200, offsetSec: 0 });
+  });
+
+  it("seeds the first time group from the joining panel and preserves its dormant local value", () => {
+    const state = stateWith({ a: timelinePanel("waveform", false, 12, 4) });
+    const joined = workspaceReducer(state, {
+      type: "JOIN_AXIS_VIEWPORT",
+      payload: { kindId: "time", panelId: "a" },
+    });
+
+    expect(joined.axisViewports.time).toEqual({ windowSec: 12, offsetSec: 4 });
+    expect(joined.panelControlsById.a.linkTimeViewport).toBe(true);
+    expect(joined.panelControlsById.a.historyWindowSec).toBe(12);
+    expect(joined.panelControlsById.a.historyOffsetSec).toBe(4);
+  });
+
+  it("copies the shared time viewport locally when a panel leaves", () => {
+    const state = {
+      ...stateWith({
+        a: timelinePanel("loudness", true, 60, 0),
+        b: timelinePanel("spectrogram", true, 60, 0),
+      }),
+      axisViewports: {
+        frequency: { min: 20, max: 20000 },
+        time: { windowSec: 20, offsetSec: 8 },
+      },
+    };
+    const left = workspaceReducer(state, {
+      type: "LEAVE_AXIS_VIEWPORT",
+      payload: { kindId: "time", panelId: "a" },
+    });
+
+    expect(resolveAxisViewport(left, "a", "time")).toEqual({
+      windowSec: 20,
+      offsetSec: 8,
+      linked: false,
+    });
+    expect(resolveAxisViewport(left, "b", "time")).toEqual({
+      windowSec: 20,
+      offsetSec: 8,
+      linked: true,
+    });
   });
 });

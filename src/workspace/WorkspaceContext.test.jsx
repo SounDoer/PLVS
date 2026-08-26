@@ -175,11 +175,14 @@ describe("WorkspaceContext active preset divergence", () => {
     expect(presetsStore.read().dirty).toBe(true);
   });
 
-  it("marks presets dirty when the shared frequency viewport changes", () => {
+  it.each([
+    ["frequency", { min: 200, max: 5000 }],
+    ["time", { windowSec: 20, offsetSec: 4 }],
+  ])("marks presets dirty when the shared %s viewport changes", (kindId, viewport) => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1", dirty: false });
     const actions = renderActions();
 
-    act(() => actions.setAxisViewport("frequency", { min: 200, max: 5000 }));
+    act(() => actions.setAxisViewport(kindId, viewport));
 
     expect(presetsStore.read()).toMatchObject({ activeId: "p1", dirty: true });
   });

@@ -23,9 +23,10 @@ describe("axis viewport descriptors", () => {
   it("names only panel control keys that exist", () => {
     const controls = normalizePanelControls(DEFAULT_PANEL_CONTROLS);
     for (const kind of Object.values(AXIS_VIEWPORTS)) {
-      for (const { minKey, maxKey } of Object.values(kind.members)) {
-        expect(controls).toHaveProperty(minKey);
-        expect(controls).toHaveProperty(maxKey);
+      for (const member of Object.values(kind.members)) {
+        for (const memberKey of Object.values(kind.localFields)) {
+          expect(controls).toHaveProperty(member[memberKey]);
+        }
       }
     }
   });
@@ -49,7 +50,9 @@ describe("axis viewport descriptors", () => {
 describe("axisKindsForModule", () => {
   it("reports the kinds a module takes part in", () => {
     expect(axisKindsForModule("spectrum")).toEqual(["frequency"]);
-    expect(axisKindsForModule("spectrogram")).toEqual(["frequency"]);
+    expect(axisKindsForModule("spectrogram")).toEqual(["frequency", "time"]);
+    expect(axisKindsForModule("loudness")).toEqual(["time"]);
+    expect(axisKindsForModule("waveform")).toEqual(["time"]);
   });
 
   it("reports nothing for a module with no linkable axis", () => {

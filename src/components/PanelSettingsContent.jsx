@@ -25,7 +25,7 @@ import {
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
 import { edgesFromViewport, viewportFromEdges } from "@/math/timeViewportEdges.js";
 import { useHistoryData } from "@/workspace/AudioDataContext.jsx";
-import { useAxisViewport } from "@/workspace/axisViewportHooks.js";
+import { useAxisViewport, useAxisViewportLink } from "@/workspace/axisViewportHooks.js";
 import { AXIS_VIEWPORTS, axisKindForRangeRow } from "@/workspace/axisViewports.js";
 import { HIST_SAMPLE_SEC } from "@/hooks/useLoudnessHistory.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
@@ -33,6 +33,7 @@ import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
+import { HoverTip } from "@/components/HoverTip.jsx";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
@@ -227,24 +228,27 @@ export function SettingsSlider({
  * Like SettingsResetButton it must hold its width in both states -- the label column is
  * `max-content`, so a control that changed size here would shift the input beside it.
  */
-export function AxisLinkToggle({ kindId, label, localKeys }) {
-  const viewport = useAxisViewport(kindId, localKeys);
+export function AxisLinkToggle({ kindId, label, tipLabel }) {
+  const viewport = useAxisViewportLink(kindId);
   if (!viewport.linkable) return null;
 
   const Icon = viewport.linked ? Link2 : Link2Off;
+  const tip = `${viewport.linked ? "Unlink" : "Link"} ${tipLabel}`;
   return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={viewport.linked}
-      onClick={() => viewport.setLinked(!viewport.linked)}
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-xs outline-none transition-colors",
-        viewport.linked ? "text-foreground" : "text-muted-foreground/50 hover:text-foreground"
-      )}
-    >
-      <Icon className="size-[length:var(--ui-icon-panel-action)]" />
-    </button>
+    <HoverTip tip={tip} side="top">
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={viewport.linked}
+        onClick={() => viewport.setLinked(!viewport.linked)}
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-xs outline-none transition-colors",
+          viewport.linked ? "text-foreground" : "text-muted-foreground/50 hover:text-foreground"
+        )}
+      >
+        <Icon className="size-[length:var(--ui-icon-panel-action)]" />
+      </button>
+    </HoverTip>
   );
 }
 
@@ -252,13 +256,7 @@ export function AxisLinkToggle({ kindId, label, localKeys }) {
 export function RangeRowLinkToggle({ moduleId, minKey, label }) {
   const kindId = axisKindForRangeRow(moduleId, minKey);
   if (!kindId) return null;
-  return (
-    <AxisLinkToggle
-      kindId={kindId}
-      label={`link ${label.toLowerCase()}`}
-      localKeys={AXIS_VIEWPORTS[kindId].members[moduleId]}
-    />
-  );
+  return <AxisLinkToggle kindId={kindId} label={`link ${label.toLowerCase()}`} tipLabel={label} />;
 }
 
 function AxisViewportRangeInput({
@@ -307,7 +305,10 @@ export function TimeRangeRow() {
   const { left, right } = edgesFromViewport(viewport);
 
   return (
-    <SettingsRow label="Time Range">
+    <SettingsRow
+      label="Time Range"
+      controlAction={<AxisLinkToggle kindId="time" label="link time range" tipLabel="Time Range" />}
+    >
       <SettingsRangeInput
         minAriaLabel="time range min"
         maxAriaLabel="time range max"

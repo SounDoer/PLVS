@@ -19,6 +19,7 @@ import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
+import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import {
   centroidYFraction,
@@ -263,6 +264,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
     selectedOffset,
     selLineX,
     showSelLine,
+    selectionEdge,
     onHistoryPointerDown,
     onHistoryPointerMove,
     onHistoryPointerUp,
@@ -444,6 +446,14 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
         <TimelineLatestEdgeHint
           active={(effectiveOffsetSamples ?? 0) > 0}
           className="left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))] w-auto"
+        />
+        <TimelineSelectionEdgeHint
+          direction={selectionEdge}
+          className={
+            selectionEdge === "left"
+              ? "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))]"
+              : undefined
+          }
         />
 
         {/* Hover crosshair + popover 鈥?pointer-events-none so interaction overlay stays active */}
