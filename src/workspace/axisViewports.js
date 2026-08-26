@@ -113,3 +113,19 @@ export function resolveAxisViewport(state, panelId, kindId) {
   }
   return { ...readLocalRange(kindId, moduleId, controls), linked: false };
 }
+
+/**
+ * Which axis kind a panel-settings range row belongs to, matched by the control key it edits. Lets
+ * the data-driven row renderer hang a link toggle on the right row without a second table naming
+ * the same keys.
+ */
+export function axisKindForRangeRow(moduleId, minKey) {
+  // A row that edits a single key has no minKey. Without this guard the comparison below reads
+  // `undefined === undefined` for every non-member module and matches the first kind in the table.
+  if (!minKey) return null;
+  return (
+    Object.keys(AXIS_VIEWPORTS).find(
+      (kindId) => AXIS_VIEWPORTS[kindId].members[moduleId]?.minKey === minKey
+    ) ?? null
+  );
+}

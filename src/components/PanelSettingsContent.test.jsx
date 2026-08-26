@@ -9,7 +9,7 @@ import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { settingsStore } from "@/persistence/index.js";
 import { profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { STATS_CANONICAL_ORDER } from "@/lib/statsCatalog.js";
-import { PanelChromeProvider } from "@/workspace/AudioDataContext.jsx";
+import { PanelChromeProvider, PanelInstanceProvider } from "@/workspace/AudioDataContext.jsx";
 import { PanelDataProviders } from "@/workspace/PanelDataProviders.jsx";
 import { DragProvider } from "@/workspace/DragContext.jsx";
 import { LeafView } from "@/workspace/LeafView.jsx";
@@ -73,6 +73,122 @@ function renderWithHistory(ui, historyData = historyDataWithViewport()) {
 function timeRangeInputs() {
   return [screen.getByLabelText("time range min"), screen.getByLabelText("time range max")];
 }
+
+function axisViewportInstance(over = {}) {
+  return {
+    panelControls: DEFAULT_PANEL_CONTROLS,
+    onPanelControlsChange: vi.fn(),
+    axisViewports: { frequency: { min: 20, max: 20000, linked: true } },
+    setAxisViewportRange: vi.fn(),
+    setAxisViewportLinked: vi.fn(),
+    ...over,
+  };
+}
+
+function renderWithInstance(ui, instance) {
+  return render(
+    <PanelDataProviders historyData={historyDataWithViewport()}>
+      <PanelInstanceProvider value={instance}>{ui}</PanelInstanceProvider>
+    </PanelDataProviders>
+  );
+}
+
+describe("PanelSettingsContent frequency link toggle", () => {
+  it.each([["spectrum"], ["spectrogram"], ["stereo-map"]])(
+    "offers the toggle on the %s panel, which shares the frequency axis",
+    (activeTab) => {
+      renderWithInstance(
+        <PanelSettingsContent
+          activeTab={activeTab}
+          panelControls={DEFAULT_PANEL_CONTROLS}
+          onPanelControlsChange={vi.fn()}
+        />,
+        axisViewportInstance()
+      );
+
+      expect(screen.getByLabelText("link frequency range")).toBeTruthy();
+    }
+  );
+
+  it.each([["loudness"], ["waveform"], ["levelMeter"]])(
+    "leaves it off the %s panel, which has no frequency axis",
+    (activeTab) => {
+      renderWithInstance(
+        <PanelSettingsContent
+          activeTab={activeTab}
+          panelControls={DEFAULT_PANEL_CONTROLS}
+          onPanelControlsChange={vi.fn()}
+        />,
+        axisViewportInstance()
+      );
+
+      expect(screen.queryByLabelText("link frequency range")).toBeNull();
+    }
+  );
+
+  it("reads as linked by default", () => {
+    renderWithInstance(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />,
+      axisViewportInstance()
+    );
+
+    expect(screen.getByLabelText("link frequency range").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("leaves the group when pressed while linked", () => {
+    const instance = axisViewportInstance();
+    renderWithInstance(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />,
+      instance
+    );
+
+    fireEvent.click(screen.getByLabelText("link frequency range"));
+
+    expect(instance.setAxisViewportLinked).toHaveBeenCalledWith("frequency", false);
+  });
+
+  it("rejoins when pressed while unlinked", () => {
+    const instance = axisViewportInstance({
+      axisViewports: { frequency: { min: 200, max: 5000, linked: false } },
+    });
+    renderWithInstance(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />,
+      instance
+    );
+    const toggle = screen.getByLabelText("link frequency range");
+
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(toggle);
+
+    expect(instance.setAxisViewportLinked).toHaveBeenCalledWith("frequency", true);
+  });
+
+  it("stays out of the way with no workspace instance behind it", () => {
+    // The dock composes its editor from the exported rows, and never mounts this dispatch.
+    renderWithInstance(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />,
+      { panelControls: DEFAULT_PANEL_CONTROLS, onPanelControlsChange: vi.fn() }
+    );
+
+    expect(screen.queryByLabelText("link frequency range")).toBeNull();
+  });
+});
 
 describe("PanelSettingsContent time range row", () => {
   it.each([["loudness"], ["waveform"], ["spectrogram"]])(

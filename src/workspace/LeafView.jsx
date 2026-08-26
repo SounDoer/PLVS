@@ -10,6 +10,7 @@ import {
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { useDrag } from "./DragContext.jsx";
 import { PanelInstanceProvider, usePanelChromeData } from "./AudioDataContext.jsx";
+import { usePanelAxisViewports } from "./axisViewportHooks.js";
 import { HelpPopover } from "../components/HelpPopover.jsx";
 import { HoverTip } from "@/components/HoverTip";
 import { PanelSettingsMenu } from "../components/PanelSettingsMenu.jsx";
@@ -164,15 +165,18 @@ export function LeafView({ node, path, style }) {
   const slotPinnedByOther = Boolean(slotPinnedId && slotPinnedId !== activeTab);
   const slotPinnedTitle = slotPinnedId ? resolvePanelDisplayName(state, slotPinnedId) : "";
   const pathAttr = JSON.stringify(path);
+  const axisViewportData = usePanelAxisViewports(activeTab);
   const panelInstanceData = useMemo(
     () => ({
       panelControls,
       onPanelControlsChange: activeTab ? onPanelControlsChange : undefined,
+      ...axisViewportData,
       analysisStatus: chromeData?.analysisStatusByPanelId?.[activeTab],
       panelVisible: !state.fullscreenId,
     }),
     [
       activeTab,
+      axisViewportData,
       chromeData?.analysisStatusByPanelId,
       onPanelControlsChange,
       panelControls,

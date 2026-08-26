@@ -19,6 +19,7 @@ import {
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
 import { AxisRail } from "./AxisRail.jsx";
+import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
@@ -118,9 +119,16 @@ export function SpectrumPanel() {
   const spectrumMaxMode = normalizedPanelControls.spectrumMaxMode;
   const maxHoldEnabled = spectrumMaxMode === "hold";
   const spectrumPeakLabels = normalizedPanelControls.spectrumPeakLabels;
+  const frequencyViewport = useAxisViewport("frequency", {
+    minKey: "spectrumXMinFreq",
+    maxKey: "spectrumXMaxFreq",
+  });
+  const xMinFreq = frequencyViewport.min;
+  const xMaxFreq = frequencyViewport.max;
+  const setFrequencyRange = frequencyViewport.setRange;
   const spectrumRange = {
-    minHz: normalizedPanelControls.spectrumXMinFreq,
-    maxHz: normalizedPanelControls.spectrumXMaxFreq,
+    minHz: xMinFreq,
+    maxHz: xMaxFreq,
     yMaxDb: normalizedPanelControls.spectrumYMaxDb,
     yMinDb: normalizedPanelControls.spectrumYMinDb,
   };
@@ -145,15 +153,14 @@ export function SpectrumPanel() {
   });
   const spectrumXAxis = useAxisInteraction({
     axis: "x",
-    min: normalizedPanelControls.spectrumXMinFreq,
-    max: normalizedPanelControls.spectrumXMaxFreq,
+    min: xMinFreq,
+    max: xMaxFreq,
     ...FREQUENCY_VIEWPORT,
     defaultMin: FREQUENCY_VIEWPORT.absMin,
     defaultMax: FREQUENCY_VIEWPORT.absMax,
     onRangeChange: useCallback(
-      (newMin, newMax) =>
-        updatePanelControlsRange({ spectrumXMinFreq: newMin, spectrumXMaxFreq: newMax }),
-      [updatePanelControlsRange]
+      (newMin, newMax) => setFrequencyRange(newMin, newMax),
+      [setFrequencyRange]
     ),
   });
   const spectrumYTicks = buildAdaptiveDbTicks(
@@ -161,11 +168,7 @@ export function SpectrumPanel() {
     normalizedPanelControls.spectrumYMaxDb,
     spectrumYAxis.axisPx
   );
-  const spectrumFreqTicks = buildAdaptiveFreqTicks(
-    normalizedPanelControls.spectrumXMinFreq,
-    normalizedPanelControls.spectrumXMaxFreq,
-    spectrumXAxis.axisPx
-  );
+  const spectrumFreqTicks = buildAdaptiveFreqTicks(xMinFreq, xMaxFreq, spectrumXAxis.axisPx);
   const holdDisplaySpectrumResultRef = useRef(null);
   // A new analysis key means a new band grid, and a hold from one grid means nothing on
   // another; the clear key and the switch itself start a new hold the same way.
@@ -397,28 +400,23 @@ export function SpectrumPanel() {
   const zoomSpectrumXFromChart = useCallback(
     (e, factor) => {
       const next = zoomRange({
-        min: normalizedPanelControls.spectrumXMinFreq,
-        max: normalizedPanelControls.spectrumXMaxFreq,
+        min: xMinFreq,
+        max: xMaxFreq,
         ...FREQUENCY_VIEWPORT,
         anchor: anchorFromPointer({
           rect: e.currentTarget.getBoundingClientRect(),
           clientX: e.clientX,
           axis: "x",
           scale: FREQUENCY_VIEWPORT.scale,
-          min: normalizedPanelControls.spectrumXMinFreq,
-          max: normalizedPanelControls.spectrumXMaxFreq,
+          min: xMinFreq,
+          max: xMaxFreq,
         }),
         factor,
       });
-      updatePanelControlsRange({ spectrumXMinFreq: next.min, spectrumXMaxFreq: next.max });
+      setFrequencyRange(next.min, next.max);
       pulseChartAxis({ x: true });
     },
-    [
-      normalizedPanelControls.spectrumXMaxFreq,
-      normalizedPanelControls.spectrumXMinFreq,
-      pulseChartAxis,
-      updatePanelControlsRange,
-    ]
+    [pulseChartAxis, setFrequencyRange, xMaxFreq, xMinFreq]
   );
   const zoomSpectrumYFromChart = useCallback(
     (e, factor) => {
@@ -447,17 +445,14 @@ export function SpectrumPanel() {
     ]
   );
   const panSpectrumXFromChart = useCallback(
-    (rect, deltaPx, startRange = normalizedPanelControls) => {
-      const next = panRange({
-        min: startRange.spectrumXMinFreq,
-        max: startRange.spectrumXMaxFreq,
+    (rect, deltaPx, startRange = { min: xMinFreq, max: xMaxFreq }) =>
+      panRange({
+        ...startRange,
         ...FREQUENCY_VIEWPORT,
         deltaPx,
         axisPx: Math.max(1, rect.width),
-      });
-      return { spectrumXMinFreq: next.min, spectrumXMaxFreq: next.max };
-    },
-    [normalizedPanelControls]
+      }),
+    [xMaxFreq, xMinFreq]
   );
   const panSpectrumYFromChart = useCallback(
     (rect, deltaPx, startRange = normalizedPanelControls) => {
@@ -482,7 +477,8 @@ export function SpectrumPanel() {
       }
       if (Number.isFinite(e.deltaX) && Math.abs(e.deltaX) > Math.abs(e.deltaY ?? 0)) {
         const rect = e.currentTarget.getBoundingClientRect();
-        updatePanelControlsRange(panSpectrumXFromChart(rect, e.deltaX * WHEEL_PAN_SCALE));
+        const panned = panSpectrumXFromChart(rect, e.deltaX * WHEEL_PAN_SCALE);
+        setFrequencyRange(panned.min, panned.max);
         pulseChartAxis({ x: true });
         return;
       }
@@ -492,7 +488,7 @@ export function SpectrumPanel() {
       historyChartInteractive,
       panSpectrumXFromChart,
       pulseChartAxis,
-      updatePanelControlsRange,
+      setFrequencyRange,
       zoomSpectrumXFromChart,
       zoomSpectrumYFromChart,
     ]
@@ -508,9 +504,8 @@ export function SpectrumPanel() {
       chartDragRef.current = {
         startX: e.clientX,
         startY: e.clientY,
+        startFrequency: { min: xMinFreq, max: xMaxFreq },
         startRange: {
-          spectrumXMinFreq: normalizedPanelControls.spectrumXMinFreq,
-          spectrumXMaxFreq: normalizedPanelControls.spectrumXMaxFreq,
           spectrumYMinDb: normalizedPanelControls.spectrumYMinDb,
           spectrumYMaxDb: normalizedPanelControls.spectrumYMaxDb,
         },
@@ -523,8 +518,8 @@ export function SpectrumPanel() {
     },
     [
       historyChartInteractive,
-      normalizedPanelControls.spectrumXMaxFreq,
-      normalizedPanelControls.spectrumXMinFreq,
+      xMaxFreq,
+      xMinFreq,
       normalizedPanelControls.spectrumYMaxDb,
       normalizedPanelControls.spectrumYMinDb,
       pulseChartAxis,
@@ -549,11 +544,9 @@ export function SpectrumPanel() {
       const rect = e.currentTarget.getBoundingClientRect();
       const dx = e.clientX - drag.startX;
       const dy = e.clientY - drag.startY;
-      const next = {
-        ...panSpectrumXFromChart(rect, -dx, drag.startRange),
-        ...panSpectrumYFromChart(rect, dy, drag.startRange),
-      };
-      updatePanelControlsRange(next);
+      const pannedX = panSpectrumXFromChart(rect, -dx, drag.startFrequency);
+      setFrequencyRange(pannedX.min, pannedX.max);
+      updatePanelControlsRange(panSpectrumYFromChart(rect, dy, drag.startRange));
       pulseChartAxis({ x: Math.abs(dx) >= 2, y: Math.abs(dy) >= 2 });
       return true;
     },
@@ -562,6 +555,7 @@ export function SpectrumPanel() {
       panSpectrumXFromChart,
       panSpectrumYFromChart,
       pulseChartAxis,
+      setFrequencyRange,
       updatePanelControlsRange,
     ]
   );

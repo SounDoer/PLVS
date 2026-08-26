@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronUp, ExternalLink, GripVertical, RotateCcw } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  GripVertical,
+  Link2,
+  Link2Off,
+  RotateCcw,
+} from "lucide-react";
 import { Reorder, useDragControls } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -16,6 +25,8 @@ import {
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
 import { edgesFromViewport, viewportFromEdges } from "@/math/timeViewportEdges.js";
 import { useHistoryData } from "@/workspace/AudioDataContext.jsx";
+import { useAxisViewport } from "@/workspace/axisViewportHooks.js";
+import { AXIS_VIEWPORTS, axisKindForRangeRow } from "@/workspace/axisViewports.js";
 import { HIST_SAMPLE_SEC } from "@/hooks/useLoudnessHistory.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
@@ -206,6 +217,47 @@ export function SettingsSlider({
 // The two inputs are the values at the ends of the rail, not the window and offset stored
 // underneath -- see timeViewportEdges. Rendering nothing without a history context keeps Dock, which
 // composes its own settings from the exported rows, and bare test renders unaffected.
+/**
+ * Rides the `action` slot of the range row it governs, rather than taking a row of its own: the
+ * spectrogram carries one of these per axis, in a panel that already has nine rows.
+ *
+ * Like SettingsResetButton it must hold its width in both states -- the label column is
+ * `max-content`, so a control that changed size here would shift the input beside it.
+ */
+export function AxisLinkToggle({ kindId, label, localKeys }) {
+  const viewport = useAxisViewport(kindId, localKeys);
+  if (!viewport.linkable) return null;
+
+  const Icon = viewport.linked ? Link2 : Link2Off;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={viewport.linked}
+      onClick={() => viewport.setLinked(!viewport.linked)}
+      className={cn(
+        "rounded-xs outline-none transition-colors",
+        viewport.linked ? "text-foreground" : "text-muted-foreground/50 hover:text-foreground"
+      )}
+    >
+      <Icon className="size-[length:var(--ui-icon-panel-action)]" />
+    </button>
+  );
+}
+
+/** The toggle for whichever axis kind a range row edits, or nothing if the row edits none. */
+export function RangeRowLinkToggle({ moduleId, minKey, label }) {
+  const kindId = axisKindForRangeRow(moduleId, minKey);
+  if (!kindId) return null;
+  return (
+    <AxisLinkToggle
+      kindId={kindId}
+      label={`link ${label.toLowerCase()}`}
+      localKeys={AXIS_VIEWPORTS[kindId].members[moduleId]}
+    />
+  );
+}
+
 export function TimeRangeRow() {
   const historyData = useHistoryData();
   if (typeof historyData?.setHistoryWindowSec !== "function") return null;
@@ -1040,7 +1092,16 @@ export function SpectrumDisplaySettingsRows({
               onChange={onOctaveSmoothingChange}
             />
           </SettingsRow>
-          <SettingsRow label="Frequency Range">
+          <SettingsRow
+            label="Frequency Range"
+            action={
+              <RangeRowLinkToggle
+                moduleId="spectrum"
+                minKey="spectrumXMinFreq"
+                label="Frequency Range"
+              />
+            }
+          >
             <SettingsRangeInput
               minAriaLabel="spectrum frequency range min"
               maxAriaLabel="spectrum frequency range max"
@@ -1096,7 +1157,9 @@ function PanelControlRows({ tab, controls, onChange, slots = {} }) {
           atDefault={controls[row.key] === DEFAULT_PANEL_CONTROLS[row.key]}
           onReset={() => commit({ [row.key]: DEFAULT_PANEL_CONTROLS[row.key] })}
         />
-      ) : null;
+      ) : (
+        <RangeRowLinkToggle moduleId={tab} minKey={row.minKey} label={ui.label} />
+      );
 
       return (
         <SettingsRow key={rowKey} label={ui.label} tooltip={ui.tooltip} action={action}>

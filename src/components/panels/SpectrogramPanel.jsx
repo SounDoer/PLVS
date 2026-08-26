@@ -10,6 +10,7 @@ import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
 import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
+import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
@@ -94,24 +95,25 @@ export function SpectrogramPanel() {
   );
   const spectrogramMode = normalizedPanelControls.spectrogramMode;
   const is3d = spectrogramMode !== "heatmap";
+  const frequencyViewport = useAxisViewport("frequency", {
+    minKey: "spectrogramYMinFreq",
+    maxKey: "spectrogramYMaxFreq",
+  });
+  const yMinFreq = frequencyViewport.min;
+  const yMaxFreq = frequencyViewport.max;
+  const setFrequencyRange = frequencyViewport.setRange;
   const spectrogramYAxis = useAxisInteraction({
     axis: "y",
-    min: normalizedPanelControls.spectrogramYMinFreq,
-    max: normalizedPanelControls.spectrogramYMaxFreq,
+    min: yMinFreq,
+    max: yMaxFreq,
     ...FREQUENCY_VIEWPORT,
     defaultMin: FREQUENCY_VIEWPORT.absMin,
     defaultMax: FREQUENCY_VIEWPORT.absMax,
     onRangeChange: useCallback(
       (newMin, newMax) => {
-        onPanelControlsChange?.(
-          normalizePanelControls({
-            ...normalizedPanelControls,
-            spectrogramYMinFreq: newMin,
-            spectrogramYMaxFreq: newMax,
-          })
-        );
+        setFrequencyRange(newMin, newMax);
       },
-      [normalizedPanelControls, onPanelControlsChange]
+      [setFrequencyRange]
     ),
   });
   const {
@@ -190,35 +192,25 @@ export function SpectrogramPanel() {
       // the anchor's frac is the mirror of fFrac.
       let anchor;
       if (floor) {
-        anchor = hzFromFrac(
-          1 - floor.fFrac,
-          normalizedPanelControls.spectrogramYMinFreq,
-          normalizedPanelControls.spectrogramYMaxFreq
-        );
+        anchor = hzFromFrac(1 - floor.fFrac, yMinFreq, yMaxFreq);
       } else {
         anchor = anchorFromPointer({
           rect: e.currentTarget.getBoundingClientRect(),
           clientY: e.clientY,
           axis: "y",
           scale: FREQUENCY_VIEWPORT.scale,
-          min: normalizedPanelControls.spectrogramYMinFreq,
-          max: normalizedPanelControls.spectrogramYMaxFreq,
+          min: yMinFreq,
+          max: yMaxFreq,
         });
       }
       const next = zoomRange({
-        min: normalizedPanelControls.spectrogramYMinFreq,
-        max: normalizedPanelControls.spectrogramYMaxFreq,
+        min: yMinFreq,
+        max: yMaxFreq,
         ...FREQUENCY_VIEWPORT,
         anchor,
         factor: e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR,
       });
-      onPanelControlsChange?.(
-        normalizePanelControls({
-          ...normalizedPanelControls,
-          spectrogramYMinFreq: next.min,
-          spectrogramYMaxFreq: next.max,
-        })
-      );
+      setFrequencyRange(next.min, next.max);
       pulseChartYAxis();
     },
     [
@@ -228,13 +220,12 @@ export function SpectrogramPanel() {
       onHistoryWheel,
       onPanelControlsChange,
       pulseChartYAxis,
+      setFrequencyRange,
+      yMaxFreq,
+      yMinFreq,
     ]
   );
-  const spectrogramFreqTicks = buildAdaptiveFreqTicks(
-    normalizedPanelControls.spectrogramYMinFreq,
-    normalizedPanelControls.spectrogramYMaxFreq,
-    spectrogramYAxis.axisPx
-  );
+  const spectrogramFreqTicks = buildAdaptiveFreqTicks(yMinFreq, yMaxFreq, spectrogramYAxis.axisPx);
   const isOverCap = analysisStatus === "overCap";
   // A right-drag rotation is only valid while 3D mode owns the canvas. If 3D View is switched off
   // (or the panel drops into the over-cap empty state, which unmounts the canvas) mid-drag, the
@@ -337,8 +328,8 @@ export function SpectrogramPanel() {
     selectedOffset,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
     colormapLut,
-    minHz: normalizedPanelControls.spectrogramYMinFreq,
-    maxHz: normalizedPanelControls.spectrogramYMaxFreq,
+    minHz: yMinFreq,
+    maxHz: yMaxFreq,
     dbFloor: normalizedPanelControls.spectrogramDbFloor,
   });
   useSpectrogram3dCanvas({
@@ -352,8 +343,8 @@ export function SpectrogramPanel() {
     selectionXFrac: selLineX / 600,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
     colormapLut,
-    minHz: normalizedPanelControls.spectrogramYMinFreq,
-    maxHz: normalizedPanelControls.spectrogramYMaxFreq,
+    minHz: yMinFreq,
+    maxHz: yMaxFreq,
     dbFloor: normalizedPanelControls.spectrogramDbFloor,
     azimuthDeg: normalizedPanelControls.spectrogram3dAzimuthDeg,
     elevationDeg: normalizedPanelControls.spectrogram3dElevationDeg,
@@ -392,12 +383,12 @@ export function SpectrogramPanel() {
         newestMs,
         sampleMs,
         markerNotes,
-        normalizedPanelControls.spectrogramYMinFreq,
-        normalizedPanelControls.spectrogramYMaxFreq
+        yMinFreq,
+        yMaxFreq
       );
     },
     selectedOffset < 0
-      ? `${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${normalizedPanelControls.spectrogramYMinFreq}:${normalizedPanelControls.spectrogramYMaxFreq}:${dataBoundaryMarkers.length}:${visibleFrequencyMarkers.length}`
+      ? `${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${dataBoundaryMarkers.length}:${visibleFrequencyMarkers.length}`
       : null
   );
   const onSpectrogramChartPointerDown = useCallback(
@@ -421,8 +412,8 @@ export function SpectrogramPanel() {
           // In 3D, floor.fFrac at drag start anchors the pan (see the pointer-move branch below);
           // in 2D this stays null and the branch there falls back to the plain pixel delta.
           startFFrac: floor ? floor.fFrac : null,
-          min: normalizedPanelControls.spectrogramYMinFreq,
-          max: normalizedPanelControls.spectrogramYMaxFreq,
+          min: yMinFreq,
+          max: yMaxFreq,
         };
         setChartDragging(true);
         holdChartYAxis();
@@ -435,8 +426,8 @@ export function SpectrogramPanel() {
       is3d,
       normalizedPanelControls.spectrogram3dAzimuthDeg,
       normalizedPanelControls.spectrogram3dElevationDeg,
-      normalizedPanelControls.spectrogramYMaxFreq,
-      normalizedPanelControls.spectrogramYMinFreq,
+      yMaxFreq,
+      yMinFreq,
       onHistoryPointerDown,
       toTimeProxyEvent,
     ]
@@ -483,13 +474,7 @@ export function SpectrogramPanel() {
             axisPx: Math.max(1, rect.height),
           });
         }
-        onPanelControlsChange?.(
-          normalizePanelControls({
-            ...normalizedPanelControls,
-            spectrogramYMinFreq: next.min,
-            spectrogramYMaxFreq: next.max,
-          })
-        );
+        setFrequencyRange(next.min, next.max);
         holdChartYAxis();
         return;
       }
@@ -504,6 +489,7 @@ export function SpectrogramPanel() {
       onHistoryPointerMove,
       onPanelControlsChange,
       onSpectrogramHoverMove,
+      setFrequencyRange,
       toTimeProxyEvent,
     ]
   );
@@ -583,11 +569,7 @@ export function SpectrogramPanel() {
             ticks={spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
               key: hz,
               label,
-              frac: rangedFreqToYFrac(
-                hz,
-                normalizedPanelControls.spectrogramYMinFreq,
-                normalizedPanelControls.spectrogramYMaxFreq
-              ),
+              frac: rangedFreqToYFrac(hz, yMinFreq, yMaxFreq),
             }))}
           />
 

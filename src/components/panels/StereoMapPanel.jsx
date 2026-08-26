@@ -9,6 +9,7 @@ import { normalizePanelControls } from "../../lib/panelControls.js";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { AxisRail } from "./AxisRail.jsx";
+import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
 import {
   SnapshotEmptyState,
@@ -196,21 +197,25 @@ export function StereoMapPanel() {
       [mode, updatePanelControlsRange]
     ),
   });
+  const frequencyViewport = useAxisViewport("frequency", {
+    minKey: "stereoMapXMinFreq",
+    maxKey: "stereoMapXMaxFreq",
+  });
+  const xMinHz = frequencyViewport.min;
+  const xMaxHz = frequencyViewport.max;
+  const setFrequencyRange = frequencyViewport.setRange;
   const stereoMapXAxis = useAxisInteraction({
     axis: "x",
-    min: normalizedPanelControls.stereoMapXMinFreq,
-    max: normalizedPanelControls.stereoMapXMaxFreq,
+    min: xMinHz,
+    max: xMaxHz,
     ...FREQUENCY_VIEWPORT,
     defaultMin: FREQUENCY_VIEWPORT.absMin,
     defaultMax: FREQUENCY_VIEWPORT.absMax,
     onRangeChange: useCallback(
-      (newMin, newMax) =>
-        updatePanelControlsRange({ stereoMapXMinFreq: newMin, stereoMapXMaxFreq: newMax }),
-      [updatePanelControlsRange]
+      (newMin, newMax) => setFrequencyRange(newMin, newMax),
+      [setFrequencyRange]
     ),
   });
-  const xMinHz = normalizedPanelControls.stereoMapXMinFreq;
-  const xMaxHz = normalizedPanelControls.stereoMapXMaxFreq;
   const freqTicks = buildAdaptiveFreqTicks(xMinHz, xMaxHz, stereoMapXAxis.axisPx);
 
   const pair = normalizedPanelControls.stereoMapPair;
@@ -323,21 +328,21 @@ export function StereoMapPanel() {
         }),
         factor,
       });
-      updatePanelControlsRange({ stereoMapXMinFreq: next.min, stereoMapXMaxFreq: next.max });
+      setFrequencyRange(next.min, next.max);
       pulseChartXAxis();
     },
-    [pulseChartXAxis, updatePanelControlsRange, xMaxHz, xMinHz]
+    [pulseChartXAxis, setFrequencyRange, xMaxHz, xMinHz]
   );
 
   const panStereoMapXFromChart = useCallback((rect, deltaPx, startRange) => {
     const next = panRange({
-      min: startRange.stereoMapXMinFreq,
-      max: startRange.stereoMapXMaxFreq,
+      min: startRange.min,
+      max: startRange.max,
       ...FREQUENCY_VIEWPORT,
       deltaPx,
       axisPx: Math.max(1, rect.width),
     });
-    return { stereoMapXMinFreq: next.min, stereoMapXMaxFreq: next.max };
+    return next;
   }, []);
 
   const onChartWheel = useCallback(
@@ -348,12 +353,11 @@ export function StereoMapPanel() {
       // magnitude, not truthiness: a trackpad puts noise-scale values on the idle axis.
       if (Number.isFinite(e.deltaX) && Math.abs(e.deltaX) > Math.abs(e.deltaY ?? 0)) {
         const rect = e.currentTarget.getBoundingClientRect();
-        updatePanelControlsRange(
-          panStereoMapXFromChart(rect, e.deltaX * WHEEL_PAN_SCALE, {
-            stereoMapXMinFreq: xMinHz,
-            stereoMapXMaxFreq: xMaxHz,
-          })
-        );
+        const panned = panStereoMapXFromChart(rect, e.deltaX * WHEEL_PAN_SCALE, {
+          min: xMinHz,
+          max: xMaxHz,
+        });
+        setFrequencyRange(panned.min, panned.max);
         pulseChartXAxis();
         return;
       }
@@ -363,7 +367,7 @@ export function StereoMapPanel() {
       historyChartInteractive,
       panStereoMapXFromChart,
       pulseChartXAxis,
-      updatePanelControlsRange,
+      setFrequencyRange,
       xMaxHz,
       xMinHz,
       zoomStereoMapXFromChart,
@@ -377,7 +381,7 @@ export function StereoMapPanel() {
       suppressChartClickRef.current = true;
       chartDragRef.current = {
         startX: e.clientX,
-        startRange: { stereoMapXMinFreq: xMinHz, stereoMapXMaxFreq: xMaxHz },
+        startRange: { min: xMinHz, max: xMaxHz },
       };
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -392,11 +396,12 @@ export function StereoMapPanel() {
       if (!drag) return false;
       const rect = e.currentTarget.getBoundingClientRect();
       const dx = e.clientX - drag.startX;
-      updatePanelControlsRange(panStereoMapXFromChart(rect, -dx, drag.startRange));
+      const panned = panStereoMapXFromChart(rect, -dx, drag.startRange);
+      setFrequencyRange(panned.min, panned.max);
       pulseChartXAxis();
       return true;
     },
-    [panStereoMapXFromChart, pulseChartXAxis, updatePanelControlsRange]
+    [panStereoMapXFromChart, pulseChartXAxis, setFrequencyRange]
   );
 
   const onChartPointerUp = useCallback((e) => {
