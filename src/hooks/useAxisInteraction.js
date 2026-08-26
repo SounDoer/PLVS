@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   anchorFromPointer,
+  applyRangeConstraints,
   panRange,
   zoomRange,
   ZOOM_IN_FACTOR,
@@ -20,6 +21,10 @@ export function useAxisInteraction({
   minSpan,
   scale,
   onRangeChange,
+  // See applyRangeConstraints. `pinnedMax` also moves the zoom anchor to the top: zooming around
+  // the cursor would fight a bound that cannot move.
+  pinnedMax = false,
+  mustInclude,
 }) {
   const { axisRef, axisPx } = useAxisSize(axis);
   const dragRef = useRef(null);
@@ -49,21 +54,44 @@ export function useAxisInteraction({
         absMax,
         minSpan,
         scale,
-        anchor: anchorFromPointer({
-          rect,
-          clientX: e.clientX,
-          clientY: e.clientY,
-          axis,
-          scale,
-          min,
-          max,
-        }),
+        anchor: pinnedMax
+          ? max
+          : anchorFromPointer({
+              rect,
+              clientX: e.clientX,
+              clientY: e.clientY,
+              axis,
+              scale,
+              min,
+              max,
+            }),
         factor: e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR,
       });
-      onRangeChange(next.min, next.max);
+      const bounded = applyRangeConstraints({
+        ...next,
+        absMin,
+        absMax,
+        minSpan,
+        pinnedMax,
+        mustInclude,
+      });
+      onRangeChange(bounded.min, bounded.max);
       pulseActive();
     },
-    [absMax, absMin, axis, axisRef, max, min, minSpan, onRangeChange, pulseActive, scale]
+    [
+      absMax,
+      absMin,
+      axis,
+      axisRef,
+      max,
+      min,
+      minSpan,
+      mustInclude,
+      onRangeChange,
+      pinnedMax,
+      pulseActive,
+      scale,
+    ]
   );
 
   const onMouseDown = useCallback(
@@ -88,16 +116,33 @@ export function useAxisInteraction({
         const currentPx = isY ? moveEvent.clientY : moveEvent.clientX;
         const rawDelta = currentPx - drag.startPx;
         const deltaPx = isY ? rawDelta : -rawDelta;
-        const next = panRange({
-          min: drag.startMin,
-          max: drag.startMax,
+        // A pinned-max axis cannot be panned: panRange shifts both ends and then clamps the whole
+        // window back inside the bounds, which on this axis is a no-op. Move the floor instead, by
+        // the same dB the drag covered -- dragging down raises it, as dragging down anywhere else
+        // brings higher values into view.
+        const next = pinnedMax
+          ? {
+              min: drag.startMin + (deltaPx / size) * (drag.startMax - drag.startMin),
+              max: absMax,
+            }
+          : panRange({
+              min: drag.startMin,
+              max: drag.startMax,
+              absMin,
+              absMax,
+              deltaPx,
+              axisPx: size,
+              scale,
+            });
+        const bounded = applyRangeConstraints({
+          ...next,
           absMin,
           absMax,
-          deltaPx,
-          axisPx: size,
-          scale,
+          minSpan,
+          pinnedMax,
+          mustInclude,
         });
-        onRangeChange(next.min, next.max);
+        onRangeChange(bounded.min, bounded.max);
       };
 
       const cleanup = () => {
@@ -113,7 +158,21 @@ export function useAxisInteraction({
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", cleanup);
     },
-    [absMax, absMin, axis, axisRef, holdActive, max, min, onRangeChange, releaseActive, scale]
+    [
+      absMax,
+      absMin,
+      axis,
+      axisRef,
+      holdActive,
+      max,
+      min,
+      minSpan,
+      mustInclude,
+      onRangeChange,
+      pinnedMax,
+      releaseActive,
+      scale,
+    ]
   );
 
   const onDoubleClick = useCallback(

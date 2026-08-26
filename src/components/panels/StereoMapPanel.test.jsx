@@ -616,6 +616,76 @@ describe("StereoMapPanel", () => {
     expect(xAxis?.className).toContain("text-foreground");
   });
 
+  it("moves the Mono Loss floor from the level axis, keeping the top at 0 dB", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel(
+      baseAudioData({
+        panelControls: {
+          stereoMapPair: { x: 0, y: 1 },
+          stereoMapMode: "monoLossDb",
+          stereoMapMonoLossYMinDb: -24,
+        },
+        onPanelControlsChange,
+        historyChartInteractive: true,
+      })
+    );
+
+    const yAxis = container.querySelector('[style*="ns-resize"]');
+    expect(yAxis).toBeTruthy();
+    fireEvent.wheel(yAxis, { clientY: 60, deltaY: -100 });
+
+    const [updated] = onPanelControlsChange.mock.calls.at(-1);
+    // Zooming in shrinks the range, and on this axis that can only raise the floor.
+    expect(updated.stereoMapMonoLossYMinDb).toBeGreaterThan(-24);
+    expect(updated.stereoMapMonoLossYMinDb).toBeLessThanOrEqual(-6);
+  });
+
+  it("keeps 0 dB on screen when the M/S Ratio axis is panned to its stop", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel(
+      baseAudioData({
+        panelControls: {
+          stereoMapPair: { x: 0, y: 1 },
+          stereoMapMode: "msRatioDb",
+          stereoMapMsRatioYMinDb: -48,
+          stereoMapMsRatioYMaxDb: 24,
+        },
+        onPanelControlsChange,
+        historyChartInteractive: true,
+      })
+    );
+
+    const yAxis = container.querySelector('[style*="ns-resize"]');
+    vi.spyOn(yAxis, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 24,
+      height: 200,
+    });
+    fireEvent.mouseDown(yAxis, { button: 0, clientY: 100 });
+    fireEvent.mouseMove(window, { clientY: 100 - 400 });
+    fireEvent.mouseUp(window);
+
+    const [updated] = onPanelControlsChange.mock.calls.at(-1);
+    expect(updated.stereoMapMsRatioYMaxDb).toBe(0);
+    // The drag ran far past the stop; the span must survive it intact.
+    expect(updated.stereoMapMsRatioYMaxDb - updated.stereoMapMsRatioYMinDb).toBe(72);
+  });
+
+  it("leaves the level axis inert in the modes whose range is fixed", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = renderPanel(
+      baseAudioData({
+        panelControls: { stereoMapPair: { x: 0, y: 1 }, stereoMapMode: "correlation" },
+        onPanelControlsChange,
+        historyChartInteractive: true,
+      })
+    );
+
+    // No ns-resize cursor at all: the rail does not advertise a gesture it will not honour.
+    expect(container.querySelector('[style*="ns-resize"]')).toBeNull();
+  });
+
   it("pans the frequency range on a trackpad horizontal swipe", () => {
     const onPanelControlsChange = vi.fn();
     renderPanel(

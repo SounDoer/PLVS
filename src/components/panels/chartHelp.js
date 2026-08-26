@@ -1,3 +1,5 @@
+import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
+
 const LEVEL_METER_AXES_HELP = [
   {
     title: "Axes",
@@ -189,7 +191,7 @@ export const VECTORSCOPE_POLAR_LEVEL_HELP = [
   },
 ];
 
-export const STEREO_MAP_HELP = [
+const STEREO_MAP_HELP_BASE = [
   {
     title: "Inspect",
     items: ["Hover - Inspect value", "Click - Capture snapshot", "Double-click - Return to live"],
@@ -202,15 +204,42 @@ export const STEREO_MAP_HELP = [
       "Ctrl + drag - Pan viewport",
     ],
   },
+];
+
+const STEREO_MAP_FREQUENCY_AXIS_ITEMS = [
+  "Frequency axis wheel - Zoom frequency",
+  "Frequency axis drag - Pan frequency",
+];
+
+export const STEREO_MAP_HELP = [
+  ...STEREO_MAP_HELP_BASE,
+  {
+    title: "Axes",
+    items: [...STEREO_MAP_FREQUENCY_AXIS_ITEMS, "Double-click axis - Reset axis"],
+  },
+];
+
+// Position and Correlation always show their complete normalized range, so only the two dB modes
+// have a level axis to offer gestures for.
+export const STEREO_MAP_LEVEL_AXIS_HELP = [
+  ...STEREO_MAP_HELP_BASE,
   {
     title: "Axes",
     items: [
-      "Frequency axis wheel - Zoom frequency",
-      "Frequency axis drag - Pan frequency",
+      ...STEREO_MAP_FREQUENCY_AXIS_ITEMS,
+      "Level axis wheel - Zoom level",
+      "Level axis drag - Pan level",
       "Double-click axis - Reset axis",
     ],
   },
 ];
+
+function resolveStereoMapHelp(controls) {
+  const mode = controls?.stereoMapMode;
+  return mode === STEREO_MAP_MODES.MONO_LOSS_DB || mode === STEREO_MAP_MODES.MS_RATIO_DB
+    ? STEREO_MAP_LEVEL_AXIS_HELP
+    : STEREO_MAP_HELP;
+}
 
 function resolveVectorscopeHelp(controls) {
   const mode = controls?.vectorscopeMode ?? "lissajous";
@@ -228,7 +257,7 @@ export const PANEL_HELP_BY_MODULE_ID = {
   spectrogram: resolveSpectrogramHelp,
   waveform: WAVEFORM_HELP,
   vectorscope: resolveVectorscopeHelp,
-  "stereo-map": STEREO_MAP_HELP,
+  "stereo-map": resolveStereoMapHelp,
 };
 
 export function resolvePanelHelpItems(moduleId, controls) {

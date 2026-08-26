@@ -125,3 +125,31 @@ export function panRange({ min, max, absMin, absMax, deltaPx, axisPx, scale }) {
     ? computeLogPan({ min, max, absMin, absMax, deltaPx, axisPx })
     : computeLinearPan({ min, max, absMin, absMax, deltaPx, axisPx });
 }
+
+// Some axes carry a constraint the plain range arithmetic cannot express, because the interval they
+// show is not free on both ends.
+//
+//   pinnedMax    The upper bound is part of the measurement rather than a view choice: the stereo
+//                map's Mono Loss tops out at 0 dB because a loss cannot be a gain. The floor is the
+//                axis's only degree of freedom, so both gestures move it and the span follows.
+//   mustInclude  A reference value has to stay on screen: M/S Ratio is read against 0 dB, so the
+//                window slides until it touches zero and stops there instead of sailing past. The
+//                span is preserved -- clamping the offending bound instead would let a pan zoom.
+export function applyRangeConstraints({
+  min,
+  max,
+  absMin,
+  absMax,
+  minSpan = 0,
+  pinnedMax,
+  mustInclude,
+}) {
+  if (pinnedMax) {
+    return { min: Math.min(Math.max(min, absMin), absMax - minSpan), max: absMax };
+  }
+  if (mustInclude == null || (min <= mustInclude && max >= mustInclude)) return { min, max };
+  const span = max - min;
+  return min > mustInclude
+    ? { min: mustInclude, max: Math.min(absMax, mustInclude + span) }
+    : { min: Math.max(absMin, mustInclude - span), max: mustInclude };
+}

@@ -46,6 +46,33 @@ import {
 
 export const STEREO_MAP_MONO_MESSAGE = "Mono input — Stereo Map requires a channel pair.";
 
+// The y axis is only editable in the two dB modes, and neither is a free interval. Mono Loss tops
+// out at 0 because a loss cannot be a gain; M/S Ratio is read against 0, which therefore has to stay
+// on screen. Position and Correlation always show their whole normalized range, so they get no
+// gestures at all -- a rail that lights up under the cursor but refuses to move would be a lie.
+const Y_VIEWPORT_BY_MODE = {
+  [STEREO_MAP_MODES.MONO_LOSS_DB]: {
+    absMin: -60,
+    absMax: 0,
+    defaultMin: -24,
+    defaultMax: 0,
+    minSpan: 6,
+    scale: "linear",
+    pinnedMax: true,
+    keys: { min: "stereoMapMonoLossYMinDb" },
+  },
+  [STEREO_MAP_MODES.MS_RATIO_DB]: {
+    absMin: -96,
+    absMax: 48,
+    defaultMin: -48,
+    defaultMax: 24,
+    minSpan: 6,
+    scale: "linear",
+    mustInclude: 0,
+    keys: { min: "stereoMapMsRatioYMinDb", max: "stereoMapMsRatioYMaxDb" },
+  },
+};
+
 function rangeForMode(mode, controls) {
   if (mode === STEREO_MAP_MODES.MONO_LOSS_DB) {
     return { lowerBound: controls.stereoMapMonoLossYMinDb, upperBound: 0 };
@@ -143,7 +170,32 @@ export function StereoMapPanel() {
   // Stereo Map's y axis is not zoom/pan interactive (Position and Correlation are fixed-range; the
   // dB modes take their bounds from panel settings), but it still labels adaptive ticks, so it
   // measures its rail for the tick spacing budget without taking the interaction handlers.
-  const yAxis = useAxisSize("y");
+  const yViewport = Y_VIEWPORT_BY_MODE[mode];
+  const passiveYAxis = useAxisSize("y");
+  const editableYAxis = useAxisInteraction({
+    axis: "y",
+    min: range.lowerBound,
+    max: range.upperBound,
+    absMin: yViewport?.absMin ?? -1,
+    absMax: yViewport?.absMax ?? 1,
+    defaultMin: yViewport?.defaultMin ?? -1,
+    defaultMax: yViewport?.defaultMax ?? 1,
+    minSpan: yViewport?.minSpan ?? 0,
+    scale: "linear",
+    pinnedMax: yViewport?.pinnedMax ?? false,
+    mustInclude: yViewport?.mustInclude,
+    onRangeChange: useCallback(
+      (newMin, newMax) => {
+        const keys = Y_VIEWPORT_BY_MODE[mode]?.keys;
+        if (!keys) return;
+        updatePanelControlsRange({
+          [keys.min]: newMin,
+          ...(keys.max ? { [keys.max]: newMax } : null),
+        });
+      },
+      [mode, updatePanelControlsRange]
+    ),
+  });
   const stereoMapXAxis = useAxisInteraction({
     axis: "x",
     min: normalizedPanelControls.stereoMapXMinFreq,
@@ -170,7 +222,13 @@ export function StereoMapPanel() {
   const firstLabel = channelLabels[firstIndex] ?? `Ch ${firstIndex + 1}`;
   const secondLabel = channelLabels[secondIndex] ?? `Ch ${secondIndex + 1}`;
 
-  const yTicks = yTicksForMode(mode, range, firstLabel, secondLabel, yAxis.axisPx);
+  const yTicks = yTicksForMode(
+    mode,
+    range,
+    firstLabel,
+    secondLabel,
+    (yViewport ? editableYAxis : passiveYAxis).axisPx
+  );
 
   const snapResolved = isSnapshot
     ? resolveStereoMapSnapshotForKey?.(stereoMapKey, mode, range, { withHold: holdVisible })
@@ -397,7 +455,8 @@ export function StereoMapPanel() {
           <AxisRail
             axis="y"
             className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
-            railRef={yAxis.axisRef}
+            interaction={yViewport ? editableYAxis : undefined}
+            railRef={passiveYAxis.axisRef}
             ticks={yTicks.map(({ v, lb }) => ({
               key: v,
               label: lb,
