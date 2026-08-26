@@ -1,3 +1,12 @@
+// Shared viewport interaction constants. Axis rails, chart plot areas, time axes and the dock strip
+// all run the same gestures, so the feel has to come from one place. These used to live in eight
+// spots -- five `const` declarations plus three literals inlined into wheel handlers -- which made
+// "make the wheel a little gentler" an edit nobody could complete correctly.
+export const ZOOM_IN_FACTOR = 0.85;
+export const ZOOM_OUT_FACTOR = 1.18;
+export const WHEEL_PAN_SCALE = 0.5;
+export const ACTIVE_PULSE_MS = 160;
+
 function clampFinite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }

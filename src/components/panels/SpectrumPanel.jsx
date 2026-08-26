@@ -39,12 +39,12 @@ import {
   computeLogZoom,
   pixelToLinearValue,
   pixelToLogValue,
+  ACTIVE_PULSE_MS,
+  WHEEL_PAN_SCALE,
+  ZOOM_IN_FACTOR,
+  ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
 
-const CHART_ZOOM_IN_FACTOR = 0.85;
-const CHART_ZOOM_OUT_FACTOR = 1.18;
-const CHART_WHEEL_PAN_SCALE = 0.5;
-const ACTIVE_PULSE_MS = 160;
 const HOLD_SMOOTHING_DELAY_MS = 300;
 const HOLD_SMOOTHING_CANCEL_PX = 4;
 const HOLD_DISPLAY_SMOOTHING_ALPHA = 0.06;
@@ -502,16 +502,16 @@ export function SpectrumPanel({ compact = false }) {
       if (!historyChartInteractive) return;
       e.preventDefault();
       if (e.ctrlKey) {
-        zoomSpectrumYFromChart(e, e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR);
+        zoomSpectrumYFromChart(e, e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR);
         return;
       }
       if (Number.isFinite(e.deltaX) && Math.abs(e.deltaX) > Math.abs(e.deltaY ?? 0)) {
         const rect = e.currentTarget.getBoundingClientRect();
-        updatePanelControlsRange(panSpectrumXFromChart(rect, e.deltaX * CHART_WHEEL_PAN_SCALE));
+        updatePanelControlsRange(panSpectrumXFromChart(rect, e.deltaX * WHEEL_PAN_SCALE));
         pulseChartAxis({ x: true });
         return;
       }
-      zoomSpectrumXFromChart(e, e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR);
+      zoomSpectrumXFromChart(e, e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR);
     },
     [
       historyChartInteractive,

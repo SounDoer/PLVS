@@ -6,12 +6,11 @@ import {
   computeLogZoom,
   pixelToLinearValue,
   pixelToLogValue,
+  ACTIVE_PULSE_MS,
+  ZOOM_IN_FACTOR,
+  ZOOM_OUT_FACTOR,
 } from "../math/axisInteractionMath";
 import { useAxisSize } from "./useAxisSize";
-
-const ZOOM_IN_FACTOR = 0.85;
-const ZOOM_OUT_FACTOR = 1.18;
-const ACTIVE_PULSE_MS = 160;
 
 export function useAxisInteraction({
   axis,

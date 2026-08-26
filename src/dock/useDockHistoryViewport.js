@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HISTORY_MIN_WINDOW_SEC } from "../math/historyMath.js";
+import { ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from "../math/axisInteractionMath.js";
 import { UI_PREFERENCES } from "../uiPreferences.js";
 
 export const DOCK_HISTORY_DEFAULT_WINDOW_SEC =
@@ -58,7 +59,7 @@ export function useDockHistoryViewport({ maxWindowSec }) {
 
   const onWheel = useCallback(
     (panelId, deltaY) => {
-      const factor = deltaY < 0 ? 0.85 : 1.18;
+      const factor = deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
       const pending = pendingWheelRef.current;
       pendingWheelRef.current = {
         panelId,

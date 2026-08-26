@@ -33,13 +33,15 @@ import {
   rangedFreqToXFrac,
   rangedFromTopFrac,
 } from "../../config/scales";
-import { computeLogPan, computeLogZoom, pixelToLogValue } from "../../math/axisInteractionMath.js";
+import {
+  computeLogPan,
+  computeLogZoom,
+  pixelToLogValue,
+  ZOOM_IN_FACTOR,
+  ZOOM_OUT_FACTOR,
+} from "../../math/axisInteractionMath.js";
 
 export const STEREO_MAP_MONO_MESSAGE = "Mono input — Stereo Map requires a channel pair.";
-
-const CHART_ZOOM_IN_FACTOR = 0.85;
-const CHART_ZOOM_OUT_FACTOR = 1.18;
-const CHART_WHEEL_PAN_SCALE = 0.5;
 
 function rangeForMode(mode, controls) {
   if (mode === STEREO_MAP_MODES.MONO_LOSS_DB) {
@@ -281,7 +283,7 @@ export function StereoMapPanel() {
     (e) => {
       if (!historyChartInteractive) return;
       e.preventDefault();
-      zoomStereoMapXFromChart(e, e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR);
+      zoomStereoMapXFromChart(e, e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR);
     },
     [historyChartInteractive, zoomStereoMapXFromChart]
   );
@@ -308,9 +310,7 @@ export function StereoMapPanel() {
       if (!drag) return false;
       const rect = e.currentTarget.getBoundingClientRect();
       const dx = e.clientX - drag.startX;
-      updatePanelControlsRange(
-        panStereoMapXFromChart(rect, -dx * CHART_WHEEL_PAN_SCALE * 2, drag.startRange)
-      );
+      updatePanelControlsRange(panStereoMapXFromChart(rect, -dx, drag.startRange));
       return true;
     },
     [panStereoMapXFromChart, updatePanelControlsRange]

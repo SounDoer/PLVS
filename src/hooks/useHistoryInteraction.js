@@ -4,8 +4,7 @@ import {
   computePanOffset,
   computeWheelZoom,
 } from "../math/historyInteractionMath";
-
-const ACTIVE_PULSE_MS = 160;
+import { ACTIVE_PULSE_MS, ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from "../math/axisInteractionMath";
 
 export function useHistoryInteraction({
   /** When false, history pointer/wheel handlers and HUD helpers from this hook are no-ops (App: `historyChartInteractive`). */
@@ -200,7 +199,7 @@ export function useHistoryInteraction({
       if (totalSamples <= 0) return;
       ev.preventDefault();
       showHistoryHud(1600);
-      const factor = ev.deltaY < 0 ? 0.85 : 1.18;
+      const factor = ev.deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
       const rect = ev.currentTarget.getBoundingClientRect();
       const width = Math.max(1, rect.width);
       const x = Math.max(0, Math.min(width, ev.clientX - rect.left));
@@ -249,7 +248,7 @@ export function useHistoryInteraction({
   const zoomTimeFromWheel = useCallback(
     (ev) => {
       showHistoryHud(1600);
-      const factor = ev.deltaY < 0 ? 0.85 : 1.18;
+      const factor = ev.deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
       const rect = ev.currentTarget.getBoundingClientRect();
       const width = Math.max(1, rect.width);
       const x = Math.max(0, Math.min(width, ev.clientX - rect.left));

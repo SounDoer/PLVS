@@ -13,7 +13,14 @@ import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
-import { computeLogPan, computeLogZoom, pixelToLogValue } from "../../math/axisInteractionMath.js";
+import {
+  computeLogPan,
+  computeLogZoom,
+  pixelToLogValue,
+  ACTIVE_PULSE_MS,
+  ZOOM_IN_FACTOR,
+  ZOOM_OUT_FACTOR,
+} from "../../math/axisInteractionMath.js";
 import { unprojectFloor } from "../../math/spectrogram3dProjection.js";
 import { hzFromFrac } from "../../math/spectrogramMath.js";
 import {
@@ -35,8 +42,6 @@ import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptySt
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelControls.js";
 
-const CHART_ZOOM_IN_FACTOR = 0.85;
-const CHART_ZOOM_OUT_FACTOR = 1.18;
 // A right press already starts a rotation drag, so a right double-click has to be distinguished
 // from "rotated out and came back". Both conditions are required: barely moved, and soon after the
 // previous right release. The budget is spent within a single press, not between the two presses --
@@ -44,7 +49,6 @@ const CHART_ZOOM_OUT_FACTOR = 1.18;
 // visible, so the looser rule costs nothing.
 const RIGHT_DOUBLE_CLICK_MS = 400;
 const RIGHT_DOUBLE_CLICK_SLOP_PX = 4;
-const ACTIVE_PULSE_MS = 160;
 // Handed to whichever renderer is inactive. Must be a stable identity: both hooks depend on the
 // canvas ref, so a fresh `{ current: null }` literal per render would tear down and restart their
 // requestAnimationFrame loops on every panel render, which happens at spectrum-frame rate.
@@ -177,7 +181,7 @@ export function SpectrogramPanel({ compact = false }) {
         // scales a *multiplier*, so the same sign would make scrolling up flatten the surface --
         // verified backwards in the real app before this was flipped. Scroll up grows, as it does
         // everywhere else; the constants' names read wrong here for exactly that reason.
-        const factor = delta > 0 ? CHART_ZOOM_IN_FACTOR : CHART_ZOOM_OUT_FACTOR;
+        const factor = delta > 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
         onPanelControlsChange?.(
           normalizePanelControls({
             ...normalizedPanelControls,
@@ -220,7 +224,7 @@ export function SpectrogramPanel({ compact = false }) {
         absMax: 20000,
         minOctaves: 1,
         anchor,
-        factor: e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR,
+        factor: e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR,
       });
       onPanelControlsChange?.(
         normalizePanelControls({

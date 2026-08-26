@@ -12,11 +12,10 @@ import {
   computeLinearPan,
   computeLinearZoom,
   pixelToLinearValue,
+  ACTIVE_PULSE_MS,
+  ZOOM_IN_FACTOR,
+  ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
-
-const CHART_ZOOM_IN_FACTOR = 0.85;
-const CHART_ZOOM_OUT_FACTOR = 1.18;
-const ACTIVE_PULSE_MS = 160;
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
@@ -115,7 +114,7 @@ export function LoudnessHistoryChart({
         absMax: 0,
         minSpan: 12,
         anchor: pixelToLinearValue(px, height, loudnessYMinDb, loudnessYMaxDb),
-        factor: e.deltaY > 0 ? CHART_ZOOM_OUT_FACTOR : CHART_ZOOM_IN_FACTOR,
+        factor: e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR,
       });
       onLoudnessYRangeChange(next.min, next.max);
       pulseChartYAxis();
