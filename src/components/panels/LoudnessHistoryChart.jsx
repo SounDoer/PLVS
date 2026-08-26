@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { loudnessTraceGradientStops } from "@/lib/loudnessTraceColor.js";
 import { RuleGradient } from "./LoudnessRuleGradient.jsx";
 import { buildAdaptiveDbTicks, loudnessFromTopFrac } from "../../config/scales";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
+import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import {
   anchorFromPointer,
@@ -204,46 +204,19 @@ export function LoudnessHistoryChart({
   return (
     <div className="grid min-h-0 h-full grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
       {/* Y-axis labels */}
-      <div
-        ref={loudnessYAxis.axisRef}
-        {...loudnessYAxis.axisHandlers}
-        style={{ cursor: loudnessYAxis.cursorStyle }}
-        className={cn(
-          W_LOUDNESS_Y_AXIS,
-          "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-          (loudnessYAxis.isActive || chartYAxisActive) && "text-foreground"
-        )}
-      >
-        <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-          {historyYAxisTicksLabeled.map(({ v, lb }, i) => {
-            const isTargetTick = v === targetLufs;
-            const tickClassExtra = isTargetTick ? "font-semibold" : "";
-            if (i === 0) {
-              return (
-                <span key={v} className={axisLabelClass("y", "start", tickClassExtra)}>
-                  {lb}
-                </span>
-              );
-            }
-            if (i === historyYAxisTicksLabeled.length - 1) {
-              return (
-                <span key={v} className={axisLabelClass("y", "end", tickClassExtra)}>
-                  {lb}
-                </span>
-              );
-            }
-            return (
-              <span
-                key={v}
-                className={axisLabelClass("y", "middle", tickClassExtra)}
-                style={{ top: `${loudnessFromTopFrac(v, loudnessYRange) * 100}%` }}
-              >
-                {lb}
-              </span>
-            );
-          })}
-        </div>
-      </div>
+      <AxisRail
+        axis="y"
+        inset
+        className={cn(W_LOUDNESS_Y_AXIS, "min-h-0 shrink-0")}
+        interaction={loudnessYAxis}
+        active={chartYAxisActive}
+        ticks={historyYAxisTicksLabeled.map(({ v, lb }) => ({
+          key: v,
+          label: lb,
+          frac: loudnessFromTopFrac(v, loudnessYRange),
+          className: v === targetLufs ? "font-semibold" : "",
+        }))}
+      />
 
       {/* Chart area */}
       <div
@@ -388,43 +361,17 @@ export function LoudnessHistoryChart({
       </div>
 
       <div />
-      <div
-        {...(historyTimeAxisHandlers ?? {})}
-        style={{ cursor: historyTimeAxisHandlers ? "ew-resize" : undefined }}
-        className={cn(
-          CAPTION_TEXT,
-          "relative h-[var(--ui-chart-x-axis-row-h)] transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-          isTimeAxisActive && "text-foreground"
-        )}
-      >
-        <div className="absolute inset-0">
-          {historyTimeTicks.map((tick, i) => {
-            if (i === 0) {
-              return (
-                <span key={`${i}-${tick}`} className={axisLabelClass("x", "start")}>
-                  {tick}
-                </span>
-              );
-            }
-            if (i === historyTickSteps) {
-              return (
-                <span key={`${i}-${tick}`} className={axisLabelClass("x", "end")}>
-                  {tick}
-                </span>
-              );
-            }
-            return (
-              <span
-                key={`${i}-${tick}`}
-                className={axisLabelClass("x", "middle")}
-                style={{ left: `${(i / historyTickSteps) * 100}%` }}
-              >
-                {tick}
-              </span>
-            );
-          })}
-        </div>
-      </div>
+      <AxisRail
+        axis="x"
+        className="h-[var(--ui-chart-x-axis-row-h)]"
+        interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+        active={isTimeAxisActive}
+        ticks={historyTimeTicks.map((tick, i) => ({
+          key: `${i}-${tick}`,
+          label: tick,
+          frac: i / historyTickSteps,
+        }))}
+      />
     </div>
   );
 }

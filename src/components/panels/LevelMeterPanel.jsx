@@ -4,7 +4,6 @@ import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useHoverTip } from "@/components/HoverTip";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 import {
   LOUDNESS_DB_MAX,
   LOUDNESS_DB_MIN,
@@ -24,6 +23,7 @@ import {
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 import { loudnessMeterMarkerClass } from "../../lib/loudnessProfileStatusClasses.js";
+import { AxisRail } from "./AxisRail.jsx";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -232,57 +232,27 @@ export function LevelMeterPanel() {
       >
         <div className="flex min-h-0 flex-1 flex-col gap-0">
           <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
-            <div
+            <AxisRail
+              axis="y"
+              inset
               data-level-meter-y-axis
-              ref={levelMeterYAxis.axisRef}
-              {...levelMeterYAxis.axisHandlers}
-              style={{ cursor: levelMeterYAxis.cursorStyle }}
-              className={cn(
-                yAxisWidthClass,
-                "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-                levelMeterYAxis.isActive && "text-foreground"
-              )}
+              scaleProps={{ "data-level-meter-y-axis-scale": true }}
+              className={cn(yAxisWidthClass, "min-h-0 h-full shrink-0 overflow-visible text-right")}
+              interaction={levelMeterYAxis}
+              ticks={levelMeterTicks.map(({ v, lb }) => ({
+                key: v,
+                label: lb,
+                frac: rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max),
+              }))}
             >
-              <div
-                data-level-meter-y-axis-scale
-                className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]"
-              >
-                {levelMeterTicks.map(({ v, lb }, i) => {
-                  if (i === 0) {
-                    return (
-                      <span key={v} className={axisLabelClass("y", "start")}>
-                        {lb}
-                      </span>
-                    );
-                  }
-                  if (i === levelMeterTicks.length - 1) {
-                    return (
-                      <span key={v} className={axisLabelClass("y", "end")}>
-                        {lb}
-                      </span>
-                    );
-                  }
-                  return (
-                    <span
-                      key={v}
-                      className={axisLabelClass("y", "middle")}
-                      style={{
-                        top: `${rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max) * 100}%`,
-                      }}
-                    >
-                      {lb}
-                    </span>
-                  );
-                })}
-                {showMarker ? (
-                  <AxisValueMarker
-                    value={readoutValue}
-                    yRange={levelMeterYRange}
-                    className={loudnessMeterMarkerClass(markerStatus, profileActive)}
-                  />
-                ) : null}
-              </div>
-            </div>
+              {showMarker ? (
+                <AxisValueMarker
+                  value={readoutValue}
+                  yRange={levelMeterYRange}
+                  className={loudnessMeterMarkerClass(markerStatus, profileActive)}
+                />
+              ) : null}
+            </AxisRail>
             <div data-level-meter-bar-region className="grid grid-cols-[minmax(0,1fr)]">
               <div className="@container relative h-full min-h-0 p-0">
                 <div
@@ -345,60 +315,33 @@ export function LevelMeterPanel() {
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div data-level-meter-grid className={cn(LEVEL_METER_GRID, PANEL_MIN_PEAK)}>
-          <div
+          <AxisRail
+            axis="y"
+            inset
             data-level-meter-y-axis
-            ref={levelMeterYAxis.axisRef}
-            {...levelMeterYAxis.axisHandlers}
-            style={{ cursor: levelMeterYAxis.cursorStyle }}
+            scaleProps={{ "data-level-meter-y-axis-scale": true }}
             className={cn(
               peakYAxisWidthClass,
-              "relative min-h-0 h-full shrink-0 overflow-visible text-right text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-              levelMeterYAxis.isActive && "text-foreground"
+              "min-h-0 h-full shrink-0 overflow-visible text-right"
             )}
+            interaction={levelMeterYAxis}
+            ticks={levelMeterTicks.map(({ v, lb }) => ({
+              key: v,
+              label: lb,
+              frac: rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max),
+            }))}
           >
-            <div
-              data-level-meter-y-axis-scale
-              className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]"
-            >
-              {levelMeterTicks.map(({ v, lb }, i) => {
-                if (i === 0) {
-                  return (
-                    <span key={v} className={axisLabelClass("y", "start")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                if (i === levelMeterTicks.length - 1) {
-                  return (
-                    <span key={v} className={axisLabelClass("y", "end")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={v}
-                    className={axisLabelClass("y", "middle")}
-                    style={{
-                      top: `${rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max) * 100}%`,
-                    }}
-                  >
-                    {lb}
-                  </span>
-                );
-              })}
-              {showTpMaxMarker ? (
-                <AxisValueMarker
-                  value={displayAudio?.tpMax}
-                  yRange={levelMeterYRange}
-                  dataAttribute="data-level-tp-max-marker"
-                  className={loudnessMeterMarkerClass(tpMaxStatus, profileActive)}
-                  onReset={onResetTpMax}
-                  resetLabel="Click to reset TP Max"
-                />
-              ) : null}
-            </div>
-          </div>
+            {showTpMaxMarker ? (
+              <AxisValueMarker
+                value={displayAudio?.tpMax}
+                yRange={levelMeterYRange}
+                dataAttribute="data-level-tp-max-marker"
+                className={loudnessMeterMarkerClass(tpMaxStatus, profileActive)}
+                onReset={onResetTpMax}
+                resetLabel="Click to reset TP Max"
+              />
+            ) : null}
+          </AxisRail>
           <div
             data-level-meter-bar-region
             data-level-meter-channel-grid

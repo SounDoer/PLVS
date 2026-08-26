@@ -287,7 +287,7 @@ describe("WaveformPanel", () => {
   it("keeps the time axis in a dedicated layout row", () => {
     renderPanel({ historyTimeTicks: ["14s", "11s", "7s", "4s", "0s"] });
 
-    const axisRow = screen.getByText("7s").parentElement?.parentElement;
+    const axisRow = screen.getByText("7s").parentElement?.parentElement?.parentElement;
 
     expect(axisRow?.className).toContain("shrink-0");
     expect(axisRow?.className).not.toContain("absolute");
@@ -299,7 +299,7 @@ describe("WaveformPanel", () => {
 
     const lane = container.querySelector("[data-waveform-lane]");
     const labelRail = lane?.querySelector("[data-waveform-label-rail]");
-    const timeAxisRow = screen.getAllByText("0s")[2].parentElement?.parentElement;
+    const timeAxisRow = screen.getAllByText("0s")[2].parentElement?.parentElement?.parentElement;
     const timeAxisSpacer = container.querySelector("[data-waveform-x-axis-spacer]");
     const interactionOverlay = container.querySelector("[data-waveform-interaction-overlay]");
 
@@ -343,7 +343,7 @@ describe("WaveformPanel", () => {
       historyTimeTicks: ["14s", "11s", "7s", "4s", "0s"],
     });
 
-    const timeAxis = screen.getByText("7s").parentElement;
+    const timeAxis = screen.getByText("7s").parentElement?.parentElement;
     expect(timeAxis?.className).toContain("text-foreground");
     expect(timeAxis?.className).not.toContain("var(--muted)_44%");
   });

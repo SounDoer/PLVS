@@ -5,11 +5,11 @@ import {
   usePanelInstanceData,
 } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { PANEL_MIN_SPECTROGRAM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
+import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
@@ -572,52 +572,21 @@ export function SpectrogramPanel({ compact = false }) {
               not a position -- the floor covers only part of the canvas height and sits at whatever
               azimuth the user has rotated to, so a tick's vertical position means nothing there.
               That is accepted, not an oversight; see the axes-and-gestures design. */}
-          <div
-            ref={spectrogramYAxis.axisRef}
-            {...spectrogramYAxis.axisHandlers}
-            style={{ cursor: spectrogramYAxis.cursorStyle }}
-            className={cn(
-              W_SPECTRUM_Y_AXIS,
-              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-              (spectrogramYAxis.isActive || chartYAxisActive) && "text-foreground"
-            )}
-          >
-            <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-              {spectrogramFreqTicks.map(({ v: hz, lb: label }, i) => {
-                if (i === 0) {
-                  return (
-                    <span key={hz} className={axisLabelClass("y", "end")}>
-                      {label}
-                    </span>
-                  );
-                }
-                if (i === spectrogramFreqTicks.length - 1) {
-                  return (
-                    <span key={hz} className={axisLabelClass("y", "start")}>
-                      {label}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={hz}
-                    className={axisLabelClass("y", "middle")}
-                    style={{
-                      top: `${
-                        rangedFreqToYFrac(
-                          hz,
-                          normalizedPanelControls.spectrogramYMinFreq,
-                          normalizedPanelControls.spectrogramYMaxFreq
-                        ) * 100
-                      }%`,
-                    }}
-                  >
-                    {label}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          <AxisRail
+            axis="y"
+            className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
+            interaction={spectrogramYAxis}
+            active={chartYAxisActive}
+            ticks={spectrogramFreqTicks.map(({ v: hz, lb: label }) => ({
+              key: hz,
+              label,
+              frac: rangedFreqToYFrac(
+                hz,
+                normalizedPanelControls.spectrogramYMinFreq,
+                normalizedPanelControls.spectrogramYMaxFreq
+              ),
+            }))}
+          />
 
           {/* Canvas chart */}
           <div className="relative min-h-0 min-w-0">
@@ -752,43 +721,17 @@ export function SpectrogramPanel({ compact = false }) {
           </div>
 
           <div />
-          <div
-            {...(historyTimeAxisHandlers ?? {})}
-            style={{ cursor: historyTimeAxisHandlers ? "ew-resize" : undefined }}
-            className={cn(
-              CAPTION_TEXT,
-              "relative h-[var(--ui-chart-x-axis-row-h)] w-full transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-              historyTimeAxisActive && "text-foreground"
-            )}
-          >
-            <div className="absolute inset-0">
-              {(historyTimeTicks ?? []).map((tick, i) => {
-                if (i === 0) {
-                  return (
-                    <span key={`${i}-${tick}`} className={axisLabelClass("x", "start")}>
-                      {tick}
-                    </span>
-                  );
-                }
-                if (i === HISTORY_TIME_TICK_STEPS) {
-                  return (
-                    <span key={`${i}-${tick}`} className={axisLabelClass("x", "end")}>
-                      {tick}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={`${i}-${tick}`}
-                    className={axisLabelClass("x", "middle")}
-                    style={{ left: `${(i / HISTORY_TIME_TICK_STEPS) * 100}%` }}
-                  >
-                    {tick}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          <AxisRail
+            axis="x"
+            className="h-[var(--ui-chart-x-axis-row-h)] w-full"
+            interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+            active={historyTimeAxisActive}
+            ticks={(historyTimeTicks ?? []).map((tick, i) => ({
+              key: `${i}-${tick}`,
+              label: tick,
+              frac: i / HISTORY_TIME_TICK_STEPS,
+            }))}
+          />
         </div>
       </div>
     </div>

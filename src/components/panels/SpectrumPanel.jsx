@@ -18,14 +18,14 @@ import {
   SNAPSHOT_NO_DATA_MESSAGE,
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
+import { AxisRail } from "./AxisRail.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import {
   buildAdaptiveDbTicks,
   buildAdaptiveFreqTicks,
@@ -682,44 +682,18 @@ export function SpectrumPanel({ compact = false }) {
             "grid min-h-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch"
           )}
         >
-          <div
-            ref={spectrumYAxis.axisRef}
-            {...spectrumYAxis.axisHandlers}
-            style={{ cursor: spectrumYAxis.cursorStyle }}
-            className={cn(
-              W_SPECTRUM_Y_AXIS,
-              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-              (spectrumYAxis.isActive || chartAxisActive.y) && "text-foreground"
-            )}
-          >
-            <div className="absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)]">
-              {spectrumYTicks.map(({ v, lb }, i) => {
-                if (i === 0) {
-                  return (
-                    <span key={v} className={axisLabelClass("y", "start")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                if (i === spectrumYTicks.length - 1) {
-                  return (
-                    <span key={v} className={axisLabelClass("y", "end")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={v}
-                    className={axisLabelClass("y", "middle")}
-                    style={{ top: `${spectrumDbToTopFrac(v, spectrumRange) * 100}%` }}
-                  >
-                    {lb}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          <AxisRail
+            axis="y"
+            inset
+            className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
+            interaction={spectrumYAxis}
+            active={chartAxisActive.y}
+            ticks={spectrumYTicks.map(({ v, lb }) => ({
+              key: v,
+              label: lb,
+              frac: spectrumDbToTopFrac(v, spectrumRange),
+            }))}
+          />
           <div className="relative min-h-0 min-w-0">
             <div
               data-testid="spectrum-chart"
@@ -990,46 +964,17 @@ export function SpectrumPanel({ compact = false }) {
           </div>
 
           <div />
-          <div
-            ref={spectrumXAxis.axisRef}
-            {...spectrumXAxis.axisHandlers}
-            style={{ cursor: spectrumXAxis.cursorStyle }}
-            className={cn(
-              CAPTION_TEXT,
-              "relative h-[var(--ui-chart-x-axis-row-h)] w-full transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-              (spectrumXAxis.isActive || chartAxisActive.x) && "text-foreground"
-            )}
-          >
-            <div className="absolute inset-x-0 top-0 h-full">
-              {spectrumFreqTicks.map(({ v: f, lb }, i) => {
-                if (i === 0) {
-                  return (
-                    <span key={f} className={axisLabelClass("x", "start")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                if (i === spectrumFreqTicks.length - 1) {
-                  return (
-                    <span key={f} className={axisLabelClass("x", "end")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={f}
-                    className={axisLabelClass("x", "middle")}
-                    style={{
-                      left: `${rangedFreqToXFrac(f, spectrumRange.minHz, spectrumRange.maxHz) * 100}%`,
-                    }}
-                  >
-                    {lb}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          <AxisRail
+            axis="x"
+            className="h-[var(--ui-chart-x-axis-row-h)] w-full"
+            interaction={spectrumXAxis}
+            active={chartAxisActive.x}
+            ticks={spectrumFreqTicks.map(({ v: f, lb }) => ({
+              key: f,
+              label: lb,
+              frac: rangedFreqToXFrac(f, spectrumRange.minHz, spectrumRange.maxHz),
+            }))}
+          />
         </div>
       </div>
     </div>

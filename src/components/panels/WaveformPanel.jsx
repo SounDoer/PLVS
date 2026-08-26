@@ -5,9 +5,9 @@ import {
   usePanelInstanceData,
 } from "../../workspace/AudioDataContext.jsx";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
+import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
   sliceWaveformSubHistory,
@@ -538,41 +538,17 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
 
       <div className="flex h-[var(--ui-chart-x-axis-row-h)] shrink-0 items-start gap-[var(--ui-chart-axis-gap)]">
         <div data-waveform-x-axis-spacer className={cn(W_LOUDNESS_Y_AXIS, "shrink-0")} />
-        <div
-          {...(historyTimeAxisHandlers ?? {})}
-          style={{ cursor: historyTimeAxisHandlers ? "ew-resize" : undefined }}
-          className={cn(
-            CAPTION_TEXT,
-            "relative h-full flex-1 transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-            historyTimeAxisActive && "text-foreground"
-          )}
-        >
-          {(historyTimeTicks ?? []).map((tick, i) => {
-            if (i === 0) {
-              return (
-                <span key={`${i}-${tick}`} className={axisLabelClass("x", "start")}>
-                  {tick}
-                </span>
-              );
-            }
-            if (i === HISTORY_TIME_TICK_STEPS) {
-              return (
-                <span key={`${i}-${tick}`} className={axisLabelClass("x", "end")}>
-                  {tick}
-                </span>
-              );
-            }
-            return (
-              <span
-                key={`${i}-${tick}`}
-                className={axisLabelClass("x", "middle")}
-                style={{ left: `${(i / HISTORY_TIME_TICK_STEPS) * 100}%` }}
-              >
-                {tick}
-              </span>
-            );
-          })}
-        </div>
+        <AxisRail
+          axis="x"
+          className="h-full flex-1"
+          interaction={timeAxisInteraction(historyTimeAxisHandlers)}
+          active={historyTimeAxisActive}
+          ticks={(historyTimeTicks ?? []).map((tick, i) => ({
+            key: `${i}-${tick}`,
+            label: tick,
+            frac: i / HISTORY_TIME_TICK_STEPS,
+          }))}
+        />
       </div>
     </div>
   );

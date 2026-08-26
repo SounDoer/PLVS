@@ -8,6 +8,7 @@ import { stereoMapRequestKeyFromControls } from "../../analysis/analysisRequests
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
+import { AxisRail } from "./AxisRail.jsx";
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
 import {
   SnapshotEmptyState,
@@ -26,8 +27,7 @@ import {
   formatStereoMapEnergy,
 } from "../../math/hoverMath";
 import { cn } from "@/lib/utils";
-import { CAPTION_TEXT, PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
-import { axisLabelClass } from "@/lib/axisLabelClasses.js";
+import { PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import {
   buildAdaptiveDbTicks,
   buildAdaptiveFreqTicks,
@@ -394,43 +394,16 @@ export function StereoMapPanel() {
     >
       <div className="flex min-h-0 flex-1 flex-col gap-0">
         <div className="grid min-h-0 flex-1 grid-cols-[var(--ui-chart-y-axis-rail-w)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_var(--ui-chart-x-axis-row-h)] gap-x-[var(--ui-chart-axis-gap)] gap-y-[var(--ui-chart-axis-gap)] items-stretch">
-          <div
-            ref={yAxis.axisRef}
-            className={cn(
-              W_SPECTRUM_Y_AXIS,
-              "relative min-h-0 shrink-0 text-[length:var(--ui-fs-axis)] text-muted-foreground"
-            )}
-          >
-            <div className="absolute inset-x-0 top-0 bottom-0">
-              {yTicks.map(({ v, lb }, i) => {
-                if (i === 0) {
-                  return (
-                    <span key={v} className={axisLabelClass("y", "start")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                if (i === yTicks.length - 1) {
-                  return (
-                    <span key={v} className={axisLabelClass("y", "end")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={v}
-                    className={axisLabelClass("y", "middle")}
-                    style={{
-                      top: `${rangedFromTopFrac(v, range.lowerBound, range.upperBound) * 100}%`,
-                    }}
-                  >
-                    {lb}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          <AxisRail
+            axis="y"
+            className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
+            railRef={yAxis.axisRef}
+            ticks={yTicks.map(({ v, lb }) => ({
+              key: v,
+              label: lb,
+              frac: rangedFromTopFrac(v, range.lowerBound, range.upperBound),
+            }))}
+          />
           <div className="relative min-h-0 min-w-0">
             <div
               data-testid="stereo-map-chart"
@@ -504,44 +477,17 @@ export function StereoMapPanel() {
             </div>
           </div>
           <div />
-          <div
-            {...stereoMapXAxis.axisHandlers}
-            ref={stereoMapXAxis.axisRef}
-            style={{ cursor: stereoMapXAxis.cursorStyle }}
-            className={cn(
-              CAPTION_TEXT,
-              "relative h-[var(--ui-chart-x-axis-row-h)] w-full transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-              (stereoMapXAxis.isActive || chartXAxisActive) && "text-foreground"
-            )}
-          >
-            <div className="absolute inset-x-0 top-0 h-full">
-              {freqTicks.map(({ v: f, lb }, i) => {
-                if (i === 0) {
-                  return (
-                    <span key={f} className={axisLabelClass("x", "start")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                if (i === freqTicks.length - 1) {
-                  return (
-                    <span key={f} className={axisLabelClass("x", "end")}>
-                      {lb}
-                    </span>
-                  );
-                }
-                return (
-                  <span
-                    key={f}
-                    className={axisLabelClass("x", "middle")}
-                    style={{ left: `${rangedFreqToXFrac(f, xMinHz, xMaxHz) * 100}%` }}
-                  >
-                    {lb}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          <AxisRail
+            axis="x"
+            className="h-[var(--ui-chart-x-axis-row-h)] w-full"
+            interaction={stereoMapXAxis}
+            active={chartXAxisActive}
+            ticks={freqTicks.map(({ v: f, lb }) => ({
+              key: f,
+              label: lb,
+              frac: rangedFreqToXFrac(f, xMinHz, xMaxHz),
+            }))}
+          />
         </div>
       </div>
     </div>

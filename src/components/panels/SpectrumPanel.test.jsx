@@ -655,7 +655,7 @@ describe("SpectrumPanel", () => {
 
     expect(container.innerHTML).not.toContain("--ui-chart-pad");
     expect(container.querySelector("svg")?.parentElement?.className).not.toContain("px-[");
-    expect(screen.getByText("1k").parentElement?.className).toContain("inset-x-0");
+    expect(screen.getByText("1k").parentElement?.className).toContain("inset-0");
   });
 
   it("keeps frequency axis endpoint labels inside the chart bounds", () => {
