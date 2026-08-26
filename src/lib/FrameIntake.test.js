@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FrameIntake, buildSpectrumDataSnapshot } from "./FrameIntake.js";
+import { FrameIntake, buildSpectrumDataSnapshot, EVICTION_GRACE_MS } from "./FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 
 const HIST_MAX = 5;
@@ -1283,5 +1283,97 @@ describe("secondary curve in spectrum data", () => {
       spectrumSmoothDb: [-10],
     });
     expect(data.dbListB).toEqual([]);
+  });
+});
+
+describe("visual history eviction", () => {
+  const SPEC_KEY = "spectrum:pair:0:1:combined:sp25:tilt300:smoff";
+  const OTHER_KEY = "spectrum:pair:0:1:combined:sp40:tilt300:smoff";
+
+  function spectrumRow(timestampMs, key) {
+    return {
+      timestampMs,
+      waveformMin: [0],
+      waveformMax: [0],
+      spectrumByKey: { [key]: { bandCentersHz: [100, 200], smoothDb: [-20, -30] } },
+    };
+  }
+
+  // A window far longer than any timestamp these tests use, so the age rule never fires unless a
+  // test is specifically exercising it.
+  const WIDE_WINDOW_MS = 60 * 60 * 1000;
+
+  function retain(keys) {
+    return { spectrum: new Set(keys), vectorscope: new Set(), stereoMap: new Set() };
+  }
+
+  it("keeps a key that a panel still needs", () => {
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(retain([SPEC_KEY]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+    intake.pushVisualHistRow(spectrumRow(1000 + EVICTION_GRACE_MS * 10, SPEC_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+  });
+
+  it("keeps an unneeded key inside the grace window and drops it after", () => {
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(retain([SPEC_KEY]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+
+    // The panel moves to a new setting: SPEC_KEY is no longer needed, OTHER_KEY is.
+    intake.setRetainedVisualKeys(retain([OTHER_KEY]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(2000, OTHER_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+
+    intake.pushVisualHistRow(spectrumRow(2000 + EVICTION_GRACE_MS - 1, OTHER_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+
+    intake.pushVisualHistRow(spectrumRow(2000 + EVICTION_GRACE_MS, OTHER_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).toBeNull();
+    expect(intake.getVisualSpectrumHistByKey(OTHER_KEY)).not.toBeNull();
+  });
+
+  it("restarts the grace window when an unneeded key is needed again", () => {
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(retain([SPEC_KEY]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+
+    intake.setRetainedVisualKeys(retain([OTHER_KEY]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(2000, OTHER_KEY), 10);
+
+    intake.setRetainedVisualKeys(retain([SPEC_KEY, OTHER_KEY]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(2000 + EVICTION_GRACE_MS * 2, OTHER_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+  });
+
+  it("drops a needed slab whose newest row has left the retention window", () => {
+    // A panel can be open -- so its key is retained -- and still receive nothing, because it lost
+    // the request cap or the dock took its slot. Expiry is append-driven, so such a slab freezes
+    // and holds rows from outside the window forever unless the age rule drops it.
+    const intake = new FrameIntake();
+    const windowMs = 5000;
+    intake.setRetainedVisualKeys(retain([SPEC_KEY, OTHER_KEY]), windowMs);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+
+    intake.pushVisualHistRow(spectrumRow(1000 + windowMs, OTHER_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+
+    intake.pushVisualHistRow(spectrumRow(1000 + windowMs + 1, OTHER_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).toBeNull();
+  });
+
+  it("does not sweep without a frame, which is what pauses eviction while stopped", () => {
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(retain([SPEC_KEY]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+    intake.setRetainedVisualKeys(retain([]), WIDE_WINDOW_MS);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+  });
+
+  it("sweeps nothing until a retained set has been supplied", () => {
+    const intake = new FrameIntake();
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+    intake.pushVisualHistRow(spectrumRow(1000 + EVICTION_GRACE_MS * 10, SPEC_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
   });
 });

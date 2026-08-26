@@ -20,6 +20,14 @@ function getBandsFromCenters(centers) {
   return cached;
 }
 
+/**
+ * How long a key must go unneeded before its slab is dropped. This is a safety margin, not a
+ * feature: it exists so a sweep never acts on a state that is mid-transition. It is deliberately
+ * short, and nothing user-facing should describe it -- "change back within three seconds and your
+ * history returns" is not a promise this app makes.
+ */
+export const EVICTION_GRACE_MS = 3000;
+
 const EMPTY_ARRAY = Object.freeze([]);
 const EMPTY_F32 = new Float32Array(0);
 const _constantArrayCache = new Map();
@@ -169,6 +177,11 @@ export class FrameIntake {
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
     this._visualStereoMapHistByKey = new Map();
+    this._retainedVisualKeys = null;
+    this._visualRetentionWindowMs = null;
+    // Key -> the timestamp it was first seen unneeded. One map across all three families is safe:
+    // every key builder prefixes its own family name, so keys never collide.
+    this._unneededVisualKeysSince = new Map();
     this._histTimestamp = createTimestampDomain();
     this._visualTimestamp = createTimestampDomain();
     this._currentChannelMetadata = {
@@ -293,6 +306,7 @@ export class FrameIntake {
       this._visualSpectrumHistByKey = new Map();
       this._visualVectorscopeHistByKey = new Map();
       this._visualStereoMapHistByKey = new Map();
+      this._unneededVisualKeysSince = new Map();
     }
 
     this._visualWaveformHist.push({
@@ -367,6 +381,56 @@ export class FrameIntake {
           pr: entry.pr,
           c: entry.c,
         });
+      }
+    }
+    this._sweepVisualHistories(timestampMs);
+  }
+
+  /**
+   * The keys whose history is worth keeping, and the retention window in milliseconds. Supplied by
+   * the app from the open panels; see `deriveRetainedAnalysisKeys`.
+   */
+  setRetainedVisualKeys(keysByFamily, windowMs) {
+    this._retainedVisualKeys = keysByFamily ?? null;
+    this._visualRetentionWindowMs = Number.isFinite(windowMs) ? windowMs : null;
+  }
+
+  /**
+   * Drops slabs no open panel needs, and slabs whose newest row has aged out of the retention
+   * window. Runs on frame arrival rather than on a timer, which is what makes eviction pause while
+   * capture is stopped: no frames, no sweep, and the recording in memory stays whole.
+   */
+  _sweepVisualHistories(nowMs) {
+    const retained = this._retainedVisualKeys;
+    if (!retained || !Number.isFinite(nowMs)) return;
+    this._sweepVisualFamily(this._visualSpectrumHistByKey, retained.spectrum, nowMs);
+    this._sweepVisualFamily(this._visualVectorscopeHistByKey, retained.vectorscope, nowMs);
+    this._sweepVisualFamily(this._visualStereoMapHistByKey, retained.stereoMap, nowMs);
+  }
+
+  _sweepVisualFamily(slabsByKey, retainedKeys, nowMs) {
+    const windowMs = this._visualRetentionWindowMs;
+    for (const [key, slab] of slabsByKey) {
+      if (retainedKeys?.has(key)) {
+        this._unneededVisualKeysSince.delete(key);
+      } else {
+        const since = this._unneededVisualKeysSince.get(key);
+        if (since === undefined) {
+          this._unneededVisualKeysSince.set(key, nowMs);
+        } else if (nowMs - since >= EVICTION_GRACE_MS) {
+          slabsByKey.delete(key);
+          this._unneededVisualKeysSince.delete(key);
+          continue;
+        }
+      }
+
+      // A retained key can still hold a slab nothing feeds any more -- expiry is append-driven, so
+      // it would otherwise keep rows from outside the window for the rest of the session.
+      if (!Number.isFinite(windowMs) || slab.length === 0) continue;
+      const newestMs = slab.timestampAt(slab.length - 1);
+      if (Number.isFinite(newestMs) && nowMs - newestMs > windowMs) {
+        slabsByKey.delete(key);
+        this._unneededVisualKeysSince.delete(key);
       }
     }
   }
@@ -466,6 +530,7 @@ export class FrameIntake {
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
     this._visualStereoMapHistByKey = new Map();
+    this._unneededVisualKeysSince = new Map();
     this._histTimestamp = createTimestampDomain();
     this._visualTimestamp = createTimestampDomain();
   }
