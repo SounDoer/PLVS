@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task.
 
+**Status:** Superseded by `docs/superpowers/plans/2026-08-26-linked-axis-viewports-implementation.md`. Never implemented; no task in it was started.
+
 **Goal:** Let eligible Workspace frequency panels optionally share one persisted logarithmic frequency range without changing DSP, history, snapshots, hover synchronization, or Dock controls.
 
 **Architecture:** Workspace state owns one dormant-or-active `frequencyViewport` and each eligible panel owns a `linkFrequencyRange` membership flag plus its dormant local range. Semantic reducer actions perform join, leave, and shared-range updates atomically. Spectrum X, Spectrogram frequency Y, and Stereo Map X consume one effective-range adapter; Dock remains screened out.

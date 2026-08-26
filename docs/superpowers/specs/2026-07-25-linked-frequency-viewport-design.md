@@ -1,7 +1,7 @@
 # Optional Linked Frequency Viewport — Design
 
 **Date:** 2026-07-25  
-**Status:** Draft for owner review  
+**Status:** Superseded by `docs/superpowers/specs/2026-08-26-linked-axis-viewports-design.md`  
 **Phase:** 3, after Shared Spectral Engine and Stereo Map
 
 ## Summary
