@@ -88,3 +88,16 @@ Traps that cost a real commit to learn, because the code either says nothing or 
 - **Window chrome must be applied before window geometry.** Geometry is stored as an outer position paired with an inner size, so both ends of a save/restore have to wear the same frame. Decorations and the platform shadow each change that frame — flip either one between save and restore and the window drifts by the difference: a title bar's worth of overshoot, a shadow's worth of gap. Every path that restores a normal window already orders it this way, each differently: boot passes `startup_window_is_frameless` to the window builder before restoring bounds, dock exit hands `decorations` to `exit_dock`, and preset apply awaits `setWindowDecorations` before `applyWindowBounds`. React state is not a way to do this — `setFocusView` only schedules the flip for `useFocusViewWindow`'s effect, which lands a commit too late. The shadow is Rust-owned (normal windows always have it, the docked strip never does); JS must not touch it.
 
 - **A fresh worktree cannot build Rust until the sidecar binaries are there.** `src-tauri/binaries/` is gitignored (the FFmpeg sidecars are Release assets, never committed), so a new worktree starts without them and `npm run check` fails in the Rust half. The trap is the error: cargo reports `could not compile serde_derive`, naming a third-party proc-macro nobody touched, and the real cause — `resource path binariesfmpeg-x86_64-pc-windows-msvc.exe doesn't exist` — is buried in the build-script stdout above it. Run `npm run ffmpeg:fetch` in the worktree; do not go debugging the dependency tree, and do not copy the files by hand from another checkout, which skips the script's checksum verification.
+
+- **A control value that is part of an analysis request key costs memory to change.** Visual history
+  is stored one slab per key (`FrameIntake`), so every distinct key mints a slab — at a four-hour
+  retention one Spectrum slab is 1.38 GB and one Stereo Map slab is 4.37 GB. That is why Spectrum
+  speed, Spectrum tilt and Stereo Map speed carry `commitOnRelease` while every other slider commits
+  per pointer move: a single two-second drag committing per step stranded 754 MB. Slabs are dropped
+  once no open panel needs the key, but the set of keys worth keeping comes from
+  `deriveRetainedAnalysisKeys`, **not** from the request list handed to Rust — that list is capped at
+  four, reshuffled by the dock, and gated on a channel count read from the live frame shape, so using
+  it would delete history on a device blip or a dock toggle. The set goes to the intakes that
+  *ingest* frames (`ingestingIntakes` in `useIntakeRouting`), never to the displayed one: `intakeRef`
+  is a stable ref, so an effect keyed on it never re-fires across a source switch and the live intake
+  would sweep against a stale key set, deleting a still-visible panel's history.
