@@ -1319,6 +1319,12 @@ function AppContent() {
   const historyData = {
     selectedOffset,
     setSelectedOffset,
+    // The Time Range settings row edits the viewport these describe. It reads the effective values
+    // rather than the stored window, because those are what the axis labels are built from.
+    sourceMode,
+    historyMaxWindowSec: historyRetentionSec,
+    setHistoryWindowSec,
+    setHistoryOffsetSec,
     running,
     referenceLufs,
     momentaryRules: loudnessTraceRules.momentary,

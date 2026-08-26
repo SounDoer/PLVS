@@ -14,6 +14,9 @@ import {
   panelControlUiRows,
 } from "@/lib/panelControls.js";
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "@/lib/statsCatalog.js";
+import { edgesFromViewport, viewportFromEdges } from "@/math/timeViewportEdges.js";
+import { useHistoryData } from "@/workspace/AudioDataContext.jsx";
+import { HIST_SAMPLE_SEC } from "@/hooks/useLoudnessHistory.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
@@ -192,6 +195,58 @@ export function SettingsSlider({
         </span>
       ) : null}
     </div>
+  );
+}
+
+// The panels with a time axis all edit one shared window today, so this row reads and writes the
+// history context directly rather than taking props: whichever panel it is opened from, it is the
+// same viewport. Phase 3 of the linked-axis work gives each panel its own, and this is where that
+// choice will be revisited.
+//
+// The two inputs are the values at the ends of the rail, not the window and offset stored
+// underneath -- see timeViewportEdges. Rendering nothing without a history context keeps Dock, which
+// composes its own settings from the exported rows, and bare test renders unaffected.
+export function TimeRangeRow() {
+  const historyData = useHistoryData();
+  if (typeof historyData?.setHistoryWindowSec !== "function") return null;
+
+  const {
+    sourceMode,
+    totalSamples,
+    visibleSamples,
+    effectiveOffsetSamples,
+    historyMaxWindowSec,
+    setHistoryWindowSec,
+    setHistoryOffsetSec,
+  } = historyData;
+  const viewport = {
+    sourceMode,
+    totalSamples,
+    visibleSamples,
+    effectiveOffsetSamples,
+    sampleSec: HIST_SAMPLE_SEC,
+  };
+  const { left, right } = edgesFromViewport(viewport);
+
+  return (
+    <SettingsRow label="Time Range">
+      <SettingsRangeInput
+        minAriaLabel="time range min"
+        maxAriaLabel="time range max"
+        minValue={left}
+        maxValue={right}
+        onCommit={(nextLeft, nextRight) => {
+          const next = viewportFromEdges({
+            left: nextLeft,
+            right: nextRight,
+            ...viewport,
+            maxWindowSec: historyMaxWindowSec,
+          });
+          setHistoryWindowSec(next.windowSec);
+          setHistoryOffsetSec(next.offsetSec);
+        }}
+      />
+    </SettingsRow>
   );
 }
 
@@ -1238,6 +1293,7 @@ export function PanelSettingsContent({
           }
           onCentroidChange={(waveformCentroid) => updateWaveformControls({ waveformCentroid })}
         />
+        <TimeRangeRow />
       </SettingsGroup>
     );
   }
@@ -1332,6 +1388,7 @@ export function PanelSettingsContent({
             );
           }}
         />
+        <TimeRangeRow />
       </SettingsGroup>
     );
   }
@@ -1527,6 +1584,8 @@ export function PanelSettingsContent({
             }}
           />
         ) : null}
+        {/* Spectrogram has a time axis; Spectrum, which shares this branch, does not. */}
+        {activeTab === "spectrogram" ? <TimeRangeRow /> : null}
       </SettingsGroup>
     );
   }

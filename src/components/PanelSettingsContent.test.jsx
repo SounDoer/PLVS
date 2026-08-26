@@ -50,6 +50,136 @@ function render(ui, options) {
   return renderInDom(ui, { wrapper: LoudnessProfileProvider, ...options });
 }
 
+// A 60 second recording at the history sample rate, viewed 30 seconds wide from the live edge.
+function historyDataWithViewport(over = {}) {
+  return {
+    sourceMode: "live",
+    totalSamples: 600,
+    visibleSamples: 300,
+    effectiveOffsetSamples: 0,
+    clampedWindowSec: 30,
+    effectiveOffsetSec: 0,
+    historyMaxWindowSec: 7200,
+    setHistoryWindowSec: vi.fn(),
+    setHistoryOffsetSec: vi.fn(),
+    ...over,
+  };
+}
+
+function renderWithHistory(ui, historyData = historyDataWithViewport()) {
+  return render(<PanelDataProviders historyData={historyData}>{ui}</PanelDataProviders>);
+}
+
+function timeRangeInputs() {
+  return [screen.getByLabelText("time range min"), screen.getByLabelText("time range max")];
+}
+
+describe("PanelSettingsContent time range row", () => {
+  it.each([["loudness"], ["waveform"], ["spectrogram"]])(
+    "offers the row on the %s panel, which has a time axis",
+    (activeTab) => {
+      renderWithHistory(
+        <PanelSettingsContent
+          activeTab={activeTab}
+          panelControls={DEFAULT_PANEL_CONTROLS}
+          onPanelControlsChange={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText("Time Range")).toBeTruthy();
+    }
+  );
+
+  it.each([["spectrum"], ["stereo-map"], ["levelMeter"], ["vectorscope"]])(
+    "leaves it off the %s panel, which has no time axis",
+    (activeTab) => {
+      renderWithHistory(
+        <PanelSettingsContent
+          activeTab={activeTab}
+          panelControls={DEFAULT_PANEL_CONTROLS}
+          onPanelControlsChange={vi.fn()}
+          vectorscopeOptions={[{ key: "0:1", label: "1/2" }]}
+        />
+      );
+
+      expect(screen.queryByText("Time Range")).toBeNull();
+    }
+  );
+
+  it("reads down from the left in live mode, the way the rail does", () => {
+    renderWithHistory(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    const [min, max] = timeRangeInputs();
+
+    expect(min.value).toBe("30");
+    expect(max.value).toBe("0");
+  });
+
+  it("reads up from the left in file mode, the way the rail does", () => {
+    renderWithHistory(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />,
+      historyDataWithViewport({ sourceMode: "file" })
+    );
+    const [min, max] = timeRangeInputs();
+
+    expect(Number(min.value)).toBeLessThan(Number(max.value));
+  });
+
+  it("carries no unit suffix, matching the frequency row", () => {
+    renderWithHistory(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    const [min] = timeRangeInputs();
+
+    expect(min.value).toBe("30");
+    expect(min.value).not.toContain("s");
+  });
+
+  it("commits an edit to the shared window and offset", () => {
+    const historyData = historyDataWithViewport();
+    renderWithHistory(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />,
+      historyData
+    );
+    const [min] = timeRangeInputs();
+
+    fireEvent.change(min, { target: { value: "20" } });
+    fireEvent.blur(min);
+
+    expect(historyData.setHistoryWindowSec).toHaveBeenCalledWith(20);
+    expect(historyData.setHistoryOffsetSec).toHaveBeenCalledWith(0);
+  });
+
+  it("stays out of the way when no history context is mounted", () => {
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText("Time Range")).toBeNull();
+  });
+});
+
 function TestPanelDataProviders({ value = {}, panelChromeData = value, children }) {
   return (
     <PanelDataProviders
