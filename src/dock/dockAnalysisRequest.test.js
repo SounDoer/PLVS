@@ -244,6 +244,9 @@ describe("mergeDockRetainedKeys", () => {
     expect(merged.spectrum).toContain(dockSpectrumKey({}));
     expect(merged.vectorscope).toContain(dockVectorscopeKey({}));
     expect(merged.stereoMap).toContain(dockStereoMapKey({}));
+    expect(merged.spectrum.size).toBe(1);
+    expect(merged.vectorscope.size).toBe(1);
+    expect(merged.stereoMap.size).toBe(1);
   });
 
   it("keeps the workspace keys and does not mutate the input", () => {
