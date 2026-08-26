@@ -239,7 +239,11 @@ describe("mergeDockRetainedKeys", () => {
       { panelId: "spectrum", moduleId: "spectrum", controls: {} },
       { panelId: "vectorscope", moduleId: "vectorscope", controls: {} },
       { panelId: "stereoMap", moduleId: "stereo-map", controls: {} },
-      { panelId: "level", moduleId: "levelMeter", controls: {} },
+      // Non-default controls: a leaked module has to produce a *different* key than the
+      // legitimate spectrum panel's for the size assertion below to catch it. With {} here,
+      // dockSpectrumKey({}) would collide with the spectrum panel's key and the leak would
+      // hide inside the same Set entry.
+      { panelId: "level", moduleId: "levelMeter", controls: { spectrumSpeedPercent: 99 } },
     ]);
     expect(merged.spectrum).toContain(dockSpectrumKey({}));
     expect(merged.vectorscope).toContain(dockVectorscopeKey({}));
