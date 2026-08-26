@@ -9,6 +9,7 @@ import { normalizePanelControlsById } from "../workspace/panelControlInstances.j
 import { normalizePinnedPanelsById } from "../workspace/reducer.js";
 import { presetsStore } from "../persistence/index.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
+import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 
 const EMPTY_PRESETS = { list: [], activeId: null, dirty: false };
 
@@ -129,6 +130,7 @@ export function usePresets({
         workspaceState.panelsById,
         workspaceState.pinnedPanelsById
       ),
+      axisViewports: normalizeAxisViewportsState(workspaceState.axisViewports),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
       panelOpacity,
@@ -154,6 +156,7 @@ export function usePresets({
     panelOpacity,
     glassEnabled,
     dock,
+    workspaceState.axisViewports,
     workspaceState.panelControlsById,
     workspaceState.panelOrder,
     workspaceState.panelsById,
@@ -208,6 +211,7 @@ export function usePresets({
         panelOrder: [...preset.panelOrder],
         panelControlsById: normalizePanelControlsById(preset.panelsById, preset.panelControlsById),
         pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
+        axisViewports: preset.axisViewports,
       });
       const presetFocusView = preset.focusView ? normalizeFocusView(preset.focusView) : null;
       let windowBoundsAppliedByDockExit;

@@ -11,6 +11,7 @@ import {
   AXIS_VIEWPORTS,
   countLinkedParticipants,
   normalizeAxisViewport,
+  normalizeAxisViewportsState,
   readLocalRange,
   writeLocalRange,
 } from "./axisViewports.js";
@@ -343,14 +344,19 @@ export function workspaceReducer(state, action) {
     }
 
     case "SET_VIEW": {
-      const { tree, panelsById, panelOrder, panelControlsById, pinnedPanelsById } = action.payload;
+      const { tree, panelsById, panelOrder, panelControlsById, pinnedPanelsById, axisViewports } =
+        action.payload;
       return {
         ...state,
         tree,
         panelsById,
+        // Membership and the shared value land in the same commit. A preset holding linked members
+        // must not render a frame where a panel claims to be linked while the group range it should
+        // be drawing is still the outgoing one.
         panelOrder,
         panelControlsById: normalizePanelControlsById(panelsById, panelControlsById),
         pinnedPanelsById: normalizePinnedPanelsById(panelsById, pinnedPanelsById),
+        axisViewports: normalizeAxisViewportsState(axisViewports),
         fullscreenId: null,
       };
     }

@@ -169,6 +169,34 @@ describe("usePresets", () => {
     });
   });
 
+  it("saves and restores the shared frequency viewport", async () => {
+    const { result } = renderPresetHook();
+    act(() => {
+      result.current.workspace.setAxisViewport("frequency", { min: 200, max: 5000 });
+    });
+
+    expect(result.current.workspace.state.axisViewports.frequency).toEqual({
+      min: 200,
+      max: 5000,
+    });
+    await act(async () => {
+      await result.current.presets.save("Zoomed");
+    });
+    expect(presetsStore.read().list[0].axisViewports.frequency).toEqual({ min: 200, max: 5000 });
+
+    act(() => {
+      result.current.workspace.setAxisViewport("frequency", { min: 20, max: 20000 });
+    });
+    await act(async () => {
+      await result.current.presets.apply(presetsStore.read().list[0].id);
+    });
+
+    expect(result.current.workspace.state.axisViewports.frequency).toEqual({
+      min: 200,
+      max: 5000,
+    });
+  });
+
   it("omits windowBounds outside Tauri", async () => {
     const { result } = renderPresetHook({ windowPinned: false });
     await act(async () => {
