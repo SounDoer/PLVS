@@ -14,7 +14,7 @@ import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { loudnessHistY } from "../../config/scales";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 
-export function LoudnessPanel({ compact = false }) {
+export function LoudnessPanel() {
   const historyTickSteps = HISTORY_TIME_TICK_STEPS;
   const {
     hasHistoryData,
@@ -129,6 +129,8 @@ export function LoudnessPanel({ compact = false }) {
             targetColumns
           ),
         };
+    // The history ring mutates in place; these values intentionally invalidate the cached paths.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     histSourceList,
     loudnessDisplayIndex,

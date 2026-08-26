@@ -468,8 +468,6 @@ describe("StereoMapPlot", () => {
       range: RANGE,
     };
     const { rerender } = render(<StereoMapPlot {...props} />);
-    const strokeCallsAfterFirst = ctx.stroke.mock.calls.length;
-
     rerender(<StereoMapPlot {...props} points={threeBandPoints({ invalidLast: true })} />);
 
     expect(ctx.stroke.mock.calls.length).toBeGreaterThan(0);

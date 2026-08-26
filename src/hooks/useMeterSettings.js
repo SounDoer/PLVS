@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { settingsStore } from "../persistence/index.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 
@@ -10,13 +10,13 @@ export function useMeterSettings() {
     sanitizeChannelLabelOverrides(settingsStore.read().channelLabelOverrides)
   );
 
-  function setChannelLabelOverrides(nextOverrides) {
+  const setChannelLabelOverrides = useCallback((nextOverrides) => {
     setChannelLabelOverridesState((prev) =>
       sanitizeChannelLabelOverrides(
         typeof nextOverrides === "function" ? nextOverrides(prev) : nextOverrides
       )
     );
-  }
+  }, []);
 
   useEffect(() => {
     settingsStore.patch({ channelLabelOverrides });

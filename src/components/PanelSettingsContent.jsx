@@ -6,12 +6,9 @@ import { cn } from "@/lib/utils";
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import {
   DEFAULT_PANEL_CONTROLS,
-  LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
-  SPECTROGRAM_MODE_OPTIONS,
   SPECTRUM_MAX_MODE_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
-  STEREO_MAP_MODE_OPTIONS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
   panelControlUiRows,

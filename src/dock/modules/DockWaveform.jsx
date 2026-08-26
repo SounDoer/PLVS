@@ -240,6 +240,7 @@ export function DockWaveform({ controls }) {
     latestTimestampMs === null
       ? historyLength
       : Math.floor(latestTimestampMs / (HIST_SAMPLE_SEC * 1000 * aggregationStride));
+  const latestRowFallback = latestTimestampMs === null ? latestRow : null;
 
   const onCanvasResize = useCallback(({ width, height }) => {
     setCanvasSize((current) =>
@@ -252,8 +253,11 @@ export function DockWaveform({ controls }) {
     maxDevicePixelRatioX: MAX_DEVICE_PIXEL_RATIO,
   });
 
-  const waveformView = useMemo(
-    () => ({
+  const waveformView = useMemo(() => {
+    // Rows without timestamps still need to invalidate the memo as the live ring advances.
+    void latestRowFallback;
+    void historyVersion;
+    return {
       envelope: sliceDockWaveformHistory(
         histSourceList,
         waveformHistoryIndex,
@@ -262,17 +266,17 @@ export function DockWaveform({ controls }) {
         canvasSize.width
       ),
       newestVisibleTimestampMs: latestTimestampMs,
-    }),
-    [
-      histSourceList,
-      waveformHistoryIndex,
-      historyVersion,
-      latestTimestampMs === null ? latestRow : null,
-      visibleSamples,
-      channelCount,
-      canvasSize.width,
-    ]
-  );
+    };
+  }, [
+    histSourceList,
+    waveformHistoryIndex,
+    historyVersion,
+    latestRowFallback,
+    latestTimestampMs,
+    visibleSamples,
+    channelCount,
+    canvasSize.width,
+  ]);
   const { envelope } = waveformView;
   const spectralMetrics = useMemo(
     () =>
@@ -300,6 +304,7 @@ export function DockWaveform({ controls }) {
       visibleSamples,
       canvasSize.width,
       channelCount,
+      histSourceList,
     ]
   );
 

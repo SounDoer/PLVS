@@ -328,6 +328,8 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
             effectiveChannels,
             canvasW
           ),
+    // The history ring mutates in place; its visible bounds intentionally invalidate this slice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       waveformSourceList,
       waveformHistoryIndex,
@@ -361,6 +363,8 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
           nominalIntervalMs: HIST_SAMPLE_SEC * 1000,
         }
       ),
+    // The spectral history ring also mutates in place; its version invalidates the derived metrics.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       visualWaveformHist,
       visualWaveformHist?.version,
@@ -372,6 +376,8 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
       visibleSamples,
       canvasW,
       effectiveChannels,
+      effectiveOffsetSamples,
+      waveformSourceList,
     ]
   );
 
@@ -562,7 +568,6 @@ function WaveformLane({
   fracPhase,
   firstBucket,
   lastBucket,
-  compact,
   selected,
   frequencyColor,
   lowMidSplitHz,

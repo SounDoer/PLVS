@@ -45,6 +45,7 @@ import {
   clampSpectrumChannelToAvailable,
 } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
+import { seedTokensFromLabels } from "./math/channelRoles.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -123,11 +124,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const {
-    state: workspaceState,
-    setPanelControls: setWorkspacePanelControls,
-    setPanelControlsForPanel,
-  } = useWorkspaceStore();
+  const { state: workspaceState, setPanelControlsForPanel } = useWorkspaceStore();
   useAppGlobalEffects();
   const {
     sourceMode,
@@ -153,7 +150,6 @@ function AppContent() {
   const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
   const settings = useSettings({ onClearRef });
   const {
-    settingsOpen,
     setSettingsOpen,
     resolvedThemeId,
     resolvedTheme,
@@ -271,13 +267,12 @@ function AppContent() {
     selectedOffset,
     setSelectedOffset,
     selectedSnapshotTimeMs,
-    selectedOffsetRef,
     notice,
     raiseNotice,
     clearNotice,
     showClock,
   } = display;
-  const { clockRef, elapsedMsRef, canClearRef } = display.clock;
+  const { elapsedMsRef } = display.clock;
 
   // Dock transitions. Exit restores the user's TRUE normal-form attributes
   // (override-not-overwrite): decorations follow focusView, always-on-top follows
@@ -535,7 +530,6 @@ function AppContent() {
     workspaceState,
     dockLayout.controlsByPanelId,
     dockLayout.setPanelControls,
-    dockLayout.panelsById,
     loudnessProfile.document,
     setPanelControlsForPanel,
   ]);
@@ -544,26 +538,7 @@ function AppContent() {
   const spectrumViewUi = normalizedPanelControls.spectrumView;
   const spectrumMaxModeUi = normalizedPanelControls.spectrumMaxMode;
 
-  const { intakeRef, fileDisplayIntake, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
-
-  // Stable identity: several effects (vectorscope/spectrum clamps, the displayAudio sync)
-  // list updatePanelControls in their deps. If its identity changed per dispatch it would
-  // re-run those effects → dispatch → re-run → "Maximum update depth exceeded" on Start.
-  // Read the latest values through refs and keep useCallback deps empty.
-  const panelControlsRef = useRef(normalizedPanelControls);
-  panelControlsRef.current = normalizedPanelControls;
-  const setWorkspacePanelControlsRef = useRef(setWorkspacePanelControls);
-  setWorkspacePanelControlsRef.current = setWorkspacePanelControls;
-  const updatePanelControls = useCallback((nextPanelControls) => {
-    const current = panelControlsRef.current;
-    const next = normalizePanelControls(
-      typeof nextPanelControls === "function" ? nextPanelControls(current) : nextPanelControls
-    );
-    // Skip redundant dispatches: normalize() always returns a new object, so without this
-    // an unchanged value would still churn workspace state (and persist) on every frame.
-    if (JSON.stringify(next) === JSON.stringify(current)) return;
-    setWorkspacePanelControlsRef.current(next);
-  }, []);
+  const { intakeRef, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
 
   const {
     histSourceList,
@@ -588,12 +563,9 @@ function AppContent() {
   });
 
   const {
-    historyWindowSec,
     setHistoryWindowSec,
-    historyOffsetSec,
     setHistoryOffsetSec,
     setHistoryHudUntilTs,
-    historyHudHold,
     setHistoryHudHold,
     historyChartInteractive,
     totalSamples,
@@ -671,6 +643,8 @@ function AppContent() {
           : histSourceList[histSourceList.length - 1]
         : null;
     return Number.isFinite(last?.timestampMs) ? last.timestampMs : undefined;
+    // The history ring mutates in place; its version is an intentional cache invalidator.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [histSourceList, histSourceList.version]);
 
   const sourceTransportState = deriveSourceTransportState({
@@ -685,7 +659,6 @@ function AppContent() {
     analyzingFileSession,
   });
   const showFileAnalysisResult = sourceMode === "file" && fileSessions.length > 0;
-  const chromeState = sourceTransportState.chromeState;
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
   const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
@@ -757,7 +730,7 @@ function AppContent() {
     () => deriveChannelLabelRuntime({ channelCount, layoutResolution, channelLabelOverrides }),
     [channelCount, channelLabelOverrides, layoutResolution]
   );
-  const { channelLabelOverride, overrideLabels, loudnessWeights } = channelLabelRuntime;
+  const { channelLabelOverride, loudnessWeights } = channelLabelRuntime;
   const { dialogueGating, dialogueVadEngine } = useMemo(
     () => deriveDialogueRuntime(workspaceState),
     [workspaceState]
@@ -803,7 +776,7 @@ function AppContent() {
         return { ...prev, [channelCount]: next };
       });
     },
-    [channelCount, channelAutoLabels]
+    [channelCount, channelAutoLabels, setChannelLabelOverrides]
   );
 
   const resetChannelLabels = useCallback(() => {
@@ -813,7 +786,7 @@ function AppContent() {
       delete next[channelCount];
       return next;
     });
-  }, [channelCount]);
+  }, [channelCount, setChannelLabelOverrides]);
 
   /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
   const vectorscopePairOptions = useMemo(() => {
@@ -913,10 +886,14 @@ function AppContent() {
     setPanelControlsForPanel,
   ]);
 
+  const dockPanels = dockLayout.panels;
+  const dockControlsByPanelId = dockLayout.controlsByPanelId;
+  const setDockPanelControls = dockLayout.setPanelControls;
+
   useEffect(() => {
-    for (const panel of dockLayout.panels) {
+    for (const panel of dockPanels) {
       if (panel.moduleId !== "vectorscope") continue;
-      const controls = dockLayout.controlsByPanelId[panel.id];
+      const controls = dockControlsByPanelId[panel.id];
       const pair = controls?.vectorscopePair;
       const nextPair = clampVectorscopePairToAvailable(
         pair,
@@ -924,20 +901,14 @@ function AppContent() {
         peakLabelContext
       );
       if (nextPair.x === pair?.x && nextPair.y === pair?.y) continue;
-      dockLayout.setPanelControls(panel.id, { ...controls, vectorscopePair: nextPair });
+      setDockPanelControls(panel.id, { ...controls, vectorscopePair: nextPair });
     }
-  }, [
-    channelCount,
-    dockLayout.controlsByPanelId,
-    dockLayout.panels,
-    dockLayout.setPanelControls,
-    peakLabelContext,
-  ]);
+  }, [channelCount, dockControlsByPanelId, dockPanels, setDockPanelControls, peakLabelContext]);
 
   useEffect(() => {
-    for (const panel of dockLayout.panels) {
+    for (const panel of dockPanels) {
       if (panel.moduleId !== "stereo-map") continue;
-      const controls = dockLayout.controlsByPanelId[panel.id];
+      const controls = dockControlsByPanelId[panel.id];
       const pair = controls?.stereoMapPair;
       const nextPair = clampVectorscopePairToAvailable(
         pair,
@@ -945,20 +916,14 @@ function AppContent() {
         peakLabelContext
       );
       if (nextPair.x === pair?.x && nextPair.y === pair?.y) continue;
-      dockLayout.setPanelControls(panel.id, { ...controls, stereoMapPair: nextPair });
+      setDockPanelControls(panel.id, { ...controls, stereoMapPair: nextPair });
     }
-  }, [
-    channelCount,
-    dockLayout.controlsByPanelId,
-    dockLayout.panels,
-    dockLayout.setPanelControls,
-    peakLabelContext,
-  ]);
+  }, [channelCount, dockControlsByPanelId, dockPanels, setDockPanelControls, peakLabelContext]);
 
   useEffect(() => {
-    for (const panel of dockLayout.panels) {
+    for (const panel of dockPanels) {
       if (panel.moduleId !== "spectrum" && panel.moduleId !== "spectrogram") continue;
-      const controls = dockLayout.controlsByPanelId[panel.id];
+      const controls = dockControlsByPanelId[panel.id];
       const channel = controls?.spectrumChannel;
       const nextChannel = clampSpectrumChannelToAvailable(channel, spectrumChannelOptions);
       const currentKey =
@@ -968,52 +933,9 @@ function AppContent() {
           ? `s-${nextChannel.ch}`
           : `p-${nextChannel.x}-${nextChannel.y}`;
       if (currentKey === nextKey) continue;
-      dockLayout.setPanelControls(panel.id, { ...controls, spectrumChannel: nextChannel });
+      setDockPanelControls(panel.id, { ...controls, spectrumChannel: nextChannel });
     }
-  }, [
-    dockLayout.controlsByPanelId,
-    dockLayout.panels,
-    dockLayout.setPanelControls,
-    spectrumChannelOptions,
-  ]);
-
-  const onVectorscopePairChange = (pair) => {
-    const nextVectorscopeLabel = formatVectorscopePairLabel({
-      x: pair.x,
-      y: pair.y,
-      channelLabels: vectorscopeChannelLabels,
-    });
-    intakeRef.current.setCurrentChannelMetadata({
-      frequencyLabel: spectrumLiveLabel,
-      vectorscopePairLabel: nextVectorscopeLabel,
-    });
-    if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
-    updatePanelControls((current) => ({ ...current, vectorscopePair: pair }));
-  };
-
-  const onSpectrumChannelChange = (sel) => {
-    const prevLabel = spectrumLiveLabel;
-    const nextKey = sel.type === "pair" ? `p-${sel.x}-${sel.y}` : `s-${sel.ch}`;
-    const nextLabel = spectrumChannelOptions.find((o) => o.key === nextKey)?.label ?? prevLabel;
-    intakeRef.current.setCurrentChannelMetadata({
-      frequencyLabel: nextLabel,
-      vectorscopePairLabel: vectorscopeLiveLabel,
-    });
-    if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
-    updatePanelControls((current) => ({ ...current, spectrumChannel: sel }));
-    if (running && prevLabel !== nextLabel) {
-      intakeRef.current.setPendingFrequencyMarker({ from: prevLabel, to: nextLabel });
-    }
-  };
-
-  const onSpectrumViewChange = (view) => {
-    if (selectedOffsetRef.current >= 0) setSelectedOffset(-1);
-    updatePanelControls((current) => ({ ...current, spectrumView: view }));
-  };
-
-  const onSpectrumMaxModeChange = (spectrumMaxMode) => {
-    updatePanelControls((current) => ({ ...current, spectrumMaxMode }));
-  };
+  }, [dockControlsByPanelId, dockPanels, setDockPanelControls, spectrumChannelOptions]);
 
   const {
     showHistoryHud,
@@ -1268,7 +1190,6 @@ function AppContent() {
       presets,
       raiseNotice,
       reserveSpace,
-      setReserveSpace,
       toggleReserveSpace,
     ]
   );
@@ -1311,7 +1232,7 @@ function AppContent() {
       frequencyLabel: spectrumLiveLabel,
       vectorscopePairLabel: vectorscopeLiveLabel,
     });
-  }, [spectrumLiveLabel, vectorscopeLiveLabel]);
+  }, [intakeRef, spectrumLiveLabel, vectorscopeLiveLabel]);
 
   const spectrumViewLegendValue = useMemo(
     () => spectrumViewLegend(spectrumViewUi, spectrumChannelUi, vectorscopeChannelLabels),

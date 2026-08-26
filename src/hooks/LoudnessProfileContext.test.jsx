@@ -16,12 +16,6 @@ function seed(profiles, active = LOUDNESS_PROFILE_OFF) {
   settingsStore.patch({ loudnessProfiles: { active, profiles } });
 }
 
-function saveProfile(hook, name = "Mine", referenceLufs = -16) {
-  act(() => hook.result.current.beginCreate());
-  act(() => hook.result.current.editDraft((document) => ({ ...document, name, referenceLufs })));
-  act(() => hook.result.current.saveDraft());
-}
-
 beforeEach(() => {
   vi.restoreAllMocks();
   settingsStore.reset();

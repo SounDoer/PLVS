@@ -31,7 +31,6 @@ import {
   buildAdaptiveFreqTicks,
   rangedFreqToXFrac,
   spectrumDbToTopFrac,
-  spectrumDbToYViewBox,
 } from "../../config/scales";
 import {
   anchorFromPointer,
@@ -100,7 +99,7 @@ function smoothSpectrumResult(previous, next) {
   };
 }
 
-export function SpectrumPanel({ compact = false }) {
+export function SpectrumPanel() {
   const { displayAudio } = useFrameData();
   const {
     selectedOffset,

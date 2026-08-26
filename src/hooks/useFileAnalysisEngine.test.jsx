@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, waitFor } from "@testing-library/react";
 import { detectHistoryTruncation, useFileAnalysisEngine } from "./useFileAnalysisEngine.js";

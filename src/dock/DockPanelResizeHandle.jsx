@@ -73,7 +73,7 @@ export function DockPanelResizeHandle({
         event.currentTarget.releasePointerCapture?.(event.pointerId);
         emit(drag.latestDelta, true, drag.widths);
       }}
-      onPointerCancel={(event) => {
+      onPointerCancel={() => {
         const drag = dragRef.current;
         dragRef.current = null;
         if (drag) emit(drag.latestDelta, true, drag.widths);

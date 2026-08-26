@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleHelp, ExternalLink, RotateCcw, Terminal, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";

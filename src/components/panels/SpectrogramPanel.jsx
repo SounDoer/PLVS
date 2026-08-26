@@ -56,7 +56,7 @@ const RIGHT_DOUBLE_CLICK_SLOP_PX = 4;
 // requestAnimationFrame loops on every panel render, which happens at spectrum-frame rate.
 const NO_CANVAS = { current: null };
 
-export function SpectrogramPanel({ compact = false }) {
+export function SpectrogramPanel() {
   const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
   const { channelCount, spectrumChannelOptions } = useFrameData();
   const {
@@ -324,6 +324,8 @@ export function SpectrogramPanel({ compact = false }) {
       showFrequencyMarkers
         ? spectrogramDataBoundaryMarkers(spectrogramSnaps, oldestMs, newestMs, sampleMs)
         : [],
+    // The snapshot ring mutates in place; its version is an intentional cache invalidator.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [showFrequencyMarkers, spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
   );
   useSpectrogramCanvas({
@@ -497,6 +499,7 @@ export function SpectrogramPanel({ compact = false }) {
       cursorToFloor,
       holdChartYAxis,
       is3d,
+      notePointerMove,
       normalizedPanelControls,
       onHistoryPointerMove,
       onPanelControlsChange,

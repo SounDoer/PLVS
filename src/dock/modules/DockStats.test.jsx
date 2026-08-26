@@ -271,7 +271,8 @@ describe("Dock Stats and the main window under one provider", () => {
   // the same profile must not read as a breach in one surface and neutral in the other.
   function renderBothSurfaces(displayAudio, { heightMode = "standard", onProfile } = {}) {
     function ProfileHandle() {
-      onProfile?.(useLoudnessProfile());
+      const profile = useLoudnessProfile();
+      onProfile?.(profile);
       return null;
     }
 

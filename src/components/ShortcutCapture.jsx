@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { keyEventToAccelerator, formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
@@ -14,33 +14,36 @@ export function ShortcutCapture({
   const [hint, setHint] = useState("");
   const buttonRef = useRef(null);
 
-  const stopRecording = () => {
+  const stopRecording = useCallback(() => {
     setRecording(false);
     setHint("");
     onRecordingChange(false);
     buttonRef.current?.blur();
-  };
+  }, [onRecordingChange]);
 
-  const onKeyDown = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.key === "Escape") {
+  const onKeyDown = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        stopRecording();
+        return;
+      }
+      const accel = keyEventToAccelerator(e);
+      if (!accel) {
+        setHint("Needs a modifier (Ctrl/Alt/Shift)");
+        return;
+      }
+      const conflict = reservedComboConflict(accel);
+      if (conflict) {
+        setHint(`Used by ${conflict}`);
+        return;
+      }
+      onChange(accel);
       stopRecording();
-      return;
-    }
-    const accel = keyEventToAccelerator(e);
-    if (!accel) {
-      setHint("Needs a modifier (Ctrl/Alt/Shift)");
-      return;
-    }
-    const conflict = reservedComboConflict(accel);
-    if (conflict) {
-      setHint(`Used by ${conflict}`);
-      return;
-    }
-    onChange(accel);
-    stopRecording();
-  };
+    },
+    [onChange, stopRecording]
+  );
 
   useEffect(() => {
     if (!recording) return;

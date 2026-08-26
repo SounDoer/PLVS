@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act, render } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
-import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
+import { presetsStore, workspaceStore } from "../persistence/index.js";
 
 function Probe({ onState }) {
   const { state } = useWorkspaceStore();

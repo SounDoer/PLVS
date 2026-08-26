@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { loudnessTraceGradientStops } from "@/lib/loudnessTraceColor.js";
@@ -188,7 +188,13 @@ export function LoudnessHistoryChart({
       }
       onHistoryHoverMove?.(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
     },
-    [holdChartYAxis, onHistoryHoverMove, onHistoryPointerMove, onLoudnessYRangeChange]
+    [
+      holdChartYAxis,
+      notePointerMove,
+      onHistoryHoverMove,
+      onHistoryPointerMove,
+      onLoudnessYRangeChange,
+    ]
   );
 
   const onChartPointerUp = useCallback(
