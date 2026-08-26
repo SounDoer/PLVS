@@ -31,7 +31,7 @@ import { useDockLayout } from "./dock/useDockLayout.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
-import { mergeDockAnalysisRequests } from "./dock/dockAnalysisRequest.js";
+import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
 import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
 import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
@@ -52,7 +52,7 @@ import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
 import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
-import { deriveAnalysisRequests } from "./analysis/analysisRequests.js";
+import { deriveAnalysisRequests, deriveRetainedAnalysisKeys } from "./analysis/analysisRequests.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import { resetTruePeakMax } from "./ipc/commands.js";
@@ -662,24 +662,37 @@ function AppContent() {
   const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
   const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
   const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
+  const dockPanelInstances = useMemo(
+    () =>
+      dockLayout.panels.map((panel) => ({
+        panelId: panel.id,
+        moduleId: panel.moduleId,
+        controls: dockLayout.controlsByPanelId[panel.id],
+      })),
+    [dockLayout.panels, dockLayout.controlsByPanelId]
+  );
   const derivedAnalysisRequests = useMemo(
     () =>
       mergeDockAnalysisRequests(
         deriveAnalysisRequests(workspaceState, { channelCount }),
-        docked
-          ? dockLayout.panels.map((panel) => ({
-              panelId: panel.id,
-              moduleId: panel.moduleId,
-              controls: dockLayout.controlsByPanelId[panel.id],
-            }))
-          : false
+        docked ? dockPanelInstances : false
       ),
-    [workspaceState, channelCount, docked, dockLayout.controlsByPanelId, dockLayout.panels]
+    [workspaceState, channelCount, docked, dockPanelInstances]
   );
   const analysisRequests = useMemo(
     () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
     [derivedAnalysisRequests]
   );
+  // Which histories survive is a different question from what Rust computes, so this is derived
+  // from the open panels rather than from `analysisRequests` -- and deliberately without `docked`,
+  // because AppShell renders the strip or the panels and whichever is hidden comes back intact.
+  const retainedAnalysisKeys = useMemo(
+    () => mergeDockRetainedKeys(deriveRetainedAnalysisKeys(workspaceState), dockPanelInstances),
+    [workspaceState, dockPanelInstances]
+  );
+  useEffect(() => {
+    intakeRef.current?.setRetainedVisualKeys(retainedAnalysisKeys, historyRetentionSec * 1000);
+  }, [intakeRef, retainedAnalysisKeys, historyRetentionSec]);
   const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
   const historyPerformanceControllerRef = useRef(null);
   const historyPerformanceRequestKeysRef = useRef(null);
