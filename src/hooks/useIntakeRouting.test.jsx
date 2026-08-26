@@ -67,4 +67,23 @@ describe("useIntakeRouting", () => {
     });
     expect(result.current.fileDisplayActiveRef.current).toBe(false);
   });
+
+  it("ingestingIntakes holds the live and analyzing intakes, not the displayed one", () => {
+    // A frozen displayed session (its own file, not the one analyzing) never receives frames and
+    // never sweeps, so it must be absent -- only the intakes that actually ingest may appear here.
+    const liveIntake = new FrameIntake();
+    const displayedFileIntake = new FrameIntake();
+    const analyzingFileIntake = new FrameIntake();
+    const { result } = run({
+      sourceMode: "file",
+      fileHistory: { analyzingFileId: "analyzing", activeFileId: "displayed" },
+      activeFileSession: { intake: displayedFileIntake },
+      analyzingFileSession: { intake: analyzingFileIntake },
+      liveIntake,
+    });
+
+    expect(result.current.intakeRef.current).toBe(displayedFileIntake);
+    expect(result.current.ingestingIntakes).toEqual([liveIntake, analyzingFileIntake]);
+    expect(result.current.ingestingIntakes).not.toContain(result.current.intakeRef.current);
+  });
 });

@@ -260,7 +260,7 @@ function AppContent() {
 
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
-  const { display, routing, liveIntakeRef } = useMeterRuntimeAssembly();
+  const { display, routing } = useMeterRuntimeAssembly();
   const {
     audio,
     setAudio,
@@ -538,7 +538,7 @@ function AppContent() {
   const spectrumViewUi = normalizedPanelControls.spectrumView;
   const spectrumMaxModeUi = normalizedPanelControls.spectrumMaxMode;
 
-  const { intakeRef, frequencyMarkerRef, getSpectrogramSnapsForKey, fileAnalysisIntake } = routing;
+  const { intakeRef, frequencyMarkerRef, getSpectrogramSnapsForKey, ingestingIntakes } = routing;
 
   const {
     histSourceList,
@@ -690,19 +690,23 @@ function AppContent() {
     () => mergeDockRetainedKeys(deriveRetainedAnalysisKeys(workspaceState), dockPanelInstances),
     [workspaceState, dockPanelInstances]
   );
-  // Sweeping runs inside pushVisualHistRow -- i.e. only on the intakes that INGEST frames, not the
-  // one that happens to be on screen. `intakeRef.current` is the DISPLAYED intake, which in file
-  // mode is a different object from the live intake; live capture keeps running underneath file
-  // mode regardless of `sourceMode`, so pushing the retained set to the displayed intake alone
-  // would leave the live intake sweeping against a stale set and deleting a still-visible panel's
-  // history a few seconds later. Target both ingesting intakes directly. `fileDisplayIntake` needs
-  // nothing of its own: it is either the same object as `fileAnalysisIntake`, or a frozen session
-  // that receives no frames and therefore never sweeps.
+  // Sweeping runs inside pushVisualHistRow -- i.e. only on the intakes that INGEST frames
+  // (routing's `ingestingIntakes`: live + file-analysis), not on `intakeRef.current`, which is
+  // whichever intake is DISPLAYED. Those differ across a source switch, and `intakeRef` is a
+  // stable ref object, so an effect keyed on it would never re-fire when only its `.current`
+  // changes -- go live, switch to file, edit panels there, switch back, and the live intake is
+  // still holding the key set from before the excursion (switchSource resets its rows but not
+  // `_retainedVisualKeys`). It then ingests under the newly-keyed panel and, a grace period later,
+  // sweeps that panel's history away as unretained. Target the ingesting intakes directly instead,
+  // so the set follows what is actually writing rows. `fileDisplayIntake` needs nothing of its
+  // own: it is either the same object as `fileAnalysisIntake`, or a frozen session that receives
+  // no frames and therefore never sweeps.
   useEffect(() => {
     const windowMs = historyRetentionSec * 1000;
-    liveIntakeRef.current?.setRetainedVisualKeys(retainedAnalysisKeys, windowMs);
-    fileAnalysisIntake?.setRetainedVisualKeys(retainedAnalysisKeys, windowMs);
-  }, [liveIntakeRef, fileAnalysisIntake, retainedAnalysisKeys, historyRetentionSec]);
+    for (const intake of ingestingIntakes) {
+      intake?.setRetainedVisualKeys(retainedAnalysisKeys, windowMs);
+    }
+  }, [ingestingIntakes, retainedAnalysisKeys, historyRetentionSec]);
   const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
   const historyPerformanceControllerRef = useRef(null);
   const historyPerformanceRequestKeysRef = useRef(null);

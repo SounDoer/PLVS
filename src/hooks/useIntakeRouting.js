@@ -38,6 +38,14 @@ export function useIntakeRouting({
   const intakeRef = useRef(liveIntake);
   intakeRef.current = sourceMode === "file" ? fileDisplayIntake : liveIntake;
 
+  // The intakes that receive frames, and therefore the only ones that sweep visual history
+  // (see FrameIntake#_sweepVisualHistories). fileDisplayIntake is deliberately absent: a displayed
+  // session that is not the analyzing one is frozen.
+  const ingestingIntakes = useMemo(
+    () => [liveIntake, fileAnalysisIntake],
+    [liveIntake, fileAnalysisIntake]
+  );
+
   const frequencyMarkerRef = useMemo(
     () => ({
       get current() {
@@ -61,5 +69,6 @@ export function useIntakeRouting({
     fileDisplayActiveRef,
     frequencyMarkerRef,
     getSpectrogramSnapsForKey,
+    ingestingIntakes,
   };
 }
