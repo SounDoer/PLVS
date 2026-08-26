@@ -6,6 +6,7 @@ import {
   deriveRetainedAnalysisKeys,
   spectrumRequestKeyFromControls,
   stereoMapRequestKeyFromControls,
+  vectorscopeRequestKeyFromControls,
 } from "./analysisRequests.js";
 
 function leaf(ids) {
@@ -477,18 +478,25 @@ describe("analysisRequests", () => {
       expect(retained.spectrum.size).toBe(5);
     });
 
-    it("puts Spectrogram panels in the Spectrum family", () => {
+    it("puts Spectrogram panels in the Spectrum family and retains open Vectorscope panels", () => {
       const retained = deriveRetainedAnalysisKeys(
         state({
-          panelsById: { spec: { moduleId: "spectrum" }, gram: { moduleId: "spectrogram" } },
+          panelsById: {
+            spec: { moduleId: "spectrum" },
+            gram: { moduleId: "spectrogram" },
+            vec: { moduleId: "vectorscope" },
+          },
           panelControlsById: {
             spec: { ...DEFAULT_PANEL_CONTROLS, spectrumView: "ms" },
             gram: { ...DEFAULT_PANEL_CONTROLS, spectrumView: "combined" },
+            vec: DEFAULT_PANEL_CONTROLS,
           },
         })
       );
       expect(retained.spectrum.size).toBe(2);
-      expect(retained.vectorscope.size).toBe(0);
+      expect(retained.vectorscope).toContain(
+        vectorscopeRequestKeyFromControls(DEFAULT_PANEL_CONTROLS)
+      );
     });
 
     it("keeps a Stereo Map key even when no channel pair is available", () => {
