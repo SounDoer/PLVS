@@ -15,6 +15,7 @@ import {
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
+import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useAxisSize } from "../../hooks/useAxisSize";
 import {
@@ -38,6 +39,7 @@ import {
   panRange,
   zoomRange,
   FREQUENCY_VIEWPORT,
+  WHEEL_PAN_SCALE,
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
@@ -245,6 +247,7 @@ export function StereoMapPanel() {
   const chartSvgRef = useRef(null);
   const chartDragRef = useRef(null);
   const suppressChartClickRef = useRef(false);
+  const { active: chartXAxisActive, pulse: pulseChartXAxis } = useAxisActivePulse();
 
   const zoomStereoMapXFromChart = useCallback(
     (e, factor) => {
@@ -263,8 +266,9 @@ export function StereoMapPanel() {
         factor,
       });
       updatePanelControlsRange({ stereoMapXMinFreq: next.min, stereoMapXMaxFreq: next.max });
+      pulseChartXAxis();
     },
-    [updatePanelControlsRange, xMaxHz, xMinHz]
+    [pulseChartXAxis, updatePanelControlsRange, xMaxHz, xMinHz]
   );
 
   const panStereoMapXFromChart = useCallback((rect, deltaPx, startRange) => {
@@ -282,9 +286,30 @@ export function StereoMapPanel() {
     (e) => {
       if (!historyChartInteractive) return;
       e.preventDefault();
+      // A trackpad's horizontal swipe pans the frequency axis, matching the spectrum. Pick by
+      // magnitude, not truthiness: a trackpad puts noise-scale values on the idle axis.
+      if (Number.isFinite(e.deltaX) && Math.abs(e.deltaX) > Math.abs(e.deltaY ?? 0)) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        updatePanelControlsRange(
+          panStereoMapXFromChart(rect, e.deltaX * WHEEL_PAN_SCALE, {
+            stereoMapXMinFreq: xMinHz,
+            stereoMapXMaxFreq: xMaxHz,
+          })
+        );
+        pulseChartXAxis();
+        return;
+      }
       zoomStereoMapXFromChart(e, e.deltaY > 0 ? ZOOM_OUT_FACTOR : ZOOM_IN_FACTOR);
     },
-    [historyChartInteractive, zoomStereoMapXFromChart]
+    [
+      historyChartInteractive,
+      panStereoMapXFromChart,
+      pulseChartXAxis,
+      updatePanelControlsRange,
+      xMaxHz,
+      xMinHz,
+      zoomStereoMapXFromChart,
+    ]
   );
 
   const onChartPointerDown = useCallback(
@@ -310,9 +335,10 @@ export function StereoMapPanel() {
       const rect = e.currentTarget.getBoundingClientRect();
       const dx = e.clientX - drag.startX;
       updatePanelControlsRange(panStereoMapXFromChart(rect, -dx, drag.startRange));
+      pulseChartXAxis();
       return true;
     },
-    [panStereoMapXFromChart, updatePanelControlsRange]
+    [panStereoMapXFromChart, pulseChartXAxis, updatePanelControlsRange]
   );
 
   const onChartPointerUp = useCallback((e) => {
@@ -485,7 +511,7 @@ export function StereoMapPanel() {
             className={cn(
               CAPTION_TEXT,
               "relative h-[var(--ui-chart-x-axis-row-h)] w-full transition-colors hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]",
-              stereoMapXAxis.isActive && "text-foreground"
+              (stereoMapXAxis.isActive || chartXAxisActive) && "text-foreground"
             )}
           >
             <div className="absolute inset-x-0 top-0 h-full">

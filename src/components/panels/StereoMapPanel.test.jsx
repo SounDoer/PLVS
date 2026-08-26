@@ -593,4 +593,60 @@ describe("StereoMapPanel", () => {
     const [updated] = onPanelControlsChange.mock.calls.at(-1);
     expect(updated.stereoMapXMaxFreq - updated.stereoMapXMinFreq).toBeLessThan(20000 - 20);
   });
+
+  it("highlights the frequency axis when the plot area changes the range", () => {
+    const { container } = renderPanel(
+      baseAudioData({
+        panelControls: {
+          stereoMapPair: { x: 0, y: 1 },
+          stereoMapXMinFreq: 20,
+          stereoMapXMaxFreq: 20000,
+        },
+        onPanelControlsChange: vi.fn(),
+        historyChartInteractive: true,
+      })
+    );
+
+    const chart = screen.getByTestId("stereo-map-chart");
+    const xAxis = container.querySelector('[style*="ew-resize"]');
+    expect(xAxis?.className).not.toContain("text-foreground");
+
+    fireEvent.wheel(chart, { clientX: 500, clientY: 130, deltaY: -100 });
+
+    expect(xAxis?.className).toContain("text-foreground");
+  });
+
+  it("pans the frequency range on a trackpad horizontal swipe", () => {
+    const onPanelControlsChange = vi.fn();
+    renderPanel(
+      baseAudioData({
+        panelControls: {
+          stereoMapPair: { x: 0, y: 1 },
+          stereoMapXMinFreq: 100,
+          stereoMapXMaxFreq: 1000,
+        },
+        onPanelControlsChange,
+        historyChartInteractive: true,
+      })
+    );
+
+    const chart = screen.getByTestId("stereo-map-chart");
+    vi.spyOn(chart, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 1000,
+      height: 260,
+    });
+    // Horizontal intent: deltaX dominates, so this pans rather than zooming.
+    fireEvent.wheel(chart, { clientX: 500, clientY: 130, deltaX: 120, deltaY: 0 });
+
+    expect(onPanelControlsChange).toHaveBeenCalled();
+    const [updated] = onPanelControlsChange.mock.calls.at(-1);
+    expect(updated.stereoMapXMinFreq).toBeGreaterThan(100);
+    expect(updated.stereoMapXMaxFreq).toBeGreaterThan(1000);
+    // A pan is rigid: the span in octaves survives it.
+    const before = Math.log2(1000 / 100);
+    const after = Math.log2(updated.stereoMapXMaxFreq / updated.stereoMapXMinFreq);
+    expect(after).toBeCloseTo(before, 6);
+  });
 });

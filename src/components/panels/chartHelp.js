@@ -70,7 +70,12 @@ export const SPECTRUM_HELP = [
   },
   {
     title: "Viewport",
-    items: ["Mouse wheel - Zoom frequency", "Ctrl + wheel - Zoom dB", "Ctrl + drag - Pan viewport"],
+    items: [
+      "Mouse wheel - Zoom frequency",
+      "Ctrl + wheel - Zoom dB",
+      "Trackpad swipe - Pan frequency",
+      "Ctrl + drag - Pan viewport",
+    ],
   },
   {
     title: "Axes",
@@ -191,7 +196,11 @@ export const STEREO_MAP_HELP = [
   },
   {
     title: "Viewport",
-    items: ["Mouse wheel - Zoom frequency", "Ctrl + drag - Pan viewport"],
+    items: [
+      "Mouse wheel - Zoom frequency",
+      "Trackpad swipe - Pan frequency",
+      "Ctrl + drag - Pan viewport",
+    ],
   },
   {
     title: "Axes",
