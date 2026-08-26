@@ -46,6 +46,22 @@ function dockVectorscopeRequest(raw, panelId = "dock:vectorscope") {
   };
 }
 
+/**
+ * Every request that does not reach the merged set is recorded, so the request set stops claiming
+ * a panel is active while nothing computes it. Both halves matter: panel requests the dock
+ * squeezed out, and dock requests the final cap could not fit.
+ */
+function recordDropped(derived, before, merged, overCapField) {
+  const mergedKeys = new Set(merged.map((request) => request.key));
+  const dropped = before.filter((request) => !mergedKeys.has(request.key));
+  if (dropped.length === 0) return { [overCapField]: derived[overCapField] };
+  const statusByPanelId = { ...derived.statusByPanelId };
+  for (const request of dropped) {
+    for (const panelId of request.panelIds) statusByPanelId[panelId] = "overCap";
+  }
+  return { [overCapField]: [...derived[overCapField], ...dropped], statusByPanelId };
+}
+
 export function mergeDockSpectrumRequest(derived, active, controls) {
   if (!active) return derived;
   const configured = Array.isArray(active)
@@ -79,9 +95,16 @@ export function mergeDockSpectrumRequest(derived, active, controls) {
     derived.spectrumRequests.length > available
       ? derived.spectrumRequests.slice(0, available)
       : derived.spectrumRequests;
+  const mergedRequests = [...kept, ...requests].slice(0, MAX_SPECTRUM_REQUESTS);
   return {
     ...derived,
-    spectrumRequests: [...kept, ...requests].slice(0, MAX_SPECTRUM_REQUESTS),
+    spectrumRequests: mergedRequests,
+    ...recordDropped(
+      derived,
+      [...derived.spectrumRequests, ...requests],
+      mergedRequests,
+      "overCapSpectrumRequests"
+    ),
   };
 }
 
@@ -114,9 +137,16 @@ export function mergeDockVectorscopeRequest(derived, active) {
     derived.vectorscopeRequests.length > available
       ? derived.vectorscopeRequests.slice(0, available)
       : derived.vectorscopeRequests;
+  const mergedRequests = [...kept, ...requests].slice(0, MAX_VECTORSCOPE_REQUESTS);
   return {
     ...derived,
-    vectorscopeRequests: [...kept, ...requests].slice(0, MAX_VECTORSCOPE_REQUESTS),
+    vectorscopeRequests: mergedRequests,
+    ...recordDropped(
+      derived,
+      [...derived.vectorscopeRequests, ...requests],
+      mergedRequests,
+      "overCapVectorscopeRequests"
+    ),
   };
 }
 
@@ -168,9 +198,16 @@ export function mergeDockStereoMapRequest(derived, active) {
     derived.stereoMapRequests.length > available
       ? derived.stereoMapRequests.slice(0, available)
       : derived.stereoMapRequests;
+  const mergedRequests = [...kept, ...requests].slice(0, MAX_STEREO_MAP_REQUESTS);
   return {
     ...derived,
-    stereoMapRequests: [...kept, ...requests].slice(0, MAX_STEREO_MAP_REQUESTS),
+    stereoMapRequests: mergedRequests,
+    ...recordDropped(
+      derived,
+      [...derived.stereoMapRequests, ...requests],
+      mergedRequests,
+      "overCapStereoMapRequests"
+    ),
   };
 }
 

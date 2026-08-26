@@ -274,3 +274,41 @@ describe("mergeDockRetainedKeys", () => {
     expect(merged.spectrum.size).toBe(1);
   });
 });
+
+describe("dock merge over-cap bookkeeping", () => {
+  it("records the panel requests the dock squeezed out", () => {
+    const full = Array.from({ length: MAX_SPECTRUM_REQUESTS }, (_, i) => ({
+      key: `panel-key-${i}`,
+      panelIds: [`panel-${i}`],
+    }));
+    const derived = { ...EMPTY_DERIVED, spectrumRequests: full };
+    const merged = mergeDockSpectrumRequest(derived, true);
+
+    const squeezedKey = `panel-key-${MAX_SPECTRUM_REQUESTS - 1}`;
+    expect(merged.overCapSpectrumRequests.map((r) => r.key)).toContain(squeezedKey);
+    expect(merged.statusByPanelId[`panel-${MAX_SPECTRUM_REQUESTS - 1}`]).toBe("overCap");
+    // The survivors are untouched.
+    expect(merged.statusByPanelId["panel-0"]).toBeUndefined();
+  });
+
+  it("records a dock request that did not fit either", () => {
+    // Five dock Spectrum modules with five distinct speeds are five distinct keys; one cannot fit.
+    const dockPanels = Array.from({ length: MAX_SPECTRUM_REQUESTS + 1 }, (_, i) => ({
+      panelId: `spectrum-${i}`,
+      moduleId: "spectrum",
+      controls: { spectrumSpeedPercent: 10 * (i + 1) },
+    }));
+    const merged = mergeDockSpectrumRequest(EMPTY_DERIVED, dockPanels);
+
+    expect(merged.spectrumRequests).toHaveLength(MAX_SPECTRUM_REQUESTS);
+    expect(merged.overCapSpectrumRequests).toHaveLength(1);
+    const droppedPanelId = merged.overCapSpectrumRequests[0].panelIds[0];
+    expect(merged.statusByPanelId[droppedPanelId]).toBe("overCap");
+  });
+
+  it("leaves the status map alone when nothing is dropped", () => {
+    const merged = mergeDockSpectrumRequest(EMPTY_DERIVED, true);
+    expect(merged.overCapSpectrumRequests).toHaveLength(0);
+    expect(merged.statusByPanelId).toBe(EMPTY_DERIVED.statusByPanelId);
+  });
+});
