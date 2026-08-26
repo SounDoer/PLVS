@@ -171,9 +171,9 @@ export class FrameIntake {
     this._channelMetadataSnap = new RingBuffer(1);
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist = new RingBuffer(1); // lazily resized on first pushVisualHistRow
-    // Request-keyed visual history: one slab/ring per active analysis request key. They are created
-    // lazily and retained after a key goes inactive (no panel uses it), so scrubbing back to an
-    // old request still shows its history until reset() / capacity change clears them.
+    // Request-keyed visual history: one slab/ring per active analysis request key. They are
+    // created lazily and dropped once no open panel needs the key (see `_sweepVisualFamily`), so
+    // scrubbing back to an abandoned request shows the empty state rather than its old history.
     this._visualSpectrumHistByKey = new Map();
     this._visualVectorscopeHistByKey = new Map();
     this._visualStereoMapHistByKey = new Map();
@@ -409,9 +409,10 @@ export class FrameIntake {
   }
 
   _sweepVisualFamily(slabsByKey, retainedKeys, nowMs) {
+    if (!(retainedKeys instanceof Set)) return;
     const windowMs = this._visualRetentionWindowMs;
     for (const [key, slab] of slabsByKey) {
-      if (retainedKeys?.has(key)) {
+      if (retainedKeys.has(key)) {
         this._unneededVisualKeysSince.delete(key);
       } else {
         const since = this._unneededVisualKeysSince.get(key);

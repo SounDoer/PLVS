@@ -1299,6 +1299,26 @@ describe("visual history eviction", () => {
     };
   }
 
+  function vectorscopeRow(timestampMs, key) {
+    return {
+      timestampMs,
+      waveformMin: [0],
+      waveformMax: [0],
+      vectorscopeByKey: { [key]: { pairs: [0.1, 0.2], correlation: 0.5 } },
+    };
+  }
+
+  function stereoMapRow(timestampMs, key) {
+    return {
+      timestampMs,
+      waveformMin: [0],
+      waveformMax: [0],
+      stereoMapByKey: {
+        [key]: { bandCentersHz: [100, 200], pl: [0.1, 0.2], pr: [0.3, 0.4], c: [0.05, 0.1] },
+      },
+    };
+  }
+
   // A window far longer than any timestamp these tests use, so the age rule never fires unless a
   // test is specifically exercising it.
   const WIDE_WINDOW_MS = 60 * 60 * 1000;
@@ -1425,5 +1445,40 @@ describe("visual history eviction", () => {
     // capacity change would delete it immediately instead of restarting its grace window.
     intake.pushVisualHistRow(spectrumRow(5000, SPEC_KEY), 20);
     expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+  });
+
+  it("Rule 1 (need) applies to the vectorscope family, not just spectrum", () => {
+    // retained.vectorscope keeps VS_KEY needed for the whole test, while retained.stereoMap stays
+    // empty throughout. If the sweep ever fed the vectorscope family the stereoMap retained set
+    // (or vice versa), VS_KEY would read as unneeded from the start and age out -- this is a
+    // deliberately stark mismatch between the two sets so a family swap can't coincidentally
+    // still pass.
+    const VS_KEY = "vectorscope:pair:0:1";
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(
+      { spectrum: new Set(), vectorscope: new Set([VS_KEY]), stereoMap: new Set() },
+      WIDE_WINDOW_MS
+    );
+    intake.pushVisualHistRow(vectorscopeRow(1000, VS_KEY), 10);
+    intake.pushVisualHistRow(vectorscopeRow(1000 + EVICTION_GRACE_MS * 10, VS_KEY), 10);
+    expect(intake.getVisualVectorscopeHistByKey(VS_KEY)).not.toBeNull();
+  });
+
+  it("Rule 2 (age) applies to the stereoMap family, whose slab is not a ChunkedHistorySlab", () => {
+    const SM_KEY = "stereoMap:pair:0:1:sp50:sm12";
+    const OTHER_SM_KEY = "stereoMap:pair:2:3:sp50:sm12";
+    const intake = new FrameIntake();
+    const windowMs = 5000;
+    intake.setRetainedVisualKeys(
+      { spectrum: new Set(), vectorscope: new Set(), stereoMap: new Set([SM_KEY, OTHER_SM_KEY]) },
+      windowMs
+    );
+    intake.pushVisualHistRow(stereoMapRow(1000, SM_KEY), 10, 48000);
+
+    intake.pushVisualHistRow(stereoMapRow(1000 + windowMs, OTHER_SM_KEY), 10, 48000);
+    expect(intake.getVisualStereoMapHistByKey(SM_KEY)).not.toBeNull();
+
+    intake.pushVisualHistRow(stereoMapRow(1000 + windowMs + 1, OTHER_SM_KEY), 10, 48000);
+    expect(intake.getVisualStereoMapHistByKey(SM_KEY)).toBeNull();
   });
 });
