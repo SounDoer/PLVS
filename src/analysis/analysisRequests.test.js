@@ -3,6 +3,7 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import {
   MAX_STEREO_MAP_REQUESTS,
   deriveAnalysisRequests,
+  deriveRetainedAnalysisKeys,
   spectrumRequestKeyFromControls,
   stereoMapRequestKeyFromControls,
 } from "./analysisRequests.js";
@@ -456,5 +457,65 @@ describe("analysisRequests", () => {
     );
 
     expect(result.spectrumRequests[0].panelIds).toEqual(["spectrum"]);
+  });
+
+  describe("deriveRetainedAnalysisKeys", () => {
+    it("keeps a key per open panel, past the request cap", () => {
+      // MAX_SPECTRUM_REQUESTS is 4. Five Spectrum panels with five distinct speeds are five
+      // distinct keys; capRequests would drop the fifth, but the panel is still open and still
+      // wants its history.
+      const panelsById = {};
+      const panelControlsById = {};
+      for (let i = 0; i < 5; i += 1) {
+        panelsById[`spec-${i}`] = { moduleId: "spectrum" };
+        panelControlsById[`spec-${i}`] = {
+          ...DEFAULT_PANEL_CONTROLS,
+          spectrumSpeedPercent: 10 * (i + 1),
+        };
+      }
+      const retained = deriveRetainedAnalysisKeys(state({ panelsById, panelControlsById }));
+      expect(retained.spectrum.size).toBe(5);
+    });
+
+    it("puts Spectrogram panels in the Spectrum family", () => {
+      const retained = deriveRetainedAnalysisKeys(
+        state({
+          panelsById: { spec: { moduleId: "spectrum" }, gram: { moduleId: "spectrogram" } },
+          panelControlsById: {
+            spec: { ...DEFAULT_PANEL_CONTROLS, spectrumView: "ms" },
+            gram: { ...DEFAULT_PANEL_CONTROLS, spectrumView: "combined" },
+          },
+        })
+      );
+      expect(retained.spectrum.size).toBe(2);
+      expect(retained.vectorscope.size).toBe(0);
+    });
+
+    it("keeps a Stereo Map key even when no channel pair is available", () => {
+      // deriveAnalysisRequests gates Stereo Map on channelCount, because Rust cannot compute it
+      // without a pair. Retention must not: channelCount comes from the live frame shape, so a
+      // device blip would otherwise delete hours of history.
+      const workspace = state({
+        panelsById: { sm: { moduleId: "stereo-map" } },
+        panelControlsById: { sm: DEFAULT_PANEL_CONTROLS },
+      });
+      expect(deriveAnalysisRequests(workspace, { channelCount: 1 }).stereoMapRequests).toHaveLength(
+        0
+      );
+      expect(deriveRetainedAnalysisKeys(workspace).stereoMap).toContain(
+        stereoMapRequestKeyFromControls(DEFAULT_PANEL_CONTROLS)
+      );
+    });
+
+    it("ignores panels that are not in the tree", () => {
+      const retained = deriveRetainedAnalysisKeys({
+        tree: leaf(["spec"]),
+        panelsById: { spec: { moduleId: "spectrum" }, gone: { moduleId: "vectorscope" } },
+        panelOrder: ["spec", "gone"],
+        panelControlsById: {},
+      });
+      expect(retained.spectrum.size).toBe(1);
+      expect(retained.vectorscope.size).toBe(0);
+    });
   });
 });

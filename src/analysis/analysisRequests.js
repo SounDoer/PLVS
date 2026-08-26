@@ -221,3 +221,37 @@ export function deriveAnalysisRequests(
     statusByPanelId,
   };
 }
+
+/**
+ * The analysis keys whose history is worth keeping: one per open panel, with no request cap, no
+ * dock merge and no availability gate.
+ *
+ * This deliberately does not reuse `deriveAnalysisRequests`. That answers "what should Rust
+ * compute right now", which is a different question -- a panel that lost the cap, or whose slot
+ * the dock took, or whose channel pair is momentarily unavailable, is still open and still wants
+ * its history. Deriving retention from the request list would delete it.
+ */
+export function deriveRetainedAnalysisKeys(state) {
+  const panelIdsInTree = collectPanelIdsFromTree(state?.tree, state?.panelsById);
+  const orderedPanelIds = (state?.panelOrder ?? []).filter((id) => panelIdsInTree.includes(id));
+  const spectrum = new Set();
+  const vectorscope = new Set();
+  const stereoMap = new Set();
+
+  for (const panelId of orderedPanelIds) {
+    const moduleId = resolvePanelModuleId(state, panelId);
+    if (moduleId === "spectrum" || moduleId === "spectrogram") {
+      spectrum.add(spectrumRequestKeyFromControls(getPanelControls(state, panelId)));
+    } else if (moduleId === "vectorscope") {
+      vectorscope.add(vectorscopeRequestKeyFromControls(getPanelControls(state, panelId)));
+    } else if (moduleId === "stereo-map") {
+      stereoMap.add(
+        stereoMapRequestKeyFromControls(
+          state.panelControlsById?.[panelId] ?? state.panelControls ?? undefined
+        )
+      );
+    }
+  }
+
+  return { spectrum, vectorscope, stereoMap };
+}
