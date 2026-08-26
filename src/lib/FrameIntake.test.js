@@ -1362,7 +1362,13 @@ describe("visual history eviction", () => {
     expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).toBeNull();
   });
 
-  it("does not sweep without a frame, which is what pauses eviction while stopped", () => {
+  it("setRetainedVisualKeys alone does not evict a key", () => {
+    // This only shows that one call to setRetainedVisualKeys, with a wide window, does not by
+    // itself drop SPEC_KEY -- it does not prove eviction is frame-gated, since a single sweep
+    // never deletes under Rule 1 regardless of when it runs (the grace window has to elapse
+    // first). The real guarantee is structural: _sweepVisualHistories is only ever called from
+    // pushVisualHistRow, which is what makes eviction pause while capture is stopped -- no frames
+    // arrive, so no sweep runs.
     const intake = new FrameIntake();
     intake.setRetainedVisualKeys(retain([SPEC_KEY]), WIDE_WINDOW_MS);
     intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
@@ -1374,6 +1380,50 @@ describe("visual history eviction", () => {
     const intake = new FrameIntake();
     intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
     intake.pushVisualHistRow(spectrumRow(1000 + EVICTION_GRACE_MS * 10, SPEC_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+  });
+
+  it("sweeps every family even when the pushed frame carries none of the three keyed records", () => {
+    // The sweep call sits at the end of pushVisualHistRow, outside all three `if (xxxByKey)`
+    // blocks. That is what lets an unfed family age out: a dead spectrum slab must still be
+    // swept even on a frame that carries only a vectorscope update, or none of the three at all.
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(retain([]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+
+    intake.pushVisualHistRow(
+      { timestampMs: 1000 + EVICTION_GRACE_MS, waveformMin: [0], waveformMax: [0] },
+      10
+    );
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).toBeNull();
+  });
+
+  it("clears the unneeded-since bookkeeping on reset, so a reappearing key gets a fresh grace window", () => {
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(retain([]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+
+    intake.reset();
+    // SPEC_KEY reappears while it is still unneeded. If reset() left the stale "since 1000"
+    // bookkeeping in place, this push would see nowMs - since already past EVICTION_GRACE_MS and
+    // delete the slab it just created, in the same call.
+    intake.pushVisualHistRow(spectrumRow(5000, SPEC_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+
+    intake.pushVisualHistRow(spectrumRow(5000 + EVICTION_GRACE_MS - 1, SPEC_KEY), 10);
+    expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
+  });
+
+  it("clears the unneeded-since bookkeeping on a capacity change, so a reappearing key gets a fresh grace window", () => {
+    const intake = new FrameIntake();
+    intake.setRetainedVisualKeys(retain([]), WIDE_WINDOW_MS);
+    intake.pushVisualHistRow(spectrumRow(1000, SPEC_KEY), 10);
+
+    // A different visualMaxSamples triggers the capacity-change branch, which recreates the keyed
+    // maps. SPEC_KEY reappears here while still unneeded; a stale "since 1000" surviving the
+    // capacity change would delete it immediately instead of restarting its grace window.
+    intake.pushVisualHistRow(spectrumRow(5000, SPEC_KEY), 20);
     expect(intake.getVisualSpectrumHistByKey(SPEC_KEY)).not.toBeNull();
   });
 });
