@@ -200,6 +200,17 @@ function progressReporter(onProgress, globalTarget) {
   };
 }
 
+function measureScalarSnapshot(intake) {
+  if (typeof intake.snapshotScalarHistory !== "function") return null;
+  const started = performance.now();
+  const frozen = intake.snapshotScalarHistory();
+  return {
+    retainedRows: frozen.loudness.length,
+    elapsedMs: performance.now() - started,
+    stats: frozen.storageStats(),
+  };
+}
+
 export function seedHistoryPerformance({
   intake,
   publishAudio,
@@ -280,9 +291,19 @@ export function seedHistoryPerformance({
       schedule(runVisualBatch);
       return;
     }
-    report({ phase: "complete", completed: total, total, fullVisual }, cancel);
+    const scalarSnapshot = measureScalarSnapshot(intake);
+    report(
+      {
+        phase: "complete",
+        completed: total,
+        total,
+        fullVisual,
+        ...(scalarSnapshot ? { scalarSnapshot } : {}),
+      },
+      cancel
+    );
     if (cancelled) return;
-    settleDone({ cancelled: false, scalarCompleted, visualCompleted });
+    settleDone({ cancelled: false, scalarCompleted, visualCompleted, scalarSnapshot });
   };
   const runScalarBatch = () => {
     idleId = null;

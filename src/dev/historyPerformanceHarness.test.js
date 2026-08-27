@@ -205,6 +205,26 @@ describe("history performance harness", () => {
     });
   });
 
+  it("reports structural scalar snapshot freeze work for a real intake", async () => {
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const controller = seedHistoryPerformance({
+      intake,
+      scheduler,
+      scalarRows: VISUAL_HISTORY_CHUNK_ROWS + 1,
+      visualRows: 0,
+      scalarBatchSize: VISUAL_HISTORY_CHUNK_ROWS + 1,
+    });
+
+    scheduler.runAllIdle();
+    const result = await controller.done;
+
+    expect(result.scalarSnapshot.retainedRows).toBe(VISUAL_HISTORY_CHUNK_ROWS + 1);
+    expect(result.scalarSnapshot.stats.scalar.sharedSealedChunks).toBe(3);
+    expect(result.scalarSnapshot.stats.scalar.copiedReferences).toBe(3);
+    expect(result.scalarSnapshot.elapsedMs).toBeGreaterThanOrEqual(0);
+  });
+
   it("uses safe one-value visual keys by default and production widths only when explicit", async () => {
     const safeScheduler = createScheduler();
     const safeIntake = createIntakeSpy();

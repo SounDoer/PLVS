@@ -37,6 +37,30 @@ export function projectedVisualBytes() {
   return { spectrumPrimary, vectorscopePairs, total: spectrumPrimary + vectorscopePairs };
 }
 
+export function projectedScalarSnapshotCopyBounds(
+  retainedRows,
+  chunkRows = VISUAL_HISTORY_CHUNK_ROWS
+) {
+  const indexLevels = retainedRows > 0 ? Math.floor(Math.log2(retainedRows)) : 0;
+  let perIndexCopiedReferences = 0;
+  for (let level = 1; level <= indexLevels; level += 1) {
+    const retainedBuckets = Math.ceil(retainedRows / 2 ** level) + 2;
+    perIndexCopiedReferences += Math.min(chunkRows, retainedBuckets);
+  }
+  const denseCopiedReferences = 3 * chunkRows;
+  const supportingSequenceCopiedReferences = 4 * chunkRows;
+  return {
+    retainedRows,
+    chunkRows,
+    indexLevels,
+    denseCopiedReferences,
+    perIndexCopiedReferences,
+    supportingSequenceCopiedReferences,
+    maxCopiedReferences:
+      denseCopiedReferences + 2 * perIndexCopiedReferences + supportingSequenceCopiedReferences,
+  };
+}
+
 /**
  * Retained-byte projection for one Stereo Map key with one active Position mode: Float64
  * timestamps, one Int16 value plane, one Int16 energy plane, a centi-dB row peak, a row-presence
@@ -154,6 +178,89 @@ function benchmarkScalarNoShift() {
     shiftCalls,
     elapsedMs: performance.now() - started,
   };
+}
+
+function benchmarkScalarSnapshot(rows) {
+  const intake = new FrameIntake();
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    if (index === Math.floor(rows.length / 2)) {
+      intake.setCurrentChannelMetadata({
+        frequencyLabel: "L/C/R",
+        vectorscopePairLabel: "Ls/Rs",
+      });
+      intake.setPendingFrequencyMarker({ from: "L/R", to: "L/C/R" });
+    }
+    intake.pushHistRow(
+      {
+        timestampMs: row.timestampMs,
+        lufsMomentary: row.m,
+        lufsShortTerm: row.st,
+        waveformMin: row.waveformMin,
+        waveformMax: row.waveformMax,
+        waveformSubPairs: row.waveformSubPairs,
+        waveformSubCount: row.waveformSubCount,
+        correlation: Math.sin(index / 101),
+      },
+      rows.length
+    );
+  }
+
+  const started = performance.now();
+  const frozen = intake.snapshotScalarHistory();
+  const elapsedMs = performance.now() - started;
+  const stats = frozen.storageStats();
+  const bounds = projectedScalarSnapshotCopyBounds(rows.length);
+  assertStructure(
+    stats.scalar.copiedReferences <= bounds.denseCopiedReferences,
+    `scalar snapshot copied ${stats.scalar.copiedReferences}/${bounds.denseCopiedReferences} dense references`
+  );
+  assertStructure(
+    stats.loudnessDisplayIndex.copiedReferences <= bounds.perIndexCopiedReferences,
+    `loudness index copied ${stats.loudnessDisplayIndex.copiedReferences}/${bounds.perIndexCopiedReferences} references`
+  );
+  assertStructure(
+    stats.waveformHistoryIndex.index.copiedReferences <= bounds.perIndexCopiedReferences,
+    `waveform index copied ${stats.waveformHistoryIndex.index.copiedReferences}/${bounds.perIndexCopiedReferences} references`
+  );
+  for (const [name, support] of [
+    ["waveform raw rows", stats.waveformHistoryIndex.rawRows],
+    ["waveform NaN rows", stats.waveformHistoryIndex.nanSequences],
+    ["channel metadata", stats.channelMetadata],
+    ["frequency markers", stats.frequencyMarkerIndex],
+  ]) {
+    assertStructure(
+      support.copiedReferences <= VISUAL_HISTORY_CHUNK_ROWS,
+      `${name} copied ${support.copiedReferences}/${VISUAL_HISTORY_CHUNK_ROWS} references`
+    );
+  }
+
+  const middle = Math.floor(rows.length / 2);
+  const checksum = {
+    oldestTimestampMs: frozen.loudness.timestampAt(0),
+    middleMomentary: frozen.audio.at(middle).momentary,
+    newestCorrelation: frozen.correlation.at(rows.length - 1),
+    middleFrequencyLabel: frozen.channelMetadata.at(middle).frequencyLabel,
+  };
+  intake.pushHistRow(
+    {
+      timestampMs: rows.length * 100,
+      lufsMomentary: -1,
+      lufsShortTerm: -2,
+      waveformMin: [-1, -1],
+      waveformMax: [1, 1],
+      waveformSubPairs: [],
+      waveformSubCount: 0,
+      correlation: -1,
+    },
+    rows.length
+  );
+  assertStructure(
+    frozen.loudness.timestampAt(0) === checksum.oldestTimestampMs,
+    "live wrap changed frozen scalar history"
+  );
+  benchmarkSink = frozen;
+  return { retainedRows: frozen.loudness.length, elapsedMs, bounds, stats, checksum };
 }
 
 function benchmarkVisualFreeze({ rows, bands, pairValues }) {
@@ -458,6 +565,8 @@ function benchmarkIndexes(rows) {
         frozenLoudness.retainedEndSequence - frozenLoudness.retainedStartSequence,
       waveformRetainedRows:
         frozenWaveform.retainedEndSequence - frozenWaveform.retainedStartSequence,
+      loudnessStorage: frozenLoudness.storageStats(),
+      waveformStorage: frozenWaveform.storageStats(),
     },
   };
 }
@@ -472,6 +581,7 @@ export function runBenchmark({ fullVisual = false } = {}) {
   const indexes = benchmarkIndexes(rows);
   const nearest = benchmarkNearestTimestamp();
   const scalar = benchmarkScalarNoShift();
+  const scalarSnapshot = benchmarkScalarSnapshot(rows);
   const safeRows = VISUAL_HISTORY_CHUNK_ROWS + 1;
   const safeVisualFreeze = benchmarkVisualFreeze({
     rows: safeRows,
@@ -500,6 +610,7 @@ export function runBenchmark({ fullVisual = false } = {}) {
     nearest,
     indexFreeze: indexes.freeze,
     scalar,
+    scalarSnapshot,
     visualFreeze: safeVisualFreeze,
     projectedVisualBytes: projected,
     stereoMapFreeze: safeStereoMapFreeze,
