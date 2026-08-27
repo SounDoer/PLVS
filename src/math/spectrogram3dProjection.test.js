@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildProjection,
   projectPoint,
+  projectPointInto,
   clampViewParams,
   labelEdges,
   unprojectFloor,
@@ -26,6 +27,21 @@ describe("clampViewParams", () => {
     expect(clampViewParams({ heightGain: 0.1 }).heightGain).toBe(0.3);
     expect(clampViewParams({ heightGain: 9 }).heightGain).toBe(3);
     expect(clampViewParams({ heightGain: Number.NaN }).heightGain).toBe(1);
+  });
+});
+
+describe("projectPointInto", () => {
+  it("writes into the caller's point and allocates nothing per call", () => {
+    const proj = buildProjection({ azimuthDeg: 25, elevationDeg: 30, ...VIEW });
+    const scratch = { x: 0, y: 0 };
+
+    const first = projectPointInto(0.25, 0.75, 0.5, proj, scratch);
+    expect(first).toBe(scratch);
+    expect(first).toEqual(projectPoint(0.25, 0.75, 0.5, proj));
+
+    const second = projectPointInto(0.9, 0.1, 0, proj, scratch);
+    expect(second).toBe(scratch);
+    expect(second).toEqual(projectPoint(0.9, 0.1, 0, proj));
   });
 });
 

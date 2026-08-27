@@ -177,11 +177,22 @@ export function unprojectFloor(x, y, proj) {
   };
 }
 
-export function projectPoint(tFrac, fFrac, hNorm, proj) {
+/**
+ * Projection that writes into a caller-owned point instead of allocating one.
+ *
+ * The ridge waterfall projects `ridges x points` vertices per repaint -- 44,800 at the
+ * RIDGE_MAX/POINT_MAX ceiling, which at the 25 Hz spectrum cadence is over a million
+ * short-lived objects per second, enough to keep the scavenger running through live
+ * monitoring. Hot loops pass a scratch point; everything else uses `projectPoint`.
+ */
+export function projectPointInto(tFrac, fFrac, hNorm, proj, out) {
   const t = tFrac - 0.5;
   const f = fFrac - 0.5;
-  return {
-    x: proj.originX + t * proj.tx + f * proj.fx,
-    y: proj.originY + t * proj.ty + f * proj.fy + hNorm * proj.hy,
-  };
+  out.x = proj.originX + t * proj.tx + f * proj.fx;
+  out.y = proj.originY + t * proj.ty + f * proj.fy + hNorm * proj.hy;
+  return out;
+}
+
+export function projectPoint(tFrac, fFrac, hNorm, proj) {
+  return projectPointInto(tFrac, fFrac, hNorm, proj, { x: 0, y: 0 });
 }

@@ -10,6 +10,7 @@ import { inWindowRange } from "../math/spectrogramTimeline.js";
 import {
   buildProjection,
   projectPoint,
+  projectPointInto,
   clampViewParams,
   labelEdges,
 } from "../math/spectrogram3dProjection.js";
@@ -827,6 +828,11 @@ export function useSpectrogram3dCanvas({
       // which end to start from.
       const first = proj.ridgeOrderAscending ? 0 : grid.count - 1;
       const step = proj.ridgeOrderAscending ? 1 : -1;
+      // One scratch point for the whole waterfall: the inner loop only reads x/y before the
+      // next call overwrites them, so a shared point is safe and keeps the per-repaint
+      // vertex projection allocation-free. See `projectPointInto`.
+      const pt = { x: 0, y: 0 };
+      const startBase = { x: 0, y: 0 };
       for (let n = 0; n < grid.count; n++) {
         const r = first + n * step;
         const tFrac = grid.tFracs[r];
@@ -835,11 +841,11 @@ export function useSpectrogram3dCanvas({
         const curve = new Path2D();
         for (let q = 0; q < grid.pointCount; q++) {
           const fFrac = q / (grid.pointCount - 1);
-          const pt = projectPoint(tFrac, fFrac, grid.heights[base + q] * view.heightGain, proj);
+          projectPointInto(tFrac, fFrac, grid.heights[base + q] * view.heightGain, proj, pt);
           if (q === 0) curve.moveTo(pt.x, pt.y);
           else curve.lineTo(pt.x, pt.y);
         }
-        const startBase = projectPoint(tFrac, 0, 0, proj);
+        projectPointInto(tFrac, 0, 0, proj, startBase);
 
         const edgeFade = tFrac < fadeSpan ? Math.max(0, tFrac) / fadeSpan : 1;
 
