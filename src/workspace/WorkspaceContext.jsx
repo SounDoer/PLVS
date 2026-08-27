@@ -57,7 +57,13 @@ export function WorkspaceProvider({ children }) {
   const [hoveredPanelId, setHoveredPanelId] = useState(null);
   const actions = useMemo(() => {
     const bound = bindWorkspaceActions(dispatch);
-    const markPresetDirty = () => presetsStore.patch({ dirty: true });
+    // Fires on every gesture, including each pointer move of a slider drag, so an unguarded
+    // patch serialised the whole presets domain a hundred times a second to re-assert a flag
+    // that was already set. The transition is what matters; the read is the cheap half.
+    const markPresetDirty = () => {
+      if (presetsStore.read().dirty === true) return;
+      presetsStore.patch({ dirty: true });
+    };
     return {
       ...bound,
       setTree: (...args) => {
@@ -119,8 +125,11 @@ export function WorkspaceProvider({ children }) {
     };
   }, []);
 
+  // Every control gesture lands here -- a slider drag fires one state change per pointer move,
+  // and this domain carries the whole layout tree plus every panel's controls, so a synchronous
+  // patch made each move pay a full get + parse + merge + stringify + set on the main thread.
   useEffect(() => {
-    workspaceStore.patch(ownedWorkspaceState(state));
+    workspaceStore.patchCoalesced(ownedWorkspaceState(state));
   }, [state]);
 
   const value = useMemo(

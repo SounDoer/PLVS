@@ -42,7 +42,8 @@ export function useViewSettings() {
 
   function setPanelOpacity(value) {
     const next = normalizePanelOpacity(value);
-    settingsStore.patch({ panelOpacity: next });
+    // Driven by a range input's `onInput`, so this runs on every pixel of a drag.
+    settingsStore.patchCoalesced({ panelOpacity: next });
     markPresetDirty();
     setPanelOpacityState(next);
   }
