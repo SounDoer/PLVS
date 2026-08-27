@@ -257,43 +257,6 @@ html[data-surface="dock-editor"] #root {
     0 1px 3px rgb(0 0 0 / 0.4);
 }
 
-/* LIVE (history snapshot) pulse on header primary control — see App.jsx */
-/* Fallback: opacity-only pulse for engines that don't support color-mix() */
-@keyframes live-snap-pulse-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.88;
-  }
-}
-
-@supports (color: color-mix(in srgb, red 50%, blue)) {
-  @keyframes live-snap-pulse-blink {
-    0%,
-    100% {
-      opacity: 1;
-      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-vectorscope-trace-snap) 45%, transparent);
-    }
-    50% {
-      opacity: 0.88;
-      box-shadow: 0 0 14px 2px color-mix(in srgb, var(--ui-vectorscope-trace-snap) 50%, transparent);
-    }
-  }
-}
-
-.live-snap-pulse {
-  animation: live-snap-pulse-blink 1.15s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .live-snap-pulse {
-    animation: none;
-    box-shadow: none;
-  }
-}
-
 /* StatusPill dot pulse — used in StatusPill.jsx */
 @keyframes status-pulse {
   0%,
