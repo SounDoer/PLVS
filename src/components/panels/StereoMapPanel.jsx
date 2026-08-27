@@ -253,8 +253,8 @@ export function StereoMapPanel() {
     }
     holdValues = snapResolved?.hold ?? null;
   } else {
-    // Live Hold accumulates once per Analysis Key, in the shared StereoMapHistorySlab this key's
-    // FrameIntake instance already owns (see StereoMapHistorySlab#liveHoldValues) — the same
+    // Live Hold accumulates once per Analysis Key, in the packed mode-history slab this key's
+    // FrameIntake instance already owns (see StereoMapModeHistorySlab#liveHoldValues) — the same
     // object every Workspace/Dock instance on this key reads via getStereoMapHistoryForKey. Reading
     // from it here, rather than accumulating a private copy, is what makes two panels (or a panel
     // and a future Dock module) on the same key agree on Hold. Global Clear replaces the whole

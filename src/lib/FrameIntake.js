@@ -2,9 +2,10 @@ import { RingBuffer } from "./RingBuffer.js";
 import { SparseHistoryMarkers } from "./SparseHistoryMarkers.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
-import { StereoMapHistorySlab } from "./StereoMapHistorySlab.js";
+import { StereoMapModeHistorySlab } from "./StereoMapModeHistorySlab.js";
 import { LoudnessHistoryIndex } from "../math/loudnessHistoryIndex.js";
 import { WaveformHistoryIndex } from "../math/waveformHistoryIndex.js";
+import { WaveformVisualHistorySlab } from "./WaveformVisualHistorySlab.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -170,7 +171,7 @@ export class FrameIntake {
     this._sparseFrequencyChannelMarkers = new SparseHistoryMarkers(1);
     this._channelMetadataSnap = new RingBuffer(1);
     this._pendingFrequencyMarker = null;
-    this._visualWaveformHist = new RingBuffer(1); // lazily resized on first pushVisualHistRow
+    this._visualWaveformHist = new WaveformVisualHistorySlab(1, 0);
     // Request-keyed visual history: one slab/ring per active analysis request key. They are
     // created lazily and dropped once no open panel needs the key (see `_sweepVisualFamily`), so
     // scrubbing back to an abandoned request shows the empty state rather than its old history.
@@ -299,8 +300,21 @@ export class FrameIntake {
 
   pushVisualHistRow(row, visualMaxSamples, defaultSampleRate) {
     const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._visualTimestamp);
-    if (this._visualWaveformHist.capacity !== visualMaxSamples) {
-      this._visualWaveformHist = new RingBuffer(visualMaxSamples);
+    const visualChannelCount = Math.max(
+      row.waveformMin?.length ?? 0,
+      row.waveformMax?.length ?? 0,
+      row.dominantFrequencyHz?.length ?? 0,
+      row.spectralCentroidHz?.length ?? 0,
+      row.tonality?.length ?? 0
+    );
+    if (
+      this._visualWaveformHist.capacity !== visualMaxSamples ||
+      this._visualWaveformHist.channelCount !== visualChannelCount
+    ) {
+      this._visualWaveformHist = new WaveformVisualHistorySlab(
+        visualMaxSamples,
+        visualChannelCount
+      );
       // Per-key rings are sized to the same window; drop them so they are recreated at the new
       // capacity rather than mixing sizes.
       this._visualSpectrumHistByKey = new Map();
@@ -310,11 +324,11 @@ export class FrameIntake {
     }
 
     this._visualWaveformHist.push({
-      waveformMin: snapshotNumericArray(row.waveformMin),
-      waveformMax: snapshotNumericArray(row.waveformMax),
-      dominantFrequencyHz: snapshotNumericArray(row.dominantFrequencyHz),
-      spectralCentroidHz: snapshotNumericArray(row.spectralCentroidHz),
-      tonality: snapshotNumericArray(row.tonality),
+      waveformMin: row.waveformMin,
+      waveformMax: row.waveformMax,
+      dominantFrequencyHz: row.dominantFrequencyHz,
+      spectralCentroidHz: row.spectralCentroidHz,
+      tonality: row.tonality,
       timestampMs,
     });
 
@@ -370,9 +384,12 @@ export class FrameIntake {
         if (!entry.bandCentersHz?.length || !entry.pl?.length) continue;
         let slab = this._visualStereoMapHistByKey.get(key);
         if (!slab || slab.capacity !== visualMaxSamples) {
-          slab = new StereoMapHistorySlab(visualMaxSamples);
+          const modes = this._retainedVisualKeys?.stereoMapModesByKey?.get(key);
+          slab = new StereoMapModeHistorySlab(visualMaxSamples, modes);
           this._visualStereoMapHistByKey.set(key, slab);
         }
+        const retainedModes = this._retainedVisualKeys?.stereoMapModesByKey?.get(key);
+        if (retainedModes) slab.setRetainedModes(retainedModes);
         slab.append({
           timestampMs,
           sampleRateHz,
@@ -393,6 +410,10 @@ export class FrameIntake {
   setRetainedVisualKeys(keysByFamily, windowMs) {
     this._retainedVisualKeys = keysByFamily ?? null;
     this._visualRetentionWindowMs = Number.isFinite(windowMs) ? windowMs : null;
+    for (const [key, slab] of this._visualStereoMapHistByKey) {
+      const modes = keysByFamily?.stereoMapModesByKey?.get(key);
+      if (modes) slab.setRetainedModes(modes);
+    }
   }
 
   /**

@@ -75,13 +75,17 @@ export function smoothPolarBins(bins) {
   return output;
 }
 
-function accumulatePairsIntoBins(pairs, peak, binCount) {
-  for (let index = 0; index + 1 < pairs.length; index += 2) {
-    const point = projectPairToPolar(pairs[index], pairs[index + 1]);
+export function accumulatePairSourceIntoBins(pairValueCount, pairAt, peak, binCount) {
+  for (let index = 0; index + 1 < pairValueCount; index += 2) {
+    const point = projectPairToPolar(pairAt(index), pairAt(index + 1));
     if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
     const bin = binIndexForAngle(point.angle, binCount);
     if (point.radius > peak[bin]) peak[bin] = point.radius;
   }
+}
+
+function accumulatePairsIntoBins(pairs, peak, binCount) {
+  accumulatePairSourceIntoBins(pairs.length, (index) => pairs[index], peak, binCount);
 }
 
 export function aggregatePolarLevel(rows, binCount = POLAR_LEVEL_BIN_COUNT) {
@@ -111,6 +115,9 @@ export const POLAR_LEVEL_MAX_HOLD_BUCKET_ROWS = 25;
 
 export function buildPolarLevelMaxHoldTable(slab, binCount = POLAR_LEVEL_BIN_COUNT) {
   const length = slab?.length ?? 0;
+  if (typeof slab?.polarMaxHoldAt === "function" && slab.polarBinCount === binCount) {
+    return { length, slab, incremental: true };
+  }
   const bucketRows = POLAR_LEVEL_MAX_HOLD_BUCKET_ROWS;
   const bucketCount = Math.ceil(length / bucketRows);
   const table = new Float64Array(bucketCount * binCount);
@@ -127,6 +134,7 @@ export function buildPolarLevelMaxHoldTable(slab, binCount = POLAR_LEVEL_BIN_COU
 
 export function polarLevelMaxHoldAt(built, index) {
   if (!built || index < 0 || index >= built.length) return null;
+  if (built.incremental) return built.slab.polarMaxHoldAt(index);
   const { table, binCount, bucketRows, slab } = built;
   const bucket = Math.floor(index / bucketRows);
   const running = new Float64Array(binCount);

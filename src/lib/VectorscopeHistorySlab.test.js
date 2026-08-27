@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { FrozenVectorscopeHistory, VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
+import { aggregatePolarLevel } from "../math/vectorscopePolarMath.js";
 
 const PAIR_VALUE_COUNT = 200;
-const CHUNK_PAYLOAD_BYTES =
-  VISUAL_HISTORY_CHUNK_ROWS * (PAIR_VALUE_COUNT * Float32Array.BYTES_PER_ELEMENT) +
-  VISUAL_HISTORY_CHUNK_ROWS * 5 * Float64Array.BYTES_PER_ELEMENT;
+const copiedTailBytes = (rows) =>
+  rows * PAIR_VALUE_COUNT * Int16Array.BYTES_PER_ELEMENT +
+  rows * 5 * Float64Array.BYTES_PER_ELEMENT +
+  64 * Float64Array.BYTES_PER_ELEMENT;
 
 function pairsFor(sequence) {
-  return Float32Array.from({ length: PAIR_VALUE_COUNT }, (_, index) => sequence + index / 1000);
+  return Float32Array.from(
+    { length: PAIR_VALUE_COUNT },
+    (_, index) => ((sequence + index) % 200) / 100 - 1
+  );
 }
 
 function pushRow(slab, sequence, overrides = {}) {
@@ -24,6 +29,38 @@ function pushRow(slab, sequence, overrides = {}) {
 }
 
 describe("VectorscopeHistorySlab", () => {
+  it("packs normalized pairs into Int16 rows with bounded display error", () => {
+    const slab = new VectorscopeHistorySlab(2, 4);
+    slab.push({ pairs: new Float32Array([-1, -0.12345, 0.5, 1]), timestampMs: 1 });
+
+    const row = slab.rowAt(0);
+    expect(row.pairAt(0)).toBe(-1);
+    expect(row.pairAt(1)).toBeCloseTo(-0.12345, 4);
+    expect(row.pairAt(2)).toBeCloseTo(0.5, 4);
+    expect(row.pairAt(3)).toBe(1);
+    expect(row.packedPairs).toBeInstanceOf(Int16Array);
+    expect(slab.storageStats()).toMatchObject({
+      valueArrayType: "Int16Array",
+      bytesPerValue: 2,
+    });
+  });
+
+  it("maintains an incremental Polar Max Hold summary across chunk boundaries", () => {
+    const slab = new VectorscopeHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 2, 2);
+    for (let i = 0; i < VISUAL_HISTORY_CHUNK_ROWS + 2; i += 1) {
+      const pairs =
+        i === 10
+          ? new Float32Array([1, 0])
+          : i === VISUAL_HISTORY_CHUNK_ROWS
+            ? new Float32Array([0, 1])
+            : new Float32Array([0, 0]);
+      slab.push({ pairs, timestampMs: i });
+    }
+
+    const expected = aggregatePolarLevel(slab.toArray());
+    expect(Array.from(slab.freeze().polarMaxHoldAt(slab.length - 1))).toEqual(Array.from(expected));
+  });
+
   it("retains exact capacity through a partial oldest chunk and drops whole expired chunks", () => {
     const capacity = VISUAL_HISTORY_CHUNK_ROWS + 3;
     const slab = new VectorscopeHistorySlab(capacity, PAIR_VALUE_COUNT);
@@ -76,29 +113,29 @@ describe("VectorscopeHistorySlab", () => {
     expect(slab.timestampAt(0)).toBe(2);
     expect(slab.timestampAt(1)).toBe(3);
     expect(slab.timestampAt(2)).toBeNaN();
-    expect(slab.rowAt(0).pairs[0]).toBe(2);
+    expect(slab.rowAt(0).pairs[0]).toBeCloseTo(-0.98, 4);
     expect(slab.rowAt(1).sideEnergy).toBe(3.5);
     expect(slab.rowAt(2)).toBeUndefined();
   });
 
-  it("freeze shares sealed buffers, clones the active backing, and pins both after eviction", () => {
+  it("freeze shares sealed buffers, clones the appended tail, and pins both after eviction", () => {
     const slab = new VectorscopeHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 2, PAIR_VALUE_COUNT);
     for (let i = 0; i <= VISUAL_HISTORY_CHUNK_ROWS; i += 1) pushRow(slab, i);
 
     const frozen = slab.freeze();
-    const frozenSealed = frozen.rowAt(0).pairs.buffer;
-    const frozenTail = frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS).pairs.buffer;
-    const liveTail = slab.rowAt(VISUAL_HISTORY_CHUNK_ROWS).pairs.buffer;
+    const frozenSealed = frozen.rowAt(0).packedPairs.buffer;
+    const frozenTail = frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS).packedPairs.buffer;
+    const liveTail = slab.rowAt(VISUAL_HISTORY_CHUNK_ROWS).packedPairs.buffer;
 
     expect(frozen).toBeInstanceOf(FrozenVectorscopeHistory);
-    expect(frozenSealed).toBe(slab.rowAt(0).pairs.buffer);
+    expect(frozenSealed).toBe(slab.rowAt(0).packedPairs.buffer);
     expect(frozenTail).not.toBe(liveTail);
-    expect(frozen.storageStats()).toEqual({
+    expect(frozen.storageStats()).toMatchObject({
       chunkCount: 2,
       retainedRows: VISUAL_HISTORY_CHUNK_ROWS + 1,
       sharedSealedChunks: 1,
       copiedTailRows: 1,
-      copiedTailBytes: CHUNK_PAYLOAD_BYTES,
+      copiedTailBytes: copiedTailBytes(1),
     });
 
     for (let i = 0; i < VISUAL_HISTORY_CHUNK_ROWS + 3; i += 1) pushRow(slab, 10_000 + i);
@@ -107,8 +144,8 @@ describe("VectorscopeHistorySlab", () => {
     expect(frozen.version).toBe(0);
     expect(frozen.timestampAt(0)).toBe(0);
     expect(frozen.timestampAt(VISUAL_HISTORY_CHUNK_ROWS)).toBe(VISUAL_HISTORY_CHUNK_ROWS);
-    expect(frozen.rowAt(0).pairs.buffer).toBe(frozenSealed);
-    expect(frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS).pairs.buffer).toBe(frozenTail);
+    expect(frozen.rowAt(0).packedPairs.buffer).toBe(frozenSealed);
+    expect(frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS).packedPairs.buffer).toBe(frozenTail);
   });
 
   it("freeze copies no payload when the newest chunk is exactly full", () => {
@@ -117,8 +154,8 @@ describe("VectorscopeHistorySlab", () => {
 
     const frozen = slab.freeze();
 
-    expect(frozen.rowAt(0).pairs.buffer).toBe(slab.rowAt(0).pairs.buffer);
-    expect(frozen.storageStats()).toEqual({
+    expect(frozen.rowAt(0).packedPairs.buffer).toBe(slab.rowAt(0).packedPairs.buffer);
+    expect(frozen.storageStats()).toMatchObject({
       chunkCount: 1,
       retainedRows: VISUAL_HISTORY_CHUNK_ROWS,
       sharedSealedChunks: 1,
@@ -139,19 +176,23 @@ describe("VectorscopeHistorySlab", () => {
 
     expect(frozen.timestampAt(0)).toBe(7);
     expect(frozen.timestampAt(lastIndex)).toBe(endSequence - 1);
-    expect(frozen.rowAt(0).pairs.buffer).toBe(slab.rowAt(0).pairs.buffer);
-    expect(frozen.rowAt(middleIndex).pairs.buffer).toBe(slab.rowAt(middleIndex).pairs.buffer);
-    expect(frozen.rowAt(lastIndex).pairs.buffer).not.toBe(slab.rowAt(lastIndex).pairs.buffer);
-    expect(frozen.storageStats()).toEqual({
+    expect(frozen.rowAt(0).packedPairs.buffer).toBe(slab.rowAt(0).packedPairs.buffer);
+    expect(frozen.rowAt(middleIndex).packedPairs.buffer).toBe(
+      slab.rowAt(middleIndex).packedPairs.buffer
+    );
+    expect(frozen.rowAt(lastIndex).packedPairs.buffer).not.toBe(
+      slab.rowAt(lastIndex).packedPairs.buffer
+    );
+    expect(frozen.storageStats()).toMatchObject({
       chunkCount: 3,
       retainedRows: capacity,
       sharedSealedChunks: 2,
       copiedTailRows: 5,
-      copiedTailBytes: CHUNK_PAYLOAD_BYTES,
+      copiedTailBytes: copiedTailBytes(5),
     });
   });
 
-  it("reports retained active intersection for small capacity while cloning full backing", () => {
+  it("reports retained active intersection while cloning appended tail storage", () => {
     const slab = new VectorscopeHistorySlab(1, PAIR_VALUE_COUNT);
     for (let i = 0; i < 10; i += 1) pushRow(slab, i);
 
@@ -159,12 +200,12 @@ describe("VectorscopeHistorySlab", () => {
 
     expect(frozen.length).toBe(1);
     expect(frozen.timestampAt(0)).toBe(9);
-    expect(frozen.storageStats()).toEqual({
+    expect(frozen.storageStats()).toMatchObject({
       chunkCount: 1,
       retainedRows: 1,
       sharedSealedChunks: 0,
       copiedTailRows: 1,
-      copiedTailBytes: CHUNK_PAYLOAD_BYTES,
+      copiedTailBytes: copiedTailBytes(10),
     });
   });
 
@@ -184,20 +225,21 @@ describe("VectorscopeHistorySlab", () => {
     });
     expect(copied.pairs.buffer).not.toBe(live.pairs.buffer);
     live.pairs[0] = 99;
-    expect(copied.pairs[0]).toBe(4);
+    expect(copied.pairs[0]).toBeCloseTo(-0.96, 4);
+    expect(slab.rowAt(0).pairs[0]).toBeCloseTo(-0.96, 4);
   });
 
   it("clear releases chunks, preserves version, and reuses the slab", () => {
     const slab = new VectorscopeHistorySlab(2, PAIR_VALUE_COUNT);
     pushRow(slab, 1);
-    const oldBuffer = slab.rowAt(0).pairs.buffer;
+    const oldBuffer = slab.rowAt(0).packedPairs.buffer;
     const version = slab.version;
 
     slab.clear();
 
     expect(slab.length).toBe(0);
     expect(slab.version).toBe(version);
-    expect(slab.storageStats()).toEqual({
+    expect(slab.storageStats()).toMatchObject({
       chunkCount: 0,
       retainedRows: 0,
       sharedSealedChunks: 0,
@@ -206,7 +248,7 @@ describe("VectorscopeHistorySlab", () => {
     });
 
     pushRow(slab, 2);
-    expect(slab.rowAt(0).pairs.buffer).not.toBe(oldBuffer);
+    expect(slab.rowAt(0).packedPairs.buffer).not.toBe(oldBuffer);
     expect(slab.timestampAt(0)).toBe(2);
   });
 
@@ -217,7 +259,7 @@ describe("VectorscopeHistorySlab", () => {
     expect(frozen.version).toBe(0);
     expect(frozen.timestampAt(0)).toBeNaN();
     expect(frozen.rowAt(0)).toBeUndefined();
-    expect(frozen.storageStats()).toEqual({
+    expect(frozen.storageStats()).toMatchObject({
       chunkCount: 0,
       retainedRows: 0,
       sharedSealedChunks: 0,

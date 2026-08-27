@@ -182,4 +182,22 @@ describe("polar level snapshot max-hold reconstruction", () => {
     expect(polarLevelMaxHoldAt(built, 1)).toBeNull();
     expect(polarLevelMaxHoldAt(null, 0)).toBeNull();
   });
+
+  it("uses the slab's incremental summary without replaying retained pairs", () => {
+    const expected = new Float64Array(POLAR_LEVEL_BIN_COUNT).fill(0.5);
+    const history = {
+      length: 100_000,
+      polarBinCount: POLAR_LEVEL_BIN_COUNT,
+      rowAt() {
+        throw new Error("row replay should not run");
+      },
+      polarMaxHoldAt(index) {
+        expect(index).toBe(99_999);
+        return expected;
+      },
+    };
+
+    const built = buildPolarLevelMaxHoldTable(history);
+    expect(polarLevelMaxHoldAt(built, 99_999)).toBe(expected);
+  });
 });

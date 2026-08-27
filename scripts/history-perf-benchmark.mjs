@@ -5,7 +5,7 @@ import { FrameIntake } from "../src/lib/FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../src/lib/historyChunkConfig.js";
 import { nearestTimestampIndex } from "../src/lib/snapshotResolve.js";
 import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
-import { HOLD_CHECKPOINT_STRIDE, StereoMapHistorySlab } from "../src/lib/StereoMapHistorySlab.js";
+import { StereoMapModeHistorySlab } from "../src/lib/StereoMapModeHistorySlab.js";
 import { VectorscopeHistorySlab } from "../src/lib/VectorscopeHistorySlab.js";
 import { buildHistoryPath, buildLoudnessHistoryPathsFromIndex } from "../src/math/historyMath.js";
 import { LoudnessHistoryIndex } from "../src/math/loudnessHistoryIndex.js";
@@ -20,14 +20,11 @@ const VISUAL_ROWS = 360_000;
 const SPECTRUM_BANDS = 958;
 const VECTOR_VALUES = 200;
 const VIEW_WIDTHS = [600, 1200];
-// Stereo Map shares Spectrum's production band-grid width; it stores three Float32 primitive
-// planes (pl, pr, c) plus Float64 timestamps per row, so its per-row footprint is roughly 3x a
-// single Spectrum plane. See StereoMapHistorySlab's Hold summary for the fixed per-chunk index cost.
+// Stereo Map shares Spectrum's production band-grid width. Retained history stores one selected
+// Int16 mode plane plus one shared Int16 energy plane; live Rust primitives are never retained.
 const STEREO_MAP_BANDS = SPECTRUM_BANDS;
 const STEREO_MAP_RETENTION_MINUTES = [30, 60, 120, 240];
 const STEREO_MAP_ROWS_PER_MINUTE = 60 * 25; // 40 ms visual cadence -> 25 rows/second.
-const STEREO_MAP_HOLD_BYTES_PER_BAND =
-  5 * Float64Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT;
 let benchmarkSink;
 
 export function parseBenchmarkArgs(args) {
@@ -35,34 +32,35 @@ export function parseBenchmarkArgs(args) {
 }
 
 export function projectedVisualBytes() {
-  const spectrumPrimary = VISUAL_ROWS * SPECTRUM_BANDS * Float32Array.BYTES_PER_ELEMENT;
-  const vectorscopePairs = VISUAL_ROWS * VECTOR_VALUES * Float32Array.BYTES_PER_ELEMENT;
+  const spectrumPrimary = VISUAL_ROWS * SPECTRUM_BANDS * Int16Array.BYTES_PER_ELEMENT;
+  const vectorscopePairs = VISUAL_ROWS * VECTOR_VALUES * Int16Array.BYTES_PER_ELEMENT;
   return { spectrumPrimary, vectorscopePairs, total: spectrumPrimary + vectorscopePairs };
 }
 
 /**
- * Exact retained-byte projection for one Stereo Map key: Float64 timestamps, three Float32
- * primitive planes (pl, pr, c) sized `rows * bands`, a fixed per-chunk Hold index, and that
- * chunk's within-chunk Hold checkpoints. Pure arithmetic — does not allocate — so it can project
- * the 240-minute/4-key worst case cheaply.
+ * Retained-byte projection for one Stereo Map key with one active Position mode: Float64
+ * timestamps, one Int16 value plane, one Int16 energy plane, a centi-dB row peak, a row-presence
+ * bitmap, and two Int16 Hold extrema per chunk. Pure arithmetic, so the four-hour case is cheap.
  */
 export function projectedStereoMapBytes(rows, { bands = STEREO_MAP_BANDS, keyCount = 1 } = {}) {
   const timestamps = rows * Float64Array.BYTES_PER_ELEMENT;
-  const primitivePlane = rows * bands * Float32Array.BYTES_PER_ELEMENT;
-  const primitives = primitivePlane * 3;
+  const modeValues = rows * bands * Int16Array.BYTES_PER_ELEMENT;
+  const energy = rows * bands * Int16Array.BYTES_PER_ELEMENT;
+  const rowPeaks = rows * Int16Array.BYTES_PER_ELEMENT;
+  const modeRows = rows * Uint8Array.BYTES_PER_ELEMENT;
+  const bandCenters = bands * Float32Array.BYTES_PER_ELEMENT;
   const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
-  const holdIndex = chunkCount * bands * STEREO_MAP_HOLD_BYTES_PER_BAND;
-  // A full chunk carries one checkpoint per stride except the final one, which its whole-chunk
-  // summary already covers. Projected at the full-chunk rate: a trailing partial chunk carries
-  // fewer, so this is the ceiling.
-  const checkpointsPerChunk = Math.floor(VISUAL_HISTORY_CHUNK_ROWS / HOLD_CHECKPOINT_STRIDE) - 1;
-  const holdCheckpoints = chunkCount * checkpointsPerChunk * bands * STEREO_MAP_HOLD_BYTES_PER_BAND;
-  const perKeyTotal = timestamps + primitives + holdIndex + holdCheckpoints;
+  const holdIndex = chunkCount * bands * Int16Array.BYTES_PER_ELEMENT * 2;
+  const perKeyTotal =
+    timestamps + modeValues + energy + rowPeaks + modeRows + bandCenters + holdIndex;
   return {
     timestamps,
-    primitives,
+    modeValues,
+    energy,
+    rowPeaks,
+    modeRows,
+    bandCenters,
     holdIndex,
-    holdCheckpoints,
     perKeyTotal,
     keyCount,
     total: perKeyTotal * keyCount,
@@ -224,23 +222,14 @@ function benchmarkStereoMapFreeze({ rows, bands, keyCount = 1 }) {
   const c = new Float32Array(bands).fill(0.05);
 
   const freezeOne = (key) => {
-    const slab = new StereoMapHistorySlab(rows);
+    const slab = new StereoMapModeHistorySlab(rows, ["position"]);
     for (let index = 0; index < rows; index += 1) {
       slab.append({ timestampMs: index * 40, sampleRateHz: 48_000, bandCentersHz, pl, pr, c });
     }
 
-    // Mode switching re-reads live Hold repeatedly without appending; the derivation scratch it
-    // shares is sized to the band grid, not to retained row count, so its bytes must stay fixed
-    // across repeated reads regardless of how many rows are retained.
-    const beforeWorkingBytes = slab.storageStats().workingBytes.total;
     slab.liveHoldValues();
     slab.liveHoldValues();
     slab.liveHoldValues();
-    const afterWorkingBytes = slab.storageStats().workingBytes.total;
-    assertStructure(
-      afterWorkingBytes === beforeWorkingBytes,
-      `${key} Mode-switch reads grew working bytes ${beforeWorkingBytes} -> ${afterWorkingBytes}`
-    );
 
     const freezeStarted = performance.now();
     const frozen = slab.freeze();
@@ -315,6 +304,12 @@ function benchmarkMixedKeyIntake({ rows, bands, spectrumKeyCount = 4, stereoMapK
   );
 
   const intake = new FrameIntake();
+  intake.setRetainedVisualKeys({
+    spectrum: new Set(spectrumKeys),
+    vectorscope: new Set(),
+    stereoMap: new Set(stereoMapKeys),
+    stereoMapModesByKey: new Map(stereoMapKeys.map((key) => [key, new Set(["position"])])),
+  });
   let pushCalls = 0;
   const originalPush = intake.pushVisualHistRow.bind(intake);
   intake.pushVisualHistRow = (...args) => {
@@ -359,12 +354,9 @@ function benchmarkMixedKeyIntake({ rows, bands, spectrumKeyCount = 4, stereoMapK
       slab?.length === rows,
       `stereoMap key ${key} retained ${slab?.length}/${rows} rows`
     );
-    const lastRow = slab.rowAt(slab.length - 1);
     assertStructure(
-      lastRow.pl instanceof Float32Array &&
-        lastRow.pr instanceof Float32Array &&
-        lastRow.c instanceof Float32Array,
-      `stereoMap key ${key} did not store typed-array primary planes`
+      slab.storageStats().arrayTypes.values === "Int16Array",
+      `stereoMap key ${key} did not store a packed mode plane`
     );
   }
 
@@ -520,8 +512,8 @@ export function runBenchmark({ fullVisual = false } = {}) {
   };
 
   if (fullVisual) {
-    // This deliberately allocates and fills all production-width rows. It is expected to retain
-    // roughly 1.3 GiB+ of typed payload; there is no silent precision or row-count downgrade.
+    // This deliberately allocates and fills all production-width rows; row count and cadence are
+    // unchanged, while Spectrum and Vectorscope now retain packed Int16 payloads.
     const memoryBefore = measuredMemoryBytes();
     const started = performance.now();
     const freeze = benchmarkVisualFreeze({
@@ -545,9 +537,8 @@ export function runBenchmark({ fullVisual = false } = {}) {
       freeze,
     };
 
-    // The 240-minute cost of roughly 3.9 GiB per full Stereo Map key (three Float32 primitive
-    // planes at 958 bands, 25 rows/second, four hours) is intentional and must remain explicit
-    // here rather than shrunk away. This is opt-in via --full-visual precisely because of that cost.
+    // The 240-minute Stereo Map allocation remains opt-in: one packed mode plus shared energy is
+    // much smaller than three primitive Float32 planes, but still intentionally retains every row.
     const stereoMapMemoryBefore = measuredMemoryBytes();
     const stereoMapStarted = performance.now();
     const stereoMapFullFreeze = benchmarkStereoMapFreeze({

@@ -46,8 +46,8 @@ export function DockStereoMap({ controls = {} }) {
     bandCentersHz = derived.bandCentersHz;
     points = derived.points;
   }
-  // Live Hold accumulates once per Analysis Key, in the shared StereoMapHistorySlab this key's
-  // FrameIntake instance owns (StereoMapHistorySlab#liveHoldValues) — the same object every
+  // Live Hold accumulates once per Analysis Key, in the packed mode-history slab this key's
+  // FrameIntake instance owns (StereoMapModeHistorySlab#liveHoldValues) — the same object every
   // Workspace/Dock instance on this key reads via getStereoMapHistoryForKey, so this never
   // accumulates a private per-instance copy.
   const holdValues =

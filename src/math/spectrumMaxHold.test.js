@@ -121,4 +121,21 @@ describe("spectrumMaxHoldAt", () => {
     expect(built.length).toBe(0);
     expect(spectrumMaxHoldAt(built, 0)).toBeNull();
   });
+
+  it("uses a history's incremental summary without replaying retained rows", () => {
+    const expected = { dbList: new Float32Array([-10]), dbListB: new Float32Array(0) };
+    const history = {
+      length: 100_000,
+      rowAt() {
+        throw new Error("row replay should not run");
+      },
+      maxHoldAt(index) {
+        expect(index).toBe(99_999);
+        return expected;
+      },
+    };
+
+    const built = buildSpectrumMaxHoldTable(history, 1024);
+    expect(spectrumMaxHoldAt(built, 99_999)).toBe(expected);
+  });
 });

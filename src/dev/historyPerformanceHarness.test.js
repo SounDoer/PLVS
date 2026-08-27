@@ -4,7 +4,7 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { FrameIntake } from "../lib/FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../lib/historyChunkConfig.js";
 import { resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
-import { HOLD_CHECKPOINT_STRIDE, StereoMapHistorySlab } from "../lib/StereoMapHistorySlab.js";
+import { StereoMapHistorySlab } from "../lib/StereoMapHistorySlab.js";
 import {
   projectedStereoMapBytes,
   projectedStereoMapRetentionBytes,
@@ -413,7 +413,7 @@ describe("history performance harness", () => {
     expect(intake.pushHistRow).toHaveBeenCalledTimes(2);
   });
 
-  it("seeds a single Stereo Map key with production band width and typed primitive planes", async () => {
+  it("seeds a single Stereo Map key with production band width and a packed mode plane", async () => {
     const scheduler = createScheduler();
     const intake = new FrameIntake();
     const key = "stereoMap:pair:0:1:sp50:sm12";
@@ -433,10 +433,13 @@ describe("history performance harness", () => {
     expect(slab.length).toBe(3);
     const row = slab.rowAt(2);
     expect(row.bandCentersHz).toHaveLength(958);
-    expect(row.pl).toBeInstanceOf(Float32Array);
-    expect(row.pl).toHaveLength(958);
-    expect(row.pr).toHaveLength(958);
-    expect(row.c).toHaveLength(958);
+    expect(row.derivedForMode("position", { lowerBound: -1, upperBound: 1 }).values).toHaveLength(
+      958
+    );
+    expect(slab.storageStats()).toMatchObject({
+      retainedModes: ["position", "correlation", "monoLossDb", "msRatioDb"],
+      arrayTypes: { values: "Int16Array", energy: "Int16Array" },
+    });
   });
 
   it("seeds four Stereo Map keys independently in the same run", async () => {
@@ -558,26 +561,27 @@ describe("history performance harness", () => {
 });
 
 describe("Stereo Map history benchmark projections", () => {
-  it("projects exact retained bytes for three Float32 planes plus Float64 timestamps at 30/60/120/240-minute retention", () => {
+  it("projects one packed mode plus shared packed energy at 30/60/120/240-minute retention", () => {
     const bands = 958;
     const rowsPerMinute = 60 * 25;
     for (const minutes of [30, 60, 120, 240]) {
       const rows = minutes * rowsPerMinute;
       const projected = projectedStereoMapBytes(rows, { bands, keyCount: 1 });
       const expectedTimestamps = rows * Float64Array.BYTES_PER_ELEMENT;
-      const expectedPrimitives = rows * bands * Float32Array.BYTES_PER_ELEMENT * 3;
+      const expectedPlane = rows * bands * Int16Array.BYTES_PER_ELEMENT;
       const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
-      const summaryBytes =
-        bands * (5 * Float64Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT);
-      const expectedHoldIndex = chunkCount * summaryBytes;
-      const expectedHoldCheckpoints =
-        chunkCount * (VISUAL_HISTORY_CHUNK_ROWS / HOLD_CHECKPOINT_STRIDE - 1) * summaryBytes;
+      const expectedHoldIndex = chunkCount * bands * Int16Array.BYTES_PER_ELEMENT * 2;
       expect(projected.timestamps).toBe(expectedTimestamps);
-      expect(projected.primitives).toBe(expectedPrimitives);
+      expect(projected.modeValues).toBe(expectedPlane);
+      expect(projected.energy).toBe(expectedPlane);
       expect(projected.holdIndex).toBe(expectedHoldIndex);
-      expect(projected.holdCheckpoints).toBe(expectedHoldCheckpoints);
       expect(projected.total).toBe(
-        expectedTimestamps + expectedPrimitives + expectedHoldIndex + expectedHoldCheckpoints
+        expectedTimestamps +
+          expectedPlane * 2 +
+          rows * Int16Array.BYTES_PER_ELEMENT +
+          rows * Uint8Array.BYTES_PER_ELEMENT +
+          bands * Float32Array.BYTES_PER_ELEMENT +
+          expectedHoldIndex
       );
     }
   });
@@ -590,16 +594,13 @@ describe("Stereo Map history benchmark projections", () => {
       expect(fourKeys[index].total).toBe(oneKey[index].total * 4);
     }
 
-    // The plan calls out roughly 3.9 GiB retained by one full Stereo Map key at 240 minutes; this
-    // pins that figure so a future change cannot silently shrink it. Within-chunk Hold checkpoints
-    // add a deliberate ~5% on top (~0.2 GiB here) to bound a scrub-time Hold query to well under
-    // one stride of rows — see HOLD_CHECKPOINT_STRIDE. The band is kept tight so any further growth
-    // still has to be argued for.
+    // One active mode plus shared Energy is roughly 1.29 GiB at four hours, without changing row
+    // count, cadence, or band count. Keep a tight bound so accidental retained-plane growth fails.
     const fullRetention = oneKey.at(-1);
     expect(fullRetention.minutes).toBe(240);
-    expect(fullRetention.total).toBeGreaterThan(4.0 * 1024 ** 3);
-    expect(fullRetention.total).toBeLessThan(4.2 * 1024 ** 3);
-    expect(fullRetention.holdCheckpoints / fullRetention.perKeyTotal).toBeLessThan(0.06);
+    expect(fullRetention.total).toBeGreaterThan(1.28 * 1024 ** 3);
+    expect(fullRetention.total).toBeLessThan(1.3 * 1024 ** 3);
+    expect(fullRetention.holdIndex / fullRetention.perKeyTotal).toBeLessThan(0.002);
   });
 });
 

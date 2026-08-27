@@ -491,14 +491,13 @@ describe("FrameIntake", () => {
     };
     intake.pushVisualHistRow(row, 10);
     expect(intake.getVisualWaveformHist().length).toBe(1);
-    expect(intake.getVisualWaveformHist().at(0)).toEqual({
-      waveformMin: [-0.5, -0.3],
-      waveformMax: [0.5, 0.3],
-      dominantFrequencyHz: [],
-      spectralCentroidHz: [],
-      tonality: [],
-      timestampMs: undefined,
-    });
+    const stored = intake.getVisualWaveformHist().at(0);
+    expect(Array.from(stored.waveformMin)).toEqual([expect.closeTo(-0.5), expect.closeTo(-0.3)]);
+    expect(Array.from(stored.waveformMax)).toEqual([expect.closeTo(0.5), expect.closeTo(0.3)]);
+    expect(Array.from(stored.dominantFrequencyHz)).toEqual([0, 0]);
+    expect(Array.from(stored.spectralCentroidHz)).toEqual([0, 0]);
+    expect(Array.from(stored.tonality)).toEqual([0, 0]);
+    expect(stored.timestampMs).toBe(-Infinity);
   });
 
   it("pushVisualHistRow stores request-keyed visual history per key", () => {
@@ -621,14 +620,14 @@ describe("FrameIntake", () => {
 
     const frozenSpectrumSealed = spectrumByKey[spectrumSealedKey];
     const frozenSpectrumTail = spectrumByKey[spectrumTailKey];
-    expect(frozenSpectrumSealed.rowAt(0).dbList.buffer).toBe(
-      liveSpectrumSealed.rowAt(0).dbList.buffer
+    expect(frozenSpectrumSealed.rowAt(0).packedDbList.buffer).toBe(
+      liveSpectrumSealed.rowAt(0).packedDbList.buffer
     );
-    expect(frozenSpectrumSealed.rowAt(capacity - 1).dbList.buffer).not.toBe(
-      liveSpectrumSealed.rowAt(capacity - 1).dbList.buffer
+    expect(frozenSpectrumSealed.rowAt(capacity - 1).packedDbList.buffer).not.toBe(
+      liveSpectrumSealed.rowAt(capacity - 1).packedDbList.buffer
     );
-    expect(frozenSpectrumTail.rowAt(0).dbList.buffer).not.toBe(
-      liveSpectrumTail.rowAt(0).dbList.buffer
+    expect(frozenSpectrumTail.rowAt(0).packedDbList.buffer).not.toBe(
+      liveSpectrumTail.rowAt(0).packedDbList.buffer
     );
     expect(frozenSpectrumSealed.storageStats()).toMatchObject({
       retainedRows: capacity,
@@ -644,14 +643,14 @@ describe("FrameIntake", () => {
 
     const frozenVectorscopeSealed = vectorscopeByKey[vectorscopeSealedKey];
     const frozenVectorscopeTail = vectorscopeByKey[vectorscopeTailKey];
-    expect(frozenVectorscopeSealed.rowAt(0).pairs.buffer).toBe(
-      liveVectorscopeSealed.rowAt(0).pairs.buffer
+    expect(frozenVectorscopeSealed.rowAt(0).packedPairs.buffer).toBe(
+      liveVectorscopeSealed.rowAt(0).packedPairs.buffer
     );
-    expect(frozenVectorscopeSealed.rowAt(capacity - 1).pairs.buffer).not.toBe(
-      liveVectorscopeSealed.rowAt(capacity - 1).pairs.buffer
+    expect(frozenVectorscopeSealed.rowAt(capacity - 1).packedPairs.buffer).not.toBe(
+      liveVectorscopeSealed.rowAt(capacity - 1).packedPairs.buffer
     );
-    expect(frozenVectorscopeTail.rowAt(0).pairs.buffer).not.toBe(
-      liveVectorscopeTail.rowAt(0).pairs.buffer
+    expect(frozenVectorscopeTail.rowAt(0).packedPairs.buffer).not.toBe(
+      liveVectorscopeTail.rowAt(0).packedPairs.buffer
     );
     expect(frozenVectorscopeSealed.storageStats()).toMatchObject({
       retainedRows: capacity,
@@ -997,7 +996,7 @@ describe("FrameIntake", () => {
     expect(intake.getVisualWaveformHist().length).toBe(3);
   });
 
-  it("reuses constant waveform arrays instead of cloning silent rows", () => {
+  it("stores adjacent waveform rows in one columnar backing", () => {
     const intake = new FrameIntake();
     const row = {
       waveformMin: [0, 0],
@@ -1008,8 +1007,8 @@ describe("FrameIntake", () => {
     intake.pushVisualHistRow(row, 10);
     intake.pushVisualHistRow(row, 10);
 
-    expect(intake.getVisualWaveformHist().at(0).waveformMin).toBe(
-      intake.getVisualWaveformHist().at(1).waveformMin
+    expect(intake.getVisualWaveformHist().at(0).waveformMin.buffer).toBe(
+      intake.getVisualWaveformHist().at(1).waveformMin.buffer
     );
   });
 
@@ -1036,11 +1035,10 @@ describe("FrameIntake", () => {
       10
     );
 
-    expect(intake.getVisualWaveformHist().at(0)).toMatchObject({
-      dominantFrequencyHz: [120, 2400],
-      spectralCentroidHz: [320, 4800],
-      tonality: [0.8, 0.25],
-    });
+    const stored = intake.getVisualWaveformHist().at(0);
+    expect(Array.from(stored.dominantFrequencyHz)).toEqual([120, 2400]);
+    expect(Array.from(stored.spectralCentroidHz)).toEqual([320, 4800]);
+    expect(Array.from(stored.tonality)).toEqual([expect.closeTo(0.8), 0.25]);
   });
 
   it("pushHistRow stores waveform sub-pairs as a Float32Array on the row", () => {
@@ -1108,12 +1106,13 @@ describe("FrameIntake Stereo Map history", () => {
     expect(slabB.length).toBe(1);
     const rowA = slabA.rowAt(0);
     expect(rowA.bandCentersHz).toBeInstanceOf(Float32Array);
-    expect(Array.from(rowA.pl)).toEqual([expect.closeTo(0.1), expect.closeTo(0.2)]);
-    expect(Array.from(rowA.pr)).toEqual([expect.closeTo(0.3), expect.closeTo(0.4)]);
-    expect(Array.from(rowA.c)).toEqual([expect.closeTo(0.05), expect.closeTo(0.1)]);
+    expect(rowA.derivedForMode("position", { lowerBound: -1, upperBound: 1 }).values).toEqual([
+      expect.closeTo(-0.5, 4),
+      expect.closeTo(-1 / 3, 4),
+    ]);
     expect(rowA.sampleRateHz).toBe(48000);
     const rowB = slabB.rowAt(0);
-    expect(Array.from(rowB.pl)).toEqual([expect.closeTo(0.5), expect.closeTo(0.6)]);
+    expect(rowB.derivedForMode("position", { lowerBound: -1, upperBound: 1 })).not.toBeNull();
     // A key never seen has no slab.
     expect(intake.getVisualStereoMapHistByKey("stereoMap:pair:9:9:sp50:sm12")).toBeNull();
   });
@@ -1138,7 +1137,9 @@ describe("FrameIntake Stereo Map history", () => {
     expect(slab.length).toBe(2);
     expect(slab.timestampAt(0)).toBe(1000);
     expect(slab.timestampAt(1)).toBe(1040);
-    expect(Array.from(slab.rowAt(1).pl)).toEqual([expect.closeTo(0.2)]);
+    expect(
+      slab.rowAt(1).derivedForMode("position", { lowerBound: -1, upperBound: 1 }).values
+    ).toEqual([0]);
   });
 
   it("retains an inactive Stereo Map request key's history when later ticks omit it (no backfill)", () => {
@@ -1211,7 +1212,9 @@ describe("FrameIntake Stereo Map history", () => {
 
     expect(frozen.length).toBe(2);
     expect(frozen.timestampAt(0)).toBe(1000);
-    expect(Array.from(frozen.rowAt(1).pl)).toEqual([expect.closeTo(0.2)]);
+    expect(
+      frozen.rowAt(1).derivedForMode("position", { lowerBound: -1, upperBound: 1 }).values
+    ).toEqual([0]);
     // Live intake kept going: a third row landed after the freeze, invisible to the frozen view.
     expect(intake.getVisualStereoMapHistByKey(key).length).toBe(3);
   });

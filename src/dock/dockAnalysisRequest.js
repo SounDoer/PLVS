@@ -228,6 +228,9 @@ export function mergeDockRetainedKeys(retained, dockPanels) {
   const spectrum = new Set(retained.spectrum);
   const vectorscope = new Set(retained.vectorscope);
   const stereoMap = new Set(retained.stereoMap);
+  const stereoMapModesByKey = new Map(
+    [...(retained.stereoMapModesByKey ?? [])].map(([key, modes]) => [key, new Set(modes)])
+  );
 
   for (const panel of dockPanels) {
     const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
@@ -236,11 +239,16 @@ export function mergeDockRetainedKeys(retained, dockPanels) {
     } else if (dockModuleId === "correlation") {
       vectorscope.add(dockVectorscopeKey(panel.controls));
     } else if (dockModuleId === "stereoMap") {
-      stereoMap.add(dockStereoMapKey(panel.controls));
+      const controls = normalizeDockModuleControls("stereoMap", panel.controls);
+      const key = dockStereoMapKey(controls);
+      stereoMap.add(key);
+      const modes = stereoMapModesByKey.get(key) ?? new Set();
+      modes.add(controls.stereoMapMode);
+      stereoMapModesByKey.set(key, modes);
     }
   }
 
-  return { spectrum, vectorscope, stereoMap };
+  return { spectrum, vectorscope, stereoMap, stereoMapModesByKey };
 }
 
 export function mergeDockAnalysisRequests(derived, active) {

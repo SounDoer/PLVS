@@ -19,9 +19,9 @@ describe("history performance benchmark options", () => {
 
   it("projects production-width payload without allocating it", () => {
     expect(projectedVisualBytes()).toEqual({
-      spectrumPrimary: 360_000 * 958 * 4,
-      vectorscopePairs: 360_000 * 200 * 4,
-      total: 360_000 * (958 + 200) * 4,
+      spectrumPrimary: 360_000 * 958 * 2,
+      vectorscopePairs: 360_000 * 200 * 2,
+      total: 360_000 * (958 + 200) * 2,
     });
   });
 });

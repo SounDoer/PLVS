@@ -279,6 +279,13 @@ export function visitStereoMapDerivedPoints(row, visitor, scratch, instrumentati
   return visitDerivedModes(row, MODE_LIST, visitor, scratch, instrumentation);
 }
 
+/** Visit only the modes that currently have an open panel while sharing one normalization pass. */
+export function visitSelectedStereoMapDerivedPoints(row, modes, visitor, scratch, instrumentation) {
+  const selected = Array.from(modes ?? []);
+  for (const mode of selected) validateMode(mode);
+  return visitDerivedModes(row, selected, visitor, scratch, instrumentation);
+}
+
 /**
  * Derive a complete primitive row. `values` retains unclipped measurements for Hold; `points`
  * contains the strict display states consumed by Workspace, history snapshots, and Dock plots.

@@ -31,7 +31,9 @@ function freezeSnapshot(intake, liveAudioFallback) {
     loudness: snapshotRows(intake.getLoudnessHistory()),
     loudnessDisplayIndex: intake.snapshotLoudnessDisplayIndex?.() ?? null,
     waveformHistoryIndex: intake.snapshotWaveformHistoryIndex?.() ?? null,
-    visualWaveform: snapshotRows(intake.getVisualWaveformHist?.()),
+    visualWaveform:
+      intake.getVisualWaveformHist?.()?.freeze?.() ??
+      snapshotRows(intake.getVisualWaveformHist?.()),
     corr: snapshotRows(intake.getCorrSnap()),
     audio: snapshotRows(intake.getAudioSnap()),
     channelMetadata: snapshotRows(intake.getChannelMetadataSnap?.()),
@@ -285,12 +287,13 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
           base = { missing: true, mode, bandCentersHz: null, derived: null };
         } else {
           const row = entries.rowAt(index);
-          base = {
-            missing: false,
-            mode,
-            bandCentersHz: row.bandCentersHz,
-            derived: deriveStereoMapRow(mode, row, range),
-          };
+          const derived =
+            typeof row?.derivedForMode === "function"
+              ? row.derivedForMode(mode, range)
+              : deriveStereoMapRow(mode, row, range);
+          base = derived
+            ? { missing: false, mode, bandCentersHz: row.bandCentersHz, derived }
+            : { missing: true, mode, bandCentersHz: null, derived: null };
         }
         if (targetCache) {
           if (!optionCache) {

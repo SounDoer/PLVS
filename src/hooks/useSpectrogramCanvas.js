@@ -6,7 +6,8 @@ import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
 
 function paintSpan(data, width, height, xStart, xEnd, snap, yToBand, colormapLut, dbFloor) {
   for (let y = 0; y < height; y++) {
-    const db = snap.dbList[yToBand[y]] ?? dbFloor;
+    const band = yToBand[y];
+    const db = (typeof snap.dbAt === "function" ? snap.dbAt(band) : snap.dbList?.[band]) ?? dbFloor;
     const t = spectrogramColorFrac(db, dbFloor);
     const lutIdx = Math.round(t * 255) * 3;
     const rowBase = y * width;
@@ -55,7 +56,7 @@ export function paintSpectrogramImageData(
       const index = upperBoundTimestamp(snaps, targetMs, startIdx, endIdx) - 1;
       if (index < startIdx || index > endIdx) continue;
       const snap = snaps.rowAt(index);
-      if (!snap?.dbList || !Number.isFinite(snap.timestampMs)) continue;
+      if (!snap || (!snap.dbAt && !snap.dbList) || !Number.isFinite(snap.timestampMs)) continue;
       const frameEndMs = spectrogramFrameEndMs(snaps, index, sampleMs);
       if (!(targetMs >= snap.timestampMs && targetMs < frameEndMs)) continue;
       paintSpan(data, W, H, x, x + 1, snap, yToBand, colormapLut, dbFloor);
@@ -65,7 +66,7 @@ export function paintSpectrogramImageData(
 
   for (let i = startIdx; i <= endIdx; i++) {
     const snap = snaps.rowAt(i);
-    if (!snap || !snap.dbList) continue;
+    if (!snap || (!snap.dbAt && !snap.dbList)) continue;
     const ts = snap.timestampMs;
     if (!Number.isFinite(ts)) continue;
     // Place the column at the x of its real timestamp; tiny scheduling jitter is stitched to the

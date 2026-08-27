@@ -515,6 +515,23 @@ describe("analysisRequests", () => {
       );
     });
 
+    it("retains only the Stereo Map modes currently displayed for each measurement key", () => {
+      const workspace = state({
+        panelsById: {
+          position: { moduleId: "stereo-map" },
+          correlation: { moduleId: "stereo-map" },
+        },
+        panelControlsById: {
+          position: { ...DEFAULT_PANEL_CONTROLS, stereoMapMode: "position" },
+          correlation: { ...DEFAULT_PANEL_CONTROLS, stereoMapMode: "correlation" },
+        },
+      });
+      const retained = deriveRetainedAnalysisKeys(workspace);
+      const key = stereoMapRequestKeyFromControls(DEFAULT_PANEL_CONTROLS);
+
+      expect(retained.stereoMapModesByKey.get(key)).toEqual(new Set(["position", "correlation"]));
+    });
+
     it("ignores panels that are not in the tree", () => {
       const retained = deriveRetainedAnalysisKeys({
         tree: leaf(["spec"]),

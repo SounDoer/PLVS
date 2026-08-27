@@ -33,10 +33,12 @@ export function accumulateSpectrumMaxHold(previous, dbList) {
   return held;
 }
 
-function foldRowInto(target, values) {
+function foldRowInto(target, row, secondary = false) {
   const bandCount = target.length;
   for (let band = 0; band < bandCount; band += 1) {
-    const value = values?.[band];
+    const accessor = secondary ? row?.dbBAt : row?.dbAt;
+    const values = secondary ? row?.dbListB : row?.dbList;
+    const value = typeof accessor === "function" ? accessor.call(row, band) : values?.[band];
     if (Number.isFinite(value) && value > target[band]) target[band] = value;
   }
 }
@@ -51,6 +53,9 @@ function foldRowInto(target, values) {
  */
 export function buildSpectrumMaxHoldTable(history, bucketRows) {
   const length = history?.length ?? 0;
+  if (typeof history?.maxHoldAt === "function") {
+    return { length, history, incremental: true };
+  }
   const firstRow = length > 0 ? history.rowAt(0) : null;
   const bandCount = firstRow?.dbList?.length ?? 0;
   const bandCountB = firstRow?.dbListB?.length ?? 0;
@@ -63,8 +68,8 @@ export function buildSpectrumMaxHoldTable(history, bucketRows) {
 
   for (let index = 0; index < length && bandCount > 0; index += 1) {
     const row = history.rowAt(index);
-    foldRowInto(runningA, row?.dbList);
-    if (bandCountB > 0) foldRowInto(runningB, row?.dbListB);
+    foldRowInto(runningA, row);
+    if (bandCountB > 0) foldRowInto(runningB, row, true);
     if ((index + 1) % bucketRows === 0 || index === length - 1) {
       const bucket = Math.floor(index / bucketRows);
       tableA.set(runningA, bucket * bandCount);
@@ -83,6 +88,7 @@ export function buildSpectrumMaxHoldTable(history, bucketRows) {
  */
 export function spectrumMaxHoldAt(built, index) {
   if (!built || index < 0 || index >= built.length) return null;
+  if (built.incremental) return built.history.maxHoldAt(index);
   const { tableA, tableB, bandCount, bandCountB, bucketRows, history } = built;
 
   const dbList = new Float32Array(bandCount).fill(-Infinity);
@@ -96,8 +102,8 @@ export function spectrumMaxHoldAt(built, index) {
   }
   for (let rowIndex = bucket * bucketRows; rowIndex <= index; rowIndex += 1) {
     const row = history.rowAt(rowIndex);
-    foldRowInto(dbList, row?.dbList);
-    if (bandCountB > 0) foldRowInto(dbListB, row?.dbListB);
+    foldRowInto(dbList, row);
+    if (bandCountB > 0) foldRowInto(dbListB, row, true);
   }
   return { dbList, dbListB };
 }

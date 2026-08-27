@@ -237,6 +237,7 @@ export function deriveRetainedAnalysisKeys(state) {
   const spectrum = new Set();
   const vectorscope = new Set();
   const stereoMap = new Set();
+  const stereoMapModesByKey = new Map();
 
   for (const panelId of orderedPanelIds) {
     const moduleId = resolvePanelModuleId(state, panelId);
@@ -245,13 +246,15 @@ export function deriveRetainedAnalysisKeys(state) {
     } else if (moduleId === "vectorscope") {
       vectorscope.add(vectorscopeRequestKeyFromControls(getPanelControls(state, panelId)));
     } else if (moduleId === "stereo-map") {
-      stereoMap.add(
-        stereoMapRequestKeyFromControls(
-          state.panelControlsById?.[panelId] ?? state.panelControls ?? undefined
-        )
-      );
+      const controls = state.panelControlsById?.[panelId] ?? state.panelControls ?? undefined;
+      const key = stereoMapRequestKeyFromControls(controls);
+      const mode = normalizePanelControls(controls).stereoMapMode;
+      stereoMap.add(key);
+      const modes = stereoMapModesByKey.get(key) ?? new Set();
+      modes.add(mode);
+      stereoMapModesByKey.set(key, modes);
     }
   }
 
-  return { spectrum, vectorscope, stereoMap };
+  return { spectrum, vectorscope, stereoMap, stereoMapModesByKey };
 }

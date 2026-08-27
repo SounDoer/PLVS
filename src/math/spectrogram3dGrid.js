@@ -96,11 +96,12 @@ export function sampleWaterfallGrid({
 
   /** Read frame `i` into row `count`, or report that it carries no levels. */
   const writeRow = (i, ts, count) => {
-    const dbList = view.rowAt(i)?.dbList;
-    if (!dbList) return false;
+    const row = view.rowAt(i);
+    if (!row || (!row.dbAt && !row.dbList)) return false;
     const base = count * pointCount;
     for (let q = 0; q < pointCount; q++) {
-      const db = dbList[yToBand[q]];
+      const band = yToBand[q];
+      const db = typeof row.dbAt === "function" ? row.dbAt(band) : row.dbList?.[band];
       const norm = Number.isFinite(db) ? (db - dbFloor) / dbRange : 0;
       heights[base + q] = norm < 0 ? 0 : norm > 1 ? 1 : norm;
     }

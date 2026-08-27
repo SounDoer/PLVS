@@ -690,9 +690,9 @@ describe("useSnapshot", () => {
     expect(frozenVectorscope.timestampAt(1)).toBe(1100);
     expect(frozenVectorscope.rowAt(1).pairs).toBeInstanceOf(Float32Array);
     expect(spectrum.data.dbList).toBeInstanceOf(Float32Array);
-    expect(spectrum.data.dbList.buffer).toBe(frozenSpectrum.rowAt(1).dbList.buffer);
+    expect(Array.from(spectrum.data.dbList)).toEqual(Array.from(frozenSpectrum.rowAt(1).dbList));
     expect(vectorscope.pairs).toBeInstanceOf(Float32Array);
-    expect(vectorscope.pairs.buffer).toBe(frozenVectorscope.rowAt(1).pairs.buffer);
+    expect(Array.from(vectorscope.pairs)).toEqual(Array.from(frozenVectorscope.rowAt(1).pairs));
 
     spectrumSlab.push({ bands, dbList: [-10, -5], timestampMs: 1200 });
     vectorscopeSlab.push({
