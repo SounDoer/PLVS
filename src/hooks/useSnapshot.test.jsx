@@ -50,6 +50,54 @@ function countingVisualView(rows) {
 }
 
 describe("useSnapshot", () => {
+  it("freezes the atomic scalar bundle once per snapshot session", () => {
+    let freezes = 0;
+    const frozenBundle = {
+      loudness: [{ timestampMs: 1000 }, { timestampMs: 1100 }],
+      audio: [{ correlation: 0.1 }, { correlation: 0.2 }],
+      correlation: [0.1, 0.2],
+      channelMetadata: [
+        { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
+        { frequencyLabel: "C", vectorscopePairLabel: "L/C" },
+      ],
+      loudnessDisplayIndex: { source: "frozen-loudness-index" },
+      waveformHistoryIndex: { source: "frozen-waveform-index" },
+      frequencyMarkerIndex: { source: "frozen-markers" },
+    };
+    const intake = {
+      getLoudnessHistory: () => [{ timestampMs: 1200 }],
+      getAudioSnap: () => [{ correlation: 0.3 }],
+      getCorrSnap: () => [0.3],
+      getVisualWaveformHist: () => emptyHist,
+      snapshotScalarHistory: () => {
+        freezes += 1;
+        return frozenBundle;
+      },
+      snapshotLoudnessDisplayIndex: () => {
+        throw new Error("legacy scalar freeze should not run");
+      },
+    };
+    const baseProps = { sampleSec: 0.1, intake, audio: { correlation: 0.3 } };
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, selectedOffset: -1 },
+    });
+
+    rerender({ ...baseProps, selectedOffset: 0 });
+    expect(freezes).toBe(1);
+    expect(result.current.channelMetadata).toEqual({
+      frequencyLabel: "C",
+      vectorscopePairLabel: "L/C",
+    });
+    expect(result.current.loudnessDisplayIndex).toBe(frozenBundle.loudnessDisplayIndex);
+
+    rerender({ ...baseProps, selectedOffset: 0.1 });
+    expect(freezes).toBe(1);
+
+    rerender({ ...baseProps, selectedOffset: -1 });
+    rerender({ ...baseProps, selectedOffset: 0 });
+    expect(freezes).toBe(2);
+  });
+
   it("freezes history data while scrubbing and returns to live data afterward", () => {
     const samples = {
       loudness: [{ lufs: -20 }, { lufs: -18 }],

@@ -223,6 +223,43 @@ describe("FrameIntake", () => {
     expect(intake.getCorrSnap()).toHaveLength(HIST_MAX);
   });
 
+  it("freezes one aligned scalar snapshot boundary across later live wrap", () => {
+    const intake = new FrameIntake();
+    for (let index = 0; index < 3; index += 1) {
+      if (index === 2) {
+        intake.setCurrentChannelMetadata({
+          frequencyLabel: "C",
+          vectorscopePairLabel: "L/C",
+        });
+      }
+      intake.pushHistRow(
+        makeRow({
+          timestampMs: index * 100,
+          lufsMomentary: -20 - index,
+          correlation: index / 10,
+        }),
+        3,
+        SR
+      );
+    }
+
+    const frozen = intake.snapshotScalarHistory();
+    for (let index = 3; index < 8; index += 1) {
+      intake.pushHistRow(makeRow({ timestampMs: index * 100, correlation: index / 10 }), 3, SR);
+    }
+
+    expect(Array.from(frozen.loudness, (row) => row.timestampMs)).toEqual([0, 100, 200]);
+    expect(Array.from(frozen.correlation)).toEqual([0, 0.1, 0.2]);
+    expect(frozen.channelMetadata.rowAt(2)).toEqual({
+      frequencyLabel: "C",
+      vectorscopePairLabel: "L/C",
+    });
+    expect(frozen.loudnessDisplayIndex.retainedEndSequence).toBe(3);
+    expect(frozen.waveformHistoryIndex.retainedEndSequence).toBe(3);
+    expect(frozen.frequencyMarkerIndex.length).toBe(3);
+    expect(frozen.storageStats().scalar.copiedReferences).toBeGreaterThan(0);
+  });
+
   it("keeps the loudness index sequence range aligned with retained scalar rows", () => {
     const intake = new FrameIntake();
     for (let sequence = 0; sequence < 9; sequence += 1) {
@@ -415,7 +452,7 @@ describe("FrameIntake", () => {
     ];
     intake.reset();
     expect(rings.every((ring) => ring.length === 0)).toBe(true);
-    expect(rings.every((ring) => ring._buf.every((entry) => entry === undefined))).toBe(true);
+    expect(rings.every((ring) => Array.from(ring).length === 0)).toBe(true);
     expect(intake.getLoudnessHistory()).toBe(rings[0]);
   });
 

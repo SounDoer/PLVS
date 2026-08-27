@@ -6,6 +6,8 @@ import { StereoMapModeHistorySlab } from "./StereoMapModeHistorySlab.js";
 import { LoudnessHistoryIndex } from "../math/loudnessHistoryIndex.js";
 import { WaveformHistoryIndex } from "../math/waveformHistoryIndex.js";
 import { WaveformVisualHistorySlab } from "./WaveformVisualHistorySlab.js";
+import { ScalarHistoryStore } from "./ScalarHistoryStore.js";
+import { ChannelMetadataHistory } from "./ChannelMetadataHistory.js";
 
 // Band center arrays are fixed for a given DSP configuration (same sample rate + resolution).
 // Cache keyed by "length:first:last" so all history entries share one object array.
@@ -162,14 +164,15 @@ function createTimestampDomain() {
 export class FrameIntake {
   constructor() {
     this._histCapacity = 1;
-    this._loudnessHist = new RingBuffer(1);
+    this._scalarHistory = new ScalarHistoryStore(1);
+    this._loudnessHist = this._scalarHistory.loudness;
     this._loudnessDisplayIndex = new LoudnessHistoryIndex(1);
     this._waveformHistoryIndex = new WaveformHistoryIndex(1);
-    this._audioSnap = new RingBuffer(1);
-    this._corrSnap = new RingBuffer(1);
+    this._audioSnap = this._scalarHistory.audio;
+    this._corrSnap = this._scalarHistory.correlation;
     this._frequencyChannelMarkers = new RingBuffer(1);
     this._sparseFrequencyChannelMarkers = new SparseHistoryMarkers(1);
-    this._channelMetadataSnap = new RingBuffer(1);
+    this._channelMetadataSnap = new ChannelMetadataHistory(1);
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist = new WaveformVisualHistorySlab(1, 0);
     // Request-keyed visual history: one slab/ring per active analysis request key. They are
@@ -192,20 +195,19 @@ export class FrameIntake {
   }
 
   _rebuildScalarHistory(capacity) {
-    const loudnessHist = new RingBuffer(capacity);
+    const scalarHistory = new ScalarHistoryStore(capacity);
     const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
     const waveformHistoryIndex = new WaveformHistoryIndex(capacity);
-    const audioSnap = new RingBuffer(capacity);
-    const corrSnap = new RingBuffer(capacity);
     const frequencyChannelMarkers = new RingBuffer(capacity);
     const sparseFrequencyChannelMarkers = new SparseHistoryMarkers(capacity);
-    const channelMetadataSnap = new RingBuffer(capacity);
+    const channelMetadataSnap = new ChannelMetadataHistory(capacity);
     this._histCapacity = capacity;
-    this._loudnessHist = loudnessHist;
+    this._scalarHistory = scalarHistory;
+    this._loudnessHist = scalarHistory.loudness;
     this._loudnessDisplayIndex = loudnessDisplayIndex;
     this._waveformHistoryIndex = waveformHistoryIndex;
-    this._audioSnap = audioSnap;
-    this._corrSnap = corrSnap;
+    this._audioSnap = scalarHistory.audio;
+    this._corrSnap = scalarHistory.correlation;
     this._frequencyChannelMarkers = frequencyChannelMarkers;
     this._sparseFrequencyChannelMarkers = sparseFrequencyChannelMarkers;
     this._channelMetadataSnap = channelMetadataSnap;
@@ -287,11 +289,13 @@ export class FrameIntake {
       waveformSubCount: row.waveformSubCount ?? 0,
       timestampMs,
     };
-    this._loudnessHist.push(loudnessRow);
     this._loudnessDisplayIndex.append(loudnessRow);
     this._waveformHistoryIndex.append(loudnessRow);
-    this._audioSnap.push(buildAudioSnap(row));
-    this._corrSnap.push(Number.isFinite(row.correlation) ? row.correlation : -Infinity);
+    this._scalarHistory.append({
+      loudness: loudnessRow,
+      audio: buildAudioSnap(row),
+      correlation: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
+    });
     this._frequencyChannelMarkers.push(this._pendingFrequencyMarker);
     this._sparseFrequencyChannelMarkers.push(this._pendingFrequencyMarker);
     this._channelMetadataSnap.push({ ...this._currentChannelMetadata });
@@ -501,6 +505,29 @@ export class FrameIntake {
   snapshotSparseFrequencyChannelMarkers() {
     return this._sparseFrequencyChannelMarkers.freeze();
   }
+  snapshotScalarHistory() {
+    const scalar = this._scalarHistory.freeze();
+    const channelMetadata = this._channelMetadataSnap.freeze();
+    const loudnessDisplayIndex = this._loudnessDisplayIndex.freeze();
+    const waveformHistoryIndex = this._waveformHistoryIndex.freeze();
+    const frequencyMarkerIndex = this._sparseFrequencyChannelMarkers.freeze();
+    return {
+      loudness: scalar.loudness,
+      audio: scalar.audio,
+      correlation: scalar.correlation,
+      channelMetadata,
+      loudnessDisplayIndex,
+      waveformHistoryIndex,
+      frequencyMarkerIndex,
+      storageStats: () => ({
+        scalar: scalar.storageStats(),
+        channelMetadata: channelMetadata.storageStats(),
+        loudnessDisplayIndex: loudnessDisplayIndex.storageStats(),
+        waveformHistoryIndex: waveformHistoryIndex.storageStats(),
+        frequencyMarkerIndex: frequencyMarkerIndex.storageStats(),
+      }),
+    };
+  }
   getChannelMetadataSnap() {
     return this._channelMetadataSnap;
   }
@@ -539,11 +566,9 @@ export class FrameIntake {
   }
 
   reset() {
-    this._loudnessHist.clear();
+    this._scalarHistory.clear();
     this._loudnessDisplayIndex.clear();
     this._waveformHistoryIndex.clear();
-    this._audioSnap.clear();
-    this._corrSnap.clear();
     this._frequencyChannelMarkers.clear();
     this._sparseFrequencyChannelMarkers.clear();
     this._channelMetadataSnap.clear();

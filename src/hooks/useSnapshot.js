@@ -27,17 +27,21 @@ function snapshotRows(view) {
 }
 
 function freezeSnapshot(intake, liveAudioFallback) {
+  const scalar = intake.snapshotScalarHistory?.() ?? null;
   return {
-    loudness: snapshotRows(intake.getLoudnessHistory()),
-    loudnessDisplayIndex: intake.snapshotLoudnessDisplayIndex?.() ?? null,
-    waveformHistoryIndex: intake.snapshotWaveformHistoryIndex?.() ?? null,
+    loudness: scalar?.loudness ?? snapshotRows(intake.getLoudnessHistory()),
+    loudnessDisplayIndex:
+      scalar?.loudnessDisplayIndex ?? intake.snapshotLoudnessDisplayIndex?.() ?? null,
+    waveformHistoryIndex:
+      scalar?.waveformHistoryIndex ?? intake.snapshotWaveformHistoryIndex?.() ?? null,
     visualWaveform:
       intake.getVisualWaveformHist?.()?.freeze?.() ??
       snapshotRows(intake.getVisualWaveformHist?.()),
-    corr: snapshotRows(intake.getCorrSnap()),
-    audio: snapshotRows(intake.getAudioSnap()),
-    channelMetadata: snapshotRows(intake.getChannelMetadataSnap?.()),
-    frequencyMarkerIndex: intake.snapshotSparseFrequencyChannelMarkers?.() ?? null,
+    corr: scalar?.correlation ?? snapshotRows(intake.getCorrSnap()),
+    audio: scalar?.audio ?? snapshotRows(intake.getAudioSnap()),
+    channelMetadata: scalar?.channelMetadata ?? snapshotRows(intake.getChannelMetadataSnap?.()),
+    frequencyMarkerIndex:
+      scalar?.frequencyMarkerIndex ?? intake.snapshotSparseFrequencyChannelMarkers?.() ?? null,
     spectrumByKey: intake.snapshotVisualSpectrumByKey?.() ?? {},
     vectorscopeByKey: intake.snapshotVisualVectorscopeByKey?.() ?? {},
     stereoMapByKey: intake.snapshotVisualStereoMapByKey?.() ?? {},
