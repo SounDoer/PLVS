@@ -44,6 +44,7 @@ import {
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
+import { beginPanelCpuSample, finishPanelCpuSample } from "../../dev/panelCpuProfiler.js";
 
 export const STEREO_MAP_MONO_MESSAGE = "Mono input — Stereo Map requires a channel pair.";
 
@@ -240,6 +241,15 @@ export function StereoMapPanel() {
     : null;
   const snapshotMissing = snapResolved?.missing === true;
   const liveRow = isSnapshot ? null : displayAudio?.stereoMapResultsByKey?.[stereoMapKey];
+  const liveDerived = useMemo(() => {
+    if (!liveRow) return null;
+    const startedAt = beginPanelCpuSample();
+    const derived = deriveStereoMapRow(mode, liveRow, range);
+    finishPanelCpuSample("stereoMap", "deriveLiveRow", startedAt);
+    return derived;
+  }, [liveRow, mode, range]);
+  const liveHistory = isSnapshot ? null : getStereoMapHistoryForKey?.(stereoMapKey);
+  const liveHistoryVersion = liveHistory?.version ?? 0;
 
   let bandCentersHz = [];
   let points = [];
@@ -260,12 +270,11 @@ export function StereoMapPanel() {
     // and a future Dock module) on the same key agree on Hold. Global Clear replaces the whole
     // per-key Map in FrameIntake, so the next live tick hands back a brand-new, empty slab with no
     // extra bookkeeping needed on this end.
-    holdValues = getStereoMapHistoryForKey?.(stereoMapKey)?.liveHoldValues()?.[mode] ?? null;
-    if (liveRow) {
-      const derived = deriveStereoMapRow(mode, liveRow, range);
-      bandCentersHz = derived.bandCentersHz;
-      points = derived.points;
-      energyDb = derived.energyDb;
+    holdValues = liveHistory?.liveHoldValues()?.[mode] ?? null;
+    if (liveDerived) {
+      bandCentersHz = liveDerived.bandCentersHz;
+      points = liveDerived.points;
+      energyDb = liveDerived.energyDb;
     }
     // Live but no per-key result yet: pending treatment (empty chart) until this request's first
     // frame arrives, matching Spectrum/Vectorscope — never fall back to another request's data.
@@ -508,6 +517,7 @@ export function StereoMapPanel() {
                   xMinHz={xMinHz}
                   xMaxHz={xMaxHz}
                   paletteKey={paletteKey}
+                  sourceVersion={isSnapshot ? selectedOffset : liveHistoryVersion}
                 />
               </div>
               {stereoMapHover ? (

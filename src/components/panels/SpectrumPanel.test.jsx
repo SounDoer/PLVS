@@ -12,6 +12,11 @@ import { SpectrumPanel } from "./SpectrumPanel.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumSvgFromBandsAndDb } from "../../math/spectrumMath.js";
 import { DEFAULT_PANEL_CONTROLS } from "../../lib/panelControls.js";
+import {
+  resetPanelCpuProfiler,
+  setPanelCpuProfilerEnabled,
+  snapshotPanelCpuProfiler,
+} from "../../dev/panelCpuProfiler.js";
 
 vi.mock("framer-motion", () => ({
   useReducedMotion: () => true,
@@ -80,12 +85,40 @@ function firstPathY(path) {
 }
 
 afterEach(() => {
+  setPanelCpuProfilerEnabled(false);
+  resetPanelCpuProfiler();
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 describe("SpectrumPanel", () => {
+  it("reuses display data and paths across unrelated meter-frame renders", () => {
+    setPanelCpuProfilerEnabled(true);
+    const first = liveResult({
+      bandCentersHz: [100, 1000, 10000],
+      smoothDb: [-30, -20, -40],
+      peakDb: [-25, -15, -35],
+    });
+    const { rerender } = renderPanel(liveAudioData(first));
+
+    expect(snapshotPanelCpuProfiler()["spectrum:buildDisplayData"]?.count).toBe(1);
+    expect(snapshotPanelCpuProfiler()["spectrum:buildPaths"]?.count).toBe(1);
+
+    rerender(spectrumPanelTree(liveAudioData(first)));
+    expect(snapshotPanelCpuProfiler()["spectrum:buildDisplayData"]?.count).toBe(1);
+    expect(snapshotPanelCpuProfiler()["spectrum:buildPaths"]?.count).toBe(1);
+
+    const second = liveResult({
+      bandCentersHz: [100, 1000, 10000],
+      smoothDb: [-29, -19, -39],
+      peakDb: [-24, -14, -34],
+    });
+    rerender(spectrumPanelTree(liveAudioData(second)));
+    expect(snapshotPanelCpuProfiler()["spectrum:buildDisplayData"]?.count).toBe(2);
+    expect(snapshotPanelCpuProfiler()["spectrum:buildPaths"]?.count).toBe(2);
+  });
+
   it("fills up to the peak contour when max hold is on", () => {
     const peakPath = "M 0 20 L 1000 20";
     const { container } = renderPanel(

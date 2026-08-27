@@ -148,6 +148,7 @@ export function VectorscopePolarPlot({
   resetEpoch = 0,
   identityKey = "",
   colors = DEFAULT_VECTORSCOPE_CANVAS_COLORS,
+  enabled = true,
 }) {
   const canvasRef = useRef(null);
   const envelopeRef = useRef(null);
@@ -166,6 +167,7 @@ export function VectorscopePolarPlot({
   const stateIdentity = `${mode}:${identityKey}:${resetEpoch}`;
 
   useLayoutEffect(() => {
+    if (!enabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext?.("2d");

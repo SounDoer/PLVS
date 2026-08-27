@@ -42,6 +42,7 @@ import {
   ZOOM_IN_FACTOR,
   ZOOM_OUT_FACTOR,
 } from "../../math/axisInteractionMath.js";
+import { beginPanelCpuSample, finishPanelCpuSample } from "../../dev/panelCpuProfiler.js";
 
 // Shared by the axis rails and the plot area, which edit the same two ranges. The y rail resets to
 // -96 rather than to absMin -- a default, not a bound, so it stays out of this.
@@ -126,12 +127,20 @@ export function SpectrumPanel() {
   const xMinFreq = frequencyViewport.min;
   const xMaxFreq = frequencyViewport.max;
   const setFrequencyRange = frequencyViewport.setRange;
-  const spectrumRange = {
-    minHz: xMinFreq,
-    maxHz: xMaxFreq,
-    yMaxDb: normalizedPanelControls.spectrumYMaxDb,
-    yMinDb: normalizedPanelControls.spectrumYMinDb,
-  };
+  const spectrumRange = useMemo(
+    () => ({
+      minHz: xMinFreq,
+      maxHz: xMaxFreq,
+      yMaxDb: normalizedPanelControls.spectrumYMaxDb,
+      yMinDb: normalizedPanelControls.spectrumYMinDb,
+    }),
+    [
+      normalizedPanelControls.spectrumYMaxDb,
+      normalizedPanelControls.spectrumYMinDb,
+      xMaxFreq,
+      xMinFreq,
+    ]
+  );
   const updatePanelControlsRange = useCallback(
     (next) => {
       onPanelControlsChange?.(normalizePanelControls({ ...normalizedPanelControls, ...next }));
@@ -206,6 +215,17 @@ export function SpectrumPanel() {
     holdDisplaySpectrumResultRef.current = smoothed;
     return smoothed;
   }, [holdSmoothingActive, isSnapshot, rawLiveSpectrumResult]);
+  const livePanelSpectrumData = useMemo(() => {
+    if (!liveSpectrumResult) return null;
+    const startedAt = beginPanelCpuSample();
+    const data = buildSpectrumDataSnapshot({
+      spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
+      spectrumSmoothDb: liveSpectrumResult.smoothDb,
+      spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
+    });
+    finishPanelCpuSample("spectrum", "buildDisplayData", startedAt);
+    return data;
+  }, [liveSpectrumResult]);
   let panelSpectrumPath;
   let panelSpectrumPeakPath;
   let panelSpectrumPathB;
@@ -228,11 +248,7 @@ export function SpectrumPanel() {
     panelSpectrumPeakPathB = liveSpectrumResult.peakPathB;
     panelSpectrumPeakDb = liveSpectrumResult.peakDb;
     panelSpectrumPeakDbB = liveSpectrumResult.peakDbB;
-    panelSpectrumData = buildSpectrumDataSnapshot({
-      spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
-      spectrumSmoothDb: liveSpectrumResult.smoothDb,
-      spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
-    });
+    panelSpectrumData = livePanelSpectrumData;
   } else {
     // Live but no per-key result yet: pending treatment (empty chart) until this request's first
     // frame arrives. Showing another request's curve here would be wrong for this panel's key.
@@ -318,15 +334,7 @@ export function SpectrumPanel() {
       topPct: spectrumDbToTopFrac(liveDb[peak.index] ?? peak.db, spectrumRange) * 100,
       freqLabel: formatSpectrumFreq(peak.freq),
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    spectrumPeakLabels,
-    panelSpectrumData,
-    spectrumRange.minHz,
-    spectrumRange.maxHz,
-    spectrumRange.yMinDb,
-    spectrumRange.yMaxDb,
-  ]);
+  }, [spectrumPeakLabels, panelSpectrumData, spectrumRange]);
   const spectrumSvgRef = useRef(null);
   const chartDragRef = useRef(null);
   const holdSmoothingTimerRef = useRef(null);
@@ -607,29 +615,54 @@ export function SpectrumPanel() {
     selectedOffset < 0 ? liveSpectrumResult : null
   );
   const reduceMotion = useReducedMotion();
-  const displayPanelSpectrumPath =
-    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbList, spectrumRange) ||
-    panelSpectrumPath;
-  const displayPanelSpectrumPathB =
-    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbListB, spectrumRange) ||
-    panelSpectrumPathB;
-  const displayPanelSpectrumPeakPath =
-    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDb, spectrumRange) ||
-    panelSpectrumPeakPath;
-  const displayPanelSpectrumPeakPathB =
-    buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDbB, spectrumRange) ||
-    panelSpectrumPeakPathB;
   const snapshotMaxHold = isSnapshot ? snapResolved?.maxHold : null;
   const maxHoldDb = isSnapshot ? snapshotMaxHold?.dbList : maxHoldRef.current;
   const maxHoldDbB = isSnapshot ? snapshotMaxHold?.dbListB : maxHoldRefB.current;
-  const displaySpectrumMaxHoldPath =
-    maxHoldEnabled && maxHoldDb?.length
-      ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDb, spectrumRange)
-      : "";
-  const displaySpectrumMaxHoldPathB =
-    maxHoldEnabled && maxHoldDbB?.length
-      ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDbB, spectrumRange)
-      : "";
+  const displayPaths = useMemo(() => {
+    const startedAt = beginPanelCpuSample();
+    const paths = {
+      curve:
+        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbList, spectrumRange) ||
+        panelSpectrumPath,
+      curveB:
+        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbListB, spectrumRange) ||
+        panelSpectrumPathB,
+      peak:
+        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDb, spectrumRange) ||
+        panelSpectrumPeakPath,
+      peakB:
+        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDbB, spectrumRange) ||
+        panelSpectrumPeakPathB,
+      maxHold:
+        maxHoldEnabled && maxHoldDb?.length
+          ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDb, spectrumRange)
+          : "",
+      maxHoldB:
+        maxHoldEnabled && maxHoldDbB?.length
+          ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDbB, spectrumRange)
+          : "",
+    };
+    finishPanelCpuSample("spectrum", "buildPaths", startedAt);
+    return paths;
+  }, [
+    panelSpectrumData,
+    panelSpectrumPath,
+    panelSpectrumPathB,
+    panelSpectrumPeakDb,
+    panelSpectrumPeakDbB,
+    panelSpectrumPeakPath,
+    panelSpectrumPeakPathB,
+    maxHoldEnabled,
+    maxHoldDb,
+    maxHoldDbB,
+    spectrumRange,
+  ]);
+  const displayPanelSpectrumPath = displayPaths.curve;
+  const displayPanelSpectrumPathB = displayPaths.curveB;
+  const displayPanelSpectrumPeakPath = displayPaths.peak;
+  const displayPanelSpectrumPeakPathB = displayPaths.peakB;
+  const displaySpectrumMaxHoldPath = displayPaths.maxHold;
+  const displaySpectrumMaxHoldPathB = displayPaths.maxHoldB;
   // One fill, and the Max mode decides what its upper edge is: the engine's decaying peak, the
   // cumulative hold, or the live curve itself when Max is off. Drawing a hold as its own line
   // beside the fill put three shapes per curve on the chart -- six in L/R and M/S -- and the

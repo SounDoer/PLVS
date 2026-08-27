@@ -402,11 +402,20 @@ export function StereoMapPlot({
   xMaxHz = 20000,
   paletteKey = "live",
   themeColors: themeColorsOverride,
+  sourceVersion = 0,
 }) {
   const resolvedThemeColors = useResolvedTheme(selectStereoMapCanvasColors);
   const themeColors = themeColorsOverride ?? resolvedThemeColors;
   const canvasRef = useRef(null);
-  const redrawRef = useRef(null);
+  const redrawRef = useRef({
+    signature: null,
+    bandCentersHz: null,
+    points: null,
+    holdValues: null,
+    bandHash: null,
+    pointHash: null,
+    holdHash: null,
+  });
   const sizeRef = useRef({ dpr: 1, width: 1, height: 1 });
   const geometryStyleRef = useRef(null);
   const [, bumpResizeVersion] = useState(0);
@@ -476,12 +485,46 @@ export function StereoMapPlot({
       rgbToCss(colors.good),
       fillOpacity,
       lineWidth,
-      hashNumArray(bandCentersHz),
-      hashPoints(points),
-      hashHoldValues(mode, holdValues),
+      sourceVersion,
     ].join("|");
-    if (redrawRef.current === signature) return;
-    redrawRef.current = signature;
+    const sameSignature = redrawRef.current.signature === signature;
+    if (sameSignature) {
+      if (
+        redrawRef.current.bandCentersHz === bandCentersHz &&
+        redrawRef.current.points === points &&
+        redrawRef.current.holdValues === holdValues
+      ) {
+        return;
+      }
+      // Compatibility fallback for callers that rebuild equal arrays. The panel's live path now
+      // memoizes its derived arrays, so steady-state frame renders take the reference fast path and
+      // never pay these O(bands) hashes.
+      const bandHash = hashNumArray(bandCentersHz);
+      const pointHash = hashPoints(points);
+      const holdHash = hashHoldValues(mode, holdValues);
+      if (
+        redrawRef.current.bandHash === bandHash &&
+        redrawRef.current.pointHash === pointHash &&
+        redrawRef.current.holdHash === holdHash
+      ) {
+        redrawRef.current = {
+          ...redrawRef.current,
+          bandCentersHz,
+          points,
+          holdValues,
+        };
+        return;
+      }
+    }
+    redrawRef.current = {
+      signature,
+      bandCentersHz,
+      points,
+      holdValues,
+      bandHash: hashNumArray(bandCentersHz),
+      pointHash: hashPoints(points),
+      holdHash: hashHoldValues(mode, holdValues),
+    };
 
     const scaleX = width / VIEW_W;
     const scaleY = height / VIEW_H;

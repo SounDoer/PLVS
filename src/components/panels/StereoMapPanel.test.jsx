@@ -10,6 +10,11 @@ import {
 import { StereoMapPanel, STEREO_MAP_MONO_MESSAGE } from "./StereoMapPanel.jsx";
 import { STEREO_MAP_MODES, deriveStereoMapRow } from "../../math/stereoMapMath.js";
 import { StereoMapHistorySlab } from "../../lib/StereoMapHistorySlab.js";
+import {
+  resetPanelCpuProfiler,
+  setPanelCpuProfilerEnabled,
+  snapshotPanelCpuProfiler,
+} from "../../dev/panelCpuProfiler.js";
 
 const KEY = "stereoMap:pair:0:1:sp25:sm12";
 
@@ -27,6 +32,10 @@ function primitiveRow() {
 }
 
 function renderPanel(audioData) {
+  return render(stereoMapPanelTree(audioData));
+}
+
+function stereoMapPanelTree(audioData) {
   const {
     panelControls,
     analysisStatus,
@@ -36,7 +45,7 @@ function renderPanel(audioData) {
     peakLabelContext,
     ...historyData
   } = audioData;
-  return render(
+  return (
     <FrameDataProvider value={{ displayAudio, channelCount, peakLabelContext }}>
       <HistoryDataProvider value={historyData}>
         <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
@@ -197,8 +206,28 @@ describe("StereoMapPanel", () => {
   });
 
   afterEach(() => {
+    setPanelCpuProfilerEnabled(false);
+    resetPanelCpuProfiler();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("derives a live row only when that analysis result changes", () => {
+    setPanelCpuProfilerEnabled(true);
+    const row = primitiveRow();
+    const first = baseAudioData({ displayAudio: { stereoMapResultsByKey: { [KEY]: row } } });
+    const { rerender } = renderPanel(first);
+
+    expect(snapshotPanelCpuProfiler()["stereoMap:deriveLiveRow"]?.count).toBe(1);
+
+    rerender(stereoMapPanelTree(first));
+    expect(snapshotPanelCpuProfiler()["stereoMap:deriveLiveRow"]?.count).toBe(1);
+
+    const second = baseAudioData({
+      displayAudio: { stereoMapResultsByKey: { [KEY]: { ...row, c: [0.9, 0, 0] } } },
+    });
+    rerender(stereoMapPanelTree(second));
+    expect(snapshotPanelCpuProfiler()["stereoMap:deriveLiveRow"]?.count).toBe(2);
   });
 
   it("renders only the selected Mode's plot", () => {

@@ -90,7 +90,8 @@ export function VectorscopePanel() {
     getVectorscopeHistoryForKey,
     vectorscopeResetEpoch = 0,
   } = useHistoryData();
-  const { panelControls, analysisStatus } = usePanelInstanceData();
+  const { panelControls, analysisStatus, panelVisible } = usePanelInstanceData();
+  const panelActive = panelVisible !== false;
   const normalizedPanelControls = normalizePanelControls(panelControls);
   const vectorscopeMode = normalizedPanelControls.vectorscopeMode;
   const isLissajous = vectorscopeMode === "lissajous";
@@ -214,15 +215,24 @@ export function VectorscopePanel() {
   // Hold slow mode: phosphor persistence window — real samples from the recent history slab,
   // drawn with age-based fading. Falls back to the live path when history is unavailable.
   // Display-only — frame intake and history writes are unaffected.
-  const needsHistorySlab = !isSnapshot && (holdSlowActive || !isLissajous);
+  const needsHistorySlab = panelActive && !isSnapshot && (holdSlowActive || !isLissajous);
   const persistenceSlab = needsHistorySlab
     ? (getVectorscopeHistoryForKey?.(vectorscopeKey) ?? null)
     : null;
-  const persistenceRows = persistenceSlab
-    ? selectPersistenceWindow(persistenceSlab, PERSISTENCE_WINDOW_MS)
-    : [];
+  const persistenceVersion = persistenceSlab?.version ?? 0;
+  const persistenceRows = useMemo(
+    () => (persistenceSlab ? selectPersistenceWindow(persistenceSlab, PERSISTENCE_WINDOW_MS) : []),
+    // The slab mutates in place; version is the intentional invalidation key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [persistenceSlab, persistenceVersion]
+  );
   const persistenceActive = isLissajous && persistenceRows.length > 0;
-  const polarRows = !isLissajous && persistenceSlab ? selectPolarWindow(persistenceSlab) : [];
+  const polarRows = useMemo(
+    () => (!isLissajous && persistenceSlab ? selectPolarWindow(persistenceSlab) : []),
+    // The slab mutates in place; version is the intentional invalidation key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isLissajous, persistenceSlab, persistenceVersion]
+  );
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;
   const stripLabels = getPeakMeterChannelLabels(labelChannelCount, peakLabelContext || {});
@@ -241,7 +251,7 @@ export function VectorscopePanel() {
   // the canvas must redraw on every render while active. No-op when inactive or in jsdom
   // (getContext returns null there).
   useLayoutEffect(() => {
-    if (!persistenceActive) return;
+    if (!panelActive || !persistenceActive) return;
     const canvas = persistenceCanvasRef.current;
     const ctx = canvas?.getContext?.("2d");
     if (!ctx) return;
@@ -399,6 +409,7 @@ export function VectorscopePanel() {
                   resetEpoch={vectorscopeResetEpoch}
                   identityKey={`${vectorscopeKey}:${px}:${py}`}
                   colors={vectorscopeColors}
+                  enabled={panelActive}
                 />
               </div>
             ) : null}

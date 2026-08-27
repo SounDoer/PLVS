@@ -25,6 +25,7 @@ function vectorscopePanelTree(audioData) {
     vectorscopePairX,
     vectorscopePairY,
     displayAudio,
+    panelVisible,
     ...historyData
   } = audioData;
   return (
@@ -41,7 +42,7 @@ function vectorscopePanelTree(audioData) {
       }}
     >
       <HistoryDataProvider value={historyData}>
-        <PanelInstanceProvider value={{ panelControls, analysisStatus }}>
+        <PanelInstanceProvider value={{ panelControls, analysisStatus, panelVisible }}>
           <VectorscopePanel />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -165,6 +166,66 @@ describe("VectorscopePanel", () => {
     expect(container.querySelector('[data-vectorscope-polar="polarSample"]')).toBeTruthy();
     expect(container.querySelector("[data-vectorscope-lissajous-grid]")).toBeNull();
     expect(container.querySelector("[data-vectorscope-correlation-rail]")).toBeTruthy();
+  });
+
+  it("reuses the decoded polar window until the history slab version changes", () => {
+    mockCanvas();
+    const rows = [
+      { pairs: new Float32Array([0.5, 0.5]), timestampMs: 100 },
+      { pairs: new Float32Array([0.6, 0.6]), timestampMs: 140 },
+    ];
+    const slab = {
+      version: 1,
+      length: rows.length,
+      timestampAt: (index) => rows[index]?.timestampMs ?? NaN,
+      rowAt: vi.fn((index) => rows[index]),
+    };
+    const audioData = {
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: "polarSample" },
+      getVectorscopeHistoryForKey: () => slab,
+      displayAudio: {
+        peakDb: [-12, -12],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": { path: "M 0 0", correlation: 0.7, pairX: 0, pairY: 1 },
+        },
+      },
+    };
+    const { rerender } = renderPanel(audioData);
+    const callsAfterFirstRender = slab.rowAt.mock.calls.length;
+
+    rerender(vectorscopePanelTree(audioData));
+    expect(slab.rowAt).toHaveBeenCalledTimes(callsAfterFirstRender);
+
+    slab.version = 2;
+    rerender(vectorscopePanelTree(audioData));
+    expect(slab.rowAt.mock.calls.length).toBeGreaterThan(callsAfterFirstRender);
+  });
+
+  it("does not decode polar history while covered by fullscreen", () => {
+    mockCanvas();
+    const rows = [
+      { pairs: new Float32Array([0.5, 0.5]), timestampMs: 100 },
+      { pairs: new Float32Array([0.6, 0.6]), timestampMs: 140 },
+    ];
+    const slab = {
+      version: 1,
+      length: rows.length,
+      timestampAt: (index) => rows[index]?.timestampMs ?? NaN,
+      rowAt: vi.fn((index) => rows[index]),
+    };
+    const audioData = {
+      selectedOffset: -1,
+      panelVisible: false,
+      panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode: "polarSample" },
+      getVectorscopeHistoryForKey: () => slab,
+      displayAudio: { peakDb: [-12, -12] },
+    };
+    const { rerender } = renderPanel(audioData);
+    expect(slab.rowAt).not.toHaveBeenCalled();
+
+    rerender(vectorscopePanelTree({ ...audioData, panelVisible: true }));
+    expect(slab.rowAt).toHaveBeenCalled();
   });
 
   it("keeps Polar Level selected in snapshot mode", () => {
