@@ -358,4 +358,27 @@ describe("useDockAccessoryVisibility", () => {
 
     expect(result.current.editorView).toBeNull();
   });
+  it("settles while inactive instead of rescheduling its own reset", async () => {
+    let renders = 0;
+    renderHook(() => {
+      renders += 1;
+      return useDockAccessoryVisibility({ active: false, edge: "bottom" });
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(0);
+        await Promise.resolve();
+      });
+    }
+    const settledRenders = renders;
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+      await Promise.resolve();
+    });
+
+    expect(renders).toBe(settledRenders);
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });

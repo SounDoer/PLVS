@@ -134,7 +134,13 @@ export function useDockAccessoryVisibility({
         setHeaderVisible(false);
         setEditorView(null);
         setEditorAnchorX(null);
-        setPresence({ stripInside: false, headerInside: false });
+        // A fresh object here would never be Object.is-equal to the previous `presence`,
+        // which is an effect dependency -- the effect would re-arm this timer forever.
+        setPresence((current) =>
+          current.stripInside || current.headerInside
+            ? { stripInside: false, headerInside: false }
+            : current
+        );
       }, 0);
       return () => clearTimeout(resetTimer);
     }
