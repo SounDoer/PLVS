@@ -58,9 +58,16 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
     async (event) => {
       if (!frameless || event.button !== 0 || event.target !== event.currentTarget) return;
       if (!isTauri()) return;
+      // `releaseAfterDrag` is rebuilt per gesture, so the browser cannot dedupe these against
+      // an earlier drag's registrations, and `once: true` only removes a listener that actually
+      // fires. Once `startDragging` hands the gesture to the OS the webview usually never sees
+      // pointerup at all -- which is why the timeout below exists -- so without an explicit
+      // teardown every drag stranded up to four listeners plus their closures on `window`.
+      const dragListeners = new AbortController();
       const releaseAfterDrag = () => {
         releaseControlsHold();
         window.clearTimeout(dragTimerRef.current);
+        dragListeners.abort();
       };
       try {
         const win = getCurrentWindow();
@@ -85,10 +92,19 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
           return;
         }
         holdControls(true);
-        window.addEventListener("pointerup", releaseAfterDrag, { once: true, capture: true });
-        window.addEventListener("pointercancel", releaseAfterDrag, { once: true, capture: true });
-        window.addEventListener("mouseup", releaseAfterDrag, { once: true, capture: true });
-        window.addEventListener("blur", releaseAfterDrag, { once: true });
+        const signal = dragListeners.signal;
+        window.addEventListener("pointerup", releaseAfterDrag, {
+          once: true,
+          capture: true,
+          signal,
+        });
+        window.addEventListener("pointercancel", releaseAfterDrag, {
+          once: true,
+          capture: true,
+          signal,
+        });
+        window.addEventListener("mouseup", releaseAfterDrag, { once: true, capture: true, signal });
+        window.addEventListener("blur", releaseAfterDrag, { once: true, signal });
         dragTimerRef.current = window.setTimeout(releaseAfterDrag, 10000);
         if (typeof win.startDragging === "function") await win.startDragging();
       } catch (_) {

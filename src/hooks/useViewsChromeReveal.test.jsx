@@ -96,6 +96,43 @@ describe("useViewsChromeReveal", () => {
     expect(mocks.toggleMaximize).not.toHaveBeenCalled();
   });
 
+  it("tears down drag listeners even when the OS drag swallows pointerup", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    const added = [];
+    const addSpy = vi.spyOn(window, "addEventListener");
+    addSpy.mockImplementation(function (type, listener, options) {
+      if (options && options.signal) added.push({ type, signal: options.signal });
+      return EventTarget.prototype.addEventListener.call(this, type, listener, options);
+    });
+
+    const { result } = renderHook(() =>
+      useViewsChromeReveal({ autoHideControls: false, frameless: true })
+    );
+    const header = document.createElement("header");
+
+    for (let drag = 0; drag < 3; drag += 1) {
+      await act(() =>
+        result.current.handleWindowDrag({
+          button: 0,
+          detail: 1,
+          target: header,
+          currentTarget: header,
+          clientX: drag * 50,
+          clientY: 0,
+          timeStamp: drag * 5000,
+        })
+      );
+      // The native drag never delivers pointerup; only the timeout fallback runs.
+      await act(async () => {
+        vi.advanceTimersByTime(10000);
+      });
+    }
+
+    addSpy.mockRestore();
+    expect(added.length).toBeGreaterThan(0);
+    expect(added.every((entry) => entry.signal.aborted)).toBe(true);
+  });
+
   it("toggles maximize for two nearby presses when pointer detail does not count clicks", async () => {
     mocks.isTauri.mockReturnValue(true);
     const { result } = renderHook(() =>
