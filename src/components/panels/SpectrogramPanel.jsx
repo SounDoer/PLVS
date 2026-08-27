@@ -53,11 +53,6 @@ import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelC
 // visible, so the looser rule costs nothing.
 const RIGHT_DOUBLE_CLICK_MS = 400;
 const RIGHT_DOUBLE_CLICK_SLOP_PX = 4;
-// Handed to whichever renderer is inactive. Must be a stable identity: both hooks depend on the
-// canvas ref, so a fresh `{ current: null }` literal per render would tear down and restart their
-// requestAnimationFrame loops on every panel render, which happens at spectrum-frame rate.
-const NO_CANVAS = { current: null };
-
 export function SpectrogramPanel() {
   const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
   const { channelCount, spectrumChannelOptions } = useFrameData();
@@ -84,7 +79,8 @@ export function SpectrogramPanel() {
     getSpectrogramSnapsForKey,
     snapshotSpectrumByKey,
   } = useHistoryData();
-  const { panelControls, analysisStatus, onPanelControlsChange } = usePanelInstanceData();
+  const { panelControls, analysisStatus, onPanelControlsChange, panelVisible } =
+    usePanelInstanceData();
   const chartYDragRef = useRef(null);
   const rotateDragRef = useRef(null);
   const lastRightUpRef = useRef(null);
@@ -242,9 +238,10 @@ export function SpectrogramPanel() {
   }, [is3d, isOverCap]);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const [canvasSizeRevision, setCanvasSizeRevision] = useState(0);
   const [chartDragging, setChartDragging] = useState(false);
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
-  useCanvasSize(canvasRef, containerRef);
+  useCanvasSize(canvasRef, containerRef, () => setCanvasSizeRevision((revision) => revision + 1));
 
   // Spectrograms are request-keyed: resolve this panel's key once and read both the live rolling
   // history and the frozen snapshot history for that key only.
@@ -322,7 +319,7 @@ export function SpectrogramPanel() {
     [showFrequencyMarkers, spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
   );
   useSpectrogramCanvas({
-    canvasRef: is3d ? NO_CANVAS : canvasRef,
+    canvasRef,
     snapRef,
     oldestMs,
     newestMs,
@@ -333,9 +330,12 @@ export function SpectrogramPanel() {
     minHz: yMinFreq,
     maxHz: yMaxFreq,
     dbFloor: normalizedPanelControls.spectrogramDbFloor,
+    sourceVersion: spectrogramSnaps.version,
+    canvasSizeRevision,
+    enabled: !is3d && panelVisible !== false,
   });
   useSpectrogram3dCanvas({
-    canvasRef: is3d ? canvasRef : NO_CANVAS,
+    canvasRef,
     snapRef,
     projectionRef,
     oldestMs,
@@ -355,6 +355,9 @@ export function SpectrogramPanel() {
     floor: normalizedPanelControls.spectrogram3dFloor,
     mode: spectrogramMode,
     themeColors: spectrogramTheme,
+    sourceVersion: spectrogramSnaps.version,
+    canvasSizeRevision,
+    enabled: is3d && panelVisible !== false,
   });
   const boundarySpan = newestMs - oldestMs;
   const {

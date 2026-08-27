@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "react";
 import { DEFAULT_SPECTROGRAM_CANVAS_THEME } from "../theme/themeCanvasSelectors.js";
+import {
+  beginPanelCpuSample,
+  finishPanelCpuSample,
+  recordPanelCpuEvent,
+} from "../dev/panelCpuProfiler.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 import { inWindowRange } from "../math/spectrogramTimeline.js";
 import {
@@ -359,6 +364,9 @@ export function useSpectrogram3dCanvas({
   floor,
   mode,
   themeColors,
+  sourceVersion = 0,
+  canvasSizeRevision = 0,
+  enabled = true,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
@@ -434,8 +442,10 @@ export function useSpectrogram3dCanvas({
   ]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     function draw() {
-      rafRef.current = requestAnimationFrame(draw);
+      rafRef.current = null;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const W = canvas.width;
@@ -475,8 +485,11 @@ export function useSpectrogram3dCanvas({
         last.floor === p.floor &&
         last.mode === p.mode &&
         last.themeColors === p.themeColors
-      )
+      ) {
+        recordPanelCpuEvent("spectrogram3d", "signatureSkip");
         return;
+      }
+      recordPanelCpuEvent("spectrogram3d", "dirtyPaint");
       lastPaintRef.current = {
         len,
         version,
@@ -849,7 +862,44 @@ export function useSpectrogram3dCanvas({
       }
     }
 
-    rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [canvasRef, snapRef, projectionRef]);
+    recordPanelCpuEvent("spectrogram3d", "scheduled");
+    const frame = requestAnimationFrame(() => {
+      const startedAt = beginPanelCpuSample();
+      recordPanelCpuEvent("spectrogram3d", "callback");
+      draw();
+      finishPanelCpuSample("spectrogram3d", "callbackDuration", startedAt);
+    });
+    rafRef.current = frame;
+    return () => {
+      if (rafRef.current === frame) {
+        recordPanelCpuEvent("spectrogram3d", "cancelled");
+        cancelAnimationFrame(frame);
+        rafRef.current = null;
+      }
+    };
+  }, [
+    canvasRef,
+    snapRef,
+    projectionRef,
+    sourceVersion,
+    canvasSizeRevision,
+    enabled,
+    oldestMs,
+    newestMs,
+    sampleMs,
+    selectedOffset,
+    selectionXFrac,
+    frozenSnaps,
+    colormapLut,
+    minHz,
+    maxHz,
+    dbFloor,
+    azimuthDeg,
+    elevationDeg,
+    heightGain,
+    colorize,
+    floor,
+    mode,
+    themeColors,
+  ]);
 }

@@ -8,7 +8,7 @@ import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 
 const BANDS = [{ fCenter: 1000 }];
 
-function Harness({ snaps, colormapLut }) {
+function Harness({ snaps, colormapLut, enabled = true, canvasSizeRevision = 0 }) {
   const canvasRef = useRef(null);
   const snapRef = useMemo(() => ({ current: snaps }), [snaps]);
 
@@ -21,6 +21,9 @@ function Harness({ snaps, colormapLut }) {
     selectedOffset: -1,
     frozenSnaps: null,
     colormapLut,
+    sourceVersion: snaps.version,
+    canvasSizeRevision,
+    enabled,
   });
 
   return <canvas ref={canvasRef} width={2} height={1} />;
@@ -68,19 +71,57 @@ describe("useSpectrogramCanvas", () => {
     vi.unstubAllGlobals();
   });
 
-  it("repaints when a stable spectrum view advances version without changing length", () => {
+  it("schedules one paint when a stable spectrum view advances version without polling", () => {
     const snaps = viewOf({ timestampMs: 0, bands: BANDS, dbList: [-20] });
     const colormapLut = new Uint8Array(256 * 3);
     colormapLut.fill(255);
-    render(<Harness snaps={snaps} colormapLut={colormapLut} />);
+    const { rerender } = render(<Harness snaps={snaps} colormapLut={colormapLut} />);
 
     rafCallback();
     expect(putImageData).toHaveBeenCalledTimes(1);
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
 
     snaps.version = 2;
+    rerender(<Harness snaps={snaps} colormapLut={colormapLut} />);
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
     rafCallback();
 
     expect(putImageData).toHaveBeenCalledTimes(2);
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays idle while hidden and paints once when revealed", () => {
+    const snaps = viewOf({ timestampMs: 0, bands: BANDS, dbList: [-20] });
+    const colormapLut = new Uint8Array(256 * 3);
+    colormapLut.fill(255);
+    const { rerender } = render(
+      <Harness snaps={snaps} colormapLut={colormapLut} enabled={false} />
+    );
+
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
+
+    snaps.version = 2;
+    rerender(<Harness snaps={snaps} colormapLut={colormapLut} enabled={false} />);
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
+
+    rerender(<Harness snaps={snaps} colormapLut={colormapLut} enabled />);
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
+    rafCallback();
+    expect(putImageData).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates once when only the canvas size revision changes", () => {
+    const snaps = viewOf({ timestampMs: 0, bands: BANDS, dbList: [-20] });
+    const colormapLut = new Uint8Array(256 * 3);
+    colormapLut.fill(255);
+    const { rerender } = render(
+      <Harness snaps={snaps} colormapLut={colormapLut} canvasSizeRevision={0} />
+    );
+    rafCallback();
+
+    rerender(<Harness snaps={snaps} colormapLut={colormapLut} canvasSizeRevision={1} />);
+
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
   });
 
   it("bounds dense long-window painting by canvas width", () => {

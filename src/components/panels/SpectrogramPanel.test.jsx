@@ -82,6 +82,7 @@ function spectrogramPanelTree(value = {}, props = {}) {
     channelCount,
     spectrumChannelOptions,
     resolvedThemeId,
+    panelVisible,
     ...history
   } = value;
   const base = { ...baseAudioData, ...history };
@@ -93,7 +94,9 @@ function spectrogramPanelTree(value = {}, props = {}) {
   return (
     <FrameDataProvider value={frameData}>
       <HistoryDataProvider value={base}>
-        <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
+        <PanelInstanceProvider
+          value={{ panelControls, analysisStatus, onPanelControlsChange, panelVisible }}
+        >
           <SpectrogramPanel {...props} />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -115,6 +118,16 @@ beforeEach(() => {
 });
 
 describe("SpectrogramPanel", () => {
+  it("disables both canvas renderers while covered by fullscreen", () => {
+    const { rerender } = renderPanel({ panelVisible: false });
+
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].enabled).toBe(false);
+    expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].enabled).toBe(false);
+
+    rerender(spectrogramPanelTree({ panelVisible: true }));
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].enabled).toBe(true);
+  });
+
   it("keeps the time axis in a dedicated layout row", () => {
     const { container } = renderPanel();
     const axisRow = screen.getByText("30s").parentElement?.parentElement;

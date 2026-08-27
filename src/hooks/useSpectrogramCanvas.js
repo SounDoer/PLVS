@@ -3,6 +3,11 @@ import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 import { buildYToBand } from "../math/spectrogramMath.js";
 import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
 import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
+import {
+  beginPanelCpuSample,
+  finishPanelCpuSample,
+  recordPanelCpuEvent,
+} from "../dev/panelCpuProfiler.js";
 
 function paintSpan(data, width, height, xStart, xEnd, snap, yToBand, colormapLut, dbFloor) {
   for (let y = 0; y < height; y++) {
@@ -92,6 +97,9 @@ export function useSpectrogramCanvas({
   minHz = 20,
   maxHz = 20000,
   dbFloor = SPECTROGRAM_DB_MIN,
+  sourceVersion = 0,
+  canvasSizeRevision = 0,
+  enabled = true,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
@@ -135,8 +143,10 @@ export function useSpectrogramCanvas({
   ]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     function draw() {
-      rafRef.current = requestAnimationFrame(draw);
+      rafRef.current = null;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const W = canvas.width;
@@ -173,8 +183,11 @@ export function useSpectrogramCanvas({
         last.maxHz === maxHz &&
         last.colormapLut === colormapLut &&
         last.dbFloor === dbFloor
-      )
+      ) {
+        recordPanelCpuEvent("spectrogram2d", "signatureSkip");
         return;
+      }
+      recordPanelCpuEvent("spectrogram2d", "dirtyPaint");
       lastPaintRef.current = {
         len,
         version,
@@ -236,7 +249,35 @@ export function useSpectrogramCanvas({
       ctx.putImageData(cache.imageData, 0, 0);
     }
 
-    rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [canvasRef, snapRef]);
+    recordPanelCpuEvent("spectrogram2d", "scheduled");
+    const frame = requestAnimationFrame(() => {
+      const startedAt = beginPanelCpuSample();
+      recordPanelCpuEvent("spectrogram2d", "callback");
+      draw();
+      finishPanelCpuSample("spectrogram2d", "callbackDuration", startedAt);
+    });
+    rafRef.current = frame;
+    return () => {
+      if (rafRef.current === frame) {
+        recordPanelCpuEvent("spectrogram2d", "cancelled");
+        cancelAnimationFrame(frame);
+        rafRef.current = null;
+      }
+    };
+  }, [
+    canvasRef,
+    snapRef,
+    sourceVersion,
+    canvasSizeRevision,
+    enabled,
+    oldestMs,
+    newestMs,
+    sampleMs,
+    selectedOffset,
+    frozenSnaps,
+    colormapLut,
+    minHz,
+    maxHz,
+    dbFloor,
+  ]);
 }
