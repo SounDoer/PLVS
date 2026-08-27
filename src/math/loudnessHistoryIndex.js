@@ -71,6 +71,10 @@ export class LoudnessHistoryIndex {
     return new LoudnessHistoryIndex(this._index.freeze(), true);
   }
 
+  storageStats() {
+    return this._index.storageStats();
+  }
+
   clear() {
     if (this._frozen) throw new TypeError("cannot clear a frozen LoudnessHistoryIndex");
     this._index.clear();

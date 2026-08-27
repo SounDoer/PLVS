@@ -123,4 +123,22 @@ describe("WaveformHistoryIndex", () => {
     expect(frozen.hasNaNInRange(1, 2)).toBe(true);
     expect(frozen.hasNaNInRange(3, 3)).toBe(false);
   });
+
+  it("freezes support rows without copying the retained history", () => {
+    const capacity = 2049;
+    const index = new WaveformHistoryIndex(capacity);
+    for (let sequence = 0; sequence < capacity; sequence += 1) {
+      index.append({
+        waveformMin: [sequence === 2048 ? NaN : -sequence],
+        waveformMax: [sequence],
+      });
+    }
+
+    const stats = index.freeze().storageStats();
+
+    expect(stats.rawRows.sharedSealedChunks).toBe(2);
+    expect(stats.rawRows.copiedReferences).toBe(1);
+    expect(stats.nanSequences.copiedReferences).toBe(1);
+    expect(stats.index.sharedSealedChunks).toBeGreaterThan(0);
+  });
 });

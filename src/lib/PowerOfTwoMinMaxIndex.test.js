@@ -146,7 +146,7 @@ describe("PowerOfTwoMinMaxIndex", () => {
 
     expect(Object.isFrozen(bucket)).toBe(true);
     expect(Object.isFrozen(bucket.mins)).toBe(true);
-    expect(frozen._levels[3][0]).toBe(bucket);
+    expect(frozen._levels[3].at(0)).toBe(bucket);
 
     for (let sequence = 8; sequence < 20; sequence++) {
       append(index, rows, sequence, [-sequence], [sequence]);
@@ -158,6 +158,20 @@ describe("PowerOfTwoMinMaxIndex", () => {
     expect(frozen.retainedStartSequence).toBe(0);
     expect(frozen.retainedEndSequence).toBe(8);
     expect(frozen.version).toBe(8);
+  });
+
+  it("bounds frozen index copying to active chunk tails", () => {
+    const capacity = 8192;
+    const index = new PowerOfTwoMinMaxIndex(capacity);
+    for (let sequence = 0; sequence < capacity; sequence += 1) {
+      index.append(sequence, [sequence], [sequence]);
+    }
+
+    const stats = index.freeze().storageStats();
+
+    expect(stats.sharedSealedChunks).toBeGreaterThan(0);
+    expect(stats.copiedReferences).toBeLessThan(capacity / 2);
+    expect(stats.levels).toHaveLength(Math.floor(Math.log2(capacity)));
   });
 
   it("clear releases levels and pending carry state, then restarts at sequence zero", () => {

@@ -1,4 +1,4 @@
-import { RingBuffer } from "./RingBuffer.js";
+import { ChunkedSequence } from "./ChunkedSequence.js";
 
 const EMPTY_QUERY_STATS = Object.freeze({
   nodesVisited: 0,
@@ -47,11 +47,11 @@ function bucketAtStart(level, startSequence, width) {
 }
 
 function frozenBucketAtStart(level, startSequence, width) {
-  const first = level[0];
+  const first = level.at(0);
   if (!first) return undefined;
   const index = (startSequence - first.startSequence) / width;
   if (!Number.isInteger(index)) return undefined;
-  const bucket = level[index];
+  const bucket = level.at(index);
   return bucket?.startSequence === startSequence ? bucket : undefined;
 }
 
@@ -124,6 +124,21 @@ class MinMaxIndexView {
     return { ...this._lastQueryStats };
   }
 
+  storageStats() {
+    const levels = [];
+    let sharedSealedChunks = 0;
+    let copiedTailRows = 0;
+    let copiedReferences = 0;
+    for (let level = 1; level <= this._maxLevel; level += 1) {
+      const stats = this._levels[level].storageStats();
+      levels.push({ level, ...stats });
+      sharedSealedChunks += stats.sharedSealedChunks;
+      copiedTailRows += stats.copiedTailRows;
+      copiedReferences += stats.copiedReferences;
+    }
+    return { levels, sharedSealedChunks, copiedTailRows, copiedReferences };
+  }
+
   get capacity() {
     return this._capacity;
   }
@@ -152,7 +167,7 @@ class FrozenPowerOfTwoMinMaxIndex extends MinMaxIndexView {
     this._maxLevel = source._maxLevel;
     const levels = new Array(this._maxLevel + 1);
     for (let level = 1; level <= this._maxLevel; level++) {
-      levels[level] = Object.freeze(source._levels[level].toArray());
+      levels[level] = source._levels[level].freeze();
     }
     this._levels = Object.freeze(levels);
     this._retainedStartSequence = source._retainedStartSequence;
@@ -178,7 +193,7 @@ export class PowerOfTwoMinMaxIndex extends MinMaxIndexView {
     this._levels = new Array(this._maxLevel + 1);
     for (let level = 1; level <= this._maxLevel; level++) {
       const width = 2 ** level;
-      this._levels[level] = new RingBuffer(Math.ceil(capacityRows / width) + 2);
+      this._levels[level] = new ChunkedSequence(Math.ceil(capacityRows / width) + 2);
     }
     this._pending = new Array(this._maxLevel + 1);
     this._retainedStartSequence = 0;

@@ -1,5 +1,5 @@
 import { PowerOfTwoMinMaxIndex } from "../lib/PowerOfTwoMinMaxIndex.js";
-import { RingBuffer } from "../lib/RingBuffer.js";
+import { ChunkedSequence } from "../lib/ChunkedSequence.js";
 
 function emptyBatchStats() {
   return {
@@ -50,8 +50,8 @@ export class WaveformHistoryIndex {
         ? new PowerOfTwoMinMaxIndex(capacityOrIndex)
         : capacityOrIndex;
     this._frozen = frozen;
-    this._rawRows = rawRows ?? new RingBuffer(capacityOrIndex);
-    this._nanSequences = nanSequences ?? new RingBuffer(capacityOrIndex);
+    this._rawRows = rawRows ?? new ChunkedSequence(capacityOrIndex);
+    this._nanSequences = nanSequences ?? new ChunkedSequence(capacityOrIndex);
     this._batchQueryStats = emptyBatchStats();
   }
 
@@ -103,9 +103,17 @@ export class WaveformHistoryIndex {
     return new WaveformHistoryIndex(
       this._index.freeze(),
       true,
-      Object.freeze(this._rawRows.toArray()),
-      Object.freeze(this._nanSequences.toArray())
+      this._rawRows.freeze(),
+      this._nanSequences.freeze()
     );
+  }
+
+  storageStats() {
+    return {
+      index: this._index.storageStats(),
+      rawRows: this._rawRows.storageStats(),
+      nanSequences: this._nanSequences.storageStats(),
+    };
   }
 
   clear() {

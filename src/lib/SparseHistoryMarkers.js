@@ -1,4 +1,4 @@
-import { RingBuffer } from "./RingBuffer.js";
+import { ChunkedSequence } from "./ChunkedSequence.js";
 
 function emptyQueryStats() {
   return { binarySearchReads: 0, markersInspected: 0, markersReturned: 0 };
@@ -45,7 +45,7 @@ export class SparseHistoryMarkers {
   constructor(capacity) {
     if (capacity <= 0) throw new RangeError("SparseHistoryMarkers capacity must be > 0");
     this._capacity = capacity;
-    this._markers = new RingBuffer(capacity);
+    this._markers = new ChunkedSequence(capacity);
     this._retainedStart = 0;
     this._nextSequence = 0;
     this._version = 0;
@@ -89,16 +89,9 @@ export class SparseHistoryMarkers {
   }
 
   freeze() {
-    const stats = emptyQueryStats();
-    const firstMarker = lowerBound(this._markers, this._retainedStart, stats);
-    const markerCount = this._markers.length - firstMarker;
-    const markers = new RingBuffer(Math.max(1, markerCount));
-    for (let index = firstMarker; index < this._markers.length; index += 1) {
-      markers.push(this._markers.at(index));
-    }
     return new FrozenSparseHistoryMarkers({
       capacity: this._capacity,
-      markers,
+      markers: this._markers.freeze(),
       retainedStart: this._retainedStart,
       retainedEnd: this._nextSequence,
       version: this._version,
@@ -149,5 +142,9 @@ class FrozenSparseHistoryMarkers {
 
   lastQueryStats() {
     return { ...this._lastQueryStats };
+  }
+
+  storageStats() {
+    return this._markers.storageStats();
   }
 }

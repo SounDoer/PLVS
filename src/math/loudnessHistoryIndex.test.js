@@ -94,4 +94,16 @@ describe("LoudnessHistoryIndex", () => {
     index.append({ m: -20, st: -21 });
     expect(() => index.queryRange("integrated", 0, 0, () => ({}))).toThrow(TypeError);
   });
+
+  it("reports tail-bounded frozen summary storage", () => {
+    const index = new LoudnessHistoryIndex(4096);
+    for (let sequence = 0; sequence < 4096; sequence += 1) {
+      index.append({ m: -sequence, st: sequence });
+    }
+
+    const stats = index.freeze().storageStats();
+
+    expect(stats.sharedSealedChunks).toBeGreaterThan(0);
+    expect(stats.copiedReferences).toBeLessThan(2048);
+  });
 });

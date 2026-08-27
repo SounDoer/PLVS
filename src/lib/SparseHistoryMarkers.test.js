@@ -81,4 +81,14 @@ describe("SparseHistoryMarkers", () => {
   it("rejects non-positive capacities", () => {
     expect(() => new SparseHistoryMarkers(0)).toThrow(/capacity must be > 0/);
   });
+
+  it("freezes a worst-case dense marker stream with tail-bounded copying", () => {
+    const markers = new SparseHistoryMarkers(2049);
+    for (let index = 0; index < 2049; index += 1) markers.push(marker(`${index}`));
+
+    const stats = markers.freeze().storageStats();
+
+    expect(stats.sharedSealedChunks).toBe(2);
+    expect(stats.copiedReferences).toBe(1);
+  });
 });
