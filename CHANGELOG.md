@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-08-27
+
+### Added
+- Linked axis viewports: Spectrum's X, Spectrogram's frequency Y and Stereo Map's X now navigate one shared frequency range, linked by default, with a link toggle on each panel's own Frequency Range row. The three timeline panels share their time viewport the same way. Membership and the shared range persist, and presets carry both.
+- Time Range is now a settings row on the three panels that have a time axis, editable as the two numbers written at the ends of the rail - time-ago when live, absolute media time in file mode.
+- Spectrum Max Hold: a cumulative per-band maximum drawn as one held outline per curve, in the curve's own color, clearable by clicking the held line. It works in snapshot mode, showing the hold as it stood at the selected row, and the Dock strip holds the spectrum peak too. The old decaying peak envelope stays, renamed Max Decay, and sits beside it.
+- Stereo Map's level axis is editable by wheel and drag in Mono Loss and M/S Ratio, not just from the settings panel. Position and Correlation always show their whole range, so their rail stays inert.
+
+### Changed
+- Long-running panel histories are packed into chunked storage and freed once no open panel needs them or they age out of the retention window, cutting memory on long sessions.
+- Sliders that change an analysis request key - Spectrum speed and tilt, Stereo Map speed - commit on release instead of on every pointer move.
+
+### Fixed
+- Idle CPU: a re-render loop in the Dock accessory visibility hook kept every non-docked session in a ~250 Hz render/effect churn, present since v0.10.0. Renderer CPU when idle drops from ~0.57 of a logical core to effectively zero.
+- Idle Spectrogram animation polling stopped, and 3D ridge projection no longer allocates per vertex.
+- Title-bar drags no longer strand event listeners for the life of the session.
+- Level Meter's RMS level range now reaches the keys the meter actually reads.
+- Linked frequency settings stay in sync across panels.
+- Workspace state is no longer written to storage on every pointer move during a drag.
+
 ## [0.14.0] - 2026-08-21
 
 ### Added
