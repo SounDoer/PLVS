@@ -33,7 +33,7 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 
 | Panel | D1 | D2 | D3 | D4 |
 | --- | --- | --- | --- | --- |
-| Spectrum | 合理性已落地，正确性待测 | 待测 | 待测 | payload 第 1 层已削减 |
+| Spectrum | 合理性已落地，正确性待测 | 待测 | 待测 | payload 第 1、2 层已落地，第 3 层待议 |
 | Spectrogram | — | — | — | — |
 | Stereo Map | — | — | — | — |
 | Waveform | — | — | — | — |
