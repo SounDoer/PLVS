@@ -44,16 +44,19 @@ export function parseArgs(argv) {
 }
 
 /**
- * The debugging port lists every target the webview owns, including its own about:blank helpers.
- * The app's page is the one serving the UI, which under Tauri is a custom scheme rather than http.
+ * The debugging port lists every page the app owns, and PLVS owns more than one: the Dock's header
+ * and editor are separate windows on the same origin, distinguished only by a `surface` query.
+ * They appear before the main window in the listing, so "the first page that is not about:blank"
+ * attaches to a Dock accessory and profiles a window that draws almost nothing.
  */
 export function pickTarget(targets) {
   const pages = targets.filter((target) => target.type === "page" && target.webSocketDebuggerUrl);
   if (pages.length === 0) return null;
-  const app = pages.find(
+  const usable = pages.filter(
     (page) => !/^about:/.test(page.url ?? "") && !/devtools/.test(page.url ?? "")
   );
-  return app ?? pages[0];
+  const main = usable.find((page) => !/[?&]surface=/.test(page.url ?? ""));
+  return main ?? usable[0] ?? pages[0];
 }
 
 /** Self time per function, which is what identifies a hot spot; totals hide it behind callers. */

@@ -28,6 +28,18 @@ describe("pickTarget", () => {
     expect(pickTarget([page("about:blank"), app])).toBe(app);
   });
 
+  it("picks the main window over the Dock's accessory surfaces", () => {
+    // The order a real session reports: both Dock surfaces come before the main window, and they
+    // draw almost nothing, so taking the first page profiles the wrong window.
+    const main = page("http://tauri.localhost/");
+    const targets = [
+      page("http://tauri.localhost/index.html?surface=dock-editor"),
+      page("http://tauri.localhost/index.html?surface=dock-header"),
+      main,
+    ];
+    expect(pickTarget(targets)).toBe(main);
+  });
+
   it("returns null when there is no page to attach to", () => {
     expect(pickTarget([{ type: "service_worker", url: "x", webSocketDebuggerUrl: "ws://x" }])).toBe(
       null

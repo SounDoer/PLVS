@@ -30,6 +30,14 @@ npm run profile:webview -- --seconds 10 --out spectrum.cpuprofile
 **前提是音频真的在流动。** 空转的窗口采出来的是一份没有样本的 profile，比没有更糟；脚本会明说
 "No samples"，但它没法替你把声音放起来。采样时把要测的面板开着。
 
+`scripts/capture-rig.mjs` 可以自己起 VLC 循环播进 VB-Cable（`resolveRenderEndpointId` +
+`startPlayer` / `stopPlayer`），所以音频这一半是能自动化的——**但只在本机会话里**。
+
+**远程桌面会话里采不了。** RDP 把音频端点换成了 "Remote Audio"：引擎的
+`list_audio_devices` 在这种会话里只返回这一个设备，VB-Cable 对 WASAPI 不可见，哪怕 PowerShell
+仍然能解析出它的 render endpoint。唯一的替代是把信号播进 "Remote Audio"，而那就是操作者的
+扬声器——一分钟的 1 kHz 正弦，不能这么干。**这类采样要在本机会话做。**
+
 ## 顺序
 
 Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level Meter / Loudness / Stats
