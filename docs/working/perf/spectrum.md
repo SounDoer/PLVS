@@ -154,7 +154,50 @@ Speed 和 Smoothing 没有一起放出来，那是另一个范围的决定。Doc
 - `legacy_payload_comparison_rejects_path_and_visual_mutations` 改名为
   `..._rejects_row_and_visual_mutations`，突变对象从 path 换成 dB 行。
 
-## 2. D2 — 前端渲染
+## 2.5 D2 判定结果与已落地的改动（2026-08-28，实测）
+
+测量工具：`npm run benchmark:spectrum-render`（`scripts/spectrum-render-benchmark.mjs`）。
+它跑的是面板每帧重做的纯计算部分，脱离 React，所以可以在应用之外复现。
+**它不覆盖 React 的 commit 与浏览器的 paint**——那两项要在真实窗口里 profiling。
+
+### 结论：path 构建是唯一的大头，其余全是噪声
+
+| 阶段 | 每帧 | 占 16 ms 预算 |
+| --- | --- | --- |
+| tilt 一行 | 0.003 ms | 0.0% |
+| `buildSpectrumDataSnapshot` | 0.001 ms | 0.0% |
+| 解包 band centers | 0.006 ms | 0.0% |
+| **一条 path** | **0.099 ms** | **0.6%** |
+| Max hold 折叠 | 0.004 ms | 0.0% |
+| 峰值标签候选 | 0.008 ms | 0.0% |
+
+一个面板每帧最多画 6 条 path（主/副曲线、主/副峰值、主/副 Max hold），所以帧成本几乎就是
+`0.099 × path 条数`：combined+Max off 是 0.10 ms，lr/ms+Max on 是 0.59 ms（4% 预算）。
+
+### 已落地：把 x 坐标缓存下来（−60%，输出逐字节相同）
+
+曲线上每个点的 x **只由栅格和频率范围决定，与 dB 行无关**——但它在一帧的 4~6 条 path 里各算
+一遍，下一帧再算一遍，每次都要 `log10` 加一次 `toFixed(2)` 的字符串分配。按 (栅格形状, 频率
+范围) 缓存这 958 个 x 字符串之后：**每条 path 0.20 ms → 0.08 ms**。
+
+同时把 `spectrumDbToYViewBox` 每点都要做的量程归一化提了出来（新增
+`spectrumDbToYProjector`，与原函数的一致性有测试保证），并把 band→centers 的解包从每帧 6 次
+收敛成 1 次。
+
+量过但**没有收益**的候选，一并记下来免得重查：
+
+- **band 对象解包不是瓶颈**（0.006 ms）。改之前我的假设是"每帧 6 次 958 元素的 map 很贵"，
+  测出来是错的；收敛成 1 次只是顺手，不是收益来源。
+- **绕开 `toFixed` 单独用**只到 0.147 ms；x 缓存之后再叠加它没有额外收益（0.079 vs 0.080）。
+- **按像素跨步降采样**在 x 缓存之后只剩 0.099 → 0.083 ms（−16%），却要改变画出来的东西。
+  作为 CPU 手段已经不划算——除非 paint 那一侧证明 14671 字符的 path 本身是问题。
+
+### 仍然未知
+
+React 的 commit 与浏览器 paint。一条 path 是 **14671 个字符**，一帧最多 6 条；这些字符串交给
+DOM 之后的成本，benchmark 看不见。这是 D2 剩下的唯一问题，需要一次真实窗口的 profiling。
+
+## 2. D2 — 前端渲染（原始清单）
 
 涉及：`components/panels/SpectrumPanel.jsx`(1008) `math/spectrumMath.js` `math/spectrumMaxHold.js`
 

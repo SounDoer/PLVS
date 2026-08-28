@@ -71,8 +71,7 @@ function buildSpectrumAreaPath(path) {
   return `${path} L 1000 260 L 0 260 Z`;
 }
 
-function buildSpectrumPathFromData(data, dbList, range) {
-  const centers = data?.bands?.map((band) => band.fCenter) ?? [];
+function buildSpectrumPathFromData(centers, dbList, range) {
   return buildSpectrumSvgFromBandsAndDb(centers, dbList ?? [], range);
 }
 
@@ -649,29 +648,41 @@ export function SpectrumPanel() {
   }, [isSnapshot, snapResolved, snapshotPanelSpectrumData, tiltDbPerOctave]);
   const maxHoldDb = isSnapshot ? snapshotMaxHold?.dbList : maxHoldRef.current;
   const maxHoldDbB = isSnapshot ? snapshotMaxHold?.dbListB : maxHoldRefB.current;
+  // Unwrapped once per frame rather than inside each of the six path builds below: the band
+  // objects exist for the hover readout and the peak labels, the path builder wants the bare
+  // frequencies, and the conversion is the same one every time.
+  const panelSpectrumCenters = useMemo(
+    () => panelSpectrumData?.bands?.map((band) => band.fCenter) ?? [],
+    [panelSpectrumData]
+  );
   const displayPaths = useMemo(() => {
     const startedAt = beginPanelCpuSample();
     const paths = {
-      curve: buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbList, spectrumRange),
+      curve: buildSpectrumPathFromData(
+        panelSpectrumCenters,
+        panelSpectrumData?.dbList,
+        spectrumRange
+      ),
       curveB: buildSpectrumPathFromData(
-        panelSpectrumData,
+        panelSpectrumCenters,
         panelSpectrumData?.dbListB,
         spectrumRange
       ),
-      peak: buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDb, spectrumRange),
-      peakB: buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDbB, spectrumRange),
+      peak: buildSpectrumPathFromData(panelSpectrumCenters, panelSpectrumPeakDb, spectrumRange),
+      peakB: buildSpectrumPathFromData(panelSpectrumCenters, panelSpectrumPeakDbB, spectrumRange),
       maxHold:
         maxHoldEnabled && maxHoldDb?.length
-          ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDb, spectrumRange)
+          ? buildSpectrumPathFromData(panelSpectrumCenters, maxHoldDb, spectrumRange)
           : "",
       maxHoldB:
         maxHoldEnabled && maxHoldDbB?.length
-          ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDbB, spectrumRange)
+          ? buildSpectrumPathFromData(panelSpectrumCenters, maxHoldDbB, spectrumRange)
           : "",
     };
     finishPanelCpuSample("spectrum", "buildPaths", startedAt);
     return paths;
   }, [
+    panelSpectrumCenters,
     panelSpectrumData,
     panelSpectrumPeakDb,
     panelSpectrumPeakDbB,

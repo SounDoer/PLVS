@@ -91,11 +91,27 @@ function normalizeSpectrumRange(range = {}) {
   return { yMaxDb, yMinDb, yRangeDb: Math.max(1, yMaxDb - yMinDb) };
 }
 
-export function spectrumDbToYViewBox(d, range = {}) {
-  const { yMaxDb, yRangeDb } = normalizeSpectrumRange(range);
-  const yMinDb = yMaxDb - yRangeDb;
+function projectDb(d, yMinDb, yMaxDb, yRangeDb) {
   const dd = Math.max(yMinDb, Math.min(yMaxDb, Number.isFinite(d) ? d : yMinDb));
   return SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD - ((dd - yMinDb) / yRangeDb) * SPEC_PLOT_H;
+}
+
+export function spectrumDbToYViewBox(d, range = {}) {
+  const { yMaxDb, yRangeDb } = normalizeSpectrumRange(range);
+  return projectDb(d, yMaxDb - yRangeDb, yMaxDb, yRangeDb);
+}
+
+/**
+ * dB→y bound to one range, for callers that project a whole row. `spectrumDbToYViewBox` re-derives
+ * the range on every value, which a 958-point path would pay for 958 times.
+ *
+ * @param {{ yMaxDb?: number, yMinDb?: number, yRangeDb?: number }} [range]
+ * @returns {(d: number) => number}
+ */
+export function spectrumDbToYProjector(range = {}) {
+  const { yMaxDb, yRangeDb } = normalizeSpectrumRange(range);
+  const yMinDb = yMaxDb - yRangeDb;
+  return (d) => projectDb(d, yMinDb, yMaxDb, yRangeDb);
 }
 
 /** Tick line top as fraction of full viewBox height (same coords as spectrum trace) */

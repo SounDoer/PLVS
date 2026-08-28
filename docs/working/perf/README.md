@@ -25,7 +25,7 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 | 维度 | 问题 | 证据来源 |
 | --- | --- | --- |
 | D1 Rust 计算 | 算得对吗？算得有没有冗余？ | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时 |
-| D2 前端渲染 | 单帧预算超了吗？还有多少空间？ | CDP renderer profiling（单面板 / 八面板同屏两档） |
+| D2 前端渲染 | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render`（纯计算部分）+ CDP renderer profiling（commit 与 paint） |
 | D3 历史存储 | 结构合理吗？占用是多少？ | `npm run benchmark:history` + heap 预算测试 |
 | D4 其他 | 每帧 payload、IPC、调度 | payload 字节数实测；`npm run soak:capture`（只作线索，阈值未校准） |
 
@@ -33,7 +33,7 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 
 | Panel | D1 | D2 | D3 | D4 |
 | --- | --- | --- | --- | --- |
-| Spectrum | 合理性已落地，正确性待测 | 待测 | 待测 | payload 第 1、2 层已落地，第 3 层待议 |
+| Spectrum | 合理性已落地，正确性待测 | 计算部分已测并优化，paint 待测 | 待测 | payload 第 1、2 层已落地，第 3 层待议 |
 | Spectrogram | — | — | — | — |
 | Stereo Map | — | — | — | — |
 | Waveform | — | — | — | — |

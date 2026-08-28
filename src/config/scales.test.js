@@ -8,6 +8,7 @@ import {
   LOUDNESS_DB_MIN,
   LOUDNESS_DB_MAX,
   spectrumDbToYViewBox,
+  spectrumDbToYProjector,
   spectrumDbToTopFrac,
   buildSpectrumYTicks,
   SPEC_VIEW_H,
@@ -71,6 +72,18 @@ describe("spectrumDbToYViewBox", () => {
     expect(spectrumDbToYViewBox(-84, { yMaxDb: -24, yRangeDb: 60 })).toBe(
       SPEC_VIEW_H - SPEC_VIEW_BOTTOM_PAD
     );
+  });
+});
+
+describe("spectrumDbToYProjector", () => {
+  it("agrees with spectrumDbToYViewBox for every range it is given", () => {
+    const ranges = [{}, { yMaxDb: -24, yRangeDb: 60 }, { yMaxDb: 0, yMinDb: -60 }];
+    for (const range of ranges) {
+      const project = spectrumDbToYProjector(range);
+      for (const db of [10, 0, -12, -40, -96, -200, Number.NaN]) {
+        expect(project(db)).toBe(spectrumDbToYViewBox(db, range));
+      }
+    }
   });
 });
 

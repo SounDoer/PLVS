@@ -231,6 +231,39 @@ describe("trackSpectrumPeaks", () => {
   });
 });
 
+describe("buildSpectrumSvgFromBandsAndDb x caching", () => {
+  const centers = [100, 1000, 10000];
+  const db = [-30, -40, -50];
+
+  it("keeps one grid's x values per frequency range", () => {
+    // The x values are cached across calls; two ranges must not share an entry.
+    const wide = buildSpectrumSvgFromBandsAndDb(centers, db, { minHz: 20, maxHz: 20000 });
+    const narrow = buildSpectrumSvgFromBandsAndDb(centers, db, { minHz: 100, maxHz: 10000 });
+    expect(narrow).not.toBe(wide);
+    expect(buildSpectrumSvgFromBandsAndDb(centers, db, { minHz: 20, maxHz: 20000 })).toBe(wide);
+  });
+
+  it("still moves y when only the dB row changes", () => {
+    const range = { minHz: 20, maxHz: 20000, yMinDb: -96, yMaxDb: -12 };
+    const first = buildSpectrumSvgFromBandsAndDb(centers, db, range);
+    const second = buildSpectrumSvgFromBandsAndDb(centers, [-31, -41, -51], range);
+    expect(second).not.toBe(first);
+    // x is shared between them, y is not.
+    const xs = (path) => path.match(/(?:M |L )([\d.]+) /g);
+    expect(xs(second)).toEqual(xs(first));
+  });
+
+  it("survives more distinct grids than the cache holds", () => {
+    const range = { minHz: 20, maxHz: 20000 };
+    const expected = buildSpectrumSvgFromBandsAndDb(centers, db, range);
+    for (let i = 0; i < 20; i += 1) {
+      const other = [100 + i, 1000 + i, 10000 + i];
+      buildSpectrumSvgFromBandsAndDb(other, db, range);
+    }
+    expect(buildSpectrumSvgFromBandsAndDb(centers, db, range)).toBe(expected);
+  });
+});
+
 describe("spectrumTiltOffsets", () => {
   it("returns null when there is nothing to apply", () => {
     expect(spectrumTiltOffsets([100, 1000], 0)).toBeNull();
