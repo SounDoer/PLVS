@@ -101,3 +101,17 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   *ingest* frames (`ingestingIntakes` in `useIntakeRouting`), never to the displayed one: `intakeRef`
   is a stable ref, so an effect keyed on it never re-fires across a source switch and the live intake
   would sweep against a stale key set, deleting a still-visible panel's history.
+
+- **History is stored in Float32 columns, so test fixtures must use values Float32 can hold
+  exactly.** The scalar and visual history layers pack their rows into typed arrays (`FrameIntake`'s
+  slabs, `RaggedFloatColumn`, `PowerOfTwoMinMaxIndex`'s levels). Real data survives that unharmed —
+  waveform extrema, loudness and spectrum values all reach the frontend as Rust `f32` — but a
+  fixture written with round decimals does not: `Math.fround(-0.4)` is `-0.4000000059604645`, so
+  `expect(Array.from(view)).toEqual([-0.5, -0.4])` fails against a *correct* implementation. The
+  trap is that the failure reads like a storage bug, and the tempting fix — loosening the assertion
+  to a tolerance — hides real errors along with the rounding. Write fixtures with `Math.fround`, or
+  with values that are exact anyway (0.25, 0.5, 0.875, or divisors that are powers of two); reach
+  for a per-element `toBeCloseTo` only where an exact value genuinely cannot be arranged. A second
+  reason to prefer exact values: a `PowerOfTwoMinMaxIndex` range query merges summary buckets with
+  raw rows, and those two stores do not have to agree on precision, so data that needs rounding
+  turns an assertion about indexing into an assertion about float representation.
