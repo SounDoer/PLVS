@@ -12,6 +12,17 @@ function rowAt(entries, index) {
 }
 
 /**
+ * One field of one row. A packed history answers this straight out of its column; materialising a
+ * whole row per drawn sample would allocate the row object and its three waveform views, and this
+ * runs once per visible sample per panel per frame.
+ */
+function valueAt(entries, index, key) {
+  if (!entries) return undefined;
+  if (typeof entries.valueAt === "function") return entries.valueAt(index, key);
+  return rowAt(entries, index)?.[key];
+}
+
+/**
  * Build human-readable time labels (e.g. `0s`, `1m30s`) along the history X axis.
  * @param {number} historyOffsetSec Viewport offset in seconds (older samples to the left).
  * @param {number} windowSec Visible window width in seconds (may be clamped by caller for UI consistency).
@@ -144,7 +155,7 @@ export function buildHistoryPath(
   if (count <= cols) {
     let d = "";
     for (let i = start; i <= end; i++) {
-      d += `${i === start ? "M" : " L"} ${xOf(i)} ${toY(rowAt(histSourceList, i)[key])}`;
+      d += `${i === start ? "M" : " L"} ${xOf(i)} ${toY(valueAt(histSourceList, i, key))}`;
     }
     return d;
   }
@@ -156,7 +167,7 @@ export function buildHistoryPath(
   const maxY = new Array(cols).fill(-Infinity);
   for (let i = start; i <= end; i++) {
     const b = Math.min(cols - 1, Math.floor(((i - start) / count) * cols));
-    const y = toY(rowAt(histSourceList, i)[key]);
+    const y = toY(valueAt(histSourceList, i, key));
     if (y < minY[b]) minY[b] = y;
     if (y > maxY[b]) maxY[b] = y;
   }

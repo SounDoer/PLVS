@@ -320,3 +320,41 @@ describe("buildLoudnessYAxisTicks", () => {
     expect(base).toEqual(original);
   });
 });
+
+describe("buildHistoryPath value access", () => {
+  it("prefers a packed history's valueAt over materialising a row", () => {
+    let rowAtCalls = 0;
+    const entries = {
+      length: 4,
+      valueAt: (index, key) => (key === "m" ? -20 - index : -30),
+      rowAt: (index) => {
+        rowAtCalls += 1;
+        return { m: -20 - index, st: -30 };
+      },
+    };
+    const path = buildHistoryPath(entries, "m", 4, 0, (value) => value, 600, 600);
+    expect(path).not.toBe("");
+    expect(rowAtCalls).toBe(0);
+  });
+
+  it("takes the same route through the decimated branch", () => {
+    let rowAtCalls = 0;
+    const entries = {
+      length: 40,
+      valueAt: (index) => -20 - index,
+      rowAt: (index) => {
+        rowAtCalls += 1;
+        return { m: -20 - index };
+      },
+    };
+    // targetColumns below the visible sample count forces the min/max envelope path.
+    const path = buildHistoryPath(entries, "m", 40, 0, (value) => value, 600, 8);
+    expect(path).not.toBe("");
+    expect(rowAtCalls).toBe(0);
+  });
+
+  it("still reads a plain array of row objects", () => {
+    const entries = [{ m: -20 }, { m: -21 }, { m: -22 }];
+    expect(buildHistoryPath(entries, "m", 3, 0, (value) => value, 600, 600)).not.toBe("");
+  });
+});
