@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
+import v8 from "node:v8";
 
 import { FrameIntake } from "../src/lib/FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "../src/lib/historyChunkConfig.js";
@@ -99,6 +100,17 @@ export function projectedStereoMapRetentionBytes(keyCount = 1) {
   });
 }
 
+/**
+ * The live-heap ceiling for the scalar history layer. Object-per-row storage cost about 1,442 B/row
+ * (measured 2026-08-28: 207.6 MiB at 144,000 rows) and mark-compact pause time tracked it linearly
+ * -- 40-124 ms at four-hour retention. Packed columns put the payload in external memory, so this
+ * budget covers the bookkeeping that is left, with headroom over the ~13 MiB measured after packing.
+ */
+export function scalarLiveHeapBudgetBytes(retainedRows) {
+  const bytesPerRow = (40 * 1024 * 1024) / 144_000;
+  return Math.round(retainedRows * bytesPerRow);
+}
+
 function assertStructure(condition, message) {
   if (!condition) throw new Error(`history benchmark structural assertion failed: ${message}`);
 }
@@ -180,7 +192,13 @@ function benchmarkScalarNoShift() {
   };
 }
 
+function liveHeapBytes() {
+  global.gc?.();
+  return v8.getHeapStatistics().used_heap_size;
+}
+
 function benchmarkScalarSnapshot(rows) {
+  const heapBeforeBytes = liveHeapBytes();
   const intake = new FrameIntake();
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
@@ -211,6 +229,17 @@ function benchmarkScalarSnapshot(rows) {
   const elapsedMs = performance.now() - started;
   const stats = frozen.storageStats();
   const bounds = projectedScalarSnapshotCopyBounds(rows.length);
+  // What this whole storage layer exists for: mark-compact pause time scales with the number of
+  // live objects, not with bytes, and typed-array payloads are external memory that is never
+  // traced. Measured against the row fixture already in memory, so this is the layer's own cost.
+  const liveHeapDeltaBytes = liveHeapBytes() - heapBeforeBytes;
+  const liveHeapBudget = scalarLiveHeapBudgetBytes(rows.length);
+  assertStructure(
+    liveHeapDeltaBytes <= liveHeapBudget,
+    `scalar live heap ${(liveHeapDeltaBytes / 1048576).toFixed(1)} MiB exceeds the ` +
+      `${(liveHeapBudget / 1048576).toFixed(1)} MiB budget for ${rows.length} rows` +
+      (typeof global.gc === "function" ? "" : " (run with --expose-gc for an exact figure)")
+  );
   assertStructure(
     stats.scalar.copiedReferences <= bounds.denseCopiedReferences,
     `scalar snapshot copied ${stats.scalar.copiedReferences}/${bounds.denseCopiedReferences} dense references`
@@ -260,7 +289,15 @@ function benchmarkScalarSnapshot(rows) {
     "live wrap changed frozen scalar history"
   );
   benchmarkSink = frozen;
-  return { retainedRows: frozen.loudness.length, elapsedMs, bounds, stats, checksum };
+  return {
+    retainedRows: frozen.loudness.length,
+    elapsedMs,
+    liveHeapDeltaBytes,
+    liveHeapBudget,
+    bounds,
+    stats,
+    checksum,
+  };
 }
 
 function benchmarkVisualFreeze({ rows, bands, pairValues }) {

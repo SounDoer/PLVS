@@ -4,6 +4,7 @@ import {
   parseBenchmarkArgs,
   projectedScalarSnapshotCopyBounds,
   projectedVisualBytes,
+  scalarLiveHeapBudgetBytes,
 } from "./history-perf-benchmark.mjs";
 
 describe("history performance benchmark options", () => {
@@ -39,5 +40,22 @@ describe("history performance benchmark options", () => {
     expect(fourHours.indexLevels).toBe(Math.floor(Math.log2(144_000)));
     expect(fourHours.maxCopiedReferences).toBeLessThan(50_000);
     expect(fourHours.maxCopiedReferences / short.maxCopiedReferences).toBeLessThan(1.5);
+  });
+});
+
+describe("scalarLiveHeapBudgetBytes", () => {
+  it("budgets 40 MiB at four-hour retention", () => {
+    expect(scalarLiveHeapBudgetBytes(144_000)).toBe(40 * 1024 * 1024);
+  });
+
+  it("scales with retained rows", () => {
+    expect(scalarLiveHeapBudgetBytes(72_000)).toBe(20 * 1024 * 1024);
+  });
+
+  it("leaves headroom over the measured cost of the packed layer", () => {
+    // 13 MiB measured at 144,000 rows after packing; the budget must catch a regression toward
+    // the 207.6 MiB the object-per-row storage cost, without tripping on ordinary variation.
+    expect(scalarLiveHeapBudgetBytes(144_000)).toBeGreaterThan(13 * 1024 * 1024);
+    expect(scalarLiveHeapBudgetBytes(144_000)).toBeLessThan(207 * 1024 * 1024);
   });
 });
