@@ -154,6 +154,29 @@ Speed 和 Smoothing 没有一起放出来，那是另一个范围的决定。Doc
 - `legacy_payload_comparison_rejects_path_and_visual_mutations` 改名为
   `..._rejects_row_and_visual_mutations`，突变对象从 path 换成 dB 行。
 
+## 1.8 D1 正确性 — 已有覆盖盘点（2026-08-28）
+
+写对拍测试之前先查了既有覆盖，结论是**§1 正确性清单的六项基本都已经被钉住了**，补测试等于重复。
+逐条对应如下：
+
+| # | 待验证 | 已有的测试 |
+| --- | --- | --- |
+| 1.1 | 窗函数 + 重叠 + 归一化：0 dBFS 正弦读数 | `spectrum_bank::calibration_mid_band_full_scale_sine_near_zero`（1 kHz，容差 2.5 dB）、`spectrum::full_scale_sine_reads_near_zero_dbfs` |
+| 1.2 | 白噪平坦、跨界连续 | `spectrum_bank::bank_broadband_continuous_across_crossovers`（接缝 < 1 dB）、`octave_smoothing_keeps_broadband_noise_flat` |
+| 1.3 | M/S 归一口径 | `spectrum_consumer::projection_consumer_applies_half_scale_before_power_and_exposes_expected_curves` 与同文件的 `projected_power` 用例：**M = (L+R)/2，S = (L−R)/2**，在取功率之前就是半幅 |
+| 1.4 | smoothing 的实际带宽 | `spectrum_bank::octave_smoothing_half_widths_are_constant_grid_points`：半宽 16/8/4 个格点，栅格是 96 点/八度，所以恰好是 1/3、1/6、1/12 八度。外加 `octave_smoothing_lowers_and_widens_a_tone_peak` |
+| 1.5 | tilt 的支点与斜率 | 已移到前端，由 `spectrumMath.test.js` 的 `spectrumTiltOffsets` 用例覆盖（1 kHz 支点，逐八度线性） |
+| 1.6 | speed 的时间常数 | `spectrum::speed_percent_50_matches_current_attack_release` 与 100% 的对应用例，外加 `spectrum_consumer::every_ui_speed_step_...` 对全部 101 档做差分比对 |
+
+**顺带确认**：Stereo Map 不与 Spectrum 共享 M/S 口径——它走的是左右功率加互谱（`left * right.conj()`）
+那条路，所以两者之间没有需要对齐的约定，1.3 原本设想的"跨面板口径一致性"是个不存在的问题。
+
+### 唯一的边缘缺口
+
+1.1 只测了 1 kHz 这一个**非 bin 中心**的音调，容差 2.5 dB。bin 正中心的音调没有单独用例。
+考虑到这是显示参考的分析器（PSD 归一化下，同一正弦在 `FFT_BIG` 与 `FFT_SMALL` 上本就相差
+±6 dB，见 `CAL_OFFSET_DB` 的注释），补这一例的价值有限。**记录，不做。**
+
 ## 2.5 D2 判定结果与已落地的改动（2026-08-28，实测）
 
 测量工具：`npm run benchmark:spectrum-render`（`scripts/spectrum-render-benchmark.mjs`）。
@@ -212,7 +235,38 @@ DOM 之后的成本，benchmark 看不见。这是 D2 剩下的唯一问题，�
 
 候选方向（先测再定，不预设）：canvas 化、path 数据复用、按像素宽度降采样。
 
-## 3. D3 — 历史存储
+## 3.0 D3 判定结果（2026-08-28，实测）
+
+**结论：结构已经在一个好的局部最优，剩下的手段全是有损的，每一条都有具体的拒绝理由。**
+
+### 实测占用
+
+用真实 `SpectrumHistorySlab` 灌 4000 行，按 schema 自己的 `payloadBytes` 累加实际 chunk：
+
+| view | 每行 | 理论下限（纯 dB 平面） | 开销 | 4 小时单 key |
+| --- | --- | --- | --- | --- |
+| combined | 1972 B | 1916 B | **+2.9%** | **0.66 GiB** |
+| lr/ms | 3937 B | 3832 B | **+2.7%** | **1.32 GiB** |
+
+开销不到 3%（时间戳 Float64、每 chunk 一份 max 平面、每行一个 hasB 标志）。**没有水分可挤。**
+
+前几轮已经做掉的事，这里确认仍然成立：值是 Int16 centi-dB 而不是 Float32；副平面 `dbB` 直到
+真有一行带它才分配（`SpectrumHistorySlab.js` 的 `createChunk`），所以 combined 会话只付一份。
+
+### 量过并拒绝的三条
+
+| 候选 | 收益 | 为什么不做 |
+| --- | --- | --- |
+| Int16 → 8 位 | 减半（0.66 → 0.33 GiB） | 用户可设的量程跨度约 120 dB，256 级即 **0.47 dB/步**；而悬停读数显示到 **0.1 dB**（`toFixed(1)`）。会看得见 |
+| 减少频带数 | 与减少的比例同步 | Spectrum 拖动回放画的曲线**真的用满 958 个点**，不是只喂给 spectrogram 的色带 |
+| 分层 / 老数据抽稀 | 可观 | 与既定方案冲突：保留策略在所有面板间保持统一，没有 per-panel 特例（见 `AGENTS.md`） |
+
+### 没有动的一条
+
+行节奏是 40 ms（25 行/秒），由 `VISUAL_EMIT_MS` 决定，和 spectrogram 的时间分辨率绑定。
+改它会同时改变 spectrogram 的横轴精度，属于产品决定，不在性能范围内。
+
+## 3. D3 — 历史存储（原始清单）
 
 涉及：`lib/SpectrumHistorySlab.js`(455)
 
@@ -222,7 +276,7 @@ DOM 之后的成本，benchmark 看不见。这是 D2 剩下的唯一问题，�
 | 3.2 | 同时存在的 key 数在真实操作下的上限 | `deriveRetainedAnalysisKeys` 的行为 + 一次典型调参会话 |
 | 3.3 | 时间轴是否值得分层（min/max 摘要 + 原始行，参照 `PowerOfTwoMinMaxIndex`） | 先看快照读取路径的实际访问模式，再决定 |
 | 3.4 | 频率轴是否可按显示分辨率降采样存 | 与 2.2 同源：若显示端本就用不了那么多 bin，存全分辨率的收益是什么 |
-| ~~3.5~~ | ~~f32 是否必要~~ | 已作废：slab 存 Int16 centi-dB，见 §1.5 |
+| ~~3.5~~ | ~~f32 是否必要~~ | 已作废：slab 存 Int16 centi-dB，见 §1.5、§3.0 |
 
 注：写任何 fixture 都用 `Math.fround` 或 2 的幂次可精确表示的值（AGENTS.md 已记录的坑）。
 
