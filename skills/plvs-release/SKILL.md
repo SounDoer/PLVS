@@ -610,7 +610,7 @@ cannot cover:
 | Platform | Runner | Artifacts |
 |----------|--------|-----------|
 | Windows | `windows-latest` | NSIS installer, portable exe |
-| macOS | `macos-latest` | DMG |
+| macOS | `macos-latest` | DMG, `.app.tar.gz` updater payload |
 
 ### Release Creation
 
@@ -619,6 +619,9 @@ cannot cover:
    version-filled filenames — maintained in the script, not in CHANGELOG.md
 3. Create GitHub Release with the combined notes
 4. Attach all build artifacts
+5. `publish-updater-manifest` (tag builds only, `needs: [build-windows, build-macos]`)
+   builds `latest.json` from both platforms' signed updater descriptors and attaches
+   it to the Release
 
 > The installation section (SmartScreen / Gatekeeper bypass, download
 > filenames) is injected by `changelog-release-body.mjs` so it ships with
@@ -631,6 +634,12 @@ cannot cover:
 | Windows NSIS | `PLVS_X.Y.Z_x64-setup.exe` |
 | Windows Portable | `PLVS-vX.Y.Z-x64-portable.exe` |
 | macOS DMG | `PLVS-vX.Y.Z-aarch64.dmg` |
+| macOS updater payload | `PLVS.app.tar.gz` |
+| Updater manifest | `latest.json` |
+
+**Check that the last two are present.** They are what the in-app updater reads;
+if `publish-updater-manifest` fails, the installers still ship and the Release
+looks complete, but every existing install silently stops seeing updates.
 
 ---
 
@@ -755,7 +764,11 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 ## Important Notes
 
 - **No code signing**: Users may see SmartScreen (Windows) or Gatekeeper (macOS) warnings
-- **No auto-update**: Users need to manually download new versions
+- **Auto-update is active**: `tauri.conf.json` sets `updater.active: true` against
+  `releases/latest/download/latest.json`, so a shipped tag reaches existing installs
+  on its own. Updates are signed — the matching `updater.pubkey` means an unsigned or
+  wrongly signed payload is refused. `desktop:build` / `desktop:dev-nsis` build against
+  `tauri.no-updater.conf.json`, so local bundles deliberately have no updater.
 - **Semantic versioning**: Breaking = MAJOR, Feature = MINOR, Fix = PATCH
 
 ---
