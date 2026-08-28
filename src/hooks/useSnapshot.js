@@ -79,9 +79,14 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   const visualWaveformHist = snapSource
     ? snapSource.visualWaveform
     : (intake.getVisualWaveformHist?.() ?? []);
-  const resolveLiveAudio = snapSource
-    ? (snapSource.audio.at(-1) ?? snapSource.liveAudioFallback)
-    : audio;
+  // In snapshot mode the live snap captured at freeze time is the fallback, and it is reached only
+  // when the frozen audio history holds no row at all: resolveSnapshot clamps the selected index
+  // into the frozen list, so a non-empty list always resolves to a retained row. Reading the newest
+  // retained row here would therefore be unreachable either way, and worse when it did run -- a
+  // retained row is AudioSnapHistorySlab's Float32 projection, the live snap is the full-precision
+  // object. (The former `.at(-1)` never ran at all: frozen history views reject a negative index
+  // instead of implementing Array.prototype.at's wrap-around.)
+  const resolveLiveAudio = snapSource ? snapSource.liveAudioFallback : audio;
   const resolved = useMemo(
     () =>
       resolveSnapshot({

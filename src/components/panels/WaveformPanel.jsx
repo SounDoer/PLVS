@@ -341,8 +341,6 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
       canvasW,
       waveformHistoryWindow.startIndex,
       waveformHistoryWindow.endIndex,
-      waveformHistoryWindow.startRow,
-      waveformHistoryWindow.endRow,
       waveformHistoryWindow.startRow?.timestampMs,
       waveformHistoryWindow.endRow?.timestampMs,
     ]

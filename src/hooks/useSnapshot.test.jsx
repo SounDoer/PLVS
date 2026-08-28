@@ -900,6 +900,28 @@ describe("useSnapshot", () => {
     expect(vectorscope.timestampReads()).toBe(readsAfterReturning.vectorscope);
   });
 
+  it("falls back to the live snap frozen with the session when no audio row is retained", () => {
+    const samples = {
+      loudness: [{ timestampMs: 1000 }, { timestampMs: 1100 }],
+      corr: [],
+      audio: [],
+    };
+    const intake = createIntake(samples);
+    const audioAtFreeze = { peak: -1, correlation: 0.9 };
+    const baseProps = { selectedOffset: 0, sampleSec: 0.1, intake };
+
+    const { result, rerender } = renderHook((props) => useSnapshot(props), {
+      initialProps: { ...baseProps, audio: audioAtFreeze },
+    });
+
+    expect(result.current.displayAudio).toBe(audioAtFreeze);
+
+    // Scrubbing on: the fallback stays the snap captured when the session was frozen, so a live
+    // audio frame arriving mid-scrub does not move the displayed point.
+    rerender({ ...baseProps, selectedOffset: 0.1, audio: { peak: -30, correlation: -0.5 } });
+    expect(result.current.displayAudio).toBe(audioAtFreeze);
+  });
+
   it("updates displayAudio on every live-mode audio rerender", () => {
     const intake = createIntake({ loudness: [], corr: [], audio: [] });
     const firstAudio = { correlation: 0.2 };
