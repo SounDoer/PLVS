@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-08-28
+
+### Changed
+- Long-session memory: scalar history - loudness, audio snaps, and the waveform and loudness min/max indexes - is stored in packed Float32 columns instead of one object per row. At four-hour retention the scalar layer's live heap drops from ~205 MB to ~13 MB, and the longest GC pause from 40-124 ms to 3.6-5.3 ms.
+
+### Fixed
+- File-analysis coverage no longer breaks when a history timestamp is non-finite.
+
 ## [0.14.1] - 2026-08-27
 
 ### Added
