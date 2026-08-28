@@ -1623,7 +1623,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByLabelText("spectrum max decay")).toBeNull();
   });
 
-  it("shows only the Frequency Range display control on the spectrogram tab", () => {
+  it("shows Tilt and Frequency Range, and nothing else, on the spectrogram tab", () => {
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -1636,9 +1636,12 @@ describe("PanelSettingsContent", () => {
       />
     );
     expect(screen.queryByLabelText("spectrum speed")).toBeNull();
-    expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
+    expect(screen.queryByLabelText("spectrum octave smoothing")).toBeNull();
     expect(screen.queryByLabelText("spectrum frequency range max")).toBeNull();
     expect(screen.queryByLabelText("spectrum level range max")).toBeNull();
+    // Tilt shapes the spectrogram's colour mapping the way it shapes the curve, so it is the one
+    // display control the heatmap carries.
+    expect(screen.getByLabelText("spectrum tilt")).toBeTruthy();
     expect(screen.getByLabelText("spectrogram frequency range min").value).toBe("20");
     expect(screen.getByLabelText("spectrogram frequency range max").value).toBe("20000");
 
@@ -1653,6 +1656,12 @@ describe("PanelSettingsContent", () => {
       ...DEFAULT_PANEL_CONTROLS,
       spectrogramYMinFreq: 100,
       spectrogramYMaxFreq: 8000,
+    });
+
+    fireEvent.change(screen.getByLabelText("spectrum tilt"), { target: { value: "4.5" } });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumTiltDbPerOctave: 4.5,
     });
   });
 

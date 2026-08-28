@@ -1021,6 +1021,10 @@ export function SpectrumDisplaySettingsRows({
   showPeak = true,
   showPeakLabels = showPeak,
   showDisplay = true,
+  // The Spectrogram takes the tilt without the rest of the display block: it shapes the colour
+  // mapping there the same way it shapes the curve here, and its colour ramp has less usable
+  // range than an axis, so it needs the slope more, not less.
+  showTilt = showDisplay,
   maxMode,
   peakLabels,
   speedPercent,
@@ -1089,17 +1093,26 @@ export function SpectrumDisplaySettingsRows({
               commitOnRelease
             />
           </SettingsRow>
-          <SettingsRow label="Tilt">
-            <SettingsSlider
-              ariaLabel="spectrum tilt"
-              min={0}
-              max={6}
-              step={0.25}
-              value={tiltDbPerOctave}
-              formatValue={(value) => `${value.toFixed(2)} dB/oct`}
-              onCommit={onTiltChange}
-            />
-          </SettingsRow>
+        </>
+      ) : null}
+      {showTilt ? (
+        <SettingsRow
+          label="Tilt"
+          tooltip="Lifts the curve by this many dB per octave above 1 kHz and drops it by as much below, so material that slopes downward reads level. Display only: it does not change what is measured."
+        >
+          <SettingsSlider
+            ariaLabel="spectrum tilt"
+            min={0}
+            max={6}
+            step={0.25}
+            value={tiltDbPerOctave}
+            formatValue={(value) => `${value.toFixed(2)} dB/oct`}
+            onCommit={onTiltChange}
+          />
+        </SettingsRow>
+      ) : null}
+      {showDisplay ? (
+        <>
           <SettingsRow
             label="Smoothing"
             tooltip="Averages the curve across frequency to show tonal balance instead of individual partials. Speed smooths over time; this smooths over frequency."
@@ -1526,8 +1539,11 @@ export function PanelSettingsContent({
       typeof onSpectrumViewChange === "function";
     const showChannel = channelCount > 2 && spectrumOptions.length > 0;
     const showPeak = activeTab === "spectrum" && typeof onSpectrumMaxModeChange === "function";
-    const showDisplayControls =
-      activeTab === "spectrum" && hasPanelControls && typeof onPanelControlsChange === "function";
+    const canEditPanelControls = hasPanelControls && typeof onPanelControlsChange === "function";
+    const showDisplayControls = activeTab === "spectrum" && canEditPanelControls;
+    // The Spectrogram gets the tilt but not the rest of the display block: it shapes the colour
+    // mapping the way it shapes the curve, and the ramp has less usable range than an axis.
+    const showTiltControl = canEditPanelControls;
     const showSpectrogramRange =
       activeTab === "spectrogram" &&
       hasPanelControls &&
@@ -1596,6 +1612,7 @@ export function PanelSettingsContent({
         <SpectrumDisplaySettingsRows
           showPeak={showPeak}
           showDisplay={showDisplayControls}
+          showTilt={showTiltControl}
           maxMode={effectiveSpectrumMaxMode}
           peakLabels={normalizedPanelControls.spectrumPeakLabels}
           speedPercent={effectiveSpeedPercent}
