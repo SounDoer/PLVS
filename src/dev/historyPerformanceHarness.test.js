@@ -221,9 +221,9 @@ describe("history performance harness", () => {
 
     expect(result.scalarSnapshot.retainedRows).toBe(VISUAL_HISTORY_CHUNK_ROWS + 1);
     expect(result.scalarSnapshot.stats.scalar.sharedSealedChunks).toBe(3);
-    // The audio column is a packed slab and always reports copiedReferences: 0 (it copies whole
-    // chunks, not individual references), so only loudness and correlation contribute here.
-    expect(result.scalarSnapshot.stats.scalar.copiedReferences).toBe(2);
+    // Loudness and audio are both packed slabs and always report copiedReferences: 0 (they copy
+    // whole chunks, not individual references), so only correlation contributes here.
+    expect(result.scalarSnapshot.stats.scalar.copiedReferences).toBe(1);
     expect(result.scalarSnapshot.elapsedMs).toBeGreaterThanOrEqual(0);
   });
 

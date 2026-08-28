@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FrameIntake, buildSpectrumDataSnapshot, EVICTION_GRACE_MS } from "./FrameIntake.js";
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
+import { LoudnessHistorySlab } from "./LoudnessHistorySlab.js";
 
 const HIST_MAX = 5;
 const SR = 48000;
@@ -208,7 +209,7 @@ describe("FrameIntake", () => {
   it("pushHistRow records loudness values correctly", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(makeRow({ lufsMomentary: -18, lufsShortTerm: -20 }), HIST_MAX, SR);
-    const [entry] = intake.getLoudnessHistory();
+    const entry = intake.getLoudnessHistory().rowAt(0);
     expect(entry.m).toBe(-18);
     expect(entry.st).toBe(-20);
   });
@@ -248,7 +249,7 @@ describe("FrameIntake", () => {
       intake.pushHistRow(makeRow({ timestampMs: index * 100, correlation: index / 10 }), 3, SR);
     }
 
-    expect(Array.from(frozen.loudness, (row) => row.timestampMs)).toEqual([0, 100, 200]);
+    expect(frozen.loudness.toArray().map((row) => row.timestampMs)).toEqual([0, 100, 200]);
     expect(Array.from(frozen.correlation)).toEqual([0, 0.1, 0.2]);
     expect(frozen.channelMetadata.rowAt(2)).toEqual({
       frequencyLabel: "C",
@@ -1081,8 +1082,20 @@ describe("FrameIntake", () => {
   it("pushHistRow stores waveform sub-pairs as a Float32Array on the row", () => {
     const intake = new FrameIntake();
     const pairs = new Float32Array([-0.5, 0.5, -0.3, 0.3]);
-    intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
-    const [row] = intake.getLoudnessHistory();
+    // Sub-count is derived from the channel count carried by waveformMin/waveformMax (see
+    // LoudnessHistorySlab), so both must be present with the real 2-channel shape the Rust side
+    // always sends alongside sub-pairs.
+    intake.pushHistRow(
+      makeRow({
+        waveformMin: [-0.5, -0.3],
+        waveformMax: [0.5, 0.3],
+        waveformSubPairs: pairs,
+        waveformSubCount: 1,
+      }),
+      HIST_MAX,
+      SR
+    );
+    const row = intake.getLoudnessHistory().rowAt(0);
     expect(row.waveformSubCount).toBe(1);
     expect(row.waveformSubPairs).toBeInstanceOf(Float32Array);
     expect(Array.from(row.waveformSubPairs)).toEqual(Array.from(pairs));
@@ -1091,22 +1104,25 @@ describe("FrameIntake", () => {
   it("pushHistRow defaults sub-pairs to an empty Float32Array when absent", () => {
     const intake = new FrameIntake();
     intake.pushHistRow(makeRow(), HIST_MAX, SR);
-    const [row] = intake.getLoudnessHistory();
+    const row = intake.getLoudnessHistory().rowAt(0);
     expect(row.waveformSubPairs).toBeInstanceOf(Float32Array);
     expect(row.waveformSubPairs).toHaveLength(0);
     expect(row.waveformSubCount).toBe(0);
   });
 
-  it("reuses constant waveform sub-pair arrays", () => {
+  it("reads back equal waveform sub-pair values for equal constant rows", () => {
+    // The loudness column is a packed slab now: each rowAt() materialises a fresh Float32Array
+    // view rather than sharing the caller's array, so two rows with the same values are no
+    // longer the same reference (see the "row identity is no longer stable" note in the plan).
+    // What must still hold is that the values read back correctly.
     const intake = new FrameIntake();
     const pairs = new Float32Array([0, 0, 0, 0]);
 
     intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
     intake.pushHistRow(makeRow({ waveformSubPairs: pairs, waveformSubCount: 1 }), HIST_MAX, SR);
 
-    expect(intake.getLoudnessHistory().rowAt(0).waveformSubPairs).toBe(
-      intake.getLoudnessHistory().rowAt(1).waveformSubPairs
-    );
+    expect(Array.from(intake.getLoudnessHistory().rowAt(0).waveformSubPairs)).toEqual([0, 0, 0, 0]);
+    expect(Array.from(intake.getLoudnessHistory().rowAt(1).waveformSubPairs)).toEqual([0, 0, 0, 0]);
   });
 });
 
@@ -1520,5 +1536,50 @@ describe("visual history eviction", () => {
 
     intake.pushVisualHistRow(stereoMapRow(1000 + windowMs + 1, OTHER_SM_KEY), 10, 48000);
     expect(intake.getVisualStereoMapHistByKey(SM_KEY)).toBeNull();
+  });
+});
+
+describe("FrameIntake packed loudness column", () => {
+  it("stores loudness rows in a packed slab", () => {
+    const intake = new FrameIntake();
+    intake.pushHistRow(
+      {
+        timestampMs: 1000,
+        lufsMomentary: -20,
+        lufsShortTerm: -22,
+        waveformMin: [-0.5, -0.4],
+        waveformMax: [0.5, 0.4],
+        waveformSubPairs: Float32Array.from([-0.1, 0.1, -0.2, 0.2]),
+        waveformSubCount: 1,
+        correlation: 0.75,
+      },
+      8
+    );
+    const history = intake.getLoudnessHistory();
+    expect(history).toBeInstanceOf(LoudnessHistorySlab);
+    expect(history.rowAt(0).m).toBeCloseTo(-20, 4);
+    expect(history.rowAt(0).waveformMin[0]).toBeCloseTo(-0.5, 4);
+    expect(history.rowAt(0).waveformSubCount).toBe(1);
+    expect(history.timestampAt(0)).toBe(1000);
+  });
+
+  it("does not retain the caller's arrays", () => {
+    const intake = new FrameIntake();
+    const waveformMin = [-0.5, -0.4];
+    intake.pushHistRow(
+      {
+        timestampMs: 0,
+        lufsMomentary: -20,
+        lufsShortTerm: -22,
+        waveformMin,
+        waveformMax: [0.5, 0.4],
+        waveformSubPairs: new Float32Array(0),
+        waveformSubCount: 0,
+        correlation: 0,
+      },
+      8
+    );
+    waveformMin[0] = 99;
+    expect(intake.getLoudnessHistory().rowAt(0).waveformMin[0]).toBeCloseTo(-0.5, 4);
   });
 });

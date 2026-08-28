@@ -32,9 +32,7 @@ function getBandsFromCenters(centers) {
 export const EVICTION_GRACE_MS = 3000;
 
 const EMPTY_ARRAY = Object.freeze([]);
-const EMPTY_F32 = new Float32Array(0);
 const _constantArrayCache = new Map();
-const _constantF32Cache = new Map();
 
 function constantValueOf(values) {
   if (!values?.length) return { isConstant: false, value: undefined };
@@ -59,29 +57,11 @@ function getConstantArray(length, value) {
   return cached;
 }
 
-function getConstantFloat32Array(length, value) {
-  const key = constantCacheKey(length, value);
-  let cached = _constantF32Cache.get(key);
-  if (!cached) {
-    cached = new Float32Array(length);
-    cached.fill(value);
-    _constantF32Cache.set(key, cached);
-  }
-  return cached;
-}
-
 function snapshotNumericArray(values) {
   if (!values?.length) return EMPTY_ARRAY;
   const constant = constantValueOf(values);
   if (constant.isConstant) return getConstantArray(values.length, constant.value);
   return Array.from(values);
-}
-
-function snapshotFloat32Array(values) {
-  if (!values?.length) return EMPTY_F32;
-  const constant = constantValueOf(values);
-  if (constant.isConstant) return getConstantFloat32Array(values.length, constant.value);
-  return Float32Array.from(values);
 }
 
 function linearPeakToDb(v) {
@@ -283,9 +263,9 @@ export class FrameIntake {
     const loudnessRow = {
       m: hm,
       st: hst,
-      waveformMin: snapshotNumericArray(row.waveformMin),
-      waveformMax: snapshotNumericArray(row.waveformMax),
-      waveformSubPairs: snapshotFloat32Array(row.waveformSubPairs),
+      waveformMin: row.waveformMin,
+      waveformMax: row.waveformMax,
+      waveformSubPairs: row.waveformSubPairs,
       waveformSubCount: row.waveformSubCount ?? 0,
       timestampMs,
     };
