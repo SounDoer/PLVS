@@ -193,7 +193,7 @@ function benchmarkScalarNoShift() {
 }
 
 function liveHeapBytes() {
-  global.gc?.();
+  globalThis.gc?.();
   return v8.getHeapStatistics().used_heap_size;
 }
 
@@ -238,7 +238,7 @@ function benchmarkScalarSnapshot(rows) {
     liveHeapDeltaBytes <= liveHeapBudget,
     `scalar live heap ${(liveHeapDeltaBytes / 1048576).toFixed(1)} MiB exceeds the ` +
       `${(liveHeapBudget / 1048576).toFixed(1)} MiB budget for ${rows.length} rows` +
-      (typeof global.gc === "function" ? "" : " (run with --expose-gc for an exact figure)")
+      (typeof globalThis.gc === "function" ? "" : " (run with --expose-gc for an exact figure)")
   );
   assertStructure(
     stats.scalar.copiedReferences <= bounds.denseCopiedReferences,
