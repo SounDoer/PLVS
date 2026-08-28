@@ -85,6 +85,12 @@ export class AudioSnapHistorySlab extends ChunkedHistorySlab {
     super(capacity, SCHEMA);
   }
 
+  /**
+   * `snap` is expected to be `buildAudioSnap`'s output (`src/lib/FrameIntake.js`), where every
+   * scalar field is already a number -- per-field defaults (e.g. `dialogueLra` falling back to 0,
+   * `vectorscopePairY` to 1) are `buildAudioSnap`'s job, not this one. The `-Infinity` written here
+   * for a non-number field is a storage sentinel for a malformed row, not a per-field default.
+   */
   push(snap, timestampMs) {
     this.appendRow(timestampMs, (chunk, row) => {
       for (const field of SCALAR_FIELDS) {

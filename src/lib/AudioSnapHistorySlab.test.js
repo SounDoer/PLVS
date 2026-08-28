@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AudioSnapHistorySlab } from "./AudioSnapHistorySlab.js";
+import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 
 function snap(overrides = {}) {
   return {
@@ -94,5 +95,63 @@ describe("AudioSnapHistorySlab", () => {
     const stats = slab.freeze().storageStats();
     expect(stats.copiedReferences).toBe(0);
     expect(typeof stats.copiedTailBytes).toBe("number");
+  });
+
+  it("stores a -Infinity/null/false sentinel row for a malformed (null) snap, not buildAudioSnap's per-field defaults", () => {
+    const slab = new AudioSnapHistorySlab(8);
+    slab.push(null, 0);
+    const row = slab.rowAt(0);
+    expect(row.momentary).toBe(-Infinity);
+    expect(row.dialogueLra).toBe(-Infinity);
+    expect(row.vectorscopePairX).toBe(-Infinity);
+    expect(row.vectorscopePairY).toBe(-Infinity);
+    expect(row.dialoguePercent).toBeNull();
+    expect(row.dialogueActiveNow).toBe(false);
+    expect(Array.from(row.peakDb)).toEqual([]);
+    expect(Array.from(row.rmsDb)).toEqual([]);
+  });
+
+  it("shares sealed chunks and copies only the active chunk on freeze, with rows on both sides of the boundary intact", () => {
+    const slab = new AudioSnapHistorySlab(VISUAL_HISTORY_CHUNK_ROWS + 1);
+    for (let index = 0; index <= VISUAL_HISTORY_CHUNK_ROWS; index += 1) {
+      slab.push(snap({ momentary: -index }), index);
+    }
+    const frozen = slab.freeze();
+
+    expect(frozen.storageStats()).toMatchObject({
+      sharedSealedChunks: 1,
+      copiedTailRows: 1,
+    });
+    expect(frozen.rowAt(0).momentary).toBeCloseTo(0, 4);
+    expect(frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS - 1).momentary).toBeCloseTo(
+      -(VISUAL_HISTORY_CHUNK_ROWS - 1),
+      4
+    );
+    expect(frozen.rowAt(VISUAL_HISTORY_CHUNK_ROWS).momentary).toBeCloseTo(
+      -VISUAL_HISTORY_CHUNK_ROWS,
+      4
+    );
+    slab.push(snap({ momentary: -99_999 }), 99_999);
+    expect(frozen.length).toBe(VISUAL_HISTORY_CHUNK_ROWS + 1);
+  });
+
+  it("carries a channel count that changes row to row through the ragged peakDb/rmsDb columns", () => {
+    const slab = new AudioSnapHistorySlab(8);
+    slab.push(snap({ peakDb: [-6, -7], rmsDb: [-24, -25] }), 0);
+    slab.push(
+      snap({
+        peakDb: [-1, -2, -3, -4, -5, -6],
+        rmsDb: [-11, -12, -13, -14, -15, -16],
+      }),
+      1
+    );
+    slab.push(snap({ peakDb: [-8, -9], rmsDb: [-28, -29] }), 2);
+
+    expect(Array.from(slab.rowAt(0).peakDb)).toEqual([-6, -7]);
+    expect(Array.from(slab.rowAt(0).rmsDb)).toEqual([-24, -25]);
+    expect(Array.from(slab.rowAt(1).peakDb)).toEqual([-1, -2, -3, -4, -5, -6]);
+    expect(Array.from(slab.rowAt(1).rmsDb)).toEqual([-11, -12, -13, -14, -15, -16]);
+    expect(Array.from(slab.rowAt(2).peakDb)).toEqual([-8, -9]);
+    expect(Array.from(slab.rowAt(2).rmsDb)).toEqual([-28, -29]);
   });
 });
