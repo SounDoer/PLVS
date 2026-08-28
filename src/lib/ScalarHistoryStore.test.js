@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ScalarHistoryStore } from "./ScalarHistoryStore.js";
+import { AudioSnapHistorySlab } from "./AudioSnapHistorySlab.js";
 
 function appendRow(store, index) {
   store.append({
@@ -20,7 +21,9 @@ describe("ScalarHistoryStore", () => {
     expect(store.correlation.length).toBe(3);
     expect(store.loudness.rowAt(0)).toEqual({ m: -22, st: -24, timestampMs: 200 });
     expect(store.loudness.timestampAt(2)).toBe(400);
-    expect(store.audio.at(2)).toEqual({ momentary: -24, integrated: -18 });
+    // Audio is a packed slab: it reads back the full row shape, not just the pushed fields.
+    expect(store.audio.at(2).momentary).toBe(-24);
+    expect(store.audio.at(2).integrated).toBe(-18);
     expect(store.correlation.at(1)).toBe(0.3);
   });
 
@@ -34,9 +37,14 @@ describe("ScalarHistoryStore", () => {
     expect(frozen.loudness.length).toBe(6);
     expect(frozen.audio.length).toBe(6);
     expect(frozen.correlation.length).toBe(6);
-    expect(stats.copiedTailRows).toBe(9);
-    expect(stats.copiedReferences).toBe(9);
-    expect(stats.sharedSealedChunks).toBe(3);
+    // The audio column is a packed slab that always uses the shared history chunk size
+    // (1024 rows), independent of the `chunkRows` option given to the other two columns, so
+    // its 7-row stream never seals a chunk here; loudness/correlation each contribute 1 sealed
+    // chunk + 3 copied tail rows/references, audio contributes 0 sealed chunks + 6 copied tail
+    // rows (its whole retained window, still unsealed) + 0 copied references (it reports none).
+    expect(stats.copiedTailRows).toBe(12);
+    expect(stats.copiedReferences).toBe(6);
+    expect(stats.sharedSealedChunks).toBe(2);
   });
 
   it("keeps a frozen boundary unchanged after live wrap and clear", () => {
@@ -50,5 +58,32 @@ describe("ScalarHistoryStore", () => {
     expect(Array.from(frozen.loudness, (row) => row.timestampMs)).toEqual([0, 100, 200]);
     expect(Array.from(frozen.correlation)).toEqual([0, 0.1, 0.2]);
     expect(store.length).toBe(0);
+  });
+});
+
+describe("ScalarHistoryStore packed audio column", () => {
+  it("stores audio snaps in a packed slab", () => {
+    const store = new ScalarHistoryStore(8);
+    store.append({
+      loudness: { m: -20, st: -22, timestampMs: 1000 },
+      audio: { momentary: -20, peakDb: [-6, -7], rmsDb: [-24, -25] },
+      correlation: 0.5,
+    });
+    expect(store.audio).toBeInstanceOf(AudioSnapHistorySlab);
+    expect(store.audio.rowAt(0).momentary).toBeCloseTo(-20, 4);
+    expect(Array.from(store.audio.rowAt(0).peakDb)).toEqual([-6, -7]);
+    expect(store.audio.timestampAt(0)).toBe(1000);
+  });
+
+  it("keeps aggregate storage stats numeric across mixed column kinds", () => {
+    const store = new ScalarHistoryStore(8);
+    store.append({
+      loudness: { m: -20, st: -22, timestampMs: 0 },
+      audio: { momentary: -20 },
+      correlation: 0.5,
+    });
+    const stats = store.freeze().storageStats();
+    expect(Number.isFinite(stats.copiedReferences)).toBe(true);
+    expect(Number.isFinite(stats.copiedTailRows)).toBe(true);
   });
 });

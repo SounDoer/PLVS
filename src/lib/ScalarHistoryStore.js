@@ -1,4 +1,5 @@
 import { ChunkedSequence } from "./ChunkedSequence.js";
+import { AudioSnapHistorySlab } from "./AudioSnapHistorySlab.js";
 
 function aggregateStats(views) {
   const columns = {};
@@ -38,7 +39,7 @@ class FrozenScalarHistory {
 export class ScalarHistoryStore {
   constructor(capacity, options) {
     this._loudness = new ChunkedSequence(capacity, options);
-    this._audio = new ChunkedSequence(capacity, options);
+    this._audio = new AudioSnapHistorySlab(capacity);
     this._correlation = new ChunkedSequence(capacity, options);
   }
 
@@ -64,7 +65,7 @@ export class ScalarHistoryStore {
 
   append({ loudness, audio, correlation }) {
     this._loudness.push(loudness);
-    this._audio.push(audio);
+    this._audio.push(audio, loudness?.timestampMs);
     this._correlation.push(correlation);
   }
 
