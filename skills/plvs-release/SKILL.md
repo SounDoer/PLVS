@@ -764,11 +764,16 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 ## Important Notes
 
 - **No code signing**: Users may see SmartScreen (Windows) or Gatekeeper (macOS) warnings
-- **Auto-update is active**: `tauri.conf.json` sets `updater.active: true` against
-  `releases/latest/download/latest.json`, so a shipped tag reaches existing installs
-  on its own. Updates are signed — the matching `updater.pubkey` means an unsigned or
-  wrongly signed payload is refused. `desktop:build` / `desktop:dev-nsis` build against
-  `tauri.no-updater.conf.json`, so local bundles deliberately have no updater.
+- **Auto-update is active**: `src-tauri/src/lib.rs` registers
+  `tauri_plugin_updater` unconditionally, and `tauri.conf.json`'s `plugins.updater`
+  points it at `releases/latest/download/latest.json`, so a shipped tag reaches
+  existing installs on its own. Updates are signed — the matching `pubkey` means an
+  unsigned or wrongly signed payload is refused. Note that the `active` key sitting
+  in that config is a **Tauri v1 leftover with no effect**: plugin 2.x's `Config`
+  has no such field and ignores unknown keys, so setting it `false` disables
+  nothing. `tauri.no-updater.conf.json` only sets `bundle.createUpdaterArtifacts:
+  false`, which stops a build producing updater payloads but leaves the updater
+  client in the app.
 - **Semantic versioning**: Breaking = MAJOR, Feature = MINOR, Fix = PATCH
 
 ---
