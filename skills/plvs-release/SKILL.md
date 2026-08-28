@@ -768,12 +768,14 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
   `tauri_plugin_updater` unconditionally, and `tauri.conf.json`'s `plugins.updater`
   points it at `releases/latest/download/latest.json`, so a shipped tag reaches
   existing installs on its own. Updates are signed — the matching `pubkey` means an
-  unsigned or wrongly signed payload is refused. Note that the `active` key sitting
-  in that config is a **Tauri v1 leftover with no effect**: plugin 2.x's `Config`
-  has no such field and ignores unknown keys, so setting it `false` disables
-  nothing. `tauri.no-updater.conf.json` only sets `bundle.createUpdaterArtifacts:
-  false`, which stops a build producing updater payloads but leaves the updater
-  client in the app.
+  unsigned or wrongly signed payload is refused. **There is no `active` flag to turn
+  this off** — plugin 2.x's `Config` has no such field and the crate sets no
+  `deny_unknown_fields`, so a v1-style `"active": false` would be read by nothing
+  and silently change nothing (one was carried here until 8683b052; the
+  `bundle.active` next door is a real field and gates the bundler).
+  `tauri.no-updater.conf.json` only sets `bundle.createUpdaterArtifacts: false`,
+  which stops a build producing updater payloads but leaves the updater client in
+  the app. Disabling it for real means not registering the plugin in `lib.rs`.
 - **Semantic versioning**: Breaking = MAJOR, Feature = MINOR, Fix = PATCH
 
 ---
