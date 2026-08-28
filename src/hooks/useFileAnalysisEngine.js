@@ -21,8 +21,11 @@ export function detectHistoryTruncation(intake, histMaxSamples, durationMs) {
     typeof loudness.rowAt === "function"
       ? loudness.rowAt(loudness.length - 1)
       : loudness[loudness.length - 1];
-  const firstTs = first?.timestampMs ?? 0;
-  const lastTs = last?.timestampMs ?? 0;
+  // A row that arrived without a usable timestamp reads back as -Infinity from the packed slab,
+  // which `??` does not catch; subtracting it would report infinite coverage and clear the
+  // truncation flag.
+  const firstTs = Number.isFinite(first?.timestampMs) ? first.timestampMs : 0;
+  const lastTs = Number.isFinite(last?.timestampMs) ? last.timestampMs : 0;
   const coveredMs = Math.max(0, lastTs - firstTs);
   if (coveredMs >= durationMs * 0.98) {
     return { historyTruncated: false, historyCoveredMs: undefined };

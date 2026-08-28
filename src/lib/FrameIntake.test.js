@@ -1110,11 +1110,10 @@ describe("FrameIntake", () => {
     expect(row.waveformSubCount).toBe(0);
   });
 
-  it("reads back equal waveform sub-pair values for equal constant rows", () => {
-    // The loudness column is a packed slab now: each rowAt() materialises a fresh Float32Array
-    // view rather than sharing the caller's array, so two rows with the same values are no
-    // longer the same reference (see the "row identity is no longer stable" note in the plan).
-    // What must still hold is that the values read back correctly.
+  it("keeps consecutive ragged sub-pair rows at their own offsets", () => {
+    // Two rows pushed from one caller-owned array. The packed column stores them back to back in
+    // a shared buffer, so this pins that the second row's offsets do not overlap the first's --
+    // and that neither aliases the caller's array, which the old storage interned by value.
     const intake = new FrameIntake();
     const pairs = new Float32Array([0, 0, 0, 0]);
 
@@ -1558,7 +1557,9 @@ describe("FrameIntake packed loudness column", () => {
     const history = intake.getLoudnessHistory();
     expect(history).toBeInstanceOf(LoudnessHistorySlab);
     expect(history.rowAt(0).m).toBeCloseTo(-20, 4);
+    expect(history.rowAt(0).waveformMin).toHaveLength(2);
     expect(history.rowAt(0).waveformMin[0]).toBeCloseTo(-0.5, 4);
+    expect(history.rowAt(0).waveformMin[1]).toBeCloseTo(-0.4, 4);
     expect(history.rowAt(0).waveformSubCount).toBe(1);
     expect(history.timestampAt(0)).toBe(1000);
   });
@@ -1580,6 +1581,7 @@ describe("FrameIntake packed loudness column", () => {
       8
     );
     waveformMin[0] = 99;
+    expect(intake.getLoudnessHistory().rowAt(0).waveformMin).toHaveLength(2);
     expect(intake.getLoudnessHistory().rowAt(0).waveformMin[0]).toBeCloseTo(-0.5, 4);
   });
 });

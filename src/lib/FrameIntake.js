@@ -260,13 +260,15 @@ export class FrameIntake {
     const timestampMs = this._normalizeTimestampMs(row.timestampMs, this._histTimestamp);
     const hm = Number.isFinite(row.lufsMomentary) ? row.lufsMomentary : -Infinity;
     const hst = Number.isFinite(row.lufsShortTerm) ? row.lufsShortTerm : -Infinity;
+    // Transient: the slab and both indexes copy the values they need out of this within the call,
+    // so the caller's arrays go in by reference. The sub-block count is not carried -- the slab
+    // derives it from the stored extrema and sub-pair lengths.
     const loudnessRow = {
       m: hm,
       st: hst,
       waveformMin: row.waveformMin,
       waveformMax: row.waveformMax,
       waveformSubPairs: row.waveformSubPairs,
-      waveformSubCount: row.waveformSubCount ?? 0,
       timestampMs,
     };
     this._loudnessDisplayIndex.append(loudnessRow);
