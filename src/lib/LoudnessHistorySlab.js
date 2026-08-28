@@ -2,8 +2,9 @@ import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 import { ChunkedHistorySlab, FrozenChunkedHistory, baseChunk } from "./ChunkedHistorySlab.js";
 import { RaggedFloatColumn } from "./RaggedFloatColumn.js";
 
-/** ~19 sub-blocks per 100 ms tick at 48 kHz in stereo: a starting guess, not a limit. */
-const SUB_PAIR_VALUES_PER_ROW = 40;
+// 19 sub-blocks per 100 ms tick at 48 kHz, times 2 channels, times min/max: a starting guess,
+// not a limit -- RaggedFloatColumn grows past it.
+const SUB_PAIR_VALUES_PER_ROW = 19 * 2 * 2;
 
 function createChunk(sequenceStart) {
   const chunk = baseChunk(sequenceStart);

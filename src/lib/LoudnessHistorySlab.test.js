@@ -17,7 +17,6 @@ function row(overrides = {}) {
     waveformMin: [-0.5, -0.4],
     waveformMax: [0.5, 0.4],
     waveformSubPairs: Float32Array.from([-0.1, 0.1, -0.2, 0.2]),
-    waveformSubCount: 1,
     timestampMs: 1000,
     ...overrides,
   };
