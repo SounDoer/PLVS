@@ -41,6 +41,21 @@ and is left alone.
 **Target:** scalar-layer live heap under 40 MB at 144,000 rows, and a mark-compact pause at 240 min
 retention in the band the 15 min case occupies today.
 
+## Outcome (measured 2026-08-28, after Tasks 1–10)
+
+| retention | live JS heap | Mark-Compact pause |
+| --- | --- | --- |
+| 2 min | 9 MB → 5.8 MB | 1–4 ms → 0.9 ms |
+| 15 min | 21 MB → 6.0 MB | 3–9 ms → 1.1–1.5 ms |
+| 60 min | 58 MB → 7.5 MB | 12–33 ms → 1.0–1.7 ms |
+| 240 min | 205 MB → 13 MB | 40–124 ms → 3.6–5.3 ms |
+
+Target met: four-hour retention now costs less than fifteen minutes did before, and the curve is
+flat rather than linear in capture length. `benchmark:history` measures the scalar layer's own live
+heap at 6.65 MiB against the 40 MiB budget added in Task 10 (run it with `--expose-gc` for an exact
+figure). `npm run check` passes end to end, Rust included. The capture layer is untouched, so this
+carries no `smoke:capture` or `soak:capture` implication.
+
 ---
 
 ## File Structure
