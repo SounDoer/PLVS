@@ -136,7 +136,8 @@ envelope）」，量级 O(bins×3) 每帧，不是多一次 FFT。所以 1.7 的
 （`PanelSettingsContent.jsx` 的 `showDisplayControls` 限定 `activeTab === "spectrum"`），
 但 Spectrogram 共用同一份扁平控件对象，所以它的配色一直被默认的 3 dB/oct 悄悄整形，
 而且一个 Spectrum 和一个 Spectrogram 只要这个看不见的值不同，就会各占一条 pipeline 和一块 slab。
-**处理方式：给 Spectrogram 加上 Tilt 控件**（`showTilt`，与 `showDisplay` 分开）。去掉 tilt
+**处理方式：给 Spectrogram 加上 Tilt 控件**（在 `panelControls.js` 的有序行表里，`order: 15`，
+落在 Mode 与 Smoothing 之间；Spectrum 侧仍由 `SpectrumDisplaySettingsRows` 渲染，两边不重复）。去掉 tilt
 不是清理而是视觉回退——热图把 dB 映射成固定范围的颜色，而节目素材的频谱本来就往下斜，不加斜率
 高频会常年贴着色阶底部；颜色的可辨识动态范围又比可缩放的 y 轴小，所以它比曲线更需要这个斜率。
 Speed 和 Smoothing 没有一起放出来，那是另一个范围的决定。Dock 的 spectrogram 控件集保持精简，

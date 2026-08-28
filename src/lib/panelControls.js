@@ -287,7 +287,26 @@ const CONTROLS = [
     default: 25,
     legacyKeys: ["spectrumSmoothingPercent"],
   },
-  { key: "spectrumTiltDbPerOctave", kind: "number", min: 0, max: 6, default: 3 },
+  {
+    key: "spectrumTiltDbPerOctave",
+    kind: "number",
+    min: 0,
+    max: 6,
+    default: 3,
+    // Shared with the Spectrum tab, which renders it through SpectrumDisplaySettingsRows; the
+    // Spectrogram tab places it here so it sorts after Mode instead of above everything.
+    ui: {
+      tab: "spectrogram",
+      label: "Tilt",
+      widget: "slider",
+      ariaLabel: "spectrogram tilt",
+      order: 15,
+      step: 0.25,
+      format: (value) => `${value.toFixed(2)} dB/oct`,
+      tooltip:
+        "Lifts the display by this many dB per octave above 1 kHz and drops it by as much below, so material that slopes downward reads level. Display only: it does not change what is measured.",
+    },
+  },
   {
     key: "spectrumOctaveSmoothing",
     kind: "enum",

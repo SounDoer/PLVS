@@ -1639,9 +1639,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByLabelText("spectrum octave smoothing")).toBeNull();
     expect(screen.queryByLabelText("spectrum frequency range max")).toBeNull();
     expect(screen.queryByLabelText("spectrum level range max")).toBeNull();
-    // Tilt shapes the spectrogram's colour mapping the way it shapes the curve, so it is the one
-    // display control the heatmap carries.
-    expect(screen.getByLabelText("spectrum tilt")).toBeTruthy();
+    expect(screen.queryByLabelText("spectrum tilt")).toBeNull();
     expect(screen.getByLabelText("spectrogram frequency range min").value).toBe("20");
     expect(screen.getByLabelText("spectrogram frequency range max").value).toBe("20000");
 
@@ -1658,7 +1656,9 @@ describe("PanelSettingsContent", () => {
       spectrogramYMaxFreq: 8000,
     });
 
-    fireEvent.change(screen.getByLabelText("spectrum tilt"), { target: { value: "4.5" } });
+    // Tilt shapes the spectrogram's colour mapping the way it shapes the curve, so the heatmap
+    // carries it too -- through the ordered row list, so it sorts after Mode rather than above it.
+    fireEvent.change(screen.getByLabelText("spectrogram tilt"), { target: { value: "4.5" } });
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
       spectrumTiltDbPerOctave: 4.5,
