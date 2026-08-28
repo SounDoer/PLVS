@@ -54,6 +54,7 @@ export function DockSpectrogram({ controls }) {
     // Workspace panel does. Leaving it off would darken the top of the strip.
     tiltDbPerOctave:
       controls?.spectrumTiltDbPerOctave ?? DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
+    dbFloor: controls?.spectrogramDbFloor ?? DEFAULT_PANEL_CONTROLS.spectrogramDbFloor,
   });
 
   return (

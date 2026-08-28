@@ -45,6 +45,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
   spectrogram: [
     "spectrumChannel",
     "spectrumTiltDbPerOctave",
+    "spectrogramDbFloor",
     "spectrogramYMinFreq",
     "spectrogramYMaxFreq",
   ],

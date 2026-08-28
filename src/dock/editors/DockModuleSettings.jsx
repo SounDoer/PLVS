@@ -17,6 +17,7 @@ import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { isDefaultDockModuleControls, normalizeDockModuleControls } from "../dockModuleControls.js";
 import {
   LEVEL_METER_MODE_OPTIONS,
+  SPECTROGRAM_DB_FLOOR_TOOLTIP,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   SPECTRUM_TILT_TOOLTIP,
   VECTORSCOPE_MODE_OPTIONS,
@@ -439,6 +440,19 @@ function SettingsBody({
             formatValue={(value) => `${value.toFixed(2)} dB/oct`}
             onCommit={(spectrumTiltDbPerOctave) =>
               onChange({ ...spectrogramControls, spectrumTiltDbPerOctave })
+            }
+          />
+        </SettingsRow>
+        <SettingsRow label="dB Floor" tooltip={SPECTROGRAM_DB_FLOOR_TOOLTIP}>
+          <SettingsSlider
+            ariaLabel="spectrogram db floor"
+            min={-96}
+            max={-12}
+            step={1}
+            value={spectrogramControls.spectrogramDbFloor}
+            formatValue={(value) => `${value.toFixed(0)} dB`}
+            onCommit={(spectrogramDbFloor) =>
+              onChange({ ...spectrogramControls, spectrogramDbFloor })
             }
           />
         </SettingsRow>

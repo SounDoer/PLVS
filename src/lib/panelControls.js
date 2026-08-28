@@ -51,6 +51,11 @@ const SPECTRUM_VIEW_IDS = ["combined", "lr", "ms"];
 
 /// One string for both tabs: the Spectrum renders its own row, the Spectrogram takes it from the
 /// ordered row list below, and the control means the same thing in each.
+/// The Dock strip has no 3D mode, so it takes this sentence without the clause the panel adds.
+export const SPECTROGRAM_DB_FLOOR_TOOLTIP =
+  "Raises the bottom of the display range so the loud part of the signal gets the resolution " +
+  "instead of the noise floor.";
+
 export const SPECTRUM_TILT_TOOLTIP =
   "Lifts the display by this many dB per octave above 1 kHz and drops it by as much below, so " +
   "material that slopes downward reads level. Display only: it does not change what is measured.";
@@ -390,8 +395,7 @@ const CONTROLS = [
       order: 30,
       step: 1,
       format: (value) => `${value.toFixed(0)} dB`,
-      tooltip:
-        "Raises the bottom of the display range so the loud part of the signal gets the resolution instead of the noise floor. Applies in both 2D and 3D.",
+      tooltip: `${SPECTROGRAM_DB_FLOOR_TOOLTIP} Applies in both 2D and 3D.`,
     },
   },
   {

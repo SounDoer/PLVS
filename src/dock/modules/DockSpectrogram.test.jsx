@@ -38,16 +38,22 @@ describe("DockSpectrogram", () => {
     vi.mocked(useSpectrogramCanvas).mockClear();
   });
 
-  it("passes the tilt through to the painter, defaulting when the record has none", () => {
+  it("passes the colour-mapping controls to the painter, defaulting when the record has none", () => {
     // The engine sends untilted rows, so the strip has to apply the slope itself; without this
-    // the top of the strip goes dark. A stored layout from before the key existed still gets it.
-    renderWith({ controls: { spectrumTiltDbPerOctave: 4.5 }, snaps: makeSnaps([]) });
-    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0].tiltDbPerOctave).toBe(4.5);
+    // the top of the strip goes dark. The floor decides how much of the ramp the signal gets.
+    // A stored layout from before either key existed still gets the panel default.
+    renderWith({
+      controls: { spectrumTiltDbPerOctave: 4.5, spectrogramDbFloor: -60 },
+      snaps: makeSnaps([]),
+    });
+    const tuned = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0];
+    expect(tuned.tiltDbPerOctave).toBe(4.5);
+    expect(tuned.dbFloor).toBe(-60);
 
     renderWith({ controls: {}, snaps: makeSnaps([]) });
-    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0].tiltDbPerOctave).toBe(
-      DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave
-    );
+    const bare = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0];
+    expect(bare.tiltDbPerOctave).toBe(DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave);
+    expect(bare.dbFloor).toBe(DEFAULT_PANEL_CONTROLS.spectrogramDbFloor);
   });
 
   it("uses a responsive 1x canvas and the shared normal-panel painter", () => {
