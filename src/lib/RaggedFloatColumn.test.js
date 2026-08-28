@@ -60,4 +60,32 @@ describe("RaggedFloatColumn", () => {
     expect(column.at(1)).toBeUndefined();
     expect(column.lengthAt(1)).toBe(0);
   });
+
+  it("reports the allocated buffer size, not the used size", () => {
+    const column = new RaggedFloatColumn(4, 2);
+    // 4 rows * 2 values/row * 4 bytes = 32 bytes of values, plus a Uint32 offset table of 5 entries.
+    expect(column.byteLength).toBe(4 * 2 * 4 + 5 * 4);
+    column.append([1, 2]);
+    expect(column.byteLength).toBe(4 * 2 * 4 + 5 * 4);
+  });
+
+  it("grows byteLength when an append overruns the initial guess, and does not shrink back", () => {
+    const column = new RaggedFloatColumn(2, 1);
+    const before = column.byteLength;
+    column.append([1, 2, 3]);
+    expect(column.byteLength).toBeGreaterThan(before);
+    // Doubling from capacity 2 to fit 3 values lands on 4, leaving one value of spare capacity
+    // that the next append below uses up without growing again -- byteLength reflects what is
+    // allocated, not what is used, and it never shrinks back down.
+    const afterGrowth = column.byteLength;
+    column.append([9]);
+    expect(column.byteLength).toBe(afterGrowth);
+  });
+
+  it("returns a live view into the column's buffer, not a copy", () => {
+    const column = new RaggedFloatColumn(4, 2);
+    column.append([1, 2]);
+    column.at(0)[0] = 42;
+    expect(Array.from(column.at(0))).toEqual([42, 2]);
+  });
 });

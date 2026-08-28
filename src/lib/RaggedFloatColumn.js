@@ -16,6 +16,8 @@ export class RaggedFloatColumn {
    * @param {number} unusableFill stored in place of a value that is not a finite number
    */
   constructor(rowCapacity, valuesPerRow = 4, unusableFill = 0) {
+    // The floor of 1 (rather than throwing on rowCapacity <= 0) exists so clone() can construct an
+    // empty column and then replace both buffers wholesale.
     this._offsets = new Uint32Array(Math.max(1, rowCapacity) + 1);
     this._values = new Float32Array(Math.max(1, rowCapacity * valuesPerRow));
     this._unusableFill = unusableFill;
@@ -54,7 +56,11 @@ export class RaggedFloatColumn {
     return this._offsets[row + 1] - this._offsets[row];
   }
 
-  /** A copy holding only the rows written so far; used when a live chunk is frozen. */
+  /**
+   * A copy holding only the rows written so far; used when a live chunk is frozen. The result is
+   * read-only: its offset table is sized to exactly the rows it holds, so appending to it is not
+   * supported.
+   */
   clone() {
     const copy = new RaggedFloatColumn(0, 1, this._unusableFill);
     copy._offsets = this._offsets.slice(0, this._rows + 1);
