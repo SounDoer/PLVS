@@ -39,6 +39,8 @@ class FrozenScalarHistory {
 export class ScalarHistoryStore {
   constructor(capacity, options) {
     this._loudness = new ChunkedSequence(capacity, options);
+    // Audio does not take `options`: the slab always uses the shared history chunk size, not a
+    // caller-supplied chunkRows, so it will not follow loudness/correlation if one is passed here.
     this._audio = new AudioSnapHistorySlab(capacity);
     this._correlation = new ChunkedSequence(capacity, options);
   }

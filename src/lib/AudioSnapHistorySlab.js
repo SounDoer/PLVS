@@ -75,7 +75,12 @@ function rowFrom(chunk, row) {
   const percent = chunk.dialoguePercent[row];
   result.dialoguePercent = Number.isNaN(percent) ? null : percent;
   result.dialogueActiveNow = chunk.dialogueActiveNow[row] === 1;
-  for (const field of CHANNEL_FIELDS) result[field] = chunk[field].at(row);
+  // Materialise as a plain Array, not the Float32Array subarray RaggedFloatColumn.at() returns:
+  // buildAudioSnap's peakDb/rmsDb are plain Arrays, and several downstream readers (App.jsx,
+  // peakChannelMath.js, VectorscopePanel.jsx, statsCatalog.js) gate on Array.isArray. This
+  // allocation happens per read (one small array per frame at a single index), not per retained
+  // row, so it costs nothing against this module's goal of keeping retained rows off the GC heap.
+  for (const field of CHANNEL_FIELDS) result[field] = Array.from(chunk[field].at(row));
   return result;
 }
 

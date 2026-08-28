@@ -154,4 +154,30 @@ describe("AudioSnapHistorySlab", () => {
     expect(Array.from(slab.rowAt(2).peakDb)).toEqual([-8, -9]);
     expect(Array.from(slab.rowAt(2).rmsDb)).toEqual([-28, -29]);
   });
+
+  // Regression: buildAudioSnap's peakDb/rmsDb are plain Arrays, and downstream readers
+  // (App.jsx, peakChannelMath.js, VectorscopePanel.jsx, statsCatalog.js) gate on
+  // Array.isArray. Wrapping the read in Array.from() before asserting -- as the other tests
+  // above do -- would normalise a Float32Array into an Array and hide a type regression, so
+  // this checks the container type directly, unwrapped.
+  it("reads peakDb/rmsDb back as plain Arrays, not typed-array views", () => {
+    const slab = new AudioSnapHistorySlab(8);
+    slab.push(snap({ peakDb: [-6, -7], rmsDb: [-24, -25] }), 0);
+    const row = slab.rowAt(0);
+    expect(Array.isArray(row.peakDb)).toBe(true);
+    expect(Array.isArray(row.rmsDb)).toBe(true);
+  });
+
+  it("keeps multichannel peakDb/rmsDb as plain Arrays after freeze, on the snapshot/scrub path", () => {
+    const slab = new AudioSnapHistorySlab(8);
+    const channels = [-6, -7, -8, -9, -10, -11];
+    slab.push(snap({ peakDb: channels, rmsDb: channels.map((v) => v - 1) }), 0);
+    const frozen = slab.freeze();
+    const row = frozen.rowAt(0);
+    expect(Array.isArray(row.peakDb)).toBe(true);
+    expect(Array.isArray(row.rmsDb)).toBe(true);
+    expect(row.peakDb).toHaveLength(6);
+    expect(row.rmsDb).toHaveLength(6);
+    expect(row.peakDb).toEqual(channels);
+  });
 });
