@@ -100,13 +100,11 @@
 
 /**
  * @typedef {object} SpectrumFrameResult
- * @property {string} path
- * @property {string} peakPath
- * @property {string} pathB
- * @property {string} peakPathB
  * @property {number[]} bandCentersHz
  * @property {number[]} smoothDb
+ * @property {number[]} peakDb
  * @property {number[]} smoothDbB
+ * @property {number[]} peakDbB
  */
 
 /**
@@ -140,7 +138,6 @@
  * @property {{ type: "pair"; x: number; y: number } | { type: "single"; ch: number }} channel
  * @property {string} view
  * @property {number} speedPercent
- * @property {number} tiltDbPerOctave
  * @property {string} octaveSmoothing
  */
 

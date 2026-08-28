@@ -624,7 +624,6 @@ mod tests {
           channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
           view: "combined".to_string(),
           speed_percent: 50.0,
-          tilt_db_per_octave: 4.5,
           octave_smoothing: "off".to_string(),
         }],
         vectorscope: vec![],
@@ -792,7 +791,6 @@ mod tests {
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
         view: "combined".to_string(),
         speed_percent: 100.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
@@ -803,7 +801,7 @@ mod tests {
     let held_dsp_time = SpectralDspTime::from_monotonic_seconds(1.0);
     let mut pipeline = MeterPipeline::new_for_file(sr, channels);
     let mut legacy = SpectrumMeter::new(sr as f64);
-    legacy.set_display_controls(100.0, 4.5, OctaveSmoothing::Off);
+    legacy.set_display_controls(100.0, OctaveSmoothing::Off);
     let mut visual_timestamps = Vec::new();
 
     for chunk in 1..=20_u64 {

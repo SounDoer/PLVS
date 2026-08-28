@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use crate::dsp::loudness::LoudnessBlock;
-use crate::dsp::paths::spectrum_paths_from_bands;
 use crate::dsp::peak::{
   sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
   RmsWindow,
@@ -76,32 +75,13 @@ fn spectrum_payload_from_shared_output(
       SpectrumVisualEntry::default(),
     );
   };
-  let (path, peak_path) =
-    spectrum_paths_from_bands(output.centers_hz, output.smooth_db, output.peak_db, true);
-  let (path_b, peak_path_b, smooth_db_b, peak_db_b) = output
+  let (smooth_db_b, peak_db_b) = output
     .secondary
-    .map(|secondary| {
-      let (path, peak_path) = spectrum_paths_from_bands(
-        output.centers_hz,
-        secondary.smooth_db,
-        secondary.peak_db,
-        true,
-      );
-      (
-        path,
-        peak_path,
-        secondary.smooth_db.to_vec(),
-        secondary.peak_db.to_vec(),
-      )
-    })
+    .map(|secondary| (secondary.smooth_db.to_vec(), secondary.peak_db.to_vec()))
     .unwrap_or_default();
   let band_centers_hz = output.centers_hz.to_vec();
   let smooth_db = output.smooth_db.to_vec();
   let result = SpectrumFrameResult {
-    path,
-    peak_path,
-    path_b,
-    peak_path_b,
     band_centers_hz,
     smooth_db,
     peak_db: output.peak_db.to_vec(),
@@ -1211,7 +1191,6 @@ mod tests {
         channel: SpectrumAnalysisChannel::Single { ch: 99 },
         view: "combined".to_string(),
         speed_percent: 50.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
@@ -1242,7 +1221,6 @@ mod tests {
       channel: crate::ipc::types::SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
       view: "combined".to_string(),
       speed_percent: 50.0,
-      tilt_db_per_octave: 4.5,
       octave_smoothing: "off".to_string(),
     }
   }
@@ -2268,8 +2246,8 @@ mod tests {
     let mut pipeline = MeterPipeline::new(sr, channels);
     let pcm_lr = tone_on_channel(4096 * 8, channels as usize, sr as f64, 1000.0, 0);
     let pcm_c_short = tone_on_channel(256, channels as usize, sr as f64, 500.0, 2);
-    let lr_key = "spectrum:pair:0:1:combined:sp50:tilt450:smoff".to_string();
-    let c_key = "spectrum:single:2:combined:sp50:tilt450:smoff".to_string();
+    let lr_key = "spectrum:pair:0:1:combined:sp50:smoff".to_string();
+    let c_key = "spectrum:single:2:combined:sp50:smoff".to_string();
     let requests_lr = AnalysisRequests {
       spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
@@ -2277,7 +2255,6 @@ mod tests {
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
         view: "combined".to_string(),
         speed_percent: 50.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
@@ -2290,7 +2267,6 @@ mod tests {
         channel: SpectrumAnalysisChannel::Single { ch: 2 },
         view: "combined".to_string(),
         speed_percent: 50.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![],
@@ -2418,11 +2394,10 @@ mod tests {
     let requests_a = AnalysisRequests {
       spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
+        key: "spectrum:single:0:combined:sp50:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
         view: "combined".to_string(),
         speed_percent: 50.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -2435,11 +2410,10 @@ mod tests {
     let requests_b = AnalysisRequests {
       spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:single:0:combined:sp25:tilt450:smoff".to_string(),
+        key: "spectrum:single:0:combined:sp25:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
         view: "combined".to_string(),
         speed_percent: 25.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -2460,7 +2434,7 @@ mod tests {
     );
     assert!(pipeline
       .shared_spectral_runtime
-      .consumer_identity_for_test("spectrum:single:0:combined:sp50:tilt450:smoff")
+      .consumer_identity_for_test("spectrum:single:0:combined:sp50:smoff")
       .is_some());
     assert!(pipeline
       .vectorscope_by_key
@@ -2477,11 +2451,11 @@ mod tests {
 
     assert!(pipeline
       .shared_spectral_runtime
-      .consumer_identity_for_test("spectrum:single:0:combined:sp25:tilt450:smoff")
+      .consumer_identity_for_test("spectrum:single:0:combined:sp25:smoff")
       .is_some());
     assert!(pipeline
       .shared_spectral_runtime
-      .consumer_identity_for_test("spectrum:single:0:combined:sp50:tilt450:smoff")
+      .consumer_identity_for_test("spectrum:single:0:combined:sp50:smoff")
       .is_none());
     assert_eq!(pipeline.vectorscope_by_key.len(), 1);
     assert!(pipeline
@@ -2509,19 +2483,17 @@ mod tests {
       spectral_waveform: false,
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
+          key: "spectrum:single:0:combined:sp50:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 0 },
           view: "combined".to_string(),
           speed_percent: 50.0,
-          tilt_db_per_octave: 4.5,
           octave_smoothing: "off".to_string(),
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:1:combined:sp50:tilt450:smoff".to_string(),
+          key: "spectrum:single:1:combined:sp50:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 1 },
           view: "combined".to_string(),
           speed_percent: 50.0,
-          tilt_db_per_octave: 4.5,
           octave_smoothing: "off".to_string(),
         },
       ],
@@ -2558,11 +2530,11 @@ mod tests {
     assert_eq!(frame.vectorscope_results_by_key.len(), 2);
     assert!(frame
       .spectrum_results_by_key
-      .get("spectrum:single:0:combined:sp50:tilt450:smoff")
+      .get("spectrum:single:0:combined:sp50:smoff")
       .is_some_and(|result| !result.smooth_db.is_empty()));
     assert!(frame
       .spectrum_results_by_key
-      .get("spectrum:single:1:combined:sp50:tilt450:smoff")
+      .get("spectrum:single:1:combined:sp50:smoff")
       .is_some_and(|result| !result.smooth_db.is_empty()));
     assert!(frame
       .vectorscope_results_by_key
@@ -2591,19 +2563,17 @@ mod tests {
       spectral_waveform: false,
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
+          key: "spectrum:single:0:combined:sp50:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 0 },
           view: "combined".to_string(),
           speed_percent: 50.0,
-          tilt_db_per_octave: 4.5,
           octave_smoothing: "off".to_string(),
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:1:combined:sp50:tilt450:smoff".to_string(),
+          key: "spectrum:single:1:combined:sp50:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 1 },
           view: "combined".to_string(),
           speed_percent: 50.0,
-          tilt_db_per_octave: 4.5,
           octave_smoothing: "off".to_string(),
         },
       ],
@@ -2635,11 +2605,11 @@ mod tests {
     assert_eq!(visual.spectrum_by_key.len(), 2);
     assert!(visual
       .spectrum_by_key
-      .get("spectrum:single:0:combined:sp50:tilt450:smoff")
+      .get("spectrum:single:0:combined:sp50:smoff")
       .is_some_and(|entry| !entry.smooth_db.is_empty()));
     assert!(visual
       .spectrum_by_key
-      .get("spectrum:single:1:combined:sp50:tilt450:smoff")
+      .get("spectrum:single:1:combined:sp50:smoff")
       .is_some_and(|entry| !entry.smooth_db.is_empty()));
     assert_eq!(visual.vectorscope_by_key.len(), 1);
     assert!(visual
@@ -2674,11 +2644,10 @@ mod tests {
     let requests = AnalysisRequests {
       spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:single:0:combined:sp50:tilt450:smoff".to_string(),
+        key: "spectrum:single:0:combined:sp50:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Single { ch: 0 },
         view: "combined".to_string(),
         speed_percent: 50.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -2696,7 +2665,7 @@ mod tests {
       for entry in &frame.visual_hist_batch {
         if entry
           .spectrum_by_key
-          .get("spectrum:single:0:combined:sp50:tilt450:smoff")
+          .get("spectrum:single:0:combined:sp50:smoff")
           .is_some_and(|e| !e.smooth_db.is_empty())
         {
           *sp += 1;
@@ -2748,7 +2717,6 @@ mod tests {
       channel,
       view: view.to_string(),
       speed_percent: 50.0,
-      tilt_db_per_octave: 4.5,
       octave_smoothing: "1/6".to_string(),
     }
   }
@@ -2778,7 +2746,7 @@ mod tests {
       "1/3" => OctaveSmoothing::OneThird,
       _ => OctaveSmoothing::Off,
     };
-    meter.set_display_controls(request.speed_percent, request.tilt_db_per_octave, smoothing);
+    meter.set_display_controls(request.speed_percent, smoothing);
     meter
   }
 
@@ -2807,23 +2775,11 @@ mod tests {
     meter: &crate::dsp::SpectrumMeter,
   ) -> (SpectrumFrameResult, SpectrumVisualEntry) {
     let (centers, smooth, peak) = meter.last_output();
-    let (path, peak_path) = if centers.is_empty() {
-      (String::new(), String::new())
-    } else {
-      spectrum_paths_from_bands(centers, smooth, peak, true)
-    };
-    let (path_b, peak_path_b, smooth_db_b, peak_db_b) = meter
+    let (smooth_db_b, peak_db_b) = meter
       .last_output_secondary()
-      .map(|(smooth_b, peak_b)| {
-        let (path_b, peak_path_b) = spectrum_paths_from_bands(centers, smooth_b, peak_b, true);
-        (path_b, peak_path_b, smooth_b.to_vec(), peak_b.to_vec())
-      })
+      .map(|(smooth_b, peak_b)| (smooth_b.to_vec(), peak_b.to_vec()))
       .unwrap_or_default();
     let result = SpectrumFrameResult {
-      path,
-      peak_path,
-      path_b,
-      peak_path_b,
       band_centers_hz: centers.to_vec(),
       smooth_db: smooth.to_vec(),
       peak_db: peak.to_vec(),
@@ -2853,47 +2809,6 @@ mod tests {
       assert!(
         (actual - expected).abs() <= tolerance_db,
         "{label}[{index}]: actual={actual}, expected={expected}, tolerance={tolerance_db}"
-      );
-    }
-  }
-
-  fn svg_points(path: &str) -> Vec<(f64, f64)> {
-    let tokens: Vec<_> = path.split_whitespace().collect();
-    assert_eq!(tokens.len() % 3, 0, "invalid SVG token count: {path}");
-    tokens
-      .as_chunks::<3>()
-      .0
-      .iter()
-      .map(|chunk| {
-        assert!(matches!(chunk[0], "M" | "L"), "invalid SVG command");
-        (
-          chunk[1].parse().expect("SVG x coordinate"),
-          chunk[2].parse().expect("SVG y coordinate"),
-        )
-      })
-      .collect()
-  }
-
-  fn assert_svg_with_route_tolerance(actual: &str, expected: &str, tolerance_db: f64, label: &str) {
-    if tolerance_db == 0.0 {
-      assert_eq!(actual, expected, "{label} exact SVG");
-      return;
-    }
-    let actual = svg_points(actual);
-    let expected = svg_points(expected);
-    assert_eq!(actual.len(), expected.len(), "{label} SVG point count");
-    // The 100 dB plot spans 246 viewBox pixels; include 0.01 formatting quantization.
-    let y_tolerance = tolerance_db * 2.46 + 0.011;
-    for (index, ((actual_x, actual_y), (expected_x, expected_y))) in
-      actual.iter().zip(&expected).enumerate()
-    {
-      assert!(
-        (actual_x - expected_x).abs() <= 0.001,
-        "{label}[{index}] x: {actual_x} vs {expected_x}"
-      );
-      assert!(
-        (actual_y - expected_y).abs() <= y_tolerance,
-        "{label}[{index}] y: {actual_y} vs {expected_y}, tolerance={y_tolerance}"
       );
     }
   }
@@ -2936,24 +2851,6 @@ mod tests {
       tolerance_db,
       &format!("{label} peak-b"),
     );
-    for (name, actual_path, legacy_path) in [
-      ("path", &actual.path, &legacy.path),
-      ("peak-path", &actual.peak_path, &legacy.peak_path),
-      ("path-b", &actual.path_b, &legacy.path_b),
-      ("peak-path-b", &actual.peak_path_b, &legacy.peak_path_b),
-    ] {
-      assert_eq!(
-        actual_path.is_empty(),
-        legacy_path.is_empty(),
-        "{label} {name} presence"
-      );
-      assert_svg_with_route_tolerance(
-        actual_path,
-        legacy_path,
-        tolerance_db,
-        &format!("{label} {name}"),
-      );
-    }
   }
 
   fn assert_visual_matches_legacy(
@@ -3158,7 +3055,7 @@ mod tests {
   }
 
   #[test]
-  fn legacy_payload_comparison_rejects_path_and_visual_mutations() {
+  fn legacy_payload_comparison_rejects_row_and_visual_mutations() {
     use crate::dsp::spectrum_bank::FFT_BIG;
     use crate::ipc::types::SpectrumAnalysisChannel;
 
@@ -3170,14 +3067,14 @@ mod tests {
     let pcm = deterministic_stereo(FFT_BIG, 0);
     let (legacy_result, legacy_visual) = legacy_spectrum_result(&request, 48_000.0, 2, &pcm, 1.0);
 
-    let mut altered_path = legacy_result.clone();
-    altered_path.path.push_str(" L 0.00 0.00");
+    let mut altered_row = legacy_result.clone();
+    altered_row.smooth_db[0] += 1.0;
     assert!(
       std::panic::catch_unwind(|| {
-        assert_result_matches_legacy(&altered_path, &legacy_result, 0.0, "path mutation");
+        assert_result_matches_legacy(&altered_row, &legacy_result, 0.0, "row mutation");
       })
       .is_err(),
-      "an altered legacy path must be rejected"
+      "an altered legacy row must be rejected"
     );
 
     let mut altered_visual = legacy_visual.clone();
@@ -3212,7 +3109,7 @@ mod tests {
     let pcm = deterministic_stereo(FFT_BIG, 0);
     let split = (FFT_BIG - 1) * 2;
     let mut legacy = SpectrumMeter::new(sample_rate as f64);
-    legacy.set_display_controls(50.0, 4.5, OctaveSmoothing::OneSixth);
+    legacy.set_display_controls(50.0, OctaveSmoothing::OneSixth);
     let mut pipeline = MeterPipeline::new(sample_rate, 2);
     pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(1.0));
 
@@ -3285,7 +3182,7 @@ mod tests {
     let chunk_frames = FFT_BIG / 4;
     let mut pipeline = MeterPipeline::new_for_file(48_000, 2);
     let mut legacy = SpectrumMeter::new(48_000.0);
-    legacy.set_display_controls(50.0, 4.5, OctaveSmoothing::OneSixth);
+    legacy.set_display_controls(50.0, OctaveSmoothing::OneSixth);
     let mut timestamps = Vec::new();
     let mut clock = 0_u64;
 
@@ -3590,10 +3487,9 @@ mod tests {
     let pending_result = &pending.spectrum_results_by_key["new"];
     assert!(pending_result.smooth_db.is_empty());
     assert!(pending_result.band_centers_hz.is_empty());
-    assert!(pending_result.path.is_empty());
-    assert!(pending_result.peak_path.is_empty());
-    assert!(pending_result.path_b.is_empty());
-    assert!(pending_result.peak_path_b.is_empty());
+    assert!(pending_result.peak_db.is_empty());
+    assert!(pending_result.smooth_db_b.is_empty());
+    assert!(pending_result.peak_db_b.is_empty());
   }
 
   #[test]
@@ -3712,7 +3608,6 @@ mod tests {
       .expect("warmed shared consumer");
 
     request.speed_percent = 75.0;
-    request.tilt_db_per_octave = 2.0;
     request.octave_smoothing = "1/3".to_string();
     let updated = AnalysisRequests {
       spectral_waveform: false,

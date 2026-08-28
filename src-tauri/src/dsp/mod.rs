@@ -6,7 +6,6 @@ pub mod filters;
 pub mod gating;
 pub mod loudness;
 pub mod meter;
-pub mod paths;
 pub mod peak;
 pub mod shared_spectral_engine;
 pub mod spectral_transform;

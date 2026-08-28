@@ -1,6 +1,6 @@
 //! **Multi-resolution spectrum display** driven by `MultiResBank` (three windowed FFTs blended
 //! at crossover frequencies). Per grid-point: optional fractional-octave smoothing, weighting,
-//! a user-set slope tilt (pivoted at 1 kHz), attack/release envelope, and peak-hold.
+//! attack/release envelope, and peak-hold. The display slope tilt is applied on the frontend.
 //!
 //! The two smoothing axes are separate controls and are easy to confuse:
 //! - **Speed** is the *time* axis — attack/release plus the bank's analysis average. It changes
@@ -54,8 +54,6 @@ pub(crate) fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
     _ => 0.0,
   }
 }
-
-pub(crate) const SLOPE_PIVOT_HZ: f64 = 1000.0;
 
 /// Apply attack/release smoothing + peak-hold for one bank's incoming dB row.
 #[allow(clippy::too_many_arguments)]
@@ -129,7 +127,6 @@ pub struct SpectrumMeter {
   release_ms: f64,
   peak_hold_sec: f64,
   peak_decay_db_per_sec: f64,
-  tilt_db_per_octave: f64,
   octave_smoothing: OctaveSmoothing,
   analysis_average_sec: f64,
   min_hz: f64,
@@ -173,7 +170,6 @@ impl SpectrumMeter {
       // reaches a rendered row. The default the user actually gets is owned by
       // `DEFAULT_PANEL_CONTROLS` in `src/lib/panelControls.js`; kept in step with it so reading
       // this line does not mislead. Nothing enforces that — check the JS side before trusting it.
-      tilt_db_per_octave: 3.0,
       octave_smoothing: OctaveSmoothing::Off,
       analysis_average_sec: analysis_average_sec_for_speed_percent(50.0),
       min_hz,
@@ -191,17 +187,11 @@ impl SpectrumMeter {
     }
   }
 
-  pub fn set_display_controls(
-    &mut self,
-    speed_percent: f64,
-    tilt_db_per_octave: f64,
-    octave_smoothing: OctaveSmoothing,
-  ) {
+  pub fn set_display_controls(&mut self, speed_percent: f64, octave_smoothing: OctaveSmoothing) {
     let (attack_ms, release_ms) = attack_release_ms_for_speed_percent(speed_percent);
     let analysis_average_sec = analysis_average_sec_for_speed_percent(speed_percent);
     self.attack_ms = attack_ms;
     self.release_ms = release_ms;
-    self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
     self.octave_smoothing = octave_smoothing;
     self.analysis_average_sec = analysis_average_sec;
     self.bank.set_analysis_average_sec(analysis_average_sec);
@@ -218,15 +208,15 @@ impl SpectrumMeter {
   fn post_process_for(&self, bank: &MultiResBank) -> Vec<f64> {
     let centers = bank.grid_freqs();
     // Smoothing happens inside the bank, on linear power, so it averages the *measurement*.
-    // Weighting and tilt are display shaping and are applied after, on the smoothed row: they
-    // are smooth curves themselves, so the order only matters for the measurement.
+    // Weighting is display shaping and is applied after, on the smoothed row: it is a smooth
+    // curve itself, so the order only matters for the measurement. The slope tilt used to be
+    // applied here too; it is a per-band constant offset that commutes with everything
+    // downstream, so it now lives on the frontend where it can reshape stored history as well.
     let raw = bank.psd_db_row(CAL_OFFSET_DB, self.octave_smoothing);
-    let log_pivot = SLOPE_PIVOT_HZ.log2();
     let mut shaped = Vec::with_capacity(raw.len());
     for (i, &db) in raw.iter().enumerate() {
       let f = centers[i];
-      let oct = f.log2() - log_pivot;
-      shaped.push(db + weighting_db(f, &self.weighting) + self.tilt_db_per_octave * oct);
+      shaped.push(db + weighting_db(f, &self.weighting));
     }
     shaped
   }
@@ -735,46 +725,6 @@ mod tests {
   }
 
   #[test]
-  fn default_slope_tilts_curve_upward() {
-    let sr = 48000.0;
-    let mut m = SpectrumMeter::new(sr);
-    // White-ish noise on both channels.
-    let mut x: u32 = 0xC0FFEE;
-    let frames = 16384 * 6;
-    let mut pcm = vec![0.0_f32; frames * 2];
-    for i in 0..frames {
-      x = x.wrapping_mul(1664525).wrapping_add(1013904223);
-      let s = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
-      pcm[i * 2] = s;
-      pcm[i * 2 + 1] = s;
-    }
-    let mut out = None;
-    for _ in 0..4 {
-      out = m.push_interleaved(&pcm, 2, 1.0);
-    }
-    let (smooth, _) = out.expect("spectrum output");
-    let centers = m.band_centers();
-    let val_near = |t: f64| {
-      let (i, _) = centers
-        .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| (**a - t).abs().partial_cmp(&(**b - t).abs()).unwrap())
-        .unwrap();
-      smooth[i]
-    };
-    // White noise is flat in PSD, so the constructed tilt is the only thing that can lift
-    // 10 kHz above 100 Hz. This is one of the few places the placeholder default is observable
-    // — nothing calls set_display_controls here — so keep the literal in step with it.
-    let default_tilt_db_per_oct = 3.0;
-    let octaves = (10000.0_f64 / 100.0).log2();
-    let delta = val_near(10000.0) - val_near(100.0);
-    assert!(
-      delta > default_tilt_db_per_oct * octaves * 0.6,
-      "slope not applied: delta={delta}"
-    );
-  }
-
-  #[test]
   fn speed_percent_50_matches_current_attack_release() {
     let (attack_ms, release_ms) = attack_release_ms_for_speed_percent(50.0);
     assert!(
@@ -801,46 +751,11 @@ mod tests {
   }
 
   #[test]
-  fn zero_tilt_disables_default_slope() {
-    let sr = 48000.0;
-    let mut m = SpectrumMeter::new(sr);
-    m.set_display_controls(75.0, 0.0, OctaveSmoothing::Off);
-    let mut x: u32 = 0xC0FFEE;
-    let frames = 16384 * 6;
-    let mut pcm = vec![0.0_f32; frames * 2];
-    for i in 0..frames {
-      x = x.wrapping_mul(1664525).wrapping_add(1013904223);
-      let s = ((x >> 8) as f32 / 8_388_608.0) - 1.0;
-      pcm[i * 2] = s;
-      pcm[i * 2 + 1] = s;
-    }
-    let mut out = None;
-    for _ in 0..4 {
-      out = m.push_interleaved(&pcm, 2, 1.0);
-    }
-    let (smooth, _) = out.expect("spectrum output");
-    let centers = m.band_centers();
-    let val_near = |t: f64| {
-      let (i, _) = centers
-        .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| (**a - t).abs().partial_cmp(&(**b - t).abs()).unwrap())
-        .unwrap();
-      smooth[i]
-    };
-    let delta = val_near(10000.0) - val_near(100.0);
-    assert!(
-      delta < 10.0,
-      "0 dB/oct tilt should not apply the default +4.5 dB/oct slope: delta={delta}"
-    );
-  }
-
-  #[test]
   fn zero_speed_bypasses_hidden_analysis_average() {
     let sr = 48000.0;
     let hz = 8000.0;
     let mut m = SpectrumMeter::new(sr);
-    m.set_display_controls(0.0, 4.5, OctaveSmoothing::Off);
+    m.set_display_controls(0.0, OctaveSmoothing::Off);
 
     let tone_frames = 16384 * 8;
     let mut tone = vec![0.0_f32; tone_frames * 2];

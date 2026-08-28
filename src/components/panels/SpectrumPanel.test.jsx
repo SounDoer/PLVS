@@ -38,10 +38,15 @@ function renderPanel(audioData) {
 function spectrumPanelTree(audioData) {
   const { panelControls, analysisStatus, onPanelControlsChange, displayAudio, ...historyData } =
     audioData;
+  // The engine sends untilted rows and the panel puts the slope on at render, so the default
+  // tilt would move every coordinate in here. Tests that are about the tilt set it themselves.
+  const flatControls = { spectrumTiltDbPerOctave: 0, ...panelControls };
   return (
     <FrameDataProvider value={{ displayAudio }}>
       <HistoryDataProvider value={historyData}>
-        <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
+        <PanelInstanceProvider
+          value={{ panelControls: flatControls, analysisStatus, onPanelControlsChange }}
+        >
           <SpectrumPanel />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -50,14 +55,23 @@ function spectrumPanelTree(audioData) {
 }
 
 // Default panel controls resolve to this live request key (pair 0/1, combined view).
-const LIVE_KEY = "spectrum:pair:0:1:combined:sp25:tilt300:smoff";
+const LIVE_KEY = "spectrum:pair:0:1:combined:sp25:smoff";
+
+// The frame carries dB rows only; every path on screen is built from them by the panel.
+const BANDS = [20, 20000];
+
+/** The curve the panel draws for `db`, in the same viewBox coordinates it uses. */
+function contour(db, range) {
+  return buildSpectrumSvgFromBandsAndDb(BANDS, db, range);
+}
+
+/** A contour closed into the filled area the panel draws under it. */
+function area(path) {
+  return `${path} L 1000 260 L 0 260 Z`;
+}
 
 function liveResult(over = {}) {
   return {
-    path: "",
-    peakPath: "",
-    pathB: "",
-    peakPathB: "",
     bandCentersHz: [],
     smoothDb: [],
     peakDb: [],
@@ -120,68 +134,70 @@ describe("SpectrumPanel", () => {
   });
 
   it("fills up to the peak contour when max hold is on", () => {
-    const peakPath = "M 0 20 L 1000 20";
+    const peakDb = [-20, -30];
     const { container } = renderPanel(
-      liveAudioData(liveResult({ path: "M 0 120 L 1000 80", peakPath }), {
+      liveAudioData(liveResult({ bandCentersHz: BANDS, smoothDb: [-40, -50], peakDb }), {
         panelControls: { spectrumMaxDecay: true },
       })
     );
 
     const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
-    expect(fill?.getAttribute("d")).toBe(`${peakPath} L 1000 260 L 0 260 Z`);
+    expect(fill?.getAttribute("d")).toBe(area(contour(peakDb)));
     // peak hold is now a filled area, not a dashed stroke
     expect(container.querySelector("path[stroke-dasharray]")).toBeNull();
   });
 
   it("uses the active panel's peak-hold setting, not the first panel's", () => {
-    const peakPath = "M 0 20 L 1000 20";
-    const livePath = "M 0 120 L 1000 80";
+    const smoothDb = [-40, -50];
     // Global (first panel) has peak hold on, but this panel's own control has it off.
     const { container } = renderPanel(
-      liveAudioData(liveResult({ path: livePath, peakPath }), {
+      liveAudioData(liveResult({ bandCentersHz: BANDS, smoothDb, peakDb: [-20, -30] }), {
         spectrumMaxDecay: true,
         panelControls: { spectrumMaxDecay: false },
       })
     );
 
     const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
-    expect(fill?.getAttribute("d")).toBe(`${livePath} L 1000 260 L 0 260 Z`);
+    expect(fill?.getAttribute("d")).toBe(area(contour(smoothDb)));
   });
 
   it("fills up to the live contour when peak hold is off", () => {
-    const livePath = "M 0 120 L 1000 80";
+    const smoothDb = [-40, -50];
     const { container } = renderPanel(
-      liveAudioData(liveResult({ path: livePath, peakPath: "M 0 20 L 1000 20" }), {
+      liveAudioData(liveResult({ bandCentersHz: BANDS, smoothDb, peakDb: [-20, -30] }), {
         panelControls: { spectrumMaxDecay: false },
       })
     );
 
     const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
-    expect(fill?.getAttribute("d")).toBe(`${livePath} L 1000 260 L 0 260 Z`);
+    expect(fill?.getAttribute("d")).toBe(area(contour(smoothDb)));
   });
 
   it("fills the secondary peak with the live-b gradient when peak hold is on", () => {
-    const peakB = "M 0 30 L 1000 30";
+    const peakDbB = [-25, -35];
     const { container } = renderPanel(
       liveAudioData(
         liveResult({
-          path: "M 0 120 L 1000 80",
-          pathB: "M 0 130 L 1000 90",
-          peakPathB: peakB,
+          bandCentersHz: BANDS,
+          smoothDb: [-40, -50],
+          smoothDbB: [-45, -55],
+          peakDb: [-20, -30],
+          peakDbB,
         }),
         { panelControls: { spectrumMaxDecay: true }, spectrumViewLegend: null }
       )
     );
 
     const fillB = container.querySelector('path[fill="url(#spectrumFillLiveB)"]');
-    expect(fillB?.getAttribute("d")).toBe(`${peakB} L 1000 260 L 0 260 Z`);
+    expect(fillB?.getAttribute("d")).toBe(area(contour(peakDbB)));
   });
 
   it("renders the secondary curve path with the live-b token when the result has a B path", () => {
     const { container } = renderPanel(
-      liveAudioData(liveResult({ path: "M 0 120 L 1000 80", pathB: "M 0 130 L 1000 90" }), {
-        spectrumViewLegend: null,
-      })
+      liveAudioData(
+        liveResult({ bandCentersHz: BANDS, smoothDb: [-40, -50], smoothDbB: [-45, -55] }),
+        { spectrumViewLegend: null }
+      )
     );
 
     const secondary = container.querySelector('path[stroke="var(--ui-spectrum-secondary)"]');
@@ -190,9 +206,10 @@ describe("SpectrumPanel", () => {
 
   it("keeps curve stroke widths independent from SVG scaling", () => {
     const { container } = renderPanel(
-      liveAudioData(liveResult({ path: "M 0 120 L 1000 80", pathB: "M 0 130 L 1000 90" }), {
-        spectrumViewLegend: null,
-      })
+      liveAudioData(
+        liveResult({ bandCentersHz: BANDS, smoothDb: [-40, -50], smoothDbB: [-45, -55] }),
+        { spectrumViewLegend: null }
+      )
     );
 
     const primary = container.querySelector('path[stroke="var(--ui-spectrum-primary)"]');
@@ -205,7 +222,6 @@ describe("SpectrumPanel", () => {
     const { container } = renderPanel(
       liveAudioData(
         liveResult({
-          path: "M 0 1 L 1000 1",
           bandCentersHz: [20, 20000],
           smoothDb: [0, -96],
         })
@@ -220,7 +236,6 @@ describe("SpectrumPanel", () => {
     const { container } = renderPanel(
       liveAudioData(
         liveResult({
-          path: "M 0 1 L 1000 1",
           bandCentersHz: [20, 20000],
           smoothDb: [-24, -84],
         }),
@@ -236,8 +251,6 @@ describe("SpectrumPanel", () => {
     const { container } = renderPanel(
       liveAudioData(
         liveResult({
-          path: "M 0 1 L 1000 1",
-          peakPath: "M 0 2 L 1000 2",
           bandCentersHz: [20, 20000],
           smoothDb: [-40, -70],
           peakDb: [-24, -84],
@@ -288,19 +301,52 @@ describe("SpectrumPanel", () => {
   });
 
   it("renders its own request key's snapshot curve in snapshot mode", () => {
-    const path = "M 0 100 L 1000 60";
+    // Snapshot rows come back untilted like live ones, and the panel builds the path from them.
+    const dbList = [-30, -60];
     const { container } = renderPanel({
       selectedOffset: 2,
       resolveSpectrumSnapshotForKey: () => ({
         missing: false,
-        path,
-        pathB: "",
-        data: { bands: [], dbList: [-10], dbListB: [] },
+        data: {
+          bands: BANDS.map((fCenter) => ({ fCenter })),
+          dbList,
+          dbListB: [],
+        },
       }),
     });
 
     const snapStroke = container.querySelector('path[stroke="var(--ui-spectrum-primary-snap)"]');
-    expect(snapStroke?.getAttribute("d")).toBe(path);
+    expect(snapStroke?.getAttribute("d")).toBe(contour(dbList));
+  });
+
+  it("tilts the live curve around 1 kHz without changing the request key", () => {
+    // The engine sends untilted rows, so this slope is the panel's own work. 1 kHz is the pivot:
+    // it does not move, and 20 Hz drops away below it.
+    const smoothDb = [-40, -40, -40];
+    const bandCentersHz = [20, 1000, 20000];
+    const withTilt = (tilt) =>
+      renderPanel(
+        liveAudioData(liveResult({ bandCentersHz, smoothDb }), {
+          panelControls: { spectrumTiltDbPerOctave: tilt },
+        })
+      );
+
+    const flat = withTilt(0);
+    const tilted = withTilt(3);
+    const ys = (view) => (primaryPath(view.container).match(/[\d.]+(?= L|$)/g) ?? []).map(Number);
+
+    const [flatLow, flatMid, flatHigh] = ys(flat);
+    const [tiltedLow, tiltedMid, tiltedHigh] = ys(tilted);
+    expect(tiltedMid).toBeCloseTo(flatMid, 5);
+    expect(tiltedLow).toBeGreaterThan(flatLow);
+    expect(tiltedHigh).toBeLessThan(flatHigh);
+  });
+
+  it("keeps one request key across tilt values", () => {
+    // Two panels differing only in tilt share an engine consumer and a history slab.
+    expect(spectrumRequestKeyFromControls({ spectrumTiltDbPerOctave: 0 })).toBe(
+      spectrumRequestKeyFromControls({ spectrumTiltDbPerOctave: 6 })
+    );
   });
 
   it("refreshes the live hover value when spectrum data changes without pointer movement", () => {
@@ -413,9 +459,9 @@ describe("SpectrumPanel", () => {
 
   it("keeps using the panel request key while display hold smoothing is active", () => {
     vi.useFakeTimers();
-    const livePath = "M 0 120 L 1000 80";
+    const smoothDb = [-40, -50];
     const { container } = renderPanel(
-      liveAudioData(liveResult({ path: livePath }), {
+      liveAudioData(liveResult({ bandCentersHz: BANDS, smoothDb }), {
         historyChartInteractive: true,
         totalSamples: 3,
       })
@@ -435,7 +481,7 @@ describe("SpectrumPanel", () => {
 
     act(() => vi.advanceTimersByTime(300));
 
-    expect(primaryPath(container)).toBe(livePath);
+    expect(primaryPath(container)).toBe(contour(smoothDb));
   });
 
   it("smooths live curve changes locally while display hold smoothing is active", () => {

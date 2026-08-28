@@ -103,7 +103,6 @@ struct Case {
   selection: SpectrumChannelSel,
   view: SpectrumView,
   speed: f64,
-  tilt: f64,
   smoothing: OctaveSmoothing,
   force_physical_pair: bool,
 }
@@ -114,7 +113,6 @@ impl Case {
       selection: SpectrumChannelSel::Pair(0, 1),
       view: SpectrumView::Combined,
       speed: 25.0,
-      tilt: 3.0,
       smoothing: OctaveSmoothing::Off,
       force_physical_pair: false,
     }
@@ -147,7 +145,7 @@ struct LegacyRunner {
 impl LegacyRunner {
   fn new(sample_rate: f64, case: Case) -> Self {
     let mut meter = SpectrumMeter::new(sample_rate);
-    meter.set_display_controls(case.speed, case.tilt, case.smoothing);
+    meter.set_display_controls(case.speed, case.smoothing);
     Self { meter, case }
   }
 
@@ -190,7 +188,6 @@ impl SharedRunner {
       channel,
       view: view.to_string(),
       speed_percent: case.speed,
-      tilt_db_per_octave: case.tilt,
       octave_smoothing: smoothing_token(case.smoothing).to_string(),
     };
     let future_pair_needs = if case.force_physical_pair {
@@ -222,7 +219,6 @@ impl SharedRunner {
         );
         consumer.set_display_controls(
           binding.settings.speed_percent,
-          binding.settings.tilt_db_per_octave,
           parse_smoothing(&binding.settings.octave_smoothing),
         );
         (binding.request_key.clone(), consumer)
@@ -636,20 +632,6 @@ fn compare_all_ui_controls_by_route() -> usize {
         Chunking::CaptureLike,
         Case {
           speed: speed as f64,
-          tilt: 3.0,
-          smoothing: OctaveSmoothing::OneSixth,
-          ..route
-        },
-      );
-      cases += 1;
-    }
-    for tilt_step in 0..=24 {
-      compare_case(
-        &pcm,
-        Chunking::CaptureLike,
-        Case {
-          speed: 50.0,
-          tilt: tilt_step as f64 * 0.25,
           smoothing: OctaveSmoothing::OneSixth,
           ..route
         },
@@ -667,7 +649,6 @@ fn compare_all_ui_controls_by_route() -> usize {
         Chunking::CaptureLike,
         Case {
           speed: 50.0,
-          tilt: 3.0,
           smoothing,
           ..route
         },
@@ -701,7 +682,7 @@ fn projections() -> [Case; 4] {
 #[test]
 fn all_pcm_fixtures_rates_chunkings_and_views_match_legacy() {
   // Exhaustive scalar controls live in spectrum_consumer: synthetic frames make all 101 speed
-  // steps, 25 tilt steps, and four smoothing modes cheap. This expensive PCM matrix instead
+  // steps and four smoothing modes cheap. This expensive PCM matrix instead
   // crosses every signal family, supported rate, chunking, and projection at the UI defaults.
   // One full FFT window preserves every fixture's spectral content and readiness boundary while
   // avoiding thousands of redundant post-ready one-sample envelope updates per case; reset and
@@ -741,21 +722,20 @@ complex regular smooth={:.17e}, peak={:.17e}; complex low-floor smooth={:.17e}, 
 fn representative_control_profiles_span_every_projection_route() {
   let pcm = fixture(FixtureKind::IndependentNoise, 48_000.0);
   // Compact three-factor pairings complement the exhaustive one-axis matrix without paying for
-  // its 101 × 25 × 4 Cartesian product. Every row is non-default and every smoothing mode appears.
+  // its 101 × 4 Cartesian product. Every row is non-default and every smoothing mode appears.
   let profiles = [
-    (17.0, 0.75, OctaveSmoothing::Off),
-    (43.0, 2.50, OctaveSmoothing::OneTwelfth),
-    (71.0, 4.25, OctaveSmoothing::OneSixth),
-    (93.0, 5.75, OctaveSmoothing::OneThird),
+    (17.0, OctaveSmoothing::Off),
+    (43.0, OctaveSmoothing::OneTwelfth),
+    (71.0, OctaveSmoothing::OneSixth),
+    (93.0, OctaveSmoothing::OneThird),
   ];
   for case in projections() {
-    for (speed, tilt, smoothing) in profiles {
+    for (speed, smoothing) in profiles {
       compare_case(
         &pcm,
         Chunking::CaptureLike,
         Case {
           speed,
-          tilt,
           smoothing,
           ..case
         },
@@ -766,7 +746,7 @@ fn representative_control_profiles_span_every_projection_route() {
 
 #[test]
 fn every_ui_control_value_is_differentially_compared_on_every_projection_route() {
-  assert_eq!(compare_all_ui_controls_by_route(), 4 * (101 + 25 + 4));
+  assert_eq!(compare_all_ui_controls_by_route(), 4 * (101 + 4));
 }
 
 #[test]

@@ -1,5 +1,9 @@
 import { useCallback, useId, useRef, useState } from "react";
-import { buildSpectrumSvgFromBandsAndDb } from "../../math/spectrumMath.js";
+import {
+  applySpectrumTilt,
+  buildSpectrumSvgFromBandsAndDb,
+  spectrumTiltOffsets,
+} from "../../math/spectrumMath.js";
 import { accumulateSpectrumMaxHold } from "../../math/spectrumMaxHold.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 import { dockSpectrumKey } from "../dockAnalysisRequest.js";
@@ -7,10 +11,13 @@ import { dockSpectrumKey } from "../dockAnalysisRequest.js";
 const VIEWBOX_WIDTH = 1000;
 const VIEWBOX_HEIGHT = 260;
 
-function spectrumPath(result, valuesKey, fallbackKey, range) {
-  return (
-    buildSpectrumSvgFromBandsAndDb(result?.bandCentersHz ?? [], result?.[valuesKey] ?? [], range) ||
-    (typeof result?.[fallbackKey] === "string" ? result[fallbackKey] : "")
+// The engine sends untilted rows; the slope tilt is display shaping and is applied here, the
+// same way the workspace panel does it. See `spectrumTiltOffsets`.
+function spectrumPath(result, valuesKey, tilt, range) {
+  return buildSpectrumSvgFromBandsAndDb(
+    result?.bandCentersHz ?? [],
+    applySpectrumTilt(result?.[valuesKey] ?? [], tilt),
+    range
   );
 }
 
@@ -50,17 +57,18 @@ export function DockSpectrum({ controls }) {
     yMinDb: controls?.spectrumYMinDb,
     yMaxDb: controls?.spectrumYMaxDb,
   };
-  const livePath = spectrumPath(result, "smoothDb", "path", range);
-  const livePathB = spectrumPath(result, "smoothDbB", "pathB", range);
-  const peakPath = spectrumPath(result, "peakDb", "peakPath", range);
-  const peakPathB = spectrumPath(result, "peakDbB", "peakPathB", range);
+  const tilt = spectrumTiltOffsets(result?.bandCentersHz, controls?.spectrumTiltDbPerOctave);
+  const livePath = spectrumPath(result, "smoothDb", tilt, range);
+  const livePathB = spectrumPath(result, "smoothDbB", tilt, range);
+  const peakPath = spectrumPath(result, "peakDb", tilt, range);
+  const peakPathB = spectrumPath(result, "peakDbB", tilt, range);
   // The Dock has no snapshot, so the hold is the live one or nothing. Only the primary curve
   // carries it: the strip draws the secondary fill from the engine's peak either way.
   const maxHoldPath =
     maxHoldEnabled && maxHoldRef.current
       ? buildSpectrumSvgFromBandsAndDb(
           result?.bandCentersHz ?? [],
-          Array.from(maxHoldRef.current),
+          applySpectrumTilt(Array.from(maxHoldRef.current), tilt),
           range
         )
       : "";

@@ -169,7 +169,6 @@ fn expected_spectrum_request_key(
   channel: &SpectrumAnalysisChannel,
   view: &str,
   speed_percent: f64,
-  tilt_db_per_octave: f64,
   octave_smoothing: &str,
 ) -> Result<String, String> {
   parse_spectrum_view(view)?;
@@ -177,20 +176,16 @@ fn expected_spectrum_request_key(
   if !speed_percent.is_finite() || !(0.0..=100.0).contains(&speed_percent) {
     return Err("spectrum speedPercent must be finite and between 0 and 100".to_string());
   }
-  if !tilt_db_per_octave.is_finite() || !(0.0..=6.0).contains(&tilt_db_per_octave) {
-    return Err("spectrum tiltDbPerOctave must be finite and between 0 and 6".to_string());
-  }
   let speed = speed_percent.round() as i64;
-  let tilt_centidb = (tilt_db_per_octave * 100.0).round() as i64;
   // Smoothing belongs in the key: it changes the row, and panels that share a key share one
   // meter — and therefore one smoothing setting, which they would otherwise fight over.
   let sm = smoothing.key_token();
   Ok(match channel {
     SpectrumAnalysisChannel::Pair { x, y } => {
-      format!("spectrum:pair:{x}:{y}:{view}:sp{speed}:tilt{tilt_centidb}:sm{sm}")
+      format!("spectrum:pair:{x}:{y}:{view}:sp{speed}:sm{sm}")
     }
     SpectrumAnalysisChannel::Single { ch } => {
-      format!("spectrum:single:{ch}:combined:sp{speed}:tilt{tilt_centidb}:sm{sm}")
+      format!("spectrum:single:{ch}:combined:sp{speed}:sm{sm}")
     }
   })
 }
@@ -254,7 +249,6 @@ fn validate_analysis_requests(requests: &AnalysisRequests) -> Result<(), String>
       &request.channel,
       &request.view,
       request.speed_percent,
-      request.tilt_db_per_octave,
       &request.octave_smoothing,
     )?;
     if request.key != expected {
@@ -600,19 +594,17 @@ mod tests {
       spectral_waveform: false,
       spectrum: vec![
         SpectrumAnalysisRequest {
-          key: "spectrum:pair:0:1:lr:sp50:tilt450:smoff".to_string(),
+          key: "spectrum:pair:0:1:lr:sp50:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
           view: "lr".to_string(),
           speed_percent: 50.0,
-          tilt_db_per_octave: 4.5,
           octave_smoothing: "off".to_string(),
         },
         SpectrumAnalysisRequest {
-          key: "spectrum:single:2:combined:sp25:tilt125:smoff".to_string(),
+          key: "spectrum:single:2:combined:sp25:smoff".to_string(),
           channel: SpectrumAnalysisChannel::Single { ch: 2 },
           view: "combined".to_string(),
           speed_percent: 25.0,
-          tilt_db_per_octave: 1.25,
           octave_smoothing: "off".to_string(),
         },
       ],
@@ -631,11 +623,10 @@ mod tests {
     let requests = AnalysisRequests {
       spectral_waveform: false,
       spectrum: vec![SpectrumAnalysisRequest {
-        key: "spectrum:pair:0:1:combined:sp50:tilt450:smoff".to_string(),
+        key: "spectrum:pair:0:1:combined:sp50:smoff".to_string(),
         channel: SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
         view: "ms".to_string(),
         speed_percent: 50.0,
-        tilt_db_per_octave: 4.5,
         octave_smoothing: "off".to_string(),
       }],
       vectorscope: vec![VectorscopeAnalysisRequest {
@@ -654,11 +645,10 @@ mod tests {
       spectral_waveform: false,
       spectrum: (0..=super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
         .map(|idx| SpectrumAnalysisRequest {
-          key: format!("spectrum:single:{idx}:combined:sp50:tilt450:smoff"),
+          key: format!("spectrum:single:{idx}:combined:sp50:smoff"),
           channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
           view: "combined".to_string(),
           speed_percent: 50.0,
-          tilt_db_per_octave: 4.5,
           octave_smoothing: "off".to_string(),
         })
         .collect(),
@@ -706,7 +696,6 @@ mod tests {
       let key = entry["key"].as_str().unwrap().to_string();
       let view = entry["view"].as_str().unwrap().to_string();
       let speed_percent = entry["speedPercent"].as_f64().unwrap();
-      let tilt_db_per_octave = entry["tiltDbPerOctave"].as_f64().unwrap();
       let octave_smoothing = entry["octaveSmoothing"].as_str().unwrap().to_string();
       let channel = if entry["type"] == "single" {
         SpectrumAnalysisChannel::Single {
@@ -725,7 +714,6 @@ mod tests {
           channel,
           view,
           speed_percent,
-          tilt_db_per_octave,
           octave_smoothing,
         }],
         vectorscope: vec![],
@@ -930,11 +918,10 @@ mod tests {
       spectral_waveform: false,
       spectrum: (0..super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
         .map(|idx| SpectrumAnalysisRequest {
-          key: format!("spectrum:single:{idx}:combined:sp25:tilt300:smoff"),
+          key: format!("spectrum:single:{idx}:combined:sp25:smoff"),
           channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
           view: "combined".to_string(),
           speed_percent: 25.0,
-          tilt_db_per_octave: 3.0,
           octave_smoothing: "off".to_string(),
         })
         .collect(),

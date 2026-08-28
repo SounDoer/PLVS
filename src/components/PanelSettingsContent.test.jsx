@@ -1541,14 +1541,10 @@ describe("PanelSettingsContent", () => {
       spectrumSpeedPercent: 42,
     });
 
-    // Tilt is in the key as well, so it commits on release too. This is interim: tilt is a
-    // per-band constant offset that belongs on the render side, and once it is out of the key it
-    // goes back to committing per change so the curve tracks the thumb.
+    // Tilt is not in the key -- it is applied on the render side -- so it commits per change and
+    // the curve tracks the thumb.
     const tilt = screen.getByLabelText("spectrum tilt");
     fireEvent.change(tilt, { target: { value: "1.25" } });
-    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
-
-    fireEvent.pointerUp(tilt);
     expect(onPanelControlsChange).toHaveBeenCalledTimes(2);
     expect(onPanelControlsChange).toHaveBeenLastCalledWith({
       ...DEFAULT_PANEL_CONTROLS,

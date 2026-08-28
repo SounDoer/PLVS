@@ -32,7 +32,6 @@ function dockSpectrumRequest(raw, panelId = "dock:spectrum") {
     channel: controls.spectrumChannel,
     view: controls.spectrumChannel?.type === "single" ? "combined" : controls.spectrumView,
     speedPercent: Math.round(controls.spectrumSpeedPercent),
-    tiltDbPerOctave: Math.round(controls.spectrumTiltDbPerOctave * 100) / 100,
     octaveSmoothing: controls.spectrumOctaveSmoothing,
   };
 }

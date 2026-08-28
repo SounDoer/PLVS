@@ -9,8 +9,10 @@ import { buildSpectrumDataSnapshot } from "../../lib/FrameIntake.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import { accumulateSpectrumMaxHold } from "../../math/spectrumMaxHold.js";
 import {
+  applySpectrumTilt,
   buildSpectrumSvgFromBandsAndDb,
   findSpectrumPeakCandidates,
+  spectrumTiltOffsets,
   trackSpectrumPeaks,
 } from "../../math/spectrumMath.js";
 import {
@@ -215,47 +217,60 @@ export function SpectrumPanel() {
     holdDisplaySpectrumResultRef.current = smoothed;
     return smoothed;
   }, [holdSmoothingActive, isSnapshot, rawLiveSpectrumResult]);
+  // The engine sends untilted rows: the slope tilt is display shaping, so it is applied here and
+  // to the snapshot rows below, which is what lets a tilt change reshape stored history instead of
+  // starting a new request key and a new slab. See `spectrumTiltOffsets`.
+  const tiltDbPerOctave = normalizedPanelControls.spectrumTiltDbPerOctave;
   const livePanelSpectrumData = useMemo(() => {
     if (!liveSpectrumResult) return null;
     const startedAt = beginPanelCpuSample();
+    const tilt = spectrumTiltOffsets(liveSpectrumResult.bandCentersHz, tiltDbPerOctave);
     const data = buildSpectrumDataSnapshot({
       spectrumBandCentersHz: liveSpectrumResult.bandCentersHz,
-      spectrumSmoothDb: liveSpectrumResult.smoothDb,
-      spectrumSmoothDbB: liveSpectrumResult.smoothDbB,
+      spectrumSmoothDb: applySpectrumTilt(liveSpectrumResult.smoothDb, tilt),
+      spectrumSmoothDbB: applySpectrumTilt(liveSpectrumResult.smoothDbB, tilt),
     });
     finishPanelCpuSample("spectrum", "buildDisplayData", startedAt);
     return data;
-  }, [liveSpectrumResult]);
-  let panelSpectrumPath;
-  let panelSpectrumPeakPath;
-  let panelSpectrumPathB;
-  let panelSpectrumPeakPathB;
+  }, [liveSpectrumResult, tiltDbPerOctave]);
+  const livePanelSpectrumPeaks = useMemo(() => {
+    if (!liveSpectrumResult) return null;
+    const tilt = spectrumTiltOffsets(liveSpectrumResult.bandCentersHz, tiltDbPerOctave);
+    return {
+      peakDb: applySpectrumTilt(liveSpectrumResult.peakDb, tilt),
+      peakDbB: applySpectrumTilt(liveSpectrumResult.peakDbB, tilt),
+    };
+  }, [liveSpectrumResult, tiltDbPerOctave]);
+  // History rows are stored untilted, so a snapshot is tilted on the way out the same way a live
+  // frame is -- which is exactly what makes the tilt reshape history rather than restart it.
+  const snapshotPanelSpectrumData = useMemo(() => {
+    const data = snapResolved?.data;
+    if (!data) return null;
+    const tilt = spectrumTiltOffsets(
+      data.bands?.map((band) => band.fCenter),
+      tiltDbPerOctave
+    );
+    if (!tilt) return data;
+    return {
+      ...data,
+      dbList: applySpectrumTilt(data.dbList, tilt),
+      dbListB: applySpectrumTilt(data.dbListB, tilt),
+    };
+  }, [snapResolved, tiltDbPerOctave]);
   let panelSpectrumData;
   let panelSpectrumPeakDb;
   let panelSpectrumPeakDbB;
   if (isSnapshot) {
-    panelSpectrumPath = snapResolved?.path ?? "";
-    panelSpectrumPeakPath = "";
-    panelSpectrumPathB = snapResolved?.pathB ?? "";
-    panelSpectrumPeakPathB = "";
-    panelSpectrumData = snapResolved?.data ?? null;
+    panelSpectrumData = snapshotPanelSpectrumData;
     panelSpectrumPeakDb = [];
     panelSpectrumPeakDbB = [];
   } else if (liveSpectrumResult) {
-    panelSpectrumPath = liveSpectrumResult.path;
-    panelSpectrumPeakPath = liveSpectrumResult.peakPath;
-    panelSpectrumPathB = liveSpectrumResult.pathB;
-    panelSpectrumPeakPathB = liveSpectrumResult.peakPathB;
-    panelSpectrumPeakDb = liveSpectrumResult.peakDb;
-    panelSpectrumPeakDbB = liveSpectrumResult.peakDbB;
+    panelSpectrumPeakDb = livePanelSpectrumPeaks.peakDb;
+    panelSpectrumPeakDbB = livePanelSpectrumPeaks.peakDbB;
     panelSpectrumData = livePanelSpectrumData;
   } else {
     // Live but no per-key result yet: pending treatment (empty chart) until this request's first
     // frame arrives. Showing another request's curve here would be wrong for this panel's key.
-    panelSpectrumPath = "";
-    panelSpectrumPeakPath = "";
-    panelSpectrumPathB = "";
-    panelSpectrumPeakPathB = "";
     panelSpectrumData = null;
     panelSpectrumPeakDb = [];
     panelSpectrumPeakDbB = [];
@@ -615,24 +630,36 @@ export function SpectrumPanel() {
     selectedOffset < 0 ? liveSpectrumResult : null
   );
   const reduceMotion = useReducedMotion();
-  const snapshotMaxHold = isSnapshot ? snapResolved?.maxHold : null;
+  // A snapshot hold is folded from untilted history, so it is tilted here; the live hold folds
+  // rows that were already tilted on the way in. Both are correct because a maximum and a
+  // per-band offset commute.
+  const snapshotMaxHold = useMemo(() => {
+    const hold = isSnapshot ? snapResolved?.maxHold : null;
+    if (!hold) return null;
+    const tilt = spectrumTiltOffsets(
+      snapshotPanelSpectrumData?.bands?.map((band) => band.fCenter),
+      tiltDbPerOctave
+    );
+    if (!tilt) return hold;
+    return {
+      ...hold,
+      dbList: applySpectrumTilt(hold.dbList, tilt),
+      dbListB: applySpectrumTilt(hold.dbListB, tilt),
+    };
+  }, [isSnapshot, snapResolved, snapshotPanelSpectrumData, tiltDbPerOctave]);
   const maxHoldDb = isSnapshot ? snapshotMaxHold?.dbList : maxHoldRef.current;
   const maxHoldDbB = isSnapshot ? snapshotMaxHold?.dbListB : maxHoldRefB.current;
   const displayPaths = useMemo(() => {
     const startedAt = beginPanelCpuSample();
     const paths = {
-      curve:
-        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbList, spectrumRange) ||
-        panelSpectrumPath,
-      curveB:
-        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbListB, spectrumRange) ||
-        panelSpectrumPathB,
-      peak:
-        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDb, spectrumRange) ||
-        panelSpectrumPeakPath,
-      peakB:
-        buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDbB, spectrumRange) ||
-        panelSpectrumPeakPathB,
+      curve: buildSpectrumPathFromData(panelSpectrumData, panelSpectrumData?.dbList, spectrumRange),
+      curveB: buildSpectrumPathFromData(
+        panelSpectrumData,
+        panelSpectrumData?.dbListB,
+        spectrumRange
+      ),
+      peak: buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDb, spectrumRange),
+      peakB: buildSpectrumPathFromData(panelSpectrumData, panelSpectrumPeakDbB, spectrumRange),
       maxHold:
         maxHoldEnabled && maxHoldDb?.length
           ? buildSpectrumPathFromData(panelSpectrumData, maxHoldDb, spectrumRange)
@@ -646,12 +673,8 @@ export function SpectrumPanel() {
     return paths;
   }, [
     panelSpectrumData,
-    panelSpectrumPath,
-    panelSpectrumPathB,
     panelSpectrumPeakDb,
     panelSpectrumPeakDbB,
-    panelSpectrumPeakPath,
-    panelSpectrumPeakPathB,
     maxHoldEnabled,
     maxHoldDb,
     maxHoldDbB,

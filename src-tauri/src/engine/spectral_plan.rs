@@ -46,7 +46,6 @@ pub(crate) enum ConsumerSelection {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ConsumerSettings {
   pub speed_percent: f64,
-  pub tilt_db_per_octave: f64,
   pub octave_smoothing: String,
 }
 
@@ -147,12 +146,6 @@ fn binding_order(first: &SpectralConsumerBinding, second: &SpectralConsumerBindi
     .then_with(|| {
       first
         .settings
-        .tilt_db_per_octave
-        .total_cmp(&second.settings.tilt_db_per_octave)
-    })
-    .then_with(|| {
-      first
-        .settings
         .octave_smoothing
         .cmp(&second.settings.octave_smoothing)
     })
@@ -191,7 +184,6 @@ pub(crate) fn plan_spectral_requests(
   for request in requests {
     let settings = ConsumerSettings {
       speed_percent: request.speed_percent,
-      tilt_db_per_octave: request.tilt_db_per_octave,
       octave_smoothing: request.octave_smoothing.clone(),
     };
     let (selection, input, projection) = match request.channel {
@@ -323,7 +315,6 @@ mod tests {
       channel,
       view: view.to_string(),
       speed_percent,
-      tilt_db_per_octave: 4.5,
       octave_smoothing: octave_smoothing.to_string(),
     }
   }
@@ -382,7 +373,7 @@ mod tests {
 
   #[test]
   fn duplicate_combined_requests_share_transform_but_keep_keyed_settings() {
-    let mut requests = vec![
+    let requests = vec![
       request(
         "combined-fast",
         SpectrumAnalysisChannel::Pair { x: 0, y: 1 },
@@ -398,8 +389,6 @@ mod tests {
         "1/3",
       ),
     ];
-    requests[0].tilt_db_per_octave = 0.75;
-    requests[1].tilt_db_per_octave = 5.25;
 
     let plan = plan_spectral_requests(2, &requests, &[]);
 
@@ -407,11 +396,9 @@ mod tests {
     assert_eq!(plan.consumers.len(), 2);
     assert_eq!(plan.consumers[0].request_key, "combined-fast");
     assert_eq!(plan.consumers[0].settings.speed_percent, 10.0);
-    assert_eq!(plan.consumers[0].settings.tilt_db_per_octave, 0.75);
     assert_eq!(plan.consumers[0].settings.octave_smoothing, "off");
     assert_eq!(plan.consumers[1].request_key, "combined-slow");
     assert_eq!(plan.consumers[1].settings.speed_percent, 90.0);
-    assert_eq!(plan.consumers[1].settings.tilt_db_per_octave, 5.25);
     assert_eq!(plan.consumers[1].settings.octave_smoothing, "1/3");
   }
 

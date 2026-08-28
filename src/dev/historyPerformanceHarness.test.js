@@ -101,7 +101,7 @@ describe("history performance harness", () => {
     });
     const spectrumKey = requests.spectrumRequests[0].key;
     const vectorscopeKey = requests.vectorscopeRequests[0].key;
-    expect(spectrumKey).toContain(":sp75:tilt150:sm");
+    expect(spectrumKey).toContain(":sp75:sm");
 
     const scheduler = createScheduler();
     const intake = new FrameIntake();
@@ -490,7 +490,7 @@ describe("history performance harness", () => {
     const intake = new FrameIntake();
     const pushVisualHistRow = vi.spyOn(intake, "pushVisualHistRow");
     const spectrumKeys = [0, 1, 2, 3].map(
-      (index) => `spectrum:pair:${index}:${index + 1}:combined:sp50:tilt0:smoff`
+      (index) => `spectrum:pair:${index}:${index + 1}:combined:sp50:smoff`
     );
     const stereoMapKeys = [0, 1, 2, 3].map(
       (index) => `stereoMap:pair:${index}:${index + 1}:sp50:sm12`

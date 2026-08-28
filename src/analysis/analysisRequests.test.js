@@ -60,10 +60,9 @@ describe("analysisRequests", () => {
 
     expect(result.spectrumRequests).toHaveLength(1);
     expect(result.spectrumRequests[0]).toMatchObject({
-      key: "spectrum:pair:0:1:combined:sp25:tilt300:smoff",
+      key: "spectrum:pair:0:1:combined:sp25:smoff",
       panelIds: ["spectrum", "spectrum-2"],
       speedPercent: 25,
-      tiltDbPerOctave: 3,
     });
   });
 
@@ -85,8 +84,8 @@ describe("analysisRequests", () => {
 
     const requests = deriveAnalysisRequests(s).spectrumRequests;
     expect(requests.map((r) => r.key)).toEqual([
-      "spectrum:pair:0:1:combined:sp25:tilt300:smoff",
-      "spectrum:single:2:combined:sp25:tilt300:smoff",
+      "spectrum:pair:0:1:combined:sp25:smoff",
+      "spectrum:single:2:combined:sp25:smoff",
     ]);
     expect(requests[1].view).toBe("combined");
   });
@@ -352,14 +351,23 @@ describe("analysisRequests", () => {
     expect(result.statusByPanelId["dock:duplicate"]).toBe("active");
   });
 
-  it("includes speed and tilt in the spectrum request key", () => {
+  it("includes speed in the spectrum request key", () => {
     expect(
       spectrumRequestKeyFromControls({
         ...DEFAULT_PANEL_CONTROLS,
         spectrumSpeedPercent: 25,
-        spectrumTiltDbPerOctave: 1.25,
       })
-    ).toBe("spectrum:pair:0:1:combined:sp25:tilt125:smoff");
+    ).toBe("spectrum:pair:0:1:combined:sp25:smoff");
+  });
+
+  it("does not include tilt in the spectrum request key", () => {
+    // Tilt is display shaping applied on the render side, so two panels that differ only in tilt
+    // share one engine consumer and one history slab. See `spectrumTiltOffsets`.
+    const tilted = spectrumRequestKeyFromControls({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumTiltDbPerOctave: 1.25,
+    });
+    expect(tilted).toBe(spectrumRequestKeyFromControls(DEFAULT_PANEL_CONTROLS));
   });
 
   it("includes spectrogram in spectrum-like requests", () => {

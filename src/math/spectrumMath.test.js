@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  applySpectrumTilt,
   buildSpectrumSvgFromBandsAndDb,
+  spectrumTiltOffsets,
+  SPECTRUM_TILT_PIVOT_HZ,
   findSpectrumPeakCandidates,
   trackSpectrumPeaks,
 } from "./spectrumMath.js";
@@ -225,5 +228,44 @@ describe("trackSpectrumPeaks", () => {
 
   it("returns nothing when there are no candidates", () => {
     expect(trackSpectrumPeaks([{ freq: 1000 }], [])).toEqual([]);
+  });
+});
+
+describe("spectrumTiltOffsets", () => {
+  it("returns null when there is nothing to apply", () => {
+    expect(spectrumTiltOffsets([100, 1000], 0)).toBeNull();
+    expect(spectrumTiltOffsets([], 3)).toBeNull();
+    expect(spectrumTiltOffsets([100, 1000], Number.NaN)).toBeNull();
+  });
+
+  it("pivots at 1 kHz and slopes by the given dB per octave", () => {
+    const centers = [
+      SPECTRUM_TILT_PIVOT_HZ / 4,
+      SPECTRUM_TILT_PIVOT_HZ,
+      SPECTRUM_TILT_PIVOT_HZ * 2,
+    ];
+    const offsets = spectrumTiltOffsets(centers, 3);
+    expect(Array.from(offsets)).toEqual([-6, 0, 3]);
+  });
+
+  it("reuses the cached row for a repeated grid and tilt", () => {
+    const first = spectrumTiltOffsets([500, 1000, 2000], 3);
+    // A fresh array each frame, same grid: the cache is keyed on shape, not identity.
+    const second = spectrumTiltOffsets([500, 1000, 2000], 3);
+    expect(second).toBe(first);
+    expect(spectrumTiltOffsets([500, 1000, 2000], 4)).not.toBe(first);
+  });
+});
+
+describe("applySpectrumTilt", () => {
+  it("adds the offsets to the row", () => {
+    const offsets = spectrumTiltOffsets([500, 1000, 2000], 3);
+    expect(applySpectrumTilt([-40, -40, -40], offsets)).toEqual([-43, -40, -37]);
+  });
+
+  it("returns the row untouched when there is no tilt or the lengths disagree", () => {
+    const row = [-40, -40];
+    expect(applySpectrumTilt(row, null)).toBe(row);
+    expect(applySpectrumTilt(row, spectrumTiltOffsets([500, 1000, 2000], 3))).toBe(row);
   });
 });

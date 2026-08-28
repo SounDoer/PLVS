@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::spectral_transform::ComplexSpectralFrame;
-use super::spectrum::{apply_envelope, weighting_db, SLOPE_PIVOT_HZ};
+use super::spectrum::{apply_envelope, weighting_db};
 use super::spectrum_bank::{
   analysis_average_sec_for_speed_percent, attack_release_ms_for_speed_percent, box_average_into,
   OctaveSmoothing, SpectrumGrid, CAL_OFFSET_DB, FFT_BIG, FFT_MID, FFT_SMALL, OVERLAP_BIG,
@@ -154,7 +154,6 @@ impl CurveState {
     release_ms: f64,
     peak_hold_sec: f64,
     peak_decay_db_per_sec: f64,
-    tilt_db_per_octave: f64,
     octave_smoothing: OctaveSmoothing,
     now_sec: f64,
   ) -> Option<SpectralCurveOutput<'_>> {
@@ -179,14 +178,10 @@ impl CurveState {
     self
       .incoming_db
       .reserve(linear.len().saturating_sub(self.incoming_db.capacity()));
-    let log_pivot = SLOPE_PIVOT_HZ.log2();
     self
       .incoming_db
       .extend(linear.iter().zip(grid.freqs()).map(|(&psd, &frequency)| {
-        10.0 * psd.max(1e-20).log10()
-          + CAL_OFFSET_DB
-          + weighting_db(frequency, weighting)
-          + tilt_db_per_octave * (frequency.log2() - log_pivot)
+        10.0 * psd.max(1e-20).log10() + CAL_OFFSET_DB + weighting_db(frequency, weighting)
       }));
 
     let delta_sec = if self.last_time_sec > 0.0 {
@@ -250,7 +245,6 @@ pub(crate) struct SpectralConsumer {
   release_ms: f64,
   peak_hold_sec: f64,
   peak_decay_db_per_sec: f64,
-  tilt_db_per_octave: f64,
   octave_smoothing: OctaveSmoothing,
   #[cfg(test)]
   state_epoch: u64,
@@ -281,7 +275,6 @@ impl SpectralConsumer {
       release_ms: 150.0,
       peak_hold_sec: 1.5,
       peak_decay_db_per_sec: 8.0,
-      tilt_db_per_octave: 3.0,
       octave_smoothing: OctaveSmoothing::Off,
       #[cfg(test)]
       state_epoch: NEXT_STATE_EPOCH.fetch_add(1, Ordering::Relaxed),
@@ -291,12 +284,10 @@ impl SpectralConsumer {
   pub(crate) fn set_display_controls(
     &mut self,
     speed_percent: f64,
-    tilt_db_per_octave: f64,
     octave_smoothing: OctaveSmoothing,
   ) {
     (self.attack_ms, self.release_ms) = attack_release_ms_for_speed_percent(speed_percent);
     self.analysis_average_sec = analysis_average_sec_for_speed_percent(speed_percent);
-    self.tilt_db_per_octave = tilt_db_per_octave.clamp(0.0, 6.0);
     self.octave_smoothing = octave_smoothing;
   }
 
@@ -376,7 +367,6 @@ impl SpectralConsumer {
         self.release_ms,
         self.peak_hold_sec,
         self.peak_decay_db_per_sec,
-        self.tilt_db_per_octave,
         self.octave_smoothing,
         now_sec,
       )?),
@@ -389,7 +379,6 @@ impl SpectralConsumer {
       self.release_ms,
       self.peak_hold_sec,
       self.peak_decay_db_per_sec,
-      self.tilt_db_per_octave,
       self.octave_smoothing,
       now_sec,
     )?;
@@ -481,9 +470,7 @@ pub(crate) struct SpectralCurveStateSnapshot {
 
 #[cfg(test)]
 mod tests {
-  use super::{
-    projected_power, CurveProjection, SpectralConsumer, SpectralProjection, SLOPE_PIVOT_HZ,
-  };
+  use super::{projected_power, CurveProjection, SpectralConsumer, SpectralProjection};
   use crate::dsp::spectral_transform::{ComplexSpectralFrame, SpectralTransform};
   use crate::dsp::spectrum::SpectrumMeter;
   use crate::dsp::spectrum_bank::{
@@ -584,7 +571,7 @@ mod tests {
     for speed in speeds {
       let speed = speed as f64;
       let mut consumer = SpectralConsumer::new(SR, 20.0, 20_000.0);
-      consumer.set_display_controls(speed, 0.0, OctaveSmoothing::Off);
+      consumer.set_display_controls(speed, OctaveSmoothing::Off);
       consume_uniform_level(&mut consumer, 0.8, 1);
       let initial = consumer.output(1.0).expect("initial speed output");
       let initial = initial.smooth_db.to_vec();
@@ -633,7 +620,7 @@ mod tests {
       );
 
       let mut attack_consumer = SpectralConsumer::new(SR, 20.0, 20_000.0);
-      attack_consumer.set_display_controls(speed, 0.0, OctaveSmoothing::Off);
+      attack_consumer.set_display_controls(speed, OctaveSmoothing::Off);
       consume_uniform_level(&mut attack_consumer, 0.2, 1);
       let attack_initial = attack_consumer
         .output(1.0)
@@ -677,28 +664,6 @@ mod tests {
     }
   }
 
-  fn output_for_tilt(tilt: f64) -> (Vec<f64>, Vec<f64>) {
-    let mut consumer = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    consumer.set_display_controls(0.0, tilt, OctaveSmoothing::Off);
-    consume_uniform_level(&mut consumer, 0.5, 1);
-    let output = consumer.output(1.0).expect("tilt output");
-    (output.centers_hz.to_vec(), output.smooth_db.to_vec())
-  }
-
-  fn assert_exhaustive_tilt_behavior(tilts: impl IntoIterator<Item = f64>) {
-    let (centers, baseline) = output_for_tilt(0.0);
-    for tilt in tilts {
-      let (actual_centers, actual) = output_for_tilt(tilt);
-      assert_eq!(actual_centers, centers);
-      let expected: Vec<_> = baseline
-        .iter()
-        .zip(&centers)
-        .map(|(&base, &frequency)| base + tilt * (frequency.log2() - SLOPE_PIVOT_HZ.log2()))
-        .collect();
-      assert_rows_close(&actual, &expected, &format!("UI tilt {tilt:.2}"));
-    }
-  }
-
   fn patterned_bins(fft_size: usize) -> Vec<Complex32> {
     (0..=fft_size / 2)
       .map(|index| {
@@ -731,7 +696,7 @@ mod tests {
 
     for smoothing in smoothings {
       let mut consumer = SpectralConsumer::new(SR, 20.0, 20_000.0);
-      consumer.set_display_controls(0.0, 0.0, smoothing);
+      consumer.set_display_controls(0.0, smoothing);
       for (index, fft_size) in [FFT_BIG, FFT_MID, FFT_SMALL].into_iter().enumerate() {
         consume(
           &mut consumer,
@@ -910,7 +875,7 @@ mod tests {
   #[test]
   fn projection_pair_curves_keep_independent_averages_and_envelopes() {
     let mut consumer = SpectralConsumer::new_projected(SR, 20.0, 20_000.0, SpectralProjection::Lr);
-    consumer.set_display_controls(100.0, 0.0, OctaveSmoothing::Off);
+    consumer.set_display_controls(100.0, OctaveSmoothing::Off);
 
     for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
       let hop = fft_size / overlap(fft_size);
@@ -983,7 +948,7 @@ mod tests {
       ),
     ] {
       let mut consumer = SpectralConsumer::new_projected(SR, 20.0, 20_000.0, projection);
-      consumer.set_display_controls(0.0, 0.0, OctaveSmoothing::Off);
+      consumer.set_display_controls(0.0, OctaveSmoothing::Off);
       let mut x_transforms = new_transforms();
       let mut y_transforms = new_transforms();
       for (&left, &right) in x.iter().zip(&y) {
@@ -1002,7 +967,7 @@ mod tests {
       let output = consumer.output(1.0).expect("projected output");
 
       let mut legacy = SpectrumMeter::new(SR);
-      legacy.set_display_controls(0.0, 0.0, OctaveSmoothing::Off);
+      legacy.set_display_controls(0.0, OctaveSmoothing::Off);
       legacy.push_pair(&interleaved, 2, 1.0, selection, view);
       let (legacy_centers, legacy_smooth, legacy_peak) = legacy.last_output();
       assert_eq!(
@@ -1166,7 +1131,7 @@ mod tests {
   #[test]
   fn zero_speed_uses_alpha_one_without_hidden_average() {
     let mut consumer = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    consumer.set_display_controls(0.0, 0.0, OctaveSmoothing::Off);
+    consumer.set_display_controls(0.0, OctaveSmoothing::Off);
 
     for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
       let hop = fft_size / overlap(fft_size);
@@ -1191,7 +1156,7 @@ mod tests {
   #[test]
   fn nonzero_speed_ema_uses_each_resolution_hop_duration() {
     let mut consumer = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    consumer.set_display_controls(50.0, 0.0, OctaveSmoothing::Off);
+    consumer.set_display_controls(50.0, OctaveSmoothing::Off);
     let average_sec = 0.075;
 
     for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
@@ -1221,13 +1186,13 @@ mod tests {
     let silence = vec![0.0_f32; (SR * 0.500) as usize];
 
     let mut legacy = SpectrumMeter::new(SR);
-    legacy.set_display_controls(50.0, 2.0, OctaveSmoothing::OneSixth);
+    legacy.set_display_controls(50.0, OctaveSmoothing::OneSixth);
     let first_legacy = legacy
       .push_mono_duplex(&first, 1.0)
       .expect("legacy first output");
 
     let mut consumer = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    consumer.set_display_controls(50.0, 2.0, OctaveSmoothing::OneSixth);
+    consumer.set_display_controls(50.0, OctaveSmoothing::OneSixth);
     let mut transforms = new_transforms();
     feed_transforms(&mut consumer, &mut transforms, &first);
     let first_output = consumer.output(1.0).expect("consumer first output");
@@ -1287,7 +1252,7 @@ mod tests {
     }
 
     let mut a_weighted = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    a_weighted.set_display_controls(50.0, 2.0, OctaveSmoothing::OneSixth);
+    a_weighted.set_display_controls(50.0, OctaveSmoothing::OneSixth);
     a_weighted.set_weighting("a");
     let mut a_transforms = new_transforms();
     feed_transforms(&mut a_weighted, &mut a_transforms, &first);
@@ -1314,9 +1279,9 @@ mod tests {
   #[test]
   fn consumers_keep_independent_averages_and_envelopes() {
     let mut fast = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    fast.set_display_controls(0.0, 0.0, OctaveSmoothing::Off);
+    fast.set_display_controls(0.0, OctaveSmoothing::Off);
     let mut slow = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    slow.set_display_controls(100.0, 0.0, OctaveSmoothing::Off);
+    slow.set_display_controls(100.0, OctaveSmoothing::Off);
 
     for fft_size in [FFT_BIG, FFT_MID, FFT_SMALL] {
       let hop = fft_size / overlap(fft_size);
@@ -1363,12 +1328,6 @@ mod tests {
   fn every_ui_speed_step_affects_ema_and_envelope_output_as_legacy_formulas_define() {
     // `PanelSettingsContent.jsx`: min=0, max=100, step=1.
     assert_exhaustive_speed_behavior(0..=100);
-  }
-
-  #[test]
-  fn every_ui_tilt_step_affects_an_actual_postprocessed_output_row() {
-    // `PanelSettingsContent.jsx`: min=0, max=6, step=0.25.
-    assert_exhaustive_tilt_behavior((0..=24).map(|step| step as f64 * 0.25));
   }
 
   #[test]

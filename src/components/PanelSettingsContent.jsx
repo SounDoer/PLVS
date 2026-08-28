@@ -1098,12 +1098,6 @@ export function SpectrumDisplaySettingsRows({
               value={tiltDbPerOctave}
               formatValue={(value) => `${value.toFixed(2)} dB/oct`}
               onCommit={onTiltChange}
-              // Interim. Tilt is a per-band constant offset applied in the Rust post-process, so it
-              // sits in the request key and churns slabs like the speed sliders do. It is the one
-              // key component that does not have to be there: moving it to the render side takes it
-              // out of the key entirely, and then this flag comes off and the curve tracks the thumb
-              // again.
-              commitOnRelease
             />
           </SettingsRow>
           <SettingsRow

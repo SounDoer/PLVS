@@ -1344,8 +1344,8 @@ describe("secondary curve in spectrum data", () => {
 });
 
 describe("visual history eviction", () => {
-  const SPEC_KEY = "spectrum:pair:0:1:combined:sp25:tilt300:smoff";
-  const OTHER_KEY = "spectrum:pair:0:1:combined:sp40:tilt300:smoff";
+  const SPEC_KEY = "spectrum:pair:0:1:combined:sp25:smoff";
+  const OTHER_KEY = "spectrum:pair:0:1:combined:sp40:smoff";
 
   function spectrumRow(timestampMs, key) {
     return {

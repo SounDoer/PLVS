@@ -261,8 +261,6 @@ describe("useSnapshot", () => {
 
     expect(result.current.resolveSpectrumSnapshotForKey("spectrum:single:2:combined")).toEqual({
       missing: true,
-      path: "",
-      pathB: "",
       data: null,
       maxHold: null,
     });

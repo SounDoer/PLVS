@@ -22,7 +22,6 @@ pub struct SpectrumAnalysisRequest {
   pub channel: SpectrumAnalysisChannel,
   pub view: String,
   pub speed_percent: f64,
-  pub tilt_db_per_octave: f64,
   pub octave_smoothing: String,
 }
 
@@ -62,10 +61,6 @@ pub struct AnalysisRequests {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpectrumFrameResult {
-  pub path: String,
-  pub peak_path: String,
-  pub path_b: String,
-  pub peak_path_b: String,
   pub band_centers_hz: Vec<f64>,
   pub smooth_db: Vec<f64>,
   pub peak_db: Vec<f64>,

@@ -36,7 +36,6 @@ describe("mergeDockSpectrumRequest", () => {
     expect(req.channel).toBeTruthy();
     expect(typeof req.speedPercent).toBe("number");
     expect(req.octaveSmoothing).toBe("off");
-    expect(typeof req.tiltDbPerOctave).toBe("number");
   });
 
   it("does not duplicate an existing request with the same key", () => {

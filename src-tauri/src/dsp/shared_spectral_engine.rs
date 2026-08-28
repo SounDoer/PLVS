@@ -484,7 +484,6 @@ fn spectral_projection(projection: ConsumerProjection) -> SpectralProjection {
 fn apply_settings(consumer: &mut SpectralConsumer, binding: &SpectralConsumerBinding) {
   consumer.set_display_controls(
     binding.settings.speed_percent,
-    binding.settings.tilt_db_per_octave,
     octave_smoothing(&binding.settings.octave_smoothing),
   );
 }
@@ -1175,7 +1174,6 @@ mod tests {
       channel,
       view: view.to_string(),
       speed_percent,
-      tilt_db_per_octave: 4.5,
       octave_smoothing: octave_smoothing.to_string(),
     }
   }

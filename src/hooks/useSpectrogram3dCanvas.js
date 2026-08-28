@@ -5,7 +5,7 @@ import {
   finishPanelCpuSample,
   recordPanelCpuEvent,
 } from "../dev/panelCpuProfiler.js";
-import { buildYToBand } from "../math/spectrogramMath.js";
+import { buildYToBand, buildYTiltDb } from "../math/spectrogramMath.js";
 import { inWindowRange } from "../math/spectrogramTimeline.js";
 import {
   buildProjection,
@@ -358,6 +358,7 @@ export function useSpectrogram3dCanvas({
   minHz = 20,
   maxHz = 20000,
   dbFloor,
+  tiltDbPerOctave = 0,
   azimuthDeg,
   elevationDeg,
   heightGain,
@@ -371,7 +372,15 @@ export function useSpectrogram3dCanvas({
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
-  const cacheRef = useRef({ pointCount: 0, minHz: 0, maxHz: 0, bands: null, yToBand: null });
+  const cacheRef = useRef({
+    pointCount: 0,
+    minHz: 0,
+    maxHz: 0,
+    tiltDbPerOctave: NaN,
+    bands: null,
+    yToBand: null,
+    yTiltDb: null,
+  });
   const offscreenRef = useRef(null);
   const surfaceLutRef = useRef({
     colorize: undefined,
@@ -392,6 +401,7 @@ export function useSpectrogram3dCanvas({
     maxHz: 20000,
     colormapLut: null,
     dbFloor: NaN,
+    tiltDbPerOctave: NaN,
     azimuthDeg: NaN,
     elevationDeg: NaN,
     heightGain: NaN,
@@ -414,6 +424,7 @@ export function useSpectrogram3dCanvas({
       minHz,
       maxHz,
       dbFloor,
+      tiltDbPerOctave,
       azimuthDeg,
       elevationDeg,
       heightGain,
@@ -433,6 +444,7 @@ export function useSpectrogram3dCanvas({
     minHz,
     maxHz,
     dbFloor,
+    tiltDbPerOctave,
     azimuthDeg,
     elevationDeg,
     heightGain,
@@ -478,6 +490,7 @@ export function useSpectrogram3dCanvas({
         last.maxHz === p.maxHz &&
         last.colormapLut === p.colormapLut &&
         last.dbFloor === p.dbFloor &&
+        last.tiltDbPerOctave === p.tiltDbPerOctave &&
         last.azimuthDeg === p.azimuthDeg &&
         last.elevationDeg === p.elevationDeg &&
         last.heightGain === p.heightGain &&
@@ -503,6 +516,7 @@ export function useSpectrogram3dCanvas({
         maxHz: p.maxHz,
         colormapLut: p.colormapLut,
         dbFloor: p.dbFloor,
+        tiltDbPerOctave: p.tiltDbPerOctave,
         azimuthDeg: p.azimuthDeg,
         elevationDeg: p.elevationDeg,
         heightGain: p.heightGain,
@@ -547,12 +561,15 @@ export function useSpectrogram3dCanvas({
         cache.pointCount !== pointCount ||
         cache.minHz !== p.minHz ||
         cache.maxHz !== p.maxHz ||
+        cache.tiltDbPerOctave !== p.tiltDbPerOctave ||
         cache.bands !== bands
       ) {
         cache.yToBand = buildYToBand(bands, pointCount, p.minHz, p.maxHz);
+        cache.yTiltDb = buildYTiltDb(cache.yToBand, bands, p.tiltDbPerOctave);
         cache.pointCount = pointCount;
         cache.minHz = p.minHz;
         cache.maxHz = p.maxHz;
+        cache.tiltDbPerOctave = p.tiltDbPerOctave;
         cache.bands = bands;
       }
 
@@ -576,6 +593,7 @@ export function useSpectrogram3dCanvas({
         sampleMs: p.sampleMs,
         maxRidges,
         yToBand: cache.yToBand,
+        yTiltDb: cache.yTiltDb,
         dbFloor: p.dbFloor,
         // Surface-only, like the two smoothers: it needs the newest frame present as a row so the
         // entering end morphs instead of swapping, where Lines would draw it as a twitching ridge.

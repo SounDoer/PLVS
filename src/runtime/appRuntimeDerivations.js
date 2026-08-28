@@ -25,7 +25,6 @@ export function deriveBackendAnalysisRequests(requests) {
       channel: request.channel,
       view: request.view,
       speedPercent: request.speedPercent,
-      tiltDbPerOctave: request.tiltDbPerOctave,
       octaveSmoothing: request.octaveSmoothing,
     })),
     vectorscope: requests.vectorscopeRequests.map((request) => ({

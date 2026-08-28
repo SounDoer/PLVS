@@ -20,7 +20,6 @@ mod ipc {
       pub(crate) channel: SpectrumAnalysisChannel,
       pub(crate) view: String,
       pub(crate) speed_percent: f64,
-      pub(crate) tilt_db_per_octave: f64,
       pub(crate) octave_smoothing: String,
     }
 
@@ -127,7 +126,6 @@ fn request(
     channel,
     view: view.to_string(),
     speed_percent,
-    tilt_db_per_octave: 4.5,
     octave_smoothing: octave_smoothing.to_string(),
   }
 }
@@ -344,11 +342,7 @@ fn legacy_meter(binding: &SpectralConsumerBinding) -> SpectrumMeter {
     _ => OctaveSmoothing::Off,
   };
   let mut meter = SpectrumMeter::new(SAMPLE_RATE as f64);
-  meter.set_display_controls(
-    binding.settings.speed_percent,
-    binding.settings.tilt_db_per_octave,
-    smoothing,
-  );
+  meter.set_display_controls(binding.settings.speed_percent, smoothing);
   meter
 }
 

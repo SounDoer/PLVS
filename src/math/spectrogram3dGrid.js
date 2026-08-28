@@ -49,6 +49,7 @@ import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
  *        one row on top of it
  * @param {Int16Array} args.yToBand frequency sample points; its length sets pointCount
  * @param {number} args.dbFloor dB value that normalises to height 0; the top stays SPECTROGRAM_DB_MAX
+ * @param {Float64Array|null} [args.yTiltDb] per sample-point slope tilt in dB, applied to the row
  * @param {boolean} [args.pinLiveRow] append the newest in-window frame as an extra row; see below
  * @returns {{ heights: Float32Array, tFracs: Float64Array, count: number, bucketCount: number,
  *          pointCount: number, strideMs: number }}
@@ -68,6 +69,7 @@ export function sampleWaterfallGrid({
   maxRidges,
   yToBand,
   dbFloor,
+  yTiltDb = null,
   pinLiveRow = false,
 }) {
   const dbRange = SPECTROGRAM_DB_MAX - dbFloor;
@@ -101,7 +103,9 @@ export function sampleWaterfallGrid({
     const base = count * pointCount;
     for (let q = 0; q < pointCount; q++) {
       const band = yToBand[q];
-      const db = typeof row.dbAt === "function" ? row.dbAt(band) : row.dbList?.[band];
+      const raw = typeof row.dbAt === "function" ? row.dbAt(band) : row.dbList?.[band];
+      // Rows are stored untilted; the tilt is display shaping (see `spectrumTiltOffsets`).
+      const db = yTiltDb && Number.isFinite(raw) ? raw + yTiltDb[q] : raw;
       const norm = Number.isFinite(db) ? (db - dbFloor) / dbRange : 0;
       heights[base + q] = norm < 0 ? 0 : norm > 1 ? 1 : norm;
     }

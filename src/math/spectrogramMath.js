@@ -1,3 +1,5 @@
+import { SPECTRUM_TILT_PIVOT_HZ } from "./spectrumMath.js";
+
 /**
  * Converts a normalised vertical fraction to Hz on a logarithmic 20–20 000 Hz scale.
  * frac=0 → 20 kHz (top), frac=1 → 20 Hz (bottom).
@@ -19,6 +21,30 @@ export function hzFromFrac(frac, minHz = 20, maxHz = 20000) {
  * @param {number} canvasH
  * @returns {Int16Array}
  */
+/**
+ * Slope tilt in dB for each sample point of a `buildYToBand` mapping.
+ *
+ * History rows are stored untilted, so the tilt is added at paint time. The mapping is fixed for
+ * a given size and frequency range, which makes the offset a point needs fixed too -- worth
+ * precomputing once per cache rebuild rather than per painted pixel. See `spectrumTiltOffsets`
+ * for the curve-side equivalent and for why the tilt lives on the display side at all.
+ *
+ * @param {Int16Array|number[]} yToBand
+ * @param {{ fCenter: number }[]} bands
+ * @param {number} tiltDbPerOctave
+ * @returns {Float64Array|null} null when there is nothing to apply
+ */
+export function buildYTiltDb(yToBand, bands, tiltDbPerOctave) {
+  if (!Number.isFinite(tiltDbPerOctave) || tiltDbPerOctave === 0) return null;
+  const pivot = Math.log2(SPECTRUM_TILT_PIVOT_HZ);
+  const out = new Float64Array(yToBand.length);
+  for (let i = 0; i < yToBand.length; i += 1) {
+    const center = bands[yToBand[i]]?.fCenter;
+    out[i] = center > 0 ? tiltDbPerOctave * (Math.log2(center) - pivot) : 0;
+  }
+  return out;
+}
+
 export function buildYToBand(bands, canvasH, minHz = 20, maxHz = 20000) {
   const lookup = new Int16Array(canvasH);
   for (let y = 0; y < canvasH; y++) {

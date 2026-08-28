@@ -3,7 +3,6 @@ import { VISUAL_HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { buildVectorscopeSvgFromPairs } from "../math/vectorscopeMath.js";
 import { buildPolarLevelMaxHoldTable, polarLevelMaxHoldAt } from "../math/vectorscopePolarMath.js";
 import { buildSpectrumMaxHoldTable, spectrumMaxHoldAt } from "../math/spectrumMaxHold.js";
-import { buildSpectrumSvgFromBandsAndDb } from "../math/spectrumMath.js";
 import { deriveStereoMapRow } from "../math/stereoMapMath.js";
 import { resolveSnapshot, resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
 
@@ -155,17 +154,14 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
       );
       let result;
       if (missing) {
-        result = { missing: true, path: "", pathB: "", data: null, maxHold: null };
+        result = { missing: true, data: null, maxHold: null };
       } else {
         const snap = entries.rowAt(index);
-        const centers = (snap.bands ?? []).map((b) => b.fCenter);
-        const dbList = snap.dbList ?? [];
-        const dbListB = snap.dbListB ?? [];
+        // Rows only, no paths: the panel owns the dB→y mapping because it owns the display range
+        // and the slope tilt, and it rebuilds the path from these rows either way.
         result = {
           missing: false,
-          path: dbList.length ? buildSpectrumSvgFromBandsAndDb(centers, dbList) : "",
-          pathB: dbListB.length ? buildSpectrumSvgFromBandsAndDb(centers, dbListB) : "",
-          data: { bands: snap.bands ?? [], dbList, dbListB },
+          data: { bands: snap.bands ?? [], dbList: snap.dbList ?? [], dbListB: snap.dbListB ?? [] },
           maxHold: withMaxHold ? spectrumMaxHoldFor(entries, index) : null,
         };
       }

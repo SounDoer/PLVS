@@ -186,3 +186,71 @@ export function trackSpectrumPeaks(previous, candidates, options = {}) {
   }
   return picked;
 }
+
+/**
+ * Pivot for the display slope tilt. A tilt of N dB/oct lifts a band N dB per octave above 1 kHz
+ * and drops it N dB per octave below, so the curve pivots around 1 kHz and the reading there is
+ * unchanged.
+ */
+export const SPECTRUM_TILT_PIVOT_HZ = 1000;
+
+const LOG2_TILT_PIVOT = Math.log2(SPECTRUM_TILT_PIVOT_HZ);
+let tiltOffsetsCache = null;
+
+/**
+ * Per-band dB offsets for a slope tilt.
+ *
+ * The tilt is display shaping, not measurement: it is a constant offset per band that commutes
+ * with everything the engine does downstream of it (the attack/release envelope, peak hold and
+ * decay are all shift-invariant in dB). That is why it is applied here instead of in Rust — out
+ * of the analysis request key, a tilt change no longer rebuilds the engine's consumer or mints a
+ * fresh history slab, and it reshapes stored history along with the live curve.
+ *
+ * The grid is fixed for a given sample rate, but arrives as a fresh array each frame, so the
+ * cache is keyed on the grid's shape rather than its identity.
+ *
+ * @param {number[]|Float32Array} centers band center frequencies in Hz
+ * @param {number} tiltDbPerOctave
+ * @returns {Float64Array|null} null when there is nothing to apply
+ */
+export function spectrumTiltOffsets(centers, tiltDbPerOctave) {
+  const count = centers?.length ?? 0;
+  if (!count || !Number.isFinite(tiltDbPerOctave) || tiltDbPerOctave === 0) return null;
+  const cached = tiltOffsetsCache;
+  if (
+    cached &&
+    cached.tilt === tiltDbPerOctave &&
+    cached.count === count &&
+    cached.first === centers[0] &&
+    cached.last === centers[count - 1]
+  ) {
+    return cached.offsets;
+  }
+  const offsets = new Float64Array(count);
+  for (let i = 0; i < count; i += 1) {
+    offsets[i] = tiltDbPerOctave * (Math.log2(centers[i]) - LOG2_TILT_PIVOT);
+  }
+  tiltOffsetsCache = {
+    tilt: tiltDbPerOctave,
+    count,
+    first: centers[0],
+    last: centers[count - 1],
+    offsets,
+  };
+  return offsets;
+}
+
+/**
+ * Add a tilt offset row to a dB row. Returns `values` unchanged when there is no tilt to apply,
+ * so a zero tilt costs nothing and the caller can keep its identity-based memoization.
+ *
+ * @param {number[]|Float32Array|undefined} values
+ * @param {Float64Array|null} offsets from spectrumTiltOffsets
+ * @returns {number[]|Float32Array|undefined}
+ */
+export function applySpectrumTilt(values, offsets) {
+  if (!offsets || !values?.length || values.length !== offsets.length) return values;
+  const out = new Array(values.length);
+  for (let i = 0; i < values.length; i += 1) out[i] = values[i] + offsets[i];
+  return out;
+}

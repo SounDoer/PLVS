@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
-import { buildYToBand } from "../math/spectrogramMath.js";
+import { buildYToBand, buildYTiltDb } from "../math/spectrogramMath.js";
 import { inWindowRange, spectrogramFrameEndMs } from "../math/spectrogramTimeline.js";
 import { spectrogramColorFrac } from "../theme/spectrogramColormap.js";
 import {
@@ -9,10 +9,25 @@ import {
   recordPanelCpuEvent,
 } from "../dev/panelCpuProfiler.js";
 
-function paintSpan(data, width, height, xStart, xEnd, snap, yToBand, colormapLut, dbFloor) {
+function paintSpan(
+  data,
+  width,
+  height,
+  xStart,
+  xEnd,
+  snap,
+  yToBand,
+  colormapLut,
+  dbFloor,
+  yTiltDb
+) {
   for (let y = 0; y < height; y++) {
     const band = yToBand[y];
-    const db = (typeof snap.dbAt === "function" ? snap.dbAt(band) : snap.dbList?.[band]) ?? dbFloor;
+    const raw =
+      (typeof snap.dbAt === "function" ? snap.dbAt(band) : snap.dbList?.[band]) ?? dbFloor;
+    // Rows are stored untilted; the slope tilt is display shaping, precomputed per canvas row
+    // because a row always reads the same band. See `spectrumTiltOffsets`.
+    const db = yTiltDb ? raw + yTiltDb[y] : raw;
     const t = spectrogramColorFrac(db, dbFloor);
     const lutIdx = Math.round(t * 255) * 3;
     const rowBase = y * width;
@@ -47,7 +62,8 @@ export function paintSpectrogramImageData(
   sampleMs,
   yToBand,
   colormapLut,
-  dbFloor
+  dbFloor,
+  yTiltDb
 ) {
   const { data, width: W, height: H } = imageData;
   data.fill(0);
@@ -64,7 +80,7 @@ export function paintSpectrogramImageData(
       if (!snap || (!snap.dbAt && !snap.dbList) || !Number.isFinite(snap.timestampMs)) continue;
       const frameEndMs = spectrogramFrameEndMs(snaps, index, sampleMs);
       if (!(targetMs >= snap.timestampMs && targetMs < frameEndMs)) continue;
-      paintSpan(data, W, H, x, x + 1, snap, yToBand, colormapLut, dbFloor);
+      paintSpan(data, W, H, x, x + 1, snap, yToBand, colormapLut, dbFloor, yTiltDb);
     }
     return;
   }
@@ -81,7 +97,7 @@ export function paintSpectrogramImageData(
     const xEnd = Math.min(W, Math.round(((endMs - oldestMs) / span) * W));
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
-    paintSpan(data, W, H, xStart, xEnd, snap, yToBand, colormapLut, dbFloor);
+    paintSpan(data, W, H, xStart, xEnd, snap, yToBand, colormapLut, dbFloor, yTiltDb);
   }
 }
 
@@ -97,13 +113,22 @@ export function useSpectrogramCanvas({
   minHz = 20,
   maxHz = 20000,
   dbFloor = SPECTROGRAM_DB_MIN,
+  tiltDbPerOctave = 0,
   sourceVersion = 0,
   canvasSizeRevision = 0,
   enabled = true,
 }) {
   const rafRef = useRef(null);
   const paramsRef = useRef({});
-  const cacheRef = useRef({ W: 0, H: 0, yToBand: null, imageData: null });
+  const cacheRef = useRef({
+    W: 0,
+    H: 0,
+    yToBand: null,
+    yTiltDb: null,
+    bands: null,
+    tiltDbPerOctave: NaN,
+    imageData: null,
+  });
   const lastPaintRef = useRef({
     len: -1,
     version: -1,
@@ -116,6 +141,7 @@ export function useSpectrogramCanvas({
     maxHz: 20000,
     colormapLut: null,
     dbFloor: NaN,
+    tiltDbPerOctave: NaN,
   });
 
   useEffect(() => {
@@ -129,6 +155,7 @@ export function useSpectrogramCanvas({
       minHz,
       maxHz,
       dbFloor,
+      tiltDbPerOctave,
     };
   }, [
     oldestMs,
@@ -140,6 +167,7 @@ export function useSpectrogramCanvas({
     minHz,
     maxHz,
     dbFloor,
+    tiltDbPerOctave,
   ]);
 
   useEffect(() => {
@@ -182,7 +210,8 @@ export function useSpectrogramCanvas({
         last.minHz === minHz &&
         last.maxHz === maxHz &&
         last.colormapLut === colormapLut &&
-        last.dbFloor === dbFloor
+        last.dbFloor === dbFloor &&
+        last.tiltDbPerOctave === tiltDbPerOctave
       ) {
         recordPanelCpuEvent("spectrogram2d", "signatureSkip");
         return;
@@ -200,6 +229,7 @@ export function useSpectrogramCanvas({
         maxHz,
         colormapLut,
         dbFloor,
+        tiltDbPerOctave,
       };
 
       const ctx = canvas.getContext("2d");
@@ -218,14 +248,19 @@ export function useSpectrogramCanvas({
         cache.H !== H ||
         cache.minHz !== minHz ||
         cache.maxHz !== maxHz ||
+        cache.tiltDbPerOctave !== tiltDbPerOctave ||
+        cache.bands !== bands ||
         !cache.yToBand
       ) {
         cache.yToBand = buildYToBand(bands, H, minHz, maxHz);
+        cache.yTiltDb = buildYTiltDb(cache.yToBand, bands, tiltDbPerOctave);
         cache.imageData = new ImageData(W, H);
         cache.W = W;
         cache.H = H;
         cache.minHz = minHz;
         cache.maxHz = maxHz;
+        cache.tiltDbPerOctave = tiltDbPerOctave;
+        cache.bands = bands;
       }
 
       const { startIdx, endIdx } = inWindowRange(snaps, oldestMs, newestMs);
@@ -244,7 +279,8 @@ export function useSpectrogramCanvas({
         sampleMs,
         cache.yToBand,
         colormapLut,
-        dbFloor
+        dbFloor,
+        cache.yTiltDb
       );
       ctx.putImageData(cache.imageData, 0, 0);
     }
@@ -279,5 +315,6 @@ export function useSpectrogramCanvas({
     minHz,
     maxHz,
     dbFloor,
+    tiltDbPerOctave,
   ]);
 }
