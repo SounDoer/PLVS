@@ -14,6 +14,22 @@
 - 发现写得不合理的既有测试（断言了实现细节、锁死了本该可改的协议、用容差掩盖真实误差）
   单列一节，不要在优化提交里顺手改掉。
 
+## 采 renderer profile
+
+计算部分可以脱离应用测；**commit 与 paint 只在真实窗口里存在**，要走 CDP。WebView2 暴露的是和
+Chrome 同一套协议，靠环境变量开端口，不需要改代码：
+
+```
+WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop
+npm run profile:webview -- --seconds 10 --out spectrum.cpuprofile
+```
+
+脚本会写出 `.cpuprofile`（可拖进 Chrome DevTools）**并在终端直接打印自耗时排行**——后者才是重点，
+它让一份 profile 不用 GUI 也能读。
+
+**前提是音频真的在流动。** 空转的窗口采出来的是一份没有样本的 profile，比没有更糟；脚本会明说
+"No samples"，但它没法替你把声音放起来。采样时把要测的面板开着。
+
 ## 顺序
 
 Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level Meter / Loudness / Stats
@@ -25,7 +41,7 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 | 维度 | 问题 | 证据来源 |
 | --- | --- | --- |
 | D1 Rust 计算 | 算得对吗？算得有没有冗余？ | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时 |
-| D2 前端渲染 | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render`（纯计算部分）+ CDP renderer profiling（commit 与 paint） |
+| D2 前端渲染 | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下） |
 | D3 历史存储 | 结构合理吗？占用是多少？ | `npm run benchmark:history` + heap 预算测试 |
 | D4 其他 | 每帧 payload、IPC、调度 | payload 字节数实测；`npm run soak:capture`（只作线索，阈值未校准） |
 

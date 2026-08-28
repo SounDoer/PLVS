@@ -19,6 +19,7 @@
     "benchmark:history:full": "node scripts/history-perf-benchmark.mjs --full-visual",
     "benchmark:history-chunks": "node scripts/history-chunk-size-benchmark.mjs",
     "benchmark:spectrum-render": "node scripts/spectrum-render-benchmark.mjs",
+    "profile:webview": "node scripts/webview-cpu-profile.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
