@@ -4,6 +4,7 @@ import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas.js";
 import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { resolveSpectrogramSampleMs } from "../../math/spectrogramTimeline.js";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
+import { DEFAULT_PANEL_CONTROLS } from "../../lib/panelControls.js";
 import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { selectSpectrogramCanvasTheme } from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
@@ -49,6 +50,10 @@ export function DockSpectrogram({ controls }) {
     colormapLut,
     minHz: controls?.spectrogramYMinFreq ?? 20,
     maxHz: controls?.spectrogramYMaxFreq ?? 20_000,
+    // The engine sends untilted rows, so the strip has to apply the slope itself, exactly as the
+    // Workspace panel does. Leaving it off would darken the top of the strip.
+    tiltDbPerOctave:
+      controls?.spectrumTiltDbPerOctave ?? DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave,
   });
 
   return (

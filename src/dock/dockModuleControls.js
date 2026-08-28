@@ -42,7 +42,12 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
   ],
   correlation: ["vectorscopePair", "vectorscopeMode", "vectorscopePolarLevelMaxHold"],
   stats: ["statsVisibleIds", "statsOrder"],
-  spectrogram: ["spectrumChannel", "spectrogramYMinFreq", "spectrogramYMaxFreq"],
+  spectrogram: [
+    "spectrumChannel",
+    "spectrumTiltDbPerOctave",
+    "spectrogramYMinFreq",
+    "spectrogramYMaxFreq",
+  ],
   stereoMap: [
     "stereoMapPair",
     "stereoMapMode",

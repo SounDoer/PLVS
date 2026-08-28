@@ -5,6 +5,7 @@ import { useCanvasSize } from "../../hooks/useCanvasSize.js";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas.js";
 import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { dockSpectrumKey } from "../dockAnalysisRequest.js";
+import { DEFAULT_PANEL_CONTROLS } from "../../lib/panelControls.js";
 import { DockSpectrogram } from "./DockSpectrogram.jsx";
 
 vi.mock("../../hooks/useCanvasSize.js", () => ({ useCanvasSize: vi.fn() }));
@@ -35,6 +36,18 @@ describe("DockSpectrogram", () => {
   beforeEach(() => {
     vi.mocked(useCanvasSize).mockClear();
     vi.mocked(useSpectrogramCanvas).mockClear();
+  });
+
+  it("passes the tilt through to the painter, defaulting when the record has none", () => {
+    // The engine sends untilted rows, so the strip has to apply the slope itself; without this
+    // the top of the strip goes dark. A stored layout from before the key existed still gets it.
+    renderWith({ controls: { spectrumTiltDbPerOctave: 4.5 }, snaps: makeSnaps([]) });
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0].tiltDbPerOctave).toBe(4.5);
+
+    renderWith({ controls: {}, snaps: makeSnaps([]) });
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)[0].tiltDbPerOctave).toBe(
+      DEFAULT_PANEL_CONTROLS.spectrumTiltDbPerOctave
+    );
   });
 
   it("uses a responsive 1x canvas and the shared normal-panel painter", () => {
