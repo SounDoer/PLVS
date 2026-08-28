@@ -118,3 +118,11 @@ The `<short-sha>` lets a tester tell two dev builds apart even after download.
 - **No version collision.** The version number in `package.json` is never
   touched; the `-dev.<sha>` marker lives only in artifact filenames.
 - **Unsigned**, like official builds. Testers will see SmartScreen warnings.
+- **Dev builds still carry a live updater.** `tauri.no-updater.conf.json` only
+  sets `bundle.createUpdaterArtifacts: false`, so a dev build produces no updater
+  payload of its own but inherits `plugins.updater` from `tauri.conf.json` and
+  keeps polling the stable `latest.json` (on launch, then every 12 hours). Since
+  the version is never bumped, a dev build is indistinguishable from stable by
+  version number - once the next release ships, a tester will be offered it and
+  can replace the build under test with stable without realising. Tell testers
+  not to accept the prompt.
