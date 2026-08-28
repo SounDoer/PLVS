@@ -53,9 +53,105 @@ describe("PowerOfTwoMinMaxIndex", () => {
     const capacity = 144_000;
     const index = new PowerOfTwoMinMaxIndex(capacity);
 
+    // Levels are created on first use: their stride is the vector width, which only the first
+    // append reveals.
+    expect(index._levels[1]).toBeUndefined();
+    index.append(0, [0], [0]);
+    index.append(1, [0], [0]);
+
     expect(index._levels[0]).toBeUndefined();
     expect(index._levels[1].capacity).toBe(Math.ceil(capacity / 2) + 2);
     expect(index.freeze()._levels[0]).toBeUndefined();
+  });
+
+  it("stores level buckets as typed-array views", () => {
+    const index = new PowerOfTwoMinMaxIndex(8);
+    for (let sequence = 0; sequence < 8; sequence++) {
+      index.append(sequence, [sequence, -sequence], [sequence + 0.5, sequence]);
+    }
+
+    const bucket = index._bucketAtStart(3, 0, 8);
+    expect(bucket.mins).toBeInstanceOf(Float32Array);
+    expect(bucket.maxes).toBeInstanceOf(Float32Array);
+    expect(Array.from(bucket.mins)).toEqual([0, -7]);
+    expect(Array.from(bucket.maxes)).toEqual([7.5, 7]);
+    expect(index.freeze()._bucketAtStart(3, 0, 8).mins).toBeInstanceOf(Float32Array);
+  });
+
+  it("answers an aligned whole-range query from summary buckets alone", () => {
+    const index = new PowerOfTwoMinMaxIndex(16);
+    for (let sequence = 0; sequence < 16; sequence++) {
+      index.append(sequence, [-sequence], [sequence]);
+    }
+
+    const forbidden = () => {
+      throw new Error("rawRowAt must not be called for a fully covered range");
+    };
+    expect(index.queryRange(0, 15, forbidden)).toEqual({ mins: [-15], maxes: [15] });
+    expect(index.lastQueryStats().rawRowsVisited).toBe(0);
+  });
+
+  it("falls back to raw rows for a range no bucket covers", () => {
+    const index = new PowerOfTwoMinMaxIndex(16);
+    const rows = [];
+    for (let sequence = 0; sequence < 16; sequence++) {
+      append(index, rows, sequence, [-sequence], [sequence]);
+    }
+
+    // 5..7 is three rows: no power-of-two bucket starts at 5 or 7, and the level-1 bucket at 6 is
+    // the only summary that fits.
+    expect(index.queryRange(5, 7, (sequence) => rawRowAt(rows, sequence))).toEqual(
+      rawRange(rows, 5, 7, 1)
+    );
+    expect(index.lastQueryStats().rawRowsVisited).toBe(1);
+    expect(index.queryRange(5, 5, () => rawRowAt(rows, 5))).toEqual(rawRange(rows, 5, 5, 1));
+    expect(index.lastQueryStats()).toEqual({
+      nodesVisited: 1,
+      rawRowsVisited: 1,
+      summaryBucketsVisited: 0,
+    });
+  });
+
+  it("resolves buckets whose oldest chunk has expired", () => {
+    // Large enough that a level slab fills and drops a whole chunk, which is where a bucket index
+    // and the slab's own push-order sequence stop agreeing.
+    const capacity = 2048;
+    const index = new PowerOfTwoMinMaxIndex(capacity);
+    for (let sequence = 0; sequence < 6000; sequence++) {
+      index.append(sequence, [-sequence], [sequence]);
+    }
+
+    expect(index._levels[1].storageStats().chunkCount).toBeGreaterThan(1);
+    expect(index.retainedStartSequence).toBe(3952);
+    expect(index._bucketAtStart(1, 3000, 2)).toBeUndefined();
+    expect(Array.from(index._bucketAtStart(1, 4000, 2).maxes)).toEqual([4001]);
+
+    const forbidden = () => {
+      throw new Error("rawRowAt must not be called for a fully covered range");
+    };
+    expect(index.queryRange(4096, 5119, forbidden)).toEqual({ mins: [-5119], maxes: [5119] });
+  });
+
+  it("widens existing levels when a later row carries more values", () => {
+    const index = new PowerOfTwoMinMaxIndex(16);
+    const rows = [];
+    for (let sequence = 0; sequence < 4; sequence++) {
+      append(index, rows, sequence, [-sequence], [sequence]);
+    }
+    expect(index._bucketAtStart(2, 0, 4).mins).toHaveLength(1);
+
+    for (let sequence = 4; sequence < 16; sequence++) {
+      append(index, rows, sequence, [-sequence, -sequence - 0.5], [sequence, sequence + 0.5]);
+    }
+
+    // The level-2 bucket at 0 predates the widening; it must now carry the wider stride, with the
+    // dimension its rows never had reading as zero rather than as a neighbour's value.
+    expect(index._bucketAtStart(2, 0, 4).mins).toHaveLength(2);
+    expect(Array.from(index._bucketAtStart(2, 0, 4).mins)).toEqual([-3, 0]);
+    expect(Array.from(index._bucketAtStart(2, 4, 4).mins)).toEqual([-7, -7.5]);
+    expect(index.queryRange(0, 15, (sequence) => rawRowAt(rows, sequence))).toEqual(
+      rawRange(rows, 0, 15, 2)
+    );
   });
 
   it("queries one row and reports an exact raw visit", () => {
@@ -134,19 +230,17 @@ describe("PowerOfTwoMinMaxIndex", () => {
     expect(rows[0].mins).toHaveLength(1);
   });
 
-  it("freezes immutable bucket references and remains stable after live eviction", () => {
+  it("freezes bucket storage and remains stable after live eviction", () => {
     const index = new PowerOfTwoMinMaxIndex(8);
     const rows = [];
     for (let sequence = 0; sequence < 8; sequence++) {
       append(index, rows, sequence, [sequence], [sequence + 1]);
     }
-    const bucket = index._levels[3].at(0);
     const frozen = index.freeze();
     const frozenRows = rows.map((row) => ({ ...row }));
 
-    expect(Object.isFrozen(bucket)).toBe(true);
-    expect(Object.isFrozen(bucket.mins)).toBe(true);
-    expect(frozen._levels[3].at(0)).toBe(bucket);
+    expect(Array.from(frozen._bucketAtStart(3, 0, 8).mins)).toEqual([0]);
+    expect(Array.from(frozen._bucketAtStart(3, 0, 8).maxes)).toEqual([8]);
 
     for (let sequence = 8; sequence < 20; sequence++) {
       append(index, rows, sequence, [-sequence], [sequence]);

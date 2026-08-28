@@ -48,7 +48,9 @@ describe("WaveformHistoryIndex", () => {
     for (let sequence = 0; sequence < 13; sequence += 1) {
       const row = {
         waveformMin: [-sequence, sequence % 2 ? -sequence / 2 : undefined],
-        waveformMax: [sequence, sequence % 3 ? sequence / 3 : undefined],
+        // Halves and quarters only: summary buckets store Float32, so a fixture that needs
+        // rounding would turn this into an assertion about float representation.
+        waveformMax: [sequence, sequence % 3 ? sequence / 4 : undefined],
       };
       index.append(row);
       rows.push(row);
@@ -62,7 +64,7 @@ describe("WaveformHistoryIndex", () => {
       index.queryRange(8, 12, (sequence) => rawRow(rows, index.retainedStartSequence, sequence))
     ).toEqual({
       mins: [-12, -5.5],
-      maxes: [12, 11 / 3],
+      maxes: [12, 11 / 4],
     });
     expect(index.batchQueryStats()).toMatchObject({
       queries: 1,
@@ -75,10 +77,11 @@ describe("WaveformHistoryIndex", () => {
 
   it("freezes independently and clear restarts sequence zero", () => {
     const index = new WaveformHistoryIndex(3);
+    // Float32-exact fixtures: the frozen query below merges summary buckets, which store Float32.
     const rows = [
-      { waveformMin: [-0.5], waveformMax: [0.2] },
-      { waveformMin: [-0.3, -0.7], waveformMax: [0.8, 0.4] },
-      { waveformMin: [-0.1], waveformMax: [0.6] },
+      { waveformMin: [-0.5], waveformMax: [0.25] },
+      { waveformMin: [-0.375, -0.75], waveformMax: [0.875, 0.5] },
+      { waveformMin: [-0.125], waveformMax: [0.625] },
     ];
     rows.forEach((row) => index.append(row));
     const frozen = index.freeze();
@@ -86,8 +89,8 @@ describe("WaveformHistoryIndex", () => {
 
     index.append({ waveformMin: [-1], waveformMax: [1] });
     expect(frozen.queryRange(0, 2, (sequence) => rawRow(rows, 0, sequence))).toEqual({
-      mins: [-0.5, -0.7],
-      maxes: [0.8, 0.4],
+      mins: [-0.5, -0.75],
+      maxes: [0.875, 0.5],
     });
     expect(frozen.version).toBe(frozenVersion);
     expect(() => frozen.append(rows[0])).toThrow(TypeError);

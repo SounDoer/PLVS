@@ -177,9 +177,13 @@ describe("buildHistoryPath", () => {
       const random = makeRandom(seed);
       for (const capacity of [17, 61, 257]) {
         const rowCount = Math.floor(random() * capacity * 3);
+        // Quantized to 1/64 rather than 1/100 so every value is exact in Float32: this path is
+        // built partly from summary buckets, which store Float32, and partly from raw rows, which
+        // are doubles here -- a value needing rounding would differ between the two halves.
+        const quantize = (value) => Math.round(value * 64) / 64;
         const rows = Array.from({ length: rowCount }, (_, index) => ({
-          m: index % 47 === 0 ? -Infinity : Math.round((random() * 60 - 60) * 100) / 100,
-          st: index % 71 === 0 ? -Infinity : Math.round((random() * 50 - 55) * 100) / 100,
+          m: index % 47 === 0 ? -Infinity : quantize(random() * 60 - 60),
+          st: index % 71 === 0 ? -Infinity : quantize(random() * 50 - 55),
           timestampMs: index * 100,
         }));
         const { retained, index, view } = indexedRows(rows, capacity);
