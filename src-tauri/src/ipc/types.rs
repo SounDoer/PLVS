@@ -61,7 +61,6 @@ pub struct AnalysisRequests {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpectrumFrameResult {
-  pub band_centers_hz: Vec<f64>,
   pub smooth_db: Vec<f64>,
   pub peak_db: Vec<f64>,
   pub smooth_db_b: Vec<f64>,
@@ -192,7 +191,6 @@ pub struct MeterHistoryEntry {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpectrumVisualEntry {
-  pub band_centers_hz: Vec<f64>,
   pub smooth_db: Vec<f64>,
   /// Secondary smoothed per-band dB (empty unless view is lr/ms).
   pub smooth_db_b: Vec<f64>,
@@ -280,6 +278,14 @@ pub struct AudioFramePayload {
   /// Whether the loudness layout is known/correct for the input stream.
   pub loudness_layout_known: bool,
   pub timestamp_ms: u64,
+  /// Identifies the log-frequency grid the spectrum rows on this frame are sampled on. The grid
+  /// depends only on the sample rate, so it is sent in `spectrum_band_centers_hz` when it changes
+  /// and periodically after that; frames in between carry the id alone and the UI reads the grid
+  /// out of its own cache. Frames are dropped when the webview falls behind, which is why this is
+  /// re-sent on a period rather than exactly once.
+  pub spectrum_band_grid_id: u64,
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub spectrum_band_centers_hz: Vec<f64>,
   /// Monotonic per-session sequence number, assigned by the capture bridge as each frame is sent.
   /// The UI echoes the latest value back via `ack_frames` so the bridge can bound its send backlog.
   pub seq: u64,

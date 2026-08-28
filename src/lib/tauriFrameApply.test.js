@@ -239,10 +239,52 @@ describe("buildTauriFrameApply", () => {
       audioState = next;
     };
     const { applyFrame } = buildTauriFrameApply(makeOptions({ setAudio, latestAudioRef }));
-    const spectrumResultsByKey = { "spectrum:pair:0:1:combined": { path: "p" } };
+    const spectrumResultsByKey = { "spectrum:pair:0:1:combined": { smoothDb: [-30, -40] } };
     const vectorscopeResultsByKey = { "vectorscope:pair:0:1": { path: "v" } };
-    applyFrame({ peakDb: [], peakHoldDb: [], spectrumResultsByKey, vectorscopeResultsByKey });
+    applyFrame({
+      peakDb: [],
+      peakHoldDb: [],
+      spectrumBandGridId: 1,
+      spectrumBandCentersHz: [100, 1000],
+      spectrumResultsByKey,
+      vectorscopeResultsByKey,
+    });
     expect(audioState.spectrumResultsByKey).toBe(spectrumResultsByKey);
     expect(audioState.vectorscopeResultsByKey).toBe(vectorscopeResultsByKey);
+  });
+
+  it("carries the band grid forward across frames that omit it", () => {
+    let audioState = { spectrumResultsByKey: {}, vectorscopeResultsByKey: {} };
+    const latestAudioRef = { current: audioState };
+    const { applyFrame } = buildTauriFrameApply(
+      makeOptions({ setAudio: (next) => (audioState = next), latestAudioRef })
+    );
+    const centers = [100, 1000];
+
+    applyFrame({
+      peakDb: [],
+      peakHoldDb: [],
+      spectrumBandGridId: 1,
+      spectrumBandCentersHz: centers,
+      spectrumResultsByKey: { a: { smoothDb: [-30, -40] } },
+    });
+    // A later frame sends the id alone; the row still has to arrive plottable.
+    applyFrame({
+      peakDb: [],
+      peakHoldDb: [],
+      spectrumBandGridId: 1,
+      spectrumResultsByKey: { a: { smoothDb: [-31, -41] } },
+    });
+    expect(audioState.spectrumResultsByKey.a.bandCentersHz).toBe(centers);
+
+    // A grid we were never sent -- its frame was dropped -- must not be plotted against the old
+    // one. The engine resends within a second.
+    applyFrame({
+      peakDb: [],
+      peakHoldDb: [],
+      spectrumBandGridId: 2,
+      spectrumResultsByKey: { a: { smoothDb: [-32, -42] } },
+    });
+    expect(audioState.spectrumResultsByKey).toEqual({});
   });
 });

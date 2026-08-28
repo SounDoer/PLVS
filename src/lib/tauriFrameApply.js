@@ -62,6 +62,45 @@ export function reduceMeterAudioFrame(previous, frame) {
 }
 
 /**
+ * Resolves the frame's band grid against a per-session cache and writes it onto every spectrum row
+ * the frame carries.
+ *
+ * The grid is ~958 frequencies that depend on nothing but the sample rate, so the engine sends it
+ * only when it changes and once a second after that, and stamps every frame with its id. A frame
+ * whose id we have no grid for is one whose grid-carrying frame the bridge dropped: its spectrum
+ * rows are removed rather than plotted, and the next resend restores them. Panels already treat a
+ * missing per-key result as "no frame yet", which is exactly the right reading.
+ *
+ * @param {object} frame the deserialised payload, mutated in place
+ * @param {{ id: number, centers: number[] | null }} cache
+ */
+export function applyBandGrid(frame, cache) {
+  const id = frame.spectrumBandGridId;
+  const sent = frame.spectrumBandCentersHz;
+  if (Array.isArray(sent) && sent.length > 0) {
+    cache.id = id;
+    cache.centers = sent;
+  }
+  const centers = cache.centers && cache.id === id ? cache.centers : null;
+
+  const stamp = (byKey) => {
+    if (!byKey || typeof byKey !== "object") return byKey;
+    if (!centers) return {};
+    for (const entry of Object.values(byKey)) {
+      if (entry && typeof entry === "object") entry.bandCentersHz = centers;
+    }
+    return byKey;
+  };
+
+  frame.spectrumResultsByKey = stamp(frame.spectrumResultsByKey);
+  if (frame.visualHistTick) stamp(frame.visualHistTick.spectrumByKey);
+  if (Array.isArray(frame.visualHistBatch)) {
+    for (const tick of frame.visualHistBatch) stamp(tick?.spectrumByKey);
+  }
+  return frame;
+}
+
+/**
  * Shared Tauri `AudioFramePayload` handler.
  * @param {object} opts
  * @param {number | import("react").MutableRefObject<number>} opts.histMaxSamples
@@ -85,8 +124,12 @@ export function buildTauriFrameApply({
   shouldDriveDisplay = () => true,
   shouldPublishDisplay = () => true,
 }) {
+  // One cache per handler: a new capture session builds a new handler, and the grid cannot outlive
+  // the sample rate that produced it.
+  const bandGrid = { id: 0, centers: null };
   const applyFrame = (f) => {
     frameRef.current += 1;
+    applyBandGrid(f, bandGrid);
     // Heartbeat the native engine ~10Hz with the latest processed seq so it can bound its send
     // backlog. Reaching this line proves the UI thread is draining frames; if it stalls, acks stop
     // and the bridge drops frames instead of letting the host process grow unboundedly.

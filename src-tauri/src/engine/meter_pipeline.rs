@@ -25,6 +25,11 @@ use crate::ipc::types::{
 };
 
 const FRAME_EMIT_MS: u128 = 16;
+/// How often the band grid rides along on a frame that did not have to carry it. The UI caches it
+/// by id, so this only has to be often enough to recover from a dropped frame — the bridge drops
+/// frames whenever the webview falls behind, and a lost grid would otherwise blank every spectrum
+/// panel for the rest of the session. One second of frames costs ~17 KiB.
+const BAND_GRID_RESEND_FRAMES: u32 = 64;
 /// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
 const HIST_EMIT_MS: u128 = 95;
 const VISUAL_EMIT_MS: u128 = 40;
@@ -79,17 +84,14 @@ fn spectrum_payload_from_shared_output(
     .secondary
     .map(|secondary| (secondary.smooth_db.to_vec(), secondary.peak_db.to_vec()))
     .unwrap_or_default();
-  let band_centers_hz = output.centers_hz.to_vec();
   let smooth_db = output.smooth_db.to_vec();
   let result = SpectrumFrameResult {
-    band_centers_hz,
     smooth_db,
     peak_db: output.peak_db.to_vec(),
     smooth_db_b,
     peak_db_b,
   };
   let visual = SpectrumVisualEntry {
-    band_centers_hz: result.band_centers_hz.clone(),
     smooth_db: result.smooth_db.clone(),
     smooth_db_b: result.smooth_db_b.clone(),
   };
@@ -146,6 +148,11 @@ type PipelineFileTimeline =
 
 pub struct MeterPipeline {
   channels: u16,
+  /// The frequency grid every spectrum row is sampled on, sent out of band. Fixed for the life of
+  /// the pipeline: a different sample rate builds a new one.
+  band_grid: Vec<f64>,
+  band_grid_id: u64,
+  frames_since_band_grid_send: u32,
   loudness: LoudnessMeter,
   shared_spectral_runtime: SharedSpectralRuntime,
   vectorscope_by_key: HashMap<String, VectorscopeMeter>,
@@ -196,6 +203,11 @@ impl MeterPipeline {
     let sr = sample_rate as f64;
     Self {
       channels,
+      band_grid: crate::dsp::spectrum_band_centers(sr),
+      // Starts at 1 so a zero on the wire is always "no grid", never a real one.
+      band_grid_id: 1,
+      // Forces the first frame that has rows to carry the grid.
+      frames_since_band_grid_send: BAND_GRID_RESEND_FRAMES,
       loudness: LoudnessMeter::new(sr),
       shared_spectral_runtime: SharedSpectralRuntime::new(sr),
       vectorscope_by_key: HashMap::new(),
@@ -460,6 +472,22 @@ impl MeterPipeline {
       dialogue_gating,
       dialogue_vad_engine,
     )?;
+    // The grid rides along only when the UI could be without it: the first frame with rows, and
+    // once a second after that in case the one carrying it was dropped. Frames with no spectrum
+    // rows never carry it -- there is nothing for the UI to plot against yet.
+    frame.spectrum_band_grid_id = self.band_grid_id;
+    if spectrum_results_by_key.is_empty() {
+      frame.spectrum_band_centers_hz = Vec::new();
+    } else {
+      // Counted before the test, so consecutive sends sit exactly BAND_GRID_RESEND_FRAMES apart.
+      self.frames_since_band_grid_send += 1;
+      if self.frames_since_band_grid_send >= BAND_GRID_RESEND_FRAMES {
+        frame.spectrum_band_centers_hz = self.band_grid.clone();
+        self.frames_since_band_grid_send = 0;
+      } else {
+        frame.spectrum_band_centers_hz = Vec::new();
+      }
+    }
     frame.spectrum_results_by_key = spectrum_results_by_key;
     frame.vectorscope_results_by_key = vectorscope_results_by_key;
     // The runtime lends its persistent row; clone it only after a frame has passed the emit gate.
@@ -955,6 +983,9 @@ impl MeterPipeline {
       };
 
     let frame = AudioFramePayload {
+      // Stamped by the caller once the frame is known to be emitted; see the band-grid block there.
+      spectrum_band_grid_id: 0,
+      spectrum_band_centers_hz: Vec::new(),
       peak_db,
       rms_db,
       peak_hold_db,
@@ -2774,20 +2805,18 @@ mod tests {
   fn legacy_payload_from_meter(
     meter: &crate::dsp::SpectrumMeter,
   ) -> (SpectrumFrameResult, SpectrumVisualEntry) {
-    let (centers, smooth, peak) = meter.last_output();
+    let (_centers, smooth, peak) = meter.last_output();
     let (smooth_db_b, peak_db_b) = meter
       .last_output_secondary()
       .map(|(smooth_b, peak_b)| (smooth_b.to_vec(), peak_b.to_vec()))
       .unwrap_or_default();
     let result = SpectrumFrameResult {
-      band_centers_hz: centers.to_vec(),
       smooth_db: smooth.to_vec(),
       peak_db: peak.to_vec(),
       smooth_db_b,
       peak_db_b,
     };
     let visual = SpectrumVisualEntry {
-      band_centers_hz: result.band_centers_hz.clone(),
       smooth_db: result.smooth_db.clone(),
       smooth_db_b: result.smooth_db_b.clone(),
     };
@@ -2819,12 +2848,18 @@ mod tests {
     tolerance_db: f64,
     label: &str,
   ) {
+    // The grid itself is compared once per frame, not per row: it left the row payload and now
+    // rides on the frame. See `frame_carries_the_band_grid_on_change_and_then_periodically`.
     assert_eq!(
-      actual.band_centers_hz, legacy.band_centers_hz,
-      "{label} centers"
+      actual.smooth_db.len(),
+      legacy.smooth_db.len(),
+      "{label} row length"
     );
-    assert_eq!(actual.smooth_db.len(), actual.band_centers_hz.len());
-    assert_eq!(actual.peak_db.len(), actual.band_centers_hz.len());
+    assert_eq!(
+      actual.peak_db.len(),
+      legacy.peak_db.len(),
+      "{label} peak length"
+    );
     assert_eq!(actual.smooth_db_b.len(), legacy.smooth_db_b.len());
     assert_eq!(actual.peak_db_b.len(), legacy.peak_db_b.len());
     assert_rows_with_route_tolerance(
@@ -2859,10 +2894,6 @@ mod tests {
     tolerance_db: f64,
     label: &str,
   ) {
-    assert_eq!(
-      actual.band_centers_hz, legacy.band_centers_hz,
-      "{label} visual centers"
-    );
     assert_rows_with_route_tolerance(
       &actual.smooth_db,
       &legacy.smooth_db,
@@ -3133,7 +3164,7 @@ mod tests {
       .expect("pending frame");
     assert!(legacy.last_output().0.is_empty());
     assert!(pending.spectrum_results_by_key["single"]
-      .band_centers_hz
+      .smooth_db
       .is_empty());
 
     legacy.push_pair(
@@ -3157,7 +3188,10 @@ mod tests {
       .expect("ready frame");
     let (legacy_centers, legacy_smooth, legacy_peak) = legacy.last_output();
     let actual = &ready.spectrum_results_by_key["single"];
-    assert_eq!(actual.band_centers_hz, legacy_centers);
+    // The grid rides on the first frame of the session, not on every one; the rows below are
+    // sampled on it either way.
+    assert_eq!(pending.spectrum_band_centers_hz, legacy_centers);
+    assert!(ready.spectrum_band_centers_hz.is_empty());
     assert_eq!(actual.smooth_db, legacy_smooth);
     assert_eq!(actual.peak_db, legacy_peak);
   }
@@ -3413,17 +3447,19 @@ mod tests {
       let actual = &frame.spectrum_results_by_key["single"];
 
       assert_eq!(
-        actual.band_centers_hz, legacy_visual.band_centers_hz,
-        "{sample_rate} Hz exact centers"
-      );
-      assert_eq!(
         actual.smooth_db.len(),
         legacy_visual.smooth_db.len(),
         "{sample_rate} Hz row length"
       );
+      // The grid now rides on the frame, once, for every row on it.
+      assert_eq!(
+        frame.spectrum_band_centers_hz.len(),
+        actual.smooth_db.len(),
+        "{sample_rate} Hz grid length"
+      );
       let expected_max = 20_000.0_f64.min(sample_rate as f64 * 0.499);
       assert!(
-        (actual.band_centers_hz.last().copied().unwrap() - expected_max).abs()
+        (frame.spectrum_band_centers_hz.last().copied().unwrap() - expected_max).abs()
           <= expected_max * f64::EPSILON,
         "{sample_rate} Hz upper grid bound"
       );
@@ -3486,10 +3522,68 @@ mod tests {
     );
     let pending_result = &pending.spectrum_results_by_key["new"];
     assert!(pending_result.smooth_db.is_empty());
-    assert!(pending_result.band_centers_hz.is_empty());
     assert!(pending_result.peak_db.is_empty());
     assert!(pending_result.smooth_db_b.is_empty());
     assert!(pending_result.peak_db_b.is_empty());
+  }
+
+  #[test]
+  fn frame_carries_the_band_grid_on_first_rows_and_then_once_a_second() {
+    use crate::dsp::spectrum_bank::FFT_BIG;
+    use crate::ipc::types::SpectrumAnalysisChannel;
+
+    let requests = AnalysisRequests {
+      spectral_waveform: false,
+      spectrum: vec![spectrum_request(
+        "single",
+        SpectrumAnalysisChannel::Single { ch: 0 },
+        "combined",
+      )],
+      vectorscope: vec![],
+      stereo_map: Vec::new(),
+    };
+    let mut pipeline = MeterPipeline::new(48_000, 2);
+    let push = |pipeline: &mut MeterPipeline, offset: u64| {
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+      pipeline
+        .push_pcm_f32_with_requests(
+          &deterministic_stereo(FFT_BIG, offset),
+          ChannelLayoutSetting::Auto,
+          &requests,
+          None,
+          false,
+          VadEngineKind::default(),
+        )
+        .expect("frame")
+    };
+
+    let first = push(&mut pipeline, 0);
+    let expected = crate::dsp::spectrum_band_centers(48_000.0);
+    assert_eq!(first.spectrum_band_centers_hz, expected, "first frame grid");
+    assert_ne!(
+      first.spectrum_band_grid_id, 0,
+      "zero means no grid on the wire"
+    );
+
+    // Every frame identifies the grid; only the periodic one repeats it. Count the frames from
+    // the first send to the next: they must sit exactly one period apart.
+    let mut frames_until_resend = 0;
+    for index in 1..=(BAND_GRID_RESEND_FRAMES as u64 * 2) {
+      let frame = push(&mut pipeline, index * FFT_BIG as u64);
+      assert_eq!(
+        frame.spectrum_band_grid_id, first.spectrum_band_grid_id,
+        "the grid did not change, so neither may its id"
+      );
+      frames_until_resend += 1;
+      if !frame.spectrum_band_centers_hz.is_empty() {
+        assert_eq!(frame.spectrum_band_centers_hz, expected, "resent grid");
+        break;
+      }
+    }
+    assert_eq!(
+      frames_until_resend, BAND_GRID_RESEND_FRAMES as u64,
+      "resend period"
+    );
   }
 
   #[test]

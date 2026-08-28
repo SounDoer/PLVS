@@ -24,6 +24,15 @@ pub(crate) fn spectrum_frequency_bounds(sample_rate: f64) -> (f64, f64) {
   (20.0, 20_000.0_f64.min(sample_rate * 0.499))
 }
 
+/// The log-frequency grid every spectrum row is sampled on. It depends on nothing but the sample
+/// rate, which is why the frame protocol carries it out of band instead of repeating it beside
+/// every row: at 96 points per octave it is ~958 values, and a frame is emitted ~62 times a
+/// second. Stereo Map rows sit on this same grid.
+pub(crate) fn spectrum_band_centers(sample_rate: f64) -> Vec<f64> {
+  let (min_hz, max_hz) = spectrum_frequency_bounds(sample_rate);
+  LogGrid::new(min_hz, max_hz).freqs
+}
+
 pub(crate) fn attack_release_ms_for_speed_percent(percent: f64) -> (f64, f64) {
   let percent = percent.clamp(0.0, 100.0);
   if percent <= 0.0 {

@@ -27,6 +27,7 @@ pub use loudness::LoudnessMeter;
 pub use meter::{Meter, PcmContext};
 #[cfg(test)]
 pub use spectrum::SpectrumMeter;
+pub(crate) use spectrum_bank::spectrum_band_centers;
 pub use spectrum_bank::OctaveSmoothing;
 pub(crate) use spectrum_consumer::SpectralOutput;
 pub use vectorscope::VectorscopeMeter;

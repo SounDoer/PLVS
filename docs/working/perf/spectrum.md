@@ -1,6 +1,7 @@
 # Spectrum 体检表
 
-**状态：** D1 合理性已判定并落地（§1.5、§1.6）；D4 的 payload 第 1 层已削减（§3.5）。其余待测。
+**状态：** D1 合理性已判定并落地（§1.5、§1.6）；D4 的 payload 第 1、2 层已削减（§3.5、§3.6）。
+其余待测。
 
 ## 0. 控制维度拆解
 
@@ -212,6 +213,32 @@ Speed 和 Smoothing 没有一起放出来，那是另一个范围的决定。Doc
    前端最终也只存 Int16 centi-dB。
 
 前两项就能砍掉 52–57%；三项都做，82 KiB → 约 4 KiB 量级。
+
+## 3.6 D4 第 2 层已落地：栅格移出每帧（2026-08-28）
+
+`bandCentersHz` 那 958 个频率只由采样率决定，却随每一行重发：主帧 62.5 次/秒，visual history
+tick 再 25 次/秒，每份 17.1 KiB。
+
+**做法**：栅格升到帧级别，配一个 id。`SpectrumFrameResult` 与 `SpectrumVisualEntry` 都不再带
+`bandCentersHz`；`AudioFramePayload` 带 `spectrumBandGridId`（每帧都有）和
+`spectrumBandCentersHz`（只在需要时有）。前端 `applyBandGrid` 按 id 缓存，把栅格写回每一行。
+
+**为什么不是"只发一次"**：`cpal_backend` 在 webview 落后时会丢帧（`MAX_FRAMES_INFLIGHT = 120`），
+而帧是先由 pipeline 构造、再被丢弃的——只发一次的话，承载栅格的那一帧一旦被丢，整个 session
+的频谱面板都会空白。所以是**变化时发 + 每 64 帧（约 1 秒）兜底重发一次**，代价约 17 KiB/秒。
+前端见到不认识的 id 就丢掉该帧的频谱行（面板本来就把"该 key 还没有结果"当作待渲染状态），
+下一次重发即恢复。
+
+**实测**（单个 key，主帧 62.5/s + visual tick 25/s 合计）：
+
+| view | 主帧 | visual tick | 合计带宽 |
+| --- | --- | --- | --- |
+| combined | 52.3 → **35.3 KiB** | 34.7 → **17.6 KiB** | 4.04 → **2.58 MiB/s**（−36%） |
+| lr / ms | 87.5 → **70.5 KiB** | 52.3 → **35.2 KiB** | 6.62 → **5.16 MiB/s**（−22%） |
+
+**Stereo Map 还没接**：它的行落在同一个栅格上（同样是 `spectrum_frequency_bounds` + 96 点/八度
+的 `LogGrid`），所以 `StereoMapFrameResult` / `StereoMapVisualEntry` 的 `bandCentersHz` 可以直接
+复用这个帧级栅格，不需要再改一次协议。留给 Stereo Map 自己那一轮。
 
 ## 4. D4 — 其他
 
