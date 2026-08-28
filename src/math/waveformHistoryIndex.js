@@ -1,5 +1,6 @@
 import { PowerOfTwoMinMaxIndex } from "../lib/PowerOfTwoMinMaxIndex.js";
 import { ChunkedSequence } from "../lib/ChunkedSequence.js";
+import { MinMaxRowStore } from "../lib/MinMaxRowStore.js";
 
 function emptyBatchStats() {
   return {
@@ -50,7 +51,10 @@ export class WaveformHistoryIndex {
         ? new PowerOfTwoMinMaxIndex(capacityOrIndex)
         : capacityOrIndex;
     this._frozen = frozen;
-    this._rawRows = rawRows ?? new ChunkedSequence(capacityOrIndex);
+    // Raw rows are packed: they duplicate extrema the loudness column already holds, and one
+    // object per row at four-hour retention is exactly the cost this storage exists to avoid.
+    // `_nanSequences` stays a ChunkedSequence -- it stores unboxed numbers, at 2 B/row.
+    this._rawRows = rawRows ?? new MinMaxRowStore(capacityOrIndex);
     this._nanSequences = nanSequences ?? new ChunkedSequence(capacityOrIndex);
     this._batchQueryStats = emptyBatchStats();
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WaveformHistoryIndex } from "./waveformHistoryIndex.js";
+import { MinMaxRowStore } from "../lib/MinMaxRowStore.js";
 
 function rawRow(rows, retainedStart, sequence) {
   const row = rows[sequence - retainedStart];
@@ -19,10 +20,14 @@ function rawRow(rows, retainedStart, sequence) {
 describe("WaveformHistoryIndex", () => {
   it("indexes dynamic channel widths with missing channels treated as zero", () => {
     const index = new WaveformHistoryIndex(8);
+    // Values are exactly representable in Float32 on purpose. A range query merges summary
+    // buckets with raw rows, and those two stores do not have to agree on precision, so data that
+    // needs rounding would make this assertion about float representation instead of channel
+    // widths -- which is what it is here to test.
     const rows = [
-      { waveformMin: [-0.2], waveformMax: [0.3] },
-      { waveformMin: [-0.8, -0.4, -0.1], waveformMax: [0.5, 0.7, 0.2] },
-      { waveformMin: [-0.1, -0.9], waveformMax: [0.4] },
+      { waveformMin: [-0.25], waveformMax: [0.375] },
+      { waveformMin: [-0.75, -0.5, -0.125], waveformMax: [0.5, 0.875, 0.25] },
+      { waveformMin: [-0.125, -0.875], waveformMax: [0.5] },
     ];
     rows.forEach((row) => index.append(row));
 
@@ -31,8 +36,8 @@ describe("WaveformHistoryIndex", () => {
     expect(index.retainedStartSequence).toBe(0);
     expect(index.retainedEndSequence).toBe(3);
     expect(index.queryRange(0, 2, (sequence) => rawRow(rows, 0, sequence))).toEqual({
-      mins: [-0.8, -0.9, -0.1],
-      maxes: [0.5, 0.7, 0.2],
+      mins: [-0.75, -0.875, -0.125],
+      maxes: [0.5, 0.875, 0.25],
     });
   });
 
@@ -137,8 +142,40 @@ describe("WaveformHistoryIndex", () => {
     const stats = index.freeze().storageStats();
 
     expect(stats.rawRows.sharedSealedChunks).toBe(2);
-    expect(stats.rawRows.copiedReferences).toBe(1);
+    // The packed raw-row store copies the open chunk's bytes, never per-row references, so the
+    // "did freeze copy the whole retained history" question is answered by the tail row count.
+    expect(stats.rawRows.copiedReferences).toBe(0);
+    expect(stats.rawRows.copiedTailRows).toBe(1);
     expect(stats.nanSequences.copiedReferences).toBe(1);
     expect(stats.index.sharedSealedChunks).toBeGreaterThan(0);
+  });
+});
+
+describe("WaveformHistoryIndex packed raw rows", () => {
+  it("stores raw extrema in a packed store", () => {
+    const index = new WaveformHistoryIndex(8);
+    index.append({ waveformMin: [-0.5, -0.4], waveformMax: [0.5, 0.4] });
+    expect(index._rawRows).toBeInstanceOf(MinMaxRowStore);
+  });
+
+  it("still answers a range query that falls back to raw rows", () => {
+    const index = new WaveformHistoryIndex(8);
+    index.append({ waveformMin: [-0.5], waveformMax: [0.5] });
+    index.append({ waveformMin: [-0.9], waveformMax: [0.2] });
+    index.append({ waveformMin: [-0.1], waveformMax: [0.7] });
+    const result = index.queryRange(0, 2);
+    expect(result.mins[0]).toBeCloseTo(-0.9, 4);
+    expect(result.maxes[0]).toBeCloseTo(0.7, 4);
+  });
+
+  it("keeps a frozen index answering the same query", () => {
+    const index = new WaveformHistoryIndex(8);
+    index.append({ waveformMin: [-0.5], waveformMax: [0.5] });
+    index.append({ waveformMin: [-0.9], waveformMax: [0.2] });
+    const frozen = index.freeze();
+    index.append({ waveformMin: [-2], waveformMax: [2] });
+    const result = frozen.queryRange(0, 1);
+    expect(result.mins[0]).toBeCloseTo(-0.9, 4);
+    expect(result.maxes[0]).toBeCloseTo(0.5, 4);
   });
 });

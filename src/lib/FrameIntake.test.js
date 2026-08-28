@@ -314,8 +314,10 @@ describe("FrameIntake", () => {
     for (let sequence = 0; sequence < 9; sequence += 1) {
       intake.pushHistRow(
         makeRow({
-          waveformMin: [-sequence / 10, sequence % 2 ? -sequence / 20 : undefined],
-          waveformMax: [sequence / 10],
+          // Divisors are powers of two so every value is exact in the Float32 columns the
+          // waveform index stores; /10 would make this assert float rounding, not alignment.
+          waveformMin: [-sequence / 16, sequence % 2 ? -sequence / 32 : undefined],
+          waveformMax: [sequence / 16],
           timestampMs: sequence * 100,
         }),
         4,
@@ -329,14 +331,14 @@ describe("FrameIntake", () => {
     expect(index.retainedStartSequence).toBe(5);
     expect(index.retainedEndSequence).toBe(9);
     expect(index.queryRange(5, 8)).toEqual({
-      mins: [-0.8, -0.35],
-      maxes: [0.8, 0],
+      mins: [-0.5, -0.21875],
+      maxes: [0.5, 0],
     });
   });
 
   it("rebuilds, freezes, and clears the waveform index with scalar history", () => {
     const intake = new FrameIntake();
-    intake.pushHistRow(makeRow({ waveformMin: [-0.2], waveformMax: [0.4] }), 3, SR);
+    intake.pushHistRow(makeRow({ waveformMin: [-0.25], waveformMax: [0.5] }), 3, SR);
     const original = intake.getWaveformHistoryIndex();
     const frozen = intake.snapshotWaveformHistoryIndex();
 
@@ -345,7 +347,7 @@ describe("FrameIntake", () => {
     expect(rebuilt).not.toBe(original);
     expect(rebuilt.capacity).toBe(5);
     expect(rebuilt.retainedEndSequence).toBe(1);
-    expect(frozen.queryRange(0, 0)).toEqual({ mins: [-0.2], maxes: [0.4] });
+    expect(frozen.queryRange(0, 0)).toEqual({ mins: [-0.25], maxes: [0.5] });
 
     intake.reset();
     expect(rebuilt.retainedStartSequence).toBe(0);

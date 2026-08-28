@@ -20,10 +20,17 @@ beforeAll(() => {
   globalThis.ResizeObserver = ResizeObserverStub;
 });
 
+// Extrema are rounded to f32 the way real ones already are: they reach the frontend as Rust f32
+// and the waveform index stores them in Float32 columns, so an unrounded fixture would make the
+// indexed path and the direct-read reference path disagree in the last bits.
 function rows(values, channelCount = 2) {
   return values.map((value, index) => ({
-    waveformMin: Array.from({ length: channelCount }, (_, channel) => -value * (1 - channel * 0.1)),
-    waveformMax: Array.from({ length: channelCount }, (_, channel) => value * (1 - channel * 0.2)),
+    waveformMin: Array.from({ length: channelCount }, (_, channel) =>
+      Math.fround(-value * (1 - channel * 0.1))
+    ),
+    waveformMax: Array.from({ length: channelCount }, (_, channel) =>
+      Math.fround(value * (1 - channel * 0.2))
+    ),
     timestampMs: index * 100,
   }));
 }

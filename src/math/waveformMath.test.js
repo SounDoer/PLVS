@@ -160,15 +160,19 @@ function randomEntry(random, sequence) {
   let minCount = Math.max(0, channelCount - Math.floor(random() * 3));
   let maxCount = Math.max(0, channelCount - Math.floor(random() * 3));
   if (minCount === 0 && maxCount === 0) maxCount = 1;
-  const waveformMin = Array.from(
-    { length: minCount },
-    (_, channel) =>
+  // Waveform extrema reach the frontend as Rust f32 and are stored in Float32 columns, so the
+  // generated values are rounded to f32 too. Without that, the reference path (reading the raw
+  // rows here) and the index path (reading them back out of Float32 storage) would disagree in
+  // the last bits on values production can never produce.
+  const waveformMin = Array.from({ length: minCount }, (_, channel) =>
+    Math.fround(
       -Math.round((random() * 0.9 + channel / 100 + sequence / 1_000_000) * 100_000) / 100_000
+    )
   );
-  const waveformMax = Array.from(
-    { length: maxCount },
-    (_, channel) =>
+  const waveformMax = Array.from({ length: maxCount }, (_, channel) =>
+    Math.fround(
       Math.round((random() * 0.9 + channel / 100 + sequence / 1_000_000) * 100_000) / 100_000
+    )
   );
   const waveformSubCount = 3 + Math.floor(random() * 8);
   const waveformSubPairs = new Float32Array(waveformSubCount * channelCount * 2);
