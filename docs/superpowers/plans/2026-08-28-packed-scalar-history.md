@@ -590,6 +590,13 @@ the stored lengths rather than stored.
 - Create: `src/lib/LoudnessHistorySlab.js`
 - Test: `src/lib/LoudnessHistorySlab.test.js`
 
+> **Correction applied during execution.** The array assertions below cannot use `toEqual` against
+> these literals: `Float32Array` does not represent 0.1, 0.2, 0.3 or 0.4 exactly — `Math.fround(-0.4)`
+> is `-0.4000000059604645` — so `toEqual` on a read-back view fails no matter how the slab is
+> written. The five affected assertions (three in "reads back every field", two in "keeps rows
+> independent") use a per-element `toBeCloseTo(..., 4)` helper instead. The scalar `m`/`st`
+> assertions were already written with `toBeCloseTo` and are unaffected.
+
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
