@@ -32,6 +32,9 @@ function levelSchema(valueCount) {
 function bucketFrom(view, bucketIndex, valueCount) {
   if (view.length === 0) return undefined;
   // A level has no clock, so the base slab's timestamp column carries the absolute bucket index.
+  // Pushes are index-contiguous -- bucket k is pushed when row (k + 1) * width - 1 arrives, so no
+  // bucket index is ever skipped -- which is what lets a slab index and a bucket index differ by a
+  // constant, read off row 0.
   const firstRetained = view.timestampAt(0);
   const found = view.chunkAt(bucketIndex - firstRetained);
   if (!found) return undefined;
@@ -47,10 +50,6 @@ class MinMaxLevel extends ChunkedHistorySlab {
   constructor(capacityBuckets, valueCount) {
     super(capacityBuckets, levelSchema(valueCount));
     this._valueCount = valueCount;
-  }
-
-  get valueCount() {
-    return this._valueCount;
   }
 
   push(bucketIndex, mins, maxes) {
@@ -305,12 +304,22 @@ export class PowerOfTwoMinMaxIndex extends MinMaxIndexView {
   /**
    * Re-lays every existing level at the widened stride.
    *
-   * A level packs its buckets into one Float32Array at a fixed stride, so a wider row cannot be
-   * written into a narrower level without spilling into the next bucket. Copying into fresh
-   * storage is the only safe answer: the level's old arrays may already be shared with a frozen
-   * snapshot that still reads them at the old stride, so they must not be touched. This costs one
-   * pass over the retained buckets, and can happen at most once per distinct vector width -- a
-   * channel count, which changes on a device switch and not per row.
+   * A level's stride is fixed at construction and `push` only ever writes that many values, so a
+   * wider bucket pushed into a narrower level is silently truncated -- it cannot corrupt its
+   * neighbour, it just loses its extra dimensions. `mergeNode` then reads those dimensions back as
+   * 0 through `?? 0`, so a query would report 0 where the real extremum was ±100. Truncation is
+   * the default behaviour here, not an alternative to this rebuild.
+   *
+   * Widening a level's arrays in place is not an option either: its sealed chunks may already be
+   * shared with a frozen snapshot that still reads them at its own captured stride. So the buckets
+   * are copied into fresh storage and the old level is left untouched for whoever still holds it.
+   *
+   * The copy is also where the zero-fill contract is honoured: `push` pads through `mins[value] ??
+   * 0`, so a dimension that did not exist when a bucket was summarised reads as 0 at the new
+   * stride rather than as whatever sat next to it.
+   *
+   * This costs one pass over the retained buckets, and can happen at most once per distinct vector
+   * width -- a channel count, which changes on a device switch and not per row.
    */
   _restrideLevels() {
     for (let level = 1; level <= this._maxLevel; level += 1) {

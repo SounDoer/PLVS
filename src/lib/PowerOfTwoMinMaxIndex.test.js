@@ -230,6 +230,36 @@ describe("PowerOfTwoMinMaxIndex", () => {
     expect(rows[0].mins).toHaveLength(1);
   });
 
+  it("keeps a snapshot readable at its own stride after the live index widens", () => {
+    // Large enough that a level chunk seals and is therefore *shared* with the snapshot rather
+    // than copied. That sharing is the whole reason widening a level in place is unsafe, so the
+    // widening below must rebuild the level rather than touch the arrays the snapshot reads.
+    const index = new PowerOfTwoMinMaxIndex(8192);
+    for (let sequence = 0; sequence < 2100; sequence++)
+      index.append(sequence, [-sequence], [sequence]);
+    const frozen = index.freeze();
+    expect(frozen._levels[1].storageStats().sharedSealedChunks).toBeGreaterThan(0);
+
+    const forbidden = () => {
+      throw new Error("rawRowAt must not be called for a fully covered range");
+    };
+    // Read through a level-1 bucket that lives in the shared sealed chunk, at a row far enough in
+    // that a stride change would resolve it to a different bucket entirely. Querying the aligned
+    // whole range instead would be answered by a high level whose tail chunk was *copied* at
+    // freeze time, and so would survive an in-place widening and prove nothing.
+    const before = frozen.queryRange(1000, 1001, forbidden);
+    expect(before).toEqual({ mins: [-1001], maxes: [1001] });
+
+    for (let sequence = 2100; sequence < 2200; sequence++) {
+      index.append(sequence, [-sequence, -1], [sequence, 1]);
+    }
+
+    expect(index.valueCount).toBe(2);
+    expect(frozen.queryRange(1000, 1001, forbidden)).toEqual(before);
+    expect(Array.from(frozen._bucketAtStart(1, 1000, 2).mins)).toEqual([-1001]);
+    expect(frozen._bucketAtStart(1, 1000, 2).mins).toHaveLength(1);
+  });
+
   it("freezes bucket storage and remains stable after live eviction", () => {
     const index = new PowerOfTwoMinMaxIndex(8);
     const rows = [];
