@@ -162,12 +162,14 @@ describe("DockEditorApp window behavior", () => {
       panelsById: { spectrogram: { id: "spectrogram", moduleId: "spectrogram" } },
       panelOrder: ["spectrogram"],
       controlsByPanelId: {
+        // The shape useDockLayout hands over: it repairs the stored record on every read, so
+        // the editor never sees the Dock's older short key names.
         spectrogram: {
-          channel: { type: "pair", x: 0, y: 1 },
-          minDb: -96,
-          maxDb: -12,
-          minFreq: 20,
-          maxFreq: 20000,
+          spectrumChannel: { type: "pair", x: 0, y: 1 },
+          spectrumTiltDbPerOctave: 3,
+          spectrogramDbFloor: -84,
+          spectrogramYMinFreq: 20,
+          spectrogramYMaxFreq: 20000,
         },
       },
     };

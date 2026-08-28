@@ -14,7 +14,7 @@ import {
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
-import { isDefaultDockModuleControls, normalizeDockModuleControls } from "../dockModuleControls.js";
+import { isDefaultDockModuleControls } from "../dockModuleControls.js";
 import {
   LEVEL_METER_MODE_OPTIONS,
   SPECTROGRAM_DB_FLOOR_TOOLTIP,
@@ -406,10 +406,6 @@ function SettingsBody({
     );
   }
   if (moduleId === "spectrogram") {
-    // Repaired before it is read: the editor is handed the stored record as-is, and a layout
-    // written before a key existed -- or under the Dock's older short names -- carries neither
-    // the value nor a shape a slider can format.
-    const spectrogramControls = normalizeDockModuleControls("spectrogram", controls);
     const runtimeOptions = spectrumOptions?.map((option) => ({
       value: channelValue(option.sel),
       label: option.label,
@@ -422,11 +418,9 @@ function SettingsBody({
           <SettingsRow label="Channel">
             <SelectField
               label="Spectrogram channel"
-              value={channelValue(spectrogramControls.spectrumChannel)}
+              value={channelValue(controls.spectrumChannel)}
               options={channelOptions}
-              onChange={(value) =>
-                onChange({ ...spectrogramControls, spectrumChannel: parseChannel(value) })
-              }
+              onChange={(value) => onChange({ ...controls, spectrumChannel: parseChannel(value) })}
             />
           </SettingsRow>
         ) : null}
@@ -436,10 +430,10 @@ function SettingsBody({
             min={0}
             max={6}
             step={0.25}
-            value={spectrogramControls.spectrumTiltDbPerOctave}
+            value={controls.spectrumTiltDbPerOctave}
             formatValue={(value) => `${value.toFixed(2)} dB/oct`}
             onCommit={(spectrumTiltDbPerOctave) =>
-              onChange({ ...spectrogramControls, spectrumTiltDbPerOctave })
+              onChange({ ...controls, spectrumTiltDbPerOctave })
             }
           />
         </SettingsRow>
@@ -449,21 +443,19 @@ function SettingsBody({
             min={-96}
             max={-12}
             step={1}
-            value={spectrogramControls.spectrogramDbFloor}
+            value={controls.spectrogramDbFloor}
             formatValue={(value) => `${value.toFixed(0)} dB`}
-            onCommit={(spectrogramDbFloor) =>
-              onChange({ ...spectrogramControls, spectrogramDbFloor })
-            }
+            onCommit={(spectrogramDbFloor) => onChange({ ...controls, spectrogramDbFloor })}
           />
         </SettingsRow>
         <SettingsRow label="Frequency Range">
           <SettingsRangeInput
             minAriaLabel="spectrogram frequency range min"
             maxAriaLabel="spectrogram frequency range max"
-            minValue={spectrogramControls.spectrogramYMinFreq}
-            maxValue={spectrogramControls.spectrogramYMaxFreq}
+            minValue={controls.spectrogramYMinFreq}
+            maxValue={controls.spectrogramYMaxFreq}
             onCommit={(spectrogramYMinFreq, spectrogramYMaxFreq) =>
-              onChange({ ...spectrogramControls, spectrogramYMinFreq, spectrogramYMaxFreq })
+              onChange({ ...controls, spectrogramYMinFreq, spectrogramYMaxFreq })
             }
           />
         </SettingsRow>
