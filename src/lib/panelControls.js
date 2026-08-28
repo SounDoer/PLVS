@@ -49,6 +49,12 @@ export const SPECTRUM_OCTAVE_SMOOTHING_OPTIONS = [
 
 const SPECTRUM_VIEW_IDS = ["combined", "lr", "ms"];
 
+/// One string for both tabs: the Spectrum renders its own row, the Spectrogram takes it from the
+/// ordered row list below, and the control means the same thing in each.
+export const SPECTRUM_TILT_TOOLTIP =
+  "Lifts the display by this many dB per octave above 1 kHz and drops it by as much below, so " +
+  "material that slopes downward reads level. Display only: it does not change what is measured.";
+
 /// What the Spectrum's filled area shows. Off draws the fill under the live curve.
 export const SPECTRUM_MAX_MODE_OPTIONS = [
   { id: "off", label: "Off" },
@@ -303,8 +309,7 @@ const CONTROLS = [
       order: 15,
       step: 0.25,
       format: (value) => `${value.toFixed(2)} dB/oct`,
-      tooltip:
-        "Lifts the display by this many dB per octave above 1 kHz and drops it by as much below, so material that slopes downward reads level. Display only: it does not change what is measured.",
+      tooltip: SPECTRUM_TILT_TOOLTIP,
     },
   },
   {

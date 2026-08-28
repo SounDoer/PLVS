@@ -18,6 +18,7 @@ import {
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTRUM_MAX_MODE_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
+  SPECTRUM_TILT_TOOLTIP,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
   panelControlUiRows,
@@ -1089,10 +1090,7 @@ export function SpectrumDisplaySettingsRows({
               commitOnRelease
             />
           </SettingsRow>
-          <SettingsRow
-            label="Tilt"
-            tooltip="Lifts the curve by this many dB per octave above 1 kHz and drops it by as much below, so material that slopes downward reads level. Display only: it does not change what is measured."
-          >
+          <SettingsRow label="Tilt" tooltip={SPECTRUM_TILT_TOOLTIP}>
             <SettingsSlider
               ariaLabel="spectrum tilt"
               min={0}

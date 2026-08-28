@@ -1623,6 +1623,31 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByLabelText("spectrum max decay")).toBeNull();
   });
 
+  it("gives the tilt row the same tooltip on both the spectrum and spectrogram tabs", () => {
+    const tiltTooltip = (activeTab) => {
+      const view = render(
+        <PanelSettingsContent
+          activeTab={activeTab}
+          channelCount={2}
+          spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+          spectrumValueKey="p-0-1"
+          panelControls={DEFAULT_PANEL_CONTROLS}
+          onPanelControlsChange={vi.fn()}
+        />
+      );
+      const label = [...view.container.querySelectorAll("span")].find(
+        (node) => node.firstChild?.nodeValue === "Tilt"
+      );
+      const text = label?.querySelector('[role="tooltip"]')?.textContent ?? null;
+      view.unmount();
+      return text;
+    };
+
+    const spectrum = tiltTooltip("spectrum");
+    expect(spectrum).toContain("dB per octave above 1 kHz");
+    expect(tiltTooltip("spectrogram")).toBe(spectrum);
+  });
+
   it("shows Tilt and Frequency Range, and nothing else, on the spectrogram tab", () => {
     const onPanelControlsChange = vi.fn();
     render(
