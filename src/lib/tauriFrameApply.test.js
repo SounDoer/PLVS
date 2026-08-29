@@ -244,8 +244,8 @@ describe("buildTauriFrameApply", () => {
     applyFrame({
       peakDb: [],
       peakHoldDb: [],
-      spectrumBandGridId: 1,
-      spectrumBandCentersHz: [100, 1000],
+      bandGridId: 1,
+      bandGridCentersHz: [100, 1000],
       spectrumResultsByKey,
       vectorscopeResultsByKey,
     });
@@ -264,15 +264,15 @@ describe("buildTauriFrameApply", () => {
     applyFrame({
       peakDb: [],
       peakHoldDb: [],
-      spectrumBandGridId: 1,
-      spectrumBandCentersHz: centers,
+      bandGridId: 1,
+      bandGridCentersHz: centers,
       spectrumResultsByKey: { a: { smoothDb: [-30, -40] } },
     });
     // A later frame sends the id alone; the row still has to arrive plottable.
     applyFrame({
       peakDb: [],
       peakHoldDb: [],
-      spectrumBandGridId: 1,
+      bandGridId: 1,
       spectrumResultsByKey: { a: { smoothDb: [-31, -41] } },
     });
     expect(audioState.spectrumResultsByKey.a.bandCentersHz).toBe(centers);
@@ -282,7 +282,7 @@ describe("buildTauriFrameApply", () => {
     applyFrame({
       peakDb: [],
       peakHoldDb: [],
-      spectrumBandGridId: 2,
+      bandGridId: 2,
       spectrumResultsByKey: { a: { smoothDb: [-32, -42] } },
     });
     expect(audioState.spectrumResultsByKey).toEqual({});

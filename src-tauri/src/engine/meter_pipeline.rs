@@ -102,7 +102,6 @@ fn stereo_map_result_from_shared_output(
   output: &crate::dsp::stereo_map::StereoMapPrimitiveRow,
 ) -> StereoMapFrameResult {
   StereoMapFrameResult {
-    band_centers_hz: output.band_centers_hz.clone(),
     pl: output.pl.clone(),
     pr: output.pr.clone(),
     c: output.c.clone(),
@@ -111,7 +110,6 @@ fn stereo_map_result_from_shared_output(
 
 fn stereo_map_visual_from_result(result: &StereoMapFrameResult) -> StereoMapVisualEntry {
   StereoMapVisualEntry {
-    band_centers_hz: result.band_centers_hz.clone(),
     pl: result.pl.clone(),
     pr: result.pr.clone(),
     c: result.c.clone(),
@@ -122,7 +120,6 @@ fn stereo_map_visual_from_shared_output(
   output: &crate::dsp::stereo_map::StereoMapPrimitiveRow,
 ) -> StereoMapVisualEntry {
   StereoMapVisualEntry {
-    band_centers_hz: output.band_centers_hz.clone(),
     pl: output.pl.clone(),
     pr: output.pr.clone(),
     c: output.c.clone(),
@@ -472,22 +469,6 @@ impl MeterPipeline {
       dialogue_gating,
       dialogue_vad_engine,
     )?;
-    // The grid rides along only when the UI could be without it: the first frame with rows, and
-    // once a second after that in case the one carrying it was dropped. Frames with no spectrum
-    // rows never carry it -- there is nothing for the UI to plot against yet.
-    frame.spectrum_band_grid_id = self.band_grid_id;
-    if spectrum_results_by_key.is_empty() {
-      frame.spectrum_band_centers_hz = Vec::new();
-    } else {
-      // Counted before the test, so consecutive sends sit exactly BAND_GRID_RESEND_FRAMES apart.
-      self.frames_since_band_grid_send += 1;
-      if self.frames_since_band_grid_send >= BAND_GRID_RESEND_FRAMES {
-        frame.spectrum_band_centers_hz = self.band_grid.clone();
-        self.frames_since_band_grid_send = 0;
-      } else {
-        frame.spectrum_band_centers_hz = Vec::new();
-      }
-    }
     frame.spectrum_results_by_key = spectrum_results_by_key;
     frame.vectorscope_results_by_key = vectorscope_results_by_key;
     // The runtime lends its persistent row; clone it only after a frame has passed the emit gate.
@@ -506,6 +487,26 @@ impl MeterPipeline {
           })
       })
       .collect();
+    // The grid rides along only when the UI could be without it: the first frame that carries band
+    // rows, and once a second after that in case the one carrying it was dropped. A frame with no
+    // band rows never carries it -- there is nothing for the UI to plot against yet. Spectrum and
+    // Stereo Map rows share this one grid; see `AudioFramePayload::band_grid_id`.
+    frame.band_grid_id = self.band_grid_id;
+    let has_band_rows =
+      !frame.spectrum_results_by_key.is_empty() || !frame.stereo_map_results_by_key.is_empty();
+    if !has_band_rows {
+      frame.band_grid_centers_hz = Vec::new();
+    } else {
+      // Counted before the test, so consecutive sends sit exactly BAND_GRID_RESEND_FRAMES apart.
+      self.frames_since_band_grid_send += 1;
+      if self.frames_since_band_grid_send >= BAND_GRID_RESEND_FRAMES {
+        frame.band_grid_centers_hz = self.band_grid.clone();
+        self.frames_since_band_grid_send = 0;
+      } else {
+        frame.band_grid_centers_hz = Vec::new();
+      }
+    }
+
     let spectral_waveform_metrics = analysis_requests.spectral_waveform.then(|| {
       self
         .shared_spectral_runtime
@@ -984,8 +985,8 @@ impl MeterPipeline {
 
     let frame = AudioFramePayload {
       // Stamped by the caller once the frame is known to be emitted; see the band-grid block there.
-      spectrum_band_grid_id: 0,
-      spectrum_band_centers_hz: Vec::new(),
+      band_grid_id: 0,
+      band_grid_centers_hz: Vec::new(),
       peak_db,
       rms_db,
       peak_hold_db,
@@ -3190,8 +3191,8 @@ mod tests {
     let actual = &ready.spectrum_results_by_key["single"];
     // The grid rides on the first frame of the session, not on every one; the rows below are
     // sampled on it either way.
-    assert_eq!(pending.spectrum_band_centers_hz, legacy_centers);
-    assert!(ready.spectrum_band_centers_hz.is_empty());
+    assert_eq!(pending.band_grid_centers_hz, legacy_centers);
+    assert!(ready.band_grid_centers_hz.is_empty());
     assert_eq!(actual.smooth_db, legacy_smooth);
     assert_eq!(actual.peak_db, legacy_peak);
   }
@@ -3314,8 +3315,9 @@ mod tests {
     );
     let early = &batch[3].stereo_map_by_key["batched"];
     let later = &batch[4].stereo_map_by_key["batched"];
-    assert!(!early.band_centers_hz.is_empty());
-    assert_eq!(early.band_centers_hz.len(), early.pl.len());
+    // The grid these rows sit on rides on the frame, not on the row; the row's own arrays still
+    // have to agree with each other.
+    assert!(!early.pl.is_empty());
     assert_eq!(early.pl.len(), early.pr.len());
     assert_eq!(early.pr.len(), early.c.len());
     assert_ne!(
@@ -3453,13 +3455,13 @@ mod tests {
       );
       // The grid now rides on the frame, once, for every row on it.
       assert_eq!(
-        frame.spectrum_band_centers_hz.len(),
+        frame.band_grid_centers_hz.len(),
         actual.smooth_db.len(),
         "{sample_rate} Hz grid length"
       );
       let expected_max = 20_000.0_f64.min(sample_rate as f64 * 0.499);
       assert!(
-        (frame.spectrum_band_centers_hz.last().copied().unwrap() - expected_max).abs()
+        (frame.band_grid_centers_hz.last().copied().unwrap() - expected_max).abs()
           <= expected_max * f64::EPSILON,
         "{sample_rate} Hz upper grid bound"
       );
@@ -3559,11 +3561,8 @@ mod tests {
 
     let first = push(&mut pipeline, 0);
     let expected = crate::dsp::spectrum_band_centers(48_000.0);
-    assert_eq!(first.spectrum_band_centers_hz, expected, "first frame grid");
-    assert_ne!(
-      first.spectrum_band_grid_id, 0,
-      "zero means no grid on the wire"
-    );
+    assert_eq!(first.band_grid_centers_hz, expected, "first frame grid");
+    assert_ne!(first.band_grid_id, 0, "zero means no grid on the wire");
 
     // Every frame identifies the grid; only the periodic one repeats it. Count the frames from
     // the first send to the next: they must sit exactly one period apart.
@@ -3571,12 +3570,12 @@ mod tests {
     for index in 1..=(BAND_GRID_RESEND_FRAMES as u64 * 2) {
       let frame = push(&mut pipeline, index * FFT_BIG as u64);
       assert_eq!(
-        frame.spectrum_band_grid_id, first.spectrum_band_grid_id,
+        frame.band_grid_id, first.band_grid_id,
         "the grid did not change, so neither may its id"
       );
       frames_until_resend += 1;
-      if !frame.spectrum_band_centers_hz.is_empty() {
-        assert_eq!(frame.spectrum_band_centers_hz, expected, "resent grid");
+      if !frame.band_grid_centers_hz.is_empty() {
+        assert_eq!(frame.band_grid_centers_hz, expected, "resent grid");
         break;
       }
     }
@@ -4131,11 +4130,14 @@ mod tests {
     assert_eq!(frame.stereo_map_results_by_key.len(), 2);
     for key in ["first", "second"] {
       let row = &frame.stereo_map_results_by_key[key];
-      assert!(!row.band_centers_hz.is_empty());
-      assert_eq!(row.band_centers_hz.len(), row.pl.len());
+      assert!(!row.pl.is_empty());
+      assert_eq!(
+        row.pl.len(),
+        frame.band_grid_centers_hz.len(),
+        "row sits on the frame's grid"
+      );
       assert_eq!(row.pl.len(), row.pr.len());
       assert_eq!(row.pr.len(), row.c.len());
-      assert!(row.band_centers_hz.iter().all(|value| value.is_finite()));
       assert!(row.pl.iter().all(|value| value.is_finite()));
       assert!(row.pr.iter().all(|value| value.is_finite()));
       assert!(row.c.iter().all(|value| value.is_finite()));
@@ -4333,15 +4335,14 @@ mod tests {
       )
       .expect("rewarmed frame");
     let ready = &rewarmed.stereo_map_results_by_key["clearable"];
-    assert!(!ready.band_centers_hz.is_empty());
-    assert_eq!(ready.band_centers_hz.len(), ready.pl.len());
+    assert!(!ready.pl.is_empty());
     assert_eq!(ready.pl.len(), ready.pr.len());
     assert_eq!(ready.pr.len(), ready.c.len());
     let visual = &rewarmed
       .visual_hist_tick
       .expect("ready post-Clear visual")
       .stereo_map_by_key["clearable"];
-    assert_eq!(visual.band_centers_hz.len(), visual.pl.len());
-    assert!(!visual.band_centers_hz.is_empty());
+    assert!(!visual.pl.is_empty());
+    assert_eq!(visual.pl.len(), visual.pr.len());
   }
 }

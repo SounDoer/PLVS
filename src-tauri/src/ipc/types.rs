@@ -82,7 +82,6 @@ pub struct VectorscopeFrameResult {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StereoMapFrameResult {
-  pub band_centers_hz: Vec<f32>,
   pub pl: Vec<f32>,
   pub pr: Vec<f32>,
   pub c: Vec<f32>,
@@ -211,7 +210,6 @@ pub struct VectorscopeVisualEntry {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StereoMapVisualEntry {
-  pub band_centers_hz: Vec<f32>,
   pub pl: Vec<f32>,
   pub pr: Vec<f32>,
   pub c: Vec<f32>,
@@ -278,14 +276,16 @@ pub struct AudioFramePayload {
   /// Whether the loudness layout is known/correct for the input stream.
   pub loudness_layout_known: bool,
   pub timestamp_ms: u64,
-  /// Identifies the log-frequency grid the spectrum rows on this frame are sampled on. The grid
-  /// depends only on the sample rate, so it is sent in `spectrum_band_centers_hz` when it changes
+  /// Identifies the log-frequency grid every band row on this frame is sampled on -- Spectrum's
+  /// and Stereo Map's alike, which sit on the same grid by construction (pinned by
+  /// `stereo_map::tests::rows_sit_on_the_same_band_grid_the_spectrum_does`). The grid
+  /// depends only on the sample rate, so it is sent in `band_grid_centers_hz` when it changes
   /// and periodically after that; frames in between carry the id alone and the UI reads the grid
   /// out of its own cache. Frames are dropped when the webview falls behind, which is why this is
   /// re-sent on a period rather than exactly once.
-  pub spectrum_band_grid_id: u64,
+  pub band_grid_id: u64,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
-  pub spectrum_band_centers_hz: Vec<f64>,
+  pub band_grid_centers_hz: Vec<f64>,
   /// Monotonic per-session sequence number, assigned by the capture bridge as each frame is sent.
   /// The UI echoes the latest value back via `ack_frames` so the bridge can bound its send backlog.
   pub seq: u64,

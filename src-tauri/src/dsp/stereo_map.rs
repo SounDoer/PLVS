@@ -370,6 +370,11 @@ impl StereoMapConsumer {
   }
 
   #[cfg(test)]
+  pub(crate) fn band_centers_for_test(&self) -> &[f32] {
+    &self.published_row.band_centers_hz
+  }
+
+  #[cfg(test)]
   fn complex_output_row_for_test(&self) -> &[Complex64] {
     if self.octave_smoothing.half_width_points().is_some() {
       &self.smoothed_c
@@ -405,6 +410,26 @@ impl StereoMapConsumer {
 
 #[cfg(test)]
 mod tests {
+  /// The frame protocol sends one band grid for every row on it, Stereo Map's included, so this
+  /// pins the thing that makes that legal: the two are built from the same `LogGrid` over the same
+  /// bounds, and a divergence here would misplace every Stereo Map band without failing anything
+  /// else.
+  #[test]
+  fn rows_sit_on_the_same_band_grid_the_spectrum_does() {
+    for sample_rate in [44_100.0, 48_000.0, 96_000.0] {
+      let consumer = super::StereoMapConsumer::for_sample_rate(sample_rate);
+      let expected: Vec<f32> = crate::dsp::spectrum_band_centers(sample_rate)
+        .into_iter()
+        .map(|frequency| frequency as f32)
+        .collect();
+      assert_eq!(
+        consumer.band_centers_for_test(),
+        expected.as_slice(),
+        "{sample_rate} Hz grid"
+      );
+    }
+  }
+
   use super::*;
   use crate::dsp::shared_spectral_engine::allocation_counter;
   use crate::dsp::spectral_transform::ComplexSpectralFrame;

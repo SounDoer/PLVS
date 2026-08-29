@@ -120,7 +120,7 @@
 
 /**
  * @typedef {object} StereoMapFrameResult
- * @property {number[]} bandCentersHz
+ * @property {number[]} bandCentersHz stamped from the frame's band grid, not sent per row
  * @property {number[]} pl
  * @property {number[]} pr
  * @property {number[]} c

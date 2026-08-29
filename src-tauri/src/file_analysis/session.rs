@@ -767,9 +767,10 @@ mod tests {
       "file warmup rows must omit an unavailable Stereo Map key"
     );
     assert!(
-      visual_rows.iter().skip(3).all(|(_, row)| row
-        .as_ref()
-        .is_some_and(|row| !row.band_centers_hz.is_empty())),
+      visual_rows
+        .iter()
+        .skip(3)
+        .all(|(_, row)| row.as_ref().is_some_and(|row| !row.pl.is_empty())),
       "rows become publishable after the shared FFT warmup"
     );
   }
