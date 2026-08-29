@@ -118,8 +118,31 @@ benchmark 里的 `full, colour math inlined` 一行衡量的就是每像素那�
 每一条都有对应的失效模式，且都是视觉上很显眼的那种（拖影、错位、空隙被糊住）。这是一次真正的
 设计改动，不是局部优化，所以停在这里等决策。
 
-## 3. 尚未测量
+## 4. 首次 renderer profile（2026-08-29）
 
-`putImageData` 的上传与画布合成——和 Spectrum 的 paint 一样，需要一次真机会话的 CDP 采样
-（远程会话采不了，原因见 `README.md`）。2D 每帧上传一整幅 RGBA 图像
-（600×300 = 720 KB，1200×600 = 2.88 MB），这个量级值得单独确认一次。
+通过**文件分析**取到了——不需要音频设备，远程会话也能跑，方法见 `README.md`。
+10 秒、17981 个样本，采的是已经带上滚动复用的生产构建。
+
+**Spectrogram 的画笔没有出现在排行前列。** 唯一能确认与它相关的是 `dbAt`（172 ms，1.7%），
+而那是 Spectrum 和 Spectrogram 共用的行解码器。滚动复用之后，2D 画笔不再是热点。
+
+`putImageData` 的上传也没有单独浮出来。它仍然每帧传一整幅 RGBA
+（600×300 = 720 KB，1200×600 = 2.88 MB），但在这次采样里没有构成可见的自耗时——
+**先不动它**，等有面板证据再说。
+
+### 采到的两条线索都不属于 Spectrogram
+
+| 原生 API | 自耗时 | 归属 |
+| --- | --- | --- |
+| `getPropertyValue` | 311 ms (3.1%) | 每帧读主题 token |
+| `addColorStop` | 211 ms (2.1%) | 每帧重建 canvas 渐变 |
+
+`getComputedStyle` 已确认落在两处**每帧绘制路径**里——`WaveformPanel.jsx:115` 与
+`VectorscopePanel.jsx:263`——读的都是只在换主题时才变的值。`StereoMapPlot.jsx:386` 的注释
+本身就警告过这会强制同步样式重算。
+
+`addColorStop` 只有两个调用点（`StereoMapPlot.jsx:213`、`useSpectrogram3dCanvas.js:253`），
+都不在默认布局里，所以它来自采样当时那台机器恢复出来的布局。**归因待定。**
+
+这两条都不是 Spectrogram 的问题，留给 Waveform、Vectorscope、Stereo Map 各自那一轮，
+或者作为一次横切修复（"主题 token 每帧只读一次"）单独做。

@@ -30,13 +30,44 @@ npm run profile:webview -- --seconds 10 --out spectrum.cpuprofile
 **前提是音频真的在流动。** 空转的窗口采出来的是一份没有样本的 profile，比没有更糟；脚本会明说
 "No samples"，但它没法替你把声音放起来。采样时把要测的面板开着。
 
-`scripts/capture-rig.mjs` 可以自己起 VLC 循环播进 VB-Cable（`resolveRenderEndpointId` +
-`startPlayer` / `stopPlayer`），所以音频这一半是能自动化的——**但只在本机会话里**。
+### 让帧流动起来：两条路
 
-**远程桌面会话里采不了。** RDP 把音频端点换成了 "Remote Audio"：引擎的
-`list_audio_devices` 在这种会话里只返回这一个设备，VB-Cable 对 WASAPI 不可见，哪怕 PowerShell
-仍然能解析出它的 render endpoint。唯一的替代是把信号播进 "Remote Audio"，而那就是操作者的
-扬声器——一分钟的 1 kHz 正弦，不能这么干。**这类采样要在本机会话做。**
+**本机会话**：`scripts/capture-rig.mjs` 能自己起 VLC 循环播进 VB-Cable
+（`resolveRenderEndpointId` + `startPlayer` / `stopPlayer`）。
+
+**远程桌面会话**：实时采集这条路是断的。RDP 把音频端点换成了 "Remote Audio"，引擎的
+`list_audio_devices` 只返回这一个设备，VB-Cable 对 WASAPI 不可见（哪怕 PowerShell 仍能解析出它的
+render endpoint）。唯一的音频替代是播进 "Remote Audio"，而那就是操作者的扬声器。
+
+**但文件分析这条路是通的，而且不需要任何音频设备。** 应用分析一个文件时照样按同一节奏发帧、
+照样驱动所有面板。全程可以从 CDP 驱动：
+
+```js
+// 1. 切到 File 模式
+document.querySelector('[aria-label^="Source:"]').click();
+[...document.querySelectorAll('[role=menuitemradio]')].find(b => b.textContent.trim() === 'FILE').click();
+
+// 2. 把文件"拖"进去。拖放走的是 Tauri 的 webview 事件而不是 HTML5 dataTransfer,
+//    而事件插件可以从 JS 侧 emit——这是这条路能通的关键。
+await window.__TAURI_INTERNALS__.invoke('plugin:event|emit', {
+  event: 'tauri://drag-drop',
+  payload: { type: 'drop', paths: ['C:\path\to\file.wav'], position: { x: 10, y: 10 } },
+});
+```
+
+文件要够长：分析比实时快得多，一个 10 分钟的 WAV 大约跑 65 秒，够采一次 10 秒的样。
+
+### 读 profile 的一个限制
+
+生产构建是压缩过的，所以自有函数在排行里只剩 `BN`、`nL` 这类名字，落在
+`index-<hash>.js:<line>` 上——**能定位到文件，定位不到函数**。
+
+浏览器原生 API 不受影响（`getPropertyValue`、`addColorStop`、`setAttribute` 都是原名），
+所以第一轮的可行动线索往往来自它们。要拿到自有函数的名字，得开 sourcemap 重新构建再做映射；
+在原生 API 的线索用尽之前不值得。
+
+另外 profile 反映的是**当时那台机器上恢复出来的布局**，不是默认布局——归因到具体面板之前
+要先确认哪些面板开着。
 
 ## 顺序
 
