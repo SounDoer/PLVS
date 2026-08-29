@@ -61,7 +61,11 @@ export default defineConfig({
       return undefined;
     })(),
     minify: process.env.TAURI_DEBUG ? false : "esbuild",
-    sourcemap: !!process.env.TAURI_DEBUG,
+    // PLVS_BUILD_SOURCEMAP is for profiling, and is deliberately not TAURI_DEBUG: that one also
+    // turns minification off, which changes the very shape being measured. This keeps the shipped
+    // code exactly as it ships and only emits the map beside it, so a recorded frame can be named
+    // (`scripts/webview-cpu-profile.mjs --dist`).
+    sourcemap: !!process.env.TAURI_DEBUG || process.env.PLVS_BUILD_SOURCEMAP === "1",
     // PLVS is a local Tauri app with one primary route; keep the warning for real growth.
     chunkSizeWarningLimit: 900,
   },

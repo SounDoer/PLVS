@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseArgs, pickTarget, summariseProfile } from "./webview-cpu-profile.mjs";
+import { makeSourceMapper } from "./sourcemap-lookup.mjs";
 
 describe("parseArgs", () => {
   it("defaults to a ten second recording on the WebView2 port", () => {
@@ -78,5 +79,54 @@ describe("summariseProfile", () => {
     const idle = { ...profile, samples: [] };
     expect(summariseProfile(idle).rows).toEqual([]);
     expect(summariseProfile(idle).totalTicks).toBe(0);
+  });
+});
+
+describe("summariseProfile with source maps", () => {
+  const profile = {
+    startTime: 0,
+    endTime: 200_000,
+    nodes: [
+      {
+        id: 1,
+        callFrame: {
+          functionName: "qN",
+          url: "http://tauri.localhost/assets/index-abc.js",
+          lineNumber: 0,
+          columnNumber: 0,
+        },
+      },
+      {
+        id: 2,
+        callFrame: {
+          functionName: "zz",
+          url: "http://tauri.localhost/assets/other.js",
+          lineNumber: 3,
+          columnNumber: 0,
+        },
+      },
+    ],
+    samples: [1, 2],
+  };
+  const mappers = new Map([
+    [
+      "http://tauri.localhost/assets/index-abc.js",
+      makeSourceMapper({
+        sources: ["../src/hooks/usePaint.js"],
+        names: ["paintEverything"],
+        mappings: "AAAAA",
+      }),
+    ],
+  ]);
+
+  it("names a minified frame from the map and drops the bundler's leading ../", () => {
+    const { rows } = summariseProfile(profile, 25, mappers);
+    const mapped = rows.find((row) => row.label.startsWith("paintEverything"));
+    expect(mapped.label).toBe("paintEverything  src/hooks/usePaint.js:1");
+  });
+
+  it("leaves a frame from an unmapped bundle under its minified name", () => {
+    const { rows } = summariseProfile(profile, 25, mappers);
+    expect(rows.some((row) => row.label === "zz  other.js:4")).toBe(true);
   });
 });

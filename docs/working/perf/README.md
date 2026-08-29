@@ -72,17 +72,30 @@ await window.__TAURI_INTERNALS__.invoke('plugin:event|emit', {
 
 第二次采样的新头名是 `qN`（910 ms，9.0%），压缩名，要归因得先开 sourcemap。
 
-### 读 profile 的一个限制
+### 给压缩过的帧还原名字
 
-生产构建是压缩过的，所以自有函数在排行里只剩 `BN`、`nL` 这类名字，落在
-`index-<hash>.js:<line>` 上——**能定位到文件，定位不到函数**。
+生产构建是压缩的，排行里只会是 `qN`、`soe` 这类名字。开 sourcemap 重新构建，
+profiler 会自己做映射：
 
-浏览器原生 API 不受影响（`getPropertyValue`、`addColorStop`、`setAttribute` 都是原名），
-所以第一轮的可行动线索往往来自它们。要拿到自有函数的名字，得开 sourcemap 重新构建再做映射；
-在原生 API 的线索用尽之前不值得。
+```
+PLVS_BUILD_SOURCEMAP=1 npx tauri build --no-bundle
+npm run profile:webview -- --seconds 10 --dist dist
+```
 
-另外 profile 反映的是**当时那台机器上恢复出来的布局**，不是默认布局——归因到具体面板之前
-要先确认哪些面板开着。
+`PLVS_BUILD_SOURCEMAP` 与 `TAURI_DEBUG` 是两回事，**这是关键**：后者会同时关掉压缩，
+那就改变了要测量的东西本身。这个开关只在照常压缩的产物旁边多写一份 map。
+
+映射由 `scripts/sourcemap-lookup.mjs` 完成（自己解 VLQ，不引依赖）。没有 map 的构建照常出报告，
+只是保留压缩名，profiler 会明说。
+
+### 两条读 profile 时的注意
+
+**跨次采样不可直接比较。** 构建、恢复出来的面板布局、素材位置都会变。观察到的 idle 占比在
+0% 到 28% 之间浮动过——所以 profile 适合回答"谁是热点"，不适合回答"降了百分之几"。
+
+**文件分析模式不等于实时模式。** 用文件驱动是这套方法能在远程会话里跑起来的原因，但两种模式的
+窗口推进方式不同，实时路径上的优化在文件模式下未必会被触发。归因到某个优化是否生效之前，
+先确认那条路径在采样时真的走到了。
 
 ## 顺序
 

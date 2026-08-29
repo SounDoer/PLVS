@@ -15,10 +15,13 @@
  *
  *   npm run profile:webview -- --seconds 10 --out spectrum.cpuprofile
  */
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { basename, join } from "node:path";
+
+import { makeSourceMapper } from "./sourcemap-lookup.mjs";
 import { pathToFileURL } from "node:url";
 
-const DEFAULTS = { port: 9222, seconds: 10, out: "webview.cpuprofile", top: 25 };
+const DEFAULTS = { port: 9222, seconds: 10, out: "webview.cpuprofile", top: 25, dist: "dist" };
 
 export function parseArgs(argv) {
   const options = { ...DEFAULTS };
@@ -33,6 +36,7 @@ export function parseArgs(argv) {
     else if (flag === "--seconds") options.seconds = Number(take());
     else if (flag === "--out") options.out = String(take());
     else if (flag === "--top") options.top = Number(take());
+    else if (flag === "--dist") options.dist = String(take());
     else if (flag === "--help" || flag === "-h") options.help = true;
     else throw new Error(`unknown argument: ${argv[i]}`);
   }
@@ -59,8 +63,36 @@ export function pickTarget(targets) {
   return main ?? usable[0] ?? pages[0];
 }
 
+/**
+ * Loads the source maps for every bundle the profile mentions, so a minified frame can be named.
+ *
+ * Built for profiling only: `PLVS_BUILD_SOURCEMAP=1 npx tauri build --no-bundle` emits the maps
+ * beside a bundle that is still minified, so the code being measured is the code that ships. A
+ * profile taken from a build without them still reports, just under the minified names.
+ *
+ * @param {object} profile
+ * @param {string} distDir
+ * @returns {Promise<Map<string, (line: number, column: number) => object | null>>}
+ */
+export async function loadSourceMappers(profile, distDir) {
+  const mappers = new Map();
+  const urls = new Set(
+    (profile.nodes ?? []).map((node) => node.callFrame?.url).filter((url) => url?.endsWith(".js"))
+  );
+  for (const url of urls) {
+    const file = join(distDir, "assets", basename(new URL(url).pathname));
+    try {
+      const map = JSON.parse(await readFile(`${file}.map`, "utf8"));
+      mappers.set(url, makeSourceMapper(map));
+    } catch {
+      // No map beside this bundle: the frames from it keep their minified names.
+    }
+  }
+  return mappers;
+}
+
 /** Self time per function, which is what identifies a hot spot; totals hide it behind callers. */
-export function summariseProfile(profile, top = DEFAULTS.top) {
+export function summariseProfile(profile, top = DEFAULTS.top, mappers = new Map()) {
   const byId = new Map(profile.nodes.map((node) => [node.id, node]));
   const selfTicks = new Map();
   for (const id of profile.samples ?? []) {
@@ -75,10 +107,15 @@ export function summariseProfile(profile, top = DEFAULTS.top) {
   for (const [id, ticks] of selfTicks) {
     const frame = byId.get(id)?.callFrame;
     if (!frame) continue;
-    const where = frame.url ? frame.url.replace(/^.*\/(?=[^/]+$)/, "") : "";
-    const line = frame.lineNumber >= 0 ? `:${frame.lineNumber + 1}` : "";
+    const mapped = mappers.get(frame.url)?.(frame.lineNumber, frame.columnNumber) ?? null;
+    const where = mapped
+      ? `${mapped.source.replace(/^(\.\.\/)+/, "")}:${mapped.line + 1}`
+      : frame.url
+        ? `${frame.url.replace(/^.*\/(?=[^/]+$)/, "")}${frame.lineNumber >= 0 ? `:${frame.lineNumber + 1}` : ""}`
+        : "";
+    const name = mapped?.name || frame.functionName || "(anonymous)";
     rows.push({
-      label: `${frame.functionName || "(anonymous)"}${where ? `  ${where}${line}` : ""}`,
+      label: `${name}${where ? `  ${where}` : ""}`,
       ms: (ticks / divisor) * spanMs,
       share: (ticks / divisor) * 100,
     });
@@ -94,7 +131,7 @@ async function send(socket, pending, method, params) {
   return result;
 }
 
-export async function recordProfile({ port, seconds, out, top }, log = console.log) {
+export async function recordProfile({ port, seconds, out, top, dist }, log = console.log) {
   const listing = await fetch(`http://127.0.0.1:${port}/json`).catch((error) => {
     throw new Error(
       `no debugging port on ${port} (${error.message}). Start the app with ` +
@@ -131,7 +168,11 @@ export async function recordProfile({ port, seconds, out, top }, log = console.l
   socket.close();
 
   await writeFile(out, JSON.stringify(profile));
-  const summary = summariseProfile(profile, top);
+  const mappers = await loadSourceMappers(profile, dist);
+  if (mappers.size === 0) {
+    log("No source maps beside the bundle; frames keep their minified names.");
+  }
+  const summary = summariseProfile(profile, top, mappers);
   log("");
   log(`${out} — ${summary.spanMs.toFixed(0)} ms, ${summary.totalTicks} samples`);
   if (summary.totalTicks <= 1) {
@@ -151,7 +192,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
     console.log(
-      "Usage: npm run profile:webview -- [--port 9222] [--seconds 10] [--out file.cpuprofile] [--top 25]"
+      "Usage: npm run profile:webview -- [--port 9222] [--seconds 10] [--out file.cpuprofile] " +
+        "[--top 25] [--dist dist]"
     );
   } else {
     recordProfile(options).catch((error) => {
