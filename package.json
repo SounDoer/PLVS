@@ -20,6 +20,7 @@
     "benchmark:history-chunks": "node scripts/history-chunk-size-benchmark.mjs",
     "benchmark:spectrum-render": "node scripts/spectrum-render-benchmark.mjs",
     "benchmark:spectrogram-render": "node scripts/spectrogram-render-benchmark.mjs",
+    "benchmark:waveform-render": "node scripts/waveform-render-benchmark.mjs",
     "profile:webview": "node scripts/webview-cpu-profile.mjs",
     "preview": "vite preview",
     "test": "vitest run",

@@ -45,13 +45,15 @@ render endpoint）。唯一的音频替代是播进 "Remote Audio"，而那就�
 ```js
 // 1. 切到 File 模式
 document.querySelector('[aria-label^="Source:"]').click();
-[...document.querySelectorAll('[role=menuitemradio]')].find(b => b.textContent.trim() === 'FILE').click();
+[...document.querySelectorAll("[role=menuitemradio]")]
+  .find((b) => b.textContent.trim() === "FILE")
+  .click();
 
 // 2. 把文件"拖"进去。拖放走的是 Tauri 的 webview 事件而不是 HTML5 dataTransfer,
 //    而事件插件可以从 JS 侧 emit——这是这条路能通的关键。
-await window.__TAURI_INTERNALS__.invoke('plugin:event|emit', {
-  event: 'tauri://drag-drop',
-  payload: { type: 'drop', paths: ['C:\path\to\file.wav'], position: { x: 10, y: 10 } },
+await window.__TAURI_INTERNALS__.invoke("plugin:event|emit", {
+  event: "tauri://drag-drop",
+  payload: { type: "drop", paths: ["C:\path\to\file.wav"], position: { x: 10, y: 10 } },
 });
 ```
 
@@ -62,10 +64,10 @@ await window.__TAURI_INTERNALS__.invoke('plugin:event|emit', {
 第一次采样的两条原生 API 线索都已处理，第二次采样（同样方法、重建后的构建）里**两者都不再进
 前 14**：
 
-| | 第一次 | 第二次 | 改动 |
-| --- | --- | --- | --- |
+|                    | 第一次        | 第二次 | 改动                                          |
+| ------------------ | ------------- | ------ | --------------------------------------------- |
 | `getPropertyValue` | 311 ms (3.1%) | 未进榜 | 主题 token 按主题缓存（`theme/cssTokens.js`） |
-| `addColorStop` | 211 ms (2.1%) | 未进榜 | Stereo Map 一个 run 一个渐变 |
+| `addColorStop`     | 211 ms (2.1%) | 未进榜 | Stereo Map 一个 run 一个渐变                  |
 
 **两次采样不是受控实验**：构建不同，面板布局也未必相同（第一次有 719 ms 的 idle，第二次没有），
 所以这只是"不再是热点"的证据，不是一个精确的减少量。
@@ -105,22 +107,22 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 
 ## 四个维度与各自的证据来源
 
-| 维度 | 问题 | 证据来源 |
-| --- | --- | --- |
-| D1 Rust 计算 | 算得对吗？算得有没有冗余？ | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时 |
-| D2 前端渲染 | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下） |
-| D3 历史存储 | 结构合理吗？占用是多少？ | `npm run benchmark:history` + heap 预算测试 |
-| D4 其他 | 每帧 payload、IPC、调度 | payload 字节数实测；`npm run soak:capture`（只作线索，阈值未校准） |
+| 维度         | 问题                           | 证据来源                                                                                                                                                             |
+| ------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1 Rust 计算 | 算得对吗？算得有没有冗余？     | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时                                                                                            |
+| D2 前端渲染  | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render` / `benchmark:spectrogram-render` / `benchmark:waveform-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下） |
+| D3 历史存储  | 结构合理吗？占用是多少？       | `npm run benchmark:history` + heap 预算测试                                                                                                                          |
+| D4 其他      | 每帧 payload、IPC、调度        | payload 字节数实测；`npm run soak:capture`（只作线索，阈值未校准）                                                                                                   |
 
 ## 状态
 
-| Panel | D1 | D2 | D3 | D4 |
-| --- | --- | --- | --- | --- |
-| Spectrum | 合理性已落地，正确性已有覆盖 | 计算部分已测并优化，paint 待测 | 已测，无水分，有损手段均拒绝 | payload 第 1、2 层已落地，第 3 层待议 |
-| Spectrogram | 继承 Spectrum | 已测并优化（−87%/−95%） | 继承 Spectrum | 继承 Spectrum |
-| Stereo Map | 待测 | 渐变已减半，其余待测 | 待测 | 已落地（−23%） |
-| Waveform | — | — | — | — |
-| Vectorscope | — | — | — | — |
-| Level Meter | — | — | — | — |
-| Loudness | — | — | — | — |
-| Stats | — | — | — | — |
+| Panel       | D1                           | D2                                 | D3                           | D4                                    |
+| ----------- | ---------------------------- | ---------------------------------- | ---------------------------- | ------------------------------------- |
+| Spectrum    | 合理性已落地，正确性已有覆盖 | 计算部分已测并优化，paint 待测     | 已测，无水分，有损手段均拒绝 | payload 第 1、2 层已落地，第 3 层待议 |
+| Spectrogram | 继承 Spectrum                | 已测并优化（−87%/−95%）            | 继承 Spectrum                | 继承 Spectrum                         |
+| Stereo Map  | 待测                         | 渐变已减半，其余待测               | 待测                         | 已落地（−23%）                        |
+| Waveform    | 边界与正确性已查，成本未测   | 已测，Frequency Color 是大头，未改 | 已测，占历史约 1%，拒绝      | 已测，11.29 KiB/s，拒绝               |
+| Vectorscope | —                            | —                                  | —                            | —                                     |
+| Level Meter | —                            | —                                  | —                            | —                                     |
+| Loudness    | —                            | —                                  | —                            | —                                     |
+| Stats       | —                            | —                                  | —                            | —                                     |
