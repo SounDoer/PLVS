@@ -125,10 +125,10 @@ describe("StereoMapPlot", () => {
     // no longer scales with how many bands (or how much the value swings between them) it contains.
     expect(ctx.stroke).toHaveBeenCalledTimes(1);
     expect(ctx.fill).toHaveBeenCalledTimes(1);
-    // Fill gradient built first, then stroke gradient, both carrying one stop per band.
-    expect(ctx.gradients).toHaveLength(2);
+    // One gradient serves both passes -- the fill's constant factor rides on globalAlpha -- so a
+    // run costs one stop per band, not two.
+    expect(ctx.gradients).toHaveLength(1);
     expect(ctx.gradients[0].stops).toHaveLength(3);
-    expect(ctx.gradients[1].stops).toHaveLength(3);
   });
 
   it("breaks the curve at an invalid band instead of interpolating across it", () => {
@@ -150,10 +150,10 @@ describe("StereoMapPlot", () => {
     expect(ctx.gradients[0].stops).toHaveLength(2);
   });
 
-  it("bakes low-energy opacity fade into each gradient stop's alpha instead of a per-draw globalAlpha", () => {
-    // Continuous modes now draw one path per run with globalAlpha fixed at 1 — varying opacity
-    // along the run has to be expressed as per-stop alpha, or a low-energy fade at one edge of a
-    // run would silently apply to the whole run instead.
+  it("keeps a run's varying opacity in the stops and only its constant fill factor on globalAlpha", () => {
+    // Continuous modes draw one path per run, so opacity that varies *along* the run has to be
+    // per-stop: a per-draw alpha would apply one edge's fade to the whole run. The fill's constant
+    // factor is the one part that can ride on globalAlpha, which the canvas multiplies in.
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     render(
@@ -170,9 +170,11 @@ describe("StereoMapPlot", () => {
     );
 
     expect(ctx.strokedAlphas.at(-1)).toBe(1);
-    const strokeGradient = ctx.gradients[1];
-    expect(strokeGradient.stops[0].color).toMatch(/, 0\.3\)$/);
-    expect(strokeGradient.stops[1].color).toMatch(/, 0\.9\)$/);
+    // The token is absent in the stub, so the fill factor is the code's own fallback.
+    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.18, 5);
+    const gradient = ctx.gradients[0];
+    expect(gradient.stops[0].color).toMatch(/, 0\.3\)$/);
+    expect(gradient.stops[1].color).toMatch(/, 0\.9\)$/);
   });
 
   it("colors Position mode as a continuous blend between the primary and secondary tokens", () => {
@@ -202,9 +204,9 @@ describe("StereoMapPlot", () => {
 
     // band0 (value -1, channelBlendT=0) is fully secondary (blue); band1 (value 1, t=1) fully
     // primary (red) — a continuous blend expressed as gradient stops, not a per-segment average.
-    const strokeGradient = ctx.gradients[1];
-    expect(strokeGradient.stops[0].color).toBe("rgba(0, 0, 255, 1)");
-    expect(strokeGradient.stops[1].color).toBe("rgba(255, 0, 0, 1)");
+    const gradient = ctx.gradients[0];
+    expect(gradient.stops[0].color).toBe("rgba(0, 0, 255, 1)");
+    expect(gradient.stops[1].color).toBe("rgba(255, 0, 0, 1)");
   });
 
   it("colors Correlation as Bad at -1 and Good at +1 via the three-stop signal tokens", () => {
@@ -233,7 +235,7 @@ describe("StereoMapPlot", () => {
       />
     );
     styleSpy.mockRestore();
-    expect(ctx.gradients[1].stops[0].color).toBe("rgba(255, 0, 0, 1)");
+    expect(ctx.gradients[0].stops[0].color).toBe("rgba(255, 0, 0, 1)");
 
     const ctx2 = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx2);
@@ -259,7 +261,7 @@ describe("StereoMapPlot", () => {
       />
     );
     styleSpy2.mockRestore();
-    expect(ctx2.gradients[1].stops[0].color).toBe("rgba(0, 0, 255, 1)");
+    expect(ctx2.gradients[0].stops[0].color).toBe("rgba(0, 0, 255, 1)");
   });
 
   it("colors M/S Ratio as a binary primary/secondary split by sign, merging same-color segments", () => {

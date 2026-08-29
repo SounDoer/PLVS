@@ -204,19 +204,25 @@ function drawGradientRun(ctx, run, mode, range, colors, baselineY, fillOpacity, 
   const span = x1 - x0;
 
   const soleColor = (alpha) => withAlpha(segmentColor(mode, run[0].value, range, colors), alpha);
-  const buildGradient = (alphaFor) => {
-    if (!(span > 0)) return null;
-    const gradient = ctx.createLinearGradient(x0, 0, x1, 0);
+  // One gradient serves both passes. The stops carry the opacity that varies along the run, which
+  // is the part a per-draw alpha could not express; the constant fill factor rides on globalAlpha,
+  // which the canvas multiplies with each stop's alpha for the same result. Building it twice cost
+  // an addColorStop and a colour string per point per pass, and a renderer profile put
+  // addColorStop at 2% of its time.
+  let gradient = null;
+  if (span > 0) {
+    gradient = ctx.createLinearGradient(x0, 0, x1, 0);
     for (const point of run) {
       const t = clamp01((point.x * scaleX - x0) / span);
-      const rgb = segmentColor(mode, point.value, range, colors);
-      gradient.addColorStop(t, withAlpha(rgb, alphaFor(point)));
+      gradient.addColorStop(
+        t,
+        withAlpha(segmentColor(mode, point.value, range, colors), point.opacity)
+      );
     }
-    return gradient;
-  };
+  }
 
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = buildGradient((point) => point.opacity * fillOpacity) ?? soleColor(fillOpacity);
+  ctx.globalAlpha = gradient ? fillOpacity : 1;
+  ctx.fillStyle = gradient ?? soleColor(fillOpacity);
   ctx.beginPath();
   ctx.moveTo(x0, baselineY);
   for (const point of run) ctx.lineTo(point.x * scaleX, point.y * scaleY);
@@ -224,7 +230,8 @@ function drawGradientRun(ctx, run, mode, range, colors, baselineY, fillOpacity, 
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = buildGradient((point) => point.opacity) ?? soleColor(run[0].opacity);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = gradient ?? soleColor(run[0].opacity);
   ctx.beginPath();
   ctx.moveTo(run[0].x * scaleX, run[0].y * scaleY);
   for (let index = 1; index < run.length; index += 1) {
