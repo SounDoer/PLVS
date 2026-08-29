@@ -12,7 +12,8 @@ import {
   centroidYFraction,
   parseCssRgb,
   sliceSpectralWaveformMetrics,
-  waveformFrequencyRgb,
+  waveformFrequencyRgbInto,
+  waveformFrequencyScale,
 } from "../../math/spectralWaveformMath.js";
 import {
   DEFAULT_WAVEFORM_CANVAS_COLORS,
@@ -96,6 +97,10 @@ export function paintDockWaveformCanvas(
     high: parseCssRgb(themeColors.frequencyHigh),
     neutral: parseCssRgb(themeColors.frequencyNeutral),
   };
+  // One colour per pixel column per lane, so the split-derived anchors are resolved once per draw
+  // and the result is written into a single reused array. See `docs/working/perf/waveform.md` §2.1.
+  const frequencyScale = waveformFrequencyScale({ lowMidSplitHz, midHighSplitHz }, spectralPalette);
+  const bucketColor = [0, 0, 0];
   const centroidColor = themeColors.centroid;
   // The backing store height now uses full DPR while width is capped, so it is no longer 1:1 with
   // CSS pixels. Convert the CSS-px row gap into backing pixels before laying out the lanes.
@@ -124,13 +129,13 @@ export function paintDockWaveformCanvas(
     if (frequencyColor) {
       for (let bucket = firstBucket; bucket <= lastBucket; bucket += 1) {
         const next = Math.min(lastBucket, bucket + 1);
-        const color = waveformFrequencyRgb(
+        waveformFrequencyRgbInto(
+          frequencyScale,
           dominantFrequencyHz?.[channel]?.[bucket] ?? 0,
           tonality?.[channel]?.[bucket] ?? 0,
-          { lowMidSplitHz, midHighSplitHz },
-          spectralPalette
+          bucketColor
         );
-        const colorCss = `rgb(${color.join(" ")})`;
+        const colorCss = `rgb(${bucketColor[0]} ${bucketColor[1]} ${bucketColor[2]})`;
         const x = xFor(bucket);
         const nextX = xFor(next) + (next === bucket ? 1 : 0);
         const yMax = centerY - Math.max(0, clampAmplitude(maxes[channel][bucket])) * halfHeight;

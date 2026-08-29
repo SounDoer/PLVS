@@ -6,11 +6,6 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 }
 
-function mixRgb(first, second, amount) {
-  const t = clamp01(amount);
-  return first.map((value, index) => Math.round(value + (second[index] - value) * t));
-}
-
 export function parseCssRgb(value, fallback = [128, 128, 128]) {
   const text = String(value ?? "").trim();
   const hex = text.match(/^#([0-9a-f]{6})$/i)?.[1];
@@ -21,40 +16,93 @@ export function parseCssRgb(value, fallback = [128, 128, 128]) {
   return rgb ? rgb.slice(1, 4).map((part) => Math.round(Number(part))) : fallback;
 }
 
-export function waveformFrequencyRgb(
-  frequencyHz,
-  tonality,
-  { lowMidSplitHz, midHighSplitHz },
-  { low, mid, high, neutral }
-) {
-  if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) return neutral;
+/**
+ * The half of the frequency-to-colour map that depends only on the two split controls: three
+ * anchors and their logarithms.
+ *
+ * A Frequency Color draw asks for one colour per pixel column, and deriving these six numbers per
+ * column was most of what that loop cost. Build this once per draw and hand it to
+ * `waveformFrequencyRgbInto`.
+ */
+export function waveformFrequencyScale({ lowMidSplitHz, midHighSplitHz }, palette) {
   const lowAnchor = Math.sqrt(MIN_FREQUENCY_HZ * lowMidSplitHz);
   const midAnchor = Math.sqrt(lowMidSplitHz * midHighSplitHz);
   const highAnchor = Math.sqrt(midHighSplitHz * MAX_FREQUENCY_HZ);
+  return {
+    lowAnchor,
+    midAnchor,
+    highAnchor,
+    logLowAnchor: Math.log(lowAnchor),
+    logMidAnchor: Math.log(midAnchor),
+    logHighAnchor: Math.log(highAnchor),
+    palette,
+  };
+}
+
+/**
+ * Writes one bucket's colour into `out` and returns it, so a draw can reuse a single array for
+ * every column instead of allocating two per column.
+ *
+ * The arithmetic is the same as it always was, in the same order, including the intermediate
+ * rounding of the interpolated hue -- `spectralWaveformMath.test.js` compares it byte for byte
+ * against an independent transcription across the input space.
+ */
+export function waveformFrequencyRgbInto(scale, frequencyHz, tonality, out) {
+  const { low, mid, high, neutral } = scale.palette;
+  if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) {
+    out[0] = neutral[0];
+    out[1] = neutral[1];
+    out[2] = neutral[2];
+    return out;
+  }
   const logFrequency = Math.log(Math.max(MIN_FREQUENCY_HZ, frequencyHz));
-  let hue;
-  if (frequencyHz <= lowAnchor) {
-    hue = low;
-  } else if (frequencyHz < midAnchor) {
-    hue = mixRgb(
-      low,
-      mid,
-      (logFrequency - Math.log(lowAnchor)) / (Math.log(midAnchor) - Math.log(lowAnchor))
+  let hueR;
+  let hueG;
+  let hueB;
+  if (frequencyHz <= scale.lowAnchor) {
+    hueR = low[0];
+    hueG = low[1];
+    hueB = low[2];
+  } else if (frequencyHz < scale.midAnchor) {
+    const t = clamp01(
+      (logFrequency - scale.logLowAnchor) / (scale.logMidAnchor - scale.logLowAnchor)
     );
-  } else if (frequencyHz < highAnchor) {
-    hue = mixRgb(
-      mid,
-      high,
-      (logFrequency - Math.log(midAnchor)) / (Math.log(highAnchor) - Math.log(midAnchor))
+    hueR = Math.round(low[0] + (mid[0] - low[0]) * t);
+    hueG = Math.round(low[1] + (mid[1] - low[1]) * t);
+    hueB = Math.round(low[2] + (mid[2] - low[2]) * t);
+  } else if (frequencyHz < scale.highAnchor) {
+    const t = clamp01(
+      (logFrequency - scale.logMidAnchor) / (scale.logHighAnchor - scale.logMidAnchor)
     );
+    hueR = Math.round(mid[0] + (high[0] - mid[0]) * t);
+    hueG = Math.round(mid[1] + (high[1] - mid[1]) * t);
+    hueB = Math.round(mid[2] + (high[2] - mid[2]) * t);
   } else {
-    hue = high;
+    hueR = high[0];
+    hueG = high[1];
+    hueB = high[2];
   }
   // Spectral concentration spends most of its useful range near zero for real-world material.
   // A perceptual lift keeps frequency bands visually distinct while broadband/no-frequency
   // content still converges to Neutral.
-  const chroma = Math.pow(clamp01(tonality), 0.35);
-  return mixRgb(neutral, hue, chroma);
+  const chroma = clamp01(Math.pow(clamp01(tonality), 0.35));
+  out[0] = Math.round(neutral[0] + (hueR - neutral[0]) * chroma);
+  out[1] = Math.round(neutral[1] + (hueG - neutral[1]) * chroma);
+  out[2] = Math.round(neutral[2] + (hueB - neutral[2]) * chroma);
+  return out;
+}
+
+/**
+ * One colour, for callers outside a paint loop. Builds the scale each call, so a loop should use
+ * `waveformFrequencyScale` plus `waveformFrequencyRgbInto` instead.
+ */
+export function waveformFrequencyRgb(frequencyHz, tonality, splits, palette) {
+  return waveformFrequencyRgbInto(
+    waveformFrequencyScale(splits, palette),
+    frequencyHz,
+    tonality,
+    [0, 0, 0]
+  );
 }
 
 export function centroidYFraction(frequencyHz) {

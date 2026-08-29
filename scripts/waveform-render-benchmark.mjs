@@ -70,7 +70,9 @@ const { sliceWaveformSubHistory, sliceWaveformSubHistoryFromIndex } =
   await import("../src/math/waveformMath.js");
 const { WaveformHistoryIndex } = await import("../src/math/waveformHistoryIndex.js");
 const { LoudnessHistorySlab } = await import("../src/lib/LoudnessHistorySlab.js");
-const { sliceSpectralWaveformMetrics } = await import("../src/math/spectralWaveformMath.js");
+const { sliceSpectralWaveformMetrics, parseCssRgb, waveformFrequencyRgb } = await import(
+  "../src/math/spectralWaveformMath.js"
+);
 const { DEFAULT_WAVEFORM_CANVAS_COLORS } = await import("../src/theme/themeCanvasSelectors.js");
 const { drawWaveformCanvas } = await loadPainter();
 
@@ -221,6 +223,112 @@ function spectralGrid(slice, visibleSamples, W, rows, newestVisibleTimestampMs) 
   };
 }
 
+/**
+ * Splits the per-bucket colour work into the pieces a fix could remove, so the fix is aimed rather
+ * than guessed. Every stage below produces the **same bytes** as the one above it -- these are
+ * loop-invariant hoisting and allocation removal, not approximations, so none of them is a
+ * quality trade.
+ */
+function colourProbe(buckets) {
+  const palette = {
+    low: parseCssRgb(DEFAULT_WAVEFORM_CANVAS_COLORS.frequencyLow),
+    mid: parseCssRgb(DEFAULT_WAVEFORM_CANVAS_COLORS.frequencyMid),
+    high: parseCssRgb(DEFAULT_WAVEFORM_CANVAS_COLORS.frequencyHigh),
+    neutral: parseCssRgb(DEFAULT_WAVEFORM_CANVAS_COLORS.frequencyNeutral),
+  };
+  const splits = { lowMidSplitHz: 250, midHighSplitHz: 2000 };
+  const frequencies = new Float32Array(buckets);
+  const tonalities = new Float32Array(buckets);
+  for (let i = 0; i < buckets; i += 1) {
+    frequencies[i] = 40 * Math.exp((Math.log(500) * (i % 400)) / 400);
+    tonalities[i] = 0.2 + 0.7 * Math.abs(Math.sin(i * 0.031));
+  }
+
+  let sink = "";
+  const results = [];
+
+  results.push(
+    bench("as shipped: waveformFrequencyRgb + join", FRAMES, () => {
+      for (let i = 0; i < buckets; i += 1) {
+        const rgb = waveformFrequencyRgb(frequencies[i], tonalities[i], splits, palette);
+        sink = `rgb(${rgb.join(" ")})`;
+      }
+    })
+  );
+
+  results.push(
+    bench("colour only, no string", FRAMES, () => {
+      for (let i = 0; i < buckets; i += 1) {
+        sink = waveformFrequencyRgb(frequencies[i], tonalities[i], splits, palette);
+      }
+    })
+  );
+
+  // The three anchors and their logs depend only on the two split controls, yet the shipped
+  // function recomputes all six every bucket.
+  const lowAnchor = Math.sqrt(20 * splits.lowMidSplitHz);
+  const midAnchor = Math.sqrt(splits.lowMidSplitHz * splits.midHighSplitHz);
+  const highAnchor = Math.sqrt(splits.midHighSplitHz * 20000);
+  const logLow = Math.log(lowAnchor);
+  const logMid = Math.log(midAnchor);
+  const logHigh = Math.log(highAnchor);
+  const { low, mid, high, neutral } = palette;
+
+  results.push(
+    bench("anchors hoisted, no array allocation", FRAMES, () => {
+      for (let i = 0; i < buckets; i += 1) {
+        const frequencyHz = frequencies[i];
+        let hr;
+        let hg;
+        let hb;
+        if (!(frequencyHz > 0)) {
+          hr = neutral[0];
+          hg = neutral[1];
+          hb = neutral[2];
+        } else {
+          const logFrequency = Math.log(Math.max(20, frequencyHz));
+          if (frequencyHz <= lowAnchor) {
+            [hr, hg, hb] = low;
+          } else if (frequencyHz < midAnchor) {
+            const t = (logFrequency - logLow) / (logMid - logLow);
+            hr = Math.round(low[0] + (mid[0] - low[0]) * t);
+            hg = Math.round(low[1] + (mid[1] - low[1]) * t);
+            hb = Math.round(low[2] + (mid[2] - low[2]) * t);
+          } else if (frequencyHz < highAnchor) {
+            const t = (logFrequency - logMid) / (logHigh - logMid);
+            hr = Math.round(mid[0] + (high[0] - mid[0]) * t);
+            hg = Math.round(mid[1] + (high[1] - mid[1]) * t);
+            hb = Math.round(mid[2] + (high[2] - mid[2]) * t);
+          } else {
+            [hr, hg, hb] = high;
+          }
+          const chroma = Math.pow(Math.max(0, Math.min(1, tonalities[i])), 0.35);
+          hr = Math.round(neutral[0] + (hr - neutral[0]) * chroma);
+          hg = Math.round(neutral[1] + (hg - neutral[1]) * chroma);
+          hb = Math.round(neutral[2] + (hb - neutral[2]) * chroma);
+        }
+        sink = `rgb(${hr} ${hg} ${hb})`;
+      }
+    })
+  );
+
+  results.push(
+    bench("  the same, minus the string build", FRAMES, () => {
+      let acc = 0;
+      for (let i = 0; i < buckets; i += 1) {
+        const frequencyHz = frequencies[i];
+        const logFrequency = Math.log(Math.max(20, frequencyHz));
+        const chroma = Math.pow(Math.max(0, Math.min(1, tonalities[i])), 0.35);
+        acc += logFrequency + chroma;
+      }
+      sink = acc;
+    })
+  );
+
+  if (sink === undefined) throw new Error("unreachable");
+  return results;
+}
+
 export function runBenchmark(log = console.log) {
   const rows = makeRows();
   const slab = makeSlab(rows);
@@ -343,6 +451,9 @@ export function runBenchmark(log = console.log) {
   log("");
   log("Waveform draw, JavaScript half only, per lane:");
   report(drawResults, log);
+  log("");
+  log("Inside the Frequency Color loop, 1200 buckets (what a 1200px lane costs per draw):");
+  report(colourProbe(1200), log);
   log("");
   log("Canvas operations issued per draw, per lane:");
   const width = Math.max(...opCounts.map((row) => row.label.length));

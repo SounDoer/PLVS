@@ -25,7 +25,8 @@ import {
   centroidYFraction,
   parseCssRgb,
   sliceSpectralWaveformMetrics,
-  waveformFrequencyRgb,
+  waveformFrequencyRgbInto,
+  waveformFrequencyScale,
 } from "../../math/spectralWaveformMath.js";
 import {
   DEFAULT_WAVEFORM_CANVAS_COLORS,
@@ -137,15 +138,22 @@ export function drawWaveformCanvas(
 
   const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
   if (frequencyColor) {
+    // One colour per pixel column, so the split-derived anchors are resolved once here and the
+    // result is written into a single reused array. See `docs/working/perf/waveform.md` §2.1.
+    const frequencyScale = waveformFrequencyScale(
+      { lowMidSplitHz, midHighSplitHz },
+      spectralPalette
+    );
+    const color = [0, 0, 0];
     for (let j = firstBucket; j <= lastBucket; j++) {
       const next = Math.min(lastBucket, j + 1);
-      const color = waveformFrequencyRgb(
+      waveformFrequencyRgbInto(
+        frequencyScale,
         dominantFrequencyHz?.[j] ?? 0,
         tonality?.[j] ?? 0,
-        { lowMidSplitHz, midHighSplitHz },
-        spectralPalette
+        color
       );
-      const colorCss = `rgb(${color.join(" ")})`;
+      const colorCss = `rgb(${color[0]} ${color[1]} ${color[2]})`;
       const x = xFor(j);
       const nextX = xFor(next) + (next === j ? 1 : 0);
       const yMax = cy - Math.max(0, maxes[j]) * cy;
