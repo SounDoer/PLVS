@@ -196,7 +196,6 @@ export function useSpectrogramCanvas({
     // Together they say whether the image on screen can be slid instead of redrawn.
     paintedOldestMs: NaN,
     paintedSpan: NaN,
-    paintedSampleMs: NaN,
     paintedSnaps: null,
   });
   const lastPaintRef = useRef({
@@ -348,30 +347,56 @@ export function useSpectrogramCanvas({
       // of those changes what some already-painted pixel should be. The eligibility test is
       // therefore written as "nothing but time moved", not as a list of things to invalidate: a
       // control added later fails it by default rather than silently keeping a stale image.
-      const slidable =
-        selectedOffset < 0 &&
-        !frozenSnaps &&
-        cache.paintedSnaps === snaps &&
-        cache.paintedSpan === span &&
-        cache.paintedSampleMs === sampleMs &&
-        Number.isFinite(cache.paintedOldestMs) &&
-        oldestMs >= cache.paintedOldestMs;
+      // The window's ends are history timestamps, so its length jitters by milliseconds even when
+      // nothing has changed; a zoom is what an actual change looks like. Asking for equality here
+      // asked for something a wall clock never gives -- measured at 256 repaints out of 256 -- so
+      // the test is in pixels instead: while the image's mapping is within half a column of the
+      // live one, the image on screen is still the right image. Measured against the span the
+      // image was painted with, not the previous frame's, so a slow drift cannot accumulate past
+      // half a column without forcing a repaint that re-anchors it.
+      const spanDriftPx = (Math.abs(span - cache.paintedSpan) / span) * W;
+      // Named rather than combined, so a profile can say which clause is turning a session's
+      // frames into full repaints. Guessing at that cost two rebuilds.
+      const blockedBy =
+        selectedOffset >= 0
+          ? "scrubbing"
+          : frozenSnaps
+            ? "frozen"
+            : cache.paintedSnaps !== snaps
+              ? "newView"
+              : !Number.isFinite(cache.paintedOldestMs)
+                ? "noPaintedImage"
+                : !(spanDriftPx < 0.5)
+                  ? "spanChanged"
+                  : !(oldestMs >= cache.paintedOldestMs)
+                    ? "wentBackwards"
+                    : null;
+      const slidable = blockedBy === null;
+      if (blockedBy) recordPanelCpuEvent("spectrogram2d", `noSlide:${blockedBy}`);
 
+      // The image carries its own mapping: the span it was painted with, not the live one. A strip
+      // drawn against a different scale would not line up with the columns beside it.
+      let paintedSpan = span;
       let paintedOldestMs = oldestMs;
       let xFrom = 0;
       if (slidable) {
-        const plan = spectrogramScrollPlan(cache.paintedOldestMs, oldestMs, span, W);
+        const plan = spectrogramScrollPlan(cache.paintedOldestMs, oldestMs, cache.paintedSpan, W);
         if (plan.xFrom > 0) {
           scrollSpectrogramImageData(cache.imageData, plan.shiftPx);
+          paintedSpan = cache.paintedSpan;
           paintedOldestMs = plan.paintedOldestMs;
           xFrom = plan.xFrom;
         }
       }
+      // Counted so a profile can tell a strip from a full redraw: they differ by two orders of
+      // magnitude, and which one a session actually runs is not visible from the paint's cost
+      // alone.
+      recordPanelCpuEvent("spectrogram2d", xFrom > 0 ? "slidStrip" : "fullRepaint");
 
-      const stripOldestMs = paintedOldestMs + (xFrom / W) * span;
+      const stripOldestMs = paintedOldestMs + (xFrom / W) * paintedSpan;
       const strip =
         xFrom > 0
-          ? inWindowRange(snaps, stripOldestMs - sampleMs, paintedOldestMs + span)
+          ? inWindowRange(snaps, stripOldestMs - sampleMs, paintedOldestMs + paintedSpan)
           : { startIdx, endIdx };
 
       if (strip.endIdx >= strip.startIdx) {
@@ -381,7 +406,7 @@ export function useSpectrogramCanvas({
           strip.startIdx,
           strip.endIdx,
           paintedOldestMs,
-          span,
+          paintedSpan,
           sampleMs,
           cache.yToBand,
           colormapLut,
@@ -392,8 +417,7 @@ export function useSpectrogramCanvas({
         );
       }
       cache.paintedOldestMs = paintedOldestMs;
-      cache.paintedSpan = span;
-      cache.paintedSampleMs = sampleMs;
+      cache.paintedSpan = paintedSpan;
       cache.paintedSnaps = snaps;
       ctx.putImageData(cache.imageData, 0, 0);
     }

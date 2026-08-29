@@ -62,7 +62,11 @@ export const panelCpuProfiler = Object.freeze({
 // DevTools workflow: enable, reset, interact for a fixed interval, then snapshot. The module is
 // already imported by the instrumented renderers, so exposing this stable controller does not
 // install a timer, observer, or React subscription of its own.
-// `import.meta.env` is Vite's, so it is absent when a benchmark imports a renderer through Node.
-if (import.meta.env?.DEV && typeof window !== "undefined") {
+//
+// Attached in release builds too, and on purpose. Renderer profiling runs against a release build
+// -- a development one is unminified and carries React's development runtime, which is not the
+// thing anyone needs measured -- so a DEV-only gate would keep the instrument out of the only
+// place it can answer anything. Counting is off until something turns it on.
+if (typeof window !== "undefined") {
   window.__PLVS_PANEL_CPU__ = panelCpuProfiler;
 }

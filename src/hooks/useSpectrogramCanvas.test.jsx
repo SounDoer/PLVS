@@ -398,6 +398,32 @@ describe("sliding versus repainting", () => {
     expect(Array.from(slid.data)).toEqual(Array.from(repainted.data));
   });
 
+  it("still slides when the window's length jitters by less than half a column", () => {
+    // The window's ends are history timestamps: its length moves by milliseconds every update even
+    // when nothing changed. Requiring equality here is what kept the slide path from ever running.
+    const rowCount = 120;
+    const view = makeView(rowCount);
+    const slid = image();
+    let paintedOldestMs = 0;
+    let paintedSpan = SPAN;
+    paint(slid, view, paintedOldestMs, 0);
+
+    for (let frame = 1; frame < rowCount; frame += 1) {
+      // A millisecond of jitter on a 6.4 s window is far under half of one of 64 columns.
+      const liveSpan = SPAN + (frame % 3) - 1;
+      const driftPx = (Math.abs(liveSpan - paintedSpan) / liveSpan) * W;
+      expect(driftPx).toBeLessThan(0.5);
+      const plan = spectrogramScrollPlan(paintedOldestMs, frame * ROW_MS, paintedSpan, W);
+      if (plan.xFrom > 0) scrollSpectrogramImageData(slid, plan.shiftPx);
+      paintedOldestMs = plan.paintedOldestMs;
+      paint(slid, view, paintedOldestMs, plan.xFrom);
+    }
+
+    const repainted = image();
+    paint(repainted, view, paintedOldestMs, 0);
+    expect(Array.from(slid.data)).toEqual(Array.from(repainted.data));
+  });
+
   it("leaves a gap in time transparent instead of smearing the pixels it slid over", () => {
     const view = makeView(40);
     const gapped = {
