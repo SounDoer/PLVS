@@ -12,9 +12,13 @@ import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
 
 import { SpectrumHistorySlab } from "../src/lib/SpectrumHistorySlab.js";
-import { paintSpectrogramImageData } from "../src/hooks/useSpectrogramCanvas.js";
+import {
+  paintSpectrogramImageData,
+  scrollSpectrogramImageData,
+  spectrogramScrollPlan,
+} from "../src/hooks/useSpectrogramCanvas.js";
 import { buildYToBand, buildYTiltDb } from "../src/math/spectrogramMath.js";
-import { spectrogramFrameEndMs } from "../src/math/spectrogramTimeline.js";
+import { inWindowRange, spectrogramFrameEndMs } from "../src/math/spectrogramTimeline.js";
 import { sampleWaterfallGrid } from "../src/math/spectrogram3dGrid.js";
 
 const BANDS = 958;
@@ -38,7 +42,10 @@ function makeSlab(bands, rows) {
     slab.push({
       timestampMs: i * ROW_MS,
       bands,
-      dbList: Array.from({ length: BANDS }, (_, b) => -30 - 40 * Math.abs(Math.sin(b * 0.02 + i * 0.05))),
+      dbList: Array.from(
+        { length: BANDS },
+        (_, b) => -30 - 40 * Math.abs(Math.sin(b * 0.02 + i * 0.05))
+      ),
       dbListB: [],
     });
   }
@@ -92,7 +99,19 @@ function packedLut(lut) {
  * `dbList` is deliberately not used: it materialises all 958 values per row, which is what the
  * row's `dbAt` exists to avoid, and reading it in a pixel loop costs ten times the paint.
  */
-function paintPacked(imageData, snaps, startIdx, endIdx, oldestMs, span, sampleMs, yToBand, packed, dbFloor, yTiltDb) {
+function paintPacked(
+  imageData,
+  snaps,
+  startIdx,
+  endIdx,
+  oldestMs,
+  span,
+  sampleMs,
+  yToBand,
+  packed,
+  dbFloor,
+  yTiltDb
+) {
   const { data, width: W, height: H } = imageData;
   const words = new Uint32Array(data.buffer);
   words.fill(0);
@@ -131,7 +150,9 @@ export function runBenchmark(log = console.log) {
   const newestMs = (rows - 1) * ROW_MS;
   const oldestMs = newestMs - WINDOW_SEC * 1000;
 
-  log(`Spectrogram render cost — ${BANDS} bands, ${rows} rows in view, ${FRAME_BUDGET_MS} ms budget`);
+  log(
+    `Spectrogram render cost — ${BANDS} bands, ${rows} rows in view, ${FRAME_BUDGET_MS} ms budget`
+  );
   log("");
 
   const results = [];
@@ -143,17 +164,101 @@ export function runBenchmark(log = console.log) {
 
     results.push(
       bench(`${W}x${H}  full repaint`, FRAMES, () =>
-        paintSpectrogramImageData(full, view, 0, rows - 1, oldestMs, WINDOW_SEC * 1000, ROW_MS, yToBand, lut, -84, yTilt)
+        paintSpectrogramImageData(
+          full,
+          view,
+          0,
+          rows - 1,
+          oldestMs,
+          WINDOW_SEC * 1000,
+          ROW_MS,
+          yToBand,
+          lut,
+          -84,
+          yTilt
+        )
       )
     );
     results.push(
       bench(`${W}x${H}  full, colour math inlined`, FRAMES, () =>
-        paintPacked(full, view, 0, rows - 1, oldestMs, WINDOW_SEC * 1000, ROW_MS, yToBand, packed, -84, yTilt)
+        paintPacked(
+          full,
+          view,
+          0,
+          rows - 1,
+          oldestMs,
+          WINDOW_SEC * 1000,
+          ROW_MS,
+          yToBand,
+          packed,
+          -84,
+          yTilt
+        )
       )
+    );
+    // What a live panel actually does now: slide, then repaint only the strip that came into view.
+    // Averaged over consecutive frames, because most of them do not earn a whole column.
+    let paintedOldestMs = oldestMs;
+    paintSpectrogramImageData(
+      full,
+      view,
+      0,
+      rows - 1,
+      oldestMs,
+      WINDOW_SEC * 1000,
+      ROW_MS,
+      yToBand,
+      lut,
+      -84,
+      yTilt
+    );
+    results.push(
+      bench(`${W}x${H}  live frame (slide + strip)`, FRAMES, (i) => {
+        const frameOldest = oldestMs + i * ROW_MS;
+        const plan = spectrogramScrollPlan(paintedOldestMs, frameOldest, WINDOW_SEC * 1000, W);
+        if (plan.xFrom > 0) scrollSpectrogramImageData(full, plan.shiftPx);
+        paintedOldestMs = plan.paintedOldestMs;
+        // Narrowed the way the hook narrows it: only the rows the strip can contain.
+        const stripOldest = paintedOldestMs + (plan.xFrom / W) * (WINDOW_SEC * 1000);
+        const strip = inWindowRange(
+          view,
+          stripOldest - ROW_MS,
+          paintedOldestMs + WINDOW_SEC * 1000
+        );
+        if (strip.endIdx >= strip.startIdx) {
+          paintSpectrogramImageData(
+            full,
+            view,
+            strip.startIdx,
+            strip.endIdx,
+            paintedOldestMs,
+            WINDOW_SEC * 1000,
+            ROW_MS,
+            yToBand,
+            lut,
+            -84,
+            yTilt,
+            plan.xFrom,
+            W
+          );
+        }
+      })
     );
     results.push(
       bench(`${W}x${H}  one column`, FRAMES, () =>
-        paintSpectrogramImageData(column, view, rows - 2, rows - 1, newestMs - ROW_MS, ROW_MS, ROW_MS, yToBand, lut, -84, yTilt)
+        paintSpectrogramImageData(
+          column,
+          view,
+          rows - 2,
+          rows - 1,
+          newestMs - ROW_MS,
+          ROW_MS,
+          ROW_MS,
+          yToBand,
+          lut,
+          -84,
+          yTilt
+        )
       )
     );
   }

@@ -51,6 +51,51 @@ function paintSpan(words, width, height, xStart, xEnd, snap, yToBand, packed, db
   }
 }
 
+/**
+ * Slides the painted image left by whole pixels, which is all a live Spectrogram does between one
+ * frame and the next: one 40 ms row is a fraction of a pixel wide, so most frames move the image
+ * by nothing at all and the ones that move it move it by one or two columns.
+ *
+ * Whole pixels only, because that is all an image can shift. The remainder is not thrown away --
+ * the caller tracks which instant the leftmost column stands for and shifts again once another
+ * whole pixel has accrued, so the image lags the true window by less than one column and never
+ * accumulates beyond it.
+ */
+export function scrollSpectrogramImageData(imageData, shiftPx) {
+  const { data, width: W, height: H } = imageData;
+  if (!(shiftPx > 0) || shiftPx >= W) return false;
+  const words = new Uint32Array(data.buffer, data.byteOffset, W * H);
+  for (let y = 0; y < H; y++) {
+    const rowBase = y * W;
+    words.copyWithin(rowBase, rowBase + shiftPx, rowBase + W);
+  }
+  return true;
+}
+
+/**
+ * How far a slidable image has to move, and which columns it then owes.
+ *
+ * Split out because it is the whole of the correctness argument: the image's leftmost column
+ * stands for `paintedOldestMs`, not for the window's true `oldestMs`, and the two are allowed to
+ * differ by up to one column. Returning the new origin rather than deriving it from the window is
+ * what keeps that difference bounded instead of accumulating.
+ *
+ * @returns {{ shiftPx: number, paintedOldestMs: number, xFrom: number }}
+ */
+export function spectrogramScrollPlan(paintedOldestMs, oldestMs, span, width) {
+  const shiftPx = Math.floor(((oldestMs - paintedOldestMs) / span) * width);
+  if (!(shiftPx >= 0) || shiftPx >= width) {
+    return { shiftPx: width, paintedOldestMs: oldestMs, xFrom: 0 };
+  }
+  return {
+    shiftPx,
+    paintedOldestMs: paintedOldestMs + (shiftPx / width) * span,
+    // Even a frame that has not earned a whole column redraws the newest one: a row lands in it
+    // before it has a column of its own, and one column costs nothing.
+    xFrom: width - Math.max(1, shiftPx),
+  };
+}
+
 function upperBoundTimestamp(view, target, startIdx, endIdx) {
   let lo = startIdx;
   let hi = endIdx + 1;
@@ -73,18 +118,25 @@ export function paintSpectrogramImageData(
   yToBand,
   colormapLut,
   dbFloor,
-  yTiltDb
+  yTiltDb,
+  xFrom = 0,
+  xTo = imageData.width
 ) {
   const { data, width: W, height: H } = imageData;
   const words = new Uint32Array(data.buffer, data.byteOffset, W * H);
-  words.fill(0);
+  // Cleared per column range rather than whole, so an incremental repaint leaves the columns it is
+  // not responsible for alone -- and so a real gap in time stays transparent either way.
+  for (let y = 0; y < H; y++) {
+    const rowBase = y * W;
+    words.fill(0, rowBase + xFrom, rowBase + xTo);
+  }
   const packed = packedColormap(colormapLut);
 
   // At long zoom levels, thousands of frames collapse into a few hundred physical pixels. Resolve
   // the newest active frame per pixel instead of walking every retained frame; work is bounded by
   // canvas width while real timestamp gaps remain transparent.
   if (endIdx - startIdx + 1 > W * 4) {
-    for (let x = 0; x < W; x++) {
+    for (let x = xFrom; x < xTo; x++) {
       const targetMs = oldestMs + ((x + 0.5) / W) * span;
       const index = upperBoundTimestamp(snaps, targetMs, startIdx, endIdx) - 1;
       if (index < startIdx || index > endIdx) continue;
@@ -104,9 +156,9 @@ export function paintSpectrogramImageData(
     if (!Number.isFinite(ts)) continue;
     // Place the column at the x of its real timestamp; tiny scheduling jitter is stitched to the
     // next frame, while real gaps in time stay unpainted (blank).
-    const xStart = Math.max(0, Math.round(((ts - oldestMs) / span) * W));
+    const xStart = Math.max(xFrom, Math.round(((ts - oldestMs) / span) * W));
     const endMs = spectrogramFrameEndMs(snaps, i, sampleMs);
-    const xEnd = Math.min(W, Math.round(((endMs - oldestMs) / span) * W));
+    const xEnd = Math.min(xTo, Math.round(((endMs - oldestMs) / span) * W));
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
     paintSpan(words, W, H, xStart, xEnd, snap, yToBand, packed, dbFloor, yTiltDb);
@@ -140,6 +192,12 @@ export function useSpectrogramCanvas({
     bands: null,
     tiltDbPerOctave: NaN,
     imageData: null,
+    // Which instant the leftmost painted column stands for, and the view it was painted from.
+    // Together they say whether the image on screen can be slid instead of redrawn.
+    paintedOldestMs: NaN,
+    paintedSpan: NaN,
+    paintedSampleMs: NaN,
+    paintedSnaps: null,
   });
   const lastPaintRef = useRef({
     len: -1,
@@ -273,27 +331,70 @@ export function useSpectrogramCanvas({
         cache.maxHz = maxHz;
         cache.tiltDbPerOctave = tiltDbPerOctave;
         cache.bands = bands;
+        // A fresh buffer holds nothing to slide.
+        cache.paintedOldestMs = NaN;
       }
 
       const { startIdx, endIdx } = inWindowRange(snaps, oldestMs, newestMs);
       if (endIdx < startIdx) {
         ctx.clearRect(0, 0, W, H);
+        cache.paintedOldestMs = NaN;
         return;
       }
 
-      paintSpectrogramImageData(
-        cache.imageData,
-        snaps,
-        startIdx,
-        endIdx,
-        oldestMs,
-        span,
-        sampleMs,
-        cache.yToBand,
-        colormapLut,
-        dbFloor,
-        cache.yTiltDb
-      );
+      // A live window that has only moved forward can slide what is already painted and draw the
+      // strip that just came into view. Everything else -- a zoom, a pan, a frozen snapshot, a
+      // changed colour ramp, floor, tilt, size or frequency range -- redraws in full, because each
+      // of those changes what some already-painted pixel should be. The eligibility test is
+      // therefore written as "nothing but time moved", not as a list of things to invalidate: a
+      // control added later fails it by default rather than silently keeping a stale image.
+      const slidable =
+        selectedOffset < 0 &&
+        !frozenSnaps &&
+        cache.paintedSnaps === snaps &&
+        cache.paintedSpan === span &&
+        cache.paintedSampleMs === sampleMs &&
+        Number.isFinite(cache.paintedOldestMs) &&
+        oldestMs >= cache.paintedOldestMs;
+
+      let paintedOldestMs = oldestMs;
+      let xFrom = 0;
+      if (slidable) {
+        const plan = spectrogramScrollPlan(cache.paintedOldestMs, oldestMs, span, W);
+        if (plan.xFrom > 0) {
+          scrollSpectrogramImageData(cache.imageData, plan.shiftPx);
+          paintedOldestMs = plan.paintedOldestMs;
+          xFrom = plan.xFrom;
+        }
+      }
+
+      const stripOldestMs = paintedOldestMs + (xFrom / W) * span;
+      const strip =
+        xFrom > 0
+          ? inWindowRange(snaps, stripOldestMs - sampleMs, paintedOldestMs + span)
+          : { startIdx, endIdx };
+
+      if (strip.endIdx >= strip.startIdx) {
+        paintSpectrogramImageData(
+          cache.imageData,
+          snaps,
+          strip.startIdx,
+          strip.endIdx,
+          paintedOldestMs,
+          span,
+          sampleMs,
+          cache.yToBand,
+          colormapLut,
+          dbFloor,
+          cache.yTiltDb,
+          xFrom,
+          W
+        );
+      }
+      cache.paintedOldestMs = paintedOldestMs;
+      cache.paintedSpan = span;
+      cache.paintedSampleMs = sampleMs;
+      cache.paintedSnaps = snaps;
       ctx.putImageData(cache.imageData, 0, 0);
     }
 
