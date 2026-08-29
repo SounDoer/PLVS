@@ -9,6 +9,7 @@ import {
   updatePolarMaxHold,
 } from "../../math/vectorscopePolarMath.js";
 import { DEFAULT_VECTORSCOPE_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
+import { readCssNumber } from "../../theme/cssTokens.js";
 
 const PLOT_PADDING_CSS_PX = 10;
 const POINT_RADIUS_CSS_PX = 1.15;
@@ -190,11 +191,10 @@ export function VectorscopePolarPlot({
     }
 
     const { dpr, width, height } = resizeCanvas(canvas);
-    const style = getComputedStyle(canvas);
+
     const traceColor = snapshot ? colors.snapshot : colors.trace;
     const gridColor = colors.grid;
-    const lineWidth =
-      (parseFloat(style.getPropertyValue("--ui-vectorscope-stroke-width")) || 1) * dpr;
+    const lineWidth = (readCssNumber(canvas, "--ui-vectorscope-stroke-width", 1) || 1) * dpr;
     const newestTimestamp = effectiveRows.at(-1)?.timestampMs;
 
     // Skip the full redraw when nothing that affects the picture has changed. The parent re-renders

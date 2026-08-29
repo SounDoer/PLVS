@@ -32,6 +32,7 @@ import {
   selectWaveformCanvasColors,
 } from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
+import { readCssNumber } from "../../theme/cssTokens.js";
 
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-chart-y-axis-rail-w";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
@@ -113,11 +114,12 @@ export function drawWaveformCanvas(
   const W = canvas.width;
   const H = canvas.height;
 
-  const style = getComputedStyle(document.documentElement);
   const strokeColor = selected ? themeColors.snapshot : themeColors.trace;
-  const fillOpacity =
-    parseFloat(style.getPropertyValue("--ui-waveform-fill-opacity").trim()) || 0.22;
-  const strokeWidth = parseFloat(style.getPropertyValue("--ui-waveform-stroke-width").trim()) || 1;
+  // Read through the theme-scoped cache: these are per-frame reads of values that change only
+  // with the theme. See `readCssToken`.
+  const root = document.documentElement;
+  const fillOpacity = readCssNumber(root, "--ui-waveform-fill-opacity", 0.22) || 0.22;
+  const strokeWidth = readCssNumber(root, "--ui-waveform-stroke-width", 1) || 1;
   const spectralPalette = {
     low: parseCssRgb(themeColors.frequencyLow),
     mid: parseCssRgb(themeColors.frequencyMid),

@@ -1,3 +1,14 @@
+import { beforeEach } from "vitest";
+
+import { resetCssTokenCache } from "./src/theme/cssTokens.js";
+
+// CSS tokens are cached per theme (src/theme/cssTokens.js). Suites routinely stub
+// `getComputedStyle`, and a value cached under one stub would answer for the next, so every
+// test starts from a cold cache.
+beforeEach(() => {
+  resetCssTokenCache();
+});
+
 // jsdom does not implement HTMLCanvasElement.getContext, and without a stub it prints
 // "Not implemented: HTMLCanvasElement.prototype.getContext" to stderr for every canvas-backed
 // component a suite renders (Vectorscope polar/persistence plots). Returning null keeps those

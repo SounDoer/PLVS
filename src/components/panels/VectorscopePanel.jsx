@@ -23,6 +23,7 @@ import {
   ANALYSIS_OVER_CAP_MESSAGE,
 } from "./SnapshotEmptyState.jsx";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
+import { readCssNumber } from "../../theme/cssTokens.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -260,11 +261,10 @@ export function VectorscopePanel() {
     const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
-    const style = getComputedStyle(canvas);
     ctx.strokeStyle = vectorscopeColors.trace;
     // Mirrors the SVG trace's non-scaling-stroke: the token is CSS pixels, not plot units.
     const strokeWidth =
-      parseFloat(style.getPropertyValue("--ui-vectorscope-stroke-width")) ||
+      readCssNumber(canvas, "--ui-vectorscope-stroke-width", VECTOR_TRACE_STROKE_FALLBACK) ||
       VECTOR_TRACE_STROKE_FALLBACK;
     ctx.lineWidth = strokeWidth * dpr;
     ctx.lineJoin = "round";

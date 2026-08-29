@@ -4,6 +4,7 @@ import { rangedFreqToXFrac, rangedHistY } from "../../config/scales";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { selectStereoMapCanvasColors } from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
+import { readCssNumber } from "../../theme/cssTokens.js";
 
 // Same viewBox convention as Spectrum's inline SVG (and this component's own former SVG
 // implementation), so the curve, grid, and hover overlay all share one coordinate system across
@@ -459,10 +460,9 @@ export function StereoMapPlot({
     if (!ctx) return;
 
     if (!geometryStyleRef.current) {
-      const style = getComputedStyle(canvas);
       geometryStyleRef.current = {
-        fillOpacity: parseFloat(style.getPropertyValue("--ui-spectrum-fill-top-opacity")) || 0.18,
-        strokeWidthCss: parseFloat(style.getPropertyValue("--ui-spectrum-stroke-width")) || 2,
+        fillOpacity: readCssNumber(canvas, "--ui-spectrum-fill-top-opacity", 0.18) || 0.18,
+        strokeWidthCss: readCssNumber(canvas, "--ui-spectrum-stroke-width", 2) || 2,
       };
     }
     const colors = resolveColors(themeColors, paletteKey);

@@ -16,6 +16,7 @@ import {
 } from "../math/spectrogram3dProjection.js";
 import { sampleWaterfallGrid } from "../math/spectrogram3dGrid.js";
 import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js";
+import { readCssToken } from "../theme/cssTokens.js";
 import {
   buildRowLut,
   buildSurfaceLut,
@@ -111,8 +112,8 @@ function surfaceRowCap(proj, height) {
 }
 
 function cssVar(el, name, fallback) {
-  const value = getComputedStyle(el).getPropertyValue(name).trim();
-  return value || fallback;
+  // Cached per theme: these resolve inside a paint that runs every frame. See `readCssToken`.
+  return readCssToken(el, name, fallback);
 }
 
 /**
