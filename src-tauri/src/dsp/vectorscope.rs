@@ -328,4 +328,34 @@ mod tests {
     let (_metrics, pairs) = vm.get_history_pairs(200);
     assert_eq!(pairs.len(), 400, "200 pairs = 400 f32 values");
   }
+
+  #[test]
+  fn history_metrics_match_known_mid_only_signal() {
+    let interleaved = [0.5_f32, 0.5_f32].repeat(100);
+    let mut vm = VectorscopeMeter::new();
+    vm.feed_interleaved(&interleaved, 2, 0, 1);
+
+    let (metrics, pairs) = vm.get_history_pairs(100);
+
+    assert_eq!(pairs, interleaved);
+    assert!((metrics.correlation - 1.0).abs() < 1e-12);
+    assert!((metrics.mid_energy - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-12);
+    assert_eq!(metrics.side_energy, 0.0);
+    assert_eq!(metrics.side_to_mid_db, -48.0);
+  }
+
+  #[test]
+  fn history_metrics_match_known_side_only_signal() {
+    let interleaved = [0.5_f32, -0.5_f32].repeat(100);
+    let mut vm = VectorscopeMeter::new();
+    vm.feed_interleaved(&interleaved, 2, 0, 1);
+
+    let (metrics, pairs) = vm.get_history_pairs(100);
+
+    assert_eq!(pairs, interleaved);
+    assert!((metrics.correlation + 1.0).abs() < 1e-12);
+    assert_eq!(metrics.mid_energy, 0.0);
+    assert!((metrics.side_energy - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-12);
+    assert_eq!(metrics.side_to_mid_db, 48.0);
+  }
 }

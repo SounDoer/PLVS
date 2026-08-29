@@ -79,3 +79,7 @@ criterion = { version = "0.8.2", default-features = false, features = ["cargo_be
 [[bench]]
 name = "spectral_fft_count"
 harness = false
+
+[[bench]]
+name = "vectorscope"
+harness = false

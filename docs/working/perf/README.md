@@ -90,6 +90,32 @@ npm run profile:webview -- --seconds 10 --dist dist
 映射由 `scripts/sourcemap-lookup.mjs` 完成（自己解 VLQ，不引依赖）。没有 map 的构建照常出报告，
 只是保留压缩名，profiler 会明说。
 
+### 数绘制命令：profile 回答不了的那两个问题
+
+profile 说的是时间花在哪。它不说**一个面板每秒重画几次**，也不说**一次重画提交了多少条绘制
+命令**。两者都是结构事实而不是计时，而且都被推断错过——Waveform 的重画频率从依赖链推了三次，
+三次都不对（`waveform.md` §2.0）。
+
+```
+node scripts/webview-draw-count.mjs --seconds 5
+```
+
+前提和 profiler 完全一样（同一个调试端口，帧必须真的在动）。它在
+`CanvasRenderingContext2D.prototype` 上包一层计数，按 canvas 分开报，用 `clearRect` /
+`putImageData` 作为"一次重画"的标记——`fill` 不能当除数，因为"一次重画发几个 fill"正是要测的
+东西。输出长这样（Frequency Color 打开、lane 宽 340 px）：
+
+```
+  waveform lane #1 [1,1,0] 340x72  31.4/s   fill 341.0   stroke 342.0   beginPath 683.0
+  waveform lane #2 [1,1,0] 340x72  31.4/s   fill 341.0   stroke 342.0   beginPath 683.0
+  canvas [1,1,1] 680x146           31.4/s   putImageData 1.0
+```
+
+一行就说清了两种画法的区别：一个每列提交一次，一个整幅传一次。
+
+**计数器自己有开销**，每秒两万多次调用都要过一次查找。脚本跑完会把原方法装回去，
+但**别在装着计数器的时候采 profile**——那量的是计数器。
+
 ### 两条读 profile 时的注意
 
 **跨次采样不可直接比较。** 构建、恢复出来的面板布局、素材位置都会变。观察到的 idle 占比在
@@ -107,22 +133,22 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 
 ## 四个维度与各自的证据来源
 
-| 维度         | 问题                           | 证据来源                                                                                                                                                             |
-| ------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1 Rust 计算 | 算得对吗？算得有没有冗余？     | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时                                                                                            |
-| D2 前端渲染  | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render` / `benchmark:spectrogram-render` / `benchmark:waveform-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下） |
-| D3 历史存储  | 结构合理吗？占用是多少？       | `npm run benchmark:history` + heap 预算测试                                                                                                                          |
-| D4 其他      | 每帧 payload、IPC、调度        | payload 字节数实测；`npm run soak:capture`（只作线索，阈值未校准）                                                                                                   |
+| 维度         | 问题                           | 证据来源                                                                                                                                                                                              |
+| ------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1 Rust 计算 | 算得对吗？算得有没有冗余？     | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时                                                                                                                             |
+| D2 前端渲染  | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render` / `benchmark:spectrogram-render` / `benchmark:waveform-render` / `benchmark:vectorscope-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下） |
+| D3 历史存储  | 结构合理吗？占用是多少？       | `npm run benchmark:history` + heap 预算测试                                                                                                                                                           |
+| D4 其他      | 每帧 payload、IPC、调度        | payload 字节数实测；`npm run soak:capture`（只作线索，阈值未校准）                                                                                                                                    |
 
 ## 状态
 
-| Panel       | D1                           | D2                                                                  | D3                           | D4                                    |
-| ----------- | ---------------------------- | ------------------------------------------------------------------- | ---------------------------- | ------------------------------------- |
-| Spectrum    | 合理性已落地，正确性已有覆盖 | 计算部分已测并优化，paint 待测                                      | 已测，无水分，有损手段均拒绝 | payload 第 1、2 层已落地，第 3 层待议 |
-| Spectrogram | 继承 Spectrum                | 已测并优化（−87%/−95%）                                             | 继承 Spectrum                | 继承 Spectrum                         |
-| Stereo Map  | 待测                         | 渐变已减半，其余待测                                                | 待测                         | 已落地（−23%）                        |
-| Waveform    | 边界与正确性已查，成本未测   | 已测并优化三处（谱线 seek、默认不计算、颜色循环），已在真实窗口验证 | 已测，占历史约 1%，拒绝      | 已测，11.29 KiB/s，拒绝               |
-| Vectorscope | —                            | —                                                                   | —                            | —                                     |
-| Level Meter | —                            | —                                                                   | —                            | —                                     |
-| Loudness    | —                            | —                                                                   | —                            | —                                     |
-| Stats       | —                            | —                                                                   | —                            | —                                     |
+| Panel       | D1                                           | D2                                                                  | D3                                    | D4                                    |
+| ----------- | -------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------- | ------------------------------------- |
+| Spectrum    | 合理性已落地，正确性已有覆盖                 | 计算部分已测并优化，paint 待测                                      | 已测，无水分，有损手段均拒绝          | payload 第 1、2 层已落地，第 3 层待议 |
+| Spectrogram | 继承 Spectrum                                | 已测并优化（−87%/−95%）                                             | 继承 Spectrum                         | 继承 Spectrum                         |
+| Stereo Map  | 待测                                         | 渐变已减半，其余待测                                                | 待测                                  | 已落地（−23%）                        |
+| Waveform    | 边界与正确性已查，成本未测                   | 已测并优化三处（谱线 seek、默认不计算、颜色循环），已在真实窗口验证 | 已测，占历史约 1%，拒绝               | 已测，11.29 KiB/s，拒绝               |
+| Vectorscope | 已测，约 0.12 ms/key/frame；字符串构建待优化 | 已测；Polar/Persistence 每 render 读布局与选窗冗余待优化            | 已测，151.4 MiB/key；拒绝有损主体压缩 | 已测，0.73–0.76 MiB/s/key；并入协议轮 |
+| Level Meter | —                                            | —                                                                   | —                                     | —                                     |
+| Loudness    | —                                            | —                                                                   | —                                     | —                                     |
+| Stats       | —                                            | —                                                                   | —                                     | —                                     |

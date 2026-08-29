@@ -21,6 +21,8 @@
     "benchmark:spectrum-render": "node scripts/spectrum-render-benchmark.mjs",
     "benchmark:spectrogram-render": "node scripts/spectrogram-render-benchmark.mjs",
     "benchmark:waveform-render": "node scripts/waveform-render-benchmark.mjs",
+    "benchmark:vectorscope-render": "node scripts/vectorscope-render-benchmark.mjs",
+    "benchmark:vectorscope-rust": "cargo bench --manifest-path src-tauri/Cargo.toml --bench vectorscope",
     "profile:webview": "node scripts/webview-cpu-profile.mjs",
     "preview": "vite preview",
     "test": "vitest run",
