@@ -62,6 +62,7 @@ export const panelCpuProfiler = Object.freeze({
 // DevTools workflow: enable, reset, interact for a fixed interval, then snapshot. The module is
 // already imported by the instrumented renderers, so exposing this stable controller does not
 // install a timer, observer, or React subscription of its own.
-if (import.meta.env.DEV && typeof window !== "undefined") {
+// `import.meta.env` is Vite's, so it is absent when a benchmark imports a renderer through Node.
+if (import.meta.env?.DEV && typeof window !== "undefined") {
   window.__PLVS_PANEL_CPU__ = panelCpuProfiler;
 }

@@ -9,18 +9,33 @@ import {
   recordPanelCpuEvent,
 } from "../dev/panelCpuProfiler.js";
 
-function paintSpan(
-  data,
-  width,
-  height,
-  xStart,
-  xEnd,
-  snap,
-  yToBand,
-  colormapLut,
-  dbFloor,
-  yTiltDb
-) {
+/**
+ * The colour ramp as whole pixels rather than component bytes, so a painted pixel costs one store
+ * instead of four. Packed through a byte view rather than by shifting, which keeps the word order
+ * whatever the platform's is.
+ *
+ * Memoised on the ramp it came from -- one entry, because a session paints from one theme.
+ */
+let packedLutCache = { source: null, packed: null };
+
+function packedColormap(colormapLut) {
+  if (packedLutCache.source === colormapLut) return packedLutCache.packed;
+  const packed = new Uint32Array(256);
+  const pixel = new Uint8Array(4);
+  const asWord = new Uint32Array(pixel.buffer);
+  for (let step = 0; step < 256; step++) {
+    pixel[0] = colormapLut[step * 3];
+    pixel[1] = colormapLut[step * 3 + 1];
+    pixel[2] = colormapLut[step * 3 + 2];
+    // Alpha rides the same step the colour does: the ramp fades in as it warms up.
+    pixel[3] = step;
+    packed[step] = asWord[0];
+  }
+  packedLutCache = { source: colormapLut, packed };
+  return packed;
+}
+
+function paintSpan(words, width, height, xStart, xEnd, snap, yToBand, packed, dbFloor, yTiltDb) {
   for (let y = 0; y < height; y++) {
     const band = yToBand[y];
     const raw =
@@ -28,15 +43,10 @@ function paintSpan(
     // Rows are stored untilted; the slope tilt is display shaping, precomputed per canvas row
     // because a row always reads the same band. See `spectrumTiltOffsets`.
     const db = yTiltDb ? raw + yTiltDb[y] : raw;
-    const t = spectrogramColorFrac(db, dbFloor);
-    const lutIdx = Math.round(t * 255) * 3;
+    const word = packed[Math.round(spectrogramColorFrac(db, dbFloor) * 255)];
     const rowBase = y * width;
     for (let x = xStart; x < xEnd; x++) {
-      const idx = (rowBase + x) * 4;
-      data[idx] = colormapLut[lutIdx];
-      data[idx + 1] = colormapLut[lutIdx + 1];
-      data[idx + 2] = colormapLut[lutIdx + 2];
-      data[idx + 3] = Math.round(t * 255);
+      words[rowBase + x] = word;
     }
   }
 }
@@ -66,7 +76,9 @@ export function paintSpectrogramImageData(
   yTiltDb
 ) {
   const { data, width: W, height: H } = imageData;
-  data.fill(0);
+  const words = new Uint32Array(data.buffer, data.byteOffset, W * H);
+  words.fill(0);
+  const packed = packedColormap(colormapLut);
 
   // At long zoom levels, thousands of frames collapse into a few hundred physical pixels. Resolve
   // the newest active frame per pixel instead of walking every retained frame; work is bounded by
@@ -80,7 +92,7 @@ export function paintSpectrogramImageData(
       if (!snap || (!snap.dbAt && !snap.dbList) || !Number.isFinite(snap.timestampMs)) continue;
       const frameEndMs = spectrogramFrameEndMs(snaps, index, sampleMs);
       if (!(targetMs >= snap.timestampMs && targetMs < frameEndMs)) continue;
-      paintSpan(data, W, H, x, x + 1, snap, yToBand, colormapLut, dbFloor, yTiltDb);
+      paintSpan(words, W, H, x, x + 1, snap, yToBand, packed, dbFloor, yTiltDb);
     }
     return;
   }
@@ -97,7 +109,7 @@ export function paintSpectrogramImageData(
     const xEnd = Math.min(W, Math.round(((endMs - oldestMs) / span) * W));
     const colW = xEnd - xStart;
     if (colW <= 0) continue;
-    paintSpan(data, W, H, xStart, xEnd, snap, yToBand, colormapLut, dbFloor, yTiltDb);
+    paintSpan(words, W, H, xStart, xEnd, snap, yToBand, packed, dbFloor, yTiltDb);
   }
 }
 

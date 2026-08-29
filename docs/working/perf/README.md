@@ -58,7 +58,7 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 | Panel | D1 | D2 | D3 | D4 |
 | --- | --- | --- | --- | --- |
 | Spectrum | 合理性已落地，正确性已有覆盖 | 计算部分已测并优化，paint 待测 | 已测，无水分，有损手段均拒绝 | payload 第 1、2 层已落地，第 3 层待议 |
-| Spectrogram | — | — | — | — |
+| Spectrogram | 继承 Spectrum | 已测，主结论待决策 | 继承 Spectrum | 继承 Spectrum |
 | Stereo Map | — | — | — | — |
 | Waveform | — | — | — | — |
 | Vectorscope | — | — | — | — |
