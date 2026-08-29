@@ -15,7 +15,11 @@ import {
   selectPersistenceWindow,
   drawPersistenceWindow,
 } from "../../math/vectorscopePersistence.js";
-import { selectPolarWindow } from "../../math/vectorscopePolarMath.js";
+import {
+  POLAR_LEVEL_WINDOW_MS,
+  POLAR_SAMPLE_WINDOW_MS,
+  selectPolarWindow,
+} from "../../math/vectorscopePolarMath.js";
 import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
 import {
   SnapshotEmptyState,
@@ -222,17 +226,23 @@ export function VectorscopePanel() {
     : null;
   const persistenceVersion = persistenceSlab?.version ?? 0;
   const persistenceRows = useMemo(
-    () => (persistenceSlab ? selectPersistenceWindow(persistenceSlab, PERSISTENCE_WINDOW_MS) : []),
-    // The slab mutates in place; version is the intentional invalidation key.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [persistenceSlab, persistenceVersion]
-  );
-  const persistenceActive = isLissajous && persistenceRows.length > 0;
-  const polarRows = useMemo(
-    () => (!isLissajous && persistenceSlab ? selectPolarWindow(persistenceSlab) : []),
+    () =>
+      isLissajous && persistenceSlab
+        ? selectPersistenceWindow(persistenceSlab, PERSISTENCE_WINDOW_MS)
+        : [],
     // The slab mutates in place; version is the intentional invalidation key.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isLissajous, persistenceSlab, persistenceVersion]
+  );
+  const persistenceActive = isLissajous && persistenceRows.length > 0;
+  const polarWindowMs =
+    vectorscopeMode === "polarLevel" ? POLAR_LEVEL_WINDOW_MS : POLAR_SAMPLE_WINDOW_MS;
+  const polarRows = useMemo(
+    () =>
+      !isLissajous && persistenceSlab ? selectPolarWindow(persistenceSlab, polarWindowMs) : [],
+    // The slab mutates in place; version is the intentional invalidation key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isLissajous, persistenceSlab, persistenceVersion, polarWindowMs]
   );
   const labelChannelCount =
     Number.isFinite(channelCount) && channelCount >= 2 ? Math.floor(Number(channelCount)) : 2;

@@ -174,7 +174,7 @@ function main() {
   const slab = populatedSlab(32);
   const persistenceRows = selectPersistenceWindow(slab, PERSISTENCE_WINDOW_MS);
   const polarRows = selectPolarWindow(slab, POLAR_SAMPLE_WINDOW_MS);
-  const polarLevelRows = polarRows.filter((row) => row.ageMs <= POLAR_LEVEL_WINDOW_MS);
+  const polarLevelRows = selectPolarWindow(slab, POLAR_LEVEL_WINDOW_MS);
   const ctx = recordingContext();
   drawPersistenceWindow(ctx, persistenceRows, {
     width: 600,
@@ -212,6 +212,10 @@ function main() {
       ),
       selectPolarWindow11x100Points: averageMs(
         () => selectPolarWindow(slab, POLAR_SAMPLE_WINDOW_MS),
+        5000
+      ),
+      selectPolarLevelWindow5x100Points: averageMs(
+        () => selectPolarWindow(slab, POLAR_LEVEL_WINDOW_MS),
         5000
       ),
     },

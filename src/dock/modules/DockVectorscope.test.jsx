@@ -27,7 +27,17 @@ function renderWith(
   selectedControls = controls,
   historyData = {}
 ) {
-  return render(
+  return render(dockVectorscopeTree(result, peakDb, heightMode, selectedControls, historyData));
+}
+
+function dockVectorscopeTree(
+  result,
+  peakDb = [-12, -10],
+  heightMode = "standard",
+  selectedControls = controls,
+  historyData = {}
+) {
+  return (
     <FrameDataProvider
       value={{
         channelCount: 2,
@@ -158,6 +168,31 @@ describe("DockVectorscope", () => {
     expect(screen.queryByTestId("dock-vectorscope-trace")).toBeNull();
     expect(getVectorscopeHistoryForKey).toHaveBeenCalledWith(key);
     expect(screen.getByTestId("dock-vectorscope-correlation-rail")).toBeTruthy();
+  });
+
+  it("reuses the decoded Dock polar window until the history slab version changes", () => {
+    const rows = [
+      { timestampMs: 100, pairs: [0.5, -0.5] },
+      { timestampMs: 140, pairs: [0.6, -0.6] },
+    ];
+    const historySlab = {
+      version: 1,
+      length: rows.length,
+      timestampAt: (index) => rows[index]?.timestampMs ?? NaN,
+      rowAt: vi.fn((index) => rows[index]),
+    };
+    const selectedControls = { ...controls, vectorscopeMode: "polarSample" };
+    const historyData = { getVectorscopeHistoryForKey: () => historySlab };
+    const result = { path: "M 0 0", correlation: 0.25, pairX: 0, pairY: 1 };
+    const { rerender } = renderWith(result, undefined, "standard", selectedControls, historyData);
+    const callsAfterFirstRender = historySlab.rowAt.mock.calls.length;
+
+    rerender(dockVectorscopeTree(result, undefined, "standard", selectedControls, historyData));
+    expect(historySlab.rowAt).toHaveBeenCalledTimes(callsAfterFirstRender);
+
+    historySlab.version = 2;
+    rerender(dockVectorscopeTree(result, undefined, "standard", selectedControls, historyData));
+    expect(historySlab.rowAt.mock.calls.length).toBeGreaterThan(callsAfterFirstRender);
   });
 
   it.each(["lissajous", "polarSample", "polarLevel"])(

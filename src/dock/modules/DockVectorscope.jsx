@@ -1,6 +1,10 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
-import { selectPolarWindow } from "../../math/vectorscopePolarMath.js";
+import {
+  POLAR_LEVEL_WINDOW_MS,
+  POLAR_SAMPLE_WINDOW_MS,
+  selectPolarWindow,
+} from "../../math/vectorscopePolarMath.js";
 import { VectorscopePolarPlot } from "../../components/panels/VectorscopePolarPlot.jsx";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
@@ -95,7 +99,14 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const firstLabel = labels[pairX] ?? `Ch ${pairX + 1}`;
   const secondLabel = labels[pairY] ?? `Ch ${pairY + 1}`;
   const polarSlab = isLissajous ? null : historyData?.getVectorscopeHistoryForKey?.(key);
-  const polarRows = polarSlab ? selectPolarWindow(polarSlab) : [];
+  const polarVersion = polarSlab?.version ?? 0;
+  const polarWindowMs = mode === "polarLevel" ? POLAR_LEVEL_WINDOW_MS : POLAR_SAMPLE_WINDOW_MS;
+  const polarRows = useMemo(
+    () => (polarSlab ? selectPolarWindow(polarSlab, polarWindowMs) : []),
+    // The slab mutates in place; version is the intentional invalidation key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [polarSlab, polarVersion, polarWindowMs]
+  );
   const expanded = heightMode === "expanded";
   const availablePlotHeight = Math.max(
     0,

@@ -202,6 +202,37 @@ describe("VectorscopePanel", () => {
     expect(slab.rowAt.mock.calls.length).toBeGreaterThan(callsAfterFirstRender);
   });
 
+  it.each([
+    ["polarSample", 11],
+    ["polarLevel", 5],
+  ])("decodes only the visible %s history window", (vectorscopeMode, expectedRows) => {
+    mockCanvas();
+    const rows = Array.from({ length: 26 }, (_, index) => ({
+      pairs: new Float32Array([0.5, 0.5]),
+      timestampMs: index * 40,
+    }));
+    const slab = {
+      version: 1,
+      length: rows.length,
+      timestampAt: (index) => rows[index]?.timestampMs ?? NaN,
+      rowAt: vi.fn((index) => rows[index]),
+    };
+
+    renderPanel({
+      selectedOffset: -1,
+      panelControls: { vectorscopePair: { x: 0, y: 1 }, vectorscopeMode },
+      getVectorscopeHistoryForKey: () => slab,
+      displayAudio: {
+        peakDb: [-12, -12],
+        vectorscopeResultsByKey: {
+          "vectorscope:pair:0:1": { path: "M 0 0", correlation: 0.7, pairX: 0, pairY: 1 },
+        },
+      },
+    });
+
+    expect(slab.rowAt).toHaveBeenCalledTimes(expectedRows);
+  });
+
   it("does not decode polar history while covered by fullscreen", () => {
     mockCanvas();
     const rows = [
