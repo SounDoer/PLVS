@@ -23,6 +23,7 @@ import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
 import { normalizePanelControls } from "../../lib/panelControls.js";
 import {
   centroidYFraction,
+  EMPTY_SPECTRAL_WAVEFORM_METRICS,
   parseCssRgb,
   sliceSpectralWaveformMetrics,
   waveformFrequencyRgbInto,
@@ -355,27 +356,33 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
       waveformHistoryWindow.endRow?.timestampMs,
     ]
   );
+  // Only the two spectral overlays read these, and both default to off. Deriving them anyway means
+  // searching the visual ring on every tick for a result nothing looks at.
+  const spectralOverlaysOn = Boolean(controls.waveformFrequencyColor || controls.waveformCentroid);
   const spectralMetrics = useMemo(
     () =>
-      sliceSpectralWaveformMetrics(
-        visualWaveformHist,
-        waveformHistoryWindow.startRow?.timestampMs,
-        waveformHistoryWindow.endRow?.timestampMs,
-        bucketCount,
-        effectiveChannels,
-        {
-          newestVisibleTimestampMs: waveformHistoryWindow.newestVisibleTimestampMs,
-          visibleSamples: visibleSamples ?? 0,
-          pixelWidth: canvasW,
-          fracPhase,
-          waveformRows: waveformSourceList,
-          effectiveOffsetSamples: effectiveOffsetSamples ?? 0,
-          nominalIntervalMs: HIST_SAMPLE_SEC * 1000,
-        }
-      ),
+      !spectralOverlaysOn
+        ? EMPTY_SPECTRAL_WAVEFORM_METRICS
+        : sliceSpectralWaveformMetrics(
+            visualWaveformHist,
+            waveformHistoryWindow.startRow?.timestampMs,
+            waveformHistoryWindow.endRow?.timestampMs,
+            bucketCount,
+            effectiveChannels,
+            {
+              newestVisibleTimestampMs: waveformHistoryWindow.newestVisibleTimestampMs,
+              visibleSamples: visibleSamples ?? 0,
+              pixelWidth: canvasW,
+              fracPhase,
+              waveformRows: waveformSourceList,
+              effectiveOffsetSamples: effectiveOffsetSamples ?? 0,
+              nominalIntervalMs: HIST_SAMPLE_SEC * 1000,
+            }
+          ),
     // The spectral history ring also mutates in place; its version invalidates the derived metrics.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
+      spectralOverlaysOn,
       visualWaveformHist,
       visualWaveformHist?.version,
       waveformHistoryWindow.startRow?.timestampMs,

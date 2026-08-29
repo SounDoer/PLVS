@@ -8,6 +8,21 @@ import {
 } from "../../workspace/AudioDataContext.jsx";
 import { drawWaveformCanvas, WaveformPanel } from "./WaveformPanel.jsx";
 
+const { sliceSpectralWaveformMetricsMock } = vi.hoisted(() => ({
+  sliceSpectralWaveformMetricsMock: vi.fn(),
+}));
+
+vi.mock("../../math/spectralWaveformMath.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    sliceSpectralWaveformMetrics: (...args) => {
+      sliceSpectralWaveformMetricsMock(...args);
+      return actual.sliceSpectralWaveformMetrics(...args);
+    },
+  };
+});
+
 const { sliceWaveformSubHistoryMock, sliceWaveformSubHistoryFromIndexMock } = vi.hoisted(() => ({
   sliceWaveformSubHistoryMock: vi.fn(() => ({
     mins: [[], []],
@@ -60,7 +75,7 @@ function renderPanel(value = {}, props = {}) {
 }
 
 function waveformPanelTree(value = {}, props = {}) {
-  const { panelVisible = true, ...shared } = value;
+  const { panelVisible = true, panelControls, ...shared } = value;
   const frameData = {
     channelCount: shared.channelCount ?? baseAudioData.channelCount,
     peakLabelContext: shared.peakLabelContext ?? baseAudioData.peakLabelContext,
@@ -68,7 +83,7 @@ function waveformPanelTree(value = {}, props = {}) {
   return (
     <FrameDataProvider value={frameData}>
       <HistoryDataProvider value={{ ...baseAudioData, ...shared }}>
-        <PanelInstanceProvider value={{ panelVisible }}>
+        <PanelInstanceProvider value={{ panelVisible, panelControls }}>
           <WaveformPanel {...props} />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -79,6 +94,7 @@ function waveformPanelTree(value = {}, props = {}) {
 beforeEach(() => {
   sliceWaveformSubHistoryMock.mockClear();
   sliceWaveformSubHistoryFromIndexMock.mockClear();
+  sliceSpectralWaveformMetricsMock.mockClear();
 
   class ResizeObserverStub {
     observe() {}
@@ -391,6 +407,44 @@ describe("WaveformPanel", () => {
       })
     );
     expect(sliceWaveformSubHistoryMock).toHaveBeenCalledWith(history, 1, 0, 2, 0);
+  });
+
+  it("does not touch the spectral ring while both overlays are off", () => {
+    // Both default to off, and nothing reads the result in that state: the arrays only reach
+    // `drawWaveformCanvas`, which looks at them under Frequency Color and Centroid.
+    renderPanel({ channelCount: 2 });
+
+    expect(sliceSpectralWaveformMetricsMock).not.toHaveBeenCalled();
+  });
+
+  it.each([["waveformFrequencyColor"], ["waveformCentroid"]])(
+    "derives the spectral metrics as soon as %s is on",
+    (control) => {
+      renderPanel({ channelCount: 2, panelControls: { [control]: true } });
+
+      expect(sliceSpectralWaveformMetricsMock).toHaveBeenCalled();
+    }
+  );
+
+  it("turning an overlay off stops the work again, even when the window moves", () => {
+    const { rerender } = render(
+      waveformPanelTree({ channelCount: 2, panelControls: { waveformCentroid: true } })
+    );
+    expect(sliceSpectralWaveformMetricsMock).toHaveBeenCalled();
+
+    sliceSpectralWaveformMetricsMock.mockClear();
+    rerender(waveformPanelTree({ channelCount: 2, panelControls: { waveformCentroid: false } }));
+    // A rerender on its own leaves the memo's other inputs untouched, so it would stay quiet
+    // whether or not the gate exists. Move the window too: that is what would recompute.
+    rerender(
+      waveformPanelTree({
+        channelCount: 2,
+        visibleSamples: 120,
+        panelControls: { waveformCentroid: false },
+      })
+    );
+
+    expect(sliceSpectralWaveformMetricsMock).not.toHaveBeenCalled();
   });
 
   it("does not slice waveform history while the panel instance is hidden", () => {

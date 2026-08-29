@@ -10,6 +10,7 @@ import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.j
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
 import {
   centroidYFraction,
+  EMPTY_SPECTRAL_WAVEFORM_METRICS,
   parseCssRgb,
   sliceSpectralWaveformMetrics,
   waveformFrequencyRgbInto,
@@ -283,25 +284,32 @@ export function DockWaveform({ controls }) {
     canvasSize.width,
   ]);
   const { envelope } = waveformView;
+  // Same gate as the panel: only the two spectral overlays read these, and both default to off.
+  const spectralOverlaysOn = Boolean(
+    controls?.waveformFrequencyColor || controls?.waveformCentroid
+  );
   const spectralMetrics = useMemo(
     () =>
-      sliceSpectralWaveformMetrics(
-        visualWaveformHist,
-        waveformView.newestVisibleTimestampMs - (visibleSamples - 1) * HIST_SAMPLE_SEC * 1000,
-        waveformView.newestVisibleTimestampMs,
-        envelope.bucketCount,
-        channelCount,
-        {
-          newestVisibleTimestampMs: waveformView.newestVisibleTimestampMs,
-          visibleSamples,
-          pixelWidth: canvasSize.width,
-          fracPhase: envelope.fracPhase,
-          waveformRows: histSourceList,
-          effectiveOffsetSamples: 0,
-          nominalIntervalMs: HIST_SAMPLE_SEC * 1000,
-        }
-      ),
+      !spectralOverlaysOn
+        ? EMPTY_SPECTRAL_WAVEFORM_METRICS
+        : sliceSpectralWaveformMetrics(
+            visualWaveformHist,
+            waveformView.newestVisibleTimestampMs - (visibleSamples - 1) * HIST_SAMPLE_SEC * 1000,
+            waveformView.newestVisibleTimestampMs,
+            envelope.bucketCount,
+            channelCount,
+            {
+              newestVisibleTimestampMs: waveformView.newestVisibleTimestampMs,
+              visibleSamples,
+              pixelWidth: canvasSize.width,
+              fracPhase: envelope.fracPhase,
+              waveformRows: histSourceList,
+              effectiveOffsetSamples: 0,
+              nominalIntervalMs: HIST_SAMPLE_SEC * 1000,
+            }
+          ),
     [
+      spectralOverlaysOn,
       visualWaveformHist,
       waveformView.newestVisibleTimestampMs,
       envelope.bucketCount,

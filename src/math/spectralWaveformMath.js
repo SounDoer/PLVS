@@ -174,6 +174,20 @@ function timestampAtWaveformCoordinate(rows, coordinate, nominalIntervalMs) {
   return lowerTimestampMs + (upperTimestampMs - lowerTimestampMs) * (fractionalIndex - lowerIndex);
 }
 
+/**
+ * What a panel uses when neither Frequency Color nor Centroid is on, which is the default for
+ * both. Nothing reads the per-bucket spectral arrays in that state, and producing them means
+ * searching the visual ring and allocating three typed arrays per channel on every visual tick.
+ *
+ * Frozen and shared on purpose: it is also a stable identity, so a panel that stays in this state
+ * does not hand its lanes a new object every render and schedule a redraw for it.
+ */
+export const EMPTY_SPECTRAL_WAVEFORM_METRICS = Object.freeze({
+  dominantFrequencyHz: Object.freeze([]),
+  spectralCentroidHz: Object.freeze([]),
+  tonality: Object.freeze([]),
+});
+
 export function sliceSpectralWaveformMetrics(
   rows,
   startTimestampMs,
