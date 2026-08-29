@@ -547,6 +547,7 @@ function persistenceAccessor() {
 describe("VectorscopePanel hold slow mode", () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   function activateHold(container) {
@@ -573,6 +574,47 @@ describe("VectorscopePanel hold slow mode", () => {
     activateHold(container);
     expect(container.querySelector("[data-vectorscope-persistence]")).toBeTruthy();
     expect(lastLiveTrace(container)).toBeNull();
+  });
+
+  it("does not remeasure or repaint Persistence when only the parent rerenders", () => {
+    vi.useFakeTimers();
+    const widthRead = vi.fn(() => 200);
+    const heightRead = vi.fn(() => 160);
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientWidth", {
+      configurable: true,
+      get: widthRead,
+    });
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientHeight", {
+      configurable: true,
+      get: heightRead,
+    });
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const rows = [
+      { pairs: [0.1, 0.1], timestampMs: 1000 },
+      { pairs: [0.2, 0.2], timestampMs: 1040 },
+    ];
+    const historySlab = { ...fakeVectorscopeSlab(rows), version: 1 };
+    const audioData = holdAudioData("M 0 0 L 10 10", 0.5, {
+      getVectorscopeHistoryForKey: () => historySlab,
+    });
+    const { container, rerender } = renderPanel(audioData);
+    activateHold(container);
+    const readsAfterActivation = widthRead.mock.calls.length + heightRead.mock.calls.length;
+    const clearsAfterActivation = ctx.clearRect.mock.calls.length;
+
+    rerender(vectorscopePanelTree(audioData));
+
+    expect(widthRead.mock.calls.length + heightRead.mock.calls.length).toBe(readsAfterActivation);
+    expect(ctx.clearRect).toHaveBeenCalledTimes(clearsAfterActivation);
   });
 
   it("removes the persistence layer and restores the live path on release", () => {

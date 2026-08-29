@@ -1,8 +1,8 @@
 # Vectorscope 体检表
 
-**状态：** 四维已测，第一项无损优化已落地：Polar 不再预取不用的 Persistence 窗口，Polar Level
-直接选择 180 ms，Dock 按 slab version 复用解码结果。D1 仍有一个输出等价的字符串构建候选；D2
-剩余的确定冗余是 canvas 每次 render 同步读布局；D3 已经
+**状态：** 四维已测，两项无损前端优化已落地：Polar 不再预取不用的 Persistence 窗口，Polar Level
+直接选择 180 ms，Dock 按 slab version 复用解码结果；Persistence 和 Polar canvas 改由
+ResizeObserver 驱动尺寸与重画。D1 仍有一个输出等价的字符串构建候选；D3 已经
 是 Int16 packed slab，主体没有无损压缩空间；D4 的大头是 live SVG path，适合并入统一二进制
 协议轮，不适合单 panel 再发一套协议。
 
@@ -91,7 +91,7 @@ Criterion 条件：ring 已填满 4096 对样本；production callback 块 480 �
 所以 live Lissajous 的浏览器侧很轻；它的主要成本在 D1 的 Rust 字符串生成和 D4 的传输，不在
 SVG path 提交或 paint。
 
-### 2.2 Persistence：219 ms/10s 的大头是同步布局读取
+### 2.2 已落地：Persistence 不再跟着父帧读取布局和重画
 
 按住 Lissajous 进入慢放后，panel 画最近 1 秒的 26 行 × 100 点。真实 profile：
 
@@ -113,10 +113,11 @@ effect 没有依赖数组，所以跟着父组件约 **60 Hz** render；历史�
 完整重画，并在每次重画同步读 `clientWidth`。脱离应用的 JS 画笔只有 **0.030 ms/次**，与原生
 stroke 数字一起证明“点太多”不是主因。
 
-**值得改：** 用 ResizeObserver/已知 backing size 驱动尺寸变化，并让绘制只随 history version、
-主题和尺寸变化。不能只粗暴加一个 history 依赖：canvas 真正 resize 时仍必须重画。
+现在 `useObservedCanvasSize` 在挂载和 ResizeObserver / window resize 通知时才同步 backing size；
+绘制 effect 只随 history window、主题和已观察尺寸变化。普通父组件 rerender 不再读取布局，也不再
+清屏重画；真正 resize 仍会更新 backing store 并触发重画。
 
-### 2.3 两种 Polar：同一个尺寸读取热点
+### 2.3 已落地：两种 Polar 不再每 render 探测尺寸
 
 真实 profile（各自重新驱动文件分析）：
 
@@ -134,9 +135,9 @@ stroke 数字一起证明“点太多”不是主因。
 | `beginPath`       |     502 |       0.2 ms |
 | `fill` + `stroke` |     502 |   **0.4 ms** |
 
-组件虽然用 signature 跳过相同图像的重画，但 signature 判断在 `resizeCanvas` **之后**，所以父组件
-每次 render 仍同步读布局。原生画图几乎免费，修法与 Persistence 相同：尺寸应该由 resize 事件
-更新，而不是靠每帧读取来发现。
+原组件虽然用 signature 跳过相同图像的重画，但 signature 判断在 `resizeCanvas` **之后**，所以
+父组件每次 render 仍同步读布局。现在它与 Persistence 共用尺寸观察 hook，绘制 effect 通过显式
+依赖只在 rows、模式、主题、尺寸或 Max Hold 状态变化时运行。
 
 脱离应用的 JS 部分也很小：
 
@@ -170,6 +171,10 @@ benchmark，本轮消除了每次 **0.247 ms + 20.8 KiB**，按 25 Hz 即约 **6
 回归测试直接统计 slab 的 `rowAt`：主面板 Sample 必须是 11 次、Level 必须是 5 次；Dock 同版本
 rerender 必须保持次数不变，version 增加后才允许重新解码。旧实现分别得到 37、37 和重复增长，
 所以测试确实覆盖了这次优化，而不只是覆盖最终画面。
+
+尺寸调度另有三层回归覆盖：Persistence 和 Polar 在相同输入的父级 rerender 后，布局读取与
+`clearRect` 次数都必须保持不变；尺寸观察 hook 收到 ResizeObserver 通知后，必须更新 canvas
+backing store。旧实现的前两项都会各增加一次宽高读取。
 
 ### 2.5 profile 的适用边界
 
@@ -256,8 +261,8 @@ live path 占 live fragment 约 98%、占 Vectorscope 总带宽约 87%。删 met
 | D1-3 | 直接写一个 String 比小 String + join 快约一半    | 54–57 vs 106–123 µs                        | **值得独立提交**       |
 | D1-4 | 非 visual frame 多算 100 对 history              | 0.85–0.98 µs/次                            | 不值得单开提交         |
 | D2-1 | 默认 Lissajous 浏览器侧不热                      | profile + `d` 定点计时                     | 不动                   |
-| D2-2 | Persistence 每 render 重画并同步读布局           | 219 ms/10s；301 次 width = 89.8 ms/5s      | **值得改**             |
-| D2-3 | 两种 Polar 每 render 先读尺寸再判断是否重画      | 227–236 ms/10s；306 次 width = 107.4 ms/5s | **值得改**             |
+| D2-2 | Persistence 每 render 重画并同步读布局           | profile + 调度回归测试                     | **已落地**             |
+| D2-3 | 两种 Polar 每 render 先读尺寸再判断是否重画      | profile + 调度回归测试                     | **已落地**             |
 | D2-4 | Polar 每 tick 解码不用的 1 秒 Persistence 窗口   | 0.247 ms + 20.8 KiB/次                     | **已落地**             |
 | D2-5 | Polar Level 多解码 6/11 行；Dock 每 render 选窗  | benchmark + 回归测试                       | **已落地**             |
 | D3-1 | 四小时 151.4 MiB/key，91% 是 packed pairs        | 字节投影                                   | 主体不动               |
@@ -268,9 +273,7 @@ live path 占 live fragment 约 98%、占 Vectorscope 总带宽约 87%。删 met
 
 ## 6. 建议的优化提交顺序
 
-1. **canvas 尺寸/绘制调度**：ResizeObserver 驱动 backing size；Persistence 和 Polar 不再每 render
-   同步读布局。
-2. **Rust path 直接写 String**：输出逐字节对拍后替换 `Vec<String> + join`。
-3. **统一二进制协议轮**：与 Spectrum 第 3 层一起讨论；届时清掉三个未读 visual metrics。
+1. **Rust path 直接写 String**：输出逐字节对拍后替换 `Vec<String> + join`。
+2. **统一二进制协议轮**：与 Spectrum 第 3 层一起讨论；届时清掉三个未读 visual metrics。
 
 前三项都能保持视觉与协议输出不变，可以各自形成小而可验证的优化提交。

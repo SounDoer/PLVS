@@ -28,6 +28,7 @@ import {
 } from "./SnapshotEmptyState.jsx";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
+import { useObservedCanvasSize } from "../../hooks/useObservedCanvasSize.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -258,19 +259,17 @@ export function VectorscopePanel() {
     hasCorrelationSignal && clampCorrelation(gatedCorrelation) !== null;
   const liveCorrelationDisplayRef = useRef(null);
   const persistenceCanvasRef = useRef(null);
-  // Intentionally no dependency array: a new history row arrives with each frame render, so
-  // the canvas must redraw on every render while active. No-op when inactive or in jsdom
-  // (getContext returns null there).
+  const persistenceCanvasSize = useObservedCanvasSize(
+    persistenceCanvasRef,
+    panelActive && persistenceActive
+  );
   useLayoutEffect(() => {
     if (!panelActive || !persistenceActive) return;
     const canvas = persistenceCanvasRef.current;
     const ctx = canvas?.getContext?.("2d");
     if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
-    const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-    const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
-    if (canvas.width !== width) canvas.width = width;
-    if (canvas.height !== height) canvas.height = height;
+    const { dpr, width, height } = persistenceCanvasSize;
+    if (width <= 0 || height <= 0) return;
     ctx.strokeStyle = vectorscopeColors.trace;
     // Mirrors the SVG trace's non-scaling-stroke: the token is CSS pixels, not plot units.
     const strokeWidth =
@@ -284,7 +283,7 @@ export function VectorscopePanel() {
       height,
       windowMs: PERSISTENCE_WINDOW_MS,
     });
-  });
+  }, [panelActive, persistenceActive, persistenceCanvasSize, persistenceRows, vectorscopeColors]);
   const displayCorrelation = useMemo(() => {
     const rawCorrelation = canPlaceCorrelationMarker ? clampCorrelation(gatedCorrelation) : null;
     if (isSnapshot || rawCorrelation === null) {

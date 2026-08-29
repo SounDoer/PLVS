@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 import {
   aggregatePolarLevel,
@@ -10,6 +10,7 @@ import {
 } from "../../math/vectorscopePolarMath.js";
 import { DEFAULT_VECTORSCOPE_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
+import { useObservedCanvasSize } from "../../hooks/useObservedCanvasSize.js";
 
 const PLOT_PADDING_CSS_PX = 10;
 const POINT_RADIUS_CSS_PX = 1.15;
@@ -17,15 +18,6 @@ const PEAK_ALPHA = 0.35;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 const POLAR_FIXED_EXTENT = Math.SQRT2;
 const POLAR_FLOOR_DB = -48;
-
-function resizeCanvas(canvas) {
-  const dpr = window.devicePixelRatio || 1;
-  const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-  const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
-  if (canvas.width !== width) canvas.width = width;
-  if (canvas.height !== height) canvas.height = height;
-  return { dpr, width, height };
-}
 
 function plotGeometry(width, height, padding) {
   const radius = Math.max(1, Math.min(width / 2 - padding, height - padding * 2));
@@ -156,10 +148,13 @@ export function VectorscopePolarPlot({
   const maxHoldRef = useRef(null);
   const lastTimestampRef = useRef(null);
   const stateIdentityRef = useRef("");
-  const redrawRef = useRef({ signature: null, snapshotPairs: null, snapshotMaxHold: null });
   const maxHoldResetKeyRef = useRef(maxHoldResetKey);
   const snapshot = snapshotPairs != null;
-  const effectiveRows = snapshot ? [{ pairs: snapshotPairs, ageMs: 0, timestampMs: 0 }] : rows;
+  const effectiveRows = useMemo(
+    () => (snapshot ? [{ pairs: snapshotPairs, ageMs: 0, timestampMs: 0 }] : rows),
+    [rows, snapshot, snapshotPairs]
+  );
+  const canvasSize = useObservedCanvasSize(canvasRef, enabled);
   // Max hold is a pure overlay: enabling/disabling it must not disturb the live envelope, and
   // updatePolarMaxHold already discards held values when disabled and reseeds from the current
   // envelope when re-enabled. So it stays out of the state-reset identity (including it here would
@@ -173,6 +168,8 @@ export function VectorscopePolarPlot({
     if (!canvas) return;
     const ctx = canvas.getContext?.("2d");
     if (!ctx) return;
+    const { dpr, width, height } = canvasSize;
+    if (width <= 0 || height <= 0) return;
 
     if (stateIdentityRef.current !== stateIdentity) {
       stateIdentityRef.current = stateIdentity;
@@ -190,28 +187,10 @@ export function VectorscopePolarPlot({
       maxHoldRef.current = null;
     }
 
-    const { dpr, width, height } = resizeCanvas(canvas);
-
     const traceColor = snapshot ? colors.snapshot : colors.trace;
     const gridColor = colors.grid;
     const lineWidth = (readCssNumber(canvas, "--ui-vectorscope-stroke-width", 1) || 1) * dpr;
     const newestTimestamp = effectiveRows.at(-1)?.timestampMs;
-
-    // Skip the full redraw when nothing that affects the picture has changed. The parent re-renders
-    // at frame cadence (~60/s) while the history slab only advances ~25/s, so without this guard
-    // every idle frame re-aggregates the window and repaints an identical image. The signature
-    // covers every input the draw reads; snapshot rows are compared by reference since their
-    // timestamp is a constant. resizeCanvas only clears the backing store when the size actually
-    // changes, and any size change is in the signature, so a skipped render never leaves it blank.
-    const signature = `${stateIdentity}|${maxHoldEnabled}|${snapshot}|${width}x${height}|${dpr}|${newestTimestamp}|${traceColor}|${gridColor}|${lineWidth}|${effectiveRows.length}|${maxHoldResetKey}`;
-    if (
-      redrawRef.current.signature === signature &&
-      redrawRef.current.snapshotPairs === snapshotPairs &&
-      redrawRef.current.snapshotMaxHold === snapshotMaxHold
-    ) {
-      return;
-    }
-    redrawRef.current = { signature, snapshotPairs, snapshotMaxHold };
 
     const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
     ctx.clearRect(0, 0, width, height);
@@ -250,7 +229,18 @@ export function VectorscopePolarPlot({
       enabled: maxHoldEnabled,
     });
     drawPolarLevel(ctx, envelopeRef.current, maxHoldRef.current, geometry, traceColor, lineWidth);
-  });
+  }, [
+    canvasSize,
+    colors,
+    effectiveRows,
+    enabled,
+    maxHoldEnabled,
+    maxHoldResetKey,
+    mode,
+    snapshot,
+    snapshotMaxHold,
+    stateIdentity,
+  ]);
 
   return (
     <div data-vectorscope-polar={mode} className="absolute inset-0">

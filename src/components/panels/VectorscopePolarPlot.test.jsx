@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
@@ -78,6 +78,8 @@ describe("VectorscopePolarPlot", () => {
     });
   });
 
+  afterEach(() => vi.restoreAllMocks());
+
   it("draws Polar Sample as points and shows endpoint labels", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
@@ -95,6 +97,36 @@ describe("VectorscopePolarPlot", () => {
     expect(screen.getByText("L")).toBeTruthy();
     expect(screen.getByText("R")).toBeTruthy();
     expect(ctx.fill).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not remeasure or repaint when only the parent rerenders", () => {
+    const widthRead = vi.fn(() => 200);
+    const heightRead = vi.fn(() => 160);
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientWidth", {
+      configurable: true,
+      get: widthRead,
+    });
+    Object.defineProperty(HTMLCanvasElement.prototype, "clientHeight", {
+      configurable: true,
+      get: heightRead,
+    });
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const rows = [{ pairs: new Float32Array([1, 1, 0, 1]), ageMs: 0, timestampMs: 100 }];
+    const props = {
+      mode: "polarSample",
+      rows,
+      firstLabel: "L",
+      secondLabel: "R",
+    };
+    const { rerender } = render(<VectorscopePolarPlot {...props} />);
+    const readsAfterFirstRender = widthRead.mock.calls.length + heightRead.mock.calls.length;
+    const clearsAfterFirstRender = ctx.clearRect.mock.calls.length;
+
+    rerender(<VectorscopePolarPlot {...props} />);
+
+    expect(widthRead.mock.calls.length + heightRead.mock.calls.length).toBe(readsAfterFirstRender);
+    expect(ctx.clearRect).toHaveBeenCalledTimes(clearsAfterFirstRender);
   });
 
   it("leaves Polar Sample empty at the silence floor", () => {
