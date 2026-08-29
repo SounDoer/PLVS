@@ -148,7 +148,7 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 | Spectrogram | 继承 Spectrum                                | 已测并优化（−87%/−95%）                                             | 继承 Spectrum                         | 继承 Spectrum                         |
 | Stereo Map  | 待测                                         | 渐变已减半，其余待测                                                | 待测                                  | 已落地（−23%）                        |
 | Waveform    | 边界与正确性已查，成本未测                   | 已测并优化三处（谱线 seek、默认不计算、颜色循环），已在真实窗口验证 | 已测，占历史约 1%，拒绝               | 已测，11.29 KiB/s，拒绝               |
-| Vectorscope | 已测，约 0.12 ms/key/frame；字符串构建待优化 | 选窗和 canvas 尺寸/绘制调度冗余均已优化                           | 已测，151.4 MiB/key；拒绝有损主体压缩 | 已测，0.73–0.76 MiB/s/key；并入协议轮 |
+| Vectorscope | SVG path 字符串构建已优化约 52%            | 选窗和 canvas 尺寸/绘制调度冗余均已优化                           | 已测，151.4 MiB/key；拒绝有损主体压缩 | 已测，0.73–0.76 MiB/s/key；并入协议轮 |
 | Level Meter | —                                            | —                                                                   | —                                     | —                                     |
 | Loudness    | —                                            | —                                                                   | —                                     | —                                     |
 | Stats       | —                                            | —                                                                   | —                                     | —                                     |

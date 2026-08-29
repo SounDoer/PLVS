@@ -1,10 +1,20 @@
 //! Lissajous path + Pearson correlation (matches `useAudioEngine` tick).
 
 use std::collections::VecDeque;
+use std::fmt::Write as _;
 
 use super::meter::{Meter, PcmContext};
 
 const VS_CAP: usize = 4096;
+
+fn append_svg_path_point(path: &mut String, index: usize, x: f64, y: f64) {
+  if index == 0 {
+    path.push_str("M ");
+  } else {
+    path.push_str(" L ");
+  }
+  write!(path, "{x:.2} {y:.2}").expect("writing to a String cannot fail");
+}
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct VectorscopeMetrics {
@@ -152,7 +162,7 @@ impl VectorscopeMeter {
     let mut sum_lr = 0.0_f64;
     let mut sum_mid = 0.0_f64;
     let mut sum_side = 0.0_f64;
-    let mut vec_pts: Vec<String> = Vec::new();
+    let mut path = String::with_capacity(n.div_ceil(6) * 16);
     let mut point_count = 0usize;
     i = 0;
     while i < n {
@@ -167,17 +177,12 @@ impl VectorscopeMeter {
       sum_side += side * side;
       let x = vs_half + side * eff_plot_radius;
       let y = vs_half - mid * eff_plot_radius;
-      vec_pts.push(format!("{x:.2} {y:.2}"));
+      append_svg_path_point(&mut path, point_count, x, y);
       point_count += 1;
       i += 6;
     }
     let metrics = metrics_from_sums(sum_l, sum_r, sum_lr, sum_mid, sum_side, point_count);
-    let vp = if vec_pts.is_empty() {
-      String::new()
-    } else {
-      format!("M {}", vec_pts.join(" L "))
-    };
-    (metrics, vp)
+    (metrics, path)
   }
 }
 
@@ -243,6 +248,36 @@ impl Meter for VectorscopeMeter {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  fn legacy_svg_path(points: &[(f64, f64)]) -> String {
+    let points = points
+      .iter()
+      .map(|(x, y)| format!("{x:.2} {y:.2}"))
+      .collect::<Vec<_>>();
+    if points.is_empty() {
+      String::new()
+    } else {
+      format!("M {}", points.join(" L "))
+    }
+  }
+
+  #[test]
+  fn direct_svg_writer_matches_legacy_bytes_at_formatting_boundaries() {
+    let cases = [
+      vec![],
+      vec![(130.0, 8.0)],
+      vec![(-0.0049, -0.005), (-1.2349, 252.005), (8.0, 130.0)],
+      vec![(f64::from(f32::MIN_POSITIVE), f64::from(f32::EPSILON))],
+    ];
+
+    for points in cases {
+      let mut direct = String::new();
+      for (index, (x, y)) in points.iter().copied().enumerate() {
+        append_svg_path_point(&mut direct, index, x, y);
+      }
+      assert_eq!(direct, legacy_svg_path(&points));
+    }
+  }
 
   #[test]
   fn empty_gives_zero_corr_and_empty_path() {

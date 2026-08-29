@@ -2,7 +2,7 @@
 
 **状态：** 四维已测，两项无损前端优化已落地：Polar 不再预取不用的 Persistence 窗口，Polar Level
 直接选择 180 ms，Dock 按 slab version 复用解码结果；Persistence 和 Polar canvas 改由
-ResizeObserver 驱动尺寸与重画。D1 仍有一个输出等价的字符串构建候选；D3 已经
+ResizeObserver 驱动尺寸与重画；D1 的 live SVG path 已改成单 String 直接写入。D3 已经
 是 Int16 packed slab，主体没有无损压缩空间；D4 的大头是 live SVG path，适合并入统一二进制
 协议轮，不适合单 panel 再发一套协议。
 
@@ -39,24 +39,25 @@ ring 扩容、展平数组和字符串分配都不违反 callback 边界。
 
 `cargo test --lib dsp::vectorscope::tests`：**9/9 通过**。
 
-### 1.2 高频输出成本：约 0.12 ms/key/frame
+### 1.2 已落地：高频输出降到约 0.06 ms/key/frame
 
 Criterion 条件：ring 已填满 4096 对样本；production callback 块 480 帧；高频 path 按代码的
 `i += 6` 取 **683 点**。
 
 | 项目                              |             耗时 |
 | --------------------------------- | ---------------: |
-| `get_output()`，683 点 SVG        |   **119–128 µs** |
-| 一 key：push 480 帧 + live output |   **119–133 µs** |
-| 四 key：push + live output        |   **468–494 µs** |
+| `get_output()`，683 点 SVG        | **58.5–59.3 µs** |
+| 一 key：push 480 帧 + live output | **79.4–85.2 µs** |
+| 四 key：push + live output        |    **264–286 µs** |
 | 100 对 history pairs              | **0.85–0.98 µs** |
 | 展平两个 VecDeque                 |     0.47–0.52 µs |
 | clone 两个 4096 长度 flat Vec     |     0.50–0.53 µs |
 
-单 key 按 62.5 frame/s 折算约 **7.5–8.0 ms CPU/s（0.75–0.80% 单核）**；四 key 约
-**3% 单核**。它不是最大的热点，但在请求上限处已经不是完全免费的。
+改动前 `get_output()` 是 119–128 µs，四 key 是 468–494 µs；Criterion 分别报告约 **−52%** 和
+**−44%**。当前单 key 的纯输出按 62.5 frame/s 折算约 **3.7 ms CPU/s（0.37% 单核）**；四 key
+live frame 约 **1.7% 单核**。
 
-### 1.3 成本几乎全在 683 次格式化，不在那两个显眼的 clone
+### 1.3 已落地：去掉 683 个临时 String 和 Vec
 
 `get_output()` 先把两个 ring 展平，又把两个 flat Vec clone 后传给 `process`。代码上四次遍历很显眼，
 实测两次展平和两次 clone 各只有约 **0.5 µs**，合计不到 `get_output()` 的 1%。不要为去 clone
@@ -69,8 +70,9 @@ Criterion 条件：ring 已填满 4096 对样本；production callback 块 480 �
 | 小 String + Vec + join                        | **106–123 µs** |
 | 预留一个 String，逐点 `write!`                |   **54–57 µs** |
 
-直接写入大 String 快约 **一半**，且协议与输出可以逐字节不变。**值得做独立优化提交**；落地前要
-用旧实现做独立对拍，钉住负数、边界、舍入和分隔符，不能只断言 path 以 `M` 开头。
+生产实现现在预留一个最终 String，并用 `write!` 逐点追加，保留完全相同的两位小数和 `M … L …`
+格式。独立对拍测试覆盖空 path、负数、舍入边界、极小 f32 和分隔符，逐字节比较旧算法与新 writer；
+原有已知几何 golden test 继续钉住 `M 130.00 8.00` 等完整 path。
 
 ### 1.4 visual history 在非 visual frame 上也会算，但不值得单独修
 
@@ -256,9 +258,9 @@ live path 占 live fragment 约 98%、占 Vectorscope 总带宽约 87%。删 met
 
 | #    | 结论                                             | 证据                                       | 判定                   |
 | ---- | ------------------------------------------------ | ------------------------------------------ | ---------------------- |
-| D1-1 | live SVG 约 0.12 ms/key/frame，四 key 约 3% 单核 | Criterion                                  | 可优化但不紧急         |
+| D1-1 | live SVG 降到约 0.06 ms/key/frame                | Criterion，`get_output()` 约 −52%          | **已落地**             |
 | D1-2 | clone/flatten 合计不到 1%                        | 微基准                                     | **不动 clone**         |
-| D1-3 | 直接写一个 String 比小 String + join 快约一半    | 54–57 vs 106–123 µs                        | **值得独立提交**       |
+| D1-3 | 直接写一个 String，输出逐字节不变                | Criterion + 新旧 writer 对拍               | **已落地**             |
 | D1-4 | 非 visual frame 多算 100 对 history              | 0.85–0.98 µs/次                            | 不值得单开提交         |
 | D2-1 | 默认 Lissajous 浏览器侧不热                      | profile + `d` 定点计时                     | 不动                   |
 | D2-2 | Persistence 每 render 重画并同步读布局           | profile + 调度回归测试                     | **已落地**             |
@@ -273,7 +275,6 @@ live path 占 live fragment 约 98%、占 Vectorscope 总带宽约 87%。删 met
 
 ## 6. 建议的优化提交顺序
 
-1. **Rust path 直接写 String**：输出逐字节对拍后替换 `Vec<String> + join`。
-2. **统一二进制协议轮**：与 Spectrum 第 3 层一起讨论；届时清掉三个未读 visual metrics。
+1. **统一二进制协议轮**：与 Spectrum 第 3 层一起讨论；届时清掉三个未读 visual metrics。
 
 前三项都能保持视觉与协议输出不变，可以各自形成小而可验证的优化提交。
