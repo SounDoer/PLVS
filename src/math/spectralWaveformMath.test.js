@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { WaveformVisualHistorySlab } from "../lib/WaveformVisualHistorySlab.js";
 import {
   centroidYFraction,
   sliceSpectralWaveformMetrics,
@@ -128,6 +129,146 @@ describe("spectral Waveform math", () => {
     silent[0] = 999;
     expect(palette.neutral[0]).not.toBe(999);
     expect(waveformFrequencyRgb(50, 1, splits, palette)).not.toBe(palette.low);
+  });
+
+  describe("finding the window in a long ring", () => {
+    const ROW_MS = 40;
+    const CHANNELS = 2;
+    const mod = (value, divisor) => ((value % divisor) + divisor) % divisor;
+
+    function ring(rowCount, firstTimestampMs = 0) {
+      const slab = new WaveformVisualHistorySlab(rowCount, CHANNELS);
+      for (let i = 0; i < rowCount; i += 1) {
+        // Values are a function of the timestamp, not of the row index: the whole point of the
+        // comparison is that the same moment carries the same numbers in both rings.
+        const timestampMs = firstTimestampMs + i * ROW_MS;
+        const tick = Math.round(timestampMs / ROW_MS);
+        slab.push({
+          timestampMs,
+          dominantFrequencyHz: [200 + mod(tick, 97) * 13, 300 + mod(tick, 61) * 7],
+          spectralCentroidHz: [800 + mod(tick, 53) * 11, 900 + mod(tick, 47) * 9],
+          tonality: [mod(tick, 32) / 32, mod(tick, 16) / 16],
+        });
+      }
+      return slab;
+    }
+
+    function counting(slab) {
+      const reads = { rowAt: 0, timestampAt: 0 };
+      return {
+        reads,
+        rows: {
+          get length() {
+            return slab.length;
+          },
+          rowAt(index) {
+            reads.rowAt += 1;
+            return slab.rowAt(index);
+          },
+          timestampAt(index) {
+            reads.timestampAt += 1;
+            return slab.timestampAt(index);
+          },
+        },
+      };
+    }
+
+    function slice(rows, newestMs, windowMs, pixelWidth) {
+      return sliceSpectralWaveformMetrics(
+        rows,
+        newestMs - windowMs,
+        newestMs,
+        pixelWidth,
+        CHANNELS,
+        {
+          newestVisibleTimestampMs: newestMs,
+          visibleSamples: Math.round(windowMs / 95),
+          pixelWidth,
+          fracPhase: 0,
+          waveformRows: null,
+          effectiveOffsetSamples: 0,
+          nominalIntervalMs: 95,
+        }
+      );
+    }
+
+    it("gives the same answer no matter how much older history sits in front of it", () => {
+      // The visible window is the last 60 s either way; only the amount of history before it
+      // differs. Any dependence on that would be the seek landing somewhere it should not.
+      const windowMs = 60_000;
+      const visibleRows = windowMs / ROW_MS;
+      for (const pixelWidth of [340, 1200]) {
+        const short = ring(visibleRows + 1);
+        const shortNewest = short.timestampAt(short.length - 1);
+        const expected = slice(short, shortNewest, windowMs, pixelWidth);
+
+        for (const olderRows of [1, 500, 20_000]) {
+          const long = ring(visibleRows + 1 + olderRows, -olderRows * ROW_MS);
+          const longNewest = long.timestampAt(long.length - 1);
+          expect(longNewest).toBe(shortNewest);
+          const actual = slice(long, longNewest, windowMs, pixelWidth);
+          for (const field of ["dominantFrequencyHz", "spectralCentroidHz", "tonality"]) {
+            for (let channel = 0; channel < CHANNELS; channel += 1) {
+              expect(Array.from(actual[field][channel])).toEqual(
+                Array.from(expected[field][channel])
+              );
+            }
+          }
+        }
+      }
+    });
+
+    it("READ BOUND: reaching the window costs a search, not a walk over the whole ring", () => {
+      // One hour of retention is 90000 rows at 25 Hz, and the panel re-runs this on every visual
+      // tick. A per-row walk to reach the newest 60 s is what made that a per-frame cost that grew
+      // with session length; the bound below is what stops it coming back.
+      const windowMs = 60_000;
+      const pixelWidth = 1200;
+      const visibleRows = windowMs / ROW_MS;
+      const totalRows = 90_000;
+      const slab = ring(totalRows);
+      const probe = counting(slab);
+      const newestMs = slab.timestampAt(totalRows - 1);
+
+      slice(probe.rows, newestMs, windowMs, pixelWidth);
+
+      const reads = probe.reads.rowAt + probe.reads.timestampAt;
+      const bound = 2 * Math.ceil(Math.log2(totalRows)) + 4 * (visibleRows + pixelWidth) + 16;
+      expect(reads).toBeLessThanOrEqual(bound);
+      // And nothing that scales with the rows sitting in front of the window.
+      expect(reads).toBeLessThan(totalRows / 4);
+    });
+
+    it("lands on the newest row at or before the window, duplicates and gaps included", () => {
+      const slab = new WaveformVisualHistorySlab(8, 1);
+      // Two rows share a timestamp, and there is a gap after them.
+      for (const [timestampMs, frequency] of [
+        [0, 100],
+        [40, 200],
+        [40, 300],
+        [400, 400],
+        [440, 500],
+      ]) {
+        slab.push({
+          timestampMs,
+          dominantFrequencyHz: [frequency],
+          spectralCentroidHz: [frequency],
+          tonality: [1],
+        });
+      }
+      // One bucket, asking for the moment of the duplicated timestamp: the newer of the pair wins,
+      // which is what a walk forward through equal timestamps also lands on.
+      const result = sliceSpectralWaveformMetrics(slab, 40, 40, 1, 1, {
+        newestVisibleTimestampMs: 40,
+        visibleSamples: 1,
+        pixelWidth: 1,
+        fracPhase: 0,
+        waveformRows: null,
+        effectiveOffsetSamples: 0,
+        nominalIntervalMs: 40,
+      });
+      expect(result.dominantFrequencyHz[0][0]).toBe(300);
+    });
   });
 
   it("maps centroid logarithmically from high at the top to low at the bottom", () => {

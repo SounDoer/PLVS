@@ -118,12 +118,49 @@ function rowAt(rows, index) {
   return typeof rows?.rowAt === "function" ? rows.rowAt(index) : rows?.[index];
 }
 
+/**
+ * A row's timestamp without materialising the row.
+ *
+ * The history slabs store their columns packed, so `rowAt` builds an object and a typed-array view
+ * per field every time it is called. Every read below wants one number out of that, and the seek
+ * makes many such reads, so it goes through the slab's own timestamp column when there is one.
+ */
+function timestampAt(rows, index) {
+  if (typeof rows?.timestampAt === "function") return rows.timestampAt(index);
+  return Number(rowAt(rows, index)?.timestampMs);
+}
+
+/**
+ * Index of the newest row at or before `targetMs`, or 0 when every row is newer.
+ *
+ * Walking forward from row 0 costs the whole ring, and the ring holds the entire retention window
+ * (an hour by default, four at most) while the panel typically shows a minute of it -- so the walk
+ * grew with how long the app had been running, not with what was on screen. See
+ * `docs/working/perf/waveform.md` §2.7.
+ *
+ * Assumes the timestamps do not decrease, which is what `FrameIntake` produces: the engine sends
+ * `u64` milliseconds and the session-boundary offset keeps them ordered across a restart. A row
+ * that arrived with no usable timestamp is stored as `-Infinity`, and one of those sitting between
+ * two real rows would break that assumption; such a row resolves to "no data" for its bucket under
+ * the age check below either way.
+ */
+function seekRowAtOrBefore(rows, targetMs, length) {
+  let low = 0;
+  let high = length - 1;
+  while (low < high) {
+    const middle = low + Math.ceil((high - low) / 2);
+    if (timestampAt(rows, middle) <= targetMs) low = middle;
+    else high = middle - 1;
+  }
+  return low;
+}
+
 function timestampAtWaveformCoordinate(rows, coordinate, nominalIntervalMs) {
   const length = rows?.length ?? 0;
   if (length <= 0 || !Number.isFinite(coordinate)) return NaN;
   const fractionalIndex = coordinate - 0.5;
-  const firstTimestampMs = Number(rowAt(rows, 0)?.timestampMs);
-  const lastTimestampMs = Number(rowAt(rows, length - 1)?.timestampMs);
+  const firstTimestampMs = timestampAt(rows, 0);
+  const lastTimestampMs = timestampAt(rows, length - 1);
   if (!Number.isFinite(firstTimestampMs) || !Number.isFinite(lastTimestampMs)) return NaN;
   if (fractionalIndex <= 0) return firstTimestampMs + fractionalIndex * nominalIntervalMs;
   if (fractionalIndex >= length - 1) {
@@ -131,8 +168,8 @@ function timestampAtWaveformCoordinate(rows, coordinate, nominalIntervalMs) {
   }
   const lowerIndex = Math.floor(fractionalIndex);
   const upperIndex = lowerIndex + 1;
-  const lowerTimestampMs = Number(rowAt(rows, lowerIndex)?.timestampMs);
-  const upperTimestampMs = Number(rowAt(rows, upperIndex)?.timestampMs);
+  const lowerTimestampMs = timestampAt(rows, lowerIndex);
+  const upperTimestampMs = timestampAt(rows, upperIndex);
   if (!Number.isFinite(lowerTimestampMs) || !Number.isFinite(upperTimestampMs)) return NaN;
   return lowerTimestampMs + (upperTimestampMs - lowerTimestampMs) * (fractionalIndex - lowerIndex);
 }
@@ -214,20 +251,10 @@ export function sliceSpectralWaveformMetrics(
           return startTimestampMs + (durationMs * bucket) / Math.max(1, bucketCount - 1);
         };
 
-  let rowIndex = 0;
-  const firstBucketTimestampMs = timestampForBucket(0);
-  while (
-    rowIndex + 1 < rows.length &&
-    Number(rowAt(rows, rowIndex + 1)?.timestampMs) <= firstBucketTimestampMs
-  ) {
-    rowIndex += 1;
-  }
+  let rowIndex = seekRowAtOrBefore(rows, timestampForBucket(0), rows.length);
   for (let bucket = 0; bucket < bucketCount; bucket += 1) {
     const timestampMs = timestampForBucket(bucket);
-    while (
-      rowIndex + 1 < rows.length &&
-      Number(rowAt(rows, rowIndex + 1)?.timestampMs) <= timestampMs
-    ) {
+    while (rowIndex + 1 < rows.length && timestampAt(rows, rowIndex + 1) <= timestampMs) {
       rowIndex += 1;
     }
     const row = rowAt(rows, rowIndex);
