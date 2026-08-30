@@ -2,8 +2,9 @@
 
 **状态：** 四维已测，两层量化都已落地。D1 成本低且稳态零分配；D2 的已知 renderer 热点已经落地，
 当前纯 JS 派生不超 0.11 ms；D3 的四小时单 key、单 mode 已从 **1.29 GiB 经 0.97 GiB 降到
-0.81 GiB（累计 −37.2%）**，实时与历史 HUD 统一明确标为近似 energy；D4 已通过共享帧级频率栅格
-降低 23%。
+0.81 GiB（累计 −37.2%）**，实时与历史 HUD 统一明确标为近似 energy；D4 先通过共享帧级频率栅格
+降低 23%，再由统一二进制协议轮把三张 primitive row 移出 JSON（§4.1）。
+**协议轮的真实窗口验证尚未做。**
 
 工具：`npm run benchmark:stereo-map-rust`（新增）、
 `npm run benchmark:stereo-map-render`（新增）、
@@ -222,6 +223,28 @@ visual tick 都从 73.5 KiB 降到 56.5 KiB，总带宽从 **6.28 MiB/s 降到 4
 剩余主体是三张 958-long f32 primitive row。二进制传输能显著减少 JSON，但与 Spectrum、
 Vectorscope 属于同一个统一协议项目；不为 Stereo Map 单独新增 wire format。
 
+### 4.1 primitive row 已移出 JSON（2026-08-30）
+
+统一二进制协议轮的第 4 步。`pl` / `pr` / `c` 改走 `f32` binary section，设计见 `protocol.md`。
+这是三个面板里最干净的一个：**这三行在管线里本来就是 `f32`**，所以既没有精度问题，前端也不需要
+改——`stereoMapMath.js` 的 `isNumericRow` 一直同时接受 `Array` 和 typed array（历史 slab 一直
+返回后者），实时路径现在只是递给它与 scrub 路径相同的形状。
+
+**实测每行 958 band**（`ipc::frame_encode::tests::a_production_width_frame_is_far_smaller_than_its_json`）：
+
+| | 每行 |
+| --- | ---: |
+| 旧：JSON 文本 f32 | **12,614 B** |
+| 新：f32 二进制 section | **3,832 B（−70%）** |
+
+三行主帧 + 三行 visual tick 折算，单 key 的 band 行部分 **3.16 → 0.96 MiB/s**。
+
+**上面那个 4.83 MiB/s 不能直接和这个相减。** 它隐含每行约 18.8 KiB，也就是 f64 的宽度，而 Rust
+直接量出来 `Vec<f32>` 经 `ryu` 只有 12,614 B。旧数字里应该混进了别的东西，经过见
+`protocol.md` §2 的 P-6；以本节的每行实测为准。
+
+**仍待验证**：以上都是线上字节，webview 侧的实际 CPU 降幅要在真实窗口里采 profile。
+
 ## 5. 判定汇总
 
 | # | 结论 | 判定 |
@@ -235,8 +258,10 @@ Vectorscope 属于同一个统一协议项目；不为 Stereo Map 单独新增 w
 | D3-3 | 12 位 value plane，误差低于显示精度一个数量级 | **已落地（−16.6%）** |
 | D3-4 | 对旧行降采样会毁掉 5 秒历史窗口 | **已否决** |
 | D4-1 | grid 复用已降低 23% | 已落地 |
-| D4-2 | primitive JSON 仍大 | 并入统一二进制协议轮 |
+| D4-2 | primitive 每行 12,614 → 3,832 B，band 行 3.16 → 0.96 MiB/s | **已落地（−70%）**，真实窗口待验 |
 
 ## 6. 后续提交建议
 
-1. 单 panel 全部走完后，统一设计 Spectrum / Stereo Map / Vectorscope 二进制协议。
+1. ~~单 panel 全部走完后，统一设计 Spectrum / Stereo Map / Vectorscope 二进制协议。~~
+   **已做**，见 `protocol.md`。Vectorscope 经实测**没有并进去**（把 path 构建搬到主线程是净亏），
+   理由记在该文档 §4。

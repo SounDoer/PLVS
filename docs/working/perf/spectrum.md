@@ -1,7 +1,8 @@
 # Spectrum 体检表
 
-**状态：** D1 合理性已判定并落地（§1.5、§1.6）；D4 的 payload 第 1、2 层已削减（§3.5、§3.6）。
-其余待测。
+**状态：** D1 合理性已判定并落地（§1.5、§1.6）；D4 的 payload 三层全部已削减
+（§3.5、§3.6、§3.7）——第 3 层是跨面板的统一二进制协议轮，设计与实测在 `protocol.md`。
+**协议轮的真实窗口验证尚未做。**
 
 ## 0. 控制维度拆解
 
@@ -357,12 +358,33 @@ tick 再 25 次/秒，每份 17.1 KiB。
 的 `LogGrid`），所以 `StereoMapFrameResult` / `StereoMapVisualEntry` 的 `bandCentersHz` 可以直接
 复用这个帧级栅格，不需要再改一次协议。留给 Stereo Map 自己那一轮。
 
+## 3.7 D4 第 3 层已落地：dB 行不再是文本（2026-08-30）
+
+统一二进制协议轮的第 3 步。dB 行不再由 `serde_json` 写成十进制、再由 webview 解析回来，而是作为
+二进制 section 跟在 JSON 信封后面，信封里留一个 `{"$bin":0,"dtype":"f64","len":958}` 描述符。
+设计见 `protocol.md`，实现是 `src-tauri/src/ipc/frame_encode.rs` 与 `src/ipc/frameWire.js`。
+
+**实测每行 958 band**（`ipc::frame_encode::tests::a_production_width_frame_is_far_smaller_than_its_json`）：
+
+| | 每行 |
+| --- | ---: |
+| 旧：JSON 文本 f64 | **18,370 B** |
+| 新：f64 二进制 section | **7,664 B（−58%）** |
+
+按此折算单 key 带宽：combined **2.58 → 约 1.08 MiB/s**，lr/ms **5.16 → 约 2.15 MiB/s**。
+
+**第一版按 f64 走线，不是 f32。** DSP 产出的就是 f64，所以这一步**不改变前端读到的任何一个值**
+——传输层落地时没有第二个变量在动。窄到 f32 是 3,832 B/行（合计 −79%），前端最终只存 Int16
+centi-dB、理论余量三个数量级，但那是精度决定，单列为 `protocol.md` 的 P-7。
+
+**仍待验证**：以上都是线上字节，webview 侧的实际 CPU 降幅要在真实窗口里采 profile（P-1 / P-2）。
+
 ## 4. D4 — 其他
 
 | # | 待测 | 怎么测 |
 | --- | --- | --- |
-| 4.1 | 每帧 Channel payload 字节数与 bin 数 | 实测；乘以帧率得带宽 |
-| 4.2 | 序列化/反序列化成本 | profiling 中 IPC 回调的占比 |
+| 4.1 | ~~每帧 Channel payload 字节数与 bin 数~~ **已测**，见 §3.5–§3.7 | 实测；乘以帧率得带宽 |
+| 4.2 | 序列化/反序列化成本 | profiling 中 IPC 回调的占比；协议轮 P-1 / P-2 |
 | 4.3 | 面板不可见时是否真的停止 ingest | 已有 `useIntakeRouting` 逻辑，需确认 Spectrum 走到了 |
 
 ## 5. 协议改动候选（跨 panel，单独记）
@@ -370,6 +392,9 @@ tick 再 25 次/秒，每份 17.1 KiB。
 - 1.7 / 1.8 若成立 → request key 语法变化，Rust 的 `OctaveSmoothing::key_token` 镜像同步，
   `analysisRequestKeyFormat.test.js` 需要改。这会同时影响 Spectrogram 和 Stereo Map（后者复用同一批 token）。
 - 3.4 / 3.5 若成立 → payload 元素类型或长度变化。
+- **3.5 第 3 层已落地**（§3.7）：dB 行改走二进制 section。`AudioFramePayload` 的 JSON 形状不再是
+  线上形状，镜像在 `ipc/frame_encode.rs` 的 `WireFrame`——**给 payload 加字段必须同时加到镜像里**，
+  两个 key-set 对拍测试盯着这条。
 
 ## 6. 既有测试的合理性存疑项
 

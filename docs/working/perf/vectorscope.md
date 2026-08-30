@@ -271,10 +271,17 @@ live path 占 live fragment 约 98%、占 Vectorscope 总带宽约 87%。删 met
 | D3-2 | Int8/降点会损伤 −48/−90 dB 显示                  | codec 步长 +显示阈值                       | **拒绝有损压缩**       |
 | D3-3 | 三个未读 metric 列 8.25 MiB/key                  | reader 盘点                                | 协议轮顺手清理         |
 | D3-4 | Max Hold summary 176 KiB，查询 <0.1 ms           | 四小时 chunk benchmark                     | 保留                   |
-| D4-1 | 0.73–0.76 MiB/s/key，87% 是 live path            | JSON UTF-8 实测                            | 值得进统一二进制协议轮 |
+| D4-1 | 0.73–0.76 MiB/s/key，87% 是 live path            | JSON UTF-8 实测；协议轮复量                | **已否决**（见下）     |
 
 ## 6. 建议的优化提交顺序
 
-1. **统一二进制协议轮**：与 Spectrum 第 3 层一起讨论；届时清掉三个未读 visual metrics。
+1. ~~**统一二进制协议轮**~~：**实测后否决（2026-08-30）**。协议轮量了这笔账：Int16 pairs 把 live
+   fragment 从 10,584 B 降到 2,732 B（−74%），但前端得自己拼 path，而
+   `buildVectorscopeSvgFromPairs` 实测 **0.103 ms/帧**——对比现状 `JSON.parse` 的 0.0028 ms，
+   单 key **净增约 6.4 ms CPU/s 且落在主线程**，换来的只是省 0.47 MiB/s。Rust 侧生成同一条 path
+   只要约 0.06 ms 且不在 UI 线程，所以这是把更便宜的活搬到更贵的线程。完整账目见
+   `protocol.md` §4。**真正的出路是让面板不再需要 path 字符串（canvas 直接画坐标），那是渲染
+   改动，不该伪装成协议改动。**
+2. 三个未读 visual metric 列（D3-3）是删字段、与 wire format 无关，不必等任何一轮。
 
 前三项都能保持视觉与协议输出不变，可以各自形成小而可验证的优化提交。
