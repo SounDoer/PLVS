@@ -208,7 +208,10 @@ Rust 与前端一起发布，没有跨版本兼容需求，但**丢帧有**：`c
    `FrameSubscribers` 改发 `InvokeResponseBody::Raw`，`src/ipc/commands.js` 解码。
    **第一版行按 f64 走线**——DSP 本来就产 f64，所以这一步不改变前端读到的任何一个值；
    窄到 f32 能再省一半字节，但那是精度决定，单独一个提交、单独一次测量（见 P-7）。
-4. **接 Stereo Map**，同样验证。
+4. **接 Stereo Map**。**代码已完成，真实窗口验证待做**：`pl` / `pr` / `c` 三行走 `f32` section。
+   它们在管线里本来就是 `f32`，所以这一步连精度问题都没有——与 Spectrum 的 f64 不同，
+   没有任何东西需要对拍。前端侧不需要改：`stereoMapMath.js` 的 `isNumericRow` 早就同时接受
+   `Array` 和 typed array（历史 slab 一直返回后者）。
 5. **`bandGridCentersHz` 并入**，顺带把 `tauriFrameApply.js:79` 的 duck-typing 改掉。
 6. 复测第 1 步的脚本，把实际降幅写回 `spectrum.md` / `stereo-map.md` 的判定表。
 

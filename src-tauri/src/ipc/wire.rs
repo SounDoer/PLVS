@@ -38,9 +38,8 @@ pub struct BinRef {
 
 /// One run of numbers moved off the JSON side.
 ///
-/// All three widths are part of the format and are exercised by the tests on both sides, but only
-/// `F64` has a caller so far: Spectrum's rows are what step 3 moved. `F32` lands with Stereo Map,
-/// `I16` with the centi-dB narrowing.
+/// `F64` carries Spectrum's rows and `F32` carries Stereo Map's. `I16` is part of the format and is
+/// exercised by the tests on both sides, but has no caller until the centi-dB narrowing.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub enum WireSection<'a> {

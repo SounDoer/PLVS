@@ -1,12 +1,13 @@
 //! Turns an [`AudioFramePayload`] into one binary message (`docs/working/perf/protocol.md` §7 step 3).
 //!
-//! Only Spectrum's band rows leave the JSON side here. Everything else -- the scalars, Stereo Map,
+//! Spectrum's and Stereo Map's band rows leave the JSON side here. Everything else -- the scalars,
 //! Vectorscope, the band grid -- still serializes exactly as before, because the envelope carries
-//! JSON and binary side by side and there is no reason to move them in one commit.
+//! JSON and binary side by side and there is no reason to move them all in one commit.
 //!
-//! Rows travel as `f64`, the width the DSP already produces, so this step changes no value the
-//! frontend reads. Narrowing to `f32` halves the bytes again and is worth doing, but it is a
-//! precision decision and belongs in its own commit with its own measurement.
+//! Both panels' rows travel at the width the DSP already produces -- `f64` for Spectrum, `f32` for
+//! Stereo Map's energies -- so this changes no value the frontend reads. Narrowing Spectrum to
+//! `f32` halves its bytes again and is worth doing, but it is a precision decision and belongs in
+//! its own commit with its own measurement.
 //!
 //! The mirror below has to name every field [`AudioFramePayload`] serializes. A field added there
 //! and forgotten here would silently stop reaching the UI, so
@@ -17,8 +18,8 @@ use std::collections::{BTreeMap, HashMap};
 use serde::Serialize;
 
 use super::types::{
-  AudioFramePayload, MeterHistoryEntry, StereoMapFrameResult, StereoMapVisualEntry,
-  VectorscopeFrameResult, VectorscopeVisualEntry, VisualHistEntry,
+  AudioFramePayload, MeterHistoryEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
+  VisualHistEntry,
 };
 use super::wire::{BinRef, FrameWire, WireSection, FRAME_WIRE_VERSION};
 
@@ -38,6 +39,15 @@ struct WireSpectrumVisualEntry {
   smooth_db_b: BinRef,
 }
 
+/// Stereo Map's three primitive rows. They are already `f32` in the pipeline, so unlike Spectrum
+/// there is no width question here at all.
+#[derive(Serialize)]
+struct WireStereoMapRows {
+  pl: BinRef,
+  pr: BinRef,
+  c: BinRef,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct WireVisualHistEntry<'a> {
@@ -51,7 +61,7 @@ struct WireVisualHistEntry<'a> {
   side_to_mid_db: f64,
   spectrum_by_key: BTreeMap<&'a str, WireSpectrumVisualEntry>,
   vectorscope_by_key: &'a HashMap<String, VectorscopeVisualEntry>,
-  stereo_map_by_key: &'a HashMap<String, StereoMapVisualEntry>,
+  stereo_map_by_key: BTreeMap<&'a str, WireStereoMapRows>,
 }
 
 #[derive(Serialize)]
@@ -78,7 +88,7 @@ struct WireFrame<'a> {
   vectorscope_pair_y: u16,
   spectrum_results_by_key: BTreeMap<&'a str, WireSpectrumFrameResult>,
   vectorscope_results_by_key: &'a HashMap<String, VectorscopeFrameResult>,
-  stereo_map_results_by_key: &'a HashMap<String, StereoMapFrameResult>,
+  stereo_map_results_by_key: BTreeMap<&'a str, WireStereoMapRows>,
   loudness_layout: &'a str,
   loudness_layout_known: bool,
   timestamp_ms: u64,
@@ -114,6 +124,17 @@ fn wire_visual_entry<'a>(
       },
     );
   }
+  let mut stereo_map_by_key = BTreeMap::new();
+  for (key, sample) in &entry.stereo_map_by_key {
+    stereo_map_by_key.insert(
+      key.as_str(),
+      WireStereoMapRows {
+        pl: wire.push(WireSection::F32(&sample.pl)),
+        pr: wire.push(WireSection::F32(&sample.pr)),
+        c: wire.push(WireSection::F32(&sample.c)),
+      },
+    );
+  }
   WireVisualHistEntry {
     timestamp_ms: entry.timestamp_ms,
     waveform_min: &entry.waveform_min,
@@ -125,7 +146,7 @@ fn wire_visual_entry<'a>(
     side_to_mid_db: entry.side_to_mid_db,
     spectrum_by_key,
     vectorscope_by_key: &entry.vectorscope_by_key,
-    stereo_map_by_key: &entry.stereo_map_by_key,
+    stereo_map_by_key,
   }
 }
 
@@ -143,6 +164,18 @@ pub fn encode_audio_frame(frame: &AudioFramePayload) -> Result<Vec<u8>, serde_js
         peak_db: wire.push(WireSection::F64(&result.peak_db)),
         smooth_db_b: wire.push(WireSection::F64(&result.smooth_db_b)),
         peak_db_b: wire.push(WireSection::F64(&result.peak_db_b)),
+      },
+    );
+  }
+
+  let mut stereo_map_results_by_key = BTreeMap::new();
+  for (key, result) in &frame.stereo_map_results_by_key {
+    stereo_map_results_by_key.insert(
+      key.as_str(),
+      WireStereoMapRows {
+        pl: wire.push(WireSection::F32(&result.pl)),
+        pr: wire.push(WireSection::F32(&result.pr)),
+        c: wire.push(WireSection::F32(&result.c)),
       },
     );
   }
@@ -178,7 +211,7 @@ pub fn encode_audio_frame(frame: &AudioFramePayload) -> Result<Vec<u8>, serde_js
     vectorscope_pair_y: frame.vectorscope_pair_y,
     spectrum_results_by_key,
     vectorscope_results_by_key: &frame.vectorscope_results_by_key,
-    stereo_map_results_by_key: &frame.stereo_map_results_by_key,
+    stereo_map_results_by_key,
     loudness_layout: &frame.loudness_layout,
     loudness_layout_known: frame.loudness_layout_known,
     timestamp_ms: frame.timestamp_ms,
@@ -201,7 +234,9 @@ pub fn encode_audio_frame(frame: &AudioFramePayload) -> Result<Vec<u8>, serde_js
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::ipc::types::{SpectrumFrameResult, SpectrumVisualEntry};
+  use crate::ipc::types::{
+    SpectrumFrameResult, SpectrumVisualEntry, StereoMapFrameResult, StereoMapVisualEntry,
+  };
   use serde_json::Value;
 
   fn frame_with_spectrum() -> AudioFramePayload {
@@ -352,6 +387,94 @@ mod tests {
       envelope["visualHistTick"]["spectrumByKey"]["spectrum:a"]["smoothDb"]["$bin"],
       envelope["visualHistBatch"][0]["spectrumByKey"]["spectrum:a"]["smoothDb"]["$bin"]
     );
+  }
+
+  #[test]
+  fn stereo_map_rows_leave_the_envelope_as_f32_descriptors() {
+    let mut frame = frame_with_spectrum();
+    frame.stereo_map_results_by_key.insert(
+      "stereoMap:a".to_string(),
+      StereoMapFrameResult {
+        pl: vec![0.25, 0.5],
+        pr: vec![0.125],
+        c: Vec::new(),
+      },
+    );
+
+    let envelope = envelope_of(&encode_audio_frame(&frame).unwrap());
+    let rows = &envelope["stereoMapResultsByKey"]["stereoMap:a"];
+
+    // Stereo Map's primitives are already f32 in the pipeline, so unlike Spectrum they cross at
+    // their native width with no precision question attached.
+    assert_eq!(rows["pl"]["dtype"], "f32");
+    assert_eq!(rows["pl"]["len"], 2);
+    assert_eq!(rows["pr"]["len"], 1);
+    assert_eq!(rows["c"]["len"], 0);
+  }
+
+  #[test]
+  fn spectrum_and_stereo_map_rows_never_share_a_section() {
+    let mut frame = frame_with_spectrum();
+    frame.stereo_map_results_by_key.insert(
+      "stereoMap:a".to_string(),
+      StereoMapFrameResult {
+        pl: vec![0.25],
+        pr: vec![0.5],
+        c: vec![0.75],
+      },
+    );
+
+    let envelope = envelope_of(&encode_audio_frame(&frame).unwrap());
+    let spectrum = &envelope["spectrumResultsByKey"]["spectrum:a"];
+    let stereo = &envelope["stereoMapResultsByKey"]["stereoMap:a"];
+
+    let mut bins: Vec<u64> = ["smoothDb", "peakDb", "smoothDbB", "peakDbB"]
+      .iter()
+      .map(|field| spectrum[field]["$bin"].as_u64().unwrap())
+      .chain(
+        ["pl", "pr", "c"]
+          .iter()
+          .map(|field| stereo[field]["$bin"].as_u64().unwrap()),
+      )
+      .collect();
+    bins.sort_unstable();
+    bins.dedup();
+
+    assert_eq!(bins, (0..7).collect::<Vec<u64>>());
+  }
+
+  #[test]
+  fn stereo_map_visual_rows_move_too() {
+    let mut frame = frame_with_spectrum();
+    let mut entry = VisualHistEntry {
+      timestamp_ms: 40,
+      waveform_min: vec![-0.5],
+      waveform_max: vec![0.5],
+      dominant_frequency_hz: vec![440.0],
+      spectral_centroid_hz: vec![1000.0],
+      tonality: vec![0.5],
+      correlation: 0.25,
+      side_to_mid_db: -12.0,
+      spectrum_by_key: HashMap::new(),
+      vectorscope_by_key: HashMap::new(),
+      stereo_map_by_key: HashMap::new(),
+    };
+    entry.stereo_map_by_key.insert(
+      "stereoMap:a".to_string(),
+      StereoMapVisualEntry {
+        pl: vec![0.25, 0.5],
+        pr: vec![0.125, 0.25],
+        c: vec![0.0625, 0.125],
+      },
+    );
+    frame.visual_hist_tick = Some(entry);
+
+    let envelope = envelope_of(&encode_audio_frame(&frame).unwrap());
+    let rows = &envelope["visualHistTick"]["stereoMapByKey"]["stereoMap:a"];
+
+    assert_eq!(rows["pl"]["dtype"], "f32");
+    assert_eq!(rows["pl"]["len"], 2);
+    assert_eq!(rows["c"]["len"], 2);
   }
 
   #[test]
