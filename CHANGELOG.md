@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-08-31
+
+### Added
+
+- Spectrogram slope tilt: the same per-octave tilt Spectrum has, now on the Spectrogram's own settings row, sorted after Mode and sharing one tooltip with Spectrum's.
+- The Dock's spectrogram strip gets a dB Floor control.
+
+### Changed
+
+- Meter frames no longer cross to the interface as JSON text. Spectrum's and Stereo Map's per-band rows now travel as binary sections beside a small JSON envelope, at the width the values actually carry. A production-width frame drops from 131,886 to 36,000 bytes, and the interface spends 0.073 ms decoding one instead of 0.689 - about 38 ms per second of the main thread handed back at the frame rate. `JSON.parse` no longer appears in a renderer profile at all.
+- Every panel went through a measured performance pass, and the ones that were doing avoidable work stopped:
+  - Spectrogram repaints by sliding the painted image instead of redrawing the whole surface.
+  - Stereo Map's four-hour history for one request key drops from 1.29 GiB to 0.81 GiB, stored in twelve bits per value rather than sixteen; the value stays well inside display precision, and the HUD says plainly that it is approximate.
+  - Vectorscope builds its live outline into one buffer, redraws its canvases only when their inputs change, and stops decoding a persistence window it never draws.
+  - Waveform skips the spectral metrics entirely when neither overlay is on, and finds its spectral window by search rather than by walking the ring.
+  - Loudness stops remounting its axis ticks on every update, and starts its history queries at the right index level.
+  - Theme tokens resolve once per theme instead of once per frame.
+- The band frequency grid is sent once a second and cached by the interface, instead of riding along with every row.
+
+### Fixed
+
+- The Spectrogram's slide window is judged in whole pixels, so a refused slide is counted rather than silently dropping a column.
+- The Spectrogram tilt control is restored and reachable from the Dock.
+
 ## [0.14.2] - 2026-08-28
 
 ### Changed
