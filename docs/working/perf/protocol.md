@@ -81,9 +81,13 @@ f32 行的字节数按 `ryu` 的 f32 最短往返形式建模，不是 JS 的 `S
 | `bandGridCentersHz` 兜底重发 |   17.5 KiB/s |          **3.7 KiB/s** |            — |             — |
 
 Spectrum 这两行与 `spectrum.md` §3.6 的真实窗口实测（combined 合计 2.58 MiB/s）**相差不到 2%**，
-模型可信。**Stereo Map 对不上**：`stereo-map.md` 的 56.5 KiB 主帧折合每行约 18.8 KiB，
-接近 f64 的格式化宽度，而本脚本按 `Vec<f32>` 建模只有 12.6 KiB。差 33%，原因未定，
-不覆盖旧数字，见 P-6。
+模型可信。
+
+**P-6 已结（2026-08-30）**：落地后由 Rust 侧直接量，
+`ipc::frame_encode::tests::a_production_width_frame_is_far_smaller_than_its_json`
+打印一行 958 band 的 JSON 字节——**Spectrum f64 行 18,370 B，Stereo Map f32 行 12,614 B**，
+与上表的模型分别差 2 字节和 0 字节。**模型是对的**：`stereo-map.md` 那个 56.5 KiB 主帧折合
+每行 18.8 KiB（f64 的宽度）不成立，旧数字里应该混进了别的东西。上面的 3.16 MiB/s 采信。
 
 ### 整帧的 parse 才是那个大数
 
@@ -93,6 +97,23 @@ Spectrum 这两行与 `spectrum.md` §3.6 的真实窗口实测（combined 合�
 **299 KiB / 帧，`JSON.parse` 约 0.46 ms。**按 62.5 帧/秒折算，**光是解析这一件事就是
 约 29 ms CPU/s，接近 3% 单核**，而且全部落在主线程上。这是本轮最值得砍的一项，
 也是单个面板的 D2 轮永远看不见的一项——它不属于任何一个面板。
+
+### 落地后：真实编码器量出来的降幅（2026-08-30）
+
+第 3、4 步做完后，同一个 Rust 测试把生产宽度的一帧（958 band，一个 combined Spectrum key +
+一个 Stereo Map key，带 visual tick）两种走线都量了一遍：
+
+|                                      |                        每帧 |
+| ------------------------------------ | --------------------------: |
+| 旧线：`serde_json::to_vec(&payload)` |               **131,886 B** |
+| 新线：`encode_audio_frame`           | **47,496 B（36.0%，−64%）** |
+| 其中 JSON 信封                       |                     1,506 B |
+| 其中二进制 section                   |                    45,986 B |
+
+**信封只剩 1.5 KiB。**帧里几乎所有的字节现在都是数据本身，不再是数据的十进制写法。
+
+按 62.5 帧/秒、其中 25 帧/秒带 visual tick 折算（单 Spectrum key + 单 Stereo Map key）：
+**5.85 MiB/s → 2.12 MiB/s**。这是线上字节的推算，webview 侧的实际 CPU 降幅仍待 P-1 / P-2。
 
 **Int16 还是 f32，本轮不定。** Spectrum 前端最终只存 Int16 centi-dB，理论上 Rust 可以直接发
 Int16，再省一半字节和三分之二 CPU。但 Stereo Map 的 pl/pr/c 是 energy 不是 dB，
@@ -212,7 +233,12 @@ Rust 与前端一起发布，没有跨版本兼容需求，但**丢帧有**：`c
    它们在管线里本来就是 `f32`，所以这一步连精度问题都没有——与 Spectrum 的 f64 不同，
    没有任何东西需要对拍。前端侧不需要改：`stereoMapMath.js` 的 `isNumericRow` 早就同时接受
    `Array` 和 typed array（历史 slab 一直返回后者）。
-5. **`bandGridCentersHz` 并入**，顺带把 `tauriFrameApply.js:79` 的 duck-typing 改掉。
+5. ~~`bandGridCentersHz` 并入~~ **暂缓，理由是量出来的**：栅格是 958 个 f64，每 64 帧重发一次
+   ——JSON 里 18,370 B，折合 **17.9 KiB/s**；换成 f64 section 是 7.5 KiB/s，**只省 10.4 KiB/s**。
+   而第 3、4 步一共省了约 3.7 MiB/s，这一项是它的 **0.3%**。
+   代价却不小：`applyBandGrid` 的缓存喂着每个面板的 x 轴映射，改它要连带动
+   `tauriFrameApply.js:79` 的 `Array.isArray` 判断，并且缓存住一个 typed array 视图会把整条帧
+   消息钉在内存里（得改成拷贝出来）。**投入产出不成立，除非之后有别的理由动这块。**
 6. 复测第 1 步的脚本，把实际降幅写回 `spectrum.md` / `stereo-map.md` 的判定表。
 
 **验证不能只靠 `npm run check`。** 改的是 `src-tauri/src/engine` 与前端帧路径，
@@ -223,12 +249,12 @@ CI 的 runner 没有声卡（AGENTS.md）。每一步都要 `npm run smoke:captu
 
 未测的一律标出来，不允许凭这些做判定：
 
-| #   | 待测                                                                | 怎么测                                                             |
-| --- | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| P-1 | WebView2 里的解码成本是否与 Node 一致                               | 真实窗口 `profile:webview`，对比 §2                                |
-| P-2 | `response.arrayBuffer()` 与 `response.json()` 在 fetch 路径上的差价 | 同上，看 IPC 回调自耗时                                            |
-| P-3 | Rust 侧省下的 `serde_json` 格式化时间                               | Criterion，整帧序列化对拍                                          |
-| P-4 | 去掉 JSON 大字符串后 GC 压力是否下降                                | 真实窗口内存采样；**这条最容易脑补，必须实测**                     |
-| P-5 | Int16 centi-dB 直发对 Spectrum 显示的影响                           | 与 f32 版本逐 band 对拍，看是否低于显示精度                        |
-| P-6 | Stereo Map 每行的真实线上字节（12.6 KiB 模型 vs 18.8 KiB 旧实测）   | Rust 侧对 `StereoMapFrameResult` 直接 `serde_json::to_vec().len()` |
-| P-7 | f64 → f32 窄化对 Spectrum 显示的影响                                | 与 f64 版本逐 band 对拍；前端最终只存 centi-dB，理论余量三个数量级 |
+| #       | 待测                                                                | 怎么测                                                             |
+| ------- | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| P-1     | WebView2 里的解码成本是否与 Node 一致                               | 真实窗口 `profile:webview`，对比 §2                                |
+| P-2     | `response.arrayBuffer()` 与 `response.json()` 在 fetch 路径上的差价 | 同上，看 IPC 回调自耗时                                            |
+| P-3     | Rust 侧省下的 `serde_json` 格式化时间                               | Criterion，整帧序列化对拍                                          |
+| P-4     | 去掉 JSON 大字符串后 GC 压力是否下降                                | 真实窗口内存采样；**这条最容易脑补，必须实测**                     |
+| P-5     | Int16 centi-dB 直发对 Spectrum 显示的影响                           | 与 f32 版本逐 band 对拍，看是否低于显示精度                        |
+| ~~P-6~~ | ~~Stereo Map 每行的真实线上字节~~ **已结**：12,614 B，模型正确      | Rust 侧 `serde_json::to_vec().len()`，见 §2                        |
+| P-7     | f64 → f32 窄化对 Spectrum 显示的影响                                | 与 f64 版本逐 band 对拍；前端最终只存 centi-dB，理论余量三个数量级 |

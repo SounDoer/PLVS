@@ -492,6 +492,114 @@ mod tests {
     assert_eq!(envelope["wireVersion"], FRAME_WIRE_VERSION);
   }
 
+  /// Production-width frame: 958 bands, one Spectrum key in combined view (two live rows plus one
+  /// visual row) and one Stereo Map key (three live rows plus three visual rows).
+  fn production_width_frame() -> AudioFramePayload {
+    let bands = 958;
+    let db_row: Vec<f64> = (0..bands)
+      .map(|i| -78.0 + (i as f64 * 0.037).sin() * 31.0 + (i as f64 * 0.31).sin() * 6.0)
+      .collect();
+    let energy_row: Vec<f32> = (0..bands)
+      .map(|i| {
+        let decades = -9.0 + (i as f64 / bands as f64) * 8.0 + (i as f64 * 0.037).sin() * 1.5;
+        (10_f64.powf(decades) * (1.0 + (i as f64 * 0.31).sin() * 0.4)) as f32
+      })
+      .collect();
+
+    let mut frame = frame_with_spectrum();
+    frame.band_grid_centers_hz = Vec::new();
+    frame.spectrum_results_by_key.clear();
+    frame.spectrum_results_by_key.insert(
+      "spectrum:sm0:sp2:v0".to_string(),
+      SpectrumFrameResult {
+        smooth_db: db_row.clone(),
+        peak_db: db_row.clone(),
+        smooth_db_b: Vec::new(),
+        peak_db_b: Vec::new(),
+      },
+    );
+    frame.stereo_map_results_by_key.insert(
+      "stereoMap:pair:0:1:sp2:sm0".to_string(),
+      StereoMapFrameResult {
+        pl: energy_row.clone(),
+        pr: energy_row.clone(),
+        c: energy_row.clone(),
+      },
+    );
+
+    let mut entry = VisualHistEntry {
+      timestamp_ms: 40,
+      waveform_min: vec![-0.5, -0.5],
+      waveform_max: vec![0.5, 0.5],
+      dominant_frequency_hz: vec![440.0, 440.0],
+      spectral_centroid_hz: vec![1000.0, 1000.0],
+      tonality: vec![0.5, 0.5],
+      correlation: 0.25,
+      side_to_mid_db: -12.0,
+      spectrum_by_key: HashMap::new(),
+      vectorscope_by_key: HashMap::new(),
+      stereo_map_by_key: HashMap::new(),
+    };
+    entry.spectrum_by_key.insert(
+      "spectrum:sm0:sp2:v0".to_string(),
+      SpectrumVisualEntry {
+        smooth_db: db_row,
+        smooth_db_b: Vec::new(),
+      },
+    );
+    entry.stereo_map_by_key.insert(
+      "stereoMap:pair:0:1:sp2:sm0".to_string(),
+      StereoMapVisualEntry {
+        pl: energy_row.clone(),
+        pr: energy_row.clone(),
+        c: energy_row,
+      },
+    );
+    frame.visual_hist_tick = Some(entry);
+    frame
+  }
+
+  /// What the round is for. The old wire is `serde_json` over the whole payload; the new one is the
+  /// envelope plus sections. Printed with `cargo test -- --nocapture` so the numbers can be read
+  /// off rather than re-derived, and asserted loosely so it fails only on a real regression.
+  #[test]
+  fn a_production_width_frame_is_far_smaller_than_its_json() {
+    let frame = production_width_frame();
+    let json_bytes = serde_json::to_vec(&frame).unwrap().len();
+    let message = encode_audio_frame(&frame).unwrap();
+    let envelope_bytes = u32::from_le_bytes(message[0..4].try_into().unwrap()) as usize;
+
+    // Per-row sizes settle P-6 in the design doc: `stereo-map.md` implied ~18.8 KiB for an f32 row,
+    // which is f64's width. `serde_json` writes an f32 through ryu's f32 form, which is shorter.
+    let spectrum_row_bytes = serde_json::to_vec(
+      &frame
+        .spectrum_results_by_key
+        .values()
+        .next()
+        .unwrap()
+        .smooth_db,
+    )
+    .unwrap()
+    .len();
+    let stereo_row_bytes =
+      serde_json::to_vec(&frame.stereo_map_results_by_key.values().next().unwrap().pl)
+        .unwrap()
+        .len();
+
+    println!(
+      "production frame: json {json_bytes} B -> message {} B (envelope {envelope_bytes} B,        sections {} B), {:.1}% of the original; one JSON row: spectrum f64 {spectrum_row_bytes} B,        stereo map f32 {stereo_row_bytes} B",
+      message.len(),
+      message.len() - envelope_bytes - 4,
+      100.0 * message.len() as f64 / json_bytes as f64
+    );
+
+    assert!(
+      message.len() * 2 < json_bytes,
+      "the binary frame should be less than half the JSON one: {} vs {json_bytes}",
+      message.len()
+    );
+  }
+
   /// A field added to `AudioFramePayload` and forgotten in `WireFrame` would simply stop reaching
   /// the UI, with nothing failing. Comparing the two key sets is what makes that loud.
   #[test]
