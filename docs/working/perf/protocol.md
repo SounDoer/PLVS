@@ -280,9 +280,9 @@ CI 的 runner 没有声卡（AGENTS.md）。每一步都要 `npm run smoke:captu
 
 ## 9. 真实窗口验证（2026-08-30）
 
-在一台断开（不是注销）的 RDP 会话里跑的：会话保留、应用照常渲染并可被 CDP 驱动，
-但**音频端点全部不可用**。所以**实时采集路径没能验证**，`smoke:capture` 与 `soak:capture`
-都跑不了（见 §10）。文件分析这条路不需要任何音频设备，下面的全部结论出自它。
+§9.1–§9.6 是在一台**断开**的 RDP 会话里跑的：会话保留、应用照常渲染并可被 CDP 驱动，
+但音频端点全部不可用，所以那一轮只走了文件分析路径（它不需要任何音频设备）。
+**§9.7 是后来在连着 RDP 时补的实时路径验证。**
 
 素材是一个 10 分钟的合成信号，三个音落在 **100 / 1000 / 10000 Hz**，L/R 电平不同。
 选这个不是为了好听：**峰的位置就是校验和**——段偏移、对齐、字节序、行顺序只要错一处，
@@ -380,13 +380,47 @@ UI 上的 INTEGRATED **−11.3 LUFS** / TRUE PEAK MAX **−7.2 dBTP** 与 `plvs-
 测量挂在同一个测试里，**只打印不断言**（计时当 CI 门就是等着变 flaky），并按 `debug_assertions`
 标注运行档位——debug 下的数字差一个数量级，不标注就会被当成真的读。
 
+### 9.7 实时发送点也验证了（RDP 会话内，无需 VB-Cable）
+
+`cpal_backend.rs` 的发送点是单元测试碰不到的唯一一段。验证它**不需要 VB-Cable，也不需要出声**：
+引擎在 RDP 下仍然看得见 "Remote Audio"（`isLoopback: true`），而后端的 silence stream 会让
+WASAPI loopback 持续产出帧——**静音一样是帧**，而传输要验证的正是帧。
+
+应用切 LIVE、选该设备、START，然后同一套 fetch 探针读 12 秒：
+
+| 检查                   | 结果                                                 |
+| ---------------------- | ---------------------------------------------------- |
+| 实时帧以二进制过线     | **600 个 `octet-stream` / 12 s**                     |
+| 有帧退回 JSON          | **没有**                                             |
+| `seq` 单调、投递无缺口 | 600 帧，1768 → 2367                                  |
+| section 铺满消息       | **0 字节富余**                                       |
+| 行                     | `Float32Array[958]`，值有限（−183.5…−98.9 dB，静音） |
+
+**`seq` 连续并不证明没有丢帧**：看 `cpal_backend.rs`，被背压丢弃的帧在 `sent_seq += 1` 之前就
+`continue` 了，**根本不分配 seq**。所以这条只证明「已发送的帧按序、无损地到达了」，
+不证明上游没有因背压丢弃。
+
+**实测 50.1 帧/秒，不是 62.5。** 换成只计数、不 clone 的探针后仍是 50.1，所以不是测量的开销。
+原因在 `meter_pipeline.rs:803`：那是**闸门不是定时器**——`elapsed() < FRAME_EMIT_MS` 只在
+`push_pcm` 被调用时判断，所以真实帧率由 PCM 块到达节奏决定。1/50 正好是 **20 ms**，
+WASAPI/RDP 的常见块周期。**这与本轮改动无关**：序列化发生在帧构造之后、闸门下游。
+（没有改动前的基线可比，此处是结构性论证而非实测对比。）
+
 ## 10. 没能验证的部分
 
-**实时采集路径（`cpal_backend.rs` 的发送点）一次都没有跑过。** 编码器是同一个、被上面全部覆盖，
-但那个发送点本身、以及 `payload clone → bytes clone` 的改动，只有实时路径会走到。
+**`npm run smoke:capture` 与 `npm run soak:capture` 都未运行**（RDP 下没有 VB-Cable）。
 
-- `npm run smoke:capture` —— **未运行**，没有音频设备。这是这轮真正的门，AGENTS.md 写明没有旁路。
-- `npm run soak:capture` —— **未运行**。这轮改了每帧的分配形态，值得跑一次。
+**但要分清这两件事**：`smoke:capture` 走 `plvs-cli capture` → `capture_device_to_summary`，
+用的是它自己的 `SummaryMeter` 消费者，**完全不碰** `frame_subscribers`、`encode_audio_frame`
+或 `Raw` channel。也就是说——**它本来也覆盖不到本轮的改动**。它与实时路径共享的是设备层和 DSP，
+不共享发送点。
+
+所以：
+
+- 本轮改动的实时路径 → **已由 §9.7 覆盖**。
+- `smoke:capture` → 仍然欠着，因为它是采集层改动的发布门（`release:preflight` 没有旁路），
+  而这轮确实动了 `src-tauri/src/audio`。**发版前必须过。**
+- `soak:capture` → 仍然欠着。这轮改了每帧的分配形态（payload clone → bytes clone），值得跑一次。
 
 ### 10.1 断开 RDP 并不会让 VB-Cable 出现
 
