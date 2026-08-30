@@ -404,3 +404,20 @@ centi-dB 的值窄化后仍可区分，即窄化不可能把显示上分得开�
 ## 6. 既有测试的合理性存疑项
 
 （实测过程中填写。判据：断言了不该锁死的实现细节 / 用容差掩盖真实误差 / 锁死了本轮想改的协议。）
+
+### 6.1 `production_spectrum_payload_matches_legacy_...` 有一处时钟竞争（2026-08-31 发现）
+
+`meter_pipeline.rs:3125` 断言 `visual.timestamp_ms == frame.timestamp_ms`。这两个值来自
+**两次独立的时钟读数**：live 模式下 `timestamp_ms()` 是 `self.t0.elapsed().as_millis()`，
+在构造 visual tick（第 905 行）和构造 frame（第 1016 行）时各读一次。中间只要跨过一个毫秒边界，
+两者就差 1。
+
+**实测**：0.14.3 的 `release:preflight` 里失败一次（`left: 1609, right: 1610`）；
+单独重跑 8 次全过。只在完整并行套件下复现，也就是 CPU 竞争最激烈的时候。
+
+**这是测试断言强于实现承诺**，不是产品缺陷：一帧和它自带的 visual tick 时间戳差 1 ms 无害。
+**没有在 0.14.3 里修**——修它要动 `meter_pipeline.rs`，而那会让该版本已经跑完的
+`smoke:capture` 与 4 小时 soak 不再对应被发布的代码。为了让门变绿去改引擎是本末倒置。
+
+**正确的修法是在产品侧**：一次 push 里把时间戳算一次、frame 和 visual tick 共用，
+让断言由构造保证成立——而不是给断言加容差。
