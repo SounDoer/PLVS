@@ -159,4 +159,4 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 | Vectorscope | SVG path 字符串构建已优化约 52%            | 选窗和 canvas 尺寸/绘制调度冗余均已优化                           | 已测，151.4 MiB/key；拒绝有损主体压缩 | 已测，0.73–0.76 MiB/s/key；并入协议轮 |
 | Level Meter | true peak 测试已补；成本可忽略                | 约 23 Hz、每次约 4.8 处 DOM 变更；profile 未进前 20                 | 无自有历史                            | 已删 `peak_hold_db`（无消费者）       |
 | Loudness    | BS.1770 断言已补（此前唯一测试不断言）        | 时间轴节点重挂已修（三面板）；历史查询 −36%                         | 标量历史，无水分                      | 标量随帧，无独立开销                  |
-| Stats       | —                                            | —                                                                   | —                                     | —                                     |
+| Stats       | 无独立计算，由其余轮覆盖                      | 87% 为文本写入、零节点增删；profile 前 40 无其帧                    | 无自有历史                            | 无自有 payload                        |

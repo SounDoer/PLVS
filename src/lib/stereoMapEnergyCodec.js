@@ -24,8 +24,14 @@ export function stereoMapGateDb(peakDb) {
   return Math.max(GATE_FLOOR_DB, peakDb - GATE_BELOW_PEAK_DB);
 }
 
-export function encodeStereoMapRelativeEnergy(peakDb, energyDb) {
-  const packedPeakDb = packedCentiDb(peakDb);
+/**
+ * @param {number} packedPeakDb the row's peak **already through the centi-dB codec**. A row has
+ *   one peak and this runs once per band, so packing it here repeated an encode/decode round trip
+ *   958 times for a value that could not change -- visible as 0.9% of a renderer profile. Callers
+ *   holding a raw peak go through `quantizeStereoMapEnergyForDisplay`, which packs it once.
+ * @param {number} energyDb the band's energy, raw.
+ */
+export function encodeStereoMapRelativeEnergy(packedPeakDb, energyDb) {
   const packedEnergyDb = packedCentiDb(energyDb);
   if (!Number.isFinite(packedPeakDb) || !Number.isFinite(packedEnergyDb)) {
     return STEREO_MAP_ENERGY_INVALID;
@@ -49,10 +55,10 @@ export function encodeStereoMapRelativeEnergy(peakDb, energyDb) {
   return code;
 }
 
-export function decodeStereoMapRelativeEnergy(peakDb, code) {
+/** @param {number} packedPeakDb already through the centi-dB codec; see the encoder. */
+export function decodeStereoMapRelativeEnergy(packedPeakDb, code) {
   if (code === STEREO_MAP_ENERGY_INVALID) return null;
   if (code === STEREO_MAP_ENERGY_BELOW_GATE) return -Infinity;
-  const packedPeakDb = packedCentiDb(peakDb);
   if (!Number.isFinite(packedPeakDb) || code < 0 || code > MAX_FINITE_CODE) return null;
   return packedPeakDb - code * STEREO_MAP_ENERGY_STEP_DB;
 }
