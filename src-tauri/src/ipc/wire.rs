@@ -38,8 +38,11 @@ pub struct BinRef {
 
 /// One run of numbers moved off the JSON side.
 ///
-/// `F64` carries Spectrum's rows and `F32` carries Stereo Map's. `I16` is part of the format and is
-/// exercised by the tests on both sides, but has no caller until the centi-dB narrowing.
+/// Only `F32` has a production caller: Spectrum's dB and Stereo Map's energies both cross at that
+/// width. `F64` carried Spectrum's rows for one commit, before they were narrowed; `I16` is what a
+/// centi-dB wire would use. Both stay because the decoder on the other side implements them and the
+/// tests on both sides exercise them -- a format whose widths are only half-built is worse than one
+/// with an unused variant.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub enum WireSection<'a> {
