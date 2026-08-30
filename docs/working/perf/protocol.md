@@ -106,7 +106,7 @@ Int16 作为后续可选层。**
 小片段发 Raw 反而更贵。所以整帧发一条 `InvokeResponseBody::Raw`：
 
 ```
-[ u32 jsonLen ][ JSON 信封 (UTF-8) ][ section 0 ][ section 1 ] …
+[ u32 LE jsonLen ][ JSON 信封 (UTF-8) ][ 对齐填充 ][ section 0 ][ section 1 ] …
 ```
 
 JSON 信封就是今天的 `AudioFramePayload`，只是被换掉的每个数组变成一个描述符：
@@ -115,16 +115,26 @@ JSON 信封就是今天的 `AudioFramePayload`，只是被换掉的每个数组�
 { "$bin": 3, "dtype": "f32", "len": 958 }
 ```
 
-尾部 section 按序紧排，第 n 个 section 的偏移由前面所有 section 的长度累加得出——
+尾部 section 按 `$bin` 顺序排列，第 n 个 section 的偏移由前面所有 section 的长度累加得出——
 **不需要偏移表**，`dtype` + `len` 已经够。
+
+**但必须对齐**（落地时发现的）：`new Float32Array(buffer, byteOffset, len)` 在 `byteOffset`
+不是 4 的倍数时直接抛错，f64 要 8。所以 JSON 块之后先补到 8 字节边界，每个 section 再补到
+自身元素宽度的边界。一个奇数长度的 i16 行会把游标留在 2 字节边界上，紧随其后的 f64 行就取不出
+视图——两侧各有一个测试盯着这条。
 
 前端在 `tauriFrameApply.js` 的 `applyFrame(f)` **之前**解一次：走一遍信封，把每个 `$bin`
 描述符换成对应的 typed array 视图，得到与今天**形状完全相同**的对象。下游
 （`reduceMeterAudioFrame`、`FrameIntake.pushFrame`、三个面板、三个 dock module）
 拿到的仍是「有 `.length`、可索引」的东西。
 
-这一层是本轮唯一的新增概念，而且是**一个纯函数**：`decodeFrame(ArrayBuffer) -> object`，
-可以脱离应用完整测试。
+这一层是本轮唯一的新增概念，而且是**一个纯函数**：`decodeFrameWire(ArrayBuffer) -> object`
+（`src/ipc/frameWire.js`），可以脱离应用完整测试。Rust 侧的对应物是 `FrameWire`
+（`src-tauri/src/ipc/wire.rs`）：`push` 收走一行、返回要嵌进信封的描述符，`encode` 排版。
+
+**两侧不共享任何代码**，所以靠一份 golden fixture 钉在一起：同一串字节既是
+`ipc::wire::tests::golden_message_matches_the_bytes_the_frontend_test_decodes` 的断言，
+也是 `src/ipc/frameWire.test.js` 的输入。要改就两边一起改，否则不要动。
 
 **已知需要改的 duck-typing**：`tauriFrameApply.js:79` 的
 `Array.isArray(frame.bandGridCentersHz)`——如果栅格也走二进制，这个判断要改成长度判断。
@@ -191,7 +201,8 @@ Rust 与前端一起发布，没有跨版本兼容需求，但**丢帧有**：`c
 1. ~~固化基线脚本~~ **已完成**：`scripts/frame-wire-benchmark.mjs` +
    `npm run benchmark:frame-wire`，§2 的数字全部出自它，纯函数部分由
    `scripts/frame-wire-benchmark.test.js` 覆盖。
-2. **`decodeFrame` / `encodeFrame` 纯函数**，两端各自单测，往返对拍。不接线。
+2. ~~编解码纯函数~~ **已完成**：`src/ipc/frameWire.js` 与 `src-tauri/src/ipc/wire.rs`，
+   两端各自单测（6 + 10 个），由一份 golden fixture 跨语言对拍。仍未接线。
 3. **接 Spectrum 一条路**，其余数组仍走 JSON（信封天然支持混合）。真实窗口里跑
    `profile:webview` + `webview-draw-count`，确认帧还在动、面板还对。
 4. **接 Stereo Map**，同样验证。
