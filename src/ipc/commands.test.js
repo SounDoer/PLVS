@@ -76,6 +76,33 @@ describe("audio engine command seam", () => {
     expect(onFrame).toHaveBeenNthCalledWith(2, { seq: 8 });
     expect(onFrame).toHaveBeenCalledTimes(2);
   });
+
+  it("decodes a binary channel message into the frame shape the UI already reads", async () => {
+    // What Rust actually sends now: the JSON envelope with Spectrum's rows moved into sections
+    // behind it. The bridge has to hand `onFrame` the same object shape either way.
+    const envelope = new TextEncoder().encode(
+      JSON.stringify({
+        wireVersion: 1,
+        seq: 11,
+        spectrumResultsByKey: { k: { smoothDb: { $bin: 0, dtype: "f64", len: 2 } } },
+      })
+    );
+    const sectionStart = Math.ceil((4 + envelope.length) / 8) * 8;
+    const message = new ArrayBuffer(sectionStart + 16);
+    new DataView(message).setUint32(0, envelope.length, true);
+    new Uint8Array(message).set(envelope, 4);
+    new Float64Array(message, sectionStart, 2).set([-0.25, -0.5]);
+
+    const onFrame = vi.fn();
+    invoke.mockResolvedValue(undefined);
+    const channel = await startFileAnalysis({ path: "C:\\audio.wav", onFrame });
+
+    channel.onmessage({ message });
+
+    const frame = onFrame.mock.calls[0][0];
+    expect(frame.seq).toBe(11);
+    expect(Array.from(frame.spectrumResultsByKey.k.smoothDb)).toEqual([-0.25, -0.5]);
+  });
 });
 
 describe("dock command seam", () => {

@@ -19,10 +19,6 @@
 //! `tests::golden_message_matches_the_bytes_the_frontend_test_decodes` here and by the same bytes
 //! in `src/ipc/frameWire.test.js`.
 
-// Step 2 of the protocol round builds the format and its tests before anything sends one, so the
-// encoder has no caller yet. The allow comes off when `meter_pipeline` starts encoding frames.
-#![allow(dead_code)]
-
 use serde::Serialize;
 
 /// Bumped only if the layout above changes. Present so a mismatch fails loudly, not subtly.
@@ -41,6 +37,11 @@ pub struct BinRef {
 }
 
 /// One run of numbers moved off the JSON side.
+///
+/// All three widths are part of the format and are exercised by the tests on both sides, but only
+/// `F64` has a caller so far: Spectrum's rows are what step 3 moved. `F32` lands with Stereo Map,
+/// `I16` with the centi-dB narrowing.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub enum WireSection<'a> {
   F32(&'a [f32]),
@@ -120,14 +121,6 @@ impl<'a> FrameWire<'a> {
     reference
   }
 
-  pub fn is_empty(&self) -> bool {
-    self.sections.is_empty()
-  }
-
-  pub fn len(&self) -> usize {
-    self.sections.len()
-  }
-
   /// Lays the message out around an envelope whose descriptors came from [`Self::push`].
   pub fn encode(&self, envelope_json: &str) -> Vec<u8> {
     let json = envelope_json.as_bytes();
@@ -187,7 +180,6 @@ mod tests {
         len: 1
       }
     );
-    assert_eq!(wire.len(), 2);
   }
 
   #[test]
@@ -253,7 +245,6 @@ mod tests {
     let envelope = envelope_with(&[]);
     let message = wire.encode(&envelope);
 
-    assert!(wire.is_empty());
     assert_eq!(
       u32::from_le_bytes(message[0..4].try_into().unwrap()) as usize,
       envelope.len()

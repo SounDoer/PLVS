@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use tauri::ipc::Channel;
+use tauri::ipc::{Channel, InvokeResponseBody};
 
 pub use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
 
@@ -310,5 +310,7 @@ pub struct AudioFramePayload {
   pub visual_hist_batch: Vec<VisualHistEntry>,
 }
 
-/// Channel holder for the primary UI's ~60Hz [`AudioFramePayload`] stream.
-pub type FrameSubscribers = Arc<Mutex<HashMap<String, Channel<AudioFramePayload>>>>;
+/// Channel holder for the primary UI's ~60Hz frame stream. The channel carries encoded messages
+/// rather than [`AudioFramePayload`] itself: Spectrum's band rows travel as binary sections beside
+/// the JSON envelope, which `crate::ipc::frame_encode` lays out and `src/ipc/frameWire.js` reads.
+pub type FrameSubscribers = Arc<Mutex<HashMap<String, Channel<InvokeResponseBody>>>>;

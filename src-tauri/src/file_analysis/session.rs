@@ -234,12 +234,14 @@ fn send_frame(
   frame_subscribers: &FrameSubscribers,
   frame: AudioFramePayload,
 ) -> Result<(), String> {
+  let message = crate::ipc::frame_encode::encode_audio_frame(&frame)
+    .map_err(|e| format!("file analysis frame could not be encoded: {e}"))?;
   let mut map = frame_subscribers
     .lock()
     .map_err(|_| "frame subscriber map poisoned".to_string())?;
   match map.get_mut("main") {
     Some(tx) => tx
-      .send(frame)
+      .send(tauri::ipc::InvokeResponseBody::Raw(message))
       .map_err(|_| "file analysis frame subscriber disconnected".to_string()),
     None => Err("file analysis frame subscriber missing".to_string()),
   }

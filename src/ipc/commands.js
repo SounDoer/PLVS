@@ -3,6 +3,21 @@
  */
 import { Channel, invoke } from "@tauri-apps/api/core";
 
+import { decodeFrameWire } from "./frameWire.js";
+
+/**
+ * Frames arrive as one binary message: a JSON envelope with Spectrum's band rows moved into typed
+ * sections behind it (`src-tauri/src/ipc/frame_encode.rs`). Tauri hands a `Raw` body to the channel
+ * as an ArrayBuffer, so what reaches `onFrame` is the same frame shape as before, with those rows
+ * as typed array views.
+ */
+function frameFromChannelMessage(message) {
+  const body =
+    message && typeof message === "object" && "message" in message ? message.message : message;
+  if (body instanceof ArrayBuffer) return decodeFrameWire(body);
+  return body && typeof body === "object" ? body : null;
+}
+
 export async function listAudioDevices() {
   return invoke("list_audio_devices");
 }
@@ -21,8 +36,8 @@ export function migrateCaptureDeviceId(deviceId) {
 export async function startAudioCapture({ deviceId, onFrame }) {
   const onAudio = new Channel();
   onAudio.onmessage = (msg) => {
-    const p = msg && typeof msg === "object" && "message" in msg ? msg.message : msg;
-    if (p && typeof p === "object") onFrame(p);
+    const frame = frameFromChannelMessage(msg);
+    if (frame) onFrame(frame);
   };
   await invoke("audio_start", { deviceId, onFrame: onAudio });
   return onAudio;
@@ -189,8 +204,8 @@ export function probeFileAnalysis(path) {
 export async function startFileAnalysis({ path, probe, onFrame }) {
   const onAudio = new Channel();
   onAudio.onmessage = (msg) => {
-    const p = msg && typeof msg === "object" && "message" in msg ? msg.message : msg;
-    if (p && typeof p === "object") onFrame(p);
+    const frame = frameFromChannelMessage(msg);
+    if (frame) onFrame(frame);
   };
   await invoke("file_analysis_start", { path, probe, onFrame: onAudio });
   return onAudio;

@@ -203,8 +203,11 @@ Rust 与前端一起发布，没有跨版本兼容需求，但**丢帧有**：`c
    `scripts/frame-wire-benchmark.test.js` 覆盖。
 2. ~~编解码纯函数~~ **已完成**：`src/ipc/frameWire.js` 与 `src-tauri/src/ipc/wire.rs`，
    两端各自单测（6 + 10 个），由一份 golden fixture 跨语言对拍。仍未接线。
-3. **接 Spectrum 一条路**，其余数组仍走 JSON（信封天然支持混合）。真实窗口里跑
-   `profile:webview` + `webview-draw-count`，确认帧还在动、面板还对。
+3. **接 Spectrum 一条路**，其余数组仍走 JSON（信封天然支持混合）。
+   **代码已完成，真实窗口验证待做**：`src-tauri/src/ipc/frame_encode.rs` 造信封，
+   `FrameSubscribers` 改发 `InvokeResponseBody::Raw`，`src/ipc/commands.js` 解码。
+   **第一版行按 f64 走线**——DSP 本来就产 f64，所以这一步不改变前端读到的任何一个值；
+   窄到 f32 能再省一半字节，但那是精度决定，单独一个提交、单独一次测量（见 P-7）。
 4. **接 Stereo Map**，同样验证。
 5. **`bandGridCentersHz` 并入**，顺带把 `tauriFrameApply.js:79` 的 duck-typing 改掉。
 6. 复测第 1 步的脚本，把实际降幅写回 `spectrum.md` / `stereo-map.md` 的判定表。
@@ -225,3 +228,4 @@ CI 的 runner 没有声卡（AGENTS.md）。每一步都要 `npm run smoke:captu
 | P-4 | 去掉 JSON 大字符串后 GC 压力是否下降                                | 真实窗口内存采样；**这条最容易脑补，必须实测**                     |
 | P-5 | Int16 centi-dB 直发对 Spectrum 显示的影响                           | 与 f32 版本逐 band 对拍，看是否低于显示精度                        |
 | P-6 | Stereo Map 每行的真实线上字节（12.6 KiB 模型 vs 18.8 KiB 旧实测）   | Rust 侧对 `StereoMapFrameResult` 直接 `serde_json::to_vec().len()` |
+| P-7 | f64 → f32 窄化对 Spectrum 显示的影响                                | 与 f64 版本逐 band 对拍；前端最终只存 centi-dB，理论余量三个数量级 |

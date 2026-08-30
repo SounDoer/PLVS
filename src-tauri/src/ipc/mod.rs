@@ -2,5 +2,6 @@
 
 pub mod commands;
 pub mod events;
+pub mod frame_encode;
 pub mod types;
 pub mod wire;

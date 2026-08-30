@@ -12,8 +12,8 @@ use crate::audio::AppAudioBackend;
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
-  AnalysisRequests, AudioDevicePreview, AudioFramePayload, EngineStateChanged,
-  FileAnalysisProbeResult, FrameSubscribers, SpectrumAnalysisChannel, StereoMapAnalysisPair,
+  AnalysisRequests, AudioDevicePreview, EngineStateChanged, FileAnalysisProbeResult,
+  FrameSubscribers, SpectrumAnalysisChannel, StereoMapAnalysisPair,
 };
 use crate::state::{AppState, EngineSource};
 
@@ -65,7 +65,7 @@ pub fn migrate_capture_device_id(device_id: String) -> Result<Option<String>, St
 pub fn audio_start(
   app: AppHandle,
   device_id: String,
-  on_frame: tauri::ipc::Channel<AudioFramePayload>,
+  on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
   {
@@ -416,7 +416,7 @@ pub fn file_analysis_start(
   app: AppHandle,
   path: String,
   probe: Option<FileAnalysisProbeResult>,
-  on_frame: tauri::ipc::Channel<AudioFramePayload>,
+  on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
   {

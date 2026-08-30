@@ -525,11 +525,21 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       }
       sent_seq += 1;
       f.seq = sent_seq;
+      // Encode once for every subscriber. This also replaces the per-subscriber clone of the
+      // payload -- cloning the encoded bytes copies one buffer instead of every band row's `Vec`.
+      let Ok(message) = crate::ipc::frame_encode::encode_audio_frame(&f) else {
+        // The envelope cannot fail on data the pipeline produces, so this is not a frame to skip
+        // and retry -- it means the payload itself is malformed. Stop rather than stream garbage.
+        pcm_pool.recycle(floats);
+        break;
+      };
       if let Ok(mut m) = frame_subscribers.lock() {
         {
           // Stop capture if the main stream drops.
           let main_ok = match m.get_mut("main") {
-            Some(tx) => tx.send(f.clone()).is_ok(),
+            Some(tx) => tx
+              .send(tauri::ipc::InvokeResponseBody::Raw(message.clone()))
+              .is_ok(),
             None => false,
           };
           if !main_ok {
@@ -542,7 +552,10 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
           if id == "main" {
             continue;
           }
-          if tx.send(f.clone()).is_err() {
+          if tx
+            .send(tauri::ipc::InvokeResponseBody::Raw(message.clone()))
+            .is_err()
+          {
             to_remove.push(id.clone());
           }
         }
