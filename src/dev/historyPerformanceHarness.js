@@ -59,7 +59,6 @@ function scalarRow(index, timestampMs) {
     vectorscopePairX: 0,
     vectorscopePairY: 1,
     peakDb: [-6, -7],
-    peakHoldDb: [-5, -6],
   };
 }
 
@@ -67,7 +66,6 @@ function meterAudioFromScalarRow(row) {
   return {
     peakDb: row.peakDb,
     rmsDb: row.rmsDb,
-    peakHoldDb: row.peakHoldDb,
     momentary: row.lufsMomentary,
     shortTerm: row.lufsShortTerm,
     integrated: row.integrated,

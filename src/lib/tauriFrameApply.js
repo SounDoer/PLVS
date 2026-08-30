@@ -11,7 +11,6 @@ export function reduceMeterAudioFrame(previous, frame) {
     ...previous,
     peakDb: Array.isArray(frame.peakDb) ? frame.peakDb : previous.peakDb,
     rmsDb: Array.isArray(frame.rmsDb) ? frame.rmsDb : (previous.rmsDb ?? []),
-    peakHoldDb: Array.isArray(frame.peakHoldDb) ? frame.peakHoldDb : previous.peakHoldDb,
     momentary: m,
     shortTerm: st,
     mMax: Number.isFinite(frame.lufsMMax) ? frame.lufsMMax : -Infinity,

@@ -35,7 +35,6 @@
  * @typedef {object} AudioFramePayload
  * @property {number[]} peakDb
  * @property {number[]} rmsDb
- * @property {number[]} peakHoldDb
  * @property {number} truePeakMaxDbtp
  * @property {number} lufsMomentary
  * @property {number} lufsShortTerm

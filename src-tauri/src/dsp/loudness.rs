@@ -851,6 +851,124 @@ mod tests {
     }
   }
 
+  /// Pushes a second of a fs/4 sine at the given phase and amplitude, and reports the loudest
+  /// true peak any block saw -- overall and for the right channel -- alongside the sample peak
+  /// that went in.
+  fn true_peak_of_quarter_rate_sine(
+    phase: f64,
+    amplitude: f64,
+    right_scale: f64,
+  ) -> (f64, f64, f64) {
+    let sr = 48_000.0_f64;
+    let mut meter = LoudnessMeter::new(sr);
+    let mut worst = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+    let mut sample_peak = 0.0_f64;
+    let mut buf = Vec::with_capacity(9600);
+    for n in 0..(sr as usize) {
+      let x = amplitude * (std::f64::consts::PI * n as f64 / 2.0 + phase).sin();
+      sample_peak = sample_peak.max(x.abs());
+      buf.push(x as f32);
+      buf.push((x * right_scale) as f32);
+      if buf.len() >= 9600 {
+        if let Some(block) = meter.push_interleaved(&buf) {
+          worst = (worst.0.max(block.true_peak), worst.1.max(block.true_peak_r));
+        }
+        buf.clear();
+      }
+    }
+    (20.0 * sample_peak.log10(), worst.0, worst.1)
+  }
+
+  /// A sine at a quarter of the sample rate, offset by an eighth of a cycle, lands every sample on
+  /// +/-1/sqrt(2) while the waveform between them reaches full scale. It is the signal true-peak
+  /// metering exists for: a sample-peak meter reads -3 dBFS and a recorder downstream still clips.
+  ///
+  /// Nothing covered this. The only assertions on true peak were a CLI `None` case and a JSON
+  /// passthrough of a hardcoded number, so the BS.1770 oversampling filter -- the part that can
+  /// actually be wrong -- was measured by no test at all, on a value the Level Meter displays.
+  #[test]
+  fn true_peak_catches_the_peak_between_two_samples() {
+    let (sample_peak_db, true_peak_db, _) =
+      true_peak_of_quarter_rate_sine(std::f64::consts::FRAC_PI_4, 1.0, 1.0);
+
+    assert!(
+      (sample_peak_db - -3.0103).abs() < 0.01,
+      "the fixture must hide its peak between samples, got {sample_peak_db} dBFS"
+    );
+    // The continuous waveform reaches full scale; a 4x oversampling filter recovers it to within a
+    // fraction of a dB. The bound is loose enough for the filter and far tighter than the 3 dB the
+    // sample peak misses by.
+    assert!(
+      (true_peak_db - 0.0).abs() < 0.25,
+      "true peak should recover full scale, got {true_peak_db} dBTP"
+    );
+    assert!(
+      true_peak_db - sample_peak_db > 2.5,
+      "true peak {true_peak_db} must sit well above sample peak {sample_peak_db}"
+    );
+  }
+
+  /// The control for the case above: the same sine aligned so that its peaks land *on* samples.
+  /// True peak and sample peak now agree, which is what separates a working oversampler from one
+  /// that simply adds gain to everything.
+  #[test]
+  fn true_peak_matches_sample_peak_when_the_peak_lands_on_a_sample() {
+    let (sample_peak_db, true_peak_db, _) = true_peak_of_quarter_rate_sine(0.0, 1.0, 1.0);
+
+    assert!(
+      (sample_peak_db - 0.0).abs() < 0.01,
+      "aligned fixture should hit full scale, got {sample_peak_db} dBFS"
+    );
+    assert!(
+      (true_peak_db - sample_peak_db).abs() < 0.25,
+      "true peak {true_peak_db} should agree with sample peak {sample_peak_db}"
+    );
+  }
+
+  /// The Level Meter shows a per-channel true peak, so a quieter right channel has to read quieter
+  /// rather than inheriting the loudest channel's value.
+  #[test]
+  fn true_peak_is_reported_per_channel() {
+    let (_, overall_db, right_db) =
+      true_peak_of_quarter_rate_sine(std::f64::consts::FRAC_PI_4, 1.0, 0.5);
+    assert!(
+      (overall_db - 0.0).abs() < 0.25,
+      "the louder channel still sets the overall reading, got {overall_db} dBTP"
+    );
+    assert!(
+      (right_db - -6.02).abs() < 0.25,
+      "a half-amplitude right channel should read about -6 dBTP, got {right_db}"
+    );
+  }
+
+  #[test]
+  fn probe_intersample_peak() {
+    let sr = 48_000.0_f64;
+    let mut m = LoudnessMeter::new(sr);
+    let mut worst = f64::NEG_INFINITY;
+    let mut sample_peak = 0.0_f64;
+    let mut buf = Vec::new();
+    for n in 0..(sr as usize) {
+      let x = (std::f64::consts::PI * n as f64 / 2.0 + std::f64::consts::FRAC_PI_4).sin() as f32;
+      sample_peak = sample_peak.max(x.abs() as f64);
+      buf.push(x);
+      buf.push(x);
+      if buf.len() >= 4800 {
+        if let Some(b) = m.push_interleaved(&buf) {
+          if b.true_peak > worst {
+            worst = b.true_peak;
+          }
+        }
+        buf.clear();
+      }
+    }
+    println!(
+      "PROBE sample_peak={:.4} dBFS  true_peak={:.4} dBTP",
+      20.0 * sample_peak.log10(),
+      worst
+    );
+  }
+
   // End-to-end wiring smoke test: with gating on, a non-speech tone flows through
   // downmix→resample→Silero→vote→dialogue integrator without panicking and is not counted
   // as dialogue (a pure tone is not speech). The speech-positive path is verified manually.

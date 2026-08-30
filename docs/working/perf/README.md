@@ -100,6 +100,14 @@ profile 说的是时间花在哪。它不说**一个面板每秒重画几次**�
 node scripts/webview-draw-count.mjs --seconds 5
 ```
 
+读数面板（Level Meter、Loudness、Stats）不画东西，只写属性，canvas 计数器对它们是盲的。
+对应的仪器是 DOM 变更计数：挂 MutationObserver，按 `data-leaf-path` 归属到面板，
+报每秒变更数与写得最多的属性名，用完卸载。
+
+```bash
+node scripts/webview-dom-count.mjs --seconds 5
+```
+
 前提和 profiler 完全一样（同一个调试端口，帧必须真的在动）。它在
 `CanvasRenderingContext2D.prototype` 上包一层计数，按 canvas 分开报，用 `clearRect` /
 `putImageData` 作为"一次重画"的标记——`fill` 不能当除数，因为"一次重画发几个 fill"正是要测的
@@ -146,9 +154,9 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 | ----------- | -------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------- | ------------------------------------- |
 | Spectrum    | 合理性已落地，正确性已有覆盖                 | 计算部分已测并优化，paint 待测                                      | 已测，无水分，有损手段均拒绝          | payload 第 1、2 层已落地，第 3 层待议 |
 | Spectrogram | 继承 Spectrum                                | 已测并优化（−87%/−95%）                                             | 继承 Spectrum                         | 继承 Spectrum                         |
-| Stereo Map  | 已测，约 50.6 µs/批；零分配，不改           | 已测，派生 <0.11 ms；canvas 调度合理                                | 已优化，1.29 → 0.81 GiB/key（−24.9%） | 已落地（−23%）                        |
+| Stereo Map  | 已测，约 50.6 µs/批；零分配，不改           | 已测，派生 <0.11 ms；canvas 调度合理                                | 已优化，1.29 → 0.81 GiB/key（−37.2%） | 已落地（−23%）                        |
 | Waveform    | 边界与正确性已查，成本未测                   | 已测并优化三处（谱线 seek、默认不计算、颜色循环），已在真实窗口验证 | 已测，占历史约 1%，拒绝               | 已测，11.29 KiB/s，拒绝               |
 | Vectorscope | SVG path 字符串构建已优化约 52%            | 选窗和 canvas 尺寸/绘制调度冗余均已优化                           | 已测，151.4 MiB/key；拒绝有损主体压缩 | 已测，0.73–0.76 MiB/s/key；并入协议轮 |
-| Level Meter | —                                            | —                                                                   | —                                     | —                                     |
+| Level Meter | true peak 测试已补；成本可忽略                | 约 23 Hz、每次约 4.8 处 DOM 变更；profile 未进前 20                 | 无自有历史                            | 已删 `peak_hold_db`（无消费者）       |
 | Loudness    | —                                            | —                                                                   | —                                     | —                                     |
 | Stats       | —                                            | —                                                                   | —                                     | —                                     |

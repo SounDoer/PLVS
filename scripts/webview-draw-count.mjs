@@ -153,7 +153,7 @@ function pageInstaller(countedMethods) {
   return true;
 }
 
-async function connect(port) {
+export async function connectToPage(port) {
   const listing = await fetch(`http://127.0.0.1:${port}/json`).catch((error) => {
     throw new Error(
       `no debugging port on ${port} (${error.message}). Start the app with ` +
@@ -205,7 +205,7 @@ async function connect(port) {
 }
 
 export async function countDraws({ port, seconds }, log = console.log) {
-  const { target, socket, evaluate } = await connect(port);
+  const { target, socket, evaluate } = await connectToPage(port);
   log(`Attached to ${target.url}`);
 
   try {

@@ -834,7 +834,6 @@ impl MeterPipeline {
 
     let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
     let rms_db = self.rms_window.db_per_channel();
-    let peak_hold_db = peak_db.clone();
 
     let dialogue_integrated = lb
       .as_ref()
@@ -989,7 +988,6 @@ impl MeterPipeline {
       band_grid_centers_hz: Vec::new(),
       peak_db,
       rms_db,
-      peak_hold_db,
       true_peak_max_dbtp: self.tp_max_db,
       lufs_momentary: lm,
       lufs_short_term: lst,

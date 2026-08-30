@@ -15,7 +15,6 @@ import { resolveDevice } from "../lib/audioEngineCommands.js";
 
 const CLEARED_AUDIO_STATE = {
   peakDb: [],
-  peakHoldDb: [],
   momentary: -Infinity,
   shortTerm: -Infinity,
   integrated: -Infinity,

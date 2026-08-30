@@ -44,7 +44,6 @@ function useHarness({
   const latestAudioRef = useRef({
     peakDb: [],
     rmsDb: [],
-    peakHoldDb: [],
     samplePeakMaxL: -Infinity,
     samplePeakMaxR: -Infinity,
   });
@@ -131,7 +130,6 @@ describe("useAudioEngine", () => {
     expect(props.setAudio).toHaveBeenCalledWith(
       expect.objectContaining({
         peakDb: [],
-        peakHoldDb: [],
         momentary: -Infinity,
         shortTerm: -Infinity,
         correlation: -Infinity,
@@ -211,7 +209,7 @@ describe("useAudioEngine", () => {
     await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
 
     const onFrame = startAudioCapture.mock.calls[0][0].onFrame;
-    onFrame({ peakDb: [-6], peakHoldDb: [], lufsMomentary: -9 });
+    onFrame({ peakDb: [-6], lufsMomentary: -9 });
 
     expect(intake.pushFrame).toHaveBeenCalledOnce();
     expect(result.current.latestAudioRef.current).toMatchObject({

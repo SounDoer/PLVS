@@ -17,7 +17,6 @@ function makeOptions(overrides = {}) {
       current: {
         peakDb: [],
         rmsDb: [],
-        peakHoldDb: [],
         samplePeakMaxL: -Infinity,
         samplePeakMaxR: -Infinity,
       },
@@ -33,7 +32,6 @@ describe("buildTauriFrameApply", () => {
     const previous = {
       peakDb: [-30],
       rmsDb: [-32],
-      peakHoldDb: [-20],
       samplePeakMaxL: -8,
       samplePeakMaxR: -9,
       spectrumResultsByKey: { old: true },
@@ -55,7 +53,6 @@ describe("buildTauriFrameApply", () => {
     expect(previous).toEqual({
       peakDb: [-30],
       rmsDb: [-32],
-      peakHoldDb: [-20],
       samplePeakMaxL: -8,
       samplePeakMaxR: -9,
       spectrumResultsByKey: { old: true },
@@ -64,7 +61,6 @@ describe("buildTauriFrameApply", () => {
     expect(next).toMatchObject({
       peakDb: [-12],
       rmsDb: [-32],
-      peakHoldDb: [-20],
       momentary: -18,
       mMax: -10,
       stMax: -11,
@@ -79,7 +75,6 @@ describe("buildTauriFrameApply", () => {
   it("updates loudness maxima from the frame payload", () => {
     let audioState = {
       peakDb: [],
-      peakHoldDb: [],
       samplePeakMaxL: -Infinity,
       samplePeakMaxR: -Infinity,
       vectorscopePairX: 0,
@@ -93,7 +88,6 @@ describe("buildTauriFrameApply", () => {
 
     applyFrame({
       peakDb: [],
-      peakHoldDb: [],
       lufsMomentary: -18,
       lufsShortTerm: -20,
       lufsMMax: -12.3,
@@ -117,7 +111,7 @@ describe("buildTauriFrameApply", () => {
     const ackFrames = vi.fn();
     const { applyFrame } = buildTauriFrameApply(makeOptions({ ackFrames }));
     for (let i = 1; i <= 12; i++) {
-      applyFrame({ peakDb: [], peakHoldDb: [], seq: i });
+      applyFrame({ peakDb: [], seq: i });
     }
     // frameRef hits 6 and 12 → two acks, each carrying that frame's seq.
     expect(ackFrames.mock.calls).toEqual([[6], [12]]);
@@ -127,7 +121,7 @@ describe("buildTauriFrameApply", () => {
     const ackFrames = vi.fn();
     const { applyFrame } = buildTauriFrameApply(makeOptions({ ackFrames }));
     for (let i = 1; i <= 6; i++) {
-      applyFrame({ peakDb: [], peakHoldDb: [] });
+      applyFrame({ peakDb: [] });
     }
     expect(ackFrames).not.toHaveBeenCalled();
   });
@@ -149,7 +143,7 @@ describe("buildTauriFrameApply", () => {
     );
 
     for (let i = 1; i <= 6; i++) {
-      applyFrame({ peakDb: [], peakHoldDb: [], seq: i });
+      applyFrame({ peakDb: [], seq: i });
     }
 
     // Display is frozen for the inactive (background) session...
@@ -181,7 +175,6 @@ describe("buildTauriFrameApply", () => {
       applyFrame({
         seq: i,
         peakDb: [-20 + i],
-        peakHoldDb: [-15],
         sampleLDb: i === 2 ? -8 : i === 5 ? -3 : undefined,
         sampleRDb: i === 3 ? -7 : i === 6 ? -2 : undefined,
       });
@@ -202,7 +195,7 @@ describe("buildTauriFrameApply", () => {
     const latestAudioRef = { current: makeOptions().latestAudioRef.current };
     const { applyFrame } = buildTauriFrameApply(makeOptions({ setAudio, latestAudioRef }));
 
-    applyFrame({ peakDb: [-9], peakHoldDb: [], lufsMomentary: -12 });
+    applyFrame({ peakDb: [-9], lufsMomentary: -12 });
 
     expect(latestAudioRef.current).toMatchObject({ peakDb: [-9], momentary: -12 });
     expect(setAudio).toHaveBeenCalledOnce();
@@ -221,10 +214,10 @@ describe("buildTauriFrameApply", () => {
       })
     );
 
-    applyFrame({ peakDb: [], peakHoldDb: [] });
+    applyFrame({ peakDb: [] });
     histMaxSamples.current = 30;
     visualMaxSamples.current = 40;
-    applyFrame({ peakDb: [], peakHoldDb: [] });
+    applyFrame({ peakDb: [] });
 
     expect(pushFrame.mock.calls[0][1]).toBe(10);
     expect(pushFrame.mock.calls[0][4]).toBe(20);
@@ -243,7 +236,6 @@ describe("buildTauriFrameApply", () => {
     const vectorscopeResultsByKey = { "vectorscope:pair:0:1": { path: "v" } };
     applyFrame({
       peakDb: [],
-      peakHoldDb: [],
       bandGridId: 1,
       bandGridCentersHz: [100, 1000],
       spectrumResultsByKey,
@@ -263,7 +255,6 @@ describe("buildTauriFrameApply", () => {
 
     applyFrame({
       peakDb: [],
-      peakHoldDb: [],
       bandGridId: 1,
       bandGridCentersHz: centers,
       spectrumResultsByKey: { a: { smoothDb: [-30, -40] } },
@@ -271,7 +262,6 @@ describe("buildTauriFrameApply", () => {
     // A later frame sends the id alone; the row still has to arrive plottable.
     applyFrame({
       peakDb: [],
-      peakHoldDb: [],
       bandGridId: 1,
       spectrumResultsByKey: { a: { smoothDb: [-31, -41] } },
     });
@@ -281,7 +271,6 @@ describe("buildTauriFrameApply", () => {
     // one. The engine resends within a second.
     applyFrame({
       peakDb: [],
-      peakHoldDb: [],
       bandGridId: 2,
       spectrumResultsByKey: { a: { smoothDb: [-32, -42] } },
     });

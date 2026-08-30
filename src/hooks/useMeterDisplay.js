@@ -15,7 +15,6 @@ import { useSessionTimer } from "./useSessionTimer.js";
 export const INITIAL_METER_AUDIO = {
   peakDb: [],
   rmsDb: [],
-  peakHoldDb: [],
   momentary: -Infinity,
   shortTerm: -Infinity,
   integrated: -Infinity,
@@ -46,7 +45,6 @@ export const INITIAL_METER_AUDIO = {
 export const CLEARED_METER_AUDIO = {
   peakDb: [],
   rmsDb: [],
-  peakHoldDb: [],
   momentary: -Infinity,
   shortTerm: -Infinity,
   integrated: -Infinity,

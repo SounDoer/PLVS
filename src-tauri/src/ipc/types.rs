@@ -249,7 +249,6 @@ pub struct AudioFramePayload {
   pub peak_db: Vec<f64>,
   /// Per-channel unweighted 400ms sliding-window sample RMS in dBFS.
   pub rms_db: Vec<f64>,
-  pub peak_hold_db: Vec<f64>,
   pub true_peak_max_dbtp: f64,
   pub lufs_momentary: f64,
   pub lufs_short_term: f64,

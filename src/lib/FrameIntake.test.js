@@ -29,7 +29,6 @@ function makeRow(overrides = {}) {
 function makeFrame(overrides = {}) {
   return {
     peakDb: [-6, -6],
-    peakHoldDb: [-6, -6],
     lufsMomentary: -23,
     lufsShortTerm: -24,
     integrated: -25,
