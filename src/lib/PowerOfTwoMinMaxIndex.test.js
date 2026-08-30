@@ -394,4 +394,53 @@ describe("PowerOfTwoMinMaxIndex", () => {
     expect(maxNodes).toBeGreaterThan(1);
     expect(maxNodes).toBeLessThanOrEqual(bound);
   });
+
+  it("answers every range exactly as a plain scan would, whatever level it starts at", () => {
+    // The query picks its starting bucket level by arithmetic on the sequence's alignment rather
+    // than by scanning down from the top. That is only ever a hint -- the loop still tests width
+    // and alignment -- so the thing worth pinning is that the answer never moves: min and max are
+    // associative, so any decomposition of the same range has to agree with a scan over it.
+    const index = new PowerOfTwoMinMaxIndex(600);
+    const rows = [];
+    for (let i = 0; i < 600; i += 1) {
+      // Float32 columns: a fixture written in plain decimals fails against a correct index.
+      // See AGENTS.md.
+      const value = Math.fround(Math.sin(i * 0.37) * 40 - 20);
+      rows.push(value);
+      index.append(i, [value], [value]);
+    }
+    const rawRowAt = (sequence) => ({ mins: [rows[sequence]], maxes: [rows[sequence]] });
+
+    for (let start = 0; start < 600; start += 7) {
+      for (const span of [1, 2, 3, 5, 8, 13, 64, 129, 256]) {
+        const end = Math.min(599, start + span - 1);
+        const result = index.queryRange(start, end, rawRowAt);
+        let min = Infinity;
+        let max = -Infinity;
+        for (let i = start; i <= end; i += 1) {
+          min = Math.min(min, rows[i]);
+          max = Math.max(max, rows[i]);
+        }
+        expect(result.mins[0]).toBe(min);
+        expect(result.maxes[0]).toBe(max);
+      }
+    }
+  });
+
+  it("hands the same wrapper back for each bucket without letting a caller keep one", () => {
+    // The bucket wrapper is reused across hits rather than allocated per hit, which is safe only
+    // because the caller merges it immediately. This states that contract where a future caller
+    // that tries to hold one will read it.
+    const index = new PowerOfTwoMinMaxIndex(64);
+    for (let i = 0; i < 64; i += 1) index.append(i, [i], [i]);
+    const seen = [];
+    index.queryRange(0, 63, () => {
+      throw new Error("this range is covered by buckets");
+    });
+    const first = index._bucketAtStart(1, 0, 2);
+    seen.push(first);
+    const second = index._bucketAtStart(1, 2, 2);
+    expect(second).toBe(first);
+    expect(second.startSequence).toBe(2);
+  });
 });

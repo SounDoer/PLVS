@@ -61,10 +61,32 @@ function pageInstaller() {
     return title ? `${title} @ ${leaf.dataset.leafPath}` : `leaf ${leaf.dataset.leafPath}`;
   };
 
+  /**
+   * Names the element a node was added to or removed from. Attribute writes already say what
+   * changed through the attribute name; node churn says nothing at all without this, and "which
+   * element is being rebuilt" is the whole question when a subtree remounts instead of updating.
+   */
+  const siteOf = (node) => {
+    const element = node?.nodeType === 1 ? node : node?.parentElement;
+    if (!element) return "(detached)";
+    const tag = element.tagName?.toLowerCase() ?? "?";
+    const data = element.getAttributeNames?.().find((name) => name.startsWith("data-"));
+    if (data) return `${tag}[${data}]`;
+    const cls = element.classList?.[0];
+    return cls ? `${tag}.${cls}` : tag;
+  };
+
   const rowFor = (label) => {
     let row = counts.get(label);
     if (!row) {
-      row = { label, attributes: 0, childList: 0, characterData: 0, attributeNames: {} };
+      row = {
+        label,
+        attributes: 0,
+        childList: 0,
+        characterData: 0,
+        attributeNames: {},
+        childSites: {},
+      };
       counts.set(label, row);
     }
     return row;
@@ -78,7 +100,10 @@ function pageInstaller() {
         const name = record.attributeName ?? "(unnamed)";
         row.attributeNames[name] = (row.attributeNames[name] ?? 0) + 1;
       } else if (record.type === "childList") {
-        row.childList += record.addedNodes.length + record.removedNodes.length;
+        const moved = record.addedNodes.length + record.removedNodes.length;
+        row.childList += moved;
+        const site = siteOf(record.target);
+        row.childSites[site] = (row.childSites[site] ?? 0) + moved;
       } else {
         row.characterData += 1;
       }
@@ -99,6 +124,9 @@ function pageInstaller() {
           attributeNames: Object.entries(row.attributeNames)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 4),
+          childSites: Object.entries(row.childSites)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3),
         }))
         .sort((a, b) => b.total - a.total);
       return { elapsedSec, rows };
@@ -139,6 +167,10 @@ export function formatReport({ elapsedSec, rows }, top = DEFAULTS.top) {
         .map(([name, count]) => `${name} ${perSec(count)}/s`)
         .join(", ");
       lines.push(`      attributes written: ${named}`);
+    }
+    if (row.childSites?.length > 0) {
+      const named = row.childSites.map(([site, count]) => `${site} ${perSec(count)}/s`).join(", ");
+      lines.push(`      nodes churned under: ${named}`);
     }
   }
   if (rows.length > top) lines.push(`  ... and ${rows.length - top} quieter rows`);

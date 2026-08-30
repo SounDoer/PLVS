@@ -106,6 +106,20 @@ function validateRange(startInclusive, endInclusive, rawRowAt) {
   }
 }
 
+/**
+ * The highest bucket level worth trying at `sequence` with `remaining` rows left.
+ *
+ * A bucket at level L spans 2^L rows and must start on a multiple of 2^L, so the level is capped
+ * by the trailing zeros of `sequence` and by floor(log2(remaining)). Falls back to `maxLevel` for
+ * sequences past what the 32-bit intrinsics cover, where the loop's own tests take over.
+ */
+function startingLevel(maxLevel, sequence, remaining) {
+  if (sequence > 0x7fffffff || remaining > 0x7fffffff) return maxLevel;
+  const alignment = sequence === 0 ? maxLevel : 31 - Math.clz32(sequence & -sequence);
+  const fits = 31 - Math.clz32(remaining);
+  return Math.min(maxLevel, alignment, fits);
+}
+
 function queryRange(view, startInclusive, endInclusive, rawRowAt) {
   validateRange(startInclusive, endInclusive, rawRowAt);
   const stats = {
@@ -127,7 +141,15 @@ function queryRange(view, startInclusive, endInclusive, rawRowAt) {
   while (sequence <= end) {
     const remaining = end - sequence + 1;
     let bucket;
-    for (let level = view._maxLevel; level >= 1; level--) {
+    // Start at the highest level that could possibly apply instead of at the top. Two things bound
+    // it: how far `sequence` is aligned, and how much range is left. Scanning down from _maxLevel
+    // tested about eighteen levels per bucket that alignment had already ruled out, on a query
+    // that visits thousands of buckets per chart build.
+    //
+    // This is a hint, not a decision: the loop still tests width and alignment itself, so a wrong
+    // starting level can only cost speed. A hint that is too low merges more buckets for the same
+    // answer -- min and max are associative -- and one that is too high is rejected on entry.
+    for (let level = startingLevel(view._maxLevel, sequence, remaining); level >= 1; level--) {
       const width = 2 ** level;
       if (width > remaining || sequence % width !== 0) continue;
       bucket = view._bucketAtStart(level, sequence, width);
@@ -166,7 +188,20 @@ class MinMaxIndexView {
     if (!Number.isInteger(bucketIndex)) return undefined;
     const bucket = store.bucketAt(bucketIndex);
     if (!bucket) return undefined;
-    return { startSequence, width, mins: bucket.mins, maxes: bucket.maxes };
+    // Reused rather than allocated per hit: the caller reads `width` and merges `mins`/`maxes`
+    // immediately and never keeps the wrapper, and one chart build finds thousands of buckets.
+    // Queries do not nest, so one scratch per view is enough.
+    const scratch = (this._bucketScratch ??= {
+      startSequence: 0,
+      width: 0,
+      mins: null,
+      maxes: null,
+    });
+    scratch.startSequence = startSequence;
+    scratch.width = width;
+    scratch.mins = bucket.mins;
+    scratch.maxes = bucket.maxes;
+    return scratch;
   }
 
   storageStats() {

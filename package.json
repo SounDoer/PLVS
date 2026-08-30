@@ -22,6 +22,7 @@
     "benchmark:spectrogram-render": "node scripts/spectrogram-render-benchmark.mjs",
     "benchmark:waveform-render": "node scripts/waveform-render-benchmark.mjs",
     "benchmark:vectorscope-render": "node scripts/vectorscope-render-benchmark.mjs",
+    "benchmark:loudness-history": "node scripts/loudness-history-benchmark.mjs",
     "benchmark:vectorscope-rust": "cargo bench --manifest-path src-tauri/Cargo.toml --bench vectorscope",
     "benchmark:stereo-map-rust": "cargo bench --manifest-path src-tauri/Cargo.toml --bench stereo_map",
     "benchmark:stereo-map-render": "node scripts/stereo-map-render-benchmark.mjs",

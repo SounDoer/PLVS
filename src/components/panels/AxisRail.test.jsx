@@ -124,4 +124,21 @@ describe("AxisRail", () => {
     expect(inset.firstChild.firstChild.className).toContain("ui-chart-inset-top");
     expect(flush.firstChild.firstChild.className).not.toContain("ui-chart-inset-top");
   });
+
+  it("updates a tick's text in place when its key stays put", () => {
+    // A time axis relabels almost every update ("5.0s ago" -> "4.9s ago"). Keying a tick by its
+    // text made React unmount and remount the element for each relabel -- 77 node mutations a
+    // second per panel, measured in three panels at once. Keying by slot writes text instead, so
+    // this asserts the node identity survives a relabel.
+    const ticks = (labels) => labels.map((label, i) => ({ key: i, label, frac: i / 2 }));
+    const { container, rerender } = render(<AxisRail axis="x" ticks={ticks(["5.0s", "2.5s"])} />);
+    const before = [...container.querySelectorAll("span")];
+    expect(before.map((el) => el.textContent)).toEqual(["5.0s", "2.5s"]);
+
+    rerender(<AxisRail axis="x" ticks={ticks(["4.9s", "2.4s"])} />);
+    const after = [...container.querySelectorAll("span")];
+    expect(after.map((el) => el.textContent)).toEqual(["4.9s", "2.4s"]);
+    expect(after[0]).toBe(before[0]);
+    expect(after[1]).toBe(before[1]);
+  });
 });

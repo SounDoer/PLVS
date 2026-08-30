@@ -941,31 +941,56 @@ mod tests {
     );
   }
 
-  #[test]
-  fn probe_intersample_peak() {
+  /// Integrated loudness of a steady 1 kHz sine, `amp` in the left channel and optionally the
+  /// same in the right.
+  fn integrated_of_1k_sine(amp: f64, stereo: bool) -> f64 {
     let sr = 48_000.0_f64;
-    let mut m = LoudnessMeter::new(sr);
-    let mut worst = f64::NEG_INFINITY;
-    let mut sample_peak = 0.0_f64;
-    let mut buf = Vec::new();
-    for n in 0..(sr as usize) {
-      let x = (std::f64::consts::PI * n as f64 / 2.0 + std::f64::consts::FRAC_PI_4).sin() as f32;
-      sample_peak = sample_peak.max(x.abs() as f64);
+    let mut meter = LoudnessMeter::new(sr);
+    let mut last = f64::NEG_INFINITY;
+    let mut buf = Vec::with_capacity(9600);
+    for n in 0..(sr as usize * 4) {
+      let x = (amp * (2.0 * std::f64::consts::PI * 1000.0 * n as f64 / sr).sin()) as f32;
       buf.push(x);
-      buf.push(x);
-      if buf.len() >= 4800 {
-        if let Some(b) = m.push_interleaved(&buf) {
-          if b.true_peak > worst {
-            worst = b.true_peak;
-          }
+      buf.push(if stereo { x } else { 0.0 });
+      if buf.len() >= 9600 {
+        if let Some(block) = meter.push_interleaved(&buf) {
+          last = block.integrated;
         }
         buf.clear();
       }
     }
-    println!(
-      "PROBE sample_peak={:.4} dBFS  true_peak={:.4} dBTP",
-      20.0 * sample_peak.log10(),
-      worst
+    last
+  }
+
+  /// The loudness numbers had no assertion anywhere. `measure_reference_files` looks like coverage
+  /// and is not: it skips silently when the audio is absent, and when the audio is present it only
+  /// prints. So this pins the three things BS.1770 fixes exactly, which between them exercise the
+  /// K-weighting, the channel sum, and the -0.691 offset.
+  #[test]
+  fn integrated_loudness_matches_bs1770_for_a_known_tone() {
+    let stereo_minus20 = integrated_of_1k_sine(0.1, true);
+    let stereo_minus14 = integrated_of_1k_sine(0.2, true);
+    let left_only_minus20 = integrated_of_1k_sine(0.1, false);
+
+    // LKFS = -0.691 + 10 log10(sum of K-weighted channel mean squares). Two channels of a 0.1
+    // amplitude sine give 2 * 0.005 * |H(1k)|^2, so the reading pins the K-weight gain at 1 kHz to
+    // +0.698 dB -- which is what makes a -20 dBFS tone read -20 LUFS, the offset and the shelf
+    // very nearly cancelling.
+    assert!(
+      (stereo_minus20 - -19.9933).abs() < 0.01,
+      "a -20 dBFS stereo 1 kHz sine should read about -19.99 LUFS, got {stereo_minus20}"
+    );
+    // Doubling amplitude is exactly 20 log10 2, with no filter or gate detail involved.
+    assert!(
+      ((stereo_minus14 - stereo_minus20) - 6.0206).abs() < 0.001,
+      "doubling amplitude should add 6.02 LU, got {}",
+      stereo_minus14 - stereo_minus20
+    );
+    // Summing an identical channel is exactly 10 log10 2: the channels sum in power, not amplitude.
+    assert!(
+      ((stereo_minus20 - left_only_minus20) - 3.0103).abs() < 0.001,
+      "a second identical channel should add 3.01 LU, got {}",
+      stereo_minus20 - left_only_minus20
     );
   }
 

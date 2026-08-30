@@ -720,7 +720,10 @@ export function SpectrogramPanel() {
             interaction={timeAxisInteraction(historyTimeAxisHandlers)}
             active={historyTimeAxisActive}
             ticks={(historyTimeTicks ?? []).map((tick, i) => ({
-              key: `${i}-${tick}`,
+              // Keyed by slot, not by text. A time label changes on almost every update, so a key
+              // carrying it made React unmount and remount the tick instead of writing its text --
+              // measured at 77 node mutations a second per panel, in three panels.
+              key: i,
               label: tick,
               frac: i / HISTORY_TIME_TICK_STEPS,
             }))}
