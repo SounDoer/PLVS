@@ -607,6 +607,31 @@ mod tests {
       "the binary frame should be less than half the JSON one: {} vs {json_bytes}",
       message.len()
     );
+
+    // P-3: what the encoder costs Rust, printed rather than asserted -- a timing that gates CI is a
+    // flake waiting to happen, and this one is only meaningful under `cargo test --release`.
+    let runs = 200;
+    let started = std::time::Instant::now();
+    for _ in 0..runs {
+      std::hint::black_box(serde_json::to_vec(&frame).unwrap());
+    }
+    let json_us = started.elapsed().as_secs_f64() * 1e6 / runs as f64;
+    let started = std::time::Instant::now();
+    for _ in 0..runs {
+      std::hint::black_box(encode_audio_frame(&frame).unwrap());
+    }
+    let wire_us = started.elapsed().as_secs_f64() * 1e6 / runs as f64;
+    // Label the profile: the debug numbers are an order of magnitude off and would be read as the
+    // real ones by anyone who ran the suite the ordinary way.
+    let profile = if cfg!(debug_assertions) {
+      "debug -- not the shipping cost, rerun with --release"
+    } else {
+      "release"
+    };
+    println!(
+      "encode cost per frame ({profile}): serde_json {json_us:.1} us -> wire {wire_us:.1} us        ({:.0}% of the original)",
+      100.0 * wire_us / json_us
+    );
   }
 
   /// A field added to `AudioFramePayload` and forgotten in `WireFrame` would simply stop reaching
