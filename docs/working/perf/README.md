@@ -139,6 +139,8 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 
 前三个既是渲染大头也是 slab 大头，投入产出比最高。
 
+八个面板走完之后是唯一的跨面板项：统一二进制协议，设计见 `protocol.md`。
+
 ## 四个维度与各自的证据来源
 
 | 维度         | 问题                           | 证据来源                                                                                                                                                                                              |
