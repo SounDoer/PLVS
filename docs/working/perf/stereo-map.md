@@ -4,7 +4,7 @@
 当前纯 JS 派生不超 0.11 ms；D3 的四小时单 key、单 mode 已从 **1.29 GiB 经 0.97 GiB 降到
 0.81 GiB（累计 −37.2%）**，实时与历史 HUD 统一明确标为近似 energy；D4 先通过共享帧级频率栅格
 降低 23%，再由统一二进制协议轮把三张 primitive row 移出 JSON（§4.1）。
-**协议轮的真实窗口验证尚未做。**
+协议轮的真实窗口验证已完成（`protocol.md` §9）。
 
 工具：`npm run benchmark:stereo-map-rust`（新增）、
 `npm run benchmark:stereo-map-render`（新增）、
@@ -258,7 +258,7 @@ Vectorscope 属于同一个统一协议项目；不为 Stereo Map 单独新增 w
 | D3-3 | 12 位 value plane，误差低于显示精度一个数量级 | **已落地（−16.6%）** |
 | D3-4 | 对旧行降采样会毁掉 5 秒历史窗口 | **已否决** |
 | D4-1 | grid 复用已降低 23% | 已落地 |
-| D4-2 | primitive 每行 12,614 → 3,832 B，band 行 3.16 → 0.96 MiB/s | **已落地（−70%）**，真实窗口待验 |
+| D4-2 | primitive 每行 12,614 → 3,832 B，band 行 3.16 → 0.96 MiB/s | **已落地（−70%）**，真实窗口已验 |
 
 ## 6. 后续提交建议
 

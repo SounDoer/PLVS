@@ -35,9 +35,13 @@ npm run profile:webview -- --seconds 10 --out spectrum.cpuprofile
 **本机会话**：`scripts/capture-rig.mjs` 能自己起 VLC 循环播进 VB-Cable
 （`resolveRenderEndpointId` + `startPlayer` / `stopPlayer`）。
 
-**远程桌面会话**：实时采集这条路是断的。RDP 把音频端点换成了 "Remote Audio"，引擎的
+**远程桌面会话**：默认设置下实时采集这条路是断的。RDP 把音频端点换成了 "Remote Audio"，引擎的
 `list_audio_devices` 只返回这一个设备，VB-Cable 对 WASAPI 不可见（哪怕 PowerShell 仍能解析出它的
-render endpoint）。唯一的音频替代是播进 "Remote Audio"，而那就是操作者的扬声器。
+render endpoint——**别拿 PowerShell 当探测**，两者会给出相反的答案）。
+
+**但这条路是可以打通的**：把 RDP 客户端的音频改成在远程计算机上播放，真实设备就全部出现，
+并且在断开和重连时都保住。细节和另一个反直觉的坑（断开前启动的播放器活不过会话切换，
+而且不报错，只是安静地采静音）见 `protocol.md` §10.3。
 
 **但文件分析这条路是通的，而且不需要任何音频设备。** 应用分析一个文件时照样按同一节奏发帧、
 照样驱动所有面板。全程可以从 CDP 驱动：
@@ -141,7 +145,8 @@ Spectrum → Spectrogram → Stereo Map → Waveform → Vectorscope → Level M
 
 八个面板走完之后是唯一的跨面板项：统一二进制协议，设计、实测与判定见 `protocol.md`。
 Spectrum 与 Stereo Map 的行已移出 JSON（生产宽度一帧 131,886 B → 36,000 B，−73%）；
-Vectorscope 实测后**没有并进去**；band grid 实测后**判定不做**。真实窗口验证仍待做。
+Vectorscope 实测后**没有并进去**；band grid 实测后**判定不做**。
+真实窗口、`smoke:capture`、4 小时 soak 均已验证（`protocol.md` §9、§10）。
 
 ## 四个维度与各自的证据来源
 
@@ -150,15 +155,15 @@ Vectorscope 实测后**没有并进去**；band grid 实测后**判定不做**�
 | D1 Rust 计算 | 算得对吗？算得有没有冗余？     | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时                                                                                                                             |
 | D2 前端渲染  | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render` / `benchmark:spectrogram-render` / `benchmark:waveform-render` / `benchmark:vectorscope-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下） |
 | D3 历史存储  | 结构合理吗？占用是多少？       | `npm run benchmark:history` + heap 预算测试                                                                                                                                                           |
-| D4 其他      | 每帧 payload、IPC、调度        | payload 字节数实测；`npm run soak:capture`（只作线索，阈值未校准）                                                                                                                                    |
+| D4 其他      | 每帧 payload、IPC、调度        | payload 字节数实测；`npm run soak:capture`（留存记录的漂移带是 0.0028–0.0036 dB，对着它读，别对着 0.01 上限）                                                                                          |
 
 ## 状态
 
 | Panel       | D1                                           | D2                                                                  | D3                                    | D4                                    |
 | ----------- | -------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------- | ------------------------------------- |
-| Spectrum    | 合理性已落地，正确性已有覆盖                 | 计算部分已测并优化；paint 已量（471.5 次/秒，最高），改动待议                                      | 已测，无水分，有损手段均拒绝          | 三层全部已落地，dB 行 −79%/行；真实窗口待验 |
+| Spectrum    | 合理性已落地，正确性已有覆盖                 | 计算部分已测并优化；paint 已量（471.5 次/秒，最高），改动待议                                      | 已测，无水分，有损手段均拒绝          | 三层全部已落地，dB 行 −79%/行；真实窗口已验 |
 | Spectrogram | 继承 Spectrum                                | 已测并优化（−87%/−95%）                                             | 继承 Spectrum                         | 继承 Spectrum                         |
-| Stereo Map  | 已测，约 50.6 µs/批；零分配，不改           | 已测，派生 <0.11 ms；canvas 调度合理                                | 已优化，1.29 → 0.81 GiB/key（−37.2%） | 已落地（栅格 −23%，行再 −70%）；真实窗口待验 |
+| Stereo Map  | 已测，约 50.6 µs/批；零分配，不改           | 已测，派生 <0.11 ms；canvas 调度合理                                | 已优化，1.29 → 0.81 GiB/key（−37.2%） | 已落地（栅格 −23%，行再 −70%）；真实窗口已验 |
 | Waveform    | 边界与正确性已查，成本未测                   | 已测并优化三处（谱线 seek、默认不计算、颜色循环），已在真实窗口验证 | 已测，占历史约 1%，拒绝               | 已测，11.29 KiB/s，拒绝               |
 | Vectorscope | SVG path 字符串构建已优化约 52%            | 选窗和 canvas 尺寸/绘制调度冗余均已优化                           | 已测，151.4 MiB/key；拒绝有损主体压缩 | 已测，0.73–0.76 MiB/s/key；协议轮实测后否决 |
 | Level Meter | true peak 测试已补；成本可忽略                | 约 23 Hz、每次约 4.8 处 DOM 变更；profile 未进前 20                 | 无自有历史                            | 已删 `peak_hold_db`（无消费者）       |

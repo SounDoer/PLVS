@@ -89,6 +89,21 @@ Traps that cost a real commit to learn, because the code either says nothing or 
 
 - **A fresh worktree cannot build Rust until the sidecar binaries are there.** `src-tauri/binaries/` is gitignored (the FFmpeg sidecars are Release assets, never committed), so a new worktree starts without them and `npm run check` fails in the Rust half. The trap is the error: cargo reports `could not compile serde_derive`, naming a third-party proc-macro nobody touched, and the real cause — `resource path binariesfmpeg-x86_64-pc-windows-msvc.exe doesn't exist` — is buried in the build-script stdout above it. Run `npm run ffmpeg:fetch` in the worktree; do not go debugging the dependency tree, and do not copy the files by hand from another checkout, which skips the script's checksum verification.
 
+- **The capture rig can run in a detached RDP session, but only if you set it up in the right
+  order — and getting it wrong fails silently.** Two facts, both counter-intuitive, both measured
+  (`docs/working/perf/protocol.md` §10.3). First: under the default RDP audio redirection the
+  engine sees only "Remote Audio" and VB-Cable is invisible to WASAPI — and disconnecting does
+  *not* bring it back; two hours of polling returned zero devices. Setting the RDP client's audio
+  to play on the remote computer exposes all the real devices, and they survive both disconnect and
+  reconnect. Do not use PowerShell to check this: it resolves endpoints WASAPI cannot see, so the
+  two give opposite answers. Use `plvs-cli devices`. Second, and worse: **a player started before
+  the session detaches stops reaching VB-Cable, without dying and without erroring.** The capture
+  side stays perfectly healthy — device present, capture returns, `droppedChunks: 0` — and every
+  sample's `integratedLufs` is `null`, because it is recording silence. A watchdog that checks
+  "process alive / device present / no drops" stays green through the whole run and then hands you
+  a signal-free record to conclude "no drift" from. Start the player *after* detaching, and check
+  for `null` loudness explicitly.
+
 - **A control value that is part of an analysis request key costs memory to change.** Visual history
   is stored one slab per key (`FrameIntake`), so every distinct key mints a slab — at a four-hour
   retention one Spectrum slab is 1.38 GB and one Stereo Map slab is 4.37 GB. That is why Spectrum
