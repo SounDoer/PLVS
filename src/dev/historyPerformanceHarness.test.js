@@ -460,7 +460,7 @@ describe("history performance harness", () => {
     );
     expect(slab.storageStats()).toMatchObject({
       retainedModes: ["position", "correlation", "monoLossDb", "msRatioDb"],
-      arrayTypes: { values: "Int16Array", energy: "Uint8Array" },
+      arrayTypes: { values: "Uint8Array (12-bit)", energy: "Uint8Array" },
     });
   });
 
@@ -590,10 +590,11 @@ describe("Stereo Map history benchmark projections", () => {
       const rows = minutes * rowsPerMinute;
       const projected = projectedStereoMapBytes(rows, { bands, keyCount: 1 });
       const expectedTimestamps = rows * Float64Array.BYTES_PER_ELEMENT;
-      const expectedPlane = rows * bands * Int16Array.BYTES_PER_ELEMENT;
+      const planeEntries = rows * bands;
+      const expectedPlane = planeEntries + ((planeEntries + 1) >> 1);
       const expectedEnergy = rows * bands * Uint8Array.BYTES_PER_ELEMENT;
       const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
-      const expectedHoldIndex = chunkCount * bands * Int16Array.BYTES_PER_ELEMENT * 2;
+      const expectedHoldIndex = chunkCount * bands * Uint16Array.BYTES_PER_ELEMENT * 2;
       expect(projected.timestamps).toBe(expectedTimestamps);
       expect(projected.modeValues).toBe(expectedPlane);
       expect(projected.energy).toBe(expectedEnergy);
@@ -618,12 +619,12 @@ describe("Stereo Map history benchmark projections", () => {
       expect(fourKeys[index].total).toBe(oneKey[index].total * 4);
     }
 
-    // One active mode plus shared Energy is roughly 0.97 GiB at four hours, without changing row
+    // One active mode plus shared Energy is roughly 0.81 GiB at four hours, without changing row
     // count, cadence, or band count. Keep a tight bound so accidental retained-plane growth fails.
     const fullRetention = oneKey.at(-1);
     expect(fullRetention.minutes).toBe(240);
-    expect(fullRetention.total).toBeGreaterThan(0.96 * 1024 ** 3);
-    expect(fullRetention.total).toBeLessThan(0.98 * 1024 ** 3);
+    expect(fullRetention.total).toBeGreaterThan(0.8 * 1024 ** 3);
+    expect(fullRetention.total).toBeLessThan(0.82 * 1024 ** 3);
     expect(fullRetention.holdIndex / fullRetention.perKeyTotal).toBeLessThan(0.002);
   });
 });

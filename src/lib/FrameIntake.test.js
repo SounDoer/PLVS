@@ -1161,8 +1161,8 @@ describe("FrameIntake Stereo Map history", () => {
     const rowA = slabA.rowAt(0);
     expect(rowA.bandCentersHz).toBeInstanceOf(Float32Array);
     expect(rowA.derivedForMode("position", { lowerBound: -1, upperBound: 1 }).values).toEqual([
-      expect.closeTo(-0.5, 4),
-      expect.closeTo(-1 / 3, 4),
+      expect.closeTo(-0.5, 3),
+      expect.closeTo(-1 / 3, 3),
     ]);
     expect(rowA.sampleRateHz).toBe(48000);
     const rowB = slabB.rowAt(0);

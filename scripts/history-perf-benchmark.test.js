@@ -67,6 +67,6 @@ describe("projectedStereoMapBytes", () => {
     const bands = 958;
     const projection = projectedStereoMapBytes(rows, { bands });
     expect(projection.energy).toBe(rows * bands * Uint8Array.BYTES_PER_ELEMENT);
-    expect(projection.perKeyTotal).toBe(1_039_952_696);
+    expect(projection.perKeyTotal).toBe(867_512_696);
   });
 });

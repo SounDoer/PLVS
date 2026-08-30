@@ -65,18 +65,20 @@ export function projectedScalarSnapshotCopyBounds(
 
 /**
  * Retained-byte projection for one Stereo Map key with one active Position mode: Float64
- * timestamps, one Int16 value plane, one Uint8 energy plane, a centi-dB row peak, a row-presence
- * bitmap, and two Int16 Hold extrema per chunk. Pure arithmetic, so the four-hour case is cheap.
+ * timestamps, one 12-bit value plane (a byte of high bits per entry plus a shared nibble), one
+ * Uint8 energy plane, a centi-dB row peak, a row-presence bitmap, and two Uint16 Hold extrema per
+ * chunk. Pure arithmetic, so the four-hour case is cheap.
  */
 export function projectedStereoMapBytes(rows, { bands = STEREO_MAP_BANDS, keyCount = 1 } = {}) {
   const timestamps = rows * Float64Array.BYTES_PER_ELEMENT;
-  const modeValues = rows * bands * Int16Array.BYTES_PER_ELEMENT;
+  const planeEntries = rows * bands;
+  const modeValues = planeEntries + ((planeEntries + 1) >> 1);
   const energy = rows * bands * Uint8Array.BYTES_PER_ELEMENT;
   const rowPeaks = rows * Int16Array.BYTES_PER_ELEMENT;
   const modeRows = rows * Uint8Array.BYTES_PER_ELEMENT;
   const bandCenters = bands * Float32Array.BYTES_PER_ELEMENT;
   const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
-  const holdIndex = chunkCount * bands * Int16Array.BYTES_PER_ELEMENT * 2;
+  const holdIndex = chunkCount * bands * Uint16Array.BYTES_PER_ELEMENT * 2;
   const perKeyTotal =
     timestamps + modeValues + energy + rowPeaks + modeRows + bandCenters + holdIndex;
   return {

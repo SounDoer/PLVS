@@ -15,19 +15,19 @@ function append(slab, timestampMs, { pl = [1, 1], pr = [0.25, 1], c = [0.25, 0] 
 }
 
 describe("StereoMapModeHistorySlab", () => {
-  it("stores selected modes in Int16 planes and shared relative energy in Uint8", () => {
+  it("stores selected modes in 12-bit planes and shared relative energy in Uint8", () => {
     const slab = new StereoMapModeHistorySlab(10, ["position"]);
     append(slab, 1);
 
     const row = slab.rowAt(0);
     expect(row.derivedForMode("position", { lowerBound: -1, upperBound: 1 }).values[0]).toBeCloseTo(
       0.6,
-      4
+      3
     );
     expect(row.derivedForMode("correlation", { lowerBound: -1, upperBound: 1 })).toBeNull();
     expect(slab.storageStats()).toMatchObject({
       retainedModes: ["position"],
-      arrayTypes: { values: "Int16Array", energy: "Uint8Array" },
+      arrayTypes: { values: "Uint8Array (12-bit)", energy: "Uint8Array" },
     });
   });
 
@@ -43,7 +43,7 @@ describe("StereoMapModeHistorySlab", () => {
     ).toBeNull();
     expect(
       slab.rowAt(1).derivedForMode("correlation", { lowerBound: -1, upperBound: 1 }).values[0]
-    ).toBeCloseTo(0.5, 4);
+    ).toBeCloseTo(0.5, 3);
   });
 
   it("freezes packed rows and answers Hold from incremental chunk summaries", () => {
@@ -53,9 +53,9 @@ describe("StereoMapModeHistorySlab", () => {
     const frozen = slab.freeze();
     const held = frozen.holdAt(1);
 
-    expect(held.values.position.minimum[0]).toBeCloseTo(-0.6, 4);
-    expect(held.values.position.maximum[0]).toBeCloseTo(0.6, 4);
-    expect(held.values.correlation[0]).toBeCloseTo(-0.5, 4);
+    expect(held.values.position.minimum[0]).toBeCloseTo(-0.6, 3);
+    expect(held.values.position.maximum[0]).toBeCloseTo(0.6, 3);
+    expect(held.values.correlation[0]).toBeCloseTo(-0.5, 3);
     expect(frozen.storageStats()).toMatchObject({ retainedRows: 2, copiedTailRows: 2 });
   });
 });

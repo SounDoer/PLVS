@@ -1,10 +1,16 @@
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 import {
   CENTI_DB_NO_VALUE,
+  STEREO_MAP_VALUE_INVALID,
+  createStereoMapValuePlane,
   decodeCentiDb,
   decodeStereoMapValue,
   encodeCentiDb,
   encodeStereoMapValue,
+  readStereoMapValueCode,
+  sliceStereoMapValuePlane,
+  stereoMapValuePlaneBytes,
+  writeStereoMapValueCode,
 } from "./packedHistoryCodecs.js";
 import {
   decodeStereoMapRelativeEnergy,
@@ -19,7 +25,7 @@ import {
 } from "../math/stereoMapMath.js";
 
 const MODES = new Set(Object.values(STEREO_MAP_MODES));
-const INVALID = -32768;
+const INVALID = STEREO_MAP_VALUE_INVALID;
 const GATE_FADE_DB = 12;
 
 function normalizedModes(modes) {
@@ -39,13 +45,14 @@ function sameGrid(a, b) {
 }
 
 function createModePlane(rowCapacity, bandCount) {
-  return new Int16Array(rowCapacity * bandCount).fill(INVALID);
+  return createStereoMapValuePlane(rowCapacity * bandCount);
 }
 
 function createModeSummary(mode, bandCount) {
-  const minimum = new Int16Array(bandCount).fill(INVALID);
+  // Summaries hold the same 12-bit codes the planes do, so Hold can compare them without decoding.
+  const minimum = new Uint16Array(bandCount).fill(INVALID);
   const maximum =
-    mode === STEREO_MAP_MODES.POSITION ? new Int16Array(bandCount).fill(INVALID) : null;
+    mode === STEREO_MAP_MODES.POSITION ? new Uint16Array(bandCount).fill(INVALID) : null;
   return { minimum, maximum };
 }
 
@@ -84,7 +91,7 @@ function cloneChunk(chunk) {
   const holdSummaries = {};
   const { bandCount } = chunk;
   for (const [mode, plane] of Object.entries(chunk.modePlanes)) {
-    modePlanes[mode] = plane.slice(0, chunk.rowCount * bandCount);
+    modePlanes[mode] = sliceStereoMapValuePlane(plane, chunk.rowCount * bandCount);
   }
   for (const [mode, rows] of Object.entries(chunk.modeRows)) {
     modeRows[mode] = rows.slice(0, chunk.rowCount);
@@ -148,7 +155,7 @@ function projectPoint(value, opacity, { lowerBound, upperBound }) {
 function payloadBytes(chunk) {
   let total =
     chunk.timestamps.byteLength + chunk.energyDb.byteLength + chunk.fullGridPeakDb.byteLength;
-  for (const plane of Object.values(chunk.modePlanes)) total += plane.byteLength;
+  for (const plane of Object.values(chunk.modePlanes)) total += stereoMapValuePlaneBytes(plane);
   for (const rows of Object.values(chunk.modeRows)) total += rows.byteLength;
   for (const summary of Object.values(chunk.holdSummaries)) {
     total += summary.minimum.byteLength + (summary.maximum?.byteLength ?? 0);
@@ -213,12 +220,11 @@ class StereoMapModeHistoryView {
       derivedForMode: (mode, range) => {
         const plane = chunk.modePlanes[mode];
         if (!plane || !chunk.modeRows[mode]?.[row]) return null;
-        const encoded = plane.subarray(first, first + bandCount);
         const values = new Array(bandCount);
         const energyDb = new Array(bandCount);
         const points = new Array(bandCount);
         for (let band = 0; band < bandCount; band += 1) {
-          const value = decodeStereoMapValue(mode, encoded[band]);
+          const value = decodeStereoMapValue(mode, readStereoMapValueCode(plane, first + band));
           const db = decodeStereoMapRelativeEnergy(peakDb, energy[band]);
           const opacity =
             db === null ? undefined : Math.min(1, Math.max(0, (db - gateDb) / GATE_FADE_DB));
@@ -272,7 +278,7 @@ class StereoMapModeHistoryView {
           for (let band = 0; band < this._bandCentersHz.length; band += 1) {
             const energyDb = decodeStereoMapRelativeEnergy(peakDb, chunk.energyDb[first + band]);
             if (!Number.isFinite(energyDb) || energyDb < gateDb + GATE_FADE_DB) continue;
-            updateSummary(summaries[mode], mode, band, plane[first + band]);
+            updateSummary(summaries[mode], mode, band, readStereoMapValueCode(plane, first + band));
           }
         }
         stats.scannedRows += 1;
@@ -306,7 +312,7 @@ class StereoMapModeHistoryView {
       copiedTailRows: this._copiedTailRows ?? 0,
       copiedTailBytes: this._copiedTailBytes ?? 0,
       retainedModes: [...this._modes],
-      arrayTypes: { values: "Int16Array", energy: "Uint8Array" },
+      arrayTypes: { values: "Uint8Array (12-bit)", energy: "Uint8Array" },
       allocatedBytes: { total: allocatedBytes },
       usedBytes: { total: allocatedBytes },
     };
@@ -400,7 +406,7 @@ export class StereoMapModeHistorySlab extends StereoMapModeHistoryView {
       this._modes,
       (mode, band, value, state) => {
         const encoded = state === "valid" ? encodeStereoMapValue(mode, value) : INVALID;
-        chunk.modePlanes[mode][first + band] = encoded;
+        writeStereoMapValueCode(chunk.modePlanes[mode], first + band, encoded);
       },
       this._scratch
     );
@@ -417,7 +423,12 @@ export class StereoMapModeHistorySlab extends StereoMapModeHistoryView {
       for (let band = 0; band < bandCount; band += 1) {
         const energyDb = decodeStereoMapRelativeEnergy(packedPeakDb, chunk.energyDb[first + band]);
         if (!Number.isFinite(energyDb) || energyDb < packedGateDb + GATE_FADE_DB) continue;
-        updateSummary(chunk.holdSummaries[mode], mode, band, chunk.modePlanes[mode][first + band]);
+        updateSummary(
+          chunk.holdSummaries[mode],
+          mode,
+          band,
+          readStereoMapValueCode(chunk.modePlanes[mode], first + band)
+        );
       }
     }
     chunk.rowCount += 1;

@@ -1,8 +1,8 @@
 # Stereo Map 体检表
 
-**状态：** 四维已测，energy codec 已对拍并落地。D1 成本低且稳态零分配；D2 的已知 renderer
-热点已经落地，当前纯 JS 派生不超 0.11 ms；D3 的四小时单 key、单 mode 已从 **1.29 GiB 降到
-0.97 GiB（−24.9%）**，实时与历史 HUD 统一明确标为近似 energy；D4 已通过共享帧级频率栅格
+**状态：** 四维已测，两层量化都已落地。D1 成本低且稳态零分配；D2 的已知 renderer 热点已经落地，
+当前纯 JS 派生不超 0.11 ms；D3 的四小时单 key、单 mode 已从 **1.29 GiB 经 0.97 GiB 降到
+0.81 GiB（累计 −37.2%）**，实时与历史 HUD 统一明确标为近似 energy；D4 已通过共享帧级频率栅格
 降低 23%。
 
 工具：`npm run benchmark:stereo-map-rust`（新增）、
@@ -87,32 +87,47 @@ profile 热点证据，**不继续凭结构猜测优化**。
 
 ## 3. D3 — 历史存储
 
-### 3.1 四小时单 key、单 mode 已降到 0.97 GiB
+### 3.1 四小时单 key、单 mode 已降到 0.81 GiB
 
 25 rows/s、360,000 rows、958 bands 的投影已由 `npm run benchmark:history` 实测结构校验：
 
 | 字段 | 字节 | 占比 |
 | --- | ---: | ---: |
-| mode values，Int16 | 689,760,000 | 66.33% |
-| relative energy，Uint8 | 344,880,000 | 33.16% |
-| timestamps | 2,880,000 | 0.28% |
-| Hold chunk summaries | 1,348,864 | 0.13% |
-| row peaks + presence bitmap + grid | 1,083,832 | 0.10% |
-| **合计** | **1,039,952,696 B（0.97 GiB）** | 100% |
+| mode values，12-bit | 517,320,000 | 59.63% |
+| relative energy，Uint8 | 344,880,000 | 39.75% |
+| timestamps | 2,880,000 | 0.33% |
+| Hold chunk summaries | 1,348,864 | 0.16% |
+| row peaks + presence bitmap + grid | 1,083,832 | 0.12% |
+| **合计** | **867,512,696 B（0.81 GiB）** | 100% |
 
-四 key 是 **4,159,810,784 B（3.87 GiB）**。每多保留一个显示 mode，同 key 仍会增加一张
-689,760,000 B value plane；四 mode 同时打开时单 key 约 **2.90 GiB**。plane 会在 panel 关闭后
+四 key 是 **3,470,050,784 B（3.23 GiB）**。每多保留一个显示 mode，同 key 仍会增加一张
+517,320,000 B value plane；四 mode 同时打开时单 key 约 **2.25 GiB**。plane 会在 panel 关闭后
 删除，但这仍是合法工作区能达到的真实上界。
 
 结构没有“忘了删”的大列：
 
 - mode value 不能从 energy 重建，energy 也不能从归一化 mode value 重建；
-- 改存 PL/PR/C 三张 primitive plane，单 mode 反而从两张增到三张；
+- 改存 PL/PR/ρ 三张 primitive plane **只在同时打开三个以上 mode 时才划算**。按字节算，现在是
+  `1 + 1.5N`（N = 同开 mode 数），primitives 是三张 plane 且 energy 变成可推导：N≤2 时现结构更省，
+  N=4 时 primitives 更省。它把存储换成查询时派生（已测 0.071~0.103 ms/行/mode），
+  **不做**，但结论的适用范围只到 N≤2；
 - bitmap 支持运行中新增 mode，早期 row 确实可能没有该 mode，不能删除；
 - row peak 驱动相对 gate，Hold summary 让四小时查询按 chunk 合并；二者合计不到 0.2%。
 
-因此 mode value 在 **Float/Int16 层面没有无损主体压缩空间**；energy 已按产品允许的近似口径
-压成 Uint8。
+因此 mode value 在 **Float/Int16 层面没有无损主体压缩空间**。但"无损"不是唯一可问的问题——
+energy 减半靠的正是"显示端到底需要多少精度"，而这一问同样适用于 value plane（见 3.3）。
+
+### 3.2b 对旧数据降采样：已否决，理由要记住
+
+任何编码都比不过对旧行降采样。四小时铺在约 1000 px 上，一个像素是 14.4 秒 = 360 行，
+看上去老数据的 40 ms 分辨率完全是浪费。
+
+**但历史窗口可以缩到 5 秒**（`HISTORY_MIN_WINDOW_SEC`），并且能停在保留期内任意位置。
+所以"三小时前的一个 5 秒窗口"是合法视图，那里的 125 行会以每行约 8 像素铺满面板——
+**老行是逐行可见的**。降采样会直接毁掉这个能力。
+
+记在这里是因为它太诱人：下一轮很可能被重新想起来，更糟的情况是有人实现了，
+然后只在一个不常用的视图里悄悄坏掉。
 
 ### 3.2 Uint8 relative-energy：采用统一近似 HUD 后落地
 
@@ -141,6 +156,64 @@ centi-dB codec，以免把旧 codec 误差算给候选。
 同一 codec 后显示 `Energy ≈ −42.3 dB`；超出有限范围显示 `Energy: Below Gate`，invalid 保持
 `Energy: -`。因此不会把量化后的值伪装成原来的精确读数，实时与历史也不会切换口径。
 
+### 3.3 12-bit value plane：把同一个问题问给最大的那张表
+
+energy 之所以能减半，靠的是"显示端需要多少精度"，而不是无损压缩。同一问题此前没有问过
+占 66% 的 value plane。
+
+问一下的话，Int16 里有 4~6 位是画不出也读不出的：
+
+| mode | 原精度 | HUD 显示 | 600 px 面板能分辨 |
+| --- | --- | --- | --- |
+| Position / Correlation | 1/32767 ≈ 0.00003 | 0.01 | ≈ 0.0033 |
+| Mono Loss / M/S Ratio | 0.01 dB | 0.1 dB | 0.24 dB/px |
+
+12 位足够，而且是可验证的足够（`packedHistoryCodecs.test.js` 穷举 20,001 个点）：
+
+| mode | 12 位最大误差 | HUD | 每格占几像素 |
+| --- | ---: | ---: | ---: |
+| Position / Correlation | 0.00024 | 0.01 | 0.147 |
+| M/S Ratio（最宽 −96..48） | 0.0176 dB | 0.1 dB | 0.147 |
+
+**每一项都低于显示精度一个数量级，也低于半个像素。** 这一点和 energy codec 不同：
+energy 有 59.9% 的时候会改变 HUD 上看得见的数字，所以才需要标 `≈`；value plane 的量化
+用户看不出任何差别，因此**不需要**任何新的近似口径标注。
+
+### 码空间必须保持单调
+
+Hold summary 直接对**编码值**取 min/max 而不先解码（`updateExtreme`），所以新码空间的顺序
+是承重的：`invalid` 占 0 且被显式跳过，然后 `-Infinity`、递增的有限区间、`+Infinity`。
+normalized mode 没有无穷值（Position/Correlation 定义在 [-1,1]），有限区间直接铺满剩余空间，
+无穷输入按边界截断——与两族共用 Int16 时的行为一致。
+
+### 存储布局：拆成高字节 + 低半字节
+
+不是三字节存两个值，而是 `hi`（每项一字节）+ `lo`（每两项共用一字节的两个半字节）。
+这样**高字节平面仍然可直接索引**，而它承载了顺序，比较常常在这里就能结束。
+
+实测代价（958 band 一行）：
+
+| | Int16 | 12 位 | 差 |
+| --- | ---: | ---: | ---: |
+| 写一行 | 0.25 µs | 0.90 µs | +0.66 µs |
+| 读一行 | 3.99 µs | 4.01 µs | **+0.02 µs** |
+
+读几乎免费，所以原本设想的"仅在 chunk 封存时再编码、活跃 chunk 保持 Int16"那层复杂度
+**不需要**——单一表示就够，也少一条容易出错的双表示读路径。
+
+### 3.4 写入侧总成本
+
+energy codec 落地时没有量过它加在写入路径上的成本，这里补上（每行 958 band）：
+
+| | 每行 | 25 行/秒占单核 |
+| --- | ---: | ---: |
+| 旧 `encodeCentiDb` | 7.95 µs | 0.020% |
+| relative-energy codec | 20.95 µs | 0.052% |
+| 12 位 plane 写入（增量） | +0.66 µs | 0.002% |
+
+贵了 2.6 倍但绝对值可忽略，四 key 也只有约 0.21% 单核。校正循环基本不触发
+（22 ns/次编码，跑不了几步）。
+
 ## 4. D4 — payload / 协议
 
 已落地：每行不再重复发送 `bandCentersHz`，Spectrum 与 Stereo Map 都引用帧级 grid。单 key 主帧与
@@ -157,8 +230,10 @@ Vectorscope 属于同一个统一协议项目；不为 Stereo Map 单独新增 w
 | D1-2 | 三档 consume + 平滑 output 约 50.6 µs | **不改** |
 | D2-1 | 958-band 派生 0.071–0.103 ms | **不改** |
 | D2-2 | Canvas 尺寸、重画跳过、gradient 复用已合理 | **不再猜改** |
-| D3-1 | 单 mode 由 1.29 GiB 降到 0.97 GiB | **已落地（−24.9%）** |
+| D3-1 | 单 mode 由 1.29 GiB 经 0.97 降到 0.81 GiB | **已落地（累计 −37.2%）** |
 | D3-2 | gate/Hold 分类不变；HUD 明确标为近似 | **已落地** |
+| D3-3 | 12 位 value plane，误差低于显示精度一个数量级 | **已落地（−16.6%）** |
+| D3-4 | 对旧行降采样会毁掉 5 秒历史窗口 | **已否决** |
 | D4-1 | grid 复用已降低 23% | 已落地 |
 | D4-2 | primitive JSON 仍大 | 并入统一二进制协议轮 |
 
