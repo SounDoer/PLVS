@@ -83,3 +83,7 @@ harness = false
 [[bench]]
 name = "vectorscope"
 harness = false
+
+[[bench]]
+name = "stereo_map"
+harness = false
