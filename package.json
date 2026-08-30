@@ -26,6 +26,7 @@
     "benchmark:vectorscope-rust": "cargo bench --manifest-path src-tauri/Cargo.toml --bench vectorscope",
     "benchmark:stereo-map-rust": "cargo bench --manifest-path src-tauri/Cargo.toml --bench stereo_map",
     "benchmark:stereo-map-render": "node scripts/stereo-map-render-benchmark.mjs",
+    "benchmark:frame-wire": "node scripts/frame-wire-benchmark.mjs",
     "experiment:stereo-map-energy-codec": "node scripts/stereo-map-energy-codec-experiment.mjs",
     "profile:webview": "node scripts/webview-cpu-profile.mjs",
     "preview": "vite preview",
