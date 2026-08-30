@@ -1,9 +1,9 @@
 # Stereo Map 体检表
 
-**状态：** 四维已测，energy codec 候选也已对拍。D1 成本低且稳态零分配；D2 的已知 renderer
-热点已经落地，当前纯 JS 派生不超 0.11 ms；D3 是主要问题，四小时单 key、单 mode 为
-**1.29 GiB**，其中 99.6% 是 mode value 与 energy 两张 Int16 平面；Uint8 energy 虽可省 24.9%，
-但会改变约 60% 的一位小数 energy HUD 标签，当前不落生产；D4 已通过共享帧级频率栅格降低 23%。
+**状态：** 四维已测，energy codec 已对拍并落地。D1 成本低且稳态零分配；D2 的已知 renderer
+热点已经落地，当前纯 JS 派生不超 0.11 ms；D3 的四小时单 key、单 mode 已从 **1.29 GiB 降到
+0.97 GiB（−24.9%）**，实时与历史 HUD 统一明确标为近似 energy；D4 已通过共享帧级频率栅格
+降低 23%。
 
 工具：`npm run benchmark:stereo-map-rust`（新增）、
 `npm run benchmark:stereo-map-render`（新增）、
@@ -87,22 +87,22 @@ profile 热点证据，**不继续凭结构猜测优化**。
 
 ## 3. D3 — 历史存储
 
-### 3.1 四小时单 key、单 mode 为 1.29 GiB
+### 3.1 四小时单 key、单 mode 已降到 0.97 GiB
 
 25 rows/s、360,000 rows、958 bands 的投影已由 `npm run benchmark:history` 实测结构校验：
 
 | 字段 | 字节 | 占比 |
 | --- | ---: | ---: |
-| mode values，Int16 | 689,760,000 | 49.81% |
-| energy，centi-dB Int16 | 689,760,000 | 49.81% |
-| timestamps | 2,880,000 | 0.21% |
-| Hold chunk summaries | 1,348,864 | 0.10% |
-| row peaks + presence bitmap + grid | 1,083,832 | 0.08% |
-| **合计** | **1,384,832,696 B（1.29 GiB）** | 100% |
+| mode values，Int16 | 689,760,000 | 66.33% |
+| relative energy，Uint8 | 344,880,000 | 33.16% |
+| timestamps | 2,880,000 | 0.28% |
+| Hold chunk summaries | 1,348,864 | 0.13% |
+| row peaks + presence bitmap + grid | 1,083,832 | 0.10% |
+| **合计** | **1,039,952,696 B（0.97 GiB）** | 100% |
 
-四 key 是 **5,539,330,784 B（5.16 GiB）**。每多保留一个显示 mode，同 key 再加一张
-689,760,000 B plane；四 mode 同时打开时单 key 约 **3.22 GiB**。plane 会在 panel 关闭后删除，
-但这仍是合法工作区能达到的真实上界。
+四 key 是 **4,159,810,784 B（3.87 GiB）**。每多保留一个显示 mode，同 key 仍会增加一张
+689,760,000 B value plane；四 mode 同时打开时单 key 约 **2.90 GiB**。plane 会在 panel 关闭后
+删除，但这仍是合法工作区能达到的真实上界。
 
 结构没有“忘了删”的大列：
 
@@ -111,34 +111,35 @@ profile 热点证据，**不继续凭结构猜测优化**。
 - bitmap 支持运行中新增 mode，早期 row 确实可能没有该 mode，不能删除；
 - row peak 驱动相对 gate，Hold summary 让四小时查询按 chunk 合并；二者合计不到 0.2%。
 
-因此 **Float/Int16 层面没有无损主体压缩空间**。
+因此 mode value 在 **Float/Int16 层面没有无损主体压缩空间**；energy 已按产品允许的近似口径
+压成 Uint8。
 
-### 3.2 Uint8 relative-energy 对拍：视觉可保，HUD 合同不可保
+### 3.2 Uint8 relative-energy：采用统一近似 HUD 后落地
 
 energy 的实际消费者只有 12 dB opacity fade、60 dB gate 和一位小数 HUD。实验编码保存
-`rowPeakDb - energyDb`，以 0.25 dB/step 使用 code 0–254，255 为 sentinel；row peak 继续使用现有
-centi-dB Int16。覆盖范围是 0–63.5 dB。
+`rowPeakDb - energyDb`，以 0.25 dB/step 使用 code 0–253；254 表示 `Below Gate`，255 单独表示
+invalid。row peak 继续使用现有 centi-dB Int16，有限覆盖范围是 0–63.25 dB。
 
 `npm run experiment:stereo-map-energy-codec` 对拍两组确定性输入：6,924,577 个穷举组合（peak
 −120..24 dB、attenuation 0..120 dB）和 512 × 958-band 代表行。所有 baseline 值先经过现有
 centi-dB codec，以免把旧 codec 误差算给候选。
 
-| 策略 | gate 错分 | 最大 energy 误差 | 最大 opacity 误差 | 可见 band HUD 标签变化 |
-| --- | ---: | ---: | ---: | ---: |
-| nearest | 代表集 0.055% | 0.12 dB | 1.0% | 59.8% |
-| gate-safe nearest | **0 / 两组** | 0.25 dB（仅 gate 边界校正） | 1.92% | 59.8% |
-| ceiling | 代表集 0.043% | 0.25 dB | 2.08% | 78.3% |
+| 策略 | gate 错分 | Hold 边界错分 | 最大 energy 误差 | 最大 opacity 误差 | 可见 HUD 变化 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| nearest | 代表集 0.055% | 0.050% | 0.12 dB | 1.0% | 59.8% |
+| 仅 gate-safe | **0** | 0.050% | 0.25 dB | 1.92% | 59.8% |
+| **production** | **0** | **0** | 0.25 dB | 2.0% | 59.9% |
 
-普通 nearest 会在 absolute `−96 dB` gate 与 0.25 dB 栅格不对齐时跨过边界。gate-safe nearest
-只在发生跨界时把 code 校正一格，穷举集与代表集都保持了 **零 gate 错分**；普通位置仍是最大
-0.125 dB 量化误差。任何超过 63.5 dB attenuation 的值都必然已经低于当前 gate，因此 sentinel
-不会删除可见曲线点。实验里约 47% 值命中 sentinel，只反映 attenuation 被均匀铺到 120 dB 的压力
-fixture，不代表真实音频发生率。
+普通 nearest 会在 absolute `−96 dB` gate 与 0.25 dB 栅格不对齐时跨过边界。生产 codec 只在
+发生跨界时把 code 校正一格，并同时保护 gate 和 `gate + 12 dB` 完全不透明边界；后者也是 Hold
+是否纳入一个点的条件。测试对每个 centi-dB row peak，在两个边界上下各 0.01/0.02 dB 穷举，
+两种分类都保持 **零错分**。普通位置最大误差 0.125 dB，边界校正最多 0.25 dB，opacity 误差上界
+约 2.1%。任何超过 63.25 dB attenuation 的值都必然已经低于当前 gate，因此 `Below Gate` 不会
+删除可见曲线点。
 
-编码会把 energy plane 减半，单 mode 四小时约从 **1.29 GiB 降到 0.97 GiB（−24.9%）**，每 key
-省 344,880,000 B；但 0.25 dB 栅格无法维持当前一位小数 HUD：均匀 centi-dB 输入中约 60% 的
-可见标签会改变，超过 63.5 dB 的低能量 hover 标签还会消失。结论是：**曲线视觉语义可以用
-gate-safe 编码保住，但当前 HUD 数据合同不能。** 在产品明确接受近似 HUD 之前不改生产存储。
+编码把 energy plane 减半，每 key 省 344,880,000 B。产品选择统一近似口径：实时和历史都经过
+同一 codec 后显示 `Energy ≈ −42.3 dB`；超出有限范围显示 `Energy: Below Gate`，invalid 保持
+`Energy: -`。因此不会把量化后的值伪装成原来的精确读数，实时与历史也不会切换口径。
 
 ## 4. D4 — payload / 协议
 
@@ -156,13 +157,11 @@ Vectorscope 属于同一个统一协议项目；不为 Stereo Map 单独新增 w
 | D1-2 | 三档 consume + 平滑 output 约 50.6 µs | **不改** |
 | D2-1 | 958-band 派生 0.071–0.103 ms | **不改** |
 | D2-2 | Canvas 尺寸、重画跳过、gradient 复用已合理 | **不再猜改** |
-| D3-1 | 单 mode 1.29 GiB，99.6% 是两张必要主体 plane | 无损结构不动 |
-| D3-2 | 相对 peak Uint8 可省 24.9%，但约 60% HUD 标签改变 | **已评估，暂不落地** |
+| D3-1 | 单 mode 由 1.29 GiB 降到 0.97 GiB | **已落地（−24.9%）** |
+| D3-2 | gate/Hold 分类不变；HUD 明确标为近似 | **已落地** |
 | D4-1 | grid 复用已降低 23% | 已落地 |
 | D4-2 | primitive JSON 仍大 | 并入统一二进制协议轮 |
 
 ## 6. 后续提交建议
 
-1. 若产品以后接受 energy HUD 为约 0.25 dB 精度，可采用已验证的 gate-safe codec；否则保持
-   Int16 centi-dB。
-2. 单 panel 全部走完后，统一设计 Spectrum / Stereo Map / Vectorscope 二进制协议。
+1. 单 panel 全部走完后，统一设计 Spectrum / Stereo Map / Vectorscope 二进制协议。

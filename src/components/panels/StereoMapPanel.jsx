@@ -6,6 +6,7 @@ import {
 } from "../../workspace/AudioDataContext.jsx";
 import { stereoMapRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { normalizePanelControls } from "../../lib/panelControls.js";
+import { quantizeStereoMapEnergyForDisplay } from "../../lib/stereoMapEnergyCodec.js";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { AxisRail } from "./AxisRail.jsx";
@@ -254,12 +255,14 @@ export function StereoMapPanel() {
   let bandCentersHz = [];
   let points = [];
   let energyDb = [];
+  let fullGridPeakDb = -Infinity;
   let holdValues = null;
   if (isSnapshot) {
     if (!snapshotMissing && snapResolved?.derived) {
       bandCentersHz = snapResolved.derived.bandCentersHz ?? [];
       points = snapResolved.derived.points ?? [];
       energyDb = snapResolved.derived.energyDb ?? [];
+      fullGridPeakDb = snapResolved.derived.fullGridPeakDb ?? -Infinity;
     }
     holdValues = snapResolved?.hold ?? null;
   } else {
@@ -275,6 +278,7 @@ export function StereoMapPanel() {
       bandCentersHz = liveDerived.bandCentersHz;
       points = liveDerived.points;
       energyDb = liveDerived.energyDb;
+      fullGridPeakDb = liveDerived.fullGridPeakDb;
     }
     // Live but no per-key result yet: pending treatment (empty chart) until this request's first
     // frame arrives, matching Spectrum/Vectorscope — never fall back to another request's data.
@@ -309,7 +313,11 @@ export function StereoMapPanel() {
           ) * 100,
         freqLabel: formatSpectrumFreq(hz),
         valueLabel: formatStereoMapValue(mode, point, { firstLabel, secondLabel }),
-        energyLabel: formatStereoMapEnergy(energyDb[index]),
+        energyLabel: formatStereoMapEnergy(
+          isSnapshot
+            ? energyDb[index]
+            : quantizeStereoMapEnergyForDisplay(fullGridPeakDb, energyDb[index])
+        ),
         holdLabel,
       };
     },

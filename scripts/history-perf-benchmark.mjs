@@ -22,7 +22,8 @@ const SPECTRUM_BANDS = 958;
 const VECTOR_VALUES = 200;
 const VIEW_WIDTHS = [600, 1200];
 // Stereo Map shares Spectrum's production band-grid width. Retained history stores one selected
-// Int16 mode plane plus one shared Int16 energy plane; live Rust primitives are never retained.
+// Int16 mode plane plus one shared Uint8 relative-energy plane; live Rust primitives are never
+// retained.
 const STEREO_MAP_BANDS = SPECTRUM_BANDS;
 const STEREO_MAP_RETENTION_MINUTES = [30, 60, 120, 240];
 const STEREO_MAP_ROWS_PER_MINUTE = 60 * 25; // 40 ms visual cadence -> 25 rows/second.
@@ -64,13 +65,13 @@ export function projectedScalarSnapshotCopyBounds(
 
 /**
  * Retained-byte projection for one Stereo Map key with one active Position mode: Float64
- * timestamps, one Int16 value plane, one Int16 energy plane, a centi-dB row peak, a row-presence
+ * timestamps, one Int16 value plane, one Uint8 energy plane, a centi-dB row peak, a row-presence
  * bitmap, and two Int16 Hold extrema per chunk. Pure arithmetic, so the four-hour case is cheap.
  */
 export function projectedStereoMapBytes(rows, { bands = STEREO_MAP_BANDS, keyCount = 1 } = {}) {
   const timestamps = rows * Float64Array.BYTES_PER_ELEMENT;
   const modeValues = rows * bands * Int16Array.BYTES_PER_ELEMENT;
-  const energy = rows * bands * Int16Array.BYTES_PER_ELEMENT;
+  const energy = rows * bands * Uint8Array.BYTES_PER_ELEMENT;
   const rowPeaks = rows * Int16Array.BYTES_PER_ELEMENT;
   const modeRows = rows * Uint8Array.BYTES_PER_ELEMENT;
   const bandCenters = bands * Float32Array.BYTES_PER_ELEMENT;

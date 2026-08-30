@@ -15,7 +15,7 @@ function append(slab, timestampMs, { pl = [1, 1], pr = [0.25, 1], c = [0.25, 0] 
 }
 
 describe("StereoMapModeHistorySlab", () => {
-  it("stores only selected modes in packed Int16 planes", () => {
+  it("stores selected modes in Int16 planes and shared relative energy in Uint8", () => {
     const slab = new StereoMapModeHistorySlab(10, ["position"]);
     append(slab, 1);
 
@@ -27,7 +27,7 @@ describe("StereoMapModeHistorySlab", () => {
     expect(row.derivedForMode("correlation", { lowerBound: -1, upperBound: 1 })).toBeNull();
     expect(slab.storageStats()).toMatchObject({
       retainedModes: ["position"],
-      arrayTypes: { values: "Int16Array", energy: "Int16Array" },
+      arrayTypes: { values: "Int16Array", energy: "Uint8Array" },
     });
   });
 

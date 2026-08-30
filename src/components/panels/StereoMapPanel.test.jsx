@@ -457,7 +457,7 @@ describe("StereoMapPanel", () => {
 
     // Band 0 (100 Hz) is near the left edge; Position there is 0% (equal energy).
     expect(container.textContent).toContain("0%");
-    expect(container.textContent).toMatch(/dB/);
+    expect(container.textContent).toMatch(/Energy ≈ .* dB/);
   });
 
   it("formats a clipped M/S Ratio infinity as a bound, not an exact measurement", () => {

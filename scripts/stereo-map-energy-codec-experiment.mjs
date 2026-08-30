@@ -1,6 +1,13 @@
 import { fileURLToPath } from "node:url";
 
 import { decodeCentiDb, encodeCentiDb } from "../src/lib/packedHistoryCodecs.js";
+import {
+  decodeStereoMapRelativeEnergy,
+  encodeStereoMapRelativeEnergy,
+  STEREO_MAP_ENERGY_BELOW_GATE,
+  STEREO_MAP_ENERGY_INVALID,
+  STEREO_MAP_ENERGY_STEP_DB,
+} from "../src/lib/stereoMapEnergyCodec.js";
 
 export const RELATIVE_ENERGY_NO_VALUE = 255;
 export const RELATIVE_ENERGY_STEP_DB = 0.25;
@@ -46,6 +53,8 @@ function createMetrics() {
     sentinel: 0,
     falseVisible: 0,
     falseHidden: 0,
+    falseOpaque: 0,
+    falseTranslucent: 0,
     opacityCompared: 0,
     opacityAbsoluteErrorTotal: 0,
     opacityAbsoluteErrorMax: 0,
@@ -64,15 +73,25 @@ function compareSample(metrics, peakDb, energyDb, rounding) {
   metrics.finiteBaseline += 1;
   const gateDb = Math.max(GATE_FLOOR_DB, peakDb - GATE_BELOW_PEAK_DB);
   const baselineVisible = energyDb >= gateDb;
-  const code = encodeRelativeEnergy(peakDb, energyDb, rounding);
-  const decoded = decodeRelativeEnergy(peakDb, code);
-  if (decoded === null) {
+  const baselineOpaque = energyDb >= gateDb + GATE_FADE_DB;
+  const code =
+    rounding === "production"
+      ? encodeStereoMapRelativeEnergy(peakDb, energyDb)
+      : encodeRelativeEnergy(peakDb, energyDb, rounding);
+  const decoded =
+    rounding === "production"
+      ? decodeStereoMapRelativeEnergy(peakDb, code)
+      : decodeRelativeEnergy(peakDb, code);
+  if (decoded === null || decoded === -Infinity) {
     metrics.sentinel += 1;
-    metrics.hudMissing += 1;
+    if (rounding !== "production") metrics.hudMissing += 1;
   } else {
     const candidateVisible = decoded >= gateDb;
+    const candidateOpaque = decoded >= gateDb + GATE_FADE_DB;
     if (candidateVisible && !baselineVisible) metrics.falseVisible += 1;
     if (!candidateVisible && baselineVisible) metrics.falseHidden += 1;
+    if (candidateOpaque && !baselineOpaque) metrics.falseOpaque += 1;
+    if (!candidateOpaque && baselineOpaque) metrics.falseTranslucent += 1;
     const opacityError = Math.abs(opacity(decoded, gateDb) - opacity(energyDb, gateDb));
     metrics.opacityCompared += 1;
     metrics.opacityAbsoluteErrorTotal += opacityError;
@@ -95,6 +114,8 @@ function finishMetrics(metrics) {
     ...metrics,
     gateMismatchRate:
       (metrics.falseVisible + metrics.falseHidden) / Math.max(1, metrics.finiteBaseline),
+    opaqueMismatchRate:
+      (metrics.falseOpaque + metrics.falseTranslucent) / Math.max(1, metrics.finiteBaseline),
     sentinelRate: metrics.sentinel / Math.max(1, metrics.finiteBaseline),
     meanOpacityAbsoluteError:
       metrics.opacityAbsoluteErrorTotal / Math.max(1, metrics.opacityCompared),
@@ -141,17 +162,25 @@ export function runExperiment() {
       stepDb: RELATIVE_ENERGY_STEP_DB,
       maxAttenuationDb: RELATIVE_ENERGY_MAX_DB,
       sentinel: RELATIVE_ENERGY_NO_VALUE,
+      production: {
+        stepDb: STEREO_MAP_ENERGY_STEP_DB,
+        belowGate: STEREO_MAP_ENERGY_BELOW_GATE,
+        invalid: STEREO_MAP_ENERGY_INVALID,
+        maxAttenuationDb: 253 * STEREO_MAP_ENERGY_STEP_DB,
+      },
     },
     sweep: {
       fixture: "peaks -120..24 dB in 0.25 dB steps; attenuation 0..120 dB in 0.01 dB steps",
       nearest: runSweep("nearest"),
       gateSafe: runSweep("gateSafe"),
+      production: runSweep("production"),
       ceiling: runSweep("ceiling"),
     },
     representative: {
       fixture: "512 deterministic rows x 958 bands; peaks -120..24 dB; attenuation 0..120 dB",
       nearest: runRepresentativeRows("nearest"),
       gateSafe: runRepresentativeRows("gateSafe"),
+      production: runRepresentativeRows("production"),
       ceiling: runRepresentativeRows("ceiling"),
     },
   };

@@ -7,8 +7,20 @@ import {
   computeWaveformHoverPoint,
   computeSpectrogramHoverPoint,
   findMarkerNoteAtX,
+  formatStereoMapEnergy,
   freqToNote,
 } from "./hoverMath";
+
+describe("formatStereoMapEnergy", () => {
+  it("labels the shared live/history readout as approximate", () => {
+    expect(formatStereoMapEnergy(-42.25)).toBe("Energy ≈ -42.3 dB");
+  });
+
+  it("explains energy beyond the retained range and keeps invalid data distinct", () => {
+    expect(formatStereoMapEnergy(-Infinity)).toBe("Energy: Below Gate");
+    expect(formatStereoMapEnergy(null)).toBe("Energy: -");
+  });
+});
 
 function viewOf(rows) {
   return {

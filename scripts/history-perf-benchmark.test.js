@@ -3,6 +3,7 @@ import packageInfo from "../package.json";
 import {
   parseBenchmarkArgs,
   projectedScalarSnapshotCopyBounds,
+  projectedStereoMapBytes,
   projectedVisualBytes,
   scalarLiveHeapBudgetBytes,
 } from "./history-perf-benchmark.mjs";
@@ -57,5 +58,15 @@ describe("scalarLiveHeapBudgetBytes", () => {
     // the 207.6 MiB the object-per-row storage cost, without tripping on ordinary variation.
     expect(scalarLiveHeapBudgetBytes(144_000)).toBeGreaterThan(13 * 1024 * 1024);
     expect(scalarLiveHeapBudgetBytes(144_000)).toBeLessThan(207 * 1024 * 1024);
+  });
+});
+
+describe("projectedStereoMapBytes", () => {
+  it("projects one byte of relative energy per retained band", () => {
+    const rows = 360_000;
+    const bands = 958;
+    const projection = projectedStereoMapBytes(rows, { bands });
+    expect(projection.energy).toBe(rows * bands * Uint8Array.BYTES_PER_ELEMENT);
+    expect(projection.perKeyTotal).toBe(1_039_952_696);
   });
 });

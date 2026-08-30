@@ -343,9 +343,10 @@ export function formatStereoMapDbValue(point, unit = "dB") {
   return "-";
 }
 
-/** Formats the Stereo Map energy gate readout (internal analysis-PSD dB scale). */
+/** Formats the intentionally approximate Stereo Map energy readout (internal analysis-PSD scale). */
 export function formatStereoMapEnergy(db) {
-  return Number.isFinite(db) ? `${db.toFixed(1)} dB` : "-";
+  if (db === -Infinity) return "Energy: Below Gate";
+  return Number.isFinite(db) ? `Energy ≈ ${db.toFixed(1)} dB` : "Energy: -";
 }
 
 /**
