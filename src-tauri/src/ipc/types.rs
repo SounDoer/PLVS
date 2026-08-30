@@ -60,11 +60,15 @@ pub struct AnalysisRequests {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+/// Per-band dB for one request key. The DSP computes these in `f64`, but they are narrowed here:
+/// the frontend's only destination for them is an Int16 centi-dB slab, and `f32` sits three orders
+/// of magnitude below that step (`spectrum_db_narrowing_stays_far_below_display_precision`). The
+/// narrowing halves what the wire carries, which is the point -- see `docs/working/perf/protocol.md`.
 pub struct SpectrumFrameResult {
-  pub smooth_db: Vec<f64>,
-  pub peak_db: Vec<f64>,
-  pub smooth_db_b: Vec<f64>,
-  pub peak_db_b: Vec<f64>,
+  pub smooth_db: Vec<f32>,
+  pub peak_db: Vec<f32>,
+  pub smooth_db_b: Vec<f32>,
+  pub peak_db_b: Vec<f32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -190,9 +194,9 @@ pub struct MeterHistoryEntry {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpectrumVisualEntry {
-  pub smooth_db: Vec<f64>,
+  pub smooth_db: Vec<f32>,
   /// Secondary smoothed per-band dB (empty unless view is lr/ms).
-  pub smooth_db_b: Vec<f64>,
+  pub smooth_db_b: Vec<f32>,
 }
 
 /// Per-request-key vectorscope sample for one visual history tick.

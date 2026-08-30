@@ -4,10 +4,9 @@
 //! Vectorscope, the band grid -- still serializes exactly as before, because the envelope carries
 //! JSON and binary side by side and there is no reason to move them all in one commit.
 //!
-//! Both panels' rows travel at the width the DSP already produces -- `f64` for Spectrum, `f32` for
-//! Stereo Map's energies -- so this changes no value the frontend reads. Narrowing Spectrum to
-//! `f32` halves its bytes again and is worth doing, but it is a precision decision and belongs in
-//! its own commit with its own measurement.
+//! Both panels' rows travel as `f32`. Stereo Map's energies are `f32` in the pipeline already;
+//! Spectrum's dB are narrowed from the DSP's `f64` at the payload boundary, which
+//! [`crate::ipc::types::SpectrumFrameResult`] explains and a pairing test pins.
 //!
 //! The mirror below has to name every field [`AudioFramePayload`] serializes. A field added there
 //! and forgotten here would silently stop reaching the UI, so
@@ -119,8 +118,8 @@ fn wire_visual_entry<'a>(
     spectrum_by_key.insert(
       key.as_str(),
       WireSpectrumVisualEntry {
-        smooth_db: wire.push(WireSection::F64(&sample.smooth_db)),
-        smooth_db_b: wire.push(WireSection::F64(&sample.smooth_db_b)),
+        smooth_db: wire.push(WireSection::F32(&sample.smooth_db)),
+        smooth_db_b: wire.push(WireSection::F32(&sample.smooth_db_b)),
       },
     );
   }
@@ -160,10 +159,10 @@ pub fn encode_audio_frame(frame: &AudioFramePayload) -> Result<Vec<u8>, serde_js
     spectrum_results_by_key.insert(
       key.as_str(),
       WireSpectrumFrameResult {
-        smooth_db: wire.push(WireSection::F64(&result.smooth_db)),
-        peak_db: wire.push(WireSection::F64(&result.peak_db)),
-        smooth_db_b: wire.push(WireSection::F64(&result.smooth_db_b)),
-        peak_db_b: wire.push(WireSection::F64(&result.peak_db_b)),
+        smooth_db: wire.push(WireSection::F32(&result.smooth_db)),
+        peak_db: wire.push(WireSection::F32(&result.peak_db)),
+        smooth_db_b: wire.push(WireSection::F32(&result.smooth_db_b)),
+        peak_db_b: wire.push(WireSection::F32(&result.peak_db_b)),
       },
     );
   }
@@ -302,7 +301,7 @@ mod tests {
     let envelope = envelope_of(&message);
     let result = &envelope["spectrumResultsByKey"]["spectrum:a"];
 
-    assert_eq!(result["smoothDb"]["dtype"], "f64");
+    assert_eq!(result["smoothDb"]["dtype"], "f32");
     assert_eq!(result["smoothDb"]["len"], 2);
     assert_eq!(result["peakDb"]["len"], 1);
     // An absent secondary row is a zero-length section, not a missing field: the frontend reads
@@ -339,8 +338,8 @@ mod tests {
     assert_eq!(smooth["$bin"], 0);
     let json_len = u32::from_le_bytes(message[0..4].try_into().unwrap()) as usize;
     let start = (4 + json_len).div_ceil(8) * 8;
-    let first = f64::from_le_bytes(message[start..start + 8].try_into().unwrap());
-    let second = f64::from_le_bytes(message[start + 8..start + 16].try_into().unwrap());
+    let first = f32::from_le_bytes(message[start..start + 4].try_into().unwrap());
+    let second = f32::from_le_bytes(message[start + 4..start + 8].try_into().unwrap());
 
     assert_eq!(first, -0.25);
     assert_eq!(second, -0.5);
@@ -492,13 +491,19 @@ mod tests {
     assert_eq!(envelope["wireVersion"], FRAME_WIRE_VERSION);
   }
 
+  /// One 958-band dB row as the DSP computes it, before the payload narrows it to `f32`. Kept in
+  /// `f64` so the measurement below can still price the wire this round started from.
+  fn production_db_row_f64() -> Vec<f64> {
+    (0..958)
+      .map(|i| -78.0 + (i as f64 * 0.037).sin() * 31.0 + (i as f64 * 0.31).sin() * 6.0)
+      .collect()
+  }
+
   /// Production-width frame: 958 bands, one Spectrum key in combined view (two live rows plus one
   /// visual row) and one Stereo Map key (three live rows plus three visual rows).
   fn production_width_frame() -> AudioFramePayload {
     let bands = 958;
-    let db_row: Vec<f64> = (0..bands)
-      .map(|i| -78.0 + (i as f64 * 0.037).sin() * 31.0 + (i as f64 * 0.31).sin() * 6.0)
-      .collect();
+    let db_row: Vec<f32> = production_db_row_f64().iter().map(|v| *v as f32).collect();
     let energy_row: Vec<f32> = (0..bands)
       .map(|i| {
         let decades = -9.0 + (i as f64 / bands as f64) * 8.0 + (i as f64 * 0.037).sin() * 1.5;
@@ -569,9 +574,11 @@ mod tests {
     let message = encode_audio_frame(&frame).unwrap();
     let envelope_bytes = u32::from_le_bytes(message[0..4].try_into().unwrap()) as usize;
 
-    // Per-row sizes settle P-6 in the design doc: `stereo-map.md` implied ~18.8 KiB for an f32 row,
-    // which is f64's width. `serde_json` writes an f32 through ryu's f32 form, which is shorter.
-    let spectrum_row_bytes = serde_json::to_vec(
+    // Per-row sizes in the three forms this round has passed through. The f64 JSON row is what the
+    // wire carried before any of it landed; the payload itself now holds f32, so that figure has to
+    // be priced from the pre-narrowing row rather than read off the frame.
+    let spectrum_row_f64_json = serde_json::to_vec(&production_db_row_f64()).unwrap().len();
+    let spectrum_row_f32_json = serde_json::to_vec(
       &frame
         .spectrum_results_by_key
         .values()
@@ -581,13 +588,15 @@ mod tests {
     )
     .unwrap()
     .len();
-    let stereo_row_bytes =
+    // Settles P-6 in the design doc: `stereo-map.md` implied ~18.8 KiB for an f32 row, which is
+    // f64's width. `serde_json` writes an f32 through ryu's f32 form, which is shorter.
+    let stereo_row_f32_json =
       serde_json::to_vec(&frame.stereo_map_results_by_key.values().next().unwrap().pl)
         .unwrap()
         .len();
 
     println!(
-      "production frame: json {json_bytes} B -> message {} B (envelope {envelope_bytes} B,        sections {} B), {:.1}% of the original; one JSON row: spectrum f64 {spectrum_row_bytes} B,        stereo map f32 {stereo_row_bytes} B",
+      "production frame: json {json_bytes} B -> message {} B (envelope {envelope_bytes} B,        sections {} B), {:.1}% of the JSON of the same payload. One 958-band row: spectrum        {spectrum_row_f64_json} B as f64 JSON, {spectrum_row_f32_json} B as f32 JSON, 3832 B as an        f32 section; stereo map {stereo_row_f32_json} B as f32 JSON, 3832 B as a section.",
       message.len(),
       message.len() - envelope_bytes - 4,
       100.0 * message.len() as f64 / json_bytes as f64

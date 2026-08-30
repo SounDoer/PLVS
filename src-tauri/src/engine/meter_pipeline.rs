@@ -71,6 +71,12 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
   }
 }
 
+/// The DSP works in `f64`; the payload carries `f32`. See [`SpectrumFrameResult`] for why that is
+/// far below anything the display or the history slab can represent.
+fn narrowed(row: &[f64]) -> Vec<f32> {
+  row.iter().map(|value| *value as f32).collect()
+}
+
 fn spectrum_payload_from_shared_output(
   output: Option<crate::dsp::SpectralOutput<'_>>,
 ) -> (SpectrumFrameResult, SpectrumVisualEntry) {
@@ -82,12 +88,11 @@ fn spectrum_payload_from_shared_output(
   };
   let (smooth_db_b, peak_db_b) = output
     .secondary
-    .map(|secondary| (secondary.smooth_db.to_vec(), secondary.peak_db.to_vec()))
+    .map(|secondary| (narrowed(secondary.smooth_db), narrowed(secondary.peak_db)))
     .unwrap_or_default();
-  let smooth_db = output.smooth_db.to_vec();
   let result = SpectrumFrameResult {
-    smooth_db,
-    peak_db: output.peak_db.to_vec(),
+    smooth_db: narrowed(output.smooth_db),
+    peak_db: narrowed(output.peak_db),
     smooth_db_b,
     peak_db_b,
   };
@@ -2807,11 +2812,11 @@ mod tests {
     let (_centers, smooth, peak) = meter.last_output();
     let (smooth_db_b, peak_db_b) = meter
       .last_output_secondary()
-      .map(|(smooth_b, peak_b)| (smooth_b.to_vec(), peak_b.to_vec()))
+      .map(|(smooth_b, peak_b)| (narrowed(smooth_b), narrowed(peak_b)))
       .unwrap_or_default();
     let result = SpectrumFrameResult {
-      smooth_db: smooth.to_vec(),
-      peak_db: peak.to_vec(),
+      smooth_db: narrowed(smooth),
+      peak_db: narrowed(peak),
       smooth_db_b,
       peak_db_b,
     };
@@ -2822,20 +2827,67 @@ mod tests {
     (result, visual)
   }
 
+  /// P-7 in `docs/working/perf/protocol.md`: the payload narrows the DSP's `f64` dB to `f32`, which
+  /// halves what the wire carries. This is the pairing that says the narrowing is invisible.
+  ///
+  /// The frontend's only destination for these values is an Int16 centi-dB slab, so 0.01 dB is the
+  /// finest step anything downstream can represent, and the panel displays 0.1 dB. The bound below
+  /// is 0.0001 dB -- two orders under storage, three under display -- swept across the widest range
+  /// the meter can hand out, including the extremes where an `f32` mantissa is worth least.
+  #[test]
+  fn spectrum_db_narrowing_stays_far_below_display_precision() {
+    const CENTI_DB_STEP: f64 = 0.01;
+    const BOUND_DB: f64 = 0.0001;
+
+    let mut worst = 0.0_f64;
+    let mut worst_at = 0.0_f64;
+    for step in 0..=20_000 {
+      let db = -200.0 + (step as f64) * 0.02;
+      let error = (db - db as f32 as f64).abs();
+      if error > worst {
+        worst = error;
+        worst_at = db;
+      }
+    }
+
+    println!("f64 -> f32 dB narrowing: worst {worst:e} dB at {worst_at} dB");
+    assert!(
+      worst < BOUND_DB,
+      "narrowing error {worst:e} dB at {worst_at} dB is not far below the {CENTI_DB_STEP} dB step        the history slab stores"
+    );
+    // The claim in `SpectrumFrameResult`'s comment is three orders below storage; hold it to that.
+    assert!(worst * 1000.0 < CENTI_DB_STEP);
+  }
+
+  /// Narrowing must not be able to reorder two values the display would draw apart. Anything the
+  /// panel can distinguish is at least a centi-dB apart, and `f32` cannot close that gap.
+  #[test]
+  fn narrowing_preserves_the_order_of_values_the_display_can_tell_apart() {
+    for step in 0..20_000 {
+      let db = -200.0 + (step as f64) * 0.02;
+      let higher = db + 0.01;
+      assert!(
+        (db as f32) < (higher as f32),
+        "narrowing collapsed {db} dB and {higher} dB onto the same f32"
+      );
+    }
+  }
+
   fn assert_rows_with_route_tolerance(
-    actual: &[f64],
-    expected: &[f64],
+    actual: &[f32],
+    expected: &[f32],
     tolerance_db: f64,
     label: &str,
   ) {
     assert_eq!(actual.len(), expected.len(), "{label} length");
     if tolerance_db == 0.0 {
+      // Both sides are narrowed the same way, so an exact comparison stays exact.
       assert_eq!(actual, expected, "{label} exact rows");
       return;
     }
     for (index, (&actual, &expected)) in actual.iter().zip(expected).enumerate() {
       assert!(
-        (actual - expected).abs() <= tolerance_db,
+        (actual as f64 - expected as f64).abs() <= tolerance_db,
         "{label}[{index}]: actual={actual}, expected={expected}, tolerance={tolerance_db}"
       );
     }
@@ -3191,8 +3243,10 @@ mod tests {
     // sampled on it either way.
     assert_eq!(pending.band_grid_centers_hz, legacy_centers);
     assert!(ready.band_grid_centers_hz.is_empty());
-    assert_eq!(actual.smooth_db, legacy_smooth);
-    assert_eq!(actual.peak_db, legacy_peak);
+    // The payload narrows to f32 at its boundary, so the legacy f64 rows narrow the same way
+    // before comparison -- still exact, just at the width the payload carries.
+    assert_eq!(actual.smooth_db, narrowed(legacy_smooth));
+    assert_eq!(actual.peak_db, narrowed(legacy_peak));
   }
 
   #[test]
