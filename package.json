@@ -28,6 +28,7 @@
     "benchmark:stereo-map-render": "node scripts/stereo-map-render-benchmark.mjs",
     "benchmark:frame-wire": "node scripts/frame-wire-benchmark.mjs",
     "experiment:stereo-map-energy-codec": "node scripts/stereo-map-energy-codec-experiment.mjs",
+    "experiment:stereo-map-opacity-codec": "node scripts/stereo-map-opacity-codec-experiment.mjs",
     "profile:webview": "node scripts/webview-cpu-profile.mjs",
     "preview": "vite preview",
     "test": "vitest run",
