@@ -419,5 +419,13 @@ centi-dB 的值窄化后仍可区分，即窄化不可能把显示上分得开�
 **没有在 0.14.3 里修**——修它要动 `meter_pipeline.rs`，而那会让该版本已经跑完的
 `smoke:capture` 与 4 小时 soak 不再对应被发布的代码。为了让门变绿去改引擎是本末倒置。
 
-**正确的修法是在产品侧**：一次 push 里把时间戳算一次、frame 和 visual tick 共用，
-让断言由构造保证成立——而不是给断言加容差。
+**已修（2026-08-31，0.14.3 之后）**：`push_pcm_f32_optional` 现在在发射段开头读一次
+`emit_timestamp_ms`，frame、visual tick、loudness tick 三处共用，断言由构造成立。
+没有给断言加容差——那是掩盖，不是修。
+
+file 模式那两处 `timestamp_ms()`（第 765、1056 行）**没有并进来**：它们是 checkpoint 的调度判断
+和各自 batch 条目的媒体时间戳，共用会改变语义。
+
+新增 `a_frame_and_the_ticks_it_carries_share_one_timestamp` 钉住这个不变式。
+**但要清楚它值多少**：如果有人重新引入第二次读数，它也只在毫秒边界恰好落在两次读数之间时才失败，
+和原来那个 flake 一样。真正的保证在"一次 push 只读一个时钟值"这个结构上，不在这个测试上。

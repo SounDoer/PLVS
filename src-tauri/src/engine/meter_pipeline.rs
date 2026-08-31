@@ -847,10 +847,17 @@ impl MeterPipeline {
     let dialogue_percent = lb.as_ref().map(|l| l.dialogue_percent).unwrap_or(0.0);
     let dialogue_lra = lb.as_ref().map(|l| l.dialogue_lra).unwrap_or(0.0);
 
+    // One reading for the whole emit: the frame, its nested visual tick and the loudness tick all
+    // describe the same instant, and `timestamp_ms()` is a wall-clock read in live mode. Reading it
+    // per structure let a millisecond boundary fall between two of them, which is a real (if
+    // harmless) inconsistency in the emitted history and made
+    // `production_spectrum_payload_matches_legacy_...` fail under a loaded parallel suite.
+    let emit_timestamp_ms = self.timestamp_ms();
+
     let loudness_hist_tick = if let Some((m, st)) = self.pending_loudness_hist.take() {
       let waveform = self.waveform.take_history();
       let entry = MeterHistoryEntry {
-        timestamp_ms: self.timestamp_ms(),
+        timestamp_ms: emit_timestamp_ms,
         rms_db: rms_db.clone(),
         lufs_momentary: m,
         lufs_short_term: st,
@@ -902,7 +909,7 @@ impl MeterPipeline {
           .unwrap_or(f64::NEG_INFINITY);
 
         Some(VisualHistEntry {
-          timestamp_ms: self.timestamp_ms(),
+          timestamp_ms: emit_timestamp_ms,
           waveform_min: waveform.min,
           waveform_max: waveform.max,
           dominant_frequency_hz: Vec::new(),
@@ -1013,7 +1020,7 @@ impl MeterPipeline {
       stereo_map_results_by_key: HashMap::new(),
       loudness_layout,
       loudness_layout_known,
-      timestamp_ms: self.timestamp_ms(),
+      timestamp_ms: emit_timestamp_ms,
       // Assigned by the capture bridge when the frame is actually sent (see run_meter_pipeline_bridge_thread).
       seq: 0,
       loudness_hist_tick,
@@ -2258,6 +2265,54 @@ mod tests {
       dialogue_gating,
       VadEngineKind::default(),
     )
+  }
+
+  /// A frame, the visual tick nested inside it, and the loudness tick it carries all describe the
+  /// same instant, so they must be stamped identically. In live mode `timestamp_ms()` is a
+  /// wall-clock read, so taking it once per structure let a millisecond boundary land between two
+  /// of them -- rare, load-dependent, and it made a much larger legacy-comparison test flake. The
+  /// invariant now holds by construction, which is where the actual guarantee lives.
+  ///
+  /// Be clear about what this test is worth: against a reintroduced second reading it would only
+  /// fail when a millisecond boundary happened to fall between the two, exactly as the original
+  /// flake did. It states the invariant and catches a blunt regression; it does not replace
+  /// reading one clock value per emit.
+  #[test]
+  fn a_frame_and_the_ticks_it_carries_share_one_timestamp() {
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+
+    // Enough audio for the loudness and visual cadences to have something to emit.
+    let mut stamped = 0_usize;
+    for _ in 0..40 {
+      let pcm = tone_on_channel(4096, channels as usize, sr as f64, 1000.0, 0);
+      let Some(frame) =
+        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false)
+      else {
+        continue;
+      };
+      if let Some(visual) = frame.visual_hist_tick.as_ref() {
+        assert_eq!(
+          visual.timestamp_ms, frame.timestamp_ms,
+          "visual tick and its frame disagree"
+        );
+        stamped += 1;
+      }
+      if let Some(loudness) = frame.loudness_hist_tick.as_ref() {
+        assert_eq!(
+          loudness.timestamp_ms, frame.timestamp_ms,
+          "loudness tick and its frame disagree"
+        );
+        stamped += 1;
+      }
+    }
+
+    // Without this the test could pass by never producing a tick at all.
+    assert!(
+      stamped > 0,
+      "no frame carried a tick, so nothing was checked"
+    );
   }
 
   #[test]
