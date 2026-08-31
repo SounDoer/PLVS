@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-09-01
+
+### Changed
+
+- Spectrogram's 3D Surface mode now renders through WebGL2, with a closed floor skirt and capture gaps preserved.
+- Spectrogram 3D rendering uses a lower-resolution surface and a faster hairline path to reduce GPU cost.
+- Stereo Map, Spectrum, and Vectorscope avoid unused history and rendering work.
+- Analysis frames and their ticks now share one clock reading.
+
+### Fixed
+
+- Spectrogram 3D Surface cadence stays aligned to the stable sampling grid, removing boundary mismatch and ridge-rebinding jitter.
+- Corrected the Surface color lookup layout and gap tolerance.
+- Surface mode no longer remains blank when its WebGL canvas initializes late.
+
 ## [0.14.3] - 2026-08-31
 
 ### Added
