@@ -124,9 +124,11 @@ resources. This is not the no-GPU case and cannot be answered by WARP.
 
 - `webglcontextlost`: `preventDefault()`, mark the renderer dead, stop scheduling repaints.
 - `webglcontextrestored`: rebuild programs, textures and buffers from the JS-side state, resume.
-- **Two failed restores in one session:** switch the panel's Mode control to 2D Heatmap and surface
-  a one-line notice. No CPU surface renderer is kept for this — the fallback is a mode the user
-  already has.
+- **Two failed restores in one session:** stop, leave the panel dark, and draw a one-line error in
+  its place. **Do not silently change the user's Mode**, which was the first proposal and was
+  rejected: a meter that quietly starts showing something other than what was asked for is worse
+  than one that says it is broken. Switching back to a working mode stays the user's action. No CPU
+  surface renderer is kept for this either.
 
 ## Testing
 
