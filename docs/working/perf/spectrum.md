@@ -248,13 +248,46 @@ D2 长期记着"paint 待测"。后续轮次为读数面板做的 `scripts/webvi
 | 文本 | 102.3 |
 | 节点增删 | 0 |
 
-`d`、`opacity`、`style` 三者数量接近且都约为每秒 100 出头，说明是**同一批元素每次更新写三个属性**。
-Spectrum 是 SVG 路径面板，这与"每次更新重写若干条路径的 d、透明度与样式"一致。
+最初把 `d`、`opacity`、`style` 数量接近解释成了“同一批元素每次更新写三个属性”。这个归因
+**不成立**：计数器只按属性名汇总，并不报告目标元素。回到渲染树后，`d` 的 156 次/秒恰好是
+最重配置的 6 条路径 × 约 26 次/秒；路径本身没有动态 `opacity` 或 `style`。后两项来自包住路径的
+Framer Motion `<motion.g>`：它原本只为 Live/Snapshot 切换提供 180 ms 的轻微淡变，却跟着父组件
+的每个数据帧重新提交动画属性。
 
 同期 profile 中 `aC src/math/spectrumMath.js:38`（`buildSpectrumSvgFromBandsAndDb`）为 1.5%，
-`setAttribute` 合计约 1.6%。**这是量到的第一个 paint 侧数字，不是结论**——是否值得改
-（例如把 opacity/style 合进 class、或减少每次更新重写的路径条数）需要单独一轮，
-本轮不动。
+`setAttribute` 合计约 1.6%。**这是量到的第一个 paint 侧数字，不是结论**。
+
+### 2.10 已落地：删除 Spectrum 独有的 Live/Snapshot 淡变（2026-08-31）
+
+其余历史面板都直接切换 Live/Snapshot；Spectrum 这层淡变是 2026-05-11 的通用 motion 改动留下的
+特例，不再是产品设计。删除 `AnimatePresence`、`motion.g` 和 `useReducedMotion`，改回普通 `<g>`：
+
+- Live/Snapshot 的数据与颜色直接切换，与其余面板一致；
+- 频谱曲线、填充、双平面和 Max Hold 点击热区不变；
+- 稳态不再有动画层反复写 `opacity` / `style`；
+- `d` 仍随真实数据更新，这是有效工作，不以降采样或改变交互来换取更低计数。
+
+原始计数里约 217 次/秒 `opacity` / `style` 写入应当全部消失；总 DOM 变更还会随素材、View、Max
+模式与峰值标签变化，不能脱离同一输入直接相减。
+
+### 2.11 删除淡变后的真实 Live 验证（2026-08-31）
+
+Windows WebView2、VB-Cable + VLC 实时信号，Spectrum 为 M/S + Decay。先用 panel CPU 计数器确认
+父组件确实在持续处理新帧：10 秒内 `buildPaths` **426 次（42.6/s）**，不是一张静止页面。
+随后用增强后的 `webview-dom-count.mjs` 计 10 秒：
+
+| | 每秒 |
+| --- | ---: |
+| Spectrum DOM 变更 | **26.0** |
+| `d` | **26.0** |
+| `opacity` | **0** |
+| `style` | **0** |
+| 节点增删 / 文本 | **0 / 0** |
+
+目标归属也吻合：25.8/s 是 `path[data-spectrum-live][d]`，0.2/s 是
+`path[data-spectrum-max-fill][d]`。这段素材是稳态双声道正弦，未变化的副路径会被 React 留在原值，
+所以总数不能和 §2.9 的文件素材直接比较；但在 426 次 path 重建期间，动画层的两种属性写入都严格
+为零，已经足够关闭这一项。剩下的 DOM 工作只有真实数据改变时才提交的路径坐标，不继续改渲染形态。
 
 ## 3.0 D3 判定结果（2026-08-28，实测）
 
@@ -382,14 +415,15 @@ tick 再 25 次/秒，每份 17.1 KiB。
 误差比它小 **1366 倍**，比面板显示的 0.1 dB 小四个数量级。另有一个测试证明任意两个相差一个
 centi-dB 的值窄化后仍可区分，即窄化不可能把显示上分得开的两条并成一条。
 
-**仍待验证**：以上都是线上字节，webview 侧的实际 CPU 降幅要在真实窗口里采 profile（P-1 / P-2）。
+**真实窗口已验证**：WebView2 解码从 0.689 降到 0.073 ms/帧，`JSON.parse` 从 profile 中消失；
+完整 P-1 / P-2 结果见 `protocol.md` §9.3。
 
 ## 4. D4 — 其他
 
 | # | 待测 | 怎么测 |
 | --- | --- | --- |
 | 4.1 | ~~每帧 Channel payload 字节数与 bin 数~~ **已测**，见 §3.5–§3.7 | 实测；乘以帧率得带宽 |
-| 4.2 | 序列化/反序列化成本 | profiling 中 IPC 回调的占比；协议轮 P-1 / P-2 |
+| 4.2 | ~~序列化/反序列化成本~~ **已测**，见 `protocol.md` §9.3 | WebView2 同帧 A/B + profile |
 | 4.3 | 面板不可见时是否真的停止 ingest | 已有 `useIntakeRouting` 逻辑，需确认 Spectrum 走到了 |
 
 ## 5. 协议改动候选（跨 panel，单独记）

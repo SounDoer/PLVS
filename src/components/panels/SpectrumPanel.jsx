@@ -26,7 +26,6 @@ import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { computeSpectrumHoverIndex, formatSpectrumFreq, freqToNote } from "../../math/hoverMath";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_SPECTRUM, W_SPECTRUM_Y_AXIS } from "@/lib/shellLayout";
 import {
@@ -628,7 +627,6 @@ export function SpectrumPanel() {
     },
     selectedOffset < 0 ? liveSpectrumResult : null
   );
-  const reduceMotion = useReducedMotion();
   // A snapshot hold is folded from untilted history, so it is tilted here; the live hold folds
   // rows that were already tilted on the way in. Both are correct because a maximum and a
   // per-band offset commute.
@@ -711,7 +709,6 @@ export function SpectrumPanel() {
   );
   const displaySpectrumAreaPathB =
     spectrumMaxMode !== "off" && maxContourPathB ? buildSpectrumAreaPath(maxContourPathB) : "";
-  const spectrumPaletteKey = selectedOffset >= 0 ? "snap" : "live";
   const canCaptureCurrentSnapshot = historyChartInteractive && totalSamples > 0;
 
   if (isOverCap || snapshotMissing) {
@@ -847,93 +844,83 @@ export function SpectrumPanel() {
                     </linearGradient>
                   </defs>
                   {displayPanelSpectrumPath ? (
-                    <AnimatePresence mode="sync">
-                      <motion.g
-                        key={spectrumPaletteKey}
-                        initial={reduceMotion ? false : { opacity: 0.88 }}
-                        animate={{ opacity: 1 }}
-                        exit={reduceMotion ? { opacity: 1 } : { opacity: 0.82 }}
-                        transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
-                      >
+                    <g>
+                      <path
+                        data-spectrum-max-fill="primary"
+                        d={displaySpectrumAreaPath}
+                        fill={
+                          selectedOffset >= 0 ? "url(#spectrumFillSnap)" : "url(#spectrumFillLive)"
+                        }
+                      />
+                      {displaySpectrumAreaPathB ? (
                         <path
-                          data-spectrum-max-fill="primary"
-                          d={displaySpectrumAreaPath}
+                          data-spectrum-max-fill="secondary"
+                          d={displaySpectrumAreaPathB}
                           fill={
                             selectedOffset >= 0
-                              ? "url(#spectrumFillSnap)"
-                              : "url(#spectrumFillLive)"
+                              ? "url(#spectrumFillSnapB)"
+                              : "url(#spectrumFillLiveB)"
                           }
                         />
-                        {displaySpectrumAreaPathB ? (
-                          <path
-                            data-spectrum-max-fill="secondary"
-                            d={displaySpectrumAreaPathB}
-                            fill={
-                              selectedOffset >= 0
-                                ? "url(#spectrumFillSnapB)"
-                                : "url(#spectrumFillLiveB)"
-                            }
-                          />
-                        ) : null}
+                      ) : null}
+                      <path
+                        data-spectrum-live="primary"
+                        d={displayPanelSpectrumPath}
+                        fill="none"
+                        stroke={
+                          selectedOffset >= 0
+                            ? "var(--ui-spectrum-primary-snap)"
+                            : "var(--ui-spectrum-primary)"
+                        }
+                        strokeWidth="var(--ui-spectrum-stroke-width)"
+                        vectorEffect="non-scaling-stroke"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      {displayPanelSpectrumPathB ? (
                         <path
-                          data-spectrum-live="primary"
-                          d={displayPanelSpectrumPath}
+                          data-spectrum-live="secondary"
+                          d={displayPanelSpectrumPathB}
                           fill="none"
                           stroke={
                             selectedOffset >= 0
-                              ? "var(--ui-spectrum-primary-snap)"
-                              : "var(--ui-spectrum-primary)"
+                              ? "var(--ui-spectrum-secondary-snap)"
+                              : "var(--ui-spectrum-secondary)"
                           }
                           strokeWidth="var(--ui-spectrum-stroke-width)"
                           vectorEffect="non-scaling-stroke"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
-                        {displayPanelSpectrumPathB ? (
-                          <path
-                            data-spectrum-live="secondary"
-                            d={displayPanelSpectrumPathB}
-                            fill="none"
-                            stroke={
-                              selectedOffset >= 0
-                                ? "var(--ui-spectrum-secondary-snap)"
-                                : "var(--ui-spectrum-secondary)"
-                            }
-                            strokeWidth="var(--ui-spectrum-stroke-width)"
-                            vectorEffect="non-scaling-stroke"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        ) : null}
-                        {/* The clear gesture rides the fill's upper edge. Stroke only: a
+                      ) : null}
+                      {/* The clear gesture rides the fill's upper edge. Stroke only: a
                             clickable fill would turn most of the chart into a reset button and
                             swallow the click that captures a snapshot. */}
-                        {clearMaxHoldOnClick && displaySpectrumMaxHoldPath ? (
-                          <path
-                            data-spectrum-max-hold-hit="primary"
-                            d={displaySpectrumMaxHoldPath}
-                            fill="none"
-                            stroke="transparent"
-                            strokeWidth="10"
-                            vectorEffect="non-scaling-stroke"
-                            style={{ pointerEvents: "stroke", cursor: "pointer" }}
-                            onClick={onMaxHoldClearClick}
-                          />
-                        ) : null}
-                        {clearMaxHoldOnClick && displaySpectrumMaxHoldPathB ? (
-                          <path
-                            data-spectrum-max-hold-hit="secondary"
-                            d={displaySpectrumMaxHoldPathB}
-                            fill="none"
-                            stroke="transparent"
-                            strokeWidth="10"
-                            vectorEffect="non-scaling-stroke"
-                            style={{ pointerEvents: "stroke", cursor: "pointer" }}
-                            onClick={onMaxHoldClearClick}
-                          />
-                        ) : null}
-                      </motion.g>
-                    </AnimatePresence>
+                      {clearMaxHoldOnClick && displaySpectrumMaxHoldPath ? (
+                        <path
+                          data-spectrum-max-hold-hit="primary"
+                          d={displaySpectrumMaxHoldPath}
+                          fill="none"
+                          stroke="transparent"
+                          strokeWidth="10"
+                          vectorEffect="non-scaling-stroke"
+                          style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                          onClick={onMaxHoldClearClick}
+                        />
+                      ) : null}
+                      {clearMaxHoldOnClick && displaySpectrumMaxHoldPathB ? (
+                        <path
+                          data-spectrum-max-hold-hit="secondary"
+                          d={displaySpectrumMaxHoldPathB}
+                          fill="none"
+                          stroke="transparent"
+                          strokeWidth="10"
+                          vectorEffect="non-scaling-stroke"
+                          style={{ pointerEvents: "stroke", cursor: "pointer" }}
+                          onClick={onMaxHoldClearClick}
+                        />
+                      ) : null}
+                    </g>
                   ) : null}
                 </svg>
               </div>

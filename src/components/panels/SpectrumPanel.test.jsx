@@ -1,5 +1,4 @@
 /** @vitest-environment jsdom */
-import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
@@ -17,19 +16,6 @@ import {
   setPanelCpuProfilerEnabled,
   snapshotPanelCpuProfiler,
 } from "../../dev/panelCpuProfiler.js";
-
-vi.mock("framer-motion", () => ({
-  useReducedMotion: () => true,
-  AnimatePresence: ({ children }) => <>{children}</>,
-  motion: {
-    g: React.forwardRef(function MotionG(
-      { initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...props },
-      ref
-    ) {
-      return <g ref={ref} {...props} />;
-    }),
-  },
-}));
 
 function renderPanel(audioData) {
   return render(spectrumPanelTree(audioData));

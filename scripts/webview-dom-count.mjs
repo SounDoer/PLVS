@@ -85,6 +85,7 @@ function pageInstaller() {
         childList: 0,
         characterData: 0,
         attributeNames: {},
+        attributeSites: {},
         childSites: {},
       };
       counts.set(label, row);
@@ -99,6 +100,8 @@ function pageInstaller() {
         row.attributes += 1;
         const name = record.attributeName ?? "(unnamed)";
         row.attributeNames[name] = (row.attributeNames[name] ?? 0) + 1;
+        const site = `${siteOf(record.target)}[${name}]`;
+        row.attributeSites[site] = (row.attributeSites[site] ?? 0) + 1;
       } else if (record.type === "childList") {
         const moved = record.addedNodes.length + record.removedNodes.length;
         row.childList += moved;
@@ -124,6 +127,9 @@ function pageInstaller() {
           attributeNames: Object.entries(row.attributeNames)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 4),
+          attributeSites: Object.entries(row.attributeSites)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 6),
           childSites: Object.entries(row.childSites)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 3),
@@ -167,6 +173,12 @@ export function formatReport({ elapsedSec, rows }, top = DEFAULTS.top) {
         .map(([name, count]) => `${name} ${perSec(count)}/s`)
         .join(", ");
       lines.push(`      attributes written: ${named}`);
+    }
+    if (row.attributeSites?.length > 0) {
+      const named = row.attributeSites
+        .map(([site, count]) => `${site} ${perSec(count)}/s`)
+        .join(", ");
+      lines.push(`      attribute targets: ${named}`);
     }
     if (row.childSites?.length > 0) {
       const named = row.childSites.map(([site, count]) => `${site} ${perSec(count)}/s`).join(", ");

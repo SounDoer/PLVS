@@ -33,6 +33,10 @@ describe("formatReport", () => {
           ["style", 320],
           ["class", 80],
         ],
+        attributeSites: [
+          ["g[style]", 320],
+          ["div[data-level-meter-fill-value][class]", 80],
+        ],
         childSites: [["div[data-axis-ticks]", 40]],
       },
       {
@@ -42,6 +46,7 @@ describe("formatReport", () => {
         characterData: 4,
         total: 12,
         attributeNames: [],
+        attributeSites: [],
         childSites: [],
       },
     ],
@@ -53,6 +58,7 @@ describe("formatReport", () => {
     expect(text).toContain("115.0 mutations/s");
     expect(text).toContain("attributes 100.0");
     expect(text).toContain("style 80.0/s");
+    expect(text).toContain("attribute targets: g[style] 80.0/s");
     // Node churn says nothing without the element it happened under.
     expect(text).toContain("nodes churned under: div[data-axis-ticks] 10.0/s");
   });
