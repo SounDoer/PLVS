@@ -202,20 +202,38 @@ async function sampleCounters(pids, seconds) {
   // should have come back as "this mode does nothing on the GPU".
   const pattern = `pid_(${pids.join("|")})_`;
   const script = [
-    "$ErrorActionPreference='Stop'",
+    // Deliberately NOT ErrorActionPreference='Stop'. The GPU Engine instance list changes while the
+    // query runs -- any process on the machine starting or exiting adds or removes instances -- and
+    // one instance whose sample comes back invalid makes Get-Counter fail the whole call
+    // ("The data in one of the performance counter samples is not valid"). That killed a six-arm
+    // experiment on its last arm. Bad samples carry a non-zero Status, so they are dropped per
+    // sample instead, and a run that loses one instance for one second still reports.
+    "$ErrorActionPreference='Continue'",
     `$re = '${pattern}'`,
-    `Get-Counter -Counter '\\GPU Engine(*)\\Utilization Percentage' -SampleInterval 1 -MaxSamples ${seconds} |`,
+    `Get-Counter -Counter '\\GPU Engine(*)\\Utilization Percentage' -SampleInterval 1 -MaxSamples ${seconds} -ErrorAction SilentlyContinue |`,
     "ForEach-Object {",
     "  $engines = @{}",
     "  foreach ($s in $_.CounterSamples) {",
-    "    if ($s.InstanceName -match $re -and $s.CookedValue -gt 0) {",
+    "    if ($s.Status -eq 0 -and $s.InstanceName -match $re -and $s.CookedValue -gt 0) {",
     "      $engines[$s.InstanceName] = [math]::Round($s.CookedValue, 3)",
     "    }",
     "  }",
     "  [pscustomobject]@{ engines = $engines } | ConvertTo-Json -Compress -Depth 3",
     "}",
+    // Suppressing the error is not enough: PowerShell still exits 1 because one occurred, and a
+    // non-zero exit is how this file reports a broken query. Every sample that mattered has already
+    // been written above, so the exit code here carries nothing the parsed output does not.
+    "exit 0",
   ].join("\n");
-  return parseSampleStream(await powershell(script));
+  const samples = parseSampleStream(await powershell(script));
+  if (samples.length === 0) {
+    // Distinct from "every sample was empty", which is a real reading of an idle window.
+    throw new Error(
+      "the GPU counter query returned no samples at all -- the counter set may be disabled or the " +
+        "process exited mid-run"
+    );
+  }
+  return samples;
 }
 
 export async function measureGpu(options, log = console.log) {

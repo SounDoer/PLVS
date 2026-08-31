@@ -159,4 +159,13 @@ describe("parseSampleStream", () => {
     ].join("\r\n");
     expect(parseSampleStream(stdout)).toEqual([{ pid_1_luid_0_phys_0_eng_0_engtype_3d: 12.5 }, {}]);
   });
+
+  it("separates a run that produced nothing from a run of empty samples", () => {
+    // The caller turns these into different outcomes: no samples at all is a broken query, while
+    // empty samples are a real reading of a window that painted nothing.
+    expect(parseSampleStream("Get-Counter : the data in one of the samples is not valid")).toEqual(
+      []
+    );
+    expect(parseSampleStream('{"engines":{}}')).toEqual([{}]);
+  });
 });
