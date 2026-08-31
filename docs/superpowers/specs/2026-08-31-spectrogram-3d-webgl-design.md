@@ -1,7 +1,7 @@
 # Spectrogram 3D Surface on WebGL — Design
 
 **Date:** 2026-08-31
-**Status:** Proposed
+**Status:** Shipped, with the popping target missed and knowingly accepted — see Acceptance
 **Scope:** Frontend only. `src-tauri` is not touched. Surface mode only; Lines and the 2D heatmap
 keep their current renderers.
 
@@ -38,10 +38,22 @@ interpolated surface.
 one-device-pixel hairline because anything wider leaves the renderer's fast path, and Surface renders
 at 0.75 scale and is stretched. Neither trade exists on the GPU.
 
-The no-GPU objection is measured and small: under `--disable-gpu`, WebGL2 does not disappear, it
+The no-GPU objection looked measured and small: under `--disable-gpu`, WebGL2 does not disappear, it
 falls back to ANGLE over the Microsoft Basic Render Driver, where a mesh this size costs 13.7 ms a
-frame against 1.2 ms on the discrete GPU. That is 1.8x today's CPU cost, not a failure, so **no
-second renderer has to be kept alive as a fallback**.
+frame against 1.2 ms on the discrete GPU. That is 1.8x today's CPU cost, not a failure, so no second
+renderer would have to be kept alive as a fallback.
+
+> **This did not survive contact with the real renderer, and it was the whole basis for deleting the
+> CPU rasteriser.** The 13.7 ms was a synthetic load with a trivial fragment shader. The actual
+> Surface renderer under the same `--disable-gpu` produces no picture at all: the context is healthy
+> (not lost, no GL error, 4x MSAA, ANGLE/Basic Render Driver) and the panel keeps reporting ~14
+> repaints a second at 4.29 ms, but the drawing buffer is frozen — `readPixels` coverage sat at
+> exactly 1.16% for 14 seconds where a working frame is ~36%. MSAA, the depth prepass, `UNSIGNED_INT`
+> indices and a 320k-triangle mesh were each ruled out by direct experiment in the same software
+> driver, all of which render correctly. Root cause unknown. `--disable-gpu` is a synthetic worst
+> case and this is not evidence that real GPU-less machines are broken, but the premise is unproven,
+> so **the CPU rasteriser stays until it is understood**. Details in
+> `docs/working/perf/spectrogram.md` §1.
 
 ## Non-Goals
 
@@ -66,9 +78,18 @@ stays testable, and CI keeps seeing it.
 | `sampleWaterfallGrid` (decimation, epoch-anchored buckets, live-row pinning) | Pure data selection; nothing about it is per-pixel                              |
 | `smoothGridFrequency`, `smoothGridTime`, `fadeGridFrequencyEdges`            | Operate on the height grid, not on pixels                                       |
 | `buildProjection`                                                            | Becomes a 3x3 uniform; the fit itself is unchanged                              |
-| `buildSurfaceLut`                                                            | Becomes the contents of a 256 x 64 RGBA texture, still built and asserted in JS |
-| `edgeFade` (time ends)                                                       | Evaluated per ROW in JS and handed over as a vertex attribute                   |
-| `columnFloorSpan`, `buildRowLut`, `rasterizeSurface`                         | **Deleted** — the depth buffer replaces the walk                                |
+| `buildSurfaceLut`                                                            | Becomes the contents of a 64 x 256 RGBA texture, still built and asserted in JS |
+| `edgeFade` (time ends)                                                       | Evaluated per ROW in JS, multiplied into the grid heights the mesh then reads   |
+| `columnFloorSpan`, `buildRowLut`, `rasterizeSurface`                         | Unreferenced — the depth buffer replaced the walk, but see Acceptance: deletion is on hold |
+
+`edgeFade` was going to be a vertex attribute and is not: the fade is a multiplier on height, so
+applying it to the grid before the mesh is built is the same arithmetic with nothing to plumb. Note
+also that `edgeFade` cannot be deleted with the rasteriser even when that happens —
+`fadeGridFrequencyEdges` calls it, and that stays.
+
+The LUT texture is 64 wide by 256 tall, shade on x and level on y, because `buildSurfaceLut` indexes
+`level * SHADE_LEVELS + shade`. Uploading it the other way round does not look like a broken table;
+it makes the surface shade by slope instead of by level and paints quiet terrain over the floor grid.
 
 Two things move that are not pixels, and both get a new pure module rather than living in a shader:
 
@@ -155,27 +176,45 @@ marker on and off; Colorize on and off; a theme switch while running; a window r
 Measured with the instruments in `docs/working/perf/README.md`, same signal, same terrain coverage,
 per window update rather than per frame:
 
-|                                    |    Now |          Target |
-| ---------------------------------- | -----: | --------------: |
-| Silhouette columns popping >= 1 px | 47–48% |       **< 15%** |
-| Main thread per repaint            | 7.5 ms |         <= 4 ms |
-| GPU 3d engine                      |   5.7% | may rise; < 25% |
-| Same, `--disable-gpu`              | 7.3 ms |        <= 20 ms |
-| Render scale                       |   0.75 |             1.0 |
+|                                    | Target          |     Arm A: CPU |  Arm B: WebGL |
+| ---------------------------------- | --------------- | -------------: | ------------: |
+| Silhouette columns popping >= 1 px  | **< 15%**       | **39.10%**     |    **35.23%** |
+| Main thread per repaint            | <= 4 ms         |        7.10 ms |       3.09 ms |
+| GPU 3d engine                      | may rise; < 25% |         12.85% |        17.17% |
+| Same, `--disable-gpu`              | <= 20 ms        |         7.3 ms | draws nothing |
+| Render scale                       | 1.0             |           0.75 |           1.0 |
 
-If the popping target is missed, the rewrite has not bought the thing it was for and should be
-reverted rather than tuned — the cost was never the problem.
+Both arms are release builds measured in one session on the same material at the same terrain
+coverage (35.6–36.4%): arm A is `cb172a74`, arm B is `54b5b1e6`. The popping figures are the
+accumulated-alpha silhouette, not the original `alpha > 8` one — that definition assumes a hard edge
+and re-quantises an MSAA ramp, which punishes the renderer exactly where antialiasing is working (it
+scores arm B at 56.50% against arm A's 48.88%). The full derivation, and the wrong second attempt
+before it, are in `docs/working/perf/spectrogram.md` §1.
+
+**The popping target is missed, by a wide margin, and this was accepted rather than reverted.** The
+revert criterion below stood: 47% to under 15% was the whole point, and 39.10% to 35.23% is under 7%
+relative. What the rewrite did buy is the two quality debts (render scale back to 1.0, ridges off the
+hairline), less than half the main thread, and MSAA making each displacement continuous instead of a
+hard one-pixel step. That last one is why the eye and the metric disagree: **the displacement barely
+shrank, its rendering became continuous.** The user judged the result acceptable on those grounds
+with the numbers in hand. Anyone reopening this should know the boiling is still there.
+
+This also means the mechanism argument in Motivation is only a third right. The three sources of the
+shimmer are new rows arriving, inter-row interpolation weights moving, and per-column sample position
+drift; WebGL removes the third alone, and the first two are properties of the data pipeline.
 
 ## Risks
 
 - **Driver variance.** ANGLE over D3D11 is the only backend WebView2 uses on Windows, which narrows
   this, but shader compilation failures are still possible in the field. Every failure path lands in
-  the same place as a lost context: switch to 2D Heatmap, do not crash the panel.
+  the same place as a lost context: report, do not crash the panel, and **do not change the user's
+  Mode** — see Context loss, which this bullet used to contradict.
 - **Theme churn.** The LUT is a texture now; a theme switch must rebuild and re-upload it. The
   existing identity-keyed cache already knows when that happens.
 - **Resize churn.** Reallocating the drawing buffer on every resize tick is expensive; debounce as
   `useCanvasSize` already does for the 2D path.
 - **A second rendering stack to maintain.** Real and unavoidable. Bounded by keeping Lines and the
   heatmap on canvas 2D, and by keeping everything except rasterisation in shared JS.
-- **The boiling may not go away.** The mechanism argument is sound but unproven on this codebase.
-  The acceptance bar above is the check, and it is a revert criterion rather than a tuning target.
+- **The boiling may not go away.** It did not. The mechanism argument was sound and turned out to
+  cover one of the three contributors; see Acceptance for the measured outcome and why it was
+  accepted anyway.

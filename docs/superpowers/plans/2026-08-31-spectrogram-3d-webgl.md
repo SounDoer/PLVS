@@ -503,6 +503,12 @@ git commit -m "feat(spectrogram): draw Surface mode through the GL renderer"
 
 ### Task 7: Measure against the acceptance table before deleting anything
 
+**DONE (2026-08-31).** Results and method in `docs/working/perf/spectrogram.md` §1; the acceptance
+table in the spec now carries the measured numbers. The popping target was missed and the outcome
+was accepted rather than reverted. Three rig traps this task hit are recorded there — read them
+before re-running: the process-name kill that silently leaves an arm alive, the window size that
+changes per launch, and the capture device that does not persist across launches.
+
 **Files:** none — this is the gate.
 
 - [ ] **Step 1: Fill the window with real audio**
@@ -535,6 +541,13 @@ entries, and commit.
 ---
 
 ### Task 8: Delete the CPU rasteriser
+
+**ON HOLD — do not start.** Task 7 ran and its popping target was missed (accepted rather than
+reverted; see the spec's Acceptance). That alone would not block this task, but the separate finding
+does: under `--disable-gpu` the WebGL surface produces no picture, and "WARP works, just slower" was
+the entire argument for keeping no fallback. Deleting the CPU rasteriser now would remove the only
+fallback on the strength of a premise that has been refuted. Resume when the `--disable-gpu` failure
+is understood — `docs/working/perf/spectrogram.md` §1 has what is known.
 
 Only after Task 7 passes.
 
