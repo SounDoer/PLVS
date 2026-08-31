@@ -541,7 +541,7 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 ### Spectrum
 
 ```
---ui-spectrum-stroke-width           1.5    Trace stroke width; also the 3D spectrogram ridges
+--ui-spectrum-stroke-width           1.5    Trace stroke width; also the 3D spectrogram scrub marker
 --ui-spectrum-fill-top-opacity       0.22   Fill gradient top opacity
 --ui-spectrum-fill-bottom-opacity    0.03   Fill gradient bottom opacity
 --ui-spectrum-grid-opacity           0.08   Grid line opacity
