@@ -18,17 +18,18 @@ import { sampleWaterfallGrid } from "../math/spectrogram3dGrid.js";
 import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js";
 import { readCssToken } from "../theme/cssTokens.js";
 import {
-  buildRowLut,
   buildSurfaceLut,
   columnFloorSpan,
-  columnStrideFor,
+  edgeFade,
   edgeRampWidth,
   fadeGridFrequencyEdges,
   packArgb,
-  rasterizeSurface,
   smoothGridFrequency,
   smoothGridTime,
 } from "../math/spectrogram3dSurface.js";
+import { buildSurfaceMesh } from "../math/spectrogram3dMesh.js";
+import { buildGlUniforms } from "../math/spectrogram3dGlUniforms.js";
+import { createSurfaceRenderer } from "./spectrogram3dGlRenderer.js";
 
 // Cost tracks the product of these two, so they can be traded against each other while tuning:
 // more ridges reads as denser time resolution, more points as finer spectral detail.
@@ -77,25 +78,6 @@ const GRADIENT_STOPS = 16;
  * exception and still reads the token -- see where it is stroked.
  */
 const RIDGE_LINE_WIDTH = 1;
-/**
- * Surface rasterises into a buffer this fraction of the canvas and lets the composite stretch it
- * back up. Cost is per pixel walked, so it falls with the area: 0.75 is about half the work.
- *
- * Measured at 1383x640 (`docs/working/perf/spectrogram.md` §1): the rasteriser is 92% of a Surface
- * repaint -- the smoothers, the row LUT and the buffer clear are together under 8%, so the only
- * lever that pays is how many pixels get walked. 7.9 ms at full size, 4.1 ms at 0.75.
- *
- * Scaling rather than striding columns is the choice with the better artefact. A column stride
- * replicates each walked column across its neighbours, which is a hard-edged vertical band; the
- * upscale is bilinear, which reads as softness. The GPU also has the headroom for it and the
- * renderer does not -- this mode uses ~7% of the 3d engine against 383 ms/s of main thread.
- *
- * This works because `buildProjection` is separable and linear in width and height: a projection
- * fitted to the smaller buffer, stretched back by the same factor, lands exactly where the
- * full-size one would. `spectrogram3dProjection.test.js` pins that property -- a margin term that
- * did not scale would slide the surface off the floor grid, which is drawn at full size.
- */
-const SURFACE_RENDER_SCALE = 0.75;
 // How many ridge spacings the old-end fade is spread over. Enough to read as a dissolve rather
 // than a blink, short enough that it costs almost none of the visible history. Lines multiplies it
 // by its own row spacing; Surface, whose row count is no longer the same number, by
@@ -170,7 +152,6 @@ function cssVar(el, name, fallback) {
  * resolution the higher cap exists to buy. 4096 gives 10 buckets per row at the ceiling and 7 at
  * the largest projection cap measured (588 rows), for 0.026 ms against 1024's 0.007.
  */
-const ROW_LUT_SIZE = 4096;
 const ROW_GAP_TOLERANCE = 1.5;
 
 /**
@@ -295,6 +276,35 @@ function buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx) {
   return gradient;
 }
 
+/** A packed ARGB word as the 0..1 RGBA vector a GL uniform takes. */
+function argbToRgba(argb) {
+  return [
+    (argb & 0xff) / 255,
+    ((argb >>> 8) & 0xff) / 255,
+    ((argb >>> 16) & 0xff) / 255,
+    ((argb >>> 24) & 0xff) / 255,
+  ];
+}
+
+/**
+ * What a dead GL context leaves on screen.
+ *
+ * One line, on the 2D canvas, in place of the surface. The panel deliberately does NOT fall back to
+ * another mode: a meter that quietly starts showing something other than what was asked for is
+ * worse than one that says it is broken, and switching back is the user's action to take.
+ */
+function drawSurfaceError(ctx, width, height, ink) {
+  const dpr = Math.max(1, width / Math.max(1, ctx.canvas.clientWidth));
+  const fontPx = parseFloat(cssVar(ctx.canvas, "--ui-fs-axis", "11")) || 11;
+  ctx.save();
+  ctx.fillStyle = ink;
+  ctx.font = `${fontPx * dpr}px ${cssVar(ctx.canvas, "--ui-font-mono", "monospace")}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("3D surface unavailable: graphics context lost", width / 2, height / 2);
+  ctx.restore();
+}
+
 const FLOOR_DIVISIONS = 4;
 
 function drawFloor(ctx, proj, grid, gridSubtle, dpr) {
@@ -386,6 +396,7 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
 
 export function useSpectrogram3dCanvas({
   canvasRef,
+  glCanvasRef,
   snapRef,
   projectionRef,
   oldestMs,
@@ -429,6 +440,11 @@ export function useSpectrogram3dCanvas({
     lut: null,
   });
   const resolveArgbRef = useRef(makeArgbResolver());
+  // The GL renderer, and the canvas it was built against. Surface mode mounts a fresh canvas every
+  // time it is entered, and a renderer holds a context bound to one canvas, so the pair has to be
+  // remembered together: comparing them is how a stale renderer gets torn down rather than drawn
+  // into a canvas that is no longer in the tree.
+  const rendererRef = useRef({ canvas: null, renderer: null });
   const lastPaintRef = useRef({
     len: -1,
     version: -1,
@@ -493,6 +509,16 @@ export function useSpectrogram3dCanvas({
     mode,
     themeColors,
   ]);
+
+  // The GL context outlives every repaint, so it has to be released on unmount rather than on the
+  // next draw -- there is no next draw.
+  useEffect(() => {
+    const held = rendererRef.current;
+    return () => {
+      held.renderer?.dispose();
+      if (rendererRef.current === held) rendererRef.current = { canvas: null, renderer: null };
+    };
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -597,19 +623,10 @@ export function useSpectrogram3dCanvas({
       // detail of one branch, and the cursor lands on the canvas.
       if (projectionRef) projectionRef.current = proj;
 
-      // Surface's own pixel space. Everything inside its branch that is measured in pixels is
-      // measured in THESE, and the composite stretches the result back over the canvas.
+      // Surface used to rasterise into a smaller buffer and stretch the result back, because the
+      // per-pixel walk cost what it cost. The GPU does not, so there is one pixel space now and
+      // every length below is in it.
       const isSurface = p.mode === "surface";
-      const surfaceW = Math.max(1, Math.round(W * SURFACE_RENDER_SCALE));
-      const surfaceH = Math.max(1, Math.round(H * SURFACE_RENDER_SCALE));
-      const surfaceProj = isSurface
-        ? buildProjection({
-            azimuthDeg: view.azimuthDeg,
-            elevationDeg: view.elevationDeg,
-            width: surfaceW,
-            height: surfaceH,
-          })
-        : null;
 
       const pointCount = pointCountFor(W);
       const cache = cacheRef.current;
@@ -637,7 +654,7 @@ export function useSpectrogram3dCanvas({
       // complete path per ridge instead of point-sampling, so ridgeCountFor(W) alone is still right
       // for it, and this cap must not apply there.
       const maxRidges = isSurface
-        ? Math.min(SURFACE_RIDGE_MAX, surfaceRowCap(surfaceProj, surfaceH))
+        ? Math.min(SURFACE_RIDGE_MAX, surfaceRowCap(proj, H))
         : ridgeCountFor(W);
       const grid = sampleWaterfallGrid({
         view: snaps,
@@ -677,7 +694,10 @@ export function useSpectrogram3dCanvas({
       const selectedStrokePx = 2 * dpr * strokeCss;
 
       if (p.floor) {
-        drawFloor(ctx, proj, gridColor, gridSubtleColor, dpr);
+        // Surface draws its floor in GL instead, one call before the terrain: a WebGL canvas
+        // stacked behind a 2D one would put the grid on top of the surface it belongs under.
+        // Labels stay here in both modes -- they are text, and text belongs above the scene.
+        if (!isSurface) drawFloor(ctx, proj, gridColor, gridSubtleColor, dpr);
         drawAxisLabels(ctx, proj, axisLabelColor, dpr);
       }
 
@@ -703,54 +723,66 @@ export function useSpectrogram3dCanvas({
         }
       }
 
-      if (p.mode === "surface") {
+      if (isSurface) {
+        const glCanvas = glCanvasRef?.current;
+        if (!glCanvas) return;
+
+        // One renderer per canvas. Leaving Surface unmounts the canvas, so the next entry brings a
+        // new one and the old context has to go with it rather than leaking a GL context per visit.
+        let held = rendererRef.current;
+        if (held.canvas !== glCanvas) {
+          held.renderer?.dispose();
+          try {
+            held = { canvas: glCanvas, renderer: createSurfaceRenderer(glCanvas) };
+          } catch {
+            held = { canvas: glCanvas, renderer: null };
+          }
+          rendererRef.current = held;
+        }
+        const renderer = held.renderer;
+        // A context that cannot be brought back reports, it does not switch modes. Quietly showing
+        // a different meter than the one the user asked for is worse than saying it is broken, and
+        // leaving Surface stays their action.
+        if (!renderer || renderer.state === "dead") {
+          drawSurfaceError(ctx, W, H, axisLabelColor);
+          return;
+        }
+        if (renderer.state !== "ok") return;
+
         // Surface-only: flatten per-bin jitter into terrain (see the two smoothers' docs). The
         // grid is rebuilt on every repaint, so mutating it here cannot leak into the Lines branch
         // of a later frame; within THIS frame the branches are exclusive.
         smoothGridFrequency(grid.heights, grid.count, grid.pointCount);
-        // The decimation stride in tFrac drives the row LUT's coverage tolerance and the time
-        // smoother's gap detection. Both mean "a row apart", so both track the real stride. Falls
-        // back to the mean row spacing only when the stride is unusable (non-finite span/sampleMs).
+        // The decimation stride in tFrac drives the time smoother's gap detection and the mesh's:
+        // both mean "a row apart", so both track the real stride. Falls back to the mean row
+        // spacing only when the stride is unusable (non-finite span/sampleMs).
         const rawStrideTFrac = grid.strideMs / span;
         const strideTFrac =
           Number.isFinite(rawStrideTFrac) && rawStrideTFrac > 0
             ? rawStrideTFrac
             : 1 / Math.max(1, grid.count - 1);
         const rowGapTFrac = ROW_GAP_TOLERANCE * strideTFrac;
-        // The edge fades used to ride the same stride, which was harmless only while the row count
-        // was fixed at ridgeCountFor(W). Once Surface resolves up to SURFACE_RIDGE_MAX rows the two
-        // quantities part company: a stride-derived fade would silently narrow to a third of the
-        // width it was tuned at, turning a reviewed dissolve back into the near-pop it replaced.
-        // They are not the same measurement. Gap tolerance asks "how far apart are two rows";
-        // the fades ask "how much of the WINDOW does the terrain sink over", which is a spatial
-        // property of the window edge and has nothing to say about how finely time is sampled.
-        // Pinning them to ridgeCountFor(W) keeps every tuned width exactly where it was reviewed,
-        // at every panel size, while leaving the row count free to move.
+        // The edge fades do NOT ride the same stride. Gap tolerance asks "how far apart are two
+        // rows"; the fades ask "how much of the WINDOW does the terrain sink over", which is a
+        // spatial property of the window edge and says nothing about how finely time is sampled.
+        // Pinning them to ridgeCountFor(W) keeps every tuned width where it was reviewed, at every
+        // panel size, while leaving the row count free to move.
         const fadeStrideTFrac = 1 / ridgeCountFor(W);
         // ...and then widened, when the view demands it, so the ramps keep a readable slope on
-        // SCREEN rather than a fixed share of the data. See edgeRampWidth: the tuned widths above
-        // are the floor, so at steep views nothing moves, and the cost is paid only at the flat
-        // views where the fade would otherwise land as a vertical face.
-        //
-        // The two time ends share one width once geometry binds, which drops the deliberate 2 vs
-        // 2.5 stride asymmetry between them. That asymmetry exists to keep the live moment from
-        // being dimmed as hard as departing history, and it is worth giving up here: at these views
-        // the alternative is not a brighter live edge but a wall standing at it.
-        // In the surface buffer's pixels, not the canvas's: every width derived from them is handed
-        // to the rasteriser, and the composite scales the result back. Mixing the two would widen
-        // each ramp by 1 / SURFACE_RENDER_SCALE on screen.
-        const risePx = surfaceProj.heightScale * view.heightGain;
-        const timeAxisPx = Math.hypot(surfaceProj.tx, surfaceProj.ty);
-        const freqAxisPx = Math.hypot(surfaceProj.fx, surfaceProj.fy);
+        // SCREEN rather than a fixed share of the data. See edgeRampWidth: the tuned widths are the
+        // floor, so at steep views nothing moves, and the cost is paid only at the flat views where
+        // the fade would otherwise land as a vertical face.
+        const risePx = proj.heightScale * view.heightGain;
+        const timeAxisPx = Math.hypot(proj.tx, proj.ty);
+        const freqAxisPx = Math.hypot(proj.fx, proj.fy);
         const rampWidth = (min, max, axisPx) => edgeRampWidth(risePx, axisPx, min, max);
         // Over the DECIMATED rows only. The pinned live row is a fraction of a stride from its
         // neighbour rather than a stride, so letting it into the kernel would both under-smooth the
         // last bucket row and feed that row the live frame's raw jitter at a quarter weight --
-        // reintroducing, one row further in, the flicker the whole entering-edge treatment removes.
-        // The live row itself needs no time smoothing: the edge fade takes it to ~0 height.
+        // reintroducing, one row further in, the flicker the entering-edge treatment removes.
         smoothGridTime(grid.heights, grid.tFracs, grid.bucketCount, grid.pointCount, rowGapTFrac);
-        // After both smoothers, so the ramp is not itself smeared back up by a later kernel, and
-        // over every row including the pinned live one -- the frequency limits are a property of the
+        // After both smoothers, so the ramp is not smeared back up by a later kernel, and over
+        // every row including the pinned live one -- the frequency limits are a property of the
         // band, not of which frames happen to be in the window.
         fadeGridFrequencyEdges(
           grid.heights,
@@ -758,13 +790,45 @@ export function useSpectrogram3dCanvas({
           grid.pointCount,
           rampWidth(FREQ_FADE_FRAC, FREQ_FADE_MAX_FRAC, freqAxisPx)
         );
-        const off = ensureOffscreen(offscreenRef, surfaceW, surfaceH);
-        // The monochrome ramp needs the theme ink as RGB. resolveArgbRef probes a colour by
-        // writing a pixel to the offscreen canvas and reading it back; probing before the LUT
-        // cache check (and before off.pixels.fill(0)) keeps the probe write from being confused
-        // with buffer prep -- it is not load-bearing, putImageData below overwrites the whole
-        // canvas regardless.
-        const inkArgb = p.colorize ? 0 : resolveArgbRef.current(off.ctx, foreground);
+
+        // The two end faces of the solid: sink the terrain into the floor rather than letting
+        // cross-sections pop in and out. Applied per ROW, into the grid the mesh then reads -- the
+        // old renderer multiplied per sampled pixel instead, but the ramp is a property of the
+        // row's position in the window either way.
+        //
+        // The ramps land where the TERRAIN ends, not where the window does. With a mesh those are
+        // simply the first and last rows: geometry stops at the last row, where the walk used to
+        // hold a horizon past it. Sinking at the window edge instead leaves the ramp partway down
+        // when the data runs out, which renders as the end face standing up off the floor.
+        const enterFadeTFrac = rampWidth(
+          ENTER_FADE_STRIDES * fadeStrideTFrac,
+          TIME_FADE_MAX_FRAC,
+          timeAxisPx
+        );
+        const exitFadeTFrac = rampWidth(
+          EDGE_FADE_RIDGES * fadeStrideTFrac,
+          TIME_FADE_MAX_FRAC,
+          timeAxisPx
+        );
+        const exitEdgeTFrac = grid.tFracs[0];
+        const enterEdgeTFrac = grid.tFracs[grid.count - 1];
+        for (let r = 0; r < grid.count; r++) {
+          const fade = edgeFade(
+            grid.tFracs[r],
+            enterFadeTFrac,
+            exitFadeTFrac,
+            exitEdgeTFrac,
+            enterEdgeTFrac
+          );
+          if (fade >= 1) continue;
+          const base = r * grid.pointCount;
+          for (let q = 0; q < grid.pointCount; q++) grid.heights[base + q] *= fade;
+        }
+
+        // A 1x1 scratch canvas, kept only so a CSS colour can be resolved to bytes -- see
+        // makeArgbResolver. The full-size offscreen buffer the rasteriser drew into is gone.
+        const probe = ensureOffscreen(offscreenRef, 1, 1);
+        const inkArgb = p.colorize ? 0 : resolveArgbRef.current(probe.ctx, foreground);
         // Cached by identity, matching the repaint-skip guard's `last.colormapLut === p.colormapLut`
         // above: the theme layer hands the hook a new array whenever the colormap actually changes,
         // so identity is sufficient. Do not switch this to a stringified key -- colormapLut is a
@@ -791,66 +855,38 @@ export function useSpectrogram3dCanvas({
             }),
           };
         }
-        const rowLut = buildRowLut(grid.tFracs, grid.count, ROW_LUT_SIZE, rowGapTFrac);
-        // resolveArgbRef probes a colour by writing a pixel to the offscreen canvas and reading it
-        // back. Doing that before off.pixels.fill(0) keeps the probe write and the buffer prep from
-        // being confused with each other; it is not load-bearing -- putImageData below writes the
-        // whole canvas regardless of what the probe left behind.
-        const highlightArgb = resolveArgbRef.current(off.ctx, selection);
-        off.pixels.fill(0);
-        rasterizeSurface({
-          out: off.pixels,
-          width: surfaceW,
-          height: surfaceH,
-          proj: surfaceProj,
-          grid,
-          rowLut,
-          lut: surfaceLutRef.current.lut,
+
+        // The scrub band, as a tFrac range rather than a count of rows. The old renderer widened it
+        // by whole rows and had to round up so it could not vanish once rows were dense on screen;
+        // a range in the units the shader already carries is the same weight on screen at any row
+        // density, with nothing to round.
+        const highlightBand =
+          selectedRidge >= 0 && timeAxisPx > 0
+            ? [
+                grid.tFracs[selectedRidge] - selectedStrokePx / 2 / timeAxisPx,
+                grid.tFracs[selectedRidge] + selectedStrokePx / 2 / timeAxisPx,
+              ]
+            : [1, 0];
+
+        const mesh = buildSurfaceMesh(grid, { rowGapTFrac, skirt: true });
+        const uniforms = buildGlUniforms({
+          proj,
+          width: W,
+          height: H,
           heightGain: view.heightGain,
-          highlightArgb,
-          highlightRow: selectedRidge,
-          // The band is one row wide, so its width on screen is the row spacing -- which fell from
-          // 6.6 to 2.3 device pixels at 1920x600 when the row cap went from 137 to 400. The marker
-          // did not change, the rows moved under it. Convert the width Lines gives its selected
-          // ridge back into rows so both modes mark the scrubbed moment with the same weight.
-          //
-          // The band with spread s covers `2s + 1` rows, so `s = (target/spacing - 1) / 2`, rounded
-          // up because an invisible marker is worse than a slightly heavy one. At a foreshortened
-          // view this can be many rows; it is still the same few pixels, which is the point. A
-          // degenerate axis gives a non-finite ratio -- fall back to the single row rather than
-          // letting Infinity highlight the whole surface.
-          highlightSpread: (() => {
-            const rowSpacingPx = strideTFrac * timeAxisPx;
-            const ratio = (selectedStrokePx * SURFACE_RENDER_SCALE) / rowSpacingPx;
-            return Number.isFinite(ratio) ? Math.max(0, Math.ceil((ratio - 1) / 2)) : 0;
-          })(),
-          columnStride: columnStrideFor(surfaceW, surfaceH),
-          maxSteps: surfaceH,
-          // The two end faces of the solid: sink the terrain into the floor rather than letting
-          // cross-sections pop in and out. Still asymmetric, mirroring Lines (whose newest ridge is
-          // deliberately not faded), but only mildly so -- see ENTER_FADE_STRIDES.
-          enterFadeTFrac: rampWidth(
-            ENTER_FADE_STRIDES * fadeStrideTFrac,
-            TIME_FADE_MAX_FRAC,
-            timeAxisPx
-          ),
-          exitFadeTFrac: rampWidth(
-            EDGE_FADE_RIDGES * fadeStrideTFrac,
-            TIME_FADE_MAX_FRAC,
-            timeAxisPx
-          ),
-          // Sink the terrain where the terrain actually ends. The row LUT knows: coverage stops at
-          // the end row plus however far the hold tolerance carries it, and that is short of the
-          // window edge by up to a frame period, because the edge comes from the 10 Hz loudness
-          // timeline and the rows from 25 Hz capture. Fading to the window edge instead leaves the
-          // ramp partway down when the data runs out, which is the end face standing off the floor.
-          enterEdgeTFrac: rowLut.lastCoveredTFrac,
-          exitEdgeTFrac: rowLut.firstCoveredTFrac,
         });
-        off.ctx.putImageData(off.image, 0, 0);
-        // Stretched, not blitted: the buffer is SURFACE_RENDER_SCALE of the canvas and this is
-        // where the resolution comes back, on the GPU, which has the headroom for it.
-        ctx.drawImage(off.canvas, 0, 0, W, H);
+        renderer.resize(W, H);
+        renderer.draw({
+          mesh,
+          uniforms,
+          lut: surfaceLutRef.current.lut,
+          lutToken: surfaceLutRef.current,
+          floor: !!p.floor,
+          gridColour: argbToRgba(resolveArgbRef.current(probe.ctx, gridColor)),
+          gridSubtleColour: argbToRgba(resolveArgbRef.current(probe.ctx, gridSubtleColor)),
+          highlightBand,
+          highlightColour: argbToRgba(resolveArgbRef.current(probe.ctx, selection)),
+        });
         return;
       }
 
@@ -957,6 +993,7 @@ export function useSpectrogram3dCanvas({
     };
   }, [
     canvasRef,
+    glCanvasRef,
     snapRef,
     projectionRef,
     sourceVersion,

@@ -93,6 +93,9 @@ export function SpectrogramPanel() {
   );
   const spectrogramMode = normalizedPanelControls.spectrogramMode;
   const is3d = spectrogramMode !== "heatmap";
+  // Only Surface moved to WebGL. Lines and the 2D heatmap keep the single 2D canvas, and no mode
+  // may have two renderers live at once, so this canvas exists exactly while Surface is showing.
+  const isGlSurface = spectrogramMode === "surface";
   const frequencyViewport = useAxisViewport("frequency", {
     minKey: "spectrogramYMinFreq",
     maxKey: "spectrogramYMaxFreq",
@@ -237,6 +240,11 @@ export function SpectrogramPanel() {
     };
   }, [is3d, isOverCap]);
   const canvasRef = useRef(null);
+  // Surface mode only. The terrain and the floor grid are drawn here, UNDER the 2D canvas, which
+  // keeps the axis labels and every pointer handler: labels are text and belong on top, and moving
+  // the handlers would rewrite interaction that has nothing to do with this renderer. Stacking is
+  // DOM order -- this canvas is rendered first -- so it must stay the first child of the chart box.
+  const glCanvasRef = useRef(null);
   const containerRef = useRef(null);
   const [canvasSizeRevision, setCanvasSizeRevision] = useState(0);
   const [chartDragging, setChartDragging] = useState(false);
@@ -337,6 +345,7 @@ export function SpectrogramPanel() {
   });
   useSpectrogram3dCanvas({
     canvasRef,
+    glCanvasRef,
     snapRef,
     projectionRef,
     oldestMs,
@@ -583,6 +592,14 @@ export function SpectrogramPanel() {
           {/* Canvas chart */}
           <div className="relative min-h-0 min-w-0">
             <div ref={containerRef} className="relative min-h-0 h-full">
+              {isGlSurface ? (
+                <canvas
+                  data-spectrogram-gl=""
+                  ref={glCanvasRef}
+                  style={{ opacity: "var(--panel-opacity-meter, 1)" }}
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                />
+              ) : null}
               <canvas
                 ref={canvasRef}
                 style={{

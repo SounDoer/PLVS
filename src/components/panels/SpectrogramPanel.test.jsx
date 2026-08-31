@@ -992,3 +992,23 @@ describe("SpectrogramPanel", () => {
     expect(onPanelControlsChange).not.toHaveBeenCalled();
   });
 });
+
+describe("SpectrogramPanel WebGL surface", () => {
+  it("gives Surface mode its own GL canvas and keeps the 2D one for the other modes", () => {
+    const { container, rerender } = render(
+      spectrogramPanelTree({ panelControls: { spectrogramMode: "lines" } })
+    );
+    expect(container.querySelector("[data-spectrogram-gl]")).toBeNull();
+
+    rerender(spectrogramPanelTree({ panelControls: { spectrogramMode: "surface" } }));
+    expect(container.querySelector("[data-spectrogram-gl]")).not.toBeNull();
+    // The 2D canvas stays: it carries the axis labels and every pointer handler.
+    expect(container.querySelector("canvas:not([data-spectrogram-gl])")).not.toBeNull();
+  });
+
+  it("hands the GL canvas to the 3D hook so the renderer can find it", () => {
+    render(spectrogramPanelTree({ panelControls: { spectrogramMode: "surface" } }));
+    const args = vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0];
+    expect(args.glCanvasRef.current).toBeInstanceOf(HTMLCanvasElement);
+  });
+});
