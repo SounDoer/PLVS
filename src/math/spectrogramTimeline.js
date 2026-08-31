@@ -119,6 +119,12 @@ export function resolveSpectrogramSampleMs(view, fallbackMs) {
  */
 const STABLE_SAMPLE_LOOKBACK = 16;
 
+// Both visual-history producers run on nominal cadences expressed in 10ms steps: live is 40ms and
+// file mode is 100ms. Their integer wall-clock timestamps still jitter between those ticks, so the
+// measured interval must be snapped back to that clock grid before it can safely quantise absolute
+// time buckets.
+const NOMINAL_SAMPLE_QUANTUM_MS = 10;
+
 /**
  * The same nominal frame interval as `resolveSpectrogramSampleMs`, but stable across updates.
  *
@@ -130,9 +136,10 @@ const STABLE_SAMPLE_LOOKBACK = 16;
  * period shifts every bucket edge by hundreds of periods -- the 3D waterfall then re-selects most of
  * its ridges on every frame, which reads as the whole surface jumping.
  *
- * The minimum over the recent intervals is the emit gate itself, so it is the cadence rather than
- * an estimate of it: capture gaps and stalls only ever make an interval LONGER, so they cannot move
- * it, and the value only changes when the source's real cadence does.
+ * The minimum over recent intervals rejects capture gaps and stalls, which only make an interval
+ * longer. It is still a measurement, though: the shortest tick can enter or leave the lookback and
+ * move the minimum by 1ms. Snap it to the producers' 10ms clock grid so the returned value is the
+ * nominal cadence required by absolute-time bucketing.
  *
  * @param {{ length: number, timestampAt?: (i:number)=>number }} view ascending by timestamp
  * @param {number} fallbackMs used when the view carries too few usable intervals
@@ -146,7 +153,11 @@ export function resolveStableSpectrogramSampleMs(view, fallbackMs) {
     const interval = timestampAt(view, i) - timestampAt(view, i - 1);
     if (Number.isFinite(interval) && interval > 0 && interval < smallest) smallest = interval;
   }
-  return smallest === Infinity ? fallbackMs : smallest;
+  if (smallest === Infinity) return fallbackMs;
+  return Math.max(
+    NOMINAL_SAMPLE_QUANTUM_MS,
+    Math.round(smallest / NOMINAL_SAMPLE_QUANTUM_MS) * NOMINAL_SAMPLE_QUANTUM_MS
+  );
 }
 
 export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 1.8) {

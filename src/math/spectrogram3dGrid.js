@@ -30,7 +30,8 @@ import { SPECTROGRAM_DB_MAX } from "../config/scales.js";
  * and the quantiser becomes the jitter source it was meant to remove -- one period of movement in
  * the stride shifts epoch-anchored bucket edges by hundreds of periods, so nearly every ridge
  * re-binds and the whole waterfall jumps. Callers get one from
- * `resolveStableSpectrogramSampleMs`, not from `resolveSpectrogramSampleMs`.
+ * `resolveStableSpectrogramSampleMs`, which snaps the measured interval to the producers' nominal
+ * clock grid, not from `resolveSpectrogramSampleMs`.
  *
  * Real capture gaps need no special handling: a stretch of time holding no frames simply
  * contributes no ridges, which is the 3D equivalent of the blank columns the 2D path leaves.

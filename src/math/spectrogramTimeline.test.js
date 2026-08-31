@@ -157,6 +157,21 @@ describe("resolveStableSpectrogramSampleMs", () => {
     expect([...seen]).toEqual([40]);
   });
 
+  it("holds still when the shortest live interval is sparse", () => {
+    const rows = [];
+    let ts = 300_000;
+    for (let i = 0; i < 200; i++) {
+      rows.push({ timestampMs: ts });
+      ts += i % 60 === 0 ? 40 : 41 + ((i * 7) % 8);
+    }
+
+    const seen = new Set();
+    for (let length = 40; length <= 200; length++) {
+      seen.add(resolveStableSpectrogramSampleMs(viewOf(rows.slice(0, length)), 40));
+    }
+    expect([...seen]).toEqual([40]);
+  });
+
   it("follows a real cadence change, such as live to file mode", () => {
     expect(resolveStableSpectrogramSampleMs(frames(1000, 3000, 100), 40)).toBe(100);
   });

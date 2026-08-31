@@ -126,9 +126,13 @@ describe("sampleWaterfallGrid", () => {
   // here caught it because they all pass a constant. `resolveStableSpectrogramSampleMs` is what makes
   // the precondition true, so the guard has to run through it rather than around it.
   it("selects the same frames despite jitter in the measured frame interval", () => {
-    // 40..48ms intervals, deterministic, standing in for real capture cadence.
+    // 40..48ms intervals, deterministic, standing in for real capture cadence. The 40ms interval
+    // is deliberately rarer than the estimator's lookback: repeating it every few frames makes the
+    // old sliding-minimum implementation trivially constant and does not exercise the live bug.
     const timestamps = [];
-    for (let i = 0, ts = 300_000; i < 900; i++, ts += 40 + ((i * 7) % 9)) timestamps.push(ts);
+    for (let i = 0, ts = 300_000; i < 900; i++, ts += i % 60 === 0 ? 40 : 41 + ((i * 7) % 8)) {
+      timestamps.push(ts);
+    }
     const view = framesAt(timestamps, -20);
     const span = 30_000;
 
@@ -157,7 +161,7 @@ describe("sampleWaterfallGrid", () => {
     // Advance one captured frame at a time, as live capture does. A frame already on screen must
     // stay on screen: the only ones allowed to leave are those falling out of the window.
     let previous = selectedAt(800);
-    for (let endIdx = 801; endIdx <= 830; endIdx++) {
+    for (let endIdx = 801; endIdx <= 880; endIdx++) {
       const current = selectedAt(endIdx);
       const oldestKept = Math.min(...current);
       const survivors = [...previous].filter((ts) => ts >= oldestKept);
