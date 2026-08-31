@@ -6,7 +6,7 @@ import { aggregatePolarLevel } from "../math/vectorscopePolarMath.js";
 const PAIR_VALUE_COUNT = 200;
 const copiedTailBytes = (rows) =>
   rows * PAIR_VALUE_COUNT * Int16Array.BYTES_PER_ELEMENT +
-  rows * 5 * Float64Array.BYTES_PER_ELEMENT +
+  rows * 2 * Float64Array.BYTES_PER_ELEMENT +
   64 * Float64Array.BYTES_PER_ELEMENT;
 
 function pairsFor(sequence) {
@@ -20,9 +20,6 @@ function pushRow(slab, sequence, overrides = {}) {
   slab.push({
     pairs: pairsFor(sequence),
     correlation: sequence / 10,
-    sideToMidDb: -sequence,
-    midEnergy: sequence + 0.25,
-    sideEnergy: sequence + 0.5,
     timestampMs: sequence,
     ...overrides,
   });
@@ -73,7 +70,7 @@ describe("VectorscopeHistorySlab", () => {
     expect(slab.storageStats()).toMatchObject({ chunkCount: 2, retainedRows: capacity });
   });
 
-  it("uses fixed pair widths, ignores empty pairs, and preserves malformed scalar fallbacks", () => {
+  it("uses fixed pair widths, ignores empty pairs, and preserves malformed correlation fallback", () => {
     const slab = new VectorscopeHistorySlab(2, PAIR_VALUE_COUNT);
     const version = slab.version;
 
@@ -87,16 +84,10 @@ describe("VectorscopeHistorySlab", () => {
     pushRow(slab, 0, {
       timestampMs: Number.NaN,
       correlation: Number.NaN,
-      sideToMidDb: Number.POSITIVE_INFINITY,
-      midEnergy: Number.NaN,
-      sideEnergy: Number.NEGATIVE_INFINITY,
     });
     expect(slab.rowAt(0)).toMatchObject({
       timestampMs: -Infinity,
       correlation: -Infinity,
-      sideToMidDb: -Infinity,
-      midEnergy: 0,
-      sideEnergy: 0,
     });
   });
 
@@ -114,7 +105,7 @@ describe("VectorscopeHistorySlab", () => {
     expect(slab.timestampAt(1)).toBe(3);
     expect(slab.timestampAt(2)).toBeNaN();
     expect(slab.rowAt(0).pairs[0]).toBeCloseTo(-0.98, 4);
-    expect(slab.rowAt(1).sideEnergy).toBe(3.5);
+    expect(slab.rowAt(1).correlation).toBe(0.3);
     expect(slab.rowAt(2)).toBeUndefined();
   });
 
@@ -209,7 +200,7 @@ describe("VectorscopeHistorySlab", () => {
     });
   });
 
-  it("returns every scalar column and honors copyRows", () => {
+  it("returns correlation and honors copyRows", () => {
     const slab = new VectorscopeHistorySlab(2, PAIR_VALUE_COUNT);
     pushRow(slab, 4);
 
@@ -218,11 +209,11 @@ describe("VectorscopeHistorySlab", () => {
 
     expect(live).toMatchObject({
       correlation: 0.4,
-      sideToMidDb: -4,
-      midEnergy: 4.25,
-      sideEnergy: 4.5,
       timestampMs: 4,
     });
+    expect(live).not.toHaveProperty("sideToMidDb");
+    expect(live).not.toHaveProperty("midEnergy");
+    expect(live).not.toHaveProperty("sideEnergy");
     expect(copied.pairs.buffer).not.toBe(live.pairs.buffer);
     live.pairs[0] = 99;
     expect(copied.pairs[0]).toBeCloseTo(-0.96, 4);

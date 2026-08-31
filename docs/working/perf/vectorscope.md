@@ -186,40 +186,41 @@ idle 百分比互相减。这里的证据是函数归因加定点包计时，不
 
 ## 3. D3 — 历史存储
 
-### 3.1 四小时约 151.4 MiB/key
+### 3.1 四小时约 143.2 MiB/key
 
-每行 200 个 Int16 pair values、1 个 Float64 timestamp、4 个 Float64 metrics；每个 1024 行 chunk
+每行 200 个 Int16 pair values、1 个 Float64 timestamp、1 个 Float64 correlation；每个 1024 行 chunk
 另带 64 个 Float64 Polar Max summary。
 
 | 四小时（360,000 行）                       |                           字节 |
 | ------------------------------------------ | -----------------------------: |
 | pairs                                      |                    144,000,000 |
 | timestamps                                 |                      2,880,000 |
-| 4 个 metrics                               |                     11,520,000 |
+| correlation                                |                      2,880,000 |
 | Polar Max summaries                        |                        180,224 |
-| retained payload 投影                      | **158,580,224 B（151.2 MiB）** |
-| 按完整 chunk 的实际 typed-array allocation |              **151.4 MiB/key** |
+| retained payload 投影                      | **149,940,224 B（143.0 MiB）** |
+| 按完整 chunk 的实际 typed-array allocation |              **143.2 MiB/key** |
 
-默认一小时约 **37.9 MiB/key**；四小时四 key 上限约 **605.7 MiB**。这比 Spectrum 单 key
+默认一小时约 **35.8 MiB/key**；四小时四 key 上限约 **572.7 MiB**。这比 Spectrum 单 key
 1.38 GB 小很多，但不是 Waveform 那种可以忽略的 56.6 MiB 总量。
 
 ### 3.2 主体已经压到 Int16，继续压会直接碰显示下限
 
-pairs 占 91%。它们已从 Float32 packed 成 normalized Int16，量化步长 `1/32767`；测试钉住误差。
+pairs 占 96%。它们已从 Float32 packed 成 normalized Int16，量化步长 `1/32767`；测试钉住误差。
 改成 Int8 的步长约 `1/127`（约 −42 dB），而 Polar 固定显示下限是 −48 dB、signal gate 是
 −90 dB，低电平形状会直接消失。减少 100 对采样也会同时降低 snapshot、Persistence 和两种 Polar
 的时间/角度分辨率。
 
 **没有无损主体优化；拒绝 Int8 和降采样。**
 
-### 3.3 三个 metric 列没有真正读者，但只值 8.25 MiB/key
+### 3.3 三个未读 metric 列已删除（2026-08-31）
 
 reader 盘点：`sideToMidDb`、`midEnergy`、`sideEnergy` 从 slab 复制进 snapshot result 后没有组件读取；
 panel 只读 `correlation` 和 pairs。删掉三列可省四小时 **8.25 MiB/key（5.4%）**，并略减 visual
-payload。
+history 的写入与 snapshot tail copy。
 
-它是确定的无损清理，但绝对收益小，且会同时改 Rust IPC type、FrameIntake、slab 和 snapshot
-contract。**不单开历史优化；若 D4 协议轮触碰这些类型，顺手移除。**
+已从 `FrameIntake` → `VectorscopeHistorySlab` → snapshot result 的历史链删除。Rust/live payload 与
+`AudioSnapHistorySlab.sideToMidDb` 保留：Stats 仍读取实时 `displayAudio.sideToMidDb`，因此这不是协议
+字段删除，也不会改变实时面板数据。四小时单 key 从 **151.4 降到 143.2 MiB（−5.4%）**。
 
 ### 3.4 Polar Max summary 值得保留
 
@@ -267,9 +268,9 @@ live path 占 live fragment 约 98%、占 Vectorscope 总带宽约 87%。删 met
 | D2-3 | 两种 Polar 每 render 先读尺寸再判断是否重画      | profile + 调度回归测试                     | **已落地**             |
 | D2-4 | Polar 每 tick 解码不用的 1 秒 Persistence 窗口   | 0.247 ms + 20.8 KiB/次                     | **已落地**             |
 | D2-5 | Polar Level 多解码 6/11 行；Dock 每 render 选窗  | benchmark + 回归测试                       | **已落地**             |
-| D3-1 | 四小时 151.4 MiB/key，91% 是 packed pairs        | 字节投影                                   | 主体不动               |
+| D3-1 | 四小时 143.2 MiB/key，96% 是 packed pairs        | 字节投影                                   | 主体不动               |
 | D3-2 | Int8/降点会损伤 −48/−90 dB 显示                  | codec 步长 +显示阈值                       | **拒绝有损压缩**       |
-| D3-3 | 三个未读 metric 列 8.25 MiB/key                  | reader 盘点                                | 协议轮顺手清理         |
+| D3-3 | 三个未读 metric 列 8.25 MiB/key                  | reader 盘点 + 回归测试                     | **已删除**             |
 | D3-4 | Max Hold summary 176 KiB，查询 <0.1 ms           | 四小时 chunk benchmark                     | 保留                   |
 | D4-1 | 0.73–0.76 MiB/s/key，87% 是 live path            | JSON UTF-8 实测；协议轮复量                | **已否决**（见下）     |
 
@@ -282,6 +283,6 @@ live path 占 live fragment 约 98%、占 Vectorscope 总带宽约 87%。删 met
    只要约 0.06 ms 且不在 UI 线程，所以这是把更便宜的活搬到更贵的线程。完整账目见
    `protocol.md` §4。**真正的出路是让面板不再需要 path 字符串（canvas 直接画坐标），那是渲染
    改动，不该伪装成协议改动。**
-2. 三个未读 visual metric 列（D3-3）是删字段、与 wire format 无关，不必等任何一轮。
+2. ~~三个未读 visual metric 列（D3-3）~~：**已于 2026-08-31 删除**；wire/live Stats 字段保留。
 
 前三项都能保持视觉与协议输出不变，可以各自形成小而可验证的优化提交。

@@ -71,45 +71,30 @@ function copySpectrumTail(source) {
 }
 
 function vectorscopeSource(rows) {
-  const values = new Float32Array(rows * VECTORSCOPE_VALUES);
+  const values = new Int16Array(rows * VECTORSCOPE_VALUES);
   const timestamps = new Float64Array(rows);
   const correlation = new Float64Array(rows);
-  const sideToMid = new Float64Array(rows);
-  const midEnergy = new Float64Array(rows);
-  const sideEnergy = new Float64Array(rows);
 
   values[values.length - 1] = 1;
   timestamps[timestamps.length - 1] = rows;
   correlation[correlation.length - 1] = 2;
-  sideToMid[sideToMid.length - 1] = 3;
-  midEnergy[midEnergy.length - 1] = 4;
-  sideEnergy[sideEnergy.length - 1] = 5;
-  return { values, timestamps, correlation, sideToMid, midEnergy, sideEnergy };
+  return { values, timestamps, correlation };
 }
 
 function copyVectorscopeTail(source) {
-  const values = new Float32Array(source.values.length);
+  const values = new Int16Array(source.values.length);
   const timestamps = new Float64Array(source.timestamps.length);
   const correlation = new Float64Array(source.correlation.length);
-  const sideToMid = new Float64Array(source.sideToMid.length);
-  const midEnergy = new Float64Array(source.midEnergy.length);
-  const sideEnergy = new Float64Array(source.sideEnergy.length);
 
   values.set(source.values);
   timestamps.set(source.timestamps);
   correlation.set(source.correlation);
-  sideToMid.set(source.sideToMid);
-  midEnergy.set(source.midEnergy);
-  sideEnergy.set(source.sideEnergy);
 
   return {
     checksum: () =>
       values[values.length - 1] +
       timestamps[timestamps.length - 1] +
-      correlation[correlation.length - 1] +
-      sideToMid[sideToMid.length - 1] +
-      midEnergy[midEnergy.length - 1] +
-      sideEnergy[sideEnergy.length - 1],
+      correlation[correlation.length - 1],
   };
 }
 

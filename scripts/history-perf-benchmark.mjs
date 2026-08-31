@@ -316,9 +316,6 @@ function benchmarkVisualFreeze({ rows, bands, pairValues }) {
     vectorscope.push({
       pairs: vectorscopeValues,
       correlation: 0.5,
-      sideToMidDb: -6,
-      midEnergy: 0.5,
-      sideEnergy: 0.25,
       timestampMs: index * 40,
     });
   }

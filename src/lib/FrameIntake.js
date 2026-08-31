@@ -355,9 +355,6 @@ export class FrameIntake {
         slab.push({
           pairs: entry.pairs,
           correlation: Number.isFinite(entry.correlation) ? entry.correlation : -Infinity,
-          sideToMidDb: Number.isFinite(entry.sideToMidDb) ? entry.sideToMidDb : -Infinity,
-          midEnergy: Number.isFinite(entry.midEnergy) ? entry.midEnergy : 0,
-          sideEnergy: Number.isFinite(entry.sideEnergy) ? entry.sideEnergy : 0,
           timestampMs,
         });
       }

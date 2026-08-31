@@ -165,9 +165,6 @@ function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys, stereoMa
       {
         pairs: payload.pairs,
         correlation: 0.75,
-        sideToMidDb: -8,
-        midEnergy: 0.5,
-        sideEnergy: 0.2,
       },
       "vectorscope"
     ),

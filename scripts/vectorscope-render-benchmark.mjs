@@ -76,9 +76,6 @@ function populatedSlab(rowCount) {
     slab.push({
       pairs: deterministicPairs(PAIR_COUNT, index * 0.013),
       correlation: Math.sin(index * 0.01),
-      sideToMidDb: -6,
-      midEnergy: 0.5,
-      sideEnergy: 0.25,
       timestampMs: index * VISUAL_TICK_MS,
     });
   }
@@ -101,14 +98,14 @@ function projectedVectorscopeHistoryBytes(rows, keyCount = 1) {
   const chunkCount = Math.ceil(rows / chunkRows);
   const timestamps = rows * Float64Array.BYTES_PER_ELEMENT;
   const pairs = rows * PAIR_VALUE_COUNT * Int16Array.BYTES_PER_ELEMENT;
-  const metrics = rows * 4 * Float64Array.BYTES_PER_ELEMENT;
+  const correlation = rows * Float64Array.BYTES_PER_ELEMENT;
   const polarMax = chunkCount * 64 * Float64Array.BYTES_PER_ELEMENT;
-  const perKeyTotal = timestamps + pairs + metrics + polarMax;
+  const perKeyTotal = timestamps + pairs + correlation + polarMax;
   return {
     rows,
     timestamps,
     pairs,
-    metrics,
+    correlation,
     polarMax,
     perKeyTotal,
     keyCount,
@@ -126,9 +123,6 @@ function benchmarkPolarMaxHoldLookup() {
     slab.push({
       pairs,
       correlation: 1,
-      sideToMidDb: -48,
-      midEnergy: 0.25 * Math.SQRT2,
-      sideEnergy: 0,
       timestampMs: index * VISUAL_TICK_MS,
     });
   }

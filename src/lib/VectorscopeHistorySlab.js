@@ -36,9 +36,6 @@ function chunkSchema(pairValueCount) {
       pairs: new Int16Array(VISUAL_HISTORY_CHUNK_ROWS * pairValueCount),
       polarMax: new Float64Array(POLAR_LEVEL_BIN_COUNT),
       correlation: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-      sideToMidDb: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-      midEnergy: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-      sideEnergy: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
     }),
     cloneChunk: (chunk) => ({
       sequenceStart: chunk.sequenceStart,
@@ -48,18 +45,12 @@ function chunkSchema(pairValueCount) {
       pairs: chunk.pairs.slice(0, chunk.rowCount * pairValueCount),
       polarMax: chunk.polarMax.slice(),
       correlation: chunk.correlation.slice(0, chunk.rowCount),
-      sideToMidDb: chunk.sideToMidDb.slice(0, chunk.rowCount),
-      midEnergy: chunk.midEnergy.slice(0, chunk.rowCount),
-      sideEnergy: chunk.sideEnergy.slice(0, chunk.rowCount),
     }),
     payloadBytes: (chunk) =>
       chunk.timestamps.byteLength +
       chunk.pairs.byteLength +
       chunk.polarMax.byteLength +
-      chunk.correlation.byteLength +
-      chunk.sideToMidDb.byteLength +
-      chunk.midEnergy.byteLength +
-      chunk.sideEnergy.byteLength,
+      chunk.correlation.byteLength,
   };
 }
 
@@ -107,9 +98,6 @@ function rowFrom(chunk, row, pairValueCount) {
         : undefined;
     },
     correlation: chunk.correlation[row],
-    sideToMidDb: chunk.sideToMidDb[row],
-    midEnergy: chunk.midEnergy[row],
-    sideEnergy: chunk.sideEnergy[row],
     timestampMs: chunk.timestamps[row],
   };
 }
@@ -143,7 +131,7 @@ export class VectorscopeHistorySlab extends ChunkedHistorySlab {
     return this._pairValueCount === pairValueCount;
   }
 
-  push({ pairs, correlation, sideToMidDb, midEnergy, sideEnergy, timestampMs }) {
+  push({ pairs, correlation, timestampMs }) {
     if (!pairs?.length) return;
     if (!this.matchesPairValueCount(pairs.length)) {
       throw new RangeError("VectorscopeHistorySlab cannot store rows with a different pair count");
@@ -156,9 +144,6 @@ export class VectorscopeHistorySlab extends ChunkedHistorySlab {
       }
       accumulatePackedPairs(chunk, row, this._pairValueCount, chunk.polarMax);
       chunk.correlation[row] = Number.isFinite(correlation) ? correlation : -Infinity;
-      chunk.sideToMidDb[row] = Number.isFinite(sideToMidDb) ? sideToMidDb : -Infinity;
-      chunk.midEnergy[row] = Number.isFinite(midEnergy) ? midEnergy : 0;
-      chunk.sideEnergy[row] = Number.isFinite(sideEnergy) ? sideEnergy : 0;
     });
   }
 

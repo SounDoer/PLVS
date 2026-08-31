@@ -739,6 +739,9 @@ describe("useSnapshot", () => {
     expect(Array.from(spectrum.data.dbList)).toEqual(Array.from(frozenSpectrum.rowAt(1).dbList));
     expect(vectorscope.pairs).toBeInstanceOf(Float32Array);
     expect(Array.from(vectorscope.pairs)).toEqual(Array.from(frozenVectorscope.rowAt(1).pairs));
+    expect(vectorscope).not.toHaveProperty("sideToMidDb");
+    expect(vectorscope).not.toHaveProperty("midEnergy");
+    expect(vectorscope).not.toHaveProperty("sideEnergy");
 
     spectrumSlab.push({ bands, dbList: [-10, -5], timestampMs: 1200 });
     vectorscopeSlab.push({

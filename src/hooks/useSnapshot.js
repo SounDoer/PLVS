@@ -227,9 +227,6 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
           pairs,
           maxHold: withMaxHold ? maxHoldEnvelopeFor(entries, index) : null,
           correlation: Number.isFinite(snap?.correlation) ? snap.correlation : -Infinity,
-          sideToMidDb: Number.isFinite(snap?.sideToMidDb) ? snap.sideToMidDb : -Infinity,
-          midEnergy: Number.isFinite(snap?.midEnergy) ? snap.midEnergy : 0,
-          sideEnergy: Number.isFinite(snap?.sideEnergy) ? snap.sideEnergy : 0,
           hasSignal: vectorscopePairsHaveSignal(pairs),
         };
       }
