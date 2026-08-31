@@ -125,6 +125,37 @@ describe("projectPoint", () => {
     }
   });
 
+  // Surface renders into a buffer smaller than the canvas and the composite stretches it back
+  // (SURFACE_RENDER_SCALE). That only lands on the full-size floor grid because the fit is
+  // separable and linear in each dimension -- a fixed margin, or one that grew with the smaller of
+  // the two axes, would slide the terrain off its own floor by a few pixels, which reads as a
+  // rendering bug nowhere near this file. Points, not coefficients: this is about where a scene
+  // lands, and it should keep holding if the coefficients are ever renamed or refactored.
+  it("projects a scaled canvas to the same scene, so a smaller render can be stretched back", () => {
+    const scale = 0.75;
+    for (const azimuthDeg of [0, 33, 135, 270]) {
+      const full = buildProjection({ azimuthDeg, elevationDeg: 40, ...VIEW });
+      const small = buildProjection({
+        azimuthDeg,
+        elevationDeg: 40,
+        width: VIEW.width * scale,
+        height: VIEW.height * scale,
+      });
+      for (const [t, f, h] of [
+        [0, 0, 0],
+        [1, 0, 0.5],
+        [0, 1, 1],
+        [1, 1, 0.25],
+        [0.5, 0.5, 0.75],
+      ]) {
+        const a = projectPoint(t, f, h, full);
+        const b = projectPoint(t, f, h, small);
+        expect(b.x / scale).toBeCloseTo(a.x, 6);
+        expect(b.y / scale).toBeCloseTo(a.y, 6);
+      }
+    }
+  });
+
   // Asserting only that two azimuths disagree would pass with the comparison inverted, which is
   // exactly the bug this replaces. Check the order actually starts at the far end, everywhere.
   it("reports a draw order that starts from the far end at every azimuth", () => {

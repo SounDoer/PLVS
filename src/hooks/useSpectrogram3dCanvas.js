@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+﻿import { useEffect, useRef } from "react";
 import { DEFAULT_SPECTROGRAM_CANVAS_THEME } from "../theme/themeCanvasSelectors.js";
 import {
   beginPanelCpuSample,
@@ -65,7 +65,7 @@ const GRADIENT_STOPS = 16;
  * two triangles per segment, plus joins and antialiased edges. Lines submits ~100 ridges of ~230
  * points, so crossing the boundary means building well over a million triangles a second.
  *
- * Measured in a real window at 1383x640 (`docs/working/perf/spectrogram.md` §1): the mesh costs
+ * Measured in a real window at 1383x640 (`docs/working/perf/spectrogram.md` 搂1): the mesh costs
  * 16.9% of the GPU's 3d engine and 288 ms/s of GPU-process CPU at the themed width, and 3.8% and
  * 14 ms/s at one device pixel. It is a cliff, not a ramp -- 1.05 costs the same as 3.0 -- so there
  * is nothing to gain by inching above it, and the whole saving is lost by exceeding it at all.
@@ -77,6 +77,25 @@ const GRADIENT_STOPS = 16;
  * exception and still reads the token -- see where it is stroked.
  */
 const RIDGE_LINE_WIDTH = 1;
+/**
+ * Surface rasterises into a buffer this fraction of the canvas and lets the composite stretch it
+ * back up. Cost is per pixel walked, so it falls with the area: 0.75 is about half the work.
+ *
+ * Measured at 1383x640 (`docs/working/perf/spectrogram.md` 搂1): the rasteriser is 92% of a Surface
+ * repaint -- the smoothers, the row LUT and the buffer clear are together under 8%, so the only
+ * lever that pays is how many pixels get walked. 7.9 ms at full size, 4.1 ms at 0.75.
+ *
+ * Scaling rather than striding columns is the choice with the better artefact. A column stride
+ * replicates each walked column across its neighbours, which is a hard-edged vertical band; the
+ * upscale is bilinear, which reads as softness. The GPU also has the headroom for it and the
+ * renderer does not -- this mode uses ~7% of the 3d engine against 383 ms/s of main thread.
+ *
+ * This works because `buildProjection` is separable and linear in width and height: a projection
+ * fitted to the smaller buffer, stretched back by the same factor, lands exactly where the
+ * full-size one would. `spectrogram3dProjection.test.js` pins that property -- a margin term that
+ * did not scale would slide the surface off the floor grid, which is drawn at full size.
+ */
+const SURFACE_RENDER_SCALE = 0.75;
 // How many ridge spacings the old-end fade is spread over. Enough to read as a dissolve rather
 // than a blink, short enough that it costs almost none of the visible history. Lines multiplies it
 // by its own row spacing; Surface, whose row count is no longer the same number, by
@@ -219,7 +238,7 @@ function ensureOffscreen(ref, width, height) {
  * equal the normalised height is `startBase + k * n` for `k = -heightPx * fx / (fx^2 + fy^2)`.
  *
  * Sanity check: a horizontal baseline (`fy = 0`) reduces to a plain vertical ramp of `heightPx`.
- * A vertical one (`fx = 0`, azimuth 0 or 180) degenerates to `k = 0` — the same degenerate view the
+ * A vertical one (`fx = 0`, azimuth 0 or 180) degenerates to `k = 0` 鈥?the same degenerate view the
  * caller already guards against.
  *
  * Built per ridge rather than once per repaint. An earlier design shared a single gradient across
@@ -573,8 +592,24 @@ export function useSpectrogram3dCanvas({
         height: H,
       });
       // Published so the panel can turn a cursor position back into (time, frequency). Pointer
-      // handling cannot be derived from the 2D layout once the floor is rotated.
+      // handling cannot be derived from the 2D layout once the floor is rotated. This is the
+      // full-size projection in every mode: what Surface rasterises into is an implementation
+      // detail of one branch, and the cursor lands on the canvas.
       if (projectionRef) projectionRef.current = proj;
+
+      // Surface's own pixel space. Everything inside its branch that is measured in pixels is
+      // measured in THESE, and the composite stretches the result back over the canvas.
+      const isSurface = p.mode === "surface";
+      const surfaceW = Math.max(1, Math.round(W * SURFACE_RENDER_SCALE));
+      const surfaceH = Math.max(1, Math.round(H * SURFACE_RENDER_SCALE));
+      const surfaceProj = isSurface
+        ? buildProjection({
+            azimuthDeg: view.azimuthDeg,
+            elevationDeg: view.elevationDeg,
+            width: surfaceW,
+            height: surfaceH,
+          })
+        : null;
 
       const pointCount = pointCountFor(W);
       const cache = cacheRef.current;
@@ -601,10 +636,9 @@ export function useSpectrogram3dCanvas({
       // how many samples the longest column actually takes -- see surfaceRowCap. Lines strokes a
       // complete path per ridge instead of point-sampling, so ridgeCountFor(W) alone is still right
       // for it, and this cap must not apply there.
-      const maxRidges =
-        p.mode === "surface"
-          ? Math.min(SURFACE_RIDGE_MAX, surfaceRowCap(proj, H))
-          : ridgeCountFor(W);
+      const maxRidges = isSurface
+        ? Math.min(SURFACE_RIDGE_MAX, surfaceRowCap(surfaceProj, surfaceH))
+        : ridgeCountFor(W);
       const grid = sampleWaterfallGrid({
         view: snaps,
         startIdx,
@@ -702,9 +736,12 @@ export function useSpectrogram3dCanvas({
         // 2.5 stride asymmetry between them. That asymmetry exists to keep the live moment from
         // being dimmed as hard as departing history, and it is worth giving up here: at these views
         // the alternative is not a brighter live edge but a wall standing at it.
-        const risePx = proj.heightScale * view.heightGain;
-        const timeAxisPx = Math.hypot(proj.tx, proj.ty);
-        const freqAxisPx = Math.hypot(proj.fx, proj.fy);
+        // In the surface buffer's pixels, not the canvas's: every width derived from them is handed
+        // to the rasteriser, and the composite scales the result back. Mixing the two would widen
+        // each ramp by 1 / SURFACE_RENDER_SCALE on screen.
+        const risePx = surfaceProj.heightScale * view.heightGain;
+        const timeAxisPx = Math.hypot(surfaceProj.tx, surfaceProj.ty);
+        const freqAxisPx = Math.hypot(surfaceProj.fx, surfaceProj.fy);
         const rampWidth = (min, max, axisPx) => edgeRampWidth(risePx, axisPx, min, max);
         // Over the DECIMATED rows only. The pinned live row is a fraction of a stride from its
         // neighbour rather than a stride, so letting it into the kernel would both under-smooth the
@@ -721,7 +758,7 @@ export function useSpectrogram3dCanvas({
           grid.pointCount,
           rampWidth(FREQ_FADE_FRAC, FREQ_FADE_MAX_FRAC, freqAxisPx)
         );
-        const off = ensureOffscreen(offscreenRef, W, H);
+        const off = ensureOffscreen(offscreenRef, surfaceW, surfaceH);
         // The monochrome ramp needs the theme ink as RGB. resolveArgbRef probes a colour by
         // writing a pixel to the offscreen canvas and reading it back; probing before the LUT
         // cache check (and before off.pixels.fill(0)) keeps the probe write from being confused
@@ -763,9 +800,9 @@ export function useSpectrogram3dCanvas({
         off.pixels.fill(0);
         rasterizeSurface({
           out: off.pixels,
-          width: W,
-          height: H,
-          proj,
+          width: surfaceW,
+          height: surfaceH,
+          proj: surfaceProj,
           grid,
           rowLut,
           lut: surfaceLutRef.current.lut,
@@ -784,11 +821,11 @@ export function useSpectrogram3dCanvas({
           // letting Infinity highlight the whole surface.
           highlightSpread: (() => {
             const rowSpacingPx = strideTFrac * timeAxisPx;
-            const ratio = selectedStrokePx / rowSpacingPx;
+            const ratio = (selectedStrokePx * SURFACE_RENDER_SCALE) / rowSpacingPx;
             return Number.isFinite(ratio) ? Math.max(0, Math.ceil((ratio - 1) / 2)) : 0;
           })(),
-          columnStride: columnStrideFor(W, H),
-          maxSteps: H,
+          columnStride: columnStrideFor(surfaceW, surfaceH),
+          maxSteps: surfaceH,
           // The two end faces of the solid: sink the terrain into the floor rather than letting
           // cross-sections pop in and out. Still asymmetric, mirroring Lines (whose newest ridge is
           // deliberately not faded), but only mildly so -- see ENTER_FADE_STRIDES.
@@ -811,7 +848,9 @@ export function useSpectrogram3dCanvas({
           exitEdgeTFrac: rowLut.firstCoveredTFrac,
         });
         off.ctx.putImageData(off.image, 0, 0);
-        ctx.drawImage(off.canvas, 0, 0);
+        // Stretched, not blitted: the buffer is SURFACE_RENDER_SCALE of the canvas and this is
+        // where the resolution comes back, on the GPU, which has the headroom for it.
+        ctx.drawImage(off.canvas, 0, 0, W, H);
         return;
       }
 
