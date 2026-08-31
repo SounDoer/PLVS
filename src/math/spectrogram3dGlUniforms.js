@@ -16,6 +16,15 @@ export function buildGlUniforms({ proj, width, height, heightGain }) {
       if (y > maxFloorY) maxFloorY = y;
     }
   }
+  // Screen pixels per unit of floor distance along the view ray -- the column the old rasteriser
+  // walked. It stepped one pixel row at a time and divided the height delta by the floor distance
+  // that step covered, so shading described the terrain rather than the panel's resolution; the
+  // shader measures the same delta per pixel with `dFdy`, so it needs the same conversion. The
+  // determinant is the screen-y rate per unit of the column's line parameter and `(-fx, tx)` is the
+  // column's direction in floor units, which is exactly `columnFloorSpan`'s arithmetic.
+  const det = proj.tx * proj.fy - proj.ty * proj.fx;
+  const columnFloorLen = Math.hypot(proj.tx, proj.fx);
+
   return {
     origin: [proj.originX, proj.originY],
     tAxis: [proj.tx, proj.ty],
@@ -23,6 +32,7 @@ export function buildGlUniforms({ proj, width, height, heightGain }) {
     hy: proj.hy * heightGain,
     viewport: [width, height],
     depthRange: [minFloorY, Math.max(maxFloorY, minFloorY + 1e-6)],
+    slopeGain: columnFloorLen > 0 ? det / columnFloorLen : 0,
   };
 }
 

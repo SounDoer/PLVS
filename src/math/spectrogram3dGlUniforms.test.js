@@ -21,6 +21,26 @@ describe("buildGlUniforms", () => {
     }
   });
 
+  it("scales slope by the floor distance one screen pixel covers", () => {
+    const proj = buildProjection({ azimuthDeg: 135, elevationDeg: 40, width: 800, height: 400 });
+    const { slopeGain } = buildGlUniforms({ proj, width: 800, height: 400, heightGain: 1 });
+    // Same quantity `columnFloorSpan` derives: screen-y per unit of the column's parameter, over
+    // the column direction's length in floor units.
+    const det = proj.tx * proj.fy - proj.ty * proj.fx;
+    expect(slopeGain).toBeCloseTo(det / Math.hypot(proj.tx, proj.fx), 9);
+    // The column runs DOWN the screen, so only the vertical fit moves this: a taller panel puts
+    // more pixels across the same floor, one pixel then covers less of it, and the gain rises to
+    // keep the same terrain shading the same. A wider panel leaves it alone.
+    const tall = buildProjection({ azimuthDeg: 135, elevationDeg: 40, width: 800, height: 800 });
+    expect(
+      buildGlUniforms({ proj: tall, width: 800, height: 800, heightGain: 1 }).slopeGain
+    ).toBeGreaterThan(slopeGain);
+    const wide = buildProjection({ azimuthDeg: 135, elevationDeg: 40, width: 1600, height: 400 });
+    expect(
+      buildGlUniforms({ proj: wide, width: 1600, height: 400, heightGain: 1 }).slopeGain
+    ).toBeCloseTo(slopeGain, 9);
+  });
+
   it("puts nearer floor points in front", () => {
     const proj = buildProjection({ azimuthDeg: 135, elevationDeg: 40, width: 800, height: 400 });
     const uniforms = buildGlUniforms({ proj, width: 800, height: 400, heightGain: 1 });
