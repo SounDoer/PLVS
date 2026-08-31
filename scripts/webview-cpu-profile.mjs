@@ -188,7 +188,9 @@ export async function recordProfile({ port, seconds, out, top, dist }, log = con
   return summary;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Guarded because argv[1] is absent when this module is imported rather than run -- it is now a
+// dependency of the spectrogram probe scripts -- and pathToFileURL throws on undefined.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const options = parseArgs(process.argv.slice(2));
   if (options.help) {
     console.log(
