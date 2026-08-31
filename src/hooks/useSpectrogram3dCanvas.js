@@ -725,7 +725,15 @@ export function useSpectrogram3dCanvas({
 
       if (isSurface) {
         const glCanvas = glCanvasRef?.current;
-        if (!glCanvas) return;
+        if (!glCanvas) {
+          // Nothing about the canvas appearing moves the repaint signature, so a repaint that
+          // reached here without one would latch: the guard above would skip every later frame and
+          // the panel would stay blank until some unrelated parameter changed. Give the signature
+          // back instead. React commits the canvas in the same pass that switches the mode, so this
+          // is insurance rather than an expected path.
+          lastPaintRef.current.mode = undefined;
+          return;
+        }
 
         // One renderer per canvas. Leaving Surface unmounts the canvas, so the next entry brings a
         // new one and the old context has to go with it rather than leaking a GL context per visit.
