@@ -172,6 +172,37 @@ describe("resolveStableSpectrogramSampleMs", () => {
     expect([...seen]).toEqual([40]);
   });
 
+  it("still reports the nominal cadence when the producer runs consistently late", () => {
+    // The emit gate is `>= 40ms`, so an interval is never SHORTER than the nominal period -- that
+    // invariant is the whole reason the minimum is used. Under sustained load every interval in the
+    // lookback can sit at 45-48ms, and rounding to the nearest 10ms grid point then reports 50: a
+    // 25% error in the decimation stride, invented at exactly the moment the machine is busiest.
+    const rows = [];
+    let ts = 500_000;
+    for (let i = 0; i < 80; i++) {
+      rows.push({ timestampMs: ts });
+      ts += 45 + ((i * 7) % 4);
+    }
+    expect(resolveStableSpectrogramSampleMs(viewOf(rows), 40)).toBe(40);
+  });
+
+  it("does not flip the stride when a late stretch ends", () => {
+    // The failure the snapping exists to prevent, one grid step coarser: if the observed minimum
+    // straddles the rounding boundary, the stride alternates between two values and every ridge
+    // re-binds on the frames where it moves.
+    const rows = [];
+    let ts = 500_000;
+    for (let i = 0; i < 80; i++) {
+      rows.push({ timestampMs: ts });
+      ts += i < 40 ? 46 : 41;
+    }
+    const seen = new Set();
+    for (let length = 20; length <= rows.length; length++) {
+      seen.add(resolveStableSpectrogramSampleMs(viewOf(rows.slice(0, length)), 40));
+    }
+    expect([...seen]).toEqual([40]);
+  });
+
   it("follows a real cadence change, such as live to file mode", () => {
     expect(resolveStableSpectrogramSampleMs(frames(1000, 3000, 100), 40)).toBe(100);
   });

@@ -154,9 +154,16 @@ export function resolveStableSpectrogramSampleMs(view, fallbackMs) {
     if (Number.isFinite(interval) && interval > 0 && interval < smallest) smallest = interval;
   }
   if (smallest === Infinity) return fallbackMs;
+  // Down to the grid, not to the nearest point on it. The emit gate means an interval is never
+  // SHORTER than the nominal period -- the same invariant that makes the minimum the right
+  // statistic -- so the nominal is the largest grid point at or below what was observed. Rounding
+  // to nearest breaks on a producer that runs consistently late: a lookback of 45-48ms intervals
+  // reports 50, a 25% stride error invented exactly when the machine is busiest, and a minimum that
+  // straddles 44/45 alternates between 40 and 50, which is the ridge re-binding this snapping
+  // exists to remove.
   return Math.max(
     NOMINAL_SAMPLE_QUANTUM_MS,
-    Math.round(smallest / NOMINAL_SAMPLE_QUANTUM_MS) * NOMINAL_SAMPLE_QUANTUM_MS
+    Math.floor(smallest / NOMINAL_SAMPLE_QUANTUM_MS) * NOMINAL_SAMPLE_QUANTUM_MS
   );
 }
 
