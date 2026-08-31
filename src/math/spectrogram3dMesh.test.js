@@ -48,3 +48,17 @@ describe("buildSurfaceMesh triangles", () => {
     expect(mesh.indices.length).toBe(2 * 2 * 3);
   });
 });
+
+describe("buildSurfaceMesh skirt", () => {
+  it("closes the solid with a skirt down to the floor along every boundary", () => {
+    const mesh = buildSurfaceMesh(grid(), { rowGapTFrac: 2, skirt: true });
+    // Six terrain vertices, plus one floor vertex under each of them on the boundary. With two rows
+    // of three points every sample is on the boundary.
+    expect(mesh.vertexCount).toBe(12);
+    const skirtStart = 6 * 3;
+    // A skirt vertex sits under its terrain vertex, at height zero.
+    expect(Array.from(mesh.positions.subarray(skirtStart, skirtStart + 3))).toEqual([0, 0, 0]);
+    // Two triangles per boundary edge, on top of the four terrain triangles.
+    expect(mesh.triangleCount).toBeGreaterThan(4);
+  });
+});
