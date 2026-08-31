@@ -26,3 +26,25 @@ describe("buildSurfaceMesh", () => {
     ]);
   });
 });
+
+describe("buildSurfaceMesh triangles", () => {
+  it("joins each pair of neighbouring rows with two triangles per cell", () => {
+    const mesh = buildSurfaceMesh(grid(), { rowGapTFrac: 2 });
+    // One row pair, two cells across the frequency axis, two triangles each.
+    expect(mesh.indices.length).toBe(2 * 2 * 3);
+    expect(Array.from(mesh.indices.subarray(0, 6))).toEqual([0, 1, 3, 1, 4, 3]);
+  });
+
+  it("leaves a hole where two rows are further apart than the stride", () => {
+    const gapped = {
+      heights: Float32Array.from([0.25, 0.5, 0.75, 0.5, 0.25, 0.875, 0.5, 0.5, 0.5]),
+      tFracs: Float64Array.from([0, 0.1, 0.9]),
+      count: 3,
+      bucketCount: 3,
+      pointCount: 3,
+    };
+    // Rows 0-1 are one stride apart and join; rows 1-2 are eight strides apart and must not.
+    const mesh = buildSurfaceMesh(gapped, { rowGapTFrac: 0.2 });
+    expect(mesh.indices.length).toBe(2 * 2 * 3);
+  });
+});
