@@ -57,6 +57,26 @@ const POINT_TARGET_DIVISOR = 6;
 const POINT_MIN = 60;
 const POINT_MAX = 320;
 const GRADIENT_STOPS = 16;
+/**
+ * Ridge stroke width, in DEVICE pixels, and the one number in this file that must not be raised.
+ *
+ * One device pixel is the boundary of the renderer's hairline fast path: a stroke that wide is
+ * rasterised as line segments, while anything wider is first tessellated into filled polygons --
+ * two triangles per segment, plus joins and antialiased edges. Lines submits ~100 ridges of ~230
+ * points, so crossing the boundary means building well over a million triangles a second.
+ *
+ * Measured in a real window at 1383x640 (`docs/working/perf/spectrogram.md` §1): the mesh costs
+ * 16.9% of the GPU's 3d engine and 288 ms/s of GPU-process CPU at the themed width, and 3.8% and
+ * 14 ms/s at one device pixel. It is a cliff, not a ramp -- 1.05 costs the same as 3.0 -- so there
+ * is nothing to gain by inching above it, and the whole saving is lost by exceeding it at all.
+ * Neither the per-ridge gradients nor the round joins move the number; both were measured.
+ *
+ * The cost of this is that the mesh does not follow `--ui-spectrum-stroke-width` any more, and on a
+ * scaled display a hairline is thinner than a CSS pixel. That was once reported as "the 3D lines
+ * look thinner" and is now a deliberate trade, taken on the screenshots. The selected ridge is the
+ * exception and still reads the token -- see where it is stroked.
+ */
+const RIDGE_LINE_WIDTH = 1;
 // How many ridge spacings the old-end fade is spread over. Enough to read as a dissolve rather
 // than a blink, short enough that it costs almost none of the visible history. Lines multiplies it
 // by its own row spacing; Surface, whose row count is no longer the same number, by
@@ -614,10 +634,11 @@ export function useSpectrogram3dCanvas({
       const heightPx = proj.heightScale * view.heightGain;
 
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
-      // Read once for both branches. Lines strokes ridges at this width and its selected ridge at
-      // twice it; Surface sizes its scrub band to the same doubled width, so the scrub marker
-      // carries the same weight whichever mode is showing. Reading the token rather than hardcoding
-      // is what keeps that true when the theme moves it -- see the note in the Lines branch.
+      // Read once for both branches, and only the scrub marker uses it: Lines strokes its selected
+      // ridge at this width and Surface sizes its scrub band to it, so the marker carries the same
+      // weight whichever mode is showing. Reading the token rather than hardcoding is what keeps
+      // that true when the theme moves it. The mesh itself does not follow the token any more --
+      // see RIDGE_LINE_WIDTH.
       const strokeCss = parseFloat(cssVar(canvas, "--ui-spectrum-stroke-width", "1.5")) || 1.5;
       const selectedStrokePx = 2 * dpr * strokeCss;
 
@@ -806,17 +827,7 @@ export function useSpectrogram3dCanvas({
         : null;
 
       ctx.lineJoin = "round";
-      // Ridges are the spectrum curve, drawn once per captured frame, so they take the spectrum
-      // trace's own stroke width rather than a width of their own. Reading the token is what makes
-      // that true by construction: a hardcoded base is a second number to keep in agreement with a
-      // themeable one, and it was already out of agreement -- 1 device-pixel-per-CSS-pixel against
-      // the token's 1.5 -- which is what a user reports as "the 3D lines look thinner".
-      //
-      // Line widths are in the canvas coordinate system, which useCanvasSize sizes in DEVICE
-      // pixels, so the CSS width has to be scaled by dpr. A literal 1 is a sub-CSS-pixel hairline
-      // on any scaled display and the whole mesh washes out. Same trap as ctx.font below.
-      const baseLineWidth = dpr * strokeCss;
-      ctx.lineWidth = baseLineWidth;
+      ctx.lineWidth = RIDGE_LINE_WIDTH;
 
       // Line waterfall: ridges are stroked, never filled.
       //
@@ -871,9 +882,12 @@ export function useSpectrogram3dCanvas({
         if (r === selectedRidge) {
           ctx.globalAlpha = edgeFade;
           ctx.strokeStyle = selection;
-          ctx.lineWidth = baseLineWidth * 2;
+          // One stroke out of a hundred, so the hairline rule that governs the mesh does not apply
+          // to it: it stays on the themed width, which is also the width Surface sizes its scrub
+          // band to. Both modes keep marking the scrubbed moment with the same weight.
+          ctx.lineWidth = selectedStrokePx;
           ctx.stroke(curve);
-          ctx.lineWidth = baseLineWidth;
+          ctx.lineWidth = RIDGE_LINE_WIDTH;
         } else {
           // Opaque apart from the old-end fade: the colour ramp already separates near from far,
           // so nothing here needs to buy depth by letting ridges accumulate.

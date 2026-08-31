@@ -1,8 +1,8 @@
 # Spectrogram 体检表
 
-**状态：** D1、D3、D4 继承自 Spectrum，无独立工作；D2 的 2D 路径已落地滚动复用；两种 3D mode
-在真实 WebView2 中都已确认是热点，CPU 总账几乎相等（Surface 花在渲染进程，Lines 花在 GPU
-进程），GPU 引擎上 Lines 约为 Surface 的 2.2 倍，两者都待决策。
+**状态：** D1、D3、D4 继承自 Spectrum，无独立工作；D2 的 2D 路径已落地滚动复用；3D Lines 的 GPU
+成本已定位到描边宽度并已落地修复（GPU 14–17% → 3.0%）；3D Surface 的逐像素 rasterize 仍是热点，
+待单独决策。
 
 ## 0. 继承关系（先钉死，免得重做）
 
@@ -172,13 +172,23 @@ mode 对拍以上面的内置 callback 计时为准。
 | 3 遍 hairline | 4.27% | 6.3 ms/s | 1.91 ms |
 
 2 遍覆盖大致同样的视觉厚度，GPU 约为现状的 1/4、GPU 进程 CPU 约为 1/30，主线程不变。
-**这一条尚未判定**：截图对比已做（`lines-control-1.875px.png` / `lines-2-hairline-passes.png`），
-两者粗细与质感接近，但错开的两条 hairline 与一条抗锯齿宽线在近距离下不是同一种边缘，
-要不要采用是视觉决定，不是性能决定。
 
-**修订后的判定：两个 mode 都是 D2 候选，但不是同一个问题。** Surface 的问题在渲染进程的逐像素
-rasterize；Lines 的问题是它的描边宽度落在 Skia hairline 快路径的贵的一侧（归因见上）。在共用的
-`sampleWaterfallGrid` 上抠时间对两者都无效。
+**已落地的是 1 遍**（2026-08-31）：截图对比之后选了最便宜也最简单的一档——脊线固定 1 device
+px，不再跟 `--ui-spectrum-stroke-width`，多遍叠加的方案没有采用，也没有留开关。真实 release
+构建复测：
+
+| | 改之前 | 改之后 |
+| --- | ---: | ---: |
+| GPU 3d 引擎 | 14–17% | **3.0%** |
+| GPU 进程 CPU | 288–330 ms/s | **17.2 ms/s** |
+| 主线程 | 1.7 ms/次 | 不变 |
+
+代价是脊在缩放显示器上比一个 CSS 像素细，这正是当年被反馈为「3D 线看起来变细了」的那个观感，
+这次是看过截图后有意接受的取舍。选中脊（scrub 标记）不在此列，它仍读 token——它只有一条，成本
+可忽略，而 Surface 的 scrub band 宽度是刻意和它对齐的。
+
+**当前判定：Lines 已解决，Surface 仍是 D2 候选。** Surface 的问题在渲染进程的逐像素 rasterize，
+和 Lines 那个描边宽度的坎完全无关。在共用的 `sampleWaterfallGrid` 上抠时间对两者都无效。
 
 ## 2. 已落地：滚动复用（2026-08-29）
 
