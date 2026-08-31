@@ -65,7 +65,7 @@ const GRADIENT_STOPS = 16;
  * two triangles per segment, plus joins and antialiased edges. Lines submits ~100 ridges of ~230
  * points, so crossing the boundary means building well over a million triangles a second.
  *
- * Measured in a real window at 1383x640 (`docs/working/perf/spectrogram.md` 搂1): the mesh costs
+ * Measured in a real window at 1383x640 (`docs/working/perf/spectrogram.md` §1): the mesh costs
  * 16.9% of the GPU's 3d engine and 288 ms/s of GPU-process CPU at the themed width, and 3.8% and
  * 14 ms/s at one device pixel. It is a cliff, not a ramp -- 1.05 costs the same as 3.0 -- so there
  * is nothing to gain by inching above it, and the whole saving is lost by exceeding it at all.
@@ -81,7 +81,7 @@ const RIDGE_LINE_WIDTH = 1;
  * Surface rasterises into a buffer this fraction of the canvas and lets the composite stretch it
  * back up. Cost is per pixel walked, so it falls with the area: 0.75 is about half the work.
  *
- * Measured at 1383x640 (`docs/working/perf/spectrogram.md` 搂1): the rasteriser is 92% of a Surface
+ * Measured at 1383x640 (`docs/working/perf/spectrogram.md` §1): the rasteriser is 92% of a Surface
  * repaint -- the smoothers, the row LUT and the buffer clear are together under 8%, so the only
  * lever that pays is how many pixels get walked. 7.9 ms at full size, 4.1 ms at 0.75.
  *
