@@ -1,8 +1,8 @@
 # 统一二进制协议轮 — 设计文档
 
-**状态：** 已全部落地并验证（代码、真实窗口、采集层门禁）。八个面板的单 panel 轮已收口，三份文档（`spectrum.md` §3.5 第 3 层、
-`stereo-map.md` D4-2、`vectorscope.md` D4-1）都把各自剩下的 D4 挂起来等这一轮。本文只定形态、
-账目和边界，不含代码改动。
+**状态：** 已全部落地并验证（代码、真实窗口、采集层门禁）。八个面板的单 panel 轮已收口；
+`spectrum.md` §3.5 第 3 层和 `stereo-map.md` D4-2 已在本轮落地，`vectorscope.md` D4-1 经实测否决。
+本文记录最终形态、账目、边界和验证结果。
 
 **结论先说**：Spectrum 与 Stereo Map 的数组值得走二进制，**字节和 CPU 是同向的**；
 **Vectorscope 不是同一笔账**，binary 省字节但会把 0.104 ms/帧/key 的 path 构建搬到 UI 线程，
@@ -122,7 +122,8 @@ Spectrum 这两行与 `spectrum.md` §3.6 的真实窗口实测（combined 合�
 | **二进制 section** | **3,832 B（−79%）** | **3,832 B（−70%）** |
 
 按 62.5 帧/秒、其中 25 帧/秒带 visual tick 折算（单 Spectrum key + 单 Stereo Map key）：
-**5.85 MiB/s → 约 1.6 MiB/s**。这是线上字节的推算，webview 侧的实际 CPU 降幅仍待 P-1 / P-2。
+**5.85 MiB/s → 约 1.6 MiB/s**。WebView2 的 P-1 / P-2 已完成：解码从 0.689 降到
+0.073 ms/帧，主线程约省 38.5 ms/s，见 §9.3。
 
 **Int16 还是 f32，本轮不定。** Spectrum 前端最终只存 Int16 centi-dB，理论上 Rust 可以直接发
 Int16，再省一半字节和三分之二 CPU。但 Stereo Map 的 pl/pr/c 是 energy 不是 dB，

@@ -104,8 +104,9 @@ canvas 计数器管不到读数面板——它们不画，只写属性。新增 
 
 DOM 计数器顺带量到了另外三条，各自留给对应轮次：
 
-- **Spectrum 是 DOM 写入最重的面板**（471.5/s），其中 `opacity` 112/s 和 `style` 103/s
-  与 `d` 155/s 是同一批元素——`spectrum.md` 的 D2 仍记着"paint 待测"。
+- **Spectrum 当时是 DOM 写入最重的面板**（471.5/s），其中 `opacity` 112/s 和 `style` 103/s
+  与 `d` 155/s 是同一批元素。后续已移除 Live/Snapshot 动画层并完成真实窗口复测，见
+  `spectrum.md` §2.11。
 - **Loudness 每秒有 76.8 次节点增删**，而不是属性更新。节点增删比属性写贵。
 - **Waveform 与 Spectrogram 也各有 76.8 次/秒节点增删**，数字与 Loudness 完全相同，
   说明来自三者共用的某个组件，不是各自的绘制。
