@@ -1,11 +1,8 @@
 import { VISUAL_HISTORY_CHUNK_ROWS } from "./historyChunkConfig.js";
 import {
-  CENTI_DB_NO_VALUE,
   STEREO_MAP_VALUE_INVALID,
   createStereoMapValuePlane,
-  decodeCentiDb,
   decodeStereoMapValue,
-  encodeCentiDb,
   encodeStereoMapValue,
   readStereoMapValueCode,
   sliceStereoMapValuePlane,
@@ -13,11 +10,14 @@ import {
   writeStereoMapValueCode,
 } from "./packedHistoryCodecs.js";
 import {
-  decodeStereoMapRelativeEnergy,
-  encodeStereoMapRelativeEnergy,
-  STEREO_MAP_ENERGY_INVALID,
-  stereoMapGateDb,
-} from "./stereoMapEnergyCodec.js";
+  STEREO_MAP_OPACITY_OPAQUE,
+  createStereoMapOpacityPlane,
+  decodeStereoMapOpacity,
+  encodeStereoMapOpacity,
+  readStereoMapOpacityCode,
+  sliceStereoMapOpacityPlane,
+  writeStereoMapOpacityCode,
+} from "./stereoMapOpacityCodec.js";
 import {
   STEREO_MAP_MODES,
   createStereoMapDerivationScratch,
@@ -26,7 +26,6 @@ import {
 
 const MODES = new Set(Object.values(STEREO_MAP_MODES));
 const INVALID = STEREO_MAP_VALUE_INVALID;
-const GATE_FADE_DB = 12;
 
 function normalizedModes(modes) {
   const selected = new Set(modes ?? MODES);
@@ -71,8 +70,7 @@ function createChunk(sequenceStart, bandCount, modes) {
     rowCount: 0,
     sealed: false,
     timestamps: new Float64Array(VISUAL_HISTORY_CHUNK_ROWS),
-    energyDb: new Uint8Array(VISUAL_HISTORY_CHUNK_ROWS * bandCount).fill(STEREO_MAP_ENERGY_INVALID),
-    fullGridPeakDb: new Int16Array(VISUAL_HISTORY_CHUNK_ROWS).fill(CENTI_DB_NO_VALUE),
+    opacity: createStereoMapOpacityPlane(VISUAL_HISTORY_CHUNK_ROWS * bandCount),
     modePlanes,
     modeRows,
     holdSummaries,
@@ -108,8 +106,7 @@ function cloneChunk(chunk) {
     rowCount: chunk.rowCount,
     sealed: true,
     timestamps: chunk.timestamps.slice(0, chunk.rowCount),
-    energyDb: chunk.energyDb.slice(0, chunk.rowCount * bandCount),
-    fullGridPeakDb: chunk.fullGridPeakDb.slice(0, chunk.rowCount),
+    opacity: sliceStereoMapOpacityPlane(chunk.opacity, chunk.rowCount * bandCount),
     modePlanes,
     modeRows,
     holdSummaries,
@@ -153,8 +150,7 @@ function projectPoint(value, opacity, { lowerBound, upperBound }) {
 }
 
 function payloadBytes(chunk) {
-  let total =
-    chunk.timestamps.byteLength + chunk.energyDb.byteLength + chunk.fullGridPeakDb.byteLength;
+  let total = chunk.timestamps.byteLength + chunk.opacity.byteLength;
   for (const plane of Object.values(chunk.modePlanes)) total += stereoMapValuePlaneBytes(plane);
   for (const rows of Object.values(chunk.modeRows)) total += rows.byteLength;
   for (const summary of Object.values(chunk.holdSummaries)) {
@@ -210,9 +206,6 @@ class StereoMapModeHistoryView {
     const row = sequence - chunk.sequenceStart;
     const bandCount = this._bandCentersHz.length;
     const first = row * bandCount;
-    const energy = chunk.energyDb.subarray(first, first + bandCount);
-    const peakDb = decodeCentiDb(chunk.fullGridPeakDb[row]);
-    const gateDb = stereoMapGateDb(peakDb);
     return {
       timestampMs: chunk.timestamps[row],
       sampleRateHz: this._sampleRateHz,
@@ -221,23 +214,18 @@ class StereoMapModeHistoryView {
         const plane = chunk.modePlanes[mode];
         if (!plane || !chunk.modeRows[mode]?.[row]) return null;
         const values = new Array(bandCount);
-        const energyDb = new Array(bandCount);
         const points = new Array(bandCount);
         for (let band = 0; band < bandCount; band += 1) {
           const value = decodeStereoMapValue(mode, readStereoMapValueCode(plane, first + band));
-          const db = decodeStereoMapRelativeEnergy(peakDb, energy[band]);
-          const opacity =
-            db === null ? undefined : Math.min(1, Math.max(0, (db - gateDb) / GATE_FADE_DB));
+          const stored = decodeStereoMapOpacity(
+            readStereoMapOpacityCode(chunk.opacity, first + band)
+          );
           values[band] = value;
-          energyDb[band] = db;
-          points[band] = projectPoint(value, opacity, range);
+          points[band] = projectPoint(value, stored === null ? undefined : stored, range);
         }
         return {
           mode,
           bandCentersHz: this._bandCentersHz,
-          fullGridPeakDb: peakDb,
-          gateDb,
-          energyDb,
           values,
           points,
         };
@@ -270,14 +258,15 @@ class StereoMapModeHistoryView {
       for (let sequence = firstSequence; sequence < endSequence; sequence += 1) {
         const row = sequence - chunk.sequenceStart;
         const first = row * this._bandCentersHz.length;
-        const peakDb = decodeCentiDb(chunk.fullGridPeakDb[row]);
-        const gateDb = stereoMapGateDb(peakDb);
         for (const mode of this._modes) {
           const plane = chunk.modePlanes[mode];
           if (!plane || !chunk.modeRows[mode]?.[row]) continue;
           for (let band = 0; band < this._bandCentersHz.length; band += 1) {
-            const energyDb = decodeStereoMapRelativeEnergy(peakDb, chunk.energyDb[first + band]);
-            if (!Number.isFinite(energyDb) || energyDb < gateDb + GATE_FADE_DB) continue;
+            if (
+              readStereoMapOpacityCode(chunk.opacity, first + band) !== STEREO_MAP_OPACITY_OPAQUE
+            ) {
+              continue;
+            }
             updateSummary(summaries[mode], mode, band, readStereoMapValueCode(plane, first + band));
           }
         }
@@ -312,7 +301,7 @@ class StereoMapModeHistoryView {
       copiedTailRows: this._copiedTailRows ?? 0,
       copiedTailBytes: this._copiedTailBytes ?? 0,
       retainedModes: [...this._modes],
-      arrayTypes: { values: "Uint8Array (12-bit)", energy: "Uint8Array" },
+      arrayTypes: { values: "Uint8Array (12-bit)", opacity: "Uint8Array (4-bit)" },
       allocatedBytes: { total: allocatedBytes },
       usedBytes: { total: allocatedBytes },
     };
@@ -410,19 +399,19 @@ export class StereoMapModeHistorySlab extends StereoMapModeHistoryView {
       },
       this._scratch
     );
-    chunk.fullGridPeakDb[row] = encodeCentiDb(this._scratch.fullGridPeakDb);
-    const packedPeakDb = decodeCentiDb(chunk.fullGridPeakDb[row]);
-    const packedGateDb = stereoMapGateDb(packedPeakDb);
+    const peakDb = this._scratch.fullGridPeakDb;
     for (let band = 0; band < bandCount; band += 1) {
-      chunk.energyDb[first + band] = encodeStereoMapRelativeEnergy(
-        packedPeakDb,
-        this._scratch.energyDb[band]
+      writeStereoMapOpacityCode(
+        chunk.opacity,
+        first + band,
+        encodeStereoMapOpacity(peakDb, this._scratch.energyDb[band])
       );
     }
     for (const mode of this._modes) {
       for (let band = 0; band < bandCount; band += 1) {
-        const energyDb = decodeStereoMapRelativeEnergy(packedPeakDb, chunk.energyDb[first + band]);
-        if (!Number.isFinite(energyDb) || energyDb < packedGateDb + GATE_FADE_DB) continue;
+        if (readStereoMapOpacityCode(chunk.opacity, first + band) !== STEREO_MAP_OPACITY_OPAQUE) {
+          continue;
+        }
         updateSummary(
           chunk.holdSummaries[mode],
           mode,

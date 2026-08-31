@@ -62,11 +62,15 @@ describe("scalarLiveHeapBudgetBytes", () => {
 });
 
 describe("projectedStereoMapBytes", () => {
-  it("projects one byte of relative energy per retained band", () => {
+  it("projects half a byte of visibility per retained band", () => {
     const rows = 360_000;
     const bands = 958;
     const projection = projectedStereoMapBytes(rows, { bands });
-    expect(projection.energy).toBe(rows * bands * Uint8Array.BYTES_PER_ELEMENT);
-    expect(projection.perKeyTotal).toBe(867_512_696);
+    // Two bands per byte, and no row peak: the peak only existed so a stored energy could be
+    // turned back into a gate.
+    expect(projection.opacity).toBe((rows * bands + 1) >> 1);
+    expect(projection).not.toHaveProperty("rowPeaks");
+    // 867,512,696 before the visibility plane replaced the energy byte and the row peak.
+    expect(projection.perKeyTotal).toBe(694_352_696);
   });
 });

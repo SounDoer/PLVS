@@ -66,26 +66,26 @@ export function projectedScalarSnapshotCopyBounds(
 /**
  * Retained-byte projection for one Stereo Map key with one active Position mode: Float64
  * timestamps, one 12-bit value plane (a byte of high bits per entry plus a shared nibble), one
- * Uint8 energy plane, a centi-dB row peak, a row-presence bitmap, and two Uint16 Hold extrema per
- * chunk. Pure arithmetic, so the four-hour case is cheap.
+ * 4-bit visibility plane (two bands per byte), a row-presence bitmap, and two Uint16 Hold extrema
+ * per chunk. Pure arithmetic, so the four-hour case is cheap.
+ *
+ * There is no row peak any more: it existed so the read side could rebuild the gate from a stored
+ * energy, and storing visibility directly removed both.
  */
 export function projectedStereoMapBytes(rows, { bands = STEREO_MAP_BANDS, keyCount = 1 } = {}) {
   const timestamps = rows * Float64Array.BYTES_PER_ELEMENT;
   const planeEntries = rows * bands;
   const modeValues = planeEntries + ((planeEntries + 1) >> 1);
-  const energy = rows * bands * Uint8Array.BYTES_PER_ELEMENT;
-  const rowPeaks = rows * Int16Array.BYTES_PER_ELEMENT;
+  const opacity = (planeEntries + 1) >> 1;
   const modeRows = rows * Uint8Array.BYTES_PER_ELEMENT;
   const bandCenters = bands * Float32Array.BYTES_PER_ELEMENT;
   const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
   const holdIndex = chunkCount * bands * Uint16Array.BYTES_PER_ELEMENT * 2;
-  const perKeyTotal =
-    timestamps + modeValues + energy + rowPeaks + modeRows + bandCenters + holdIndex;
+  const perKeyTotal = timestamps + modeValues + opacity + modeRows + bandCenters + holdIndex;
   return {
     timestamps,
     modeValues,
-    energy,
-    rowPeaks,
+    opacity,
     modeRows,
     bandCenters,
     holdIndex,
@@ -501,9 +501,17 @@ function benchmarkMixedKeyIntake({ rows, bands, spectrumKeyCount = 4, stereoMapK
       slab?.length === rows,
       `stereoMap key ${key} retained ${slab?.length}/${rows} rows`
     );
+    // The label moved to "Uint8Array (12-bit)" when mode values were narrowed, and this assertion
+    // was not updated with it -- so this benchmark has thrown since then. It is outside
+    // `npm run check`, which is why that went unnoticed.
+    const stereoMapTypes = slab.storageStats().arrayTypes;
     assertStructure(
-      slab.storageStats().arrayTypes.values === "Int16Array",
-      `stereoMap key ${key} did not store a packed mode plane`
+      stereoMapTypes.values === "Uint8Array (12-bit)",
+      `stereoMap key ${key} did not store a packed mode plane, got ${stereoMapTypes.values}`
+    );
+    assertStructure(
+      stereoMapTypes.opacity === "Uint8Array (4-bit)",
+      `stereoMap key ${key} did not store a packed visibility plane, got ${stereoMapTypes.opacity}`
     );
   }
 

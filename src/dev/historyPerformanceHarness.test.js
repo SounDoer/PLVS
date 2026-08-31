@@ -460,7 +460,7 @@ describe("history performance harness", () => {
     );
     expect(slab.storageStats()).toMatchObject({
       retainedModes: ["position", "correlation", "monoLossDb", "msRatioDb"],
-      arrayTypes: { values: "Uint8Array (12-bit)", energy: "Uint8Array" },
+      arrayTypes: { values: "Uint8Array (12-bit)", opacity: "Uint8Array (4-bit)" },
     });
   });
 
@@ -583,7 +583,7 @@ describe("history performance harness", () => {
 });
 
 describe("Stereo Map history benchmark projections", () => {
-  it("projects one packed mode plus shared packed energy at 30/60/120/240-minute retention", () => {
+  it("projects one packed mode plus a shared packed visibility plane at 30/60/120/240-minute retention", () => {
     const bands = 958;
     const rowsPerMinute = 60 * 25;
     for (const minutes of [30, 60, 120, 240]) {
@@ -592,18 +592,19 @@ describe("Stereo Map history benchmark projections", () => {
       const expectedTimestamps = rows * Float64Array.BYTES_PER_ELEMENT;
       const planeEntries = rows * bands;
       const expectedPlane = planeEntries + ((planeEntries + 1) >> 1);
-      const expectedEnergy = rows * bands * Uint8Array.BYTES_PER_ELEMENT;
+      const expectedOpacity = (planeEntries + 1) >> 1;
       const chunkCount = Math.ceil(rows / VISUAL_HISTORY_CHUNK_ROWS);
       const expectedHoldIndex = chunkCount * bands * Uint16Array.BYTES_PER_ELEMENT * 2;
       expect(projected.timestamps).toBe(expectedTimestamps);
       expect(projected.modeValues).toBe(expectedPlane);
-      expect(projected.energy).toBe(expectedEnergy);
+      expect(projected.opacity).toBe(expectedOpacity);
       expect(projected.holdIndex).toBe(expectedHoldIndex);
+      // No row-peak term: the peak existed only so a stored energy could be turned back into a
+      // gate, and the visibility plane stores the answer instead of the ingredients.
       expect(projected.total).toBe(
         expectedTimestamps +
           expectedPlane +
-          expectedEnergy +
-          rows * Int16Array.BYTES_PER_ELEMENT +
+          expectedOpacity +
           rows * Uint8Array.BYTES_PER_ELEMENT +
           bands * Float32Array.BYTES_PER_ELEMENT +
           expectedHoldIndex
@@ -619,12 +620,13 @@ describe("Stereo Map history benchmark projections", () => {
       expect(fourKeys[index].total).toBe(oneKey[index].total * 4);
     }
 
-    // One active mode plus shared Energy is roughly 0.81 GiB at four hours, without changing row
-    // count, cadence, or band count. Keep a tight bound so accidental retained-plane growth fails.
+    // One active mode plus the shared visibility plane is roughly 0.65 GiB at four hours, down
+    // from 0.81 when a byte of energy per band and a row peak were stored. Keep a tight bound so
+    // accidental retained-plane growth fails.
     const fullRetention = oneKey.at(-1);
     expect(fullRetention.minutes).toBe(240);
-    expect(fullRetention.total).toBeGreaterThan(0.8 * 1024 ** 3);
-    expect(fullRetention.total).toBeLessThan(0.82 * 1024 ** 3);
+    expect(fullRetention.total).toBeGreaterThan(0.64 * 1024 ** 3);
+    expect(fullRetention.total).toBeLessThan(0.66 * 1024 ** 3);
     expect(fullRetention.holdIndex / fullRetention.perKeyTotal).toBeLessThan(0.002);
   });
 });

@@ -435,7 +435,7 @@ describe("StereoMapPanel", () => {
     expect(ctxC.stroke).toHaveBeenCalledTimes(0);
   });
 
-  it("shows the current value, energy, and Hold on hover", () => {
+  it("shows the current value and Hold on hover, and no energy readout", () => {
     const { container } = renderPanel(
       baseAudioData({
         panelControls: {
@@ -457,7 +457,10 @@ describe("StereoMapPanel", () => {
 
     // Band 0 (100 Hz) is near the left edge; Position there is 0% (equal energy).
     expect(container.textContent).toContain("0%");
-    expect(container.textContent).toMatch(/Energy ≈ .* dB/);
+    // The energy readout is gone on purpose: history stores how visible a band is, not how much
+    // energy it carries, so there is no dB value left to report here. Spectrum's HUD is where a
+    // band's level is read now.
+    expect(container.textContent).not.toMatch(/Energy/);
   });
 
   it("formats a clipped M/S Ratio infinity as a bound, not an exact measurement", () => {

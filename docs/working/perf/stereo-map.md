@@ -198,6 +198,41 @@ code INVALID  无值
 **尚未验证**：0.017（5 bit）或 0.038（4 bit）的 alpha 阶梯在真实画面上看不看得出来。
 误差是量出来的，"看不出来"是判断，需要真实窗口对比才能定。
 
+### 3.2c 4 bit 已落地（2026-08-31）
+
+按 §3.2b 的 4 bit 方案实现。`src/lib/stereoMapOpacityCodec.js` 是新的编解码与半字节 plane，
+`StereoMapModeHistorySlab` 存的是可见度而不是能量。
+
+**行峰值（`fullGridPeakDb`）也一并删掉了**：它唯一的用途是让读取侧从存储的能量重建门限，
+而现在门限的结果被直接存下来了。原来每行 2 字节。
+
+**实测投影**（`npm run benchmark:history`，四小时单 key 单 mode）：
+
+| 字段 | 改前 | 改后 |
+| --- | ---: | ---: |
+| mode values，12-bit | 517,320,000 | 517,320,000 |
+| relative energy，Uint8 | 344,880,000 | — |
+| **visibility，4-bit** | — | **172,440,000** |
+| row peaks | 720,000 | — |
+| 其余 | 4,592,696 | 4,592,696 |
+| **合计** | **867,512,696 B（0.808 GiB）** | **694,352,696 B（0.647 GiB）** |
+
+**−173,160,000 B，即 −19.96%**，与 §3.2b 的预测（−19.9%）一致。四 key 从 3.23 GiB 降到 2.59 GiB。
+
+**HUD 的 energy 读数已移除。** 想看某个频点的电平去 Spectrum 的 HUD——但注意**两个数不相等**：
+Stereo Map 的能量是 `10·log10(PL+PR)`，Spectrum 是该 band 的 PSD 且带频率加权，
+两者是独立的 request key（speed / smoothing 各自设置），Spectrum 显示端还会加倾斜。
+校准偏移倒是同一个（`CAL_OFFSET_DB = 16.5`）。
+
+**被门限挡住的 band 依然是 `state: "invalid"`，不是"透明度 0"**——实时路径本来就这样标
+（`stereoMapMath.js` 的 `gated` 分支给 `value = null`），存储层保持一致。
+
+**顺带修好了 `npm run benchmark:history`**：它的结构断言从 `0cd42589`（12-bit 那一轮）起就写着
+`arrayTypes.values === "Int16Array"`，而代码早已返回 `"Uint8Array (12-bit)"`，所以那条命令一直是
+抛错的。它不在 `npm run check` 里，所以没人发现。
+
+**仍未验证**：alpha 阶梯的可见性要真实窗口里看。
+
 ### 3.3 12-bit value plane：把同一个问题问给最大的那张表
 
 energy 之所以能减半，靠的是"显示端需要多少精度"，而不是无损压缩。同一问题此前没有问过
