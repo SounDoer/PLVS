@@ -17,9 +17,18 @@
  * end of the scene recedes without a second light being introduced.
  */
 const DEPTH_FADE_FLOOR = 0.65;
-/** Matches `SHADE_LEVELS` in `spectrogram3dSurface.js` -- the LUT texture's height. */
+/**
+ * The colour table's shape, and it is SHADE first on purpose.
+ *
+ * `buildSurfaceLut` indexes `level * SHADE_LEVELS + shade`, so shade is the FAST axis and level the
+ * slow one. A texture's fast axis is its width, which makes this 64 wide by 256 tall and the sample
+ * coordinate `(shade, level)` -- not the other way round. Uploading it transposed does not look
+ * like a broken table: the level a fragment reads comes out as roughly `4 * (shade + height)`, so
+ * the surface still shades smoothly, it just shades by SLOPE instead of by level, and quiet terrain
+ * lands at a level far above the alpha fade and paints over the floor grid it should dissolve into.
+ */
 const SHADE_LEVELS = 64;
-const LUT_WIDTH = 256;
+const LUT_LEVELS = 256;
 
 const SURFACE_VERTEX_SOURCE = `#version 300 es
 in vec3 vertex;            // tFrac, fFrac, height
@@ -57,7 +66,7 @@ precision highp float;
 in float height;
 in float nearness;
 in float tFrac;
-uniform sampler2D lut;     // 256 x 64, level on x, shade on y
+uniform sampler2D lut;     // 64 x 256, shade on x, level on y
 uniform float slopeGain;
 uniform float depthFadeFloor;
 uniform vec2 highlightBand;   // tFrac range; empty when min > max
@@ -71,7 +80,7 @@ void main() {
   float slope = length(vec2(dFdx(height), dFdy(height))) * sign(dFdy(height)) * slopeGain;
   float shade = 0.5 + 0.5 * (slope / (1.0 + abs(slope)));
   shade *= depthFadeFloor + (1.0 - depthFadeFloor) * nearness;
-  colour = texture(lut, vec2(height, shade));
+  colour = texture(lut, vec2(shade, height));
 }
 `;
 
@@ -296,8 +305,8 @@ export function createSurfaceRenderer(canvas) {
       gl.TEXTURE_2D,
       0,
       gl.RGBA,
-      LUT_WIDTH,
       SHADE_LEVELS,
+      LUT_LEVELS,
       0,
       gl.RGBA,
       gl.UNSIGNED_BYTE,

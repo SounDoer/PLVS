@@ -27,7 +27,7 @@ import {
   smoothGridFrequency,
   smoothGridTime,
 } from "../math/spectrogram3dSurface.js";
-import { buildSurfaceMesh } from "../math/spectrogram3dMesh.js";
+import { buildSurfaceMesh, rowGapToleranceTFrac } from "../math/spectrogram3dMesh.js";
 import { buildGlUniforms } from "../math/spectrogram3dGlUniforms.js";
 import { createSurfaceRenderer } from "./spectrogram3dGlRenderer.js";
 
@@ -136,23 +136,6 @@ function cssVar(el, name, fallback) {
   // Cached per theme: these resolve inside a paint that runs every frame. See `readCssToken`.
   return readCssToken(el, name, fallback);
 }
-
-/**
- * Rows within this multiple of the decimation stride count as covering a sample; see buildRowLut.
- * Scaled by the STRIDE, not by the mean row spacing: at capture start the few captured rows all
- * sit at the newest end of a full-width window, and a tolerance derived from `span / count` grows
- * with the emptiness -- count = 2 makes it 1.5x the whole window, so the two frames get held
- * across time they contain no data for, which renders as giant extruded ridges. The stride is
- * independent of how much history exists, so the empty region stays the hole it is in 2D.
- */
-/**
- * The row LUT quantises the time axis, so it has to stay comfortably finer than the row spacing or
- * it becomes the resolution limit instead of the row count. At `SURFACE_RIDGE_MAX` rows, 1024
- * buckets left 2.6 per row -- adjacent rows collapsing into one bucket, which would have eaten the
- * resolution the higher cap exists to buy. 4096 gives 10 buckets per row at the ceiling and 7 at
- * the largest projection cap measured (588 rows), for 0.026 ms against 1024's 0.007.
- */
-const ROW_GAP_TOLERANCE = 1.5;
 
 /**
  * Resolve a CSS colour string to a packed ARGB word.
@@ -769,7 +752,12 @@ export function useSpectrogram3dCanvas({
           Number.isFinite(rawStrideTFrac) && rawStrideTFrac > 0
             ? rawStrideTFrac
             : 1 / Math.max(1, grid.count - 1);
-        const rowGapTFrac = ROW_GAP_TOLERANCE * strideTFrac;
+        // Plus a frame period, not a bigger multiple of the stride -- see rowGapToleranceTFrac.
+        // Without it a zoomed-in time axis fills the surface with black bars.
+        const rowGapTFrac = rowGapToleranceTFrac(
+          strideTFrac,
+          Number.isFinite(p.sampleMs) && p.sampleMs > 0 && span > 0 ? p.sampleMs / span : 0
+        );
         // The edge fades do NOT ride the same stride. Gap tolerance asks "how far apart are two
         // rows"; the fades ask "how much of the WINDOW does the terrain sink over", which is a
         // spatial property of the window edge and says nothing about how finely time is sampled.

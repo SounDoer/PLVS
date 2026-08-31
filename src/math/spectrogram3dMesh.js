@@ -102,3 +102,38 @@ function boundaryCycle(count, pointCount) {
   for (let q = pointCount - 2; q >= 1; q -= 1) cycle.push(q);
   return cycle;
 }
+
+/**
+ * How far apart two rows may sit before the mesh treats the space between them as a capture gap.
+ *
+ * Not a fixed multiple of the decimation stride, and that is the whole content of this function.
+ * The stride is quantised to a whole number of frame periods, so the number of frames a bucket
+ * holds can differ by one between neighbours -- the real spacing swings between the stride and the
+ * stride plus one frame period. At wide windows the stride is many periods and the swing is a few
+ * percent, which any sane multiple absorbs. Zoom the time axis in far enough and the stride falls to
+ * ONE period, the swing becomes a factor of two, and a `1.5 * stride` tolerance rejects every second
+ * row pair: the mesh drops those quads, and the surface fills with black bars running the full
+ * length of the frequency axis. Adding a frame period rather than raising the multiple absorbs
+ * exactly that quantisation and nothing wider, so a real gap -- seconds of no frames -- is still a
+ * gap at every zoom.
+ *
+ * The old rasteriser never showed this because it asked a different question: `buildRowLut` measured
+ * how far a COLUMN sat from the nearest row, which is at most half the spacing, where this measures
+ * the spacing itself.
+ *
+ * Scaled by the STRIDE rather than by the mean row spacing, for a reason that predates the mesh: at
+ * capture start the few rows that exist all sit at the newest end of a full-width window, and a
+ * tolerance derived from `span / count` grows with the emptiness -- two rows would make it 1.5x the
+ * whole window, joining them across time that holds no data at all. The stride does not care how
+ * much history exists, so the empty region stays the hole it is in 2D.
+ *
+ * @param {number} strideTFrac decimation stride, as a fraction of the window
+ * @param {number} frameTFrac nominal frame period, in the same units; 0 when it is unknown
+ */
+export function rowGapToleranceTFrac(strideTFrac, frameTFrac) {
+  const jitter = Number.isFinite(frameTFrac) && frameTFrac > 0 ? frameTFrac : 0;
+  return ROW_GAP_TOLERANCE * strideTFrac + jitter;
+}
+
+/** Rows within this multiple of the decimation stride are neighbours rather than a gap. */
+const ROW_GAP_TOLERANCE = 1.5;

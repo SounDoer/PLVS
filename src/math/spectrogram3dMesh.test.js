@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSurfaceMesh } from "./spectrogram3dMesh.js";
+import { buildSurfaceMesh, rowGapToleranceTFrac } from "./spectrogram3dMesh.js";
 
 /** Two rows of three points, heights chosen so Float32 holds them exactly. */
 function grid() {
@@ -60,5 +60,28 @@ describe("buildSurfaceMesh skirt", () => {
     expect(Array.from(mesh.positions.subarray(skirtStart, skirtStart + 3))).toEqual([0, 0, 0]);
     // Two triangles per boundary edge, on top of the four terrain triangles.
     expect(mesh.triangleCount).toBeGreaterThan(4);
+  });
+});
+
+describe("rowGapToleranceTFrac", () => {
+  it("absorbs the one-frame swing a quantised stride leaves between neighbouring rows", () => {
+    // Zoomed in far enough that the stride IS one frame period: bucket sizes then differ by a whole
+    // period, so consecutive rows can sit two periods apart without a frame having been missed.
+    const frame = 0.008;
+    const tolerance = rowGapToleranceTFrac(frame, frame);
+    expect(tolerance).toBeGreaterThan(2 * frame);
+  });
+
+  it("still calls a real capture gap a gap", () => {
+    const frame = 0.008;
+    expect(rowGapToleranceTFrac(frame, frame)).toBeLessThan(20 * frame);
+  });
+
+  it("is dominated by the stride once the window is wide", () => {
+    const frame = 0.0004;
+    const stride = 0.02;
+    expect(rowGapToleranceTFrac(stride, frame)).toBeCloseTo(1.5 * stride + frame, 12);
+    // A bucket holding one frame more than its neighbour is still under the bar.
+    expect(rowGapToleranceTFrac(stride, frame)).toBeGreaterThan(stride + frame);
   });
 });
