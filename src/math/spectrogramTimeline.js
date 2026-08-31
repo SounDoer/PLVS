@@ -119,11 +119,11 @@ export function resolveSpectrogramSampleMs(view, fallbackMs) {
  */
 const STABLE_SAMPLE_LOOKBACK = 16;
 
-// Both visual-history producers run on nominal cadences expressed in 10ms steps: live is 40ms and
-// file mode is 100ms. Their integer wall-clock timestamps still jitter between those ticks, so the
-// measured interval must be snapped back to that clock grid before it can safely quantise absolute
-// time buckets.
-const NOMINAL_SAMPLE_QUANTUM_MS = 10;
+// The two visual-history producers have fixed nominal cadences. Match measurements to these actual
+// contracts rather than rounding on an arbitrary grid: live timestamps can occasionally measure
+// 39ms or 45-48ms around their 40ms gate, while cumulative file timestamps can alternate between
+// 99ms and 100ms at sample rates whose 100ms chunk is not an integer number of frames.
+const NOMINAL_SAMPLE_CADENCES_MS = [40, 100];
 
 /**
  * The same nominal frame interval as `resolveSpectrogramSampleMs`, but stable across updates.
@@ -136,10 +136,9 @@ const NOMINAL_SAMPLE_QUANTUM_MS = 10;
  * period shifts every bucket edge by hundreds of periods -- the 3D waterfall then re-selects most of
  * its ridges on every frame, which reads as the whole surface jumping.
  *
- * The minimum over recent intervals rejects capture gaps and stalls, which only make an interval
- * longer. It is still a measurement, though: the shortest tick can enter or leave the lookback and
- * move the minimum by 1ms. Snap it to the producers' 10ms clock grid so the returned value is the
- * nominal cadence required by absolute-time bucketing.
+ * The minimum over recent intervals rejects isolated capture gaps and stalls. It is still a noisy
+ * measurement, though, so match it to a cadence a producer can actually emit. This avoids both
+ * sides of generic grid rounding: 45ms must not become 50ms, and 39/99ms must not become 30/90ms.
  *
  * @param {{ length: number, timestampAt?: (i:number)=>number }} view ascending by timestamp
  * @param {number} fallbackMs used when the view carries too few usable intervals
@@ -154,17 +153,18 @@ export function resolveStableSpectrogramSampleMs(view, fallbackMs) {
     if (Number.isFinite(interval) && interval > 0 && interval < smallest) smallest = interval;
   }
   if (smallest === Infinity) return fallbackMs;
-  // Down to the grid, not to the nearest point on it. The emit gate means an interval is never
-  // SHORTER than the nominal period -- the same invariant that makes the minimum the right
-  // statistic -- so the nominal is the largest grid point at or below what was observed. Rounding
-  // to nearest breaks on a producer that runs consistently late: a lookback of 45-48ms intervals
-  // reports 50, a 25% stride error invented exactly when the machine is busiest, and a minimum that
-  // straddles 44/45 alternates between 40 and 50, which is the ridge re-binding this snapping
-  // exists to remove.
-  return Math.max(
-    NOMINAL_SAMPLE_QUANTUM_MS,
-    Math.floor(smallest / NOMINAL_SAMPLE_QUANTUM_MS) * NOMINAL_SAMPLE_QUANTUM_MS
-  );
+  let nearest = NOMINAL_SAMPLE_CADENCES_MS[0];
+  let nearestDistance = Math.abs(smallest - nearest);
+  for (let i = 1; i < NOMINAL_SAMPLE_CADENCES_MS.length; i++) {
+    const candidate = NOMINAL_SAMPLE_CADENCES_MS[i];
+    const distance = Math.abs(smallest - candidate);
+    // Keep the shorter cadence on an exact tie; do not invent a wider stride without evidence.
+    if (distance < nearestDistance) {
+      nearest = candidate;
+      nearestDistance = distance;
+    }
+  }
+  return nearest;
 }
 
 export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 1.8) {

@@ -173,10 +173,9 @@ describe("resolveStableSpectrogramSampleMs", () => {
   });
 
   it("still reports the nominal cadence when the producer runs consistently late", () => {
-    // The emit gate is `>= 40ms`, so an interval is never SHORTER than the nominal period -- that
-    // invariant is the whole reason the minimum is used. Under sustained load every interval in the
-    // lookback can sit at 45-48ms, and rounding to the nearest 10ms grid point then reports 50: a
-    // 25% error in the decimation stride, invented at exactly the moment the machine is busiest.
+    // Under sustained load every interval in the lookback can sit at 45-48ms. Rounding to the
+    // nearest point on an arbitrary 10ms grid then reports 50: a 25% error in the decimation stride,
+    // invented at exactly the moment the machine is busiest.
     const rows = [];
     let ts = 500_000;
     for (let i = 0; i < 80; i++) {
@@ -187,9 +186,9 @@ describe("resolveStableSpectrogramSampleMs", () => {
   });
 
   it("does not flip the stride when a late stretch ends", () => {
-    // The failure the snapping exists to prevent, one grid step coarser: if the observed minimum
-    // straddles the rounding boundary, the stride alternates between two values and every ridge
-    // re-binds on the frames where it moves.
+    // The failure cadence matching exists to prevent: if the observed minimum straddles an
+    // arbitrary grid boundary, the stride alternates between two values and every ridge re-binds on
+    // the frames where it moves.
     const rows = [];
     let ts = 500_000;
     for (let i = 0; i < 80; i++) {
@@ -201,6 +200,28 @@ describe("resolveStableSpectrogramSampleMs", () => {
       seen.add(resolveStableSpectrogramSampleMs(viewOf(rows.slice(0, length)), 40));
     }
     expect([...seen]).toEqual([40]);
+  });
+
+  it("does not undershoot the live cadence when a timestamp arrives 1ms early", () => {
+    const rows = [];
+    let ts = 500_000;
+    for (let i = 0; i < 40; i++) {
+      rows.push({ timestampMs: ts });
+      ts += i === 30 ? 39 : 40;
+    }
+    expect(resolveStableSpectrogramSampleMs(viewOf(rows), 40)).toBe(40);
+  });
+
+  it("recognises file cadence when cumulative timestamp rounding produces 99ms intervals", () => {
+    // File chunks contain floor(sampleRate / 10) frames and their cumulative media timestamp is
+    // rounded to integer milliseconds. At rates such as 11025Hz that produces 99/100ms intervals,
+    // even though the producer's nominal cadence is 100ms.
+    const sampleRate = 11_025;
+    const chunkFrames = Math.floor(sampleRate / 10);
+    const rows = Array.from({ length: 40 }, (_, i) => ({
+      timestampMs: Math.round((((i + 1) * chunkFrames) / sampleRate) * 1000),
+    }));
+    expect(resolveStableSpectrogramSampleMs(viewOf(rows), 40)).toBe(100);
   });
 
   it("follows a real cadence change, such as live to file mode", () => {
