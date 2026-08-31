@@ -128,6 +128,36 @@ node scripts/webview-dom-count.mjs --seconds 5
 **计数器自己有开销**，每秒两万多次调用都要过一次查找。脚本跑完会把原方法装回去，
 但**别在装着计数器的时候采 profile**——那量的是计数器。
 
+### 量 GPU：前两把尺子都够不到的那一段
+
+**`ctx.stroke()` 在任何东西被光栅化之前就返回了。** 面板自己的 rAF 计时器（`beginPanelCpuSample`）
+和 renderer profile 量的都是主线程，两者都停在「绘制命令提交完毕」那一刻；真正的三角形细分和填色
+发生在之后的 GPU 进程里，不在任何一个计时器的账上。所以一个面板可以在现有两把尺子上都很便宜，
+同时比它的对照组更贵——Spectrogram 的 3D Lines 与 Surface 就是这样，见 `spectrogram.md` §1。
+
+Windows 把每进程的 GPU 时间开在 `GPU Engine` 计数器集里，也就是任务管理器 GPU 那一列的同一个源。
+不需要调试端口，也不需要改代码，应用跑着就行：
+
+```bash
+node scripts/webview-gpu-usage.mjs --seconds 10 --label "3D Lines"
+```
+
+脚本沿 `GPU 进程 → WebView2 browser 进程 → plvs.exe` 这条父子链定位归属，不会把机器上别的
+WebView2 应用算进来；同时报出 GPU 进程自己的 CPU（把活交给驱动也要花 CPU，而这段 CPU 和那段
+GPU 时间一样，在 renderer profile 里是隐形的）。
+
+三条决定这个数字怎么用的性质：
+
+- **它是整个应用，不是一个面板。** 一个 GPU 进程负责所有面板加窗口本身，所以单独一个读数没有意义。
+  必须配一个底线读数（面板关掉，或切到已经判定便宜的 mode），读**差值**。窗口尺寸、布局、信号都要
+  保持一致——device 像素是这里影响最大的自变量。
+- **`Utilization Percentage` 是按引擎算的。** 一个进程可以同时跑在 3d、copy、video 引擎上，几个引擎
+  加起来可以超过 100%。任务管理器只显示最大的那个；脚本给的是分引擎明细加它们的和，因为对 canvas
+  来说 3d 与 copy 的分布本身就是结论（细分几何 vs 上传纹理）。
+- **计数器一秒一采。** 10 秒就是 10 个样本，max 那一列是真实观测但很粗，别把一个尖峰当帧时间读。
+
+**窗口被遮挡会让读数归零**，而这和「这个 mode 不花 GPU」在输出上长得一模一样。采样时把窗口露在外面。
+
 ### 两条读 profile 时的注意
 
 **跨次采样不可直接比较。** 构建、恢复出来的面板布局、素材位置都会变。观察到的 idle 占比在
@@ -153,7 +183,7 @@ Vectorscope 实测后**没有并进去**；band grid 实测后**判定不做**�
 | 维度         | 问题                           | 证据来源                                                                                                                                                                                              |
 | ------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1 Rust 计算 | 算得对吗？算得有没有冗余？     | `npm run rust:test` + 新增对拍测试（已知输入 → 期望 dB）；Rust 侧单帧耗时                                                                                                                             |
-| D2 前端渲染  | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render` / `benchmark:spectrogram-render` / `benchmark:waveform-render` / `benchmark:vectorscope-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下） |
+| D2 前端渲染  | 单帧预算超了吗？还有多少空间？ | `npm run benchmark:spectrum-render` / `benchmark:spectrogram-render` / `benchmark:waveform-render` / `benchmark:vectorscope-render`（纯计算部分）+ `npm run profile:webview`（commit 与 paint，见下）+ `webview-gpu-usage.mjs`（光栅化，见下） |
 | D3 历史存储  | 结构合理吗？占用是多少？       | `npm run benchmark:history` + heap 预算测试                                                                                                                                                           |
 | D4 其他      | 每帧 payload、IPC、调度        | payload 字节数实测；`npm run soak:capture`（留存记录的漂移带是 0.0028–0.0036 dB，对着它读，别对着 0.01 上限）                                                                                          |
 
@@ -162,7 +192,7 @@ Vectorscope 实测后**没有并进去**；band grid 实测后**判定不做**�
 | Panel       | D1                                           | D2                                                                  | D3                                    | D4                                    |
 | ----------- | -------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------- | ------------------------------------- |
 | Spectrum    | 合理性已落地，正确性已有覆盖                 | 计算部分已优化；Live 实测动画层 `opacity`/`style` 稳态写入归零                                     | 已测，无水分，有损手段均拒绝          | 三层全部已落地，dB 行 −79%/行；真实窗口已验 |
-| Spectrogram | 继承 Spectrum                                | 2D 已优化（−87%/−95%，92.0% 脏帧走滚动条带）；3D Lines 1.74 ms/帧，Surface 11.0–11.6 ms/帧，待决策 | 继承 Spectrum                         | 继承 Spectrum                         |
+| Spectrogram | 继承 Spectrum                                | 2D 已优化（−87%/−95%，92.0% 脏帧走滚动条带）；两种 3D mode 的 CPU 总账相当（Surface 383 ms/s 在渲染进程，Lines 330 ms/s 在 GPU 进程），GPU 引擎 Lines 14–17% vs Surface 7%，均待决策 | 继承 Spectrum                         | 继承 Spectrum                         |
 | Stereo Map  | 已测，约 50.6 µs/批；零分配，不改           | 已测，派生 <0.11 ms；canvas 调度合理                                | 已优化，1.29 → 0.647 GiB/key（约 −50%）；4-bit 视觉已验 | 已落地（栅格 −23%，行再 −70%）；真实窗口已验 |
 | Waveform    | 边界与正确性已查，成本未测                   | 已测并优化三处（谱线 seek、默认不计算、颜色循环），已在真实窗口验证 | 已测，占历史约 1%，拒绝               | 已测，11.29 KiB/s，拒绝               |
 | Vectorscope | SVG path 字符串构建已优化约 52%            | 选窗和 canvas 尺寸/绘制调度冗余均已优化                           | 未读列已删，143.2 MiB/key；拒绝有损主体压缩 | 已测，0.73–0.76 MiB/s/key；协议轮实测后否决 |

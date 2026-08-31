@@ -1,7 +1,8 @@
 # Spectrogram 体检表
 
-**状态：** D1、D3、D4 继承自 Spectrum，无独立工作；D2 的 2D 路径已落地滚动复用，3D Lines
-成本可接受，3D Surface 已在真实 WebView2 中确认是独立热点，待单独决策。
+**状态：** D1、D3、D4 继承自 Spectrum，无独立工作；D2 的 2D 路径已落地滚动复用；两种 3D mode
+在真实 WebView2 中都已确认是热点，CPU 总账几乎相等（Surface 花在渲染进程，Lines 花在 GPU
+进程），GPU 引擎上 Lines 约为 Surface 的 2.2 倍，两者都待决策。
 
 ## 0. 继承关系（先钉死，免得重做）
 
@@ -89,8 +90,53 @@ renderer profile 也把 Surface 的 `useSpectrogram3dCanvas` `draw` 列为第一
 同样条件切回 Lines 后，它没有进入前 20。profile 会放大采样开销，所以百分比只作热点归因，精确的
 mode 对拍以上面的内置 callback 计时为准。
 
-**判定：Lines 不动；Surface 不是漏测的小分支，而是下一项明确的 D2 候选。** 优化应盯 Surface
-逐像素 rasterize / 分辨率策略，不能继续在共用的 `sampleWaterfallGrid` 上抠时间。
+**当时的判定是「Lines 不动，Surface 是下一项 D2 候选」。下一节推翻了前半句**：这张表量的是
+主线程，而 `ctx.stroke()` 在光栅化发生之前就返回了。
+
+### 把 GPU 侧也量了之后：成本没有消失，只是换了个进程（2026-08-31）
+
+上一节的两把尺子——面板自己的 rAF 计时器和 renderer profile——都停在「绘制命令提交完毕」。
+真正的三角形细分和填色发生在 WebView2 的 GPU 进程里，不在任何一个计时器的账上。补上
+`scripts/webview-gpu-usage.mjs`（Windows `GPU Engine` 计数器，按父子链归属到 plvs.exe，见
+`README.md`）之后，同一窗口、同一信号、同一 1383×640 device canvas 重测：
+
+| mode | 重画 | 主线程每次 | 主线程 | GPU 3d 引擎 | **GPU 进程 CPU** | CPU 合计 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| **3D Lines** | 33.5 / 33.7 次/s | 1.67 / 1.66 ms | 56 ms/s | **14.3% / 17.3%** | **327 / 330 ms/s** | ≈386 ms/s |
+| **3D Surface** | 32.8 / 33.8 次/s | 11.68 / 11.36 ms | 383 ms/s | 7.2% / 7.6% | 6.3 / 6.3 ms/s | ≈390 ms/s |
+| 2D Heatmap | 34.6 次/s | 1.07 ms | 37 ms/s | 6.6% | 10.9 ms/s | ≈48 ms/s |
+| 底线（停止采集） | 0 | — | — | **0.00%** | **0.0 ms/s** | 0 |
+
+（每档 10 秒，A/B/A/B 交替；底线读数是 0，所以上面每一行都可以整份记到面板头上。GPU 进程 CPU
+的量级另用一次独立的 `Get-Process` 采样复核过：Lines 245 ms/s、Surface 9.4 ms/s——同一方向，
+绝对值略低，因为那次设置浮层还盖着一部分画布。）
+
+三条结论：
+
+1. **两个 mode 的 CPU 总账几乎相等（386 vs 390 ms/s）。** Lines 不是更便宜，它只是把同一份活
+   从渲染进程搬到了 GPU 进程：主线程省下的 327 ms/s，在 GPU 进程里几乎一分不少地又花掉了。
+   上一节「Surface 是 Lines 的 6.3–6.7 倍」是只看渲染进程得出的，成立但不完整。
+2. **GPU 引擎这一侧 Lines 是 Surface 的约 2.2 倍**（14.3–17.3% vs 7.2–7.6%），也是全部四档里
+   最高的。用户先感觉到的就是这一项。
+3. **两个 mode 的重画频率一致（约 33 次/s）**，所以上面每秒的数字可以直接比。此前那张表里
+   Lines 约 11 次/s 是另一组时间轴参数下的读数，不要跨表比较。
+
+结构计数给出了原因，同一次会话里数的：
+
+| mode | 每次重画提交 |
+| --- | --- |
+| 3D Lines | **98.5 次 `stroke`**（2693 次/秒），每条脊一次 |
+| 3D Surface | 1 次 `putImageData` + 1 次 `drawImage` + 2 次 `stroke`（地面网格） |
+
+每条脊是一条约 230 点、`lineJoin: "round"`、线宽 `dpr × 1.5` 的折线，且**每条脊都新建一个
+17 stop 的 `createLinearGradient`**（`buildRidgeGradient`）。约 100 次不可批处理的描边、约 2.3 万
+段几何、约 100 次画笔状态切换——这就是那 327 ms/s 和 14–17% 的去处。Surface 反过来：整张图在 JS
+里逐像素算完，GPU 只做一次约 3.5 MB 的纹理上传。
+
+**修订后的判定：两个 mode 都是 D2 候选，但不是同一个问题。** Surface 的问题在渲染进程的逐像素
+rasterize；Lines 的问题在提交给 GPU 的绘制命令结构——先分清是那 100 个渐变还是那 2.3 万段几何在
+花钱，再决定改法（按色阶分桶批量描边 / `lineJoin` 改 bevel / 降密度）。在共用的
+`sampleWaterfallGrid` 上抠时间对两者都无效。
 
 ## 2. 已落地：滚动复用（2026-08-29）
 
