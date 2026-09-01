@@ -22,7 +22,6 @@ import {
   columnFloorSpan,
   edgeFade,
   edgeRampWidth,
-  fadeGridFrequencyEdges,
   packArgb,
   smoothGridFrequency,
   smoothGridTime,
@@ -83,30 +82,36 @@ const RIDGE_LINE_WIDTH = 1;
 // by its own row spacing; Surface, whose row count is no longer the same number, by
 // `fadeStrideTFrac` -- see where that is derived.
 const EDGE_FADE_RIDGES = 2.5;
-// Surface's entering-edge fade, in the same units as EDGE_FADE_RIDGES. Still narrower than the
-// exiting edge on purpose -- it must not dim the live moment out of the frame -- but not as narrow
-// as it can be: at one stride the entering ramp was 2.5x steeper than the exiting one, so the same
-// mechanism read as a pop on arrival and as a dissolve on departure. See edgeFade.
-const ENTER_FADE_STRIDES = 2;
-// The frequency limits' ramp, as a fraction of the frequency axis. See fadeGridFrequencyEdges --
-// unlike the time ends, nothing pops here, so this buys only the closed silhouette.
-const FREQ_FADE_FRAC = 0.02;
 
 /**
- * Caps on how much of an axis an edge ramp may swallow while chasing `EDGE_RAMP_SLOPE`.
+ * The ENTERING time end and both FREQUENCY ends no longer sink at all. Only the exiting end does.
  *
- * The two are different because what they spend is different. A time ramp costs history at the
- * window's own edge -- at the newest end that is the live moment, which is why this is a tenth of
- * the window and not more: at a 60s window it sinks the newest 4.2s, at the 5s minimum only 0.35s,
- * and short windows are where flattening the view actually happens.
+ * All three ramps were written for the per-pixel rasteriser, which had no way to close the solid:
+ * sinking the heights to zero was the only way to stop an edge reading as a sliced-off face. The
+ * mesh closes it with a skirt instead (`buildSurfaceMesh`'s `skirt`), and the two mechanisms were
+ * fighting -- `edgeFade` puts every boundary row at exactly zero, so the skirt was a strip of
+ * degenerate quads that never drew a pixel.
  *
- * A frequency ramp costs the band the user explicitly asked for, on a LOG axis, where a small
- * fraction is a large number of Hz -- 6% of a 20 Hz - 20 kHz range is the bottom 20-30 Hz but also
- * the top 13.3-20 kHz. Hence the tighter cap, and the frequency ends staying slightly steeper than
- * the time ends at flat views rather than eating an octave to match them.
+ * With the skirt doing the closing, what the ramps still bought was pop suppression, and only the
+ * time ends have anything to pop: nothing enters or leaves at a frequency limit. At the entering
+ * end that suppression was not worth its price. The width chases a screen slope, so it grows as the
+ * view flattens -- at elevation 59 it measured 6.4% of the window, which at a 60s span holds the
+ * newest 3.8 seconds below its true height, and the two ramps compound in the near corner, where
+ * an azimuth near 180 presents the result broadside. That is a latency the live edge cannot afford,
+ * and Lines has always left its newest ridge unfaded for the same reason.
+ *
+ * The exiting end keeps its ramp: departure has no latency cost, and a dissolve beats a blink.
+ */
+const ENTER_FADE_TFRAC = 0;
+
+/**
+ * Cap on how much of the time axis the exiting ramp may swallow while chasing `EDGE_RAMP_SLOPE`.
+ *
+ * A time ramp costs history at the window's own edge, which is why this is a tenth of the window
+ * and not more: at a 60s window it sinks the oldest 6s, at the 5s minimum only 0.5s, and short
+ * windows are where flattening the view actually happens.
  */
 const TIME_FADE_MAX_FRAC = 0.1;
-const FREQ_FADE_MAX_FRAC = 0.06;
 
 function ridgeCountFor(widthPx) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
@@ -758,60 +763,45 @@ export function useSpectrogram3dCanvas({
           strideTFrac,
           Number.isFinite(p.sampleMs) && p.sampleMs > 0 && span > 0 ? p.sampleMs / span : 0
         );
-        // The edge fades do NOT ride the same stride. Gap tolerance asks "how far apart are two
-        // rows"; the fades ask "how much of the WINDOW does the terrain sink over", which is a
+        // The exiting fade does NOT ride the same stride. Gap tolerance asks "how far apart are two
+        // rows"; the fade asks "how much of the WINDOW does the terrain sink over", which is a
         // spatial property of the window edge and says nothing about how finely time is sampled.
-        // Pinning them to ridgeCountFor(W) keeps every tuned width where it was reviewed, at every
+        // Pinning it to ridgeCountFor(W) keeps the tuned width where it was reviewed, at every
         // panel size, while leaving the row count free to move.
         const fadeStrideTFrac = 1 / ridgeCountFor(W);
-        // ...and then widened, when the view demands it, so the ramps keep a readable slope on
-        // SCREEN rather than a fixed share of the data. See edgeRampWidth: the tuned widths are the
+        // ...and then widened, when the view demands it, so the ramp keeps a readable slope on
+        // SCREEN rather than a fixed share of the data. See edgeRampWidth: the tuned width is the
         // floor, so at steep views nothing moves, and the cost is paid only at the flat views where
         // the fade would otherwise land as a vertical face.
         const risePx = proj.heightScale * view.heightGain;
         const timeAxisPx = Math.hypot(proj.tx, proj.ty);
-        const freqAxisPx = Math.hypot(proj.fx, proj.fy);
-        const rampWidth = (min, max, axisPx) => edgeRampWidth(risePx, axisPx, min, max);
         // Over the DECIMATED rows only. The pinned live row is a fraction of a stride from its
         // neighbour rather than a stride, so letting it into the kernel would both under-smooth the
-        // last bucket row and feed that row the live frame's raw jitter at a quarter weight --
-        // reintroducing, one row further in, the flicker the entering-edge treatment removes.
+        // last bucket row and feed that row the live frame's raw jitter at a quarter weight.
         smoothGridTime(grid.heights, grid.tFracs, grid.bucketCount, grid.pointCount, rowGapTFrac);
-        // After both smoothers, so the ramp is not smeared back up by a later kernel, and over
-        // every row including the pinned live one -- the frequency limits are a property of the
-        // band, not of which frames happen to be in the window.
-        fadeGridFrequencyEdges(
-          grid.heights,
-          grid.count,
-          grid.pointCount,
-          rampWidth(FREQ_FADE_FRAC, FREQ_FADE_MAX_FRAC, freqAxisPx)
-        );
 
-        // The two end faces of the solid: sink the terrain into the floor rather than letting
-        // cross-sections pop in and out. Applied per ROW, into the grid the mesh then reads -- the
-        // old renderer multiplied per sampled pixel instead, but the ramp is a property of the
-        // row's position in the window either way.
+        // The OLDEST end face of the solid: sink the terrain into the floor rather than letting
+        // cross-sections pop out. Applied per ROW, into the grid the mesh then reads -- the old
+        // renderer multiplied per sampled pixel instead, but the ramp is a property of the row's
+        // position in the window either way. The newest end no longer sinks at all, and neither do
+        // the frequency limits; the skirt closes those three faces. See ENTER_FADE_TFRAC.
         //
-        // The ramps land where the TERRAIN ends, not where the window does. With a mesh those are
-        // simply the first and last rows: geometry stops at the last row, where the walk used to
-        // hold a horizon past it. Sinking at the window edge instead leaves the ramp partway down
-        // when the data runs out, which renders as the end face standing up off the floor.
-        const enterFadeTFrac = rampWidth(
-          ENTER_FADE_STRIDES * fadeStrideTFrac,
-          TIME_FADE_MAX_FRAC,
-          timeAxisPx
-        );
-        const exitFadeTFrac = rampWidth(
+        // The ramp lands where the TERRAIN ends, not where the window does. With a mesh that is
+        // simply the first row: geometry stops there, where the walk used to hold a horizon past
+        // it. Sinking at the window edge instead leaves the ramp partway down when the data runs
+        // out, which renders as the end face standing up off the floor.
+        const exitFadeTFrac = edgeRampWidth(
+          risePx,
+          timeAxisPx,
           EDGE_FADE_RIDGES * fadeStrideTFrac,
-          TIME_FADE_MAX_FRAC,
-          timeAxisPx
+          TIME_FADE_MAX_FRAC
         );
         const exitEdgeTFrac = grid.tFracs[0];
         const enterEdgeTFrac = grid.tFracs[grid.count - 1];
         for (let r = 0; r < grid.count; r++) {
           const fade = edgeFade(
             grid.tFracs[r],
-            enterFadeTFrac,
+            ENTER_FADE_TFRAC,
             exitFadeTFrac,
             exitEdgeTFrac,
             enterEdgeTFrac
