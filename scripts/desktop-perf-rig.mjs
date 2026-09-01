@@ -179,12 +179,14 @@ export async function startLiveCapture(session, device) {
   if (!ready) throw new Error("audio device list did not become available");
 
   await clickByLabel(session, "Devices");
-  await wait(200);
-  const selection =
-    await session.evaluate(`(()=>{const scope=document.querySelector("[data-radix-popper-content-wrapper]")||document;
-    const previous=[...scope.querySelectorAll("button")].find(button=>button.querySelector(".bg-primary"))?.getAttribute("aria-label")??null;
-    const hit=[...scope.querySelectorAll("button")].find(button=>(button.getAttribute("aria-label")||"").startsWith(${JSON.stringify(device)}));
-    if(!hit)return null;const selected=hit.getAttribute("aria-label");hit.click();return {previous,selected};})()`);
+  const selection = await waitForValue(
+    () =>
+      session.evaluate(`(()=>{const buttons=[...document.querySelectorAll("button")];
+        const hit=buttons.find(button=>(button.getAttribute("aria-label")||"").startsWith(${JSON.stringify(device)}));
+        if(!hit)return null;const previous=buttons.find(button=>button.querySelector(".bg-primary"))?.getAttribute("aria-label")??null;
+        const selected=hit.getAttribute("aria-label");hit.click();return {previous,selected};})()`),
+    3_000
+  );
   if (!selection) throw new Error(`capture device not offered: ${device}`);
   if (selection.previous && selection.previous !== selection.selected) {
     session.captureDeviceRestoreLabel = selection.previous;

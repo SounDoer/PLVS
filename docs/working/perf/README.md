@@ -257,6 +257,27 @@ host 仅 `-0.1 MB`、GPU `+21.7 MB`，增量集中在 renderer。这份 30 分�
 无界 IPC 增长，但不取代填满 retention 窗口后的长 soak。原始序列在
 [`desktop-soak-heavy-2026-09-01.jsonl`](./desktop-soak-heavy-2026-09-01.jsonl)。
 
+上表的 `670 ms` 只有 Long Tasks 累计值，没有函数或渲染阶段归因。后续已在同一探针里加入
+Chromium Long Animation Frames（LoAF）：每个 >50 ms 动画帧记录 task/render/style-layout 拆分，
+以及最重 8 个脚本的 invoker、函数、bundle 位置和 forced layout。来源字段按 Chromium 的
+[Long Animation Frames API](https://developer.chrome.com/docs/web-platform/long-animation-frames) 定义记录。
+
+2026-09-01 的 Heavy LoAF 对照（5 分钟，60 样本）仅捕到 3 个启动阶段的长帧，它们的
+`startTime` 全部在导航后 1.3 秒内；后续稳态 5 分钟没有新 Long Task/LoAF，UI 丢帧与音频丢块
+仍为 0，积压峰值 7/120。
+
+|   启动长帧 | 拆分                                       | 归因                                                              |
+| ---------: | ------------------------------------------ | ----------------------------------------------------------------- |
+| `197.3 ms` | work `196.0`，render `1.3`，blocking `0`   | React Scheduler `MessagePort.onmessage`；没有单个 >50 ms 阻塞脚本 |
+|  `91.2 ms` | work `89.3`，render `1.9`，blocking `37.6` | React Scheduler 提交，其中 forced style/layout `23.8 ms`          |
+|  `79.5 ms` | work `41.3`，render `38.2`，blocking `0`   | Spectrogram 3D `requestAnimationFrame` 回调 `37.6 ms`             |
+
+压缩 bundle 位置 `10493` 落在 React Scheduler 的 `MessagePort` work loop；`883772` 落在
+Spectrogram 3D 的 scheduled rAF callback。这里的结论是“启动有尖峰，稳态未复现”，不是已定位 30 分钟
+记录里的那个 `670 ms`。后者保留为 `HYPOTHESIS`：可能受窗口遮挡/调度状态影响，下一个受控实验应比较
+前台、被遮挡和最小化，而不应直接修某个 panel。原始 LoAF 序列在
+[`desktop-soak-heavy-loaf-2026-09-01.jsonl`](./desktop-soak-heavy-loaf-2026-09-01.jsonl)。
+
 ### 两条读 profile 时的注意
 
 **跨次采样不可直接比较。** 构建、恢复出来的面板布局、素材位置都会变。观察到的 idle 占比在

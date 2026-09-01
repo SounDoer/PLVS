@@ -90,16 +90,28 @@ export function verifyBackpressurePhases({ normalStart, normalEnd, stalled, reco
 
 export const INSTALL_RUNTIME_PROBE = `(()=>{
   if (window.__PLVS_DESKTOP_SOAK__) return true;
-  const state={longTasks:0,longTaskTotalMs:0,longTaskMaxMs:0,rafGaps:0,rafGapMaxMs:0,lastRaf:0};
+  const state={longTasks:0,longTaskTotalMs:0,longTaskMaxMs:0,rafGaps:0,rafGapMaxMs:0,lastRaf:0,
+    loafSupported:PerformanceObserver.supportedEntryTypes?.includes("long-animation-frame")===true,loafs:[]};
   try { state.observer=new PerformanceObserver(list=>{for(const e of list.getEntries()){
     state.longTasks++; state.longTaskTotalMs+=e.duration; state.longTaskMaxMs=Math.max(state.longTaskMaxMs,e.duration);
   }}); state.observer.observe({entryTypes:["longtask"]}); } catch {}
+  if(state.loafSupported){try{state.loafObserver=new PerformanceObserver(list=>{for(const e of list.getEntries()){
+    const scripts=[...(e.scripts||[])].sort((a,b)=>b.duration-a.duration).slice(0,8).map(s=>({
+      duration:+s.duration.toFixed(2),forcedStyleAndLayoutDuration:+s.forcedStyleAndLayoutDuration.toFixed(2),
+      pauseDuration:+s.pauseDuration.toFixed(2),invoker:s.invoker,invokerType:s.invokerType,
+      sourceURL:s.sourceURL,sourceFunctionName:s.sourceFunctionName,sourceCharPosition:s.sourceCharPosition}));
+    state.loafs.push({startTime:+e.startTime.toFixed(2),duration:+e.duration.toFixed(2),
+      blockingDuration:+e.blockingDuration.toFixed(2),workDuration:+(e.renderStart?e.renderStart-e.startTime:e.duration).toFixed(2),
+      renderDuration:+(e.renderStart?e.startTime+e.duration-e.renderStart:0).toFixed(2),
+      styleAndLayoutDuration:+(e.styleAndLayoutStart?e.startTime+e.duration-e.styleAndLayoutStart:0).toFixed(2),scripts});
+  }});state.loafObserver.observe({type:"long-animation-frame",buffered:true});}catch{state.loafSupported=false;}}
   const tick=t=>{if(state.lastRaf){const gap=t-state.lastRaf;if(gap>50){state.rafGaps++;state.rafGapMaxMs=Math.max(state.rafGapMaxMs,gap);}}
     state.lastRaf=t; state.raf=requestAnimationFrame(tick);}; state.raf=requestAnimationFrame(tick);
-  window.__PLVS_DESKTOP_SOAK__={snapshot(){return {longTasks:state.longTasks,
+  window.__PLVS_DESKTOP_SOAK__={snapshot(){const longAnimationFrames=state.loafs.splice(0);return {longTasks:state.longTasks,
     longTaskTotalMs:+state.longTaskTotalMs.toFixed(2),longTaskMaxMs:+state.longTaskMaxMs.toFixed(2),
     rafGaps:state.rafGaps,rafGapMaxMs:+state.rafGapMaxMs.toFixed(2),documentHidden:document.hidden,
-    domNodes:document.getElementsByTagName("*").length};},stop(){state.observer?.disconnect();cancelAnimationFrame(state.raf);}};
+    domNodes:document.getElementsByTagName("*").length,longAnimationFrameSupported:state.loafSupported,longAnimationFrames};},
+    stop(){state.observer?.disconnect();state.loafObserver?.disconnect();cancelAnimationFrame(state.raf);}};
   return true;
 })()`;
 
@@ -207,6 +219,10 @@ export function summarizeDesktopSoak(samples) {
     ])
   );
   const inflight = samples.map((sample) => sample.ui.currentInflightFrames).sort((a, b) => a - b);
+  const longAnimationFrames = samples.flatMap((sample) => sample.runtime.longAnimationFrames ?? []);
+  const worstLongAnimationFrames = [...longAnimationFrames]
+    .sort((a, b) => b.duration - a.duration)
+    .slice(0, 10);
   return {
     sampleCount: samples.length,
     uiDroppedFrames: last.ui.droppedFrames - first.ui.droppedFrames,
@@ -229,6 +245,17 @@ export function summarizeDesktopSoak(samples) {
     currentInflightP95: inflight[Math.floor((inflight.length - 1) * 0.95)],
     longTasks: last.runtime.longTasks - first.runtime.longTasks,
     longTaskMaxMs: Math.max(...samples.map((sample) => sample.runtime.longTaskMaxMs)),
+    longAnimationFrameSupported: samples.some(
+      (sample) => sample.runtime.longAnimationFrameSupported === true
+    ),
+    longAnimationFrames: longAnimationFrames.length,
+    longAnimationFrameMaxMs: longAnimationFrames.length
+      ? Math.max(...longAnimationFrames.map((frame) => frame.duration))
+      : 0,
+    longAnimationFrameMaxBlockingMs: longAnimationFrames.length
+      ? Math.max(...longAnimationFrames.map((frame) => frame.blockingDuration))
+      : 0,
+    worstLongAnimationFrames,
     rafGaps: last.runtime.rafGaps - first.runtime.rafGaps,
     rafGapMaxMs: Math.max(...samples.map((sample) => sample.runtime.rafGapMaxMs)),
   };

@@ -61,7 +61,7 @@ describe("process classification", () => {
 
 describe("summarizeDesktopSoak", () => {
   it("reports deltas and peaks without mistaking cumulative counters for per-sample values", () => {
-    const sample = (t, sent, dropped, chunks, rss, heap, longTasks, rafGaps) => ({
+    const sample = (t, sent, dropped, chunks, rss, heap, longTasks, rafGaps, loafs = []) => ({
       t,
       ui: diagnostics({
         sentFrames: sent,
@@ -71,11 +71,21 @@ describe("summarizeDesktopSoak", () => {
       }),
       processes: [{ kind: "renderer", workingSetMb: rss, cpuMs: sent * 10 }],
       webview: { jsHeapUsedMb: heap },
-      runtime: { longTasks, longTaskMaxMs: longTasks * 60, rafGaps, rafGapMaxMs: rafGaps * 70 },
+      runtime: {
+        longTasks,
+        longTaskMaxMs: longTasks * 60,
+        rafGaps,
+        rafGapMaxMs: rafGaps * 70,
+        longAnimationFrameSupported: true,
+        longAnimationFrames: loafs,
+      },
     });
     const summary = summarizeDesktopSoak([
       sample(0, 10, 2, 1, 100, 20, 1, 2),
-      sample(10, 20, 5, 1, 112, 27, 3, 5),
+      sample(10, 20, 5, 1, 112, 27, 3, 5, [
+        { duration: 80, blockingDuration: 20, scripts: [{ sourceFunctionName: "paint" }] },
+        { duration: 140, blockingDuration: 70, scripts: [{ sourceFunctionName: "commit" }] },
+      ]),
     ]);
     expect(summary).toMatchObject({
       sampleCount: 2,
@@ -85,10 +95,15 @@ describe("summarizeDesktopSoak", () => {
       jsHeapMaxMb: 27,
       currentInflightP95: 0,
       longTasks: 2,
+      longAnimationFrameSupported: true,
+      longAnimationFrames: 2,
+      longAnimationFrameMaxMs: 140,
+      longAnimationFrameMaxBlockingMs: 70,
       rafGaps: 3,
     });
     expect(summary.workingSetSecondHalfSlopeMbPerMin).toBe(0);
     expect(summary.workingSetSlopeAfterWarmupMbPerMin).toBeCloseTo(72);
     expect(summary.processGrowthMbByKind).toEqual({ renderer: 12 });
+    expect(summary.worstLongAnimationFrames[0].scripts[0].sourceFunctionName).toBe("commit");
   });
 });
