@@ -257,6 +257,17 @@ host 仅 `-0.1 MB`、GPU `+21.7 MB`，增量集中在 renderer。这份 30 分�
 无界 IPC 增长，但不取代填满 retention 窗口后的长 soak。原始序列在
 [`desktop-soak-heavy-2026-09-01.jsonl`](./desktop-soak-heavy-2026-09-01.jsonl)。
 
+当前实测配置的 History Length 是 `240 min`，所以“真实窗口填满后是否平台化”至少需要超过 4 小时，
+并会实际分配数 GiB；30 分钟曲线不能替它作答。先补了一个便宜但稳定的整链容量回归：真实
+`FrameIntake` 通过 history performance harness 填满标量、Spectrum、Vectorscope 与 Stereo Map，
+再继续写过一个完整的 `1,024` 行 chunk。四类历史都保持设定容量，三个视觉 slab 的存活 chunk
+均不超过 2，且淘汰后的最老时间戳继续对齐。`benchmark:history` 同轮通过，四小时标量 snapshot
+的 live heap 增量 `15.0 MB`，低于 `40 MB` 预算。
+
+这证明了“容量满后旧行会被替换，容器不会无限加长”，但不冒充操作系统 working set 的 4 小时平台
+实测：分配器是否及时归还或复用页面仍需一次 >4h 的真实窗口 soak。它是低频验收项，不是当前发现的
+泄漏证据，也不应仅凭填充期斜率触发代码修改。
+
 上表的 `670 ms` 只有 Long Tasks 累计值，没有函数或渲染阶段归因。后续已在同一探针里加入
 Chromium Long Animation Frames（LoAF）：每个 >50 ms 动画帧记录 task/render/style-layout 拆分，
 以及最重 8 个脚本的 invoker、函数、bundle 位置和 forced layout。来源字段按 Chromium 的
@@ -274,8 +285,8 @@ Chromium Long Animation Frames（LoAF）：每个 >50 ms 动画帧记录 task/re
 
 压缩 bundle 位置 `10493` 落在 React Scheduler 的 `MessagePort` work loop；`883772` 落在
 Spectrogram 3D 的 scheduled rAF callback。这里的结论是“启动有尖峰，稳态未复现”，不是已定位 30 分钟
-记录里的那个 `670 ms`。后者保留为 `HYPOTHESIS`：可能受窗口遮挡/调度状态影响，下一个受控实验应比较
-前台、被遮挡和最小化，而不应直接修某个 panel。原始 LoAF 序列在
+记录里的那个 `670 ms`。那次 30 分钟测试没有最小化操作，也没有记录足以指向窗口状态的证据；因此不再
+把最小化/遮挡当成下一项。该尖峰保留为“未复现、未归因”，不据此修改任何 panel。原始 LoAF 序列在
 [`desktop-soak-heavy-loaf-2026-09-01.jsonl`](./desktop-soak-heavy-loaf-2026-09-01.jsonl)。
 
 ### 两条读 profile 时的注意

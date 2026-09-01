@@ -435,6 +435,51 @@ describe("history performance harness", () => {
     expect(intake.pushHistRow).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps real history slabs bounded after seeded retention fills and a whole chunk rolls over", async () => {
+    const scheduler = createScheduler();
+    const intake = new FrameIntake();
+    const spectrumKey = "spectrum:bounded";
+    const vectorscopeKey = "vectorscope:bounded";
+    const stereoMapKey = "stereoMap:bounded";
+    const scalarCapacity = 3;
+    const visualCapacity = 4;
+    intake.setRetainedVisualKeys(
+      {
+        spectrum: new Set([spectrumKey]),
+        vectorscope: new Set([vectorscopeKey]),
+        stereoMap: new Set([stereoMapKey]),
+        stereoMapModesByKey: new Map([[stereoMapKey, new Set(["position"])]]),
+      },
+      4 * 60 * 60 * 1_000
+    );
+    const controller = startHistoryPerformanceHarness({
+      intake,
+      scheduler,
+      scalarRows: scalarCapacity,
+      visualRows: visualCapacity,
+      spectrumKeys: [spectrumKey],
+      vectorscopeKeys: [vectorscopeKey],
+      stereoMapKeys: [stereoMapKey],
+    });
+    scheduler.runAllIdle();
+    await controller.seeded;
+
+    scheduler.tickIntervals(VISUAL_HISTORY_CHUNK_ROWS + 7);
+
+    const spectrum = intake.getVisualSpectrumHistByKey(spectrumKey);
+    const vectorscope = intake.getVisualVectorscopeHistByKey(vectorscopeKey);
+    const stereoMap = intake.getVisualStereoMapHistByKey(stereoMapKey);
+    expect(intake.getLoudnessHistory()).toHaveLength(scalarCapacity);
+    for (const slab of [spectrum, vectorscope, stereoMap]) {
+      expect(slab).toHaveLength(visualCapacity);
+      expect(slab.storageStats().chunkCount).toBeLessThanOrEqual(2);
+    }
+    expect(spectrum.timestampAt(0)).toBe(vectorscope.timestampAt(0));
+    expect(vectorscope.timestampAt(0)).toBe(stereoMap.timestampAt(0));
+
+    controller.cancel();
+  });
+
   it("seeds a single Stereo Map key with production band width and a packed mode plane", async () => {
     const scheduler = createScheduler();
     const intake = new FrameIntake();
