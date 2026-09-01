@@ -11,6 +11,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import {
   cursorOverDockSurfaces,
+  getUiFrameDiagnostics,
   probeFileAnalysis,
   getDockState,
   setDialogueGating,
@@ -28,6 +29,11 @@ beforeEach(() => {
 });
 
 describe("audio engine command seam", () => {
+  it("reads UI frame diagnostics without changing runtime state", async () => {
+    await getUiFrameDiagnostics();
+    expect(invoke).toHaveBeenCalledWith("get_ui_frame_diagnostics");
+  });
+
   it("maps dynamic loudness and dialogue settings to native commands", async () => {
     await setLoudnessWeights([1, 0.5]);
     await setDialogueGating(1);

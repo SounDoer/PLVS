@@ -132,6 +132,16 @@
  */
 
 /**
+ * @typedef {object} UiFrameDiagnostics
+ * @property {number} sentFrames frames successfully handed to the primary WebView this session
+ * @property {number} droppedFrames frames discarded because the WebView backlog reached its cap
+ * @property {number} audioDroppedChunks audio callback chunks dropped before analysis this session
+ * @property {number} currentInflightFrames sent frames not yet acknowledged by the WebView
+ * @property {number} maxInflightFrames highest in-flight count observed this session
+ * @property {number} inflightLimit backlog cap at which new UI frames are dropped
+ */
+
+/**
  * @typedef {object} SpectrumAnalysisRequest
  * @property {string} key
  * @property {{ type: "pair"; x: number; y: number } | { type: "single"; ch: number }} channel

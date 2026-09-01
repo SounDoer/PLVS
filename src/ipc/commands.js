@@ -56,6 +56,14 @@ export function ackFrames(seq) {
   return invoke("ack_frames", { seq });
 }
 
+/**
+ * Read-only native-to-WebView frame bridge counters for performance diagnostics.
+ * @returns {Promise<import("./types.js").UiFrameDiagnostics>}
+ */
+export function getUiFrameDiagnostics() {
+  return invoke("get_ui_frame_diagnostics");
+}
+
 /** Clears native loudness history ring and peak maxima (call with UI Clear when Tauri capture is running). */
 export function clearAudioHistory() {
   return invoke("clear_audio_history");

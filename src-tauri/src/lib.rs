@@ -67,6 +67,7 @@ pub fn run() {
       ipc::commands::set_dialogue_gating,
       ipc::commands::set_dialogue_vad_engine,
       ipc::commands::ack_frames,
+      ipc::commands::get_ui_frame_diagnostics,
       ipc::commands::audio_stop,
       ipc::commands::file_analysis_probe,
       ipc::commands::file_analysis_start,

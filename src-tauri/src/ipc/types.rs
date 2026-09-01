@@ -106,6 +106,18 @@ pub struct EngineBackpressurePayload {
   pub dropped_chunks: u64,
 }
 
+/// Read-only native-to-WebView frame bridge counters for performance diagnostics.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UiFrameDiagnostics {
+  pub sent_frames: u64,
+  pub dropped_frames: u64,
+  pub audio_dropped_chunks: u64,
+  pub current_inflight_frames: u64,
+  pub max_inflight_frames: u64,
+  pub inflight_limit: u64,
+}
+
 /// Resolved device name and format for UI (e.g. before `audio_start` with `deviceId: "default"`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

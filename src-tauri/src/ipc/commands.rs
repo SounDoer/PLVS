@@ -13,7 +13,7 @@ use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AnalysisRequests, AudioDevicePreview, EngineStateChanged, FileAnalysisProbeResult,
-  FrameSubscribers, SpectrumAnalysisChannel, StereoMapAnalysisPair,
+  FrameSubscribers, SpectrumAnalysisChannel, StereoMapAnalysisPair, UiFrameDiagnostics,
 };
 use crate::state::{AppState, EngineSource};
 
@@ -91,6 +91,7 @@ pub fn audio_start(
     .inner()
     .frame_ack_seq
     .store(0, std::sync::atomic::Ordering::Relaxed);
+  state.inner().ui_frame_diagnostics.reset();
   let pool: FrameSubscribers = Arc::new(std::sync::Mutex::new(HashMap::new()));
   {
     let mut p = pool
@@ -378,6 +379,21 @@ pub fn ack_frames(seq: u64, state: State<'_, AppState>) -> Result<(), String> {
   Ok(())
 }
 
+/// Hidden, read-only performance diagnostic. It is intentionally not wired to React or normal UI.
+#[tauri::command]
+pub fn get_ui_frame_diagnostics(state: State<'_, AppState>) -> Result<UiFrameDiagnostics, String> {
+  let acked_frames = state
+    .inner()
+    .frame_ack_seq
+    .load(std::sync::atomic::Ordering::Relaxed);
+  Ok(
+    state
+      .inner()
+      .ui_frame_diagnostics
+      .snapshot(acked_frames, cpal_backend::MAX_FRAMES_INFLIGHT),
+  )
+}
+
 #[tauri::command]
 pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
   {
@@ -432,6 +448,7 @@ pub fn file_analysis_start(
     .inner()
     .frame_ack_seq
     .store(0, std::sync::atomic::Ordering::Relaxed);
+  state.inner().ui_frame_diagnostics.reset();
   let pool: FrameSubscribers = Arc::new(std::sync::Mutex::new(HashMap::new()));
   {
     let mut p = pool

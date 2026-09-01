@@ -47,6 +47,8 @@
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
     "smoke:capture": "node scripts/smoke-capture.mjs",
     "soak:capture": "node scripts/soak-capture.mjs",
+    "verify:ui-backpressure": "node scripts/verify-ui-frame-backpressure.mjs",
+    "soak:desktop": "node scripts/soak-desktop.mjs",
     "tauri": "tauri",
     "ffmpeg:fetch": "node scripts/fetch-ffmpeg-sidecar.mjs",
     "desktop": "npm run ffmpeg:fetch && tauri dev",

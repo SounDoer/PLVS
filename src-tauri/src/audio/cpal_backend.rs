@@ -30,7 +30,7 @@ const PCM_WORKER_IDLE_POLL: std::time::Duration = std::time::Duration::from_mill
 /// `Channel` to the webview has no backpressure: if the UI thread stalls (e.g. a render loop)
 /// while capture keeps producing ~60 Hz, frames queue in the host process unboundedly until OOM.
 /// Capping in-flight frames bounds that backlog to ~2 s (~1 MB) and resumes once the UI catches up.
-const MAX_FRAMES_INFLIGHT: u64 = 120;
+pub(crate) const MAX_FRAMES_INFLIGHT: u64 = 120;
 
 /// True when `sent_seq - acked_seq` has reached `max_inflight`, i.e. the next frame must be
 /// dropped rather than sent. `saturating_sub` guards a stale-high ack after an engine restart.
@@ -454,6 +454,10 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     .try_state::<crate::state::AppState>()
     .map(|s| s.frame_ack_seq.clone())
     .unwrap_or_else(|| Arc::new(AtomicU64::new(0)));
+  let ui_frame_diagnostics = app
+    .try_state::<crate::state::AppState>()
+    .map(|s| s.ui_frame_diagnostics.clone())
+    .unwrap_or_default();
   let analysis_requests = app
     .try_state::<crate::state::AppState>()
     .map(|s| s.analysis_requests.clone())
@@ -467,6 +471,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     if recv_tick.is_multiple_of(480) {
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
       if dropped > 0 {
+        ui_frame_diagnostics.record_audio_dropped_chunks(dropped);
         log::warn!("cpal→meter queue dropped {dropped} audio chunks (callback backpressure)");
         let _ = app.emit(
           "engine-backpressure",
@@ -520,6 +525,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
         MAX_FRAMES_INFLIGHT,
       ) {
         dropped_frames += 1;
+        ui_frame_diagnostics.record_dropped();
         pcm_pool.recycle(floats);
         continue;
       }
@@ -544,6 +550,8 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
           };
           if !main_ok {
             should_stop = true;
+          } else {
+            ui_frame_diagnostics.record_sent(sent_seq, acked_seq.load(Ordering::Relaxed));
           }
         }
         // Avoid per-key remove/insert on every frame; drop dead subscribers lazily.
@@ -785,6 +793,7 @@ mod backpressure_tests {
     frame_inflight_exceeds, PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue,
     MAX_FRAMES_INFLIGHT,
   };
+  use crate::state::UiFrameDiagnosticsCounters;
   use std::sync::atomic::{AtomicU64, Ordering};
   use std::sync::Arc;
 
@@ -813,6 +822,31 @@ mod backpressure_tests {
       0,
       MAX_FRAMES_INFLIGHT
     ));
+  }
+
+  #[test]
+  fn stalled_webview_drop_policy_is_visible_in_diagnostics() {
+    let counters = UiFrameDiagnosticsCounters::default();
+    let acked_seq = 0;
+    let mut sent_seq = 0;
+
+    // Simulate 125 frame opportunities while the WebView never acknowledges one. The existing
+    // policy admits 120 and drops the remaining five; the diagnostic must reveal those otherwise
+    // invisible drops even though the admitted sequence remains perfectly contiguous.
+    for _ in 0..125 {
+      if frame_inflight_exceeds(sent_seq, acked_seq, MAX_FRAMES_INFLIGHT) {
+        counters.record_dropped();
+      } else {
+        sent_seq += 1;
+        counters.record_sent(sent_seq, acked_seq);
+      }
+    }
+
+    let snapshot = counters.snapshot(acked_seq, MAX_FRAMES_INFLIGHT);
+    assert_eq!(snapshot.sent_frames, 120);
+    assert_eq!(snapshot.dropped_frames, 5);
+    assert_eq!(snapshot.current_inflight_frames, 120);
+    assert_eq!(snapshot.max_inflight_frames, 120);
   }
 
   #[test]
