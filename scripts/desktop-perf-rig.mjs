@@ -36,6 +36,7 @@ export function parseRigArgs(argv, defaults = {}) {
     else if (flag === "--seconds") options.seconds = Number(take());
     else if (flag === "--every") options.every = Number(take());
     else if (flag === "--stall-ms") options.stallMs = Number(take());
+    else if (flag === "--browser-args") options.browserArgs = String(take());
     else if (flag === "--out") options.out = resolve(String(take()));
     else if (flag === "--help" || flag === "-h") options.help = true;
     else throw new Error(`unknown argument: ${argv[i]}`);
@@ -77,7 +78,8 @@ export async function launchDesktopPerfRig(options) {
   const app = spawn(options.exe, [], {
     env: {
       ...process.env,
-      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${options.port}`,
+      WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
+        `--remote-debugging-port=${options.port} ${options.browserArgs ?? ""}`.trim(),
       WEBVIEW2_USER_DATA_FOLDER: userDataFolder,
     },
     stdio: "ignore",

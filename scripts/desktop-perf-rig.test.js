@@ -11,8 +11,15 @@ describe("parseRigArgs", () => {
       "--seconds",
       "60",
       "--every=5",
+      "--browser-args=--disable-gpu",
     ]);
-    expect(options).toMatchObject({ port: 9333, scenario: "heavy", seconds: 60, every: 5 });
+    expect(options).toMatchObject({
+      port: 9333,
+      scenario: "heavy",
+      seconds: 60,
+      every: 5,
+      browserArgs: "--disable-gpu",
+    });
   });
 
   it("rejects an unknown scenario and non-positive timing", () => {

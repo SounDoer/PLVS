@@ -433,28 +433,32 @@ B 臂原口径 56.50% 比 A 臂还差，就是这么来的。
 每次启动退回配置里的那一个。有一整臂因此对着没有信号的设备采了 2 分半的静音，
 面板全空——正是 `protocol.md` §10.3 那个陷阱的另一个版本。测量前必须读状态栏确认设备。
 
-### `--disable-gpu` 下 WebGL Surface 画不出来（2026-08-31，未定位）
+### `--disable-gpu` 下 WebGL Surface 实际可用（2026-09-01，修正测量）
 
-**这一条推翻上一节的结论，也就是"不需要维护 CPU 回退路径"的唯一依据。**
+上一版“画不出来”的结论是**测量错误**。生产 canvas 明确使用
+`preserveDrawingBuffer: false`；在 WebGL 绘制回调之外调用 `readPixels`，缓冲内容本来就是未定义的，
+连续读到同一份旧内容不能推出用户看到的合成画面冻结。合成负载因为把 `readPixels` 当同步屏障放在 draw
+内而能更新，真实 Surface 的旧探针却在 draw 外读，两者从一开始就不是同一把尺子。
 
-上一节测的是一个平凡片元着色器的合成负载，得出 WARP 下 13.7 ms/帧、可用。真实的 Surface 渲染器
-在同样的 `--disable-gpu` 下**画不出画面**：
+新增 `npm run diagnose:surface-fallback`：以 `--disable-gpu` 启动真实 Heavy preset 和 VB-Cable，
+在 `drawElements` 处只记录 GL 状态，不读取 drawing buffer；是否可见、是否在更新改由 CDP 对整页**合成后
+截图**，裁出 Spectrogram 区域后比较两张相隔 3 秒的图。这量的是用户最终看到的画面，不依赖
+`preserveDrawingBuffer`。
 
-- 上下文健康：`isContextLost()` 为 false，`getError()` 为 0，`SAMPLES` 为 4，
-  renderer 是 `ANGLE (Microsoft, Microsoft Basic Render Driver, D3D11)`——**WebGL2 确实没有消失**
-- 但**绘制缓冲是冻结的**：14 秒内 `readPixels` 覆盖率一动不动停在 1.16%（正常约 36%），
-  同期面板自报 `dirtyPaint` 从 3606 涨到 3810（约 14 次/秒），主线程每次 4.29 ms
+15 秒实测：
 
-命令在发、无错误、缓冲不更新。那 1.16% 是更早某个时刻的残留。
+| 检查 | 结果 |
+| --- | ---: |
+| renderer | Microsoft Basic Render Driver / D3D11（WARP） |
+| 真实 Surface `drawElements` | `888` 次 |
+| GL error / context lost | `0 / false` |
+| 顶点位置 / VAO / 顶点与索引 buffer | `0 / 已绑定 / 已绑定` |
+| 两张合成截图中的变化 | `614 / 198,633` px（`0.309%`） |
+| UI 丢帧 / 音频丢块 | `0 / 0` |
 
-**三个显然的嫌疑已在同一个软件驱动里直接证伪**：在页面内新建上下文，把 MSAA、深度预通道
-（`LESS` + colorMask off，再 `LEQUAL` + depthMask off）、`UNSIGNED_INT` 索引、
-以及 400×400 网格（约 32 万三角形）四种组合各跑一遍，**全部正确渲染出 81% 覆盖**，只是慢（61 ms）。
-所以不是技术选型、不是 MSAA、不是网格规模。差别在于 app 的上下文是长生命周期、由 rAF 驱动的。
-
-**根因未定位。** 需要知道的限定：`--disable-gpu` 是人为的最坏情况代理，真实的无独显机器仍然有
-能工作的驱动，**这不是"今天有用户是坏的"的证据**。但它确实意味着"WARP 回退可用，所以可以删掉
-CPU 光栅化器"这个前提**没有被验证过**，删除因此挂起。
+截图中地形清晰可见，并在 3 秒间继续向前填充；同一诊断的前一轮是 `640` px（`0.322%`），结果一致。
+**结论恢复为：软件 WebGL 回退可用，不需要为这个假象新增 CPU Surface 分支。** `--disable-gpu` 仍只是
+人为最坏情况代理；这项验收回答兼容性，不把它当真实无独显机器的性能分布。
 
 ## 2. 已落地：滚动复用（2026-08-29）
 
