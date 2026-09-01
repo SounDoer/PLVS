@@ -39,11 +39,15 @@ export default defineConfig({
     globals: true,
     // Silences jsdom's "getContext not implemented" stderr spam from canvas-backed components.
     setupFiles: ["./vitest.setup.js"],
-    // Nested git worktrees live under .claude/ with their own node_modules. Their test files sit
-    // outside the default node_modules exclude, and importing them pulls in a second React copy
-    // that breaks unrelated suites in this repo. Spread the defaults — setting exclude replaces
-    // them, and dropping **/node_modules/** would be far worse than the problem being fixed.
-    exclude: [...configDefaults.exclude, "**/.claude/**"],
+    // Nested git worktrees live under one prefix per agent -- see AGENTS.md -- with their own
+    // node_modules. Their test files sit outside the default node_modules exclude, and collecting
+    // them breaks this repo's suites two ways: importing them pulls in a second React copy, and
+    // the `@` alias resolves to this checkout's src, so a worktree's tests run against code they
+    // were never written for and fail somewhere that looks unrelated. All three prefixes are
+    // listed even where no worktree exists today: a missing one only shows up once a worktree
+    // happens to be open. Spread the defaults — setting exclude replaces them, and dropping
+    // **/node_modules/** would be far worse than the problem being fixed.
+    exclude: [...configDefaults.exclude, "**/.claude/**", "**/.codex/**", "**/.cursor/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
