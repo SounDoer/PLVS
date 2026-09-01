@@ -1,5 +1,5 @@
 //! **Multi-resolution spectrum display** driven by `MultiResBank` (three windowed FFTs blended
-//! at crossover frequencies). Per grid-point: optional fractional-octave smoothing, weighting,
+//! at crossover frequencies). Per grid-point: optional fractional-octave smoothing,
 //! attack/release envelope, and peak-hold. The display slope tilt is applied on the frontend.
 //!
 //! The two smoothing axes are separate controls and are easy to confuse:
@@ -27,33 +27,6 @@ use crate::dsp::spectrum_bank::{
 };
 #[cfg(test)]
 use crate::dsp::{SpectrumChannelSel, SpectrumView};
-
-fn weighting_a(f_hz: f64) -> f64 {
-  let f = f_hz;
-  let f2 = f * f;
-  let num = 12194.0_f64.powi(2) * f2 * f2;
-  let den = (f2 + 20.6_f64.powi(2))
-    * ((f2 + 107.7_f64.powi(2)) * (f2 + 737.9_f64.powi(2))).sqrt()
-    * (f2 + 12194.0_f64.powi(2));
-  2.0 + 20.0 * (num / den.max(1e-20)).log10()
-}
-
-fn weighting_c(f_hz: f64) -> f64 {
-  let f = f_hz;
-  let f2 = f * f;
-  let num = 12194.0_f64.powi(2) * f2;
-  let den = (f2 + 20.6_f64.powi(2)) * (f2 + 12194.0_f64.powi(2));
-  0.06 + 20.0 * (num / den.max(1e-20)).log10()
-}
-
-pub(crate) fn weighting_db(freq_hz: f64, mode: &str) -> f64 {
-  let f = freq_hz.max(10.0);
-  match mode {
-    "a" => weighting_a(f),
-    "c" => weighting_c(f),
-    _ => 0.0,
-  }
-}
 
 /// Apply attack/release smoothing + peak-hold for one bank's incoming dB row.
 #[allow(clippy::too_many_arguments)]
@@ -122,7 +95,6 @@ pub struct SpectrumMeter {
   peak_hold_until: Vec<f64>,
   last_time_sec: f64,
   sample_rate: f64,
-  weighting: String,
   attack_ms: f64,
   release_ms: f64,
   peak_hold_sec: f64,
@@ -160,7 +132,6 @@ impl SpectrumMeter {
       peak_hold_until: Vec::new(),
       last_time_sec: 0.0,
       sample_rate,
-      weighting: "z".to_string(),
       attack_ms: 30.0,
       release_ms: 150.0,
       peak_hold_sec: 1.5,
@@ -206,19 +177,11 @@ impl SpectrumMeter {
   }
 
   fn post_process_for(&self, bank: &MultiResBank) -> Vec<f64> {
-    let centers = bank.grid_freqs();
     // Smoothing happens inside the bank, on linear power, so it averages the *measurement*.
-    // Weighting is display shaping and is applied after, on the smoothed row: it is a smooth
-    // curve itself, so the order only matters for the measurement. The slope tilt used to be
-    // applied here too; it is a per-band constant offset that commutes with everything
-    // downstream, so it now lives on the frontend where it can reshape stored history as well.
-    let raw = bank.psd_db_row(CAL_OFFSET_DB, self.octave_smoothing);
-    let mut shaped = Vec::with_capacity(raw.len());
-    for (i, &db) in raw.iter().enumerate() {
-      let f = centers[i];
-      shaped.push(db + weighting_db(f, &self.weighting));
-    }
-    shaped
+    // The slope tilt used to be applied here; it is a per-band constant offset that commutes with
+    // everything downstream, so it now lives on the frontend where it can reshape stored history
+    // as well.
+    bank.psd_db_row(CAL_OFFSET_DB, self.octave_smoothing)
   }
 
   fn post_process(&self) -> Vec<f64> {

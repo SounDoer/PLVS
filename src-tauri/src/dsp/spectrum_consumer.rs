@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::spectral_transform::ComplexSpectralFrame;
-use super::spectrum::{apply_envelope, weighting_db};
+use super::spectrum::apply_envelope;
 use super::spectrum_bank::{
   analysis_average_sec_for_speed_percent, attack_release_ms_for_speed_percent, box_average_into,
   OctaveSmoothing, SpectrumGrid, CAL_OFFSET_DB, FFT_BIG, FFT_MID, FFT_SMALL, OVERLAP_BIG,
@@ -149,7 +149,6 @@ impl CurveState {
   fn output(
     &mut self,
     grid: &SpectrumGrid,
-    weighting: &str,
     attack_ms: f64,
     release_ms: f64,
     peak_hold_sec: f64,
@@ -178,11 +177,11 @@ impl CurveState {
     self
       .incoming_db
       .reserve(linear.len().saturating_sub(self.incoming_db.capacity()));
-    self
-      .incoming_db
-      .extend(linear.iter().zip(grid.freqs()).map(|(&psd, &frequency)| {
-        10.0 * psd.max(1e-20).log10() + CAL_OFFSET_DB + weighting_db(frequency, weighting)
-      }));
+    self.incoming_db.extend(
+      linear
+        .iter()
+        .map(|&psd| 10.0 * psd.max(1e-20).log10() + CAL_OFFSET_DB),
+    );
 
     let delta_sec = if self.last_time_sec > 0.0 {
       (now_sec - self.last_time_sec).clamp(1.0 / 240.0, 0.25)
@@ -240,7 +239,6 @@ pub(crate) struct SpectralConsumer {
   projection: SpectralProjection,
   primary: CurveState,
   secondary: Option<CurveState>,
-  weighting: String,
   attack_ms: f64,
   release_ms: f64,
   peak_hold_sec: f64,
@@ -270,7 +268,6 @@ impl SpectralConsumer {
       primary: CurveState::new(),
       secondary: matches!(projection, SpectralProjection::Lr | SpectralProjection::Ms)
         .then(CurveState::new),
-      weighting: "z".to_string(),
       attack_ms: 30.0,
       release_ms: 150.0,
       peak_hold_sec: 1.5,
@@ -289,11 +286,6 @@ impl SpectralConsumer {
     (self.attack_ms, self.release_ms) = attack_release_ms_for_speed_percent(speed_percent);
     self.analysis_average_sec = analysis_average_sec_for_speed_percent(speed_percent);
     self.octave_smoothing = octave_smoothing;
-  }
-
-  pub(crate) fn set_weighting(&mut self, weighting: &str) {
-    self.weighting.clear();
-    self.weighting.push_str(weighting);
   }
 
   pub(crate) fn set_projection(&mut self, projection: SpectralProjection) {
@@ -362,7 +354,6 @@ impl SpectralConsumer {
     let secondary = match self.secondary.as_mut() {
       Some(state) => Some(state.output(
         &self.grid,
-        &self.weighting,
         self.attack_ms,
         self.release_ms,
         self.peak_hold_sec,
@@ -374,7 +365,6 @@ impl SpectralConsumer {
     };
     let primary = self.primary.output(
       &self.grid,
-      &self.weighting,
       self.attack_ms,
       self.release_ms,
       self.peak_hold_sec,
@@ -1249,30 +1239,6 @@ mod tests {
         );
         first_decayed_peak = Some(peak);
       }
-    }
-
-    let mut a_weighted = SpectralConsumer::new(SR, 20.0, 20_000.0);
-    a_weighted.set_display_controls(50.0, OctaveSmoothing::OneSixth);
-    a_weighted.set_weighting("a");
-    let mut a_transforms = new_transforms();
-    feed_transforms(&mut a_weighted, &mut a_transforms, &first);
-    let weighted = a_weighted.output(1.0).expect("weighted output");
-    for ((&frequency, &z), &a) in weighted
-      .centers_hz
-      .iter()
-      .zip(first_legacy.0.iter())
-      .zip(weighted.smooth_db.iter())
-    {
-      let f2 = frequency.max(10.0).powi(2);
-      let numerator = 12194.0_f64.powi(2) * f2 * f2;
-      let denominator = (f2 + 20.6_f64.powi(2))
-        * ((f2 + 107.7_f64.powi(2)) * (f2 + 737.9_f64.powi(2))).sqrt()
-        * (f2 + 12194.0_f64.powi(2));
-      let expected_a = 2.0 + 20.0 * (numerator / denominator).log10();
-      assert!(
-        (a - (z + expected_a)).abs() < 1e-9,
-        "weighting must follow calibrated/smoothed dB at {frequency} Hz"
-      );
     }
   }
 

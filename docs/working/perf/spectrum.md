@@ -107,9 +107,11 @@ envelope）」，量级 O(bins×3) 每帧，不是多一次 FFT。所以 1.7 的
 
 ### 附带发现（非本轮目标，记录待办）
 
-- **`weighting` 是死参数。** 生产路径恒为 `"z"`，`weighting_db` 恒返回 0，
-  `set_weighting` 无调用方。这个参数贯穿整条 Rust 频谱链路；`src/config/scales.js:168-188`
-  还有一份前端的 A/C 加权实现同样没人用。不是性能问题，是清理项。
+- ~~**`weighting` 是死参数。**~~ **已删（2026-09-01）。** 生产路径恒为 `"z"`，`weighting_db` 恒返回 0，
+  `set_weighting` 的唯一调用方是它自己的单元测试；前端 `getWeightingDb` 的唯一引用者是
+  `scales.test.js`。两端的 A/C 加权实现、`SpectralConsumer` 与 `SpectrumMeter` 的 `weighting`
+  字段、`SPECTRUM_SETTINGS.weighting` 已一并移除。这不是性能改动：删掉的加权项在生产路径上
+  恒为 0，`spectrum_differential` 那套对拍测试逐值不变。
 - **grid 是 96 点/八度**（`spectrum_bank.rs:10`），20 Hz–20 kHz ≈ **958 个点**。
   直接进入 D2 的 2.2（958 个点 vs 面板 CSS 像素宽度）与 D3。
 - **修正本文件 3.5：f32 之问不成立。** slab 已经存 Int16 centi-dB

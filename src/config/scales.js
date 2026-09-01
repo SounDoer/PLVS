@@ -74,7 +74,6 @@ export const SPEC_PLOT_H = SPEC_VIEW_H - SPEC_VIEW_TOP_PAD - SPEC_VIEW_BOTTOM_PA
 /** React Spectrum: default FFT→RTA display params (not theme tokens; see App tick) */
 export const SPECTRUM_SETTINGS = {
   resolution: "1/24", // 1/3 | 1/6 | 1/12 | 1/24 | 1/48
-  weighting: "z", // z | a | c
   smoothing: "fast", // fast | normal | slow
   freqSmoothingKernel: [0.12, 0.76, 0.12],
   tiltDbPerOctave: 0,
@@ -179,30 +178,6 @@ export function buildRtaBands(minHz = 20, maxHz = 20000, resolution = "1/6") {
     center *= step;
   }
   return bands;
-}
-
-function weightingA(fHz) {
-  const f2 = fHz * fHz;
-  const num = 12194 * 12194 * f2 * f2;
-  const den =
-    (f2 + 20.6 * 20.6) *
-    Math.sqrt((f2 + 107.7 * 107.7) * (f2 + 737.9 * 737.9)) *
-    (f2 + 12194 * 12194);
-  return 2 + 20 * Math.log10(Math.max(1e-20, num / den));
-}
-
-function weightingC(fHz) {
-  const f2 = fHz * fHz;
-  const num = 12194 * 12194 * f2;
-  const den = (f2 + 20.6 * 20.6) * (f2 + 12194 * 12194);
-  return 0.06 + 20 * Math.log10(Math.max(1e-20, num / den));
-}
-
-export function getWeightingDb(freqHz, mode = "z") {
-  const f = Math.max(10, freqHz);
-  if (mode === "a") return weightingA(f);
-  if (mode === "c") return weightingC(f);
-  return 0;
 }
 
 /** Peak meter main ticks (left rail) */

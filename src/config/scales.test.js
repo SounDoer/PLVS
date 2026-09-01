@@ -20,7 +20,6 @@ import {
   buildAdaptiveDbTicks,
   buildAdaptiveFreqTicks,
   buildRtaBands,
-  getWeightingDb,
 } from "./scales";
 
 describe("peakFrac", () => {
@@ -260,25 +259,5 @@ describe("buildRtaBands", () => {
     const bands = buildRtaBands(20, 20000, "1/3");
     expect(bands[0].fLow).toBeGreaterThanOrEqual(20);
     expect(bands[bands.length - 1].fHigh).toBeLessThanOrEqual(20001);
-  });
-});
-
-describe("getWeightingDb", () => {
-  it("Z-weighting always returns 0", () => {
-    expect(getWeightingDb(100, "z")).toBe(0);
-    expect(getWeightingDb(1000, "z")).toBe(0);
-    expect(getWeightingDb(10000, "z")).toBe(0);
-  });
-  it("A-weighting at 1 kHz is approximately 0 dB (reference point)", () => {
-    expect(getWeightingDb(1000, "a")).toBeCloseTo(0, 1);
-  });
-  it("A-weighting significantly attenuates low frequencies", () => {
-    expect(getWeightingDb(100, "a")).toBeLessThan(-10);
-  });
-  it("C-weighting at 1 kHz is approximately 0 dB", () => {
-    expect(getWeightingDb(1000, "c")).toBeCloseTo(0, 0);
-  });
-  it("defaults to Z-weighting for unknown mode", () => {
-    expect(getWeightingDb(1000, "xyz")).toBe(0);
   });
 });
