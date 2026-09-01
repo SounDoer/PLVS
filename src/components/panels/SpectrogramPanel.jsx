@@ -28,6 +28,7 @@ import { unprojectFloor } from "../../math/spectrogram3dProjection.js";
 import { hzFromFrac } from "../../math/spectrogramMath.js";
 import {
   spectrogramTimeWindow,
+  spectrogramRenderTimeWindow,
   spectrogramDataBoundaryMarkers,
   resolveSpectrogramSampleMs,
   resolveStableSpectrogramSampleMs,
@@ -76,6 +77,8 @@ export function SpectrogramPanel() {
     historyTimeAxisHandlers,
     historyTimeAxisActive,
     historyTimeTicks,
+    sourceMode,
+    running,
     getSpectrogramSnapsForKey,
     snapshotSpectrumByKey,
   } = useHistoryData();
@@ -315,6 +318,17 @@ export function SpectrogramPanel() {
   );
   const oldestMs = timeWindow?.oldestMs ?? NaN;
   const newestMs = timeWindow?.newestMs ?? NaN;
+  // The shared timeline advances at ~10 Hz, while this panel already receives timestamped visual
+  // rows at 25 Hz. At the live edge only, let the canvas use that finer clock (bounded to one
+  // history interval) so motion does not wait for the next master row. Axes, hover, markers, file
+  // analysis, paused history, and scrubbed/offset views continue to use the unchanged master window.
+  const canAdvancePaintWindow =
+    sourceMode === "live" && running === true && selectedOffset < 0 && effectiveOffsetSamples <= 0;
+  const paintTimeWindow = canAdvancePaintWindow
+    ? spectrogramRenderTimeWindow(timeWindow, spectrogramSnaps, HIST_SAMPLE_SEC * 1000)
+    : timeWindow;
+  const paintOldestMs = paintTimeWindow?.oldestMs ?? NaN;
+  const paintNewestMs = paintTimeWindow?.newestMs ?? NaN;
   // Marker lines where this request key's data appears/disappears inside the window (memoized so the
   // O(window) gap scan does not run on every ~60Hz panel re-render).
   const dataBoundaryMarkers = useMemo(
@@ -329,8 +343,8 @@ export function SpectrogramPanel() {
   useSpectrogramCanvas({
     canvasRef,
     snapRef,
-    oldestMs,
-    newestMs,
+    oldestMs: paintOldestMs,
+    newestMs: paintNewestMs,
     sampleMs,
     selectedOffset,
     frozenSnaps: selectedOffset >= 0 ? spectrogramSnaps : null,
@@ -348,8 +362,8 @@ export function SpectrogramPanel() {
     glCanvasRef,
     snapRef,
     projectionRef,
-    oldestMs,
-    newestMs,
+    oldestMs: paintOldestMs,
+    newestMs: paintNewestMs,
     sampleMs: stableSampleMs,
     selectedOffset,
     selectionXFrac: selLineX / 600,

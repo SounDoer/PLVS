@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   spectrogramTimeWindow,
+  spectrogramRenderTimeWindow,
   spectrogramFrameEndMs,
   inWindowRange,
   spectrogramDataBoundaryMarkers,
@@ -92,6 +93,37 @@ describe("spectrogramTimeWindow", () => {
       oldestMs: 303,
       newestMs: 1203,
     });
+  });
+});
+
+describe("spectrogramRenderTimeWindow", () => {
+  const master = { oldestMs: 1000, newestMs: 1200 };
+
+  it("uses the newer visual cadence to advance only the paint window", () => {
+    expect(
+      [1200, 1240, 1280].map(
+        (visualNewestMs) =>
+          spectrogramRenderTimeWindow(master, frames(1160, visualNewestMs), 100).newestMs
+      )
+    ).toEqual([1200, 1240, 1280]);
+    expect(spectrogramRenderTimeWindow(master, frames(1160, 1280), 100)).toEqual({
+      oldestMs: 1080,
+      newestMs: 1280,
+    });
+    expect(master).toEqual({ oldestMs: 1000, newestMs: 1200 });
+  });
+
+  it("caps the advance at one master-history interval", () => {
+    expect(spectrogramRenderTimeWindow(master, frames(1200, 1600), 100)).toEqual({
+      oldestMs: 1100,
+      newestMs: 1300,
+    });
+  });
+
+  it("keeps the master window for missing, stale, or invalid visual time", () => {
+    expect(spectrogramRenderTimeWindow(master, viewOf([]), 100)).toBe(master);
+    expect(spectrogramRenderTimeWindow(master, frames(1000, 1160), 100)).toBe(master);
+    expect(spectrogramRenderTimeWindow(null, frames(1200, 1280), 100)).toBeNull();
   });
 });
 

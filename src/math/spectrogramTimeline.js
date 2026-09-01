@@ -97,6 +97,29 @@ export function spectrogramTimeWindow(
 }
 
 /**
+ * Advances only the Spectrogram's paint window to the newest visual frame, without moving the
+ * shared history viewport used by axes, markers, hover, or the other timeline panels.
+ *
+ * The caller owns the live-edge policy. This helper only bounds the shift: a missing or older
+ * visual row leaves the master window untouched, while a stalled master clock can never be hidden
+ * by more than one history interval.
+ */
+export function spectrogramRenderTimeWindow(timeWindow, visualFrames, maxAdvanceMs) {
+  if (!timeWindow || !(timeWindow.newestMs > timeWindow.oldestMs)) return timeWindow;
+  if (!visualFrames || visualFrames.length === 0) return timeWindow;
+  const visualNewestMs = timestampAt(visualFrames, visualFrames.length - 1);
+  const advanceMs = Math.min(
+    Math.max(0, Number(maxAdvanceMs) || 0),
+    Math.max(0, visualNewestMs - timeWindow.newestMs)
+  );
+  if (!(advanceMs > 0)) return timeWindow;
+  return {
+    oldestMs: timeWindow.oldestMs + advanceMs,
+    newestMs: timeWindow.newestMs + advanceMs,
+  };
+}
+
+/**
  * Nominal frame interval near the newest row, inferred from real timestamps rather than assumed.
  * Gap detection (`spectrogramFrameEndMs`) needs a nominal interval to size its gap threshold, but
  * the actual cadence depends on how the view was produced: live visual history ticks at ~40ms

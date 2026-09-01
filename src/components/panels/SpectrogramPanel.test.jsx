@@ -280,6 +280,64 @@ describe("SpectrogramPanel", () => {
     expect(canvasArgs.newestMs).toBe(1200);
   });
 
+  it("advances only the live-edge paint window on the finer visual cadence", () => {
+    const visualFrames = viewOf([
+      { timestampMs: 1160, dbList: [-20] },
+      { timestampMs: 1200, dbList: [-20] },
+      { timestampMs: 1240, dbList: [-20] },
+      { timestampMs: 1280, dbList: [-20] },
+    ]);
+    renderPanel({
+      sourceMode: "live",
+      running: true,
+      selectedOffset: -1,
+      effectiveOffsetSamples: 0,
+      visibleSamples: 3,
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }],
+      getSpectrogramSnapsForKey: () => visualFrames,
+    });
+
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0]).toMatchObject({
+      oldestMs: 1080,
+      newestMs: 1280,
+    });
+    expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0]).toMatchObject({
+      oldestMs: 1080,
+      newestMs: 1280,
+    });
+  });
+
+  it.each([
+    ["file analysis", { sourceMode: "file", running: true, effectiveOffsetSamples: 0 }, 1000, 1200],
+    [
+      "stopped capture",
+      { sourceMode: "live", running: false, effectiveOffsetSamples: 0 },
+      1000,
+      1200,
+    ],
+    ["history offset", { sourceMode: "live", running: true, effectiveOffsetSamples: 1 }, 900, 1100],
+    [
+      "scrub selection",
+      { sourceMode: "live", running: true, effectiveOffsetSamples: 0, selectedOffset: 0 },
+      1000,
+      1200,
+    ],
+  ])("keeps the master paint window during %s", (_label, state, expectedOldest, expectedNewest) => {
+    const visualFrames = viewOf([{ timestampMs: 1280, dbList: [-20] }]);
+    renderPanel({
+      selectedOffset: -1,
+      visibleSamples: 3,
+      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }],
+      getSpectrogramSnapsForKey: () => visualFrames,
+      ...state,
+    });
+
+    expect(vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0]).toMatchObject({
+      oldestMs: expectedOldest,
+      newestMs: expectedNewest,
+    });
+  });
+
   it("hides frequency change markers when no selectable channel chip is shown", () => {
     const { container } = renderPanel({
       channelCount: 2,
