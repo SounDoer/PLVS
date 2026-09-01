@@ -148,6 +148,37 @@ fn sanitize(values: &mut [f32]) {
 mod tests {
   use super::*;
 
+  #[cfg(not(debug_assertions))]
+  fn measure_one_audio_second(sample_rate: usize, channels: u16, repeats: usize) -> f64 {
+    // Ten milliseconds matches the normal order of magnitude of capture deliveries. The
+    // accumulator's cost is sample-bound, but retaining chunk boundaries here also prices the
+    // periodic drains and partial history sub-blocks that production performs.
+    let chunk_frames = sample_rate / 100;
+    let channel_count = channels as usize;
+    let mut pcm = Vec::with_capacity(chunk_frames * channel_count);
+    for frame in 0..chunk_frames {
+      for channel in 0..channel_count {
+        let phase = ((frame * 17 + channel * 31) & 1023) as f32 / 512.0 - 1.0;
+        pcm.push(phase);
+      }
+    }
+
+    let mut accumulator = WaveformAccumulator::new(channels);
+    let started = std::time::Instant::now();
+    for _ in 0..repeats {
+      for chunk in 1..=100 {
+        accumulator.push_interleaved(std::hint::black_box(&pcm));
+        if chunk % 4 == 0 {
+          std::hint::black_box(accumulator.take_visual());
+        }
+        if chunk % 10 == 0 {
+          std::hint::black_box(accumulator.take_history());
+        }
+      }
+    }
+    started.elapsed().as_secs_f64() * 1_000.0 / repeats as f64
+  }
+
   #[test]
   fn captures_channel_extrema_without_the_meter_pipeline() {
     let mut accumulator = WaveformAccumulator::new(2);
@@ -187,5 +218,26 @@ mod tests {
       }
     );
     assert_eq!(accumulator.take_visual().min, vec![0.0]);
+  }
+
+  /// Diagnostic only: report the shipping-profile CPU cost without turning machine timing into a
+  /// flaky test gate. Run this test by name with a release profile, `--ignored`, and `--nocapture`.
+  #[test]
+  #[ignore]
+  #[cfg(not(debug_assertions))]
+  fn measure_waveform_accumulator_cost() {
+    for (sample_rate, channels) in [(48_000, 2), (192_000, 2), (192_000, 8)] {
+      // Keep the amount of PCM work comparable across scenarios while retaining enough repeated
+      // one-second windows to smooth timer noise.
+      let samples_per_second = sample_rate * channels as usize;
+      let repeats = (20_000_000usize / samples_per_second).max(10);
+      let milliseconds = measure_one_audio_second(sample_rate, channels, repeats);
+      let nanoseconds_per_sample = milliseconds * 1_000_000.0 / samples_per_second as f64;
+      println!(
+        "waveform accumulator: {sample_rate} Hz, {channels} ch: {milliseconds:.3} ms/audio-s, \
+         {:.4}% of one core, {nanoseconds_per_sample:.2} ns/interleaved-sample ({repeats} rounds)",
+        milliseconds / 10.0
+      );
+    }
   }
 }
