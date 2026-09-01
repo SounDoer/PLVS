@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -1148,6 +1148,9 @@ export function SpectrumDisplaySettingsRows({
   );
 }
 
+/** Widgets the table declares but does not draw: the settings surface passes them in `slots`. */
+const SLOT_WIDGETS = new Set(["custom", "customRow"]);
+
 /**
  * Renders the rows one tab owns straight from the control table: the row carries its label,
  * tooltip, widget and visibility rule, and the value and its repair rule come from the same row.
@@ -1163,14 +1166,17 @@ function PanelControlRows({ tab, controls, onChange, slots = {} }) {
 
   return panelControlUiRows(tab)
     .filter((row) => !row.ui.showWhen || row.ui.showWhen(controls))
-    .filter((row) => row.ui.widget !== "custom" || slots[row.key])
+    .filter((row) => !SLOT_WIDGETS.has(row.ui.widget) || slots[row.key ?? row.minKey])
     .map((row) => {
       const { ui } = row;
       const rowKey = row.key ?? row.minKey;
+      // `custom` fills in the control of a row the table labels; `customRow` hands over the row
+      // itself, for the ones that carry their own label, link toggle or visibility rule.
+      if (ui.widget === "customRow") return <Fragment key={rowKey}>{slots[rowKey]}</Fragment>;
       if (ui.widget === "custom") {
         return (
           <SettingsRow key={rowKey} label={ui.label} tooltip={ui.tooltip}>
-            {slots[row.key]}
+            {slots[rowKey]}
           </SettingsRow>
         );
       }
@@ -1342,27 +1348,31 @@ export function PanelSettingsContent({
           tab="levelMeter"
           controls={normalizedPanelControls}
           onChange={onPanelControlsChange}
+          slots={{
+            // A whole row rather than a control: it names one of two stored ranges depending on
+            // the mode, so a single table row would have to carry two pairs of keys.
+            levelMeterYMinDb: (
+              <SettingsRow label="Level Range">
+                <SettingsRangeInput
+                  minAriaLabel="level meter range min"
+                  maxAriaLabel="level meter range max"
+                  minValue={levelMeterYMinDb}
+                  maxValue={levelMeterYMaxDb}
+                  onCommit={(newMin, newMax) => {
+                    onPanelControlsChange(
+                      normalizePanelControls({
+                        ...normalizedPanelControls,
+                        ...(isPeakFamilyMode
+                          ? { levelMeterYMinDb: newMin, levelMeterYMaxDb: newMax }
+                          : { loudnessYMinDb: newMin, loudnessYMaxDb: newMax }),
+                      })
+                    );
+                  }}
+                />
+              </SettingsRow>
+            ),
+          }}
         />
-        {/* Not a table row: it names one of two stored ranges depending on the mode, so a single
-            row would have to carry two pairs of keys. */}
-        <SettingsRow label="Level Range">
-          <SettingsRangeInput
-            minAriaLabel="level meter range min"
-            maxAriaLabel="level meter range max"
-            minValue={levelMeterYMinDb}
-            maxValue={levelMeterYMaxDb}
-            onCommit={(newMin, newMax) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  ...(isPeakFamilyMode
-                    ? { levelMeterYMinDb: newMin, levelMeterYMaxDb: newMax }
-                    : { loudnessYMinDb: newMin, loudnessYMaxDb: newMax }),
-                })
-              );
-            }}
-          />
-        </SettingsRow>
       </SettingsGroup>
     );
   }
@@ -1669,6 +1679,8 @@ export function PanelSettingsContent({
             controls={normalizedPanelControls}
             onChange={onPanelControlsChange}
             slots={{
+              // Spectrogram has a time axis; Spectrum, which shares this branch, does not.
+              historyWindowSec: <TimeRangeRow />,
               spectrumOctaveSmoothing: (
                 <SettingsChoiceSelect
                   ariaLabel="spectrogram octave smoothing"
@@ -1689,8 +1701,6 @@ export function PanelSettingsContent({
             }}
           />
         ) : null}
-        {/* Spectrogram has a time axis; Spectrum, which shares this branch, does not. */}
-        {activeTab === "spectrogram" ? <TimeRangeRow /> : null}
       </SettingsGroup>
     );
   }

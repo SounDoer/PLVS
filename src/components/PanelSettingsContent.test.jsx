@@ -335,6 +335,23 @@ describe("PanelSettingsContent time range row", () => {
     expect(historyData.setHistoryOffsetSec).toHaveBeenCalledWith(0);
   });
 
+  // The row's position is an `ui.order` in the control table like every other row's, so that a
+  // tab's order can be read off the table alone. It used to be rendered after the table's output,
+  // where no order could reach it.
+  it("sorts after the spectrogram's own range row", () => {
+    const { container } = renderWithHistory(
+      <PanelSettingsContent
+        activeTab="spectrogram"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    const text = container.textContent;
+
+    expect(text.indexOf("Frequency Range")).toBeGreaterThan(-1);
+    expect(text.indexOf("Time Range")).toBeGreaterThan(text.indexOf("Frequency Range"));
+  });
+
   it("stays out of the way when no history context is mounted", () => {
     render(
       <PanelSettingsContent
@@ -589,6 +606,22 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("TP Max")).toBeNull();
     expect(screen.getByLabelText("level meter range min").value).toBe("-60");
     expect(screen.getByLabelText("level meter range max").value).toBe("3");
+  });
+
+  // Same reason as the spectrogram's Time Range row: the range sits in the control table so its
+  // position is an `ui.order`, not an accident of being rendered after the table's output.
+  it("sorts the Level Meter range after the mode-dependent switches", () => {
+    const { container } = render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "peak" }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    const text = container.textContent;
+
+    expect(text.indexOf("TP Max")).toBeGreaterThan(-1);
+    expect(text.indexOf("Level Range")).toBeGreaterThan(text.indexOf("TP Max"));
   });
 
   it("commits the RMS range to the level keys the Level Meter panel reads", () => {
@@ -1705,9 +1738,10 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram frequency range max").value).toBe("20000");
   });
 
-  // Mode leads because it decides which of the rows below it even exist, and the three that apply
-  // to every mode come before the ones a 3D mode adds.
-  it("orders spectrogram Mode first, then the shared rows, then the 3D ones", () => {
+  // Mode leads because it decides which of the rows below it even exist, then the rows that apply
+  // to every mode, then the ones a 3D mode adds. Frequency Range trails all of them, with Time
+  // Range last: the range rows sit at the end of every tab.
+  it("orders spectrogram Mode first, then the shared rows, then the 3D ones, then the ranges", () => {
     const { container } = render(
       <PanelSettingsContent
         activeTab="spectrogram"
@@ -1720,7 +1754,7 @@ describe("PanelSettingsContent", () => {
     );
 
     const text = container.textContent;
-    const order = ["Mode", "Smoothing", "dB Floor", "Frequency Range", "Elevation", "Azimuth"];
+    const order = ["Mode", "Smoothing", "dB Floor", "Elevation", "Azimuth", "Frequency Range"];
     const at = order.map((label) => text.indexOf(label));
     for (const [i, index] of at.entries()) {
       expect({ label: order[i], found: index >= 0 }).toEqual({ label: order[i], found: true });

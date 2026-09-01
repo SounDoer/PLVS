@@ -378,7 +378,7 @@ const CONTROLS = [
       label: "Frequency Range",
       widget: "range",
       ariaLabel: "spectrogram frequency range",
-      order: 40,
+      order: 90,
     },
   },
   {
@@ -423,7 +423,7 @@ const CONTROLS = [
       label: "Colorize",
       widget: "switch",
       ariaLabel: "spectrogram 3d colorize",
-      order: 80,
+      order: 70,
       showWhen: is3dSpectrogram,
     },
   },
@@ -440,7 +440,7 @@ const CONTROLS = [
       label: "Height Scale",
       widget: "slider",
       ariaLabel: "spectrogram 3d height scale",
-      order: 70,
+      order: 60,
       step: 0.05,
       format: (value) => `${value.toFixed(2)}x`,
       showWhen: is3dSpectrogram,
@@ -455,7 +455,7 @@ const CONTROLS = [
       label: "Azimuth",
       widget: "slider",
       ariaLabel: "spectrogram 3d azimuth",
-      order: 60,
+      order: 50,
       // The slider stops one degree short of a full turn; the row itself wraps, so 359 and 0 are
       // neighbours rather than the two ends of a range.
       min: 0,
@@ -478,7 +478,7 @@ const CONTROLS = [
       label: "Elevation",
       widget: "slider",
       ariaLabel: "spectrogram 3d elevation",
-      order: 50,
+      order: 40,
       step: 1,
       format: (value) => `${value.toFixed(0)}\u00b0`,
       resettable: true,
@@ -497,7 +497,7 @@ const CONTROLS = [
       label: "Grid",
       widget: "switch",
       ariaLabel: "spectrogram 3d grid",
-      order: 90,
+      order: 80,
       showWhen: is3dSpectrogram,
     },
   },
@@ -520,6 +520,11 @@ const CONTROLS = [
     absMin: -60,
     absMax: 3,
     minSpan: 12,
+    // `customRow`: the Level Meter's range row reads and writes one of two stored pairs depending
+    // on the mode, which a one-key row cannot express, so the settings surface supplies the whole
+    // row. It is in the table anyway so that its position is an `order` like every other row's --
+    // a row rendered after the table's output would be unreachable from here.
+    ui: { tab: "levelMeter", widget: "customRow", order: 90 },
   },
   {
     key: "statsVisibleIds",
@@ -710,6 +715,12 @@ const CONTROLS = [
     min: AXIS_VIEWPORTS.time.minWindowSec,
     max: Number.MAX_SAFE_INTEGER,
     default: AXIS_VIEWPORTS.time.defaultWindowSec,
+    // The Time Range row, anchored here because this is the control it edits. `customRow` for the
+    // same reason as the Level Meter range above: the row owns its own label and axis-link toggle,
+    // and its value comes from the live history viewport rather than from a panel control.
+    // The Waveform and Loudness tabs show the same row but render it by hand, because their tabs
+    // are hand-written throughout -- the same split spectrumTiltDbPerOctave already carries.
+    ui: { tab: "spectrogram", widget: "customRow", order: 100 },
   },
   {
     key: "historyOffsetSec",
