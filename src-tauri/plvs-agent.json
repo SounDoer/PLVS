@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "productName": "PLVS",
   "identifier": "com.soundoer.plvs",
-  "version": "0.14.4",
+  "version": "0.14.5",
   "cli": {
     "relativePath": {
       "windows": "plvs-cli.exe",

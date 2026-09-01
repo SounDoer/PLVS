@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.5] - 2026-09-01
+
+### Added
+
+- UI frame drop observability: the desktop perf rig records dropped UI frames and attributes long animation frames, so a soak run says where the main thread went.
+
+### Changed
+
+- Spectrogram advances its paint window on the 25 Hz visual cadence at the live edge, so the waterfall no longer stutters on the 10 Hz history step. File analysis, stopped capture, history offset, and scrub selection keep the unchanged window.
+- Removed the A/C weighting parameter from Spectrum. It had no production caller and always contributed 0 dB.
+
+### Fixed
+
+- Spectrogram's decimation stride rounds up, so the newest end is never truncated and the entering edge no longer shows a black slot that moved with the camera.
+- Spectrogram's floor skirt closes the entering and frequency edges instead of the old height ramps, which held the newest 3.8s of a 60s span below its true height.
+- Panel settings: every range row sits at the end of its tab. The Level Meter's Level Range and the Spectrogram's Time Range are now orderable at all.
+
 ## [0.14.4] - 2026-09-01
 
 ### Changed
