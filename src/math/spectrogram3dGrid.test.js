@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sampleWaterfallGrid } from "./spectrogram3dGrid.js";
+import { rowGapToleranceTFrac } from "./spectrogram3dMesh.js";
 import { resolveStableSpectrogramSampleMs } from "./spectrogramTimeline.js";
 import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
 
@@ -94,6 +95,68 @@ describe("sampleWaterfallGrid", () => {
     const setB = abs(at37, 37, 1000);
     const shared = setA.filter((ts) => setB.includes(ts));
     expect(shared.length).toBeGreaterThanOrEqual(setA.length - 1);
+  });
+
+  /**
+   * The quantised stride must never fall BELOW `span / maxRidges`.
+   *
+   * When it does, the window holds more buckets than the loop may keep, and since the loop walks
+   * oldest to newest it stops at the NEWEST end. The live row is still pinned at its true
+   * timestamp, so the grid comes back with a multi-stride hole between the last decimated row and
+   * it -- `buildSurfaceMesh` reads that as a capture gap, drops the quads, and the entering end
+   * renders as a black slot the full length of the frequency axis with the live row stranded
+   * beyond it as bare skirt. `Math.round` did exactly this; `Math.ceil` cannot.
+   *
+   * Asserted against `rowGapToleranceTFrac` rather than against the stride, because the mesh's
+   * tolerance is the thing that actually decides whether a hole appears.
+   */
+  const newestEndGap = (grid, span, sampleMs) => {
+    const tFracs = Array.from(grid.tFracs.subarray(0, grid.count));
+    let widest = 0;
+    for (let r = 1; r < tFracs.length; r++) {
+      const gap = tFracs[r] - tFracs[r - 1];
+      if (gap > widest) widest = gap;
+    }
+    return { widest, tolerance: rowGapToleranceTFrac(grid.strideMs / span, sampleMs / span) };
+  };
+
+  it("never truncates the newest end when the stride is quantised", () => {
+    // 333 rows over 30s at 25Hz: `span / cap` is 90.09ms, which rounds DOWN to 80 and asks for 375
+    // buckets. The old quantiser lost the newest 42 of them -- a 3.36s hole.
+    const span = 30_000;
+    const timestamps = evenly(0, span);
+    const view = framesAt(timestamps, -20);
+    const grid = sampleWaterfallGrid({
+      ...BASE,
+      view,
+      startIdx: 0,
+      endIdx: timestamps.length - 1,
+      span,
+      maxRidges: 333,
+      pinLiveRow: true,
+    });
+
+    expect(grid.strideMs).toBeGreaterThanOrEqual(span / 333);
+    expect(grid.bucketCount).toBeLessThanOrEqual(333);
+    // The decimated rows reach the newest frame, rather than stopping a few seconds short of it.
+    expect(1 - grid.tFracs[grid.bucketCount - 1]).toBeLessThan(grid.strideMs / span);
+    const { widest, tolerance } = newestEndGap(grid, span, SAMPLE_MS);
+    expect(widest).toBeLessThanOrEqual(tolerance);
+  });
+
+  // The cap comes from `surfaceRowCap`, which the projection moves as the user rotates, so a fix
+  // that only holds at one cap is not a fix: at 60s the old quantiser broke 118 of these 251.
+  it("holds the newest end across every row cap a surface panel can ask for", () => {
+    const span = 60_000;
+    const timestamps = evenly(0, span);
+    const view = framesAt(timestamps, -20);
+    const args = { ...BASE, view, startIdx: 0, endIdx: timestamps.length - 1, span };
+
+    for (let maxRidges = 150; maxRidges <= 400; maxRidges++) {
+      const grid = sampleWaterfallGrid({ ...args, maxRidges, pinLiveRow: true });
+      const { widest, tolerance } = newestEndGap(grid, span, SAMPLE_MS);
+      expect({ maxRidges, holed: widest > tolerance }).toEqual({ maxRidges, holed: false });
+    }
   });
 
   // The window's edges are real captured timestamps, so span jitters by a few ms on every history
@@ -288,7 +351,8 @@ describe("sampleWaterfallGrid", () => {
   // and a tolerance derived from span / count smears them across the empty rest of it.
   it("returns the bucket stride, quantised to whole frame periods", () => {
     const view = framesAt(evenly(0, 4000), -20);
-    // span 1000 / maxRidges 12 -> raw 83.3 ms -> 2 whole 40 ms periods.
+    // span 1000 / maxRidges 12 -> raw 83.3 ms -> 3 whole 40 ms periods. Rounded UP, never to
+    // nearest: 2 periods would put 12.5 buckets in a window allowed 12 rows.
     const grid = sampleWaterfallGrid({
       ...BASE,
       view,
@@ -297,7 +361,7 @@ describe("sampleWaterfallGrid", () => {
       span: 1000,
       maxRidges: 12,
     });
-    expect(grid.strideMs).toBe(80);
+    expect(grid.strideMs).toBe(120);
   });
 
   it("returns the raw stride when the frame period is unusable", () => {

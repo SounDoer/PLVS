@@ -87,10 +87,24 @@ export function sampleWaterfallGrid({
   // One frame per absolute-time bucket. Buckets are anchored to the epoch rather than to the
   // window, so a frame stays selected while the window slides past it, and their width is a whole
   // number of frame periods so window jitter cannot move the edges.
+  //
+  // Rounded UP, never to nearest. `round` can land the stride BELOW `span / cap`, which puts more
+  // buckets in the window than the loop below is allowed to keep -- and since it walks oldest to
+  // newest, `count < cap` stops it at the NEWEST end. The live row is still pinned at its true
+  // timestamp, so the grid comes out with a multi-stride hole between the last kept row and it;
+  // wide enough that `buildSurfaceMesh` reads it as a capture gap and drops the quads, leaving a
+  // black slot the full length of the frequency axis with the live row stranded beyond it as bare
+  // skirt. At a 60s window and 25 Hz frames that hit 118 of the 251 caps a surface panel can ask
+  // for, up to 6.56s wide, appearing and vanishing as rotation moved `surfaceRowCap`.
+  //
+  // Ceiling costs at most one frame period of extra stride, and it is exactly as stable as
+  // rounding: both move only when `span` or `cap` does, which is what the jitter argument above
+  // needs. It cannot bind the cap either -- `strideMs >= span / cap` puts the bucket count at or
+  // below `cap` by construction.
   const rawStrideMs = span / cap;
   const strideMs =
     Number.isFinite(sampleMs) && sampleMs > 0
-      ? sampleMs * Math.max(1, Math.round(rawStrideMs / sampleMs))
+      ? sampleMs * Math.max(1, Math.ceil(rawStrideMs / sampleMs))
       : rawStrideMs;
 
   if (!view || endIdx < startIdx || !(span > 0)) {
