@@ -8,7 +8,7 @@
  * `directsound` rejects a device name and wants a GUID; only `mmdevice` with an
  * MMDevice endpoint id works). A caller should never have to know any of that.
  */
-import { writeFileSync, existsSync } from "node:fs";
+import { writeFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { spawnSync, spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -169,11 +169,50 @@ export function locateVlc() {
   return vlc;
 }
 
+const BUILD_CLI = "cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs-cli";
+
+/** What a plvs-cli rebuild consumes. `target/` is deliberately absent: it holds the
+ *  binary being compared, not an input to it. */
+const CLI_SOURCES = ["src-tauri/src", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock"];
+
+/**
+ * Paths under `root` modified after `cliMtimeMs`. Exported for its test; callers want
+ * `locateCli`.
+ */
+export function staleCliSources(cliMtimeMs, root = ROOT) {
+  const stale = [];
+  const walk = (rel) => {
+    const abs = join(root, rel);
+    if (!existsSync(abs)) return;
+    const stat = statSync(abs);
+    if (stat.isDirectory()) {
+      for (const entry of readdirSync(abs)) walk(`${rel}/${entry}`);
+      return;
+    }
+    if (stat.mtimeMs > cliMtimeMs) stale.push(rel);
+  };
+  for (const rel of CLI_SOURCES) walk(rel);
+  return stale;
+}
+
 export function locateCli() {
   const cli = join(ROOT, "src-tauri", "target", "release", "plvs-cli.exe");
   if (!existsSync(cli)) {
+    throw new RigError(`plvs-cli not built. Run:\n  ${BUILD_CLI}`);
+  }
+
+  // Nothing on the way here rebuilds it. `npm run check` builds the debug profile, and
+  // CI runners have no sound card, so this rig is the capture layer's only real
+  // verification -- one that would otherwise pass against a binary predating the commit
+  // it was run to check. The tell is silent: the run prints OK either way.
+  const stale = staleCliSources(statSync(cli).mtimeMs);
+  if (stale.length > 0) {
+    const listed = stale.slice(0, 5).map((rel) => `  ${rel}`);
+    if (stale.length > listed.length) {
+      listed.push(`  ... and ${stale.length - listed.length} more`);
+    }
     throw new RigError(
-      `plvs-cli not built. Run:\n  cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs-cli`,
+      `plvs-cli is older than its sources, so this run would not exercise them:\n${listed.join("\n")}\nRebuild first:\n  ${BUILD_CLI}`,
     );
   }
   return cli;

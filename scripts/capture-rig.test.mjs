@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdirSync, writeFileSync, utimesSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
-import { synthesizeSignal, compareMetrics, SIGNAL } from "./capture-rig.mjs";
+import { synthesizeSignal, compareMetrics, staleCliSources, SIGNAL } from "./capture-rig.mjs";
 
 describe("synthesizeSignal", () => {
   it("writes a WAV whose header matches the declared format", async () => {
@@ -116,5 +116,74 @@ describe("compareMetrics", () => {
     });
     expect(result.ok).toBe(false);
     expect(result.failures).toHaveLength(3);
+  });
+});
+
+describe("staleCliSources", () => {
+  // A built binary carries no record of what went into it, so the rig compares
+  // mtimes. These fixtures set them explicitly: writing files in sequence gives
+  // timestamps too close together to order reliably.
+  const BUILT_AT = 1_700_000_000_000;
+
+  async function fixture(files) {
+    const root = join(tmpdir(), `plvs-stale-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    for (const [rel, mtimeMs] of Object.entries(files)) {
+      const abs = join(root, rel);
+      mkdirSync(dirname(abs), { recursive: true });
+      writeFileSync(abs, "x");
+      const seconds = mtimeMs / 1000;
+      utimesSync(abs, seconds, seconds);
+    }
+    return root;
+  }
+
+  it("reports nothing when every source predates the binary", async () => {
+    const root = await fixture({
+      "src-tauri/src/lib.rs": BUILT_AT - 60_000,
+      "src-tauri/Cargo.toml": BUILT_AT - 60_000,
+    });
+    try {
+      expect(staleCliSources(BUILT_AT, root)).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("names a nested source that changed after the binary was built", async () => {
+    const root = await fixture({
+      "src-tauri/src/lib.rs": BUILT_AT - 60_000,
+      "src-tauri/src/dsp/spectrum.rs": BUILT_AT + 60_000,
+    });
+    try {
+      expect(staleCliSources(BUILT_AT, root)).toEqual(["src-tauri/src/dsp/spectrum.rs"]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("ignores target/, which holds the binary rather than an input to it", async () => {
+    // Every build writes here, so counting it would make the rig permanently stale
+    // against itself.
+    const root = await fixture({
+      "src-tauri/src/lib.rs": BUILT_AT - 60_000,
+      "src-tauri/target/release/plvs-cli.exe": BUILT_AT + 60_000,
+    });
+    try {
+      expect(staleCliSources(BUILT_AT, root)).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("catches a Cargo.lock bump, which changes the binary without touching src", async () => {
+    const root = await fixture({
+      "src-tauri/src/lib.rs": BUILT_AT - 60_000,
+      "src-tauri/Cargo.lock": BUILT_AT + 60_000,
+    });
+    try {
+      expect(staleCliSources(BUILT_AT, root)).toEqual(["src-tauri/Cargo.lock"]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
