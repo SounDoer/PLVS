@@ -34,7 +34,7 @@ import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
 import { openExternalUrl } from "@/ipc/openExternal.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
-import { HoverTip } from "@/components/HoverTip.jsx";
+import { HoverTip, useHoverTip } from "@/components/HoverTip.jsx";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
@@ -62,20 +62,28 @@ export function SettingsGroup({ children }) {
   return <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5">{children}</div>;
 }
 
+// The label tip is portaled rather than absolutely positioned above the label: the settings body
+// scrolls, so an in-flow tip on one of the first rows is clipped by that container and reads as
+// hidden behind the settings header.
 export function SettingsRow({ label, tooltip, action, controlAction, children }) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+    tip: tooltip,
+    side: "top",
+    align: "start",
+    tipClassName: "w-48 whitespace-normal rounded-md border-border leading-snug",
+  });
+
   return (
     <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
-      <span className="group relative flex h-6 items-center gap-1 whitespace-nowrap font-medium text-muted-foreground">
+      <span
+        ref={anchorRef}
+        onMouseEnter={tooltip ? showTip : undefined}
+        onMouseLeave={tooltip ? hideTip : undefined}
+        className="flex h-6 items-center gap-1 whitespace-nowrap font-medium text-muted-foreground"
+      >
         {label}
         {action}
-        {tooltip ? (
-          <span
-            role="tooltip"
-            className="pointer-events-none absolute bottom-full left-0 z-50 mb-1 hidden w-48 whitespace-normal rounded-md border border-border bg-popover px-2 py-1 text-[length:var(--ui-fs-axis)] font-normal leading-snug text-popover-foreground shadow-sm group-hover:block"
-          >
-            {tooltip}
-          </span>
-        ) : null}
+        {tipNode}
       </span>
       <div className="flex min-h-6 min-w-0 items-center justify-end gap-2">
         {controlAction}

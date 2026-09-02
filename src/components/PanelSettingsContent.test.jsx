@@ -558,9 +558,11 @@ describe("PanelSettingsContent", () => {
 
     const playbackMaxLabel = screen.getByText("Playback Max");
     const floatingValueLabel = screen.getByText("Floating Value");
+    fireEvent.mouseEnter(playbackMaxLabel);
     expect(
       screen.getByText("Show the latest playback max as the readout while the bar stays live.")
     ).toBeTruthy();
+    fireEvent.mouseLeave(playbackMaxLabel);
     expect(playbackMaxLabel.compareDocumentPosition(floatingValueLabel)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
@@ -1165,8 +1167,9 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    expect(screen.getByText("VAD")).toBeTruthy();
+    fireEvent.mouseEnter(screen.getByText("VAD"));
     expect(screen.getByRole("tooltip").textContent).toContain("Voice activity detector");
+    fireEvent.mouseLeave(screen.getByText("VAD"));
     fireEvent.click(screen.getByRole("button", { name: "dialogue vad" }));
 
     expect(screen.getByRole("option", { name: /Silero VAD/ })).toBeTruthy();
@@ -1656,6 +1659,21 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByLabelText("spectrum max decay")).toBeNull();
   });
 
+  it("portals the label tooltip out of the scrolling settings body", () => {
+    const view = render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.mouseEnter(screen.getByText("Playback Max"));
+    const tip = screen.getByRole("tooltip");
+    expect(view.container.contains(tip)).toBe(false);
+    expect(tip.className).toContain("fixed");
+  });
+
   it("gives the tilt row the same tooltip on both the spectrum and spectrogram tabs", () => {
     const tiltTooltip = (activeTab) => {
       const view = render(
@@ -1671,7 +1689,8 @@ describe("PanelSettingsContent", () => {
       const label = [...view.container.querySelectorAll("span")].find(
         (node) => node.firstChild?.nodeValue === "Tilt"
       );
-      const text = label?.querySelector('[role="tooltip"]')?.textContent ?? null;
+      if (label) fireEvent.mouseEnter(label);
+      const text = screen.queryByRole("tooltip")?.textContent ?? null;
       view.unmount();
       return text;
     };
