@@ -1,8 +1,10 @@
+pub mod agent_control;
 #[cfg(target_os = "windows")]
 mod appbar;
 mod audio;
 pub mod cli_analyze;
 pub mod cli_analyze_batch;
+pub mod cli_app;
 pub mod cli_capture;
 pub mod cli_devices;
 pub mod cli_main;
@@ -51,6 +53,8 @@ pub fn run() {
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
     .manage(AppState::default())
+    .manage(agent_control::broker::AgentControlState::default())
+    .manage(agent_control::windows_pipe::PipeServerState::default())
     .manage(dock::DockedFlag(std::sync::Arc::new(
       std::sync::atomic::AtomicBool::new(false),
     )))
@@ -94,6 +98,9 @@ pub fn run() {
       dock_accessories::set_dock_accessories,
       dock_accessories::cursor_over_dock_surfaces,
       glass_effect::set_glass_effect,
+      agent_control::broker::agent_control_frontend_ready,
+      agent_control::broker::agent_control_frontend_not_ready,
+      agent_control::broker::agent_control_respond,
     ])
     .setup(|app| {
       #[cfg(debug_assertions)]
@@ -113,6 +120,13 @@ pub fn run() {
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
       let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
       let themes = store.get("plvs:themes").unwrap_or(serde_json::json!({}));
+      let agent_control = serde_json::json!({
+        "available": cfg!(all(target_os = "windows", feature = "dev-identity")),
+        "appName": if cfg!(feature = "dev-identity") { "PLVS Dev" } else { "PLVS" },
+        "appVersion": env!("CARGO_PKG_VERSION"),
+        "identifier": env!("PLVS_APP_ID"),
+        "platform": std::env::consts::OS,
+      });
       let dock_state: Option<dock::DockStateRecord> = store
         .get(dock::DOCK_STATE_KEY)
         .and_then(|value| serde_json::from_value(value).ok())
@@ -127,6 +141,7 @@ pub fn run() {
         "plvs:presets": presets,
         "plvs:themes": themes,
         "dockState": dock_state,
+        "agentControl": agent_control,
       });
       let init_script = format!("window.__PLVS_INITIAL_STATE__ = {};", initial);
 
@@ -141,9 +156,14 @@ pub fn run() {
       let boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       let initial_decorations = !boot_docked && !startup_window_is_frameless(&settings, &presets);
+      let window_title = if cfg!(feature = "dev-identity") {
+        "PLVS Dev"
+      } else {
+        "PLVS"
+      };
 
       let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
-        .title("PLVS")
+        .title(window_title)
         .resizable(true)
         .decorations(initial_decorations)
         .visible(false);
@@ -213,6 +233,22 @@ pub fn run() {
         }
       }
       let _ = window.show();
+
+      #[cfg(all(target_os = "windows", feature = "dev-identity"))]
+      if let Err(error) = agent_control::windows_pipe::start_for_app(app) {
+        log::warn!("agent control unavailable; PLVS will continue normally: {error}");
+      }
+
+      {
+        let handle = app.handle().clone();
+        window.on_window_event(move |event| {
+          if matches!(event, tauri::WindowEvent::Destroyed) {
+            handle
+              .state::<agent_control::windows_pipe::PipeServerState>()
+              .stop();
+          }
+        });
+      }
 
       #[cfg(target_os = "windows")]
       appbar::install_window_subclass(&window).map_err(|e| format!("appbar subclass: {e}"))?;

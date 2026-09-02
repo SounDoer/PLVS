@@ -2,12 +2,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const saved = [];
+const storeSet = vi.fn(async (k, v) => saved.push([k, v]));
+const storeSave = vi.fn(async () => {});
+const storeDelete = vi.fn(async (k) => saved.push(["__delete__", k]));
 vi.mock("@tauri-apps/plugin-store", () => ({
   Store: {
     load: vi.fn(async () => ({
-      set: vi.fn(async (k, v) => saved.push([k, v])),
-      save: vi.fn(async () => {}),
-      delete: vi.fn(async (k) => saved.push(["__delete__", k])),
+      set: storeSet,
+      save: storeSave,
+      delete: storeDelete,
     })),
   },
 }));
@@ -16,6 +19,9 @@ describe("pluginStoreBackend", () => {
   beforeEach(() => {
     vi.resetModules();
     saved.length = 0;
+    storeSet.mockReset().mockImplementation(async (k, v) => saved.push([k, v]));
+    storeSave.mockReset().mockImplementation(async () => {});
+    storeDelete.mockReset().mockImplementation(async (k) => saved.push(["__delete__", k]));
     globalThis.window = globalThis.window || {};
     window.__PLVS_INITIAL_STATE__ = {
       "plvs:settings": { referenceLufs: -20 },
@@ -105,5 +111,46 @@ describe("pluginStoreBackend", () => {
     backend.set("plvs:settings", { referenceLufs: -18 });
     await backend.flush();
     expect(saved).toContainEqual(["plvs:settings", { referenceLufs: -18 }]);
+  });
+
+  it("backend.flush() waits for both set operations and save()", async () => {
+    let releaseSet;
+    let releaseSave;
+    storeSet.mockImplementationOnce(
+      () => new Promise((resolve) => (releaseSet = () => resolve(undefined)))
+    );
+    storeSave.mockImplementationOnce(
+      () => new Promise((resolve) => (releaseSave = () => resolve(undefined)))
+    );
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    backend.set("plvs:settings", { referenceLufs: -17 });
+
+    let settled = false;
+    const flushing = backend.flush().then(() => (settled = true));
+    await vi.waitFor(() => expect(releaseSet).toBeTypeOf("function"));
+    expect(storeSave).not.toHaveBeenCalled();
+    expect(settled).toBe(false);
+
+    releaseSet();
+    await vi.waitFor(() => expect(releaseSave).toBeTypeOf("function"));
+    expect(settled).toBe(false);
+
+    releaseSave();
+    await flushing;
+    expect(settled).toBe(true);
+  });
+
+  it("reports the original persistence failure once and allows a later flush to succeed", async () => {
+    const failure = new Error("disk full");
+    storeSave.mockRejectedValueOnce(failure);
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    backend.set("plvs:settings", { referenceLufs: -16 });
+
+    await expect(backend.flush()).rejects.toBe(failure);
+
+    backend.set("plvs:settings", { referenceLufs: -15 });
+    await expect(backend.flush()).resolves.toBeUndefined();
   });
 });

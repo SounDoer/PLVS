@@ -32,6 +32,15 @@ export const presetsStore = createDomainStore({
 });
 export const themesStore = createDomainStore({ name: "plvs:themes", backend });
 
+/** Force every coalesced domain update into the selected backend, then wait for durable settling. */
+export async function flushPersistence() {
+  settingsStore.flush();
+  workspaceStore.flush();
+  presetsStore.flush();
+  themesStore.flush();
+  await backend.flush();
+}
+
 /** Whole-app snapshot of every persisted domain (foundation for problem #5). */
 export function exportAll() {
   return {

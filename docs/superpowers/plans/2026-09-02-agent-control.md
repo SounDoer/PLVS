@@ -1,5 +1,7 @@
 # PLVS Live Agent Control Implementation Plan
 
+**Status:** Implemented; merge gate and real Windows acceptance passed on 2026-09-02
+
 > Implement task-by-task with focused tests at every boundary. Keep the design document authoritative
 > for behavior. Do not commit, push, or merge unless the user explicitly authorizes it.
 
@@ -42,12 +44,12 @@ smoke or soak is required unless scope crosses into `src-tauri/src/audio`, `dsp`
 
 ## Phase map
 
-| Phase | Tasks | Checkpoint |
-| --- | --- | --- |
-| 1 — Workspace semantics | 1–3 | Public layout round-trips and applies atomically without Tauri |
-| 2 — Native protocol | 4–6 | Authenticated local requests reach a correlated Rust pending request |
-| 3 — Frontend bridge | 7–9 | `capabilities` and `inspect` round-trip through the real App; layout apply settles correctly |
-| 4 — CLI and delivery | 10–12 | `desktop:control` works end to end against `npm run desktop` |
+| Phase                   | Tasks | Checkpoint                                                                                   |
+| ----------------------- | ----- | -------------------------------------------------------------------------------------------- |
+| 1 — Workspace semantics | 1–3   | Public layout round-trips and applies atomically without Tauri                               |
+| 2 — Native protocol     | 4–6   | Authenticated local requests reach a correlated Rust pending request                         |
+| 3 — Frontend bridge     | 7–9   | `capabilities` and `inspect` round-trip through the real App; layout apply settles correctly |
+| 4 — CLI and delivery    | 10–12 | `desktop:control` works end to end against `npm run desktop`                                 |
 
 ---
 
@@ -101,8 +103,8 @@ stable reason, JSON path, and concise message.
 Export narrow functions such as:
 
 ```js
-serializeWorkspaceLayout(workspace)
-compileWorkspaceLayout(layout, workspace, options)
+serializeWorkspaceLayout(workspace);
+compileWorkspaceLayout(layout, workspace, options);
 ```
 
 The compiler:
@@ -685,6 +687,13 @@ Record any platform-specific manual observations in the implementation handoff. 
 design implemented until every acceptance item that can run on the current machine has passed or is
 explicitly reported as unavailable.
 
+**Acceptance record (2026-09-02):** The release and dev identities ran side by side. Capabilities,
+inspection, dry-run, existing-panel rearrangement, new-panel creation, revision conflict, invalid
+layouts, file/stdin input, persistence across restart, stale discovery, and first-instance ownership
+all passed through the real Windows pipe → Rust → WebView → React path. The installed CLI did not
+advertise `app`; a clean mutation pass left the installed settings file byte-for-byte unchanged.
+`npm run check`, the full dev-identity Rust test suite, and strict dev-identity clippy all passed.
+
 ## Completion criteria
 
 - Tasks 1–12 are complete and their focused tests pass.
@@ -695,4 +704,3 @@ explicitly reported as unavailable.
 - The design document status is updated from Draft only after the real acceptance pass.
 - No capture-layer files changed; otherwise the user is reminded to rebuild the release CLI and run
   the required capture smoke plus four-hour soak guidance from `AGENTS.md`.
-

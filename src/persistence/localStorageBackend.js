@@ -35,6 +35,7 @@ export function createLocalStorageBackend() {
         localStorage.removeItem(key);
       } catch (_) {}
     },
+    async flush() {},
     subscribe(key, fn) {
       if (typeof window === "undefined") return () => {};
       const onStorage = (e) => {

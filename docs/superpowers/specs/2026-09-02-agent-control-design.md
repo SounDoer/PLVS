@@ -1,7 +1,7 @@
 # PLVS Live Agent Control - Design
 
 **Date:** 2026-09-02  
-**Status:** Draft; product direction locked, implementation not started
+**Status:** Implemented and verified on Windows
 
 ## Summary
 
@@ -93,24 +93,24 @@ desktop app and are not governed by the future Agent Control authorization setti
 
 ## Locked product decisions
 
-| Topic | Decision |
-| --- | --- |
-| Initial audience | Development agents controlling `PLVS Dev` |
-| Initial platform | Windows |
-| App lifecycle | PLVS must already be running; no automatic launch |
-| Configuration isolation | Reuse `com.soundoer.plvs.dev`; do not introduce a dynamic store filename |
-| Control model | Semantic commands, not mouse automation or direct store edits |
-| Layout model | Declarative complete target layout |
-| Existing panels | Referenced by `panelId` and preserved with their controls/title/config |
-| New panels | Declared by module ID; PLVS generates the persistent panel ID |
-| Mutation shape | Validate completely, then apply with one `SET_VIEW` commit |
-| Concurrency | Optional expected revision; stale writes are rejected |
-| Completion | React commit plus persistence flush; paint stability is a later concern |
-| Undo | Not in the first version |
-| Controllable instances | One endpoint per app identity |
-| PATH | Irrelevant to authorization and discovery; full-path discovery remains supported |
-| Production authorization | Deferred; production builds expose no endpoint in the first slice |
-| Release CLI surface | Unchanged; `app` is compiled and advertised only with `dev-identity` in the first slice |
+| Topic                    | Decision                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| Initial audience         | Development agents controlling `PLVS Dev`                                               |
+| Initial platform         | Windows                                                                                 |
+| App lifecycle            | PLVS must already be running; no automatic launch                                       |
+| Configuration isolation  | Reuse `com.soundoer.plvs.dev`; do not introduce a dynamic store filename                |
+| Control model            | Semantic commands, not mouse automation or direct store edits                           |
+| Layout model             | Declarative complete target layout                                                      |
+| Existing panels          | Referenced by `panelId` and preserved with their controls/title/config                  |
+| New panels               | Declared by module ID; PLVS generates the persistent panel ID                           |
+| Mutation shape           | Validate completely, then apply with one `SET_VIEW` commit                              |
+| Concurrency              | Optional expected revision; stale writes are rejected                                   |
+| Completion               | React commit plus persistence flush; paint stability is a later concern                 |
+| Undo                     | Not in the first version                                                                |
+| Controllable instances   | One endpoint per app identity                                                           |
+| PATH                     | Irrelevant to authorization and discovery; full-path discovery remains supported        |
+| Production authorization | Deferred; production builds expose no endpoint in the first slice                       |
+| Release CLI surface      | Unchanged; `app` is compiled and advertised only with `dev-identity` in the first slice |
 
 ## Runtime topology
 
@@ -324,11 +324,11 @@ Control ships; a release user is not shown a permanently unavailable command fam
 
 The existing CLI contract remains:
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Command succeeded |
-| `1` | The running app produced a valid error result, such as validation failure or revision conflict |
-| `2` | Invalid usage or failure before a valid app result, such as app not running, malformed descriptor, authentication failure, or transport failure |
+| Code | Meaning                                                                                                                                         |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | Command succeeded                                                                                                                               |
+| `1`  | The running app produced a valid error result, such as validation failure or revision conflict                                                  |
+| `2`  | Invalid usage or failure before a valid app result, such as app not running, malformed descriptor, authentication failure, or transport failure |
 
 ### Report envelopes
 

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
@@ -99,7 +99,10 @@ describe("WorkspaceContext initState unknown module guard", () => {
 });
 
 describe("WorkspaceContext active preset divergence", () => {
-  afterEach(() => localStorage.clear());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
 
   function renderActions() {
     let actions = null;
@@ -199,6 +202,84 @@ describe("WorkspaceContext active preset divergence", () => {
       })
     );
     expect(presetsStore.read().activeId).toBe("p1");
+  });
+
+  it("replaces an externally supplied workspace in one state transition and marks a clean preset dirty once", () => {
+    presetsStore.patch({
+      list: [{ id: "p1", name: "Preset" }],
+      activeId: "p1",
+      dirty: false,
+    });
+    const presetPatch = vi.spyOn(presetsStore, "patch");
+    const persistedPatch = vi.spyOn(workspaceStore, "patchCoalesced");
+    const snapshots = [];
+    let actions = null;
+    render(
+      <WorkspaceProvider>
+        <ActionsProbe
+          onActions={(next) => {
+            actions = next;
+            snapshots.push(next.state);
+          }}
+        />
+      </WorkspaceProvider>
+    );
+    presetPatch.mockClear();
+    persistedPatch.mockClear();
+
+    const view = {
+      ...DEFAULT_WORKSPACE_STATE,
+      tree: leaf(["spectrum"]),
+      panelOrder: ["spectrum"],
+      panelsById: { spectrum: DEFAULT_WORKSPACE_STATE.panelsById.spectrum },
+      panelControlsById: {
+        spectrum: DEFAULT_WORKSPACE_STATE.panelControlsById.spectrum,
+      },
+    };
+    const beforeCount = snapshots.length;
+
+    act(() => actions.replaceWorkspace(view));
+
+    expect(snapshots).toHaveLength(beforeCount + 1);
+    expect(actions.state.tree).toEqual(view.tree);
+    expect(presetPatch).toHaveBeenCalledTimes(1);
+    expect(presetPatch).toHaveBeenCalledWith({ dirty: true });
+    expect(persistedPatch).toHaveBeenCalledTimes(1);
+    expect(persistedPatch).toHaveBeenCalledWith(
+      expect.objectContaining({ tree: view.tree, panelOrder: ["spectrum"] })
+    );
+  });
+
+  it("does not rewrite an already-dirty preset when replacing a workspace", () => {
+    presetsStore.patch({
+      list: [{ id: "p1", name: "Preset" }],
+      activeId: "p1",
+      dirty: true,
+    });
+    const presetPatch = vi.spyOn(presetsStore, "patch");
+    const actions = renderActions();
+    presetPatch.mockClear();
+
+    act(() => actions.replaceWorkspace(DEFAULT_WORKSPACE_STATE));
+
+    expect(presetPatch).not.toHaveBeenCalled();
+    expect(presetsStore.read().dirty).toBe(true);
+  });
+
+  it("keeps setView neutral so preset application can restore a clean preset", () => {
+    presetsStore.patch({
+      list: [{ id: "p1", name: "Preset" }],
+      activeId: "p1",
+      dirty: false,
+    });
+    const presetPatch = vi.spyOn(presetsStore, "patch");
+    const actions = renderActions();
+    presetPatch.mockClear();
+
+    act(() => actions.setView(DEFAULT_WORKSPACE_STATE));
+
+    expect(presetPatch).not.toHaveBeenCalled();
+    expect(presetsStore.read()).toMatchObject({ activeId: "p1", dirty: false });
   });
 
   it("does not overwrite a Dock preset applied alongside the main workspace view", () => {

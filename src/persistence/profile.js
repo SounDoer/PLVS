@@ -8,16 +8,14 @@ import { LEGACY_CAPTURE_DEVICE_LS_KEY } from "../ipc/capturePrefs.js";
 import { DEFAULT_CLEAR_SHORTCUT } from "../lib/clearShortcutPrefs.js";
 import {
   exportAll,
+  flushPersistence,
   presetsStore,
   resetAll,
   settingsStore,
   themesStore,
   workspaceStore,
 } from "./index.js";
-import {
-  flushPluginStorePersistence,
-  suspendPluginStorePersistence,
-} from "./pluginStoreBackend.js";
+import { suspendPluginStorePersistence } from "./pluginStoreBackend.js";
 import { buildProfileSnapshot, normalizeImportedProfile } from "./profileShape.js";
 import { closeTrayIcon } from "../lib/trayIconLifecycle.js";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -43,7 +41,7 @@ function replaceStore(store, value) {
 }
 
 export async function exportProfile() {
-  if (isTauri()) await flushPluginStorePersistence();
+  await flushPersistence();
   const raw = isTauri() ? await exportProfileCommand() : browserRawProfile();
   return buildProfileSnapshot(raw);
 }

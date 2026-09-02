@@ -7,6 +7,7 @@ import {
   presetsStore,
   themesStore,
   exportAll,
+  flushPersistence,
   resetAll,
 } from "./index.js";
 
@@ -89,6 +90,17 @@ describe("persistence index", () => {
       workspace: { visibleModules: ["levelMeter"] },
       presets: { list: [], activeId: null },
       themes: { themes: {}, order: [] },
+    });
+  });
+
+  it("flushPersistence lands pending domain writes before it resolves", async () => {
+    workspaceStore.patchCoalesced({ visibleModules: ["spectrum"] });
+    expect(localStorage.getItem("plvs:workspace")).toBeNull();
+
+    await flushPersistence();
+
+    expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({
+      visibleModules: ["spectrum"],
     });
   });
 

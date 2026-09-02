@@ -15,6 +15,7 @@ use crate::cli_analyze_batch::{
   read_manifest, run_analyze_batch, CliAnalyzeBatchStatus, DEFAULT_BATCH_CONCURRENCY,
   MAX_BATCH_CONCURRENCY,
 };
+use crate::cli_app::{self, CliAppCommand};
 use crate::cli_capture::{run_capture, sample_line, CliCaptureStatus};
 use crate::cli_devices::{run_devices, CliDevicesStatus};
 use crate::cli_probe::{run_probe, CliProbeStatus};
@@ -31,6 +32,7 @@ use crate::profile::ProfileImportOptions;
 enum CliCommand {
   Help(HelpTopic),
   Version,
+  App(CliAppCommand),
   Doctor {
     json: bool,
     out: Option<String>,
@@ -92,9 +94,14 @@ enum HelpTopic {
   Devices,
   Profile,
   Report,
+  App,
 }
 
 fn parse_args(args: &[String]) -> Result<CliCommand, String> {
+  parse_args_with_app(args, cfg!(feature = "dev-identity"))
+}
+
+fn parse_args_with_app(args: &[String], app_available: bool) -> Result<CliCommand, String> {
   match args {
     [flag] if flag == "--help" || flag == "-h" || flag == "help" => {
       Ok(CliCommand::Help(HelpTopic::Root))
@@ -107,7 +114,10 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, rest @ ..] if command == "devices" => parse_devices_args(rest),
     [command, rest @ ..] if command == "profile" => parse_profile_args(rest),
     [command, rest @ ..] if command == "report" => parse_report_args(rest),
-    [command, topic] if command == "help" => parse_help_topic(topic),
+    [command, rest @ ..] if command == "app" && app_available => {
+      cli_app::parse_app_args(rest).map(CliCommand::App)
+    }
+    [command, topic] if command == "help" => parse_help_topic(topic, app_available),
     [command, ..] if command == "help" => Err(
       "Usage: plvs-cli help [doctor|probe|analyze|analyze-batch|capture|devices|profile|report]"
         .to_string(),
@@ -359,7 +369,7 @@ fn parse_finite_number(value: &str, flag: &str) -> Result<f64, String> {
   Ok(parsed)
 }
 
-fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
+fn parse_help_topic(topic: &str, app_available: bool) -> Result<CliCommand, String> {
   match topic {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
     "probe" => Ok(CliCommand::Help(HelpTopic::Probe)),
@@ -369,6 +379,7 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
     "devices" => Ok(CliCommand::Help(HelpTopic::Devices)),
     "profile" => Ok(CliCommand::Help(HelpTopic::Profile)),
     "report" => Ok(CliCommand::Help(HelpTopic::Report)),
+    "app" if app_available => Ok(CliCommand::Help(HelpTopic::App)),
     _ => Err(format!("Unknown help topic: {topic}")),
   }
 }
@@ -746,6 +757,7 @@ fn help_text(topic: HelpTopic) -> &'static str {
     HelpTopic::Report => {
       "PLVS CLI - report\n\nUsage:\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nReads JSON produced by analyze, analyze-batch, or capture and renders a human-readable Markdown table.\nMarkdown is written to stdout. With --out, the same Markdown is also written to a file.\n\nExit codes:\n  0  report rendered successfully\n  2  invalid usage, unreadable input, unsupported JSON, or output write failure"
     }
+    HelpTopic::App => cli_app::help_text(),
   }
 }
 
@@ -760,13 +772,21 @@ pub fn run(args: &[String]) -> ExitCode {
 
   match command {
     CliCommand::Help(topic) => {
-      println!("{}", help_text(topic));
+      if topic == HelpTopic::Root && cfg!(feature = "dev-identity") {
+        println!(
+          "{}\n\nDevelopment app control:\n  plvs-cli app --help",
+          help_text(topic)
+        );
+      } else {
+        println!("{}", help_text(topic));
+      }
       ExitCode::SUCCESS
     }
     CliCommand::Version => {
       println!("PLVS {}", env!("CARGO_PKG_VERSION"));
       ExitCode::SUCCESS
     }
+    CliCommand::App(command) => cli_app::run(command),
     CliCommand::Doctor { json, out } => {
       let report = run_doctor();
       if json {
@@ -1122,6 +1142,30 @@ mod tests {
     assert_eq!(
       parse_args(&args(&["help"])),
       Ok(CliCommand::Help(HelpTopic::Root))
+    );
+  }
+
+  #[test]
+  fn gates_the_app_command_family_on_explicit_availability() {
+    assert_eq!(
+      parse_args_with_app(&args(&["app", "inspect", "--json"]), true),
+      Ok(CliCommand::App(CliAppCommand::Inspect))
+    );
+    assert_eq!(
+      parse_args_with_app(&args(&["app", "--help"]), true),
+      Ok(CliCommand::App(CliAppCommand::Help))
+    );
+    assert_eq!(
+      parse_args_with_app(&args(&["help", "app"]), true),
+      Ok(CliCommand::Help(HelpTopic::App))
+    );
+    assert_eq!(
+      parse_args_with_app(&args(&["app", "inspect", "--json"]), false),
+      Err("Unknown command: app".to_string())
+    );
+    assert_eq!(
+      parse_args_with_app(&args(&["help", "app"]), false),
+      Err("Unknown help topic: app".to_string())
     );
   }
 

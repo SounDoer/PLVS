@@ -48,6 +48,10 @@ async function importProfileModuleWithPersistenceMocks({ commandMocks = {}, pers
     relaunch: commandMocks.relaunch ?? vi.fn(async () => {}),
   }));
   vi.doMock("./pluginStoreBackend.js", () => persistenceMocks);
+  vi.doMock("./index.js", async (importOriginal) => ({
+    ...(await importOriginal()),
+    flushPersistence: persistenceMocks.flushPersistence,
+  }));
   return import("./profile.js");
 }
 
@@ -185,7 +189,7 @@ describe("profile API", () => {
         remove: vi.fn(),
         subscribe: vi.fn(() => () => {}),
       })),
-      flushPluginStorePersistence: vi.fn(async () => {}),
+      flushPersistence: vi.fn(async () => {}),
       suspendPluginStorePersistence: vi.fn(),
     };
     const { exportProfile } = await importProfileModuleWithPersistenceMocks({
@@ -195,7 +199,7 @@ describe("profile API", () => {
 
     await exportProfile();
 
-    expect(persistenceMocks.flushPluginStorePersistence).toHaveBeenCalledBefore(
+    expect(persistenceMocks.flushPersistence).toHaveBeenCalledBefore(
       commandMocks.exportProfileCommand
     );
   });

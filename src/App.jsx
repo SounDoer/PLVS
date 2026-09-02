@@ -79,6 +79,8 @@ import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js"
 import { useDialogueEngineRestart } from "./hooks/useDialogueEngineRestart.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
+import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
+import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
@@ -135,7 +137,13 @@ export default function App() {
 }
 
 function AppContent() {
-  const { state: workspaceState, setPanelControlsForPanel, setAxisViewport } = useWorkspaceStore();
+  const {
+    state: workspaceState,
+    replaceWorkspace,
+    waitForWorkspacePersistenceEnqueue,
+    setPanelControlsForPanel,
+    setAxisViewport,
+  } = useWorkspaceStore();
   const sharedTimeViewport = useMemo(
     () => normalizeAxisViewport("time", workspaceState.axisViewports?.time),
     [workspaceState.axisViewports?.time]
@@ -540,6 +548,15 @@ function AppContent() {
     applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,
     assertSceneOperationAllowed,
     blockingEditors: activeBlockingEditors,
+  });
+  const agentControlRuntime = useMemo(readAgentControlRuntime, []);
+  useAgentControlBridge({
+    enabled: agentControlRuntime.available === true,
+    runtime: agentControlRuntime,
+    workspace: workspaceState,
+    replaceWorkspace,
+    waitForWorkspacePersistenceEnqueue,
+    presets,
   });
 
   const historyRetentionSec = settings.historyRetentionSec;

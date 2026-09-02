@@ -25,6 +25,11 @@ describe("default Tauri capabilities", () => {
   it("allows the updater plugin to check and install updates", () => {
     expect(capability.permissions).toContain("updater:default");
   });
+
+  it("keeps agent-control frontend commands scoped to the main window", () => {
+    expect(capability.windows).toEqual(["main"]);
+    expect(accessoryCapability.windows).not.toContain("main");
+  });
 });
 
 describe("Dock accessory Tauri capabilities", () => {

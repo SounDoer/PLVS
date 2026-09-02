@@ -72,6 +72,9 @@ vi.mock("./ipc/commands.js", () => ({
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn().mockResolvedValue(undefined),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
+  agentControlFrontendReadyCommand: vi.fn().mockResolvedValue(undefined),
+  agentControlFrontendNotReadyCommand: vi.fn().mockResolvedValue(undefined),
+  agentControlRespondCommand: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -274,6 +277,21 @@ describe("App smoke", () => {
     // whole provider/workspace/panel tree mounted without throwing.
     expect(await screen.findByText("Ready")).toBeTruthy();
     expect(screen.getByRole("button", { name: /start/i })).toBeTruthy();
+  });
+
+  it("mounts the agent-control bridge only from Rust's injected development capability", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      agentControl: {
+        available: true,
+        appName: "PLVS Dev",
+        appVersion: "0.14.5",
+        identifier: "com.soundoer.plvs.dev",
+        platform: "windows",
+      },
+    };
+    render(<App />);
+
+    await waitFor(() => expect(tauriEventHandlers.has("agent-control://request")).toBe(true));
   });
 
   it("START click settles back to Ready without crashing (browser branch)", async () => {

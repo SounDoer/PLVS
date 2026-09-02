@@ -39,6 +39,11 @@ describe("localStorageBackend", () => {
     expect(backend.get("plvs:settings")).toBeNull();
   });
 
+  it("exposes the shared asynchronous flush contract as an immediate no-op", async () => {
+    const backend = createLocalStorageBackend();
+    await expect(backend.flush()).resolves.toBeUndefined();
+  });
+
   it("subscribe fires fn on a matching storage event and unsubscribes", () => {
     const backend = createLocalStorageBackend();
     const fn = vi.fn();

@@ -176,6 +176,18 @@ export function writeTextFile(path, contents) {
   return invoke("write_text_file", { path, contents });
 }
 
+export function agentControlFrontendReadyCommand() {
+  return invoke("agent_control_frontend_ready");
+}
+
+export function agentControlFrontendNotReadyCommand() {
+  return invoke("agent_control_frontend_not_ready");
+}
+
+export function agentControlRespondCommand(response) {
+  return invoke("agent_control_respond", { response });
+}
+
 export function cliPathStatusCommand() {
   return invoke("cli_path_status");
 }

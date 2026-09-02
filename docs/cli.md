@@ -2,7 +2,10 @@
 
 PLVS ships an installed command-line companion named `plvs-cli`. It is meant for agents, support workflows, and terminal automation that need PLVS analysis without opening the desktop UI.
 
-The CLI is read-only. It does not route, process, or modify audio.
+The audio-facing command surface does not route or modify audio. `profile import` can replace stored
+desktop configuration. A separate development-only `app` family can inspect and replace the live
+workspace of an already-running PLVS Dev window; installed/release builds do not expose that family
+in the first version.
 
 ## Install Location
 
@@ -214,15 +217,50 @@ Do not mix positional paths with `--manifest`. Batch results preserve input orde
 
 ## Exit Codes
 
-| Code | Meaning                                                        |
-| ---- | -------------------------------------------------------------- |
-| `0`  | Success                                                        |
+| Code | Meaning                                                         |
+| ---- | --------------------------------------------------------------- |
+| `0`  | Success                                                         |
 | `1`  | Command produced an error result or a requested QC check failed |
-| `2`  | Invalid usage or CLI failure before a valid report             |
+| `2`  | Invalid usage or CLI failure before a valid report              |
 
 For `doctor`, `ok` and `warning` reports exit `0`; an `error` report exits `1`.
 
 ## Development
+
+### Control the running development app
+
+Use two terminals:
+
+```powershell
+# Terminal A
+npm run desktop
+
+# Terminal B
+npm run desktop:control -- inspect --json
+npm run desktop:control -- capabilities --json
+npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
+```
+
+`desktop:control` fixes both the `dev-identity` feature and the `plvs-cli app` prefix. The GUI must
+already be running. The command discovers the authenticated endpoint for
+`com.soundoer.plvs.dev`, so it neither reads nor controls an installed PLVS identity. Command Line
+Tools / PATH setup is unrelated to this repository command.
+
+The JSON report remains the authority for repository automation. The underlying development CLI
+uses exit codes `0`, `1`, and `2` as documented above; npm itself may normalize a nonzero lifecycle
+script result to `1`, so callers using `npm run desktop:control` should also inspect `status` and
+`error.reason`.
+
+Workspace input is a complete declarative target layout. Use `inspect` to obtain the current public
+layout, keep a panel's `panelId` to preserve that instance, or declare a new panel with a temporary
+`key` and `moduleId`. Pass `-` instead of a filename to read one UTF-8 JSON document from stdin.
+`--dry-run` validates and reports planned panel IDs without changing the app. Supplying the latest
+`revision` through `--expected-revision` prevents overwriting a workspace that changed meanwhile.
+
+The existing standalone commands (`doctor`, `probe`, `analyze`, `capture`, `profile`, and others)
+keep their installed behavior. Release `plvs-cli --help` intentionally does not advertise `app` yet.
+
+### Run standalone commands from source
 
 Run the CLI from source with Cargo:
 

@@ -50,12 +50,15 @@ rubato = "5.0"
 # Pin: time 0.3.48 breaks a trait-coherence check in tauri-utils/cookie. The pre-commit hook
 # regenerates Cargo.lock (`cargo generate-lockfile`) whenever Cargo.toml changes, which would
 # otherwise keep re-bumping time to the broken release. The `=` constraint makes the pin stick.
-time = "=0.3.55"
+time = { version = "=0.3.55", features = ["formatting"] }
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-updater = "2"
 firered-vad = "0.1.0"
 ten-vad-rs = "0.1.7"
 crossbeam-queue = "0.3.13"
+atomic-write-file = "0.3.1"
+getrandom = "0.4.3"
+subtle = "2.6.1"
 
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.
@@ -67,6 +70,12 @@ winreg = "0.56"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Gdi",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Storage_FileSystem",
+  "Win32_System_IO",
+  "Win32_System_Pipes",
+  "Win32_System_Threading",
   "Win32_UI_Controls",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",

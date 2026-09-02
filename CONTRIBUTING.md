@@ -27,6 +27,15 @@ npm run desktop
 
 `npm run desktop` 和 `npm run desktop:build` 都会带上 `--config src-tauri/tauri.dev.conf.json --features dev-identity`，把 app identifier 换成 `com.soundoer.plvs.dev`。开发版因此有自己的 `%APPDATA%\com.soundoer.plvs.dev\plvs-settings.json` 和自己的 webview 数据，不会和本机安装的正式版互相覆盖设置、窗口位置和 dock 状态。`--features dev-identity` 让 `build.rs` 读同一个 overlay，`plvs-cli doctor` 才不会报出正式版的目录——两者必须成对出现。代价是切换开发/正式两种构建时 `plvs` crate 会重新编译一次。
 
+需要让 agent 检查或调整正在运行的开发版 Workspace 时，另开一个终端：
+
+```bash
+npm run desktop:control -- inspect --json
+npm run desktop:control -- workspace apply layout.json --json
+```
+
+`desktop:control` 会固定使用同一个 `dev-identity` 并自动补上 `plvs-cli app`；开发版 GUI 必须已经运行。它不依赖 Settings 中的 Command Line Tools / PATH，也不会发现或修改本机安装的正式版。当前只在 Windows 开发构建开放，release CLI 不显示 `app` 命令。
+
 NSIS 相关的脚本（`desktop:dev-nsis`、`desktop:release-nsis`）**不带**这个 overlay：注册表登记键 `HKCU\Software\SounDoer\PLVS` 是写死的，且 `scripts/generate-agent-discovery.mjs` 只读基础 `tauri.conf.json`，给它们套上 overlay 只会写出自相矛盾的登记。
 
 Windows 发布构建（与 CI `release.yml` 一致：NSIS 安装包 + `target/release/app.exe` 便携主程序）：

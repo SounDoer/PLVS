@@ -18,7 +18,6 @@ const FLUSH_DELAY_MS = 200;
 
 let writeEpoch = 0;
 let persistenceSuspended = false;
-const pendingWrites = new Set();
 const forceFlushers = new Set();
 
 export function suspendPluginStorePersistence() {
@@ -37,52 +36,73 @@ export function createPluginStoreBackend() {
     }
     return storePromise;
   }
-  function trackPending(p) {
-    pendingWrites.add(p);
-    p.finally(() => pendingWrites.delete(p));
-    return p;
-  }
-
   const dirty = new Map(); // key -> "set" | "delete"
   let flushTimer = null;
-  let inFlight = null; // promise of the write batch currently being written to disk
+  let activeDrain = null;
+  let unreportedFailure = null;
 
-  function runBatch() {
-    flushTimer = null;
-    if (persistenceSuspended || dirty.size === 0) return;
-    const epoch = writeEpoch;
-    const ops = new Map(dirty);
-    dirty.clear();
-    const p = store()
-      .then(async (s) => {
+  async function drainBatches() {
+    while (!persistenceSuspended && dirty.size > 0) {
+      const epoch = writeEpoch;
+      const ops = new Map(dirty);
+      dirty.clear();
+      try {
+        const s = await store();
         if (epoch !== writeEpoch || persistenceSuspended) return;
         for (const [key, op] of ops) {
           if (op === "delete") await s.delete(key);
           else await s.set(key, cache.get(key));
         }
         await s.save();
-      })
-      .catch(() => {});
-    inFlight = p;
-    trackPending(p);
-    p.finally(() => {
-      if (inFlight === p) inFlight = null;
+      } catch (error) {
+        // Background persistence stays fire-and-forget. Keep the original failure so the next
+        // explicit flush can report that durable completion was not achieved.
+        unreportedFailure ??= error;
+      }
+    }
+  }
+
+  function ensureDrain() {
+    if (persistenceSuspended || dirty.size === 0) return activeDrain;
+    if (activeDrain) return activeDrain;
+
+    const drain = drainBatches().catch((error) => {
+      unreportedFailure ??= error;
     });
+    activeDrain = drain;
+    drain.then(() => {
+      if (activeDrain !== drain) return;
+      activeDrain = null;
+      if (!persistenceSuspended && dirty.size > 0) ensureDrain();
+    });
+    return drain;
+  }
+
+  function runBatch() {
+    flushTimer = null;
+    ensureDrain();
   }
 
   function scheduleBatch() {
     if (!flushTimer) flushTimer = setTimeout(runBatch, FLUSH_DELAY_MS);
   }
 
-  function forceFlush() {
+  async function forceFlush() {
     if (flushTimer) {
       clearTimeout(flushTimer);
-      runBatch();
+      flushTimer = null;
+    }
+    ensureDrain();
+    while (activeDrain) await activeDrain;
+
+    if (unreportedFailure) {
+      const failure = unreportedFailure;
+      unreportedFailure = null;
+      throw failure;
     }
   }
-  forceFlushers.add(forceFlush);
 
-  return {
+  const backend = {
     get(key) {
       const v = cache.get(key);
       return v && typeof v === "object" && !Array.isArray(v) ? v : null;
@@ -98,17 +118,17 @@ export function createPluginStoreBackend() {
       scheduleBatch();
     },
     async flush() {
-      forceFlush();
-      await inFlight;
+      await forceFlush();
     },
     subscribe() {
       // Single-window app; the file is only written by this process. No cross-context events.
       return () => {};
     },
   };
+  forceFlushers.add(forceFlush);
+  return backend;
 }
 
 export async function flushPluginStorePersistence() {
-  for (const forceFlush of forceFlushers) forceFlush();
-  await Promise.allSettled([...pendingWrites]);
+  await Promise.all([...forceFlushers].map((forceFlush) => forceFlush()));
 }

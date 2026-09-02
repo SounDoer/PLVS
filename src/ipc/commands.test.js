@@ -10,6 +10,9 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import {
+  agentControlFrontendNotReadyCommand,
+  agentControlFrontendReadyCommand,
+  agentControlRespondCommand,
   cursorOverDockSurfaces,
   getUiFrameDiagnostics,
   probeFileAnalysis,
@@ -108,6 +111,19 @@ describe("audio engine command seam", () => {
     const frame = onFrame.mock.calls[0][0];
     expect(frame.seq).toBe(11);
     expect(Array.from(frame.spectrumResultsByKey.k.smoothDb)).toEqual([-0.25, -0.5]);
+  });
+});
+
+describe("agent-control command seam", () => {
+  it("maps lifecycle and response payloads without exposing invoke to callers", async () => {
+    const response = { requestId: "req-1", result: { ok: true } };
+    await agentControlFrontendReadyCommand();
+    await agentControlRespondCommand(response);
+    await agentControlFrontendNotReadyCommand();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "agent_control_frontend_ready");
+    expect(invoke).toHaveBeenNthCalledWith(2, "agent_control_respond", { response });
+    expect(invoke).toHaveBeenNthCalledWith(3, "agent_control_frontend_not_ready");
   });
 });
 

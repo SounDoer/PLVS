@@ -53,6 +53,7 @@
     "tauri": "tauri",
     "ffmpeg:fetch": "node scripts/fetch-ffmpeg-sidecar.mjs",
     "desktop": "npm run ffmpeg:fetch && tauri dev --config src-tauri/tauri.dev.conf.json --features dev-identity",
+    "desktop:control": "node scripts/run-desktop-control.mjs",
     "desktop:build": "npm run ffmpeg:fetch && tauri build --config src-tauri/tauri.no-updater.conf.json --config src-tauri/tauri.dev.conf.json --features dev-identity",
     "desktop:dev-nsis": "npm run ffmpeg:fetch && tauri build --bundles nsis --config src-tauri/tauri.no-updater.conf.json",
     "desktop:release-nsis": "npm run ffmpeg:fetch && tauri build --bundles nsis",
