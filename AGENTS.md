@@ -104,6 +104,20 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   a signal-free record to conclude "no drift" from. Start the player *after* detaching, and check
   for `null` loudness explicitly.
 
+- **`smoke:capture` and `soak:capture` run whichever `plvs-cli.exe` is already in
+  `src-tauri/target/release/`, and nothing on the way there rebuilds it.** `npm run check`
+  builds the *debug* profile, so a release binary left by an earlier build can be older than
+  the commits under test — and since CI has no sound card, that binary is the capture layer's
+  only real verification. On the v0.14.5 release both the preflight smoke and the four-hour
+  soak ran a build predating the release's last DSP commit and printed OK; the sole tell was
+  `app.version` in the soak's trailing summary record, reading one version behind. `locateCli`
+  now compares mtimes against `src-tauri/src`, `Cargo.toml` and `Cargo.lock` and refuses to run
+  when the binary is older, so the trap is closed — but the refusal is exit 2, the "rig unusable"
+  code, and it is expected the first time you run either script after touching `src-tauri`. Do
+  what it says: `cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs-cli`,
+  then re-run. It does not rebuild for you, deliberately — a release build costs two minutes
+  that a script called "smoke" should not spend unasked.
+
 - **A control value that is part of an analysis request key costs memory to change.** Visual history
   is stored one slab per key (`FrameIntake`), so every distinct key mints a slab — at a four-hour
   retention one Spectrum slab is 1.38 GB and one Stereo Map slab is 4.37 GB. That is why Spectrum
