@@ -19,8 +19,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "plvs"
 path = "src/main.rs"
 
+[features]
+# Off by default. `npm run desktop` and `desktop:build` enable it alongside
+# `--config src-tauri/tauri.dev.conf.json`, so build.rs reads the app identifier from the same
+# overlay Tauri does. See the comment on `emit_app_id` in build.rs.
+dev-identity = []
+
 [build-dependencies]
 cc = "1.2.61"
+serde_json = "1.0"
 tauri-build = { version = "2.6.1", features = [] }
 
 [dependencies]

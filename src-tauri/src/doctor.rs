@@ -16,7 +16,9 @@ use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-const APP_ID: &str = "com.soundoer.plvs";
+/// Set by build.rs from the Tauri config that this build actually uses, so a dev build reports
+/// its own directories instead of the installed app's.
+const APP_ID: &str = env!("PLVS_APP_ID");
 const DOCTOR_WRITE_TEST_FILE: &str = ".plvs-doctor-write-test";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
