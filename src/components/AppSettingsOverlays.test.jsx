@@ -39,13 +39,19 @@ vi.mock("./SettingsPanel.jsx", () => ({
     cliPathStatus,
     interfaceSize,
     setInterfaceSize,
+    dialogueVadEngine,
+    setDialogueVadEngine,
   }) => (
     <div data-testid="settings-panel">
       <span data-testid="theme-disabled">{String(themeControlsDisabled)}</span>
       <span data-testid="cli-status">{cliPathStatus}</span>
       <span data-testid="interface-size">{interfaceSize}</span>
+      <span data-testid="dialogue-vad-engine">{dialogueVadEngine}</span>
       <button type="button" onClick={() => setInterfaceSize("large")}>
         Set interface size
+      </button>
+      <button type="button" onClick={() => setDialogueVadEngine("ten")}>
+        Set dialogue engine
       </button>
       <button type="button" onClick={onInstallUpdate}>
         Update
@@ -102,6 +108,8 @@ function makeSettings(overrides = {}) {
     autostartReady: true,
     closeAction: "ask",
     setCloseAction: vi.fn(),
+    dialogueVadEngine: "firered",
+    setDialogueVadEngine: vi.fn(),
     clearShortcut: "CmdOrCtrl+K",
     setClearShortcut: vi.fn(),
     clearGlobal: false,
@@ -180,6 +188,15 @@ describe("AppSettingsOverlays", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("forwards the global dialogue detection engine setting", () => {
+    const settings = makeSettings({ dialogueVadEngine: "firered" });
+    renderOverlays(settings);
+
+    expect(screen.getByTestId("dialogue-vad-engine").textContent).toBe("firered");
+    fireEvent.click(screen.getByRole("button", { name: "Set dialogue engine" }));
+    expect(settings.setDialogueVadEngine).toHaveBeenCalledWith("ten");
   });
 
   it("opens feedback from Settings and closes the settings sheet", () => {

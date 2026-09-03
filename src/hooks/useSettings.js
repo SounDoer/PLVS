@@ -4,6 +4,7 @@ import { useCustomThemeSettings } from "./useCustomThemeSettings.js";
 import { useAutostart } from "./useAutostart.js";
 import { useClearShortcut } from "./useClearShortcut.js";
 import { useCloseActionSetting } from "./useCloseActionSetting.js";
+import { useDialogueVadEngineSetting } from "./useDialogueVadEngineSetting.js";
 import { useHistoryRetentionSetting } from "./useHistoryRetentionSetting.js";
 import { useInterfaceSizeSetting } from "./useInterfaceSizeSetting.js";
 import { useMeterSettings } from "./useMeterSettings.js";
@@ -16,6 +17,7 @@ export function useSettings({ onClearRef } = {}) {
   const themeSettings = useThemeSettings();
   const customThemeSettings = useCustomThemeSettings({ themeSettings, setSettingsOpen });
   const closeActionSetting = useCloseActionSetting();
+  const dialogueVadEngineSetting = useDialogueVadEngineSetting();
   const historyRetentionSetting = useHistoryRetentionSetting();
   const interfaceSizeSetting = useInterfaceSizeSetting();
   const meterSettings = useMeterSettings();
@@ -35,6 +37,7 @@ export function useSettings({ onClearRef } = {}) {
     fixedThemeSelectValue: themeSettings.fixedThemeSelectValue,
     ...meterSettings,
     ...closeActionSetting,
+    ...dialogueVadEngineSetting,
     ...historyRetentionSetting,
     ...interfaceSizeSetting,
     ...viewSettings,

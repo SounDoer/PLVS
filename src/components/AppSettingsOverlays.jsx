@@ -82,6 +82,8 @@ export function AppSettingsOverlays({
         setCloseAction={settings.setCloseAction}
         historyRetentionSec={settings.historyRetentionSec}
         setHistoryRetentionSec={settings.setHistoryRetentionSec}
+        dialogueVadEngine={settings.dialogueVadEngine}
+        setDialogueVadEngine={settings.setDialogueVadEngine}
         clearShortcut={settings.clearShortcut}
         setClearShortcut={settings.setClearShortcut}
         clearGlobal={settings.clearGlobal}

@@ -164,6 +164,22 @@ describe("useSettings", () => {
     expect(result.current.closeAction).toBe("ask");
   });
 
+  it("reads dialogueVadEngine from localStorage on mount", () => {
+    localStorage.setItem("plvs:settings", JSON.stringify({ dialogueVadEngine: "ten" }));
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.dialogueVadEngine).toBe("ten");
+  });
+
+  it("setDialogueVadEngine persists to localStorage and updates state", () => {
+    localStorage.clear();
+    const { result } = renderHook(() => useSettings());
+    act(() => {
+      result.current.setDialogueVadEngine("silero");
+    });
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).dialogueVadEngine).toBe("silero");
+    expect(result.current.dialogueVadEngine).toBe("silero");
+  });
+
   it("defaults Focus View options to off", () => {
     const { result } = renderHook(() => useSettings());
     expect(result.current.focusView).toEqual({
