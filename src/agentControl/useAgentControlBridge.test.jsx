@@ -43,6 +43,7 @@ function Harness({
   flush = vi.fn(async () => {}),
   hasLoudnessReference = false,
   analysisContext = {},
+  presets = { activeId: null, dirty: false },
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
@@ -52,8 +53,9 @@ function Harness({
     runtime,
     workspace: store.state,
     replaceWorkspace: store.replaceWorkspace,
+    setPanelControlsForPanel: store.setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
-    presets: { activeId: null, dirty: false },
+    presets,
     hasLoudnessReference,
     analysisContext,
     flush,
@@ -217,6 +219,147 @@ describe("useAgentControlBridge", () => {
     });
     expect(view.store.state).toBe(initialState);
     expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("updates panel controls atomically and returns the complete persisted panel", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "panel.update",
+        {
+          panelId: "levelMeter",
+          expectedRevision: 0,
+          patch: { mode: "rms", playbackMax: true },
+        },
+        "panel-update"
+      )
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: false,
+      revision: 1,
+      changed: ["controls.mode", "controls.playbackMax"],
+      warnings: [],
+      panel: {
+        id: "levelMeter",
+        moduleId: "levelMeter",
+        controls: { mode: "rms", playbackMax: true },
+      },
+      preset: { activeId: null, dirty: false },
+    });
+    expect(response.result).not.toHaveProperty("persisted");
+    expect(view.store.state.panelControlsById.levelMeter).toMatchObject({
+      levelMeterMode: "rms",
+      levelMeterPlaybackMax: true,
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("dry-runs a panel update without changing revision, state, or persistence", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+    const initialState = view.store.state;
+
+    const response = await send(
+      request(
+        "panel.update",
+        { panelId: "levelMeter", dryRun: true, patch: { mode: "rms" } },
+        "panel-dry"
+      )
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: true,
+      revision: 0,
+      changed: ["controls.mode"],
+      panel: { controls: { mode: "rms" } },
+    });
+    expect(view.store.state).toBe(initialState);
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("returns all panel validation issues without partial mutation", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+    const initialControls = view.store.state.panelControlsById.levelMeter;
+
+    const response = await send(
+      request(
+        "panel.update",
+        {
+          panelId: "levelMeter",
+          patch: { unknown: true, mode: "vu", playbackMax: "yes" },
+        },
+        "panel-invalid"
+      )
+    );
+
+    expect(response.error).toMatchObject({
+      data: {
+        reason: "invalidControls",
+        path: "$.params.patch",
+        details: {
+          issues: [
+            expect.objectContaining({ code: "unknownControl", path: "$.unknown" }),
+            expect.objectContaining({ code: "invalidEnum", path: "$.mode" }),
+            expect.objectContaining({ code: "invalidType", path: "$.playbackMax" }),
+          ],
+        },
+      },
+    });
+    expect(view.store.state.panelControlsById.levelMeter).toBe(initialControls);
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("keeps a no-op panel update clean and marks an effective update dirty", async () => {
+    const flush = vi.fn(async () => {});
+    const presets = { activeId: "preset-1", dirty: false };
+    const view = mount({ flush, presets });
+    await waitUntilReady();
+    const initialState = view.store.state;
+
+    const noOp = await send(
+      request("panel.update", { panelId: "levelMeter", patch: { mode: "peak" } }, "panel-no-op")
+    );
+    expect(noOp.result).toMatchObject({
+      revision: 0,
+      changed: [],
+      preset: { activeId: "preset-1", dirty: false },
+    });
+    expect(view.store.state).toBe(initialState);
+    expect(flush).not.toHaveBeenCalled();
+
+    const changed = await send(
+      request("panel.update", { panelId: "levelMeter", patch: { mode: "rms" } }, "panel-dirty")
+    );
+    expect(changed.result.preset).toEqual({ activeId: "preset-1", dirty: true });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a panel persistence failure with the committed revision", async () => {
+    const flush = vi.fn(async () => {
+      throw new Error("disk full");
+    });
+    const view = mount({ flush });
+    await waitUntilReady();
+
+    const response = await send(
+      request("panel.update", { panelId: "levelMeter", patch: { mode: "rms" } }, "panel-flush")
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32030,
+      data: {
+        reason: "persistenceFailed",
+        details: { stateCommitted: true, revision: 1 },
+      },
+    });
+    expect(view.store.state.panelControlsById.levelMeter.levelMeterMode).toBe("rms");
   });
 
   it("applies once, waits for commit and persistence, and returns the committed revision", async () => {

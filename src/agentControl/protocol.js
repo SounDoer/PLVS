@@ -89,6 +89,47 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "panel.update") {
+    const field = unknownField(
+      input.params,
+      new Set(["panelId", "patch", "expectedRevision", "dryRun"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "") {
+      return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
+    }
+    if (!isPlainJsonObject(input.params.patch)) {
+      return invalidParams("$.params.patch", "patch must be a plain JSON object.");
+    }
+    if (
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
+      );
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          panelId: input.params.panelId,
+          patch: input.params.patch,
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
+            : {}),
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
+    };
+  }
+
   return error(
     "methodNotFound",
     "$.method",

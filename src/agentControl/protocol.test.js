@@ -33,6 +33,27 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes panel.update params and options", () => {
+    const patch = { mode: "rms", playbackMax: true };
+    expect(
+      normalizeAgentControlRequest(
+        request("panel.update", {
+          panelId: "levelMeter",
+          patch,
+          expectedRevision: 7,
+          dryRun: true,
+        })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "panel.update",
+        params: { panelId: "levelMeter", patch, expectedRevision: 7, dryRun: true },
+      },
+    });
+  });
+
   it.each([
     [request("unknown"), "methodNotFound", "$.method", -32601],
     [{ ...request("app.inspect"), extra: true }, "invalidRequest", "$.extra", -32600],
@@ -59,6 +80,20 @@ describe("normalizeAgentControlRequest", () => {
       request("workspace.applyLayout", { layout: {}, dryRun: "yes" }),
       "invalidParams",
       "$.params.dryRun",
+      -32602,
+    ],
+    [request("panel.update", { patch: {} }), "invalidParams", "$.params.panelId", -32602],
+    [request("panel.update", { panelId: "levelMeter" }), "invalidParams", "$.params.patch", -32602],
+    [
+      request("panel.update", { panelId: "levelMeter", patch: {}, expectedRevision: -1 }),
+      "invalidParams",
+      "$.params.expectedRevision",
+      -32602,
+    ],
+    [
+      request("panel.update", { panelId: "levelMeter", patch: {}, extra: true }),
+      "invalidParams",
+      "$.params.extra",
       -32602,
     ],
   ])("returns a structured error for invalid input %#", (input, reason, path, code) => {

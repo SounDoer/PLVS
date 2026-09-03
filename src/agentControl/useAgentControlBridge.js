@@ -7,7 +7,12 @@ import {
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence } from "../persistence/index.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
-import { buildAgentControlCapabilities, buildAgentControlSnapshot } from "./appSnapshot.js";
+import {
+  buildAgentControlCapabilities,
+  buildAgentControlPanelSnapshot,
+  buildAgentControlSnapshot,
+} from "./appSnapshot.js";
+import { planPublicPanelControlPatch } from "./panelControlPatch.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -26,6 +31,21 @@ function workspaceMatches(workspace, view) {
   );
 }
 
+function panelControlsMatch(workspace, view, panelId) {
+  return (
+    JSON.stringify(workspace.panelControlsById?.[panelId]) ===
+    JSON.stringify(view.panelControlsById?.[panelId])
+  );
+}
+
+function panelResultPreset(presets, changed) {
+  const activeId = typeof presets?.activeId === "string" ? presets.activeId : null;
+  return {
+    activeId,
+    dirty: presets?.dirty === true || (activeId !== null && changed.length > 0),
+  };
+}
+
 function controllableWorkspaceMatches(left, right) {
   return (
     left.tree === right.tree &&
@@ -42,6 +62,7 @@ export function useAgentControlBridge({
   runtime,
   workspace,
   replaceWorkspace,
+  setPanelControlsForPanel,
   waitForWorkspacePersistenceEnqueue,
   presets,
   hasLoudnessReference = false,
@@ -63,7 +84,7 @@ export function useAgentControlBridge({
       previousWorkspaceRef.current = workspace;
     }
     const settlement = settlementRef.current;
-    if (settlement && workspaceMatches(workspace, settlement.view)) {
+    if (settlement && settlement.matches(workspace)) {
       settlementRef.current = null;
       settlement.resolve(revisionRef.current);
     }
@@ -103,6 +124,101 @@ export function useAgentControlBridge({
               analysisContext,
             }),
           };
+        }
+
+        if (request.method === "panel.update") {
+          const currentRevision = revisionRef.current;
+          if (
+            request.params.expectedRevision !== undefined &&
+            request.params.expectedRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `Workspace changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedRevision,
+                currentRevision,
+              }
+            );
+          }
+          const panelId = request.params.panelId;
+          const panel = workspace.panelsById?.[panelId];
+          if (!panel) {
+            throw semanticFailure(
+              "panelNotFound",
+              "$.params.panelId",
+              `Panel ${panelId} was not found.`,
+              -32010
+            );
+          }
+          const planned = planPublicPanelControlPatch(
+            panel.moduleId,
+            workspace.panelControlsById?.[panelId],
+            request.params.patch,
+            {
+              ...analysisContext,
+              hasLoudnessReference,
+            }
+          );
+          if (planned.issues.length > 0) {
+            throw semanticFailure(
+              "invalidControls",
+              "$.params.patch",
+              "The panel controls are invalid.",
+              -32602,
+              { issues: planned.issues }
+            );
+          }
+          const nextWorkspace = {
+            ...workspace,
+            panelControlsById: {
+              ...workspace.panelControlsById,
+              [panelId]: planned.panelControls,
+            },
+          };
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            changed: planned.changed,
+            warnings: planned.warnings,
+            panel: buildAgentControlPanelSnapshot({
+              workspace: nextWorkspace,
+              panelId,
+              hasLoudnessReference,
+              analysisContext,
+            }),
+            preset: panelResultPreset(presets, planned.changed),
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          const committed = new Promise((resolve, reject) => {
+            settlementRef.current = {
+              view: nextWorkspace,
+              matches: (currentWorkspace) =>
+                panelControlsMatch(currentWorkspace, nextWorkspace, panelId),
+              resolve,
+              reject,
+            };
+          });
+          setPanelControlsForPanel(panelId, planned.panelControls);
+          result.revision = await committed;
+          await waitForWorkspacePersistenceEnqueue(nextWorkspace);
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Panel controls committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revision: result.revision }
+            );
+          }
+          return { requestId, result };
         }
 
         const currentRevision = revisionRef.current;
@@ -150,7 +266,12 @@ export function useAgentControlBridge({
         }
 
         const committed = new Promise((resolve, reject) => {
-          settlementRef.current = { view: compiled.view, resolve, reject };
+          settlementRef.current = {
+            view: compiled.view,
+            matches: (currentWorkspace) => workspaceMatches(currentWorkspace, compiled.view),
+            resolve,
+            reject,
+          };
         });
         replaceWorkspace(compiled.view);
         const committedRevision = await committed;
@@ -193,6 +314,7 @@ export function useAgentControlBridge({
     presets,
     replaceWorkspace,
     runtime,
+    setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     workspace,
   ]);

@@ -6,7 +6,26 @@ import { readPublicPanelAxes } from "./panelAxes.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 
-const METHODS = ["app.capabilities", "app.inspect", "workspace.applyLayout"];
+const METHODS = ["app.capabilities", "app.inspect", "workspace.applyLayout", "panel.update"];
+
+export function buildAgentControlPanelSnapshot({
+  workspace,
+  panelId,
+  hasLoudnessReference = false,
+  analysisContext = {},
+}) {
+  const panel = workspace.panelsById[panelId];
+  return {
+    id: panelId,
+    moduleId: panel.moduleId,
+    title: resolvePanelDisplayName(workspace, panelId),
+    controls: readPublicPanelControls(panel.moduleId, getPanelControls(workspace, panelId), {
+      hasLoudnessReference,
+    }),
+    axes: readPublicPanelAxes(workspace, panelId),
+    analysis: readPublicPanelAnalysis(workspace, panelId, analysisContext),
+  };
+}
 
 export function buildAgentControlCapabilities(runtime) {
   return {
@@ -58,18 +77,14 @@ export function buildAgentControlSnapshot({
     },
     workspace: {
       layout: serializeWorkspaceLayout(workspace),
-      panels: workspace.panelOrder.map((panelId) => ({
-        id: panelId,
-        moduleId: workspace.panelsById[panelId].moduleId,
-        title: resolvePanelDisplayName(workspace, panelId),
-        controls: readPublicPanelControls(
-          workspace.panelsById[panelId].moduleId,
-          getPanelControls(workspace, panelId),
-          { hasLoudnessReference }
-        ),
-        axes: readPublicPanelAxes(workspace, panelId),
-        analysis: readPublicPanelAnalysis(workspace, panelId, analysisContext),
-      })),
+      panels: workspace.panelOrder.map((panelId) =>
+        buildAgentControlPanelSnapshot({
+          workspace,
+          panelId,
+          hasLoudnessReference,
+          analysisContext,
+        })
+      ),
     },
     preset: {
       activeId: typeof presets?.activeId === "string" ? presets.activeId : null,

@@ -850,6 +850,7 @@ function AppContent() {
     runtime: agentControlRuntime,
     workspace: workspaceState,
     replaceWorkspace,
+    setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     presets,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
