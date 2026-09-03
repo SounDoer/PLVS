@@ -210,4 +210,37 @@ describe("planPublicPanelControlPatch", () => {
     ]);
     expect(unavailable.changed).toEqual([]);
   });
+
+  it("maps a partial Stats metrics patch and canonicalizes visible order", () => {
+    const result = planPublicPanelControlPatch("stats", DEFAULT_PANEL_CONTROLS, {
+      metrics: { visible: ["truePeak", "momentary"] },
+    });
+
+    expect(result).toMatchObject({
+      issues: [],
+      warnings: [],
+      changed: ["controls.metrics.visible"],
+    });
+    expect(result.panelControls.statsVisibleIds).toEqual(["momentary", "truePeak"]);
+    expect(result.panelControls.statsOrder).toEqual(DEFAULT_PANEL_CONTROLS.statsOrder);
+  });
+
+  it("requires a complete Stats order and reflects order changes in visible output", () => {
+    const invalid = planPublicPanelControlPatch("stats", DEFAULT_PANEL_CONTROLS, {
+      metrics: { order: ["momentary"] },
+    });
+    expect(invalid.issues).toEqual([
+      expect.objectContaining({ code: "invalidEnum", path: "$.metrics.order" }),
+    ]);
+    expect(invalid.changed).toEqual([]);
+
+    const reversed = [...DEFAULT_PANEL_CONTROLS.statsOrder].reverse();
+    const valid = planPublicPanelControlPatch("stats", DEFAULT_PANEL_CONTROLS, {
+      metrics: { order: reversed },
+    });
+    expect(valid.changed).toEqual(["controls.metrics.visible", "controls.metrics.order"]);
+    expect(valid.panelControls.statsVisibleIds).toEqual(
+      [...DEFAULT_PANEL_CONTROLS.statsVisibleIds].reverse()
+    );
+  });
 });

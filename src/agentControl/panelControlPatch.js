@@ -1,4 +1,5 @@
 import { normalizePanelControls } from "../lib/panelControls.js";
+import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const arraysEqual = (left, right) =>
@@ -13,6 +14,7 @@ const LEVEL_METER_FIELDS = new Set([
   "loudnessRangeLufs",
 ]);
 const LEVEL_METER_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
+const STATS_IDS = new Set(STATS_CANONICAL_ORDER);
 
 function issue(code, path, message) {
   return { code, path, message };
@@ -343,6 +345,93 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
         changed.push("controls.loudnessRangeLufs.max");
       }
     }
+    return { panelControls, changed, warnings: [], issues };
+  }
+
+  if (moduleId === "stats") {
+    const issues = [];
+    for (const key of Object.keys(patch)) {
+      if (key !== "metrics") {
+        issues.push(issue("unknownControl", `$.${key}`, `Unknown Stats control: ${key}.`));
+      }
+    }
+    const rawMetrics = patch.metrics;
+    const metrics =
+      rawMetrics !== null && typeof rawMetrics === "object" && !Array.isArray(rawMetrics)
+        ? rawMetrics
+        : {};
+    if (
+      hasOwn(patch, "metrics") &&
+      (rawMetrics === null || typeof rawMetrics !== "object" || Array.isArray(rawMetrics))
+    ) {
+      issues.push(issue("invalidType", "$.metrics", "metrics must be an object."));
+    } else if (hasOwn(patch, "metrics")) {
+      for (const key of Object.keys(metrics)) {
+        if (key !== "visible" && key !== "order") {
+          issues.push(
+            issue("unknownControl", `$.metrics.${key}`, `Unknown Stats metrics field: ${key}.`)
+          );
+        }
+      }
+      if (hasOwn(metrics, "visible")) {
+        if (
+          !Array.isArray(metrics.visible) ||
+          metrics.visible.some((id) => typeof id !== "string")
+        ) {
+          issues.push(
+            issue(
+              "invalidType",
+              "$.metrics.visible",
+              "metrics.visible must be an array of strings."
+            )
+          );
+        } else if (
+          metrics.visible.some((id) => !STATS_IDS.has(id)) ||
+          new Set(metrics.visible).size !== metrics.visible.length
+        ) {
+          issues.push(
+            issue(
+              "invalidEnum",
+              "$.metrics.visible",
+              "metrics.visible contains an unknown or duplicate metric."
+            )
+          );
+        }
+      }
+      if (hasOwn(metrics, "order")) {
+        if (!Array.isArray(metrics.order) || metrics.order.some((id) => typeof id !== "string")) {
+          issues.push(
+            issue("invalidType", "$.metrics.order", "metrics.order must be an array of strings.")
+          );
+        } else if (
+          metrics.order.length !== STATS_CANONICAL_ORDER.length ||
+          new Set(metrics.order).size !== metrics.order.length ||
+          metrics.order.some((id) => !STATS_IDS.has(id))
+        ) {
+          issues.push(
+            issue(
+              "invalidEnum",
+              "$.metrics.order",
+              "metrics.order must be a complete permutation of all Stats metrics."
+            )
+          );
+        }
+      }
+    }
+    if (issues.length > 0) {
+      return { panelControls: current, changed: [], warnings: [], issues };
+    }
+
+    const finalOrder = hasOwn(metrics, "order") ? [...metrics.order] : [...current.statsOrder];
+    const submittedVisible = hasOwn(metrics, "visible") ? metrics.visible : current.statsVisibleIds;
+    const visibleSet = new Set(submittedVisible);
+    const finalVisible = finalOrder.filter((id) => visibleSet.has(id));
+    const currentVisibleSet = new Set(current.statsVisibleIds);
+    const currentVisible = current.statsOrder.filter((id) => currentVisibleSet.has(id));
+    if (!arraysEqual(finalVisible, currentVisible)) changed.push("controls.metrics.visible");
+    if (!arraysEqual(finalOrder, current.statsOrder)) changed.push("controls.metrics.order");
+    panelControls.statsVisibleIds = finalVisible;
+    panelControls.statsOrder = finalOrder;
     return { panelControls, changed, warnings: [], issues };
   }
 
