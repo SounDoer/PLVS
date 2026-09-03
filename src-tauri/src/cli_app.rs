@@ -19,6 +19,9 @@ pub enum CliAppCommand {
   Help,
   Capabilities,
   Inspect,
+  PanelDescribe {
+    panel_id: String,
+  },
   WorkspaceApply {
     input: String,
     expected_revision: Option<u64>,
@@ -56,7 +59,7 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [] => {}
   }
   Err(
-    "Usage: plvs-cli app <capabilities|inspect|workspace apply|panel update|panel reset> ..."
+    "Usage: plvs-cli app <capabilities|inspect|workspace apply|panel describe|panel update|panel reset> ..."
       .to_string(),
   )
 }
@@ -132,11 +135,13 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
     "Usage: plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]";
   const RESET_USAGE: &str =
     "Usage: plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]";
+  const DESCRIBE_USAGE: &str = "Usage: plvs-cli app panel describe <panel-id> --json";
   let action = args.first().map(String::as_str);
   let usage = match action {
     Some("update") => UPDATE_USAGE,
     Some("reset") => RESET_USAGE,
-    _ => return Err(format!("{UPDATE_USAGE}\n{RESET_USAGE}")),
+    Some("describe") => DESCRIBE_USAGE,
+    _ => return Err(format!("{DESCRIBE_USAGE}\n{UPDATE_USAGE}\n{RESET_USAGE}")),
   };
 
   let mut positionals = Vec::new();
@@ -151,10 +156,16 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
         index += 1;
       }
       "--dry-run" => {
+        if action == Some("describe") {
+          return Err("Unknown option: --dry-run".to_string());
+        }
         dry_run = true;
         index += 1;
       }
       "--expected-revision" => {
+        if action == Some("describe") {
+          return Err("Unknown option: --expected-revision".to_string());
+        }
         let raw = args
           .get(index + 1)
           .ok_or_else(|| "Missing value for --expected-revision.".to_string())?;
@@ -186,19 +197,22 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
   if positionals.len() != expected_positionals || positionals[0].trim().is_empty() {
     return Err(usage.to_string());
   }
-  if action == Some("update") {
-    Ok(CliAppCommand::PanelUpdate {
+  match action {
+    Some("update") => Ok(CliAppCommand::PanelUpdate {
       panel_id: positionals[0].clone(),
       input: positionals[1].clone(),
       expected_revision,
       dry_run,
-    })
-  } else {
-    Ok(CliAppCommand::PanelReset {
+    }),
+    Some("reset") => Ok(CliAppCommand::PanelReset {
       panel_id: positionals[0].clone(),
       expected_revision,
       dry_run,
-    })
+    }),
+    Some("describe") => Ok(CliAppCommand::PanelDescribe {
+      panel_id: positionals[0].clone(),
+    }),
+    _ => unreachable!("panel action was validated above"),
   }
 }
 
@@ -207,7 +221,7 @@ fn is_help(value: &str) -> bool {
 }
 
 pub fn help_text() -> &'static str {
-  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
@@ -353,6 +367,7 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::Help => "app.help",
     CliAppCommand::Capabilities => "app.capabilities",
     CliAppCommand::Inspect => "app.inspect",
+    CliAppCommand::PanelDescribe { .. } => "panel.describe",
     CliAppCommand::WorkspaceApply { .. } => "workspace.applyLayout",
     CliAppCommand::PanelUpdate { .. } => "panel.update",
     CliAppCommand::PanelReset { .. } => "panel.reset",
@@ -366,6 +381,9 @@ fn request_for_command<R: Read>(
   let method = command_name(command);
   let params = match command {
     CliAppCommand::Capabilities | CliAppCommand::Inspect => serde_json::json!({}),
+    CliAppCommand::PanelDescribe { panel_id } => {
+      serde_json::json!({ "panelId": panel_id })
+    }
     CliAppCommand::WorkspaceApply {
       input,
       expected_revision,
@@ -698,6 +716,36 @@ mod tests {
     assert_eq!(request.params["expectedRevision"], 8);
     assert_eq!(request.params["dryRun"], true);
     assert!(request.params.get("patch").is_none());
+  }
+
+  #[test]
+  fn parses_and_builds_panel_describe() {
+    let command = parse_app_args(&args(&["panel", "describe", "spectrum", "--json"])).unwrap();
+    assert_eq!(
+      command,
+      CliAppCommand::PanelDescribe {
+        panel_id: "spectrum".to_string(),
+      }
+    );
+    let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "panel.describe");
+    assert_eq!(request.params, serde_json::json!({ "panelId": "spectrum" }));
+
+    for invalid in [
+      args(&["panel", "describe", "--json"]),
+      args(&["panel", "describe", "spectrum"]),
+      args(&["panel", "describe", "spectrum", "--dry-run", "--json"]),
+      args(&[
+        "panel",
+        "describe",
+        "spectrum",
+        "--expected-revision",
+        "1",
+        "--json",
+      ]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err());
+    }
   }
 
   #[test]
