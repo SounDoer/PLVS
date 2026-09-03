@@ -8,7 +8,7 @@ import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { normalizePinnedPanelsById } from "../workspace/reducer.js";
 import { presetsStore } from "../persistence/index.js";
-import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
+import { SCENE_OPERATIONS, SceneOperationUnavailableError } from "../lib/sceneOperations.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 
@@ -58,7 +58,10 @@ export function usePresets({
     controlsByPanelId: undefined,
   },
   applyDockPreset = async () => {},
-  canApplyDockPreset = () => true,
+  // Returns the reason the preset's dock cannot be honoured, or null. A reason refuses the whole
+  // apply before anything moves; a platform that simply has no dock is not one -- `applyDockPreset`
+  // drops the dock and applies the rest.
+  dockPresetUnavailableReason = () => null,
   onApplyError = () => {},
   // Which Loudness Profile was active, never the library itself -- the same way a view snapshot
   // records the active theme rather than every theme.
@@ -208,9 +211,13 @@ export function usePresets({
         panelSizesById: preset.dock?.panelSizesById,
         controlsByPanelId: preset.dock?.controlsByPanelId,
       };
-      if (presetDock.enabled && !canApplyDockPreset(presetDock)) {
-        const error = new Error("Dock presets are unavailable in FILE mode");
-        onApplyError(error);
+      const dockUnavailableReason = presetDock.enabled
+        ? dockPresetUnavailableReason(presetDock)
+        : null;
+      if (dockUnavailableReason) {
+        onApplyError(
+          new SceneOperationUnavailableError(SCENE_OPERATIONS.presetApply, dockUnavailableReason)
+        );
         return false;
       }
       if (preset.windowBounds && isTauri()) {
@@ -287,7 +294,7 @@ export function usePresets({
       setPanelOpacity,
       setGlassEnabled,
       applyDockPreset,
-      canApplyDockPreset,
+      dockPresetUnavailableReason,
       onApplyError,
       suppressPresetDivergence,
       applyLoudnessProfileSnapshot,

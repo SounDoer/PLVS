@@ -24,7 +24,12 @@ import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
-import { isSceneOperationBlocked } from "./lib/sceneOperations.js";
+import {
+  SCENE_OPERATIONS,
+  SceneOperationUnavailableError,
+  isSceneOperationRefused,
+  sceneOperationUnavailableReason,
+} from "./lib/sceneOperations.js";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
@@ -209,9 +214,26 @@ function AppContent() {
   // read with no ordering constraints of its own.
   const loudnessProfile = useLoudnessProfile();
   // The scene guard. Every operation that captures, replaces or tears down the current editing
-  // scene -- preset apply / save / update, dock entry -- asks it first, and it refuses while any
-  // draft-style editor is open. See `hooks/BlockingEditorsContext.jsx`.
-  const { activeBlockingEditors, assertSceneOperationAllowed } = useBlockingEditors();
+  // scene -- preset apply / save / update, dock entry -- asks it first. See
+  // `hooks/BlockingEditorsContext.jsx` for the editor half.
+  //
+  // Composed here because the two rules have different owners: the registry knows which editors
+  // are open, and only App knows the source mode. Everything downstream asks one function, so an
+  // entry point cannot pick up one rule and miss the other.
+  const { activeBlockingEditors, assertSceneOperationAllowed: assertNoBlockingEditor } =
+    useBlockingEditors();
+  // FILE mode forbids the dock outright: it is a state conflict, not a missing capability, so it
+  // refuses rather than degrading the way a platform without dock support does. Enforced here and
+  // not only on the disabled Dock control, so every entry point -- and App Control later -- gets
+  // the same answer.
+  const assertSceneOperationAllowed = useCallback(
+    (operation) => {
+      assertNoBlockingEditor(operation);
+      const reason = sceneOperationUnavailableReason(operation, { sourceMode });
+      if (reason) throw new SceneOperationUnavailableError(operation, reason);
+    },
+    [assertNoBlockingEditor, sourceMode]
+  );
   // Dock hooks run first: `docked` suspends the always-on-top and focus-view
   // window overrides below (Rust owns strip chrome + topmost while docked),
   // and preset capture/apply reads dock state. useDockMode depends only on the
@@ -357,7 +379,7 @@ function AppContent() {
   // what the user has to do instead, and keep the technical detail for everything else.
   const reportSceneOperationError = useCallback(
     (error, fallbackMessage, detailPrefix) => {
-      if (isSceneOperationBlocked(error)) {
+      if (isSceneOperationRefused(error)) {
         raiseNotice("error", error.message);
         return;
       }
@@ -453,6 +475,13 @@ function AppContent() {
 
   const onPresetApplyError = useCallback(
     (error) => {
+      // A refusal already carries a sentence written for the user, and naming the reason is the
+      // difference between "it failed" and knowing what to change. Everything else is a genuine
+      // failure: generic line, technical detail on hover.
+      if (isSceneOperationRefused(error)) {
+        raiseNotice("error", error.message);
+        return;
+      }
       raiseNotice(
         "error",
         "Preset could not be applied.",
@@ -500,8 +529,12 @@ function AppContent() {
     setGlassEnabled,
     dock: presetDockState,
     applyDockPreset,
-    canApplyDockPreset: (presetDock) =>
-      !presetDock.enabled || !supportsDockMode() || sourceMode !== "file",
+    // A platform without dock support is not a refusal: applyDockPreset drops the dock and applies
+    // the rest of the preset.
+    dockPresetUnavailableReason: (presetDock) =>
+      presetDock.enabled && supportsDockMode()
+        ? sceneOperationUnavailableReason(SCENE_OPERATIONS.dockEnter, { sourceMode })
+        : null,
     onApplyError: onPresetApplyError,
     snapshotLoudnessProfile: loudnessProfile.snapshotForPreset,
     applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,

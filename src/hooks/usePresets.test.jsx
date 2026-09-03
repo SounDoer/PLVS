@@ -689,7 +689,7 @@ describe("usePresets", () => {
 
     it("rejects an ineligible dock preset before mutating the workspace", async () => {
       const applyDockPreset = vi.fn(async () => {});
-      const canApplyDockPreset = vi.fn(() => false);
+      const dockPresetUnavailableReason = vi.fn(() => "fileMode");
       const onApplyError = vi.fn();
       presetsStore.patch({
         list: [
@@ -708,7 +708,7 @@ describe("usePresets", () => {
       });
       const { result } = renderPresetHook({
         applyDockPreset,
-        canApplyDockPreset,
+        dockPresetUnavailableReason,
         onApplyError,
       });
       const before = result.current.workspace.state;
@@ -719,12 +719,53 @@ describe("usePresets", () => {
       });
 
       expect(applied).toBe(false);
-      expect(canApplyDockPreset).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }));
+      expect(dockPresetUnavailableReason).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: true })
+      );
       expect(applyDockPreset).not.toHaveBeenCalled();
       expect(result.current.workspace.state).toBe(before);
-      expect(onApplyError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: "Dock presets are unavailable in FILE mode" })
-      );
+      // A structured refusal, not a bare Error: the notice reads its message, and App Control will
+      // read `code` rather than parsing English.
+      const [error] = onApplyError.mock.calls[0];
+      expect(error.code).toBe("fileModeActive");
+      expect(error.operation).toBe("preset.apply");
+      expect(error.reason).toBe("fileMode");
+      expect(error.message).toBe("Preset needs Dock, which is unavailable in FILE mode.");
+    });
+
+    it("applies the rest of a dock preset when no reason refuses it", async () => {
+      const applyDockPreset = vi.fn(async () => false);
+      const onApplyError = vi.fn();
+      presetsStore.patch({
+        list: [
+          {
+            id: "dock-ok",
+            name: "Docked",
+            tree: leaf(["spectrum"]),
+            panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+            panelOrder: ["spectrum"],
+            panelControlsById: {},
+            dock: { enabled: true, edge: "top" },
+          },
+        ],
+        activeId: null,
+        dirty: false,
+      });
+      // A platform with no dock support reports no reason: the dock is dropped downstream and the
+      // rest of the preset still lands.
+      const { result } = renderPresetHook({
+        applyDockPreset,
+        dockPresetUnavailableReason: () => null,
+        onApplyError,
+      });
+
+      await act(async () => {
+        await result.current.presets.apply("dock-ok");
+      });
+
+      expect(onApplyError).not.toHaveBeenCalled();
+      expect(applyDockPreset).toHaveBeenCalled();
+      expect(result.current.workspace.state.tree).toEqual(leaf(["spectrum"]));
     });
 
     it("presets without a dock field apply as dock-disabled (backward compat)", async () => {
