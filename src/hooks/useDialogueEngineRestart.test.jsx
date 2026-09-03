@@ -53,4 +53,22 @@ describe("useDialogueEngineRestart", () => {
     rerender({ engine: "webrtc", gating: true });
     expect(clearAll).not.toHaveBeenCalled();
   });
+
+  it("does not clear when gating turns on after an engine change, because Rust already reset itself", () => {
+    // src-tauri/src/dsp/loudness.rs resets the dialogue accumulator itself the next time it sees
+    // an engine mismatch while gating is on, so a frontend clear here would be redundant.
+    const clearAll = vi.fn();
+    const { rerender } = renderHook(
+      ({ engine, gating }) => {
+        const ref = useRef(clearAll);
+        ref.current = clearAll;
+        useDialogueEngineRestart(engine, gating, ref);
+      },
+      { initialProps: { engine: "webrtc", gating: false } }
+    );
+
+    rerender({ engine: "silero", gating: false });
+    rerender({ engine: "silero", gating: true });
+    expect(clearAll).not.toHaveBeenCalled();
+  });
 });
