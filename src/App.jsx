@@ -711,7 +711,6 @@ function AppContent() {
       intake?.setRetainedVisualKeys(retainedAnalysisKeys, windowMs);
     }
   }, [ingestingIntakes, retainedAnalysisKeys, historyRetentionSec]);
-  const analysisStatusByPanelId = derivedAnalysisRequests.statusByPanelId;
   const historyPerformanceControllerRef = useRef(null);
   const historyPerformanceRequestKeysRef = useRef(null);
   historyPerformanceRequestKeysRef.current = {
@@ -1257,7 +1256,6 @@ function AppContent() {
       spectrumView: spectrumViewUi,
       spectrumViewLegend: spectrumViewLegendValue,
       spectrumMaxMode: spectrumMaxModeUi,
-      analysisStatusByPanelId,
     }),
     [
       focusView.compactPanels,
@@ -1271,7 +1269,6 @@ function AppContent() {
       spectrumViewUi,
       spectrumViewLegendValue,
       spectrumMaxModeUi,
-      analysisStatusByPanelId,
     ]
   );
 

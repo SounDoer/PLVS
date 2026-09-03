@@ -43,7 +43,6 @@ import { buildSpectrogramLut } from "../../theme/spectrogramColormap.js";
 import { selectSpectrogramCanvasTheme } from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
-import { SnapshotEmptyState, ANALYSIS_OVER_CAP_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { EMPTY_SPECTRUM_VIEW } from "../../lib/SpectrumHistorySlab.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../../lib/panelControls.js";
 
@@ -82,8 +81,7 @@ export function SpectrogramPanel() {
     getSpectrogramSnapsForKey,
     snapshotSpectrumByKey,
   } = useHistoryData();
-  const { panelControls, analysisStatus, onPanelControlsChange, panelVisible } =
-    usePanelInstanceData();
+  const { panelControls, onPanelControlsChange, panelVisible } = usePanelInstanceData();
   const chartYDragRef = useRef(null);
   const rotateDragRef = useRef(null);
   const lastRightUpRef = useRef(null);
@@ -230,18 +228,16 @@ export function SpectrogramPanel() {
     ]
   );
   const spectrogramFreqTicks = buildAdaptiveFreqTicks(yMinFreq, yMaxFreq, spectrogramYAxis.axisPx);
-  const isOverCap = analysisStatus === "overCap";
   // A right-drag rotation is only valid while 3D mode owns the canvas. If 3D View is switched off
-  // (or the panel drops into the over-cap empty state, which unmounts the canvas) mid-drag, the
-  // held button never delivers a pointerup to this component, so the ref would otherwise strand
-  // itself set and keep gating pointer-move away from ordinary 2D handling. Clearing it here -- on
-  // unmount too -- guarantees the very next pointer move behaves like a normal 2D move.
+  // mid-drag, the held button never delivers a pointerup to this component, so the ref would
+  // otherwise strand itself set and keep gating pointer-move away from ordinary 2D handling.
+  // Clearing it here -- on unmount too -- guarantees the next pointer move behaves normally.
   useEffect(() => {
-    if (!is3d || isOverCap) rotateDragRef.current = null;
+    if (!is3d) rotateDragRef.current = null;
     return () => {
       rotateDragRef.current = null;
     };
-  }, [is3d, isOverCap]);
+  }, [is3d]);
   const canvasRef = useRef(null);
   // Surface mode only. The terrain and the floor grid are drawn here, UNDER the 2D canvas, which
   // keeps the axis labels and every pointer handler: labels are text and belong on top, and moving
@@ -560,19 +556,6 @@ export function SpectrogramPanel() {
     },
     [is3d, normalizedPanelControls, onHistoryPointerUp, onPanelControlsChange, releaseChartYAxis]
   );
-
-  if (isOverCap) {
-    return (
-      <div
-        className={cn(
-          PANEL_MIN_SPECTROGRAM,
-          "relative flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
-        )}
-      >
-        <SnapshotEmptyState message={ANALYSIS_OVER_CAP_MESSAGE} />
-      </div>
-    );
-  }
 
   return (
     <div

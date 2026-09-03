@@ -17,9 +17,6 @@ use crate::ipc::types::{
 };
 use crate::state::{AppState, EngineSource};
 
-const MAX_SPECTRUM_ANALYSIS_REQUESTS: usize = 4;
-const MAX_VECTORSCOPE_ANALYSIS_REQUESTS: usize = 4;
-const MAX_STEREO_MAP_ANALYSIS_REQUESTS: usize = 4;
 const MAX_ANALYSIS_CHANNEL_INDEX: u16 = 63;
 
 #[tauri::command]
@@ -228,22 +225,6 @@ fn validate_analysis_request_key(key: &str, label: &str) -> Result<(), String> {
 }
 
 fn validate_analysis_requests(requests: &AnalysisRequests) -> Result<(), String> {
-  if requests.spectrum.len() > MAX_SPECTRUM_ANALYSIS_REQUESTS {
-    return Err(format!(
-      "spectrum request count cannot exceed {MAX_SPECTRUM_ANALYSIS_REQUESTS}"
-    ));
-  }
-  if requests.vectorscope.len() > MAX_VECTORSCOPE_ANALYSIS_REQUESTS {
-    return Err(format!(
-      "vectorscope request count cannot exceed {MAX_VECTORSCOPE_ANALYSIS_REQUESTS}"
-    ));
-  }
-  if requests.stereo_map.len() > MAX_STEREO_MAP_ANALYSIS_REQUESTS {
-    return Err(format!(
-      "stereo map request count cannot exceed {MAX_STEREO_MAP_ANALYSIS_REQUESTS}"
-    ));
-  }
-
   for request in &requests.spectrum {
     validate_analysis_request_key(&request.key, "spectrum")?;
     let expected = expected_spectrum_request_key(
@@ -657,10 +638,10 @@ mod tests {
   }
 
   #[test]
-  fn analysis_requests_validation_rejects_over_cap_requests() {
+  fn analysis_requests_validation_accepts_more_than_four_requests_per_family() {
     let requests = AnalysisRequests {
       spectral_waveform: false,
-      spectrum: (0..=super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
+      spectrum: (0..5)
         .map(|idx| SpectrumAnalysisRequest {
           key: format!("spectrum:single:{idx}:combined:sp50:smoff"),
           channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
@@ -669,10 +650,26 @@ mod tests {
           octave_smoothing: "off".to_string(),
         })
         .collect(),
-      vectorscope: vec![],
-      stereo_map: vec![],
+      vectorscope: (0..5)
+        .map(|idx| VectorscopeAnalysisRequest {
+          key: format!("vectorscope:pair:{idx}:{}", idx + 1),
+          x: idx as u16,
+          y: idx as u16 + 1,
+        })
+        .collect(),
+      stereo_map: (0..5)
+        .map(|idx| StereoMapAnalysisRequest {
+          key: format!("stereoMap:pair:{idx}:{}:sp25:sm12", idx + 1),
+          pair: StereoMapAnalysisPair {
+            first: idx as u16,
+            second: idx as u16 + 1,
+          },
+          speed_percent: 25.0,
+          octave_smoothing: "1/12".to_string(),
+        })
+        .collect(),
     };
-    assert!(super::validate_analysis_requests(&requests).is_err());
+    assert!(super::validate_analysis_requests(&requests).is_ok());
   }
 
   #[test]
@@ -913,60 +910,6 @@ mod tests {
         speed_percent: 25.0,
         octave_smoothing: "1/12".to_string(),
       }],
-    };
-
-    assert!(super::validate_analysis_requests(&requests).is_err());
-  }
-
-  #[test]
-  fn stereo_map_validation_uses_an_independent_cap() {
-    let stereo_map = (0..super::MAX_STEREO_MAP_ANALYSIS_REQUESTS)
-      .map(|idx| StereoMapAnalysisRequest {
-        key: format!("stereoMap:pair:{idx}:{}:sp25:sm12", idx + 1),
-        pair: StereoMapAnalysisPair {
-          first: idx as u16,
-          second: idx as u16 + 1,
-        },
-        speed_percent: 25.0,
-        octave_smoothing: "1/12".to_string(),
-      })
-      .collect();
-    let requests = AnalysisRequests {
-      spectral_waveform: false,
-      spectrum: (0..super::MAX_SPECTRUM_ANALYSIS_REQUESTS)
-        .map(|idx| SpectrumAnalysisRequest {
-          key: format!("spectrum:single:{idx}:combined:sp25:smoff"),
-          channel: SpectrumAnalysisChannel::Single { ch: idx as u16 },
-          view: "combined".to_string(),
-          speed_percent: 25.0,
-          octave_smoothing: "off".to_string(),
-        })
-        .collect(),
-      vectorscope: vec![],
-      stereo_map,
-    };
-
-    assert!(super::validate_analysis_requests(&requests).is_ok());
-  }
-
-  #[test]
-  fn stereo_map_validation_rejects_requests_over_its_cap() {
-    let stereo_map = (0..=super::MAX_STEREO_MAP_ANALYSIS_REQUESTS)
-      .map(|idx| StereoMapAnalysisRequest {
-        key: format!("stereoMap:pair:{idx}:{}:sp25:sm12", idx + 1),
-        pair: StereoMapAnalysisPair {
-          first: idx as u16,
-          second: idx as u16 + 1,
-        },
-        speed_percent: 25.0,
-        octave_smoothing: "1/12".to_string(),
-      })
-      .collect();
-    let requests = AnalysisRequests {
-      spectral_waveform: false,
-      spectrum: vec![],
-      vectorscope: vec![],
-      stereo_map,
     };
 
     assert!(super::validate_analysis_requests(&requests).is_err());

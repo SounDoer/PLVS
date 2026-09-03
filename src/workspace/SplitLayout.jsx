@@ -345,17 +345,9 @@ function FullscreenOverlay() {
       onPanelControlsChange: fullscreenId ? onPanelControlsChange : undefined,
       ...axisViewportData,
       historyData: panelHistoryData,
-      analysisStatus: chromeData?.analysisStatusByPanelId?.[fullscreenId],
       panelVisible: true,
     }),
-    [
-      axisViewportData,
-      chromeData?.analysisStatusByPanelId,
-      fullscreenId,
-      onPanelControlsChange,
-      panelControls,
-      panelHistoryData,
-    ]
+    [axisViewportData, fullscreenId, onPanelControlsChange, panelControls, panelHistoryData]
   );
 
   if (!fullscreenId || !def || !Component) return null;

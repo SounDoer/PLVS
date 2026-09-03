@@ -16,7 +16,6 @@ function renderPanel(audioData) {
 function vectorscopePanelTree(audioData) {
   const {
     panelControls,
-    analysisStatus,
     vsGridDiagInset,
     vsGridDiagFar,
     correlation,
@@ -42,7 +41,7 @@ function vectorscopePanelTree(audioData) {
       }}
     >
       <HistoryDataProvider value={historyData}>
-        <PanelInstanceProvider value={{ panelControls, analysisStatus, panelVisible }}>
+        <PanelInstanceProvider value={{ panelControls, panelVisible }}>
           <VectorscopePanel />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -89,12 +88,6 @@ describe("VectorscopePanel", () => {
     });
 
     expect(screen.getByText("No data for this view at selected time")).toBeTruthy();
-  });
-
-  it("shows the over-cap empty state when its request is over the active cap", () => {
-    renderPanel({ selectedOffset: -1, analysisStatus: "overCap" });
-
-    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
   });
 
   it("renders its own request key's snapshot trace in snapshot mode", () => {

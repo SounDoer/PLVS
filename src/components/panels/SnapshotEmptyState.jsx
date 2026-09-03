@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Empty state shown when a panel's request key has no history at the selected snapshot time
- * (the request did not exist yet), or when the request is over the active analysis cap.
+ * because the request did not exist yet.
  */
 export function SnapshotEmptyState({ message, className }) {
   return (
@@ -18,4 +18,3 @@ export function SnapshotEmptyState({ message, className }) {
 }
 
 export const SNAPSHOT_NO_DATA_MESSAGE = "No data for this view at selected time";
-export const ANALYSIS_OVER_CAP_MESSAGE = "Too many active analysis views";

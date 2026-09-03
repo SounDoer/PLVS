@@ -38,7 +38,6 @@ function renderPanel(audioData) {
 function stereoMapPanelTree(audioData) {
   const {
     panelControls,
-    analysisStatus,
     onPanelControlsChange,
     displayAudio,
     channelCount,
@@ -48,7 +47,7 @@ function stereoMapPanelTree(audioData) {
   return (
     <FrameDataProvider value={{ displayAudio, channelCount, peakLabelContext }}>
       <HistoryDataProvider value={historyData}>
-        <PanelInstanceProvider value={{ panelControls, analysisStatus, onPanelControlsChange }}>
+        <PanelInstanceProvider value={{ panelControls, onPanelControlsChange }}>
           <StereoMapPanel />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -515,12 +514,6 @@ describe("StereoMapPanel", () => {
     // different key.
     expect(ctx.fill).not.toHaveBeenCalled();
     expect(ctx.stroke).toHaveBeenCalledTimes(0);
-  });
-
-  it("shows the over-cap empty state when its request is over the active cap", () => {
-    renderPanel(baseAudioData({ analysisStatus: "overCap" }));
-
-    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
   });
 
   it("shows the snapshot no-data state when its request key has no history at the selected time", () => {

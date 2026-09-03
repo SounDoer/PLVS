@@ -1423,9 +1423,9 @@ describe("visual history eviction", () => {
   });
 
   it("drops a needed slab whose newest row has left the retention window", () => {
-    // A panel can be open -- so its key is retained -- and still receive nothing, because it lost
-    // the request cap or the dock took its slot. Expiry is append-driven, so such a slab freezes
-    // and holds rows from outside the window forever unless the age rule drops it.
+    // A panel can be open -- so its key is retained -- and still receive nothing while its source
+    // or channel pair is unavailable. Expiry is append-driven, so such a slab freezes and holds
+    // rows from outside the window forever unless the age rule drops it.
     const intake = new FrameIntake();
     const windowMs = 5000;
     intake.setRetainedVisualKeys(retain([SPEC_KEY, OTHER_KEY]), windowMs);

@@ -21,11 +21,7 @@ import {
   selectPolarWindow,
 } from "../../math/vectorscopePolarMath.js";
 import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
-import {
-  SnapshotEmptyState,
-  SNAPSHOT_NO_DATA_MESSAGE,
-  ANALYSIS_OVER_CAP_MESSAGE,
-} from "./SnapshotEmptyState.jsx";
+import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useObservedCanvasSize } from "../../hooks/useObservedCanvasSize.js";
@@ -96,13 +92,12 @@ export function VectorscopePanel() {
     getVectorscopeHistoryForKey,
     vectorscopeResetEpoch = 0,
   } = useHistoryData();
-  const { panelControls, analysisStatus, panelVisible } = usePanelInstanceData();
+  const { panelControls, panelVisible } = usePanelInstanceData();
   const panelActive = panelVisible !== false;
   const normalizedPanelControls = normalizePanelControls(panelControls);
   const vectorscopeMode = normalizedPanelControls.vectorscopeMode;
   const isLissajous = vectorscopeMode === "lissajous";
   const vectorscopeKey = vectorscopeRequestKeyFromControls(panelControls);
-  const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
   const [holdSlowActive, setHoldSlowActive] = useState(false);
   const holdSlowTimerRef = useRef(null);
@@ -298,7 +293,7 @@ export function VectorscopePanel() {
     return smoothedCorrelation;
   }, [canPlaceCorrelationMarker, isSnapshot, gatedCorrelation]);
 
-  if (isOverCap || snapshotMissing) {
+  if (snapshotMissing) {
     return (
       <div
         className={cn(
@@ -306,9 +301,7 @@ export function VectorscopePanel() {
           "@container flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
         )}
       >
-        <SnapshotEmptyState
-          message={isOverCap ? ANALYSIS_OVER_CAP_MESSAGE : SNAPSHOT_NO_DATA_MESSAGE}
-        />
+        <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
       </div>
     );
   }

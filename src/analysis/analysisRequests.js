@@ -6,10 +6,6 @@ import {
 import { getPanelControls } from "../workspace/panelControlInstances.js";
 import { resolvePanelModuleId } from "../workspace/panelInstances.js";
 
-export const MAX_SPECTRUM_REQUESTS = 4;
-export const MAX_VECTORSCOPE_REQUESTS = 4;
-export const MAX_STEREO_MAP_REQUESTS = 4;
-
 const DEFAULT_STEREO_MAP_PAIR = { x: 0, y: 1 };
 const DEFAULT_STEREO_MAP_SMOOTHING = "1/12";
 const MAX_ANALYSIS_CHANNEL_INDEX = 63;
@@ -98,17 +94,6 @@ function pushRequest(map, key, panelId, payload) {
   map.set(key, { key, panelIds: [panelId], ...payload });
 }
 
-function capRequests(requests, max, statusByPanelId) {
-  const active = requests.slice(0, max);
-  const overCap = requests.slice(max);
-  for (const request of overCap) {
-    for (const panelId of request.panelIds) {
-      statusByPanelId[panelId] = "overCap";
-    }
-  }
-  return { active, overCap };
-}
-
 function dockPanelIdentity(panelId) {
   return `dock:${panelId}`;
 }
@@ -137,7 +122,6 @@ export function deriveAnalysisRequests(
 ) {
   const panelIdsInTree = collectPanelIdsFromTree(state.tree, state.panelsById);
   const orderedPanelIds = (state.panelOrder ?? []).filter((id) => panelIdsInTree.includes(id));
-  const statusByPanelId = {};
   const spectrumByKey = new Map();
   const vectorscopeByKey = new Map();
   const stereoMapByKey = new Map();
@@ -158,7 +142,6 @@ export function deriveAnalysisRequests(
       speedPercent: measurement.speedPercent,
       octaveSmoothing: measurement.octaveSmoothing,
     });
-    statusByPanelId[panelId] = "active";
   };
 
   for (const panelId of orderedPanelIds) {
@@ -173,13 +156,11 @@ export function deriveAnalysisRequests(
         speedPercent: display.speedPercent,
         octaveSmoothing: display.octaveSmoothing,
       });
-      statusByPanelId[panelId] = "active";
     } else if (moduleId === "vectorscope") {
       const key = vectorscopeRequestKeyFromControls(controls);
       pushRequest(vectorscopeByKey, key, panelId, {
         pair: controls.vectorscopePair,
       });
-      statusByPanelId[panelId] = "active";
     } else if (moduleId === "stereo-map") {
       addStereoMapRequest(
         panelId,
@@ -195,38 +176,22 @@ export function deriveAnalysisRequests(
     addStereoMapRequest(dockPanelIdentity(instance.panelId), instance.controls);
   }
 
-  const spectrum = capRequests([...spectrumByKey.values()], MAX_SPECTRUM_REQUESTS, statusByPanelId);
-  const vectorscope = capRequests(
-    [...vectorscopeByKey.values()],
-    MAX_VECTORSCOPE_REQUESTS,
-    statusByPanelId
-  );
-  const stereoMap = capRequests(
-    [...stereoMapByKey.values()],
-    MAX_STEREO_MAP_REQUESTS,
-    statusByPanelId
-  );
-
   return {
-    spectrumRequests: spectrum.active,
-    vectorscopeRequests: vectorscope.active,
-    stereoMapRequests: stereoMap.active,
-    overCapSpectrumRequests: spectrum.overCap,
-    overCapVectorscopeRequests: vectorscope.overCap,
-    overCapStereoMapRequests: stereoMap.overCap,
+    spectrumRequests: [...spectrumByKey.values()],
+    vectorscopeRequests: [...vectorscopeByKey.values()],
+    stereoMapRequests: [...stereoMapByKey.values()],
     spectralWaveform,
-    statusByPanelId,
   };
 }
 
 /**
- * The analysis keys whose history is worth keeping: one per open panel, with no request cap, no
- * dock merge and no availability gate.
+ * The analysis keys whose history is worth keeping: one per open panel, with no dock merge and no
+ * availability gate.
  *
  * This deliberately does not reuse `deriveAnalysisRequests`. That answers "what should Rust
- * compute right now", which is a different question -- a panel that lost the cap, or whose slot
- * the dock took, or whose channel pair is momentarily unavailable, is still open and still wants
- * its history. Deriving retention from the request list would delete it.
+ * compute right now", which is a different question -- a panel whose channel pair is momentarily
+ * unavailable is still open and still wants its history. Deriving retention from the request list
+ * would delete it.
  */
 export function deriveRetainedAnalysisKeys(state) {
   const panelIdsInTree = collectPanelIdsFromTree(state?.tree, state?.panelsById);

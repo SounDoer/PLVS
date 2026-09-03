@@ -2252,41 +2252,6 @@ describe("PanelSettingsContent", () => {
     expect(latestState.panelControlsById.stats.statsVisibleIds).not.toContain("momentary");
   });
 
-  it("preserves per-panel analysis status in fullscreen", () => {
-    localStorage.setItem(
-      "plvs:workspace",
-      JSON.stringify({
-        tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
-        panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
-        panelOrder: ["spectrum"],
-        panelControlsById: { spectrum: DEFAULT_PANEL_CONTROLS },
-      })
-    );
-
-    render(
-      <WorkspaceProvider>
-        <DragProvider onDrop={vi.fn()}>
-          <TestPanelDataProviders
-            value={{
-              panelControls: DEFAULT_PANEL_CONTROLS,
-              analysisStatusByPanelId: { spectrum: "overCap" },
-              selectedOffset: -1,
-            }}
-          >
-            <PanelChromeProvider value={{ analysisStatusByPanelId: { spectrum: "overCap" } }}>
-              <SplitLayout />
-            </PanelChromeProvider>
-          </TestPanelDataProviders>
-        </DragProvider>
-      </WorkspaceProvider>
-    );
-
-    expect(screen.getAllByText("Too many active analysis views")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
-
-    expect(screen.getAllByText("Too many active analysis views")).toHaveLength(2);
-  });
-
   it("uses a compact title bar for normal workspace panels", () => {
     const { container } = render(
       <WorkspaceProvider>

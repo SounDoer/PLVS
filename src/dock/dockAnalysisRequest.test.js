@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  MAX_SPECTRUM_REQUESTS,
-  MAX_STEREO_MAP_REQUESTS,
-  MAX_VECTORSCOPE_REQUESTS,
   deriveAnalysisRequests,
   deriveRetainedAnalysisKeys,
 } from "../analysis/analysisRequests.js";
@@ -16,8 +13,6 @@ import {
   mergeDockAnalysisRequests,
   mergeDockRetainedKeys,
   mergeDockSpectrumRequest,
-  mergeDockStereoMapRequest,
-  mergeDockVectorscopeRequest,
 } from "./dockAnalysisRequest.js";
 
 const EMPTY_DERIVED = deriveAnalysisRequests({ tree: null, panelsById: {}, panelOrder: [] });
@@ -59,23 +54,17 @@ describe("mergeDockSpectrumRequest", () => {
     expect(merged.spectrumRequests[1].panelIds).toEqual(["dock:spectrogram"]);
   });
 
-  it("evicts the tail request when already at the spectrum cap", () => {
-    // A full workspace: MAX_SPECTRUM_REQUESTS distinct spectrum requests, none
-    // the dock key. Appending would exceed the cap and Rust would reject the set.
-    const full = Array.from({ length: MAX_SPECTRUM_REQUESTS }, (_, i) => ({
+  it("appends the Dock request after more than four Workspace requests", () => {
+    const full = Array.from({ length: 5 }, (_, i) => ({
       key: `panel-key-${i}`,
       panelIds: [`panel-${i}`],
     }));
     const derived = { ...EMPTY_DERIVED, spectrumRequests: full };
     const merged = mergeDockSpectrumRequest(derived, true);
 
-    expect(merged.spectrumRequests).toHaveLength(MAX_SPECTRUM_REQUESTS);
-    // Dock request present.
-    expect(merged.spectrumRequests.some((r) => r.key === DOCK_SPECTRUM_KEY)).toBe(true);
-    // Former tail evicted; earlier requests preserved.
-    const keys = merged.spectrumRequests.map((r) => r.key);
-    expect(keys).not.toContain(`panel-key-${MAX_SPECTRUM_REQUESTS - 1}`);
-    expect(keys).toContain("panel-key-0");
+    expect(merged.spectrumRequests).toHaveLength(6);
+    expect(merged.spectrumRequests.at(-1)?.key).toBe(DOCK_SPECTRUM_KEY);
+    expect(merged.spectrumRequests.slice(0, 5)).toEqual(full);
   });
 });
 
@@ -124,10 +113,10 @@ describe("mergeDockAnalysisRequests", () => {
     ]);
   });
 
-  it("keeps the Dock vectorscope request within the backend cap", () => {
+  it("appends a Dock vectorscope request after more than four Workspace requests", () => {
     const derived = {
       ...EMPTY_DERIVED,
-      vectorscopeRequests: Array.from({ length: MAX_VECTORSCOPE_REQUESTS }, (_, index) => ({
+      vectorscopeRequests: Array.from({ length: 5 }, (_, index) => ({
         key: `vectorscope:pair:${index}:${index + 1}`,
         panelIds: [`panel-${index}`],
       })),
@@ -139,7 +128,7 @@ describe("mergeDockAnalysisRequests", () => {
         controls: { pair: { x: 8, y: 9 } },
       },
     ]);
-    expect(merged.vectorscopeRequests).toHaveLength(MAX_VECTORSCOPE_REQUESTS);
+    expect(merged.vectorscopeRequests).toHaveLength(6);
     expect(merged.vectorscopeRequests.at(-1)?.key).toBe("vectorscope:pair:8:9");
   });
 
@@ -208,10 +197,10 @@ describe("mergeDockAnalysisRequests", () => {
     expect(merged.stereoMapRequests[0].panelIds).toEqual(["dock:stereo-map", "dock:stereo-map-2"]);
   });
 
-  it("keeps the Dock Stereo Map request within its own independent backend cap", () => {
+  it("appends a Dock Stereo Map request after more than four Workspace requests", () => {
     const derived = {
       ...EMPTY_DERIVED,
-      stereoMapRequests: Array.from({ length: MAX_STEREO_MAP_REQUESTS }, (_, index) => ({
+      stereoMapRequests: Array.from({ length: 5 }, (_, index) => ({
         key: `stereoMap:pair:${index}:${index + 1}:sp50:sm12`,
         panelIds: [`panel-${index}`],
       })),
@@ -223,7 +212,7 @@ describe("mergeDockAnalysisRequests", () => {
         controls: { pair: { x: 8, y: 9 } },
       },
     ]);
-    expect(merged.stereoMapRequests).toHaveLength(MAX_STEREO_MAP_REQUESTS);
+    expect(merged.stereoMapRequests).toHaveLength(6);
     expect(merged.stereoMapRequests.at(-1)?.key).toBe("stereoMap:pair:8:9:sp50:sm12");
   });
 });
@@ -274,65 +263,6 @@ describe("mergeDockRetainedKeys", () => {
       { panelId: "spectrogram", moduleId: "spectrogram", controls: {} },
     ]);
     expect(merged.spectrum.size).toBe(1);
-  });
-});
-
-describe("dock merge over-cap bookkeeping", () => {
-  it("records the panel requests the dock squeezed out", () => {
-    const full = Array.from({ length: MAX_SPECTRUM_REQUESTS }, (_, i) => ({
-      key: `panel-key-${i}`,
-      panelIds: [`panel-${i}`],
-    }));
-    const derived = { ...EMPTY_DERIVED, spectrumRequests: full };
-    const merged = mergeDockSpectrumRequest(derived, true);
-
-    const squeezedKey = `panel-key-${MAX_SPECTRUM_REQUESTS - 1}`;
-    expect(merged.overCapSpectrumRequests.map((r) => r.key)).toContain(squeezedKey);
-    expect(merged.statusByPanelId[`panel-${MAX_SPECTRUM_REQUESTS - 1}`]).toBe("overCap");
-    // The survivors are untouched.
-    expect(merged.statusByPanelId["panel-0"]).toBeUndefined();
-  });
-
-  it("records a dock request that did not fit either", () => {
-    // Five dock Spectrum modules with five distinct speeds are five distinct keys; one cannot fit.
-    const dockPanels = Array.from({ length: MAX_SPECTRUM_REQUESTS + 1 }, (_, i) => ({
-      panelId: `spectrum-${i}`,
-      moduleId: "spectrum",
-      controls: { spectrumSpeedPercent: 10 * (i + 1) },
-    }));
-    const merged = mergeDockSpectrumRequest(EMPTY_DERIVED, dockPanels);
-
-    expect(merged.spectrumRequests).toHaveLength(MAX_SPECTRUM_REQUESTS);
-    expect(merged.overCapSpectrumRequests).toHaveLength(1);
-    const droppedPanelId = merged.overCapSpectrumRequests[0].panelIds[0];
-    expect(merged.statusByPanelId[droppedPanelId]).toBe("overCap");
-  });
-
-  it("leaves the status map alone when nothing is dropped", () => {
-    const merged = mergeDockSpectrumRequest(EMPTY_DERIVED, true);
-    expect(merged.overCapSpectrumRequests).toHaveLength(0);
-    expect(merged.statusByPanelId).toBe(EMPTY_DERIVED.statusByPanelId);
-  });
-
-  const filled = (n) =>
-    Array.from({ length: n }, (_, i) => ({ key: `k${i}`, panelIds: [`p${i}`] }));
-
-  it("records the panel requests the dock squeezed out, per family: stereoMap", () => {
-    const derived = { ...EMPTY_DERIVED, stereoMapRequests: filled(MAX_STEREO_MAP_REQUESTS) };
-    const merged = mergeDockStereoMapRequest(derived, true);
-    expect(merged.overCapStereoMapRequests.map((r) => r.key)).toContain(
-      `k${MAX_STEREO_MAP_REQUESTS - 1}`
-    );
-    expect(merged.statusByPanelId[`p${MAX_STEREO_MAP_REQUESTS - 1}`]).toBe("overCap");
-  });
-
-  it("records the panel requests the dock squeezed out, per family: vectorscope", () => {
-    const derived = { ...EMPTY_DERIVED, vectorscopeRequests: filled(MAX_VECTORSCOPE_REQUESTS) };
-    const merged = mergeDockVectorscopeRequest(derived, true);
-    expect(merged.overCapVectorscopeRequests.map((r) => r.key)).toContain(
-      `k${MAX_VECTORSCOPE_REQUESTS - 1}`
-    );
-    expect(merged.statusByPanelId[`p${MAX_VECTORSCOPE_REQUESTS - 1}`]).toBe("overCap");
   });
 });
 

@@ -22,17 +22,14 @@ function renderPanel(audioData) {
 }
 
 function spectrumPanelTree(audioData) {
-  const { panelControls, analysisStatus, onPanelControlsChange, displayAudio, ...historyData } =
-    audioData;
+  const { panelControls, onPanelControlsChange, displayAudio, ...historyData } = audioData;
   // The engine sends untilted rows and the panel puts the slope on at render, so the default
   // tilt would move every coordinate in here. Tests that are about the tilt set it themselves.
   const flatControls = { spectrumTiltDbPerOctave: 0, ...panelControls };
   return (
     <FrameDataProvider value={{ displayAudio }}>
       <HistoryDataProvider value={historyData}>
-        <PanelInstanceProvider
-          value={{ panelControls: flatControls, analysisStatus, onPanelControlsChange }}
-        >
+        <PanelInstanceProvider value={{ panelControls: flatControls, onPanelControlsChange }}>
           <SpectrumPanel />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -273,17 +270,6 @@ describe("SpectrumPanel", () => {
     });
 
     expect(screen.getByText("No data for this view at selected time")).toBeTruthy();
-  });
-
-  it("shows the over-cap empty state when its request is over the active cap", () => {
-    renderPanel({
-      selectedOffset: -1,
-      analysisStatus: "overCap",
-    });
-
-    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
-    // Over-cap is distinct from the snapshot no-data state.
-    expect(screen.queryByText("No data for this view at selected time")).toBeNull();
   });
 
   it("renders its own request key's snapshot curve in snapshot mode", () => {

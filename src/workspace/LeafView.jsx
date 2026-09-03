@@ -174,13 +174,11 @@ export function LeafView({ node, path, style }) {
       onPanelControlsChange: activeTab ? onPanelControlsChange : undefined,
       ...axisViewportData,
       historyData: panelHistoryData,
-      analysisStatus: chromeData?.analysisStatusByPanelId?.[activeTab],
       panelVisible: !state.fullscreenId,
     }),
     [
       activeTab,
       axisViewportData,
-      chromeData?.analysisStatusByPanelId,
       onPanelControlsChange,
       panelControls,
       panelHistoryData,

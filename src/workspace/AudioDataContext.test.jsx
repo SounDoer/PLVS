@@ -33,7 +33,6 @@ describe("panel instance data seam", () => {
           value={{
             panelControls: { spectrumView: "midSide" },
             onPanelControlsChange,
-            analysisStatus: "overCap",
             panelVisible: false,
           }}
         >
@@ -71,7 +70,6 @@ describe("panel instance data seam", () => {
           value={{
             panelControls: { spectrumView: "midSide" },
             onPanelControlsChange,
-            analysisStatus: "overCap",
             panelVisible: false,
           }}
         >
@@ -84,7 +82,6 @@ describe("panel instance data seam", () => {
 
     expect(result.current.panelControls).toEqual({ spectrumView: "midSide" });
     expect(result.current.onPanelControlsChange).toBe(onPanelControlsChange);
-    expect(result.current.analysisStatus).toBe("overCap");
     expect(result.current.panelVisible).toBe(false);
     expect(result.current.displayAudio).toBeUndefined();
   });

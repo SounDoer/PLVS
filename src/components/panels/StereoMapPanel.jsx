@@ -11,11 +11,7 @@ import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js"
 import { AxisRail } from "./AxisRail.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
-import {
-  SnapshotEmptyState,
-  SNAPSHOT_NO_DATA_MESSAGE,
-  ANALYSIS_OVER_CAP_MESSAGE,
-} from "./SnapshotEmptyState.jsx";
+import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
@@ -141,7 +137,7 @@ export function StereoMapPanel() {
     setSelectedOffset,
     captureCurrentSnapshot,
   } = useHistoryData();
-  const { panelControls, analysisStatus, onPanelControlsChange } = usePanelInstanceData();
+  const { panelControls, onPanelControlsChange } = usePanelInstanceData();
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]
@@ -149,7 +145,6 @@ export function StereoMapPanel() {
   const mode = normalizedPanelControls.stereoMapMode;
   const holdVisible = normalizedPanelControls.stereoMapHold;
   const stereoMapKey = stereoMapRequestKeyFromControls(panelControls);
-  const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
   // channelCount is 0 before capture has reported real device info (see appRuntimeDerivations.js) —
   // that's "not started yet", not a mono device, so it must fall through to the normal empty chart
@@ -437,7 +432,7 @@ export function StereoMapPanel() {
     );
   }
 
-  if (isOverCap || snapshotMissing) {
+  if (snapshotMissing) {
     return (
       <div
         className={cn(
@@ -445,9 +440,7 @@ export function StereoMapPanel() {
           "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
         )}
       >
-        <SnapshotEmptyState
-          message={isOverCap ? ANALYSIS_OVER_CAP_MESSAGE : SNAPSHOT_NO_DATA_MESSAGE}
-        />
+        <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
       </div>
     );
   }

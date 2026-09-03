@@ -77,7 +77,6 @@ function renderPanel(value = {}, props = {}) {
 function spectrogramPanelTree(value = {}, props = {}) {
   const {
     panelControls,
-    analysisStatus,
     onPanelControlsChange,
     channelCount,
     spectrumChannelOptions,
@@ -94,9 +93,7 @@ function spectrogramPanelTree(value = {}, props = {}) {
   return (
     <FrameDataProvider value={frameData}>
       <HistoryDataProvider value={base}>
-        <PanelInstanceProvider
-          value={{ panelControls, analysisStatus, onPanelControlsChange, panelVisible }}
-        >
+        <PanelInstanceProvider value={{ panelControls, onPanelControlsChange, panelVisible }}>
           <SpectrogramPanel {...props} />
         </PanelInstanceProvider>
       </HistoryDataProvider>
@@ -243,13 +240,6 @@ describe("SpectrogramPanel", () => {
 
     const frozen = vi.mocked(useSpectrogramCanvas).mock.calls.at(-1)?.[0].frozenSnaps;
     expect(frozen).toBe(mine);
-  });
-
-  it("shows the over-cap empty state instead of the canvas when over the active cap", () => {
-    const { container } = renderPanel({ analysisStatus: "overCap" });
-
-    expect(screen.getByText("Too many active analysis views")).toBeTruthy();
-    expect(container.querySelector("canvas")).toBeNull();
   });
 
   it("reads its own request key's live rolling history in live mode", () => {

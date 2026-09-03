@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import {
-  MAX_STEREO_MAP_REQUESTS,
   deriveAnalysisRequests,
   deriveRetainedAnalysisKeys,
   spectrumRequestKeyFromControls,
@@ -106,10 +105,6 @@ describe("analysisRequests", () => {
     ).toBe(spectrumRequestKeyFromControls(DEFAULT_PANEL_CONTROLS));
   });
 
-  it("defines an independent four-request Stereo Map cap", () => {
-    expect(MAX_STEREO_MAP_REQUESTS).toBe(4);
-  });
-
   it("excludes every Stereo Map display-only control from the request key", () => {
     const measurementControls = {
       stereoMapPair: { x: 2, y: 3 },
@@ -195,7 +190,7 @@ describe("analysisRequests", () => {
     expect(result.stereoMapRequests[0].panelIds).toEqual(["map", "dock:dock-map"]);
   });
 
-  it("keeps matching Workspace and future Dock local panel ids status-independent", () => {
+  it("keeps distinct Workspace and future Dock Stereo Map requests", () => {
     const workspaceIds = ["map", "map-2", "map-3", "map-4"];
     const result = deriveAnalysisRequests(
       state({
@@ -219,12 +214,10 @@ describe("analysisRequests", () => {
       }
     );
 
-    expect(result.stereoMapRequests).toHaveLength(4);
-    expect(result.overCapStereoMapRequests).toEqual([
-      expect.objectContaining({ panelIds: ["dock:map"] }),
-    ]);
-    expect(result.statusByPanelId.map).toBe("active");
-    expect(result.statusByPanelId["dock:map"]).toBe("overCap");
+    expect(result.stereoMapRequests).toHaveLength(5);
+    expect(result.stereoMapRequests.at(-1)).toEqual(
+      expect.objectContaining({ panelIds: ["dock:map"] })
+    );
   });
 
   it("keeps same-key Workspace and future Dock panel identities distinct", () => {
@@ -244,7 +237,7 @@ describe("analysisRequests", () => {
     expect(new Set(result.stereoMapRequests[0].panelIds).size).toBe(2);
   });
 
-  it("admits four unique Stereo Map keys and marks the fifth over cap", () => {
+  it("admits more than four unique Stereo Map keys", () => {
     const panelOrder = Array.from({ length: 5 }, (_, index) => `map-${index + 1}`);
     const panelsById = Object.fromEntries(
       panelOrder.map((id) => [id, { id, moduleId: "stereo-map" }])
@@ -257,12 +250,10 @@ describe("analysisRequests", () => {
       channelCount: 6,
     });
 
-    expect(result.stereoMapRequests).toHaveLength(4);
-    expect(result.overCapStereoMapRequests).toHaveLength(1);
-    expect(result.statusByPanelId["map-5"]).toBe("overCap");
+    expect(result.stereoMapRequests).toHaveLength(5);
   });
 
-  it("applies Spectrum and Stereo Map caps independently", () => {
+  it("derives Spectrum and Stereo Map requests independently", () => {
     const spectrumIds = Array.from({ length: 4 }, (_, index) => `spectrum-${index + 1}`);
     const stereoMapIds = Array.from({ length: 4 }, (_, index) => `map-${index + 1}`);
     const panelOrder = [...spectrumIds, ...stereoMapIds];
@@ -284,8 +275,6 @@ describe("analysisRequests", () => {
 
     expect(result.spectrumRequests).toHaveLength(4);
     expect(result.stereoMapRequests).toHaveLength(4);
-    expect(result.overCapSpectrumRequests).toEqual([]);
-    expect(result.overCapStereoMapRequests).toEqual([]);
   });
 
   it("does not request Stereo Map for mono input or an unavailable pair", () => {
@@ -321,7 +310,7 @@ describe("analysisRequests", () => {
     }
   );
 
-  it("does not count a fifth Stereo Map instance when its key is already admitted", () => {
+  it("deduplicates an additional Stereo Map instance with an existing key", () => {
     const workspaceIds = ["map-1", "map-2", "map-3", "map-4"];
     const result = deriveAnalysisRequests(
       state({
@@ -346,9 +335,7 @@ describe("analysisRequests", () => {
     );
 
     expect(result.stereoMapRequests).toHaveLength(4);
-    expect(result.overCapStereoMapRequests).toEqual([]);
     expect(result.stereoMapRequests[0].panelIds).toEqual(["map-1", "dock:duplicate"]);
-    expect(result.statusByPanelId["dock:duplicate"]).toBe("active");
   });
 
   it("includes speed in the spectrum request key", () => {
@@ -428,7 +415,24 @@ describe("analysisRequests", () => {
     ]);
   });
 
-  it("applies caps by unique request key in panel order", () => {
+  it("admits more than four unique Vectorscope keys", () => {
+    const panelOrder = Array.from({ length: 5 }, (_, index) => `vectorscope-${index + 1}`);
+    const panelsById = Object.fromEntries(
+      panelOrder.map((id) => [id, { id, moduleId: "vectorscope" }])
+    );
+    const panelControlsById = Object.fromEntries(
+      panelOrder.map((id, index) => [
+        id,
+        { ...DEFAULT_PANEL_CONTROLS, vectorscopePair: { x: index, y: index + 1 } },
+      ])
+    );
+
+    const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }));
+
+    expect(result.vectorscopeRequests).toHaveLength(5);
+  });
+
+  it("includes every unique request key in panel order", () => {
     const panelsById = Object.fromEntries(
       Array.from({ length: 5 }, (_, i) => [
         `spectrum-${i + 1}`,
@@ -448,9 +452,8 @@ describe("analysisRequests", () => {
 
     const result = deriveAnalysisRequests(state({ panelsById, panelOrder, panelControlsById }));
 
-    expect(result.spectrumRequests).toHaveLength(4);
-    expect(result.overCapSpectrumRequests).toHaveLength(1);
-    expect(result.statusByPanelId["spectrum-5"]).toBe("overCap");
+    expect(result.spectrumRequests).toHaveLength(5);
+    expect(result.spectrumRequests.map((request) => request.panelIds[0])).toEqual(panelOrder);
   });
 
   it("ignores stale panels not present in the tree", () => {
@@ -469,10 +472,7 @@ describe("analysisRequests", () => {
   });
 
   describe("deriveRetainedAnalysisKeys", () => {
-    it("keeps a key per open panel, past the request cap", () => {
-      // MAX_SPECTRUM_REQUESTS is 4. Five Spectrum panels with five distinct speeds are five
-      // distinct keys; capRequests would drop the fifth, but the panel is still open and still
-      // wants its history.
+    it("keeps a key per open panel", () => {
       const panelsById = {};
       const panelControlsById = {};
       for (let i = 0; i < 5; i += 1) {

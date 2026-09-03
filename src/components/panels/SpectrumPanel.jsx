@@ -15,11 +15,7 @@ import {
   spectrumTiltOffsets,
   trackSpectrumPeaks,
 } from "../../math/spectrumMath.js";
-import {
-  SnapshotEmptyState,
-  SNAPSHOT_NO_DATA_MESSAGE,
-  ANALYSIS_OVER_CAP_MESSAGE,
-} from "./SnapshotEmptyState.jsx";
+import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { AxisRail } from "./AxisRail.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useChartHover } from "../../hooks/useChartHover";
@@ -111,7 +107,7 @@ export function SpectrumPanel() {
     setSelectedOffset,
     captureCurrentSnapshot,
   } = useHistoryData();
-  const { panelControls, analysisStatus, onPanelControlsChange } = usePanelInstanceData();
+  const { panelControls, onPanelControlsChange } = usePanelInstanceData();
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
     [panelControls]
@@ -188,7 +184,6 @@ export function SpectrumPanel() {
   const spectrumPeakTrackRef = useRef([]);
   const spectrumPeakDetectDbRef = useRef(null);
   const spectrumKey = spectrumRequestKeyFromControls(panelControls);
-  const isOverCap = analysisStatus === "overCap";
   const isSnapshot = selectedOffset >= 0;
   // In snapshot mode each panel reads history for its own request key; in live mode it reads the
   // request-keyed live result.
@@ -711,7 +706,7 @@ export function SpectrumPanel() {
     spectrumMaxMode !== "off" && maxContourPathB ? buildSpectrumAreaPath(maxContourPathB) : "";
   const canCaptureCurrentSnapshot = historyChartInteractive && totalSamples > 0;
 
-  if (isOverCap || snapshotMissing) {
+  if (snapshotMissing) {
     return (
       <div
         className={cn(
@@ -719,9 +714,7 @@ export function SpectrumPanel() {
           "flex min-h-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]"
         )}
       >
-        <SnapshotEmptyState
-          message={isOverCap ? ANALYSIS_OVER_CAP_MESSAGE : SNAPSHOT_NO_DATA_MESSAGE}
-        />
+        <SnapshotEmptyState message={SNAPSHOT_NO_DATA_MESSAGE} />
       </div>
     );
   }

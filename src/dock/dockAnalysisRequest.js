@@ -1,7 +1,4 @@
 import {
-  MAX_SPECTRUM_REQUESTS,
-  MAX_STEREO_MAP_REQUESTS,
-  MAX_VECTORSCOPE_REQUESTS,
   spectrumRequestKeyFromControls,
   stereoMapRequestKeyFromControls,
   vectorscopeRequestKeyFromControls,
@@ -45,27 +42,6 @@ function dockVectorscopeRequest(raw, panelId = "dock:vectorscope") {
   };
 }
 
-/**
- * Every request that does not reach the merged set is recorded, so the request set stops claiming
- * a panel is active while nothing computes it. Both halves matter: panel requests the dock
- * squeezed out, and dock requests the final cap could not fit.
- *
- * Returns a patch meant to be spread after `...derived`; empty when nothing was dropped. Dropped
- * dock requests get an `"overCap"` entry in `statusByPanelId`, but dock requests that fit are
- * never marked `"active"`, so the map is not a complete picture of dock ids either way.
- */
-function recordDropped(derived, candidates, merged, overCapField) {
-  const mergedKeys = new Set(merged.map((request) => request.key));
-  const dropped = candidates.filter((request) => !mergedKeys.has(request.key));
-  // No patch when nothing was dropped, so the caller keeps `derived`'s own status map by reference.
-  if (dropped.length === 0) return {};
-  const statusByPanelId = { ...derived.statusByPanelId };
-  for (const request of dropped) {
-    for (const panelId of request.panelIds) statusByPanelId[panelId] = "overCap";
-  }
-  return { [overCapField]: [...derived[overCapField], ...dropped], statusByPanelId };
-}
-
 export function mergeDockSpectrumRequest(derived, active, controls) {
   if (!active) return derived;
   const configured = Array.isArray(active)
@@ -94,21 +70,9 @@ export function mergeDockSpectrumRequest(derived, active, controls) {
     (request) => !derived.spectrumRequests.some((candidate) => candidate.key === request.key)
   );
   if (requests.length === 0) return derived;
-  const available = Math.max(0, MAX_SPECTRUM_REQUESTS - requests.length);
-  const kept =
-    derived.spectrumRequests.length > available
-      ? derived.spectrumRequests.slice(0, available)
-      : derived.spectrumRequests;
-  const mergedRequests = [...kept, ...requests].slice(0, MAX_SPECTRUM_REQUESTS);
   return {
     ...derived,
-    spectrumRequests: mergedRequests,
-    ...recordDropped(
-      derived,
-      [...derived.spectrumRequests, ...requests],
-      mergedRequests,
-      "overCapSpectrumRequests"
-    ),
+    spectrumRequests: [...derived.spectrumRequests, ...requests],
   };
 }
 
@@ -136,21 +100,9 @@ export function mergeDockVectorscopeRequest(derived, active) {
     (request) => !derived.vectorscopeRequests.some((candidate) => candidate.key === request.key)
   );
   if (requests.length === 0) return derived;
-  const available = Math.max(0, MAX_VECTORSCOPE_REQUESTS - requests.length);
-  const kept =
-    derived.vectorscopeRequests.length > available
-      ? derived.vectorscopeRequests.slice(0, available)
-      : derived.vectorscopeRequests;
-  const mergedRequests = [...kept, ...requests].slice(0, MAX_VECTORSCOPE_REQUESTS);
   return {
     ...derived,
-    vectorscopeRequests: mergedRequests,
-    ...recordDropped(
-      derived,
-      [...derived.vectorscopeRequests, ...requests],
-      mergedRequests,
-      "overCapVectorscopeRequests"
-    ),
+    vectorscopeRequests: [...derived.vectorscopeRequests, ...requests],
   };
 }
 
@@ -197,21 +149,9 @@ export function mergeDockStereoMapRequest(derived, active) {
     (request) => !derived.stereoMapRequests.some((candidate) => candidate.key === request.key)
   );
   if (requests.length === 0) return derived;
-  const available = Math.max(0, MAX_STEREO_MAP_REQUESTS - requests.length);
-  const kept =
-    derived.stereoMapRequests.length > available
-      ? derived.stereoMapRequests.slice(0, available)
-      : derived.stereoMapRequests;
-  const mergedRequests = [...kept, ...requests].slice(0, MAX_STEREO_MAP_REQUESTS);
   return {
     ...derived,
-    stereoMapRequests: mergedRequests,
-    ...recordDropped(
-      derived,
-      [...derived.stereoMapRequests, ...requests],
-      mergedRequests,
-      "overCapStereoMapRequests"
-    ),
+    stereoMapRequests: [...derived.stereoMapRequests, ...requests],
   };
 }
 
