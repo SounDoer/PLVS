@@ -161,4 +161,53 @@ describe("planPublicPanelControlPatch", () => {
       },
     ]);
   });
+
+  it("maps a valid Loudness layer and range patch", () => {
+    const result = planPublicPanelControlPatch(
+      "loudness",
+      DEFAULT_PANEL_CONTROLS,
+      {
+        layers: ["shortTerm", "reference"],
+        loudnessRangeLufs: { min: -48, max: -6 },
+      },
+      { hasLoudnessReference: true }
+    );
+
+    expect(result).toMatchObject({
+      issues: [],
+      warnings: [],
+      changed: [
+        "controls.layers",
+        "controls.loudnessRangeLufs.min",
+        "controls.loudnessRangeLufs.max",
+      ],
+    });
+    expect(result.panelControls).toMatchObject({
+      loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
+      loudnessYMinDb: -48,
+      loudnessYMaxDb: -6,
+    });
+  });
+
+  it("preserves hidden Loudness reference preference and rejects selecting it while unavailable", () => {
+    const hidden = planPublicPanelControlPatch(
+      "loudness",
+      DEFAULT_PANEL_CONTROLS,
+      { layers: ["momentary"] },
+      { hasLoudnessReference: false }
+    );
+    expect(hidden.issues).toEqual([]);
+    expect(hidden.panelControls.loudnessHistoryVisibleLayerIds).toEqual(["momentary", "ref"]);
+
+    const unavailable = planPublicPanelControlPatch(
+      "loudness",
+      DEFAULT_PANEL_CONTROLS,
+      { layers: ["reference"] },
+      { hasLoudnessReference: false }
+    );
+    expect(unavailable.issues).toEqual([
+      expect.objectContaining({ code: "controlUnavailable", path: "$.layers" }),
+    ]);
+    expect(unavailable.changed).toEqual([]);
+  });
 });

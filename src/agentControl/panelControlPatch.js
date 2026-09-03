@@ -1,6 +1,8 @@
 import { normalizePanelControls } from "../lib/panelControls.js";
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+const arraysEqual = (left, right) =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
 
 const LEVEL_METER_FIELDS = new Set([
   "mode",
@@ -268,6 +270,80 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
           ]
         : [];
     return { panelControls, changed, warnings, issues };
+  }
+
+  if (moduleId === "loudness") {
+    const issues = [];
+    const allowed = new Set(["layers", "loudnessRangeLufs"]);
+    for (const key of Object.keys(patch)) {
+      if (!allowed.has(key)) {
+        issues.push(issue("unknownControl", `$.${key}`, `Unknown Loudness control: ${key}.`));
+      }
+    }
+    if (hasOwn(patch, "layers")) {
+      if (!Array.isArray(patch.layers) || patch.layers.some((id) => typeof id !== "string")) {
+        issues.push(issue("invalidType", "$.layers", "layers must be an array of strings."));
+      } else {
+        const known = new Set(["momentary", "shortTerm", "reference"]);
+        if (
+          patch.layers.some((id) => !known.has(id)) ||
+          new Set(patch.layers).size !== patch.layers.length
+        ) {
+          issues.push(
+            issue("invalidEnum", "$.layers", "layers contains an unknown or duplicate value.")
+          );
+        }
+        if (patch.layers.includes("reference") && context.hasLoudnessReference !== true) {
+          issues.push(
+            issue(
+              "controlUnavailable",
+              "$.layers",
+              "reference is unavailable under the active Profile."
+            )
+          );
+        }
+      }
+    }
+    if (hasOwn(patch, "loudnessRangeLufs")) {
+      validateRange(patch.loudnessRangeLufs, "$.loudnessRangeLufs", -64, 0, 12, issues);
+    }
+    if (issues.length > 0) {
+      return { panelControls: current, changed: [], warnings: [], issues };
+    }
+
+    if (hasOwn(patch, "layers")) {
+      const canonicalPublic = ["momentary", "shortTerm", "reference"].filter((id) =>
+        patch.layers.includes(id)
+      );
+      const currentPublic = ["momentary", "shortTerm"]
+        .filter((id) => current.loudnessHistoryVisibleLayerIds.includes(id))
+        .concat(
+          context.hasLoudnessReference === true &&
+            current.loudnessHistoryVisibleLayerIds.includes("ref")
+            ? ["reference"]
+            : []
+        );
+      if (!arraysEqual(canonicalPublic, currentPublic)) changed.push("controls.layers");
+      const nextInternal = canonicalPublic.map((id) => (id === "reference" ? "ref" : id));
+      if (
+        context.hasLoudnessReference !== true &&
+        current.loudnessHistoryVisibleLayerIds.includes("ref")
+      ) {
+        nextInternal.push("ref");
+      }
+      panelControls.loudnessHistoryVisibleLayerIds = nextInternal;
+    }
+    if (hasOwn(patch, "loudnessRangeLufs")) {
+      if (patch.loudnessRangeLufs.min !== current.loudnessYMinDb) {
+        panelControls.loudnessYMinDb = patch.loudnessRangeLufs.min;
+        changed.push("controls.loudnessRangeLufs.min");
+      }
+      if (patch.loudnessRangeLufs.max !== current.loudnessYMaxDb) {
+        panelControls.loudnessYMaxDb = patch.loudnessRangeLufs.max;
+        changed.push("controls.loudnessRangeLufs.max");
+      }
+    }
+    return { panelControls, changed, warnings: [], issues };
   }
 
   return { panelControls, changed, warnings: [], issues: [] };
