@@ -24,6 +24,12 @@ pub enum CliAppCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  PanelUpdate {
+    panel_id: String,
+    input: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
 }
 
 pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -40,10 +46,11 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
       return Err(format!("The app {command} command requires --json."));
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
+    [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli app <capabilities|inspect|workspace apply> ...".to_string())
+  Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel update> ...".to_string())
 }
 
 fn parse_workspace_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -109,26 +116,91 @@ fn parse_workspace_args(args: &[String]) -> Result<CliAppCommand, String> {
   })
 }
 
+fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  const USAGE: &str =
+    "Usage: plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]";
+  if args.first().map(String::as_str) != Some("update") {
+    return Err(USAGE.to_string());
+  }
+
+  let mut positionals = Vec::new();
+  let mut json = false;
+  let mut expected_revision = None;
+  let mut dry_run = false;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--expected-revision" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-revision.".to_string())?;
+        let revision = raw.parse::<u64>().map_err(|_| {
+          "The --expected-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if revision > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-revision value must be a non-negative safe integer.".to_string(),
+          );
+        }
+        expected_revision = Some(revision);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value => {
+        positionals.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+  if !json {
+    return Err("The app panel update command requires --json.".to_string());
+  }
+  if positionals.len() != 2 || positionals[0].trim().is_empty() {
+    return Err(USAGE.to_string());
+  }
+  Ok(CliAppCommand::PanelUpdate {
+    panel_id: positionals[0].clone(),
+    input: positionals[1].clone(),
+    expected_revision,
+    dry_run,
+  })
+}
+
 fn is_help(value: &str) -> bool {
   matches!(value, "--help" | "-h" | "help")
 }
 
 pub fn help_text() -> &'static str {
-  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one layout JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
+  read_json_document(input, stdin, "layout")
+}
+
+fn read_json_document<R: Read>(input: &str, stdin: &mut R, subject: &str) -> Result<Value, String> {
   let mut bytes = Vec::new();
   if input == "-" {
     stdin
       .read_to_end(&mut bytes)
-      .map_err(|error| format!("Unable to read layout JSON from stdin: {error}"))?;
+      .map_err(|error| format!("Unable to read {subject} JSON from stdin: {error}"))?;
   } else {
     bytes = fs::read(Path::new(input))
-      .map_err(|error| format!("Unable to read layout JSON from {input}: {error}"))?;
+      .map_err(|error| format!("Unable to read {subject} JSON from {input}: {error}"))?;
   }
   let bytes = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(&bytes);
-  serde_json::from_slice(bytes).map_err(|error| format!("Unable to parse layout JSON: {error}"))
+  serde_json::from_slice(bytes).map_err(|error| format!("Unable to parse {subject} JSON: {error}"))
 }
 
 #[derive(Debug, Clone)]
@@ -257,6 +329,7 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::Capabilities => "app.capabilities",
     CliAppCommand::Inspect => "app.inspect",
     CliAppCommand::WorkspaceApply { .. } => "workspace.applyLayout",
+    CliAppCommand::PanelUpdate { .. } => "panel.update",
   }
 }
 
@@ -276,6 +349,24 @@ fn request_for_command<R: Read>(
         .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
       let mut params = serde_json::Map::from_iter([
         ("layout".to_string(), layout),
+        ("dryRun".to_string(), Value::Bool(*dry_run)),
+      ]);
+      if let Some(revision) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      Value::Object(params)
+    }
+    CliAppCommand::PanelUpdate {
+      panel_id,
+      input,
+      expected_revision,
+      dry_run,
+    } => {
+      let patch = read_json_document(input, stdin, "panel controls")
+        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+      let mut params = serde_json::Map::from_iter([
+        ("panelId".to_string(), Value::String(panel_id.clone())),
+        ("patch".to_string(), patch),
         ("dryRun".to_string(), Value::Bool(*dry_run)),
       ]);
       if let Some(revision) = expected_revision {
@@ -465,6 +556,64 @@ mod tests {
     ] {
       assert!(parse_app_args(&invalid).is_err());
     }
+  }
+
+  #[test]
+  fn parses_panel_update_and_its_concurrency_options() {
+    assert_eq!(
+      parse_app_args(&args(&[
+        "panel",
+        "update",
+        "levelMeter",
+        "controls.json",
+        "--json",
+        "--expected-revision",
+        "7",
+        "--dry-run"
+      ])),
+      Ok(CliAppCommand::PanelUpdate {
+        panel_id: "levelMeter".to_string(),
+        input: "controls.json".to_string(),
+        expected_revision: Some(7),
+        dry_run: true,
+      })
+    );
+    for invalid in [
+      args(&["panel", "update", "levelMeter", "--json"]),
+      args(&[
+        "panel",
+        "update",
+        "levelMeter",
+        "a.json",
+        "b.json",
+        "--json",
+      ]),
+      args(&["panel", "update", "levelMeter", "-", "--bogus", "--json"]),
+      args(&["panel", "update", "levelMeter", "-"]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err());
+    }
+  }
+
+  #[test]
+  fn builds_panel_update_request_from_stdin() {
+    let command = CliAppCommand::PanelUpdate {
+      panel_id: "levelMeter".to_string(),
+      input: "-".to_string(),
+      expected_revision: Some(7),
+      dry_run: true,
+    };
+    let request = request_for_command(
+      &command,
+      &mut Cursor::new(br#"{"mode":"rms","playbackMax":true}"#),
+    )
+    .unwrap();
+
+    assert_eq!(request.method, "panel.update");
+    assert_eq!(request.params["panelId"], "levelMeter");
+    assert_eq!(request.params["patch"]["mode"], "rms");
+    assert_eq!(request.params["expectedRevision"], 7);
+    assert_eq!(request.params["dryRun"], true);
   }
 
   #[test]
