@@ -1,11 +1,16 @@
 import { DEFAULT_REFERENCE_LUFS as LOUDNESS_DEFAULT_REFERENCE_LUFS } from "../config/loudnessReferenceProfiles.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
+import {
+  DEFAULT_DIALOGUE_VAD_ENGINE as DIALOGUE_VAD_ENGINE_FALLBACK,
+  normalizeDialogueVadEngine as normalizeDialogueVadEngineValue,
+} from "../lib/dialogueVadEngines.js";
 
 export const DEFAULT_REFERENCE_LUFS = LOUDNESS_DEFAULT_REFERENCE_LUFS;
 export const DEFAULT_CLOSE_ACTION = "ask";
 export const DEFAULT_PANEL_OPACITY = 100;
 export const DEFAULT_GLASS_ENABLED = false;
 export const DEFAULT_HISTORY_RETENTION_SEC = 3600;
+export const DEFAULT_DIALOGUE_VAD_ENGINE = DIALOGUE_VAD_ENGINE_FALLBACK;
 export const HISTORY_RETENTION_OPTIONS_SEC = [1800, 3600, 7200, 14400];
 export const DEFAULT_THEME_EDITOR_POS = Object.freeze({ x: 80, y: 80 });
 export const DEFAULT_INTERFACE_SIZE = "default";
@@ -51,6 +56,10 @@ export function normalizeGlassEnabled(raw) {
 
 export function normalizeHistoryRetentionSec(raw) {
   return HISTORY_RETENTION_OPTIONS_SEC.includes(raw) ? raw : DEFAULT_HISTORY_RETENTION_SEC;
+}
+
+export function normalizeDialogueVadEngine(raw) {
+  return normalizeDialogueVadEngineValue(raw);
 }
 
 export function normalizeInterfaceSize(raw) {
