@@ -1,6 +1,7 @@
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
 import { getPanelControls } from "../workspace/panelControlInstances.js";
 import { resolvePanelDisplayName } from "../workspace/panelInstances.js";
+import { readPublicPanelAxes } from "./panelAxes.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 
@@ -51,6 +52,7 @@ export function buildAgentControlSnapshot({
           getPanelControls(workspace, panelId),
           { hasLoudnessReference }
         ),
+        axes: readPublicPanelAxes(workspace, panelId),
       })),
     },
     preset: {

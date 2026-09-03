@@ -60,6 +60,15 @@ describe("agent-control app snapshots", () => {
         levelRangeDbfs: { min: -60, max: 3 },
         loudnessRangeLufs: { min: -64, max: 0 },
       },
+      axes: {},
+    });
+    expect(snapshot.workspace.panels.find(({ id }) => id === "spectrum").axes).toEqual({
+      frequency: {
+        linked: true,
+        source: "workspace",
+        writable: false,
+        range: { minHz: 20, maxHz: 20000 },
+      },
     });
     expect(snapshot.workspace.layout.type).toBe("split");
     const encoded = JSON.stringify(snapshot);
