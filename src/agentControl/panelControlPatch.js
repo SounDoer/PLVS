@@ -732,5 +732,163 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     return { panelControls, changed, warnings, issues };
   }
 
+  if (moduleId === "stereo-map") {
+    const issues = [];
+    const allowed = new Set([
+      "mode",
+      "channelPair",
+      "maxHold",
+      "speedPercent",
+      "octaveSmoothing",
+      "monoLossFloorDb",
+      "msRatioRangeDb",
+    ]);
+    for (const key of Object.keys(patch)) {
+      if (!allowed.has(key)) {
+        issues.push(issue("unknownControl", `$.${key}`, `Unknown Stereo Map control: ${key}.`));
+      }
+    }
+    if (
+      hasOwn(patch, "mode") &&
+      !new Set(["position", "correlation", "monoLossDb", "msRatioDb"]).has(patch.mode)
+    ) {
+      issues.push(issue("invalidEnum", "$.mode", "mode is not a supported Stereo Map mode."));
+    }
+    if (hasOwn(patch, "channelPair")) {
+      const pair = patch.channelPair;
+      const channelCount =
+        Number.isInteger(context.channelCount) && context.channelCount > 0
+          ? context.channelCount
+          : 2;
+      if (
+        pair === null ||
+        typeof pair !== "object" ||
+        Array.isArray(pair) ||
+        !Number.isInteger(pair.x) ||
+        !Number.isInteger(pair.y)
+      ) {
+        issues.push(
+          issue("invalidType", "$.channelPair", "channelPair must contain integer x and y.")
+        );
+      } else if (pair.x < 0 || pair.y >= channelCount || pair.x >= pair.y) {
+        issues.push(
+          issue("outOfRange", "$.channelPair", "channelPair must be an available ordered pair.")
+        );
+      }
+    }
+    if (hasOwn(patch, "maxHold")) validateBoolean(patch.maxHold, "$.maxHold", issues);
+    if (
+      hasOwn(patch, "speedPercent") &&
+      (!Number.isInteger(patch.speedPercent) || patch.speedPercent < 0 || patch.speedPercent > 100)
+    ) {
+      issues.push(
+        issue("outOfRange", "$.speedPercent", "speedPercent must be an integer from 0 to 100.")
+      );
+    }
+    if (
+      hasOwn(patch, "octaveSmoothing") &&
+      !new Set(["off", "1/12", "1/6", "1/3"]).has(patch.octaveSmoothing)
+    ) {
+      issues.push(issue("invalidEnum", "$.octaveSmoothing", "octaveSmoothing is not supported."));
+    }
+    if (
+      hasOwn(patch, "monoLossFloorDb") &&
+      (!Number.isFinite(patch.monoLossFloorDb) ||
+        patch.monoLossFloorDb < -60 ||
+        patch.monoLossFloorDb > -6)
+    ) {
+      issues.push(
+        issue("outOfRange", "$.monoLossFloorDb", "monoLossFloorDb must be from -60 to -6.")
+      );
+    }
+    if (hasOwn(patch, "msRatioRangeDb")) {
+      const range = patch.msRatioRangeDb;
+      if (
+        range === null ||
+        typeof range !== "object" ||
+        Array.isArray(range) ||
+        !Number.isFinite(range.min) ||
+        !Number.isFinite(range.max)
+      ) {
+        issues.push(
+          issue("invalidType", "$.msRatioRangeDb", "msRatioRangeDb must be a finite range.")
+        );
+      } else if (
+        range.min < -96 ||
+        range.min > 0 ||
+        range.max < 0 ||
+        range.max > 48 ||
+        range.min >= range.max
+      ) {
+        issues.push(
+          issue(
+            "outOfRange",
+            "$.msRatioRangeDb",
+            "msRatioRangeDb must satisfy -96 <= min <= 0 <= max <= 48 and min < max."
+          )
+        );
+      }
+    }
+    if (issues.length > 0) {
+      return { panelControls: current, changed: [], warnings: [], issues };
+    }
+
+    for (const [publicKey, internalKey] of [
+      ["mode", "stereoMapMode"],
+      ["maxHold", "stereoMapHold"],
+      ["speedPercent", "stereoMapSpeedPercent"],
+      ["octaveSmoothing", "stereoMapOctaveSmoothing"],
+      ["monoLossFloorDb", "stereoMapMonoLossYMinDb"],
+    ]) {
+      if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
+        panelControls[internalKey] = patch[publicKey];
+        changed.push(`controls.${publicKey}`);
+      }
+    }
+    if (hasOwn(patch, "channelPair")) {
+      if (patch.channelPair.x !== current.stereoMapPair.x) changed.push("controls.channelPair.x");
+      if (patch.channelPair.y !== current.stereoMapPair.y) changed.push("controls.channelPair.y");
+      panelControls.stereoMapPair = { ...patch.channelPair };
+    }
+    if (hasOwn(patch, "msRatioRangeDb")) {
+      if (patch.msRatioRangeDb.min !== current.stereoMapMsRatioYMinDb) {
+        panelControls.stereoMapMsRatioYMinDb = patch.msRatioRangeDb.min;
+        changed.push("controls.msRatioRangeDb.min");
+      }
+      if (patch.msRatioRangeDb.max !== current.stereoMapMsRatioYMaxDb) {
+        panelControls.stereoMapMsRatioYMaxDb = patch.msRatioRangeDb.max;
+        changed.push("controls.msRatioRangeDb.max");
+      }
+    }
+    const order = [
+      "controls.mode",
+      "controls.channelPair.x",
+      "controls.channelPair.y",
+      "controls.maxHold",
+      "controls.speedPercent",
+      "controls.octaveSmoothing",
+      "controls.monoLossFloorDb",
+      "controls.msRatioRangeDb.min",
+      "controls.msRatioRangeDb.max",
+    ];
+    changed.sort((left, right) => order.indexOf(left) - order.indexOf(right));
+    const warnings = [];
+    if (hasOwn(patch, "monoLossFloorDb") && panelControls.stereoMapMode !== "monoLossDb") {
+      warnings.push({
+        code: "currentlyInactive",
+        path: "controls.monoLossFloorDb",
+        inactiveReason: "nonMonoLossMode",
+      });
+    }
+    if (hasOwn(patch, "msRatioRangeDb") && panelControls.stereoMapMode !== "msRatioDb") {
+      warnings.push({
+        code: "currentlyInactive",
+        path: "controls.msRatioRangeDb",
+        inactiveReason: "nonMsRatioMode",
+      });
+    }
+    return { panelControls, changed, warnings, issues };
+  }
+
   return { panelControls, changed, warnings: [], issues: [] };
 }

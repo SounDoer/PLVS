@@ -368,4 +368,71 @@ describe("planPublicPanelControlPatch", () => {
       },
     ]);
   });
+
+  it("maps valid Stereo Map controls", () => {
+    const result = planPublicPanelControlPatch(
+      "stereo-map",
+      DEFAULT_PANEL_CONTROLS,
+      {
+        mode: "msRatioDb",
+        channelPair: { x: 1, y: 4 },
+        maxHold: true,
+        speedPercent: 80,
+        octaveSmoothing: "off",
+        monoLossFloorDb: -30,
+        msRatioRangeDb: { min: -36, max: 18 },
+      },
+      { channelCount: 6 }
+    );
+
+    expect(result).toMatchObject({
+      issues: [],
+      warnings: [
+        expect.objectContaining({
+          path: "controls.monoLossFloorDb",
+          inactiveReason: "nonMonoLossMode",
+        }),
+      ],
+      changed: [
+        "controls.mode",
+        "controls.channelPair.x",
+        "controls.channelPair.y",
+        "controls.maxHold",
+        "controls.speedPercent",
+        "controls.octaveSmoothing",
+        "controls.monoLossFloorDb",
+        "controls.msRatioRangeDb.min",
+        "controls.msRatioRangeDb.max",
+      ],
+    });
+    expect(result.panelControls).toMatchObject({
+      stereoMapMode: "msRatioDb",
+      stereoMapPair: { x: 1, y: 4 },
+      stereoMapHold: true,
+      stereoMapSpeedPercent: 80,
+      stereoMapOctaveSmoothing: "off",
+      stereoMapMonoLossYMinDb: -30,
+      stereoMapMsRatioYMinDb: -36,
+      stereoMapMsRatioYMaxDb: 18,
+    });
+  });
+
+  it("rejects invalid Stereo Map pair and M/S ratio range atomically", () => {
+    const result = planPublicPanelControlPatch(
+      "stereo-map",
+      DEFAULT_PANEL_CONTROLS,
+      {
+        channelPair: { x: 2, y: 2 },
+        msRatioRangeDb: { min: 1, max: 12 },
+      },
+      { channelCount: 6 }
+    );
+
+    expect(result.issues).toEqual([
+      expect.objectContaining({ code: "outOfRange", path: "$.channelPair" }),
+      expect.objectContaining({ code: "outOfRange", path: "$.msRatioRangeDb" }),
+    ]);
+    expect(result.changed).toEqual([]);
+    expect(result.panelControls).toEqual(DEFAULT_PANEL_CONTROLS);
+  });
 });
