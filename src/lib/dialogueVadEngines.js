@@ -1,13 +1,15 @@
+/// Listed in the order the picker offers them, so the default comes first. That also makes
+/// `DIALOGUE_VAD_ENGINE_OPTIONS[0]` a correct last-resort fallback for an unrecognized id.
 export const DIALOGUE_VAD_ENGINE_OPTIONS = [
-  {
-    id: "silero",
-    label: "Silero VAD",
-    url: "https://github.com/snakers4/silero-vad",
-  },
   {
     id: "firered",
     label: "FireRedVAD",
     url: "https://github.com/FireRedTeam/FireRedVAD",
+  },
+  {
+    id: "silero",
+    label: "Silero VAD",
+    url: "https://github.com/snakers4/silero-vad",
   },
   {
     id: "ten",

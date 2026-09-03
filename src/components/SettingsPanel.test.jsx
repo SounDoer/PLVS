@@ -545,11 +545,13 @@ describe("SettingsPanel", () => {
   it("renders Dialogue Detection with the three engines", () => {
     render(<SettingsPanel {...BASE_PROPS} {...DIALOGUE_PROPS} />);
     fireEvent.click(screen.getByLabelText("Dialogue Detection"));
-    expect(screen.getByRole("option", { name: "Silero VAD" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "FireRedVAD" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "TEN VAD" })).toBeTruthy();
+    // Order matters: the default engine is offered first.
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "FireRedVAD",
+      "Silero VAD",
+      "TEN VAD",
+    ]);
     // No Off option: showing a dialogue metric is what enables detection.
-    expect(screen.getAllByRole("option")).toHaveLength(3);
     expect(screen.queryByRole("option", { name: /off/i })).toBeNull();
   });
 

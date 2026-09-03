@@ -471,7 +471,15 @@ export function SettingsPanel({
                       />
                     }
                   >
+                    {/* The link sits left of the select so this row's chevron stays on the same
+                        vertical line as every other select in the drawer. */}
                     <div className="flex min-w-0 items-center gap-1">
+                      <IconButton
+                        aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
+                        onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
+                      >
+                        <ExternalLink className="size-[1em]" />
+                      </IconButton>
                       <Select value={dialogueVadEngine} onValueChange={setDialogueVadEngine}>
                         <SelectTrigger
                           aria-label="Dialogue Detection"
@@ -487,12 +495,6 @@ export function SettingsPanel({
                           ))}
                         </SelectContent>
                       </Select>
-                      <IconButton
-                        aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
-                        onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
-                      >
-                        <ExternalLink className="size-[1em]" />
-                      </IconButton>
                     </div>
                   </SettingsRow>
                 </SettingsSection>
