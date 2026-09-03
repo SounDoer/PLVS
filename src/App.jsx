@@ -557,6 +557,7 @@ function AppContent() {
     replaceWorkspace,
     waitForWorkspacePersistenceEnqueue,
     presets,
+    hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
   });
 
   const historyRetentionSec = settings.historyRetentionSec;

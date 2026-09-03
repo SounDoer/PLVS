@@ -48,14 +48,22 @@ describe("agent-control app snapshots", () => {
       preset: { activeId: "p1", dirty: true },
     });
     expect(snapshot).not.toHaveProperty("revision");
-    expect(snapshot.workspace.panels[0]).toMatchObject({
-      panelId: "levelMeter",
+    expect(snapshot.workspace.panels[0]).toEqual({
+      id: "levelMeter",
       moduleId: "levelMeter",
       title: "Level Meter",
+      controls: {
+        mode: "peak",
+        playbackMax: false,
+        floatingValue: false,
+        tpMaxMarker: false,
+        levelRangeDbfs: { min: -60, max: 3 },
+        loudnessRangeLufs: { min: -64, max: 0 },
+      },
     });
     expect(snapshot.workspace.layout.type).toBe("split");
     const encoded = JSON.stringify(snapshot);
-    expect(encoded).not.toMatch(/history|audioFrame|reactOnly|controls|config|fullscreen/);
+    expect(encoded).not.toMatch(/history|audioFrame|reactOnly|config|fullscreen/);
     expect(JSON.parse(encoded)).toEqual(snapshot);
   });
 });

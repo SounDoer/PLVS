@@ -44,6 +44,7 @@ export function useAgentControlBridge({
   replaceWorkspace,
   waitForWorkspacePersistenceEnqueue,
   presets,
+  hasLoudnessReference = false,
   flush = flushPersistence,
 }) {
   const aliveRef = useRef(false);
@@ -97,6 +98,7 @@ export function useAgentControlBridge({
               revision: revisionRef.current,
               workspace,
               presets,
+              hasLoudnessReference,
             }),
           };
         }
@@ -182,7 +184,15 @@ export function useAgentControlBridge({
         return { requestId, error: agentControlRpcError(semantic) };
       }
     };
-  }, [flush, presets, replaceWorkspace, runtime, waitForWorkspacePersistenceEnqueue, workspace]);
+  }, [
+    flush,
+    hasLoudnessReference,
+    presets,
+    replaceWorkspace,
+    runtime,
+    waitForWorkspacePersistenceEnqueue,
+    workspace,
+  ]);
 
   useEffect(() => {
     if (!enabled) return undefined;

@@ -1,5 +1,7 @@
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
+import { getPanelControls } from "../workspace/panelControlInstances.js";
 import { resolvePanelDisplayName } from "../workspace/panelInstances.js";
+import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 
 const METHODS = ["app.capabilities", "app.inspect", "workspace.applyLayout"];
@@ -22,7 +24,13 @@ export function buildAgentControlCapabilities(runtime) {
   };
 }
 
-export function buildAgentControlSnapshot({ runtime, revision, workspace, presets }) {
+export function buildAgentControlSnapshot({
+  runtime,
+  revision,
+  workspace,
+  presets,
+  hasLoudnessReference = false,
+}) {
   return {
     app: {
       name: String(runtime.appName),
@@ -35,9 +43,14 @@ export function buildAgentControlSnapshot({ runtime, revision, workspace, preset
     workspace: {
       layout: serializeWorkspaceLayout(workspace),
       panels: workspace.panelOrder.map((panelId) => ({
-        panelId,
+        id: panelId,
         moduleId: workspace.panelsById[panelId].moduleId,
         title: resolvePanelDisplayName(workspace, panelId),
+        controls: readPublicPanelControls(
+          workspace.panelsById[panelId].moduleId,
+          getPanelControls(workspace, panelId),
+          { hasLoudnessReference }
+        ),
       })),
     },
     preset: {

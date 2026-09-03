@@ -38,7 +38,12 @@ function request(method, params = {}, id = "req-1") {
   return { jsonrpc: "2.0", id, method, params };
 }
 
-function Harness({ enabled = true, flush = vi.fn(async () => {}), onStore = () => {} }) {
+function Harness({
+  enabled = true,
+  flush = vi.fn(async () => {}),
+  hasLoudnessReference = false,
+  onStore = () => {},
+}) {
   const store = useWorkspaceStore();
   onStore(store);
   useAgentControlBridge({
@@ -48,6 +53,7 @@ function Harness({ enabled = true, flush = vi.fn(async () => {}), onStore = () =
     replaceWorkspace: store.replaceWorkspace,
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
     presets: { activeId: null, dirty: false },
+    hasLoudnessReference,
     flush,
   });
   return null;
@@ -142,6 +148,16 @@ describe("useAgentControlBridge", () => {
     const inspected = await send(request("app.inspect", {}, "inspect-fullscreen"));
 
     expect(inspected.result.revisions.workspace).toBe(0);
+  });
+
+  it("reports Loudness reference availability from the active Profile", async () => {
+    mount({ hasLoudnessReference: true });
+    await waitUntilReady();
+
+    const inspected = await send(request("app.inspect", {}, "inspect-reference"));
+    const loudness = inspected.result.workspace.panels.find(({ id }) => id === "loudness");
+
+    expect(loudness.controls.layers).toEqual(["momentary", "shortTerm", "reference"]);
   });
 
   it("returns one structured error for invalid or unsupported requests", async () => {
