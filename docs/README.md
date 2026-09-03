@@ -5,13 +5,14 @@ Standard reference docs live directly in `docs/`. Working and process docs live 
 
 ## Standard docs
 
-| File                                             | Purpose                                                                                   | Read when                                                                |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [prd.md](prd.md)                                 | Product intent: what PLVS is, target users, features, non-goals                           | Understanding product scope and decisions                                |
-| [architecture.md](architecture.md)               | Technical map: tech stack, directory structure, audio pipeline, IPC, theme system         | Writing code, navigating the codebase                                    |
-| [cli.md](cli.md)                                 | Installed `plvs-cli` command reference for agents, support, and automation                | Running PLVS diagnostics or file analysis without opening the desktop UI |
-| [design-tokens.md](design-tokens.md)             | UI token system: CSS variables, semantic tokens, theme structure, text casing conventions | Working on visual appearance, theming, or label text casing              |
-| [loudness-references.md](loudness-references.md) | Loudness reference profile data for UI overlays                                           | Adding or editing loudness reference targets                             |
+| File                                               | Purpose                                                                                   | Read when                                                                |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [prd.md](prd.md)                                   | Product intent: what PLVS is, target users, features, non-goals                           | Understanding product scope and decisions                                |
+| [architecture.md](architecture.md)                 | Technical map: tech stack, directory structure, audio pipeline, IPC, theme system         | Writing code, navigating the codebase                                    |
+| [cli.md](cli.md)                                   | Installed `plvs-cli` command reference for agents, support, and automation                | Running PLVS diagnostics or file analysis without opening the desktop UI |
+| [agent-control/README.md](agent-control/README.md) | Living design record for developer-only live application control                          | Extending or reviewing the agent-control protocol                        |
+| [design-tokens.md](design-tokens.md)               | UI token system: CSS variables, semantic tokens, theme structure, text casing conventions | Working on visual appearance, theming, or label text casing              |
+| [loudness-references.md](loudness-references.md)   | Loudness reference profile data for UI overlays                                           | Adding or editing loudness reference targets                             |
 
 ## Decision records
 
