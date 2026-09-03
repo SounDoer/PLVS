@@ -34,6 +34,10 @@ export function buildAgentControlSnapshot({
   hasLoudnessReference = false,
   analysisContext = {},
 }) {
+  const detectedChannelCount =
+    Number.isInteger(analysisContext.channelCount) && analysisContext.channelCount > 0
+      ? analysisContext.channelCount
+      : null;
   return {
     app: {
       name: String(runtime.appName),
@@ -43,6 +47,15 @@ export function buildAgentControlSnapshot({
     },
     protocolVersion: 1,
     revisions: { workspace: revision },
+    runtime: {
+      channelTopology: {
+        status: detectedChannelCount === null ? "assumed" : "detected",
+        channelCount: detectedChannelCount ?? 2,
+      },
+      dialogueDetection:
+        analysisContext.dialogueDetectionActive === true ? "active" : "notRequested",
+      spectralWaveform: analysisContext.spectralWaveformActive === true ? "active" : "notRequested",
+    },
     workspace: {
       layout: serializeWorkspaceLayout(workspace),
       panels: workspace.panelOrder.map((panelId) => ({

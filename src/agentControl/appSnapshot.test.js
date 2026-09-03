@@ -34,7 +34,11 @@ describe("agent-control app snapshots", () => {
       revision: 7,
       workspace,
       presets: { activeId: "p1", dirty: true, list: [{ id: "p1", name: "Mix" }] },
-      analysisContext: { channelCount: 2 },
+      analysisContext: {
+        channelCount: 2,
+        dialogueDetectionActive: true,
+        spectralWaveformActive: false,
+      },
     });
 
     expect(snapshot).toMatchObject({
@@ -46,6 +50,11 @@ describe("agent-control app snapshots", () => {
       },
       protocolVersion: 1,
       revisions: { workspace: 7 },
+      runtime: {
+        channelTopology: { status: "detected", channelCount: 2 },
+        dialogueDetection: "active",
+        spectralWaveform: "notRequested",
+      },
       preset: { activeId: "p1", dirty: true },
     });
     expect(snapshot).not.toHaveProperty("revision");
