@@ -245,6 +245,136 @@ describe("useAgentControlBridge", () => {
     expect(view.store.state).toBe(initialState);
   });
 
+  it("updates a shared axis as one durable Workspace mutation", async () => {
+    const flush = vi.fn(async () => {});
+    const presets = { activeId: "preset-1", dirty: false };
+    const view = mount({ flush, presets });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "axis.shared.update",
+        {
+          kind: "frequency",
+          range: { minHz: 200, maxHz: 5000 },
+          expectedRevision: 0,
+        },
+        "axis-shared-update"
+      )
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: false,
+      revision: 1,
+      changed: ["shared.frequency.minHz", "shared.frequency.maxHz"],
+      warnings: [],
+      axis: { shared: { frequency: { minHz: 200, maxHz: 5000 } } },
+      preset: { activeId: "preset-1", dirty: true },
+    });
+    expect(response.result).not.toHaveProperty("persisted");
+    expect(view.store.state.axisViewports.frequency).toEqual({ min: 200, max: 5000 });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("dry-runs a panel unlink and rejects a linked local range atomically", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+    const initialState = view.store.state;
+
+    const dryRun = await send(
+      request(
+        "axis.panel.update",
+        {
+          panelId: "spectrum",
+          kind: "frequency",
+          patch: { linked: false, range: { minHz: 200, maxHz: 5000 } },
+          dryRun: true,
+        },
+        "axis-panel-dry"
+      )
+    );
+    const invalid = await send(
+      request(
+        "axis.panel.update",
+        {
+          panelId: "spectrum",
+          kind: "frequency",
+          patch: { range: { minHz: 200, maxHz: 5000 } },
+        },
+        "axis-panel-invalid"
+      )
+    );
+
+    expect(dryRun.result).toMatchObject({
+      dryRun: true,
+      revision: 0,
+      changed: expect.arrayContaining(["panels.spectrum.frequency.linked"]),
+      axis: {
+        panels: expect.arrayContaining([
+          expect.objectContaining({
+            id: "spectrum",
+            axes: expect.objectContaining({
+              frequency: expect.objectContaining({ linked: false }),
+            }),
+          }),
+        ]),
+      },
+    });
+    expect(invalid.error).toMatchObject({
+      code: -32602,
+      data: {
+        reason: "invalidAxis",
+        details: { issues: [expect.objectContaining({ code: "rangeWhileLinked" })] },
+      },
+    });
+    expect(view.store.state).toBe(initialState);
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("resets panel and shared axes and returns stable target errors", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+    act(() => {
+      view.store.replaceWorkspace({
+        ...view.store.state,
+        axisViewports: {
+          ...view.store.state.axisViewports,
+          frequency: { min: 200, max: 5000 },
+        },
+        panelControlsById: {
+          ...view.store.state.panelControlsById,
+          spectrum: {
+            ...view.store.state.panelControlsById.spectrum,
+            linkFrequencyViewport: false,
+            spectrumXMinFreq: 1000,
+            spectrumXMaxFreq: 8000,
+          },
+        },
+      });
+    });
+    flush.mockClear();
+
+    const panelReset = await send(
+      request("axis.panel.reset", { panelId: "spectrum", kind: "frequency" }, "axis-panel-reset")
+    );
+    const sharedReset = await send(
+      request("axis.shared.reset", { kind: "frequency" }, "axis-shared-reset")
+    );
+    const unavailable = await send(
+      request("axis.panel.reset", { panelId: "levelMeter", kind: "frequency" }, "axis-unavailable")
+    );
+
+    expect(panelReset.result.changed).toContain("panels.spectrum.frequency.linked");
+    expect(sharedReset.result.axis.shared.frequency).toEqual({ minHz: 20, maxHz: 20000 });
+    expect(unavailable.error).toMatchObject({
+      code: -32012,
+      data: { reason: "axisUnavailable", path: "$.params.kind" },
+    });
+    expect(flush).toHaveBeenCalledTimes(2);
+  });
+
   it("returns one structured error for invalid or unsupported requests", async () => {
     mount();
     await waitUntilReady();

@@ -7,7 +7,14 @@ import {
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence } from "../persistence/index.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
-import { buildAxisInspection, buildAxisSchema } from "./axisControl.js";
+import {
+  buildAxisInspection,
+  buildAxisSchema,
+  planPanelAxisReset,
+  planPanelAxisUpdate,
+  planSharedAxisReset,
+  planSharedAxisUpdate,
+} from "./axisControl.js";
 import {
   buildAgentControlCapabilities,
   buildAgentControlPanelSnapshot,
@@ -37,6 +44,13 @@ function panelControlsMatch(workspace, view, panelId) {
   return (
     JSON.stringify(workspace.panelControlsById?.[panelId]) ===
     JSON.stringify(view.panelControlsById?.[panelId])
+  );
+}
+
+function axisStateMatches(workspace, view) {
+  return (
+    JSON.stringify(workspace.axisViewports) === JSON.stringify(view.axisViewports) &&
+    JSON.stringify(workspace.panelControlsById) === JSON.stringify(view.panelControlsById)
   );
 }
 
@@ -140,6 +154,109 @@ export function useAgentControlBridge({
               ...inspection,
             },
           };
+        }
+
+        if (
+          request.method === "axis.shared.update" ||
+          request.method === "axis.shared.reset" ||
+          request.method === "axis.panel.update" ||
+          request.method === "axis.panel.reset"
+        ) {
+          const currentRevision = revisionRef.current;
+          if (
+            request.params.expectedRevision !== undefined &&
+            request.params.expectedRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `Workspace changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedRevision,
+                currentRevision,
+              }
+            );
+          }
+          const planned =
+            request.method === "axis.shared.update"
+              ? planSharedAxisUpdate(
+                  workspace,
+                  request.params.kind,
+                  request.params.range,
+                  analysisContext
+                )
+              : request.method === "axis.shared.reset"
+                ? planSharedAxisReset(workspace, request.params.kind)
+                : request.method === "axis.panel.update"
+                  ? planPanelAxisUpdate(
+                      workspace,
+                      request.params.panelId,
+                      request.params.kind,
+                      request.params.patch,
+                      analysisContext
+                    )
+                  : planPanelAxisReset(workspace, request.params.panelId, request.params.kind);
+          if (planned.issues.length > 0) {
+            const target = planned.issues.find(({ code }) =>
+              ["panelNotFound", "axisNotFound", "axisUnavailable"].includes(code)
+            );
+            if (target) {
+              const codes = {
+                panelNotFound: -32010,
+                axisNotFound: -32011,
+                axisUnavailable: -32012,
+              };
+              throw semanticFailure(
+                target.code,
+                target.path === "$.panelId" ? "$.params.panelId" : "$.params.kind",
+                target.message,
+                codes[target.code]
+              );
+            }
+            throw semanticFailure(
+              "invalidAxis",
+              request.method.includes(".update") ? "$.params" : "$.params.kind",
+              "The axis request is invalid.",
+              -32602,
+              { issues: planned.issues }
+            );
+          }
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            changed: planned.changed,
+            warnings: planned.warnings,
+            axis: buildAxisInspection(planned.workspace),
+            preset: panelResultPreset(presets, planned.changed),
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          const committed = new Promise((resolve, reject) => {
+            settlementRef.current = {
+              view: planned.workspace,
+              matches: (currentWorkspace) => axisStateMatches(currentWorkspace, planned.workspace),
+              resolve,
+              reject,
+            };
+          });
+          replaceWorkspace(planned.workspace);
+          result.revision = await committed;
+          await waitForWorkspacePersistenceEnqueue(planned.workspace);
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Axis state committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revision: result.revision }
+            );
+          }
+          return { requestId, result };
         }
 
         if (request.method === "panel.describe") {

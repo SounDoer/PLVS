@@ -90,6 +90,33 @@ describe("normalizeAgentControlRequest", () => {
   });
 
   it.each([
+    [
+      "axis.shared.update",
+      { kind: "frequency", range: { minHz: 200, maxHz: 5000 }, expectedRevision: 2, dryRun: true },
+    ],
+    ["axis.shared.reset", { kind: "time", expectedRevision: 2, dryRun: true }],
+    [
+      "axis.panel.update",
+      {
+        panelId: "spectrum",
+        kind: "frequency",
+        patch: { linked: false },
+        expectedRevision: 2,
+        dryRun: true,
+      },
+    ],
+    [
+      "axis.panel.reset",
+      { panelId: "spectrum", kind: "frequency", expectedRevision: 2, dryRun: true },
+    ],
+  ])("normalizes %s mutation params", (method, params) => {
+    expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method, params },
+    });
+  });
+
+  it.each([
     [request("unknown"), "methodNotFound", "$.method", -32601],
     [{ ...request("app.inspect"), extra: true }, "invalidRequest", "$.extra", -32600],
     [request("app.inspect", { extra: true }), "invalidParams", "$.params.extra", -32602],
@@ -121,6 +148,25 @@ describe("normalizeAgentControlRequest", () => {
     [request("panel.update", { patch: {} }), "invalidParams", "$.params.panelId", -32602],
     [request("panel.update", { panelId: "levelMeter" }), "invalidParams", "$.params.patch", -32602],
     [request("panel.reset", {}), "invalidParams", "$.params.panelId", -32602],
+    [
+      request("axis.shared.update", { kind: "frequency" }),
+      "invalidParams",
+      "$.params.range",
+      -32602,
+    ],
+    [request("axis.shared.reset", {}), "invalidParams", "$.params.kind", -32602],
+    [
+      request("axis.panel.update", { panelId: "spectrum", kind: "frequency" }),
+      "invalidParams",
+      "$.params.patch",
+      -32602,
+    ],
+    [
+      request("axis.panel.reset", { panelId: "spectrum", kind: "frequency", dryRun: "yes" }),
+      "invalidParams",
+      "$.params.dryRun",
+      -32602,
+    ],
     [request("panel.describe", {}), "invalidParams", "$.params.panelId", -32602],
     [
       request("panel.describe", { panelId: "spectrum", extra: true }),
