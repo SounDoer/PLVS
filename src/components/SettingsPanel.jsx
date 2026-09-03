@@ -440,7 +440,14 @@ export function SettingsPanel({
 
                 {/* History retention */}
                 <SettingsSection>
-                  <SettingsRow label="History Length">
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="History Length"
+                        tip="How far back the history panels can be scrolled. Changing it does not restart the measurement; shortening it drops rows older than the new length."
+                      />
+                    }
+                  >
                     <Select
                       value={String(historyRetentionSec)}
                       onValueChange={setHistoryRetentionSec}
