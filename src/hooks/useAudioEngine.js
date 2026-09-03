@@ -12,6 +12,7 @@ import {
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 import { resolveDevice } from "../lib/audioEngineCommands.js";
+import { DEFAULT_DIALOGUE_VAD_ENGINE } from "../settings/defaults.js";
 
 const CLEARED_AUDIO_STATE = {
   peakDb: [],
@@ -178,7 +179,9 @@ export function useAudioEngine({
           } catch (_) {}
 
           try {
-            await setDialogueVadEngine(dialogueVadEngineRef?.current ?? "firered");
+            await setDialogueVadEngine(
+              dialogueVadEngineRef?.current ?? DEFAULT_DIALOGUE_VAD_ENGINE
+            );
           } catch (_) {}
 
           await startAudioCapture({
