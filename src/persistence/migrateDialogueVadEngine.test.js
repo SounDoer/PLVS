@@ -80,4 +80,20 @@ describe("migrateDialogueVadEngine", () => {
     expect(() => migrateDialogueVadEngine()).not.toThrow();
     expect(settingsStore.read().dialogueVadEngine).toBeUndefined();
   });
+
+  it("skips a dangling panelOrder id and an orphaned panelControlsById entry", () => {
+    workspaceStore.patch({
+      tree: { type: "leaf", panelId: "p2" },
+      panelOrder: ["ghost", "p2"],
+      panelsById: {
+        p2: { id: "p2", moduleId: "stats" },
+      },
+      panelControlsById: {
+        orphan: { dialogueVadEngine: "silero" },
+        p2: { dialogueVadEngine: "ten" },
+      },
+    });
+    expect(() => migrateDialogueVadEngine()).not.toThrow();
+    expect(settingsStore.read().dialogueVadEngine).toBe("ten");
+  });
 });

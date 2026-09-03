@@ -11,6 +11,9 @@
  * when it resolved the same conflict, so nobody's effective engine changes across the upgrade.
  * Presets are not migrated: there is one global engine now, and five conflicting old values have
  * nowhere to go.
+ *
+ * Called from `src/main.jsx`, before `createRoot`, for the reason above: waiting for a React effect
+ * would be too late, since the first workspace write-back has already dropped the old key by then.
  */
 import { settingsStore, workspaceStore } from "./index.js";
 import { normalizeDialogueVadEngine } from "../settings/defaults.js";
