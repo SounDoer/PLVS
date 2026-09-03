@@ -160,25 +160,25 @@ describe("app runtime derivations", () => {
     expect(runtime.loudnessWeights).toBeNull();
   });
 
-  it("derives dialogue gating and VAD engine from visible stats controls", () => {
+  it("derives dialogue gating from visible stats controls", () => {
     expect(
       deriveDialogueRuntime(
         workspace({
           panelsById: {
-            stats: { id: "stats", moduleId: "stats" },
             "stats-hidden": { id: "stats-hidden", moduleId: "stats" },
+            stats: { id: "stats", moduleId: "stats" },
           },
-          panelOrder: ["stats", "stats-hidden"],
+          panelOrder: ["stats-hidden", "stats"],
           panelControlsById: {
-            stats: {
-              ...DEFAULT_PANEL_CONTROLS,
-              statsVisibleIds: ["integrated", "dialogueCoverage"],
-              dialogueVadEngine: "silero",
-            },
             "stats-hidden": {
               ...DEFAULT_PANEL_CONTROLS,
               statsVisibleIds: ["integrated"],
               dialogueVadEngine: "ten",
+            },
+            stats: {
+              ...DEFAULT_PANEL_CONTROLS,
+              statsVisibleIds: ["integrated", "dialogueCoverage"],
+              dialogueVadEngine: "silero",
             },
           },
         })
