@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CLOSE_ACTION,
+  DEFAULT_DIALOGUE_VAD_ENGINE,
   DEFAULT_GLASS_ENABLED,
   DEFAULT_HISTORY_RETENTION_SEC,
   DEFAULT_INTERFACE_SIZE,
@@ -10,6 +11,7 @@ import {
   HISTORY_RETENTION_OPTIONS_SEC,
   INTERFACE_SIZE_OPTIONS,
   normalizeCloseAction,
+  normalizeDialogueVadEngine,
   normalizeGlassEnabled,
   normalizeHistoryRetentionSec,
   normalizeInterfaceSize,
@@ -89,6 +91,15 @@ describe("settings defaults", () => {
     expect(normalizeInterfaceSize("extra-large")).toBe("extra-large");
     expect(normalizeInterfaceSize("huge")).toBe(DEFAULT_INTERFACE_SIZE);
     expect(normalizeInterfaceSize(undefined)).toBe(DEFAULT_INTERFACE_SIZE);
+  });
+
+  it("normalizes dialogue VAD engine", () => {
+    expect(DEFAULT_DIALOGUE_VAD_ENGINE).toBe("firered");
+    expect(normalizeDialogueVadEngine("silero")).toBe("silero");
+    expect(normalizeDialogueVadEngine("firered")).toBe("firered");
+    expect(normalizeDialogueVadEngine("ten")).toBe("ten");
+    expect(normalizeDialogueVadEngine("nonsense")).toBe(DEFAULT_DIALOGUE_VAD_ENGINE);
+    expect(normalizeDialogueVadEngine(undefined)).toBe(DEFAULT_DIALOGUE_VAD_ENGINE);
   });
 
   it("normalizes glass enabled", () => {
