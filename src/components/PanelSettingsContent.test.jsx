@@ -4,7 +4,6 @@ import { fireEvent, render as renderInDom, screen } from "@testing-library/react
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { LoudnessProfileProvider } from "@/hooks/LoudnessProfileContext.jsx";
-import { openExternalUrl } from "@/ipc/openExternal.js";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 import { settingsStore } from "@/persistence/index.js";
 import { profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
@@ -1132,12 +1131,6 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.getByText("Metrics")).toBeTruthy();
-    expect(screen.getByText("VAD")).toBeTruthy();
-    expect(
-      screen.getByText("Metrics").compareDocumentPosition(screen.getByText("VAD")) &
-        Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-    expect(screen.getByText("FireRedVAD")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Configure metrics" })).toBeNull();
     expect(screen.getByText("8 visible")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Edit metrics" }));
@@ -1157,39 +1150,17 @@ describe("PanelSettingsContent", () => {
     });
   });
 
-  it("renders the Stats VAD selector with official links and updates the selected engine", () => {
-    const onPanelControlsChange = vi.fn();
+  it("offers no VAD selector, since the detector is a global setting", () => {
     render(
       <PanelSettingsContent
         activeTab="stats"
         panelControls={DEFAULT_PANEL_CONTROLS}
-        onPanelControlsChange={onPanelControlsChange}
+        onPanelControlsChange={vi.fn()}
       />
     );
 
-    fireEvent.mouseEnter(screen.getByText("VAD"));
-    expect(screen.getByRole("tooltip").textContent).toContain("Voice activity detector");
-    fireEvent.mouseLeave(screen.getByText("VAD"));
-    fireEvent.click(screen.getByRole("button", { name: "dialogue vad" }));
-
-    expect(screen.getByRole("option", { name: /Silero VAD/ })).toBeTruthy();
-    expect(screen.getByRole("option", { name: /FireRedVAD/ })).toBeTruthy();
-    expect(screen.getByRole("option", { name: /TEN VAD/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open Silero VAD official link" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open FireRedVAD official link" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open TEN VAD official link" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "Open TEN VAD official link" }));
-
-    expect(openExternalUrl).toHaveBeenCalledWith("https://github.com/TEN-framework/ten-vad");
-    expect(onPanelControlsChange).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("option", { name: /TEN VAD/ }));
-
-    expect(onPanelControlsChange).toHaveBeenCalledWith({
-      ...DEFAULT_PANEL_CONTROLS,
-      dialogueVadEngine: "ten",
-    });
+    expect(screen.queryByText("VAD")).toBeNull();
+    expect(screen.queryByRole("button", { name: "dialogue vad" })).toBeNull();
   });
 
   it("offers no reference editor, since the active Loudness Profile owns that value", () => {

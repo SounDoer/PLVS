@@ -3,7 +3,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
   GripVertical,
   Link2,
   Link2Off,
@@ -29,10 +28,8 @@ import { useHistoryData } from "@/workspace/AudioDataContext.jsx";
 import { useAxisViewport, useAxisViewportLink } from "@/workspace/axisViewportHooks.js";
 import { AXIS_VIEWPORTS, axisKindForRangeRow } from "@/workspace/axisViewports.js";
 import { HIST_SAMPLE_SEC } from "@/hooks/useLoudnessHistory.js";
-import { DIALOGUE_VAD_ENGINE_OPTIONS } from "@/lib/dialogueVadEngines.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
-import { openExternalUrl } from "@/ipc/openExternal.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 import { HoverTip, useHoverTip } from "@/components/HoverTip.jsx";
 
@@ -654,8 +651,7 @@ export function SettingsSelect({
   );
 }
 
-/// A plain label-only choice list. `SettingsVadSelect` carries an external-link button per row,
-/// which nothing else needs.
+/// A plain label-only choice list.
 function SettingsChoiceSelect({ ariaLabel, options, value, onChange, open, onOpenChange }) {
   const selectedOption = options.find((option) => option.id === value) ?? options[0];
   return (
@@ -695,71 +691,6 @@ function SettingsChoiceSelect({ ariaLabel, options, value, onChange, open, onOpe
                   {checked ? <Check aria-hidden="true" className="size-[1em]" /> : null}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function SettingsVadSelect({ selectedOption, options, value, onChange, open, onOpenChange }) {
-  return (
-    <div className="flex min-w-0 flex-col items-end">
-      <InlineDetailTrigger
-        ariaLabel="dialogue vad"
-        summary={selectedOption.label}
-        open={open}
-        onToggle={() => onOpenChange(!open)}
-        className="w-auto grid-cols-[auto_auto] gap-1.5 justify-self-end"
-      />
-      {open ? (
-        <div role="listbox" aria-label="dialogue vad" className={SETTINGS_DETAIL_SURFACE_CLASS}>
-          {options.map((option) => {
-            const checked = option.id === value;
-            return (
-              <div
-                key={option.id}
-                role="option"
-                aria-selected={checked}
-                tabIndex={0}
-                data-settings-option-row
-                className={cn(SETTINGS_CHOICE_ROW_CLASS, "cursor-default")}
-                onClick={() => {
-                  onChange(option.id);
-                  onOpenChange(false);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onChange(option.id);
-                    onOpenChange(false);
-                  }
-                }}
-              >
-                <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS)}>
-                  {checked ? <Check aria-hidden="true" className="size-[1em]" /> : null}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                <button
-                  type="button"
-                  aria-label={`Open ${option.label} official link`}
-                  className="rounded-xs p-0.5 text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-foreground"
-                  onPointerDown={(event) => {
-                    event.stopPropagation();
-                  }}
-                  onMouseDown={(event) => {
-                    event.stopPropagation();
-                  }}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    void openExternalUrl(option.url);
-                  }}
-                >
-                  <ExternalLink aria-hidden="true" className="size-[1em]" />
-                </button>
               </div>
             );
           })}
@@ -1331,7 +1262,6 @@ export function PanelSettingsContent({
   const [vectorscopeModeOpen, setVectorscopeModeOpen] = useState(false);
   const [stereoMapPairOpen, setStereoMapPairOpen] = useState(false);
   const [spectrogramSmoothingOpen, setSpectrogramSmoothingOpen] = useState(false);
-  const [vadOpen, setVadOpen] = useState(false);
 
   if (activeTab === "levelMeter") {
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
@@ -1425,10 +1355,6 @@ export function PanelSettingsContent({
     if (!panelControls || typeof onPanelControlsChange !== "function") return null;
 
     const normalizedPanelControls = normalizePanelControls(panelControls);
-    const selectedVad =
-      DIALOGUE_VAD_ENGINE_OPTIONS.find(
-        (option) => option.id === normalizedPanelControls.dialogueVadEngine
-      ) ?? DIALOGUE_VAD_ENGINE_OPTIONS[0];
 
     return (
       <SettingsGroup title="Stats">
@@ -1461,23 +1387,6 @@ export function PanelSettingsContent({
             );
           }}
         />
-        <SettingsRow label="VAD" tooltip="Voice activity detector used by dialogue stats.">
-          <SettingsVadSelect
-            selectedOption={selectedVad}
-            options={DIALOGUE_VAD_ENGINE_OPTIONS}
-            value={selectedVad.id}
-            open={vadOpen}
-            onOpenChange={setVadOpen}
-            onChange={(dialogueVadEngine) => {
-              onPanelControlsChange(
-                normalizePanelControls({
-                  ...normalizedPanelControls,
-                  dialogueVadEngine,
-                })
-              );
-            }}
-          />
-        </SettingsRow>
       </SettingsGroup>
     );
   }
