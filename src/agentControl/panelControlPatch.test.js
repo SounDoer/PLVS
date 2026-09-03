@@ -115,4 +115,50 @@ describe("planPublicPanelControlPatch", () => {
       },
     ]);
   });
+
+  it("maps a valid Waveform patch", () => {
+    const result = planPublicPanelControlPatch("waveform", DEFAULT_PANEL_CONTROLS, {
+      frequencyColor: true,
+      frequencyBandsHz: { lowMid: 300, midHigh: 3000 },
+      centroid: true,
+    });
+
+    expect(result).toMatchObject({
+      issues: [],
+      warnings: [],
+      changed: [
+        "controls.frequencyColor",
+        "controls.frequencyBandsHz.lowMid",
+        "controls.frequencyBandsHz.midHigh",
+        "controls.centroid",
+      ],
+    });
+    expect(result.panelControls).toMatchObject({
+      waveformFrequencyColor: true,
+      waveformLowMidSplitHz: 300,
+      waveformMidHighSplitHz: 3000,
+      waveformCentroid: true,
+    });
+  });
+
+  it("rejects invalid Waveform bands and warns for dormant valid bands", () => {
+    const invalid = planPublicPanelControlPatch("waveform", DEFAULT_PANEL_CONTROLS, {
+      frequencyBandsHz: { lowMid: 2000, midHigh: 200 },
+    });
+    expect(invalid.issues).toEqual([
+      expect.objectContaining({ code: "outOfRange", path: "$.frequencyBandsHz" }),
+    ]);
+    expect(invalid.changed).toEqual([]);
+
+    const dormant = planPublicPanelControlPatch("waveform", DEFAULT_PANEL_CONTROLS, {
+      frequencyBandsHz: { lowMid: 300, midHigh: 3000 },
+    });
+    expect(dormant.warnings).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.frequencyBandsHz",
+        inactiveReason: "frequencyColorOff",
+      },
+    ]);
+  });
 });

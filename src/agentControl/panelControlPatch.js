@@ -195,5 +195,80 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     return { panelControls, changed, warnings, issues };
   }
 
+  if (moduleId === "waveform") {
+    const issues = [];
+    const allowed = new Set(["frequencyColor", "frequencyBandsHz", "centroid"]);
+    for (const key of Object.keys(patch)) {
+      if (!allowed.has(key)) {
+        issues.push(issue("unknownControl", `$.${key}`, `Unknown Waveform control: ${key}.`));
+      }
+    }
+    for (const key of ["frequencyColor", "centroid"]) {
+      if (hasOwn(patch, key)) validateBoolean(patch[key], `$.${key}`, issues);
+    }
+    if (hasOwn(patch, "frequencyBandsHz")) {
+      const bands = patch.frequencyBandsHz;
+      if (
+        bands === null ||
+        typeof bands !== "object" ||
+        Array.isArray(bands) ||
+        !Number.isInteger(bands.lowMid) ||
+        !Number.isInteger(bands.midHigh)
+      ) {
+        issues.push(
+          issue(
+            "invalidType",
+            "$.frequencyBandsHz",
+            "frequencyBandsHz must contain integer lowMid and midHigh values."
+          )
+        );
+      } else if (bands.lowMid < 20 || bands.midHigh > 20000 || bands.lowMid >= bands.midHigh) {
+        issues.push(
+          issue(
+            "outOfRange",
+            "$.frequencyBandsHz",
+            "frequencyBandsHz must satisfy 20 <= lowMid < midHigh <= 20000."
+          )
+        );
+      }
+    }
+    if (issues.length > 0) {
+      return { panelControls: current, changed: [], warnings: [], issues };
+    }
+
+    if (
+      hasOwn(patch, "frequencyColor") &&
+      patch.frequencyColor !== current.waveformFrequencyColor
+    ) {
+      panelControls.waveformFrequencyColor = patch.frequencyColor;
+      changed.push("controls.frequencyColor");
+    }
+    if (hasOwn(patch, "frequencyBandsHz")) {
+      if (patch.frequencyBandsHz.lowMid !== current.waveformLowMidSplitHz) {
+        panelControls.waveformLowMidSplitHz = patch.frequencyBandsHz.lowMid;
+        changed.push("controls.frequencyBandsHz.lowMid");
+      }
+      if (patch.frequencyBandsHz.midHigh !== current.waveformMidHighSplitHz) {
+        panelControls.waveformMidHighSplitHz = patch.frequencyBandsHz.midHigh;
+        changed.push("controls.frequencyBandsHz.midHigh");
+      }
+    }
+    if (hasOwn(patch, "centroid") && patch.centroid !== current.waveformCentroid) {
+      panelControls.waveformCentroid = patch.centroid;
+      changed.push("controls.centroid");
+    }
+    const warnings =
+      hasOwn(patch, "frequencyBandsHz") && !panelControls.waveformFrequencyColor
+        ? [
+            {
+              code: "currentlyInactive",
+              path: "controls.frequencyBandsHz",
+              inactiveReason: "frequencyColorOff",
+            },
+          ]
+        : [];
+    return { panelControls, changed, warnings, issues };
+  }
+
   return { panelControls, changed, warnings: [], issues: [] };
 }
