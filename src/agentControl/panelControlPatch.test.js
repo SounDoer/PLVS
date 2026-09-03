@@ -243,4 +243,69 @@ describe("planPublicPanelControlPatch", () => {
       [...DEFAULT_PANEL_CONTROLS.statsVisibleIds].reverse()
     );
   });
+
+  it("maps valid Spectrum display controls", () => {
+    const result = planPublicPanelControlPatch("spectrum", DEFAULT_PANEL_CONTROLS, {
+      view: "ms",
+      maxMode: "hold",
+      peakLabels: true,
+      speedPercent: 70,
+      tiltDbPerOctave: 4.5,
+      octaveSmoothing: "1/6",
+      levelRangeDb: { min: -72, max: -6 },
+    });
+
+    expect(result).toMatchObject({
+      issues: [],
+      warnings: [],
+      changed: [
+        "controls.view",
+        "controls.maxMode",
+        "controls.peakLabels",
+        "controls.speedPercent",
+        "controls.tiltDbPerOctave",
+        "controls.octaveSmoothing",
+        "controls.levelRangeDb.min",
+        "controls.levelRangeDb.max",
+      ],
+    });
+    expect(result.panelControls).toMatchObject({
+      spectrumView: "ms",
+      spectrumMaxMode: "hold",
+      spectrumPeakLabels: true,
+      spectrumSpeedPercent: 70,
+      spectrumTiltDbPerOctave: 4.5,
+      spectrumOctaveSmoothing: "1/6",
+      spectrumYMinDb: -72,
+      spectrumYMaxDb: -6,
+    });
+  });
+
+  it("validates Spectrum channel choices and warns when pair view is dormant", () => {
+    const available = planPublicPanelControlPatch(
+      "spectrum",
+      DEFAULT_PANEL_CONTROLS,
+      { channel: { type: "single", ch: 2 }, view: "ms" },
+      { channelCount: 6 }
+    );
+    expect(available.issues).toEqual([]);
+    expect(available.warnings).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.view",
+        inactiveReason: "singleChannel",
+      },
+    ]);
+
+    const unavailable = planPublicPanelControlPatch(
+      "spectrum",
+      DEFAULT_PANEL_CONTROLS,
+      { channel: { type: "single", ch: 2 } },
+      { channelCount: 4 }
+    );
+    expect(unavailable.issues).toEqual([
+      expect.objectContaining({ code: "controlUnavailable", path: "$.channel" }),
+    ]);
+    expect(unavailable.changed).toEqual([]);
+  });
 });

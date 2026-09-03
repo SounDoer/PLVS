@@ -1,5 +1,6 @@
 import { normalizePanelControls } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
+import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const arraysEqual = (left, right) =>
@@ -433,6 +434,136 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     panelControls.statsVisibleIds = finalVisible;
     panelControls.statsOrder = finalOrder;
     return { panelControls, changed, warnings: [], issues };
+  }
+
+  if (moduleId === "spectrum") {
+    const issues = [];
+    const allowed = new Set([
+      "channel",
+      "view",
+      "maxMode",
+      "peakLabels",
+      "speedPercent",
+      "tiltDbPerOctave",
+      "octaveSmoothing",
+      "levelRangeDb",
+    ]);
+    for (const key of Object.keys(patch)) {
+      if (!allowed.has(key)) {
+        issues.push(issue("unknownControl", `$.${key}`, `Unknown Spectrum control: ${key}.`));
+      }
+    }
+    if (hasOwn(patch, "channel")) {
+      const selection = patch.channel;
+      const validShape =
+        selection !== null &&
+        typeof selection === "object" &&
+        !Array.isArray(selection) &&
+        ((selection.type === "single" && Number.isInteger(selection.ch)) ||
+          (selection.type === "pair" &&
+            Number.isInteger(selection.x) &&
+            Number.isInteger(selection.y)));
+      if (!validShape) {
+        issues.push(
+          issue("invalidType", "$.channel", "channel must be a single or pair selection.")
+        );
+      } else {
+        const channelCount =
+          Number.isInteger(context.channelCount) && context.channelCount >= 2
+            ? context.channelCount
+            : 2;
+        const options = buildSpectrumChannelOptions(channelCount, []);
+        const available = options.some(
+          ({ sel }) => JSON.stringify(sel) === JSON.stringify(selection)
+        );
+        if (!available) {
+          issues.push(
+            issue(
+              "controlUnavailable",
+              "$.channel",
+              "channel is unavailable under the current channel topology."
+            )
+          );
+        }
+      }
+    }
+    const enumFields = [
+      ["view", new Set(["combined", "lr", "ms"])],
+      ["maxMode", new Set(["off", "decay", "hold"])],
+      ["octaveSmoothing", new Set(["off", "1/12", "1/6", "1/3"])],
+    ];
+    for (const [key, values] of enumFields) {
+      if (hasOwn(patch, key) && !values.has(patch[key])) {
+        issues.push(issue("invalidEnum", `$.${key}`, `${key} is not a supported value.`));
+      }
+    }
+    if (hasOwn(patch, "peakLabels")) {
+      validateBoolean(patch.peakLabels, "$.peakLabels", issues);
+    }
+    if (
+      hasOwn(patch, "speedPercent") &&
+      (!Number.isInteger(patch.speedPercent) || patch.speedPercent < 0 || patch.speedPercent > 100)
+    ) {
+      issues.push(
+        issue("outOfRange", "$.speedPercent", "speedPercent must be an integer from 0 to 100.")
+      );
+    }
+    if (
+      hasOwn(patch, "tiltDbPerOctave") &&
+      (!Number.isFinite(patch.tiltDbPerOctave) ||
+        patch.tiltDbPerOctave < 0 ||
+        patch.tiltDbPerOctave > 6)
+    ) {
+      issues.push(issue("outOfRange", "$.tiltDbPerOctave", "tiltDbPerOctave must be from 0 to 6."));
+    }
+    if (hasOwn(patch, "levelRangeDb")) {
+      validateRange(patch.levelRangeDb, "$.levelRangeDb", -120, 0, 12, issues);
+    }
+    if (issues.length > 0) {
+      return { panelControls: current, changed: [], warnings: [], issues };
+    }
+
+    if (
+      hasOwn(patch, "channel") &&
+      JSON.stringify(patch.channel) !== JSON.stringify(current.spectrumChannel)
+    ) {
+      panelControls.spectrumChannel = { ...patch.channel };
+      changed.push("controls.channel");
+    }
+    for (const [publicKey, internalKey] of [
+      ["view", "spectrumView"],
+      ["maxMode", "spectrumMaxMode"],
+      ["peakLabels", "spectrumPeakLabels"],
+      ["speedPercent", "spectrumSpeedPercent"],
+      ["tiltDbPerOctave", "spectrumTiltDbPerOctave"],
+      ["octaveSmoothing", "spectrumOctaveSmoothing"],
+    ]) {
+      if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
+        panelControls[internalKey] = patch[publicKey];
+        changed.push(`controls.${publicKey}`);
+      }
+    }
+    if (hasOwn(patch, "levelRangeDb")) {
+      if (patch.levelRangeDb.min !== current.spectrumYMinDb) {
+        panelControls.spectrumYMinDb = patch.levelRangeDb.min;
+        changed.push("controls.levelRangeDb.min");
+      }
+      if (patch.levelRangeDb.max !== current.spectrumYMaxDb) {
+        panelControls.spectrumYMaxDb = patch.levelRangeDb.max;
+        changed.push("controls.levelRangeDb.max");
+      }
+    }
+    const warnings =
+      hasOwn(patch, "view") && panelControls.spectrumChannel.type === "single"
+        ? [
+            {
+              code: "currentlyInactive",
+              path: "controls.view",
+              inactiveReason: "singleChannel",
+            },
+          ]
+        : [];
+    return { panelControls, changed, warnings, issues };
   }
 
   return { panelControls, changed, warnings: [], issues: [] };
