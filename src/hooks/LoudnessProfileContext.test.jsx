@@ -259,28 +259,58 @@ describe("draft versus library actions", () => {
     expect(result.current.draftBlocksLibraryActions).toBe(true);
   });
 
-  it("closes a clean draft when deleting or selecting", () => {
+  it("blocks deletion and selection under a clean draft too", () => {
     const mine = profile("mine", "Mine");
     seed([mine]);
     const first = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => first.result.current.beginEdit(mine.id));
     act(() => first.result.current.removeProfile(mine.id));
-    expect(first.result.current.draft).toBe(null);
-    expect(first.result.current.profiles).toEqual([]);
+    act(() => first.result.current.select(profileSelectionId(mine.id)));
+
+    // Open, not dirty, is the rule: an untouched draft used to yield, which made the block depend
+    // on state the user cannot see. The way out is the editor's own Cancel.
+    expect(first.result.current.draft).not.toBe(null);
+    expect(first.result.current.profiles).toEqual([mine]);
+    expect(first.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    expect(first.result.current.draftBlocksLibraryActions).toBe(true);
   });
 
-  it("lets preset apply cancel a dirty draft", () => {
+  it("refuses a preset snapshot restore rather than discarding the draft", () => {
     const mine = profile("mine", "Mine", -20);
     seed([mine]);
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.beginCreate());
     act(() => result.current.editDraft((document) => ({ ...document, name: "Half typed" })));
+
+    let thrown = null;
+    act(() => {
+      try {
+        result.current.applyPresetSnapshot({
+          loudnessProfileActive: profileSelectionId(mine.id),
+        });
+      } catch (error) {
+        thrown = error;
+      }
+    });
+
+    expect(thrown?.code).toBe("editorActive");
+    expect(thrown?.operation).toBe("preset.apply");
+    expect(thrown?.editors).toEqual(["loudnessProfile"]);
+    // The draft survives, and nothing was written: this is the last line of defence for an entry
+    // point that skipped the guard, and it must not cost the user the edit it just refused.
+    expect(result.current.draft.document.name).toBe("Half typed");
+    expect(result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+  });
+
+  it("restores a preset snapshot when no draft is open", () => {
+    const mine = profile("mine", "Mine", -20);
+    seed([mine]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() =>
       result.current.applyPresetSnapshot({
         loudnessProfileActive: profileSelectionId(mine.id),
       })
     );
-    expect(result.current.draft).toBe(null);
     expect(result.current.document).toEqual(mine);
   });
 });

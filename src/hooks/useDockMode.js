@@ -10,6 +10,7 @@ import {
 import { isTauri } from "../ipc/env.js";
 import { presetsStore } from "../persistence/index.js";
 import { clampDockHeight } from "../dock/dockSizing.js";
+import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
 import { isWindows, supportsDockMode } from "../lib/platform.js";
 
 function supportsDockReserveSpace() {
@@ -34,11 +35,14 @@ function normalizeDockState(raw) {
  * Attribute restores (decorations / always-on-top) are passed by the caller so
  * stored user settings are never rewritten by the dock override.
  *
- * `onEnterDock` runs once a dock entry has actually landed, for the state the
- * dock has no surface to finish. Passed in rather than reached for: the dock
- * knows it is a monitoring posture, not which editors that strands.
+ * Dock entry is a scene operation: the strip replaces the whole UI, so a
+ * draft-style editor open in the normal window would be stranded off screen.
+ * `assertSceneOperationAllowed` refuses the entry in that case -- it used to
+ * cancel the profile draft instead, which is the silent discard this guard
+ * exists to prevent. Passed in rather than reached for: the dock knows it is a
+ * monitoring posture, not which editors that strands.
  */
-export function useDockMode({ onEnterDock } = {}) {
+export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   const [dock, setDock] = useState(() =>
     normalizeDockState(
       typeof window !== "undefined" ? window.__PLVS_INITIAL_STATE__?.dockState : undefined
@@ -92,6 +96,9 @@ export function useDockMode({ onEnterDock } = {}) {
 
   const enterDockMode = useCallback(
     (edge, reserveSpaceOverride, monitorOverride, heightOverride) => {
+      // Before the platform checks so the refusal does not depend on where it runs, and before
+      // enqueueTransition so a blocked entry never joins the transition chain.
+      assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter);
       if (!isTauri() || !supportsDockMode()) return Promise.resolve();
       return enqueueTransition(async () => {
         const current = dockRef.current;
@@ -132,13 +139,10 @@ export function useDockMode({ onEnterDock } = {}) {
           height: clampDockHeight(resolved?.height ?? heightOverride ?? latest.height),
         }));
         setDockSuspendedState(false);
-        // After the transition lands, never before: a rejected `enterDock` leaves the window a
-        // normal one, with the panels it stranded still on screen and still finishable.
-        onEnterDock?.();
         if (changed) presetsStore.patch({ dirty: true });
       });
     },
-    [commitDock, enqueueTransition, onEnterDock]
+    [assertSceneOperationAllowed, commitDock, enqueueTransition]
   );
 
   const exitDockMode = useCallback(

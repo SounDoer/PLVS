@@ -338,3 +338,59 @@ describe("PresetsPopoverContent", () => {
     expect(iconsSpan.className).toContain("group-focus-within:opacity-100");
   });
 });
+
+/// Apply, Save and Update are refused by the controller while a draft-style editor is open. The
+/// popover renders them disabled because a button that silently does nothing is worse than one
+/// that looks disabled -- and the caption says how to clear the block.
+describe("PresetsPopoverContent under an active blocking editor", () => {
+  const PRESETS = {
+    ...NOOP_PRESETS,
+    list: [{ id: "p1", name: "Mixing" }],
+    activeId: "p1",
+    blocked: true,
+  };
+
+  it("disables scene operations and explains why", () => {
+    render(<PresetsPopoverContent presets={PRESETS} />);
+
+    expect(screen.getByRole("button", { name: "Apply preset Mixing" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Update preset Mixing" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(true);
+    expect(screen.getByText("Finish or cancel the active editor first.")).toBeTruthy();
+  });
+
+  it("leaves the library actions alone", () => {
+    render(<PresetsPopoverContent presets={PRESETS} />);
+
+    expect(screen.getByRole("button", { name: "Rename preset Mixing" }).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "Delete preset Mixing" }).disabled).toBe(false);
+    expect(screen.getByRole("button", { name: "Reorder Mixing" }).disabled).toBe(false);
+  });
+
+  it("does not apply on a click that lands before the disabled state renders", () => {
+    const apply = vi.fn();
+    render(<PresetsPopoverContent presets={{ ...PRESETS, apply }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply preset Mixing" }));
+
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it("does not save on Enter in the name field", () => {
+    const save = vi.fn();
+    render(<PresetsPopoverContent presets={{ ...PRESETS, save }} />);
+    const input = screen.getByRole("textbox", { name: "New preset name" });
+
+    fireEvent.change(input, { target: { value: "Nope" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("shows no caption and no disabled buttons when nothing is open", () => {
+    render(<PresetsPopoverContent presets={{ ...PRESETS, blocked: false }} />);
+
+    expect(screen.getByRole("button", { name: "Apply preset Mixing" }).disabled).toBe(false);
+    expect(screen.queryByText("Finish or cancel the active editor first.")).toBe(null);
+  });
+});

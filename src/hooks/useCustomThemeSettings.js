@@ -10,6 +10,7 @@ import { isCustomThemeId } from "../theme/customTheme.js";
 import { settingsStore } from "../persistence/index.js";
 import { normalizeThemeEditorPos } from "../settings/defaults.js";
 import { useThemeEditor } from "./useThemeEditor.js";
+import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
 
 export function useCustomThemeSettings({ themeSettings, setSettingsOpen }) {
   const [editorPos, setEditorPos] = useState(() =>
@@ -32,6 +33,10 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen }) {
     // pluginStore.subscribe is a no-op, so refresh the list explicitly after editor mutations.
     onChange: () => themeSettings.setCustomThemes(listCustomThemes()),
   });
+
+  // A blocking editor: its draft is published as a live preview, and a preset apply or a dock
+  // entry would close the panel and take the unsaved theme with it.
+  useBlockingEditor("theme", editor.isEditing);
 
   const customThemeOptions = listCustomThemeDocumentsOrdered().map((theme) => ({
     id: theme.id,

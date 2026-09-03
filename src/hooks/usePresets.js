@@ -8,6 +8,7 @@ import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { normalizePinnedPanelsById } from "../workspace/reducer.js";
 import { presetsStore } from "../persistence/index.js";
+import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 
@@ -63,6 +64,12 @@ export function usePresets({
   // records the active theme rather than every theme.
   snapshotLoudnessProfile = () => ({}),
   applyLoudnessProfileSnapshot = () => {},
+  // Apply, Save and Update are scene operations: the first replaces the scene, the other two
+  // capture it. All three are refused while a draft-style editor is open, and refused here rather
+  // than in the popover so the dock, the tray and App Control get the same answer. Throws a
+  // SceneOperationBlockedError; see `lib/sceneOperations.js`.
+  assertSceneOperationAllowed = () => {},
+  blockingEditors = [],
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
@@ -166,6 +173,7 @@ export function usePresets({
 
   const save = useCallback(
     async (name) => {
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetSave);
       const trimmed = String(name ?? "").trim();
       if (!trimmed) return null;
       const snapshot = await captureSnapshot();
@@ -178,11 +186,14 @@ export function usePresets({
       write({ list: [...current.list, preset], activeId: preset.id, dirty: false });
       return preset;
     },
-    [captureSnapshot, write]
+    [assertSceneOperationAllowed, captureSnapshot, write]
   );
 
   const apply = useCallback(
     async (id) => {
+      // Before `setView`, before the dock transition, before any window call: a refusal must not
+      // leave half a preset applied.
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetApply);
       const current = normalizePresets(presetsStore.read());
       const preset = current.list.find((p) => p.id === id);
       if (!preset) return false;
@@ -269,6 +280,7 @@ export function usePresets({
       return true;
     },
     [
+      assertSceneOperationAllowed,
       setView,
       setWindowPinned,
       setFocusView,
@@ -285,6 +297,7 @@ export function usePresets({
 
   const update = useCallback(
     async (id) => {
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetUpdate);
       const current = normalizePresets(presetsStore.read());
       const existing = current.list.find((p) => p.id === id);
       if (!existing) return null;
@@ -297,7 +310,7 @@ export function usePresets({
       });
       return updated;
     },
-    [captureSnapshot, write]
+    [assertSceneOperationAllowed, captureSnapshot, write]
   );
 
   const rename = useCallback(
@@ -340,6 +353,9 @@ export function usePresets({
       list: presets.list,
       activeId: presets.activeId,
       dirty: presets.dirty,
+      // What the popover, the dock row and the tray grey out. The refusal above is the guard;
+      // this only makes it legible.
+      blocked: blockingEditors.length > 0,
       save,
       apply,
       update,
@@ -351,6 +367,7 @@ export function usePresets({
     }),
     [
       apply,
+      blockingEditors,
       clearActive,
       markDirty,
       presets.activeId,

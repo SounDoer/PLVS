@@ -33,6 +33,7 @@ import { settingsStore } from "../persistence/index.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import { profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 import { useDockMode } from "./useDockMode.js";
+import { BlockingEditorsProvider, useBlockingEditors } from "./BlockingEditorsContext.jsx";
 
 const TEST_PROFILE = {
   id: "test-profile",
@@ -321,7 +322,10 @@ describe("useDockMode", () => {
 /// rendered while docked and the strip has no profile popover, so a draft carried into the dock
 /// would keep outranking the persisted selection for DockStats and the dock's reference line with
 /// no way for the user to see, name, save or cancel it.
-describe("useDockMode hands off an open configuration draft", () => {
+///
+/// Entry is therefore refused while a draft is open. It used to cancel the draft instead, which
+/// destroyed user content on a path the user did not think of as destructive.
+describe("useDockMode refuses entry while a configuration draft is open", () => {
   beforeEach(() => {
     mocks.enterDock.mockClear().mockResolvedValue(undefined);
     mocks.getDockState.mockReset().mockResolvedValue(undefined);
@@ -336,16 +340,34 @@ describe("useDockMode hands off an open configuration draft", () => {
     return renderHook(
       () => {
         const profile = useLoudnessProfile();
-        const dock = useDockMode({ onEnterDock: profile.cancelDraft });
+        const { assertSceneOperationAllowed } = useBlockingEditors();
+        const dock = useDockMode({ assertSceneOperationAllowed });
         return { profile, dock };
       },
       {
-        wrapper: ({ children }) => createElement(LoudnessProfileProvider, null, children),
+        wrapper: ({ children }) =>
+          createElement(
+            BlockingEditorsProvider,
+            null,
+            createElement(LoudnessProfileProvider, null, children)
+          ),
       }
     );
   }
 
-  it("cancels a dirty draft when the app enters dock mode", async () => {
+  function enterDockCatching(result) {
+    let thrown = null;
+    act(() => {
+      try {
+        result.current.dock.enterDockMode("bottom");
+      } catch (error) {
+        thrown = error;
+      }
+    });
+    return thrown;
+  }
+
+  it("refuses entry under a dirty draft and keeps the draft and the preview", () => {
     settingsStore.patch({
       loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] },
     });
@@ -355,23 +377,38 @@ describe("useDockMode hands off an open configuration draft", () => {
     act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -16 })));
     expect(result.current.profile.referenceLufs).toBe(-16);
 
-    await act(() => result.current.dock.enterDockMode("bottom"));
+    const thrown = enterDockCatching(result);
 
-    expect(result.current.profile.draft).toBe(null);
-    // What DockStats colours against reverts to the selection the user last persisted.
-    expect(result.current.profile.document.name).toBe("Test profile");
-    expect(result.current.profile.referenceLufs).toBe(-23);
+    expect(thrown?.code).toBe("editorActive");
+    expect(thrown?.operation).toBe("dock.enter");
+    expect(thrown?.editors).toEqual(["loudnessProfile"]);
+    // Refused before the transition: no IPC, no dock state, and the preview the user was reading
+    // is still the one on screen.
+    expect(mocks.enterDock).not.toHaveBeenCalled();
+    expect(result.current.dock.dockEnabled).toBe(false);
+    expect(result.current.profile.draft.document.referenceLufs).toBe(-16);
+    expect(result.current.profile.referenceLufs).toBe(-16);
   });
 
-  it("keeps the draft when the dock transition fails", async () => {
-    mocks.enterDock.mockRejectedValueOnce(new Error("apply_dock_form failed"));
+  it("refuses entry under a clean draft too", () => {
     const { result } = renderDockWithProfile();
     act(() => result.current.profile.beginCreate());
-    act(() => result.current.profile.editDraft((d) => ({ ...d, referenceLufs: -16 })));
 
-    await expect(act(() => result.current.dock.enterDockMode("bottom"))).rejects.toThrow();
+    const thrown = enterDockCatching(result);
 
-    // The window never became a strip, so the editor is still on screen and still reachable.
-    expect(result.current.profile.draft.document.referenceLufs).toBe(-16);
+    expect(thrown?.code).toBe("editorActive");
+    expect(mocks.enterDock).not.toHaveBeenCalled();
+    expect(result.current.profile.draft).not.toBe(null);
+  });
+
+  it("enters once the draft is cancelled", async () => {
+    const { result } = renderDockWithProfile();
+    act(() => result.current.profile.beginCreate());
+    act(() => result.current.profile.cancelDraft());
+
+    await act(() => result.current.dock.enterDockMode("bottom"));
+
+    expect(mocks.enterDock).toHaveBeenCalledTimes(1);
+    expect(result.current.dock.dockEnabled).toBe(true);
   });
 });

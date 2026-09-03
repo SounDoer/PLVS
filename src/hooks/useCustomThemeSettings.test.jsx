@@ -5,6 +5,7 @@ import { useCustomThemeSettings } from "./useCustomThemeSettings.js";
 import { useThemeSettings } from "./useThemeSettings.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { upsertCustomTheme } from "../theme/customThemesRepo.js";
+import { BlockingEditorsProvider, useBlockingEditors } from "./BlockingEditorsContext.jsx";
 
 function mockMatchMedia(matches) {
   return vi.fn().mockImplementation((query) => ({
@@ -24,6 +25,53 @@ function renderCustomThemeSettings() {
     });
   });
 }
+
+/// The theme editor is a blocking editor: its draft is published as a live preview, and a preset
+/// apply or a dock entry would close the panel and take the unsaved theme with it.
+describe("useCustomThemeSettings registers a blocking editor", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.matchMedia = mockMatchMedia(true);
+  });
+
+  function renderWithRegistry() {
+    return renderHook(
+      () => {
+        const themeSettings = useThemeSettings();
+        return {
+          settings: useCustomThemeSettings({ themeSettings, setSettingsOpen: vi.fn() }),
+          registry: useBlockingEditors(),
+        };
+      },
+      { wrapper: ({ children }) => <BlockingEditorsProvider>{children}</BlockingEditorsProvider> }
+    );
+  }
+
+  it("registers while the editor is open and clears on cancel", () => {
+    const { result } = renderWithRegistry();
+    expect(result.current.registry.activeBlockingEditors).toEqual([]);
+
+    act(() => result.current.settings.createCustomTheme());
+
+    // Open, not dirty: nothing has been typed into the new theme yet.
+    expect(result.current.registry.activeBlockingEditors).toEqual(["theme"]);
+    expect(() => result.current.registry.assertSceneOperationAllowed("preset.apply")).toThrow(
+      /Finish or cancel/
+    );
+
+    act(() => result.current.settings.editor.cancel());
+
+    expect(result.current.registry.activeBlockingEditors).toEqual([]);
+  });
+
+  it("clears the registration on save", () => {
+    const { result } = renderWithRegistry();
+    act(() => result.current.settings.createCustomTheme());
+    act(() => result.current.settings.editor.save());
+
+    expect(result.current.registry.activeBlockingEditors).toEqual([]);
+  });
+});
 
 describe("useCustomThemeSettings", () => {
   beforeEach(() => {

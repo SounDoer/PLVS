@@ -26,6 +26,14 @@ const DRAG_HANDLE_CLASS =
  * Update / Rename / Delete. Rename is inline.
  */
 export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true }) {
+  // Apply, Save and Update capture or replace the whole scene, so they are refused while a
+  // draft-style editor is open. The controller refuses them whatever this renders; showing them
+  // disabled is what makes the refusal legible, and the caption below says how to clear it.
+  //
+  // Deliberately not per-preset: a preset that carries no dock state is no safer to apply than one
+  // that does, and a rule that depended on the row's contents could not be read off the screen.
+  const blocked = presets.blocked === true;
+  const blockedClass = "disabled:opacity-40";
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [drafts, setDrafts] = useState({});
@@ -41,10 +49,19 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
   );
   const orderedList = orderedIds.map((id) => presetsById.get(id)).filter(Boolean);
 
+  // The controller rejects rather than returning false when blocked, and blocked is the only
+  // rejection these produce here; the dock's proxy returns nothing at all. Neither is worth an
+  // unhandled rejection, and the caption below has already said what happened.
+  const runPresetAction = (result) => {
+    if (result && typeof result.catch === "function") result.catch(() => {});
+    return result;
+  };
+
   const handleSave = () => {
+    if (blocked) return;
     const trimmed = name.trim();
     if (!trimmed) return;
-    const result = presets.save(trimmed);
+    const result = runPresetAction(presets.save(trimmed));
     if (result && typeof result.then === "function") {
       result.then((v) => {
         if (v !== false) setName("");
@@ -95,9 +112,9 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
           type="button"
           variant="secondary"
           size="sm"
-          className="h-7 shrink-0 px-2 text-[length:var(--ui-fs-control)]"
+          className={cn("h-7 shrink-0 px-2 text-[length:var(--ui-fs-control)]", blockedClass)}
           onClick={handleSave}
-          disabled={!name.trim()}
+          disabled={blocked || !name.trim()}
         >
           Save
         </Button>
@@ -171,11 +188,15 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                     <button
                       type="button"
                       aria-label={`Apply preset ${preset.name}`}
-                      onClick={() => presets.apply(preset.id)}
+                      onClick={() => runPresetAction(presets.apply(preset.id))}
+                      disabled={blocked}
                       // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after
                       // the drag handle, so the left side doesn't need a second helping of the
                       // handle's own gap.
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded-xs pl-1 pr-1.5 py-1.5 text-left"
+                      className={cn(
+                        "flex min-w-0 flex-1 items-center gap-2 rounded-xs pl-1 pr-1.5 py-1.5 text-left",
+                        blockedClass
+                      )}
                     >
                       <span
                         aria-label={
@@ -199,9 +220,13 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                         aria-label={`Update preset ${preset.name}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          presets.update(preset.id);
+                          runPresetAction(presets.update(preset.id));
                         }}
-                        className="rounded-xs text-muted-foreground hover:text-foreground"
+                        disabled={blocked}
+                        className={cn(
+                          "rounded-xs text-muted-foreground hover:text-foreground",
+                          blockedClass
+                        )}
                       >
                         <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
@@ -242,6 +267,12 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
           })}
         </div>
       )}
+
+      {blocked ? (
+        <p className="px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
+          Finish or cancel the active editor first.
+        </p>
+      ) : null}
     </>
   );
 }

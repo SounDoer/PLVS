@@ -237,6 +237,46 @@ describe("useTray", () => {
     expect(apply).toHaveBeenCalledWith("p1");
   });
 
+  it("disables the Presets submenu while a blocking editor is open", async () => {
+    const apply = vi.fn();
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        presets: {
+          list: [{ id: "p1", name: "Mixing" }],
+          activeId: "p1",
+          dirty: false,
+          blocked: true,
+          apply,
+        },
+      })
+    );
+    await act(async () => {});
+
+    // The tray has nowhere to put a caption, so the parent carries the reason.
+    expect(findText(submenuOptions(), "Presets: Editing…")).toBeTruthy();
+    expect(findText(checkItemOptions(), "Mixing")).toMatchObject({ enabled: false });
+  });
+
+  it("drops the rejection from a click that beat the menu rebuild", async () => {
+    const blocked = Object.assign(new Error("Finish or cancel the active editor first."), {
+      code: "editorActive",
+    });
+    const apply = vi.fn(() => Promise.reject(blocked));
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        presets: { list: [{ id: "p1", name: "Mixing" }], activeId: null, dirty: false, apply },
+      })
+    );
+    await act(async () => {});
+
+    // The controller refuses it; an unhandled rejection is not a way to report that.
+    expect(() => findText(checkItemOptions(), "Mixing").action()).not.toThrow();
+    await act(async () => {});
+    expect(apply).toHaveBeenCalledWith("p1");
+  });
+
   it("shows a disabled No presets item when the list is empty", async () => {
     renderHook(() => useTray(defaultProps));
     await act(async () => {});

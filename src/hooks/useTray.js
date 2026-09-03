@@ -64,7 +64,13 @@ function presetLabelFor({ presetList, presetActiveId, presetDirty }) {
   return presetDirty ? `${active.name} (modified)` : active.name;
 }
 
-async function buildPresetItems({ presetList, presetActiveId, presetDirty, onApplyPreset }) {
+async function buildPresetItems({
+  presetList,
+  presetActiveId,
+  presetDirty,
+  presetsBlocked,
+  onApplyPreset,
+}) {
   if (!presetList.length) {
     return [await MenuItem.new({ text: "No presets", enabled: false })];
   }
@@ -75,6 +81,9 @@ async function buildPresetItems({ presetList, presetActiveId, presetDirty, onApp
       await CheckMenuItem.new({
         text: active && presetDirty ? `${p.name} (modified)` : p.name,
         checked: active,
+        // Applying a preset replaces the scene, so it is refused while a draft-style editor is
+        // open. The tray has nowhere to show a caption, so the submenu title carries the reason.
+        enabled: !presetsBlocked,
         action: () => onApplyPreset(p.id),
       })
     );
@@ -98,6 +107,7 @@ async function buildMenu(cfg) {
     presetList,
     presetActiveId,
     presetDirty,
+    presetsBlocked,
     onApplyPreset,
   } = cfg;
 
@@ -136,9 +146,17 @@ async function buildMenu(cfg) {
       }),
     }),
     await Submenu.new({
-      text: `Presets: ${presetLabelFor({ presetList, presetActiveId, presetDirty })}`,
+      text: presetsBlocked
+        ? "Presets: Editing…"
+        : `Presets: ${presetLabelFor({ presetList, presetActiveId, presetDirty })}`,
       enabled: !updateBusy,
-      items: await buildPresetItems({ presetList, presetActiveId, presetDirty, onApplyPreset }),
+      items: await buildPresetItems({
+        presetList,
+        presetActiveId,
+        presetDirty,
+        presetsBlocked,
+        onApplyPreset,
+      }),
     }),
     await PredefinedMenuItem.new({ item: "Separator" }),
     await MenuItem.new({
@@ -162,7 +180,7 @@ export function useTray({
   safeAudioDeviceId = "default",
   defaultOutputLabel = "",
   onSelectDevice = () => {},
-  presets = { list: [], activeId: null, dirty: false, apply: () => {} },
+  presets = { list: [], activeId: null, dirty: false, blocked: false, apply: () => {} },
 }) {
   const isMac = isMacOS();
   const trayRef = useRef(null);
@@ -198,7 +216,12 @@ export function useTray({
   }, []);
   const stableSelectDevice = useCallback((id) => onSelectDeviceRef.current(id), []);
   const stableApplyPreset = useCallback((id) => {
-    if (!updateBusyRef.current) onApplyPresetRef.current(id);
+    if (updateBusyRef.current) return;
+    // The items are disabled while the guard is up, but the menu is rebuilt asynchronously and a
+    // click can land against the previous one. The controller refuses it either way; the tray has
+    // no surface to report that on, so the rejection is dropped here rather than left unhandled.
+    const result = onApplyPresetRef.current(id);
+    if (result && typeof result.catch === "function") result.catch(() => {});
   }, []);
 
   // Everything buildMenu reads that can change after creation. The ref keeps the
@@ -214,6 +237,7 @@ export function useTray({
     presetList: presets.list,
     presetActiveId: presets.activeId,
     presetDirty: presets.dirty,
+    presetsBlocked: presets.blocked === true,
   };
   const menuInputsRef = useRef(menuInputs);
   useEffect(() => {
@@ -303,6 +327,7 @@ export function useTray({
     presets.list,
     presets.activeId,
     presets.dirty,
+    presets.blocked,
   ]);
 
   // Update tray icon when color scheme changes.

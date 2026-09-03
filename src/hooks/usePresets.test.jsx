@@ -36,7 +36,13 @@ vi.mock("../ipc/events.js", () => ({
   onWindowBoundsChanged: mocks.onWindowBoundsChanged,
 }));
 
+import { useState } from "react";
 import { usePresets } from "./usePresets.js";
+import {
+  BlockingEditorsProvider,
+  useBlockingEditor,
+  useBlockingEditors,
+} from "./BlockingEditorsContext.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import { settingsStore } from "../persistence/index.js";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfileCatalog.js";
@@ -939,5 +945,197 @@ describe("usePresets Loudness Profile snapshot", () => {
     // Off, and crucially the library is left alone rather than resurrected.
     expect(result.current.profile.active).toBe(LOUDNESS_PROFILE_OFF);
     expect(result.current.profile.profiles).toEqual([]);
+  });
+});
+
+/// The scene guard. Apply replaces the scene, Save and Update capture it, so all three are refused
+/// while a draft-style editor is open -- open, not dirty. Refused here rather than in the popover
+/// so the dock, the tray and App Control get the same answer.
+describe("usePresets under an active blocking editor", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    // Preset ids are minted from Date.now(), so two saves in the same millisecond would collide
+    // and a delete would take both.
+    let now = 1000;
+    vi.spyOn(Date, "now").mockImplementation(() => (now += 1));
+    mocks.isTauri.mockReset().mockReturnValue(true);
+    mocks.applyWindowBounds.mockReset().mockResolvedValue(undefined);
+    mocks.currentWindowBounds.mockReset().mockResolvedValue({
+      x: 10,
+      y: 20,
+      width: 800,
+      height: 600,
+      isMaximized: false,
+    });
+    mocks.isDecorated.mockReset().mockResolvedValue(true);
+    mocks.setDecorations.mockReset().mockResolvedValue(undefined);
+    mocks.onWindowBoundsChanged.mockReset().mockImplementation(async () => () => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  function guardWrapper({ children }) {
+    return (
+      <BlockingEditorsProvider>
+        <WorkspaceProvider>
+          <LoudnessProfileProvider>{children}</LoudnessProfileProvider>
+        </WorkspaceProvider>
+      </BlockingEditorsProvider>
+    );
+  }
+
+  /// The real registry, driven the way an editor drives it. `spies` stands in for every scene
+  /// mutation usePresets performs, so "refused before mutation" can be asserted as "none of these
+  /// ran" rather than by reading the outcome back.
+  function renderGuardedPresets() {
+    const spies = {
+      setWindowPinned: vi.fn(),
+      setFocusView: vi.fn(),
+      setPanelOpacity: vi.fn(),
+      setGlassEnabled: vi.fn(),
+      applyDockPreset: vi.fn(async () => false),
+      applyLoudnessProfileSnapshot: vi.fn(),
+    };
+    let setEditorOpen;
+    const view = renderHook(
+      () => {
+        const [open, setOpen] = useState(false);
+        setEditorOpen = setOpen;
+        useBlockingEditor("loudnessProfile", open);
+        const { activeBlockingEditors, assertSceneOperationAllowed } = useBlockingEditors();
+        return {
+          workspace: useWorkspaceStore(),
+          presets: usePresets({
+            ...spies,
+            assertSceneOperationAllowed,
+            blockingEditors: activeBlockingEditors,
+          }),
+        };
+      },
+      { wrapper: guardWrapper }
+    );
+    return {
+      ...view,
+      spies,
+      openEditor: () => act(() => setEditorOpen(true)),
+      closeEditor: () => act(() => setEditorOpen(false)),
+    };
+  }
+
+  async function refusal(call) {
+    let thrown = null;
+    await act(async () => {
+      try {
+        await call();
+      } catch (error) {
+        thrown = error;
+      }
+    });
+    return thrown;
+  }
+
+  it("refuses apply before touching the workspace, the dock, the window or the profile", async () => {
+    const view = renderGuardedPresets();
+    await act(async () => {
+      await view.result.current.presets.save("Saved");
+    });
+    const savedId = presetsStore.read().list[0].id;
+    // Move the live scene away from the preset so a partial apply would be visible.
+    act(() => view.result.current.workspace.setTree(leaf(["loudness"])));
+    const before = presetsStore.read();
+
+    view.openEditor();
+    const thrown = await refusal(() => view.result.current.presets.apply(savedId));
+
+    expect(thrown?.code).toBe("editorActive");
+    expect(thrown?.operation).toBe("preset.apply");
+    expect(thrown?.editors).toEqual(["loudnessProfile"]);
+    expect(view.result.current.workspace.state.tree).toEqual(leaf(["loudness"]));
+    expect(view.spies.applyDockPreset).not.toHaveBeenCalled();
+    expect(view.spies.setFocusView).not.toHaveBeenCalled();
+    expect(view.spies.setWindowPinned).not.toHaveBeenCalled();
+    expect(view.spies.setPanelOpacity).not.toHaveBeenCalled();
+    expect(view.spies.setGlassEnabled).not.toHaveBeenCalled();
+    expect(view.spies.applyLoudnessProfileSnapshot).not.toHaveBeenCalled();
+    expect(mocks.applyWindowBounds).not.toHaveBeenCalled();
+    expect(mocks.setDecorations).not.toHaveBeenCalled();
+    expect(presetsStore.read()).toEqual(before);
+  });
+
+  it("refuses save and update without writing to the library", async () => {
+    const view = renderGuardedPresets();
+    await act(async () => {
+      await view.result.current.presets.save("Saved");
+    });
+    const savedId = presetsStore.read().list[0].id;
+    const before = presetsStore.read();
+
+    view.openEditor();
+    const save = await refusal(() => view.result.current.presets.save("Second"));
+    const update = await refusal(() => view.result.current.presets.update(savedId));
+
+    expect(save?.operation).toBe("preset.save");
+    expect(update?.operation).toBe("preset.update");
+    // Capture is the risk here: what the editor previews is not what a snapshot would record.
+    expect(presetsStore.read()).toEqual(before);
+  });
+
+  it("refuses even when the editor has no unsaved edits", async () => {
+    const view = renderGuardedPresets();
+    await act(async () => {
+      await view.result.current.presets.save("Saved");
+    });
+    const savedId = presetsStore.read().list[0].id;
+
+    // No edit was made; the editor is merely open. Dirty is invisible to the user and flips
+    // mid-interaction, so the rule keys on open.
+    view.openEditor();
+    expect(view.result.current.presets.blocked).toBe(true);
+    expect((await refusal(() => view.result.current.presets.apply(savedId)))?.code).toBe(
+      "editorActive"
+    );
+  });
+
+  it("still allows the library actions that neither read nor replace the scene", async () => {
+    const view = renderGuardedPresets();
+    await act(async () => {
+      await view.result.current.presets.save("First");
+    });
+    await act(async () => {
+      await view.result.current.presets.save("Second");
+    });
+    const [first, second] = presetsStore.read().list.map((preset) => preset.id);
+
+    view.openEditor();
+    act(() => view.result.current.presets.rename(first, "Renamed"));
+    act(() => view.result.current.presets.reorder([second, first]));
+    act(() => view.result.current.presets.remove(second));
+
+    expect(presetsStore.read().list.map((preset) => preset.name)).toEqual(["Renamed"]);
+  });
+
+  it("allows the refused operation again once the editor closes", async () => {
+    const view = renderGuardedPresets();
+    await act(async () => {
+      await view.result.current.presets.save("Saved");
+    });
+    const savedId = presetsStore.read().list[0].id;
+    act(() => view.result.current.workspace.setTree(leaf(["loudness"])));
+
+    view.openEditor();
+    expect((await refusal(() => view.result.current.presets.apply(savedId)))?.code).toBe(
+      "editorActive"
+    );
+    view.closeEditor();
+    expect(view.result.current.presets.blocked).toBe(false);
+    await act(async () => {
+      await view.result.current.presets.apply(savedId);
+    });
+
+    expect(view.spies.applyDockPreset).toHaveBeenCalled();
+    expect(view.result.current.presets.activeId).toBe(savedId);
   });
 });

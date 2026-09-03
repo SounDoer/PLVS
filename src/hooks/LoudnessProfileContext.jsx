@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
+import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
+import { SCENE_OPERATIONS, SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import {
   LOUDNESS_PROFILE_OFF,
   createProfileDraft,
@@ -116,19 +118,28 @@ export function LoudnessProfileProvider({ children }) {
     setDraft(next);
   }, []);
 
-  /// One rule for every library action that would take an open draft with it: a dirty draft blocks
-  /// it, a clean draft yields to it.
+  /// An open draft blocks every library action that would take it with it -- open, not dirty.
   ///
   /// The popover stays usable while the editor panel is open, so two surfaces mutate this state and
   /// somebody has to lose. Losing the typing is the wrong answer -- the draft outranks the
   /// selection for every reader, so the discard is invisible until much later. The way out is the
   /// panel's own Save or Cancel, which is on screen and already prompts.
   ///
+  /// It used to turn on `dirty`, letting an untouched draft yield. One rule is better than two:
+  /// `dirty` is invisible to the user and flips mid-interaction, and the scene guard this editor
+  /// now feeds (`BlockingEditorsContext`) keys on "open" for exactly that reason. The cost is one
+  /// Cancel before switching profiles from an editor nothing was typed into.
+  ///
   /// Enforced here rather than only in the popover so a second caller cannot route around it.
   ///
   /// Read from the ref, not from `draft`: a click landing in the same tick as a debounced edit must
   /// see the edit. See the `draftRef` comment above.
-  const draftBlocks = useCallback(() => draftRef.current?.dirty === true, []);
+  const draftBlocks = useCallback(() => draftRef.current != null, []);
+
+  /// This editor is a blocking editor: while a draft is open, preset apply / save / update and
+  /// dock entry are all refused. Registered from the provider so it holds for every surface that
+  /// can open the draft.
+  useBlockingEditor("loudnessProfile", draft != null);
 
   const beginCreate = useCallback(() => {
     if (draftBlocks()) return;
@@ -208,10 +219,9 @@ export function LoudnessProfileProvider({ children }) {
   const select = useCallback(
     (selection) => {
       if (draftBlocks()) return;
-      if (draftRef.current) cancelDraft();
       commit((prev) => ({ ...prev, active: selection }));
     },
-    [cancelDraft, commit, draftBlocks]
+    [commit, draftBlocks]
   );
 
   const selectOff = useCallback(() => select(LOUDNESS_PROFILE_OFF), [select]);
@@ -219,16 +229,13 @@ export function LoudnessProfileProvider({ children }) {
   /// Deleting the active profile drops the session to Off; normalize would do it anyway, but
   /// doing it here keeps the transition explicit.
   ///
-  /// Delete sits two icons from Edit in the same row, so the draft has to be dealt with here. A
-  /// dirty draft blocks the delete; a clean one is closed, because leaving the panel open on a
-  /// profile that no longer exists is how Save came to write nothing at all.
+  /// Delete sits two icons from Edit in the same row, so the draft has to be dealt with here: any
+  /// open draft blocks the delete. Leaving the panel open on a profile that no longer exists is
+  /// how Save came to write nothing at all, and closing it for the user is the discard this whole
+  /// guard exists to prevent -- so the click is refused instead, and the panel says why.
   const removeProfile = useCallback(
     (id) => {
       if (draftBlocks()) return;
-      // Broader than "cancel the draft that edits this id" on purpose: that narrower rule is the
-      // one that matters, and stating it as a special case would invite someone to relax the
-      // general one and take it with them.
-      if (draftRef.current) cancelDraft();
       const selection = profileSelectionId(id);
       commit((prev) => ({
         ...prev,
@@ -237,7 +244,7 @@ export function LoudnessProfileProvider({ children }) {
       }));
       replacePresetProfileSelection(selection);
     },
-    [cancelDraft, commit, draftBlocks]
+    [commit, draftBlocks]
   );
 
   /// Pure reordering of the library: never touches `active`, so it cannot dirty a preset and
@@ -259,18 +266,24 @@ export function LoudnessProfileProvider({ children }) {
     [state.active]
   );
 
-  /// The one library action that overrides the block. A preset apply is not a popover click the
-  /// user can be asked to reconsider -- it arrives from elsewhere and must win, or the restore
-  /// silently does nothing because the draft still outranks the selection it just wrote.
+  /// Preset application must be rejected before mutation while a blocking editor is active.
+  /// This function must never discard an editor draft implicitly.
+  ///
+  /// It used to do the opposite -- cancel the draft, on the grounds that an apply arriving from
+  /// elsewhere must win. That made a missed guard upstream destroy user content silently. The
+  /// caller (`usePresets.apply`) now refuses the whole operation before touching anything; this
+  /// throw is the last line of defence for an entry point that forgets to, and it is a refusal,
+  /// not a discard.
   const applyPresetSnapshot = useCallback(
     (snapshot) => {
-      // Nothing to restore is not a restore, and must not cost the draft anything.
-      if (snapshot && draftRef.current) cancelDraft();
+      if (draftRef.current) {
+        throw new SceneOperationBlockedError(SCENE_OPERATIONS.presetApply, ["loudnessProfile"]);
+      }
       commit((prev) => (snapshot ? { ...prev, active: snapshot.loudnessProfileActive } : prev), {
         presetDirty: false,
       });
     },
-    [cancelDraft, commit]
+    [commit]
   );
 
   const value = useMemo(
@@ -282,7 +295,7 @@ export function LoudnessProfileProvider({ children }) {
       draft,
       // The provider already refuses these; the popover renders them disabled because a button
       // that silently does nothing is worse than one that looks disabled.
-      draftBlocksLibraryActions: draft?.dirty === true,
+      draftBlocksLibraryActions: draft != null,
       beginCreate,
       beginEdit,
       editDraft,

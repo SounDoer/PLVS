@@ -23,6 +23,8 @@ import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
+import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
+import { isSceneOperationBlocked } from "./lib/sceneOperations.js";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
@@ -115,9 +117,13 @@ export default function App() {
       <MeterRuntimeProvider>
         {/* Inside MeterRuntime and outside AppContent: dockLayout is a hook in AppContent and
             DockStats is rendered by it, so one provider covers both windows' worth of Stats. */}
-        <LoudnessProfileProvider>
-          <AppContent />
-        </LoudnessProfileProvider>
+        {/* Outside LoudnessProfileProvider: the profile draft registers itself as a blocking
+            editor, and so does the theme editor further down in AppContent. */}
+        <BlockingEditorsProvider>
+          <LoudnessProfileProvider>
+            <AppContent />
+          </LoudnessProfileProvider>
+        </BlockingEditorsProvider>
       </MeterRuntimeProvider>
     </WorkspaceProvider>
   );
@@ -202,6 +208,10 @@ function AppContent() {
   // "there is nothing to show". Reading it this early is safe: it is a context
   // read with no ordering constraints of its own.
   const loudnessProfile = useLoudnessProfile();
+  // The scene guard. Every operation that captures, replaces or tears down the current editing
+  // scene -- preset apply / save / update, dock entry -- asks it first, and it refuses while any
+  // draft-style editor is open. See `hooks/BlockingEditorsContext.jsx`.
+  const { activeBlockingEditors, assertSceneOperationAllowed } = useBlockingEditors();
   // Dock hooks run first: `docked` suspends the always-on-top and focus-view
   // window overrides below (Rust owns strip chrome + topmost while docked),
   // and preset capture/apply reads dock state. useDockMode depends only on the
@@ -210,8 +220,9 @@ function AppContent() {
   // The dock is a monitoring posture: AppShell renders the settings overlays
   // (and so the profile editor) only when undocked, and the strip has no profile
   // popover, so a draft carried in would keep outranking the persisted selection
-  // for DockStats with no way to see, name, save or cancel it. Cancelling on
-  // entry matches how applyPresetSnapshot already treats a draft it cannot honour.
+  // for DockStats with no way to see, name, save or cancel it. Entry is therefore
+  // refused while one is open -- the discard it used to do instead is exactly what
+  // the scene guard exists to prevent.
   const {
     dockEnabled,
     dockEdge,
@@ -227,7 +238,7 @@ function AppContent() {
     resizeDockHeight,
     suspendDockMode,
     resumeDockMode,
-  } = useDockMode({ onEnterDock: loudnessProfile.cancelDraft });
+  } = useDockMode({ assertSceneOperationAllowed });
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
   // Suspended while docked: a preset apply may flip the stored pin to false
@@ -342,6 +353,19 @@ function AppContent() {
     ]
   );
 
+  // A refused scene operation is not a failure to report as one -- the guard did its job. Say
+  // what the user has to do instead, and keep the technical detail for everything else.
+  const reportSceneOperationError = useCallback(
+    (error, fallbackMessage, detailPrefix) => {
+      if (isSceneOperationBlocked(error)) {
+        raiseNotice("error", error.message);
+        return;
+      }
+      raiseNotice("error", fallbackMessage, errorDetails(detailPrefix, error));
+    },
+    [raiseNotice]
+  );
+
   const onDockChange = useCallback(
     async (edgeOrNull) => {
       clearNotice();
@@ -351,14 +375,20 @@ function AppContent() {
           setSelectedOffset(-1);
         } else await exitDockRestoringAttributes();
       } catch (error) {
-        raiseNotice(
-          "error",
+        reportSceneOperationError(
+          error,
           "Could not move Dock. The previous position was kept.",
-          errorDetails("Dock failed", error)
+          "Dock failed"
         );
       }
     },
-    [clearNotice, enterDockMode, exitDockRestoringAttributes, raiseNotice, setSelectedOffset]
+    [
+      clearNotice,
+      enterDockMode,
+      exitDockRestoringAttributes,
+      reportSceneOperationError,
+      setSelectedOffset,
+    ]
   );
 
   // Preset apply hand-off: dock geometry is Rust-owned, so a preset's dock
@@ -475,6 +505,8 @@ function AppContent() {
     onApplyError: onPresetApplyError,
     snapshotLoudnessProfile: loudnessProfile.snapshotForPreset,
     applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,
+    assertSceneOperationAllowed,
+    blockingEditors: activeBlockingEditors,
   });
 
   const historyRetentionSec = settings.historyRetentionSec;
@@ -1110,6 +1142,7 @@ function AppContent() {
         list: presets.list.map(({ id, name }) => ({ id, name })),
         activeId: presets.activeId,
         dirty: presets.dirty,
+        blocked: presets.blocked,
       },
     }),
     [
@@ -1120,6 +1153,7 @@ function AppContent() {
       dockLayout.panelsById,
       channelCount,
       presets.activeId,
+      presets.blocked,
       presets.dirty,
       presets.list,
       spectrumChannelOptions,
@@ -1174,10 +1208,20 @@ function AppContent() {
         dockLayout.resetPanelControls(payload.panelId);
       } else if (type === "apply-preset") {
         clearNotice();
-        void presets.apply(payload.presetId);
-      } else if (type === "save-preset") void presets.save(payload.name);
-      else if (type === "update-preset") void presets.update(payload.presetId);
-      else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
+        // The dock row greys these out, but the refusal still has to land somewhere: the strip is
+        // a separate webview and its buttons can be a render behind this window's guard.
+        void presets
+          .apply(payload.presetId)
+          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+      } else if (type === "save-preset") {
+        void presets
+          .save(payload.name)
+          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+      } else if (type === "update-preset") {
+        void presets
+          .update(payload.presetId)
+          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+      } else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
       else if (type === "delete-preset") presets.remove(payload.presetId);
       else if (type === "reorder-preset") presets.reorder(payload.presetIds);
     },
@@ -1191,6 +1235,7 @@ function AppContent() {
       onSourceTransportAction,
       presets,
       raiseNotice,
+      reportSceneOperationError,
       reserveSpace,
       toggleReserveSpace,
     ]

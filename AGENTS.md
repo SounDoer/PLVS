@@ -75,6 +75,9 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 **Always**
 
 - Run `npm run check` before merging.
+- Register every new editor with draft / preview / save / cancel semantics as a blocking editor
+  (`useBlockingEditor`), and cover it with tests that the scene operations are refused and that
+  nothing was mutated before the refusal. See Known pitfalls.
 
 ## Known pitfalls
 
@@ -117,6 +120,20 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   what it says: `cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs-cli`,
   then re-run. It does not rebuild for you, deliberately — a release build costs two minutes
   that a script called "smoke" should not spend unasked.
+
+- **A draft-style editor must be registered as a blocking editor, or nothing protects its draft.**
+  Preset apply / save / update and dock entry are *scene operations*: the first two capture or
+  replace the whole scene, the third replaces the UI with the strip. They are refused while any
+  editor with draft semantics is open, by `assertSceneOperationAllowed` from
+  `hooks/BlockingEditorsContext.jsx` — in the business functions, before any mutation, so the
+  popover, the dock, the tray and App Control all get the same `editorActive` refusal and no entry
+  point can be protected by greying a button alone. The rule keys on **open, not dirty**: dirty is
+  invisible to the user, flips mid-interaction, and these operations destroy the editor rather than
+  merely losing keystrokes. Nothing in this path may discard a draft to get itself through — that
+  is what `applyPresetSnapshot` used to do, and a single missed guard upstream then destroyed user
+  content silently. The trap is that a new editor which forgets `useBlockingEditor` looks entirely
+  correct: every existing test still passes, the buttons still work, and the loss only shows up as
+  a user's unsaved work vanishing on a click they did not think of as destructive.
 
 - **A control value that is part of an analysis request key costs memory to change.** Visual history
   is stored one slab per key (`FrameIntake`), so every distinct key mints a slab — at a four-hour
