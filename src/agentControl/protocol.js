@@ -111,6 +111,7 @@ export function agentControlRpcError(errorValue) {
     data: {
       reason: typeof value.reason === "string" ? value.reason : fallback.reason,
       ...(typeof value.path === "string" ? { path: value.path } : {}),
+      ...(isPlainJsonObject(value.details) ? { details: value.details } : {}),
     },
   };
 }

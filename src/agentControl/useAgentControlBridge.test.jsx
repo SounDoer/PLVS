@@ -115,20 +115,22 @@ describe("useAgentControlBridge", () => {
     expect(adapter.ready).not.toHaveBeenCalled();
   });
 
-  it("answers capabilities and inspect from the latest revision without mutation", async () => {
+  it("keeps capabilities independent from the latest inspect revision", async () => {
     const view = mount();
     await waitUntilReady();
     const initialTree = view.store.state.tree;
 
     const capabilities = await send(request("app.capabilities", {}, "cap"));
-    expect(capabilities.result).toMatchObject({ revision: 0, protocolVersion: 1 });
+    expect(capabilities.result).toMatchObject({ protocolVersion: 1 });
+    expect(capabilities.result).not.toHaveProperty("revision");
     const first = await send(request("app.inspect", {}, "inspect-1"));
-    expect(first.result.revision).toBe(0);
+    expect(first.result.revisions.workspace).toBe(0);
+    expect(first.result).not.toHaveProperty("revision");
     expect(view.store.state.tree).toBe(initialTree);
 
     act(() => view.store.setTree({ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" }));
     const second = await send(request("app.inspect", {}, "inspect-2"));
-    expect(second.result.revision).toBe(1);
+    expect(second.result.revisions.workspace).toBe(1);
     expect(second.result.workspace.layout).toEqual({ type: "panel", panelId: "spectrum" });
   });
 
@@ -139,7 +141,7 @@ describe("useAgentControlBridge", () => {
     act(() => view.store.setFullscreen("spectrum"));
     const inspected = await send(request("app.inspect", {}, "inspect-fullscreen"));
 
-    expect(inspected.result.revision).toBe(0);
+    expect(inspected.result.revisions.workspace).toBe(0);
   });
 
   it("returns one structured error for invalid or unsupported requests", async () => {
@@ -212,6 +214,26 @@ describe("useAgentControlBridge", () => {
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
+  it("does not commit or persist when applying the current layout", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+    const initialState = view.store.state;
+    const inspected = await send(request("app.inspect", {}, "inspect-current"));
+
+    const response = await send(
+      request(
+        "workspace.applyLayout",
+        { expectedRevision: 0, layout: inspected.result.workspace.layout },
+        "apply-current"
+      )
+    );
+
+    expect(response.result).toMatchObject({ revision: 0, changed: [] });
+    expect(view.store.state).toBe(initialState);
+    expect(flush).not.toHaveBeenCalled();
+  });
+
   it("checks revision at the queue head before compiling or mutating", async () => {
     const flush = vi.fn(async () => {});
     const view = mount({ flush });
@@ -241,7 +263,7 @@ describe("useAgentControlBridge", () => {
     expect(flush).not.toHaveBeenCalled();
   });
 
-  it("reports a flush failure without claiming persistence success", async () => {
+  it("reports the committed revision when persistence fails", async () => {
     const flush = vi.fn(async () => {
       throw new Error("disk full");
     });
@@ -256,7 +278,10 @@ describe("useAgentControlBridge", () => {
     );
     expect(response.error).toMatchObject({
       code: -32030,
-      data: expect.objectContaining({ reason: "commandFailed" }),
+      data: {
+        reason: "persistenceFailed",
+        details: { stateCommitted: true, revision: 1 },
+      },
     });
     expect(response).not.toHaveProperty("result");
   });

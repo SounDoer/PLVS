@@ -44,9 +44,10 @@ describe("agent-control app snapshots", () => {
         platform: "windows",
       },
       protocolVersion: 1,
-      revision: 7,
+      revisions: { workspace: 7 },
       preset: { activeId: "p1", dirty: true },
     });
+    expect(snapshot).not.toHaveProperty("revision");
     expect(snapshot.workspace.panels[0]).toMatchObject({
       panelId: "levelMeter",
       moduleId: "levelMeter",

@@ -8,10 +8,14 @@ import {
 import { flushPersistence } from "../persistence/index.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
 import { buildAgentControlCapabilities, buildAgentControlSnapshot } from "./appSnapshot.js";
-import { compileWorkspaceLayout, WorkspaceLayoutError } from "./workspaceLayout.js";
+import {
+  compileWorkspaceLayout,
+  serializeWorkspaceLayout,
+  WorkspaceLayoutError,
+} from "./workspaceLayout.js";
 
-function semanticFailure(reason, path, message, code) {
-  return { reason, path, message, code };
+function semanticFailure(reason, path, message, code, details) {
+  return { reason, path, message, code, ...(details ? { details } : {}) };
 }
 
 function workspaceMatches(workspace, view) {
@@ -82,10 +86,7 @@ export function useAgentControlBridge({
         if (request.method === "app.capabilities") {
           return {
             requestId,
-            result: {
-              ...buildAgentControlCapabilities(runtime),
-              revision: revisionRef.current,
-            },
+            result: buildAgentControlCapabilities(runtime),
           };
         }
         if (request.method === "app.inspect") {
@@ -127,6 +128,22 @@ export function useAgentControlBridge({
             },
           };
         }
+        const layoutIsUnchanged =
+          Object.keys(compiled.createdPanels).length === 0 &&
+          JSON.stringify(compiled.layout) === JSON.stringify(serializeWorkspaceLayout(workspace));
+        if (layoutIsUnchanged) {
+          return {
+            requestId,
+            result: {
+              revision: currentRevision,
+              dryRun: false,
+              changed: [],
+              layout: compiled.layout,
+              createdPanels: {},
+              persisted: false,
+            },
+          };
+        }
 
         const committed = new Promise((resolve, reject) => {
           settlementRef.current = { view: compiled.view, resolve, reject };
@@ -138,10 +155,11 @@ export function useAgentControlBridge({
           await flush();
         } catch (error) {
           throw semanticFailure(
-            "commandFailed",
+            "persistenceFailed",
             "$",
             `Workspace committed but persistence failed: ${error?.message || String(error)}`,
-            -32030
+            -32030,
+            { stateCommitted: true, revision: committedRevision }
           );
         }
 

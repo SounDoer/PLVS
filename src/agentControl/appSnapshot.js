@@ -31,7 +31,7 @@ export function buildAgentControlSnapshot({ runtime, revision, workspace, preset
       platform: String(runtime.platform),
     },
     protocolVersion: 1,
-    revision,
+    revisions: { workspace: revision },
     workspace: {
       layout: serializeWorkspaceLayout(workspace),
       panels: workspace.panelOrder.map((panelId) => ({
