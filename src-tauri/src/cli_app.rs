@@ -30,6 +30,11 @@ pub enum CliAppCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  PanelReset {
+    panel_id: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
 }
 
 pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -50,7 +55,10 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel update> ...".to_string())
+  Err(
+    "Usage: plvs-cli app <capabilities|inspect|workspace apply|panel update|panel reset> ..."
+      .to_string(),
+  )
 }
 
 fn parse_workspace_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -120,11 +128,16 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(CliAppCommand::Help);
   }
-  const USAGE: &str =
+  const UPDATE_USAGE: &str =
     "Usage: plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]";
-  if args.first().map(String::as_str) != Some("update") {
-    return Err(USAGE.to_string());
-  }
+  const RESET_USAGE: &str =
+    "Usage: plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]";
+  let action = args.first().map(String::as_str);
+  let usage = match action {
+    Some("update") => UPDATE_USAGE,
+    Some("reset") => RESET_USAGE,
+    _ => return Err(format!("{UPDATE_USAGE}\n{RESET_USAGE}")),
+  };
 
   let mut positionals = Vec::new();
   let mut json = false;
@@ -164,17 +177,29 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
   }
   if !json {
-    return Err("The app panel update command requires --json.".to_string());
+    return Err(format!(
+      "The app panel {} command requires --json.",
+      action.unwrap()
+    ));
   }
-  if positionals.len() != 2 || positionals[0].trim().is_empty() {
-    return Err(USAGE.to_string());
+  let expected_positionals = if action == Some("update") { 2 } else { 1 };
+  if positionals.len() != expected_positionals || positionals[0].trim().is_empty() {
+    return Err(usage.to_string());
   }
-  Ok(CliAppCommand::PanelUpdate {
-    panel_id: positionals[0].clone(),
-    input: positionals[1].clone(),
-    expected_revision,
-    dry_run,
-  })
+  if action == Some("update") {
+    Ok(CliAppCommand::PanelUpdate {
+      panel_id: positionals[0].clone(),
+      input: positionals[1].clone(),
+      expected_revision,
+      dry_run,
+    })
+  } else {
+    Ok(CliAppCommand::PanelReset {
+      panel_id: positionals[0].clone(),
+      expected_revision,
+      dry_run,
+    })
+  }
 }
 
 fn is_help(value: &str) -> bool {
@@ -182,7 +207,7 @@ fn is_help(value: &str) -> bool {
 }
 
 pub fn help_text() -> &'static str {
-  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
@@ -330,6 +355,7 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::Inspect => "app.inspect",
     CliAppCommand::WorkspaceApply { .. } => "workspace.applyLayout",
     CliAppCommand::PanelUpdate { .. } => "panel.update",
+    CliAppCommand::PanelReset { .. } => "panel.reset",
   }
 }
 
@@ -367,6 +393,20 @@ fn request_for_command<R: Read>(
       let mut params = serde_json::Map::from_iter([
         ("panelId".to_string(), Value::String(panel_id.clone())),
         ("patch".to_string(), patch),
+        ("dryRun".to_string(), Value::Bool(*dry_run)),
+      ]);
+      if let Some(revision) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      Value::Object(params)
+    }
+    CliAppCommand::PanelReset {
+      panel_id,
+      expected_revision,
+      dry_run,
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        ("panelId".to_string(), Value::String(panel_id.clone())),
         ("dryRun".to_string(), Value::Bool(*dry_run)),
       ]);
       if let Some(revision) = expected_revision {
@@ -614,6 +654,50 @@ mod tests {
     assert_eq!(request.params["patch"]["mode"], "rms");
     assert_eq!(request.params["expectedRevision"], 7);
     assert_eq!(request.params["dryRun"], true);
+  }
+
+  #[test]
+  fn parses_panel_reset_and_its_concurrency_options() {
+    assert_eq!(
+      parse_app_args(&args(&[
+        "panel",
+        "reset",
+        "spectrum",
+        "--json",
+        "--expected-revision",
+        "8",
+        "--dry-run"
+      ])),
+      Ok(CliAppCommand::PanelReset {
+        panel_id: "spectrum".to_string(),
+        expected_revision: Some(8),
+        dry_run: true,
+      })
+    );
+    for invalid in [
+      args(&["panel", "reset", "--json"]),
+      args(&["panel", "reset", "spectrum", "extra", "--json"]),
+      args(&["panel", "reset", "spectrum", "--bogus", "--json"]),
+      args(&["panel", "reset", "spectrum"]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err());
+    }
+  }
+
+  #[test]
+  fn builds_panel_reset_request_without_an_input_document() {
+    let command = CliAppCommand::PanelReset {
+      panel_id: "spectrum".to_string(),
+      expected_revision: Some(8),
+      dry_run: true,
+    };
+    let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
+
+    assert_eq!(request.method, "panel.reset");
+    assert_eq!(request.params["panelId"], "spectrum");
+    assert_eq!(request.params["expectedRevision"], 8);
+    assert_eq!(request.params["dryRun"], true);
+    assert!(request.params.get("patch").is_none());
   }
 
   #[test]
