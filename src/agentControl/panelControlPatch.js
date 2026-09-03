@@ -46,7 +46,7 @@ function validateRange(value, path, min, max, minSpan, issues) {
   }
 }
 
-export function planPublicPanelControlPatch(moduleId, currentPanelControls, patch) {
+export function planPublicPanelControlPatch(moduleId, currentPanelControls, patch, context = {}) {
   const current = normalizePanelControls(currentPanelControls);
   const panelControls = { ...current };
   const changed = [];
@@ -125,6 +125,73 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     if (finalMode !== "peak") warn("tpMaxMarker", "nonPeakMode");
     if (loudnessMode) warn("levelRangeDbfs", "loudnessMode");
     if (!loudnessMode) warn("loudnessRangeLufs", "levelMode");
+    return { panelControls, changed, warnings, issues };
+  }
+
+  if (moduleId === "vectorscope") {
+    const issues = [];
+    const allowed = new Set(["channelPair", "mode", "maxHold"]);
+    for (const key of Object.keys(patch)) {
+      if (!allowed.has(key)) {
+        issues.push(issue("unknownControl", `$.${key}`, `Unknown Vectorscope control: ${key}.`));
+      }
+    }
+    if (hasOwn(patch, "channelPair")) {
+      const pair = patch.channelPair;
+      const channelCount =
+        Number.isInteger(context.channelCount) && context.channelCount > 0
+          ? context.channelCount
+          : 2;
+      if (
+        pair === null ||
+        typeof pair !== "object" ||
+        Array.isArray(pair) ||
+        !Number.isInteger(pair.x) ||
+        !Number.isInteger(pair.y)
+      ) {
+        issues.push(
+          issue("invalidType", "$.channelPair", "channelPair must contain integer x and y.")
+        );
+      } else if (pair.x < 0 || pair.y >= channelCount || pair.x >= pair.y) {
+        issues.push(
+          issue("outOfRange", "$.channelPair", "channelPair must be an available ordered pair.")
+        );
+      }
+    }
+    if (
+      hasOwn(patch, "mode") &&
+      !new Set(["lissajous", "polarSample", "polarLevel"]).has(patch.mode)
+    ) {
+      issues.push(issue("invalidEnum", "$.mode", "mode is not a supported Vectorscope mode."));
+    }
+    if (hasOwn(patch, "maxHold")) validateBoolean(patch.maxHold, "$.maxHold", issues);
+    if (issues.length > 0) {
+      return { panelControls: current, changed: [], warnings: [], issues };
+    }
+
+    if (hasOwn(patch, "channelPair")) {
+      if (patch.channelPair.x !== current.vectorscopePair.x) changed.push("controls.channelPair.x");
+      if (patch.channelPair.y !== current.vectorscopePair.y) changed.push("controls.channelPair.y");
+      panelControls.vectorscopePair = { ...patch.channelPair };
+    }
+    if (hasOwn(patch, "mode") && patch.mode !== current.vectorscopeMode) {
+      panelControls.vectorscopeMode = patch.mode;
+      changed.push("controls.mode");
+    }
+    if (hasOwn(patch, "maxHold") && patch.maxHold !== current.vectorscopePolarLevelMaxHold) {
+      panelControls.vectorscopePolarLevelMaxHold = patch.maxHold;
+      changed.push("controls.maxHold");
+    }
+    const warnings =
+      hasOwn(patch, "maxHold") && panelControls.vectorscopeMode !== "polarLevel"
+        ? [
+            {
+              code: "currentlyInactive",
+              path: "controls.maxHold",
+              inactiveReason: "nonPolarLevelMode",
+            },
+          ]
+        : [];
     return { panelControls, changed, warnings, issues };
   }
 

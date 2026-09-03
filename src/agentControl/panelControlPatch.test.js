@@ -57,4 +57,62 @@ describe("planPublicPanelControlPatch", () => {
       },
     ]);
   });
+
+  it("maps a valid Vectorscope patch", () => {
+    const result = planPublicPanelControlPatch(
+      "vectorscope",
+      DEFAULT_PANEL_CONTROLS,
+      {
+        channelPair: { x: 2, y: 5 },
+        mode: "polarLevel",
+        maxHold: true,
+      },
+      { channelCount: 6 }
+    );
+
+    expect(result).toMatchObject({
+      issues: [],
+      warnings: [],
+      changed: [
+        "controls.channelPair.x",
+        "controls.channelPair.y",
+        "controls.mode",
+        "controls.maxHold",
+      ],
+    });
+    expect(result.panelControls).toMatchObject({
+      vectorscopePair: { x: 2, y: 5 },
+      vectorscopeMode: "polarLevel",
+      vectorscopePolarLevelMaxHold: true,
+    });
+  });
+
+  it("rejects an unavailable or reversed Vectorscope pair atomically", () => {
+    const result = planPublicPanelControlPatch(
+      "vectorscope",
+      DEFAULT_PANEL_CONTROLS,
+      { channelPair: { x: 2, y: 1 } },
+      { channelCount: 2 }
+    );
+
+    expect(result.issues).toEqual([
+      expect.objectContaining({ code: "outOfRange", path: "$.channelPair" }),
+    ]);
+    expect(result.changed).toEqual([]);
+    expect(result.panelControls).toEqual(DEFAULT_PANEL_CONTROLS);
+  });
+
+  it("warns when Vectorscope Max Hold is configured outside Polar Level", () => {
+    const result = planPublicPanelControlPatch("vectorscope", DEFAULT_PANEL_CONTROLS, {
+      maxHold: true,
+    });
+
+    expect(result.warnings).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.maxHold",
+        inactiveReason: "nonPolarLevelMode",
+      },
+    ]);
+  });
 });
