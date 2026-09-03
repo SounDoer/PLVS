@@ -16,6 +16,7 @@ import { listCustomThemes } from "./theme/customThemesRepo.js";
 import { DockHeaderApp } from "./dock/accessories/DockHeaderApp.jsx";
 import { DockEditorApp } from "./dock/accessories/DockEditorApp.jsx";
 import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
+import { DOCK_ACCESSORY_SURFACES } from "./dock/accessoryProtocol.js";
 import { migrateDialogueVadEngine } from "./persistence/migrateDialogueVadEngine.js";
 
 const surface = applyDocumentSurface(window.location.search);
@@ -23,7 +24,7 @@ const surface = applyDocumentSurface(window.location.search);
 // Main surface only: the dock accessories are separate webviews over the same storage and have no
 // Stats panels to read from. Must run before `createRoot`, since the first workspace write-back
 // normalizes the old panel-control key away.
-if (surface !== "dock-header" && surface !== "dock-editor") {
+if (!DOCK_ACCESSORY_SURFACES.includes(surface)) {
   migrateDialogueVadEngine();
 }
 const systemPrefersDark = readSystemPrefersDark();
