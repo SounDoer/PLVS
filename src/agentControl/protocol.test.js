@@ -54,6 +54,25 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes panel.reset params and options", () => {
+    expect(
+      normalizeAgentControlRequest(
+        request("panel.reset", {
+          panelId: "spectrum",
+          expectedRevision: 7,
+          dryRun: true,
+        })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "panel.reset",
+        params: { panelId: "spectrum", expectedRevision: 7, dryRun: true },
+      },
+    });
+  });
+
   it.each([
     [request("unknown"), "methodNotFound", "$.method", -32601],
     [{ ...request("app.inspect"), extra: true }, "invalidRequest", "$.extra", -32600],
@@ -84,6 +103,13 @@ describe("normalizeAgentControlRequest", () => {
     ],
     [request("panel.update", { patch: {} }), "invalidParams", "$.params.panelId", -32602],
     [request("panel.update", { panelId: "levelMeter" }), "invalidParams", "$.params.patch", -32602],
+    [request("panel.reset", {}), "invalidParams", "$.params.panelId", -32602],
+    [
+      request("panel.reset", { panelId: "spectrum", patch: {} }),
+      "invalidParams",
+      "$.params.patch",
+      -32602,
+    ],
     [
       request("panel.update", { panelId: "levelMeter", patch: {}, expectedRevision: -1 }),
       "invalidParams",

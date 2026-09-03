@@ -12,7 +12,7 @@ import {
   buildAgentControlPanelSnapshot,
   buildAgentControlSnapshot,
 } from "./appSnapshot.js";
-import { planPublicPanelControlPatch } from "./panelControlPatch.js";
+import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -126,7 +126,7 @@ export function useAgentControlBridge({
           };
         }
 
-        if (request.method === "panel.update") {
+        if (request.method === "panel.update" || request.method === "panel.reset") {
           const currentRevision = revisionRef.current;
           if (
             request.params.expectedRevision !== undefined &&
@@ -153,19 +153,24 @@ export function useAgentControlBridge({
               -32010
             );
           }
-          const planned = planPublicPanelControlPatch(
-            panel.moduleId,
-            workspace.panelControlsById?.[panelId],
-            request.params.patch,
-            {
-              ...analysisContext,
-              hasLoudnessReference,
-            }
-          );
+          const context = { ...analysisContext, hasLoudnessReference };
+          const planned =
+            request.method === "panel.reset"
+              ? planPublicPanelReset(
+                  panel.moduleId,
+                  workspace.panelControlsById?.[panelId],
+                  context
+                )
+              : planPublicPanelControlPatch(
+                  panel.moduleId,
+                  workspace.panelControlsById?.[panelId],
+                  request.params.patch,
+                  context
+                );
           if (planned.issues.length > 0) {
             throw semanticFailure(
               "invalidControls",
-              "$.params.patch",
+              request.method === "panel.update" ? "$.params.patch" : "$.params",
               "The panel controls are invalid.",
               -32602,
               { issues: planned.issues }

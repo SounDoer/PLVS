@@ -16,7 +16,13 @@ describe("agent-control app snapshots", () => {
     expect(capabilities).toMatchObject({
       protocolVersion: 1,
       runtime,
-      methods: ["app.capabilities", "app.inspect", "workspace.applyLayout", "panel.update"],
+      methods: [
+        "app.capabilities",
+        "app.inspect",
+        "workspace.applyLayout",
+        "panel.update",
+        "panel.reset",
+      ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
     expect(JSON.parse(JSON.stringify(capabilities))).toEqual(capabilities);

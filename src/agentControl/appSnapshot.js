@@ -6,7 +6,13 @@ import { readPublicPanelAxes } from "./panelAxes.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 
-const METHODS = ["app.capabilities", "app.inspect", "workspace.applyLayout", "panel.update"];
+const METHODS = [
+  "app.capabilities",
+  "app.inspect",
+  "workspace.applyLayout",
+  "panel.update",
+  "panel.reset",
+];
 
 export function buildAgentControlPanelSnapshot({
   workspace,

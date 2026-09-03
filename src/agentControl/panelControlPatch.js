@@ -903,6 +903,15 @@ export function planPublicPanelReset(moduleId, currentPanelControls, context = {
   const changed = [...planned.changed];
 
   if (moduleId === "loudness") {
+    if (
+      !arraysEqual(
+        current.loudnessHistoryVisibleLayerIds,
+        DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds
+      ) &&
+      !changed.includes("controls.layers")
+    ) {
+      changed.unshift("controls.layers");
+    }
     panelControls.loudnessHistoryVisibleLayerIds = [
       ...DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds,
     ];

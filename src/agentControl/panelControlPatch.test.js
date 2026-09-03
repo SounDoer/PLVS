@@ -488,6 +488,24 @@ describe("planPublicPanelReset", () => {
     ]);
   });
 
+  it("treats a hidden Loudness reference reset as an effective layers change", () => {
+    const result = planPublicPanelReset(
+      "loudness",
+      {
+        ...DEFAULT_PANEL_CONTROLS,
+        loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm"],
+      },
+      { hasLoudnessReference: false }
+    );
+
+    expect(result.changed).toEqual(["controls.layers"]);
+    expect(result.panelControls.loudnessHistoryVisibleLayerIds).toEqual([
+      "momentary",
+      "shortTerm",
+      "ref",
+    ]);
+  });
+
   it("is a no-op when all public controls and axis state already use defaults", () => {
     const result = planPublicPanelReset("spectrogram", DEFAULT_PANEL_CONTROLS);
 

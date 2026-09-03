@@ -362,6 +362,73 @@ describe("useAgentControlBridge", () => {
     expect(view.store.state.panelControlsById.levelMeter.levelMeterMode).toBe("rms");
   });
 
+  it("resets panel controls and local axis state as one persisted Workspace mutation", async () => {
+    const flush = vi.fn(async () => {});
+    const presets = { activeId: "preset-1", dirty: false };
+    const view = mount({ flush, presets });
+    await waitUntilReady();
+    act(() => {
+      view.store.setPanelControlsForPanel("spectrum", {
+        ...view.store.state.panelControlsById.spectrum,
+        spectrumMaxMode: "hold",
+        spectrumSpeedPercent: 80,
+        linkFrequencyViewport: false,
+        spectrumXMinFreq: 200,
+        spectrumXMaxFreq: 5000,
+      });
+    });
+    const revision = (await send(request("app.inspect", {}, "before-reset"))).result.revisions
+      .workspace;
+    flush.mockClear();
+
+    const response = await send(
+      request("panel.reset", { panelId: "spectrum", expectedRevision: revision }, "panel-reset")
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: false,
+      revision: revision + 1,
+      changed: expect.arrayContaining([
+        "controls.maxMode",
+        "controls.speedPercent",
+        "axes.frequency.linked",
+      ]),
+      warnings: [],
+      panel: {
+        id: "spectrum",
+        moduleId: "spectrum",
+        controls: { maxMode: "off", speedPercent: 25 },
+        axes: { frequency: { linked: true } },
+      },
+      preset: { activeId: "preset-1", dirty: true },
+    });
+    expect(view.store.state.panelControlsById.spectrum).toMatchObject({
+      spectrumMaxMode: "off",
+      spectrumSpeedPercent: 25,
+      linkFrequencyViewport: true,
+      spectrumXMinFreq: 20,
+      spectrumXMaxFreq: 20000,
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("dry-runs and no-ops panel resets without persistence", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+    const initialState = view.store.state;
+
+    const noOp = await send(request("panel.reset", { panelId: "spectrum" }, "reset-no-op"));
+    const dryRun = await send(
+      request("panel.reset", { panelId: "levelMeter", dryRun: true }, "reset-dry")
+    );
+
+    expect(noOp.result).toMatchObject({ revision: 0, changed: [], dryRun: false });
+    expect(dryRun.result).toMatchObject({ revision: 0, changed: [], dryRun: true });
+    expect(view.store.state).toBe(initialState);
+    expect(flush).not.toHaveBeenCalled();
+  });
+
   it("applies once, waits for commit and persistence, and returns the committed revision", async () => {
     const flush = vi.fn(async () => {});
     const view = mount({ flush });
