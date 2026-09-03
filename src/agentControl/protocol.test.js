@@ -6,12 +6,15 @@ function request(method, params = {}) {
 }
 
 describe("normalizeAgentControlRequest", () => {
-  it.each(["app.capabilities", "app.inspect"])("accepts %s with empty params", (method) => {
-    expect(normalizeAgentControlRequest(request(method))).toEqual({
-      ok: true,
-      request: { id: "req-1", method, params: {} },
-    });
-  });
+  it.each(["app.capabilities", "app.inspect", "axis.describe", "axis.inspect"])(
+    "accepts %s with empty params",
+    (method) => {
+      expect(normalizeAgentControlRequest(request(method))).toEqual({
+        ok: true,
+        request: { id: "req-1", method, params: {} },
+      });
+    }
+  );
 
   it("normalizes workspace.applyLayout options", () => {
     const layout = { type: "panel", panelId: "spectrum" };
@@ -90,6 +93,7 @@ describe("normalizeAgentControlRequest", () => {
     [request("unknown"), "methodNotFound", "$.method", -32601],
     [{ ...request("app.inspect"), extra: true }, "invalidRequest", "$.extra", -32600],
     [request("app.inspect", { extra: true }), "invalidParams", "$.params.extra", -32602],
+    [request("axis.inspect", { extra: true }), "invalidParams", "$.params.extra", -32602],
     [request("app.inspect", []), "invalidParams", "$.params", -32602],
     [request("workspace.applyLayout", {}), "invalidParams", "$.params.layout", -32602],
     [request("workspace.applyLayout", { layout: [] }), "invalidParams", "$.params.layout", -32602],

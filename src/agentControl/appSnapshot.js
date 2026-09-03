@@ -10,6 +10,8 @@ const METHODS = [
   "app.capabilities",
   "app.inspect",
   "workspace.applyLayout",
+  "axis.describe",
+  "axis.inspect",
   "panel.describe",
   "panel.update",
   "panel.reset",

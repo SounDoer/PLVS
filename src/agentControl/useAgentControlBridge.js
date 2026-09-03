@@ -7,6 +7,7 @@ import {
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence } from "../persistence/index.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
+import { buildAxisInspection, buildAxisSchema } from "./axisControl.js";
 import {
   buildAgentControlCapabilities,
   buildAgentControlPanelSnapshot,
@@ -124,6 +125,20 @@ export function useAgentControlBridge({
               hasLoudnessReference,
               analysisContext,
             }),
+          };
+        }
+
+        if (request.method === "axis.describe" || request.method === "axis.inspect") {
+          const inspection = buildAxisInspection(workspace);
+          return {
+            requestId,
+            result: {
+              revision: revisionRef.current,
+              ...(request.method === "axis.describe"
+                ? { schema: buildAxisSchema(analysisContext) }
+                : {}),
+              ...inspection,
+            },
           };
         }
 

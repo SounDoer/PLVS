@@ -7,7 +7,7 @@ function publicRange(kindId, viewport) {
   return { windowSec: viewport.windowSec, offsetSec: viewport.offsetSec };
 }
 
-export function readPublicPanelAxes(workspace, panelId, { writable = false } = {}) {
+export function readPublicPanelAxes(workspace, panelId, { writable = true } = {}) {
   const moduleId = workspace?.panelsById?.[panelId]?.moduleId;
   return Object.fromEntries(
     axisKindsForModule(moduleId).map((kindId) => {

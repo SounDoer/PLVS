@@ -219,6 +219,32 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("describes and inspects Axis Control without mutating Workspace state", async () => {
+    const view = mount({
+      analysisContext: { timeMaxWindowSec: 3600, timeMaxOffsetSec: 3540 },
+    });
+    await waitUntilReady();
+    const initialState = view.store.state;
+
+    const described = await send(request("axis.describe", {}, "axis-describe"));
+    const inspected = await send(request("axis.inspect", {}, "axis-inspect"));
+
+    expect(described.result).toMatchObject({
+      revision: 0,
+      schema: {
+        time: { properties: { windowSec: { maximum: 3600 } } },
+      },
+      shared: { frequency: { minHz: 20, maxHz: 20000 } },
+    });
+    expect(inspected.result).toMatchObject({
+      revision: 0,
+      shared: { time: { windowSec: 60, offsetSec: 0 } },
+      panels: expect.any(Array),
+    });
+    expect(inspected.result).not.toHaveProperty("schema");
+    expect(view.store.state).toBe(initialState);
+  });
+
   it("returns one structured error for invalid or unsupported requests", async () => {
     mount();
     await waitUntilReady();

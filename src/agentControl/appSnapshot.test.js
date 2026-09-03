@@ -20,6 +20,8 @@ describe("agent-control app snapshots", () => {
         "app.capabilities",
         "app.inspect",
         "workspace.applyLayout",
+        "axis.describe",
+        "axis.inspect",
         "panel.describe",
         "panel.update",
         "panel.reset",
@@ -84,7 +86,7 @@ describe("agent-control app snapshots", () => {
       frequency: {
         linked: true,
         source: "workspace",
-        writable: false,
+        writable: true,
         range: { minHz: 20, maxHz: 20000 },
       },
     });

@@ -8,7 +8,7 @@ describe("readPublicPanelAxes", () => {
       frequency: {
         linked: true,
         source: "workspace",
-        writable: false,
+        writable: true,
         range: { minHz: 20, maxHz: 20000 },
       },
     });
@@ -32,7 +32,7 @@ describe("readPublicPanelAxes", () => {
       time: {
         linked: false,
         source: "panel",
-        writable: false,
+        writable: true,
         range: { windowSec: 25, offsetSec: 5 },
       },
     });

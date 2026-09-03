@@ -838,12 +838,44 @@ function AppContent() {
   const { channelLabelOverride, loudnessWeights } = channelLabelRuntime;
   const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
   const agentControlAnalysisContext = useMemo(
-    () => ({
+    () => {
+      const first =
+        histSourceList.length > 0
+          ? typeof histSourceList.rowAt === "function"
+            ? histSourceList.rowAt(0)
+            : histSourceList[0]
+          : null;
+      const measuredDurationSec =
+        Number.isFinite(first?.timestampMs) && Number.isFinite(latestTimestampMs)
+          ? Math.max(0, (latestTimestampMs - first.timestampMs) / 1000)
+          : 0;
+      const availableDurationSec =
+        sourceMode === "file" && Number.isFinite(fileDurationMs)
+          ? Math.min(historyRetentionSec, fileDurationMs / 1000)
+          : Math.min(historyRetentionSec, measuredDurationSec);
+      return {
+        channelCount,
+        channelLabels: channelLabelRuntime.channelAutoLabels,
+        dialogueDetectionActive: dialogueGating,
+        spectralWaveformActive: derivedAnalysisRequests.spectralWaveform,
+        timeMaxWindowSec: Math.max(60, availableDurationSec),
+        timeMaxOffsetSec: Math.max(0, availableDurationSec - 5),
+      };
+    },
+    // The history ring mutates in place; its version intentionally invalidates this snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
       channelCount,
-      dialogueDetectionActive: dialogueGating,
-      spectralWaveformActive: derivedAnalysisRequests.spectralWaveform,
-    }),
-    [channelCount, dialogueGating, derivedAnalysisRequests.spectralWaveform]
+      channelLabelRuntime.channelAutoLabels,
+      dialogueGating,
+      derivedAnalysisRequests.spectralWaveform,
+      fileDurationMs,
+      histSourceList,
+      histSourceList.version,
+      historyRetentionSec,
+      latestTimestampMs,
+      sourceMode,
+    ]
   );
   useAgentControlBridge({
     enabled: agentControlRuntime.available === true,

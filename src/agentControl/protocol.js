@@ -46,7 +46,12 @@ export function normalizeAgentControlRequest(input) {
     return invalidParams("$.params", "Request params must be a plain JSON object.");
   }
 
-  if (input.method === "app.capabilities" || input.method === "app.inspect") {
+  if (
+    input.method === "app.capabilities" ||
+    input.method === "app.inspect" ||
+    input.method === "axis.describe" ||
+    input.method === "axis.inspect"
+  ) {
     const field = Object.keys(input.params)[0];
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     return {
