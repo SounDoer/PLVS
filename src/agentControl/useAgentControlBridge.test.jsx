@@ -42,6 +42,7 @@ function Harness({
   enabled = true,
   flush = vi.fn(async () => {}),
   hasLoudnessReference = false,
+  analysisContext = {},
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
@@ -54,6 +55,7 @@ function Harness({
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
     presets: { activeId: null, dirty: false },
     hasLoudnessReference,
+    analysisContext,
     flush,
   });
   return null;
@@ -158,6 +160,22 @@ describe("useAgentControlBridge", () => {
     const loudness = inspected.result.workspace.panels.find(({ id }) => id === "loudness");
 
     expect(loudness.controls.layers).toEqual(["momentary", "shortTerm", "reference"]);
+  });
+
+  it("reports panel analysis against the current channel topology", async () => {
+    const view = mount({ analysisContext: { channelCount: 4 } });
+    await waitUntilReady();
+    act(() => {
+      view.store.setPanelControlsForPanel("spectrum", {
+        ...view.store.state.panelControlsById.spectrum,
+        spectrumChannel: { type: "pair", x: 0, y: 3 },
+      });
+    });
+
+    const inspected = await send(request("app.inspect", {}, "inspect-analysis"));
+    const spectrum = inspected.result.workspace.panels.find(({ id }) => id === "spectrum");
+
+    expect(spectrum.analysis).toEqual({ status: "active" });
   });
 
   it("returns one structured error for invalid or unsupported requests", async () => {

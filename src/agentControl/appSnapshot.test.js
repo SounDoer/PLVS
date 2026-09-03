@@ -34,6 +34,7 @@ describe("agent-control app snapshots", () => {
       revision: 7,
       workspace,
       presets: { activeId: "p1", dirty: true, list: [{ id: "p1", name: "Mix" }] },
+      analysisContext: { channelCount: 2 },
     });
 
     expect(snapshot).toMatchObject({
@@ -61,6 +62,7 @@ describe("agent-control app snapshots", () => {
         loudnessRangeLufs: { min: -64, max: 0 },
       },
       axes: {},
+      analysis: {},
     });
     expect(snapshot.workspace.panels.find(({ id }) => id === "spectrum").axes).toEqual({
       frequency: {
@@ -69,6 +71,9 @@ describe("agent-control app snapshots", () => {
         writable: false,
         range: { minHz: 20, maxHz: 20000 },
       },
+    });
+    expect(snapshot.workspace.panels.find(({ id }) => id === "spectrum").analysis).toEqual({
+      status: "active",
     });
     expect(snapshot.workspace.layout.type).toBe("split");
     const encoded = JSON.stringify(snapshot);

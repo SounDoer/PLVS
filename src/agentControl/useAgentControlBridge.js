@@ -45,6 +45,7 @@ export function useAgentControlBridge({
   waitForWorkspacePersistenceEnqueue,
   presets,
   hasLoudnessReference = false,
+  analysisContext = {},
   flush = flushPersistence,
 }) {
   const aliveRef = useRef(false);
@@ -99,6 +100,7 @@ export function useAgentControlBridge({
               workspace,
               presets,
               hasLoudnessReference,
+              analysisContext,
             }),
           };
         }
@@ -187,6 +189,7 @@ export function useAgentControlBridge({
   }, [
     flush,
     hasLoudnessReference,
+    analysisContext,
     presets,
     replaceWorkspace,
     runtime,

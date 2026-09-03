@@ -550,15 +550,6 @@ function AppContent() {
     blockingEditors: activeBlockingEditors,
   });
   const agentControlRuntime = useMemo(readAgentControlRuntime, []);
-  useAgentControlBridge({
-    enabled: agentControlRuntime.available === true,
-    runtime: agentControlRuntime,
-    workspace: workspaceState,
-    replaceWorkspace,
-    waitForWorkspacePersistenceEnqueue,
-    presets,
-    hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
-  });
 
   const historyRetentionSec = settings.historyRetentionSec;
   const dockHistoryViewport = useDockHistoryViewport({ maxWindowSec: historyRetentionSec });
@@ -846,6 +837,24 @@ function AppContent() {
   );
   const { channelLabelOverride, loudnessWeights } = channelLabelRuntime;
   const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
+  const agentControlAnalysisContext = useMemo(
+    () => ({
+      channelCount,
+      dialogueDetectionActive: dialogueGating,
+      spectralWaveformActive: derivedAnalysisRequests.spectralWaveform,
+    }),
+    [channelCount, dialogueGating, derivedAnalysisRequests.spectralWaveform]
+  );
+  useAgentControlBridge({
+    enabled: agentControlRuntime.available === true,
+    runtime: agentControlRuntime,
+    workspace: workspaceState,
+    replaceWorkspace,
+    waitForWorkspacePersistenceEnqueue,
+    presets,
+    hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
+    analysisContext: agentControlAnalysisContext,
+  });
   const dialogueVadEngine = settings.dialogueVadEngine;
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
