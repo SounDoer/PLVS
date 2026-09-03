@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, render } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
@@ -248,6 +248,34 @@ describe("WorkspaceContext active preset divergence", () => {
     expect(persistedPatch).toHaveBeenCalledWith(
       expect.objectContaining({ tree: view.tree, panelOrder: ["spectrum"] })
     );
+  });
+
+  it("settles persistence waiters only after panel controls have been enqueued", async () => {
+    let actions = null;
+    render(
+      <WorkspaceProvider>
+        <ActionsProbe onActions={(next) => (actions = next)} />
+      </WorkspaceProvider>
+    );
+    const nextControls = {
+      ...actions.state.panelControlsById.levelMeter,
+      levelMeterMode: "rms",
+    };
+    const target = {
+      ...actions.state,
+      panelControlsById: {
+        ...actions.state.panelControlsById,
+        levelMeter: nextControls,
+      },
+    };
+    let settled = false;
+
+    void actions.waitForWorkspacePersistenceEnqueue(target).then(() => (settled = true));
+    await Promise.resolve();
+
+    expect(settled).toBe(false);
+    act(() => actions.setPanelControlsForPanel("levelMeter", nextControls));
+    await waitFor(() => expect(settled).toBe(true));
   });
 
   it("does not rewrite an already-dirty preset when replacing a workspace", () => {

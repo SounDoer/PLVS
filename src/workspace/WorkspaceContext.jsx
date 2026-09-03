@@ -29,6 +29,20 @@ function ownedWorkspaceState(state) {
   };
 }
 
+function persistedWorkspaceMatches(left, right) {
+  const sameValue = (leftValue, rightValue) =>
+    leftValue === rightValue || JSON.stringify(leftValue) === JSON.stringify(rightValue);
+  return (
+    left?.tree === right?.tree &&
+    left?.panelsById === right?.panelsById &&
+    left?.panelOrder === right?.panelOrder &&
+    sameValue(left?.panelControlsById, right?.panelControlsById) &&
+    sameValue(left?.pinnedPanelsById, right?.pinnedPanelsById) &&
+    sameValue(left?.axisViewports, right?.axisViewports) &&
+    left?.fullscreenId === right?.fullscreenId
+  );
+}
+
 function initState() {
   const parsed = workspaceStore.read();
   if (!parsed.tree || !parsed.panelsById || !Array.isArray(parsed.panelOrder)) {
@@ -150,11 +164,7 @@ export function WorkspaceProvider({ children }) {
     workspaceStore.patchCoalesced(ownedWorkspaceState(state));
     persistedWorkspaceRef.current = state;
     for (const waiter of persistenceWaitersRef.current) {
-      if (
-        state.tree === waiter.view.tree &&
-        state.panelsById === waiter.view.panelsById &&
-        state.panelOrder === waiter.view.panelOrder
-      ) {
+      if (persistedWorkspaceMatches(state, waiter.view)) {
         persistenceWaitersRef.current.delete(waiter);
         waiter.resolve();
       }
@@ -163,11 +173,7 @@ export function WorkspaceProvider({ children }) {
 
   const waitForWorkspacePersistenceEnqueue = useCallback((view) => {
     const persisted = persistedWorkspaceRef.current;
-    if (
-      persisted?.tree === view.tree &&
-      persisted?.panelsById === view.panelsById &&
-      persisted?.panelOrder === view.panelOrder
-    ) {
+    if (persistedWorkspaceMatches(persisted, view)) {
       return Promise.resolve();
     }
     return new Promise((resolve) => {
