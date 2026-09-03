@@ -21,6 +21,10 @@ import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
+import {
+  DIALOGUE_VAD_ENGINE_OPTIONS,
+  DEFAULT_DIALOGUE_VAD_ENGINE,
+} from "@/lib/dialogueVadEngines.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
@@ -164,6 +168,8 @@ export function SettingsPanel({
   setCloseAction = () => {},
   historyRetentionSec = 3600,
   setHistoryRetentionSec = () => {},
+  dialogueVadEngine = DEFAULT_DIALOGUE_VAD_ENGINE,
+  setDialogueVadEngine = () => {},
   clearShortcut = "CmdOrCtrl+K",
   setClearShortcut = () => {},
   clearGlobal = false,
@@ -213,6 +219,9 @@ export function SettingsPanel({
   const cliPathOnPath = !!cliPathStatus?.onPath;
   const cliPathDisabled = cliPathBusy || !cliPathSupported || !cliPathInstalled;
   const cliPathMessage = cliPathStatus?.message ?? "Checking command line tools...";
+  const selectedDialogueVadEngine =
+    DIALOGUE_VAD_ENGINE_OPTIONS.find((option) => option.id === dialogueVadEngine) ??
+    DIALOGUE_VAD_ENGINE_OPTIONS[0];
 
   useLayoutEffect(() => {
     if (settingsOpen) {
@@ -446,6 +455,38 @@ export function SettingsPanel({
                         <SelectItem value="14400">240 min</SelectItem>
                       </SelectContent>
                     </Select>
+                  </SettingsRow>
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="Dialogue Detection"
+                        tip="The detector behind the Stats dialogue metrics. Showing one of those metrics is what switches it on; changing the detector restarts the measurement."
+                      />
+                    }
+                  >
+                    <div className="flex min-w-0 items-center gap-1">
+                      <Select value={dialogueVadEngine} onValueChange={setDialogueVadEngine}>
+                        <SelectTrigger
+                          aria-label="Dialogue Detection"
+                          className={SELECT_TRIGGER_CLASS}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                          {DIALOGUE_VAD_ENGINE_OPTIONS.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <IconButton
+                        aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
+                        onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
+                      >
+                        <ExternalLink className="size-3" />
+                      </IconButton>
+                    </div>
                   </SettingsRow>
                 </SettingsSection>
 

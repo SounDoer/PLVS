@@ -525,6 +525,47 @@ describe("SettingsPanel", () => {
     expect(setHistoryRetentionSec).toHaveBeenCalledWith("7200");
   });
 
+  const DIALOGUE_PROPS = {
+    dialogueVadEngine: "firered",
+    setDialogueVadEngine: vi.fn(),
+  };
+
+  it("renders Dialogue Detection with the three engines", () => {
+    render(<SettingsPanel {...BASE_PROPS} {...DIALOGUE_PROPS} />);
+    fireEvent.click(screen.getByLabelText("Dialogue Detection"));
+    expect(screen.getByRole("option", { name: "Silero VAD" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "FireRedVAD" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "TEN VAD" })).toBeTruthy();
+  });
+
+  it("calls setDialogueVadEngine when a new engine is chosen", () => {
+    const setDialogueVadEngine = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        {...DIALOGUE_PROPS}
+        setDialogueVadEngine={setDialogueVadEngine}
+      />
+    );
+    fireEvent.click(screen.getByLabelText("Dialogue Detection"));
+    fireEvent.click(screen.getByText("TEN VAD"));
+    expect(setDialogueVadEngine).toHaveBeenCalledWith("ten");
+  });
+
+  it("opens the official link for the selected engine", () => {
+    const openExternalUrl = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        {...DIALOGUE_PROPS}
+        dialogueVadEngine="ten"
+        openExternalUrl={openExternalUrl}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open TEN VAD official link" }));
+    expect(openExternalUrl).toHaveBeenCalledWith("https://github.com/TEN-framework/ten-vad");
+  });
+
   it("existing controls still render with new props absent (backwards compat)", () => {
     render(<SettingsPanel {...BASE_PROPS} />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();
