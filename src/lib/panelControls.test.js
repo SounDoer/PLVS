@@ -134,7 +134,6 @@ describe("panelControls", () => {
         "correlation",
         "sideToMid",
       ],
-      dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
       stereoMapMode: "position",
       stereoMapPair: { x: 0, y: 1 },
@@ -157,15 +156,12 @@ describe("panelControls", () => {
     });
   });
 
-  it("normalizes the dialogue VAD engine", () => {
-    expect(normalizePanelControls({}).dialogueVadEngine).toBe("firered");
-    expect(normalizePanelControls({ dialogueVadEngine: "silero" }).dialogueVadEngine).toBe(
-      "silero"
-    );
-    expect(normalizePanelControls({ dialogueVadEngine: "ten" }).dialogueVadEngine).toBe("ten");
-    expect(normalizePanelControls({ dialogueVadEngine: "unknown" }).dialogueVadEngine).toBe(
-      "firered"
-    );
+  it("drops the dialogue VAD engine, which is now a global setting", () => {
+    expect(normalizePanelControls({}).dialogueVadEngine).toBeUndefined();
+    expect(
+      normalizePanelControls({ dialogueVadEngine: "silero" }).dialogueVadEngine
+    ).toBeUndefined();
+    expect(DEFAULT_PANEL_CONTROLS.dialogueVadEngine).toBeUndefined();
   });
 
   it("does not carry a loudness reference: the active Loudness Profile owns it", () => {
@@ -266,7 +262,6 @@ describe("panelControls", () => {
       levelMeterYMaxDb: 3,
       statsVisibleIds: ["momentary"],
       statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
-      dialogueVadEngine: "firered",
       loudnessHistoryVisibleLayerIds: ["ref"],
       stereoMapMode: "position",
       stereoMapPair: { x: 0, y: 1 },

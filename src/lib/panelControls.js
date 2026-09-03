@@ -1,5 +1,4 @@
 import { STATS_CANONICAL_ORDER, STATS_OPTIONS } from "./statsCatalog.js";
-import { DEFAULT_DIALOGUE_VAD_ENGINE, normalizeDialogueVadEngine } from "./dialogueVadEngines.js";
 import { STEREO_MAP_MODES } from "../math/stereoMapMath.js";
 import {
   ELEVATION_MAX_DEG,
@@ -546,11 +545,6 @@ const CONTROLS = [
     kind: "orderedIdList",
     options: [...STATS_CANONICAL_ORDER],
     default: [...STATS_CANONICAL_ORDER],
-  },
-  {
-    key: "dialogueVadEngine",
-    default: DEFAULT_DIALOGUE_VAD_ENGINE,
-    normalize: (row, raw) => normalizeDialogueVadEngine(readStored(raw, row)),
   },
   {
     key: "loudnessHistoryVisibleLayerIds",
