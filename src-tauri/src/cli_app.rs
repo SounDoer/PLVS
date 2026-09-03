@@ -38,6 +38,32 @@ pub enum CliAppCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  AxisDescribe,
+  AxisInspect,
+  AxisSharedUpdate {
+    kind: String,
+    input: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
+  AxisSharedReset {
+    kind: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
+  AxisPanelUpdate {
+    panel_id: String,
+    kind: String,
+    input: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
+  AxisPanelReset {
+    panel_id: String,
+    kind: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
 }
 
 pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -55,13 +81,11 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
+    [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
-  Err(
-    "Usage: plvs-cli app <capabilities|inspect|workspace apply|panel describe|panel update|panel reset> ..."
-      .to_string(),
-  )
+  Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel|axis> ...".to_string())
 }
 
 fn parse_workspace_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -216,12 +240,124 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
   }
 }
 
+fn parse_axis_args(args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  match args {
+    [command, json] if (command == "describe" || command == "inspect") && json == "--json" => {
+      return Ok(if command == "describe" {
+        CliAppCommand::AxisDescribe
+      } else {
+        CliAppCommand::AxisInspect
+      });
+    }
+    [command, ..] if command == "describe" || command == "inspect" => {
+      return Err(format!("The app axis {command} command requires --json."));
+    }
+    _ => {}
+  }
+
+  const USAGE: &str = "Usage:\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]";
+  let scope = args.first().map(String::as_str);
+  let action = args.get(1).map(String::as_str);
+  if !matches!(scope, Some("shared" | "panel")) || !matches!(action, Some("update" | "reset")) {
+    return Err(USAGE.to_string());
+  }
+
+  let mut positionals = Vec::new();
+  let mut json = false;
+  let mut expected_revision = None;
+  let mut dry_run = false;
+  let mut index = 2;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--expected-workspace-revision" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-workspace-revision.".to_string())?;
+        let revision = raw.parse::<u64>().map_err(|_| {
+          "The --expected-workspace-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if revision > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-workspace-revision value must be a non-negative safe integer."
+              .to_string(),
+          );
+        }
+        expected_revision = Some(revision);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value => {
+        positionals.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+  if !json {
+    return Err(format!(
+      "The app axis {} {} command requires --json.",
+      scope.unwrap(),
+      action.unwrap()
+    ));
+  }
+  let expected_positionals = match (scope, action) {
+    (Some("shared"), Some("update")) => 2,
+    (Some("shared"), Some("reset")) => 1,
+    (Some("panel"), Some("update")) => 3,
+    (Some("panel"), Some("reset")) => 2,
+    _ => unreachable!("axis command was validated above"),
+  };
+  if positionals.len() != expected_positionals
+    || positionals.iter().any(|value| value.trim().is_empty())
+  {
+    return Err(USAGE.to_string());
+  }
+
+  match (scope, action) {
+    (Some("shared"), Some("update")) => Ok(CliAppCommand::AxisSharedUpdate {
+      kind: positionals[0].clone(),
+      input: positionals[1].clone(),
+      expected_revision,
+      dry_run,
+    }),
+    (Some("shared"), Some("reset")) => Ok(CliAppCommand::AxisSharedReset {
+      kind: positionals[0].clone(),
+      expected_revision,
+      dry_run,
+    }),
+    (Some("panel"), Some("update")) => Ok(CliAppCommand::AxisPanelUpdate {
+      panel_id: positionals[0].clone(),
+      kind: positionals[1].clone(),
+      input: positionals[2].clone(),
+      expected_revision,
+      dry_run,
+    }),
+    (Some("panel"), Some("reset")) => Ok(CliAppCommand::AxisPanelReset {
+      panel_id: positionals[0].clone(),
+      kind: positionals[1].clone(),
+      expected_revision,
+      dry_run,
+    }),
+    _ => unreachable!("axis command was validated above"),
+  }
+}
+
 fn is_help(value: &str) -> bool {
   matches!(value, "--help" | "-h" | "help")
 }
 
 pub fn help_text() -> &'static str {
-  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
@@ -371,7 +507,30 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::WorkspaceApply { .. } => "workspace.applyLayout",
     CliAppCommand::PanelUpdate { .. } => "panel.update",
     CliAppCommand::PanelReset { .. } => "panel.reset",
+    CliAppCommand::AxisDescribe => "axis.describe",
+    CliAppCommand::AxisInspect => "axis.inspect",
+    CliAppCommand::AxisSharedUpdate { .. } => "axis.shared.update",
+    CliAppCommand::AxisSharedReset { .. } => "axis.shared.reset",
+    CliAppCommand::AxisPanelUpdate { .. } => "axis.panel.update",
+    CliAppCommand::AxisPanelReset { .. } => "axis.panel.reset",
   }
+}
+
+fn mutation_params<const N: usize>(
+  fields: [(&str, Value); N],
+  expected_revision: Option<u64>,
+  dry_run: bool,
+) -> Value {
+  let mut params = serde_json::Map::from_iter(
+    fields
+      .into_iter()
+      .map(|(key, value)| (key.to_string(), value)),
+  );
+  params.insert("dryRun".to_string(), Value::Bool(dry_run));
+  if let Some(revision) = expected_revision {
+    params.insert("expectedRevision".to_string(), Value::from(revision));
+  }
+  Value::Object(params)
 }
 
 fn request_for_command<R: Read>(
@@ -380,7 +539,10 @@ fn request_for_command<R: Read>(
 ) -> Result<JsonRpcRequest, CliAppFailure> {
   let method = command_name(command);
   let params = match command {
-    CliAppCommand::Capabilities | CliAppCommand::Inspect => serde_json::json!({}),
+    CliAppCommand::Capabilities
+    | CliAppCommand::Inspect
+    | CliAppCommand::AxisDescribe
+    | CliAppCommand::AxisInspect => serde_json::json!({}),
     CliAppCommand::PanelDescribe { panel_id } => {
       serde_json::json!({ "panelId": panel_id })
     }
@@ -432,6 +594,61 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
+    CliAppCommand::AxisSharedUpdate {
+      kind,
+      input,
+      expected_revision,
+      dry_run,
+    } => {
+      let range = read_json_document(input, stdin, "axis range")
+        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+      mutation_params(
+        [("kind", Value::String(kind.clone())), ("range", range)],
+        *expected_revision,
+        *dry_run,
+      )
+    }
+    CliAppCommand::AxisSharedReset {
+      kind,
+      expected_revision,
+      dry_run,
+    } => mutation_params(
+      [("kind", Value::String(kind.clone()))],
+      *expected_revision,
+      *dry_run,
+    ),
+    CliAppCommand::AxisPanelUpdate {
+      panel_id,
+      kind,
+      input,
+      expected_revision,
+      dry_run,
+    } => {
+      let patch = read_json_document(input, stdin, "panel axis")
+        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+      mutation_params(
+        [
+          ("panelId", Value::String(panel_id.clone())),
+          ("kind", Value::String(kind.clone())),
+          ("patch", patch),
+        ],
+        *expected_revision,
+        *dry_run,
+      )
+    }
+    CliAppCommand::AxisPanelReset {
+      panel_id,
+      kind,
+      expected_revision,
+      dry_run,
+    } => mutation_params(
+      [
+        ("panelId", Value::String(panel_id.clone())),
+        ("kind", Value::String(kind.clone())),
+      ],
+      *expected_revision,
+      *dry_run,
+    ),
     CliAppCommand::Help => unreachable!("help does not create a request"),
   };
   Ok(JsonRpcRequest {
@@ -740,6 +957,146 @@ mod tests {
         "describe",
         "spectrum",
         "--expected-revision",
+        "1",
+        "--json",
+      ]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err());
+    }
+  }
+
+  #[test]
+  fn parses_axis_read_and_mutation_commands() {
+    assert_eq!(
+      parse_app_args(&args(&["axis", "describe", "--json"])),
+      Ok(CliAppCommand::AxisDescribe)
+    );
+    assert_eq!(
+      parse_app_args(&args(&["axis", "inspect", "--json"])),
+      Ok(CliAppCommand::AxisInspect)
+    );
+    assert_eq!(
+      parse_app_args(&args(&[
+        "axis",
+        "shared",
+        "update",
+        "frequency",
+        "range.json",
+        "--json",
+        "--expected-workspace-revision",
+        "3",
+        "--dry-run",
+      ])),
+      Ok(CliAppCommand::AxisSharedUpdate {
+        kind: "frequency".to_string(),
+        input: "range.json".to_string(),
+        expected_revision: Some(3),
+        dry_run: true,
+      })
+    );
+    assert_eq!(
+      parse_app_args(&args(&["axis", "shared", "reset", "time", "--json",])),
+      Ok(CliAppCommand::AxisSharedReset {
+        kind: "time".to_string(),
+        expected_revision: None,
+        dry_run: false,
+      })
+    );
+    assert_eq!(
+      parse_app_args(&args(&[
+        "axis",
+        "panel",
+        "update",
+        "spectrum",
+        "frequency",
+        "axis.json",
+        "--json",
+      ])),
+      Ok(CliAppCommand::AxisPanelUpdate {
+        panel_id: "spectrum".to_string(),
+        kind: "frequency".to_string(),
+        input: "axis.json".to_string(),
+        expected_revision: None,
+        dry_run: false,
+      })
+    );
+    assert_eq!(
+      parse_app_args(&args(&[
+        "axis", "panel", "reset", "waveform", "time", "--json",
+      ])),
+      Ok(CliAppCommand::AxisPanelReset {
+        panel_id: "waveform".to_string(),
+        kind: "time".to_string(),
+        expected_revision: None,
+        dry_run: false,
+      })
+    );
+  }
+
+  #[test]
+  fn builds_axis_requests_and_reads_update_documents() {
+    let shared = request_for_command(
+      &CliAppCommand::AxisSharedUpdate {
+        kind: "frequency".to_string(),
+        input: "-".to_string(),
+        expected_revision: Some(3),
+        dry_run: true,
+      },
+      &mut Cursor::new(br#"{"minHz":200,"maxHz":5000}"#),
+    )
+    .unwrap();
+    assert_eq!(shared.method, "axis.shared.update");
+    assert_eq!(shared.params["range"]["minHz"], 200);
+    assert_eq!(shared.params["expectedRevision"], 3);
+
+    let panel = request_for_command(
+      &CliAppCommand::AxisPanelUpdate {
+        panel_id: "spectrum".to_string(),
+        kind: "frequency".to_string(),
+        input: "-".to_string(),
+        expected_revision: None,
+        dry_run: false,
+      },
+      &mut Cursor::new(br#"{"linked":false}"#),
+    )
+    .unwrap();
+    assert_eq!(panel.method, "axis.panel.update");
+    assert_eq!(panel.params["panelId"], "spectrum");
+    assert_eq!(panel.params["patch"]["linked"], false);
+
+    let reset = request_for_command(
+      &CliAppCommand::AxisPanelReset {
+        panel_id: "waveform".to_string(),
+        kind: "time".to_string(),
+        expected_revision: None,
+        dry_run: false,
+      },
+      &mut Cursor::new([]),
+    )
+    .unwrap();
+    assert_eq!(reset.method, "axis.panel.reset");
+    assert_eq!(
+      reset.params,
+      serde_json::json!({
+        "panelId": "waveform",
+        "kind": "time",
+        "dryRun": false,
+      })
+    );
+  }
+
+  #[test]
+  fn rejects_incomplete_or_unsupported_axis_cli_input() {
+    for invalid in [
+      args(&["axis", "describe"]),
+      args(&["axis", "shared", "update", "frequency", "--json"]),
+      args(&["axis", "shared", "reset", "frequency", "extra", "--json"]),
+      args(&["axis", "panel", "update", "spectrum", "frequency", "--json"]),
+      args(&["axis", "panel", "reset", "spectrum", "--json"]),
+      args(&[
+        "axis",
+        "inspect",
+        "--expected-workspace-revision",
         "1",
         "--json",
       ]),
