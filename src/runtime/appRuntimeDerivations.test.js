@@ -183,7 +183,7 @@ describe("app runtime derivations", () => {
           },
         })
       )
-    ).toEqual({ dialogueGating: true, dialogueVadEngine: "silero" });
+    ).toEqual({ dialogueGating: true });
   });
 
   it("keeps dialogue disabled when dialogue stats are absent", () => {
@@ -196,6 +196,6 @@ describe("app runtime derivations", () => {
           },
         })
       )
-    ).toEqual({ dialogueGating: false, dialogueVadEngine: "firered" });
+    ).toEqual({ dialogueGating: false });
   });
 });

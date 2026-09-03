@@ -5,7 +5,6 @@ import {
 } from "../math/channelRoles.js";
 import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
 import { getPanelControls } from "../workspace/panelControlInstances.js";
-import { DEFAULT_DIALOGUE_VAD_ENGINE } from "../lib/dialogueVadEngines.js";
 
 export const DIALOGUE_STAT_IDS = [
   "dialogueCoverage",
@@ -74,21 +73,17 @@ export function deriveChannelLabelRuntime({
   };
 }
 
+/// Whether any Stats panel is showing a dialogue row. Showing one is what turns the detector on;
+/// which detector runs is a global setting, not a panel control.
 export function deriveDialogueRuntime(workspaceState) {
   for (const panelId of workspaceState.panelOrder) {
     const panel = workspaceState.panelsById[panelId];
     if (panel?.moduleId !== "stats") continue;
     const controls = getPanelControls(workspaceState, panelId);
     if (controls.statsVisibleIds.some((id) => DIALOGUE_STAT_IDS.includes(id))) {
-      return {
-        dialogueGating: true,
-        dialogueVadEngine: controls.dialogueVadEngine ?? DEFAULT_DIALOGUE_VAD_ENGINE,
-      };
+      return { dialogueGating: true };
     }
   }
 
-  return {
-    dialogueGating: false,
-    dialogueVadEngine: DEFAULT_DIALOGUE_VAD_ENGINE,
-  };
+  return { dialogueGating: false };
 }
