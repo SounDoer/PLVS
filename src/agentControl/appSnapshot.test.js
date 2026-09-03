@@ -20,6 +20,7 @@ describe("agent-control app snapshots", () => {
         "app.capabilities",
         "app.inspect",
         "workspace.applyLayout",
+        "panel.describe",
         "panel.update",
         "panel.reset",
       ],

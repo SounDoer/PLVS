@@ -180,6 +180,45 @@ describe("useAgentControlBridge", () => {
     expect(spectrum.analysis).toEqual({ status: "active" });
   });
 
+  it("describes one live panel with its dynamic public control schema", async () => {
+    mount({ analysisContext: { channelCount: 6 }, hasLoudnessReference: false });
+    await waitUntilReady();
+
+    const response = await send(
+      request("panel.describe", { panelId: "loudness" }, "describe-panel")
+    );
+
+    expect(response.result).toMatchObject({
+      revision: 0,
+      panel: {
+        id: "loudness",
+        moduleId: "loudness",
+        controls: { layers: ["momentary", "shortTerm"] },
+      },
+      schema: {
+        type: "object",
+        patchMode: "merge",
+        properties: {
+          layers: { options: ["momentary", "shortTerm"] },
+        },
+      },
+    });
+  });
+
+  it("returns panelNotFound when describing an unknown panel", async () => {
+    mount();
+    await waitUntilReady();
+
+    const response = await send(
+      request("panel.describe", { panelId: "missing" }, "describe-missing")
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32010,
+      data: { reason: "panelNotFound", path: "$.params.panelId" },
+    });
+  });
+
   it("returns one structured error for invalid or unsupported requests", async () => {
     mount();
     await waitUntilReady();

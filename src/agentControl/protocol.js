@@ -89,6 +89,22 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "panel.describe") {
+    const field = unknownField(input.params, new Set(["panelId"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "") {
+      return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { panelId: input.params.panelId },
+      },
+    };
+  }
+
   if (input.method === "panel.update" || input.method === "panel.reset") {
     const isUpdate = input.method === "panel.update";
     const field = unknownField(

@@ -13,6 +13,7 @@ import {
   buildAgentControlSnapshot,
 } from "./appSnapshot.js";
 import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
+import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -123,6 +124,37 @@ export function useAgentControlBridge({
               hasLoudnessReference,
               analysisContext,
             }),
+          };
+        }
+
+        if (request.method === "panel.describe") {
+          const panelId = request.params.panelId;
+          const panel = workspace.panelsById?.[panelId];
+          if (!panel) {
+            throw semanticFailure(
+              "panelNotFound",
+              "$.params.panelId",
+              `Panel ${panelId} was not found.`,
+              -32010
+            );
+          }
+          const context = { ...analysisContext, hasLoudnessReference };
+          return {
+            requestId,
+            result: {
+              revision: revisionRef.current,
+              panel: buildAgentControlPanelSnapshot({
+                workspace,
+                panelId,
+                hasLoudnessReference,
+                analysisContext,
+              }),
+              schema: buildPublicPanelControlSchema(
+                panel.moduleId,
+                workspace.panelControlsById?.[panelId],
+                context
+              ),
+            },
           };
         }
 
