@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
-import { planPublicPanelControlPatch } from "./panelControlPatch.js";
+import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 
 describe("planPublicPanelControlPatch", () => {
   it("maps a valid Level Meter patch without changing unrelated stored controls", () => {
@@ -433,6 +433,65 @@ describe("planPublicPanelControlPatch", () => {
       expect.objectContaining({ code: "outOfRange", path: "$.msRatioRangeDb" }),
     ]);
     expect(result.changed).toEqual([]);
+    expect(result.panelControls).toEqual(DEFAULT_PANEL_CONTROLS);
+  });
+});
+
+describe("planPublicPanelReset", () => {
+  it("resets Spectrum controls and its local frequency-axis state without changing shared axes", () => {
+    const current = {
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumMaxMode: "hold",
+      spectrumSpeedPercent: 80,
+      linkFrequencyViewport: false,
+      spectrumXMinFreq: 200,
+      spectrumXMaxFreq: 5000,
+    };
+
+    const result = planPublicPanelReset("spectrum", current);
+
+    expect(result.issues).toEqual([]);
+    expect(result.changed).toContain("controls.maxMode");
+    expect(result.changed).toContain("controls.speedPercent");
+    expect(result.changed).toContain("axes.frequency.linked");
+    expect(result.panelControls).toMatchObject({
+      spectrumMaxMode: "off",
+      spectrumSpeedPercent: 25,
+      linkFrequencyViewport: true,
+      spectrumXMinFreq: 20,
+      spectrumXMaxFreq: 20000,
+    });
+  });
+
+  it("restores Loudness reference visibility even while the active Profile hides it", () => {
+    const current = {
+      ...DEFAULT_PANEL_CONTROLS,
+      loudnessHistoryVisibleLayerIds: ["momentary"],
+      loudnessYMinDb: -48,
+      loudnessYMaxDb: -6,
+    };
+
+    const result = planPublicPanelReset("loudness", current, {
+      hasLoudnessReference: false,
+    });
+
+    expect(result.issues).toEqual([]);
+    expect(result.changed).toEqual([
+      "controls.layers",
+      "controls.loudnessRangeLufs.min",
+      "controls.loudnessRangeLufs.max",
+    ]);
+    expect(result.panelControls.loudnessHistoryVisibleLayerIds).toEqual([
+      "momentary",
+      "shortTerm",
+      "ref",
+    ]);
+  });
+
+  it("is a no-op when all public controls and axis state already use defaults", () => {
+    const result = planPublicPanelReset("spectrogram", DEFAULT_PANEL_CONTROLS);
+
+    expect(result).toMatchObject({ changed: [], warnings: [], issues: [] });
     expect(result.panelControls).toEqual(DEFAULT_PANEL_CONTROLS);
   });
 });

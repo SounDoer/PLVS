@@ -1,6 +1,8 @@
-import { normalizePanelControls } from "../lib/panelControls.js";
+import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
+import { AXIS_VIEWPORTS, axisKindsForModule } from "../workspace/axisViewports.js";
+import { readPublicPanelControls } from "./panelControls.js";
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const arraysEqual = (left, right) =>
@@ -891,4 +893,28 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
   }
 
   return { panelControls, changed, warnings: [], issues: [] };
+}
+
+export function planPublicPanelReset(moduleId, currentPanelControls, context = {}) {
+  const current = normalizePanelControls(currentPanelControls);
+  const defaultPatch = readPublicPanelControls(moduleId, DEFAULT_PANEL_CONTROLS, context);
+  const planned = planPublicPanelControlPatch(moduleId, current, defaultPatch, context);
+  const panelControls = { ...planned.panelControls };
+  const changed = [...planned.changed];
+
+  if (moduleId === "loudness") {
+    panelControls.loudnessHistoryVisibleLayerIds = [
+      ...DEFAULT_PANEL_CONTROLS.loudnessHistoryVisibleLayerIds,
+    ];
+  }
+  for (const kindId of axisKindsForModule(moduleId)) {
+    const descriptor = AXIS_VIEWPORTS[kindId];
+    if (current[descriptor.linkKey] !== true) changed.push(`axes.${kindId}.linked`);
+    panelControls[descriptor.linkKey] = true;
+    for (const internalKey of Object.values(descriptor.members[moduleId])) {
+      panelControls[internalKey] = DEFAULT_PANEL_CONTROLS[internalKey];
+    }
+  }
+
+  return { panelControls, changed, warnings: [], issues: planned.issues };
 }
