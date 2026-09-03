@@ -69,6 +69,7 @@ import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
 import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
+import { useDialogueEngineRestart } from "./hooks/useDialogueEngineRestart.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 
@@ -762,10 +763,8 @@ function AppContent() {
     [channelCount, channelLabelOverrides, layoutResolution]
   );
   const { channelLabelOverride, loudnessWeights } = channelLabelRuntime;
-  const { dialogueGating, dialogueVadEngine } = useMemo(
-    () => deriveDialogueRuntime(workspaceState),
-    [workspaceState]
-  );
+  const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
+  const dialogueVadEngine = settings.dialogueVadEngine;
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
   const { loudnessWeightsRef, dialogueGatingRef, dialogueVadEngineRef } = useRuntimeBackendSync({
@@ -1024,6 +1023,7 @@ function AppContent() {
     },
   });
   onClearRef.current = clearAll;
+  useDialogueEngineRestart(dialogueVadEngine, dialogueGating, onClearRef);
 
   const onDockAccessoryError = useCallback(
     async (accessoryError) => {
