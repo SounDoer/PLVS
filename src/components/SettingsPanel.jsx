@@ -484,7 +484,7 @@ export function SettingsPanel({
                         aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
                         onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
                       >
-                        <ExternalLink className="size-3" />
+                        <ExternalLink className="size-[1em]" />
                       </IconButton>
                     </div>
                   </SettingsRow>
