@@ -566,5 +566,171 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     return { panelControls, changed, warnings, issues };
   }
 
+  if (moduleId === "spectrogram") {
+    const issues = [];
+    const allowed = new Set([
+      "channel",
+      "mode",
+      "tiltDbPerOctave",
+      "octaveSmoothing",
+      "dbFloor",
+      "threeD",
+    ]);
+    for (const key of Object.keys(patch)) {
+      if (!allowed.has(key)) {
+        issues.push(issue("unknownControl", `$.${key}`, `Unknown Spectrogram control: ${key}.`));
+      }
+    }
+    if (hasOwn(patch, "channel")) {
+      const selection = patch.channel;
+      const validShape =
+        selection !== null &&
+        typeof selection === "object" &&
+        !Array.isArray(selection) &&
+        ((selection.type === "single" && Number.isInteger(selection.ch)) ||
+          (selection.type === "pair" &&
+            Number.isInteger(selection.x) &&
+            Number.isInteger(selection.y)));
+      if (!validShape) {
+        issues.push(
+          issue("invalidType", "$.channel", "channel must be a single or pair selection.")
+        );
+      } else {
+        const channelCount =
+          Number.isInteger(context.channelCount) && context.channelCount >= 2
+            ? context.channelCount
+            : 2;
+        if (
+          !buildSpectrumChannelOptions(channelCount, []).some(
+            ({ sel }) => JSON.stringify(sel) === JSON.stringify(selection)
+          )
+        ) {
+          issues.push(
+            issue(
+              "controlUnavailable",
+              "$.channel",
+              "channel is unavailable under the current channel topology."
+            )
+          );
+        }
+      }
+    }
+    if (hasOwn(patch, "mode") && !new Set(["heatmap", "lines", "surface"]).has(patch.mode)) {
+      issues.push(issue("invalidEnum", "$.mode", "mode is not a supported Spectrogram mode."));
+    }
+    if (
+      hasOwn(patch, "octaveSmoothing") &&
+      !new Set(["off", "1/12", "1/6", "1/3"]).has(patch.octaveSmoothing)
+    ) {
+      issues.push(issue("invalidEnum", "$.octaveSmoothing", "octaveSmoothing is not supported."));
+    }
+    if (
+      hasOwn(patch, "tiltDbPerOctave") &&
+      (!Number.isFinite(patch.tiltDbPerOctave) ||
+        patch.tiltDbPerOctave < 0 ||
+        patch.tiltDbPerOctave > 6)
+    ) {
+      issues.push(issue("outOfRange", "$.tiltDbPerOctave", "tiltDbPerOctave must be from 0 to 6."));
+    }
+    if (
+      hasOwn(patch, "dbFloor") &&
+      (!Number.isInteger(patch.dbFloor) || patch.dbFloor < -96 || patch.dbFloor > -12)
+    ) {
+      issues.push(issue("outOfRange", "$.dbFloor", "dbFloor must be an integer from -96 to -12."));
+    }
+    const rawThreeD = patch.threeD;
+    const threeD =
+      rawThreeD !== null && typeof rawThreeD === "object" && !Array.isArray(rawThreeD)
+        ? rawThreeD
+        : {};
+    if (
+      hasOwn(patch, "threeD") &&
+      (rawThreeD === null || typeof rawThreeD !== "object" || Array.isArray(rawThreeD))
+    ) {
+      issues.push(issue("invalidType", "$.threeD", "threeD must be an object."));
+    } else if (hasOwn(patch, "threeD")) {
+      const allowedThreeD = new Set([
+        "azimuthDeg",
+        "elevationDeg",
+        "heightScale",
+        "colorize",
+        "grid",
+      ]);
+      for (const key of Object.keys(threeD)) {
+        if (!allowedThreeD.has(key)) {
+          issues.push(
+            issue("unknownControl", `$.threeD.${key}`, `Unknown Spectrogram 3D control: ${key}.`)
+          );
+        }
+      }
+      for (const key of ["colorize", "grid"]) {
+        if (hasOwn(threeD, key)) validateBoolean(threeD[key], `$.threeD.${key}`, issues);
+      }
+      for (const [key, min, max, maxExclusive] of [
+        ["azimuthDeg", 0, 360, true],
+        ["elevationDeg", 5, 85, false],
+        ["heightScale", 0.3, 3, false],
+      ]) {
+        if (
+          hasOwn(threeD, key) &&
+          (!Number.isFinite(threeD[key]) ||
+            threeD[key] < min ||
+            (maxExclusive ? threeD[key] >= max : threeD[key] > max))
+        ) {
+          issues.push(
+            issue("outOfRange", `$.threeD.${key}`, `${key} is outside its allowed range.`)
+          );
+        }
+      }
+    }
+    if (issues.length > 0) {
+      return { panelControls: current, changed: [], warnings: [], issues };
+    }
+
+    if (
+      hasOwn(patch, "channel") &&
+      JSON.stringify(patch.channel) !== JSON.stringify(current.spectrumChannel)
+    ) {
+      panelControls.spectrumChannel = { ...patch.channel };
+      changed.push("controls.channel");
+    }
+    for (const [publicKey, internalKey] of [
+      ["mode", "spectrogramMode"],
+      ["tiltDbPerOctave", "spectrumTiltDbPerOctave"],
+      ["octaveSmoothing", "spectrumOctaveSmoothing"],
+      ["dbFloor", "spectrogramDbFloor"],
+    ]) {
+      if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
+        panelControls[internalKey] = patch[publicKey];
+        changed.push(`controls.${publicKey}`);
+      }
+    }
+    for (const [publicKey, internalKey] of [
+      ["azimuthDeg", "spectrogram3dAzimuthDeg"],
+      ["elevationDeg", "spectrogram3dElevationDeg"],
+      ["heightScale", "spectrogram3dHeightGain"],
+      ["colorize", "spectrogram3dColorize"],
+      ["grid", "spectrogram3dFloor"],
+    ]) {
+      if (hasOwn(threeD, publicKey) && threeD[publicKey] !== current[internalKey]) {
+        panelControls[internalKey] = threeD[publicKey];
+        changed.push(`controls.threeD.${publicKey}`);
+      }
+    }
+    const warnings = [];
+    if (hasOwn(patch, "threeD") && panelControls.spectrogramMode === "heatmap") {
+      for (const key of ["azimuthDeg", "elevationDeg", "heightScale", "colorize", "grid"]) {
+        if (hasOwn(threeD, key)) {
+          warnings.push({
+            code: "currentlyInactive",
+            path: `controls.threeD.${key}`,
+            inactiveReason: "heatmapMode",
+          });
+        }
+      }
+    }
+    return { panelControls, changed, warnings, issues };
+  }
+
   return { panelControls, changed, warnings: [], issues: [] };
 }

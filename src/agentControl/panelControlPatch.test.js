@@ -308,4 +308,64 @@ describe("planPublicPanelControlPatch", () => {
     ]);
     expect(unavailable.changed).toEqual([]);
   });
+
+  it("maps valid Spectrogram controls including a partial threeD patch", () => {
+    const result = planPublicPanelControlPatch("spectrogram", DEFAULT_PANEL_CONTROLS, {
+      mode: "surface",
+      tiltDbPerOctave: 2.25,
+      octaveSmoothing: "1/3",
+      dbFloor: -66,
+      threeD: { elevationDeg: 45, heightScale: 1.5, grid: false },
+    });
+
+    expect(result).toMatchObject({
+      issues: [],
+      warnings: [],
+      changed: [
+        "controls.mode",
+        "controls.tiltDbPerOctave",
+        "controls.octaveSmoothing",
+        "controls.dbFloor",
+        "controls.threeD.elevationDeg",
+        "controls.threeD.heightScale",
+        "controls.threeD.grid",
+      ],
+    });
+    expect(result.panelControls).toMatchObject({
+      spectrogramMode: "surface",
+      spectrumTiltDbPerOctave: 2.25,
+      spectrumOctaveSmoothing: "1/3",
+      spectrogramDbFloor: -66,
+      spectrogram3dElevationDeg: 45,
+      spectrogram3dHeightGain: 1.5,
+      spectrogram3dFloor: false,
+    });
+  });
+
+  it("rejects invalid Spectrogram camera values and warns for dormant valid fields", () => {
+    const invalid = planPublicPanelControlPatch("spectrogram", DEFAULT_PANEL_CONTROLS, {
+      threeD: { azimuthDeg: 360, elevationDeg: 4 },
+    });
+    expect(invalid.issues).toEqual([
+      expect.objectContaining({ code: "outOfRange", path: "$.threeD.azimuthDeg" }),
+      expect.objectContaining({ code: "outOfRange", path: "$.threeD.elevationDeg" }),
+    ]);
+    expect(invalid.changed).toEqual([]);
+
+    const dormant = planPublicPanelControlPatch("spectrogram", DEFAULT_PANEL_CONTROLS, {
+      threeD: { heightScale: 1.5, grid: false },
+    });
+    expect(dormant.warnings).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.threeD.heightScale",
+        inactiveReason: "heatmapMode",
+      },
+      {
+        code: "currentlyInactive",
+        path: "controls.threeD.grid",
+        inactiveReason: "heatmapMode",
+      },
+    ]);
+  });
 });
