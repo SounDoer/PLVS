@@ -39,10 +39,6 @@ vi.mock("framer-motion", () => ({
   useSpring: () => ({ set: vi.fn() }),
 }));
 
-vi.mock("@/ipc/openExternal.js", () => ({
-  openExternalUrl: vi.fn(),
-}));
-
 /// PanelSettingsContent reads the profile, which now lives in a provider rather than a per-caller
 /// hook, so every render in this file needs one in its tree.
 function render(ui, options) {
@@ -1159,6 +1155,7 @@ describe("PanelSettingsContent", () => {
       />
     );
 
+    expect(screen.getByText("Metrics")).toBeTruthy();
     expect(screen.queryByText("VAD")).toBeNull();
     expect(screen.queryByRole("button", { name: "dialogue vad" })).toBeNull();
   });
