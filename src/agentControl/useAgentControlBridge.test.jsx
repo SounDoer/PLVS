@@ -4,6 +4,7 @@ import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
+import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 
 const adapter = vi.hoisted(() => ({
@@ -46,6 +47,8 @@ function Harness({
   hasLoudnessReference = false,
   analysisContext = {},
   loudnessProfiles = [],
+  capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
+  assertPresetOperationAllowed = () => {},
   presets = { activeId: null, dirty: false },
   onStore = () => {},
 }) {
@@ -70,6 +73,30 @@ function Harness({
         const byId = new Map(current.list.map((preset) => [preset.id, preset]));
         return { ...current, list: ids.map((id) => byId.get(id)) };
       }),
+    captureSnapshot: capturePresetSnapshot,
+    assertSceneOperationAllowed: assertPresetOperationAllowed,
+    saveSnapshot: (name, snapshot) => {
+      const preset = { id: "preset-new", name, ...snapshot };
+      setPresetState((current) => ({
+        list: [...current.list, preset],
+        activeId: preset.id,
+        dirty: false,
+      }));
+      return preset;
+    },
+    updateSnapshot: (id, snapshot) => {
+      let updated = null;
+      setPresetState((current) => ({
+        list: current.list.map((preset) => {
+          if (preset.id !== id) return preset;
+          updated = { id, name: preset.name, ...snapshot };
+          return updated;
+        }),
+        activeId: id,
+        dirty: false,
+      }));
+      return updated;
+    },
   };
   onStore(store);
   useAgentControlBridge({
@@ -316,6 +343,79 @@ describe("useAgentControlBridge", () => {
       data: {
         reason: "invalidPreset",
         details: { issues: [expect.objectContaining({ code: "invalidPermutation" })] },
+      },
+    });
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("saves a captured scene and previews an update without allocating or persisting", async () => {
+    const flush = vi.fn(async () => {});
+    const snapshot = { tree: { type: "leaf", tabs: [] }, windowPinned: true };
+    mount({
+      flush,
+      capturePresetSnapshot: vi.fn(async () => snapshot),
+      presets: { list: [], activeId: null, dirty: false },
+    });
+    await waitUntilReady();
+
+    const saved = await send(
+      request(
+        "preset.save",
+        {
+          name: "  New Mix  ",
+          expectedWorkspaceRevision: 0,
+          expectedPresetsRevision: 0,
+        },
+        "preset-save"
+      )
+    );
+    const updateDryRun = await send(
+      request(
+        "preset.update",
+        {
+          presetId: "preset-new",
+          expectedWorkspaceRevision: 0,
+          expectedPresetsRevision: 1,
+          dryRun: true,
+        },
+        "preset-update-dry"
+      )
+    );
+
+    expect(saved.result).toMatchObject({
+      dryRun: false,
+      changed: ["presets.library", "presets.activeId"],
+      preset: { id: "preset-new", name: "New Mix" },
+      presetState: { activeId: "preset-new", dirty: false },
+      revisions: { workspace: 0, presets: 1 },
+    });
+    expect(updateDryRun.result).toMatchObject({
+      dryRun: true,
+      changed: [],
+      preset: { id: "preset-new", name: "New Mix" },
+      revisions: { workspace: 0, presets: 1 },
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves structured blocking-editor refusals for Preset capture", async () => {
+    const flush = vi.fn(async () => {});
+    mount({
+      flush,
+      assertPresetOperationAllowed: (operation) => {
+        throw new SceneOperationBlockedError(operation, ["theme"]);
+      },
+      presets: { list: [], activeId: null, dirty: false },
+    });
+    await waitUntilReady();
+
+    const response = await send(request("preset.save", { name: "Blocked" }, "preset-save-blocked"));
+
+    expect(response.error).toMatchObject({
+      code: -32040,
+      data: {
+        reason: "editorActive",
+        details: { operation: "preset.save", editors: ["theme"] },
       },
     });
     expect(flush).not.toHaveBeenCalled();

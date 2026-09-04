@@ -151,6 +151,50 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "preset.save" || input.method === "preset.update") {
+    const isSave = input.method === "preset.save";
+    const targetKey = isSave ? "name" : "presetId";
+    const field = unknownField(
+      input.params,
+      new Set([targetKey, "expectedWorkspaceRevision", "expectedPresetsRevision", "dryRun"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params[targetKey] !== "string" || input.params[targetKey].trim() === "") {
+      return invalidParams(`$.params.${targetKey}`, `${targetKey} must be a non-empty string.`);
+    }
+    for (const revisionKey of ["expectedWorkspaceRevision", "expectedPresetsRevision"]) {
+      if (
+        input.params[revisionKey] !== undefined &&
+        (!Number.isSafeInteger(input.params[revisionKey]) || input.params[revisionKey] < 0)
+      ) {
+        return invalidParams(
+          `$.params.${revisionKey}`,
+          `${revisionKey} must be a non-negative safe integer.`
+        );
+      }
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          [targetKey]: input.params[targetKey],
+          ...(input.params.expectedWorkspaceRevision !== undefined
+            ? { expectedWorkspaceRevision: input.params.expectedWorkspaceRevision }
+            : {}),
+          ...(input.params.expectedPresetsRevision !== undefined
+            ? { expectedPresetsRevision: input.params.expectedPresetsRevision }
+            : {}),
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
+    };
+  }
+
   if (input.method === "workspace.applyLayout") {
     const field = unknownField(input.params, new Set(["layout", "expectedRevision", "dryRun"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

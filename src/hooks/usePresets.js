@@ -174,12 +174,10 @@ export function usePresets({
     workspaceState.tree,
   ]);
 
-  const save = useCallback(
-    async (name) => {
-      assertSceneOperationAllowed(SCENE_OPERATIONS.presetSave);
+  const saveSnapshot = useCallback(
+    (name, snapshot) => {
       const trimmed = String(name ?? "").trim();
       if (!trimmed) return null;
-      const snapshot = await captureSnapshot();
       const preset = {
         id: `preset-${Date.now()}`,
         name: trimmed,
@@ -189,7 +187,18 @@ export function usePresets({
       write({ list: [...current.list, preset], activeId: preset.id, dirty: false });
       return preset;
     },
-    [assertSceneOperationAllowed, captureSnapshot, write]
+    [write]
+  );
+
+  const save = useCallback(
+    async (name) => {
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetSave);
+      const trimmed = String(name ?? "").trim();
+      if (!trimmed) return null;
+      const snapshot = await captureSnapshot();
+      return saveSnapshot(trimmed, snapshot);
+    },
+    [assertSceneOperationAllowed, captureSnapshot, saveSnapshot]
   );
 
   const apply = useCallback(
@@ -302,13 +311,11 @@ export function usePresets({
     ]
   );
 
-  const update = useCallback(
-    async (id) => {
-      assertSceneOperationAllowed(SCENE_OPERATIONS.presetUpdate);
+  const updateSnapshot = useCallback(
+    (id, snapshot) => {
       const current = normalizePresets(presetsStore.read());
       const existing = current.list.find((p) => p.id === id);
       if (!existing) return null;
-      const snapshot = await captureSnapshot();
       const updated = { id, name: existing.name, ...snapshot };
       write({
         list: current.list.map((p) => (p.id === id ? updated : p)),
@@ -317,7 +324,16 @@ export function usePresets({
       });
       return updated;
     },
-    [assertSceneOperationAllowed, captureSnapshot, write]
+    [write]
+  );
+
+  const update = useCallback(
+    async (id) => {
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetUpdate);
+      const snapshot = await captureSnapshot();
+      return updateSnapshot(id, snapshot);
+    },
+    [assertSceneOperationAllowed, captureSnapshot, updateSnapshot]
   );
 
   const rename = useCallback(
@@ -372,10 +388,16 @@ export function usePresets({
       reorder,
       clearActive,
       markDirty,
+      captureSnapshot,
+      assertSceneOperationAllowed,
+      saveSnapshot,
+      updateSnapshot,
     }),
     [
       apply,
+      assertSceneOperationAllowed,
       blockingEditors,
+      captureSnapshot,
       clearActive,
       markDirty,
       presets.activeId,
@@ -385,7 +407,9 @@ export function usePresets({
       reorder,
       rename,
       save,
+      saveSnapshot,
       update,
+      updateSnapshot,
     ]
   );
 }

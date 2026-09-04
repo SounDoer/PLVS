@@ -6,6 +6,7 @@ import {
   respondToAgentControlRequest,
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence } from "../persistence/index.js";
+import { isSceneOperationRefused } from "../lib/sceneOperations.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
 import {
   buildAxisInspection,
@@ -24,6 +25,7 @@ import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelContro
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
+import { planPresetSave, planPresetUpdate } from "./presetScene.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -215,6 +217,132 @@ export function useAgentControlBridge({
               preset: buildPublicPresetSnapshot(preset, { loudnessProfiles }),
             },
           };
+        }
+
+        if (request.method === "preset.save" || request.method === "preset.update") {
+          const initialWorkspaceRevision = revisionRef.current;
+          const initialPresetsRevision = presetsRevisionRef.current;
+          const assertRevisions = () => {
+            if (
+              request.params.expectedWorkspaceRevision !== undefined &&
+              request.params.expectedWorkspaceRevision !== revisionRef.current
+            ) {
+              throw semanticFailure(
+                "revisionConflict",
+                "$.params.expectedWorkspaceRevision",
+                `Workspace changed after revision ${request.params.expectedWorkspaceRevision}.`,
+                -32004,
+                {
+                  expectedRevision: request.params.expectedWorkspaceRevision,
+                  currentRevision: revisionRef.current,
+                }
+              );
+            }
+            if (
+              request.params.expectedPresetsRevision !== undefined &&
+              request.params.expectedPresetsRevision !== presetsRevisionRef.current
+            ) {
+              throw semanticFailure(
+                "revisionConflict",
+                "$.params.expectedPresetsRevision",
+                `Presets changed after revision ${request.params.expectedPresetsRevision}.`,
+                -32004,
+                {
+                  expectedRevision: request.params.expectedPresetsRevision,
+                  currentRevision: presetsRevisionRef.current,
+                }
+              );
+            }
+          };
+          assertRevisions();
+          presets.assertSceneOperationAllowed(request.method);
+          const state = {
+            list: presets?.list ?? [],
+            activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
+            dirty: presets?.dirty === true,
+          };
+          if (
+            request.method === "preset.update" &&
+            !state.list.some(({ id }) => id === request.params.presetId)
+          ) {
+            throw semanticFailure(
+              "presetNotFound",
+              "$.params.presetId",
+              `Preset ${request.params.presetId} was not found.`,
+              -32020
+            );
+          }
+          const snapshot = await presets.captureSnapshot();
+          assertRevisions();
+          let planned =
+            request.method === "preset.save"
+              ? planPresetSave(state, request.params.name, snapshot)
+              : planPresetUpdate(state, request.params.presetId, snapshot);
+          if (planned.issues.length > 0) {
+            throw semanticFailure(
+              "invalidPreset",
+              "$.params",
+              "The Preset request is invalid.",
+              -32602,
+              { issues: planned.issues }
+            );
+          }
+          const result = {
+            dryRun: request.params.dryRun === true,
+            changed: planned.changed,
+            preset: planned.preset,
+            presetState: planned.presetState,
+            revisions: {
+              workspace: initialWorkspaceRevision,
+              presets: initialPresetsRevision,
+            },
+            warnings: planned.warnings,
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          if (request.method === "preset.save") {
+            const saved = presets.saveSnapshot(planned.preset.name, snapshot);
+            if (!saved) {
+              throw semanticFailure("commandFailed", "$", "Preset could not be saved.", -32050);
+            }
+            planned = planPresetSave(state, planned.preset.name, snapshot, saved.id);
+          }
+          const committed = new Promise((resolve, reject) => {
+            presetSettlementRef.current = {
+              signature: presetStateSignature(planned.presets),
+              resolve,
+              reject,
+            };
+          });
+          if (request.method === "preset.update") {
+            const updated = presets.updateSnapshot(request.params.presetId, snapshot);
+            if (!updated) {
+              presetSettlementRef.current = null;
+              throw semanticFailure(
+                "presetNotFound",
+                "$.params.presetId",
+                "Preset was not found.",
+                -32020
+              );
+            }
+          }
+          result.preset = planned.preset;
+          result.presetState = planned.presetState;
+          result.revisions.presets = await committed;
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Preset state committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revisions: result.revisions }
+            );
+          }
+          return { requestId, result };
         }
 
         if (
@@ -638,7 +766,13 @@ export function useAgentControlBridge({
         const semantic =
           error instanceof WorkspaceLayoutError
             ? semanticFailure(error.reason, error.path, error.message, -32602)
-            : error;
+            : isSceneOperationRefused(error)
+              ? semanticFailure(error.code, "$", error.message, -32040, {
+                  operation: error.operation,
+                  ...(Array.isArray(error.editors) ? { editors: error.editors } : {}),
+                  ...(typeof error.reason === "string" ? { reason: error.reason } : {}),
+                })
+              : error;
         return { requestId, error: agentControlRpcError(semantic) };
       }
     };

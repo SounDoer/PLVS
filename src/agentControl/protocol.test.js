@@ -52,6 +52,32 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it.each([
+    [
+      "preset.save",
+      {
+        name: "New Mix",
+        expectedWorkspaceRevision: 1,
+        expectedPresetsRevision: 2,
+        dryRun: true,
+      },
+    ],
+    [
+      "preset.update",
+      {
+        presetId: "preset-1",
+        expectedWorkspaceRevision: 1,
+        expectedPresetsRevision: 2,
+        dryRun: true,
+      },
+    ],
+  ])("normalizes %s scene capture", (method, params) => {
+    expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method, params },
+    });
+  });
+
   it("normalizes workspace.applyLayout options", () => {
     const layout = { type: "panel", panelId: "spectrum" };
     expect(
@@ -162,6 +188,8 @@ describe("normalizeAgentControlRequest", () => {
     [request("preset.rename", { presetId: "preset-1" }), "invalidParams", "$.params.name", -32602],
     [request("preset.delete", {}), "invalidParams", "$.params.presetId", -32602],
     [request("preset.reorder", {}), "invalidParams", "$.params.presetIds", -32602],
+    [request("preset.save", {}), "invalidParams", "$.params.name", -32602],
+    [request("preset.update", {}), "invalidParams", "$.params.presetId", -32602],
     [
       request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: -1 }),
       "invalidParams",
