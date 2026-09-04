@@ -283,8 +283,10 @@ export function compileDockLayout(dock, document, context = {}) {
     }
     const sizing = getDockPanelSizing(panel.moduleId);
     if (hasOwn(entry, "width")) {
+      // Any finite width in range, not just an integer: dragging the strip stores fractional CSS
+      // pixels, so requiring integers here rejected the very document `dock.inspect` reports.
       if (
-        !Number.isInteger(entry.width) ||
+        !Number.isFinite(entry.width) ||
         entry.width < sizing.minWidth ||
         entry.width > sizing.maxPreferredWidth
       )

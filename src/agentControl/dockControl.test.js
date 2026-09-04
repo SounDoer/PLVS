@@ -153,6 +153,23 @@ describe("Dock Control", () => {
     });
   });
 
+  it("accepts the fractional widths that inspection reports", () => {
+    // Resizing the strip stores fractional CSS pixels, so a document taken straight from
+    // `dock.inspect` carries them; rejecting non-integers broke that round trip.
+    const fractional = compileDockLayout(
+      dock,
+      { panels: [{ panelId: "transport" }, { panelId: "level", width: 227.20004272460935 }] },
+      {}
+    );
+    expect(fractional.issues).toEqual([]);
+    expect(fractional.dock.panelSizesById.level).toBe(227.20004272460935);
+
+    // Out of range is still out of range.
+    expect(
+      compileDockLayout(dock, { panels: [{ panelId: "level", width: 139.5 }] }, {}).issues
+    ).toEqual([expect.objectContaining({ code: "outOfRange", path: "$.panels[0].width" })]);
+  });
+
   it("compiles an atomic ordered layout with retained and generated panel ids", () => {
     const compiled = compileDockLayout(
       dock,
