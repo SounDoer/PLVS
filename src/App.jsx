@@ -291,7 +291,9 @@ function AppContent() {
   const [agentControlMonitorRects, setAgentControlMonitorRects] = useState([]);
   const [agentControlMonitorInventoryReady, setAgentControlMonitorInventoryReady] = useState(false);
   useEffect(() => {
-    if (!isTauri()) return;
+    // Dock Control is the only consumer, and it exists only in a development-identity build, so a
+    // release has no reason to query the monitor list at boot.
+    if (!isTauri() || readAgentControlRuntime().available !== true) return;
     let cancelled = false;
     void Promise.resolve()
       .then(async () => {
