@@ -104,6 +104,7 @@ function Harness({
   agentSettingsContext = settingsContext,
   agentTransport = transport,
   agentDock = dock,
+  agentDockContext = {},
   executeAgentDock,
   controlledAgentSettings = false,
   executeAgentTransport,
@@ -205,7 +206,13 @@ function Harness({
     transportContext: { docked: false },
     executeTransport,
     dock: dockState,
-    dockContext: { platform: "windows", monitors: [], sourceMode: "live", activeEditors: [] },
+    dockContext: {
+      platform: "windows",
+      monitors: [],
+      sourceMode: "live",
+      activeEditors: [],
+      ...agentDockContext,
+    },
     executeDock,
     hasLoudnessReference,
     analysisContext,
@@ -841,6 +848,36 @@ describe("useAgentControlBridge", () => {
       revisions: { workspace: 0, presets: 1 },
     });
     expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("previews Preset resource fallbacks", async () => {
+    const target = {
+      id: "preset-1",
+      name: "Mix",
+      tree: { type: "leaf", tabs: [] },
+      windowPinned: true,
+      loudnessProfileActive: "profile:deleted",
+      dock: { enabled: true, monitor: "missing-monitor" },
+    };
+    mount({
+      capturePresetSnapshot: vi.fn(async () => ({ tree: target.tree, windowPinned: true })),
+      presets: { list: [target], activeId: null, dirty: false },
+      agentDockContext: {
+        monitors: [{ id: "monitor-1", name: "Display 1" }],
+        fallbackMonitor: "monitor-1",
+        monitorInventoryReady: true,
+      },
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("preset.apply", { presetId: "preset-1", dryRun: true }, "preset-fallback-dry")
+    );
+
+    expect(response.result.warnings).toEqual([
+      { code: "loudnessProfileUnavailable", requested: "deleted", effective: null },
+      { code: "dockMonitorUnavailable", requested: "missing-monitor", effective: "monitor-1" },
+    ]);
   });
 
   it("does not advance the public revision for transient fullscreen state", async () => {

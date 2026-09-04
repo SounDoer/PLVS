@@ -288,6 +288,8 @@ function AppContent() {
   const docked = isTauri() && dockEnabled;
   const [agentControlMonitors, setAgentControlMonitors] = useState([]);
   const [agentControlFallbackMonitor, setAgentControlFallbackMonitor] = useState(null);
+  const [agentControlMonitorRects, setAgentControlMonitorRects] = useState([]);
+  const [agentControlMonitorInventoryReady, setAgentControlMonitorInventoryReady] = useState(false);
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
@@ -311,6 +313,24 @@ function AppContent() {
               ? primary.name
               : null
         );
+        setAgentControlMonitorRects(
+          monitors.flatMap((monitor) =>
+            Number.isFinite(monitor.position?.x) &&
+            Number.isFinite(monitor.position?.y) &&
+            Number.isFinite(monitor.size?.width) &&
+            Number.isFinite(monitor.size?.height)
+              ? [
+                  {
+                    x: monitor.position.x,
+                    y: monitor.position.y,
+                    width: monitor.size.width,
+                    height: monitor.size.height,
+                  },
+                ]
+              : []
+          )
+        );
+        setAgentControlMonitorInventoryReady(true);
       })
       .catch(() => {});
     return () => {
@@ -1239,6 +1259,8 @@ function AppContent() {
       transitioning: dockTransitioning,
       monitors: agentControlMonitors,
       fallbackMonitor: agentControlFallbackMonitor,
+      monitorRects: agentControlMonitorRects,
+      monitorInventoryReady: agentControlMonitorInventoryReady,
     },
     executeDock: executeAgentControlDock,
     loudnessProfiles: loudnessProfile.profiles,

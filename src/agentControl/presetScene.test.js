@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { planPresetApply, planPresetSave, planPresetUpdate } from "./presetScene.js";
+import {
+  planPresetApply,
+  planPresetApplyResources,
+  planPresetSave,
+  planPresetUpdate,
+} from "./presetScene.js";
 
 const snapshot = { tree: { type: "leaf" }, windowPinned: false };
 const current = {
@@ -97,5 +102,65 @@ describe("Preset scene capture planning", () => {
       changed: [],
       issues: [{ code: "presetNotFound" }],
     });
+  });
+
+  it("preflights unavailable saved resources and adjusted bounds", () => {
+    const preset = {
+      id: "preset-1",
+      name: "Mixing",
+      loudnessProfileActive: "profile:deleted",
+      dock: { enabled: true, monitor: "missing-monitor" },
+      windowBounds: { x: 5000, y: 5000, width: 800, height: 600, isMaximized: false },
+    };
+    expect(
+      planPresetApplyResources(preset, {
+        loudnessProfiles: [],
+        dockSupported: true,
+        monitors: [{ id: "monitor-1" }],
+        fallbackMonitor: "monitor-1",
+        monitorRects: [{ x: 0, y: 0, width: 1920, height: 1080 }],
+      })
+    ).toEqual({
+      issues: [],
+      warnings: [
+        { code: "loudnessProfileUnavailable", requested: "deleted", effective: null },
+        {
+          code: "dockMonitorUnavailable",
+          requested: "missing-monitor",
+          effective: "monitor-1",
+        },
+      ],
+    });
+
+    expect(
+      planPresetApplyResources(
+        { ...preset, dock: { enabled: false } },
+        {
+          loudnessProfiles: [],
+          dockSupported: true,
+          monitorRects: [{ x: 0, y: 0, width: 1920, height: 1080 }],
+        }
+      ).warnings
+    ).toContainEqual({
+      code: "windowBoundsAdjusted",
+      requested: preset.windowBounds,
+      effective: { ...preset.windowBounds, x: 560, y: 240 },
+    });
+  });
+
+  it("degrades unsupported Dock and rejects an impossible monitor fallback", () => {
+    const preset = { id: "preset-1", dock: { enabled: true, monitor: "missing" } };
+    expect(planPresetApplyResources(preset, { dockSupported: false })).toEqual({
+      issues: [],
+      warnings: [{ code: "dockUnsupported", requested: true, effective: false }],
+    });
+    expect(
+      planPresetApplyResources(preset, {
+        dockSupported: true,
+        monitors: [],
+        fallbackMonitor: null,
+        monitorInventoryReady: true,
+      }).issues
+    ).toEqual([expect.objectContaining({ code: "monitorUnavailable" })]);
   });
 });

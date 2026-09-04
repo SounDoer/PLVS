@@ -25,7 +25,12 @@ import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelContro
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
-import { planPresetApply, planPresetSave, planPresetUpdate } from "./presetScene.js";
+import {
+  planPresetApply,
+  planPresetApplyResources,
+  planPresetSave,
+  planPresetUpdate,
+} from "./presetScene.js";
 import {
   buildSettingsInspection,
   buildSettingsSchema,
@@ -1043,9 +1048,30 @@ export function useAgentControlBridge({
             );
           }
           presets.preflightApplySnapshot(request.params.presetId);
+          const resources = planPresetApplyResources(target, {
+            loudnessProfiles,
+            dockSupported: dock.supported === true,
+            monitors: dockContext.monitors,
+            fallbackMonitor: dockContext.fallbackMonitor,
+            monitorInventoryReady: dockContext.monitorInventoryReady,
+            monitorRects: dockContext.monitorRects,
+          });
+          if (resources.issues.length > 0) {
+            throw semanticFailure(
+              "controlUnavailable",
+              "$.params.presetId",
+              "A saved Preset resource is unavailable.",
+              -32012,
+              { issues: resources.issues }
+            );
+          }
           const currentSnapshot = await presets.captureSnapshot();
           assertRevisions();
-          const planned = planPresetApply(state, request.params.presetId, currentSnapshot);
+          const scenePlan = planPresetApply(state, request.params.presetId, currentSnapshot);
+          const planned = {
+            ...scenePlan,
+            warnings: [...resources.warnings, ...scenePlan.warnings],
+          };
           const result = {
             dryRun: request.params.dryRun === true,
             changed: planned.changed,

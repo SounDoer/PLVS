@@ -92,4 +92,38 @@ describe("buildPublicPresetSnapshot", () => {
 
     expect(result.window.bounds).toBeNull();
   });
+
+  it("uses the Dock-only public controls and effective sizing", () => {
+    const result = buildPublicPresetSnapshot({
+      id: "preset-1",
+      name: "Mixing",
+      ...DEFAULT_WORKSPACE_STATE,
+      dock: {
+        enabled: true,
+        panelsById: { meter: { id: "meter", moduleId: "levelMeter" } },
+        panelOrder: ["meter"],
+        panelSizesById: {},
+        controlsByPanelId: {
+          meter: {
+            levelMeterMode: "peak",
+            playbackMax: true,
+            readout: "truePeakMax",
+            showLabels: false,
+          },
+        },
+      },
+    });
+
+    expect(result.dock.panels).toEqual([
+      {
+        id: "meter",
+        moduleId: "levelMeter",
+        title: "Level Meter",
+        customTitle: null,
+        width: 180,
+        controls: { mode: "peak", readout: "truePeakMax", showLabels: false },
+      },
+    ]);
+    expect(result.dock.panels[0].controls).not.toHaveProperty("playbackMax");
+  });
 });

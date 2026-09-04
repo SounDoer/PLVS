@@ -2,11 +2,11 @@ import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { normalizeDockControlsByPanelId } from "../dock/dockModuleControls.js";
 import { normalizeDockLayout } from "../dock/dockLayout.js";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
-import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { resolvePanelDisplayName } from "../workspace/panelInstances.js";
 import { readPublicPanelAxes } from "./panelAxes.js";
 import { readPublicPanelControls } from "./panelControls.js";
+import { buildDockSnapshot } from "./dockControl.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 
 function savedProfileId(selection) {
@@ -45,32 +45,27 @@ function buildSavedDock(preset, context) {
     raw.controlsByPanelId
   );
   const hasLoudnessReference = hasSavedLoudnessReference(preset, context);
+  const snapshot = buildDockSnapshot(
+    {
+      supported: true,
+      enabled: raw.enabled === true,
+      edge: raw.edge,
+      monitor: raw.monitor,
+      reserveSpace: raw.reserveSpace,
+      height: Number.isFinite(raw.height) ? raw.height : 72,
+      suspended: false,
+      ...layout,
+      controlsByPanelId,
+    },
+    { hasLoudnessReference }
+  );
   return {
     enabled: raw.enabled === true,
     edge: raw.edge === "top" ? "top" : "bottom",
     monitor: typeof raw.monitor === "string" ? raw.monitor : null,
     reserveSpace: raw.reserveSpace === true,
     height: Number.isFinite(raw.height) ? raw.height : 72,
-    panels: layout.panelOrder.map((panelId) => {
-      const panel = layout.panelsById[panelId];
-      const moduleId = panel.moduleId;
-      const title =
-        typeof panel.customTitle === "string" && panel.customTitle.trim()
-          ? panel.customTitle.trim()
-          : (MODULE_CATALOG[moduleId]?.title ?? (moduleId === "transport" ? "Timecode" : moduleId));
-      const controls = MODULE_CATALOG[moduleId]
-        ? readPublicPanelControls(moduleId, controlsByPanelId[panelId], {
-            hasLoudnessReference,
-          })
-        : {};
-      return {
-        id: panelId,
-        moduleId,
-        title,
-        width: layout.panelSizesById[panelId],
-        controls,
-      };
-    }),
+    panels: snapshot.panels.map(({ analysis: _analysis, ...panel }) => panel),
   };
 }
 
