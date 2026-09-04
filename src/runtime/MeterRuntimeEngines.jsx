@@ -22,6 +22,7 @@ export function MeterRuntimeEngines({
     audioRef,
     defaultSampleRateRef,
     stopFileAnalysisRef,
+    fileAnalysisAcceptanceRef,
   } = useMeterRuntimeAssembly();
   const { validRunRequest, updateSession, setAnalyzingFileId } = ledger;
   const { fileAnalysisIntake, fileDisplayActiveRef } = routing;
@@ -40,6 +41,7 @@ export function MeterRuntimeEngines({
     setAnalyzingFileId,
     display,
     shouldDriveDisplay: () => fileDisplayActiveRef.current,
+    fileAnalysisAcceptanceRef,
   });
 
   useEffect(() => {

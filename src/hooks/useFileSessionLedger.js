@@ -94,7 +94,6 @@ export function useFileSessionLedger() {
       const updatedHistory = updateFileEntry(history, sessionId, (entry) => ({
         ...entry,
         state: "ready",
-        progress: 0,
         error: null,
       }));
       return { ...updatedHistory, analyzingFileId: null };

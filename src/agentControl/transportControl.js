@@ -116,6 +116,7 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
   const entersFile =
     method === "transport.source.file" ||
     method === "transport.file.analyze" ||
+    method === "transport.file.reanalyze" ||
     method === "transport.file.select";
   if (entersFile && context.docked === true) {
     return result({ refusal: { code: "dockActive" } });

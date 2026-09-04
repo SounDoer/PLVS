@@ -114,5 +114,13 @@ describe("Transport Control", () => {
       planTransportMutation(snapshot, "transport.source.file", {}, { ...context, docked: true })
         .refusal
     ).toEqual({ code: "dockActive" });
+    expect(
+      planTransportMutation(
+        { ...snapshot, source: "live" },
+        "transport.file.reanalyze",
+        { sessionId: "file-1" },
+        { ...context, docked: true }
+      ).refusal
+    ).toEqual({ code: "dockActive" });
   });
 });

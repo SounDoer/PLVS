@@ -31,7 +31,7 @@ import {
   buildSettingsSchema,
   planSettingsUpdate,
 } from "./settingsControl.js";
-import { transportLifecycleSignature } from "./transportControl.js";
+import { planTransportMutation, transportLifecycleSignature } from "./transportControl.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -131,6 +131,43 @@ function changedRevisionDomains(baselines, revisions) {
     .map(([domain]) => domain);
 }
 
+function transportMutationMatches(method, params, execution, snapshot) {
+  const sessionId = execution?.sessionId ?? params.sessionId;
+  if (method === "transport.source.live") {
+    return snapshot.source === "live" && snapshot.files.analyzingId === null;
+  }
+  if (method === "transport.source.file") return snapshot.source === "file";
+  if (method === "transport.live.start") {
+    return snapshot.source === "live" && snapshot.live.state === "running";
+  }
+  if (method === "transport.live.stop") return snapshot.live.state === "stopped";
+  if (method === "transport.file.analyze" || method === "transport.file.reanalyze") {
+    return (
+      snapshot.source === "file" &&
+      snapshot.files.analyzingId === sessionId &&
+      snapshot.files.sessions.some(
+        (session) => session.id === sessionId && ["probing", "analyzing"].includes(session.state)
+      )
+    );
+  }
+  if (method === "transport.file.stop") {
+    return (
+      snapshot.files.analyzingId !== sessionId &&
+      snapshot.files.sessions.some(
+        (session) => session.id === sessionId && session.state === "stopped"
+      )
+    );
+  }
+  if (method === "transport.file.select") {
+    return snapshot.source === "file" && snapshot.files.activeId === sessionId;
+  }
+  if (method === "transport.file.remove") {
+    return !snapshot.files.sessions.some((session) => session.id === sessionId);
+  }
+  if (method === "transport.file.clear") return snapshot.files.sessions.length === 0;
+  return false;
+}
+
 export function useAgentControlBridge({
   enabled,
   runtime,
@@ -143,6 +180,8 @@ export function useAgentControlBridge({
   settingsContext = {},
   applySettings = async () => {},
   transport,
+  transportContext = {},
+  executeTransport = async () => ({}),
   loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
@@ -160,6 +199,8 @@ export function useAgentControlBridge({
   const settingsSettlementRef = useRef(null);
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
   const transportRevisionRef = useRef(0);
+  const latestTransportRef = useRef(transport);
+  const transportSettlementRef = useRef(null);
   const waitersRef = useRef(new Map());
   const waitWakeScheduledRef = useRef(false);
   const processRef = useRef(null);
@@ -234,11 +275,18 @@ export function useAgentControlBridge({
   }, [scheduleWaitWake, settings]);
 
   useEffect(() => {
+    latestTransportRef.current = transport;
     const signature = transportLifecycleSignature(transport);
-    if (signature === previousTransportSignatureRef.current) return;
-    previousTransportSignatureRef.current = signature;
-    transportRevisionRef.current += 1;
-    scheduleWaitWake();
+    if (signature !== previousTransportSignatureRef.current) {
+      previousTransportSignatureRef.current = signature;
+      transportRevisionRef.current += 1;
+      scheduleWaitWake();
+    }
+    const settlement = transportSettlementRef.current;
+    if (settlement && settlement.matches(transport)) {
+      transportSettlementRef.current = null;
+      settlement.resolve(transportRevisionRef.current);
+    }
   }, [scheduleWaitWake, transport]);
 
   useEffect(() => {
@@ -330,6 +378,119 @@ export function useAgentControlBridge({
             requestId,
             result: { revision: transportRevisionRef.current, ...transport },
           };
+        }
+
+        if (request.method.startsWith("transport.")) {
+          const currentRevision = transportRevisionRef.current;
+          if (
+            request.params.expectedTransportRevision !== undefined &&
+            request.params.expectedTransportRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedTransportRevision",
+              `Transport changed after revision ${request.params.expectedTransportRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedTransportRevision,
+                currentRevision,
+              }
+            );
+          }
+          const planned = planTransportMutation(
+            latestTransportRef.current,
+            request.method,
+            request.params,
+            transportContext
+          );
+          if (planned.issues.length > 0) {
+            const missing = planned.issues.some(({ code }) => code === "fileSessionNotFound");
+            throw semanticFailure(
+              missing ? "fileSessionNotFound" : "invalidTransport",
+              missing ? "$.params.sessionId" : "$.params",
+              missing ? "The FILE session was not found." : "The Transport request is invalid.",
+              missing ? -32080 : -32602,
+              { issues: planned.issues }
+            );
+          }
+          if (planned.refusal) {
+            const refusalCodes = {
+              transitionInProgress: -32081,
+              analysisInProgress: -32082,
+              dockActive: -32083,
+              fileAnalysisNotActive: -32084,
+            };
+            throw semanticFailure(
+              planned.refusal.code,
+              "$.params",
+              "The Transport operation is unavailable in the current state.",
+              refusalCodes[planned.refusal.code] ?? -32012,
+              planned.refusal
+            );
+          }
+          if (planned.confirmation) {
+            throw semanticFailure(
+              "confirmationRequired",
+              "$.params.allowStopFileAnalysis",
+              "Active FILE analysis must be stopped before switching to LIVE.",
+              -32041,
+              planned.confirmation
+            );
+          }
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            changed: planned.changed,
+            effects: planned.effects,
+            warnings: planned.warnings,
+            ...latestTransportRef.current,
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          let execution;
+          try {
+            execution = await executeTransport(request.method, request.params);
+          } catch (error) {
+            throw semanticFailure(
+              "applicationFailed",
+              "$.params",
+              `Transport operation failed: ${error?.message || String(error)}`,
+              -32050,
+              {
+                partial: true,
+                stage: error?.stage ?? "execution",
+                changed: planned.changed,
+                revision: transportRevisionRef.current,
+                ...(error?.sessionId ? { sessionId: error.sessionId } : {}),
+              }
+            );
+          }
+
+          if (request.method === "transport.live.clear") {
+            transportRevisionRef.current += 1;
+            scheduleWaitWake();
+            result.revision = transportRevisionRef.current;
+          } else {
+            const matches = (candidate) =>
+              transportMutationMatches(request.method, request.params, execution, candidate);
+            if (matches(latestTransportRef.current)) {
+              result.revision = transportRevisionRef.current;
+            } else {
+              result.revision = await new Promise((resolve, reject) => {
+                transportSettlementRef.current = { matches, resolve, reject };
+              });
+            }
+          }
+          Object.assign(result, latestTransportRef.current, execution?.result ?? {});
+          if (Array.isArray(execution?.affectedSessions)) {
+            result.affectedSessions = execution.affectedSessions;
+          }
+          if (Array.isArray(execution?.evictedSessions)) {
+            result.evictedSessions = execution.evictedSessions;
+          }
+          return { requestId, result };
         }
 
         if (request.method === "settings.update") {
@@ -1189,13 +1350,16 @@ export function useAgentControlBridge({
     loudnessProfiles,
     analysisContext,
     applySettings,
+    executeTransport,
     currentRevisions,
     presets,
     replaceWorkspace,
     runtime,
+    scheduleWaitWake,
     settings,
     settingsContext,
     transport,
+    transportContext,
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     workspace,
@@ -1248,6 +1412,9 @@ export function useAgentControlBridge({
       const settingsSettlement = settingsSettlementRef.current;
       settingsSettlementRef.current = null;
       settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      const transportSettlement = transportSettlementRef.current;
+      transportSettlementRef.current = null;
+      transportSettlement?.reject(new Error("Agent-control bridge unmounted."));
       for (const waiter of waiters.values()) {
         clearTimeout(waiter.timer);
         waiter.reject(new Error("Agent-control bridge unmounted."));

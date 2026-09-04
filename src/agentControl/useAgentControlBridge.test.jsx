@@ -89,12 +89,14 @@ function Harness({
   agentSettings = publicSettings,
   agentSettingsContext = settingsContext,
   agentTransport = transport,
+  executeAgentTransport,
   presets = { activeId: null, dirty: false },
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
   const [presetState, setPresetState] = useState(presets);
   const [settingsState, setSettingsState] = useState(agentSettings);
+  const [transportState, setTransportState] = useState(agentTransport);
   const controlledPresets = {
     ...presetState,
     rename: (id, name) =>
@@ -149,6 +151,21 @@ function Harness({
     preflightApplySnapshot: () => true,
   };
   onStore(store);
+  const executeTransport =
+    executeAgentTransport ??
+    (async (method) => {
+      if (method === "transport.source.file") {
+        setTransportState((current) => ({ ...current, source: "file" }));
+      } else if (method === "transport.source.live") {
+        setTransportState((current) => ({ ...current, source: "live" }));
+      } else if (method === "transport.live.start") {
+        setTransportState((current) => ({
+          ...current,
+          source: "live",
+          live: { ...current.live, state: "running", resolvedDeviceId: "device-1" },
+        }));
+      }
+    });
   useAgentControlBridge({
     enabled,
     runtime,
@@ -160,7 +177,9 @@ function Harness({
     settings: settingsState,
     settingsContext: agentSettingsContext,
     applySettings: async (next) => setSettingsState(next),
-    transport: agentTransport,
+    transport: transportState,
+    transportContext: { docked: false },
+    executeTransport,
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
@@ -317,6 +336,63 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
     const response = await send(request("transport.inspect", {}, "transport-inspect"));
     expect(response.result).toEqual({ revision: 0, ...transport });
+  });
+
+  it("applies a Transport source mutation and settles on its revision", async () => {
+    mount();
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.source.file", { expectedTransportRevision: 0 }, "transport-source-file")
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: false,
+      revision: 1,
+      changed: ["transport.source"],
+      effects: [],
+      warnings: [],
+      source: "file",
+    });
+  });
+
+  it("does not execute a Transport dry-run", async () => {
+    const executeTransport = vi.fn(async () => {});
+    mount({ executeAgentTransport: executeTransport });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.live.start", { dryRun: true }, "transport-start-dry")
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: true,
+      revision: 0,
+      changed: ["transport.live.state"],
+      source: "live",
+      live: { state: "stopped" },
+    });
+    expect(executeTransport).not.toHaveBeenCalled();
+  });
+
+  it("rejects stale Transport mutations before execution", async () => {
+    const executeTransport = vi.fn(async () => {});
+    mount({ executeAgentTransport: executeTransport });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.live.stop", { expectedTransportRevision: 3 }, "transport-conflict")
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32004,
+      data: {
+        reason: "revisionConflict",
+        path: "$.params.expectedTransportRevision",
+        details: { expectedRevision: 3, currentRevision: 0 },
+      },
+    });
+    expect(executeTransport).not.toHaveBeenCalled();
   });
 
   it("updates Settings atomically and reports its independent revision", async () => {

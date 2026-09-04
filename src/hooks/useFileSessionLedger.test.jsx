@@ -25,17 +25,19 @@ describe("useFileSessionLedger", () => {
     });
   });
 
-  it("markStopped returns the entry to ready and clears the run request", () => {
+  it("markStopped retains partial progress and clears the run request", () => {
     const { result } = mount();
     let sessionId;
     act(() => {
       sessionId = result.current.beginRun("C:/mix/final.wav", {});
     });
+    act(() => result.current.updateSession(sessionId, (entry) => ({ ...entry, progress: 0.625 })));
     act(() => result.current.markStopped(sessionId));
 
     expect(result.current.fileHistory.analyzingFileId).toBe(null);
     expect(result.current.validRunRequest).toBe(null);
     expect(result.current.fileHistory.sessionsById[sessionId].state).toBe("ready");
+    expect(result.current.fileHistory.sessionsById[sessionId].progress).toBe(0.625);
   });
 
   it("rerun bumps the run id and re-marks an existing entry", () => {

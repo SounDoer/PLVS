@@ -65,6 +65,7 @@ function Harness({
   raiseNotice = vi.fn(),
   shouldDriveDisplay = () => true,
   selectedOffset = -1,
+  fileAnalysisAcceptanceRef = { current: new Map() },
 }) {
   const audioRef = useRef(null);
   const selectedOffsetRef = useRef(selectedOffset);
@@ -94,6 +95,7 @@ function Harness({
       raiseNotice,
     },
     shouldDriveDisplay,
+    fileAnalysisAcceptanceRef,
   });
 
   window.__fileApi = api;
@@ -167,6 +169,21 @@ describe("useFileAnalysisEngine", () => {
         onFrame: expect.any(Function),
       })
     );
+  });
+
+  it("acknowledges a control run only after the native engine accepts it", async () => {
+    const resolve = vi.fn();
+    const reject = vi.fn();
+    const fileAnalysisAcceptanceRef = {
+      current: new Map([["session-a", { resolve, reject }]]),
+    };
+
+    renderHarness({ fileAnalysisAcceptanceRef });
+    await waitFor(() => expect(resolve).toHaveBeenCalledTimes(1));
+
+    expect(startFileAnalysis).toHaveBeenCalledTimes(1);
+    expect(reject).not.toHaveBeenCalled();
+    expect(fileAnalysisAcceptanceRef.current.has("session-a")).toBe(false);
   });
 
   it("keeps the active-session gate separate from snapshot publication", async () => {

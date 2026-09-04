@@ -40,6 +40,16 @@ describe("MeterRuntimeProvider", () => {
     expect(result.current.running).toBe(true);
   });
 
+  it("can clear retained Live data while File remains selected", async () => {
+    const { result } = renderHook(() => useMeterRuntime(), { wrapper });
+
+    act(() => result.current.switchSource("file"));
+    await act(() => result.current.clearLiveForControl());
+
+    expect(result.current.sourceMode).toBe("file");
+    expect(result.current.fileSessions).toHaveLength(0);
+  });
+
   it("begins one file analysis and rejects a concurrent run", () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
     const settings = { analysisRequests: { spectrum: [], vectorscope: [] } };

@@ -39,6 +39,7 @@ export function MeterRuntimeProvider({ children }) {
   const audioRef = useRef(null);
   const defaultSampleRateRef = useRef(48000);
   const stopFileAnalysisRef = useRef(async () => {});
+  const fileAnalysisAcceptanceRef = useRef(new Map());
   const stopFileAnalysis = async (expectedSessionId) => {
     const sessionId = fileHistory.analyzingFileId;
     if (!sessionId) return;
@@ -57,7 +58,6 @@ export function MeterRuntimeProvider({ children }) {
     display.clearNotice();
     display.clearAudio();
     display.setSelectedOffset(-1);
-    liveIntakeRef.current.reset();
 
     if (nextMode === "file") {
       if (transport.running) {
@@ -73,6 +73,24 @@ export function MeterRuntimeProvider({ children }) {
     }
     setSourceMode("live");
   };
+  const clearLiveSource = async ({ strict = false } = {}) => {
+    if (isTauri()) {
+      try {
+        await clearAudioHistory();
+      } catch (error) {
+        if (strict) throw error;
+      }
+    }
+    liveIntakeRef.current.reset();
+    if (sourceMode === "live") {
+      display.clearAudio();
+      display.setSelectedOffset(-1);
+      display.clock.resetTimer({ restart: transport.running });
+      display.setShowClock(transport.running);
+    }
+    return true;
+  };
+  const clearLiveForControl = () => clearLiveSource({ strict: true });
   const clearActiveSource = async () => {
     display.clearNotice();
     if (sourceMode === "file") {
@@ -91,17 +109,7 @@ export function MeterRuntimeProvider({ children }) {
       return true;
     }
 
-    if (isTauri()) {
-      try {
-        await clearAudioHistory();
-      } catch (_) {}
-    }
-    routing.intakeRef.current.reset();
-    display.clearAudio();
-    display.setSelectedOffset(-1);
-    display.clock.resetTimer({ restart: transport.running });
-    display.setShowClock(transport.running);
-    return true;
+    return clearLiveSource();
   };
   const beginFileAnalysis = (path, analysisSettings) => {
     if (!path) return null;
@@ -114,6 +122,14 @@ export function MeterRuntimeProvider({ children }) {
     display.setSelectedOffset(-1);
     display.selectedOffsetRef.current = -1;
     return ledger.beginRun(path, analysisSettings);
+  };
+  const beginFileAnalysisForControl = (path, analysisSettings) => {
+    const sessionId = beginFileAnalysis(path, analysisSettings);
+    if (!sessionId) return null;
+    const accepted = new Promise((resolve, reject) => {
+      fileAnalysisAcceptanceRef.current.set(sessionId, { resolve, reject });
+    });
+    return { sessionId, accepted };
   };
   const reanalyzeFile = (sessionId, analysisSettings) => {
     display.clearNotice();
@@ -131,6 +147,13 @@ export function MeterRuntimeProvider({ children }) {
     display.selectedOffsetRef.current = -1;
     ledger.rerun(entry.id, entry.path, analysisSettings);
     return true;
+  };
+  const reanalyzeFileForControl = (sessionId, analysisSettings) => {
+    if (!reanalyzeFile(sessionId, analysisSettings)) return null;
+    const accepted = new Promise((resolve, reject) => {
+      fileAnalysisAcceptanceRef.current.set(sessionId, { resolve, reject });
+    });
+    return { sessionId, accepted };
   };
   const selectFile = (sessionId) => {
     display.clearNotice();
@@ -191,8 +214,11 @@ export function MeterRuntimeProvider({ children }) {
     stopFileAnalysis,
     switchSource,
     clearActiveSource,
+    clearLiveForControl,
     beginFileAnalysis,
+    beginFileAnalysisForControl,
     reanalyzeFile,
+    reanalyzeFileForControl,
     selectFile,
     removeFile,
     clearFiles,
@@ -214,8 +240,11 @@ export function MeterRuntimeProvider({ children }) {
       stopFileAnalysis: forward("stopFileAnalysis"),
       switchSource: forward("switchSource"),
       clearActiveSource: forward("clearActiveSource"),
+      clearLiveForControl: forward("clearLiveForControl"),
       beginFileAnalysis: forward("beginFileAnalysis"),
+      beginFileAnalysisForControl: forward("beginFileAnalysisForControl"),
       reanalyzeFile: forward("reanalyzeFile"),
+      reanalyzeFileForControl: forward("reanalyzeFileForControl"),
       selectFile: forward("selectFile"),
       removeFile: forward("removeFile"),
       clearFiles: forward("clearFiles"),
@@ -265,6 +294,7 @@ export function MeterRuntimeProvider({ children }) {
     audioRef,
     defaultSampleRateRef,
     stopFileAnalysisRef,
+    fileAnalysisAcceptanceRef,
   };
 
   return (

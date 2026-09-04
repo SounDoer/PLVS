@@ -189,11 +189,16 @@ function AppContent() {
     analyzingFileId,
     startLive,
     stopLive,
+    startLiveForControl,
+    stopLiveForControl,
     stopFileAnalysis,
     switchSource,
     clearActiveSource,
+    clearLiveForControl,
     beginFileAnalysis: beginRuntimeFileAnalysis,
+    beginFileAnalysisForControl,
     reanalyzeFile,
+    reanalyzeFileForControl,
     selectFile,
     removeFile,
     clearFiles,
@@ -935,6 +940,15 @@ function AppContent() {
       }),
     [captureDeviceId, docked, meterRuntime, selectedOffset]
   );
+  const currentFileAnalysisSettings = useCallback(
+    () => ({
+      dialogue: {
+        enabled: dialogueGating,
+        engine: dialogueGating ? settings.dialogueVadEngine : null,
+      },
+    }),
+    [dialogueGating, settings.dialogueVadEngine]
+  );
   const applyAgentControlSettings = useCallback(
     async (next, { changed, effects }) => {
       const compensation = [];
@@ -989,6 +1003,84 @@ function AppContent() {
     },
     [agentControlSettings, settings]
   );
+  const executeAgentControlTransport = useCallback(
+    async (method, params) => {
+      if (method === "transport.source.live") {
+        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
+        switchSource("live");
+        return {};
+      }
+      if (method === "transport.source.file") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+        switchSource("file");
+        return {};
+      }
+      if (method === "transport.live.start") {
+        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
+        switchSource("live");
+        await startLiveForControl();
+        return {};
+      }
+      if (method === "transport.live.stop") {
+        await stopLiveForControl();
+        return {};
+      }
+      if (method === "transport.live.clear") {
+        await clearLiveForControl();
+        return {};
+      }
+      if (method === "transport.file.analyze") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+        switchSource("file");
+        const run = beginFileAnalysisForControl(params.path, currentFileAnalysisSettings());
+        if (!run) throw new Error("FILE analysis was not accepted.");
+        await run.accepted;
+        const { sessionId } = run;
+        return { sessionId };
+      }
+      if (method === "transport.file.reanalyze") {
+        switchSource("file");
+        const run = reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
+        if (!run) throw new Error("FILE reanalysis was not accepted.");
+        await run.accepted;
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.stop") {
+        await stopFileAnalysis(params.sessionId);
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.select") {
+        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+        switchSource("file");
+        selectFile(params.sessionId);
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.remove") {
+        await removeFile(params.sessionId);
+        return { sessionId: params.sessionId };
+      }
+      if (method === "transport.file.clear") {
+        await clearFiles();
+        return {};
+      }
+      throw new Error(`Unsupported Transport method: ${method}`);
+    },
+    [
+      analyzingFileId,
+      beginFileAnalysisForControl,
+      clearFiles,
+      clearLiveForControl,
+      currentFileAnalysisSettings,
+      meterRuntime.liveLifecycle,
+      reanalyzeFileForControl,
+      removeFile,
+      selectFile,
+      startLiveForControl,
+      stopFileAnalysis,
+      stopLiveForControl,
+      switchSource,
+    ]
+  );
   useAgentControlBridge({
     enabled: agentControlRuntime.available === true,
     runtime: agentControlRuntime,
@@ -1001,6 +1093,8 @@ function AppContent() {
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
     transport: agentControlTransport,
+    transportContext: { docked },
+    executeTransport: executeAgentControlTransport,
     loudnessProfiles: loudnessProfile.profiles,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
@@ -1024,16 +1118,6 @@ function AppContent() {
     s.setProperty("--panel-opacity-header", `${Math.round(p * 0.6)}%`);
     s.setProperty("--panel-opacity-meter", String(Math.max(0.25, p / 100)));
   }, [panelOpacity]);
-
-  const currentFileAnalysisSettings = useCallback(
-    () => ({
-      dialogue: {
-        enabled: dialogueGating,
-        engine: dialogueGating ? dialogueVadEngine : null,
-      },
-    }),
-    [dialogueGating, dialogueVadEngine]
-  );
 
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
 

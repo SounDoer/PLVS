@@ -47,6 +47,7 @@ export function useFileAnalysisEngine({
   setAnalyzingFileId,
   display,
   shouldDriveDisplay,
+  fileAnalysisAcceptanceRef,
 }) {
   const { frameRef, selectedOffsetRef, latestAudioRef, setAudio, setSelectedOffset, raiseNotice } =
     display;
@@ -61,6 +62,14 @@ export function useFileAnalysisEngine({
     if (!isTauri()) {
       raiseNotice("error", "Error: File analysis runs in the desktop app");
       updateFileSession(sessionId, (current) => ({ ...current, state: "empty" }));
+      const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
+      fileAnalysisAcceptanceRef?.current.delete(sessionId);
+      if (acceptance) {
+        const error = new Error("File analysis runs in the desktop app");
+        error.sessionId = sessionId;
+        error.stage = "availability";
+        acceptance.reject(error);
+      }
       return;
     }
 
@@ -68,6 +77,7 @@ export function useFileAnalysisEngine({
     const unsubs = [];
 
     const run = async () => {
+      let stage = "probe";
       try {
         activePathRef.current = filePath;
         intake.reset();
@@ -146,6 +156,7 @@ export function useFileAnalysisEngine({
           shouldDriveDisplay,
           shouldPublishDisplay: () => selectedOffsetRef.current < 0,
         });
+        stage = "start";
         const channel = await startFileAnalysis({
           path: filePath,
           probe: metadata,
@@ -154,6 +165,9 @@ export function useFileAnalysisEngine({
           },
         });
         audioRef.current = { mode: "file", channel, unsubs };
+        const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
+        fileAnalysisAcceptanceRef?.current.delete(sessionId);
+        acceptance?.resolve();
       } catch (err) {
         if (!mounted) return;
         const message = err?.message || "File analysis unavailable";
@@ -166,6 +180,14 @@ export function useFileAnalysisEngine({
         }));
         setAnalyzingFileId((current) => (current === sessionId ? null : current));
         raiseNotice("error", `Error: ${message}`);
+        const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
+        fileAnalysisAcceptanceRef?.current.delete(sessionId);
+        if (acceptance) {
+          const failure = err instanceof Error ? err : new Error(message);
+          failure.sessionId = sessionId;
+          failure.stage = stage;
+          acceptance.reject(failure);
+        }
       }
     };
 
