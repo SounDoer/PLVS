@@ -19,6 +19,8 @@ const METHODS = [
   "panel.describe",
   "panel.update",
   "panel.reset",
+  "preset.list",
+  "preset.describe",
 ];
 
 export function buildAgentControlPanelSnapshot({
@@ -61,6 +63,7 @@ export function buildAgentControlCapabilities(runtime) {
 export function buildAgentControlSnapshot({
   runtime,
   revision,
+  presetsRevision = 0,
   workspace,
   presets,
   hasLoudnessReference = false,
@@ -78,7 +81,7 @@ export function buildAgentControlSnapshot({
       platform: String(runtime.platform),
     },
     protocolVersion: 1,
-    revisions: { workspace: revision },
+    revisions: { workspace: revision, presets: presetsRevision },
     runtime: {
       channelTopology: {
         status: detectedChannelCount === null ? "assumed" : "detected",

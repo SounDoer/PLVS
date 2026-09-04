@@ -29,6 +29,8 @@ describe("agent-control app snapshots", () => {
         "panel.describe",
         "panel.update",
         "panel.reset",
+        "preset.list",
+        "preset.describe",
       ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
@@ -45,6 +47,7 @@ describe("agent-control app snapshots", () => {
     const snapshot = buildAgentControlSnapshot({
       runtime,
       revision: 7,
+      presetsRevision: 3,
       workspace,
       presets: { activeId: "p1", dirty: true, list: [{ id: "p1", name: "Mix" }] },
       analysisContext: {
@@ -62,7 +65,7 @@ describe("agent-control app snapshots", () => {
         platform: "windows",
       },
       protocolVersion: 1,
-      revisions: { workspace: 7 },
+      revisions: { workspace: 7, presets: 3 },
       runtime: {
         channelTopology: { status: "detected", channelCount: 2 },
         dialogueDetection: "active",

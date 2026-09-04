@@ -16,6 +16,25 @@ describe("normalizeAgentControlRequest", () => {
     }
   );
 
+  it("normalizes Preset read commands", () => {
+    expect(normalizeAgentControlRequest(request("preset.list"))).toEqual({
+      ok: true,
+      request: { id: "req-1", method: "preset.list", params: {} },
+    });
+    expect(
+      normalizeAgentControlRequest(
+        request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: 4 })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "preset.describe",
+        params: { presetId: "preset-1", expectedPresetsRevision: 4 },
+      },
+    });
+  });
+
   it("normalizes workspace.applyLayout options", () => {
     const layout = { type: "panel", panelId: "spectrum" };
     expect(
@@ -121,6 +140,14 @@ describe("normalizeAgentControlRequest", () => {
     [{ ...request("app.inspect"), extra: true }, "invalidRequest", "$.extra", -32600],
     [request("app.inspect", { extra: true }), "invalidParams", "$.params.extra", -32602],
     [request("axis.inspect", { extra: true }), "invalidParams", "$.params.extra", -32602],
+    [request("preset.list", { extra: true }), "invalidParams", "$.params.extra", -32602],
+    [request("preset.describe", {}), "invalidParams", "$.params.presetId", -32602],
+    [
+      request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: -1 }),
+      "invalidParams",
+      "$.params.expectedPresetsRevision",
+      -32602,
+    ],
     [request("app.inspect", []), "invalidParams", "$.params", -32602],
     [request("workspace.applyLayout", {}), "invalidParams", "$.params.layout", -32602],
     [request("workspace.applyLayout", { layout: [] }), "invalidParams", "$.params.layout", -32602],

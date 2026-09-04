@@ -22,6 +22,7 @@ import {
 } from "./appSnapshot.js";
 import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
+import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -73,6 +74,14 @@ function controllableWorkspaceMatches(left, right) {
   );
 }
 
+function presetStateSignature(presets) {
+  return JSON.stringify({
+    list: Array.isArray(presets?.list) ? presets.list : [],
+    activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
+    dirty: presets?.dirty === true,
+  });
+}
+
 export function useAgentControlBridge({
   enabled,
   runtime,
@@ -81,6 +90,7 @@ export function useAgentControlBridge({
   setPanelControlsForPanel,
   waitForWorkspacePersistenceEnqueue,
   presets,
+  loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
   flush = flushPersistence,
@@ -88,6 +98,8 @@ export function useAgentControlBridge({
   const aliveRef = useRef(false);
   const previousWorkspaceRef = useRef(workspace);
   const revisionRef = useRef(0);
+  const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
+  const presetsRevisionRef = useRef(0);
   const settlementRef = useRef(null);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
@@ -105,6 +117,14 @@ export function useAgentControlBridge({
       settlement.resolve(revisionRef.current);
     }
   }, [workspace]);
+
+  useEffect(() => {
+    const signature = presetStateSignature(presets);
+    if (signature !== previousPresetsSignatureRef.current) {
+      previousPresetsSignatureRef.current = signature;
+      presetsRevisionRef.current += 1;
+    }
+  }, [presets]);
 
   useEffect(() => {
     processRef.current = async (rawRequest) => {
@@ -134,11 +154,59 @@ export function useAgentControlBridge({
             result: buildAgentControlSnapshot({
               runtime,
               revision: revisionRef.current,
+              presetsRevision: presetsRevisionRef.current,
               workspace,
               presets,
               hasLoudnessReference,
               analysisContext,
             }),
+          };
+        }
+
+        if (request.method === "preset.list") {
+          return {
+            requestId,
+            result: {
+              revision: presetsRevisionRef.current,
+              presets: (presets?.list ?? []).map(({ id, name }) => ({ id, name })),
+              activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
+              dirty: presets?.dirty === true,
+            },
+          };
+        }
+
+        if (request.method === "preset.describe") {
+          const currentRevision = presetsRevisionRef.current;
+          if (
+            request.params.expectedPresetsRevision !== undefined &&
+            request.params.expectedPresetsRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedPresetsRevision",
+              `Presets changed after revision ${request.params.expectedPresetsRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedPresetsRevision,
+                currentRevision,
+              }
+            );
+          }
+          const preset = (presets?.list ?? []).find(({ id }) => id === request.params.presetId);
+          if (!preset) {
+            throw semanticFailure(
+              "presetNotFound",
+              "$.params.presetId",
+              `Preset ${request.params.presetId} was not found.`,
+              -32020
+            );
+          }
+          return {
+            requestId,
+            result: {
+              revision: currentRevision,
+              preset: buildPublicPresetSnapshot(preset, { loudnessProfiles }),
+            },
           };
         }
 
@@ -479,6 +547,7 @@ export function useAgentControlBridge({
   }, [
     flush,
     hasLoudnessReference,
+    loudnessProfiles,
     analysisContext,
     presets,
     replaceWorkspace,

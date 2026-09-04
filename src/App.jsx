@@ -885,6 +885,7 @@ function AppContent() {
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     presets,
+    loudnessProfiles: loudnessProfile.profiles,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
   });

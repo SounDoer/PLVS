@@ -50,13 +50,45 @@ export function normalizeAgentControlRequest(input) {
     input.method === "app.capabilities" ||
     input.method === "app.inspect" ||
     input.method === "axis.describe" ||
-    input.method === "axis.inspect"
+    input.method === "axis.inspect" ||
+    input.method === "preset.list"
   ) {
     const field = Object.keys(input.params)[0];
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     return {
       ok: true,
       request: { id: input.id, method: input.method, params: {} },
+    };
+  }
+
+  if (input.method === "preset.describe") {
+    const field = unknownField(input.params, new Set(["presetId", "expectedPresetsRevision"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params.presetId !== "string" || input.params.presetId.trim() === "") {
+      return invalidParams("$.params.presetId", "presetId must be a non-empty string.");
+    }
+    if (
+      input.params.expectedPresetsRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedPresetsRevision) ||
+        input.params.expectedPresetsRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedPresetsRevision",
+        "expectedPresetsRevision must be a non-negative safe integer."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          presetId: input.params.presetId,
+          ...(input.params.expectedPresetsRevision !== undefined
+            ? { expectedPresetsRevision: input.params.expectedPresetsRevision }
+            : {}),
+        },
+      },
     };
   }
 

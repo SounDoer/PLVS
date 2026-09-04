@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 
 const adapter = vi.hoisted(() => ({
@@ -43,6 +44,7 @@ function Harness({
   flush = vi.fn(async () => {}),
   hasLoudnessReference = false,
   analysisContext = {},
+  loudnessProfiles = [],
   presets = { activeId: null, dirty: false },
   onStore = () => {},
 }) {
@@ -58,6 +60,7 @@ function Harness({
     presets,
     hasLoudnessReference,
     analysisContext,
+    loudnessProfiles,
     flush,
   });
   return null;
@@ -135,6 +138,7 @@ describe("useAgentControlBridge", () => {
     expect(capabilities.result).not.toHaveProperty("revision");
     const first = await send(request("app.inspect", {}, "inspect-1"));
     expect(first.result.revisions.workspace).toBe(0);
+    expect(first.result.revisions.presets).toBe(0);
     expect(first.result).not.toHaveProperty("revision");
     expect(view.store.state.tree).toBe(initialTree);
 
@@ -142,6 +146,74 @@ describe("useAgentControlBridge", () => {
     const second = await send(request("app.inspect", {}, "inspect-2"));
     expect(second.result.revisions.workspace).toBe(1);
     expect(second.result.workspace.layout).toEqual({ type: "panel", panelId: "spectrum" });
+  });
+
+  it("lists and describes saved Presets through public shapes", async () => {
+    const stored = {
+      id: "preset-1",
+      name: "Mixing",
+      ...DEFAULT_WORKSPACE_STATE,
+      loudnessProfileActive: "off",
+    };
+    mount({
+      presets: { list: [stored], activeId: "preset-1", dirty: true },
+    });
+    await waitUntilReady();
+
+    const listed = await send(request("preset.list", {}, "preset-list"));
+    const described = await send(
+      request(
+        "preset.describe",
+        { presetId: "preset-1", expectedPresetsRevision: 0 },
+        "preset-describe"
+      )
+    );
+
+    expect(listed.result).toEqual({
+      revision: 0,
+      presets: [{ id: "preset-1", name: "Mixing" }],
+      activeId: "preset-1",
+      dirty: true,
+    });
+    expect(described.result).toMatchObject({
+      revision: 0,
+      preset: {
+        id: "preset-1",
+        name: "Mixing",
+        workspace: { layout: expect.any(Object), panels: expect.any(Array) },
+        window: { bounds: null },
+        loudnessProfile: { activeId: null },
+      },
+    });
+  });
+
+  it("returns stable Preset read conflicts and missing-target errors", async () => {
+    mount();
+    await waitUntilReady();
+
+    const conflict = await send(
+      request(
+        "preset.describe",
+        { presetId: "missing", expectedPresetsRevision: 1 },
+        "preset-conflict"
+      )
+    );
+    const missing = await send(
+      request("preset.describe", { presetId: "missing" }, "preset-missing")
+    );
+
+    expect(conflict.error).toMatchObject({
+      code: -32004,
+      data: {
+        reason: "revisionConflict",
+        path: "$.params.expectedPresetsRevision",
+        details: { expectedRevision: 1, currentRevision: 0 },
+      },
+    });
+    expect(missing.error).toMatchObject({
+      code: -32020,
+      data: { reason: "presetNotFound", path: "$.params.presetId" },
+    });
   });
 
   it("does not advance the public revision for transient fullscreen state", async () => {
