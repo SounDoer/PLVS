@@ -5,8 +5,6 @@ use std::io::{self, Read};
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
-#[cfg(target_os = "windows")]
-use std::time::Duration;
 
 use crate::agent_control::discovery::{
   descriptor_path, read_descriptor_at, AgentControlDescriptor, DescriptorApp, DiscoveryErrorKind,
@@ -1038,32 +1036,25 @@ fn call_descriptor(
   descriptor: &AgentControlDescriptor,
   request: &JsonRpcRequest,
 ) -> Result<AppCall, CliAppFailure> {
-  let wait_timeout = request
-    .params
-    .get("timeoutMs")
-    .and_then(Value::as_u64)
-    .map(|milliseconds| Duration::from_millis(milliseconds.saturating_add(2_000)));
-  let response = wait_timeout
-    .map_or_else(
-      || crate::agent_control::windows_pipe::call(&descriptor.endpoint, &descriptor.token, request),
-      |timeout| {
-        crate::agent_control::windows_pipe::call_with_timeout(
-          &descriptor.endpoint,
-          &descriptor.token,
-          request,
-          timeout,
-        )
-      },
-    )
-    .map_err(|error| {
-      let reason = match error.reason {
-        crate::agent_control::windows_pipe::PipeErrorReason::Unauthorized => "authenticationFailed",
-        crate::agent_control::windows_pipe::PipeErrorReason::ConnectionFailed => "appNotRunning",
-        crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => "timeout",
-        _ => "transportFailed",
-      };
-      CliAppFailure::transport(reason, error.to_string(), Some(descriptor.app.clone()))
-    })?;
+  // The same budget the broker uses, plus a wider grace, so this end is always the last to give up
+  // and the app's own answer is never replaced by a client-side timeout.
+  let timeout = crate::agent_control::broker::frontend_budget(request)
+    + crate::agent_control::broker::CLIENT_GRACE;
+  let response = crate::agent_control::windows_pipe::call_with_timeout(
+    &descriptor.endpoint,
+    &descriptor.token,
+    request,
+    timeout,
+  )
+  .map_err(|error| {
+    let reason = match error.reason {
+      crate::agent_control::windows_pipe::PipeErrorReason::Unauthorized => "authenticationFailed",
+      crate::agent_control::windows_pipe::PipeErrorReason::ConnectionFailed => "appNotRunning",
+      crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => "timeout",
+      _ => "transportFailed",
+    };
+    CliAppFailure::transport(reason, error.to_string(), Some(descriptor.app.clone()))
+  })?;
   Ok(AppCall {
     app: descriptor.app.clone(),
     protocol_version: descriptor.protocol_version,

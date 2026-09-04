@@ -13,6 +13,45 @@ pub const AGENT_CONTROL_REQUEST_EVENT: &str = "agent-control://request";
 pub const DEFAULT_MAX_PENDING_REQUESTS: usize = 8;
 pub const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Long-poll method whose frontend budget is set by the caller, not by the default above.
+const WAIT_METHOD: &str = "app.wait";
+/// Mirrors the `app.wait` contract the frontend validates (`docs/agent-control/wait.md`).
+const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
+const MIN_WAIT_TIMEOUT_MS: u64 = 100;
+const MAX_WAIT_TIMEOUT_MS: u64 = 300_000;
+/// Grace the broker allows on top of the frontend's own budget, so the frontend's answer —
+/// including its own `outcome: "timeout"` — always wins the race against this timer.
+const BROKER_GRACE: Duration = Duration::from_secs(1);
+/// The client waits one grace period longer again, for the same reason.
+pub const CLIENT_GRACE: Duration = Duration::from_secs(2);
+
+/// How long the frontend itself may take to answer this request.
+///
+/// Every layer between the caller and the frontend has to agree on this, or whichever one gives up
+/// first replaces the real outcome with its own error. `app.wait` is the only method that
+/// deliberately holds a request open, so it is the only one that needs more than the default.
+/// The value is clamped rather than trusted: the frontend rejects an out-of-range `timeoutMs`, but
+/// the broker has to pick its own deadline before the frontend ever sees the request, and an
+/// unbounded one would pin a pending slot.
+pub fn frontend_budget(request: &JsonRpcRequest) -> Duration {
+  wait_budget(request).unwrap_or(DEFAULT_RESPONSE_TIMEOUT)
+}
+
+/// The caller-supplied budget, for the one method that has one. `None` for every other method,
+/// which leaves the broker free to keep using its own configured default.
+fn wait_budget(request: &JsonRpcRequest) -> Option<Duration> {
+  if request.method != WAIT_METHOD {
+    return None;
+  }
+  let milliseconds = request
+    .params
+    .get("timeoutMs")
+    .and_then(Value::as_u64)
+    .unwrap_or(DEFAULT_WAIT_TIMEOUT_MS)
+    .clamp(MIN_WAIT_TIMEOUT_MS, MAX_WAIT_TIMEOUT_MS);
+  Some(Duration::from_millis(milliseconds))
+}
+
 pub trait FrontendEmitter: Send + Sync {
   fn emit(&self, request: &JsonRpcRequest) -> Result<(), String>;
 
@@ -182,6 +221,10 @@ impl Broker {
   }
 
   pub fn dispatch(&self, request: JsonRpcRequest) -> Result<PendingRequest, BrokerError> {
+    // Read the deadline before `request` is moved into the pending map. Only `app.wait` carries
+    // its own budget; everything else keeps this broker's configured default.
+    let response_timeout =
+      wait_budget(&request).map_or(self.core.response_timeout, |budget| budget + BROKER_GRACE);
     let (sender, receiver) = mpsc::sync_channel(1);
     {
       let mut inner = self
@@ -228,6 +271,7 @@ impl Broker {
       request_id: request.id,
       receiver: Some(receiver),
       core: self.core.clone(),
+      response_timeout,
       completed: false,
     })
   }
@@ -284,6 +328,7 @@ pub struct PendingRequest {
   request_id: String,
   receiver: Option<Receiver<Result<FrontendOutcome, BrokerError>>>,
   core: Arc<BrokerCore>,
+  response_timeout: Duration,
   completed: bool,
 }
 
@@ -313,14 +358,14 @@ impl PendingRequest {
     let poll_interval = Duration::from_millis(25);
     loop {
       let elapsed = started.elapsed();
-      if elapsed >= self.core.response_timeout {
+      if elapsed >= self.response_timeout {
         self.cancel_pending();
         return Err(BrokerError::new(
           BrokerErrorReason::Timeout,
           "The PLVS frontend did not respond before the timeout.",
         ));
       }
-      let remaining = self.core.response_timeout - elapsed;
+      let remaining = self.response_timeout - elapsed;
       match receiver.recv_timeout(remaining.min(poll_interval)) {
         Ok(Ok(FrontendOutcome::Success(result))) => {
           self.completed = true;
@@ -542,6 +587,71 @@ mod tests {
   fn broker(limit: usize, timeout: Duration) -> (Broker, Arc<FakeEmitter>) {
     let emitter = Arc::new(FakeEmitter::default());
     (Broker::new(emitter.clone(), limit, timeout), emitter)
+  }
+
+  fn wait_request(id: &str, params: Value) -> JsonRpcRequest {
+    JsonRpcRequest {
+      id: id.to_string(),
+      method: WAIT_METHOD.to_string(),
+      params,
+    }
+  }
+
+  #[test]
+  fn only_the_long_poll_method_carries_its_own_frontend_budget() {
+    assert_eq!(frontend_budget(&request("plain")), DEFAULT_RESPONSE_TIMEOUT);
+    // The documented default, for a caller that omits the field entirely.
+    assert_eq!(
+      frontend_budget(&wait_request("default", json!({ "workspaceRevision": 0 }))),
+      Duration::from_millis(DEFAULT_WAIT_TIMEOUT_MS)
+    );
+    assert_eq!(
+      frontend_budget(&wait_request("explicit", json!({ "timeoutMs": 30_000 }))),
+      Duration::from_millis(30_000)
+    );
+    // Never trusted: the broker picks its deadline before the frontend can reject the value.
+    assert_eq!(
+      frontend_budget(&wait_request(
+        "huge",
+        json!({ "timeoutMs": 999_999_999_u64 })
+      )),
+      Duration::from_millis(MAX_WAIT_TIMEOUT_MS)
+    );
+    assert_eq!(
+      frontend_budget(&wait_request("tiny", json!({ "timeoutMs": 1 }))),
+      Duration::from_millis(MIN_WAIT_TIMEOUT_MS)
+    );
+  }
+
+  #[test]
+  fn a_long_poll_outlives_the_brokers_default_response_timeout() {
+    // A default far shorter than the wait's own budget: before per-request deadlines, this is
+    // exactly the shape that failed every `app.wait` longer than ten seconds.
+    let (broker, _) = broker(4, Duration::from_millis(20));
+    broker.frontend_ready().unwrap();
+
+    let pending = broker
+      .dispatch(wait_request("wait-1", json!({ "timeoutMs": 100 })))
+      .unwrap();
+    let responder = broker.clone();
+    let answered = std::thread::spawn(move || {
+      std::thread::sleep(Duration::from_millis(120));
+      responder.respond(
+        "wait-1",
+        FrontendOutcome::Success(json!({ "outcome": "timeout" })),
+      )
+    });
+
+    let response = pending.wait().unwrap();
+    answered.join().unwrap().unwrap();
+    assert_eq!(
+      serde_json::to_value(response).unwrap()["result"]["outcome"],
+      "timeout"
+    );
+
+    // Anything that is not a long poll still answers to the configured default.
+    let plain = broker.dispatch(request("plain")).unwrap();
+    assert_eq!(plain.wait().unwrap_err().reason, BrokerErrorReason::Timeout);
   }
 
   #[test]
