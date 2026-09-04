@@ -93,6 +93,9 @@ describe("Dock Control", () => {
       speedPercent: { type: "integer", unit: "%" },
       frequencyRangeHz: { type: "object", unit: "Hz" },
     });
+    expect(
+      result.modules.find(({ moduleId }) => moduleId === "spectrum").controls
+    ).not.toHaveProperty("peakLabels");
   });
 
   it("strictly plans Dock-only panel controls", () => {

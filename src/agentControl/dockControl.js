@@ -345,7 +345,13 @@ function publicControls(panel, raw, context) {
   if (panel.moduleId === "loudness") return { ...all, showReadouts: normalized.showReadouts };
   if (panel.moduleId === "spectrum") {
     return {
-      ...all,
+      channel: all.channel,
+      view: all.view,
+      maxMode: all.maxMode,
+      speedPercent: all.speedPercent,
+      tiltDbPerOctave: all.tiltDbPerOctave,
+      octaveSmoothing: all.octaveSmoothing,
+      levelRangeDb: all.levelRangeDb,
       frequencyRangeHz: { min: normalized.spectrumXMinFreq, max: normalized.spectrumXMaxFreq },
     };
   }
