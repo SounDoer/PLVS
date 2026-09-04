@@ -100,6 +100,7 @@ export function buildAgentControlSnapshot({
   presets,
   settings,
   transport,
+  dock,
   hasLoudnessReference = false,
   analysisContext = {},
 }) {
@@ -147,6 +148,7 @@ export function buildAgentControlSnapshot({
     },
     ...(settings ? { settings } : {}),
     ...(transport ? { transport } : {}),
+    ...(dock ? { dock } : {}),
   };
 }
 

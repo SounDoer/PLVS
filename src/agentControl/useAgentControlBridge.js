@@ -207,6 +207,7 @@ export function useAgentControlBridge({
   const presetsRevisionRef = useRef(0);
   const previousSettingsSignatureRef = useRef(settingsStateSignature(settings));
   const settingsRevisionRef = useRef(0);
+  const settingsInitializedRef = useRef(false);
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
@@ -278,6 +279,13 @@ export function useAgentControlBridge({
 
   useEffect(() => {
     const signature = settingsStateSignature(settings);
+    if (!settingsInitializedRef.current) {
+      previousSettingsSignatureRef.current = signature;
+      if (settingsContext.autostartReady === true && settingsContext.clearShortcutReady === true) {
+        settingsInitializedRef.current = true;
+      }
+      return;
+    }
     if (signature !== previousSettingsSignatureRef.current) {
       previousSettingsSignatureRef.current = signature;
       settingsRevisionRef.current += 1;
@@ -288,7 +296,12 @@ export function useAgentControlBridge({
       settingsSettlementRef.current = null;
       settlement.resolve(settingsRevisionRef.current);
     }
-  }, [scheduleWaitWake, settings]);
+  }, [
+    scheduleWaitWake,
+    settings,
+    settingsContext.autostartReady,
+    settingsContext.clearShortcutReady,
+  ]);
 
   useEffect(() => {
     latestTransportRef.current = transport;
@@ -385,6 +398,7 @@ export function useAgentControlBridge({
               presets,
               settings,
               transport,
+              dock: buildDockSnapshot(dock, dockContext),
               hasLoudnessReference,
               analysisContext,
             }),

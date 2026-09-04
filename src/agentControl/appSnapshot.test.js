@@ -83,6 +83,7 @@ describe("agent-control app snapshots", () => {
       presets: { activeId: "p1", dirty: true, list: [{ id: "p1", name: "Mix" }] },
       settings: { interfaceSize: "large" },
       transport: { source: "live", live: { state: "stopped" }, files: { sessions: [] } },
+      dock: { supported: true, enabled: false, panels: [] },
       analysisContext: {
         channelCount: 2,
         dialogueDetectionActive: true,
@@ -107,6 +108,7 @@ describe("agent-control app snapshots", () => {
       preset: { activeId: "p1", dirty: true },
       settings: { interfaceSize: "large" },
       transport: { source: "live", live: { state: "stopped" }, files: { sessions: [] } },
+      dock: { supported: true, enabled: false, panels: [] },
     });
     expect(snapshot).not.toHaveProperty("revision");
     expect(snapshot.workspace.panels[0]).toEqual({

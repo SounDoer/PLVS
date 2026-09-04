@@ -105,6 +105,7 @@ function Harness({
   agentTransport = transport,
   agentDock = dock,
   executeAgentDock,
+  controlledAgentSettings = false,
   executeAgentTransport,
   presets = { activeId: null, dirty: false },
   onStore = () => {},
@@ -112,6 +113,7 @@ function Harness({
   const store = useWorkspaceStore();
   const [presetState, setPresetState] = useState(presets);
   const [settingsState, setSettingsState] = useState(agentSettings);
+  const effectiveSettings = controlledAgentSettings ? agentSettings : settingsState;
   const [transportState, setTransportState] = useState(agentTransport);
   const [dockState, setDockState] = useState(agentDock);
   const controlledPresets = {
@@ -196,7 +198,7 @@ function Harness({
     setPanelControlsForPanel: store.setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
     presets: controlledPresets,
-    settings: settingsState,
+    settings: effectiveSettings,
     settingsContext: agentSettingsContext,
     applySettings: async (next) => setSettingsState(next),
     transport: transportState,
@@ -483,6 +485,32 @@ describe("useAgentControlBridge", () => {
       warnings: [],
     });
     expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not count initial Settings capability hydration as a revision", async () => {
+    const view = mount({
+      agentSettingsContext: {
+        ...settingsContext,
+        autostartReady: false,
+        clearShortcutReady: false,
+      },
+    });
+    await waitUntilReady();
+    view.rerender(
+      <WorkspaceProvider>
+        <Harness
+          agentSettings={{ ...publicSettings, openAtLogin: true }}
+          agentSettingsContext={{
+            ...settingsContext,
+            autostartReady: true,
+            clearShortcutReady: true,
+          }}
+          controlledAgentSettings
+        />
+      </WorkspaceProvider>
+    );
+    const inspected = await send(request("settings.inspect", {}, "settings-hydrated"));
+    expect(inspected.result.revision).toBe(0);
   });
 
   it("waits outside the command queue until any watched revision changes", async () => {
