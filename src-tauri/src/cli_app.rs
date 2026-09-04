@@ -107,6 +107,15 @@ pub enum CliAppCommand {
   },
   SettingsDescribe,
   SettingsInspect,
+  TransportInspect,
+  TransportMutation {
+    method: String,
+    target_key: Option<String>,
+    target: Option<String>,
+    expected_revision: Option<u64>,
+    allow_stop_file_analysis: bool,
+    dry_run: bool,
+  },
   SettingsUpdate {
     input: String,
     expected_revision: Option<u64>,
@@ -140,11 +149,119 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
+    [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
     [command, rest @ ..] if command == "wait" => return parse_wait_args(rest),
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
   Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel|axis> ...".to_string())
+}
+
+fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  if args.first().map(String::as_str) == Some("inspect") {
+    return if args == ["inspect", "--json"] {
+      Ok(CliAppCommand::TransportInspect)
+    } else {
+      Err("Usage: plvs-cli app transport inspect --json".to_string())
+    };
+  }
+
+  let (method, target_key, target, consumed) = match args {
+    [scope, value, ..] if scope == "source" && matches!(value.as_str(), "live" | "file") => (
+      format!("transport.source.{value}"),
+      None,
+      None,
+      2,
+    ),
+    [scope, action, ..]
+      if scope == "live" && matches!(action.as_str(), "start" | "stop" | "clear") =>
+    {
+      (format!("transport.live.{action}"), None, None, 2)
+    }
+    [scope, action, value, ..]
+      if scope == "file"
+        && matches!(
+          action.as_str(),
+          "analyze" | "reanalyze" | "stop" | "select" | "remove"
+        ) =>
+    {
+      (
+        format!("transport.file.{action}"),
+        Some(if action == "analyze" { "path" } else { "sessionId" }.to_string()),
+        Some(value.clone()),
+        3,
+      )
+    }
+    [scope, action, ..] if scope == "file" && action == "clear" => {
+      ("transport.file.clear".to_string(), None, None, 2)
+    }
+    _ => {
+      return Err(
+        "Usage: plvs-cli app transport <inspect|source live|source file|live start|live stop|live clear|file analyze|file reanalyze|file stop|file select|file remove|file clear> ... --json"
+          .to_string(),
+      )
+    }
+  };
+  let mut expected_revision = None;
+  let mut allow_stop_file_analysis = false;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = consumed;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--allow-stop-file-analysis" => {
+        if !matches!(
+          method.as_str(),
+          "transport.source.live" | "transport.live.start"
+        ) {
+          return Err(format!(
+            "The {method} command does not accept --allow-stop-file-analysis."
+          ));
+        }
+        allow_stop_file_analysis = true;
+        index += 1;
+      }
+      "--expected-transport-revision" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-transport-revision.".to_string())?;
+        let revision = raw.parse::<u64>().map_err(|_| {
+          "The --expected-transport-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if revision > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-transport-revision value must be a non-negative safe integer."
+              .to_string(),
+          );
+        }
+        expected_revision = Some(revision);
+        index += 2;
+      }
+      value => return Err(format!("Unexpected transport argument: {value}")),
+    }
+  }
+  if !json {
+    return Err("The app transport command requires --json.".to_string());
+  }
+  Ok(CliAppCommand::TransportMutation {
+    method,
+    target_key,
+    target,
+    expected_revision,
+    allow_stop_file_analysis,
+    dry_run,
+  })
 }
 
 fn parse_wait_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -707,7 +824,7 @@ fn is_help(value: &str) -> bool {
 }
 
 pub fn help_text() -> &'static str {
-  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json [--expected-presets-revision <n>]\n  plvs-cli app preset save <name> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset update <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-presets-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json [--expected-presets-revision <n>]\n  plvs-cli app preset save <name> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset update <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset apply <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-settings-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait <--workspace-revision <n>|--presets-revision <n>|--settings-revision <n>|--transport-revision <n>> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop|clear> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file <reanalyze|stop|select|remove> <session-id> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-transport-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
@@ -861,7 +978,7 @@ struct CliAppReport {
   error: Option<CliAppError>,
 }
 
-fn command_name(command: &CliAppCommand) -> &'static str {
+fn command_name(command: &CliAppCommand) -> &str {
   match command {
     CliAppCommand::Help => "app.help",
     CliAppCommand::Capabilities => "app.capabilities",
@@ -886,6 +1003,8 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::PresetReorder { .. } => "preset.reorder",
     CliAppCommand::SettingsDescribe => "settings.describe",
     CliAppCommand::SettingsInspect => "settings.inspect",
+    CliAppCommand::TransportInspect => "transport.inspect",
+    CliAppCommand::TransportMutation { method, .. } => method,
     CliAppCommand::SettingsUpdate { .. } => "settings.update",
     CliAppCommand::Wait { .. } => "app.wait",
   }
@@ -920,7 +1039,44 @@ fn request_for_command<R: Read>(
     | CliAppCommand::AxisInspect
     | CliAppCommand::PresetList
     | CliAppCommand::SettingsDescribe
-    | CliAppCommand::SettingsInspect => serde_json::json!({}),
+    | CliAppCommand::SettingsInspect
+    | CliAppCommand::TransportInspect => serde_json::json!({}),
+    CliAppCommand::TransportMutation {
+      method,
+      target_key,
+      target,
+      expected_revision,
+      allow_stop_file_analysis,
+      dry_run,
+    } => {
+      let mut params = serde_json::Map::new();
+      if let (Some(key), Some(value)) = (target_key, target) {
+        let value = if method == "transport.file.analyze" {
+          let canonical = fs::canonicalize(Path::new(value)).map_err(|error| {
+            CliAppFailure::transport(
+              "invalidInput",
+              format!("Unable to resolve audio path {value}: {error}"),
+              None,
+            )
+          })?;
+          Value::String(canonical.to_string_lossy().into_owned())
+        } else {
+          Value::String(value.clone())
+        };
+        params.insert(key.clone(), value);
+      }
+      params.insert("dryRun".to_string(), Value::Bool(*dry_run));
+      if let Some(revision) = expected_revision {
+        params.insert(
+          "expectedTransportRevision".to_string(),
+          Value::from(*revision),
+        );
+      }
+      if *allow_stop_file_analysis {
+        params.insert("allowStopFileAnalysis".to_string(), Value::Bool(true));
+      }
+      Value::Object(params)
+    }
     CliAppCommand::PresetDescribe {
       preset_id,
       expected_revision,
@@ -1882,6 +2038,86 @@ mod tests {
     ] {
       assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
     }
+  }
+
+  #[test]
+  fn parses_and_builds_transport_commands() {
+    assert_eq!(
+      parse_app_args(&args(&["transport", "inspect", "--json"])),
+      Ok(CliAppCommand::TransportInspect)
+    );
+    let start = parse_app_args(&args(&[
+      "transport",
+      "live",
+      "start",
+      "--expected-transport-revision",
+      "4",
+      "--allow-stop-file-analysis",
+      "--dry-run",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&start, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "transport.live.start");
+    assert_eq!(request.params["expectedTransportRevision"], 4);
+    assert_eq!(request.params["allowStopFileAnalysis"], true);
+    assert_eq!(request.params["dryRun"], true);
+
+    let select = parse_app_args(&args(&[
+      "transport",
+      "file",
+      "select",
+      "session-1",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&select, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "transport.file.select");
+    assert_eq!(request.params["sessionId"], "session-1");
+
+    for invalid in [
+      args(&["transport", "inspect"]),
+      args(&["transport", "live", "start", "--json", "extra"]),
+      args(&["transport", "file", "analyze", "--json"]),
+      args(&[
+        "transport",
+        "source",
+        "file",
+        "--allow-stop-file-analysis",
+        "--json",
+      ]),
+      args(&[
+        "transport",
+        "live",
+        "stop",
+        "--expected-transport-revision",
+        "-1",
+        "--json",
+      ]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+    }
+  }
+
+  #[test]
+  fn canonicalizes_transport_analysis_paths_before_transport() {
+    let path = std::env::temp_dir().join(format!("plvs-transport-{}.wav", std::process::id()));
+    fs::write(&path, []).unwrap();
+    let command = CliAppCommand::TransportMutation {
+      method: "transport.file.analyze".to_string(),
+      target_key: Some("path".to_string()),
+      target: Some(path.to_string_lossy().into_owned()),
+      expected_revision: None,
+      allow_stop_file_analysis: false,
+      dry_run: false,
+    };
+    let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "transport.file.analyze");
+    assert_eq!(
+      Path::new(request.params["path"].as_str().unwrap()),
+      fs::canonicalize(&path).unwrap()
+    );
+    fs::remove_file(path).unwrap();
   }
 
   #[test]
