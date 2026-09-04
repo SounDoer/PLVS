@@ -116,6 +116,20 @@ pub enum CliAppCommand {
     allow_stop_file_analysis: bool,
     dry_run: bool,
   },
+  DockRead {
+    method: String,
+  },
+  DockCommand {
+    method: String,
+    panel_id: Option<String>,
+    input: Option<String>,
+    edge: Option<String>,
+    monitor: Option<String>,
+    reserve_space: Option<bool>,
+    height: Option<u64>,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
   SettingsUpdate {
     input: String,
     expected_revision: Option<u64>,
@@ -150,11 +164,142 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
     [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
+    [command, rest @ ..] if command == "dock" => return parse_dock_args(rest),
     [command, rest @ ..] if command == "wait" => return parse_wait_args(rest),
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
   Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel|axis> ...".to_string())
+}
+
+fn parse_dock_args(args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  if let [action, json] = args {
+    if matches!(action.as_str(), "describe" | "inspect") && json == "--json" {
+      return Ok(CliAppCommand::DockRead {
+        method: format!("dock.{action}"),
+      });
+    }
+  }
+  let (method, panel_id, input, consumed) = match args {
+    [action, ..] if matches!(action.as_str(), "enter" | "exit") => {
+      (format!("dock.{action}"), None, None, 1)
+    }
+    [scope, action, value, ..] if scope == "layout" && action == "apply" => {
+      ("dock.layout.apply".to_string(), None, Some(value.clone()), 3)
+    }
+    [scope, action, panel_id, ..]
+      if scope == "panel" && matches!(action.as_str(), "describe" | "reset") =>
+    {
+      (format!("dock.panel.{action}"), Some(panel_id.clone()), None, 3)
+    }
+    [scope, action, panel_id, input, ..] if scope == "panel" && action == "update" => (
+      "dock.panel.update".to_string(),
+      Some(panel_id.clone()),
+      Some(input.clone()),
+      4,
+    ),
+    _ => return Err("Usage: plvs-cli app dock <describe|inspect|enter|exit|layout apply|panel describe|panel update|panel reset> ... --json".to_string()),
+  };
+  let read_panel = method == "dock.panel.describe";
+  let enter = method == "dock.enter";
+  let mut edge = None;
+  let mut monitor = None;
+  let mut reserve_space = None;
+  let mut height = None;
+  let mut expected_revision = None;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = consumed;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" if !read_panel => {
+        dry_run = true;
+        index += 1;
+      }
+      "--edge" if enter => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --edge.".to_string())?;
+        if !matches!(value.as_str(), "top" | "bottom") {
+          return Err("The --edge value must be top or bottom.".to_string());
+        }
+        edge = Some(value.clone());
+        index += 2;
+      }
+      "--monitor" if enter => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --monitor.".to_string())?;
+        if value.is_empty() {
+          return Err("The --monitor value must be non-empty.".to_string());
+        }
+        monitor = Some(value.clone());
+        index += 2;
+      }
+      "--reserve-space" if enter => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --reserve-space.".to_string())?;
+        reserve_space = Some(match value.as_str() {
+          "true" => true,
+          "false" => false,
+          _ => return Err("The --reserve-space value must be true or false.".to_string()),
+        });
+        index += 2;
+      }
+      "--height" if enter => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --height.".to_string())?;
+        let parsed = value
+          .parse::<u64>()
+          .map_err(|_| "The --height value must be an integer from 56 to 160.".to_string())?;
+        if !(56..=160).contains(&parsed) {
+          return Err("The --height value must be an integer from 56 to 160.".to_string());
+        }
+        height = Some(parsed);
+        index += 2;
+      }
+      "--expected-workspace-revision" if !read_panel => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-workspace-revision.".to_string())?;
+        let parsed = value.parse::<u64>().map_err(|_| {
+          "The --expected-workspace-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if parsed > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-workspace-revision value must be a non-negative safe integer."
+              .to_string(),
+          );
+        }
+        expected_revision = Some(parsed);
+        index += 2;
+      }
+      value => return Err(format!("Unexpected dock argument: {value}")),
+    }
+  }
+  if !json {
+    return Err("The app dock command requires --json.".to_string());
+  }
+  Ok(CliAppCommand::DockCommand {
+    method,
+    panel_id,
+    input,
+    edge,
+    monitor,
+    reserve_space,
+    height,
+    expected_revision,
+    dry_run,
+  })
 }
 
 fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -823,8 +968,21 @@ fn is_help(value: &str) -> bool {
   matches!(value, "--help" | "-h" | "help")
 }
 
-pub fn help_text() -> &'static str {
+fn base_help_text() -> &'static str {
   "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json [--expected-presets-revision <n>]\n  plvs-cli app preset save <name> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset update <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset apply <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-settings-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait <--workspace-revision <n>|--presets-revision <n>|--settings-revision <n>|--transport-revision <n>> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop|clear> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file <reanalyze|stop|select|remove> <session-id> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-transport-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+}
+
+pub fn help_text() -> &'static str {
+  static HELP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+  HELP
+    .get_or_init(|| {
+      base_help_text().replacen(
+        "\n\nControls the already-running",
+        "\n  plvs-cli app dock describe --json\n  plvs-cli app dock inspect --json\n  plvs-cli app dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app dock exit --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app dock layout apply <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app dock panel describe <panel-id> --json\n  plvs-cli app dock panel update <panel-id> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app dock panel reset <panel-id> --json [--expected-workspace-revision <n>] [--dry-run]\n\nControls the already-running",
+        1,
+      )
+    })
+    .as_str()
 }
 
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
@@ -1005,6 +1163,7 @@ fn command_name(command: &CliAppCommand) -> &str {
     CliAppCommand::SettingsInspect => "settings.inspect",
     CliAppCommand::TransportInspect => "transport.inspect",
     CliAppCommand::TransportMutation { method, .. } => method,
+    CliAppCommand::DockRead { method } | CliAppCommand::DockCommand { method, .. } => method,
     CliAppCommand::SettingsUpdate { .. } => "settings.update",
     CliAppCommand::Wait { .. } => "app.wait",
   }
@@ -1041,6 +1200,63 @@ fn request_for_command<R: Read>(
     | CliAppCommand::SettingsDescribe
     | CliAppCommand::SettingsInspect
     | CliAppCommand::TransportInspect => serde_json::json!({}),
+    CliAppCommand::DockRead { .. } => serde_json::json!({}),
+    CliAppCommand::DockCommand {
+      method,
+      panel_id,
+      input,
+      edge,
+      monitor,
+      reserve_space,
+      height,
+      expected_revision,
+      dry_run,
+    } => {
+      let mut params = serde_json::Map::new();
+      if let Some(panel_id) = panel_id {
+        params.insert("panelId".to_string(), Value::String(panel_id.clone()));
+      }
+      if let Some(input) = input {
+        let subject = if method == "dock.layout.apply" {
+          "Dock layout"
+        } else {
+          "Dock panel controls"
+        };
+        let document = read_json_document(input, stdin, subject)
+          .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+        params.insert(
+          if method == "dock.layout.apply" {
+            "layout"
+          } else {
+            "patch"
+          }
+          .to_string(),
+          document,
+        );
+      }
+      if let Some(value) = edge {
+        params.insert("edge".to_string(), Value::String(value.clone()));
+      }
+      if let Some(value) = monitor {
+        params.insert("monitor".to_string(), Value::String(value.clone()));
+      }
+      if let Some(value) = reserve_space {
+        params.insert("reserveSpace".to_string(), Value::Bool(*value));
+      }
+      if let Some(value) = height {
+        params.insert("height".to_string(), Value::from(*value));
+      }
+      if method != "dock.panel.describe" {
+        params.insert("dryRun".to_string(), Value::Bool(*dry_run));
+        if let Some(revision) = expected_revision {
+          params.insert(
+            "expectedWorkspaceRevision".to_string(),
+            Value::from(*revision),
+          );
+        }
+      }
+      Value::Object(params)
+    }
     CliAppCommand::TransportMutation {
       method,
       target_key,
@@ -2118,6 +2334,59 @@ mod tests {
       fs::canonicalize(&path).unwrap()
     );
     fs::remove_file(path).unwrap();
+  }
+
+  #[test]
+  fn parses_and_builds_dock_commands() {
+    assert!(help_text().contains("app dock layout apply"));
+    assert_eq!(
+      parse_app_args(&args(&["dock", "inspect", "--json"])),
+      Ok(CliAppCommand::DockRead {
+        method: "dock.inspect".to_string(),
+      })
+    );
+    let enter = parse_app_args(&args(&[
+      "dock",
+      "enter",
+      "--edge",
+      "top",
+      "--monitor",
+      "DISPLAY1",
+      "--reserve-space",
+      "false",
+      "--height",
+      "72",
+      "--expected-workspace-revision",
+      "3",
+      "--dry-run",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&enter, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "dock.enter");
+    assert_eq!(request.params["edge"], "top");
+    assert_eq!(request.params["monitor"], "DISPLAY1");
+    assert_eq!(request.params["reserveSpace"], false);
+    assert_eq!(request.params["height"], 72);
+    assert_eq!(request.params["expectedWorkspaceRevision"], 3);
+
+    let update =
+      parse_app_args(&args(&["dock", "panel", "update", "level", "-", "--json"])).unwrap();
+    let request = request_for_command(&update, &mut Cursor::new(br#"{"mode":"rms"}"#)).unwrap();
+    assert_eq!(request.method, "dock.panel.update");
+    assert_eq!(request.params["panelId"], "level");
+    assert_eq!(request.params["patch"]["mode"], "rms");
+
+    for invalid in [
+      args(&["dock", "describe"]),
+      args(&["dock", "enter", "--edge", "left", "--json"]),
+      args(&["dock", "enter", "--height", "55", "--json"]),
+      args(&["dock", "enter", "--reserve-space", "yes", "--json"]),
+      args(&["dock", "layout", "apply", "--json"]),
+      args(&["dock", "panel", "update", "level", "--json"]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+    }
   }
 
   #[test]
