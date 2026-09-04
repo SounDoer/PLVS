@@ -30,6 +30,119 @@ function changedValue(changed, path, before, after) {
   if (JSON.stringify(before) !== JSON.stringify(after)) changed.push(path);
 }
 
+export function buildPublicSettings(settings, context) {
+  return {
+    openAtLogin: context.autostartReady === false ? null : settings.autostartEnabled === true,
+    closeBehavior: settings.closeAction,
+    clearShortcut: {
+      accelerator: settings.clearShortcut,
+      global: settings.clearGlobal === true,
+    },
+    interfaceSize: settings.interfaceSize,
+    appearance: {
+      mode: settings.appearance,
+      themeId: settings.appearance === "system" ? null : settings.themeId,
+      resolvedThemeId: settings.resolvedThemeId,
+    },
+    historyRetentionSec: settings.historyRetentionSec,
+    dialogueVadEngine: settings.dialogueVadEngine,
+    channelLabels: {
+      channelCount: context.channelCount,
+      mode: context.channelLabelMode,
+      roles: [...context.channelLabelRoles],
+    },
+  };
+}
+
+export function buildSettingsSchema(settings, context) {
+  const inspection = buildSettingsInspection(settings, context);
+  return {
+    openAtLogin: {
+      type: "boolean",
+      default: false,
+      current: settings.openAtLogin,
+      availability: inspection.availability.openAtLogin,
+    },
+    closeBehavior: {
+      type: "enum",
+      default: "ask",
+      current: settings.closeBehavior,
+      options: CLOSE_BEHAVIORS,
+    },
+    clearShortcut: {
+      type: "object",
+      properties: {
+        accelerator: {
+          type: "accelerator",
+          default: "CmdOrCtrl+K",
+          current: settings.clearShortcut.accelerator,
+        },
+        global: { type: "boolean", default: false, current: settings.clearShortcut.global },
+      },
+      availability: inspection.availability.clearShortcut,
+    },
+    interfaceSize: {
+      type: "enum",
+      default: "default",
+      current: settings.interfaceSize,
+      options: INTERFACE_SIZES,
+    },
+    appearance: {
+      type: "object",
+      properties: {
+        mode: {
+          type: "enum",
+          default: "system",
+          current: settings.appearance.mode,
+          options: ["system", "fixed"],
+        },
+        themeId: {
+          type: "enum",
+          default: null,
+          current: settings.appearance.themeId,
+          options: context.themeOptions,
+          nullable: true,
+        },
+        resolvedThemeId: {
+          type: "string",
+          current: settings.appearance.resolvedThemeId,
+          writable: false,
+        },
+      },
+      availability: inspection.availability.appearance,
+    },
+    historyRetentionSec: {
+      type: "enum",
+      default: 3600,
+      current: settings.historyRetentionSec,
+      options: HISTORY_LENGTHS,
+      unit: "s",
+    },
+    dialogueVadEngine: {
+      type: "enum",
+      default: "firered",
+      current: settings.dialogueVadEngine,
+      options: VAD_ENGINES,
+    },
+    channelLabels: {
+      type: "object",
+      properties: {
+        channelCount: { type: "integer", current: settings.channelLabels.channelCount },
+        mode: { type: "enum", current: settings.channelLabels.mode, options: ["auto", "custom"] },
+        roles: {
+          type: "array",
+          current: settings.channelLabels.roles,
+          items: {
+            type: "enum",
+            options: CHANNEL_ROLE_VOCABULARY.map(({ id, label }) => ({ id, name: label })),
+          },
+        },
+      },
+      availability: inspection.availability.channelLabels,
+    },
+  };
+}
+
 export function buildSettingsInspection(settings, context) {
   const autostartWritable = context.autostartReady === true;
   const shortcutWritable = context.clearShortcutCapturing !== true;

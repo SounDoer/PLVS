@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildSettingsInspection, planSettingsUpdate } from "./settingsControl.js";
+import {
+  buildPublicSettings,
+  buildSettingsInspection,
+  buildSettingsSchema,
+  planSettingsUpdate,
+} from "./settingsControl.js";
 
 const current = {
   openAtLogin: false,
@@ -26,6 +31,51 @@ const context = {
 };
 
 describe("Settings Control", () => {
+  it("maps the application hook state into the public Settings shape", () => {
+    expect(
+      buildPublicSettings(
+        {
+          autostartEnabled: true,
+          closeAction: "tray",
+          clearShortcut: "CmdOrCtrl+L",
+          clearGlobal: true,
+          interfaceSize: "large",
+          appearance: "fixed",
+          themeId: "custom",
+          resolvedThemeId: "custom",
+          historyRetentionSec: 7200,
+          dialogueVadEngine: "silero",
+        },
+        { channelCount: 2, channelLabelMode: "custom", channelLabelRoles: ["L", "R"] }
+      )
+    ).toEqual({
+      openAtLogin: true,
+      closeBehavior: "tray",
+      clearShortcut: { accelerator: "CmdOrCtrl+L", global: true },
+      interfaceSize: "large",
+      appearance: { mode: "fixed", themeId: "custom", resolvedThemeId: "custom" },
+      historyRetentionSec: 7200,
+      dialogueVadEngine: "silero",
+      channelLabels: { channelCount: 2, mode: "custom", roles: ["L", "R"] },
+    });
+  });
+
+  it("describes dynamic Theme and Channel Role options", () => {
+    const schema = buildSettingsSchema(current, context);
+    expect(schema.appearance.properties.themeId.options).toEqual(context.themeOptions);
+    expect(schema.channelLabels.properties.roles.items.options).toContainEqual({
+      id: "LFE",
+      name: "LFE",
+    });
+    expect(schema.historyRetentionSec).toMatchObject({
+      type: "enum",
+      default: 3600,
+      current: 3600,
+      options: [1800, 3600, 7200, 14400],
+      unit: "s",
+    });
+  });
+
   it("separates configured settings from runtime and availability", () => {
     expect(buildSettingsInspection(current, context)).toEqual({
       settings: current,
