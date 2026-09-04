@@ -15,6 +15,10 @@ pub const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub trait FrontendEmitter: Send + Sync {
   fn emit(&self, request: &JsonRpcRequest) -> Result<(), String>;
+
+  fn cancel(&self, _request_id: &str) -> Result<(), String> {
+    Ok(())
+  }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -251,13 +255,17 @@ impl Broker {
   }
 
   fn cancel(&self, request_id: &str) {
-    self
+    let removed = self
       .core
       .inner
       .lock()
       .expect("agent-control broker poisoned")
       .pending
-      .remove(request_id);
+      .remove(request_id)
+      .is_some();
+    if removed {
+      let _ = self.core.emitter.cancel(request_id);
+    }
   }
 
   #[cfg(test)]
@@ -346,13 +354,17 @@ impl PendingRequest {
   }
 
   fn cancel_pending(&mut self) {
-    self
+    let removed = self
       .core
       .inner
       .lock()
       .expect("agent-control broker poisoned")
       .pending
-      .remove(&self.request_id);
+      .remove(&self.request_id)
+      .is_some();
+    if removed {
+      let _ = self.core.emitter.cancel(&self.request_id);
+    }
     self.completed = true;
   }
 }
@@ -360,13 +372,17 @@ impl PendingRequest {
 impl Drop for PendingRequest {
   fn drop(&mut self) {
     if !self.completed {
-      self
+      let removed = self
         .core
         .inner
         .lock()
         .expect("agent-control broker poisoned")
         .pending
-        .remove(&self.request_id);
+        .remove(&self.request_id)
+        .is_some();
+      if removed {
+        let _ = self.core.emitter.cancel(&self.request_id);
+      }
     }
   }
 }
@@ -386,6 +402,17 @@ impl FrontendEmitter for TauriFrontendEmitter {
     self
       .app
       .emit_to("main", AGENT_CONTROL_REQUEST_EVENT, request.clone())
+      .map_err(|error| error.to_string())
+  }
+
+  fn cancel(&self, request_id: &str) -> Result<(), String> {
+    self
+      .app
+      .emit_to(
+        "main",
+        AGENT_CONTROL_REQUEST_EVENT,
+        serde_json::json!({ "type": "cancel", "requestId": request_id }),
+      )
       .map_err(|error| error.to_string())
   }
 }
@@ -481,6 +508,7 @@ mod tests {
   #[derive(Default)]
   struct FakeEmitter {
     requests: Mutex<Vec<JsonRpcRequest>>,
+    cancellations: Mutex<Vec<String>>,
     fail: bool,
   }
 
@@ -490,6 +518,15 @@ mod tests {
         return Err("event unavailable".to_string());
       }
       self.requests.lock().unwrap().push(request.clone());
+      Ok(())
+    }
+
+    fn cancel(&self, request_id: &str) -> Result<(), String> {
+      self
+        .cancellations
+        .lock()
+        .unwrap()
+        .push(request_id.to_string());
       Ok(())
     }
   }
@@ -534,6 +571,7 @@ mod tests {
     assert_eq!(emitter.requests.lock().unwrap().len(), 2);
     drop(first);
     drop(second);
+    assert_eq!(*emitter.cancellations.lock().unwrap(), vec!["one", "two"]);
     assert_eq!(broker.pending_count(), 0);
   }
 
@@ -622,6 +660,7 @@ mod tests {
   fn failed_event_delivery_never_leaves_a_pending_request() {
     let emitter = Arc::new(FakeEmitter {
       requests: Mutex::new(Vec::new()),
+      cancellations: Mutex::new(Vec::new()),
       fail: true,
     });
     let broker = Broker::new(emitter, 2, Duration::from_secs(1));

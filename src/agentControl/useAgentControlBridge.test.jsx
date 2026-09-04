@@ -615,6 +615,33 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("releases a revision waiter immediately when its client disconnects", async () => {
+    mount();
+    await waitUntilReady();
+    act(() =>
+      adapter.handler(request("app.wait", { workspaceRevision: 0, timeoutMs: 100 }, "gone"))
+    );
+    act(() => adapter.handler({ type: "cancel", requestId: "gone" }));
+
+    for (let index = 0; index < 4; index += 1) {
+      act(() =>
+        adapter.handler(
+          request("app.wait", { workspaceRevision: 0, timeoutMs: 100 }, `remaining-${index}`)
+        )
+      );
+    }
+
+    await waitFor(() =>
+      expect(
+        adapter.responses.filter(({ requestId }) => requestId.startsWith("remaining-"))
+      ).toHaveLength(4)
+    );
+    expect(adapter.responses.find(({ requestId }) => requestId === "gone")).toBeUndefined();
+    expect(
+      adapter.responses.filter(({ requestId }) => requestId.startsWith("remaining-"))
+    ).toSatisfy((responses) => responses.every(({ result }) => result?.outcome === "timeout"));
+  });
+
   it("returns a successful timeout with the current revision snapshot", async () => {
     mount();
     await waitUntilReady();

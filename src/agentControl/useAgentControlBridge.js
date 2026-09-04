@@ -138,6 +138,7 @@ const WAIT_BASELINE_KEYS = {
   settings: "settingsRevision",
   transport: "transportRevision",
 };
+const WAIT_CANCELLED = Symbol("waitCancelled");
 
 function changedRevisionDomains(baselines, revisions) {
   return Object.entries(WAIT_BASELINE_KEYS)
@@ -396,6 +397,7 @@ export function useAgentControlBridge({
               reject,
             });
           });
+          if (result === WAIT_CANCELLED) return null;
           return { requestId, result };
         }
         if (request.method === "app.inspect") {
@@ -1628,10 +1630,19 @@ export function useAgentControlBridge({
 
     const install = async () => {
       unlisten = await listenForAgentControlRequests((request) => {
+        if (request?.type === "cancel" && typeof request.requestId === "string") {
+          const waiter = waiters.get(request.requestId);
+          if (waiter) {
+            clearTimeout(waiter.timer);
+            waiters.delete(request.requestId);
+            waiter.resolve(WAIT_CANCELLED);
+          }
+          return;
+        }
         const respond = (processing) =>
           processing
             .then((response) => {
-              if (aliveRef.current) return respondToAgentControlRequest(response);
+              if (response && aliveRef.current) return respondToAgentControlRequest(response);
               return undefined;
             })
             .catch(() => undefined);
