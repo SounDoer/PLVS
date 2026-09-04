@@ -5,23 +5,28 @@ Date: 2026-09-03
 Status: Living design record; Panel, Axis, Preset, Settings, Wait, Transport, and Dock Control
 decisions are approved unless explicitly marked otherwise
 
-This directory records the evolving developer-only App Control contract. It complements the
-implemented first-slice design in
+This directory records the implemented developer-only App Control contract. It complements the
+first-slice design in
 [`../superpowers/specs/2026-09-02-agent-control-design.md`](../superpowers/specs/2026-09-02-agent-control-design.md).
-That document explains the transport and the existing Workspace implementation; this directory is
-the source of truth for follow-on design discussions.
-
-The contract described here is not yet implemented unless the Current implementation section says
-otherwise.
+That document explains the transport and initial Workspace implementation; this directory is the
+source of truth for the complete public control surface.
 
 ## Current implementation
 
-The development-identity build currently exposes:
+The development-identity build exposes all approved command families:
 
 ```text
 app.capabilities
 app.inspect
+app.wait
 workspace.applyLayout
+panel.describe / panel.update / panel.reset
+axis.describe / axis.inspect / axis shared / axis panel
+preset.list / preset.describe / preset save / preset update / preset apply
+preset.rename / preset.delete / preset.reorder
+settings.describe / settings.inspect / settings.update
+transport.inspect / transport source / transport live / transport file
+dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
 ```
 
 The repository entrypoint automatically supplies the `plvs-cli app` prefix:
@@ -29,23 +34,23 @@ The repository entrypoint automatically supplies the `plvs-cli app` prefix:
 ```powershell
 npm run desktop:control -- capabilities --json
 npm run desktop:control -- inspect --json
+npm run desktop:control -- wait --workspace-revision 0 --json
 npm run desktop:control -- workspace apply layout.json --json
+npm run desktop:control -- panel describe spectrum --json
+npm run desktop:control -- settings inspect --json
+npm run desktop:control -- transport inspect --json
+npm run desktop:control -- dock inspect --json
 ```
 
 These commands are development-only. The installed release CLI neither displays nor accepts the
-`app` command family. At present, Workspace layout is the only live state an agent can mutate.
+`app` command family. Every mutation is delivered to the already-running React application and
+uses the same state, native integrations, safety guards, and persistence paths as the GUI.
 
-## Planned order
+## Implementation status
 
-1. Finish the App Control foundation.
-2. Panel Control.
-3. Axis Control.
-4. Presets.
-5. Settings.
-6. `app.wait`.
-7. Transport.
-8. Dock.
-9. Revisit production exposure and MCP integration later.
+The foundation, Panel Control, Axis Control, Presets, Settings, Revision Wait, Transport, and Dock
+Control are implemented. Production exposure and MCP integration remain deferred product
+decisions.
 
 ## Method responsibilities
 
@@ -93,7 +98,7 @@ Dynamic choices list only currently valid values. For example, Loudness omits `r
 Profile supplies no reference. Channel schemas include the currently valid object-valued choices
 and report `channelTopology.status` as `assumed` or `detected`.
 
-## Planned Panel Control commands
+## Panel Control commands
 
 ```powershell
 npm run desktop:control -- panel describe <panel-id> --json
@@ -101,7 +106,7 @@ npm run desktop:control -- panel update <panel-id> <file|-> --json
 npm run desktop:control -- panel reset <panel-id> --json
 ```
 
-`panel.update` and `panel.reset` will also accept:
+`panel.update` and `panel.reset` also accept:
 
 ```text
 --dry-run

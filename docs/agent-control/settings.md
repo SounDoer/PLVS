@@ -16,7 +16,7 @@ npm run desktop:control -- settings update <file|-> --json
 - `describe` reports the public schema, defaults, options, current effective values, and dynamic
   availability.
 - `inspect` reports current effective public values without schema metadata.
-- `update` applies an atomic direct-field patch and will support expected revision, dry-run, no-op,
+- `update` applies an atomic direct-field patch with expected revision, dry-run, no-op,
   precise changed paths, warnings, and durable persistence settlement.
 
 There is no generic `settings reset` in the first version. Individual GUI resets and the destructive
