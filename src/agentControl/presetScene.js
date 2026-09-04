@@ -7,6 +7,20 @@ function snapshotOf(preset) {
   return snapshot;
 }
 
+const SNAPSHOT_GROUPS = [
+  [
+    "workspace",
+    ["tree", "panelsById", "panelOrder", "panelControlsById", "pinnedPanelsById", "axisViewports"],
+  ],
+  ["window", ["windowBounds", "windowPinned", "focusView", "panelOpacity", "glassEnabled"]],
+  ["dock", ["dock"]],
+  ["loudnessProfile", ["loudnessProfileActive"]],
+];
+
+function groupChanged(target, current, keys) {
+  return keys.some((key) => JSON.stringify(target[key]) !== JSON.stringify(current[key]));
+}
+
 export function planPresetSave(presets, name, snapshot, allocatedId = null) {
   if (typeof name !== "string" || name.trim() === "") {
     return {
@@ -84,6 +98,36 @@ export function planPresetUpdate(presets, presetId, snapshot) {
     warnings: [],
     issues: [],
     preset: { id: existing.id, name: existing.name },
+    presetState: { activeId: presetId, dirty: false },
+  };
+}
+
+export function planPresetApply(presets, presetId, currentSnapshot) {
+  const preset = presets.list.find(({ id }) => id === presetId);
+  if (!preset) {
+    return {
+      presets,
+      changed: [],
+      warnings: [],
+      issues: [issue("presetNotFound", "$.presetId", `Preset ${presetId} was not found.`)],
+    };
+  }
+  const targetSnapshot = snapshotOf(preset);
+  const sceneChanges = SNAPSHOT_GROUPS.filter(([, keys]) =>
+    groupChanged(targetSnapshot, currentSnapshot, keys)
+  ).map(([path]) => path);
+  const changed = [
+    ...sceneChanges,
+    ...(presets.activeId !== presetId ? ["presets.activeId"] : []),
+    ...(presets.dirty === true ? ["presets.dirty"] : []),
+  ];
+  return {
+    presets: changed.length === 0 ? presets : { ...presets, activeId: presetId, dirty: false },
+    changed,
+    warnings: [],
+    issues: [],
+    applyScene: sceneChanges.length > 0,
+    preset: { id: preset.id, name: preset.name },
     presetState: { activeId: presetId, dirty: false },
   };
 }

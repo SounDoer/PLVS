@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planPresetSave, planPresetUpdate } from "./presetScene.js";
+import { planPresetApply, planPresetSave, planPresetUpdate } from "./presetScene.js";
 
 const snapshot = { tree: { type: "leaf" }, windowPinned: false };
 const current = {
@@ -59,5 +59,43 @@ describe("Preset scene capture planning", () => {
     expect(planPresetUpdate(current, "missing", snapshot).issues).toEqual([
       expect.objectContaining({ code: "presetNotFound", path: "$.presetId" }),
     ]);
+  });
+
+  it("recognizes an active clean apply as a no-op", () => {
+    expect(planPresetApply(current, "preset-1", snapshot)).toMatchObject({
+      issues: [],
+      changed: [],
+      applyScene: false,
+      presetState: { activeId: "preset-1", dirty: false },
+    });
+  });
+
+  it("associates matching scene content without replacing the scene", () => {
+    const state = { ...current, activeId: null };
+    expect(planPresetApply(state, "preset-1", snapshot)).toMatchObject({
+      issues: [],
+      changed: ["presets.activeId"],
+      applyScene: false,
+      presetState: { activeId: "preset-1", dirty: false },
+    });
+  });
+
+  it("plans replacement for different scene content and rejects a missing target", () => {
+    const state = { ...current, activeId: null, dirty: true };
+    expect(
+      planPresetApply(state, "preset-1", {
+        ...snapshot,
+        tree: { type: "leaf", tabs: [] },
+        windowPinned: true,
+      })
+    ).toMatchObject({
+      issues: [],
+      changed: ["workspace", "window", "presets.activeId", "presets.dirty"],
+      applyScene: true,
+    });
+    expect(planPresetApply(state, "missing", snapshot)).toMatchObject({
+      changed: [],
+      issues: [{ code: "presetNotFound" }],
+    });
   });
 });
