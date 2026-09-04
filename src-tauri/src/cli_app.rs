@@ -1586,8 +1586,13 @@ fn execute<R: Read>(
   let request_id = request.id.clone();
   match client.call(request) {
     Ok(call) => {
+      // An empty id means PLVS failed before it could attribute the failure to this request (a
+      // frame it could not parse or authenticate). That is still a real error with a real reason,
+      // so report what it sent. Any other mismatch is a reply to somebody else's request.
+      let id = call.response.get("id").and_then(Value::as_str);
+      let attributed = id == Some(request_id.as_str());
       if call.response.get("jsonrpc").and_then(Value::as_str) != Some("2.0")
-        || call.response.get("id").and_then(Value::as_str) != Some(request_id.as_str())
+        || !(attributed || id == Some(""))
       {
         let failure = CliAppFailure::transport(
           "transportFailed",
@@ -1615,15 +1620,19 @@ fn execute<R: Read>(
         .pointer("/data/reason")
         .and_then(Value::as_str)
         .unwrap_or("commandFailed");
-      if reason == "unauthorized" {
-        let failure = CliAppFailure::transport(
-          "authenticationFailed",
-          rpc_error
-            .get("message")
-            .and_then(Value::as_str)
-            .unwrap_or("PLVS rejected the local-control credential."),
-          Some(call.app),
-        );
+      // Exit 1 is reserved for a valid app result. A failure tagged `transport` never reached the
+      // application at all — it is the broker, the pipe, or the envelope — so it exits 2 while
+      // keeping the reason PLVS actually reported.
+      if rpc_error.pointer("/data/layer").and_then(Value::as_str) == Some("transport") {
+        let message = rpc_error
+          .get("message")
+          .and_then(Value::as_str)
+          .unwrap_or("PLVS could not deliver the command.");
+        let failure = if reason == "unauthorized" {
+          CliAppFailure::transport("authenticationFailed", message, Some(call.app))
+        } else {
+          CliAppFailure::transport(reason, message, Some(call.app))
+        };
         return (failure_report(command_label, failure), 2);
       }
       let error = CliAppError {
@@ -2419,6 +2428,116 @@ mod tests {
     }
   }
 
+  /// Answers with a fixed id instead of echoing the request's, so the id check can be exercised.
+  struct FixedIdClient {
+    response: Value,
+  }
+
+  impl ControlClient for FixedIdClient {
+    fn call(&self, _request: JsonRpcRequest) -> Result<AppCall, CliAppFailure> {
+      Ok(AppCall {
+        app: app(),
+        protocol_version: 1,
+        response: self.response.clone(),
+      })
+    }
+  }
+
+  fn transport_error(id: &str, reason: &str) -> Value {
+    serde_json::json!({
+      "jsonrpc": "2.0",
+      "id": id,
+      "error": {
+        "code": -32003,
+        "message": "The PLVS frontend is not ready for agent control.",
+        "data": { "reason": reason, "layer": "transport" }
+      }
+    })
+  }
+
+  #[test]
+  fn an_unattributed_server_error_keeps_its_reason_but_a_mismatched_reply_does_not() {
+    // No request id could be recovered, so PLVS answered with the empty sentinel. The failure is
+    // still real and its reason has to survive.
+    let (report, exit) = execute(
+      &CliAppCommand::Inspect,
+      &mut Cursor::new([]),
+      &FixedIdClient {
+        response: transport_error("", "invalidEnvelope"),
+      },
+    );
+    assert_eq!(exit, 2);
+    let json = serde_json::to_value(report).unwrap();
+    assert_eq!(json["error"]["reason"], "invalidEnvelope");
+
+    // A non-empty id that belongs to someone else is a genuinely mismatched reply.
+    let (report, exit) = execute(
+      &CliAppCommand::Inspect,
+      &mut Cursor::new([]),
+      &FixedIdClient {
+        response: transport_error("someone-elses-request", "frontendNotReady"),
+      },
+    );
+    assert_eq!(exit, 2);
+    assert_eq!(
+      serde_json::to_value(report).unwrap()["error"]["reason"],
+      "transportFailed"
+    );
+  }
+
+  #[test]
+  fn a_failure_below_the_app_exits_two_while_an_app_result_exits_one() {
+    // Same reason string on both sides of the boundary: the broker's pending limit versus the
+    // frontend refusing a fifth concurrent wait. Only `layer` tells them apart.
+    let broker_busy = FakeClient {
+      response: Ok(AppCall {
+        app: app(),
+        protocol_version: 1,
+        response: serde_json::json!({
+          "jsonrpc": "2.0",
+          "id": "replaced",
+          "error": {
+            "code": -32006,
+            "message": "PLVS has reached the agent-control request limit.",
+            "data": { "reason": "busy", "layer": "transport" }
+          }
+        }),
+      }),
+    };
+    let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &broker_busy);
+    assert_eq!(exit, 2);
+    assert_eq!(
+      serde_json::to_value(report).unwrap()["error"]["reason"],
+      "busy"
+    );
+
+    let frontend_busy = FakeClient {
+      response: Ok(AppCall {
+        app: app(),
+        protocol_version: 1,
+        response: serde_json::json!({
+          "jsonrpc": "2.0",
+          "id": "replaced",
+          "error": {
+            "code": -32070,
+            "message": "Too many revision waits are active.",
+            "data": { "reason": "busy" }
+          }
+        }),
+      }),
+    };
+    let (report, exit) = execute(
+      &CliAppCommand::Inspect,
+      &mut Cursor::new([]),
+      &frontend_busy,
+    );
+    assert_eq!(exit, 1);
+    assert_eq!(
+      serde_json::to_value(report).unwrap()["error"]["reason"],
+      "busy"
+    );
+  }
+
   #[test]
   fn reports_success_app_errors_and_transport_exit_codes_without_tokens() {
     let command = CliAppCommand::Inspect;
@@ -2473,7 +2592,7 @@ mod tests {
           "error": {
             "code": -32020,
             "message": "unauthorized",
-            "data": { "reason": "unauthorized" }
+            "data": { "reason": "unauthorized", "layer": "transport" }
           }
         }),
       }),

@@ -281,6 +281,15 @@ A persistence failure must state the partial outcome explicitly:
 After a revision conflict or persistence failure, the caller should inspect current state rather
 than retry blindly.
 
+### Failures below the application
+
+A request can also fail before it reaches the application at all: the frontend is not ready yet, the
+broker's pending limit is full, the frontend did not answer in time, or the envelope was unreadable.
+These carry `"layer": "transport"` alongside their `reason`, because they are not a valid app result
+and must not be read as one — the same `busy` reason means the broker's request limit with the tag
+and a refused concurrent `app.wait` without it. The CLI maps a tagged failure to exit code `2`
+while keeping the reported reason; untagged errors are app results and exit `1`.
+
 ### Conditional controls and warnings
 
 A stored control may be temporarily hidden or ineffective because of another control. Updating it

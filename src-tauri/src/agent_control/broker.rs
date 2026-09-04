@@ -113,7 +113,10 @@ impl BrokerError {
     JsonRpcError {
       code,
       message: self.message.clone(),
-      data: serde_json::json!({ "reason": self.reason }),
+      // `layer` says the request never produced a valid app result, so the caller can keep the
+      // real reason and still classify it as a transport failure. It also separates this `busy`
+      // — the broker's pending limit — from the frontend's own `busy` for concurrent waits.
+      data: serde_json::json!({ "reason": self.reason, "layer": "transport" }),
     }
   }
 }

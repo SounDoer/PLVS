@@ -96,7 +96,7 @@ impl PipeError {
     JsonRpcError {
       code,
       message: self.message.clone(),
-      data: serde_json::json!({ "reason": self.reason }),
+      data: serde_json::json!({ "reason": self.reason, "layer": "transport" }),
     }
   }
 }
@@ -494,7 +494,10 @@ impl Write for NamedPipe {
   }
 }
 
-fn error_response(error: JsonRpcError) -> JsonRpcResponse {
+/// A failure that could not be attributed to a request. `parse_request` rejects an empty id, so no
+/// real request can ever carry one — the client reads it as "server-level error, not a stray reply
+/// to some other request", and reports the error the server actually sent.
+fn unattributed_error_response(error: JsonRpcError) -> JsonRpcResponse {
   JsonRpcResponse::error("", error)
 }
 
@@ -502,15 +505,21 @@ fn handle_client(mut pipe: NamedPipe, token: LaunchToken, broker: Broker) {
   let response = match read_frame(&mut pipe, MAX_WIRE_REQUEST_BYTES)
     .and_then(|bytes| decode_authenticated_request(&bytes, &token))
   {
-    Ok(request) => match broker.dispatch(request) {
-      Ok(mut pending) => match pending.wait_until(|| !pipe.is_connected()) {
-        Ok(response) => response,
-        Err(error) if error.reason == BrokerErrorReason::ClientDisconnected => return,
-        Err(error) => error_response(error.rpc_error()),
-      },
-      Err(error) => error_response(error.rpc_error()),
-    },
-    Err(error) => error_response(error.rpc_error()),
+    Ok(request) => {
+      // Keep the id: a broker-level failure is still an answer to *this* request, and dropping it
+      // would leave the client unable to tell the real reason from a mismatched reply.
+      let request_id = request.id.clone();
+      match broker.dispatch(request) {
+        Ok(mut pending) => match pending.wait_until(|| !pipe.is_connected()) {
+          Ok(response) => response,
+          Err(error) if error.reason == BrokerErrorReason::ClientDisconnected => return,
+          Err(error) => JsonRpcResponse::error(request_id, error.rpc_error()),
+        },
+        Err(error) => JsonRpcResponse::error(request_id, error.rpc_error()),
+      }
+    }
+    // The frame never parsed into a request, so there is no id to attribute this to.
+    Err(error) => unattributed_error_response(error.rpc_error()),
   };
 
   if let Ok(encoded) = encode_response(&response) {
@@ -654,14 +663,6 @@ fn connect_client(endpoint: &str, timeout: Duration) -> io::Result<OwnedHandle> 
       WaitNamedPipeW(path.as_ptr(), 25);
     }
   }
-}
-
-pub fn call(
-  endpoint: &str,
-  token: &LaunchToken,
-  request: &JsonRpcRequest,
-) -> Result<Value, PipeError> {
-  call_with_timeout(endpoint, token, request, IO_TIMEOUT)
 }
 
 pub fn call_with_timeout(
@@ -985,6 +986,70 @@ mod tests {
     assert_eq!(responder.requests.load(Ordering::Acquire), 1);
 
     drop(stalled);
+    drop(client);
+    server.stop();
+  }
+
+  #[test]
+  fn a_broker_level_failure_answers_with_the_requests_own_id() {
+    let token = generate_launch_token().unwrap();
+    let endpoint = format!("plvs-agent-control-test-{}", &token.expose()[..16]);
+    let responder = Arc::new(AutoResponder::default());
+    // Deliberately never made ready: the request cannot reach the frontend at all, which is the
+    // class of failure whose reason used to be lost on the way back to the client.
+    let broker = Broker::new(responder.clone(), 4, Duration::from_secs(1));
+    let mut server = PipeServer::bind(endpoint.clone(), token.clone(), broker).unwrap();
+
+    let client_handle = connect_client(&endpoint, Duration::from_secs(1)).unwrap();
+    let mut client = NamedPipe {
+      handle: client_handle,
+    };
+    client.set_nonblocking().unwrap();
+    let request = JsonRpcRequest {
+      id: "req-3".to_string(),
+      method: "app.inspect".to_string(),
+      params: serde_json::json!({}),
+    };
+    let payload = serde_json::to_vec(&OutgoingEnvelope {
+      token: token.expose(),
+      request: &request,
+    })
+    .unwrap();
+
+    write_frame(&mut client, &payload, MAX_WIRE_REQUEST_BYTES).unwrap();
+    let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
+    let response: Value = serde_json::from_slice(&response).unwrap();
+
+    assert_eq!(response["id"], "req-3");
+    assert_eq!(response["error"]["data"]["reason"], "frontendNotReady");
+
+    drop(client);
+    server.stop();
+  }
+
+  #[test]
+  fn a_frame_that_never_parsed_answers_without_an_id() {
+    let token = generate_launch_token().unwrap();
+    let endpoint = format!("plvs-agent-control-test-{}", &token.expose()[16..32]);
+    let responder = Arc::new(AutoResponder::default());
+    let broker = Broker::new(responder.clone(), 4, Duration::from_secs(1));
+    *responder.broker.lock().unwrap() = Some(broker.clone());
+    broker.frontend_ready().unwrap();
+    let mut server = PipeServer::bind(endpoint.clone(), token.clone(), broker).unwrap();
+
+    let client_handle = connect_client(&endpoint, Duration::from_secs(1)).unwrap();
+    let mut client = NamedPipe {
+      handle: client_handle,
+    };
+    client.set_nonblocking().unwrap();
+    write_frame(&mut client, b"{not json", MAX_WIRE_REQUEST_BYTES).unwrap();
+    let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
+    let response: Value = serde_json::from_slice(&response).unwrap();
+
+    // No request was ever recovered, so there is nothing to attribute the failure to.
+    assert_eq!(response["id"], "");
+    assert!(response["error"]["code"].is_i64());
+
     drop(client);
     server.stop();
   }

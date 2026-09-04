@@ -77,7 +77,7 @@ impl ProtocolError {
     JsonRpcError {
       code: self.reason.json_rpc_code(),
       message: self.message.clone(),
-      data: serde_json::json!({ "reason": self.reason }),
+      data: serde_json::json!({ "reason": self.reason, "layer": "transport" }),
     }
   }
 }
@@ -243,7 +243,10 @@ mod tests {
 
     let rpc = ProtocolError::new(ProtocolErrorReason::RequestTooLarge, "too large").rpc_error();
     assert_eq!(rpc.code, -32001);
-    assert_eq!(rpc.data, json!({ "reason": "requestTooLarge" }));
+    assert_eq!(
+      rpc.data,
+      json!({ "reason": "requestTooLarge", "layer": "transport" })
+    );
   }
 
   #[test]
