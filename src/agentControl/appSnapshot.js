@@ -31,6 +31,7 @@ const METHODS = [
   "settings.inspect",
   "settings.update",
   "app.wait",
+  "transport.inspect",
 ];
 
 export function buildAgentControlPanelSnapshot({
@@ -79,6 +80,7 @@ export function buildAgentControlSnapshot({
   workspace,
   presets,
   settings,
+  transport,
   hasLoudnessReference = false,
   analysisContext = {},
 }) {
@@ -125,6 +127,7 @@ export function buildAgentControlSnapshot({
       dirty: presets?.dirty === true,
     },
     ...(settings ? { settings } : {}),
+    ...(transport ? { transport } : {}),
   };
 }
 

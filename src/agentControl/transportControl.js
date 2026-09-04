@@ -53,6 +53,7 @@ export function buildTransportSnapshot(runtime, context = {}) {
 }
 
 export function transportLifecycleSignature(snapshot) {
+  if (!snapshot) return "null";
   return JSON.stringify({
     source: snapshot.source,
     live: {

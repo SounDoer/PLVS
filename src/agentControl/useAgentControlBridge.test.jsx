@@ -61,6 +61,19 @@ const settingsContext = {
   sourceMode: "live",
 };
 
+const transport = {
+  source: "live",
+  live: {
+    state: "stopped",
+    requestedDeviceId: "default",
+    resolvedDeviceId: null,
+    startedAt: null,
+    atLiveEdge: true,
+    error: null,
+  },
+  files: { activeId: null, analyzingId: null, sessions: [] },
+};
+
 function request(method, params = {}, id = "req-1") {
   return { jsonrpc: "2.0", id, method, params };
 }
@@ -75,6 +88,7 @@ function Harness({
   assertPresetOperationAllowed = () => {},
   agentSettings = publicSettings,
   agentSettingsContext = settingsContext,
+  agentTransport = transport,
   presets = { activeId: null, dirty: false },
   onStore = () => {},
 }) {
@@ -146,6 +160,7 @@ function Harness({
     settings: settingsState,
     settingsContext: agentSettingsContext,
     applySettings: async (next) => setSettingsState(next),
+    transport: agentTransport,
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
@@ -295,6 +310,13 @@ describe("useAgentControlBridge", () => {
         historyRetentionSec: { type: "enum", current: 3600, unit: "s" },
       },
     });
+  });
+
+  it("inspects the focused Transport lifecycle", async () => {
+    mount();
+    await waitUntilReady();
+    const response = await send(request("transport.inspect", {}, "transport-inspect"));
+    expect(response.result).toEqual({ revision: 0, ...transport });
   });
 
   it("updates Settings atomically and reports its independent revision", async () => {

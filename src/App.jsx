@@ -82,6 +82,7 @@ import packageInfo from "../package.json";
 import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
 import { buildPublicSettings } from "./agentControl/settingsControl.js";
+import { buildTransportSnapshot } from "./agentControl/transportControl.js";
 import { BUILTIN_THEMES_V2 } from "./theme/builtinThemesV2.js";
 
 const APP_VERSION = packageInfo.version;
@@ -139,6 +140,7 @@ export default function App() {
 }
 
 function AppContent() {
+  const meterRuntime = useMeterRuntime();
   const {
     state: workspaceState,
     replaceWorkspace,
@@ -195,7 +197,7 @@ function AppContent() {
     selectFile,
     removeFile,
     clearFiles,
-  } = useMeterRuntime();
+  } = meterRuntime;
   const onClearRef = useRef(null);
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
   const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
@@ -924,6 +926,15 @@ function AppContent() {
     () => buildPublicSettings(settings, agentControlSettingsContext),
     [agentControlSettingsContext, settings]
   );
+  const agentControlTransport = useMemo(
+    () =>
+      buildTransportSnapshot(meterRuntime, {
+        requestedDeviceId: captureDeviceId,
+        atLiveEdge: selectedOffset < 0,
+        docked,
+      }),
+    [captureDeviceId, docked, meterRuntime, selectedOffset]
+  );
   const applyAgentControlSettings = useCallback(
     async (next, { changed, effects }) => {
       const compensation = [];
@@ -989,6 +1000,7 @@ function AppContent() {
     settings: agentControlSettings,
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
+    transport: agentControlTransport,
     loudnessProfiles: loudnessProfile.profiles,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,

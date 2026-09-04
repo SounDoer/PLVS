@@ -53,7 +53,8 @@ export function normalizeAgentControlRequest(input) {
     input.method === "axis.inspect" ||
     input.method === "preset.list" ||
     input.method === "settings.describe" ||
-    input.method === "settings.inspect"
+    input.method === "settings.inspect" ||
+    input.method === "transport.inspect"
   ) {
     const field = Object.keys(input.params)[0];
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

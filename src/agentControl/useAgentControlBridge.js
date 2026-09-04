@@ -31,6 +31,7 @@ import {
   buildSettingsSchema,
   planSettingsUpdate,
 } from "./settingsControl.js";
+import { transportLifecycleSignature } from "./transportControl.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -141,7 +142,7 @@ export function useAgentControlBridge({
   settings,
   settingsContext = {},
   applySettings = async () => {},
-  transportRevision = 0,
+  transport,
   loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
@@ -157,7 +158,8 @@ export function useAgentControlBridge({
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
-  const transportRevisionRef = useRef(transportRevision);
+  const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
+  const transportRevisionRef = useRef(0);
   const waitersRef = useRef(new Map());
   const waitWakeScheduledRef = useRef(false);
   const processRef = useRef(null);
@@ -232,10 +234,12 @@ export function useAgentControlBridge({
   }, [scheduleWaitWake, settings]);
 
   useEffect(() => {
-    if (transportRevisionRef.current === transportRevision) return;
-    transportRevisionRef.current = transportRevision;
+    const signature = transportLifecycleSignature(transport);
+    if (signature === previousTransportSignatureRef.current) return;
+    previousTransportSignatureRef.current = signature;
+    transportRevisionRef.current += 1;
     scheduleWaitWake();
-  }, [scheduleWaitWake, transportRevision]);
+  }, [scheduleWaitWake, transport]);
 
   useEffect(() => {
     processRef.current = async (rawRequest) => {
@@ -301,6 +305,7 @@ export function useAgentControlBridge({
               workspace,
               presets,
               settings,
+              transport,
               hasLoudnessReference,
               analysisContext,
             }),
@@ -318,6 +323,12 @@ export function useAgentControlBridge({
                 ? { schema: buildSettingsSchema(settings, settingsContext) }
                 : {}),
             },
+          };
+        }
+        if (request.method === "transport.inspect") {
+          return {
+            requestId,
+            result: { revision: transportRevisionRef.current, ...transport },
           };
         }
 
@@ -1184,6 +1195,7 @@ export function useAgentControlBridge({
     runtime,
     settings,
     settingsContext,
+    transport,
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     workspace,

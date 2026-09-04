@@ -13,6 +13,7 @@ describe("normalizeAgentControlRequest", () => {
     "axis.inspect",
     "settings.describe",
     "settings.inspect",
+    "transport.inspect",
   ])("accepts %s with empty params", (method) => {
     expect(normalizeAgentControlRequest(request(method))).toEqual({
       ok: true,

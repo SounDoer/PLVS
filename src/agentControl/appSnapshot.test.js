@@ -41,6 +41,7 @@ describe("agent-control app snapshots", () => {
         "settings.inspect",
         "settings.update",
         "app.wait",
+        "transport.inspect",
       ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
@@ -62,6 +63,7 @@ describe("agent-control app snapshots", () => {
       workspace,
       presets: { activeId: "p1", dirty: true, list: [{ id: "p1", name: "Mix" }] },
       settings: { interfaceSize: "large" },
+      transport: { source: "live", live: { state: "stopped" }, files: { sessions: [] } },
       analysisContext: {
         channelCount: 2,
         dialogueDetectionActive: true,
@@ -85,6 +87,7 @@ describe("agent-control app snapshots", () => {
       },
       preset: { activeId: "p1", dirty: true },
       settings: { interfaceSize: "large" },
+      transport: { source: "live", live: { state: "stopped" }, files: { sessions: [] } },
     });
     expect(snapshot).not.toHaveProperty("revision");
     expect(snapshot.workspace.panels[0]).toEqual({
