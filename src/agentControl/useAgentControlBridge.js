@@ -132,6 +132,49 @@ function settingsStateSignature(settings) {
   });
 }
 
+/// A settlement waits only for React to render a change that has already been applied, so anything
+/// near a second means the predicate will never match. Kept well under the broker's own budget so
+/// the caller gets this specific failure instead of a transport timeout.
+const SETTLEMENT_TIMEOUT_MS = 5000;
+
+/// Bounds a settlement wait.
+///
+/// Without this a predicate that can never match hangs the request forever - and because commands
+/// share one serialized queue, every later command hangs behind it and the whole control channel is
+/// dead until the app restarts. A timeout turns that into one failed command with a stated cause.
+const COMMIT_NOT_OBSERVED = "commitNotObserved";
+
+function isCommitNotObserved(error) {
+  return error?.reason === COMMIT_NOT_OBSERVED;
+}
+
+function awaitSettlement(committed, clear, subject) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      clear();
+      reject(
+        semanticFailure(
+          COMMIT_NOT_OBSERVED,
+          "$",
+          `${subject} was applied but the commit was not observed within ${SETTLEMENT_TIMEOUT_MS} ms.`,
+          -32031,
+          { stateCommitted: true }
+        )
+      );
+    }, SETTLEMENT_TIMEOUT_MS);
+    committed.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
 const WAIT_BASELINE_KEYS = {
   workspace: "workspaceRevision",
   presets: "presetsRevision",
@@ -555,9 +598,18 @@ export function useAgentControlBridge({
           });
           try {
             await executeDock(request.method, planned.dock);
-            result.revision = await committed;
+            result.revision = await awaitSettlement(
+              committed,
+              () => {
+                dockSettlementRef.current = null;
+              },
+              "The Dock change"
+            );
           } catch (error) {
             dockSettlementRef.current = null;
+            // The backstop already states what went wrong and that state was committed; relabelling
+            // it as a failed native operation would hide the real cause.
+            if (isCommitNotObserved(error)) throw error;
             const observableDock = latestDockRef.current;
             const partial = dockStateSignature(observableDock) !== dockStateSignature(dock);
             throw semanticFailure(
@@ -703,9 +755,15 @@ export function useAgentControlBridge({
             if (matches(latestTransportRef.current)) {
               result.revision = transportRevisionRef.current;
             } else {
-              result.revision = await new Promise((resolve, reject) => {
-                transportSettlementRef.current = { matches, resolve, reject };
-              });
+              result.revision = await awaitSettlement(
+                new Promise((resolve, reject) => {
+                  transportSettlementRef.current = { matches, resolve, reject };
+                }),
+                () => {
+                  transportSettlementRef.current = null;
+                },
+                "The Transport change"
+              );
             }
           }
           Object.assign(result, latestTransportRef.current, execution?.result ?? {});
@@ -810,7 +868,13 @@ export function useAgentControlBridge({
               }
             );
           }
-          result.revision = await committed;
+          result.revision = await awaitSettlement(
+            committed,
+            () => {
+              settingsSettlementRef.current = null;
+            },
+            "The Settings change"
+          );
           try {
             await flush();
           } catch (error) {
@@ -983,7 +1047,13 @@ export function useAgentControlBridge({
           }
           result.preset = planned.preset;
           result.presetState = planned.presetState;
-          result.revisions.presets = await committed;
+          result.revisions.presets = await awaitSettlement(
+            committed,
+            () => {
+              presetSettlementRef.current = null;
+            },
+            "The Preset change"
+          );
           try {
             await flush();
           } catch (error) {
@@ -1139,10 +1209,17 @@ export function useAgentControlBridge({
               }
             );
           }
-          const settled = await Promise.all([
-            ...(presetCommitted ? [presetCommitted] : []),
-            ...(workspaceCommitted ? [workspaceCommitted] : []),
-          ]);
+          const settled = await awaitSettlement(
+            Promise.all([
+              ...(presetCommitted ? [presetCommitted] : []),
+              ...(workspaceCommitted ? [workspaceCommitted] : []),
+            ]),
+            () => {
+              presetSettlementRef.current = null;
+              settlementRef.current = null;
+            },
+            "The Preset application"
+          );
           let settledIndex = 0;
           if (presetCommitted) {
             result.revisions.presets = settled[settledIndex];
@@ -1242,7 +1319,13 @@ export function useAgentControlBridge({
           } else {
             presets.reorder(planned.presetIds);
           }
-          result.revisions.presets = await committed;
+          result.revisions.presets = await awaitSettlement(
+            committed,
+            () => {
+              presetSettlementRef.current = null;
+            },
+            "The Preset order"
+          );
           try {
             await flush();
           } catch (error) {
@@ -1358,7 +1441,13 @@ export function useAgentControlBridge({
             };
           });
           replaceWorkspace(planned.workspace);
-          result.revision = await committed;
+          result.revision = await awaitSettlement(
+            committed,
+            () => {
+              settlementRef.current = null;
+            },
+            "The axis change"
+          );
           await waitForWorkspacePersistenceEnqueue(planned.workspace);
           try {
             await flush();
@@ -1489,7 +1578,13 @@ export function useAgentControlBridge({
             };
           });
           setPanelControlsForPanel(panelId, planned.panelControls);
-          result.revision = await committed;
+          result.revision = await awaitSettlement(
+            committed,
+            () => {
+              settlementRef.current = null;
+            },
+            "The panel controls change"
+          );
           await waitForWorkspacePersistenceEnqueue(nextWorkspace);
           try {
             await flush();
@@ -1558,7 +1653,13 @@ export function useAgentControlBridge({
           };
         });
         replaceWorkspace(compiled.view);
-        const committedRevision = await committed;
+        const committedRevision = await awaitSettlement(
+          committed,
+          () => {
+            settlementRef.current = null;
+          },
+          "The Workspace layout"
+        );
         await waitForWorkspacePersistenceEnqueue(compiled.view);
         try {
           await flush();

@@ -872,6 +872,39 @@ describe("useAgentControlBridge", () => {
     expect(flush).not.toHaveBeenCalled();
   });
 
+  it("fails one command instead of the channel when a commit is never observed", async () => {
+    // A settlement predicate that never matches used to hang forever, and because commands share
+    // one serialized queue every later command hung behind it - the control channel was dead until
+    // the app restarted. The backstop turns that into a single stated failure.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      // Resolves without ever moving Dock state, so the settlement can never match.
+      mount({ executeAgentDock: vi.fn(async () => {}) });
+      await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
+
+      act(() => adapter.handler(request("dock.enter", { edge: "top" }, "dock-stuck")));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000);
+      });
+
+      const response = adapter.responses.find(({ requestId }) => requestId === "dock-stuck");
+      expect(response?.error).toMatchObject({
+        code: -32031,
+        data: { reason: "commitNotObserved", details: { stateCommitted: true } },
+      });
+
+      // The queue moved on rather than staying blocked behind it.
+      act(() => adapter.handler(request("app.inspect", {}, "after-stuck")));
+      await vi.waitFor(() =>
+        expect(adapter.responses.some(({ requestId }) => requestId === "after-stuck")).toBe(true)
+      );
+      const after = adapter.responses.find(({ requestId }) => requestId === "after-stuck");
+      expect(after.error).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("applies a matching Preset by associating it without replacing the Workspace", async () => {
     const flush = vi.fn(async () => {});
     const snapshot = { tree: { type: "leaf", tabs: [] }, windowPinned: true };
