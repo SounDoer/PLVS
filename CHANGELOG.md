@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.6] - 2026-09-04
+
+### Added
+
+- Dialogue Detection is now a global setting: the engine is chosen once in Settings instead of per panel, existing per-panel choices are migrated, and changing it clears the running measurement.
+- Preset apply, preset save/update, and dock entry are refused while a draft editor is open, so they can no longer discard unsaved editor work. Enforced below the UI, so the popover, dock and tray all report the same reason.
+
+### Changed
+
+- Analysis request caps are gone; panels no longer compete for a limited number of analysis slots.
+- A dock preset refused in FILE mode now says why. A platform without dock support still applies the rest of the preset silently.
+- Dev builds use their own app identifier, so running from source no longer overwrites the installed app's settings, window geometry and dock state.
+
+### Fixed
+
+- Level Meter: a TP Max or value readout that leaves the axis range is pinned to the edge it left, keeping the real number, its reset click, and an arrow marking the direction.
+- Panel settings: a row label's tooltip is no longer clipped by the settings body.
+- Settings: the Dialogue Detection row leads with the default engine, and its link icon follows the iconography contract.
+- The capture rig refuses to run against a `plvs-cli` older than its own sources, instead of silently verifying stale code.
+
 ## [0.14.5] - 2026-09-01
 
 ### Added
