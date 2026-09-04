@@ -84,7 +84,15 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   delete corePatch.frequencyRangeHz;
   const planned = planPublicPanelControlPatch(panel.moduleId, current, corePatch, context);
   if (planned.issues.length > 0) return { dock, changed: [], warnings: [], issues: planned.issues };
-  const next = normalizeDockModuleControls(dockModuleId, planned.panelControls);
+  // `planned.panelControls` holds only the core panel controls, so the Dock-only ones have to be
+  // carried over explicitly: normalization falls back to their defaults when it cannot find them,
+  // which would silently reset every Dock-only control the patch did not name.
+  const next = normalizeDockModuleControls(dockModuleId, {
+    ...planned.panelControls,
+    readout: current.readout,
+    showLabels: current.showLabels,
+    showReadouts: current.showReadouts,
+  });
   const extraIssues = [];
   if (hasOwn(patch, "showLabels") && typeof patch.showLabels !== "boolean")
     extraIssues.push(issue("invalidType", "$.showLabels", "showLabels must be a boolean."));

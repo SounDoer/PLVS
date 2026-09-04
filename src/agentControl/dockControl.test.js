@@ -131,6 +131,28 @@ describe("Dock Control", () => {
     ]);
   });
 
+  it("leaves a Dock-only control the patch did not name alone", () => {
+    // The fixture is non-default on both: readout truePeakMax, showLabels false. A patch naming one
+    // of them used to reset the other, because the Dock-only controls are absent from the planned
+    // core controls and normalization then fell back to their defaults.
+    const labels = planDockPanelPatch(dock, "level", { showLabels: true }, {});
+    expect(labels.issues).toEqual([]);
+    expect(labels.changed).toEqual(["dock.panels.level.controls.showLabels"]);
+    expect(buildDockSnapshot(labels.dock).panels[1].controls).toEqual({
+      mode: "peak",
+      readout: "truePeakMax",
+      showLabels: true,
+    });
+
+    const readout = planDockPanelPatch(dock, "level", { readout: "live" }, {});
+    expect(readout.changed).toEqual(["dock.panels.level.controls.readout"]);
+    expect(buildDockSnapshot(readout.dock).panels[1].controls).toEqual({
+      mode: "peak",
+      readout: "live",
+      showLabels: false,
+    });
+  });
+
   it("compiles an atomic ordered layout with retained and generated panel ids", () => {
     const compiled = compileDockLayout(
       dock,
