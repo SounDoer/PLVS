@@ -99,6 +99,7 @@ export function useClearShortcut(onClearRef) {
     clearShortcut: shortcut,
     clearGlobal: global,
     clearReady: ready,
+    clearCapturing: capturing,
     registrationError,
     setClearGlobal,
     setClearShortcut,

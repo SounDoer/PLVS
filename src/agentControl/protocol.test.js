@@ -6,15 +6,19 @@ function request(method, params = {}) {
 }
 
 describe("normalizeAgentControlRequest", () => {
-  it.each(["app.capabilities", "app.inspect", "axis.describe", "axis.inspect"])(
-    "accepts %s with empty params",
-    (method) => {
-      expect(normalizeAgentControlRequest(request(method))).toEqual({
-        ok: true,
-        request: { id: "req-1", method, params: {} },
-      });
-    }
-  );
+  it.each([
+    "app.capabilities",
+    "app.inspect",
+    "axis.describe",
+    "axis.inspect",
+    "settings.describe",
+    "settings.inspect",
+  ])("accepts %s with empty params", (method) => {
+    expect(normalizeAgentControlRequest(request(method))).toEqual({
+      ok: true,
+      request: { id: "req-1", method, params: {} },
+    });
+  });
 
   it("normalizes Preset read commands", () => {
     expect(normalizeAgentControlRequest(request("preset.list"))).toEqual({

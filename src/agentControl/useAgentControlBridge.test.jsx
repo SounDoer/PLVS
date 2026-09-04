@@ -37,6 +37,30 @@ const runtime = {
   platform: "windows",
 };
 
+const publicSettings = {
+  openAtLogin: false,
+  closeBehavior: "ask",
+  clearShortcut: { accelerator: "CmdOrCtrl+K", global: false },
+  interfaceSize: "default",
+  appearance: { mode: "system", themeId: null, resolvedThemeId: "plvs-dark" },
+  historyRetentionSec: 3600,
+  dialogueVadEngine: "firered",
+  channelLabels: { channelCount: 2, mode: "auto", roles: ["L", "R"] },
+};
+
+const settingsContext = {
+  autostartReady: true,
+  clearShortcutReady: true,
+  clearShortcutCapturing: false,
+  themeOptions: [
+    { id: "plvs-dark", name: "Dark", kind: "builtin" },
+    { id: "plvs-light", name: "Light", kind: "builtin" },
+  ],
+  activeEditors: [],
+  dialogueDetectionActive: false,
+  sourceMode: "live",
+};
+
 function request(method, params = {}, id = "req-1") {
   return { jsonrpc: "2.0", id, method, params };
 }
@@ -49,6 +73,8 @@ function Harness({
   loudnessProfiles = [],
   capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
   assertPresetOperationAllowed = () => {},
+  agentSettings = publicSettings,
+  agentSettingsContext = settingsContext,
   presets = { activeId: null, dirty: false },
   onStore = () => {},
 }) {
@@ -116,6 +142,8 @@ function Harness({
     setPanelControlsForPanel: store.setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
     presets: controlledPresets,
+    settings: agentSettings,
+    settingsContext: agentSettingsContext,
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
@@ -241,6 +269,28 @@ describe("useAgentControlBridge", () => {
         workspace: { layout: expect.any(Object), panels: expect.any(Array) },
         window: { bounds: null },
         loudnessProfile: { activeId: null },
+      },
+    });
+  });
+
+  it("inspects and describes focused Settings with an independent revision", async () => {
+    mount();
+    await waitUntilReady();
+
+    const inspected = await send(request("settings.inspect", {}, "settings-inspect"));
+    const described = await send(request("settings.describe", {}, "settings-describe"));
+
+    expect(inspected.result).toMatchObject({
+      revision: 0,
+      settings: publicSettings,
+      availability: { openAtLogin: { writable: true, reason: null } },
+    });
+    expect(inspected.result).not.toHaveProperty("schema");
+    expect(described.result).toMatchObject({
+      revision: 0,
+      settings: publicSettings,
+      schema: {
+        historyRetentionSec: { type: "enum", current: 3600, unit: "s" },
       },
     });
   });

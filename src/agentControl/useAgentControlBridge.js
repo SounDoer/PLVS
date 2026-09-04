@@ -26,6 +26,7 @@ import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
 import { planPresetApply, planPresetSave, planPresetUpdate } from "./presetScene.js";
+import { buildSettingsInspection, buildSettingsSchema } from "./settingsControl.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -96,6 +97,21 @@ function workspaceMatchesPreset(workspace, preset) {
   ].every((key) => JSON.stringify(workspace[key]) === JSON.stringify(preset[key]));
 }
 
+function settingsStateSignature(settings) {
+  if (!settings) return "null";
+  return JSON.stringify({
+    ...settings,
+    appearance: {
+      mode: settings.appearance?.mode,
+      themeId: settings.appearance?.themeId ?? null,
+    },
+    channelLabels: {
+      mode: settings.channelLabels?.mode,
+      ...(settings.channelLabels?.mode === "custom" ? { roles: settings.channelLabels.roles } : {}),
+    },
+  });
+}
+
 export function useAgentControlBridge({
   enabled,
   runtime,
@@ -104,6 +120,8 @@ export function useAgentControlBridge({
   setPanelControlsForPanel,
   waitForWorkspacePersistenceEnqueue,
   presets,
+  settings,
+  settingsContext = {},
   loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
@@ -114,6 +132,8 @@ export function useAgentControlBridge({
   const revisionRef = useRef(0);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
   const presetsRevisionRef = useRef(0);
+  const previousSettingsSignatureRef = useRef(settingsStateSignature(settings));
+  const settingsRevisionRef = useRef(0);
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
   const processRef = useRef(null);
@@ -147,6 +167,14 @@ export function useAgentControlBridge({
   }, [presets]);
 
   useEffect(() => {
+    const signature = settingsStateSignature(settings);
+    if (signature !== previousSettingsSignatureRef.current) {
+      previousSettingsSignatureRef.current = signature;
+      settingsRevisionRef.current += 1;
+    }
+  }, [settings]);
+
+  useEffect(() => {
     processRef.current = async (rawRequest) => {
       const normalized = normalizeAgentControlRequest(rawRequest);
       const requestId =
@@ -175,11 +203,27 @@ export function useAgentControlBridge({
               runtime,
               revision: revisionRef.current,
               presetsRevision: presetsRevisionRef.current,
+              settingsRevision: settingsRevisionRef.current,
               workspace,
               presets,
+              settings,
               hasLoudnessReference,
               analysisContext,
             }),
+          };
+        }
+
+        if (request.method === "settings.describe" || request.method === "settings.inspect") {
+          const inspection = buildSettingsInspection(settings, settingsContext);
+          return {
+            requestId,
+            result: {
+              revision: settingsRevisionRef.current,
+              ...inspection,
+              ...(request.method === "settings.describe"
+                ? { schema: buildSettingsSchema(settings, settingsContext) }
+                : {}),
+            },
           };
         }
 
@@ -942,6 +986,8 @@ export function useAgentControlBridge({
     presets,
     replaceWorkspace,
     runtime,
+    settings,
+    settingsContext,
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     workspace,

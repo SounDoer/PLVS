@@ -81,6 +81,8 @@ import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
+import { buildPublicSettings } from "./agentControl/settingsControl.js";
+import { BUILTIN_THEMES_V2 } from "./theme/builtinThemesV2.js";
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
@@ -877,6 +879,51 @@ function AppContent() {
       sourceMode,
     ]
   );
+  const agentControlSettingsContext = useMemo(
+    () => ({
+      autostartReady: settings.autostartReady,
+      clearShortcutReady: settings.clearReady,
+      clearShortcutCapturing: settings.clearCapturing,
+      clearShortcutRegistrationError: settings.registrationError,
+      themeOptions: [
+        ...Object.values(BUILTIN_THEMES_V2).map(({ id, name }) => ({
+          id,
+          name,
+          kind: "builtin",
+        })),
+        ...Object.values(settings.customThemes ?? {}).map(({ id, name }) => ({
+          id,
+          name,
+          kind: "custom",
+        })),
+      ],
+      activeEditors: activeBlockingEditors,
+      dialogueDetectionRequested: dialogueGating,
+      dialogueDetectionActive: dialogueGating && running,
+      sourceMode,
+      channelCount,
+      channelLabelMode: channelLabelOverride ? "custom" : "auto",
+      channelLabelRoles: channelLabelRuntime.channelLabelTokens,
+    }),
+    [
+      activeBlockingEditors,
+      channelCount,
+      channelLabelOverride,
+      channelLabelRuntime.channelLabelTokens,
+      dialogueGating,
+      running,
+      settings.autostartReady,
+      settings.clearCapturing,
+      settings.clearReady,
+      settings.customThemes,
+      settings.registrationError,
+      sourceMode,
+    ]
+  );
+  const agentControlSettings = useMemo(
+    () => buildPublicSettings(settings, agentControlSettingsContext),
+    [agentControlSettingsContext, settings]
+  );
   useAgentControlBridge({
     enabled: agentControlRuntime.available === true,
     runtime: agentControlRuntime,
@@ -885,6 +932,8 @@ function AppContent() {
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
     presets,
+    settings: agentControlSettings,
+    settingsContext: agentControlSettingsContext,
     loudnessProfiles: loudnessProfile.profiles,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,

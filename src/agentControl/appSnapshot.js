@@ -27,6 +27,8 @@ const METHODS = [
   "preset.save",
   "preset.update",
   "preset.apply",
+  "settings.describe",
+  "settings.inspect",
 ];
 
 export function buildAgentControlPanelSnapshot({
@@ -70,8 +72,10 @@ export function buildAgentControlSnapshot({
   runtime,
   revision,
   presetsRevision = 0,
+  settingsRevision = 0,
   workspace,
   presets,
+  settings,
   hasLoudnessReference = false,
   analysisContext = {},
 }) {
@@ -87,7 +91,7 @@ export function buildAgentControlSnapshot({
       platform: String(runtime.platform),
     },
     protocolVersion: 1,
-    revisions: { workspace: revision, presets: presetsRevision },
+    revisions: { workspace: revision, presets: presetsRevision, settings: settingsRevision },
     runtime: {
       channelTopology: {
         status: detectedChannelCount === null ? "assumed" : "detected",
@@ -112,6 +116,7 @@ export function buildAgentControlSnapshot({
       activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
       dirty: presets?.dirty === true,
     },
+    ...(settings ? { settings } : {}),
   };
 }
 

@@ -37,6 +37,8 @@ describe("agent-control app snapshots", () => {
         "preset.save",
         "preset.update",
         "preset.apply",
+        "settings.describe",
+        "settings.inspect",
       ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
@@ -54,8 +56,10 @@ describe("agent-control app snapshots", () => {
       runtime,
       revision: 7,
       presetsRevision: 3,
+      settingsRevision: 4,
       workspace,
       presets: { activeId: "p1", dirty: true, list: [{ id: "p1", name: "Mix" }] },
+      settings: { interfaceSize: "large" },
       analysisContext: {
         channelCount: 2,
         dialogueDetectionActive: true,
@@ -71,13 +75,14 @@ describe("agent-control app snapshots", () => {
         platform: "windows",
       },
       protocolVersion: 1,
-      revisions: { workspace: 7, presets: 3 },
+      revisions: { workspace: 7, presets: 3, settings: 4 },
       runtime: {
         channelTopology: { status: "detected", channelCount: 2 },
         dialogueDetection: "active",
         spectralWaveform: "notRequested",
       },
       preset: { activeId: "p1", dirty: true },
+      settings: { interfaceSize: "large" },
     });
     expect(snapshot).not.toHaveProperty("revision");
     expect(snapshot.workspace.panels[0]).toEqual({
