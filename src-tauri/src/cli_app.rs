@@ -64,6 +64,11 @@ pub enum CliAppCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  PresetList,
+  PresetDescribe {
+    preset_id: String,
+    expected_revision: Option<u64>,
+  },
 }
 
 pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -82,6 +87,7 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
+    [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
@@ -352,12 +358,76 @@ fn parse_axis_args(args: &[String]) -> Result<CliAppCommand, String> {
   }
 }
 
+fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  match args {
+    [command, json] if command == "list" && json == "--json" => {
+      return Ok(CliAppCommand::PresetList);
+    }
+    [command, ..] if command == "list" => {
+      return Err("The app preset list command requires --json.".to_string());
+    }
+    _ => {}
+  }
+  const USAGE: &str =
+    "Usage: plvs-cli app preset describe <preset-id> --json [--expected-presets-revision <n>]";
+  if args.first().map(String::as_str) != Some("describe") {
+    return Err(USAGE.to_string());
+  }
+  let mut preset_id = None;
+  let mut expected_revision = None;
+  let mut json = false;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--expected-presets-revision" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-presets-revision.".to_string())?;
+        let revision = raw.parse::<u64>().map_err(|_| {
+          "The --expected-presets-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if revision > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-presets-revision value must be a non-negative safe integer."
+              .to_string(),
+          );
+        }
+        expected_revision = Some(revision);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value if preset_id.is_none() => {
+        preset_id = Some(value.to_string());
+        index += 1;
+      }
+      value => return Err(format!("Unexpected argument: {value}")),
+    }
+  }
+  if !json {
+    return Err("The app preset describe command requires --json.".to_string());
+  }
+  let preset_id = preset_id
+    .filter(|value| !value.trim().is_empty())
+    .ok_or_else(|| USAGE.to_string())?;
+  Ok(CliAppCommand::PresetDescribe {
+    preset_id,
+    expected_revision,
+  })
+}
+
 fn is_help(value: &str) -> bool {
   matches!(value, "--help" | "-h" | "help")
 }
 
 pub fn help_text() -> &'static str {
-  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json [--expected-presets-revision <n>]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
@@ -513,6 +583,8 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::AxisSharedReset { .. } => "axis.shared.reset",
     CliAppCommand::AxisPanelUpdate { .. } => "axis.panel.update",
     CliAppCommand::AxisPanelReset { .. } => "axis.panel.reset",
+    CliAppCommand::PresetList => "preset.list",
+    CliAppCommand::PresetDescribe { .. } => "preset.describe",
   }
 }
 
@@ -542,7 +614,22 @@ fn request_for_command<R: Read>(
     CliAppCommand::Capabilities
     | CliAppCommand::Inspect
     | CliAppCommand::AxisDescribe
-    | CliAppCommand::AxisInspect => serde_json::json!({}),
+    | CliAppCommand::AxisInspect
+    | CliAppCommand::PresetList => serde_json::json!({}),
+    CliAppCommand::PresetDescribe {
+      preset_id,
+      expected_revision,
+    } => {
+      let mut params =
+        serde_json::Map::from_iter([("presetId".to_string(), Value::String(preset_id.clone()))]);
+      if let Some(revision) = expected_revision {
+        params.insert(
+          "expectedPresetsRevision".to_string(),
+          Value::from(*revision),
+        );
+      }
+      Value::Object(params)
+    }
     CliAppCommand::PanelDescribe { panel_id } => {
       serde_json::json!({ "panelId": panel_id })
     }
@@ -1098,6 +1185,50 @@ mod tests {
         "inspect",
         "--expected-workspace-revision",
         "1",
+        "--json",
+      ]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err());
+    }
+  }
+
+  #[test]
+  fn parses_and_builds_preset_read_commands() {
+    assert_eq!(
+      parse_app_args(&args(&["preset", "list", "--json"])),
+      Ok(CliAppCommand::PresetList)
+    );
+    let describe = parse_app_args(&args(&[
+      "preset",
+      "describe",
+      "preset-1",
+      "--json",
+      "--expected-presets-revision",
+      "4",
+    ]))
+    .unwrap();
+    assert_eq!(
+      describe,
+      CliAppCommand::PresetDescribe {
+        preset_id: "preset-1".to_string(),
+        expected_revision: Some(4),
+      }
+    );
+    let request = request_for_command(&describe, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "preset.describe");
+    assert_eq!(request.params["presetId"], "preset-1");
+    assert_eq!(request.params["expectedPresetsRevision"], 4);
+
+    for invalid in [
+      args(&["preset", "list"]),
+      args(&["preset", "list", "extra", "--json"]),
+      args(&["preset", "describe", "--json"]),
+      args(&[
+        "preset",
+        "describe",
+        "preset-1",
+        "--expected-presets-revision",
+        "-1",
         "--json",
       ]),
     ] {
