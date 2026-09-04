@@ -28,6 +28,7 @@ const context = {
   activeEditors: [],
   dialogueDetectionActive: false,
   sourceMode: "live",
+  channelAutoRoles: ["L", "R"],
 };
 
 describe("Settings Control", () => {
@@ -208,5 +209,30 @@ describe("Settings Control", () => {
         context
       ).issues
     ).toEqual([expect.objectContaining({ code: "invalidChannelRole" })]);
+  });
+
+  it("projects automatic labels and warns every FILE label change", () => {
+    const custom = {
+      ...current,
+      channelLabels: { channelCount: 2, mode: "custom", roles: ["M", "M"] },
+    };
+    const auto = planSettingsUpdate(
+      custom,
+      { channelLabels: { channelCount: 2, mode: "auto" } },
+      { ...context, sourceMode: "file" }
+    );
+    expect(auto.settings.channelLabels).toEqual({
+      channelCount: 2,
+      mode: "auto",
+      roles: ["L", "R"],
+    });
+    expect(auto.warnings).toContainEqual({ code: "fileReanalysisRequired" });
+
+    const relabeled = planSettingsUpdate(
+      current,
+      { channelLabels: { channelCount: 2, mode: "custom", roles: ["R", "L"] } },
+      { ...context, sourceMode: "file" }
+    );
+    expect(relabeled.warnings).toContainEqual({ code: "fileReanalysisRequired" });
   });
 });

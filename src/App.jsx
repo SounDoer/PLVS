@@ -51,7 +51,7 @@ import {
   clampSpectrumChannelToAvailable,
 } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
-import { seedTokensFromLabels } from "./math/channelRoles.js";
+import { roleTokensToLoudnessWeights, seedTokensFromLabels } from "./math/channelRoles.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -883,6 +883,20 @@ function AppContent() {
   );
   const { channelLabelOverride, loudnessWeights } = channelLabelRuntime;
   const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
+  const dialogueVadEngine = settings.dialogueVadEngine;
+  const {
+    loudnessWeightsRef,
+    dialogueGatingRef,
+    dialogueVadEngineRef,
+    setLoudnessWeightsForControl,
+    setDialogueVadEngineForControl,
+  } = useRuntimeBackendSync({
+    analysisRequests,
+    loudnessWeights,
+    running,
+    dialogueGating,
+    dialogueVadEngine,
+  });
   const agentControlAnalysisContext = useMemo(
     () => {
       const first =
@@ -948,11 +962,13 @@ function AppContent() {
       channelCount,
       channelLabelMode: channelLabelOverride ? "custom" : "auto",
       channelLabelRoles: channelLabelRuntime.channelLabelTokens,
+      channelAutoRoles: seedTokensFromLabels(channelLabelRuntime.channelAutoLabels),
     }),
     [
       activeBlockingEditors,
       channelCount,
       channelLabelOverride,
+      channelLabelRuntime.channelAutoLabels,
       channelLabelRuntime.channelLabelTokens,
       dialogueGating,
       running,
@@ -1029,10 +1045,28 @@ function AppContent() {
             settings.applyClearShortcutForControl(agentControlSettings.clearShortcut)
           );
         }
-      } catch (error) {
-        for (const compensate of compensation.reverse()) {
-          await compensate().catch(() => {});
+        if (changed.includes("settings.dialogueVadEngine")) {
+          await setDialogueVadEngineForControl(next.dialogueVadEngine);
+          compensation.push(() =>
+            setDialogueVadEngineForControl(agentControlSettings.dialogueVadEngine)
+          );
         }
+        if (changed.includes("settings.channelLabels")) {
+          const nextWeights = roleTokensToLoudnessWeights(next.channelLabels.roles);
+          if (JSON.stringify(nextWeights) !== JSON.stringify(loudnessWeights)) {
+            await setLoudnessWeightsForControl(nextWeights);
+            compensation.push(() => setLoudnessWeightsForControl(loudnessWeights));
+          }
+        }
+      } catch (error) {
+        let rollbackFailed = false;
+        for (const compensate of compensation.reverse()) {
+          await compensate().catch(() => {
+            rollbackFailed = true;
+          });
+        }
+        error.partial = rollbackFailed;
+        error.rollback = rollbackFailed ? "failed" : "completed";
         throw error;
       }
 
@@ -1063,9 +1097,25 @@ function AppContent() {
           return updated;
         });
       }
-      if (effects.length > 0) onClearRef.current?.();
+      if (effects.length > 0) {
+        try {
+          await onClearRef.current?.();
+        } catch (error) {
+          error.partial = true;
+          error.rollback = "notPossible";
+          error.changed = changed;
+          error.effects = effects;
+          throw error;
+        }
+      }
     },
-    [agentControlSettings, settings]
+    [
+      agentControlSettings,
+      loudnessWeights,
+      setDialogueVadEngineForControl,
+      setLoudnessWeightsForControl,
+      settings,
+    ]
   );
   const executeAgentControlTransport = useCallback(
     async (method, params) => {
@@ -1195,16 +1245,8 @@ function AppContent() {
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
   });
-  const dialogueVadEngine = settings.dialogueVadEngine;
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
-  const { loudnessWeightsRef, dialogueGatingRef, dialogueVadEngineRef } = useRuntimeBackendSync({
-    analysisRequests,
-    loudnessWeights,
-    running,
-    dialogueGating,
-    dialogueVadEngine,
-  });
 
   useEffect(() => {
     const s = document.documentElement.style;

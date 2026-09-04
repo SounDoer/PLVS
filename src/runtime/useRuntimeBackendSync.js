@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   setAnalysisRequests,
   setDialogueGating,
@@ -54,9 +54,24 @@ export function useRuntimeBackendSync({
     });
   }, [analysisRequests]);
 
+  const setLoudnessWeightsForControl = useCallback(
+    async (nextWeights) => {
+      if (isTauri() && running) await setLoudnessWeights(nextWeights);
+      loudnessWeightsRef.current = nextWeights;
+    },
+    [running]
+  );
+
+  const setDialogueVadEngineForControl = useCallback(async (nextEngine) => {
+    if (isTauri()) await setDialogueVadEngine(nextEngine);
+    dialogueVadEngineRef.current = nextEngine;
+  }, []);
+
   return {
     loudnessWeightsRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
+    setLoudnessWeightsForControl,
+    setDialogueVadEngineForControl,
   };
 }

@@ -104,4 +104,26 @@ describe("useRuntimeBackendSync", () => {
 
     expect(mocks.setAnalysisRequests).toHaveBeenCalledTimes(2);
   });
+
+  it("exposes awaited backend setters for App Control", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    const { result } = renderSync({ running: true, loudnessWeights: [1, 1] });
+    await flushPromises();
+    mocks.setLoudnessWeights.mockClear();
+    mocks.setDialogueVadEngine.mockClear();
+
+    await result.current.setLoudnessWeightsForControl([1, 0]);
+    await result.current.setDialogueVadEngineForControl("ten");
+
+    expect(mocks.setLoudnessWeights).toHaveBeenCalledWith([1, 0]);
+    expect(mocks.setDialogueVadEngine).toHaveBeenCalledWith("ten");
+    expect(result.current.loudnessWeightsRef.current).toEqual([1, 0]);
+    expect(result.current.dialogueVadEngineRef.current).toBe("ten");
+
+    mocks.setDialogueVadEngine.mockRejectedValueOnce(new Error("ipc failed"));
+    await expect(result.current.setDialogueVadEngineForControl("firered")).rejects.toThrow(
+      "ipc failed"
+    );
+    expect(result.current.dialogueVadEngineRef.current).toBe("ten");
+  });
 });

@@ -334,7 +334,13 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       nextChannelLabels = {
         channelCount: value.channelCount,
         mode: value.mode,
-        roles: value.mode === "custom" ? value.roles : current.channelLabels.roles,
+        roles:
+          value.mode === "custom"
+            ? value.roles
+            : Array.isArray(context.channelAutoRoles) &&
+                context.channelAutoRoles.length === value.channelCount
+              ? context.channelAutoRoles
+              : current.channelLabels.roles,
       };
     }
   }
@@ -488,11 +494,7 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       target: settings.historyRetentionSec,
     });
   }
-  if (
-    changed.includes("settings.channelLabels") &&
-    context.sourceMode === "file" &&
-    current.channelLabels.mode !== settings.channelLabels.mode
-  ) {
+  if (changed.includes("settings.channelLabels") && context.sourceMode === "file") {
     warnings.push({ code: "fileReanalysisRequired" });
   }
   return { settings, changed, effects, warnings, issues: [], refusal: null, confirmation };

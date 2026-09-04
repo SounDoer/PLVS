@@ -536,6 +536,29 @@ describe("useAgentControlBridge", () => {
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
+  it("previews a required Settings restart without demanding confirmation", async () => {
+    mount({
+      agentSettingsContext: { ...settingsContext, dialogueDetectionActive: true },
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "settings.update",
+        { patch: { dialogueVadEngine: "silero" }, dryRun: true },
+        "settings-restart-dry"
+      )
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: true,
+      revision: 0,
+      effects: ["measurementRestart"],
+      confirmation: { requiredFlag: "allowMeasurementRestart" },
+      settings: { dialogueVadEngine: "silero" },
+    });
+  });
+
   it("does not count initial Settings capability hydration as a revision", async () => {
     const view = mount({
       agentSettingsContext: {

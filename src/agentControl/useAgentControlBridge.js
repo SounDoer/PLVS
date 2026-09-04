@@ -752,7 +752,7 @@ export function useAgentControlBridge({
               planned.refusal
             );
           }
-          if (planned.confirmation) {
+          if (planned.confirmation && request.params.dryRun !== true) {
             throw semanticFailure(
               "confirmationRequired",
               "$.params.allowMeasurementRestart",
@@ -768,6 +768,7 @@ export function useAgentControlBridge({
             changed: planned.changed,
             effects: planned.effects,
             warnings: planned.warnings,
+            ...(planned.confirmation ? { confirmation: planned.confirmation } : {}),
             ...inspection,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
@@ -793,7 +794,13 @@ export function useAgentControlBridge({
               "$",
               `Settings application failed: ${error?.message || String(error)}`,
               -32050,
-              { partial: false, rollback: "completed", changed: [], revision: currentRevision }
+              {
+                partial: error?.partial === true,
+                rollback: error?.rollback ?? "completed",
+                changed: error?.changed ?? [],
+                effects: error?.effects ?? [],
+                revision: settingsRevisionRef.current,
+              }
             );
           }
           result.revision = await committed;
