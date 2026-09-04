@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FrameDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
 import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
@@ -153,9 +153,9 @@ describe("LevelMeterPanel", () => {
     expect(marker.className).toContain("tabular-nums");
     expect(marker.className).toContain("font-semibold");
     expect(marker.className).not.toContain("bg-primary");
-    expect(marker.className).toContain("left-0");
-    expect(marker.className).toContain("text-left");
-    expect(marker.className).not.toContain("right-0");
+    expect(marker.className).toContain("right-0");
+    expect(marker.className).toContain("text-right");
+    expect(marker.className).not.toContain("left-0");
     expect(marker.className).not.toContain("translate-x");
     expect(marker.closest("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
     expect(marker.closest("[data-level-meter-y-axis]")?.className).not.toContain(
@@ -539,5 +539,88 @@ describe("LevelMeterPanel", () => {
     await waitFor(() =>
       expect(container.querySelector("[data-level-value]")?.textContent).toBe("-35.0")
     );
+  });
+
+  it("pins the TP Max marker to the top of the axis when it reads above the range", () => {
+    const { container } = renderPanel({
+      panelControls: {
+        levelMeterMode: "peak",
+        levelMeterTpMaxMarker: true,
+        levelMeterYMinDb: -60,
+        levelMeterYMaxDb: -6,
+      },
+    });
+
+    const marker = container.querySelector("[data-level-tp-max-marker]");
+    expect(marker?.textContent).toBe("-1.0▲");
+    const arrow = marker.querySelector("[data-marker-out-of-range]");
+    expect(arrow?.dataset.markerOutOfRange).toBe("above");
+    expect(arrow.className).toContain("ml-[0.3ch]");
+    // Out of flow, or its margin alone would shift the right-aligned digits out of the column.
+    expect(arrow.className).toContain("absolute");
+    expect(arrow.className).toContain("left-full");
+    expect(marker.style.top).toBe("0%");
+    expect(marker.className).not.toContain("-translate-y-1/2");
+  });
+
+  it("pins the TP Max marker to the bottom of the axis when it reads below the range", () => {
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-70, -70], tpMax: -70 },
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
+
+    const marker = container.querySelector("[data-level-tp-max-marker]");
+    expect(marker?.textContent).toBe("-70.0▼");
+    expect(marker.querySelector("[data-marker-out-of-range]")?.dataset.markerOutOfRange).toBe(
+      "below"
+    );
+    expect(marker.style.top).toBe("100%");
+    expect(marker.className).toContain("-translate-y-full");
+  });
+
+  it("keeps an in-range TP Max marker centred on its value and undimmed", () => {
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+    });
+
+    const marker = container.querySelector("[data-level-tp-max-marker]");
+    expect(marker.className).toContain("-translate-y-1/2");
+    expect(marker.querySelector("[data-marker-out-of-range]")).toBeNull();
+    // Shares the tick labels' anchor, so reading and ticks end on the same column.
+    expect(marker.className).toContain("right-0");
+    expect(marker.className).toContain("text-right");
+  });
+
+  it("keeps the TP Max reset clickable while the marker is pinned", () => {
+    const onResetTpMax = vi.fn();
+    const { container } = renderPanel({
+      onResetTpMax,
+      panelControls: {
+        levelMeterMode: "peak",
+        levelMeterTpMaxMarker: true,
+        levelMeterYMinDb: -60,
+        levelMeterYMaxDb: -6,
+      },
+    });
+
+    fireEvent.click(container.querySelector("[data-level-tp-max-marker]"));
+
+    expect(onResetTpMax).toHaveBeenCalledTimes(1);
+  });
+
+  it("pins the value marker to the top of the loudness axis when it reads above the range", () => {
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-9, -9], momentary: -2 },
+      panelControls: {
+        levelMeterMode: "momentary",
+        levelMeterValueMarker: true,
+        loudnessYMinDb: -64,
+        loudnessYMaxDb: -20,
+      },
+    });
+
+    const marker = container.querySelector("[data-level-value-marker]");
+    expect(marker?.textContent).toBe("-2.0▲");
+    expect(marker.style.top).toBe("0%");
   });
 });

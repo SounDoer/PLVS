@@ -32,14 +32,19 @@ const LEVEL_MODE_META = {
   shortTerm: { label: "Short-term", meterLabel: "ST", unit: "LUFS", field: "shortTerm" },
 };
 
+// The marker is placed by an inline `top`, so the endpoints shift the label off that anchor with
+// a transform rather than a second positioning property, which would fight the inline one.
 const LEVEL_METER_VALUE_MARKER_POSITION = {
-  start: "top-0",
+  start: "translate-y-0",
   middle: "-translate-y-1/2",
-  end: "bottom-0",
+  end: "-translate-y-full",
 };
 
+// Anchored right like the axis tick labels, so the reading and the ticks end on the same column.
+// The rail stays as narrow as it was, which means a full-width marker overhangs it on the left,
+// into the panel's padding -- the side with nothing to collide with.
 const LEVEL_METER_VALUE_MARKER_BASE =
-  "absolute left-0 whitespace-nowrap text-left font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-display)] leading-none tabular-nums";
+  "absolute right-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-display)] leading-none tabular-nums";
 const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[5ch]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
@@ -104,7 +109,15 @@ function AxisValueMarker({
     tip: onReset ? resetLabel : undefined,
     side: "bottom",
   });
-  if (!Number.isFinite(value) || value < yRange.min || value > yRange.max) return null;
+  const label = formatLevelValue(value);
+  // A reading with nothing printable -- silence, or the out-of-range sentinel -- has no position
+  // worth pinning. Everything else stays visible: a TP Max hidden because the user zoomed past it
+  // takes its reset click with it, and the reading most likely to leave the range is the hot one.
+  if (!Number.isFinite(value) || label === "-") return null;
+
+  const clamped = Math.max(yRange.min, Math.min(yRange.max, value));
+  const outOfRange = clamped !== value;
+  const position = !outOfRange ? "middle" : value > yRange.max ? "start" : "end";
 
   // Stops the click from reaching the y-axis drag/zoom handlers underneath.
   const stopAxisInteraction = onReset ? (e) => e.stopPropagation() : undefined;
@@ -116,10 +129,10 @@ function AxisValueMarker({
       className={cn(
         onReset ? "pointer-events-auto cursor-pointer" : "pointer-events-none",
         "z-10 font-semibold text-primary",
-        levelMeterValueMarkerClass("middle"),
+        levelMeterValueMarkerClass(position),
         className
       )}
-      style={{ top: `${rangedFromTopFrac(value, yRange.min, yRange.max) * 100}%` }}
+      style={{ top: `${rangedFromTopFrac(clamped, yRange.min, yRange.max) * 100}%` }}
       onMouseDown={stopAxisInteraction}
       onDoubleClick={stopAxisInteraction}
       onClick={
@@ -133,7 +146,21 @@ function AxisValueMarker({
       onMouseEnter={onReset ? showTip : undefined}
       onMouseLeave={onReset ? hideTip : undefined}
     >
-      {formatLevelValue(value)}
+      {label}
+      {outOfRange ? (
+        // The arrow says the pinned position is not a real place on the scale, and which way the
+        // reading actually left the range. Taken out of flow rather than merely zero-width: the
+        // marker is right-aligned, so anything the arrow contributes to the line -- its margin
+        // included -- would shift the digits off the tick column. Decorative to a screen reader,
+        // which already gets the value.
+        <span
+          aria-hidden="true"
+          data-marker-out-of-range={value > yRange.max ? "above" : "below"}
+          className="absolute left-full ml-[0.3ch]"
+        >
+          {value > yRange.max ? "▲" : "▼"}
+        </span>
+      ) : null}
       {onReset ? tipNode : null}
     </span>
   );
