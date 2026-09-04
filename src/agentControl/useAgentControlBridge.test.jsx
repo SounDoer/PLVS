@@ -6,6 +6,7 @@ import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceCont
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
+import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 
 const adapter = vi.hoisted(() => ({
   handler: null,
@@ -109,6 +110,7 @@ function Harness({
   controlledAgentSettings = false,
   executeAgentTransport,
   presets = { activeId: null, dirty: false },
+  applyPresetToWorkspace = false,
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
@@ -165,6 +167,12 @@ function Harness({
       return true;
     },
     applySnapshot: async (id) => {
+      if (applyPresetToWorkspace) {
+        const preset = presetState.list.find((entry) => entry.id === id);
+        // What the real applySnapshot does: the Workspace it installs is the *migrated* view of
+        // the Preset, never the stored record itself.
+        if (preset) store.replaceWorkspace(presetWorkspaceView(preset));
+      }
       setPresetState((current) => ({ ...current, activeId: id, dirty: false }));
       return true;
     },
@@ -903,6 +911,46 @@ describe("useAgentControlBridge", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("applies a Preset whose stored controls no longer match the migrated Workspace", async () => {
+    // A Preset saved before a control existed stores a different `panelControlsById` than the one
+    // applying it produces, because applying migrates. Waiting for the live Workspace to equal the
+    // *stored* record therefore never settled, and since commands share one serialized queue that
+    // hung every later command until the app restarted.
+    const flush = vi.fn(async () => {});
+    const stale = {
+      id: "preset-1",
+      name: "Saved Long Ago",
+      ...DEFAULT_WORKSPACE_STATE,
+      panelControlsById: { spectrum: { spectrumSpeedPercent: 40, removedLegacyControl: 7 } },
+    };
+    // The Preset really does differ from what applying it yields, or the test proves nothing.
+    expect(JSON.stringify(presetWorkspaceView(stale).panelControlsById)).not.toBe(
+      JSON.stringify(stale.panelControlsById)
+    );
+
+    const view = mount({
+      flush,
+      applyPresetToWorkspace: true,
+      capturePresetSnapshot: vi.fn(async () => ({
+        ...DEFAULT_WORKSPACE_STATE,
+        windowPinned: false,
+      })),
+      presets: { list: [stale], activeId: null, dirty: false },
+    });
+    await waitUntilReady();
+
+    const response = await send(request("preset.apply", { presetId: "preset-1" }, "preset-stale"));
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({ dryRun: false, preset: { id: "preset-1" } });
+    expect(flush).toHaveBeenCalled();
+
+    // The channel is still usable: a hung settlement used to block everything behind it.
+    const after = await send(request("app.inspect", {}, "after-stale-apply"));
+    expect(after.error).toBeUndefined();
+    expect(view.store.state.panelControlsById.spectrum.spectrumSpeedPercent).toBe(40);
   });
 
   it("applies a matching Preset by associating it without replacing the Workspace", async () => {

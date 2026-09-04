@@ -7,6 +7,7 @@ import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { normalizePinnedPanelsById } from "../workspace/reducer.js";
+import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { presetsStore } from "../persistence/index.js";
 import { SCENE_OPERATIONS, SceneOperationUnavailableError } from "../lib/sceneOperations.js";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
@@ -240,17 +241,7 @@ export function usePresets({
         suppressPresetDivergence();
       }
       if (applyWorkspace) {
-        setView({
-          tree: clone(preset.tree),
-          panelsById: clone(preset.panelsById),
-          panelOrder: [...preset.panelOrder],
-          panelControlsById: normalizePanelControlsById(
-            preset.panelsById,
-            preset.panelControlsById
-          ),
-          pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
-          axisViewports: preset.axisViewports,
-        });
+        setView(presetWorkspaceView(preset));
       }
       const presetFocusView = preset.focusView ? normalizeFocusView(preset.focusView) : null;
       let windowBoundsAppliedByDockExit;

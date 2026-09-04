@@ -6,6 +6,7 @@ import {
   respondToAgentControlRequest,
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence } from "../persistence/index.js";
+import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
 import {
@@ -106,7 +107,12 @@ function presetStateSignature(presets) {
   });
 }
 
-function workspaceMatchesPreset(workspace, preset) {
+/// Compares the live Workspace against the view a Preset becomes once applied.
+///
+/// Never compare against the stored Preset itself: applying migrates its controls, so a Preset
+/// saved before a control was added or removed can never equal the Workspace it produces, and a
+/// settlement waiting on that equality would never fire.
+function workspaceMatchesPresetView(workspace, view) {
   return [
     "tree",
     "panelsById",
@@ -114,7 +120,7 @@ function workspaceMatchesPreset(workspace, preset) {
     "panelControlsById",
     "pinnedPanelsById",
     "axisViewports",
-  ].every((key) => JSON.stringify(workspace[key]) === JSON.stringify(preset[key]));
+  ].every((key) => JSON.stringify(workspace[key]) === JSON.stringify(view[key]));
 }
 
 function settingsStateSignature(settings) {
@@ -1170,10 +1176,17 @@ export function useAgentControlBridge({
               })
             : null;
           let workspaceCommitted = null;
+          // What applying this Preset actually installs. Both the settlement below and the
+          // persistence wait further down must compare against this, never against `target`. Built
+          // only when the Workspace is really being replaced: a Preset that merely gets associated
+          // need not carry a complete Workspace record.
+          let targetView = null;
           if (planned.changed.includes("workspace")) {
+            targetView = presetWorkspaceView(target);
             workspaceCommitted = new Promise((resolve, reject) => {
               settlementRef.current = {
-                matches: (currentWorkspace) => workspaceMatchesPreset(currentWorkspace, target),
+                matches: (currentWorkspace) =>
+                  workspaceMatchesPresetView(currentWorkspace, targetView),
                 resolve,
                 reject,
               };
@@ -1227,7 +1240,11 @@ export function useAgentControlBridge({
           }
           if (workspaceCommitted) {
             result.revisions.workspace = settled[settledIndex];
-            await waitForWorkspacePersistenceEnqueue(target);
+            await awaitSettlement(
+              waitForWorkspacePersistenceEnqueue(targetView),
+              () => {},
+              "The Preset Workspace"
+            );
           }
           try {
             await flush();

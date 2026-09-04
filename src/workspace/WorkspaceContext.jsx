@@ -30,12 +30,16 @@ function ownedWorkspaceState(state) {
 }
 
 function persistedWorkspaceMatches(left, right) {
+  // Identity first, value as the fallback. Most callers wait on the very object they installed, so
+  // the reference check settles it for free. Preset application cannot: the Workspace is built
+  // inside `applySnapshot` while the waiter builds its own equal copy, and requiring identity for
+  // tree/panelsById/panelOrder meant that waiter could never be satisfied.
   const sameValue = (leftValue, rightValue) =>
     leftValue === rightValue || JSON.stringify(leftValue) === JSON.stringify(rightValue);
   return (
-    left?.tree === right?.tree &&
-    left?.panelsById === right?.panelsById &&
-    left?.panelOrder === right?.panelOrder &&
+    sameValue(left?.tree, right?.tree) &&
+    sameValue(left?.panelsById, right?.panelsById) &&
+    sameValue(left?.panelOrder, right?.panelOrder) &&
     sameValue(left?.panelControlsById, right?.panelControlsById) &&
     sameValue(left?.pinnedPanelsById, right?.pinnedPanelsById) &&
     sameValue(left?.axisViewports, right?.axisViewports) &&
