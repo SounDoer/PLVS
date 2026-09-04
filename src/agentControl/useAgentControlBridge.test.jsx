@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
@@ -49,6 +50,27 @@ function Harness({
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
+  const [presetState, setPresetState] = useState(presets);
+  const controlledPresets = {
+    ...presetState,
+    rename: (id, name) =>
+      setPresetState((current) => ({
+        ...current,
+        list: current.list.map((preset) => (preset.id === id ? { ...preset, name } : preset)),
+      })),
+    remove: (id) =>
+      setPresetState((current) => ({
+        ...current,
+        list: current.list.filter((preset) => preset.id !== id),
+        activeId: current.activeId === id ? null : current.activeId,
+        dirty: current.activeId === id ? false : current.dirty,
+      })),
+    reorder: (ids) =>
+      setPresetState((current) => {
+        const byId = new Map(current.list.map((preset) => [preset.id, preset]));
+        return { ...current, list: ids.map((id) => byId.get(id)) };
+      }),
+  };
   onStore(store);
   useAgentControlBridge({
     enabled,
@@ -57,7 +79,7 @@ function Harness({
     replaceWorkspace: store.replaceWorkspace,
     setPanelControlsForPanel: store.setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
-    presets,
+    presets: controlledPresets,
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
@@ -214,6 +236,89 @@ describe("useAgentControlBridge", () => {
       code: -32020,
       data: { reason: "presetNotFound", path: "$.params.presetId" },
     });
+  });
+
+  it("renames, reorders, and deletes Presets with revision and persistence settlement", async () => {
+    const flush = vi.fn(async () => {});
+    const first = { id: "preset-1", name: "Mixing" };
+    const second = { id: "preset-2", name: "Mastering" };
+    mount({
+      flush,
+      presets: { list: [first, second], activeId: "preset-1", dirty: true },
+    });
+    await waitUntilReady();
+
+    const renamed = await send(
+      request(
+        "preset.rename",
+        { presetId: "preset-1", name: "  Final Mix  ", expectedPresetsRevision: 0 },
+        "preset-rename"
+      )
+    );
+    const reorderDryRun = await send(
+      request(
+        "preset.reorder",
+        { presetIds: ["preset-2", "preset-1"], dryRun: true, expectedPresetsRevision: 1 },
+        "preset-reorder-dry"
+      )
+    );
+    const deleted = await send(
+      request(
+        "preset.delete",
+        { presetId: "preset-1", expectedPresetsRevision: 1 },
+        "preset-delete"
+      )
+    );
+    const listed = await send(request("preset.list", {}, "preset-list-after-delete"));
+
+    expect(renamed.result).toMatchObject({
+      dryRun: false,
+      changed: ["presets.preset-1.name"],
+      preset: { id: "preset-1", name: "Final Mix" },
+      presetState: { activeId: "preset-1", dirty: true },
+      revisions: { workspace: 0, presets: 1 },
+      warnings: [],
+    });
+    expect(reorderDryRun.result).toMatchObject({
+      dryRun: true,
+      changed: ["presets.order"],
+      presetIds: ["preset-2", "preset-1"],
+      revisions: { workspace: 0, presets: 1 },
+    });
+    expect(deleted.result).toMatchObject({
+      deletedPreset: { id: "preset-1", name: "Final Mix" },
+      changed: ["presets.library", "presets.activeId", "presets.dirty"],
+      presetState: { activeId: null, dirty: false },
+      revisions: { workspace: 0, presets: 2 },
+    });
+    expect(listed.result.presets).toEqual([{ id: "preset-2", name: "Mastering" }]);
+    expect(flush).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps invalid and no-op Preset library mutations side-effect free", async () => {
+    const flush = vi.fn(async () => {});
+    mount({
+      flush,
+      presets: { list: [{ id: "preset-1", name: "Mixing" }], activeId: null, dirty: false },
+    });
+    await waitUntilReady();
+
+    const noOp = await send(
+      request("preset.rename", { presetId: "preset-1", name: " Mixing " }, "preset-rename-noop")
+    );
+    const invalid = await send(
+      request("preset.reorder", { presetIds: ["missing"] }, "preset-reorder-invalid")
+    );
+
+    expect(noOp.result).toMatchObject({ changed: [], revisions: { workspace: 0, presets: 0 } });
+    expect(invalid.error).toMatchObject({
+      code: -32602,
+      data: {
+        reason: "invalidPreset",
+        details: { issues: [expect.objectContaining({ code: "invalidPermutation" })] },
+      },
+    });
+    expect(flush).not.toHaveBeenCalled();
   });
 
   it("does not advance the public revision for transient fullscreen state", async () => {

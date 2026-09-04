@@ -35,6 +35,23 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it.each([
+    [
+      "preset.rename",
+      { presetId: "preset-1", name: "New Name", expectedPresetsRevision: 2, dryRun: true },
+    ],
+    ["preset.delete", { presetId: "preset-1", expectedPresetsRevision: 2, dryRun: true }],
+    [
+      "preset.reorder",
+      { presetIds: ["preset-2", "preset-1"], expectedPresetsRevision: 2, dryRun: true },
+    ],
+  ])("normalizes %s library mutation", (method, params) => {
+    expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method, params },
+    });
+  });
+
   it("normalizes workspace.applyLayout options", () => {
     const layout = { type: "panel", panelId: "spectrum" };
     expect(
@@ -142,6 +159,9 @@ describe("normalizeAgentControlRequest", () => {
     [request("axis.inspect", { extra: true }), "invalidParams", "$.params.extra", -32602],
     [request("preset.list", { extra: true }), "invalidParams", "$.params.extra", -32602],
     [request("preset.describe", {}), "invalidParams", "$.params.presetId", -32602],
+    [request("preset.rename", { presetId: "preset-1" }), "invalidParams", "$.params.name", -32602],
+    [request("preset.delete", {}), "invalidParams", "$.params.presetId", -32602],
+    [request("preset.reorder", {}), "invalidParams", "$.params.presetIds", -32602],
     [
       request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: -1 }),
       "invalidParams",

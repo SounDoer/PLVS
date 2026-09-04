@@ -23,6 +23,7 @@ import {
 import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
+import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -101,6 +102,7 @@ export function useAgentControlBridge({
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
   const presetsRevisionRef = useRef(0);
   const settlementRef = useRef(null);
+  const presetSettlementRef = useRef(null);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
@@ -123,6 +125,11 @@ export function useAgentControlBridge({
     if (signature !== previousPresetsSignatureRef.current) {
       previousPresetsSignatureRef.current = signature;
       presetsRevisionRef.current += 1;
+    }
+    const settlement = presetSettlementRef.current;
+    if (settlement && signature === settlement.signature) {
+      presetSettlementRef.current = null;
+      settlement.resolve(presetsRevisionRef.current);
     }
   }, [presets]);
 
@@ -208,6 +215,97 @@ export function useAgentControlBridge({
               preset: buildPublicPresetSnapshot(preset, { loudnessProfiles }),
             },
           };
+        }
+
+        if (
+          request.method === "preset.rename" ||
+          request.method === "preset.delete" ||
+          request.method === "preset.reorder"
+        ) {
+          const currentRevision = presetsRevisionRef.current;
+          if (
+            request.params.expectedPresetsRevision !== undefined &&
+            request.params.expectedPresetsRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedPresetsRevision",
+              `Presets changed after revision ${request.params.expectedPresetsRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedPresetsRevision,
+                currentRevision,
+              }
+            );
+          }
+          const state = {
+            list: presets?.list ?? [],
+            activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
+            dirty: presets?.dirty === true,
+          };
+          const planned =
+            request.method === "preset.rename"
+              ? planPresetRename(state, request.params.presetId, request.params.name)
+              : request.method === "preset.delete"
+                ? planPresetDelete(state, request.params.presetId)
+                : planPresetReorder(state, request.params.presetIds);
+          if (planned.issues.length > 0) {
+            const missing = planned.issues.find(({ code }) => code === "presetNotFound");
+            if (missing) {
+              throw semanticFailure("presetNotFound", "$.params.presetId", missing.message, -32020);
+            }
+            throw semanticFailure(
+              "invalidPreset",
+              "$.params",
+              "The Preset request is invalid.",
+              -32602,
+              { issues: planned.issues }
+            );
+          }
+          const result = {
+            dryRun: request.params.dryRun === true,
+            changed: planned.changed,
+            ...(planned.preset ? { preset: planned.preset } : {}),
+            ...(planned.deletedPreset ? { deletedPreset: planned.deletedPreset } : {}),
+            ...(planned.presetIds ? { presetIds: planned.presetIds } : {}),
+            presetState: {
+              activeId: planned.presets.activeId,
+              dirty: planned.presets.dirty === true,
+            },
+            revisions: { workspace: revisionRef.current, presets: currentRevision },
+            warnings: planned.warnings,
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          const committed = new Promise((resolve, reject) => {
+            presetSettlementRef.current = {
+              signature: presetStateSignature(planned.presets),
+              resolve,
+              reject,
+            };
+          });
+          if (request.method === "preset.rename") {
+            presets.rename(request.params.presetId, planned.preset.name);
+          } else if (request.method === "preset.delete") {
+            presets.remove(request.params.presetId);
+          } else {
+            presets.reorder(planned.presetIds);
+          }
+          result.revisions.presets = await committed;
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Preset state committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revisions: result.revisions }
+            );
+          }
+          return { requestId, result };
         }
 
         if (request.method === "axis.describe" || request.method === "axis.inspect") {
@@ -591,6 +689,9 @@ export function useAgentControlBridge({
       const settlement = settlementRef.current;
       settlementRef.current = null;
       settlement?.reject(new Error("Agent-control bridge unmounted."));
+      const presetSettlement = presetSettlementRef.current;
+      presetSettlementRef.current = null;
+      presetSettlement?.reject(new Error("Agent-control bridge unmounted."));
       if (unlisten) unlisten();
       if (ready) void announceAgentControlFrontendNotReady();
     };
