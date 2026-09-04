@@ -62,7 +62,7 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 
 **Never**
 
-- Edit anything under `src/generated/` by hand.
+- Edit anything under `src/generated/` or `docs/agent-control/generated/` by hand.
 - Route around a red `smoke:capture`.
 - Reach the audio engine from a component. All engine traffic (invoke / Channel / Event) goes through `src/ipc/`. This covers the audio engine only — window, tray, always-on-top and autostart call `@tauri-apps/api` straight from their hooks by design. Do not "fix" them.
 - Allocate, lock, or syscall on the audio callback thread. See `docs/architecture.md` §7 when touching `src-tauri/src/audio` or `dsp`.

@@ -1,27 +1,15 @@
 # Loudness Panel Control
 
-Status: Approved design; pending implementation
+Status: Implemented.
 
 ## Public controls
 
-When the active Profile provides a loudness reference:
+Fields, types, units, defaults and bounds are generated from the schema:
+[`../generated/panel-loudness.md`](../generated/panel-loudness.md). This page carries the
+behaviour that a schema cannot state.
 
-```json
-{
-  "layers": ["momentary", "shortTerm", "reference"],
-  "loudnessRangeLufs": { "min": -64, "max": 0 }
-}
-```
-
-When no Profile reference is available, `reference` is omitted from both the public value and the
-schema's available options:
-
-```json
-{
-  "layers": ["momentary", "shortTerm"],
-  "loudnessRangeLufs": { "min": -64, "max": 0 }
-}
-```
+When the active Profile provides no loudness reference, `reference` is omitted from both the
+public value and the schema's available options.
 
 ## Validation and availability
 
@@ -32,7 +20,6 @@ schema's available options:
   `controlUnavailable`. It is not accepted as a dormant setting with a warning.
 - The hidden internal reference preference may remain stored so it can reappear when a suitable
   Profile is enabled. Updating visible layers while Profile is off must not accidentally erase it.
-- `loudnessRangeLufs` is atomic, bounded by -64 and 0, and has a minimum span of 12 LU.
 
 The time axis is read-only within Panel Control and writable through
 [`../axes.md`](../axes.md).

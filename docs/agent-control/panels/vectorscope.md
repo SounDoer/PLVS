@@ -1,16 +1,12 @@
 # Vectorscope Panel Control
 
-Status: Approved design; pending implementation
+Status: Implemented.
 
 ## Public controls
 
-```json
-{
-  "channelPair": { "x": 0, "y": 1 },
-  "mode": "lissajous",
-  "maxHold": false
-}
-```
+Fields, types, units, defaults and bounds are generated from the schema:
+[`../generated/panel-vectorscope.md`](../generated/panel-vectorscope.md). This page carries the
+behaviour that a schema cannot state.
 
 ## Validation and availability
 
@@ -20,7 +16,6 @@ Status: Approved design; pending implementation
   limit callers to that shortlist.
 - Invalid or reversed pairs are rejected; the API does not swap or clamp them.
 - Before topology detection, PLVS exposes assumed stereo L/R.
-- `mode` is `lissajous`, `polarSample`, or `polarLevel`.
 - `maxHold` is only effective in `polarLevel`. It may be preconfigured in another mode and then
   returns `currentlyInactive` if touched while the final mode remains inactive.
 

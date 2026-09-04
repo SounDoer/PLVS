@@ -25,24 +25,9 @@ ordinary defaults. Configuration export/import remains owned by the installed `p
 
 ## First-version public scope
 
-```json
-{
-  "openAtLogin": false,
-  "closeBehavior": "ask",
-  "clearShortcut": {
-    "accelerator": "CmdOrCtrl+K",
-    "global": false
-  },
-  "interfaceSize": "default",
-  "appearance": {
-    "mode": "system",
-    "themeId": null
-  },
-  "historyRetentionSec": 3600,
-  "dialogueVadEngine": "firered",
-  "channelLabels": []
-}
-```
+Fields, types, defaults and options are generated from the schema:
+[`generated/settings.md`](generated/settings.md). Current values and dynamic availability are
+runtime state, reported by `settings inspect` rather than documented here.
 
 The public fields correspond to Open at Login, Close Behavior, the configurable Clear shortcut,
 Interface Size, Appearance and active Theme selection, History Length, Dialogue Detection, and

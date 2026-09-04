@@ -56,6 +56,30 @@ The foundation, Panel Control, Axis Control, Presets, Settings, Revision Wait, T
 Control are implemented. Production exposure and MCP integration remain deferred product
 decisions.
 
+## Keeping this contract in step with the app
+
+Panel Control is three hand-written lists of the same fields -- the schema, the read mapping and the
+patch planner -- layered on one flat control record. Nothing in the app makes them agree, and a
+control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no App Control
+change to look finished. Three guards make that omission fail instead:
+
+| Guard | Fails when |
+| --- | --- |
+| `src/agentControl/panelControlCoverage.test.js` | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal. |
+| `src/agentControl/panelControlContract.test.js` | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
+| `src/agentControl/publicSurfaceDocs.test.js` | `generated/` no longer matches the schema builders. |
+
+The third fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the pages.
+
+`generated/` holds the reference half of this directory: every field's type, unit, default and
+bounds, rendered from the schema builders. It is not editable by hand. The pages beside it carry
+what a schema cannot state -- atomicity, warning semantics, availability rules, analysis identity --
+and no longer restate numbers the generated tables own.
+
+Deciding that a control stays out of App Control is a normal outcome; record it by adding the key to
+`INTERNAL_ONLY_CONTROLS` in the coverage test, with the reason. What the guards forbid is leaving
+the question unanswered.
+
 ## Method responsibilities
 
 ### `app.capabilities`

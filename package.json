@@ -13,6 +13,7 @@
     "prepare": "simple-git-hooks",
     "theme:generate": "node scripts/generate-theme-fallbacks.mjs",
     "agent:generate": "node scripts/generate-agent-discovery.mjs",
+    "docs:agent-control": "vitest run publicSurfaceDocs --update",
     "prebuild": "npm run theme:generate && npm run agent:generate",
     "build": "vite build",
     "benchmark:history": "node scripts/history-perf-benchmark.mjs",

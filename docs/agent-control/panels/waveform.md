@@ -1,21 +1,15 @@
 # Waveform Panel Control
 
-Status: Approved design; pending implementation
+Status: Implemented.
 
 ## Public controls
 
-```json
-{
-  "frequencyColor": false,
-  "frequencyBandsHz": { "lowMid": 200, "midHigh": 2000 },
-  "centroid": false
-}
-```
+Fields, types, units, defaults and bounds are generated from the schema:
+[`../generated/panel-waveform.md`](../generated/panel-waveform.md). This page carries the
+behaviour that a schema cannot state.
 
 ## Validation and availability
 
-- `frequencyBandsHz` is atomic. Both values are integers and must satisfy
-  `20 <= lowMid < midHigh <= 20000`.
 - When `frequencyColor` is false, the frequency split controls are hidden in the GUI and do not
   affect the display. Updating them is still valid so an agent can preconfigure Frequency Color.
 - If `frequencyBandsHz` is touched and Frequency Color remains off in the final state, the result
@@ -53,6 +47,6 @@ provides one global Spectral Waveform summary.
 
 ## Reset
 
-Reset restores the values above and the default linked time-axis state. If this panel was the final
+Reset restores the generated defaults and the default linked time-axis state. If this panel was the final
 requester, shared spectral Waveform analysis becomes unrequested. Reset does not clear Waveform
 history or change the shared Workspace time range.

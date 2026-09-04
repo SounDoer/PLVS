@@ -26,28 +26,16 @@ coordinate, wheel, drag, or zoom command; App Control expresses the final semant
 
 ## Public model
 
-The frequency viewport is a logarithmic range:
+Field types, defaults and bounds are generated from the schema:
+[`generated/axes.md`](generated/axes.md). Spectrum, Spectrogram, and Stereo Map share the frequency
+axis even though its visual orientation differs in each panel.
 
-```json
-{ "minHz": 20, "maxHz": 20000 }
-```
-
-Both values are finite, `20 <= minHz < maxHz <= 20000`, with at least 1 Hz span. Spectrum,
-Spectrogram, and Stereo Map can participate even though the frequency axis has a different visual
-orientation in each panel.
-
-The time viewport is:
-
-```json
-{ "windowSec": 60, "offsetSec": 0 }
-```
-
-`windowSec` is the visible duration and is at least 5 seconds. `offsetSec` is the non-negative
-distance back from the newest available sample; zero means the live edge or end of a FILE result.
-The maximum valid window and offset are dynamic, bounded by current history retention and available
-LIVE/selected FILE data. Describe reports those bounds. App Control rejects an out-of-range request
-instead of silently clamping it, while an ordinary no-data state still accepts the default viewport
-for future samples.
+`windowSec` is the visible duration; `offsetSec` is the non-negative distance back from the newest
+available sample, where zero means the live edge or the end of a FILE result. The maximum valid
+window and offset are dynamic, bounded by current history retention and available LIVE/selected FILE
+data, and `axis describe` reports the bounds that currently apply. App Control rejects an
+out-of-range request instead of silently clamping it, while an ordinary no-data state still accepts
+the default viewport for future samples.
 
 ## Shared viewport
 

@@ -1,45 +1,15 @@
 # Stats Panel Control
 
-Status: Approved design; pending implementation
+Status: Implemented.
 
 ## Public controls
 
-```json
-{
-  "metrics": {
-    "visible": [
-      "momentary",
-      "shortTerm",
-      "integrated",
-      "momentaryMax",
-      "shortTermMax",
-      "lra",
-      "psr",
-      "plr"
-    ],
-    "order": [
-      "momentary",
-      "shortTerm",
-      "integrated",
-      "momentaryMax",
-      "shortTermMax",
-      "lra",
-      "psr",
-      "plr",
-      "dialogueCoverage",
-      "dialogueIntegrated",
-      "dialogueRange",
-      "dialogueOffset",
-      "truePeak",
-      "correlation",
-      "sideToMid"
-    ]
-  }
-}
-```
+Fields, types, units, defaults and bounds are generated from the schema:
+[`../generated/panel-stats.md`](../generated/panel-stats.md). This page carries the
+behaviour that a schema cannot state.
 
-`metrics.visible` defaults to the first eight identifiers shown above. `metrics.order` defaults to
-the full canonical order.
+`metrics.visible` defaults to the first eight identifiers of the canonical order; `metrics.order`
+defaults to the full canonical order.
 
 ## Validation and patching
 

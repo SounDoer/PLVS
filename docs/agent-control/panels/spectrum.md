@@ -1,21 +1,12 @@
 # Spectrum Panel Control
 
-Status: Approved design; pending implementation
+Status: Implemented.
 
 ## Public controls
 
-```json
-{
-  "channel": { "type": "pair", "x": 0, "y": 1 },
-  "view": "combined",
-  "maxMode": "off",
-  "peakLabels": false,
-  "speedPercent": 25,
-  "tiltDbPerOctave": 3,
-  "octaveSmoothing": "off",
-  "levelRangeDb": { "min": -96, "max": -12 }
-}
-```
+Fields, types, units, defaults and bounds are generated from the schema:
+[`../generated/panel-spectrum.md`](../generated/panel-spectrum.md). This page carries the
+behaviour that a schema cannot state.
 
 ## Validation and availability
 
@@ -27,12 +18,6 @@ Status: Approved design; pending implementation
   `channelTopology.status` as `assumed` or `detected`.
 - `view` is `combined`, `lr`, or `ms`. It is only effective for a channel pair. Updating it while a
   single channel remains selected is valid but returns `currentlyInactive`.
-- `maxMode` is `off`, `decay`, or `hold`.
-- `speedPercent` is an integer from 0 through 100.
-- `tiltDbPerOctave` is any finite number from 0 through 6. A step of 0.25 is a UI recommendation,
-  not a wire-validation requirement.
-- `octaveSmoothing` is `off`, `1/12`, `1/6`, or `1/3`.
-- `levelRangeDb` is an atomic object: `-120 <= min < max <= 0`, with a minimum span of 12 dB.
 
 The frequency axis is read-only within Panel Control and writable through
 [`../axes.md`](../axes.md).
@@ -48,6 +33,6 @@ The panel reports whether its valid request is active or waiting for channel ava
 
 ## Reset and exclusions
 
-Reset restores the values above and the default linked frequency-axis state. It does not change the
+Reset restores the generated defaults and the default linked frequency-axis state. It does not change the
 shared Workspace frequency range. Clearing accumulated Max Hold data is a transient chart action and
 is outside Panel Control.
