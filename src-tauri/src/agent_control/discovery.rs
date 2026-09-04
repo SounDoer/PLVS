@@ -23,6 +23,8 @@ impl LaunchToken {
     Ok(Self(value))
   }
 
+  // Only the Windows pipe server reads the raw token; elsewhere it is test-only.
+  #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
   pub(crate) fn expose(&self) -> &str {
     &self.0
   }
