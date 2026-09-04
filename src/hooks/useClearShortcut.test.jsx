@@ -11,6 +11,7 @@ vi.mock("../lib/clearShortcutPrefs.js", () => ({
   DEFAULT_CLEAR_SHORTCUT: "CmdOrCtrl+K",
   loadClearShortcutPrefs: () => Promise.resolve({ shortcut: "CmdOrCtrl+K", global: true }),
   saveClearShortcutPrefs: () => Promise.resolve(),
+  saveClearShortcutPrefsForControl: () => Promise.resolve(),
 }));
 vi.mock("@tauri-apps/plugin-global-shortcut", () => ({ register, unregister }));
 

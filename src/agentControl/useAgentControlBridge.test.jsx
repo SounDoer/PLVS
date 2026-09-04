@@ -80,6 +80,7 @@ function Harness({
 }) {
   const store = useWorkspaceStore();
   const [presetState, setPresetState] = useState(presets);
+  const [settingsState, setSettingsState] = useState(agentSettings);
   const controlledPresets = {
     ...presetState,
     rename: (id, name) =>
@@ -142,8 +143,9 @@ function Harness({
     setPanelControlsForPanel: store.setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
     presets: controlledPresets,
-    settings: agentSettings,
+    settings: settingsState,
     settingsContext: agentSettingsContext,
+    applySettings: async (next) => setSettingsState(next),
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
@@ -293,6 +295,33 @@ describe("useAgentControlBridge", () => {
         historyRetentionSec: { type: "enum", current: 3600, unit: "s" },
       },
     });
+  });
+
+  it("updates Settings atomically and reports its independent revision", async () => {
+    const flush = vi.fn(async () => {});
+    mount({ flush });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "settings.update",
+        {
+          patch: { closeBehavior: "tray", interfaceSize: "large" },
+          expectedSettingsRevision: 0,
+        },
+        "settings-update"
+      )
+    );
+
+    expect(response.result).toMatchObject({
+      dryRun: false,
+      revision: 1,
+      changed: ["settings.closeBehavior", "settings.interfaceSize"],
+      settings: { closeBehavior: "tray", interfaceSize: "large" },
+      effects: [],
+      warnings: [],
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
   });
 
   it("returns stable Preset read conflicts and missing-target errors", async () => {

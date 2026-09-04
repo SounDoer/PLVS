@@ -235,6 +235,56 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "settings.update") {
+    const field = unknownField(
+      input.params,
+      new Set(["patch", "expectedSettingsRevision", "allowMeasurementRestart", "dryRun"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (!isPlainJsonObject(input.params.patch)) {
+      return invalidParams("$.params.patch", "patch must be a plain JSON object.");
+    }
+    if (
+      input.params.expectedSettingsRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedSettingsRevision) ||
+        input.params.expectedSettingsRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedSettingsRevision",
+        "expectedSettingsRevision must be a non-negative safe integer."
+      );
+    }
+    if (
+      input.params.allowMeasurementRestart !== undefined &&
+      typeof input.params.allowMeasurementRestart !== "boolean"
+    ) {
+      return invalidParams(
+        "$.params.allowMeasurementRestart",
+        "allowMeasurementRestart must be a boolean."
+      );
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          patch: input.params.patch,
+          ...(input.params.expectedSettingsRevision !== undefined
+            ? { expectedSettingsRevision: input.params.expectedSettingsRevision }
+            : {}),
+          ...(input.params.allowMeasurementRestart !== undefined
+            ? { allowMeasurementRestart: input.params.allowMeasurementRestart }
+            : {}),
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
+    };
+  }
+
   if (input.method === "panel.describe") {
     const field = unknownField(input.params, new Set(["panelId"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

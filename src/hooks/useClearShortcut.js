@@ -3,6 +3,7 @@ import { isTauri } from "../ipc/env.js";
 import {
   loadClearShortcutPrefs,
   saveClearShortcutPrefs,
+  saveClearShortcutPrefsForControl,
   DEFAULT_CLEAR_SHORTCUT,
 } from "../lib/clearShortcutPrefs.js";
 
@@ -95,6 +96,49 @@ export function useClearShortcut(onClearRef) {
     void saveClearShortcutPrefs({ shortcut: next, global });
   }
 
+  async function applyClearShortcutForControl(next) {
+    if (!ready || capturing) throw new Error("Clear shortcut is unavailable.");
+    const previous = { shortcut, global, registered: registeredRef.current };
+    let register;
+    let unregister;
+    let registeredNew = false;
+    if (isTauri()) {
+      ({ register, unregister } = await import("@tauri-apps/plugin-global-shortcut"));
+      if (next.global && previous.registered !== next.accelerator) {
+        await register(next.accelerator, (event) => {
+          if (event && event.state && event.state !== "Pressed") return;
+          onClearRef?.current?.();
+        });
+        registeredNew = true;
+      }
+      if (previous.registered && (!next.global || previous.registered !== next.accelerator)) {
+        await unregister(previous.registered);
+      }
+    }
+    try {
+      await saveClearShortcutPrefsForControl({
+        shortcut: next.accelerator,
+        global: next.global,
+      });
+    } catch (error) {
+      if (isTauri()) {
+        if (registeredNew) await unregister(next.accelerator).catch(() => {});
+        if (previous.registered) {
+          await register(previous.registered, (event) => {
+            if (event && event.state && event.state !== "Pressed") return;
+            onClearRef?.current?.();
+          }).catch(() => {});
+        }
+      }
+      registeredRef.current = previous.registered;
+      throw error;
+    }
+    registeredRef.current = next.global ? next.accelerator : null;
+    setShortcutState(next.accelerator);
+    setGlobalState(next.global);
+    setRegistrationError(null);
+  }
+
   return {
     clearShortcut: shortcut,
     clearGlobal: global,
@@ -104,5 +148,6 @@ export function useClearShortcut(onClearRef) {
     setClearGlobal,
     setClearShortcut,
     setClearCapturing: setCapturing,
+    applyClearShortcutForControl,
   };
 }

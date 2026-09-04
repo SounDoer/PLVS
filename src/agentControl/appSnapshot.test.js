@@ -39,6 +39,7 @@ describe("agent-control app snapshots", () => {
         "preset.apply",
         "settings.describe",
         "settings.inspect",
+        "settings.update",
       ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");

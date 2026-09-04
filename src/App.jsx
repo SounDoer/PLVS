@@ -924,6 +924,60 @@ function AppContent() {
     () => buildPublicSettings(settings, agentControlSettingsContext),
     [agentControlSettingsContext, settings]
   );
+  const applyAgentControlSettings = useCallback(
+    async (next, { changed, effects }) => {
+      const compensation = [];
+      try {
+        if (changed.includes("settings.openAtLogin")) {
+          await settings.setAutostartEnabledForControl(next.openAtLogin);
+          compensation.push(() =>
+            settings.setAutostartEnabledForControl(agentControlSettings.openAtLogin)
+          );
+        }
+        if (changed.some((path) => path.startsWith("settings.clearShortcut."))) {
+          await settings.applyClearShortcutForControl(next.clearShortcut);
+          compensation.push(() =>
+            settings.applyClearShortcutForControl(agentControlSettings.clearShortcut)
+          );
+        }
+      } catch (error) {
+        for (const compensate of compensation.reverse()) {
+          await compensate().catch(() => {});
+        }
+        throw error;
+      }
+
+      if (changed.includes("settings.closeBehavior")) {
+        settings.setCloseAction(next.closeBehavior);
+      }
+      if (changed.includes("settings.interfaceSize")) {
+        settings.setInterfaceSize(next.interfaceSize);
+      }
+      if (changed.some((path) => path.startsWith("settings.appearance."))) {
+        settings.setThemeId(next.appearance.themeId);
+        settings.setAppearance(next.appearance.mode);
+      }
+      if (changed.includes("settings.historyRetentionSec")) {
+        settings.setHistoryRetentionSec(next.historyRetentionSec);
+      }
+      if (changed.includes("settings.dialogueVadEngine")) {
+        settings.setDialogueVadEngine(next.dialogueVadEngine);
+      }
+      if (changed.includes("settings.channelLabels")) {
+        settings.setChannelLabelOverrides((current) => {
+          const updated = { ...current };
+          if (next.channelLabels.mode === "custom") {
+            updated[next.channelLabels.channelCount] = [...next.channelLabels.roles];
+          } else {
+            delete updated[next.channelLabels.channelCount];
+          }
+          return updated;
+        });
+      }
+      if (effects.length > 0) onClearRef.current?.();
+    },
+    [agentControlSettings, settings]
+  );
   useAgentControlBridge({
     enabled: agentControlRuntime.available === true,
     runtime: agentControlRuntime,
@@ -934,6 +988,7 @@ function AppContent() {
     presets,
     settings: agentControlSettings,
     settingsContext: agentControlSettingsContext,
+    applySettings: applyAgentControlSettings,
     loudnessProfiles: loudnessProfile.profiles,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,

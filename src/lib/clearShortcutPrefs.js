@@ -26,10 +26,15 @@ export async function loadClearShortcutPrefs() {
 export async function saveClearShortcutPrefs({ shortcut, global }) {
   if (!isTauri()) return;
   try {
-    const { Store } = await import("@tauri-apps/plugin-store");
-    const store = await Store.load(STORE_FILE);
-    await store.set(SHORTCUT_KEY, String(shortcut));
-    await store.set(GLOBAL_KEY, Boolean(global));
-    await store.save();
+    await saveClearShortcutPrefsForControl({ shortcut, global });
   } catch (_) {}
+}
+
+export async function saveClearShortcutPrefsForControl({ shortcut, global }) {
+  if (!isTauri()) return;
+  const { Store } = await import("@tauri-apps/plugin-store");
+  const store = await Store.load(STORE_FILE);
+  await store.set(SHORTCUT_KEY, String(shortcut));
+  await store.set(GLOBAL_KEY, Boolean(global));
+  await store.save();
 }

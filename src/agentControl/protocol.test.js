@@ -111,6 +111,19 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes settings.update options", () => {
+    const params = {
+      patch: { closeBehavior: "tray", interfaceSize: "large" },
+      expectedSettingsRevision: 2,
+      allowMeasurementRestart: true,
+      dryRun: true,
+    };
+    expect(normalizeAgentControlRequest(request("settings.update", params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method: "settings.update", params },
+    });
+  });
+
   it("normalizes panel.update params and options", () => {
     const patch = { mode: "rms", playbackMax: true };
     expect(
@@ -203,6 +216,7 @@ describe("normalizeAgentControlRequest", () => {
     [request("preset.reorder", {}), "invalidParams", "$.params.presetIds", -32602],
     [request("preset.save", {}), "invalidParams", "$.params.name", -32602],
     [request("preset.update", {}), "invalidParams", "$.params.presetId", -32602],
+    [request("settings.update", {}), "invalidParams", "$.params.patch", -32602],
     [
       request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: -1 }),
       "invalidParams",

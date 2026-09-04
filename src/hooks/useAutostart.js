@@ -18,13 +18,22 @@ export function useAutostart() {
       });
   }, []);
 
+  async function setAutostartEnabledForControl(enabled) {
+    if (!isTauri() || !autostartReady) throw new Error("Autostart is unavailable.");
+    await invoke(enabled ? "plugin:autostart|enable" : "plugin:autostart|disable");
+    setAutostartEnabledState(enabled);
+  }
+
   async function setAutostartEnabled(enabled) {
-    if (!isTauri()) return;
     try {
-      await invoke(enabled ? "plugin:autostart|enable" : "plugin:autostart|disable");
-      setAutostartEnabledState(enabled);
+      await setAutostartEnabledForControl(enabled);
     } catch (_) {}
   }
 
-  return { autostartEnabled, setAutostartEnabled, autostartReady };
+  return {
+    autostartEnabled,
+    setAutostartEnabled,
+    setAutostartEnabledForControl,
+    autostartReady,
+  };
 }

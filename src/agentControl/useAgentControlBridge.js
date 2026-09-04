@@ -26,7 +26,11 @@ import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
 import { planPresetApply, planPresetSave, planPresetUpdate } from "./presetScene.js";
-import { buildSettingsInspection, buildSettingsSchema } from "./settingsControl.js";
+import {
+  buildSettingsInspection,
+  buildSettingsSchema,
+  planSettingsUpdate,
+} from "./settingsControl.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -122,6 +126,7 @@ export function useAgentControlBridge({
   presets,
   settings,
   settingsContext = {},
+  applySettings = async () => {},
   loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
@@ -136,6 +141,7 @@ export function useAgentControlBridge({
   const settingsRevisionRef = useRef(0);
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
+  const settingsSettlementRef = useRef(null);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
@@ -171,6 +177,11 @@ export function useAgentControlBridge({
     if (signature !== previousSettingsSignatureRef.current) {
       previousSettingsSignatureRef.current = signature;
       settingsRevisionRef.current += 1;
+    }
+    const settlement = settingsSettlementRef.current;
+    if (settlement && signature === settlement.signature) {
+      settingsSettlementRef.current = null;
+      settlement.resolve(settingsRevisionRef.current);
     }
   }, [settings]);
 
@@ -225,6 +236,106 @@ export function useAgentControlBridge({
                 : {}),
             },
           };
+        }
+
+        if (request.method === "settings.update") {
+          const currentRevision = settingsRevisionRef.current;
+          if (
+            request.params.expectedSettingsRevision !== undefined &&
+            request.params.expectedSettingsRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedSettingsRevision",
+              `Settings changed after revision ${request.params.expectedSettingsRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedSettingsRevision,
+                currentRevision,
+              }
+            );
+          }
+          const planned = planSettingsUpdate(settings, request.params.patch, settingsContext, {
+            allowMeasurementRestart: request.params.allowMeasurementRestart === true,
+          });
+          if (planned.issues.length > 0) {
+            throw semanticFailure(
+              "invalidSettings",
+              "$.params.patch",
+              "The Settings patch is invalid.",
+              -32602,
+              { issues: planned.issues }
+            );
+          }
+          if (planned.refusal) {
+            const editorActive = planned.refusal.code === "editorActive";
+            throw semanticFailure(
+              planned.refusal.code,
+              "$.params.patch",
+              editorActive
+                ? "Finish or cancel the active editor first."
+                : "A Settings control is unavailable.",
+              editorActive ? -32040 : -32012,
+              planned.refusal
+            );
+          }
+          if (planned.confirmation) {
+            throw semanticFailure(
+              "confirmationRequired",
+              "$.params.allowMeasurementRestart",
+              "This change requires a measurement restart.",
+              -32041,
+              planned.confirmation
+            );
+          }
+          const inspection = buildSettingsInspection(planned.settings, settingsContext);
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            changed: planned.changed,
+            effects: planned.effects,
+            warnings: planned.warnings,
+            ...inspection,
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          const committed = new Promise((resolve, reject) => {
+            settingsSettlementRef.current = {
+              signature: settingsStateSignature(planned.settings),
+              resolve,
+              reject,
+            };
+          });
+          try {
+            await applySettings(planned.settings, {
+              changed: planned.changed,
+              effects: planned.effects,
+            });
+          } catch (error) {
+            settingsSettlementRef.current = null;
+            throw semanticFailure(
+              "applicationFailed",
+              "$",
+              `Settings application failed: ${error?.message || String(error)}`,
+              -32050,
+              { partial: false, rollback: "completed", changed: [], revision: currentRevision }
+            );
+          }
+          result.revision = await committed;
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Settings committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revision: result.revision }
+            );
+          }
+          return { requestId, result };
         }
 
         if (request.method === "preset.list") {
@@ -983,6 +1094,7 @@ export function useAgentControlBridge({
     hasLoudnessReference,
     loudnessProfiles,
     analysisContext,
+    applySettings,
     presets,
     replaceWorkspace,
     runtime,
@@ -1030,6 +1142,9 @@ export function useAgentControlBridge({
       const presetSettlement = presetSettlementRef.current;
       presetSettlementRef.current = null;
       presetSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      const settingsSettlement = settingsSettlementRef.current;
+      settingsSettlementRef.current = null;
+      settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));
       if (unlisten) unlisten();
       if (ready) void announceAgentControlFrontendNotReady();
     };

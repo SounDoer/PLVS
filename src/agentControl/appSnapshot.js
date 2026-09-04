@@ -29,6 +29,7 @@ const METHODS = [
   "preset.apply",
   "settings.describe",
   "settings.inspect",
+  "settings.update",
 ];
 
 export function buildAgentControlPanelSnapshot({
