@@ -627,12 +627,13 @@ describe("usePresets", () => {
         },
       ],
       activeId: "p1",
+      dirty: true,
     });
     const { result } = renderPresetHook();
     act(() => result.current.presets.rename("p1", "Renamed"));
     expect(presetsStore.read().list[0].name).toBe("Renamed");
     act(() => result.current.presets.remove("p1"));
-    expect(presetsStore.read()).toEqual({ list: [], activeId: null });
+    expect(presetsStore.read()).toEqual({ list: [], activeId: null, dirty: false });
   });
 
   describe("dock in presets", () => {

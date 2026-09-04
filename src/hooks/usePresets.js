@@ -339,6 +339,7 @@ export function usePresets({
       write({
         list: current.list.filter((p) => p.id !== id),
         activeId: current.activeId === id ? null : current.activeId,
+        dirty: current.activeId === id ? false : current.dirty,
       });
     },
     [write]
