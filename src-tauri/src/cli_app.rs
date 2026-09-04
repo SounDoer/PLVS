@@ -1568,6 +1568,28 @@ fn preset_mutation_params<const N: usize>(
   Value::Object(params)
 }
 
+/// Flattens the JSON-RPC error payload into the reported `details`.
+///
+/// The payload nests the real details one level down and repeats the reason that the report
+/// already carries at the top level, so a caller had to read `error.details.details.issues` to
+/// reach what the contract documents as `error.details.issues`. Keep `path`, which says which part
+/// of the request was rejected, and let a detail of the same name win.
+fn public_error_details(data: &Value) -> Option<Value> {
+  let mut merged = serde_json::Map::new();
+  if let Some(path) = data.get("path").and_then(Value::as_str) {
+    merged.insert("path".to_string(), Value::from(path));
+  }
+  if let Some(Value::Object(details)) = data.get("details") {
+    for (key, value) in details {
+      merged.insert(key.clone(), value.clone());
+    }
+  }
+  if merged.is_empty() {
+    return None;
+  }
+  Some(Value::Object(merged))
+}
+
 fn execute<R: Read>(
   command: &CliAppCommand,
   stdin: &mut R,
@@ -1642,7 +1664,7 @@ fn execute<R: Read>(
           .and_then(Value::as_str)
           .unwrap_or("PLVS rejected the command.")
           .to_string(),
-        details: rpc_error.get("data").cloned(),
+        details: public_error_details(rpc_error.get("data").unwrap_or(&Value::Null)),
       };
       let failure = CliAppFailure::app(call.app, error);
       (failure_report(command_label, failure), 1)
@@ -2453,6 +2475,63 @@ mod tests {
         "data": { "reason": reason, "layer": "transport" }
       }
     })
+  }
+
+  #[test]
+  fn reported_details_are_flat_and_do_not_repeat_the_reason() {
+    let client = FakeClient {
+      response: Ok(AppCall {
+        app: app(),
+        protocol_version: 1,
+        response: serde_json::json!({
+          "jsonrpc": "2.0",
+          "id": "replaced",
+          "error": {
+            "code": -32050,
+            "message": "The panel controls are invalid.",
+            "data": {
+              "reason": "invalidControls",
+              "path": "$.params.patch",
+              "details": {
+                "issues": [{ "code": "outOfRange", "path": "$.speedPercent", "message": "nope" }]
+              }
+            }
+          }
+        }),
+      }),
+    };
+    let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &client);
+    let json = serde_json::to_value(report).unwrap();
+    assert_eq!(exit, 1);
+    assert_eq!(json["error"]["reason"], "invalidControls");
+    // The documented path, not `details.details.issues`.
+    assert_eq!(json["error"]["details"]["issues"][0]["code"], "outOfRange");
+    assert_eq!(json["error"]["details"]["path"], "$.params.patch");
+    assert!(json["error"]["details"].get("reason").is_none());
+    assert!(json["error"]["details"].get("details").is_none());
+
+    // A payload with nothing but a reason reports no details at all rather than an echo.
+    let bare = FakeClient {
+      response: Ok(AppCall {
+        app: app(),
+        protocol_version: 1,
+        response: serde_json::json!({
+          "jsonrpc": "2.0",
+          "id": "replaced",
+          "error": {
+            "code": -32050,
+            "message": "gone",
+            "data": { "reason": "panelNotFound", "path": "$.params.panelId" }
+          }
+        }),
+      }),
+    };
+    let (report, _) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &bare);
+    let json = serde_json::to_value(report).unwrap();
+    assert_eq!(
+      json["error"]["details"],
+      serde_json::json!({ "path": "$.params.panelId" })
+    );
   }
 
   #[test]
