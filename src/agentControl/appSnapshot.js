@@ -45,6 +45,12 @@ const METHODS = [
   "transport.file.clear",
   "dock.describe",
   "dock.inspect",
+  "dock.enter",
+  "dock.exit",
+  "dock.layout.apply",
+  "dock.panel.describe",
+  "dock.panel.update",
+  "dock.panel.reset",
 ];
 
 export function buildAgentControlPanelSnapshot({

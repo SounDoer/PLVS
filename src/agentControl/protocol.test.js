@@ -166,6 +166,41 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it.each([
+    [
+      "dock.enter",
+      {
+        edge: "top",
+        monitor: "monitor-1",
+        reserveSpace: false,
+        height: 72,
+        expectedWorkspaceRevision: 2,
+        dryRun: true,
+      },
+    ],
+    ["dock.exit", { expectedWorkspaceRevision: 2, dryRun: true }],
+    ["dock.layout.apply", { layout: { panels: [] }, expectedWorkspaceRevision: 2, dryRun: true }],
+    [
+      "dock.panel.update",
+      { panelId: "level", patch: { mode: "rms" }, expectedWorkspaceRevision: 2, dryRun: true },
+    ],
+    ["dock.panel.reset", { panelId: "level", expectedWorkspaceRevision: 2, dryRun: true }],
+  ])("normalizes %s options", (method, params) => {
+    expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method, params },
+    });
+  });
+
+  it("normalizes dock.panel.describe", () => {
+    expect(
+      normalizeAgentControlRequest(request("dock.panel.describe", { panelId: "level" }))
+    ).toEqual({
+      ok: true,
+      request: { id: "req-1", method: "dock.panel.describe", params: { panelId: "level" } },
+    });
+  });
+
   it("normalizes panel.update params and options", () => {
     const patch = { mode: "rms", playbackMax: true };
     expect(
@@ -262,6 +297,10 @@ describe("normalizeAgentControlRequest", () => {
     [request("app.wait", {}), "invalidParams", "$.params", -32602],
     [request("transport.file.analyze", {}), "invalidParams", "$.params.path", -32602],
     [request("transport.file.select", {}), "invalidParams", "$.params.sessionId", -32602],
+    [request("dock.layout.apply", {}), "invalidParams", "$.params.layout", -32602],
+    [request("dock.panel.update", { panelId: "level" }), "invalidParams", "$.params.patch", -32602],
+    [request("dock.panel.reset", {}), "invalidParams", "$.params.panelId", -32602],
+    [request("dock.enter", { height: 72.5 }), "invalidParams", "$.params.height", -32602],
     [
       request("transport.live.start", { allowStopFileAnalysis: "yes" }),
       "invalidParams",

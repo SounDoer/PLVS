@@ -407,6 +407,94 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "dock.panel.describe") {
+    const field = unknownField(input.params, new Set(["panelId"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "") {
+      return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
+    }
+    return {
+      ok: true,
+      request: { id: input.id, method: input.method, params: { panelId: input.params.panelId } },
+    };
+  }
+
+  const dockMutations = new Set([
+    "dock.enter",
+    "dock.exit",
+    "dock.layout.apply",
+    "dock.panel.update",
+    "dock.panel.reset",
+  ]);
+  if (dockMutations.has(input.method)) {
+    const enter = input.method === "dock.enter";
+    const layout = input.method === "dock.layout.apply";
+    const panel = input.method.startsWith("dock.panel.");
+    const update = input.method === "dock.panel.update";
+    const allowed = new Set([
+      ...(enter ? ["edge", "monitor", "reserveSpace", "height"] : []),
+      ...(layout ? ["layout"] : []),
+      ...(panel ? ["panelId"] : []),
+      ...(update ? ["patch"] : []),
+      "expectedWorkspaceRevision",
+      "dryRun",
+    ]);
+    const field = unknownField(input.params, allowed);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (layout && !isPlainJsonObject(input.params.layout)) {
+      return invalidParams("$.params.layout", "layout must be a plain JSON object.");
+    }
+    if (panel && (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "")) {
+      return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
+    }
+    if (update && !isPlainJsonObject(input.params.patch)) {
+      return invalidParams("$.params.patch", "patch must be a plain JSON object.");
+    }
+    if (input.params.edge !== undefined && !["top", "bottom"].includes(input.params.edge)) {
+      return invalidParams("$.params.edge", "edge must be top or bottom.");
+    }
+    if (
+      input.params.monitor !== undefined &&
+      (typeof input.params.monitor !== "string" || input.params.monitor.trim() === "")
+    ) {
+      return invalidParams("$.params.monitor", "monitor must be a non-empty string.");
+    }
+    if (input.params.reserveSpace !== undefined && typeof input.params.reserveSpace !== "boolean") {
+      return invalidParams("$.params.reserveSpace", "reserveSpace must be a boolean.");
+    }
+    if (
+      input.params.height !== undefined &&
+      (!Number.isInteger(input.params.height) ||
+        input.params.height < 56 ||
+        input.params.height > 160)
+    ) {
+      return invalidParams("$.params.height", "height must be an integer from 56 to 160.");
+    }
+    if (
+      input.params.expectedWorkspaceRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedWorkspaceRevision) ||
+        input.params.expectedWorkspaceRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedWorkspaceRevision",
+        "expectedWorkspaceRevision must be a non-negative safe integer."
+      );
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: Object.fromEntries(
+          Object.keys(input.params).map((key) => [key, input.params[key]])
+        ),
+      },
+    };
+  }
+
   if (input.method === "panel.describe") {
     const field = unknownField(input.params, new Set(["panelId"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

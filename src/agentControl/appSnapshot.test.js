@@ -55,6 +55,12 @@ describe("agent-control app snapshots", () => {
         "transport.file.clear",
         "dock.describe",
         "dock.inspect",
+        "dock.enter",
+        "dock.exit",
+        "dock.layout.apply",
+        "dock.panel.describe",
+        "dock.panel.update",
+        "dock.panel.reset",
       ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
