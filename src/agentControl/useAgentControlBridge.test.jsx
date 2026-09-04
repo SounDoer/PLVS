@@ -324,6 +324,42 @@ describe("useAgentControlBridge", () => {
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
+  it("waits outside the command queue until any watched revision changes", async () => {
+    const view = mount();
+    await waitUntilReady();
+    const waitRequest = request(
+      "app.wait",
+      { workspaceRevision: 0, settingsRevision: 0, timeoutMs: 1000 },
+      "wait-change"
+    );
+    act(() => adapter.handler(waitRequest));
+
+    const inspected = await send(request("app.inspect", {}, "inspect-during-wait"));
+    expect(inspected.result.revisions.workspace).toBe(0);
+    act(() => view.store.setTree({ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" }));
+    await waitFor(() =>
+      expect(adapter.responses.some(({ requestId }) => requestId === "wait-change")).toBe(true)
+    );
+    expect(adapter.responses.find(({ requestId }) => requestId === "wait-change").result).toEqual({
+      outcome: "changed",
+      changedDomains: ["workspace"],
+      revisions: { workspace: 1, presets: 0, settings: 0, transport: 0 },
+    });
+  });
+
+  it("returns a successful timeout with the current revision snapshot", async () => {
+    mount();
+    await waitUntilReady();
+    const response = await send(
+      request("app.wait", { presetsRevision: 0, timeoutMs: 100 }, "wait-timeout")
+    );
+    expect(response.result).toEqual({
+      outcome: "timeout",
+      changedDomains: [],
+      revisions: { workspace: 0, presets: 0, settings: 0, transport: 0 },
+    });
+  });
+
   it("returns stable Preset read conflicts and missing-target errors", async () => {
     mount();
     await waitUntilReady();

@@ -30,6 +30,7 @@ const METHODS = [
   "settings.describe",
   "settings.inspect",
   "settings.update",
+  "app.wait",
 ];
 
 export function buildAgentControlPanelSnapshot({
@@ -74,6 +75,7 @@ export function buildAgentControlSnapshot({
   revision,
   presetsRevision = 0,
   settingsRevision = 0,
+  transportRevision = 0,
   workspace,
   presets,
   settings,
@@ -92,7 +94,12 @@ export function buildAgentControlSnapshot({
       platform: String(runtime.platform),
     },
     protocolVersion: 1,
-    revisions: { workspace: revision, presets: presetsRevision, settings: settingsRevision },
+    revisions: {
+      workspace: revision,
+      presets: presetsRevision,
+      settings: settingsRevision,
+      transport: transportRevision,
+    },
     runtime: {
       channelTopology: {
         status: detectedChannelCount === null ? "assumed" : "detected",

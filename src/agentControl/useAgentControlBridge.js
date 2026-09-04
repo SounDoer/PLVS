@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   announceAgentControlFrontendNotReady,
   announceAgentControlFrontendReady,
@@ -116,6 +116,20 @@ function settingsStateSignature(settings) {
   });
 }
 
+const WAIT_BASELINE_KEYS = {
+  workspace: "workspaceRevision",
+  presets: "presetsRevision",
+  settings: "settingsRevision",
+  transport: "transportRevision",
+};
+
+function changedRevisionDomains(baselines, revisions) {
+  return Object.entries(WAIT_BASELINE_KEYS)
+    .filter(([, key]) => baselines[key] !== undefined)
+    .filter(([domain, key]) => revisions[domain] !== baselines[key])
+    .map(([domain]) => domain);
+}
+
 export function useAgentControlBridge({
   enabled,
   runtime,
@@ -127,6 +141,7 @@ export function useAgentControlBridge({
   settings,
   settingsContext = {},
   applySettings = async () => {},
+  transportRevision = 0,
   loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
@@ -142,13 +157,42 @@ export function useAgentControlBridge({
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
+  const transportRevisionRef = useRef(transportRevision);
+  const waitersRef = useRef(new Map());
+  const waitWakeScheduledRef = useRef(false);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
+
+  const currentRevisions = useCallback(
+    () => ({
+      workspace: revisionRef.current,
+      presets: presetsRevisionRef.current,
+      settings: settingsRevisionRef.current,
+      transport: transportRevisionRef.current,
+    }),
+    []
+  );
+  const scheduleWaitWake = useCallback(() => {
+    if (waitWakeScheduledRef.current) return;
+    waitWakeScheduledRef.current = true;
+    queueMicrotask(() => {
+      waitWakeScheduledRef.current = false;
+      const revisions = currentRevisions();
+      for (const [id, waiter] of waitersRef.current) {
+        const changedDomains = changedRevisionDomains(waiter.baselines, revisions);
+        if (changedDomains.length === 0) continue;
+        clearTimeout(waiter.timer);
+        waitersRef.current.delete(id);
+        waiter.resolve({ outcome: "changed", changedDomains, revisions });
+      }
+    });
+  }, [currentRevisions]);
 
   useEffect(() => {
     if (!controllableWorkspaceMatches(previousWorkspaceRef.current, workspace)) {
       previousWorkspaceRef.current = workspace;
       revisionRef.current += 1;
+      scheduleWaitWake();
     } else {
       previousWorkspaceRef.current = workspace;
     }
@@ -157,33 +201,41 @@ export function useAgentControlBridge({
       settlementRef.current = null;
       settlement.resolve(revisionRef.current);
     }
-  }, [workspace]);
+  }, [scheduleWaitWake, workspace]);
 
   useEffect(() => {
     const signature = presetStateSignature(presets);
     if (signature !== previousPresetsSignatureRef.current) {
       previousPresetsSignatureRef.current = signature;
       presetsRevisionRef.current += 1;
+      scheduleWaitWake();
     }
     const settlement = presetSettlementRef.current;
     if (settlement && signature === settlement.signature) {
       presetSettlementRef.current = null;
       settlement.resolve(presetsRevisionRef.current);
     }
-  }, [presets]);
+  }, [presets, scheduleWaitWake]);
 
   useEffect(() => {
     const signature = settingsStateSignature(settings);
     if (signature !== previousSettingsSignatureRef.current) {
       previousSettingsSignatureRef.current = signature;
       settingsRevisionRef.current += 1;
+      scheduleWaitWake();
     }
     const settlement = settingsSettlementRef.current;
     if (settlement && signature === settlement.signature) {
       settingsSettlementRef.current = null;
       settlement.resolve(settingsRevisionRef.current);
     }
-  }, [settings]);
+  }, [scheduleWaitWake, settings]);
+
+  useEffect(() => {
+    if (transportRevisionRef.current === transportRevision) return;
+    transportRevisionRef.current = transportRevision;
+    scheduleWaitWake();
+  }, [scheduleWaitWake, transportRevision]);
 
   useEffect(() => {
     processRef.current = async (rawRequest) => {
@@ -207,6 +259,36 @@ export function useAgentControlBridge({
             result: buildAgentControlCapabilities(runtime),
           };
         }
+        if (request.method === "app.wait") {
+          const revisions = currentRevisions();
+          const changedDomains = changedRevisionDomains(request.params, revisions);
+          if (changedDomains.length > 0) {
+            return {
+              requestId,
+              result: { outcome: "changed", changedDomains, revisions },
+            };
+          }
+          if (waitersRef.current.size >= 4) {
+            throw semanticFailure("busy", "$", "Too many revision waits are active.", -32070);
+          }
+          const result = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+              waitersRef.current.delete(requestId);
+              resolve({
+                outcome: "timeout",
+                changedDomains: [],
+                revisions: currentRevisions(),
+              });
+            }, request.params.timeoutMs);
+            waitersRef.current.set(requestId, {
+              baselines: request.params,
+              timer,
+              resolve,
+              reject,
+            });
+          });
+          return { requestId, result };
+        }
         if (request.method === "app.inspect") {
           return {
             requestId,
@@ -215,6 +297,7 @@ export function useAgentControlBridge({
               revision: revisionRef.current,
               presetsRevision: presetsRevisionRef.current,
               settingsRevision: settingsRevisionRef.current,
+              transportRevision: transportRevisionRef.current,
               workspace,
               presets,
               settings,
@@ -1095,6 +1178,7 @@ export function useAgentControlBridge({
     loudnessProfiles,
     analysisContext,
     applySettings,
+    currentRevisions,
     presets,
     replaceWorkspace,
     runtime,
@@ -1107,19 +1191,26 @@ export function useAgentControlBridge({
 
   useEffect(() => {
     if (!enabled) return undefined;
+    const waiters = waitersRef.current;
     aliveRef.current = true;
     let unlisten = null;
     let ready = false;
 
     const install = async () => {
       unlisten = await listenForAgentControlRequests((request) => {
-        queueRef.current = queueRef.current
-          .then(() => processRef.current(request))
-          .then((response) => {
-            if (aliveRef.current) return respondToAgentControlRequest(response);
-            return undefined;
-          })
-          .catch(() => undefined);
+        const respond = (processing) =>
+          processing
+            .then((response) => {
+              if (aliveRef.current) return respondToAgentControlRequest(response);
+              return undefined;
+            })
+            .catch(() => undefined);
+        if (request?.method === "app.wait") {
+          void respond(processRef.current(request));
+          return;
+        }
+        queueRef.current = queueRef.current.then(() => processRef.current(request));
+        void respond(queueRef.current);
       });
       if (!aliveRef.current) {
         unlisten();
@@ -1145,6 +1236,11 @@ export function useAgentControlBridge({
       const settingsSettlement = settingsSettlementRef.current;
       settingsSettlementRef.current = null;
       settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      for (const waiter of waiters.values()) {
+        clearTimeout(waiter.timer);
+        waiter.reject(new Error("Agent-control bridge unmounted."));
+      }
+      waiters.clear();
       if (unlisten) unlisten();
       if (ready) void announceAgentControlFrontendNotReady();
     };

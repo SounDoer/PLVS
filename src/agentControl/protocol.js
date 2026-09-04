@@ -285,6 +285,44 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "app.wait") {
+    const revisionKeys = [
+      "workspaceRevision",
+      "presetsRevision",
+      "settingsRevision",
+      "transportRevision",
+    ];
+    const field = unknownField(input.params, new Set([...revisionKeys, "timeoutMs"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const supplied = revisionKeys.filter((key) => input.params[key] !== undefined);
+    if (supplied.length === 0) {
+      return invalidParams("$.params", "At least one revision baseline is required.");
+    }
+    for (const key of supplied) {
+      if (!Number.isSafeInteger(input.params[key]) || input.params[key] < 0) {
+        return invalidParams(`$.params.${key}`, `${key} must be a non-negative safe integer.`);
+      }
+    }
+    const timeoutMs = input.params.timeoutMs ?? 30000;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300000) {
+      return invalidParams(
+        "$.params.timeoutMs",
+        "timeoutMs must be an integer from 100 to 300000."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          ...Object.fromEntries(supplied.map((key) => [key, input.params[key]])),
+          timeoutMs,
+        },
+      },
+    };
+  }
+
   if (input.method === "panel.describe") {
     const field = unknownField(input.params, new Set(["panelId"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

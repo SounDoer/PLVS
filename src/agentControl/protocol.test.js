@@ -124,6 +124,14 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes app.wait baselines and timeout", () => {
+    const params = { workspaceRevision: 1, settingsRevision: 2, timeoutMs: 5000 };
+    expect(normalizeAgentControlRequest(request("app.wait", params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method: "app.wait", params },
+    });
+  });
+
   it("normalizes panel.update params and options", () => {
     const patch = { mode: "rms", playbackMax: true };
     expect(
@@ -217,6 +225,13 @@ describe("normalizeAgentControlRequest", () => {
     [request("preset.save", {}), "invalidParams", "$.params.name", -32602],
     [request("preset.update", {}), "invalidParams", "$.params.presetId", -32602],
     [request("settings.update", {}), "invalidParams", "$.params.patch", -32602],
+    [request("app.wait", {}), "invalidParams", "$.params", -32602],
+    [
+      request("app.wait", { workspaceRevision: 0, timeoutMs: 99 }),
+      "invalidParams",
+      "$.params.timeoutMs",
+      -32602,
+    ],
     [
       request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: -1 }),
       "invalidParams",
