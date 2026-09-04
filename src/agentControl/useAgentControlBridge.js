@@ -32,6 +32,7 @@ import {
   planSettingsUpdate,
 } from "./settingsControl.js";
 import { planTransportMutation, transportLifecycleSignature } from "./transportControl.js";
+import { buildDockDescription, buildDockSnapshot } from "./dockControl.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -182,6 +183,8 @@ export function useAgentControlBridge({
   transport,
   transportContext = {},
   executeTransport = async () => ({}),
+  dock,
+  dockContext = {},
   loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
@@ -201,6 +204,7 @@ export function useAgentControlBridge({
   const transportRevisionRef = useRef(0);
   const latestTransportRef = useRef(transport);
   const transportSettlementRef = useRef(null);
+  const previousDockSignatureRef = useRef(JSON.stringify(dock));
   const waitersRef = useRef(new Map());
   const waitWakeScheduledRef = useRef(false);
   const processRef = useRef(null);
@@ -290,6 +294,14 @@ export function useAgentControlBridge({
   }, [scheduleWaitWake, transport]);
 
   useEffect(() => {
+    const signature = JSON.stringify(dock);
+    if (signature === previousDockSignatureRef.current) return;
+    previousDockSignatureRef.current = signature;
+    revisionRef.current += 1;
+    scheduleWaitWake();
+  }, [dock, scheduleWaitWake]);
+
+  useEffect(() => {
     processRef.current = async (rawRequest) => {
       const normalized = normalizeAgentControlRequest(rawRequest);
       const requestId =
@@ -377,6 +389,20 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: { revision: transportRevisionRef.current, ...transport },
+          };
+        }
+        if (request.method === "dock.describe" || request.method === "dock.inspect") {
+          const snapshot = buildDockSnapshot(dock, dockContext);
+          return {
+            requestId,
+            result: {
+              revision: revisionRef.current,
+              presetsRevision: presetsRevisionRef.current,
+              preset: panelResultPreset(presets, []),
+              ...(request.method === "dock.describe"
+                ? buildDockDescription(dock, dockContext)
+                : snapshot),
+            },
           };
         }
 
@@ -1352,6 +1378,8 @@ export function useAgentControlBridge({
     applySettings,
     executeTransport,
     currentRevisions,
+    dock,
+    dockContext,
     presets,
     replaceWorkspace,
     runtime,

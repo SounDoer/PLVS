@@ -74,6 +74,20 @@ const transport = {
   files: { activeId: null, analyzingId: null, sessions: [] },
 };
 
+const dock = {
+  supported: true,
+  enabled: false,
+  edge: "bottom",
+  monitor: null,
+  reserveSpace: true,
+  height: 72,
+  suspended: false,
+  panelsById: { transport: { id: "transport", moduleId: "transport" } },
+  panelOrder: ["transport"],
+  panelSizesById: {},
+  controlsByPanelId: {},
+};
+
 function request(method, params = {}, id = "req-1") {
   return { jsonrpc: "2.0", id, method, params };
 }
@@ -89,6 +103,7 @@ function Harness({
   agentSettings = publicSettings,
   agentSettingsContext = settingsContext,
   agentTransport = transport,
+  agentDock = dock,
   executeAgentTransport,
   presets = { activeId: null, dirty: false },
   onStore = () => {},
@@ -180,6 +195,8 @@ function Harness({
     transport: transportState,
     transportContext: { docked: false },
     executeTransport,
+    dock: agentDock,
+    dockContext: { platform: "windows", monitors: [] },
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
@@ -336,6 +353,25 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
     const response = await send(request("transport.inspect", {}, "transport-inspect"));
     expect(response.result).toEqual({ revision: 0, ...transport });
+  });
+
+  it("inspects and describes Dock against the Workspace revision", async () => {
+    mount();
+    await waitUntilReady();
+    const inspected = await send(request("dock.inspect", {}, "dock-inspect"));
+    const described = await send(request("dock.describe", {}, "dock-describe"));
+    expect(inspected.result).toMatchObject({
+      revision: 0,
+      presetsRevision: 0,
+      supported: true,
+      enabled: false,
+      panels: [{ id: "transport", moduleId: "transport" }],
+    });
+    expect(described.result).toMatchObject({
+      revision: 0,
+      supported: true,
+      height: { min: 56, max: 160 },
+    });
   });
 
   it("applies a Transport source mutation and settles on its revision", async () => {

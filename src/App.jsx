@@ -940,6 +940,33 @@ function AppContent() {
       }),
     [captureDeviceId, docked, meterRuntime, selectedOffset]
   );
+  const agentControlDock = useMemo(
+    () => ({
+      supported: supportsDockMode(),
+      enabled: docked,
+      edge: dockEdge,
+      monitor: dockMonitor,
+      reserveSpace,
+      height: dockHeight,
+      suspended: dockSuspended,
+      panelsById: dockLayout.panelsById,
+      panelOrder: dockLayout.panelOrder,
+      panelSizesById: dockLayout.panelSizesById,
+      controlsByPanelId: dockLayout.controlsByPanelId,
+    }),
+    [
+      dockEdge,
+      dockHeight,
+      dockLayout.controlsByPanelId,
+      dockLayout.panelOrder,
+      dockLayout.panelSizesById,
+      dockLayout.panelsById,
+      dockMonitor,
+      dockSuspended,
+      docked,
+      reserveSpace,
+    ]
+  );
   const currentFileAnalysisSettings = useCallback(
     () => ({
       dialogue: {
@@ -1095,6 +1122,8 @@ function AppContent() {
     transport: agentControlTransport,
     transportContext: { docked },
     executeTransport: executeAgentControlTransport,
+    dock: agentControlDock,
+    dockContext: { platform: agentControlRuntime.platform, ...agentControlAnalysisContext },
     loudnessProfiles: loudnessProfile.profiles,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,

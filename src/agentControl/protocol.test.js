@@ -14,6 +14,8 @@ describe("normalizeAgentControlRequest", () => {
     "settings.describe",
     "settings.inspect",
     "transport.inspect",
+    "dock.describe",
+    "dock.inspect",
   ])("accepts %s with empty params", (method) => {
     expect(normalizeAgentControlRequest(request(method))).toEqual({
       ok: true,

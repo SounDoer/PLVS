@@ -43,6 +43,8 @@ const METHODS = [
   "transport.file.select",
   "transport.file.remove",
   "transport.file.clear",
+  "dock.describe",
+  "dock.inspect",
 ];
 
 export function buildAgentControlPanelSnapshot({

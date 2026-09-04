@@ -53,6 +53,8 @@ describe("agent-control app snapshots", () => {
         "transport.file.select",
         "transport.file.remove",
         "transport.file.clear",
+        "dock.describe",
+        "dock.inspect",
       ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
