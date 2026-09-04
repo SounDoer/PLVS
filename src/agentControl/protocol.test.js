@@ -71,6 +71,15 @@ describe("normalizeAgentControlRequest", () => {
         dryRun: true,
       },
     ],
+    [
+      "preset.apply",
+      {
+        presetId: "preset-1",
+        expectedWorkspaceRevision: 1,
+        expectedPresetsRevision: 2,
+        dryRun: true,
+      },
+    ],
   ])("normalizes %s scene capture", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({
       ok: true,

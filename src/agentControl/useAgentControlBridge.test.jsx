@@ -97,6 +97,15 @@ function Harness({
       }));
       return updated;
     },
+    activateSnapshot: (id) => {
+      setPresetState((current) => ({ ...current, activeId: id, dirty: false }));
+      return true;
+    },
+    applySnapshot: async (id) => {
+      setPresetState((current) => ({ ...current, activeId: id, dirty: false }));
+      return true;
+    },
+    preflightApplySnapshot: () => true,
   };
   onStore(store);
   useAgentControlBridge({
@@ -419,6 +428,43 @@ describe("useAgentControlBridge", () => {
       },
     });
     expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("applies a matching Preset by associating it without replacing the Workspace", async () => {
+    const flush = vi.fn(async () => {});
+    const snapshot = { tree: { type: "leaf", tabs: [] }, windowPinned: true };
+    mount({
+      flush,
+      capturePresetSnapshot: vi.fn(async () => snapshot),
+      presets: {
+        list: [{ id: "preset-1", name: "Mix", ...snapshot }],
+        activeId: null,
+        dirty: false,
+      },
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "preset.apply",
+        {
+          presetId: "preset-1",
+          expectedWorkspaceRevision: 0,
+          expectedPresetsRevision: 0,
+        },
+        "preset-apply"
+      )
+    );
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({
+      dryRun: false,
+      changed: ["presets.activeId"],
+      preset: { id: "preset-1", name: "Mix" },
+      presetState: { activeId: "preset-1", dirty: false },
+      revisions: { workspace: 0, presets: 1 },
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
   });
 
   it("does not advance the public revision for transient fullscreen state", async () => {

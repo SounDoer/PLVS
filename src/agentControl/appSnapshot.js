@@ -26,6 +26,7 @@ const METHODS = [
   "preset.reorder",
   "preset.save",
   "preset.update",
+  "preset.apply",
 ];
 
 export function buildAgentControlPanelSnapshot({

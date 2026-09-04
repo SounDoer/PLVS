@@ -201,14 +201,11 @@ export function usePresets({
     [assertSceneOperationAllowed, captureSnapshot, saveSnapshot]
   );
 
-  const apply = useCallback(
-    async (id) => {
-      // Before `setView`, before the dock transition, before any window call: a refusal must not
-      // leave half a preset applied.
-      assertSceneOperationAllowed(SCENE_OPERATIONS.presetApply);
+  const preflightApplySnapshot = useCallback(
+    (id) => {
       const current = normalizePresets(presetsStore.read());
       const preset = current.list.find((p) => p.id === id);
-      if (!preset) return false;
+      if (!preset) return null;
       const presetDock = {
         enabled: preset.dock?.enabled === true,
         edge: preset.dock?.edge === "top" ? "top" : "bottom",
@@ -224,22 +221,37 @@ export function usePresets({
         ? dockPresetUnavailableReason(presetDock)
         : null;
       if (dockUnavailableReason) {
-        onApplyError(
-          new SceneOperationUnavailableError(SCENE_OPERATIONS.presetApply, dockUnavailableReason)
+        throw new SceneOperationUnavailableError(
+          SCENE_OPERATIONS.presetApply,
+          dockUnavailableReason
         );
-        return false;
       }
+      return { preset, presetDock };
+    },
+    [dockPresetUnavailableReason]
+  );
+
+  const applySnapshot = useCallback(
+    async (id, { applyWorkspace = true } = {}) => {
+      const preflight = preflightApplySnapshot(id);
+      if (!preflight) return false;
+      const { preset, presetDock } = preflight;
       if (preset.windowBounds && isTauri()) {
         suppressPresetDivergence();
       }
-      setView({
-        tree: clone(preset.tree),
-        panelsById: clone(preset.panelsById),
-        panelOrder: [...preset.panelOrder],
-        panelControlsById: normalizePanelControlsById(preset.panelsById, preset.panelControlsById),
-        pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
-        axisViewports: preset.axisViewports,
-      });
+      if (applyWorkspace) {
+        setView({
+          tree: clone(preset.tree),
+          panelsById: clone(preset.panelsById),
+          panelOrder: [...preset.panelOrder],
+          panelControlsById: normalizePanelControlsById(
+            preset.panelsById,
+            preset.panelControlsById
+          ),
+          pinnedPanelsById: normalizePinnedPanelsById(preset.panelsById, preset.pinnedPanelsById),
+          axisViewports: preset.axisViewports,
+        });
+      }
       const presetFocusView = preset.focusView ? normalizeFocusView(preset.focusView) : null;
       let windowBoundsAppliedByDockExit;
       try {
@@ -249,9 +261,9 @@ export function usePresets({
           pinned: preset.windowPinned,
         });
       } catch (error) {
-        write({ activeId: null });
-        onApplyError(error);
-        return false;
+        write({ activeId: null, dirty: false });
+        error.stage = "dock";
+        throw error;
       }
       if (
         !presetDock.enabled &&
@@ -274,9 +286,9 @@ export function usePresets({
           }
           await applyWindowBounds(preset.windowBounds);
         } catch (error) {
-          write({ activeId: null });
-          onApplyError(error);
-          return false;
+          write({ activeId: null, dirty: false });
+          error.stage = "window";
+          throw error;
         }
       }
       if (typeof preset.windowPinned === "boolean") {
@@ -296,19 +308,42 @@ export function usePresets({
       return true;
     },
     [
-      assertSceneOperationAllowed,
       setView,
       setWindowPinned,
       setFocusView,
       setPanelOpacity,
       setGlassEnabled,
       applyDockPreset,
-      dockPresetUnavailableReason,
-      onApplyError,
       suppressPresetDivergence,
       applyLoudnessProfileSnapshot,
+      preflightApplySnapshot,
       write,
     ]
+  );
+
+  const activateSnapshot = useCallback(
+    (id) => {
+      const current = normalizePresets(presetsStore.read());
+      if (!current.list.some((preset) => preset.id === id)) return false;
+      write({ activeId: id, dirty: false });
+      return true;
+    },
+    [write]
+  );
+
+  const apply = useCallback(
+    async (id) => {
+      // Before `setView`, before the dock transition, before any window call: a refusal must not
+      // leave half a preset applied.
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetApply);
+      try {
+        return await applySnapshot(id);
+      } catch (error) {
+        onApplyError(error);
+        return false;
+      }
+    },
+    [applySnapshot, assertSceneOperationAllowed, onApplyError]
   );
 
   const updateSnapshot = useCallback(
@@ -392,14 +427,20 @@ export function usePresets({
       assertSceneOperationAllowed,
       saveSnapshot,
       updateSnapshot,
+      applySnapshot,
+      activateSnapshot,
+      preflightApplySnapshot,
     }),
     [
       apply,
+      applySnapshot,
+      activateSnapshot,
       assertSceneOperationAllowed,
       blockingEditors,
       captureSnapshot,
       clearActive,
       markDirty,
+      preflightApplySnapshot,
       presets.activeId,
       presets.dirty,
       presets.list,

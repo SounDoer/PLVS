@@ -25,7 +25,7 @@ import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelContro
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
-import { planPresetSave, planPresetUpdate } from "./presetScene.js";
+import { planPresetApply, planPresetSave, planPresetUpdate } from "./presetScene.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -83,6 +83,17 @@ function presetStateSignature(presets) {
     activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
     dirty: presets?.dirty === true,
   });
+}
+
+function workspaceMatchesPreset(workspace, preset) {
+  return [
+    "tree",
+    "panelsById",
+    "panelOrder",
+    "panelControlsById",
+    "pinnedPanelsById",
+    "axisViewports",
+  ].every((key) => JSON.stringify(workspace[key]) === JSON.stringify(preset[key]));
 }
 
 export function useAgentControlBridge({
@@ -331,6 +342,153 @@ export function useAgentControlBridge({
           result.preset = planned.preset;
           result.presetState = planned.presetState;
           result.revisions.presets = await committed;
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Preset state committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revisions: result.revisions }
+            );
+          }
+          return { requestId, result };
+        }
+
+        if (request.method === "preset.apply") {
+          const initialWorkspaceRevision = revisionRef.current;
+          const initialPresetsRevision = presetsRevisionRef.current;
+          const assertRevisions = () => {
+            if (
+              request.params.expectedWorkspaceRevision !== undefined &&
+              request.params.expectedWorkspaceRevision !== revisionRef.current
+            ) {
+              throw semanticFailure(
+                "revisionConflict",
+                "$.params.expectedWorkspaceRevision",
+                `Workspace changed after revision ${request.params.expectedWorkspaceRevision}.`,
+                -32004,
+                {
+                  expectedRevision: request.params.expectedWorkspaceRevision,
+                  currentRevision: revisionRef.current,
+                }
+              );
+            }
+            if (
+              request.params.expectedPresetsRevision !== undefined &&
+              request.params.expectedPresetsRevision !== presetsRevisionRef.current
+            ) {
+              throw semanticFailure(
+                "revisionConflict",
+                "$.params.expectedPresetsRevision",
+                `Presets changed after revision ${request.params.expectedPresetsRevision}.`,
+                -32004,
+                {
+                  expectedRevision: request.params.expectedPresetsRevision,
+                  currentRevision: presetsRevisionRef.current,
+                }
+              );
+            }
+          };
+          assertRevisions();
+          presets.assertSceneOperationAllowed(request.method);
+          const state = {
+            list: presets?.list ?? [],
+            activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
+            dirty: presets?.dirty === true,
+          };
+          const target = state.list.find(({ id }) => id === request.params.presetId);
+          if (!target) {
+            throw semanticFailure(
+              "presetNotFound",
+              "$.params.presetId",
+              `Preset ${request.params.presetId} was not found.`,
+              -32020
+            );
+          }
+          presets.preflightApplySnapshot(request.params.presetId);
+          const currentSnapshot = await presets.captureSnapshot();
+          assertRevisions();
+          const planned = planPresetApply(state, request.params.presetId, currentSnapshot);
+          const result = {
+            dryRun: request.params.dryRun === true,
+            changed: planned.changed,
+            preset: planned.preset,
+            presetState: planned.presetState,
+            revisions: {
+              workspace: initialWorkspaceRevision,
+              presets: initialPresetsRevision,
+            },
+            warnings: planned.warnings,
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          const presetStateChanged = planned.changed.some((path) => path.startsWith("presets."));
+          const presetCommitted = presetStateChanged
+            ? new Promise((resolve, reject) => {
+                presetSettlementRef.current = {
+                  signature: presetStateSignature(planned.presets),
+                  resolve,
+                  reject,
+                };
+              })
+            : null;
+          let workspaceCommitted = null;
+          if (planned.changed.includes("workspace")) {
+            workspaceCommitted = new Promise((resolve, reject) => {
+              settlementRef.current = {
+                matches: (currentWorkspace) => workspaceMatchesPreset(currentWorkspace, target),
+                resolve,
+                reject,
+              };
+            });
+          }
+          try {
+            if (planned.applyScene) {
+              const applied = await presets.applySnapshot(request.params.presetId, {
+                applyWorkspace: planned.changed.includes("workspace"),
+              });
+              if (!applied) throw new Error("Preset target disappeared before application.");
+            } else if (!presets.activateSnapshot(request.params.presetId)) {
+              throw new Error("Preset target disappeared before activation.");
+            }
+          } catch (error) {
+            settlementRef.current = null;
+            presetSettlementRef.current = null;
+            if (isSceneOperationRefused(error)) throw error;
+            throw semanticFailure(
+              "applicationFailed",
+              "$",
+              `Preset application failed: ${error?.message || String(error)}`,
+              -32050,
+              {
+                stage: typeof error?.stage === "string" ? error.stage : "scene",
+                partial: planned.applyScene,
+                changed: planned.changed,
+                revisions: {
+                  workspace: revisionRef.current,
+                  presets: presetsRevisionRef.current,
+                },
+                presetState: { activeId: null, dirty: false },
+              }
+            );
+          }
+          const settled = await Promise.all([
+            ...(presetCommitted ? [presetCommitted] : []),
+            ...(workspaceCommitted ? [workspaceCommitted] : []),
+          ]);
+          let settledIndex = 0;
+          if (presetCommitted) {
+            result.revisions.presets = settled[settledIndex];
+            settledIndex += 1;
+          }
+          if (workspaceCommitted) {
+            result.revisions.workspace = settled[settledIndex];
+            await waitForWorkspacePersistenceEnqueue(target);
+          }
           try {
             await flush();
           } catch (error) {

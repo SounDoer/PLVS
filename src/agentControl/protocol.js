@@ -151,7 +151,11 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (input.method === "preset.save" || input.method === "preset.update") {
+  if (
+    input.method === "preset.save" ||
+    input.method === "preset.update" ||
+    input.method === "preset.apply"
+  ) {
     const isSave = input.method === "preset.save";
     const targetKey = isSave ? "name" : "presetId";
     const field = unknownField(
