@@ -103,6 +103,14 @@ pub enum CliAppCommand {
     expected_presets_revision: Option<u64>,
     dry_run: bool,
   },
+  SettingsDescribe,
+  SettingsInspect,
+  SettingsUpdate {
+    input: String,
+    expected_revision: Option<u64>,
+    allow_measurement_restart: bool,
+    dry_run: bool,
+  },
 }
 
 pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -122,10 +130,88 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
+    [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
   Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel|axis> ...".to_string())
+}
+
+fn parse_settings_args(args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  match args {
+    [command, json] if command == "describe" && json == "--json" => {
+      return Ok(CliAppCommand::SettingsDescribe);
+    }
+    [command, json] if command == "inspect" && json == "--json" => {
+      return Ok(CliAppCommand::SettingsInspect);
+    }
+    [command, ..] if command == "describe" || command == "inspect" => {
+      return Err(format!(
+        "The app settings {command} command requires --json."
+      ));
+    }
+    _ => {}
+  }
+  const USAGE: &str = "Usage: plvs-cli app settings update <file|-> --json [--expected-settings-revision <n>] [--allow-measurement-restart] [--dry-run]";
+  if args.first().map(String::as_str) != Some("update") {
+    return Err(USAGE.to_string());
+  }
+  let mut input = None;
+  let mut expected_revision = None;
+  let mut allow_measurement_restart = false;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--allow-measurement-restart" => {
+        allow_measurement_restart = true;
+        index += 1;
+      }
+      "--expected-settings-revision" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-settings-revision.".to_string())?;
+        let revision = raw.parse::<u64>().map_err(|_| {
+          "The --expected-settings-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if revision > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-settings-revision value must be a non-negative safe integer."
+              .to_string(),
+          );
+        }
+        expected_revision = Some(revision);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value if input.is_none() => {
+        input = Some(value.to_string());
+        index += 1;
+      }
+      value => return Err(format!("Unexpected argument: {value}")),
+    }
+  }
+  if !json {
+    return Err("The app settings update command requires --json.".to_string());
+  }
+  Ok(CliAppCommand::SettingsUpdate {
+    input: input.ok_or_else(|| USAGE.to_string())?,
+    expected_revision,
+    allow_measurement_restart,
+    dry_run,
+  })
 }
 
 fn parse_workspace_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -704,6 +790,9 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::PresetRename { .. } => "preset.rename",
     CliAppCommand::PresetDelete { .. } => "preset.delete",
     CliAppCommand::PresetReorder { .. } => "preset.reorder",
+    CliAppCommand::SettingsDescribe => "settings.describe",
+    CliAppCommand::SettingsInspect => "settings.inspect",
+    CliAppCommand::SettingsUpdate { .. } => "settings.update",
   }
 }
 
@@ -734,7 +823,9 @@ fn request_for_command<R: Read>(
     | CliAppCommand::Inspect
     | CliAppCommand::AxisDescribe
     | CliAppCommand::AxisInspect
-    | CliAppCommand::PresetList => serde_json::json!({}),
+    | CliAppCommand::PresetList
+    | CliAppCommand::SettingsDescribe
+    | CliAppCommand::SettingsInspect => serde_json::json!({}),
     CliAppCommand::PresetDescribe {
       preset_id,
       expected_revision,
@@ -830,6 +921,30 @@ fn request_for_command<R: Read>(
         *expected_presets_revision,
         *dry_run,
       )
+    }
+    CliAppCommand::SettingsUpdate {
+      input,
+      expected_revision,
+      allow_measurement_restart,
+      dry_run,
+    } => {
+      let patch = read_json_document(input, stdin, "Settings patch")
+        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+      let mut params = serde_json::Map::from_iter([
+        ("patch".to_string(), patch),
+        ("dryRun".to_string(), Value::Bool(*dry_run)),
+        (
+          "allowMeasurementRestart".to_string(),
+          Value::Bool(*allow_measurement_restart),
+        ),
+      ]);
+      if let Some(revision) = expected_revision {
+        params.insert(
+          "expectedSettingsRevision".to_string(),
+          Value::from(*revision),
+        );
+      }
+      Value::Object(params)
     }
     CliAppCommand::PanelDescribe { panel_id } => {
       serde_json::json!({ "panelId": panel_id })
@@ -1561,6 +1676,52 @@ mod tests {
       args(&["preset", "delete", "preset-1", "extra", "--json"]),
       args(&["preset", "reorder", "--json"]),
       args(&["preset", "reorder", "file.json", "--json", "--unknown"]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+    }
+  }
+
+  #[test]
+  fn parses_and_builds_settings_commands() {
+    assert_eq!(
+      parse_app_args(&args(&["settings", "describe", "--json"])),
+      Ok(CliAppCommand::SettingsDescribe)
+    );
+    assert_eq!(
+      parse_app_args(&args(&["settings", "inspect", "--json"])),
+      Ok(CliAppCommand::SettingsInspect)
+    );
+    let update = parse_app_args(&args(&[
+      "settings",
+      "update",
+      "-",
+      "--json",
+      "--expected-settings-revision",
+      "3",
+      "--allow-measurement-restart",
+      "--dry-run",
+    ]))
+    .unwrap();
+    let mut stdin = Cursor::new(br#"{"interfaceSize":"large"}"#);
+    let request = request_for_command(&update, &mut stdin).unwrap();
+    assert_eq!(request.method, "settings.update");
+    assert_eq!(request.params["patch"]["interfaceSize"], "large");
+    assert_eq!(request.params["expectedSettingsRevision"], 3);
+    assert_eq!(request.params["allowMeasurementRestart"], true);
+    assert_eq!(request.params["dryRun"], true);
+
+    for invalid in [
+      args(&["settings", "describe"]),
+      args(&["settings", "inspect", "extra", "--json"]),
+      args(&["settings", "update", "--json"]),
+      args(&[
+        "settings",
+        "update",
+        "-",
+        "--json",
+        "--expected-settings-revision",
+        "-1",
+      ]),
     ] {
       assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
     }
