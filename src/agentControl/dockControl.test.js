@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildDockDescription, buildDockSnapshot } from "./dockControl.js";
+import {
+  buildDockDescription,
+  buildDockSnapshot,
+  compileDockLayout,
+  planDockPanelPatch,
+  planDockPanelReset,
+} from "./dockControl.js";
 
 const dock = {
   supported: true,
@@ -71,5 +77,49 @@ describe("Dock Control", () => {
       maxPreferred: 960,
       growth: "flexible",
     });
+  });
+
+  it("strictly plans Dock-only panel controls", () => {
+    const planned = planDockPanelPatch(
+      dock,
+      "level",
+      { mode: "rms", readout: "playbackMax", showLabels: true },
+      {}
+    );
+    expect(planned.issues).toEqual([]);
+    expect(planned.changed).toEqual([
+      "dock.panels.level.controls.mode",
+      "dock.panels.level.controls.readout",
+      "dock.panels.level.controls.showLabels",
+    ]);
+    expect(buildDockSnapshot(planned.dock).panels[1].controls).toEqual({
+      mode: "rms",
+      readout: "playbackMax",
+      showLabels: true,
+    });
+    expect(planDockPanelPatch(dock, "level", { playbackMax: true }).issues).toEqual([
+      expect.objectContaining({ code: "unknownControl" }),
+    ]);
+    expect(planDockPanelReset(planned.dock, "level").changed.length).toBeGreaterThan(0);
+  });
+
+  it("compiles an atomic ordered layout with retained and generated panel ids", () => {
+    const compiled = compileDockLayout(
+      dock,
+      {
+        panels: [
+          { panelId: "level", customTitle: null, width: 240, controls: { mode: "rms" } },
+          { key: "scope", moduleId: "vectorscope", width: 220, controls: {} },
+        ],
+      },
+      { channelCount: 2 }
+    );
+    expect(compiled.issues).toEqual([]);
+    expect(compiled.createdPanels.scope).toBe("vectorscope");
+    expect(compiled.dock.panelOrder).toEqual(["level", "vectorscope"]);
+    expect(compiled.dock.panelSizesById).toEqual({ level: 240, vectorscope: 220 });
+    expect(compileDockLayout(dock, { panels: [{ key: "bad", moduleId: "level" }] }).issues).toEqual(
+      [expect.objectContaining({ code: "unknownModule" })]
+    );
   });
 });

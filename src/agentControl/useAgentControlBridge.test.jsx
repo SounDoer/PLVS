@@ -104,6 +104,7 @@ function Harness({
   agentSettingsContext = settingsContext,
   agentTransport = transport,
   agentDock = dock,
+  executeAgentDock,
   executeAgentTransport,
   presets = { activeId: null, dirty: false },
   onStore = () => {},
@@ -112,6 +113,7 @@ function Harness({
   const [presetState, setPresetState] = useState(presets);
   const [settingsState, setSettingsState] = useState(agentSettings);
   const [transportState, setTransportState] = useState(agentTransport);
+  const [dockState, setDockState] = useState(agentDock);
   const controlledPresets = {
     ...presetState,
     rename: (id, name) =>
@@ -181,6 +183,11 @@ function Harness({
         }));
       }
     });
+  const executeDock =
+    executeAgentDock ??
+    (async (_method, projected) => {
+      setDockState(projected);
+    });
   useAgentControlBridge({
     enabled,
     runtime,
@@ -195,8 +202,9 @@ function Harness({
     transport: transportState,
     transportContext: { docked: false },
     executeTransport,
-    dock: agentDock,
-    dockContext: { platform: "windows", monitors: [] },
+    dock: dockState,
+    dockContext: { platform: "windows", monitors: [], sourceMode: "live", activeEditors: [] },
+    executeDock,
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
@@ -371,6 +379,25 @@ describe("useAgentControlBridge", () => {
       revision: 0,
       supported: true,
       height: { min: 56, max: 160 },
+    });
+  });
+
+  it("atomically replaces the Dock layout and settles on Workspace revision", async () => {
+    mount();
+    await waitUntilReady();
+    const response = await send(
+      request(
+        "dock.layout.apply",
+        { layout: { panels: [{ key: "meter", moduleId: "levelMeter", controls: {} }] } },
+        "dock-layout"
+      )
+    );
+    expect(response.result).toMatchObject({
+      revision: 1,
+      dryRun: false,
+      changed: ["dock.panels"],
+      createdPanels: { meter: "levelMeter" },
+      dock: { panels: [{ id: "levelMeter", moduleId: "levelMeter" }] },
     });
   });
 

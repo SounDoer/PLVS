@@ -63,7 +63,7 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import { resetTruePeakMax } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { availableMonitors, getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
@@ -269,6 +269,7 @@ function AppContent() {
     dockHeight,
     dockPreviewHeight,
     dockSuspended,
+    dockTransitioning,
     reserveSpace,
     enterDockMode,
     exitDockMode,
@@ -280,6 +281,25 @@ function AppContent() {
   } = useDockMode({ assertSceneOperationAllowed });
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
+  const [agentControlMonitors, setAgentControlMonitors] = useState([]);
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    void Promise.resolve()
+      .then(async () => {
+        const monitors = await availableMonitors();
+        if (cancelled) return;
+        setAgentControlMonitors(
+          monitors.flatMap((monitor) =>
+            typeof monitor.name === "string" ? [{ id: monitor.name, name: monitor.name }] : []
+          )
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Suspended while docked: a preset apply may flip the stored pin to false
   // while the strip must stay topmost; when docked flips false the effect
   // re-asserts the user's value.
@@ -1108,6 +1128,27 @@ function AppContent() {
       switchSource,
     ]
   );
+  const executeAgentControlDock = useCallback(
+    async (method, projected) => {
+      if (method === "dock.enter") {
+        await enterDockMode(
+          projected.edge,
+          projected.reserveSpace,
+          projected.monitor,
+          projected.height
+        );
+        setSelectedOffset(-1);
+        return;
+      }
+      if (method === "dock.exit") {
+        const result = await exitDockRestoringAttributes({ reportError: false });
+        if (!result.ok) throw result.error;
+        return;
+      }
+      dockLayout.setPanels(projected);
+    },
+    [dockLayout, enterDockMode, exitDockRestoringAttributes, setSelectedOffset]
+  );
   useAgentControlBridge({
     enabled: agentControlRuntime.available === true,
     runtime: agentControlRuntime,
@@ -1123,7 +1164,15 @@ function AppContent() {
     transportContext: { docked },
     executeTransport: executeAgentControlTransport,
     dock: agentControlDock,
-    dockContext: { platform: agentControlRuntime.platform, ...agentControlAnalysisContext },
+    dockContext: {
+      platform: agentControlRuntime.platform,
+      ...agentControlAnalysisContext,
+      sourceMode,
+      activeEditors: activeBlockingEditors,
+      transitioning: dockTransitioning,
+      monitors: agentControlMonitors,
+    },
+    executeDock: executeAgentControlDock,
     loudnessProfiles: loudnessProfile.profiles,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,

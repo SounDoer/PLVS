@@ -50,8 +50,10 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   );
   const [dockPreviewHeight, setDockPreviewHeight] = useState(null);
   const [dockSuspended, setDockSuspendedState] = useState(false);
+  const [dockTransitioning, setDockTransitioning] = useState(false);
   const dockRef = useRef(dock);
   const transitionTailRef = useRef(Promise.resolve());
+  const transitionCountRef = useRef(0);
   const heightTransitionTailRef = useRef(Promise.resolve());
   const heightRequestRef = useRef(0);
 
@@ -63,9 +65,14 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   }, []);
 
   const enqueueTransition = useCallback((operation) => {
+    transitionCountRef.current += 1;
+    setDockTransitioning(true);
     const result = transitionTailRef.current.then(operation, operation);
     transitionTailRef.current = result.catch(() => {});
-    return result;
+    return result.finally(() => {
+      transitionCountRef.current -= 1;
+      if (transitionCountRef.current === 0) setDockTransitioning(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -249,6 +256,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     dockHeight: dock.height,
     dockPreviewHeight,
     dockSuspended,
+    dockTransitioning,
     reserveSpace: dock.reserveSpace,
     enterDockMode,
     exitDockMode,

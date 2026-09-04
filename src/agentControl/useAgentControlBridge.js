@@ -32,7 +32,16 @@ import {
   planSettingsUpdate,
 } from "./settingsControl.js";
 import { planTransportMutation, transportLifecycleSignature } from "./transportControl.js";
-import { buildDockDescription, buildDockSnapshot } from "./dockControl.js";
+import {
+  buildDockDescription,
+  buildDockPanelDescription,
+  buildDockSnapshot,
+  compileDockLayout,
+  dockStateSignature,
+  planDockFormMutation,
+  planDockPanelPatch,
+  planDockPanelReset,
+} from "./dockControl.js";
 import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
@@ -185,6 +194,7 @@ export function useAgentControlBridge({
   executeTransport = async () => ({}),
   dock,
   dockContext = {},
+  executeDock = async () => {},
   loudnessProfiles = [],
   hasLoudnessReference = false,
   analysisContext = {},
@@ -204,7 +214,9 @@ export function useAgentControlBridge({
   const transportRevisionRef = useRef(0);
   const latestTransportRef = useRef(transport);
   const transportSettlementRef = useRef(null);
-  const previousDockSignatureRef = useRef(JSON.stringify(dock));
+  const previousDockSignatureRef = useRef(dockStateSignature(dock));
+  const latestDockRef = useRef(dock);
+  const dockSettlementRef = useRef(null);
   const waitersRef = useRef(new Map());
   const waitWakeScheduledRef = useRef(false);
   const processRef = useRef(null);
@@ -294,11 +306,18 @@ export function useAgentControlBridge({
   }, [scheduleWaitWake, transport]);
 
   useEffect(() => {
-    const signature = JSON.stringify(dock);
-    if (signature === previousDockSignatureRef.current) return;
-    previousDockSignatureRef.current = signature;
-    revisionRef.current += 1;
-    scheduleWaitWake();
+    latestDockRef.current = dock;
+    const signature = dockStateSignature(dock);
+    if (signature !== previousDockSignatureRef.current) {
+      previousDockSignatureRef.current = signature;
+      revisionRef.current += 1;
+      scheduleWaitWake();
+    }
+    const settlement = dockSettlementRef.current;
+    if (settlement && settlement.matches(dock)) {
+      dockSettlementRef.current = null;
+      settlement.resolve(revisionRef.current);
+    }
   }, [dock, scheduleWaitWake]);
 
   useEffect(() => {
@@ -404,6 +423,129 @@ export function useAgentControlBridge({
                 : snapshot),
             },
           };
+        }
+        if (request.method === "dock.panel.describe") {
+          const description = buildDockPanelDescription(dock, request.params.panelId, dockContext);
+          if (description.issue) {
+            throw semanticFailure(
+              "dockPanelNotFound",
+              "$.params.panelId",
+              description.issue.message,
+              -32090
+            );
+          }
+          return { requestId, result: { revision: revisionRef.current, ...description } };
+        }
+        if (request.method.startsWith("dock.")) {
+          const currentRevision = revisionRef.current;
+          if (
+            request.params.expectedWorkspaceRevision !== undefined &&
+            request.params.expectedWorkspaceRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedWorkspaceRevision",
+              `Workspace changed after revision ${request.params.expectedWorkspaceRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedWorkspaceRevision, currentRevision }
+            );
+          }
+          let planned;
+          let createdPanels = {};
+          if (request.method === "dock.enter" || request.method === "dock.exit") {
+            planned = planDockFormMutation(dock, request.method, request.params, dockContext);
+          } else if (request.method === "dock.layout.apply") {
+            planned = compileDockLayout(dock, request.params.layout, dockContext);
+            createdPanels = planned.createdPanels;
+          } else if (request.method === "dock.panel.update") {
+            planned = planDockPanelPatch(
+              dock,
+              request.params.panelId,
+              request.params.patch,
+              dockContext
+            );
+          } else {
+            planned = planDockPanelReset(dock, request.params.panelId, dockContext);
+          }
+          if (planned.issues.length) {
+            const missing = planned.issues.some(({ code }) => code === "dockPanelNotFound");
+            const unavailable = planned.issues.some(({ code }) => code === "controlsUnavailable");
+            throw semanticFailure(
+              missing
+                ? "dockPanelNotFound"
+                : unavailable
+                  ? "controlsUnavailable"
+                  : request.method === "dock.layout.apply"
+                    ? "invalidDockLayout"
+                    : "invalidDockControls",
+              "$.params",
+              "The Dock request is invalid.",
+              missing ? -32090 : unavailable ? -32091 : -32602,
+              { issues: planned.issues }
+            );
+          }
+          if (planned.refusal) {
+            const code = planned.refusal.code === "editorActive" ? -32040 : -32092;
+            throw semanticFailure(
+              planned.refusal.code,
+              "$.params",
+              "The Dock operation is unavailable in the current state.",
+              code,
+              planned.refusal
+            );
+          }
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            presetsRevision: presetsRevisionRef.current,
+            preset: panelResultPreset(presets, planned.changed),
+            changed: planned.changed,
+            effects: planned.effects ?? [],
+            warnings: planned.warnings,
+            createdPanels,
+            dock: buildDockSnapshot(planned.dock, dockContext),
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0)
+            return { requestId, result };
+          const plannedSignature = dockStateSignature(planned.dock);
+          const matches =
+            request.method === "dock.enter"
+              ? (candidate) =>
+                  candidate.enabled === true &&
+                  candidate.edge === planned.dock.edge &&
+                  candidate.reserveSpace === planned.dock.reserveSpace &&
+                  candidate.height === planned.dock.height &&
+                  (request.params.monitor === undefined ||
+                    candidate.monitor === planned.dock.monitor)
+              : request.method === "dock.exit"
+                ? (candidate) => candidate.enabled === false
+                : (candidate) => dockStateSignature(candidate) === plannedSignature;
+          const committed = new Promise((resolve, reject) => {
+            dockSettlementRef.current = { matches, resolve, reject };
+          });
+          try {
+            await executeDock(request.method, planned.dock);
+            result.revision = await committed;
+          } catch (error) {
+            dockSettlementRef.current = null;
+            throw semanticFailure(
+              "applicationFailed",
+              "$.params",
+              `Dock operation failed: ${error?.message || String(error)}`,
+              -32050,
+              {
+                stage: error?.stage ?? "execution",
+                partial: true,
+                changed: planned.changed,
+                revision: revisionRef.current,
+              }
+            );
+          }
+          await flush();
+          result.dock = buildDockSnapshot(latestDockRef.current, dockContext);
+          result.presetsRevision = presetsRevisionRef.current;
+          result.preset = panelResultPreset(presets, planned.changed);
+          return { requestId, result };
         }
 
         if (request.method.startsWith("transport.")) {
@@ -1380,6 +1522,7 @@ export function useAgentControlBridge({
     currentRevisions,
     dock,
     dockContext,
+    executeDock,
     presets,
     replaceWorkspace,
     runtime,
@@ -1443,6 +1586,9 @@ export function useAgentControlBridge({
       const transportSettlement = transportSettlementRef.current;
       transportSettlementRef.current = null;
       transportSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      const dockSettlement = dockSettlementRef.current;
+      dockSettlementRef.current = null;
+      dockSettlement?.reject(new Error("Agent-control bridge unmounted."));
       for (const waiter of waiters.values()) {
         clearTimeout(waiter.timer);
         waiter.reject(new Error("Agent-control bridge unmounted."));
