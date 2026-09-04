@@ -42,6 +42,10 @@ npm run desktop:control -- transport inspect --json
 npm run desktop:control -- dock inspect --json
 ```
 
+Every example here writes its report to stdout, where npm also prints its script banner, so add
+`--silent` (or call `node scripts/run-desktop-control.mjs` directly) whenever the JSON is
+redirected or piped rather than read by a person.
+
 These commands are development-only. The installed release CLI neither displays nor accepts the
 `app` command family. Every mutation is delivered to the already-running React application and
 uses the same state, native integrations, safety guards, and persistence paths as the GUI.

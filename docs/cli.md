@@ -251,6 +251,14 @@ uses exit codes `0`, `1`, and `2` as documented above; npm itself may normalize 
 script result to `1`, so callers using `npm run desktop:control` should also inspect `status` and
 `error.reason`.
 
+npm also prints its own script banner on stdout, so redirecting or piping the report through
+`npm run` does not yield parseable JSON. Add `--silent`, or call the script directly:
+
+```powershell
+npm run --silent desktop:control -- inspect --json > inspect.json
+node scripts/run-desktop-control.mjs inspect --json > inspect.json
+```
+
 Workspace input is a complete declarative target layout. Use `inspect` to obtain the current public
 layout, keep a panel's `panelId` to preserve that instance, or declare a new panel with a temporary
 `key` and `moduleId`. Pass `-` instead of a filename to read one UTF-8 JSON document from stdin.
