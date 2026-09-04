@@ -42,6 +42,17 @@ describe("agent-control app snapshots", () => {
         "settings.update",
         "app.wait",
         "transport.inspect",
+        "transport.source.live",
+        "transport.source.file",
+        "transport.live.start",
+        "transport.live.stop",
+        "transport.live.clear",
+        "transport.file.analyze",
+        "transport.file.reanalyze",
+        "transport.file.stop",
+        "transport.file.select",
+        "transport.file.remove",
+        "transport.file.clear",
       ],
     });
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");

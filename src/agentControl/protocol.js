@@ -324,6 +324,87 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  const transportMutations = new Set([
+    "transport.source.live",
+    "transport.source.file",
+    "transport.live.start",
+    "transport.live.stop",
+    "transport.live.clear",
+    "transport.file.analyze",
+    "transport.file.reanalyze",
+    "transport.file.stop",
+    "transport.file.select",
+    "transport.file.remove",
+    "transport.file.clear",
+  ]);
+  if (transportMutations.has(input.method)) {
+    const needsPath = input.method === "transport.file.analyze";
+    const needsSession = [
+      "transport.file.reanalyze",
+      "transport.file.stop",
+      "transport.file.select",
+      "transport.file.remove",
+    ].includes(input.method);
+    const allowsStopFileAnalysis = ["transport.source.live", "transport.live.start"].includes(
+      input.method
+    );
+    const allowed = new Set([
+      ...(needsPath ? ["path"] : []),
+      ...(needsSession ? ["sessionId"] : []),
+      ...(allowsStopFileAnalysis ? ["allowStopFileAnalysis"] : []),
+      "expectedTransportRevision",
+      "dryRun",
+    ]);
+    const field = unknownField(input.params, allowed);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const targetKey = needsPath ? "path" : needsSession ? "sessionId" : null;
+    if (
+      targetKey &&
+      (typeof input.params[targetKey] !== "string" || input.params[targetKey].trim() === "")
+    ) {
+      return invalidParams(`$.params.${targetKey}`, `${targetKey} must be a non-empty string.`);
+    }
+    if (
+      input.params.expectedTransportRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedTransportRevision) ||
+        input.params.expectedTransportRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedTransportRevision",
+        "expectedTransportRevision must be a non-negative safe integer."
+      );
+    }
+    if (
+      input.params.allowStopFileAnalysis !== undefined &&
+      typeof input.params.allowStopFileAnalysis !== "boolean"
+    ) {
+      return invalidParams(
+        "$.params.allowStopFileAnalysis",
+        "allowStopFileAnalysis must be a boolean."
+      );
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          ...(targetKey ? { [targetKey]: input.params[targetKey] } : {}),
+          ...(input.params.expectedTransportRevision !== undefined
+            ? { expectedTransportRevision: input.params.expectedTransportRevision }
+            : {}),
+          ...(input.params.allowStopFileAnalysis !== undefined
+            ? { allowStopFileAnalysis: input.params.allowStopFileAnalysis }
+            : {}),
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
+    };
+  }
+
   if (input.method === "panel.describe") {
     const field = unknownField(input.params, new Set(["panelId"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

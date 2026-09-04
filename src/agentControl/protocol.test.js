@@ -133,6 +133,37 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it.each([
+    [
+      "transport.source.live",
+      { expectedTransportRevision: 1, allowStopFileAnalysis: true, dryRun: true },
+    ],
+    ["transport.source.file", { expectedTransportRevision: 1, dryRun: true }],
+    [
+      "transport.live.start",
+      { expectedTransportRevision: 1, allowStopFileAnalysis: true, dryRun: true },
+    ],
+    ["transport.live.stop", { expectedTransportRevision: 1, dryRun: true }],
+    ["transport.live.clear", { expectedTransportRevision: 1, dryRun: true }],
+    [
+      "transport.file.analyze",
+      { path: "C:\\audio\\mix.wav", expectedTransportRevision: 1, dryRun: true },
+    ],
+    [
+      "transport.file.reanalyze",
+      { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true },
+    ],
+    ["transport.file.stop", { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true }],
+    ["transport.file.select", { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true }],
+    ["transport.file.remove", { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true }],
+    ["transport.file.clear", { expectedTransportRevision: 1, dryRun: true }],
+  ])("normalizes %s mutation options", (method, params) => {
+    expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method, params },
+    });
+  });
+
   it("normalizes panel.update params and options", () => {
     const patch = { mode: "rms", playbackMax: true };
     expect(
@@ -227,6 +258,20 @@ describe("normalizeAgentControlRequest", () => {
     [request("preset.update", {}), "invalidParams", "$.params.presetId", -32602],
     [request("settings.update", {}), "invalidParams", "$.params.patch", -32602],
     [request("app.wait", {}), "invalidParams", "$.params", -32602],
+    [request("transport.file.analyze", {}), "invalidParams", "$.params.path", -32602],
+    [request("transport.file.select", {}), "invalidParams", "$.params.sessionId", -32602],
+    [
+      request("transport.live.start", { allowStopFileAnalysis: "yes" }),
+      "invalidParams",
+      "$.params.allowStopFileAnalysis",
+      -32602,
+    ],
+    [
+      request("transport.live.stop", { expectedTransportRevision: -1 }),
+      "invalidParams",
+      "$.params.expectedTransportRevision",
+      -32602,
+    ],
     [
       request("app.wait", { workspaceRevision: 0, timeoutMs: 99 }),
       "invalidParams",

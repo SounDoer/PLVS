@@ -32,6 +32,17 @@ const METHODS = [
   "settings.update",
   "app.wait",
   "transport.inspect",
+  "transport.source.live",
+  "transport.source.file",
+  "transport.live.start",
+  "transport.live.stop",
+  "transport.live.clear",
+  "transport.file.analyze",
+  "transport.file.reanalyze",
+  "transport.file.stop",
+  "transport.file.select",
+  "transport.file.remove",
+  "transport.file.clear",
 ];
 
 export function buildAgentControlPanelSnapshot({
