@@ -1625,11 +1625,15 @@ export function useAgentControlBridge({
     if (!enabled) return undefined;
     const waiters = waitersRef.current;
     aliveRef.current = true;
+    // Per-run, unlike `aliveRef`: a remount sets that shared ref back to true, so an install left
+    // over from the previous run cannot use it to tell that its own run was torn down. Believing
+    // it could is what left two listeners attached, and every request then ran twice.
+    let cancelled = false;
     let unlisten = null;
     let ready = false;
 
     const install = async () => {
-      unlisten = await listenForAgentControlRequests((request) => {
+      const stop = await listenForAgentControlRequests((request) => {
         if (request?.type === "cancel" && typeof request.requestId === "string") {
           const waiter = waiters.get(request.requestId);
           if (waiter) {
@@ -1653,20 +1657,29 @@ export function useAgentControlBridge({
         queueRef.current = queueRef.current.then(() => processRef.current(request));
         void respond(queueRef.current);
       });
-      if (!aliveRef.current) {
-        unlisten();
-        unlisten = null;
+      if (cancelled) {
+        stop();
         return;
       }
+      unlisten = stop;
       await announceAgentControlFrontendReady();
+      if (cancelled) {
+        // Teardown ran during the announce, so it saw `ready` still false and left the broker
+        // believing a frontend is listening. Undo both halves here.
+        unlisten?.();
+        unlisten = null;
+        void announceAgentControlFrontendNotReady();
+        return;
+      }
       ready = true;
     };
     void install().catch(() => {
-      if (unlisten) unlisten();
+      unlisten?.();
       unlisten = null;
     });
 
     return () => {
+      cancelled = true;
       aliveRef.current = false;
       const settlement = settlementRef.current;
       settlementRef.current = null;
@@ -1688,7 +1701,8 @@ export function useAgentControlBridge({
         waiter.reject(new Error("Agent-control bridge unmounted."));
       }
       waiters.clear();
-      if (unlisten) unlisten();
+      unlisten?.();
+      unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();
     };
   }, [enabled]);

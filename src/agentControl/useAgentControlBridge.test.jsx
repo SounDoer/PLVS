@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
@@ -275,6 +275,38 @@ describe("useAgentControlBridge", () => {
     view.unmount();
     expect(adapter.unlisten).toHaveBeenCalledTimes(1);
     expect(adapter.notReady).toHaveBeenCalledTimes(1);
+  });
+
+  it("attaches one listener when StrictMode re-runs the effect mid-installation", async () => {
+    // StrictMode tears the first effect run down and starts a second on the same component, so
+    // both runs share every ref. The first run's listener resolves after the second has already
+    // reset the shared liveness flag, and it must still withdraw itself — leaving it attached
+    // delivered every request twice, which silently ran a non-idempotent command such as
+    // `preset save` two times while reporting one result.
+    const installs = [];
+    const deferred = (handler) =>
+      new Promise((resolve) => {
+        const stop = vi.fn();
+        installs.push({ handler, stop, settle: () => resolve(stop) });
+      });
+    adapter.listen.mockImplementationOnce(deferred).mockImplementationOnce(deferred);
+
+    render(
+      <StrictMode>
+        <WorkspaceProvider>
+          <Harness onStore={() => {}} />
+        </WorkspaceProvider>
+      </StrictMode>
+    );
+    await waitFor(() => expect(installs).toHaveLength(2));
+
+    installs[0].settle();
+    installs[1].settle();
+
+    await waitFor(() => expect(installs[0].stop).toHaveBeenCalledTimes(1));
+    expect(installs[1].stop).not.toHaveBeenCalled();
+    // Only the surviving run announces readiness.
+    await waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
   });
 
   it("does not mount for an unavailable runtime or an accessory surface", async () => {
