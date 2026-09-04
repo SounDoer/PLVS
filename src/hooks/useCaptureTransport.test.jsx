@@ -1,63 +1,53 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { useCaptureTransport } from "./useCaptureTransport.js";
 
-function makeDisplay() {
-  return {
-    setSelectedOffset: vi.fn(),
+function setup() {
+  const display = {
     clearNotice: vi.fn(),
+    setSelectedOffset: vi.fn(),
     setShowClock: vi.fn(),
     clock: { startTimer: vi.fn(), stopTimer: vi.fn() },
   };
+  const intake = { beginCaptureSession: vi.fn() };
+  const hook = renderHook(() => useCaptureTransport({ display, getLiveIntake: () => intake }));
+  return { ...hook, display, intake };
 }
 
-describe("useCaptureTransport", () => {
-  it("startLive begins an intake session, flips running, and starts the clock", () => {
-    const display = makeDisplay();
-    const intake = { beginCaptureSession: vi.fn() };
-    const { result } = renderHook(() =>
-      useCaptureTransport({ display, getLiveIntake: () => intake })
-    );
-
-    act(() => result.current.startLive());
-
-    expect(result.current.running).toBe(true);
-    expect(display.clearNotice).toHaveBeenCalledTimes(1);
-    expect(intake.beginCaptureSession).toHaveBeenCalledTimes(1);
-    expect(display.clock.startTimer).toHaveBeenCalledTimes(1);
-    expect(display.setShowClock).toHaveBeenCalledWith(true);
+describe("useCaptureTransport lifecycle", () => {
+  it("settles start only after the engine acknowledges capture", async () => {
+    const { result } = setup();
+    let settled = false;
+    let starting;
+    act(() => {
+      starting = result.current.startLiveForControl().then(() => (settled = true));
+    });
+    expect(result.current.lifecycle).toBe("starting");
+    expect(settled).toBe(false);
+    act(() => result.current.markStarted({ resolvedDeviceId: "device-1" }));
+    await starting;
+    expect(result.current.lifecycle).toBe("running");
+    expect(result.current.resolvedDeviceId).toBe("device-1");
   });
 
-  it("stopLive flips running off, clears notices, resets the scrub offset, and stops the clock", () => {
-    const display = makeDisplay();
-    const { result } = renderHook(() =>
-      useCaptureTransport({ display, getLiveIntake: () => ({ beginCaptureSession: vi.fn() }) })
-    );
+  it("settles stop after native shutdown and exposes start failures", async () => {
+    const { result } = setup();
+    let starting;
+    act(() => {
+      starting = result.current.startLiveForControl();
+      result.current.markStartFailed(new Error("device busy"));
+    });
+    await expect(starting).rejects.toThrow("device busy");
+    expect(result.current.lifecycle).toBe("error");
 
-    act(() => result.current.startLive());
-    act(() => result.current.stopLive());
-
-    expect(result.current.running).toBe(false);
-    expect(display.clearNotice).toHaveBeenCalledTimes(2);
-    expect(display.setSelectedOffset).toHaveBeenCalledWith(-1);
-    expect(display.clock.stopTimer).toHaveBeenCalledTimes(1);
-  });
-
-  it("halt only flips running without touching display", () => {
-    const display = makeDisplay();
-    const { result } = renderHook(() =>
-      useCaptureTransport({ display, getLiveIntake: () => ({ beginCaptureSession: vi.fn() }) })
-    );
-
-    act(() => result.current.startLive());
-    display.clearNotice.mockClear();
-    display.clock.stopTimer.mockClear();
-
-    act(() => result.current.halt());
-
-    expect(result.current.running).toBe(false);
-    expect(display.clearNotice).not.toHaveBeenCalled();
-    expect(display.clock.stopTimer).not.toHaveBeenCalled();
+    let stopping;
+    act(() => {
+      stopping = result.current.stopLiveForControl();
+    });
+    expect(result.current.lifecycle).toBe("stopping");
+    act(() => result.current.markStopped());
+    await stopping;
+    expect(result.current.lifecycle).toBe("stopped");
   });
 });

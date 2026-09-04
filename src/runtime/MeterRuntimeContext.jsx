@@ -186,6 +186,8 @@ export function MeterRuntimeProvider({ children }) {
   const verbImpls = {
     startLive: transport.startLive,
     stopLive: transport.stopLive,
+    startLiveForControl: transport.startLiveForControl,
+    stopLiveForControl: transport.stopLiveForControl,
     stopFileAnalysis,
     switchSource,
     clearActiveSource,
@@ -207,6 +209,8 @@ export function MeterRuntimeProvider({ children }) {
     return {
       startLive: forward("startLive"),
       stopLive: forward("stopLive"),
+      startLiveForControl: forward("startLiveForControl"),
+      stopLiveForControl: forward("stopLiveForControl"),
       stopFileAnalysis: forward("stopFileAnalysis"),
       switchSource: forward("switchSource"),
       clearActiveSource: forward("clearActiveSource"),
@@ -222,6 +226,10 @@ export function MeterRuntimeProvider({ children }) {
     () => ({
       sourceMode,
       running: transport.running,
+      liveLifecycle: transport.lifecycle,
+      liveResolvedDeviceId: transport.resolvedDeviceId,
+      liveStartedAt: transport.startedAt,
+      liveLastError: transport.lastError,
       fileSessions,
       activeFileSession,
       analyzingFileSession,
@@ -232,6 +240,10 @@ export function MeterRuntimeProvider({ children }) {
     [
       sourceMode,
       transport.running,
+      transport.lifecycle,
+      transport.resolvedDeviceId,
+      transport.startedAt,
+      transport.lastError,
       fileSessions,
       activeFileSession,
       analyzingFileSession,

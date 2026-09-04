@@ -56,7 +56,7 @@ export function useAudioEngine({
   display,
   defaultSampleRateRef: externalDefaultSampleRateRef,
 }) {
-  const { running, halt } = transport;
+  const { running, halt, markStarted, markStopped, markStopFailed } = transport;
   const rafRef = useRef(0);
   const {
     frameRef,
@@ -106,8 +106,9 @@ export function useAudioEngine({
   /* eslint-disable react-hooks/exhaustive-deps, react-hooks/immutability */
   useEffect(() => {
     if (!running) {
+      let stopResult = Promise.resolve();
       if (audioRef.current?.mode === "tauri") {
-        void stopAudioCapture();
+        stopResult = stopAudioCapture();
         for (const u of audioRef.current?.unsubs || []) {
           try {
             u();
@@ -124,6 +125,7 @@ export function useAudioEngine({
       }
       audioRef.current = null;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      void stopResult.then(() => markStopped?.()).catch((error) => markStopFailed?.(error));
       return;
     }
     if (isTauri() && audioRef.current?.mode === "tauri") {
@@ -190,17 +192,18 @@ export function useAudioEngine({
           });
           if (!mounted) return;
           audioRef.current = { mode: "tauri", unsubs };
+          markStarted?.({ resolvedDeviceId: resolvedDevice.id ?? engineDeviceId });
           return;
         }
 
-        halt();
+        halt(new Error("Browser preview does not provide audio capture."));
         setSelectedOffset(-1);
         raiseNotice(
           "error",
           "Error: Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`."
         );
       } catch (err) {
-        halt();
+        halt(err);
         setSelectedOffset(-1);
         raiseNotice("error", `Error: ${err?.message || "Audio unavailable"}`);
       }
