@@ -5,6 +5,8 @@ use std::io::{self, Read};
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(target_os = "windows")]
+use std::time::Duration;
 
 use crate::agent_control::discovery::{
   descriptor_path, read_descriptor_at, AgentControlDescriptor, DescriptorApp, DiscoveryErrorKind,
@@ -111,6 +113,13 @@ pub enum CliAppCommand {
     allow_measurement_restart: bool,
     dry_run: bool,
   },
+  Wait {
+    workspace_revision: Option<u64>,
+    presets_revision: Option<u64>,
+    settings_revision: Option<u64>,
+    transport_revision: Option<u64>,
+    timeout_ms: u64,
+  },
 }
 
 pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -131,10 +140,82 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
+    [command, rest @ ..] if command == "wait" => return parse_wait_args(rest),
     [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
     [] => {}
   }
   Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel|axis> ...".to_string())
+}
+
+fn parse_wait_args(args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  let mut workspace_revision = None;
+  let mut presets_revision = None;
+  let mut settings_revision = None;
+  let mut transport_revision = None;
+  let mut timeout_ms = 30_000;
+  let mut json = false;
+  let mut index = 0;
+  while index < args.len() {
+    let option = args[index].as_str();
+    if option == "--json" {
+      json = true;
+      index += 1;
+      continue;
+    }
+    let target = match option {
+      "--workspace-revision" => &mut workspace_revision,
+      "--presets-revision" => &mut presets_revision,
+      "--settings-revision" => &mut settings_revision,
+      "--transport-revision" => &mut transport_revision,
+      "--timeout-ms" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --timeout-ms.".to_string())?;
+        timeout_ms = raw
+          .parse::<u64>()
+          .map_err(|_| "The --timeout-ms value must be an integer.".to_string())?;
+        index += 2;
+        continue;
+      }
+      value => return Err(format!("Unknown wait option: {value}")),
+    };
+    let raw = args
+      .get(index + 1)
+      .ok_or_else(|| format!("Missing value for {option}."))?;
+    let revision = raw
+      .parse::<u64>()
+      .map_err(|_| format!("The {option} value must be a non-negative safe integer."))?;
+    if revision > MAX_SAFE_REVISION {
+      return Err(format!(
+        "The {option} value must be a non-negative safe integer."
+      ));
+    }
+    *target = Some(revision);
+    index += 2;
+  }
+  if !json {
+    return Err("The app wait command requires --json.".to_string());
+  }
+  if workspace_revision.is_none()
+    && presets_revision.is_none()
+    && settings_revision.is_none()
+    && transport_revision.is_none()
+  {
+    return Err("The app wait command requires at least one revision baseline.".to_string());
+  }
+  if !(100..=300_000).contains(&timeout_ms) {
+    return Err("The --timeout-ms value must be from 100 to 300000.".to_string());
+  }
+  Ok(CliAppCommand::Wait {
+    workspace_revision,
+    presets_revision,
+    settings_revision,
+    transport_revision,
+    timeout_ms,
+  })
 }
 
 fn parse_settings_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -682,19 +763,32 @@ fn call_descriptor(
   descriptor: &AgentControlDescriptor,
   request: &JsonRpcRequest,
 ) -> Result<AppCall, CliAppFailure> {
-  let response =
-    crate::agent_control::windows_pipe::call(&descriptor.endpoint, &descriptor.token, request)
-      .map_err(|error| {
-        let reason = match error.reason {
-          crate::agent_control::windows_pipe::PipeErrorReason::Unauthorized => {
-            "authenticationFailed"
-          }
-          crate::agent_control::windows_pipe::PipeErrorReason::ConnectionFailed => "appNotRunning",
-          crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => "timeout",
-          _ => "transportFailed",
-        };
-        CliAppFailure::transport(reason, error.to_string(), Some(descriptor.app.clone()))
-      })?;
+  let wait_timeout = request
+    .params
+    .get("timeoutMs")
+    .and_then(Value::as_u64)
+    .map(|milliseconds| Duration::from_millis(milliseconds.saturating_add(2_000)));
+  let response = wait_timeout
+    .map_or_else(
+      || crate::agent_control::windows_pipe::call(&descriptor.endpoint, &descriptor.token, request),
+      |timeout| {
+        crate::agent_control::windows_pipe::call_with_timeout(
+          &descriptor.endpoint,
+          &descriptor.token,
+          request,
+          timeout,
+        )
+      },
+    )
+    .map_err(|error| {
+      let reason = match error.reason {
+        crate::agent_control::windows_pipe::PipeErrorReason::Unauthorized => "authenticationFailed",
+        crate::agent_control::windows_pipe::PipeErrorReason::ConnectionFailed => "appNotRunning",
+        crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => "timeout",
+        _ => "transportFailed",
+      };
+      CliAppFailure::transport(reason, error.to_string(), Some(descriptor.app.clone()))
+    })?;
   Ok(AppCall {
     app: descriptor.app.clone(),
     protocol_version: descriptor.protocol_version,
@@ -793,6 +887,7 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::SettingsDescribe => "settings.describe",
     CliAppCommand::SettingsInspect => "settings.inspect",
     CliAppCommand::SettingsUpdate { .. } => "settings.update",
+    CliAppCommand::Wait { .. } => "app.wait",
   }
 }
 
@@ -944,6 +1039,27 @@ fn request_for_command<R: Read>(
           Value::from(*revision),
         );
       }
+      Value::Object(params)
+    }
+    CliAppCommand::Wait {
+      workspace_revision,
+      presets_revision,
+      settings_revision,
+      transport_revision,
+      timeout_ms,
+    } => {
+      let mut params = serde_json::Map::new();
+      for (key, revision) in [
+        ("workspaceRevision", workspace_revision),
+        ("presetsRevision", presets_revision),
+        ("settingsRevision", settings_revision),
+        ("transportRevision", transport_revision),
+      ] {
+        if let Some(revision) = revision {
+          params.insert(key.to_string(), Value::from(*revision));
+        }
+      }
+      params.insert("timeoutMs".to_string(), Value::from(*timeout_ms));
       Value::Object(params)
     }
     CliAppCommand::PanelDescribe { panel_id } => {
@@ -1721,6 +1837,47 @@ mod tests {
         "--json",
         "--expected-settings-revision",
         "-1",
+      ]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+    }
+  }
+
+  #[test]
+  fn parses_and_builds_revision_wait() {
+    let command = parse_app_args(&args(&[
+      "wait",
+      "--workspace-revision",
+      "1",
+      "--presets-revision",
+      "2",
+      "--settings-revision",
+      "3",
+      "--transport-revision",
+      "4",
+      "--timeout-ms",
+      "5000",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "app.wait");
+    assert_eq!(request.params["workspaceRevision"], 1);
+    assert_eq!(request.params["presetsRevision"], 2);
+    assert_eq!(request.params["settingsRevision"], 3);
+    assert_eq!(request.params["transportRevision"], 4);
+    assert_eq!(request.params["timeoutMs"], 5000);
+
+    for invalid in [
+      args(&["wait", "--json"]),
+      args(&["wait", "--workspace-revision", "0"]),
+      args(&[
+        "wait",
+        "--workspace-revision",
+        "0",
+        "--timeout-ms",
+        "99",
+        "--json",
       ]),
     ] {
       assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");

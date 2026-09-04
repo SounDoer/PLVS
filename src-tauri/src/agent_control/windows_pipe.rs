@@ -149,7 +149,15 @@ fn read_exact_until<R: Read>(
 }
 
 fn read_frame<R: Read>(reader: &mut R, max_bytes: usize) -> Result<Vec<u8>, PipeError> {
-  let deadline = Instant::now() + IO_TIMEOUT;
+  read_frame_with_timeout(reader, max_bytes, IO_TIMEOUT)
+}
+
+fn read_frame_with_timeout<R: Read>(
+  reader: &mut R,
+  max_bytes: usize,
+  timeout: Duration,
+) -> Result<Vec<u8>, PipeError> {
+  let deadline = Instant::now() + timeout;
   let mut prefix = [0_u8; FRAME_PREFIX_BYTES];
   read_exact_until(reader, &mut prefix, deadline)?;
   let length = u32::from_le_bytes(prefix) as usize;
@@ -653,6 +661,15 @@ pub fn call(
   token: &LaunchToken,
   request: &JsonRpcRequest,
 ) -> Result<Value, PipeError> {
+  call_with_timeout(endpoint, token, request, IO_TIMEOUT)
+}
+
+pub fn call_with_timeout(
+  endpoint: &str,
+  token: &LaunchToken,
+  request: &JsonRpcRequest,
+  response_timeout: Duration,
+) -> Result<Value, PipeError> {
   let handle = connect_client(endpoint, IO_TIMEOUT).map_err(|error| {
     PipeError::new(
       PipeErrorReason::ConnectionFailed,
@@ -672,7 +689,7 @@ pub fn call(
     )
   })?;
   write_frame(&mut pipe, &payload, MAX_WIRE_REQUEST_BYTES)?;
-  let response = read_frame(&mut pipe, MAX_RESPONSE_BYTES)?;
+  let response = read_frame_with_timeout(&mut pipe, MAX_RESPONSE_BYTES, response_timeout)?;
   serde_json::from_slice(&response).map_err(|_| {
     PipeError::new(
       PipeErrorReason::InvalidEnvelope,
