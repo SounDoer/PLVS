@@ -81,6 +81,12 @@ pub enum CliAppCommand {
     expected_presets_revision: Option<u64>,
     dry_run: bool,
   },
+  PresetApply {
+    preset_id: String,
+    expected_workspace_revision: Option<u64>,
+    expected_presets_revision: Option<u64>,
+    dry_run: bool,
+  },
   PresetRename {
     preset_id: String,
     name: String,
@@ -399,14 +405,14 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
     _ => {}
   }
-  const USAGE: &str = "Usage: plvs-cli app preset <describe|save|update|rename|delete|reorder> ... --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]";
+  const USAGE: &str = "Usage: plvs-cli app preset <describe|save|apply|update|rename|delete|reorder> ... --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]";
   let command = args
     .first()
     .map(String::as_str)
     .ok_or_else(|| USAGE.to_string())?;
   if !matches!(
     command,
-    "describe" | "save" | "update" | "rename" | "delete" | "reorder"
+    "describe" | "save" | "apply" | "update" | "rename" | "delete" | "reorder"
   ) {
     return Err(USAGE.to_string());
   }
@@ -474,7 +480,11 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
   {
     return Err(USAGE.to_string());
   }
-  if command != "save" && command != "update" && expected_workspace_revision.is_some() {
+  if command != "save"
+    && command != "apply"
+    && command != "update"
+    && expected_workspace_revision.is_some()
+  {
     return Err(format!(
       "The app preset {command} command does not accept --expected-workspace-revision."
     ));
@@ -494,6 +504,12 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
       dry_run,
     },
     "update" => CliAppCommand::PresetUpdate {
+      preset_id: positionals.remove(0),
+      expected_workspace_revision,
+      expected_presets_revision,
+      dry_run,
+    },
+    "apply" => CliAppCommand::PresetApply {
       preset_id: positionals.remove(0),
       expected_workspace_revision,
       expected_presets_revision,
@@ -684,6 +700,7 @@ fn command_name(command: &CliAppCommand) -> &'static str {
     CliAppCommand::PresetDescribe { .. } => "preset.describe",
     CliAppCommand::PresetSave { .. } => "preset.save",
     CliAppCommand::PresetUpdate { .. } => "preset.update",
+    CliAppCommand::PresetApply { .. } => "preset.apply",
     CliAppCommand::PresetRename { .. } => "preset.rename",
     CliAppCommand::PresetDelete { .. } => "preset.delete",
     CliAppCommand::PresetReorder { .. } => "preset.reorder",
@@ -744,6 +761,17 @@ fn request_for_command<R: Read>(
       *dry_run,
     ),
     CliAppCommand::PresetUpdate {
+      preset_id,
+      expected_workspace_revision,
+      expected_presets_revision,
+      dry_run,
+    } => preset_mutation_params(
+      [("presetId", Value::String(preset_id.clone()))],
+      *expected_workspace_revision,
+      *expected_presets_revision,
+      *dry_run,
+    ),
+    CliAppCommand::PresetApply {
       preset_id,
       expected_workspace_revision,
       expected_presets_revision,
@@ -1471,6 +1499,19 @@ mod tests {
         .method,
       "preset.update"
     );
+
+    let apply = parse_app_args(&args(&[
+      "preset",
+      "apply",
+      "preset-1",
+      "--json",
+      "--dry-run",
+    ]))
+    .unwrap();
+    let request = request_for_command(&apply, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "preset.apply");
+    assert_eq!(request.params["presetId"], "preset-1");
+    assert_eq!(request.params["dryRun"], true);
 
     let rename = parse_app_args(&args(&[
       "preset",
