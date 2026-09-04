@@ -7,6 +7,7 @@ import {
 
 export const DEFAULT_REFERENCE_LUFS = LOUDNESS_DEFAULT_REFERENCE_LUFS;
 export const DEFAULT_CLOSE_ACTION = "ask";
+export const CLOSE_ACTION_OPTIONS = Object.freeze(["ask", "tray", "quit"]);
 export const DEFAULT_PANEL_OPACITY = 100;
 export const DEFAULT_GLASS_ENABLED = false;
 export const DEFAULT_HISTORY_RETENTION_SEC = 3600;
@@ -30,7 +31,7 @@ export function normalizeReferenceLufs(raw) {
 }
 
 export function normalizeCloseAction(raw) {
-  return raw === "tray" || raw === "quit" || raw === "ask" ? raw : DEFAULT_CLOSE_ACTION;
+  return CLOSE_ACTION_OPTIONS.includes(raw) ? raw : DEFAULT_CLOSE_ACTION;
 }
 
 export function normalizeSettingsFocusView(raw) {

@@ -61,15 +61,25 @@ decisions.
 Panel Control is three hand-written lists of the same fields -- the schema, the read mapping and the
 patch planner -- layered on one flat control record. Nothing in the app makes them agree, and a
 control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no App Control
-change to look finished. Three guards make that omission fail instead:
+change to look finished. Four guards make that omission fail instead:
 
 | Guard | Fails when |
 | --- | --- |
 | `src/agentControl/panelControlCoverage.test.js` | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal. |
 | `src/agentControl/panelControlContract.test.js` | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
+| `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own. |
 | `src/agentControl/publicSurfaceDocs.test.js` | `generated/` no longer matches the schema builders. |
 
-The third fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the pages.
+The last fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the pages.
+
+Settings has no coverage guard of its own. There is no single definition of "every setting" to check
+`PUBLIC_FIELDS` against -- the settings persistence domain also holds Preset-captured scene state,
+the Theme and Profile libraries and window state, all of which `settings.md` places outside this
+contract -- so such a list would be a judgement call maintained by hand, which is the failure mode
+these guards exist to remove. What is checked instead is that Settings Control never restates an
+option list or default: it imports the app's own from `src/settings/defaults.js` and
+`src/lib/dialogueVadEngines.js`. A value the GUI offers that App Control rejects would otherwise be
+invisible, because `settings describe` would tell the agent the value does not exist.
 
 `generated/` holds the reference half of this directory: every field's type, unit, default and
 bounds, rendered from the schema builders. It is not editable by hand. The pages beside it carry

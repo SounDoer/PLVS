@@ -1,8 +1,19 @@
 import { reservedComboConflict } from "../data/keyboardShortcuts.js";
 import { isValidAccelerator } from "../lib/accelerator.js";
+import { DEFAULT_CLEAR_SHORTCUT } from "../lib/clearShortcutPrefs.js";
+import { DIALOGUE_VAD_ENGINE_OPTIONS } from "../lib/dialogueVadEngines.js";
 import { CHANNEL_ROLE_VOCABULARY, roleTokensToLoudnessWeights } from "../math/channelRoles.js";
+import {
+  CLOSE_ACTION_OPTIONS,
+  DEFAULT_CLOSE_ACTION,
+  DEFAULT_DIALOGUE_VAD_ENGINE,
+  DEFAULT_HISTORY_RETENTION_SEC,
+  DEFAULT_INTERFACE_SIZE,
+  HISTORY_RETENTION_OPTIONS_SEC,
+  INTERFACE_SIZE_OPTIONS,
+} from "../settings/defaults.js";
 
-const PUBLIC_FIELDS = [
+export const PUBLIC_FIELDS = [
   "openAtLogin",
   "closeBehavior",
   "clearShortcut",
@@ -12,10 +23,13 @@ const PUBLIC_FIELDS = [
   "dialogueVadEngine",
   "channelLabels",
 ];
-const CLOSE_BEHAVIORS = ["ask", "tray", "quit"];
-const INTERFACE_SIZES = ["small", "default", "large", "extra-large"];
-const HISTORY_LENGTHS = [1800, 3600, 7200, 14400];
-const VAD_ENGINES = ["firered", "silero", "ten"];
+// Every option list and default below is the app's own, not a copy: a value the GUI offers that
+// App Control would reject is the failure this indirection exists to make impossible.
+const CLOSE_BEHAVIORS = CLOSE_ACTION_OPTIONS;
+const INTERFACE_SIZES = INTERFACE_SIZE_OPTIONS.map(({ id }) => id);
+const HISTORY_LENGTHS = HISTORY_RETENTION_OPTIONS_SEC;
+const VAD_ENGINES = DIALOGUE_VAD_ENGINE_OPTIONS.map(({ id }) => id);
+const APPEARANCE_MODES = ["system", "fixed"];
 const CHANNEL_ROLES = new Set(CHANNEL_ROLE_VOCABULARY.map(({ id }) => id));
 
 function isObject(value) {
@@ -65,7 +79,7 @@ export function buildSettingsSchema(settings, context) {
     },
     closeBehavior: {
       type: "enum",
-      default: "ask",
+      default: DEFAULT_CLOSE_ACTION,
       current: settings.closeBehavior,
       options: CLOSE_BEHAVIORS,
     },
@@ -74,7 +88,7 @@ export function buildSettingsSchema(settings, context) {
       properties: {
         accelerator: {
           type: "accelerator",
-          default: "CmdOrCtrl+K",
+          default: DEFAULT_CLEAR_SHORTCUT,
           current: settings.clearShortcut.accelerator,
         },
         global: { type: "boolean", default: false, current: settings.clearShortcut.global },
@@ -83,7 +97,7 @@ export function buildSettingsSchema(settings, context) {
     },
     interfaceSize: {
       type: "enum",
-      default: "default",
+      default: DEFAULT_INTERFACE_SIZE,
       current: settings.interfaceSize,
       options: INTERFACE_SIZES,
     },
@@ -94,7 +108,7 @@ export function buildSettingsSchema(settings, context) {
           type: "enum",
           default: "system",
           current: settings.appearance.mode,
-          options: ["system", "fixed"],
+          options: APPEARANCE_MODES,
         },
         themeId: {
           type: "enum",
@@ -113,14 +127,14 @@ export function buildSettingsSchema(settings, context) {
     },
     historyRetentionSec: {
       type: "enum",
-      default: 3600,
+      default: DEFAULT_HISTORY_RETENTION_SEC,
       current: settings.historyRetentionSec,
       options: HISTORY_LENGTHS,
       unit: "s",
     },
     dialogueVadEngine: {
       type: "enum",
-      default: "firered",
+      default: DEFAULT_DIALOGUE_VAD_ENGINE,
       current: settings.dialogueVadEngine,
       options: VAD_ENGINES,
     },
@@ -254,7 +268,7 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
         }
       }
       nextAppearance = { ...current.appearance, ...patch.appearance };
-      if (!new Set(["system", "fixed"]).has(nextAppearance.mode)) {
+      if (!APPEARANCE_MODES.includes(nextAppearance.mode)) {
         issues.push(
           issue("invalidOption", "$.appearance.mode", "appearance.mode is not supported.")
         );
