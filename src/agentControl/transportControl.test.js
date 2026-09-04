@@ -123,4 +123,24 @@ describe("Transport Control", () => {
       ).refusal
     ).toEqual({ code: "dockActive" });
   });
+
+  it("previews affected and evicted FILE sessions", () => {
+    const snapshot = buildTransportSnapshot(runtime, context);
+    snapshot.files.sessions = Array.from({ length: 5 }, (_, index) => ({
+      ...snapshot.files.sessions[0],
+      id: `file-${index + 1}`,
+      state: "complete",
+    }));
+    snapshot.files.activeId = "file-5";
+    expect(
+      planTransportMutation(snapshot, "transport.file.analyze", {}, context).evictedSessions
+    ).toEqual([expect.objectContaining({ id: "file-1" })]);
+    expect(
+      planTransportMutation(snapshot, "transport.file.remove", { sessionId: "file-2" }, context)
+        .affectedSessions
+    ).toEqual([expect.objectContaining({ id: "file-2" })]);
+    expect(
+      planTransportMutation(snapshot, "transport.file.clear", {}, context).affectedSessions
+    ).toHaveLength(5);
+  });
 });

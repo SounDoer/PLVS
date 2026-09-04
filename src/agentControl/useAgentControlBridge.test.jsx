@@ -403,6 +403,55 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("reports the observable Dock state when native execution fails", async () => {
+    mount({ executeAgentDock: vi.fn(async () => Promise.reject(new Error("native refused"))) });
+    await waitUntilReady();
+
+    const response = await send(request("dock.enter", {}, "dock-native-failure"));
+
+    expect(response.error).toMatchObject({
+      code: -32050,
+      data: {
+        reason: "applicationFailed",
+        details: {
+          stage: "execution",
+          partial: false,
+          changed: ["dock.enabled"],
+          revision: 0,
+          dock: { enabled: false },
+        },
+      },
+    });
+  });
+
+  it("reports a committed Dock mutation when persistence fails", async () => {
+    const flush = vi.fn(async () => Promise.reject(new Error("disk full")));
+    mount({ flush });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "dock.layout.apply",
+        { layout: { panels: [{ key: "meter", moduleId: "levelMeter", controls: {} }] } },
+        "dock-persistence-failure"
+      )
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32030,
+      data: {
+        reason: "persistenceFailed",
+        details: {
+          stage: "persistence",
+          partial: true,
+          changed: ["dock.panels"],
+          revision: 1,
+          dock: { panels: [{ id: "levelMeter" }] },
+        },
+      },
+    });
+  });
+
   it("applies a Transport source mutation and settles on its revision", async () => {
     mount();
     await waitUntilReady();

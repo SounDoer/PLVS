@@ -8,6 +8,7 @@ import {
 import { getDockPanelSizing } from "../dock/dockPanelSizing.js";
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
 import { readPublicPanelAnalysis } from "./panelAnalysis.js";
+import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { planPublicPanelControlPatch } from "./panelControlPatch.js";
 
@@ -272,12 +273,22 @@ export function compileDockLayout(dock, document, context = {}) {
       else panelSizesById[panel.id] = entry.width;
     }
     const baseControls = existing ? dock.controlsByPanelId?.[panel.id] : undefined;
+    const controlsValid =
+      !hasOwn(entry, "controls") ||
+      (entry.controls !== null &&
+        typeof entry.controls === "object" &&
+        !Array.isArray(entry.controls));
+    if (!controlsValid) {
+      issues.push(issue("invalidType", `${path}.controls`, "controls must be a plain object."));
+    }
     const staged = {
       ...dock,
       panelsById: { ...dock.panelsById, [panel.id]: panel },
       controlsByPanelId: { ...dock.controlsByPanelId, [panel.id]: baseControls },
     };
-    const planned = planDockPanelPatch(staged, panel.id, entry.controls ?? {}, context);
+    const planned = controlsValid
+      ? planDockPanelPatch(staged, panel.id, entry.controls ?? {}, context)
+      : { dock: staged, issues: [] };
     for (const problem of planned.issues)
       issues.push({ ...problem, path: `${path}.controls${problem.path.slice(1)}` });
     panelsById[panel.id] = panel;
@@ -335,6 +346,68 @@ function publicControls(panel, raw, context) {
   return all;
 }
 
+function dockControlSchema(panel, raw, context, includeCurrent = false) {
+  if (panel.moduleId === "transport") return {};
+  const dockModuleId = dockControlModuleIdForPanel(panel);
+  const normalized = normalizeDockModuleControls(dockModuleId, raw);
+  const current = publicControls(panel, normalized, context);
+  const defaultControls = publicControls(
+    panel,
+    DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[dockModuleId],
+    context
+  );
+  const base = buildPublicPanelControlSchema(panel.moduleId, normalized, context).properties;
+  const extras = {
+    readout: {
+      type: "string",
+      title: "Readout",
+      description: "Value shown beside the meter.",
+      default: defaultControls.readout,
+      options:
+        normalized.levelMeterMode === "peak" ? ["live", "truePeakMax"] : ["live", "playbackMax"],
+      effective: true,
+    },
+    showLabels: {
+      type: "boolean",
+      title: "Show Labels",
+      description: "Show meter scale labels.",
+      default: defaultControls.showLabels,
+      effective: true,
+    },
+    showReadouts: {
+      type: "boolean",
+      title: "Show Readouts",
+      description: "Show loudness value readouts.",
+      default: defaultControls.showReadouts,
+      effective: true,
+    },
+    frequencyRangeHz: {
+      type: "object",
+      title: "Frequency Range",
+      description: "Stored frequency minimum and maximum.",
+      unit: "Hz",
+      default: defaultControls.frequencyRangeHz,
+      patchMode: "replace",
+      required: ["min", "max"],
+      properties: {
+        min: { type: "number", title: "Minimum", minimum: 20, maximum: 20000 },
+        max: { type: "number", title: "Maximum", minimum: 20, maximum: 20000 },
+      },
+      constraints: [{ kind: "ordered", lower: "min", upper: "max" }],
+      effective: true,
+    },
+  };
+  return Object.fromEntries(
+    Object.keys(current).map((key) => [
+      key,
+      {
+        ...(base[key] ?? extras[key]),
+        ...(includeCurrent ? { current: current[key] } : {}),
+      },
+    ])
+  );
+}
+
 function panelAnalysis(dock, panel, context) {
   if (panel.moduleId === "transport") return { status: "notApplicable" };
   const workspace = {
@@ -387,6 +460,8 @@ export function buildDockDescription(dock, context = {}) {
     monitors: Array.isArray(context.monitors) ? context.monitors : [],
     modules: DOCK_PANEL_MODULE_IDS.map((moduleId) => {
       const sizing = getDockPanelSizing(moduleId);
+      const panel = { id: moduleId, moduleId };
+      const defaults = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[dockControlModuleIdForPanel(panel)];
       return {
         moduleId,
         title: MODULE_CATALOG[moduleId]?.title || "Transport",
@@ -396,6 +471,7 @@ export function buildDockDescription(dock, context = {}) {
           maxPreferred: sizing.maxPreferredWidth,
           growth: sizing.growthPolicy,
         },
+        controls: dockControlSchema(panel, defaults, context),
       };
     }),
     layoutSchema: {
@@ -485,11 +561,26 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
       refusal: null,
       issues: [issue("monitorNotFound", "$.monitor", "Monitor was not found.")],
     };
+  const monitors = Array.isArray(context.monitors) ? context.monitors : [];
+  const savedMonitorAvailable =
+    typeof dock.monitor === "string" && monitors.some(({ id }) => id === dock.monitor);
+  const fallbackMonitor =
+    monitors.find(({ id }) => id === context.fallbackMonitor)?.id ?? monitors[0]?.id ?? null;
+  const monitor =
+    params.monitor ??
+    (monitors.length > 0 && !savedMonitorAvailable ? fallbackMonitor : dock.monitor);
+  const warnings =
+    params.monitor === undefined &&
+    typeof dock.monitor === "string" &&
+    monitors.length > 0 &&
+    !savedMonitorAvailable
+      ? [{ code: "monitorFallback", requested: dock.monitor, effective: monitor }]
+      : [];
   const projected = {
     ...dock,
     enabled: true,
     edge: params.edge ?? dock.edge,
-    monitor: params.monitor ?? dock.monitor,
+    monitor,
     reserveSpace: params.reserveSpace ?? dock.reserveSpace,
     height: params.height ?? dock.height,
     suspended: false,
@@ -500,7 +591,7 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
   return {
     dock: projected,
     changed,
-    warnings: [],
+    warnings,
     effects: changed.length ? ["applyDockWindowForm"] : [],
     issues: [],
     refusal: null,
@@ -512,6 +603,11 @@ export function buildDockPanelDescription(dock, panelId, context = {}) {
   const panel = snapshot.panels.find(({ id }) => id === panelId);
   if (!panel)
     return { issue: issue("dockPanelNotFound", "$.panelId", "Dock panel was not found.") };
+  if (Object.keys(panel.controls).length === 0) {
+    return {
+      issue: issue("controlsUnavailable", "$.panelId", "This Dock panel has no controls."),
+    };
+  }
   const sizing = getDockPanelSizing(panel.moduleId);
   return {
     panel,
@@ -521,8 +617,11 @@ export function buildDockPanelDescription(dock, panelId, context = {}) {
       maxPreferred: sizing.maxPreferredWidth,
       growth: sizing.growthPolicy,
     },
-    schema: Object.fromEntries(
-      Object.keys(panel.controls).map((key) => [key, { current: panel.controls[key] }])
+    schema: dockControlSchema(
+      dock.panelsById[panelId],
+      dock.controlsByPanelId?.[panelId],
+      context,
+      true
     ),
   };
 }

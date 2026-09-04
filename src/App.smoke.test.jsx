@@ -78,6 +78,9 @@ vi.mock("./ipc/commands.js", () => ({
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
+  availableMonitors: vi.fn().mockResolvedValue([]),
+  currentMonitor: vi.fn().mockResolvedValue(null),
+  primaryMonitor: vi.fn().mockResolvedValue(null),
   getCurrentWindow: () => ({
     setAlwaysOnTop: vi.fn().mockResolvedValue(undefined),
     onCloseRequested: vi.fn().mockResolvedValue(() => {}),

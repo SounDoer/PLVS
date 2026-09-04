@@ -220,6 +220,7 @@ export function useAgentControlBridge({
   const dockSettlementRef = useRef(null);
   const waitersRef = useRef(new Map());
   const waitWakeScheduledRef = useRef(false);
+  const workspaceRevisionBumpedThisTurnRef = useRef(false);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
@@ -247,12 +248,20 @@ export function useAgentControlBridge({
       }
     });
   }, [currentRevisions]);
+  const bumpWorkspaceRevision = useCallback(() => {
+    if (workspaceRevisionBumpedThisTurnRef.current) return;
+    workspaceRevisionBumpedThisTurnRef.current = true;
+    revisionRef.current += 1;
+    queueMicrotask(() => {
+      workspaceRevisionBumpedThisTurnRef.current = false;
+    });
+    scheduleWaitWake();
+  }, [scheduleWaitWake]);
 
   useEffect(() => {
     if (!controllableWorkspaceMatches(previousWorkspaceRef.current, workspace)) {
       previousWorkspaceRef.current = workspace;
-      revisionRef.current += 1;
-      scheduleWaitWake();
+      bumpWorkspaceRevision();
     } else {
       previousWorkspaceRef.current = workspace;
     }
@@ -261,7 +270,7 @@ export function useAgentControlBridge({
       settlementRef.current = null;
       settlement.resolve(revisionRef.current);
     }
-  }, [scheduleWaitWake, workspace]);
+  }, [bumpWorkspaceRevision, workspace]);
 
   useEffect(() => {
     const signature = presetStateSignature(presets);
@@ -323,15 +332,14 @@ export function useAgentControlBridge({
     const signature = dockStateSignature(dock);
     if (signature !== previousDockSignatureRef.current) {
       previousDockSignatureRef.current = signature;
-      revisionRef.current += 1;
-      scheduleWaitWake();
+      bumpWorkspaceRevision();
     }
     const settlement = dockSettlementRef.current;
     if (settlement && settlement.matches(dock)) {
       dockSettlementRef.current = null;
       settlement.resolve(revisionRef.current);
     }
-  }, [dock, scheduleWaitWake]);
+  }, [bumpWorkspaceRevision, dock]);
 
   useEffect(() => {
     processRef.current = async (rawRequest) => {
@@ -441,11 +449,12 @@ export function useAgentControlBridge({
         if (request.method === "dock.panel.describe") {
           const description = buildDockPanelDescription(dock, request.params.panelId, dockContext);
           if (description.issue) {
+            const unavailable = description.issue.code === "controlsUnavailable";
             throw semanticFailure(
-              "dockPanelNotFound",
+              unavailable ? "controlsUnavailable" : "dockPanelNotFound",
               "$.params.panelId",
               description.issue.message,
-              -32090
+              unavailable ? -32091 : -32090
             );
           }
           return { requestId, result: { revision: revisionRef.current, ...description } };
@@ -542,6 +551,8 @@ export function useAgentControlBridge({
             result.revision = await committed;
           } catch (error) {
             dockSettlementRef.current = null;
+            const observableDock = latestDockRef.current;
+            const partial = dockStateSignature(observableDock) !== dockStateSignature(dock);
             throw semanticFailure(
               "applicationFailed",
               "$.params",
@@ -549,16 +560,35 @@ export function useAgentControlBridge({
               -32050,
               {
                 stage: error?.stage ?? "execution",
-                partial: true,
+                partial,
                 changed: planned.changed,
                 revision: revisionRef.current,
+                dock: buildDockSnapshot(observableDock, dockContext),
               }
             );
           }
-          await flush();
           result.dock = buildDockSnapshot(latestDockRef.current, dockContext);
           result.presetsRevision = presetsRevisionRef.current;
           result.preset = panelResultPreset(presets, planned.changed);
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$.params",
+              `Dock state committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              {
+                stage: "persistence",
+                partial: true,
+                stateCommitted: true,
+                changed: planned.changed,
+                revision: result.revision,
+                presetsRevision: result.presetsRevision,
+                dock: result.dock,
+              }
+            );
+          }
           return { requestId, result };
         }
 
@@ -625,6 +655,12 @@ export function useAgentControlBridge({
             changed: planned.changed,
             effects: planned.effects,
             warnings: planned.warnings,
+            ...(planned.affectedSessions.length > 0
+              ? { affectedSessions: planned.affectedSessions }
+              : {}),
+            ...(planned.evictedSessions.length > 0
+              ? { evictedSessions: planned.evictedSessions }
+              : {}),
             ...latestTransportRef.current,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {

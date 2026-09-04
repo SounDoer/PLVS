@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDockDescription,
+  buildDockPanelDescription,
   buildDockSnapshot,
   compileDockLayout,
+  planDockFormMutation,
   planDockPanelPatch,
   planDockPanelReset,
 } from "./dockControl.js";
@@ -77,6 +79,20 @@ describe("Dock Control", () => {
       maxPreferred: 960,
       growth: "flexible",
     });
+    expect(
+      result.modules.find(({ moduleId }) => moduleId === "levelMeter").controls
+    ).toHaveProperty("readout");
+    expect(result.modules.find(({ moduleId }) => moduleId === "levelMeter").controls).toMatchObject(
+      {
+        mode: { type: "string", options: ["peak", "rms", "momentary", "shortTerm"] },
+        readout: { type: "string", options: ["live", "truePeakMax"] },
+        showLabels: { type: "boolean" },
+      }
+    );
+    expect(result.modules.find(({ moduleId }) => moduleId === "spectrum").controls).toMatchObject({
+      speedPercent: { type: "integer", unit: "%" },
+      frequencyRangeHz: { type: "object", unit: "Hz" },
+    });
   });
 
   it("strictly plans Dock-only panel controls", () => {
@@ -101,6 +117,12 @@ describe("Dock Control", () => {
       expect.objectContaining({ code: "unknownControl" }),
     ]);
     expect(planDockPanelReset(planned.dock, "level").changed.length).toBeGreaterThan(0);
+    expect(buildDockPanelDescription(dock, "level").schema).toMatchObject({
+      mode: { type: "string", current: "peak" },
+      readout: { type: "string", current: "truePeakMax", options: ["live", "truePeakMax"] },
+      showLabels: { type: "boolean", current: false },
+    });
+    expect(buildDockPanelDescription(dock, "transport").issue.code).toBe("controlsUnavailable");
   });
 
   it("compiles an atomic ordered layout with retained and generated panel ids", () => {
@@ -121,5 +143,31 @@ describe("Dock Control", () => {
     expect(compileDockLayout(dock, { panels: [{ key: "bad", moduleId: "level" }] }).issues).toEqual(
       [expect.objectContaining({ code: "unknownModule" })]
     );
+    expect(
+      compileDockLayout(dock, { panels: [{ panelId: "level", controls: null }] }).issues
+    ).toEqual([expect.objectContaining({ code: "invalidType" })]);
+  });
+
+  it("previews and reports fallback from a stale saved monitor", () => {
+    const stale = { ...dock, enabled: false, monitor: "missing-monitor" };
+    const planned = planDockFormMutation(
+      stale,
+      "dock.enter",
+      {},
+      {
+        platform: "windows",
+        monitors: [{ id: "monitor-2", name: "Display 2" }],
+        fallbackMonitor: "monitor-2",
+      }
+    );
+    expect(planned.issues).toEqual([]);
+    expect(planned.dock.monitor).toBe("monitor-2");
+    expect(planned.warnings).toEqual([
+      {
+        code: "monitorFallback",
+        requested: "missing-monitor",
+        effective: "monitor-2",
+      },
+    ]);
   });
 });

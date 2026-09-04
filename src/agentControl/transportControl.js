@@ -88,6 +88,8 @@ function result(overrides = {}) {
     issues: [],
     refusal: null,
     confirmation: null,
+    affectedSessions: [],
+    evictedSessions: [],
     ...overrides,
   };
 }
@@ -169,9 +171,23 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     if (snapshot.files.analyzingId) {
       return result({ refusal: { code: "analysisInProgress" } });
     }
+    const retained = [...snapshot.files.sessions];
+    const evictedSessions = [];
+    while (retained.length >= 5) {
+      const index = retained.findIndex(
+        (session) =>
+          session.id !== snapshot.files.activeId &&
+          session.id !== snapshot.files.analyzingId &&
+          ["complete", "stopped", "error"].includes(session.state)
+      );
+      if (index < 0) break;
+      evictedSessions.push(retained[index]);
+      retained.splice(index, 1);
+    }
     return result({
       changed: [...(snapshot.source !== "file" ? ["transport.source"] : []), "transport.files"],
       effects: snapshot.live.state === "running" ? ["stopLiveCapture"] : [],
+      evictedSessions,
     });
   }
   if (method === "transport.file.reanalyze") {
@@ -181,13 +197,18 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     return result({
       changed: ["transport.files"],
       effects: snapshot.source !== "file" ? ["selectFileSource"] : [],
+      affectedSessions: [target],
     });
   }
   if (method === "transport.file.stop") {
     if (snapshot.files.analyzingId !== targetId) {
       return result({ refusal: { code: "fileAnalysisNotActive", sessionId: targetId } });
     }
-    return result({ changed: ["transport.files"], effects: ["stopFileAnalysis"] });
+    return result({
+      changed: ["transport.files"],
+      effects: ["stopFileAnalysis"],
+      affectedSessions: [target],
+    });
   }
   if (method === "transport.file.select") {
     if (snapshot.source === "file" && snapshot.files.activeId === targetId) return result();
@@ -197,14 +218,23 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
         ...(snapshot.files.activeId !== targetId ? ["transport.files.activeId"] : []),
       ],
       effects: snapshot.live.state === "running" ? ["stopLiveCapture"] : [],
+      affectedSessions: [target],
     });
   }
   if (method === "transport.file.remove") {
-    return result({ changed: ["transport.files"], effects: ["removeFileSession"] });
+    return result({
+      changed: ["transport.files"],
+      effects: ["removeFileSession"],
+      affectedSessions: [target],
+    });
   }
   if (method === "transport.file.clear") {
     if (snapshot.files.sessions.length === 0) return result();
-    return result({ changed: ["transport.files"], effects: ["clearFileSessions"] });
+    return result({
+      changed: ["transport.files"],
+      effects: ["clearFileSessions"],
+      affectedSessions: [...snapshot.files.sessions],
+    });
   }
   return result({ issues: [issue("methodNotFound", "$.method", `Unknown method: ${method}.`)] });
 }

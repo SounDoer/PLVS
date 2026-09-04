@@ -63,7 +63,12 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import { resetTruePeakMax } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
-import { availableMonitors, getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  availableMonitors,
+  currentMonitor,
+  getCurrentWindow,
+  primaryMonitor,
+} from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
@@ -282,17 +287,29 @@ function AppContent() {
   const dockLayout = useDockLayout();
   const docked = isTauri() && dockEnabled;
   const [agentControlMonitors, setAgentControlMonitors] = useState([]);
+  const [agentControlFallbackMonitor, setAgentControlFallbackMonitor] = useState(null);
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
     void Promise.resolve()
       .then(async () => {
-        const monitors = await availableMonitors();
+        const [monitors, current, primary] = await Promise.all([
+          availableMonitors(),
+          currentMonitor(),
+          primaryMonitor(),
+        ]);
         if (cancelled) return;
         setAgentControlMonitors(
           monitors.flatMap((monitor) =>
             typeof monitor.name === "string" ? [{ id: monitor.name, name: monitor.name }] : []
           )
+        );
+        setAgentControlFallbackMonitor(
+          typeof current?.name === "string"
+            ? current.name
+            : typeof primary?.name === "string"
+              ? primary.name
+              : null
         );
       })
       .catch(() => {});
@@ -1171,6 +1188,7 @@ function AppContent() {
       activeEditors: activeBlockingEditors,
       transitioning: dockTransitioning,
       monitors: agentControlMonitors,
+      fallbackMonitor: agentControlFallbackMonitor,
     },
     executeDock: executeAgentControlDock,
     loudnessProfiles: loudnessProfile.profiles,
