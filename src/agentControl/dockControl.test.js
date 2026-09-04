@@ -123,6 +123,9 @@ describe("Dock Control", () => {
       showLabels: { type: "boolean", current: false },
     });
     expect(buildDockPanelDescription(dock, "transport").issue.code).toBe("controlsUnavailable");
+    expect(planDockPanelPatch(dock, "level", { mode: "rms" }).issues).toEqual([
+      expect.objectContaining({ code: "incompatibleControl", path: "$.readout" }),
+    ]);
   });
 
   it("compiles an atomic ordered layout with retained and generated panel ids", () => {
@@ -130,7 +133,12 @@ describe("Dock Control", () => {
       dock,
       {
         panels: [
-          { panelId: "level", customTitle: null, width: 240, controls: { mode: "rms" } },
+          {
+            panelId: "level",
+            customTitle: null,
+            width: 240,
+            controls: { mode: "rms", readout: "playbackMax" },
+          },
           { key: "scope", moduleId: "vectorscope", width: 220, controls: {} },
         ],
       },
@@ -146,6 +154,56 @@ describe("Dock Control", () => {
     expect(
       compileDockLayout(dock, { panels: [{ panelId: "level", controls: null }] }).issues
     ).toEqual([expect.objectContaining({ code: "invalidType" })]);
+    expect(
+      compileDockLayout(dock, {
+        panels: [{ panelId: "transport", controls: {} }],
+      }).issues
+    ).toEqual([]);
+  });
+
+  it("preserves panel warnings in an atomic layout plan", () => {
+    const compiled = compileDockLayout(dock, {
+      panels: [
+        {
+          key: "wave",
+          moduleId: "waveform",
+          controls: { frequencyBandsHz: { lowMid: 300, midHigh: 3000 } },
+        },
+      ],
+    });
+    expect(compiled.issues).toEqual([]);
+    expect(compiled.warnings).toEqual([
+      expect.objectContaining({
+        code: "currentlyInactive",
+        path: "$.panels[0].controls.frequencyBandsHz",
+      }),
+    ]);
+  });
+
+  it("rejects extra frequency-range fields and a known-empty monitor inventory", () => {
+    const spectrumDock = {
+      ...dock,
+      panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
+      panelOrder: ["spectrum"],
+      controlsByPanelId: {},
+    };
+    expect(
+      planDockPanelPatch(spectrumDock, "spectrum", {
+        frequencyRangeHz: { min: 20, max: 20000, extra: true },
+      }).issues
+    ).toEqual([expect.objectContaining({ code: "unknownControl" })]);
+    expect(
+      planDockFormMutation(
+        { ...dock, enabled: false },
+        "dock.enter",
+        { monitor: "missing" },
+        {
+          platform: "windows",
+          monitors: [],
+          monitorInventoryReady: true,
+        }
+      ).issues
+    ).toEqual([expect.objectContaining({ code: "monitorNotFound" })]);
   });
 
   it("previews and reports fallback from a stale saved monitor", () => {

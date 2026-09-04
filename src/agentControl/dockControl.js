@@ -93,10 +93,13 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   if (hasOwn(patch, "readout")) {
     if (!["live", "truePeakMax", "playbackMax"].includes(patch.readout))
       extraIssues.push(issue("invalidEnum", "$.readout", "readout is invalid."));
-    const mode = hasOwn(patch, "mode") ? patch.mode : next.levelMeterMode;
+  }
+  if (hasOwn(patch, "readout") || hasOwn(patch, "mode")) {
+    const mode = planned.panelControls.levelMeterMode;
+    const readout = hasOwn(patch, "readout") ? patch.readout : current.readout;
     if (
-      (mode === "peak" && patch.readout === "playbackMax") ||
-      (mode !== "peak" && patch.readout === "truePeakMax")
+      (mode === "peak" && readout === "playbackMax") ||
+      (mode !== "peak" && readout === "truePeakMax")
     )
       extraIssues.push(
         issue("incompatibleControl", "$.readout", "readout is incompatible with mode.")
@@ -104,6 +107,15 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   }
   if (hasOwn(patch, "frequencyRangeHz")) {
     const range = patch.frequencyRangeHz;
+    if (range && typeof range === "object" && !Array.isArray(range)) {
+      for (const key of Object.keys(range)) {
+        if (!new Set(["min", "max"]).has(key)) {
+          extraIssues.push(
+            issue("unknownControl", `$.frequencyRangeHz.${key}`, `Unknown range field: ${key}.`)
+          );
+        }
+      }
+    }
     if (
       !range ||
       typeof range !== "object" ||
@@ -180,6 +192,7 @@ export function planDockPanelReset(dock, panelId, context = {}) {
 
 export function compileDockLayout(dock, document, context = {}) {
   const issues = [];
+  const warnings = [];
   if (
     !document ||
     typeof document !== "object" ||
@@ -286,11 +299,21 @@ export function compileDockLayout(dock, document, context = {}) {
       panelsById: { ...dock.panelsById, [panel.id]: panel },
       controlsByPanelId: { ...dock.controlsByPanelId, [panel.id]: baseControls },
     };
-    const planned = controlsValid
-      ? planDockPanelPatch(staged, panel.id, entry.controls ?? {}, context)
-      : { dock: staged, issues: [] };
+    const emptyControlLessPanel =
+      panel.moduleId === "transport" && Object.keys(entry.controls ?? {}).length === 0;
+    const planned = emptyControlLessPanel
+      ? { dock: staged, issues: [], warnings: [] }
+      : controlsValid
+        ? planDockPanelPatch(staged, panel.id, entry.controls ?? {}, context)
+        : { dock: staged, issues: [] };
     for (const problem of planned.issues)
       issues.push({ ...problem, path: `${path}.controls${problem.path.slice(1)}` });
+    for (const warning of planned.warnings ?? []) {
+      warnings.push({
+        ...warning,
+        path: `${path}.controls.${warning.path.replace(/^controls\./, "")}`,
+      });
+    }
     panelsById[panel.id] = panel;
     panelOrder.push(panel.id);
     if (planned.issues.length === 0 && panel.moduleId !== "transport")
@@ -308,7 +331,7 @@ export function compileDockLayout(dock, document, context = {}) {
     })
       ? []
       : ["dock.panels"];
-  return { dock: projected, createdPanels, changed, warnings: [], issues: [] };
+  return { dock: projected, createdPanels, changed, warnings, issues: [] };
 }
 
 function publicControls(panel, raw, context) {
@@ -550,7 +573,7 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
   if (
     params.monitor !== undefined &&
     Array.isArray(context.monitors) &&
-    context.monitors.length > 0 &&
+    (context.monitors.length > 0 || context.monitorInventoryReady === true) &&
     !context.monitors.some(({ id }) => id === params.monitor)
   )
     return {
