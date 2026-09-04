@@ -161,3 +161,20 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   reason to prefer exact values: a `PowerOfTwoMinMaxIndex` range query merges summary buckets with
   raw rows, and those two stores do not have to agree on precision, so data that needs rounding
   turns an assertion about indexing into an assertion about float representation.
+
+- **A dock-disabled preset stores a strip layout it will never restore, and that asymmetry is
+  correct.** `captureSnapshot` writes `panelsById` / `panelOrder` / `panelSizesById` /
+  `controlsByPanelId` unconditionally, but `applyDockPreset` (`App.jsx`) calls
+  `dockLayout.setPanels` only inside its `presetDock.enabled` branch — so for a windowed preset
+  those four fields are parsed out of the record and dropped. It reads like a missed branch. It is
+  not: every entry point that edits the strip lives in the dock accessory windows
+  (`dock/accessories/DockEditorApp.jsx`), which exist only while docked, so the layout a windowed
+  preset carries was never authored *for* that preset — it is whatever happened to be in
+  `workspaceStore` when the user, sitting in a normal window, pressed Save. Restoring it would
+  silently overwrite a strip the user did hand-tune, and the overwrite is invisible because the
+  strip is not on screen at apply time. Dock-*enabled* presets round-trip their layout fine; this
+  is dead data in the record, not a lost setting. The near-miss argument for "fix" is that a strip
+  edit patches `presetsStore` `dirty`, which looks like the preset claiming ownership — but such an
+  edit can only happen while docked, and if the active preset is windowed the scene is already
+  dirty on `dock.enabled` alone, so that flag is redundant there, never wrong. Investigated
+  2026-09-05; deliberately left as is.
