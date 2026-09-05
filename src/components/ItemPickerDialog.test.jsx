@@ -83,3 +83,62 @@ describe("ItemPickerDialog pick mode", () => {
     expect(screen.getByText("No custom themes to export.")).toBeTruthy();
   });
 });
+
+describe("ItemPickerDialog review mode", () => {
+  const review = {
+    itemPlan: [
+      { sourceId: "p1", finalId: "p1", name: "P1", disposition: "added" },
+      { sourceId: "p2", finalId: "p2", name: "P2", disposition: "skipped" },
+      { sourceId: "p3", finalId: "x", name: "P3 (2)", disposition: "duplicated" },
+    ],
+    profilePlan: [{ sourceId: "a", finalId: "a", name: "Alpha", disposition: "added" }],
+  };
+
+  it("labels each row with its disposition", () => {
+    render(
+      <ItemPickerDialog
+        open
+        mode="review"
+        type="presets"
+        review={review}
+        onConfirm={() => {}}
+        onClose={() => {}}
+      />
+    );
+    expect(screen.getByText("P1").closest("li").textContent).toContain("Add");
+    expect(screen.getByText("P2").closest("li").textContent).toContain("Already in your library");
+    expect(screen.getByText("P3 (2)").closest("li").textContent).toContain("Import as a copy");
+  });
+
+  it("shows the bundled profiles under Also included", () => {
+    render(
+      <ItemPickerDialog
+        open
+        mode="review"
+        type="presets"
+        review={review}
+        onConfirm={() => {}}
+        onClose={() => {}}
+      />
+    );
+    expect(screen.getByText("Also included")).toBeTruthy();
+    expect(screen.getByText("Alpha")).toBeTruthy();
+  });
+
+  it("confirms only when Import is pressed", () => {
+    const onConfirm = vi.fn();
+    render(
+      <ItemPickerDialog
+        open
+        mode="review"
+        type="presets"
+        review={review}
+        onConfirm={onConfirm}
+        onClose={() => {}}
+      />
+    );
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+});
