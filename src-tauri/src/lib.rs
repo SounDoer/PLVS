@@ -122,8 +122,15 @@ pub fn run() {
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
       let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
       let themes = store.get("plvs:themes").unwrap_or(serde_json::json!({}));
+      let agent_control_enabled = match store.get(agent_control::toggle::ENABLED_KEY) {
+        Some(serde_json::Value::Bool(value)) => value,
+        _ => agent_control::toggle::default_enabled(),
+      };
       let agent_control = serde_json::json!({
-        "available": cfg!(all(target_os = "windows", feature = "dev-identity")),
+        // `available` is platform support alone. Whether the endpoint is actually open is
+        // `enabled`, which the user owns from Settings.
+        "available": cfg!(target_os = "windows"),
+        "enabled": cfg!(target_os = "windows") && agent_control_enabled,
         "appName": if cfg!(feature = "dev-identity") { "PLVS Dev" } else { "PLVS" },
         "appVersion": env!("CARGO_PKG_VERSION"),
         "identifier": env!("PLVS_APP_ID"),
@@ -236,9 +243,11 @@ pub fn run() {
       }
       let _ = window.show();
 
-      #[cfg(all(target_os = "windows", feature = "dev-identity"))]
-      if let Err(error) = agent_control::windows_pipe::start(app.handle()) {
-        log::warn!("agent control unavailable; PLVS will continue normally: {error}");
+      #[cfg(target_os = "windows")]
+      if agent_control_enabled {
+        if let Err(error) = agent_control::windows_pipe::start(app.handle()) {
+          log::warn!("agent control unavailable; PLVS will continue normally: {error}");
+        }
       }
 
       {
