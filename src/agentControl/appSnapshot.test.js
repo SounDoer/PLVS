@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
-import { buildAgentControlCapabilities, buildAgentControlSnapshot } from "./appSnapshot.js";
+import {
+  buildAgentControlCapabilities,
+  buildAgentControlSnapshot,
+  readAgentControlRuntime,
+} from "./appSnapshot.js";
 
 const runtime = {
   available: true,
@@ -11,6 +15,10 @@ const runtime = {
 };
 
 describe("agent-control app snapshots", () => {
+  afterEach(() => {
+    if (globalThis.window) delete globalThis.window.__PLVS_INITIAL_STATE__;
+  });
+
   it("reports deterministic runtime and module capabilities", () => {
     const capabilities = buildAgentControlCapabilities(runtime);
     expect(capabilities).toMatchObject({
@@ -141,5 +149,20 @@ describe("agent-control app snapshots", () => {
     const encoded = JSON.stringify(snapshot);
     expect(encoded).not.toMatch(/history|audioFrame|reactOnly|config|fullscreen/);
     expect(JSON.parse(encoded)).toEqual(snapshot);
+  });
+
+  it("reports the live enabled flag alongside platform availability", () => {
+    globalThis.window = globalThis.window || {};
+    globalThis.window.__PLVS_INITIAL_STATE__ = {
+      agentControl: {
+        available: true,
+        enabled: false,
+        appName: "PLVS",
+        appVersion: "0.0.0",
+        identifier: "com.soundoer.plvs",
+        platform: "windows",
+      },
+    };
+    expect(readAgentControlRuntime()).toMatchObject({ available: true, enabled: false });
   });
 });

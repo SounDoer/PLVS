@@ -618,6 +618,9 @@ function AppContent() {
     blockingEditors: activeBlockingEditors,
   });
   const agentControlRuntime = useMemo(readAgentControlRuntime, []);
+  const [agentControlEnabled, setAgentControlEnabled] = useState(
+    () => agentControlRuntime.enabled === true
+  );
 
   const historyRetentionSec = settings.historyRetentionSec;
   const dockHistoryViewport = useDockHistoryViewport({ maxWindowSec: historyRetentionSec });
@@ -1239,7 +1242,7 @@ function AppContent() {
     [dockLayout, enterDockMode, exitDockRestoringAttributes, setSelectedOffset]
   );
   useAgentControlBridge({
-    enabled: agentControlRuntime.available === true,
+    enabled: agentControlRuntime.available === true && agentControlEnabled,
     runtime: agentControlRuntime,
     workspace: workspaceState,
     replaceWorkspace,
@@ -1982,6 +1985,7 @@ function AppContent() {
           resetInstall,
         }}
         appVersion={APP_VERSION}
+        onAgentControlEnabledChange={setAgentControlEnabled}
       />
 
       <CloseConfirmDialog

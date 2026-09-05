@@ -154,9 +154,10 @@ export function buildAgentControlSnapshot({
 
 export function readAgentControlRuntime() {
   const injected = globalThis.window?.__PLVS_INITIAL_STATE__?.agentControl;
-  if (!injected || injected.available !== true) return { available: false };
+  if (!injected || injected.available !== true) return { available: false, enabled: false };
   return {
     available: true,
+    enabled: injected.enabled === true,
     appName: injected.appName,
     appVersion: injected.appVersion,
     identifier: injected.identifier,

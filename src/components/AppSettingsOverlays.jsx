@@ -15,6 +15,7 @@ export function AppSettingsOverlays({
   updateControls,
   appVersion,
   loudnessProfile,
+  onAgentControlEnabledChange = () => {},
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
@@ -105,7 +106,10 @@ export function AppSettingsOverlays({
         configurationStatus={configurationStatus}
         agentControlStatus={agentControlStatus}
         agentControlBusy={agentControlBusy}
-        onSetAgentControlEnabled={setAgentControlEnabled}
+        onSetAgentControlEnabled={async (next) => {
+          const status = await setAgentControlEnabled(next);
+          onAgentControlEnabledChange(status?.enabled === true);
+        }}
         onOpenFeedback={() => {
           settings.setSettingsOpen(false);
           setFeedbackOpen(true);
