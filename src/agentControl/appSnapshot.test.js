@@ -19,9 +19,10 @@ describe("agent-control app snapshots", () => {
     if (globalThis.window) delete globalThis.window.__PLVS_INITIAL_STATE__;
   });
 
-  it("reports deterministic runtime and module capabilities", () => {
-    const capabilities = buildAgentControlCapabilities(runtime);
+  it("reports deterministic runtime and module capabilities at the current revision", () => {
+    const capabilities = buildAgentControlCapabilities(runtime, 11);
     expect(capabilities).toMatchObject({
+      revision: 11,
       protocolVersion: 1,
       runtime,
       methods: [
@@ -71,6 +72,7 @@ describe("agent-control app snapshots", () => {
         "dock.panel.reset",
       ],
     });
+    expect(capabilities).not.toHaveProperty("revisions");
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
     expect(JSON.parse(JSON.stringify(capabilities))).toEqual(capabilities);
   });
@@ -85,8 +87,6 @@ describe("agent-control app snapshots", () => {
     const snapshot = buildAgentControlSnapshot({
       runtime,
       revision: 7,
-      presetsRevision: 3,
-      settingsRevision: 4,
       workspace,
       presets: { activeId: "p1", dirty: true, list: [{ id: "p1", name: "Mix" }] },
       settings: { interfaceSize: "large" },
@@ -100,6 +100,7 @@ describe("agent-control app snapshots", () => {
     });
 
     expect(snapshot).toMatchObject({
+      revision: 7,
       app: {
         name: "PLVS Dev",
         version: "0.14.5",
@@ -107,7 +108,6 @@ describe("agent-control app snapshots", () => {
         platform: "windows",
       },
       protocolVersion: 1,
-      revisions: { workspace: 7, presets: 3, settings: 4 },
       runtime: {
         channelTopology: { status: "detected", channelCount: 2 },
         dialogueDetection: "active",
@@ -118,7 +118,7 @@ describe("agent-control app snapshots", () => {
       transport: { source: "live", live: { state: "stopped" }, files: { sessions: [] } },
       dock: { supported: true, enabled: false, panels: [] },
     });
-    expect(snapshot).not.toHaveProperty("revision");
+    expect(snapshot).not.toHaveProperty("revisions");
     expect(snapshot.workspace.panels[0]).toEqual({
       id: "levelMeter",
       moduleId: "levelMeter",

@@ -72,8 +72,9 @@ export function buildAgentControlPanelSnapshot({
   };
 }
 
-export function buildAgentControlCapabilities(runtime) {
+export function buildAgentControlCapabilities(runtime, revision) {
   return {
+    revision,
     protocolVersion: 1,
     runtime: {
       available: runtime.available === true,
@@ -93,9 +94,6 @@ export function buildAgentControlCapabilities(runtime) {
 export function buildAgentControlSnapshot({
   runtime,
   revision,
-  presetsRevision = 0,
-  settingsRevision = 0,
-  transportRevision = 0,
   workspace,
   presets,
   settings,
@@ -109,6 +107,7 @@ export function buildAgentControlSnapshot({
       ? analysisContext.channelCount
       : null;
   return {
+    revision,
     app: {
       name: String(runtime.appName),
       version: String(runtime.appVersion),
@@ -116,12 +115,6 @@ export function buildAgentControlSnapshot({
       platform: String(runtime.platform),
     },
     protocolVersion: 1,
-    revisions: {
-      workspace: revision,
-      presets: presetsRevision,
-      settings: settingsRevision,
-      transport: transportRevision,
-    },
     runtime: {
       channelTopology: {
         status: detectedChannelCount === null ? "assumed" : "detected",

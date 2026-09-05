@@ -246,17 +246,13 @@ export function useAgentControlBridge({
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
   const previousWorkspaceRef = useRef(workspace);
-  const revisionRef = useRef(0);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
-  const presetsRevisionRef = useRef(0);
   const previousSettingsSignatureRef = useRef(settingsStateSignature(settings));
-  const settingsRevisionRef = useRef(0);
   const settingsInitializedRef = useRef(false);
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
-  const transportRevisionRef = useRef(0);
   const latestTransportRef = useRef(transport);
   const transportSettlementRef = useRef(null);
   const previousDockSignatureRef = useRef(dockStateSignature(dock));
@@ -296,7 +292,6 @@ export function useAgentControlBridge({
   const bumpWorkspaceRevision = useCallback(() => {
     if (workspaceRevisionBumpedThisTurnRef.current) return;
     workspaceRevisionBumpedThisTurnRef.current = true;
-    revisionRef.current += 1;
     bumpControlRevision();
     queueMicrotask(() => {
       workspaceRevisionBumpedThisTurnRef.current = false;
@@ -322,7 +317,6 @@ export function useAgentControlBridge({
     const signature = presetStateSignature(presets);
     if (signature !== previousPresetsSignatureRef.current) {
       previousPresetsSignatureRef.current = signature;
-      presetsRevisionRef.current += 1;
       bumpControlRevision();
       scheduleWaitWake();
     }
@@ -344,7 +338,6 @@ export function useAgentControlBridge({
     }
     if (signature !== previousSettingsSignatureRef.current) {
       previousSettingsSignatureRef.current = signature;
-      settingsRevisionRef.current += 1;
       bumpControlRevision();
       scheduleWaitWake();
     }
@@ -366,7 +359,6 @@ export function useAgentControlBridge({
     const signature = transportLifecycleSignature(transport);
     if (signature !== previousTransportSignatureRef.current) {
       previousTransportSignatureRef.current = signature;
-      transportRevisionRef.current += 1;
       bumpControlRevision();
       scheduleWaitWake();
     }
@@ -410,7 +402,7 @@ export function useAgentControlBridge({
         if (request.method === "app.capabilities") {
           return {
             requestId,
-            result: buildAgentControlCapabilities(runtime),
+            result: buildAgentControlCapabilities(runtime, controlRevisionRef.current),
           };
         }
         if (request.method === "app.wait") {
@@ -463,9 +455,6 @@ export function useAgentControlBridge({
             result: buildAgentControlSnapshot({
               runtime,
               revision: controlRevisionRef.current,
-              presetsRevision: presetsRevisionRef.current,
-              settingsRevision: settingsRevisionRef.current,
-              transportRevision: transportRevisionRef.current,
               workspace,
               presets,
               settings,
@@ -502,7 +491,6 @@ export function useAgentControlBridge({
             requestId,
             result: {
               revision: controlRevisionRef.current,
-              presetsRevision: presetsRevisionRef.current,
               preset: panelResultPreset(presets, []),
               ...(request.method === "dock.describe"
                 ? buildDockDescription(dock, dockContext)
@@ -587,7 +575,6 @@ export function useAgentControlBridge({
           const result = {
             dryRun: request.params.dryRun === true,
             revision: currentRevision,
-            presetsRevision: presetsRevisionRef.current,
             preset: panelResultPreset(presets, planned.changed),
             changed: planned.changed,
             effects: planned.effects ?? [],
@@ -638,13 +625,12 @@ export function useAgentControlBridge({
                 stage: error?.stage ?? "execution",
                 partial,
                 changed: planned.changed,
-                revision: revisionRef.current,
+                revision: controlRevisionRef.current,
                 dock: buildDockSnapshot(observableDock, dockContext),
               }
             );
           }
           result.dock = buildDockSnapshot(latestDockRef.current, dockContext);
-          result.presetsRevision = presetsRevisionRef.current;
           result.preset = panelResultPreset(presets, planned.changed);
           try {
             await flush();
@@ -660,7 +646,6 @@ export function useAgentControlBridge({
                 stateCommitted: true,
                 changed: planned.changed,
                 revision: result.revision,
-                presetsRevision: result.presetsRevision,
                 dock: result.dock,
               }
             );
@@ -756,14 +741,13 @@ export function useAgentControlBridge({
                 partial: true,
                 stage: error?.stage ?? "execution",
                 changed: planned.changed,
-                revision: transportRevisionRef.current,
+                revision: controlRevisionRef.current,
                 ...(error?.sessionId ? { sessionId: error.sessionId } : {}),
               }
             );
           }
 
           if (request.method === "transport.live.clear") {
-            transportRevisionRef.current += 1;
             bumpControlRevision();
             scheduleWaitWake();
             result.revision = controlRevisionRef.current;
@@ -882,7 +866,7 @@ export function useAgentControlBridge({
                 rollback: error?.rollback ?? "completed",
                 changed: error?.changed ?? [],
                 effects: error?.effects ?? [],
-                revision: settingsRevisionRef.current,
+                revision: controlRevisionRef.current,
               }
             );
           }
@@ -940,8 +924,6 @@ export function useAgentControlBridge({
         }
 
         if (request.method === "preset.save" || request.method === "preset.update") {
-          const initialWorkspaceRevision = revisionRef.current;
-          const initialPresetsRevision = presetsRevisionRef.current;
           const assertRevisions = () => {
             if (request.params.expectedRevision !== controlRevisionRef.current) {
               throw semanticFailure(
@@ -994,10 +976,7 @@ export function useAgentControlBridge({
             changed: planned.changed,
             preset: planned.preset,
             presetState: planned.presetState,
-            revisions: {
-              workspace: initialWorkspaceRevision,
-              presets: initialPresetsRevision,
-            },
+            revision: controlRevisionRef.current,
             warnings: planned.warnings,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
@@ -1032,7 +1011,7 @@ export function useAgentControlBridge({
           }
           result.preset = planned.preset;
           result.presetState = planned.presetState;
-          result.revisions.presets = await awaitSettlement(
+          result.revision = await awaitSettlement(
             committed,
             () => {
               presetSettlementRef.current = null;
@@ -1047,15 +1026,13 @@ export function useAgentControlBridge({
               "$",
               `Preset state committed but persistence failed: ${error?.message || String(error)}`,
               -32030,
-              { stateCommitted: true, revisions: result.revisions }
+              { stateCommitted: true, revision: result.revision }
             );
           }
           return { requestId, result };
         }
 
         if (request.method === "preset.apply") {
-          const initialWorkspaceRevision = revisionRef.current;
-          const initialPresetsRevision = presetsRevisionRef.current;
           const assertRevisions = () => {
             if (request.params.expectedRevision !== controlRevisionRef.current) {
               throw semanticFailure(
@@ -1116,10 +1093,7 @@ export function useAgentControlBridge({
             changed: planned.changed,
             preset: planned.preset,
             presetState: planned.presetState,
-            revisions: {
-              workspace: initialWorkspaceRevision,
-              presets: initialPresetsRevision,
-            },
+            revision: controlRevisionRef.current,
             warnings: planned.warnings,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
@@ -1175,15 +1149,12 @@ export function useAgentControlBridge({
                 stage: typeof error?.stage === "string" ? error.stage : "scene",
                 partial: planned.applyScene,
                 changed: planned.changed,
-                revisions: {
-                  workspace: revisionRef.current,
-                  presets: presetsRevisionRef.current,
-                },
+                revision: controlRevisionRef.current,
                 presetState: { activeId: null, dirty: false },
               }
             );
           }
-          const settled = await awaitSettlement(
+          await awaitSettlement(
             Promise.all([
               ...(presetCommitted ? [presetCommitted] : []),
               ...(workspaceCommitted ? [workspaceCommitted] : []),
@@ -1194,13 +1165,8 @@ export function useAgentControlBridge({
             },
             "The Preset application"
           );
-          let settledIndex = 0;
-          if (presetCommitted) {
-            result.revisions.presets = settled[settledIndex];
-            settledIndex += 1;
-          }
+          result.revision = controlRevisionRef.current;
           if (workspaceCommitted) {
-            result.revisions.workspace = settled[settledIndex];
             await awaitSettlement(
               waitForWorkspacePersistenceEnqueue(targetView),
               () => {},
@@ -1215,7 +1181,7 @@ export function useAgentControlBridge({
               "$",
               `Preset state committed but persistence failed: ${error?.message || String(error)}`,
               -32030,
-              { stateCommitted: true, revisions: result.revisions }
+              { stateCommitted: true, revision: result.revision }
             );
           }
           return { requestId, result };
@@ -1276,7 +1242,7 @@ export function useAgentControlBridge({
               activeId: planned.presets.activeId,
               dirty: planned.presets.dirty === true,
             },
-            revisions: { workspace: revisionRef.current, presets: currentRevision },
+            revision: currentRevision,
             warnings: planned.warnings,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
@@ -1297,7 +1263,7 @@ export function useAgentControlBridge({
           } else {
             presets.reorder(planned.presetIds);
           }
-          result.revisions.presets = await awaitSettlement(
+          result.revision = await awaitSettlement(
             committed,
             () => {
               presetSettlementRef.current = null;
@@ -1312,7 +1278,7 @@ export function useAgentControlBridge({
               "$",
               `Preset state committed but persistence failed: ${error?.message || String(error)}`,
               -32030,
-              { stateCommitted: true, revisions: result.revisions }
+              { stateCommitted: true, revision: result.revision }
             );
           }
           return { requestId, result };

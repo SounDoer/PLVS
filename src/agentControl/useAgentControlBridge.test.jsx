@@ -144,6 +144,7 @@ function Harness({
   assertPresetOperationAllowed = () => {},
   agentSettings = publicSettings,
   agentSettingsContext = settingsContext,
+  applyAgentSettings,
   agentTransport = transport,
   agentDock = dock,
   agentDockContext = {},
@@ -250,7 +251,7 @@ function Harness({
     presets: controlledPresets,
     settings: effectiveSettings,
     settingsContext: agentSettingsContext,
-    applySettings: async (next) => setSettingsState(next),
+    applySettings: applyAgentSettings ?? (async (next) => setSettingsState(next)),
     transport: transportState,
     transportContext: { docked: false },
     executeTransport,
@@ -371,17 +372,16 @@ describe("useAgentControlBridge", () => {
     const initialTree = view.store.state.tree;
 
     const capabilities = await send(request("app.capabilities", {}, "cap"));
-    expect(capabilities.result).toMatchObject({ protocolVersion: 1 });
-    expect(capabilities.result).not.toHaveProperty("revision");
+    expect(capabilities.result).toMatchObject({ protocolVersion: 1, revision: 0 });
+    expect(capabilities.result).not.toHaveProperty("revisions");
     const first = await send(request("app.inspect", {}, "inspect-1"));
-    expect(first.result.revisions.workspace).toBe(0);
-    expect(first.result.revisions.presets).toBe(0);
-    expect(first.result).not.toHaveProperty("revision");
+    expect(first.result.revision).toBe(0);
+    expect(first.result).not.toHaveProperty("revisions");
     expect(view.store.state.tree).toBe(initialTree);
 
     act(() => view.store.setTree({ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" }));
     const second = await send(request("app.inspect", {}, "inspect-2"));
-    expect(second.result.revisions.workspace).toBe(1);
+    expect(second.result.revision).toBe(1);
     expect(second.result.workspace.layout).toEqual({ type: "panel", panelId: "spectrum" });
   });
 
@@ -456,11 +456,11 @@ describe("useAgentControlBridge", () => {
     const described = await send(request("dock.describe", {}, "dock-describe"));
     expect(inspected.result).toMatchObject({
       revision: 0,
-      presetsRevision: 0,
       supported: true,
       enabled: false,
       panels: [{ id: "transport", moduleId: "transport" }],
     });
+    expect(inspected.result).not.toHaveProperty("presetsRevision");
     expect(described.result).toMatchObject({
       revision: 0,
       supported: true,
@@ -512,7 +512,14 @@ describe("useAgentControlBridge", () => {
     mount({ executeAgentDock: vi.fn(async () => Promise.reject(new Error("native refused"))) });
     await waitUntilReady();
 
-    const response = await send(request("dock.enter", {}, "dock-native-failure"));
+    const transportChanged = await send(
+      request("transport.source.file", { expectedRevision: 0 }, "transport-before-dock-failure")
+    );
+    expect(transportChanged.result.revision).toBe(1);
+
+    const response = await send(
+      request("dock.enter", { expectedRevision: 1 }, "dock-native-failure")
+    );
 
     expect(response.error).toMatchObject({
       code: -32050,
@@ -522,7 +529,7 @@ describe("useAgentControlBridge", () => {
           stage: "execution",
           partial: false,
           changed: ["dock.enabled"],
-          revision: 0,
+          revision: 1,
           dock: { enabled: false },
         },
       },
@@ -614,6 +621,38 @@ describe("useAgentControlBridge", () => {
     expect(executeTransport).not.toHaveBeenCalled();
   });
 
+  it("reports Transport execution failures at the global revision", async () => {
+    mount({
+      executeAgentTransport: vi.fn(async () => Promise.reject(new Error("device refused"))),
+      presets: {
+        list: [{ id: "preset-1", name: "Mixing" }],
+        activeId: null,
+        dirty: false,
+      },
+    });
+    await waitUntilReady();
+
+    const renamed = await send(
+      request(
+        "preset.rename",
+        { presetId: "preset-1", name: "Final Mix", expectedRevision: 0 },
+        "preset-before-transport-failure"
+      )
+    );
+    expect(renamed.result.revision).toBe(1);
+
+    const response = await send(
+      request("transport.live.start", { expectedRevision: 1 }, "transport-execution-failure")
+    );
+
+    expect(response.error).toMatchObject({
+      data: {
+        reason: "applicationFailed",
+        details: { revision: 1 },
+      },
+    });
+  });
+
   it("updates Settings atomically and reports its independent revision", async () => {
     const flush = vi.fn(async () => {});
     mount({ flush });
@@ -639,6 +678,32 @@ describe("useAgentControlBridge", () => {
       warnings: [],
     });
     expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports Settings application failures at the global revision", async () => {
+    const view = mount({
+      applyAgentSettings: vi.fn(async () => Promise.reject(new Error("setting refused"))),
+    });
+    await waitUntilReady();
+
+    act(() => view.store.setTree({ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" }));
+    const inspected = await send(request("app.inspect", {}, "workspace-before-settings-failure"));
+    expect(inspected.result.revision).toBe(1);
+
+    const response = await send(
+      request(
+        "settings.update",
+        { patch: { interfaceSize: "large" }, expectedRevision: 1 },
+        "settings-application-failure"
+      )
+    );
+
+    expect(response.error).toMatchObject({
+      data: {
+        reason: "applicationFailed",
+        details: { revision: 1 },
+      },
+    });
   });
 
   it("previews a required Settings restart without demanding confirmation", async () => {
@@ -697,7 +762,7 @@ describe("useAgentControlBridge", () => {
     act(() => adapter.handler(waitRequest));
 
     const inspected = await send(request("app.inspect", {}, "inspect-during-wait"));
-    expect(inspected.result.revisions.workspace).toBe(0);
+    expect(inspected.result.revision).toBe(0);
     act(() => view.store.setTree({ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" }));
     await waitFor(() =>
       expect(adapter.responses.some(({ requestId }) => requestId === "wait-change")).toBe(true)
@@ -797,21 +862,24 @@ describe("useAgentControlBridge", () => {
       changed: ["presets.preset-1.name"],
       preset: { id: "preset-1", name: "Final Mix" },
       presetState: { activeId: "preset-1", dirty: true },
-      revisions: { workspace: 0, presets: 1 },
+      revision: 1,
       warnings: [],
     });
+    expect(renamed.result).not.toHaveProperty("revisions");
     expect(reorderDryRun.result).toMatchObject({
       dryRun: true,
       changed: ["presets.order"],
       presetIds: ["preset-2", "preset-1"],
-      revisions: { workspace: 0, presets: 1 },
+      revision: 1,
     });
+    expect(reorderDryRun.result).not.toHaveProperty("revisions");
     expect(deleted.result).toMatchObject({
       deletedPreset: { id: "preset-1", name: "Final Mix" },
       changed: ["presets.library", "presets.activeId", "presets.dirty"],
       presetState: { activeId: null, dirty: false },
-      revisions: { workspace: 0, presets: 2 },
+      revision: 2,
     });
+    expect(deleted.result).not.toHaveProperty("revisions");
     expect(listed.result.presets).toEqual([{ id: "preset-2", name: "Mastering" }]);
     expect(flush).toHaveBeenCalledTimes(2);
   });
@@ -831,7 +899,8 @@ describe("useAgentControlBridge", () => {
       request("preset.reorder", { presetIds: ["missing"] }, "preset-reorder-invalid")
     );
 
-    expect(noOp.result).toMatchObject({ changed: [], revisions: { workspace: 0, presets: 0 } });
+    expect(noOp.result).toMatchObject({ changed: [], revision: 0 });
+    expect(noOp.result).not.toHaveProperty("revisions");
     expect(invalid.error).toMatchObject({
       code: -32602,
       data: {
@@ -881,14 +950,16 @@ describe("useAgentControlBridge", () => {
       changed: ["presets.library", "presets.activeId"],
       preset: { id: "preset-new", name: "New Mix" },
       presetState: { activeId: "preset-new", dirty: false },
-      revisions: { workspace: 0, presets: 1 },
+      revision: 1,
     });
+    expect(saved.result).not.toHaveProperty("revisions");
     expect(updateDryRun.result).toMatchObject({
       dryRun: true,
       changed: [],
       preset: { id: "preset-new", name: "New Mix" },
-      revisions: { workspace: 0, presets: 1 },
+      revision: 1,
     });
+    expect(updateDryRun.result).not.toHaveProperty("revisions");
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
@@ -1020,8 +1091,9 @@ describe("useAgentControlBridge", () => {
       changed: ["presets.activeId"],
       preset: { id: "preset-1", name: "Mix" },
       presetState: { activeId: "preset-1", dirty: false },
-      revisions: { workspace: 0, presets: 1 },
+      revision: 1,
     });
+    expect(response.result).not.toHaveProperty("revisions");
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
@@ -1062,7 +1134,7 @@ describe("useAgentControlBridge", () => {
     act(() => view.store.setFullscreen("spectrum"));
     const inspected = await send(request("app.inspect", {}, "inspect-fullscreen"));
 
-    expect(inspected.result.revisions.workspace).toBe(0);
+    expect(inspected.result.revision).toBe(0);
   });
 
   it("reports Loudness reference availability from the active Profile", async () => {
@@ -1491,8 +1563,7 @@ describe("useAgentControlBridge", () => {
         spectrumXMaxFreq: 5000,
       });
     });
-    const revision = (await send(request("app.inspect", {}, "before-reset"))).result.revisions
-      .workspace;
+    const revision = (await send(request("app.inspect", {}, "before-reset"))).result.revision;
     flush.mockClear();
 
     const response = await send(
