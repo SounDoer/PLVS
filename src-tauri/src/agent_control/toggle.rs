@@ -135,4 +135,11 @@ mod tests {
       "Programs on this machine can control PLVS through plvs-cli."
     );
   }
+
+  #[test]
+  fn a_stored_yes_does_not_survive_a_platform_that_cannot_honour_it() {
+    assert!(!compose_status(false, true, true).enabled);
+    assert!(!compose_status(true, false, true).enabled);
+    assert!(compose_status(true, true, true).enabled);
+  }
 }
