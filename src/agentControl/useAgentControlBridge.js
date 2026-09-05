@@ -975,9 +975,11 @@ export function useAgentControlBridge({
           }
           const result = {
             dryRun: request.params.dryRun === true,
-            changed: planned.changed,
-            preset: planned.preset,
-            presetState: planned.presetState,
+            changed: planned.changed.length > 0,
+            state: {
+              preset: planned.preset,
+              presets: planned.presetState,
+            },
             revision: controlRevisionRef.current,
             warnings: planned.warnings,
           };
@@ -1011,8 +1013,8 @@ export function useAgentControlBridge({
               );
             }
           }
-          result.preset = planned.preset;
-          result.presetState = planned.presetState;
+          result.state.preset = planned.preset;
+          result.state.presets = planned.presetState;
           result.revision = await awaitSettlement(
             committed,
             () => {
@@ -1092,9 +1094,11 @@ export function useAgentControlBridge({
           };
           const result = {
             dryRun: request.params.dryRun === true,
-            changed: planned.changed,
-            preset: planned.preset,
-            presetState: planned.presetState,
+            changed: planned.changed.length > 0,
+            state: {
+              preset: planned.preset,
+              presets: planned.presetState,
+            },
             revision: controlRevisionRef.current,
             warnings: planned.warnings,
           };
@@ -1236,13 +1240,15 @@ export function useAgentControlBridge({
           }
           const result = {
             dryRun: request.params.dryRun === true,
-            changed: planned.changed,
-            ...(planned.preset ? { preset: planned.preset } : {}),
+            changed: planned.changed.length > 0,
             ...(planned.deletedPreset ? { deletedPreset: planned.deletedPreset } : {}),
-            ...(planned.presetIds ? { presetIds: planned.presetIds } : {}),
-            presetState: {
-              activeId: planned.presets.activeId,
-              dirty: planned.presets.dirty === true,
+            state: {
+              ...(planned.preset ? { preset: planned.preset } : {}),
+              presets: {
+                activeId: planned.presets.activeId,
+                dirty: planned.presets.dirty === true,
+                ...(planned.presetIds ? { presetIds: planned.presetIds } : {}),
+              },
             },
             revision: currentRevision,
             warnings: planned.warnings,
