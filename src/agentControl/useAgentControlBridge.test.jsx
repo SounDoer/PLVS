@@ -161,6 +161,7 @@ function Harness({
   executeAgentTransport,
   presets = { activeId: null, dirty: false },
   applyPresetToWorkspace = false,
+  presetApplyBarrier = null,
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
@@ -223,6 +224,7 @@ function Harness({
         // the Preset, never the stored record itself.
         if (preset) store.replaceWorkspace(presetWorkspaceView(preset));
       }
+      if (presetApplyBarrier) await presetApplyBarrier;
       setPresetState((current) => ({ ...current, activeId: id, dirty: false }));
       return true;
     },
@@ -1347,6 +1349,80 @@ describe("useAgentControlBridge", () => {
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
+  it("publishes one revision after all staggered Preset Apply commits settle", async () => {
+    const flush = vi.fn(async () => {});
+    const presetApplyBarrier = createDeferred();
+    const target = {
+      id: "preset-1",
+      name: "Target",
+      ...DEFAULT_WORKSPACE_STATE,
+      tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+    };
+    const view = mount({
+      flush,
+      applyPresetToWorkspace: true,
+      presetApplyBarrier: presetApplyBarrier.promise,
+      capturePresetSnapshot: vi.fn(async () => ({
+        ...DEFAULT_WORKSPACE_STATE,
+        windowPinned: false,
+      })),
+      presets: { list: [target], activeId: null, dirty: false },
+    });
+    await waitUntilReady();
+    const applyRequest = request(
+      "preset.apply",
+      { presetId: "preset-1", expectedRevision: 0 },
+      "staggered-preset-apply"
+    );
+    act(() => {
+      adapter.handler(applyRequest);
+    });
+    await waitFor(() => expect(view.store.state.tree).toEqual(target.tree));
+
+    act(() => {
+      adapter.handler(
+        request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, "wait-preset-apply")
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(
+      adapter.responses.find(({ requestId }) => requestId === "wait-preset-apply")
+    ).toBeUndefined();
+
+    await act(async () => {
+      presetApplyBarrier.resolve();
+    });
+    await waitFor(() =>
+      expect(
+        adapter.responses.some(({ requestId }) => requestId === "staggered-preset-apply")
+      ).toBe(true)
+    );
+    await waitFor(() =>
+      expect(adapter.responses.some(({ requestId }) => requestId === "wait-preset-apply")).toBe(
+        true
+      )
+    );
+    const applied = adapter.responses.find(
+      ({ requestId }) => requestId === "staggered-preset-apply"
+    );
+    const waited = adapter.responses.find(({ requestId }) => requestId === "wait-preset-apply");
+
+    expect(applied.result.revision).toBe(1);
+    expect(waited.result).toEqual({
+      outcome: "changed",
+      matchedImmediately: false,
+      revision: 1,
+    });
+    expect(view.store.state.tree).toEqual(target.tree);
+    expect(applied.result.state.presets).toMatchObject({
+      activeId: "preset-1",
+      dirty: false,
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
   it("previews Preset resource fallbacks", async () => {
     const target = {
       id: "preset-1",
@@ -1791,11 +1867,15 @@ describe("useAgentControlBridge", () => {
   });
 
   it("reports a panel persistence failure with the committed revision", async () => {
-    const flush = vi.fn(async () => {
-      throw new Error("disk full");
-    });
+    const flush = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("disk full"))
+      .mockResolvedValue(undefined);
     const view = mount({ flush });
     await waitUntilReady();
+    act(() => {
+      adapter.handler(request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, "wait-flush"));
+    });
 
     const response = await send(
       request("panel.update", { panelId: "levelMeter", patch: { mode: "rms" } }, "panel-flush")
@@ -1809,6 +1889,24 @@ describe("useAgentControlBridge", () => {
       },
     });
     expect(view.store.state.panelControlsById.levelMeter.levelMeterMode).toBe("rms");
+
+    await waitFor(() =>
+      expect(adapter.responses.some(({ requestId }) => requestId === "wait-flush")).toBe(true)
+    );
+    expect(adapter.responses.find(({ requestId }) => requestId === "wait-flush").result).toEqual({
+      outcome: "changed",
+      matchedImmediately: false,
+      revision: 1,
+    });
+
+    const recovered = await send(
+      request(
+        "panel.update",
+        { panelId: "levelMeter", patch: { mode: "peak" }, expectedRevision: 1 },
+        "panel-after-flush"
+      )
+    );
+    expect(recovered.result).toMatchObject({ changed: true, revision: 2 });
   });
 
   it("resets panel controls and local axis state as one persisted Workspace mutation", async () => {
