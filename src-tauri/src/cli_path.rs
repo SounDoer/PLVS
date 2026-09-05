@@ -5,12 +5,12 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliPathStatus {
-  supported: bool,
-  install_dir: Option<String>,
-  cli_path: Option<String>,
-  installed: bool,
-  on_path: bool,
-  message: String,
+  pub(crate) supported: bool,
+  pub(crate) install_dir: Option<String>,
+  pub(crate) cli_path: Option<String>,
+  pub(crate) installed: bool,
+  pub(crate) on_path: bool,
+  pub(crate) message: String,
 }
 
 #[tauri::command]
