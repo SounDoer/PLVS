@@ -98,7 +98,7 @@ enum HelpTopic {
 }
 
 fn parse_args(args: &[String]) -> Result<CliCommand, String> {
-  parse_args_with_app(args, cfg!(feature = "dev-identity"))
+  parse_args_with_app(args, true)
 }
 
 fn parse_args_with_app(args: &[String], app_available: bool) -> Result<CliCommand, String> {
@@ -731,7 +731,7 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]\n  plvs-cli devices --json [--out <file>]\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli profile validate <file> [--json] [--out <file>]\n  plvs-cli profile export [--out <file>]\n  plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use devices --json to list stable capture ids before capture.\n  Use analyze --dialogue for dialogue-gated loudness on a file.\n  Use profile export/import to back up or deploy desktop configuration.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli probe <path> --json [--out <file>]\n  plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n  plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]\n  plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]\n  plvs-cli devices --json [--out <file>]\n  plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n  plvs-cli profile validate <file> [--json] [--out <file>]\n  plvs-cli profile export [--out <file>]\n  plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]\n  plvs-cli report <analysis.json> --format markdown [--out <file>]\n  plvs-cli app <command> [options]\n\nAgent usage:\n  Add --json to doctor and analyze for stable machine-readable output.\n  Use probe before analyze to discover absolute audio track indices.\n  Use devices --json to list stable capture ids before capture.\n  Use analyze --dialogue for dialogue-gated loudness on a file.\n  Use profile export/import to back up or deploy desktop configuration.\n  Use analyze for exactly one file.\n  Use analyze-batch for two or more files.\n  Use capture to measure live audio from a capture device instead of a file.\n  Use report --format markdown when the user asks for a human-readable report, summary, table, or Markdown output.\n  Use --manifest when paths are numerous, generated programmatically, or need reproducibility.\n  Use --out to save the same output that is written to stdout.\n  Use app to inspect or control a running PLVS window; see plvs-cli app --help.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors or a requested QC check failed\n  2  invalid usage or CLI failure before a valid report"
     }
     HelpTopic::Doctor => {
       "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
@@ -772,14 +772,7 @@ pub fn run(args: &[String]) -> ExitCode {
 
   match command {
     CliCommand::Help(topic) => {
-      if topic == HelpTopic::Root && cfg!(feature = "dev-identity") {
-        println!(
-          "{}\n\nDevelopment app control:\n  plvs-cli app --help",
-          help_text(topic)
-        );
-      } else {
-        println!("{}", help_text(topic));
-      }
+      println!("{}", help_text(topic));
       ExitCode::SUCCESS
     }
     CliCommand::Version => {
@@ -1167,6 +1160,20 @@ mod tests {
       parse_args_with_app(&args(&["help", "app"]), false),
       Err("Unknown help topic: app".to_string())
     );
+  }
+
+  #[test]
+  fn exposes_the_app_command_family_in_every_build() {
+    assert!(parse_args(&args(&["app", "inspect", "--json"])).is_ok());
+    assert_eq!(
+      parse_args(&args(&["help", "app"])),
+      Ok(CliCommand::Help(HelpTopic::App))
+    );
+  }
+
+  #[test]
+  fn root_help_points_at_the_app_family() {
+    assert!(help_text(HelpTopic::Root).contains("plvs-cli app"));
   }
 
   #[test]
