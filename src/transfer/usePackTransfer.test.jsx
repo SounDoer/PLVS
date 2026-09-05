@@ -2,7 +2,11 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
+// `isTauri` is a vi.fn created inside the factory (not a variable closed over from this file's
+// top level) because `persistence/index.js` below calls it eagerly at import time, before any
+// top-level `const` in this file has run -- closing over an outer variable here would throw a
+// TDZ ReferenceError the moment that import resolves.
+vi.mock("../ipc/env.js", () => ({ isTauri: vi.fn(() => true) }));
 
 const readProfileFile = vi.fn();
 const writeProfileFile = vi.fn();
@@ -18,11 +22,13 @@ vi.mock("../ipc/fileDialog.js", () => ({
   savePackFile: (...args) => savePackFile(...args),
 }));
 
+import { isTauri } from "../ipc/env.js";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 import { usePackTransfer } from "./usePackTransfer.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  isTauri.mockReturnValue(true);
   settingsStore.reset();
   presetsStore.reset();
   themesStore.reset();
@@ -66,6 +72,69 @@ describe("usePackTransfer export", () => {
     });
 
     expect(savePackFile.mock.calls[0][1]).toBe("A.plvsloudness");
+  });
+
+  it("bundles only the loudness profiles referenced by the exported presets", async () => {
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: "off",
+        profiles: [
+          { id: "a", name: "A", referenceLufs: -23, rules: [] },
+          { id: "b", name: "B", referenceLufs: -16, rules: [] },
+        ],
+      },
+    });
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Preset 1",
+          panelsById: {},
+          loudnessProfileActive: "profile:a",
+        },
+      ],
+    });
+    savePackFile.mockResolvedValue("C:/out.plvspreset");
+
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => {
+      await result.current.exportSelection("presets", ["p1"]);
+    });
+
+    const written = JSON.parse(writeProfileFile.mock.calls[0][1]);
+    expect(written.items.map((item) => item.id)).toEqual(["p1"]);
+    expect(written.loudnessProfiles.map((profile) => profile.id)).toEqual(["a"]);
+  });
+
+  it("downloads a Blob instead of writing through Tauri outside the desktop app", async () => {
+    isTauri.mockReturnValue(false);
+    const createObjectURL = vi.fn().mockReturnValue("blob:mock");
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+    let downloadedName;
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function () {
+      downloadedName = this.download;
+    });
+
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: "off",
+        profiles: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      },
+    });
+
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => {
+      await result.current.exportSelection("loudness", ["a"]);
+    });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock");
+    expect(downloadedName).toBe("A.plvsloudness");
+    expect(writeProfileFile).not.toHaveBeenCalled();
+
+    clickSpy.mockRestore();
   });
 });
 

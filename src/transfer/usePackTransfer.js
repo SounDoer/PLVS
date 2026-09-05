@@ -43,6 +43,9 @@ export function usePackTransfer() {
   const [status, setStatus] = useState("");
   const [review, setReview] = useState(null);
 
+  // No `flushPersistence()` here: unlike `profile.js`'s `exportProfile()`, which round-trips
+  // through a Rust command that reads the store file from disk, this hook's reads never leave
+  // the in-memory JS store.
   const exportSelection = useCallback(
     async (type, selectedIds) => {
       if (busy) return;
@@ -114,6 +117,11 @@ export function usePackTransfer() {
         });
         setReview({ type, pack, ...planned });
       } catch (error) {
+        // The specific messages cover problems with the file's *contents* -- what a recipient of
+        // a shared file actually hits. A filesystem failure here (deleted between picking and
+        // reading, permission denied, disk full) is rare, self-explanatory, and its underlying OS
+        // string is implementation detail, not user-facing copy, so it falls back to the generic
+        // message on purpose rather than by omission.
         setStatus(error instanceof PackValidationError ? error.message : "Import failed");
       } finally {
         setBusy(false);
