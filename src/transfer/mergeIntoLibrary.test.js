@@ -186,4 +186,20 @@ describe("planPackImport", () => {
     });
     expect(result.itemAdditions[0].loudnessProfileActive).toBe("off");
   });
+
+  // Our own exporter never bundles a profile no preset references (buildPack filters through
+  // referencedProfileIds), but planPackImport is a pure function that does not enforce that --
+  // a hand-edited or third-party file could carry one, and it should still import.
+  it("imports a bundled profile that no preset references", () => {
+    const Q = { id: "pb", name: "Prof B", referenceLufs: -16, rules: [] };
+    const preset = { id: "p1", name: "P1", loudnessProfileActive: "profile:pa" };
+    const result = planPackImport("presets", presetPack([preset], [P, Q]), {
+      existingItems: [],
+      existingProfiles: [],
+      makeId: counter(),
+    });
+    expect(result.profileAdditions).toEqual([P, Q]);
+    expect(result.profilePlan.map((entry) => entry.sourceId)).toEqual(["pa", "pb"]);
+    expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:pa");
+  });
 });

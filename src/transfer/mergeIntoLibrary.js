@@ -106,6 +106,11 @@ export function planPackImport(
     return { profileAdditions: [], profilePlan: [], itemAdditions: additions, itemPlan: plan };
   }
 
+  /// Both stages below share one `makeId`, but a minted profile id can never collide with a
+  /// preset id: profiles and presets live in separate stores and are never looked up by bare id
+  /// across that boundary -- the only link is the `profile:<id>` selection string, which is
+  /// domain-scoped by construction -- and the profile stage's id map is complete before the
+  /// preset stage mints any id.
   const profiles = planMerge(existingProfiles, pack.loudnessProfiles ?? [], { makeId });
   const idMap = new Map(profiles.plan.map((entry) => [entry.sourceId, entry.finalId]));
   const remapped = pack.items.map((preset) => remapPresetProfile(preset, idMap));
