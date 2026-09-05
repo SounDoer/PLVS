@@ -42,6 +42,35 @@ describe("loudness adapter", () => {
     expect(blob.profiles.map((p) => p.id)).toEqual(["a", "b"]);
     expect(blob.active).toBe("profile:a");
   });
+
+  it("appends exactly the given item on a fresh store, injecting no starter profile", () => {
+    settingsStore.reset();
+    getAdapter("loudness").append([{ id: "b", name: "B", referenceLufs: -16, rules: [] }]);
+    const blob = settingsStore.read().loudnessProfiles;
+    expect(blob.profiles.map((p) => p.id)).toEqual(["b"]);
+  });
+
+  it("preserves a malformed profile already on disk", () => {
+    // No `id` -- rejected by `normalizeRuleDocument`.
+    const malformed = { name: "Malformed", referenceLufs: -23, rules: [] };
+    settingsStore.patch({
+      loudnessProfiles: { active: "off", profiles: [malformed] },
+    });
+    getAdapter("loudness").append([{ id: "b", name: "B", referenceLufs: -16, rules: [] }]);
+    const blob = settingsStore.read().loudnessProfiles;
+    expect(blob.profiles).toContainEqual(malformed);
+    expect(blob.profiles.map((p) => p.id)).toEqual([undefined, "b"]);
+  });
+
+  it("does not reset active when the active profile would be dropped by the normalizer", () => {
+    const malformed = { name: "Malformed", referenceLufs: -23, rules: [] };
+    settingsStore.patch({
+      loudnessProfiles: { active: "profile:ghost", profiles: [malformed] },
+    });
+    getAdapter("loudness").append([{ id: "b", name: "B", referenceLufs: -16, rules: [] }]);
+    const blob = settingsStore.read().loudnessProfiles;
+    expect(blob.active).toBe("profile:ghost");
+  });
 });
 
 describe("presets adapter", () => {
@@ -71,6 +100,14 @@ describe("themes adapter", () => {
       name: "Colliding",
     };
     getAdapter("themes").append([collidingTheme]);
+    const raw = themesStore.read();
+    expect(raw.themes.t1.name).toBe("T1");
+    expect(raw.order).toEqual(["t1"]);
+  });
+
+  it("writes only the first of two items sharing an id in one batch", () => {
+    const dup = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "Second" };
+    getAdapter("themes").append([THEME, dup]);
     const raw = themesStore.read();
     expect(raw.themes.t1.name).toBe("T1");
     expect(raw.order).toEqual(["t1"]);

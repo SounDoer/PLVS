@@ -7,7 +7,7 @@
 /// `dirty` and `settings.themeId` are all left exactly as they were.
 
 import { presetsStore, settingsStore } from "../persistence/index.js";
-import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
+import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import {
   listCustomThemes,
   listCustomThemesOrdered,
@@ -17,14 +17,29 @@ import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 
 const adapters = {
   loudness: {
+    // Reports what's in the library, not a normalized/repaired view: malformed entries are hidden
+    // (each is run through `normalizeRuleDocument` individually, and de-duped by id) but nothing is
+    // seeded and nothing is written back. Seeding an empty store is `LoudnessProfileContext`'s job.
     list() {
-      return normalizeLoudnessProfiles(settingsStore.read().loudnessProfiles).profiles;
+      const raw = settingsStore.read().loudnessProfiles;
+      const profiles =
+        raw && typeof raw === "object" && Array.isArray(raw.profiles) ? raw.profiles : [];
+      const seenIds = new Set();
+      return profiles
+        .map((entry) => normalizeRuleDocument(entry))
+        .filter((profile) => {
+          if (!profile || seenIds.has(profile.id)) return false;
+          seenIds.add(profile.id);
+          return true;
+        });
     },
     append(items) {
       if (items.length === 0) return;
-      const current = normalizeLoudnessProfiles(settingsStore.read().loudnessProfiles);
+      const raw = settingsStore.read().loudnessProfiles;
+      const current = raw && typeof raw === "object" ? raw : {};
+      const profiles = Array.isArray(current.profiles) ? current.profiles : [];
       settingsStore.patch({
-        loudnessProfiles: { ...current, profiles: [...current.profiles, ...items] },
+        loudnessProfiles: { ...current, profiles: [...profiles, ...items] },
       });
     },
   },
@@ -51,9 +66,11 @@ const adapters = {
       // this adapter enforces its own non-destructive contract instead of borrowing one from a
       // caller that could change.
       const existing = listCustomThemes();
+      const written = new Set();
       for (const theme of items) {
-        if (theme && Object.hasOwn(existing, theme.id)) continue;
+        if (theme && (Object.hasOwn(existing, theme.id) || written.has(theme.id))) continue;
         upsertCustomTheme(theme);
+        if (theme) written.add(theme.id);
       }
     },
   },
