@@ -605,10 +605,10 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       dryRun: false,
       revision: 1,
-      changed: ["transport.source"],
+      changed: true,
       effects: [],
       warnings: [],
-      source: "file",
+      state: { transport: { source: "file" } },
     });
   });
 
@@ -618,17 +618,39 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
 
     const response = await send(
-      request("transport.live.start", { dryRun: true }, "transport-start-dry")
+      request("transport.source.file", { dryRun: true }, "transport-source-file-dry")
     );
 
     expect(response.result).toMatchObject({
       dryRun: true,
       revision: 0,
-      changed: ["transport.live.state"],
-      source: "live",
-      live: { state: "stopped" },
+      changed: true,
+      state: { transport: { source: "file" } },
     });
     expect(executeTransport).not.toHaveBeenCalled();
+  });
+
+  it("reports completed Transport actions with their final state", async () => {
+    mount();
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.live.start", { expectedRevision: 0 }, "transport-start")
+    );
+
+    expect(response.result).toMatchObject({
+      action: "transport.live.start",
+      status: "completed",
+      revision: 1,
+      state: {
+        transport: {
+          source: "live",
+          live: { state: "running", resolvedDeviceId: "device-1" },
+        },
+      },
+    });
+    expect(response.result).not.toHaveProperty("changed");
+    expect(response.result).not.toHaveProperty("dryRun");
   });
 
   it("rejects stale Transport mutations before execution", async () => {

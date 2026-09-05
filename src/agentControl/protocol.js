@@ -1,4 +1,15 @@
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
+const TRANSPORT_ACTIONS = new Set([
+  "transport.live.start",
+  "transport.live.stop",
+  "transport.file.analyze",
+  "transport.file.reanalyze",
+  "transport.file.stop",
+]);
+
+export function isTransportAction(method) {
+  return TRANSPORT_ACTIONS.has(method);
+}
 
 function isPlainJsonObject(value) {
   return (
@@ -323,7 +334,7 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  const transportMutations = new Set([
+  const transportCommands = new Set([
     "transport.source.live",
     "transport.source.file",
     "transport.live.start",
@@ -336,7 +347,8 @@ export function normalizeAgentControlRequest(input) {
     "transport.file.remove",
     "transport.file.clear",
   ]);
-  if (transportMutations.has(input.method)) {
+  if (transportCommands.has(input.method)) {
+    const isAction = isTransportAction(input.method);
     const needsPath = input.method === "transport.file.analyze";
     const needsSession = [
       "transport.file.reanalyze",
@@ -352,7 +364,7 @@ export function normalizeAgentControlRequest(input) {
       ...(needsSession ? ["sessionId"] : []),
       ...(allowsStopFileAnalysis ? ["allowStopFileAnalysis"] : []),
       "expectedRevision",
-      "dryRun",
+      ...(!isAction ? ["dryRun"] : []),
     ]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
@@ -382,7 +394,11 @@ export function normalizeAgentControlRequest(input) {
         "allowStopFileAnalysis must be a boolean."
       );
     }
-    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+    if (
+      !isAction &&
+      input.params.dryRun !== undefined &&
+      typeof input.params.dryRun !== "boolean"
+    ) {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
     const revisionError = validateExpectedRevision(input.params);
@@ -400,7 +416,9 @@ export function normalizeAgentControlRequest(input) {
           ...(input.params.allowStopFileAnalysis !== undefined
             ? { allowStopFileAnalysis: input.params.allowStopFileAnalysis }
             : {}),
-          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+          ...(!isAction && input.params.dryRun !== undefined
+            ? { dryRun: input.params.dryRun }
+            : {}),
         },
       },
     };

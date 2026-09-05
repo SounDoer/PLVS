@@ -8,7 +8,11 @@ import {
 import { flushPersistence } from "../persistence/index.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
-import { agentControlRpcError, normalizeAgentControlRequest } from "./protocol.js";
+import {
+  agentControlRpcError,
+  isTransportAction,
+  normalizeAgentControlRequest,
+} from "./protocol.js";
 import {
   buildAxisInspection,
   buildAxisSchema,
@@ -37,7 +41,11 @@ import {
   buildSettingsSchema,
   planSettingsUpdate,
 } from "./settingsControl.js";
-import { planTransportMutation, transportLifecycleSignature } from "./transportControl.js";
+import {
+  planTransportMutation,
+  projectTransportMutation,
+  transportLifecycleSignature,
+} from "./transportControl.js";
 import {
   buildDockDescription,
   buildDockPanelDescription,
@@ -712,10 +720,15 @@ export function useAgentControlBridge({
               planned.confirmation
             );
           }
+          const action = isTransportAction(request.method);
           const result = {
-            dryRun: request.params.dryRun === true,
+            ...(action
+              ? { action: request.method, status: "completed" }
+              : {
+                  dryRun: request.params.dryRun === true,
+                  changed: planned.changed.length > 0,
+                }),
             revision: currentRevision,
-            changed: planned.changed,
             effects: planned.effects,
             warnings: planned.warnings,
             ...(planned.affectedSessions.length > 0
@@ -724,7 +737,15 @@ export function useAgentControlBridge({
             ...(planned.evictedSessions.length > 0
               ? { evictedSessions: planned.evictedSessions }
               : {}),
-            ...latestTransportRef.current,
+            state: {
+              transport: action
+                ? latestTransportRef.current
+                : projectTransportMutation(
+                    latestTransportRef.current,
+                    request.method,
+                    request.params
+                  ),
+            },
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
             return { requestId, result };
@@ -770,7 +791,8 @@ export function useAgentControlBridge({
               );
             }
           }
-          Object.assign(result, latestTransportRef.current, execution?.result ?? {});
+          result.state.transport = latestTransportRef.current;
+          Object.assign(result, execution?.result ?? {});
           if (Array.isArray(execution?.affectedSessions)) {
             result.affectedSessions = execution.affectedSessions;
           }

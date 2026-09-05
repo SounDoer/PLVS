@@ -76,6 +76,35 @@ export function transportLifecycleSignature(snapshot) {
   });
 }
 
+export function projectTransportMutation(snapshot, method, params = {}) {
+  const projected = cloneJson(snapshot);
+  if (method === "transport.source.live") {
+    projected.source = "live";
+    const analyzingId = projected.files.analyzingId;
+    projected.files.analyzingId = null;
+    if (analyzingId) {
+      const session = projected.files.sessions.find(({ id }) => id === analyzingId);
+      if (session) session.state = "stopped";
+    }
+  } else if (method === "transport.source.file") {
+    projected.source = "file";
+    projected.live.state = "stopped";
+  } else if (method === "transport.file.select") {
+    projected.source = "file";
+    projected.live.state = "stopped";
+    projected.files.activeId = params.sessionId;
+  } else if (method === "transport.file.remove") {
+    projected.files.sessions = projected.files.sessions.filter(({ id }) => id !== params.sessionId);
+    if (projected.files.activeId === params.sessionId) {
+      projected.files.activeId = projected.files.sessions.at(-1)?.id ?? null;
+    }
+    if (projected.files.analyzingId === params.sessionId) projected.files.analyzingId = null;
+  } else if (method === "transport.file.clear") {
+    projected.files = { activeId: null, analyzingId: null, sessions: [] };
+  }
+  return projected;
+}
+
 function issue(code, path, message) {
   return { code, path, message };
 }

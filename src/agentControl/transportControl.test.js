@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildTransportSnapshot,
   planTransportMutation,
+  projectTransportMutation,
   transportLifecycleSignature,
 } from "./transportControl.js";
 
@@ -142,5 +143,46 @@ describe("Transport Control", () => {
     expect(
       planTransportMutation(snapshot, "transport.file.clear", {}, context).affectedSessions
     ).toHaveLength(5);
+  });
+
+  it("projects final state for side-effect-free Transport mutations", () => {
+    const snapshot = buildTransportSnapshot(runtime, context);
+    const live = {
+      ...snapshot,
+      source: "live",
+      live: { ...snapshot.live, state: "running" },
+    };
+
+    expect(projectTransportMutation(snapshot, "transport.source.live", {})).toMatchObject({
+      source: "live",
+    });
+    expect(projectTransportMutation(live, "transport.source.file", {})).toMatchObject({
+      source: "file",
+      live: { state: "stopped" },
+    });
+    expect(
+      projectTransportMutation(live, "transport.file.select", { sessionId: "file-1" })
+    ).toMatchObject({
+      source: "file",
+      live: { state: "stopped" },
+      files: { activeId: "file-1" },
+    });
+    expect(
+      projectTransportMutation(snapshot, "transport.file.remove", { sessionId: "file-1" })
+    ).toMatchObject({
+      files: { activeId: null, sessions: [] },
+    });
+    const withFallback = structuredClone(snapshot);
+    withFallback.files.sessions.push({ ...withFallback.files.sessions[0], id: "file-2" });
+    expect(
+      projectTransportMutation(withFallback, "transport.file.remove", { sessionId: "file-1" })
+    ).toMatchObject({
+      files: { activeId: "file-2", sessions: [expect.objectContaining({ id: "file-2" })] },
+    });
+    expect(projectTransportMutation(snapshot, "transport.file.clear", {})).toMatchObject({
+      files: { activeId: null, analyzingId: null, sessions: [] },
+    });
+    expect(snapshot.source).toBe("file");
+    expect(snapshot.files.sessions).toHaveLength(1);
   });
 });

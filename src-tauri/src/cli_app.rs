@@ -346,6 +346,7 @@ fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
       )
     }
   };
+  let action = is_transport_action(&method);
   let mut expected_revision = None;
   let mut allow_stop_file_analysis = false;
   let mut dry_run = false;
@@ -357,9 +358,12 @@ fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
         json = true;
         index += 1;
       }
-      "--dry-run" => {
+      "--dry-run" if !action => {
         dry_run = true;
         index += 1;
+      }
+      "--dry-run" => {
+        return Err(format!("The {method} action does not accept --dry-run."));
       }
       "--allow-stop-file-analysis" => {
         if !matches!(
@@ -407,6 +411,17 @@ fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
     allow_stop_file_analysis,
     dry_run,
   })
+}
+
+fn is_transport_action(method: &str) -> bool {
+  matches!(
+    method,
+    "transport.live.start"
+      | "transport.live.stop"
+      | "transport.file.analyze"
+      | "transport.file.reanalyze"
+      | "transport.file.stop"
+  )
 }
 
 fn parse_wait_args(args: &[String]) -> Result<CliAppCommand, String> {
@@ -945,7 +960,7 @@ fn is_help(value: &str) -> bool {
 }
 
 fn base_help_text() -> &'static str {
-  "PLVS CLI - app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json\n  plvs-cli app preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop|clear> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file <reanalyze|stop|select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json\n  plvs-cli app preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli app transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli app transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli app transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 pub fn help_text() -> &'static str {
@@ -1265,7 +1280,9 @@ fn request_for_command<R: Read>(
         };
         params.insert(key.clone(), value);
       }
-      params.insert("dryRun".to_string(), Value::Bool(*dry_run));
+      if !is_transport_action(method) {
+        params.insert("dryRun".to_string(), Value::Bool(*dry_run));
+      }
       if let Some(revision) = expected_revision {
         params.insert("expectedRevision".to_string(), Value::from(*revision));
       }
@@ -2205,7 +2222,6 @@ mod tests {
       "--expected-revision",
       "4",
       "--allow-stop-file-analysis",
-      "--dry-run",
       "--json",
     ]))
     .unwrap();
@@ -2213,7 +2229,7 @@ mod tests {
     assert_eq!(request.method, "transport.live.start");
     assert_eq!(request.params["expectedRevision"], 4);
     assert_eq!(request.params["allowStopFileAnalysis"], true);
-    assert_eq!(request.params["dryRun"], true);
+    assert!(request.params.get("dryRun").is_none());
 
     let select = parse_app_args(&args(&[
       "transport",
@@ -2232,6 +2248,15 @@ mod tests {
     for invalid in [
       args(&["transport", "inspect"]),
       args(&["transport", "live", "start", "--json", "extra"]),
+      args(&[
+        "transport",
+        "live",
+        "start",
+        "--expected-revision",
+        "0",
+        "--dry-run",
+        "--json",
+      ]),
       args(&["transport", "file", "analyze", "--json"]),
       args(&[
         "transport",
