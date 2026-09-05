@@ -24,6 +24,7 @@ vi.mock("../ipc/fileDialog.js", () => ({
 
 import { isTauri } from "../ipc/env.js";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import { STATUS_DISMISS_MS } from "../hooks/useTransientStatus.js";
 import { usePackTransfer } from "./usePackTransfer.js";
 
 beforeEach(() => {
@@ -55,6 +56,34 @@ describe("usePackTransfer export", () => {
     const written = JSON.parse(writeProfileFile.mock.calls[0][1]);
     expect(written.kind).toBe("loudness-pack");
     expect(written.items.map((item) => item.id)).toEqual(["a"]);
+  });
+
+  // The dismiss mechanism itself is covered in useTransientStatus.test.jsx; this pins that the
+  // hook actually uses it, so a swap back to a plain useState does not go unnoticed.
+  it("clears the status line on its own", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      settingsStore.patch({
+        loudnessProfiles: {
+          active: "off",
+          profiles: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+        },
+      });
+      savePackFile.mockResolvedValue("C:/out.plvsloudness");
+
+      const { result } = renderHook(() => usePackTransfer());
+      await act(async () => {
+        await result.current.exportSelection("loudness", ["a"]);
+      });
+      expect(result.current.status).toBe("Loudness Profiles exported");
+
+      await act(async () => {
+        vi.advanceTimersByTime(STATUS_DISMISS_MS);
+      });
+      expect(result.current.status).toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("names the file after the item when exactly one is selected", async () => {

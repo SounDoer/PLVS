@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTransientStatus } from "./useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { pickConfigurationProfileFile, saveConfigurationProfileFile } from "../ipc/fileDialog.js";
@@ -11,7 +12,7 @@ import {
 
 export function useConfigurationProfileActions() {
   const [configurationBusy, setConfigurationBusy] = useState(false);
-  const [configurationStatus, setConfigurationStatus] = useState("");
+  const [configurationStatus, setConfigurationStatus] = useTransientStatus();
 
   const exportConfiguration = useCallback(async () => {
     if (configurationBusy) return;

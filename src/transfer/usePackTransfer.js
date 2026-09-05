@@ -6,6 +6,7 @@
 /// a machine whose user did not make it, and "Import failed" tells them nothing they can act on.
 
 import { useCallback, useState } from "react";
+import { useTransientStatus } from "../hooks/useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { pickPackFile, savePackFile } from "../ipc/fileDialog.js";
@@ -40,7 +41,7 @@ function downloadInBrowser(fileName, contents) {
 
 export function usePackTransfer() {
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useTransientStatus();
   const [review, setReview] = useState(null);
 
   // No `flushPersistence()` here: unlike `profile.js`'s `exportProfile()`, which round-trips
