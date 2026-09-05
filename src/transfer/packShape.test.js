@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { PACK_KINDS, PACK_VERSION, buildPack } from "./packShape.js";
+import {
+  PACK_KINDS,
+  PACK_VERSION,
+  PackValidationError,
+  buildPack,
+  parsePack,
+} from "./packShape.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 
 describe("buildPack", () => {
@@ -55,5 +61,61 @@ describe("buildPack", () => {
   it("drops a malformed theme document", () => {
     const pack = buildPack("themes", [{ version: 2, id: "bad" }], { exportedAt: "x" });
     expect(pack.items).toEqual([]);
+  });
+});
+
+describe("parsePack", () => {
+  const good = {
+    app: "PLVS",
+    kind: "theme-pack",
+    version: 1,
+    exportedAt: "2026-09-05T00:00:00.000Z",
+    items: [],
+  };
+
+  it("accepts a well-formed pack of the expected type", () => {
+    expect(parsePack(good, "themes")).toEqual({ ...good, items: [] });
+  });
+
+  it("rejects a non-object", () => {
+    expect(() => parsePack("nope", "themes")).toThrow(PackValidationError);
+    expect(() => parsePack("nope", "themes")).toThrow(/not a PLVS file/i);
+  });
+
+  it("rejects a file from another app", () => {
+    expect(() => parsePack({ ...good, app: "OTHER" }, "themes")).toThrow(/not a PLVS file/i);
+  });
+
+  it("names the right row when the kind is a known but different pack", () => {
+    expect(() => parsePack({ ...good, kind: "preset-pack" }, "themes")).toThrow(
+      "This is a Presets file. Import it from the Presets row."
+    );
+  });
+
+  it("rejects the whole-configuration file with its own message", () => {
+    expect(() => parsePack({ ...good, kind: "configuration-profile" }, "themes")).toThrow(
+      /whole configuration/i
+    );
+  });
+
+  it("rejects a newer version", () => {
+    expect(() => parsePack({ ...good, version: 99 }, "themes")).toThrow(/newer version/i);
+  });
+
+  it("rejects a missing version", () => {
+    expect(() => parsePack({ ...good, version: "1" }, "themes")).toThrow(/missing a version/i);
+  });
+
+  it("drops items the normalizer rejects rather than failing the file", () => {
+    const parsed = parsePack({ ...good, items: [{ nope: true }] }, "themes");
+    expect(parsed.items).toEqual([]);
+  });
+
+  it("defaults a preset pack's loudnessProfiles to an empty array", () => {
+    const parsed = parsePack(
+      { app: "PLVS", kind: "preset-pack", version: 1, exportedAt: "x", items: [] },
+      "presets"
+    );
+    expect(parsed.loudnessProfiles).toEqual([]);
   });
 });
