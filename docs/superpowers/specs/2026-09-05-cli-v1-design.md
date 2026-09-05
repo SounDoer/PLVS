@@ -16,6 +16,11 @@ Control cannot be reached.
 This design establishes the public boundary and the compatibility rules before Theme, Loudness
 Profile, Device, and other controls expand the surface.
 
+Agent Control has not been publicly released. This work is therefore a pre-release contract
+finalization rather than a user-facing migration: old App Control JSON shapes, flags, and command
+names are replaced directly, with no aliases, deprecation warnings, compatibility period, or
+external-script migration work. Compatibility begins when CLI v1 ships.
+
 ## Product boundary
 
 The public command tree has two roots:
@@ -254,7 +259,7 @@ Stable initial error codes include:
 |  `2` | `protocolMismatch`     | App and CLI cannot negotiate a supported control protocol.      |
 |  `3` | `invalidArguments`     | Command syntax or a value is invalid.                           |
 |  `3` | `unknownCommand`       | The command or subcommand does not exist.                       |
-|  `3` | `revisionRequired`     | A mutation omitted `--if-revision`.                             |
+|  `3` | `revisionRequired`     | A mutation omitted `--expected-revision`.                       |
 |  `3` | `resourceNotFound`     | A user-supplied opaque ID does not identify a current resource. |
 |  `4` | `revisionConflict`     | State changed since the caller inspected it.                    |
 |  `4` | `editorActive`         | A blocking editor protects an open draft.                       |
@@ -281,7 +286,7 @@ Every `app` query returns the current global `revision` alongside its domain res
 }
 ```
 
-Queries do not accept `--if-revision` and never change revision. `app inspect` is the broad snapshot
+Queries do not accept `--expected-revision` and never change revision. `app inspect` is the broad snapshot
 used to begin a control transaction. Narrow queries return only their domain and the same global
 revision.
 
@@ -295,7 +300,7 @@ applying a workspace, selecting a theme, or entering Dock mode.
 
 Every state mutation:
 
-- requires `--if-revision <n>`;
+- requires `--expected-revision <n>`;
 - supports `--dry-run`;
 - compares the revision atomically with applying the mutation;
 - returns `changed`, the resulting global `revision`, and the relevant final `state`;
@@ -325,9 +330,10 @@ Example:
 The final `state` contains the portion directly affected by the command, not a complete application
 snapshot. This lets the caller verify the result without issuing a second query.
 
-`--if-revision` replaces the current collection of domain-specific CLI names such as
-`--expected-revision`, `--expected-workspace-revision`, and `--expected-settings-revision`. The
-wire protocol may retain domain revisions internally during migration, but the public v1 CLI has
+`--expected-revision` replaces domain-specific CLI names such as
+`--expected-workspace-revision` and `--expected-settings-revision`. It reads as a complete
+precondition: execute only when the app is still at the revision the caller inspected. The wire
+protocol may retain domain revisions internally during implementation, but the public v1 CLI has
 one concurrency token.
 
 The CLI never retries a `revisionConflict`. An agent must inspect the new state, reconcile the
@@ -368,7 +374,7 @@ such as starting a device, opening and analyzing media, restarting the app, or e
 
 Every action:
 
-- requires `--if-revision <n>` because it can race with visible user activity;
+- requires `--expected-revision <n>` because it can race with visible user activity;
 - does not support `--dry-run` unless the feature defines a truthful, side-effect-free preview;
 - returns a stable `action` identifier, `status`, and the latest revision;
 - includes `state` when it changed app state;
@@ -418,7 +424,7 @@ The public operation family is added only when the first product action needs it
 ```text
 plvs-cli app operation get <operation-id> --json
 plvs-cli app operation wait <operation-id> [--timeout <duration>] --json
-plvs-cli app operation cancel <operation-id> --if-revision <n> --json
+plvs-cli app operation cancel <operation-id> --expected-revision <n> --json
 ```
 
 Operation states are the closed enum:
@@ -440,7 +446,7 @@ Revision follows visible state rather than operation lifetime:
 - accepted responses report the revision after acceptance;
 - get/wait responses report the revision at observation time;
 - a terminal operation records `completedRevision`;
-- cancellation is a mutation and requires `--if-revision`;
+- cancellation is a mutation and requires `--expected-revision`;
 - progress updates alone do not increment revision unless progress is part of the public controlled
   state exposed by inspect.
 
@@ -457,7 +463,7 @@ plvs-cli app wait --after-revision 44 --timeout 30s --json
 plvs-cli app wait --path live.running --equals true --timeout 10s --json
 ```
 
-This is a query, so it does not accept `--if-revision`. If the condition is already true it succeeds
+This is a query, so it does not accept `--expected-revision`. If the condition is already true it succeeds
 immediately with `matchedImmediately: true`. Otherwise it returns the matching value, relevant
 state, and latest revision when the condition becomes true.
 
@@ -586,14 +592,14 @@ construct bespoke top-level reports.
 - Add the common envelope and one error/exit mapper.
 - Migrate argument and transport failures into structured errors.
 - Add the global public control revision and expose it in inspect/capabilities.
-- Accept `--if-revision` on every mutation and reject omission with `revisionRequired`.
+- Accept `--expected-revision` on every mutation and reject omission with `revisionRequired`.
 - Keep revision comparison and mutation atomic inside the running app.
 
 ### 3. Migrate existing App Control families
 
 - Normalize query results around `revision`.
 - Normalize state mutations around `changed`, `revision`, and final `state`.
-- Rename domain-specific expected-revision flags to `--if-revision`.
+- Remove domain-specific revision flags in favor of `--expected-revision`.
 - Verify every state mutation supports truthful dry-run.
 - Classify transport commands as state mutations or actions and normalize their results.
 - Migrate wait to the state-wait contract without exposing an arbitrary expression evaluator.
@@ -639,7 +645,7 @@ CLI v1 is ready when:
 2. Removed standalone commands are unreachable in installed and source entrypoints.
 3. All JSON commands use the v1 envelope and produce clean stdout.
 4. All `app` queries return the current global revision.
-5. Every mutation rejects a missing or stale `--if-revision` before mutation.
+5. Every mutation rejects a missing or stale `--expected-revision` before mutation.
 6. Every state mutation has a side-effect-free dry-run with the same pure validation.
 7. Mutations return their relevant final state, and no-ops return `changed: false`.
 8. App unavailable, input, state refusal, wait, and runtime failures map to the documented exit
