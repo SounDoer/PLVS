@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { PACK_KINDS } from "../transfer/packShape.js";
+import { clampPanelPos } from "../lib/dragClamp.js";
+
+const CENTERED_CONTENT_CLASS =
+  "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-xl";
+const POSITIONED_CONTENT_CLASS =
+  "fixed z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-xl";
 
 const EMPTY_MESSAGE = {
   loudness: "No loudness profiles to export.",
@@ -33,9 +39,11 @@ function PlanRow({ entry }) {
 /// closing it discards nothing the user authored, and neither mode performs a scene operation.
 /// Registering it would block preset apply and dock entry for no reason.
 ///
-/// Position is not persisted -- unlike `ThemeEditor`, which stays open across repeated adjustments,
-/// this dialog is a one-shot pick-or-review-then-close, so it always opens centred and is not
-/// draggable.
+/// Position IS draggable -- the design spec calls for "a movable window, like the editor" -- but it
+/// is local component state, not persisted. Unlike `ThemeEditor`, which stays open across repeated
+/// adjustments and so remembers where the user left it (`settings.themeEditorPos`), this dialog is a
+/// one-shot pick-or-review-then-close: there is nothing to remember it for, so it always reopens
+/// centred and a drag only lasts for the current open.
 export function ItemPickerDialog({
   open,
   mode,
@@ -48,12 +56,45 @@ export function ItemPickerDialog({
   onClose = () => {},
 }) {
   const [selected, setSelected] = useState(() => new Set());
+  // `null` means "still centred". A drag switches to explicit coordinates; reopening resets to
+  // `null` so the dialog is centred again next time (see the comment on the component above).
+  const [pos, setPos] = useState(null);
+  const contentRef = useRef(null);
+  const dragRef = useRef(null);
   const label = PACK_KINDS[type].label;
   const title = mode === "pick" ? `Export ${label}` : `Import ${label}`;
 
   useEffect(() => {
-    if (!open) setSelected(new Set());
+    if (!open) {
+      setSelected(new Set());
+      setPos(null);
+    }
   }, [open]);
+
+  function onHeaderPointerDown(e) {
+    const rect = contentRef.current.getBoundingClientRect();
+    dragRef.current = {
+      dx: e.clientX - rect.left,
+      dy: e.clientY - rect.top,
+      w: rect.width,
+      h: rect.height,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onHeaderPointerMove(e) {
+    const d = dragRef.current;
+    if (!d) return;
+    setPos(
+      clampPanelPos(
+        { x: e.clientX - d.dx, y: e.clientY - d.dy },
+        { w: d.w, h: d.h },
+        { w: window.innerWidth, h: window.innerHeight }
+      )
+    );
+  }
+  function onHeaderPointerUp() {
+    dragRef.current = null;
+  }
 
   const toggle = (id) => {
     setSelected((prev) => {
@@ -87,15 +128,27 @@ export function ItemPickerDialog({
     <Dialog.Root open={open} onOpenChange={(next) => (next ? null : handleDismiss())}>
       <Dialog.Portal>
         <Dialog.Overlay className={SCRIM_CLASS} onClick={handleDismiss} />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-xl">
-          <Dialog.Title className="text-[length:var(--ui-fs-control)] font-semibold text-foreground">
-            {title}
-          </Dialog.Title>
-          <Dialog.Description className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-            {mode === "pick"
-              ? `Choose which ${label.toLowerCase()} to export.`
-              : `Review what will be added to your library.`}
-          </Dialog.Description>
+        <Dialog.Content
+          ref={contentRef}
+          className={pos ? POSITIONED_CONTENT_CLASS : CENTERED_CONTENT_CLASS}
+          style={pos ? { left: pos.x, top: pos.y } : undefined}
+        >
+          <div
+            data-testid="item-picker-drag-handle"
+            onPointerDown={onHeaderPointerDown}
+            onPointerMove={onHeaderPointerMove}
+            onPointerUp={onHeaderPointerUp}
+            className="cursor-move"
+          >
+            <Dialog.Title className="text-[length:var(--ui-fs-control)] font-semibold text-foreground">
+              {title}
+            </Dialog.Title>
+            <Dialog.Description className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+              {mode === "pick"
+                ? `Choose which ${label.toLowerCase()} to export.`
+                : `Review what will be added to your library.`}
+            </Dialog.Description>
+          </div>
 
           <div className="my-3 min-h-0 flex-1 overflow-y-auto">
             {mode === "pick" ? (
