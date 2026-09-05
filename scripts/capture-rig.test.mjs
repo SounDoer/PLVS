@@ -153,6 +153,35 @@ describe("capture harness invocation", () => {
   });
 });
 
+describe("soak capture completion", () => {
+  it("accepts a successful final report", () => {
+    expect(captureRig.assertSoakCaptureCompleted).toBeTypeOf("function");
+    expect(() => captureRig.assertSoakCaptureCompleted(0, { status: "ok" })).not.toThrow();
+  });
+
+  it("rejects a nonzero child exit", () => {
+    expect(captureRig.assertSoakCaptureCompleted).toBeTypeOf("function");
+    expect(() => captureRig.assertSoakCaptureCompleted(1, null)).toThrow(/exit code 1/);
+  });
+
+  it("rejects a missing final report", () => {
+    expect(captureRig.assertSoakCaptureCompleted).toBeTypeOf("function");
+    expect(() => captureRig.assertSoakCaptureCompleted(0, null)).toThrow(
+      /without a final report/,
+    );
+  });
+
+  it("rejects an error final report", () => {
+    expect(captureRig.assertSoakCaptureCompleted).toBeTypeOf("function");
+    expect(() =>
+      captureRig.assertSoakCaptureCompleted(0, {
+        status: "error",
+        error: { message: "device lost" },
+      }),
+    ).toThrow(/device lost/);
+  });
+});
+
 describe("staleHarnessSources", () => {
   // A built binary carries no record of what went into it, so the rig compares
   // mtimes. These fixtures set them explicitly: writing files in sequence gives

@@ -210,6 +210,18 @@ export function verifyHarnessBuild(harness, run = runCli) {
   );
 }
 
+export function assertSoakCaptureCompleted(status, finalReport) {
+  if (status !== 0) {
+    throw new RigError(`plvs-cli capture exited with exit code ${status ?? "unknown"}.`);
+  }
+  if (!finalReport) {
+    throw new RigError("plvs-cli capture exited without a final report.");
+  }
+  if (finalReport.status !== "ok") {
+    throw new RigError(`plvs-cli capture failed mid-run: ${finalReport.error?.message}`);
+  }
+}
+
 export function locateHarness() {
   const harness = join(ROOT, "src-tauri", "target", "release", "plvs.exe");
   if (!existsSync(harness)) {
