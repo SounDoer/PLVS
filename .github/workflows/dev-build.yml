@@ -1,6 +1,6 @@
 # Dev installer builds — manual, for testing only.
 # - Triggered by workflow_dispatch on any branch (driven by the plvs-dev-build skill).
-# - Builds the Windows NSIS installer + portable exe for the selected ref.
+# - Builds the Windows NSIS installer + portable ZIP for the selected ref.
 # - Publishes to a single rolling "dev" Pre-release (overwritten each run).
 # - Does NOT bump the version, touch CHANGELOG, or create a v* tag — this is
 #   not an official release. See release.yml + the plvs-release skill for that.
@@ -44,7 +44,7 @@ jobs:
       - name: Build frontend (Vite)
         run: npm run build
 
-      - name: Build Tauri bundle (NSIS + release binary for portable)
+      - name: Build Tauri bundle (NSIS + release binaries for portable)
         run: npm run desktop:dev-nsis
 
       - name: Smoke test Windows installer
@@ -61,7 +61,11 @@ jobs:
           $nsis = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
           if (-not $nsis) { throw "NSIS installer not found" }
           Copy-Item $nsis.FullName "dev-dist/PLVS_${label}_x64-setup.exe"
-          Copy-Item "src-tauri/target/release/plvs.exe" "dev-dist/PLVS-v${label}-x64-portable.exe"
+          $portableDir = "PLVS-v${label}-x64-portable"
+          New-Item -ItemType Directory -Force $portableDir | Out-Null
+          Copy-Item "src-tauri/target/release/plvs.exe" "$portableDir/plvs.exe"
+          Copy-Item "src-tauri/target/release/plvs-cli.exe" "$portableDir/plvs-cli.exe"
+          Compress-Archive -Path "$portableDir\*" -DestinationPath "dev-dist/$portableDir.zip"
           "label=$label" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Remove previous dev pre-release
