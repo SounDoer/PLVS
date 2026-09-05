@@ -508,7 +508,10 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       target: settings.historyRetentionSec,
     });
   }
-  if (changed.includes("settings.channelLabels") && context.sourceMode === "file") {
+  if (
+    (changed.includes("settings.channelLabels") && context.sourceMode === "file") ||
+    (changed.includes("settings.dialogueVadEngine") && context.hasCompletedFileAnalysis === true)
+  ) {
     warnings.push({ code: "fileReanalysisRequired" });
   }
   return { settings, changed, effects, warnings, issues: [], refusal: null, confirmation };

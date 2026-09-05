@@ -548,18 +548,21 @@ export function useAgentControlBridge({
           }
           if (planned.issues.length) {
             const missing = planned.issues.some(({ code }) => code === "dockPanelNotFound");
+            const monitorMissing = planned.issues.some(({ code }) => code === "monitorNotFound");
             const unavailable = planned.issues.some(({ code }) => code === "controlsUnavailable");
             throw semanticFailure(
               missing
                 ? "dockPanelNotFound"
-                : unavailable
-                  ? "controlsUnavailable"
-                  : request.method === "dock.layout.apply"
-                    ? "invalidDockLayout"
-                    : "invalidDockControls",
+                : monitorMissing
+                  ? "monitorNotFound"
+                  : unavailable
+                    ? "controlsUnavailable"
+                    : request.method === "dock.layout.apply"
+                      ? "invalidDockLayout"
+                      : "invalidDockControls",
               "$.params",
               "The Dock request is invalid.",
-              missing ? -32090 : unavailable ? -32091 : -32602,
+              missing ? -32090 : monitorMissing ? -32093 : unavailable ? -32091 : -32602,
               { issues: planned.issues }
             );
           }

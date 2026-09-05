@@ -12,7 +12,8 @@ import { useViewSettings } from "./useViewSettings.js";
 
 export function useSettings({ onClearRef } = {}) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { autostartEnabled, setAutostartEnabled, autostartReady } = useAutostart();
+  const { autostartEnabled, setAutostartEnabled, setAutostartEnabledForControl, autostartReady } =
+    useAutostart();
   const clearShortcutState = useClearShortcut(onClearRef);
   const themeSettings = useThemeSettings();
   const customThemeSettings = useCustomThemeSettings({ themeSettings, setSettingsOpen });
@@ -43,6 +44,7 @@ export function useSettings({ onClearRef } = {}) {
     ...viewSettings,
     autostartEnabled,
     setAutostartEnabled,
+    setAutostartEnabledForControl,
     autostartReady,
     ...customThemeSettings,
     ...clearShortcutState,

@@ -431,6 +431,27 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("preserves the monitorNotFound reason from Dock validation", async () => {
+    mount({
+      agentDockContext: {
+        monitors: [{ id: "monitor-1", name: "Display 1" }],
+        monitorInventoryReady: true,
+      },
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("dock.enter", { monitor: "missing" }, "dock-monitor-missing")
+    );
+
+    expect(response.error).toMatchObject({
+      data: {
+        reason: "monitorNotFound",
+        details: { issues: [expect.objectContaining({ code: "monitorNotFound" })] },
+      },
+    });
+  });
+
   it("atomically replaces the Dock layout and settles on Workspace revision", async () => {
     mount();
     await waitUntilReady();

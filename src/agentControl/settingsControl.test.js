@@ -202,6 +202,15 @@ describe("Settings Control", () => {
     ).toBeNull();
   });
 
+  it("warns that completed FILE results need reanalysis when the VAD engine changes", () => {
+    const planned = planSettingsUpdate(
+      current,
+      { dialogueVadEngine: "silero" },
+      { ...context, hasCompletedFileAnalysis: true }
+    );
+    expect(planned.warnings).toContainEqual({ code: "fileReanalysisRequired" });
+  });
+
   it("validates complete channel-role updates against the live channel count", () => {
     expect(
       planSettingsUpdate(

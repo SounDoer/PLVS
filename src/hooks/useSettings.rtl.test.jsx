@@ -19,6 +19,11 @@ describe("useSettings", () => {
     window.matchMedia = mockMatchMedia(true);
   });
 
+  it("exposes the error-reporting autostart setter used by Agent Control", () => {
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.setAutostartEnabledForControl).toBeTypeOf("function");
+  });
+
   it("seeds themeId to resolved dark builtin when switching system to fixed (ADR 0002 §6)", async () => {
     const { result } = renderHook(() => useSettings());
     await waitFor(() => {
