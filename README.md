@@ -68,13 +68,16 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 > [!TIP]
 > Visit [**GitHub Releases**](https://github.com/SounDoer/PLVS/releases) for the latest version.
 
-| Platform                  | Package                 | Notes                                         |
-| ------------------------- | ----------------------- | --------------------------------------------- |
-| **Windows 10/11 (x64)**   | `PLVS_x64-setup.exe`    | NSIS installer                                |
-| **Windows 10/11 (x64)**   | `PLVS_portable_x64.exe` | Portable — no install required                |
-| **macOS (Apple Silicon)** | `PLVS_aarch64.dmg`      | Requires macOS 14.2+ for system audio capture |
+| Platform                  | Package                  | Notes                                         |
+| ------------------------- | ------------------------ | --------------------------------------------- |
+| **Windows 10/11 (x64)**   | `PLVS_x64-setup.exe`     | NSIS installer                                |
+| **Windows 10/11 (x64)**   | `PLVS_x64-portable.zip`  | Portable — extract, no install required       |
+| **macOS (Apple Silicon)** | `PLVS_aarch64.dmg`       | Requires macOS 14.2+ for system audio capture |
 
 ### Installation notes
+
+For Windows Portable, extract the ZIP and launch `plvs.exe`; keep `plvs-cli.exe` beside it so the
+CLI can locate the application host.
 
 <details>
 <summary><b>macOS — first launch warning</b></summary>
@@ -113,7 +116,9 @@ The installer is not code-signed. If SmartScreen blocks it, click **More info** 
 
 ## CLI
 
-Installed Windows builds include `plvs-cli` on the current user's `PATH`; portable builds may require calling the executable by full path.
+Windows builds include `plvs-cli.exe` beside the application. Enabling Agent Control in Settings
+adds that directory to the current user's `PATH`; otherwise invoke it by full path. From a Portable
+folder, use `.\plvs-cli.exe`.
 
 ```powershell
 plvs-cli --help
