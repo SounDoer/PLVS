@@ -837,6 +837,72 @@ describe("useAgentControlBridge", () => {
     expect(inspected.result.revision).toBe(0);
   });
 
+  it.each([
+    [
+      "autostart",
+      { autostartReady: false, clearShortcutReady: true },
+      { interfaceSize: "large" },
+      { interfaceSize: "large" },
+    ],
+    [
+      "clear shortcut",
+      { autostartReady: true, clearShortcutReady: false },
+      { closeBehavior: "tray" },
+      { closeBehavior: "tray" },
+    ],
+  ])(
+    "tracks ordinary Settings while %s capability hydration is unavailable",
+    async (capability, readiness, patch, expectedSettings) => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        const flush = vi.fn(async () => {});
+        mount({
+          flush,
+          agentSettingsContext: { ...settingsContext, ...readiness },
+        });
+        await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
+        const waitRequest = request(
+          "app.wait",
+          { afterRevision: 0, timeoutMs: 1000 },
+          `settings-${capability}-wait`
+        );
+        const updateRequest = request(
+          "settings.update",
+          { patch, expectedRevision: 0 },
+          `settings-${capability}-update`
+        );
+
+        act(() => adapter.handler(waitRequest));
+        act(() => adapter.handler(updateRequest));
+        await vi.waitFor(
+          () =>
+            expect(adapter.responses.some(({ requestId }) => requestId === updateRequest.id)).toBe(
+              true
+            ),
+          { timeout: 7000 }
+        );
+
+        const response = adapter.responses.find(({ requestId }) => requestId === updateRequest.id);
+        expect(response?.error).toBeUndefined();
+        expect(response?.result).toMatchObject({
+          revision: 1,
+          changed: true,
+          state: { settings: expectedSettings },
+        });
+        expect(
+          adapter.responses.find(({ requestId }) => requestId === waitRequest.id)?.result
+        ).toEqual({
+          outcome: "changed",
+          matchedImmediately: false,
+          revision: 1,
+        });
+        expect(flush).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
+
   it("waits outside the command queue until the global revision changes", async () => {
     const view = mount();
     await waitUntilReady();

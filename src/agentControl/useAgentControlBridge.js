@@ -131,9 +131,9 @@ function workspaceMatchesPresetView(workspace, view) {
   ].every((key) => JSON.stringify(workspace[key]) === JSON.stringify(view[key]));
 }
 
-function settingsStateSignature(settings) {
-  if (!settings) return "null";
-  return JSON.stringify({
+function settingsStateForSignature(settings) {
+  if (!settings) return null;
+  return {
     ...settings,
     appearance: {
       mode: settings.appearance?.mode,
@@ -143,7 +143,18 @@ function settingsStateSignature(settings) {
       mode: settings.channelLabels?.mode,
       ...(settings.channelLabels?.mode === "custom" ? { roles: settings.channelLabels.roles } : {}),
     },
-  });
+  };
+}
+
+function settingsStateSignature(settings) {
+  return JSON.stringify(settingsStateForSignature(settings));
+}
+
+function ordinarySettingsStateSignature(settings) {
+  const normalized = settingsStateForSignature(settings);
+  if (normalized === null) return "null";
+  const { openAtLogin: _openAtLogin, clearShortcut: _clearShortcut, ...ordinary } = normalized;
+  return JSON.stringify(ordinary);
 }
 
 /// A settlement waits only for React to render a change that has already been applied, so anything
@@ -255,8 +266,15 @@ export function useAgentControlBridge({
   const controlRevisionBumpedThisTurnRef = useRef(false);
   const previousWorkspaceRef = useRef(workspace);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
-  const previousSettingsSignatureRef = useRef(settingsStateSignature(settings));
-  const settingsInitializedRef = useRef(false);
+  const previousOrdinarySettingsSignatureRef = useRef(ordinarySettingsStateSignature(settings));
+  const openAtLoginTrackingRef = useRef({
+    ready: settingsContext.autostartReady === true,
+    value: settings?.openAtLogin,
+  });
+  const clearShortcutTrackingRef = useRef({
+    ready: settingsContext.clearShortcutReady === true,
+    signature: JSON.stringify(settings?.clearShortcut ?? null),
+  });
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
@@ -337,15 +355,33 @@ export function useAgentControlBridge({
 
   useEffect(() => {
     const signature = settingsStateSignature(settings);
-    if (!settingsInitializedRef.current) {
-      previousSettingsSignatureRef.current = signature;
-      if (settingsContext.autostartReady === true && settingsContext.clearShortcutReady === true) {
-        settingsInitializedRef.current = true;
-      }
-      return;
+    const ordinarySignature = ordinarySettingsStateSignature(settings);
+    let changed = false;
+    if (ordinarySignature !== previousOrdinarySettingsSignatureRef.current) {
+      previousOrdinarySettingsSignatureRef.current = ordinarySignature;
+      changed = true;
     }
-    if (signature !== previousSettingsSignatureRef.current) {
-      previousSettingsSignatureRef.current = signature;
+
+    const openAtLogin = openAtLoginTrackingRef.current;
+    if (settingsContext.autostartReady === true) {
+      if (openAtLogin.ready && openAtLogin.value !== settings?.openAtLogin) changed = true;
+      openAtLogin.ready = true;
+      openAtLogin.value = settings?.openAtLogin;
+    } else {
+      openAtLogin.ready = false;
+    }
+
+    const clearShortcut = clearShortcutTrackingRef.current;
+    const clearShortcutSignature = JSON.stringify(settings?.clearShortcut ?? null);
+    if (settingsContext.clearShortcutReady === true) {
+      if (clearShortcut.ready && clearShortcut.signature !== clearShortcutSignature) changed = true;
+      clearShortcut.ready = true;
+      clearShortcut.signature = clearShortcutSignature;
+    } else {
+      clearShortcut.ready = false;
+    }
+
+    if (changed) {
       bumpControlRevision();
       scheduleWaitWake();
     }
