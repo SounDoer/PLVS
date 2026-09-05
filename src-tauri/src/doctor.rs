@@ -382,16 +382,7 @@ fn check_capabilities() -> DoctorCheck {
     "capabilities",
     "CLI capabilities for this build",
     json!({
-      "commands": [
-        "doctor",
-        "probe",
-        "analyze",
-        "analyze-batch",
-        "capture",
-        "devices",
-        "profile",
-        "report"
-      ],
+      "commands": ["doctor", "app"],
       "profileImport": true,
       "profileExport": true,
       "fileAnalysis": true,
@@ -552,6 +543,12 @@ mod tests {
     assert_eq!(status, DoctorStatus::Ok);
     assert_eq!(summary.ok, 1);
     assert_eq!(summary.skipped, 1);
+  }
+
+  #[test]
+  fn capabilities_report_only_public_cli_commands() {
+    let check = check_capabilities();
+    assert_eq!(check.details["commands"], json!(["doctor", "app"]));
   }
 
   #[test]
