@@ -5,6 +5,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { presetsStore, resetAll, settingsStore } from "../persistence/index.js";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
+import { getAdapter } from "../transfer/libraryAdapters.js";
 
 const wrapper = ({ children }) => <LoudnessProfileProvider>{children}</LoudnessProfileProvider>;
 
@@ -427,5 +428,33 @@ describe("preset snapshots and dirty state", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     act(() => result.current.removeProfile(mine.id));
     expect(presetsStore.read().dirty).toBe(true);
+  });
+});
+
+// The list is React state seeded from the store, and the store's backend has no same-context
+// events in the desktop build -- the plugin store is written only by this process, so it publishes
+// nothing. An importer writing straight to the store therefore has to announce it, or the profile
+// lands on disk and the list keeps showing the library as it was. That shipped once: the review
+// said "Add", the write happened, nothing appeared, and importing the same file again reported it
+// as already in the library.
+describe("import visibility", () => {
+  it("shows a profile appended straight to the store", async () => {
+    seed([profile("a", "Alpha")]);
+    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(hook.result.current.profiles.map((p) => p.id)).toEqual(["a"]);
+
+    act(() => getAdapter("loudness").append([profile("b", "Beta")]));
+
+    await waitFor(() => expect(hook.result.current.profiles.map((p) => p.id)).toEqual(["a", "b"]));
+  });
+
+  it("leaves the active selection alone while doing it", async () => {
+    seed([profile("a", "Alpha")], profileSelectionId("a"));
+    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+
+    act(() => getAdapter("loudness").append([profile("b", "Beta")]));
+
+    await waitFor(() => expect(hook.result.current.profiles).toHaveLength(2));
+    expect(hook.result.current.active).toBe(profileSelectionId("a"));
   });
 });

@@ -6,7 +6,7 @@
 /// overwrites an existing entry, and nothing here touches a selection: `active`, `activeId`,
 /// `dirty` and `settings.themeId` are all left exactly as they were.
 
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import {
   listCustomThemes,
@@ -41,6 +41,9 @@ const adapters = {
       settingsStore.patch({
         loudnessProfiles: { ...current, profiles: [...profiles, ...items] },
       });
+      // `plvs:settings` does not announce a write to its own context, so without this the profile
+      // list keeps rendering the library as it was before the import. See `notifyLocal`.
+      settingsStore.notifyLocal();
     },
   },
   presets: {
@@ -72,6 +75,9 @@ const adapters = {
         upsertCustomTheme(theme);
         if (theme) written.add(theme.id);
       }
+      // Same reason as the loudness adapter: `plvs:themes` does not notify its own context, so the
+      // theme picker would not show an imported theme until something else made it re-read.
+      if (written.size > 0) themesStore.notifyLocal();
     },
   },
 };

@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it } from "vitest";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import { vi } from "vitest";
 // Built from a built-in rather than hand-written: `normalizeThemeDocument` rejects a document that
 // is short of a single field, and a built-in is guaranteed to round-trip. `SettingsPanel.test.jsx`
 // makes its custom-theme fixture the same way.
@@ -111,5 +112,43 @@ describe("themes adapter", () => {
     const raw = themesStore.read();
     expect(raw.themes.t1.name).toBe("T1");
     expect(raw.order).toEqual(["t1"]);
+  });
+});
+
+// An import writes to a store from outside the React state that owns that library, so nothing
+// re-renders unless the store announces the write to its same-context subscribers. In the desktop
+// build the backend's own `subscribe` is a no-op -- single window, single writer -- so this is the
+// only signal there is. Without it the item lands on disk and never appears in the list.
+describe("append announces the write", () => {
+  it("notifies loudness subscribers", () => {
+    const seen = vi.fn();
+    const unsubscribe = settingsStore.subscribe(seen);
+    getAdapter("loudness").append([{ id: "b", name: "B", referenceLufs: -16, rules: [] }]);
+    unsubscribe();
+    expect(seen).toHaveBeenCalled();
+  });
+
+  it("notifies theme subscribers", () => {
+    const seen = vi.fn();
+    const unsubscribe = themesStore.subscribe(seen);
+    getAdapter("themes").append([THEME]);
+    unsubscribe();
+    expect(seen).toHaveBeenCalled();
+  });
+
+  it("notifies preset subscribers", () => {
+    const seen = vi.fn();
+    const unsubscribe = presetsStore.subscribe(seen);
+    getAdapter("presets").append([{ id: "p1", name: "P1", loudnessProfileActive: "off" }]);
+    unsubscribe();
+    expect(seen).toHaveBeenCalled();
+  });
+
+  it("stays quiet when there is nothing to append", () => {
+    const seen = vi.fn();
+    const unsubscribe = settingsStore.subscribe(seen);
+    getAdapter("loudness").append([]);
+    unsubscribe();
+    expect(seen).not.toHaveBeenCalled();
   });
 });

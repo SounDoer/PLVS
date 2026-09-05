@@ -74,6 +74,21 @@ export function createDomainStore({ name, backend, migrate, notifySameContext = 
   return {
     read,
     flush,
+    /**
+     * Announce a write to this context's subscribers, whatever `notifySameContext` says.
+     *
+     * For a writer that sits outside the React state owning the data it just changed -- profile
+     * import is the one today -- where nothing else will make that state re-read. The backend is
+     * no help: the plugin store has no cross-context events at all (single window, single writer),
+     * and localStorage's `storage` event fires only in *other* documents.
+     *
+     * Deliberately not `notifySameContext: true` on the store instead: `plvs:settings` is written
+     * through `patchCoalesced` during an opacity drag, and every subscriber re-reading four times
+     * a second is a cost the ordinary path should not pay for the sake of an occasional import.
+     */
+    notifyLocal() {
+      listeners.forEach((fn) => fn());
+    },
     patch(partial) {
       writeMerged(partial);
       notify();
