@@ -74,7 +74,6 @@ pub struct DoctorCheck {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorReport {
-  pub schema_version: u32,
   pub status: DoctorStatus,
   pub summary: DoctorSummary,
   pub app: DoctorAppInfo,
@@ -129,7 +128,6 @@ pub fn run_doctor() -> DoctorReport {
 
   let (status, summary) = aggregate_status(&checks);
   DoctorReport {
-    schema_version: 1,
     status,
     summary,
     app,

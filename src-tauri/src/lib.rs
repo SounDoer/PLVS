@@ -6,6 +6,7 @@ pub mod cli_analyze;
 pub mod cli_analyze_batch;
 pub mod cli_app;
 pub mod cli_capture;
+pub mod cli_contract;
 pub mod cli_devices;
 pub mod cli_main;
 mod cli_path;
