@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { Check, GripVertical, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/AddButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { useTruncationTip } from "@/components/HoverTip";
 import {
   Select,
@@ -20,7 +20,6 @@ import {
   withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
 import { STATS_META, roundToStatPrecision, statDecimals } from "@/lib/statsCatalog.js";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 
 /// A new rule opens on Integrated: the metric every delivery reference judges. The user re-picks it
 /// from the row's own metric select.
@@ -551,36 +550,15 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         </div>
       </div>
 
-      <Dialog.Root open={discardOpen} onOpenChange={setDiscardOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={cn(SCRIM_CLASS, "z-[60]")} />
-          <Dialog.Content
-            role="alertdialog"
-            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl"
-          >
-            <Dialog.Title className="mb-3 text-[length:var(--ui-fs-body)] font-semibold text-foreground">
-              Discard profile changes?
-            </Dialog.Title>
-            <Dialog.Description className="mb-6 text-[length:var(--ui-fs-body)] text-muted-foreground">
-              Unsaved rule edits will be discarded.
-            </Dialog.Description>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setDiscardOpen(false)}>
-                Keep Editing
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  setDiscardOpen(false);
-                  onCancel();
-                }}
-              >
-                Discard Changes
-              </Button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard profile changes?"
+        description="Unsaved rule edits will be discarded."
+        cancelLabel="Keep Editing"
+        confirmLabel="Discard Changes"
+        onConfirm={onCancel}
+      />
     </>
   );
 }

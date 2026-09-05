@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { Check, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
+import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
-import { cn } from "@/lib/utils";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -140,11 +138,6 @@ export function ThemeEditor({
       return;
     }
     setDiscardDialogOpen(true);
-  }
-
-  function handleDiscardChanges() {
-    setDiscardDialogOpen(false);
-    onCancel();
   }
 
   const ref = useRef(null);
@@ -359,30 +352,15 @@ export function ThemeEditor({
           </div>
         </div>
       </div>
-      <Dialog.Root open={discardDialogOpen} onOpenChange={setDiscardDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className={cn(SCRIM_CLASS, "z-[60]")} />
-          <Dialog.Content
-            role="alertdialog"
-            className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl"
-          >
-            <Dialog.Title className="mb-3 text-[length:var(--ui-fs-body)] font-semibold text-foreground">
-              Discard theme changes?
-            </Dialog.Title>
-            <Dialog.Description className="mb-6 text-[length:var(--ui-fs-body)] text-muted-foreground">
-              Unsaved edits will be discarded and the previous theme will be restored.
-            </Dialog.Description>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setDiscardDialogOpen(false)}>
-                Keep Editing
-              </Button>
-              <Button variant="destructive" onClick={handleDiscardChanges}>
-                Discard Changes
-              </Button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <ConfirmDialog
+        open={discardDialogOpen}
+        onOpenChange={setDiscardDialogOpen}
+        title="Discard theme changes?"
+        description="Unsaved edits will be discarded and the previous theme will be restored."
+        cancelLabel="Keep Editing"
+        confirmLabel="Discard Changes"
+        onConfirm={onCancel}
+      />
     </>
   );
 }
