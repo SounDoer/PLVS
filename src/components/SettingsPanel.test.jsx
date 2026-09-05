@@ -141,7 +141,7 @@ describe("SettingsPanel", () => {
           enabled: false,
           cliInstalled: true,
           onPath: false,
-          message: "Allows programs on this machine to control PLVS through plvs-cli.",
+          message: "Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
         }}
         onSetAgentControlEnabled={onSetAgentControlEnabled}
       />
@@ -149,11 +149,11 @@ describe("SettingsPanel", () => {
 
     expect(screen.getByText("Agent Control")).toBeTruthy();
     const help = screen.getByRole("button", {
-      name: "Agent Control help: Allows programs on this machine to control PLVS through plvs-cli.",
+      name: "Agent Control help: Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
     });
     fireEvent.mouseEnter(help);
     expect(
-      screen.getByText("Allows programs on this machine to control PLVS through plvs-cli.")
+      screen.getByText("Lets AI agents and scripts on this machine control PLVS through plvs-cli.")
     ).toBeTruthy();
 
     const toggle = screen.getByRole("switch", { name: "Agent Control" });

@@ -11,6 +11,12 @@ pub const ENABLED_KEY: &str = "agentControlEnabled";
 
 const WINDOWS_ONLY_MESSAGE: &str = "Agent Control is currently available on Windows only.";
 
+/// The help tip describes the control, not the current state: the switch already shows whether it
+/// is on, and a tip that rewrites itself under the cursor reads as a status line instead of an
+/// explanation.
+const AGENT_CONTROL_MESSAGE: &str =
+  "Lets AI agents and scripts on this machine control PLVS through plvs-cli.";
+
 /// Development builds keep the behaviour they have today — Agent Control on, no setup step.
 /// Release builds start off, including on upgrade from a version that had no such setting.
 pub fn default_enabled() -> bool {
@@ -51,10 +57,8 @@ fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentC
     WINDOWS_ONLY_MESSAGE
   } else if !cli_installed {
     "plvs-cli.exe was not found in this installation."
-  } else if enabled {
-    "Programs on this machine can control PLVS through plvs-cli."
   } else {
-    "Allows programs on this machine to control PLVS through plvs-cli."
+    AGENT_CONTROL_MESSAGE
   };
   AgentControlStatus {
     supported,
@@ -206,20 +210,18 @@ mod tests {
   }
 
   #[test]
-  fn the_message_says_plainly_what_being_on_means() {
+  fn the_message_describes_the_control_and_does_not_track_the_switch() {
     let off = compose_status(true, true, false);
     assert!(!off.enabled);
-    assert_eq!(
-      off.message,
-      "Allows programs on this machine to control PLVS through plvs-cli."
-    );
 
     let on = compose_status(true, true, true);
     assert!(on.enabled);
+
     assert_eq!(
-      on.message,
-      "Programs on this machine can control PLVS through plvs-cli."
+      off.message,
+      "Lets AI agents and scripts on this machine control PLVS through plvs-cli."
     );
+    assert_eq!(off.message, on.message);
   }
 
   #[test]

@@ -21,7 +21,7 @@ const READY = {
   enabled: false,
   cliInstalled: true,
   onPath: false,
-  message: "Allows programs on this machine to control PLVS through plvs-cli.",
+  message: "Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
 };
 
 describe("useAgentControlSettings", () => {

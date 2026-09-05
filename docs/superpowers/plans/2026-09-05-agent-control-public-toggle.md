@@ -76,6 +76,7 @@ The store file is `plvs-settings.json` in the config directory. The new key is a
 ### Task 1: The persisted flag
 
 **Files:**
+
 - Create: `src-tauri/src/agent_control/toggle.rs`
 - Modify: `src-tauri/src/agent_control/mod.rs`
 - Modify: `src-tauri/src/cli_path.rs:7-14`
@@ -201,6 +202,7 @@ git commit -m "feat(agent-control): persist the Agent Control flag outside the p
 ### Task 2: The status shape
 
 **Files:**
+
 - Modify: `src-tauri/src/agent_control/toggle.rs`
 
 - [ ] **Step 1: Write the failing test**
@@ -225,20 +227,18 @@ Add to the `tests` module in `src-tauri/src/agent_control/toggle.rs`:
   }
 
   #[test]
-  fn the_message_says_plainly_what_being_on_means() {
+  fn the_message_describes_the_control_and_does_not_track_the_switch() {
     let off = compose_status(true, true, false);
     assert!(!off.enabled);
-    assert_eq!(
-      off.message,
-      "Allows programs on this machine to control PLVS through plvs-cli."
-    );
 
     let on = compose_status(true, true, true);
     assert!(on.enabled);
+
     assert_eq!(
-      on.message,
-      "Programs on this machine can control PLVS through plvs-cli."
+      off.message,
+      "Lets AI agents and scripts on this machine control PLVS through plvs-cli."
     );
+    assert_eq!(off.message, on.message);
   }
 ```
 
@@ -263,15 +263,19 @@ pub struct AgentControlStatus {
   pub message: String,
 }
 
+/// The help tip describes the control, not the current state: the switch already shows whether it
+/// is on, and a tip that rewrites itself under the cursor reads as a status line instead of an
+/// explanation.
+const AGENT_CONTROL_MESSAGE: &str =
+  "Lets AI agents and scripts on this machine control PLVS through plvs-cli.";
+
 fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentControlStatus {
   let message = if !supported {
     "Agent Control is currently available on Windows only."
   } else if !cli_installed {
     "plvs-cli.exe was not found in this installation."
-  } else if enabled {
-    "Programs on this machine can control PLVS through plvs-cli."
   } else {
-    "Allows programs on this machine to control PLVS through plvs-cli."
+    AGENT_CONTROL_MESSAGE
   };
   AgentControlStatus {
     supported,
@@ -305,6 +309,7 @@ hardcoded to `PLVS Dev`, which was fine while the feature was development-only a
 moment a release build writes one.
 
 **Files:**
+
 - Modify: `src-tauri/src/agent_control/windows_pipe.rs:737-772`
 - Modify: `src-tauri/src/lib.rs:237-240`
 
@@ -366,6 +371,7 @@ git commit -m "refactor(agent-control): start the endpoint from an AppHandle" -m
 One command performs the whole operation, so the endpoint and PATH can never end up disagreeing.
 
 **Files:**
+
 - Modify: `src-tauri/src/agent_control/toggle.rs`
 - Modify: `src-tauri/src/agent_control/windows_pipe.rs` (`impl PipeServerState`)
 - Modify: `src-tauri/src/lib.rs` (the `invoke_handler` list)
@@ -504,6 +510,7 @@ git commit -m "feat(agent-control): apply the toggle as one endpoint-and-PATH op
 ### Task 5: Boot from the flag instead of the compile gate
 
 **Files:**
+
 - Modify: `src-tauri/src/lib.rs:123-129` (the injected `agentControl` object)
 - Modify: `src-tauri/src/lib.rs:237-240` (the start call)
 
@@ -556,6 +563,7 @@ git commit -m "feat(agent-control): boot from the persisted flag, not the build 
 ### Task 6: `plvs-cli` always has the `app` family
 
 **Files:**
+
 - Modify: `src-tauri/src/cli_main.rs:100-102`
 - Modify: `src-tauri/src/cli_main.rs:734` (root help text)
 - Modify: `src-tauri/src/cli_main.rs:775-782` (the root help branch)
@@ -639,6 +647,7 @@ git commit -m "feat(cli): expose the app command family in release builds" -m "C
 ### Task 7: Tell "disabled" apart from "not running"
 
 **Files:**
+
 - Modify: `src-tauri/src/cli_app.rs:1017-1030`
 - Test: `src-tauri/src/cli_app.rs` tests module
 
@@ -753,6 +762,7 @@ The flag is excluded from export/import because it is in neither `DOMAIN_KEYS` n
 Nothing states that, so a future key sweep could quietly include it. This test states it.
 
 **Files:**
+
 - Modify: `src-tauri/src/profile.rs` tests module
 
 - [ ] **Step 1: Write the test**
@@ -793,6 +803,7 @@ git commit -m "test(profile): pin Agent Control out of configuration export and 
 ### Task 9: Keep the toggle out of agent-visible settings
 
 **Files:**
+
 - Modify: `src/agentControl/settingsControl.test.js`
 
 - [ ] **Step 1: Write the test**
@@ -831,6 +842,7 @@ git commit -m "test(agent-control): pin the toggle out of agent-editable setting
 ### Task 10: The React hook
 
 **Files:**
+
 - Create: `src/hooks/useAgentControlSettings.js`
 - Create: `src/hooks/useAgentControlSettings.test.js`
 - Modify: `src/ipc/commands.js:191-197`
@@ -878,7 +890,7 @@ const READY = {
   enabled: false,
   cliInstalled: true,
   onPath: false,
-  message: "Allows programs on this machine to control PLVS through plvs-cli.",
+  message: "Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
 };
 
 describe("useAgentControlSettings", () => {
@@ -1046,6 +1058,7 @@ git commit -m "feat(agent-control): add the Agent Control settings hook" -m "Co-
 ### Task 11: The Settings row
 
 **Files:**
+
 - Modify: `src/components/SettingsPanel.jsx:197-221` (props and derived values)
 - Modify: `src/components/SettingsPanel.jsx:614-642` (the row itself)
 - Modify: `src/components/SettingsPanel.test.jsx:134-165`
@@ -1056,49 +1069,47 @@ Replace the `renders command line PATH setup as an explicit action` case in
 `src/components/SettingsPanel.test.jsx` with:
 
 ```jsx
-  it("renders Agent Control as a toggle with an honest tip", () => {
-    const onSetAgentControlEnabled = vi.fn();
-    renderPanel({
-      agentControlStatus: {
-        supported: true,
-        enabled: false,
-        cliInstalled: true,
-        onPath: false,
-        message: "Allows programs on this machine to control PLVS through plvs-cli.",
-      },
-      onSetAgentControlEnabled,
-    });
-
-    expect(screen.getByText("Agent Control")).toBeTruthy();
-    const help = screen.getByRole("button", {
-      name: "Agent Control help: Allows programs on this machine to control PLVS through plvs-cli.",
-    });
-    fireEvent.mouseEnter(help);
-    expect(
-      screen.getByText("Allows programs on this machine to control PLVS through plvs-cli.")
-    ).toBeTruthy();
-
-    const toggle = screen.getByRole("switch", { name: "Agent Control" });
-    expect(toggle.getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(toggle);
-    expect(onSetAgentControlEnabled).toHaveBeenCalledWith(true);
+it("renders Agent Control as a toggle with an honest tip", () => {
+  const onSetAgentControlEnabled = vi.fn();
+  renderPanel({
+    agentControlStatus: {
+      supported: true,
+      enabled: false,
+      cliInstalled: true,
+      onPath: false,
+      message: "Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
+    },
+    onSetAgentControlEnabled,
   });
 
-  it("disables Agent Control where the platform has no endpoint", () => {
-    renderPanel({
-      agentControlStatus: {
-        supported: false,
-        enabled: false,
-        cliInstalled: false,
-        onPath: false,
-        message: "Agent Control is currently available on Windows only.",
-      },
-    });
-
-    expect(screen.getByRole("switch", { name: "Agent Control" }).hasAttribute("disabled")).toBe(
-      true
-    );
+  expect(screen.getByText("Agent Control")).toBeTruthy();
+  const help = screen.getByRole("button", {
+    name: "Agent Control help: Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
   });
+  fireEvent.mouseEnter(help);
+  expect(
+    screen.getByText("Lets AI agents and scripts on this machine control PLVS through plvs-cli.")
+  ).toBeTruthy();
+
+  const toggle = screen.getByRole("switch", { name: "Agent Control" });
+  expect(toggle.getAttribute("aria-checked")).toBe("false");
+  fireEvent.click(toggle);
+  expect(onSetAgentControlEnabled).toHaveBeenCalledWith(true);
+});
+
+it("disables Agent Control where the platform has no endpoint", () => {
+  renderPanel({
+    agentControlStatus: {
+      supported: false,
+      enabled: false,
+      cliInstalled: false,
+      onPath: false,
+      message: "Agent Control is currently available on Windows only.",
+    },
+  });
+
+  expect(screen.getByRole("switch", { name: "Agent Control" }).hasAttribute("disabled")).toBe(true);
+});
 ```
 
 Use whatever helper the file already uses to render the panel. If there is no `renderPanel` helper,
@@ -1123,13 +1134,12 @@ In `src/components/SettingsPanel.jsx`, replace the three `cliPath*` props:
 and the derived block:
 
 ```jsx
-  const showAgentControl = agentControlStatus !== undefined;
-  const agentControlSupported = !!agentControlStatus?.supported;
-  const agentControlInstalled = !!agentControlStatus?.cliInstalled;
-  const agentControlEnabled = !!agentControlStatus?.enabled;
-  const agentControlDisabled =
-    agentControlBusy || !agentControlSupported || !agentControlInstalled;
-  const agentControlMessage = agentControlStatus?.message ?? "Checking Agent Control...";
+const showAgentControl = agentControlStatus !== undefined;
+const agentControlSupported = !!agentControlStatus?.supported;
+const agentControlInstalled = !!agentControlStatus?.cliInstalled;
+const agentControlEnabled = !!agentControlStatus?.enabled;
+const agentControlDisabled = agentControlBusy || !agentControlSupported || !agentControlInstalled;
+const agentControlMessage = agentControlStatus?.message ?? "Checking Agent Control...";
 ```
 
 - [ ] **Step 4: Replace the row**
@@ -1137,27 +1147,27 @@ and the derived block:
 Replace the whole `{showCliPath ? ( ... ) : null}` block with:
 
 ```jsx
-                {showAgentControl ? (
-                  <>
-                    <SettingsDivider />
+{
+  showAgentControl ? (
+    <>
+      <SettingsDivider />
 
-                    {/* Agent control */}
-                    <SettingsSection>
-                      <SettingsRow
-                        labelNode={
-                          <SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />
-                        }
-                      >
-                        <SettingsSwitch
-                          aria-label="Agent Control"
-                          checked={agentControlEnabled}
-                          disabled={agentControlDisabled}
-                          onCheckedChange={(next) => onSetAgentControlEnabled(next)}
-                        />
-                      </SettingsRow>
-                    </SettingsSection>
-                  </>
-                ) : null}
+      {/* Agent control */}
+      <SettingsSection>
+        <SettingsRow
+          labelNode={<SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />}
+        >
+          <SettingsSwitch
+            aria-label="Agent Control"
+            checked={agentControlEnabled}
+            disabled={agentControlDisabled}
+            onCheckedChange={(next) => onSetAgentControlEnabled(next)}
+          />
+        </SettingsRow>
+      </SettingsSection>
+    </>
+  ) : null;
+}
 ```
 
 Copy the exact `SettingsSwitch` prop spelling from the `Open at Login` row at
@@ -1181,6 +1191,7 @@ git commit -m "feat(settings): replace the Command Line row with an Agent Contro
 ### Task 12: Wire the overlay
 
 **Files:**
+
 - Modify: `src/components/AppSettingsOverlays.jsx:4,32,106-108`
 - Modify: `src/components/AppSettingsOverlays.test.jsx:13,26-30,39,47`
 
@@ -1202,7 +1213,7 @@ Rename the hoisted mock at line 13 from `setCliPathEnabled` to `setAgentControlE
 stub `SettingsPanel` replace the `cliPathStatus` prop and its `data-testid="cli-status"` span with:
 
 ```jsx
-      <span data-testid="agent-control-enabled">{String(agentControlStatus?.enabled)}</span>
+<span data-testid="agent-control-enabled">{String(agentControlStatus?.enabled)}</span>
 ```
 
 taking `agentControlStatus` from the stub's props in place of `cliPathStatus`.
@@ -1223,17 +1234,17 @@ import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 the call:
 
 ```jsx
-  const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
-    settingsOpen: settings.settingsOpen,
-  });
+const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
+  settingsOpen: settings.settingsOpen,
+});
 ```
 
 and the three props passed to `SettingsPanel`:
 
 ```jsx
-        agentControlStatus={agentControlStatus}
-        agentControlBusy={agentControlBusy}
-        onSetAgentControlEnabled={setAgentControlEnabled}
+agentControlStatus = { agentControlStatus };
+agentControlBusy = { agentControlBusy };
+onSetAgentControlEnabled = { setAgentControlEnabled };
 ```
 
 Task 13 replaces that last prop again once `App.jsx` needs to hear about changes.
@@ -1260,6 +1271,7 @@ bridge must follow the flag, so the enabled state has to live in `App.jsx` rathe
 settings overlay.
 
 **Files:**
+
 - Modify: `src/agentControl/appSnapshot.js:155-165`
 - Modify: `src/agentControl/appSnapshot.test.js`
 - Modify: `src/App.jsx:620`, `src/App.jsx:1242`, `src/App.jsx:1966`
@@ -1321,10 +1333,10 @@ export function readAgentControlRuntime() {
 In `src/App.jsx`, replace line 620:
 
 ```jsx
-  const agentControlRuntime = useMemo(readAgentControlRuntime, []);
-  const [agentControlEnabled, setAgentControlEnabled] = useState(
-    () => agentControlRuntime.enabled === true
-  );
+const agentControlRuntime = useMemo(readAgentControlRuntime, []);
+const [agentControlEnabled, setAgentControlEnabled] = useState(
+  () => agentControlRuntime.enabled === true
+);
 ```
 
 Replace the bridge's `enabled` prop at line 1242:
@@ -1336,7 +1348,7 @@ Replace the bridge's `enabled` prop at line 1242:
 Pass the setter to the overlay at line 1966, alongside the props already there:
 
 ```jsx
-        onAgentControlEnabledChange={setAgentControlEnabled}
+onAgentControlEnabledChange = { setAgentControlEnabled };
 ```
 
 - [ ] **Step 5: Report changes upward from the overlay**
@@ -1414,6 +1426,7 @@ git commit -m "feat(agent-control): follow the toggle at runtime in the React br
 ### Task 14: Documentation
 
 **Files:**
+
 - Modify: `docs/cli.md:5-9` and its `Commands` block
 - Modify: `docs/agent-control/README.md`
 
