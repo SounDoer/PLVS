@@ -425,7 +425,12 @@ export function useAgentControlBridge({
             };
           }
           if (waitersRef.current.size >= 4) {
-            throw semanticFailure("busy", "$", "Too many revision waits are active.", -32070);
+            throw semanticFailure(
+              "waitLimitReached",
+              "$",
+              "Too many revision waits are active.",
+              -32070
+            );
           }
           const result = await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {

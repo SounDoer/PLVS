@@ -1,0 +1,151 @@
+[
+  {
+    "id": "doctor.warning",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "report": {
+          "status": "warning",
+          "summary": { "ok": 1, "warning": 1, "error": 0, "skipped": 0 },
+          "app": { "name": "PLVS", "version": "0.14.6", "executablePath": null },
+          "platform": { "os": "windows", "arch": "x86_64" },
+          "paths": { "configDir": null, "dataDir": null },
+          "checks": []
+        }
+      }
+    }
+  },
+  {
+    "id": "doctor.error",
+    "exitCode": 1,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "report": {
+          "status": "error",
+          "summary": { "ok": 1, "warning": 0, "error": 1, "skipped": 0 },
+          "app": { "name": "PLVS", "version": "0.14.6", "executablePath": null },
+          "platform": { "os": "windows", "arch": "x86_64" },
+          "paths": { "configDir": null, "dataDir": null },
+          "checks": []
+        }
+      }
+    }
+  },
+  {
+    "id": "error.unknownCommand",
+    "exitCode": 3,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": false,
+      "error": {
+        "code": "unknownCommand",
+        "message": "Unknown command: capture"
+      }
+    }
+  },
+  {
+    "id": "query.capabilities",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "revision": 4,
+        "appVersion": "99.99.99-app",
+        "cliVersion": "0.14.6",
+        "protocolVersion": 1,
+        "commands": [],
+        "features": {}
+      }
+    }
+  },
+  {
+    "id": "query.appInspect",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "revision": 0,
+        "workspace": {}
+      }
+    }
+  },
+  {
+    "id": "mutation.panelDryRun",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "dryRun": true,
+        "changed": true,
+        "revision": 0,
+        "warnings": [],
+        "state": {
+          "panel": {
+            "id": "levelMeter",
+            "moduleId": "levelMeter",
+            "controls": { "mode": "rms" }
+          },
+          "preset": { "activeId": null, "dirty": false }
+        }
+      }
+    }
+  },
+  {
+    "id": "action.transportLiveStart",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "action": "transport.live.start",
+        "status": "completed",
+        "revision": 1,
+        "effects": [],
+        "warnings": [],
+        "state": {
+          "transport": {
+            "source": "live",
+            "live": { "state": "running", "resolvedDeviceId": "device-1" }
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "wait.changed",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "outcome": "changed",
+        "matchedImmediately": false,
+        "revision": 1
+      }
+    }
+  },
+  {
+    "id": "wait.timeout",
+    "exitCode": 5,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "The app revision did not change before the timeout.",
+        "details": {
+          "path": "$.params.timeoutMs",
+          "afterRevision": 44,
+          "currentRevision": 44
+        }
+      }
+    }
+  }
+]
