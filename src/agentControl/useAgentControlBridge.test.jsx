@@ -89,8 +89,49 @@ const dock = {
   controlsByPanelId: {},
 };
 
+const MUTATION_METHODS = new Set([
+  "workspace.applyLayout",
+  "panel.update",
+  "panel.reset",
+  "axis.shared.update",
+  "axis.shared.reset",
+  "axis.panel.update",
+  "axis.panel.reset",
+  "preset.save",
+  "preset.update",
+  "preset.apply",
+  "preset.rename",
+  "preset.delete",
+  "preset.reorder",
+  "settings.update",
+  "transport.source.live",
+  "transport.source.file",
+  "transport.live.start",
+  "transport.live.stop",
+  "transport.live.clear",
+  "transport.file.analyze",
+  "transport.file.reanalyze",
+  "transport.file.stop",
+  "transport.file.select",
+  "transport.file.remove",
+  "transport.file.clear",
+  "dock.enter",
+  "dock.exit",
+  "dock.layout.apply",
+  "dock.panel.update",
+  "dock.panel.reset",
+]);
+
 function request(method, params = {}, id = "req-1") {
-  return { jsonrpc: "2.0", id, method, params };
+  return {
+    jsonrpc: "2.0",
+    id,
+    method,
+    params:
+      MUTATION_METHODS.has(method) && params.expectedRevision === undefined
+        ? { ...params, expectedRevision: 0 }
+        : params,
+  };
 }
 
 function Harness({
@@ -358,11 +399,7 @@ describe("useAgentControlBridge", () => {
 
     const listed = await send(request("preset.list", {}, "preset-list"));
     const described = await send(
-      request(
-        "preset.describe",
-        { presetId: "preset-1", expectedPresetsRevision: 0 },
-        "preset-describe"
-      )
+      request("preset.describe", { presetId: "preset-1" }, "preset-describe")
     );
 
     expect(listed.result).toEqual({
@@ -525,7 +562,7 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
 
     const response = await send(
-      request("transport.source.file", { expectedTransportRevision: 0 }, "transport-source-file")
+      request("transport.source.file", { expectedRevision: 0 }, "transport-source-file")
     );
 
     expect(response.result).toMatchObject({
@@ -563,14 +600,14 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
 
     const response = await send(
-      request("transport.live.stop", { expectedTransportRevision: 3 }, "transport-conflict")
+      request("transport.live.stop", { expectedRevision: 3 }, "transport-conflict")
     );
 
     expect(response.error).toMatchObject({
       code: -32004,
       data: {
         reason: "revisionConflict",
-        path: "$.params.expectedTransportRevision",
+        path: "$.params.expectedRevision",
         details: { expectedRevision: 3, currentRevision: 0 },
       },
     });
@@ -587,7 +624,7 @@ describe("useAgentControlBridge", () => {
         "settings.update",
         {
           patch: { closeBehavior: "tray", interfaceSize: "large" },
-          expectedSettingsRevision: 0,
+          expectedRevision: 0,
         },
         "settings-update"
       )
@@ -653,14 +690,10 @@ describe("useAgentControlBridge", () => {
     expect(inspected.result.revision).toBe(0);
   });
 
-  it("waits outside the command queue until any watched revision changes", async () => {
+  it("waits outside the command queue until the global revision changes", async () => {
     const view = mount();
     await waitUntilReady();
-    const waitRequest = request(
-      "app.wait",
-      { workspaceRevision: 0, settingsRevision: 0, timeoutMs: 1000 },
-      "wait-change"
-    );
+    const waitRequest = request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, "wait-change");
     act(() => adapter.handler(waitRequest));
 
     const inspected = await send(request("app.inspect", {}, "inspect-during-wait"));
@@ -671,23 +704,21 @@ describe("useAgentControlBridge", () => {
     );
     expect(adapter.responses.find(({ requestId }) => requestId === "wait-change").result).toEqual({
       outcome: "changed",
-      changedDomains: ["workspace"],
-      revisions: { workspace: 1, presets: 0, settings: 0, transport: 0 },
+      matchedImmediately: false,
+      revision: 1,
     });
   });
 
   it("releases a revision waiter immediately when its client disconnects", async () => {
     mount();
     await waitUntilReady();
-    act(() =>
-      adapter.handler(request("app.wait", { workspaceRevision: 0, timeoutMs: 100 }, "gone"))
-    );
+    act(() => adapter.handler(request("app.wait", { afterRevision: 0, timeoutMs: 100 }, "gone")));
     act(() => adapter.handler({ type: "cancel", requestId: "gone" }));
 
     for (let index = 0; index < 4; index += 1) {
       act(() =>
         adapter.handler(
-          request("app.wait", { workspaceRevision: 0, timeoutMs: 100 }, `remaining-${index}`)
+          request("app.wait", { afterRevision: 0, timeoutMs: 100 }, `remaining-${index}`)
         )
       );
     }
@@ -700,45 +731,32 @@ describe("useAgentControlBridge", () => {
     expect(adapter.responses.find(({ requestId }) => requestId === "gone")).toBeUndefined();
     expect(
       adapter.responses.filter(({ requestId }) => requestId.startsWith("remaining-"))
-    ).toSatisfy((responses) => responses.every(({ result }) => result?.outcome === "timeout"));
+    ).toSatisfy((responses) => responses.every(({ error }) => error?.data?.reason === "timeout"));
   });
 
-  it("returns a successful timeout with the current revision snapshot", async () => {
+  it("returns a timeout error with the current global revision", async () => {
     mount();
     await waitUntilReady();
     const response = await send(
-      request("app.wait", { presetsRevision: 0, timeoutMs: 100 }, "wait-timeout")
+      request("app.wait", { afterRevision: 0, timeoutMs: 100 }, "wait-timeout")
     );
-    expect(response.result).toEqual({
-      outcome: "timeout",
-      changedDomains: [],
-      revisions: { workspace: 0, presets: 0, settings: 0, transport: 0 },
+    expect(response.error).toMatchObject({
+      code: -32071,
+      data: {
+        reason: "timeout",
+        details: { afterRevision: 0, currentRevision: 0 },
+      },
     });
   });
 
-  it("returns stable Preset read conflicts and missing-target errors", async () => {
+  it("returns stable Preset missing-target errors", async () => {
     mount();
     await waitUntilReady();
 
-    const conflict = await send(
-      request(
-        "preset.describe",
-        { presetId: "missing", expectedPresetsRevision: 1 },
-        "preset-conflict"
-      )
-    );
     const missing = await send(
       request("preset.describe", { presetId: "missing" }, "preset-missing")
     );
 
-    expect(conflict.error).toMatchObject({
-      code: -32004,
-      data: {
-        reason: "revisionConflict",
-        path: "$.params.expectedPresetsRevision",
-        details: { expectedRevision: 1, currentRevision: 0 },
-      },
-    });
     expect(missing.error).toMatchObject({
       code: -32020,
       data: { reason: "presetNotFound", path: "$.params.presetId" },
@@ -758,23 +776,19 @@ describe("useAgentControlBridge", () => {
     const renamed = await send(
       request(
         "preset.rename",
-        { presetId: "preset-1", name: "  Final Mix  ", expectedPresetsRevision: 0 },
+        { presetId: "preset-1", name: "  Final Mix  ", expectedRevision: 0 },
         "preset-rename"
       )
     );
     const reorderDryRun = await send(
       request(
         "preset.reorder",
-        { presetIds: ["preset-2", "preset-1"], dryRun: true, expectedPresetsRevision: 1 },
+        { presetIds: ["preset-2", "preset-1"], dryRun: true, expectedRevision: 1 },
         "preset-reorder-dry"
       )
     );
     const deleted = await send(
-      request(
-        "preset.delete",
-        { presetId: "preset-1", expectedPresetsRevision: 1 },
-        "preset-delete"
-      )
+      request("preset.delete", { presetId: "preset-1", expectedRevision: 1 }, "preset-delete")
     );
     const listed = await send(request("preset.list", {}, "preset-list-after-delete"));
 
@@ -843,8 +857,8 @@ describe("useAgentControlBridge", () => {
         "preset.save",
         {
           name: "  New Mix  ",
-          expectedWorkspaceRevision: 0,
-          expectedPresetsRevision: 0,
+          expectedRevision: 0,
+          expectedRevision: 0,
         },
         "preset-save"
       )
@@ -854,8 +868,8 @@ describe("useAgentControlBridge", () => {
         "preset.update",
         {
           presetId: "preset-new",
-          expectedWorkspaceRevision: 0,
-          expectedPresetsRevision: 1,
+          expectedRevision: 0,
+          expectedRevision: 1,
           dryRun: true,
         },
         "preset-update-dry"
@@ -993,8 +1007,8 @@ describe("useAgentControlBridge", () => {
         "preset.apply",
         {
           presetId: "preset-1",
-          expectedWorkspaceRevision: 0,
-          expectedPresetsRevision: 0,
+          expectedRevision: 0,
+          expectedRevision: 0,
         },
         "preset-apply"
       )
@@ -1254,13 +1268,21 @@ describe("useAgentControlBridge", () => {
     flush.mockClear();
 
     const panelReset = await send(
-      request("axis.panel.reset", { panelId: "spectrum", kind: "frequency" }, "axis-panel-reset")
+      request(
+        "axis.panel.reset",
+        { panelId: "spectrum", kind: "frequency", expectedRevision: 1 },
+        "axis-panel-reset"
+      )
     );
     const sharedReset = await send(
-      request("axis.shared.reset", { kind: "frequency" }, "axis-shared-reset")
+      request("axis.shared.reset", { kind: "frequency", expectedRevision: 2 }, "axis-shared-reset")
     );
     const unavailable = await send(
-      request("axis.panel.reset", { panelId: "levelMeter", kind: "frequency" }, "axis-unavailable")
+      request(
+        "axis.panel.reset",
+        { panelId: "levelMeter", kind: "frequency", expectedRevision: 3 },
+        "axis-unavailable"
+      )
     );
 
     expect(panelReset.result.changed).toContain("panels.spectrum.frequency.linked");
