@@ -7,7 +7,8 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::agent_control::discovery::{
-  descriptor_path, read_descriptor_at, AgentControlDescriptor, DescriptorApp, DiscoveryErrorKind,
+  descriptor_path, read_descriptor_at, AgentControlDescriptor, DescriptorApp, DiscoveryError,
+  DiscoveryErrorKind,
 };
 use crate::agent_control::protocol::JsonRpcRequest;
 
@@ -967,7 +968,7 @@ fn is_help(value: &str) -> bool {
 }
 
 fn base_help_text() -> &'static str {
-  "PLVS CLI - development app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json [--expected-presets-revision <n>]\n  plvs-cli app preset save <name> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset update <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset apply <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-settings-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait <--workspace-revision <n>|--presets-revision <n>|--settings-revision <n>|--transport-revision <n>> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop|clear> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file <reanalyze|stop|select|remove> <session-id> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-transport-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family is available\nonly in a dev-identity build; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-workspace-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json [--expected-presets-revision <n>]\n  plvs-cli app preset save <name> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset update <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset apply <preset-id> --json [--expected-workspace-revision <n>] [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-presets-revision <n>] [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-settings-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait <--workspace-revision <n>|--presets-revision <n>|--settings-revision <n>|--transport-revision <n>> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop|clear> --json [--expected-transport-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file <reanalyze|stop|select|remove> <session-id> --json [--expected-transport-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-transport-revision <n>] [--dry-run]\n\nControls the already-running PLVS Dev GUI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 pub fn help_text() -> &'static str {
@@ -1014,18 +1015,27 @@ trait ControlClient {
 
 struct LocalControlClient;
 
-/// A missing or stale descriptor has two causes and they need different sentences: an agent that
-/// cannot tell "you never turned this on" from "the app is closed" will report the wrong one to
-/// the user, and the user cannot act on it.
-fn missing_descriptor_failure(enabled: bool) -> CliAppFailure {
-  if enabled {
-    CliAppFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
-  } else {
-    CliAppFailure::transport(
+/// A discovery failure has several causes and they need different sentences. Only a missing
+/// descriptor is ambiguous: it means either that the user never turned Agent Control on, or that
+/// it is on and the app is closed, and an agent that cannot tell those apart sends the user to the
+/// wrong fix. Every other kind is specific, and reporting it as a setting would hide a real fault
+/// and point the user at a switch that is already on.
+fn discovery_failure(error: &DiscoveryError, enabled: bool) -> CliAppFailure {
+  match error.kind {
+    DiscoveryErrorKind::Missing if enabled => {
+      CliAppFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
+    }
+    DiscoveryErrorKind::Missing => CliAppFailure::transport(
       "agentControlDisabled",
       "Agent Control is disabled. Enable it in PLVS Settings.".to_string(),
       None,
-    )
+    ),
+    // A descriptor naming a process that is gone: the app really is not running, and the
+    // discovery text says which check decided that.
+    DiscoveryErrorKind::Stale => CliAppFailure::transport("appNotRunning", error.to_string(), None),
+    DiscoveryErrorKind::Malformed | DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => {
+      CliAppFailure::transport("discoveryFailed", error.to_string(), None)
+    }
   }
 }
 
@@ -1034,14 +1044,10 @@ impl ControlClient for LocalControlClient {
     let path = descriptor_path()
       .map_err(|error| CliAppFailure::transport("appNotRunning", error.to_string(), None))?;
     let descriptor = read_descriptor_at(&path, env!("PLVS_APP_ID"), |_| true).map_err(|error| {
-      match error.kind {
-        DiscoveryErrorKind::Missing | DiscoveryErrorKind::Malformed | DiscoveryErrorKind::Stale => {
-          missing_descriptor_failure(crate::agent_control::toggle::read_enabled_from_disk())
-        }
-        DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => {
-          CliAppFailure::transport("discoveryFailed", error.to_string(), None)
-        }
-      }
+      discovery_failure(
+        &error,
+        crate::agent_control::toggle::read_enabled_from_disk(),
+      )
     })?;
     call_descriptor(&descriptor, &request)
   }
@@ -2716,15 +2722,34 @@ mod tests {
 
   #[test]
   fn a_missing_descriptor_reads_differently_when_the_toggle_is_off() {
-    let disabled = missing_descriptor_failure(false);
+    let missing = DiscoveryError::new(DiscoveryErrorKind::Missing, "no descriptor");
+
+    let disabled = discovery_failure(&missing, false);
     assert_eq!(disabled.error.reason, "agentControlDisabled");
     assert_eq!(
       disabled.error.message,
       "Agent Control is disabled. Enable it in PLVS Settings."
     );
 
-    let not_running = missing_descriptor_failure(true);
+    let not_running = discovery_failure(&missing, true);
     assert_eq!(not_running.error.reason, "appNotRunning");
     assert_eq!(not_running.error.message, "PLVS is not running.");
+  }
+
+  #[test]
+  fn a_descriptor_that_exists_but_fails_keeps_its_diagnostic() {
+    let malformed = discovery_failure(
+      &DiscoveryError::new(DiscoveryErrorKind::Malformed, "bad token"),
+      true,
+    );
+    assert_eq!(malformed.error.reason, "discoveryFailed");
+    assert_eq!(malformed.error.message, "bad token");
+
+    let stale = discovery_failure(
+      &DiscoveryError::new(DiscoveryErrorKind::Stale, "pid 4321 is gone"),
+      true,
+    );
+    assert_eq!(stale.error.reason, "appNotRunning");
+    assert_eq!(stale.error.message, "pid 4321 is gone");
   }
 }

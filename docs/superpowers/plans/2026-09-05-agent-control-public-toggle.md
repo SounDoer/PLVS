@@ -649,61 +649,86 @@ In the `tests` module of `src-tauri/src/cli_app.rs`, add:
 ```rust
   #[test]
   fn a_missing_descriptor_reads_differently_when_the_toggle_is_off() {
-    let disabled = missing_descriptor_failure(false);
-    assert_eq!(disabled.reason, "agentControlDisabled");
+    let missing = DiscoveryError::new(DiscoveryErrorKind::Missing, "no descriptor");
+
+    let disabled = discovery_failure(&missing, false);
+    assert_eq!(disabled.error.reason, "agentControlDisabled");
     assert_eq!(
-      disabled.message,
+      disabled.error.message,
       "Agent Control is disabled. Enable it in PLVS Settings."
     );
 
-    let not_running = missing_descriptor_failure(true);
-    assert_eq!(not_running.reason, "appNotRunning");
-    assert_eq!(not_running.message, "PLVS is not running.");
+    let not_running = discovery_failure(&missing, true);
+    assert_eq!(not_running.error.reason, "appNotRunning");
+    assert_eq!(not_running.error.message, "PLVS is not running.");
+  }
+
+  #[test]
+  fn a_descriptor_that_exists_but_fails_keeps_its_diagnostic() {
+    let malformed = discovery_failure(
+      &DiscoveryError::new(DiscoveryErrorKind::Malformed, "bad token"),
+      true,
+    );
+    assert_eq!(malformed.error.reason, "discoveryFailed");
+    assert_eq!(malformed.error.message, "bad token");
+
+    let stale = discovery_failure(
+      &DiscoveryError::new(DiscoveryErrorKind::Stale, "pid 4321 is gone"),
+      true,
+    );
+    assert_eq!(stale.error.reason, "appNotRunning");
+    assert_eq!(stale.error.message, "pid 4321 is gone");
   }
 ```
 
-Read `CliAppFailure` before writing this: if `reason` and `message` are not reachable from the test
-module, follow whatever the neighbouring tests in that file already do to inspect a failure rather
-than widening the type.
+Read `CliAppFailure` before writing this: `reason` and `message` sit on the `CliAppError` boxed
+inside it, reachable as `failure.error.reason` / `failure.error.message` — do not widen either
+type's visibility to get there. `DiscoveryError::new(kind, message)` is already public in
+`src-tauri/src/agent_control/discovery.rs`; check its exact signature before using it.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test --manifest-path src-tauri/Cargo.toml cli_app::`
-Expected: FAIL to compile — `cannot find function missing_descriptor_failure in this scope`.
+Expected: FAIL to compile — `cannot find function discovery_failure in this scope`.
 
 - [ ] **Step 3: Write the helper and use it**
 
 Add above `impl ControlClient for LocalControlClient`:
 
 ```rust
-/// A missing or stale descriptor has two causes and they need different sentences: an agent that
-/// cannot tell "you never turned this on" from "the app is closed" will report the wrong one to
-/// the user, and the user cannot act on it.
-fn missing_descriptor_failure(enabled: bool) -> CliAppFailure {
-  if enabled {
-    CliAppFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
-  } else {
-    CliAppFailure::transport(
+/// A discovery failure has several causes and they need different sentences. Only a missing
+/// descriptor is ambiguous: it means either that the user never turned Agent Control on, or that
+/// it is on and the app is closed, and an agent that cannot tell those apart sends the user to the
+/// wrong fix. Every other kind is specific, and reporting it as a setting would hide a real fault
+/// and point the user at a switch that is already on.
+fn discovery_failure(error: &DiscoveryError, enabled: bool) -> CliAppFailure {
+  match error.kind {
+    DiscoveryErrorKind::Missing if enabled => {
+      CliAppFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
+    }
+    DiscoveryErrorKind::Missing => CliAppFailure::transport(
       "agentControlDisabled",
       "Agent Control is disabled. Enable it in PLVS Settings.".to_string(),
       None,
-    )
+    ),
+    // A descriptor naming a process that is gone: the app really is not running, and the
+    // discovery text says which check decided that.
+    DiscoveryErrorKind::Stale => CliAppFailure::transport("appNotRunning", error.to_string(), None),
+    DiscoveryErrorKind::Malformed | DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => {
+      CliAppFailure::transport("discoveryFailed", error.to_string(), None)
+    }
   }
 }
 ```
+
+You will need `DiscoveryError` added to the `use crate::agent_control::discovery::{...}` list at
+the top of the file; `DiscoveryErrorKind` is already there.
 
 Then replace the error mapping inside `LocalControlClient::call`:
 
 ```rust
     let descriptor = read_descriptor_at(&path, env!("PLVS_APP_ID"), |_| true).map_err(|error| {
-      match error.kind {
-        DiscoveryErrorKind::Missing | DiscoveryErrorKind::Malformed | DiscoveryErrorKind::Stale => {
-          missing_descriptor_failure(crate::agent_control::toggle::read_enabled_from_disk())
-        }
-        DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => {
-          CliAppFailure::transport("discoveryFailed", error.to_string(), None)
-        }
-      }
+      discovery_failure(&error, crate::agent_control::toggle::read_enabled_from_disk())
     })?;
 ```
 
@@ -1373,6 +1398,10 @@ Windows-only for now. With Agent Control off, `app` commands exit with
 
 Add `plvs-cli app <command> [options]` to the `Commands` block, after the `report` line.
 
+- State in the `app` paragraph which reason an agent gets when Agent Control is off:
+  `agentControlDisabled`, alongside the `Agent Control is disabled. Enable it in PLVS Settings.`
+  message already quoted there.
+
 - [ ] **Step 2: Update `docs/agent-control/README.md`**
 
 - In "This directory records the implemented developer-only App Control contract.", drop
@@ -1388,6 +1417,10 @@ paths as the GUI.
 
 - In "Implementation status", replace "Production exposure and MCP integration remain deferred
   product decisions." with "MCP integration remains a deferred product decision."
+
+- Add `agentControlDisabled` to the list of transport-layer failure reasons in the "Failures below
+  the application" section. `discoveryFailed` is missing from that list too; add it alongside
+  `agentControlDisabled` rather than leaving it undocumented.
 
 - [ ] **Step 3: Commit**
 
