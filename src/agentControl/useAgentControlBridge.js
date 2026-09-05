@@ -287,10 +287,11 @@ export function useAgentControlBridge({
   const waitersRef = useRef(new Map());
   const waitWakeScheduledRef = useRef(false);
   const workspaceRevisionBumpedThisTurnRef = useRef(false);
+  const revisionBatchRef = useRef(null);
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
-  const scheduleWaitWake = useCallback(() => {
+  const publishWaitWake = useCallback(() => {
     if (waitWakeScheduledRef.current) return;
     waitWakeScheduledRef.current = true;
     queueMicrotask(() => {
@@ -307,7 +308,22 @@ export function useAgentControlBridge({
       }
     });
   }, []);
+  const scheduleWaitWake = useCallback(() => {
+    const batch = revisionBatchRef.current;
+    if (batch) {
+      batch.wakePending = true;
+      return;
+    }
+    publishWaitWake();
+  }, [publishWaitWake]);
   const bumpControlRevision = useCallback(() => {
+    const batch = revisionBatchRef.current;
+    if (batch) {
+      if (batch.bumped) return;
+      batch.bumped = true;
+      controlRevisionRef.current += 1;
+      return;
+    }
     if (controlRevisionBumpedThisTurnRef.current) return;
     controlRevisionBumpedThisTurnRef.current = true;
     controlRevisionRef.current += 1;
@@ -442,6 +458,15 @@ export function useAgentControlBridge({
       }
 
       const { request } = normalized;
+      const revisionBatch =
+        request.params.expectedRevision === undefined
+          ? null
+          : {
+              startRevision: controlRevisionRef.current,
+              bumped: false,
+              wakePending: false,
+            };
+      if (revisionBatch) revisionBatchRef.current = revisionBatch;
       try {
         if (request.method === "app.capabilities") {
           return {
@@ -450,7 +475,11 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "app.wait") {
-          if (controlRevisionRef.current !== request.params.afterRevision) {
+          const activeBatch = revisionBatchRef.current;
+          const awaitingActiveBatch =
+            activeBatch?.bumped === true &&
+            request.params.afterRevision === activeBatch.startRevision;
+          if (controlRevisionRef.current !== request.params.afterRevision && !awaitingActiveBatch) {
             return {
               requestId,
               result: {
@@ -1690,6 +1719,11 @@ export function useAgentControlBridge({
                 })
               : error;
         return { requestId, error: agentControlRpcError(semantic) };
+      } finally {
+        if (revisionBatch && revisionBatchRef.current === revisionBatch) {
+          revisionBatchRef.current = null;
+          if (revisionBatch.wakePending) publishWaitWake();
+        }
       }
     };
   }, [
@@ -1704,6 +1738,7 @@ export function useAgentControlBridge({
     dockContext,
     executeDock,
     presets,
+    publishWaitWake,
     replaceWorkspace,
     runtime,
     scheduleWaitWake,
