@@ -502,10 +502,40 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       revision: 1,
       dryRun: false,
-      changed: ["dock.panels"],
+      changed: true,
       createdPanels: { meter: "levelMeter" },
-      dock: { panels: [{ id: "levelMeter", moduleId: "levelMeter" }] },
+      state: {
+        dock: { panels: [{ id: "levelMeter", moduleId: "levelMeter" }] },
+        preset: { activeId: null, dirty: false },
+      },
     });
+    expect(response.result).not.toHaveProperty("dock");
+    expect(response.result).not.toHaveProperty("preset");
+  });
+
+  it("truthfully previews and no-ops Dock mutations", async () => {
+    const executeDock = vi.fn(async () => {});
+    const flush = vi.fn(async () => {});
+    mount({ executeAgentDock: executeDock, flush });
+    await waitUntilReady();
+
+    const noOp = await send(request("dock.exit", {}, "dock-exit-no-op"));
+    const dryRun = await send(request("dock.enter", { dryRun: true }, "dock-enter-dry-run"));
+
+    expect(noOp.result).toMatchObject({
+      revision: 0,
+      dryRun: false,
+      changed: false,
+      state: { dock: { enabled: false } },
+    });
+    expect(dryRun.result).toMatchObject({
+      revision: 0,
+      dryRun: true,
+      changed: true,
+      state: { dock: { enabled: true } },
+    });
+    expect(executeDock).not.toHaveBeenCalled();
+    expect(flush).not.toHaveBeenCalled();
   });
 
   it("reports the observable Dock state when native execution fails", async () => {

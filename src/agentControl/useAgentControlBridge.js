@@ -575,12 +575,14 @@ export function useAgentControlBridge({
           const result = {
             dryRun: request.params.dryRun === true,
             revision: currentRevision,
-            preset: panelResultPreset(presets, planned.changed),
-            changed: planned.changed,
+            changed: planned.changed.length > 0,
             effects: planned.effects ?? [],
             warnings: planned.warnings,
             createdPanels,
-            dock: buildDockSnapshot(planned.dock, dockContext),
+            state: {
+              dock: buildDockSnapshot(planned.dock, dockContext),
+              preset: panelResultPreset(presets, planned.changed),
+            },
           };
           if (request.params.dryRun === true || planned.changed.length === 0)
             return { requestId, result };
@@ -630,8 +632,8 @@ export function useAgentControlBridge({
               }
             );
           }
-          result.dock = buildDockSnapshot(latestDockRef.current, dockContext);
-          result.preset = panelResultPreset(presets, planned.changed);
+          result.state.dock = buildDockSnapshot(latestDockRef.current, dockContext);
+          result.state.preset = panelResultPreset(presets, planned.changed);
           try {
             await flush();
           } catch (error) {
@@ -646,7 +648,7 @@ export function useAgentControlBridge({
                 stateCommitted: true,
                 changed: planned.changed,
                 revision: result.revision,
-                dock: result.dock,
+                dock: result.state.dock,
               }
             );
           }
