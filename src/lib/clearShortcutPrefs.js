@@ -1,5 +1,7 @@
 import { isTauri } from "../ipc/env.js";
 
+// The one store file, same as `pluginStoreBackend.js` -- it holds all four domains, not just
+// settings, despite the name.
 const STORE_FILE = "plvs-settings.json";
 const SHORTCUT_KEY = "clearShortcut";
 const GLOBAL_KEY = "clearGlobal";

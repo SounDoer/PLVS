@@ -178,3 +178,54 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   edit can only happen while docked, and if the active preset is windowed the scene is already
   dirty on `dock.enabled` alone, so that flag is redundant there, never wrong. Investigated
   2026-09-05; deliberately left as is.
+
+- **Writing a domain store from outside the React state that owns it changes nothing on screen,
+  and says nothing about it.** A store's same-context subscribers are only called when it was
+  built with `notifySameContext`, and of the four in `persistence/index.js` only `presetsStore`
+  was. Nothing else fills the gap: in the desktop build `pluginStoreBackend.subscribe()` is a
+  literal no-op (single window, single writer, no events to publish), and in the browser the
+  `storage` event fires by spec only in *other* documents, never the one that wrote. This stays
+  invisible day to day because the writer is normally the hook that owns the state — it sets its
+  own state and writes the store as persistence, needing no notification. The trap is code that
+  writes from outside that owner: per-item import does, through `transfer/libraryAdapters.js`,
+  which is a plain module with no React to update. The failure has no error and no warning — the
+  data reaches disk correctly and the list keeps rendering what it had, so a second import of the
+  same file reports it as already in the library. That shipped. Use `store.notifyLocal()` from the
+  writer rather than turning `notifySameContext` on for the store: `plvs:settings` is written
+  through `patchCoalesced` during an opacity drag, and every subscriber re-reading four times a
+  second is a cost the ordinary path should not pay for an occasional import. Note where the
+  existing code sits on this — `useCustomThemeSettings` calls `setCustomThemes(listCustomThemes())`
+  by hand after each write — so the convention is upheld by memory, not by the type system, and a
+  test that asserts on store contents passes either way. Cover it where it breaks: render the
+  owner and assert the rendered list.
+
+- **`plvs-settings.json` is not the settings file; it is the only file.** It holds `plvs:settings`,
+  `plvs:workspace`, `plvs:presets` and `plvs:themes` side by side, plus Rust-owned siblings
+  (`windowBounds`, `captureDeviceId`, `clearShortcut`, `clearGlobal`, `agentControlEnabled`). The
+  name predates the other three domains, so "settings" names one key inside the file rather than
+  the file. Do not rename it: the mechanical part is small — 14 references across 8 files, several
+  written inline rather than through a constant, and three JS modules each declaring the same
+  constant independently — but it needs a migration of every installed user's only copy of their
+  data, in Rust, on the boot path *before* the first `app.store(...)` call that restores window
+  geometry. Get it wrong and the app opens empty and default, which reads to the user as the
+  update having eaten everything, with nothing on screen pointing at AppData. A downgrade is worse
+  either way: renamed, the old build finds nothing; copied, both files exist and the two builds
+  edit different ones in silence. None of that is verifiable by `npm run check`, which can test
+  the migration function but not the ordering, the locked file, or the permission failure that
+  would actually bite. The name misleads; the fix costs more than the confusion. Also note that
+  importing a whole configuration does *not* overwrite this file — `import_profile` inserts the
+  four domain keys and some siblings, and `agentControlEnabled` stays out of both `DOMAIN_KEYS`
+  and `SIBLING_KEYS` on purpose, so a shared configuration cannot carry a permission onto someone
+  else's machine.
+
+- **Two things about this repo's Vitest setup will fail you confusingly rather than clearly.**
+  First, `vite.config.js` sets the environment to `node` by default to avoid jsdom's setup cost
+  across the whole suite, so any test that renders React or touches a persistence store needs
+  `/** @vitest-environment jsdom */` as its first line — about 134 files carry it. Omit it and
+  there is no error: `localStorage` is undefined, `localStorageBackend` silently no-ops every read
+  and write, and the assertions fail against default values, which reads like a bug in the code
+  under test. Second, `@testing-library/jest-dom` is **not** a dependency here, so
+  `toBeInTheDocument()` and `toBeDisabled()` do not exist; the repo's own idiom is a bare
+  `getBy*` (which throws when absent), `expect(x).toBeTruthy()`, `expect(queryBy*(...)).toBeNull()`
+  and `expect(el.disabled).toBe(true)`. Both are easy to import from a plan or another codebase
+  without noticing.

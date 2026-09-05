@@ -5,6 +5,9 @@ use serde_json::{json, Map, Value};
 use tauri::AppHandle;
 use tauri_plugin_store::StoreExt;
 
+/// The one store file. Its name predates the other three domains: it holds `plvs:settings`,
+/// `plvs:workspace`, `plvs:presets` and `plvs:themes` together with the Rust-owned siblings, so
+/// "settings" names a key inside it, not the file. Deliberately not renamed -- see AGENTS.md.
 const STORE_FILE: &str = "plvs-settings.json";
 const PROFILE_APP: &str = "PLVS";
 const PROFILE_KIND: &str = "configuration-profile";

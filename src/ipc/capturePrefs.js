@@ -4,6 +4,9 @@
  */
 import { isTauri } from "./env.js";
 
+// The one store file, same as `pluginStoreBackend.js` -- it holds all four domains, not just
+// settings, despite the name. Declared again here rather than imported to keep this module off
+// the persistence layer.
 const STORE_FILE = "plvs-settings.json";
 const STORE_KEY = "captureDeviceId";
 
