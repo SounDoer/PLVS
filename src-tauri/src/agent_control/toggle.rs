@@ -54,8 +54,15 @@ mod tests {
     assert_eq!(enabled_from_store_map(&map), default_enabled());
   }
 
+  #[cfg(feature = "dev-identity")]
+  #[test]
+  fn development_builds_default_to_enabled() {
+    assert!(default_enabled());
+  }
+
+  #[cfg(not(feature = "dev-identity"))]
   #[test]
   fn release_builds_default_to_disabled() {
-    assert_eq!(default_enabled(), cfg!(feature = "dev-identity"));
+    assert!(!default_enabled());
   }
 }
