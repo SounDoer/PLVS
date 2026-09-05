@@ -492,11 +492,10 @@ pub struct FrontendResponse {
   pub error: Option<JsonRpcError>,
 }
 
-fn main_broker(window: &tauri::WebviewWindow, state: &AgentControlState) -> Result<Broker, String> {
-  if !cfg!(feature = "dev-identity") {
-    return Err("Agent control is disabled in this build.".to_string());
-  }
-  if window.label() != "main" {
+fn main_broker(window_label: &str, state: &AgentControlState) -> Result<Broker, String> {
+  // The Settings toggle owns endpoint access in both installed and development builds.
+  // Frontend commands still belong exclusively to the main window.
+  if window_label != "main" {
     return Err("Only the main PLVS window can handle agent-control requests.".to_string());
   }
   state
@@ -509,7 +508,7 @@ pub fn agent_control_frontend_ready(
   window: tauri::WebviewWindow,
   state: tauri::State<'_, AgentControlState>,
 ) -> Result<(), String> {
-  main_broker(&window, &state)?
+  main_broker(window.label(), &state)?
     .frontend_ready()
     .map_err(|error| error.to_string())
 }
@@ -519,7 +518,7 @@ pub fn agent_control_frontend_not_ready(
   window: tauri::WebviewWindow,
   state: tauri::State<'_, AgentControlState>,
 ) -> Result<(), String> {
-  main_broker(&window, &state)?.frontend_not_ready();
+  main_broker(window.label(), &state)?.frontend_not_ready();
   Ok(())
 }
 
@@ -542,7 +541,7 @@ pub fn agent_control_respond(
       )
     }
   };
-  main_broker(&window, &state)?
+  main_broker(window.label(), &state)?
     .respond(&response.request_id, outcome)
     .map_err(|error| error.to_string())
 }
@@ -590,6 +589,45 @@ mod tests {
   fn broker(limit: usize, timeout: Duration) -> (Broker, Arc<FakeEmitter>) {
     let emitter = Arc::new(FakeEmitter::default());
     (Broker::new(emitter.clone(), limit, timeout), emitter)
+  }
+
+  #[test]
+  fn main_window_can_ready_and_answer_requests_in_either_build_identity() {
+    let state = AgentControlState::default();
+    let (installed, emitter) = broker(4, Duration::from_secs(1));
+    state.install(installed.clone());
+    let frontend = main_broker("main", &state).unwrap();
+    frontend.frontend_ready().unwrap();
+    let pending = installed.dispatch(request("installed-app")).unwrap();
+    assert_eq!(emitter.requests.lock().unwrap().len(), 1);
+    frontend
+      .respond(
+        "installed-app",
+        FrontendOutcome::Success(json!({ "ok": true })),
+      )
+      .unwrap();
+    assert_eq!(
+      serde_json::to_value(pending.wait().unwrap()).unwrap()["result"],
+      json!({ "ok": true })
+    );
+    frontend.frontend_not_ready();
+    assert_eq!(
+      installed
+        .dispatch(request("after-unmount"))
+        .unwrap_err()
+        .reason,
+      BrokerErrorReason::FrontendNotReady
+    );
+  }
+
+  #[test]
+  fn frontend_access_requires_the_main_window_and_an_installed_broker() {
+    let state = AgentControlState::default();
+    assert!(main_broker("main", &state).is_err());
+    let (installed, _) = broker(4, Duration::from_secs(1));
+    state.install(installed);
+    assert!(main_broker("dock-editor", &state).is_err());
+    assert!(main_broker("", &state).is_err());
   }
 
   fn wait_request(id: &str, params: Value) -> JsonRpcRequest {
