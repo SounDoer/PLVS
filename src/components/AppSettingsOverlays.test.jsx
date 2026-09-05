@@ -42,12 +42,18 @@ vi.mock("./SettingsPanel.jsx", () => ({
     dialogueVadEngine,
     setDialogueVadEngine,
     onSetAgentControlEnabled,
+    onPackExport,
+    onPackImport,
+    packBusy,
+    packStatus,
   }) => (
     <div data-testid="settings-panel">
       <span data-testid="theme-disabled">{String(themeControlsDisabled)}</span>
       <span data-testid="agent-control-enabled">{String(agentControlStatus?.enabled)}</span>
       <span data-testid="interface-size">{interfaceSize}</span>
       <span data-testid="dialogue-vad-engine">{dialogueVadEngine}</span>
+      <span data-testid="pack-busy">{String(packBusy)}</span>
+      <span data-testid="pack-status">{packStatus}</span>
       <button type="button" onClick={() => setInterfaceSize("large")}>
         Set interface size
       </button>
@@ -66,6 +72,12 @@ vi.mock("./SettingsPanel.jsx", () => ({
         onClick={() => onSetAgentControlEnabled(true)}
       >
         Set agent control enabled
+      </button>
+      <button type="button" onClick={() => onPackExport("presets")}>
+        Export presets
+      </button>
+      <button type="button" onClick={() => onPackImport("loudness")}>
+        Import loudness
       </button>
     </div>
   ),
@@ -320,6 +332,26 @@ describe("AppSettingsOverlays", () => {
 
     await waitFor(() => expect(onAgentControlEnabledChange).toHaveBeenCalledWith(false));
     expect(onAgentControlEnabledChange).not.toHaveBeenCalledWith(true);
+  });
+
+  it("opens the export picker for the requested library", () => {
+    renderOverlays();
+
+    fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
+
+    expect(screen.getByRole("dialog", { name: "Export Presets" })).toBeTruthy();
+  });
+
+  it("surfaces the pack transfer status after an import attempt outside the desktop app", async () => {
+    renderOverlays();
+
+    fireEvent.click(screen.getByRole("button", { name: "Import loudness" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("pack-status").textContent).toBe(
+        "Import is available in the desktop app"
+      )
+    );
   });
 
   it("renders the theme editor when custom theme editing is active", () => {

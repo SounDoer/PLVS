@@ -631,6 +631,24 @@ describe("SettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Feedback" }));
     expect(onOpenFeedback).toHaveBeenCalledTimes(1);
   });
+
+  it("offers export and import for each library above the Configuration row", () => {
+    const onPackExport = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} onPackExport={onPackExport} onPackImport={vi.fn()} />);
+
+    for (const label of ["loudness profiles", "presets", "theme"]) {
+      expect(screen.getByRole("button", { name: `Export ${label}` })).toBeTruthy();
+      expect(screen.getByRole("button", { name: `Import ${label}` })).toBeTruthy();
+    }
+
+    const rows = Array.from(document.querySelectorAll("[data-settings-row]"));
+    const index = (label) => rows.findIndex((row) => row.textContent.startsWith(label));
+    expect(index("Presets")).toBeGreaterThanOrEqual(0);
+    expect(index("Presets")).toBeLessThan(index("Configuration"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
+    expect(onPackExport).toHaveBeenCalledWith("presets");
+  });
 });
 
 describe("SettingsPanel — Channel labels", () => {

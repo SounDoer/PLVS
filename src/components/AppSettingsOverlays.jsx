@@ -3,7 +3,10 @@ import { openExternalUrl } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
+import { getAdapter } from "../transfer/libraryAdapters.js";
+import { usePackTransfer } from "../transfer/usePackTransfer.js";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
+import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { ThemeEditor } from "./ThemeEditor.jsx";
@@ -23,6 +26,7 @@ export function AppSettingsOverlays({
   // Held here, beside the theme editor's position, because both panels are floating overlays this
   // component owns; nothing outside it needs to know where they sit.
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
+  const [pickType, setPickType] = useState(null);
   const {
     configurationBusy,
     configurationStatus,
@@ -30,6 +34,7 @@ export function AppSettingsOverlays({
     importConfiguration,
     resetConfiguration,
   } = useConfigurationProfileActions();
+  const pack = usePackTransfer();
   const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
   });
@@ -104,6 +109,10 @@ export function AppSettingsOverlays({
         onResetConfiguration={resetConfiguration}
         configurationBusy={configurationBusy}
         configurationStatus={configurationStatus}
+        onPackExport={setPickType}
+        onPackImport={pack.beginImport}
+        packBusy={pack.busy}
+        packStatus={pack.status}
         agentControlStatus={agentControlStatus}
         agentControlBusy={agentControlBusy}
         onSetAgentControlEnabled={async (next) => {
@@ -128,6 +137,32 @@ export function AppSettingsOverlays({
       />
 
       {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
+
+      {pickType ? (
+        <ItemPickerDialog
+          open
+          mode="pick"
+          type={pickType}
+          items={getAdapter(pickType).list()}
+          dependencies={pickType === "presets" ? getAdapter("loudness").list() : []}
+          onExport={async (ids) => {
+            await pack.exportSelection(pickType, ids);
+            setPickType(null);
+          }}
+          onClose={() => setPickType(null)}
+        />
+      ) : null}
+
+      {pack.review ? (
+        <ItemPickerDialog
+          open
+          mode="review"
+          type={pack.review.type}
+          review={pack.review}
+          onConfirm={pack.confirmImport}
+          onClose={pack.cancelImport}
+        />
+      ) : null}
 
       {editor.isEditing ? (
         <ThemeEditor

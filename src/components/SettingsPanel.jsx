@@ -71,6 +71,12 @@ const FOOTER_LINK_CLASS =
 const CONFIG_TEXT_BTN_CLASS =
   "h-auto bg-transparent px-0 py-0 text-[length:var(--ui-fs-display)] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
 
+const PACK_ROWS = [
+  { type: "loudness", label: "Loudness Profiles", aria: "loudness profiles" },
+  { type: "presets", label: "Presets", aria: "presets" },
+  { type: "themes", label: "Theme", aria: "theme" },
+];
+
 function SettingsBody({ children }) {
   return (
     <div data-settings-body className={BODY_CLASS}>
@@ -193,6 +199,10 @@ export function SettingsPanel({
   onResetConfiguration = () => {},
   configurationBusy = false,
   configurationStatus = "",
+  onPackExport = () => {},
+  onPackImport = () => {},
+  packBusy = false,
+  packStatus = "",
   agentControlStatus = undefined,
   agentControlBusy = false,
   onSetAgentControlEnabled = () => {},
@@ -566,6 +576,39 @@ export function SettingsPanel({
 
                 {/* Configuration */}
                 <SettingsSection>
+                  {PACK_ROWS.map((row) => (
+                    <SettingsRow
+                      key={row.type}
+                      label={row.label}
+                      className="settings-row-stackable"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => onPackExport(row.type)}
+                          disabled={packBusy}
+                          aria-label={`Export ${row.aria}`}
+                          className={CONFIG_TEXT_BTN_CLASS}
+                        >
+                          Export…
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onPackImport(row.type)}
+                          disabled={packBusy}
+                          aria-label={`Import ${row.aria}`}
+                          className={CONFIG_TEXT_BTN_CLASS}
+                        >
+                          Import…
+                        </button>
+                      </div>
+                    </SettingsRow>
+                  ))}
+                  {packStatus ? (
+                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
+                      {packStatus}
+                    </div>
+                  ) : null}
                   <SettingsRow label="Configuration" className="settings-row-stackable">
                     <div className="flex items-center gap-2.5">
                       <button
