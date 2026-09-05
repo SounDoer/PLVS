@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planMerge } from "./mergeIntoLibrary.js";
+import { planMerge, planPackImport } from "./mergeIntoLibrary.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 
 function counter() {
@@ -115,5 +115,75 @@ describe("planMerge", () => {
     expect(planMerge([withValueDoc], [noValueDoc], { makeId: counter() }).plan[0].disposition).toBe(
       "duplicated"
     );
+  });
+});
+
+const P = { id: "pa", name: "Prof A", referenceLufs: -23, rules: [] };
+
+function presetPack(items, loudnessProfiles) {
+  return { app: "PLVS", kind: "preset-pack", version: 1, exportedAt: "x", items, loudnessProfiles };
+}
+
+describe("planPackImport", () => {
+  it("passes a non-preset pack straight through with no profile stage", () => {
+    const pack = { app: "PLVS", kind: "theme-pack", version: 1, exportedAt: "x", items: [] };
+    const result = planPackImport("themes", pack, { existingItems: [], makeId: counter() });
+    expect(result.profileAdditions).toEqual([]);
+    expect(result.profilePlan).toEqual([]);
+  });
+
+  it("imports a preset with its profile and keeps the reference", () => {
+    const preset = { id: "p1", name: "P1", loudnessProfileActive: "profile:pa" };
+    const result = planPackImport("presets", presetPack([preset], [P]), {
+      existingItems: [],
+      existingProfiles: [],
+      makeId: counter(),
+    });
+    expect(result.profileAdditions).toEqual([P]);
+    expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:pa");
+  });
+
+  it("points the preset at the copy when the profile was duplicated", () => {
+    const localProfile = { ...P, referenceLufs: -16 };
+    const preset = { id: "p1", name: "P1", loudnessProfileActive: "profile:pa" };
+    const result = planPackImport("presets", presetPack([preset], [P]), {
+      existingItems: [],
+      existingProfiles: [localProfile],
+      makeId: counter(),
+    });
+    expect(result.profileAdditions[0].id).toBe("new-1");
+    expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:new-1");
+  });
+
+  it("keeps the reference when the profile was already in the library", () => {
+    const preset = { id: "p1", name: "P1", loudnessProfileActive: "profile:pa" };
+    const result = planPackImport("presets", presetPack([preset], [P]), {
+      existingItems: [],
+      existingProfiles: [P],
+      makeId: counter(),
+    });
+    expect(result.profileAdditions).toEqual([]);
+    expect(result.profilePlan[0].disposition).toBe("skipped");
+    expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:pa");
+  });
+
+  it("drops a reference the pack did not carry", () => {
+    const preset = { id: "p1", name: "P1", loudnessProfileActive: "profile:missing" };
+    const result = planPackImport("presets", presetPack([preset], []), {
+      existingItems: [],
+      existingProfiles: [],
+      makeId: counter(),
+    });
+    expect(result.itemAdditions[0].loudnessProfileActive).toBe("off");
+  });
+
+  it("leaves an Off preset alone", () => {
+    const preset = { id: "p1", name: "P1", loudnessProfileActive: "off" };
+    const result = planPackImport("presets", presetPack([preset], []), {
+      existingItems: [],
+      existingProfiles: [],
+      makeId: counter(),
+    });
+    expect(result.itemAdditions[0].loudnessProfileActive).toBe("off");
   });
 });
