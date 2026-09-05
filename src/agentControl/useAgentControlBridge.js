@@ -832,11 +832,11 @@ export function useAgentControlBridge({
           const result = {
             dryRun: request.params.dryRun === true,
             revision: currentRevision,
-            changed: planned.changed,
+            changed: planned.changed.length > 0,
             effects: planned.effects,
             warnings: planned.warnings,
             ...(planned.confirmation ? { confirmation: planned.confirmation } : {}),
-            ...inspection,
+            state: inspection,
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
             return { requestId, result };
