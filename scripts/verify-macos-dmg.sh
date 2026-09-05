@@ -77,10 +77,18 @@ if [[ -n "$unexpected_binaries" ]]; then
 fi
 
 "$cli_binary" doctor --json >"$doctor_output"
-if ! grep -q '"schemaVersion":1' "$doctor_output"; then
-  echo "CLI doctor returned unexpected JSON" >&2
-  cat "$doctor_output" >&2
-  exit 1
-fi
+DOCTOR_OUTPUT="$doctor_output" node <<'NODE'
+const { readFileSync } = require("node:fs");
+const doctor = JSON.parse(readFileSync(process.env.DOCTOR_OUTPUT, "utf8"));
+const status = doctor["result"]["report"]["status"];
+if (
+  doctor["schemaVersion"] !== 1 ||
+  doctor["ok"] !== true ||
+  !["ok", "warning"].includes(status)
+) {
+  console.error("CLI doctor returned an unexpected v1 envelope:", doctor);
+  process.exit(1);
+}
+NODE
 
 echo "macOS DMG smoke check passed: $dmg"
