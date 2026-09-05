@@ -420,17 +420,20 @@ pub fn set_agent_control_enabled(
     return Ok(before);
   }
 
-  // PATH first when enabling and last when disabling, so a failure never leaves the endpoint open
-  // with no way to reach it, nor PATH pointing at an endpoint that is gone.
+  // The flag is written the moment the endpoint matches it. PATH is a convenience that may lag
+  // behind a failed registry write; the next successful toggle reconciles it. Persisting last
+  // would let a failed PATH write leave a revoked permission recorded as granted, and a later
+  // launch would reopen the endpoint the user just closed.
   if enabled {
     let _ = crate::cli_path::set_cli_path_enabled(true)?;
     start_endpoint(&app)?;
+    persist_enabled(&app, true)?;
   } else {
     stop_endpoint(&app);
+    persist_enabled(&app, false)?;
     let _ = crate::cli_path::set_cli_path_enabled(false)?;
   }
 
-  persist_enabled(&app, enabled)?;
   current_status(&app)
 }
 

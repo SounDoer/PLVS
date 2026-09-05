@@ -9,6 +9,8 @@ use tauri_plugin_store::StoreExt;
 /// what keeps it out.
 pub const ENABLED_KEY: &str = "agentControlEnabled";
 
+const WINDOWS_ONLY_MESSAGE: &str = "Agent Control is currently available on Windows only.";
+
 /// Development builds keep the behaviour they have today — Agent Control on, no setup step.
 /// Release builds start off, including on upgrade from a version that had no such setting.
 pub fn default_enabled() -> bool {
@@ -46,7 +48,7 @@ pub struct AgentControlStatus {
 
 fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentControlStatus {
   let message = if !supported {
-    "Agent Control is currently available on Windows only."
+    WINDOWS_ONLY_MESSAGE
   } else if !cli_installed {
     "plvs-cli.exe was not found in this installation."
   } else if enabled {
@@ -106,17 +108,20 @@ pub fn set_agent_control_enabled(
     return Ok(before);
   }
 
-  // PATH first when enabling and last when disabling, so a failure never leaves the endpoint open
-  // with no way to reach it, nor PATH pointing at an endpoint that is gone.
+  // The flag is written the moment the endpoint matches it. PATH is a convenience that may lag
+  // behind a failed registry write; the next successful toggle reconciles it. Persisting last
+  // would let a failed PATH write leave a revoked permission recorded as granted, and a later
+  // launch would reopen the endpoint the user just closed.
   if enabled {
     let _ = crate::cli_path::set_cli_path_enabled(true)?;
     start_endpoint(&app)?;
+    persist_enabled(&app, true)?;
   } else {
     stop_endpoint(&app);
+    persist_enabled(&app, false)?;
     let _ = crate::cli_path::set_cli_path_enabled(false)?;
   }
 
-  persist_enabled(&app, enabled)?;
   current_status(&app)
 }
 
@@ -133,7 +138,7 @@ fn start_endpoint(app: &AppHandle) -> Result<(), String> {
 
 #[cfg(not(target_os = "windows"))]
 fn start_endpoint(_app: &AppHandle) -> Result<(), String> {
-  Err("Agent Control is currently available on Windows only.".to_string())
+  Err(WINDOWS_ONLY_MESSAGE.to_string())
 }
 
 fn stop_endpoint(app: &AppHandle) {
