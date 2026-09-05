@@ -653,7 +653,7 @@ describe("useAgentControlBridge", () => {
     });
   });
 
-  it("updates Settings atomically and reports its independent revision", async () => {
+  it("updates Settings atomically and returns its final state", async () => {
     const flush = vi.fn(async () => {});
     mount({ flush });
     await waitUntilReady();
@@ -672,11 +672,15 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       dryRun: false,
       revision: 1,
-      changed: ["settings.closeBehavior", "settings.interfaceSize"],
-      settings: { closeBehavior: "tray", interfaceSize: "large" },
+      changed: true,
+      state: {
+        settings: { closeBehavior: "tray", interfaceSize: "large" },
+        availability: { openAtLogin: { writable: true, reason: null } },
+      },
       effects: [],
       warnings: [],
     });
+    expect(response.result).not.toHaveProperty("settings");
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
@@ -723,9 +727,10 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       dryRun: true,
       revision: 0,
+      changed: true,
       effects: ["measurementRestart"],
       confirmation: { requiredFlag: "allowMeasurementRestart" },
-      settings: { dialogueVadEngine: "silero" },
+      state: { settings: { dialogueVadEngine: "silero" } },
     });
   });
 
