@@ -29,15 +29,13 @@ describe("normalizeAgentControlRequest", () => {
       request: { id: "req-1", method: "preset.list", params: {} },
     });
     expect(
-      normalizeAgentControlRequest(
-        request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: 4 })
-      )
+      normalizeAgentControlRequest(request("preset.describe", { presetId: "preset-1" }))
     ).toEqual({
       ok: true,
       request: {
         id: "req-1",
         method: "preset.describe",
-        params: { presetId: "preset-1", expectedPresetsRevision: 4 },
+        params: { presetId: "preset-1" },
       },
     });
   });
@@ -45,13 +43,10 @@ describe("normalizeAgentControlRequest", () => {
   it.each([
     [
       "preset.rename",
-      { presetId: "preset-1", name: "New Name", expectedPresetsRevision: 2, dryRun: true },
+      { presetId: "preset-1", name: "New Name", expectedRevision: 2, dryRun: true },
     ],
-    ["preset.delete", { presetId: "preset-1", expectedPresetsRevision: 2, dryRun: true }],
-    [
-      "preset.reorder",
-      { presetIds: ["preset-2", "preset-1"], expectedPresetsRevision: 2, dryRun: true },
-    ],
+    ["preset.delete", { presetId: "preset-1", expectedRevision: 2, dryRun: true }],
+    ["preset.reorder", { presetIds: ["preset-2", "preset-1"], expectedRevision: 2, dryRun: true }],
   ])("normalizes %s library mutation", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({
       ok: true,
@@ -64,8 +59,7 @@ describe("normalizeAgentControlRequest", () => {
       "preset.save",
       {
         name: "New Mix",
-        expectedWorkspaceRevision: 1,
-        expectedPresetsRevision: 2,
+        expectedRevision: 2,
         dryRun: true,
       },
     ],
@@ -73,8 +67,7 @@ describe("normalizeAgentControlRequest", () => {
       "preset.update",
       {
         presetId: "preset-1",
-        expectedWorkspaceRevision: 1,
-        expectedPresetsRevision: 2,
+        expectedRevision: 2,
         dryRun: true,
       },
     ],
@@ -82,8 +75,7 @@ describe("normalizeAgentControlRequest", () => {
       "preset.apply",
       {
         presetId: "preset-1",
-        expectedWorkspaceRevision: 1,
-        expectedPresetsRevision: 2,
+        expectedRevision: 2,
         dryRun: true,
       },
     ],
@@ -117,7 +109,7 @@ describe("normalizeAgentControlRequest", () => {
   it("normalizes settings.update options", () => {
     const params = {
       patch: { closeBehavior: "tray", interfaceSize: "large" },
-      expectedSettingsRevision: 2,
+      expectedRevision: 2,
       allowMeasurementRestart: true,
       dryRun: true,
     };
@@ -128,7 +120,7 @@ describe("normalizeAgentControlRequest", () => {
   });
 
   it("normalizes app.wait baselines and timeout", () => {
-    const params = { workspaceRevision: 1, settingsRevision: 2, timeoutMs: 5000 };
+    const params = { afterRevision: 2, timeoutMs: 5000 };
     expect(normalizeAgentControlRequest(request("app.wait", params))).toEqual({
       ok: true,
       request: { id: "req-1", method: "app.wait", params },
@@ -136,29 +128,17 @@ describe("normalizeAgentControlRequest", () => {
   });
 
   it.each([
-    [
-      "transport.source.live",
-      { expectedTransportRevision: 1, allowStopFileAnalysis: true, dryRun: true },
-    ],
-    ["transport.source.file", { expectedTransportRevision: 1, dryRun: true }],
-    [
-      "transport.live.start",
-      { expectedTransportRevision: 1, allowStopFileAnalysis: true, dryRun: true },
-    ],
-    ["transport.live.stop", { expectedTransportRevision: 1, dryRun: true }],
-    ["transport.live.clear", { expectedTransportRevision: 1, dryRun: true }],
-    [
-      "transport.file.analyze",
-      { path: "C:\\audio\\mix.wav", expectedTransportRevision: 1, dryRun: true },
-    ],
-    [
-      "transport.file.reanalyze",
-      { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true },
-    ],
-    ["transport.file.stop", { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true }],
-    ["transport.file.select", { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true }],
-    ["transport.file.remove", { sessionId: "file-1", expectedTransportRevision: 1, dryRun: true }],
-    ["transport.file.clear", { expectedTransportRevision: 1, dryRun: true }],
+    ["transport.source.live", { expectedRevision: 1, allowStopFileAnalysis: true, dryRun: true }],
+    ["transport.source.file", { expectedRevision: 1, dryRun: true }],
+    ["transport.live.start", { expectedRevision: 1, allowStopFileAnalysis: true, dryRun: true }],
+    ["transport.live.stop", { expectedRevision: 1, dryRun: true }],
+    ["transport.live.clear", { expectedRevision: 1, dryRun: true }],
+    ["transport.file.analyze", { path: "C:\\audio\\mix.wav", expectedRevision: 1, dryRun: true }],
+    ["transport.file.reanalyze", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
+    ["transport.file.stop", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
+    ["transport.file.select", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
+    ["transport.file.remove", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
+    ["transport.file.clear", { expectedRevision: 1, dryRun: true }],
   ])("normalizes %s mutation options", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({
       ok: true,
@@ -174,17 +154,17 @@ describe("normalizeAgentControlRequest", () => {
         monitor: "monitor-1",
         reserveSpace: false,
         height: 72,
-        expectedWorkspaceRevision: 2,
+        expectedRevision: 2,
         dryRun: true,
       },
     ],
-    ["dock.exit", { expectedWorkspaceRevision: 2, dryRun: true }],
-    ["dock.layout.apply", { layout: { panels: [] }, expectedWorkspaceRevision: 2, dryRun: true }],
+    ["dock.exit", { expectedRevision: 2, dryRun: true }],
+    ["dock.layout.apply", { layout: { panels: [] }, expectedRevision: 2, dryRun: true }],
     [
       "dock.panel.update",
-      { panelId: "level", patch: { mode: "rms" }, expectedWorkspaceRevision: 2, dryRun: true },
+      { panelId: "level", patch: { mode: "rms" }, expectedRevision: 2, dryRun: true },
     ],
-    ["dock.panel.reset", { panelId: "level", expectedWorkspaceRevision: 2, dryRun: true }],
+    ["dock.panel.reset", { panelId: "level", expectedRevision: 2, dryRun: true }],
   ])("normalizes %s options", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({
       ok: true,
@@ -294,7 +274,7 @@ describe("normalizeAgentControlRequest", () => {
     [request("preset.save", {}), "invalidParams", "$.params.name", -32602],
     [request("preset.update", {}), "invalidParams", "$.params.presetId", -32602],
     [request("settings.update", {}), "invalidParams", "$.params.patch", -32602],
-    [request("app.wait", {}), "invalidParams", "$.params", -32602],
+    [request("app.wait", {}), "invalidParams", "$.params.afterRevision", -32602],
     [request("transport.file.analyze", {}), "invalidParams", "$.params.path", -32602],
     [request("transport.file.select", {}), "invalidParams", "$.params.sessionId", -32602],
     [request("dock.layout.apply", {}), "invalidParams", "$.params.layout", -32602],
@@ -308,21 +288,21 @@ describe("normalizeAgentControlRequest", () => {
       -32602,
     ],
     [
-      request("transport.live.stop", { expectedTransportRevision: -1 }),
+      request("transport.live.stop", { expectedRevision: -1 }),
       "invalidParams",
-      "$.params.expectedTransportRevision",
+      "$.params.expectedRevision",
       -32602,
     ],
     [
-      request("app.wait", { workspaceRevision: 0, timeoutMs: 99 }),
+      request("app.wait", { afterRevision: 0, timeoutMs: 99 }),
       "invalidParams",
       "$.params.timeoutMs",
       -32602,
     ],
     [
-      request("preset.describe", { presetId: "preset-1", expectedPresetsRevision: -1 }),
+      request("preset.describe", { presetId: "preset-1", expectedRevision: -1 }),
       "invalidParams",
-      "$.params.expectedPresetsRevision",
+      "$.params.expectedRevision",
       -32602,
     ],
     [request("app.inspect", []), "invalidParams", "$.params", -32602],
@@ -400,6 +380,25 @@ describe("normalizeAgentControlRequest", () => {
     expect(normalizeAgentControlRequest(input)).toEqual({
       ok: false,
       error: expect.objectContaining({ reason, path, code }),
+    });
+  });
+
+  it.each([
+    ["workspace.applyLayout", { layout: {} }],
+    ["panel.reset", { panelId: "spectrum" }],
+    ["axis.shared.reset", { kind: "frequency" }],
+    ["preset.delete", { presetId: "preset-1" }],
+    ["settings.update", { patch: {} }],
+    ["transport.live.stop", {}],
+    ["dock.exit", {}],
+  ])("requires expectedRevision for %s", (method, params) => {
+    expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+      ok: false,
+      error: expect.objectContaining({
+        reason: "revisionRequired",
+        path: "$.params.expectedRevision",
+        code: -32602,
+      }),
     });
   });
 

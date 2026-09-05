@@ -21,6 +21,24 @@ function invalidParams(path, message) {
   return error("invalidParams", path, message, -32602);
 }
 
+function validateExpectedRevision(params) {
+  if (params.expectedRevision === undefined) {
+    return error(
+      "revisionRequired",
+      "$.params.expectedRevision",
+      "expectedRevision is required for every mutation.",
+      -32602
+    );
+  }
+  if (!Number.isSafeInteger(params.expectedRevision) || params.expectedRevision < 0) {
+    return invalidParams(
+      "$.params.expectedRevision",
+      "expectedRevision must be a non-negative safe integer."
+    );
+  }
+  return null;
+}
+
 export function normalizeAgentControlRequest(input) {
   if (!isPlainJsonObject(input)) {
     return error("invalidRequest", "$", "Request must be a plain JSON object.", -32600);
@@ -67,20 +85,10 @@ export function normalizeAgentControlRequest(input) {
   }
 
   if (input.method === "preset.describe") {
-    const field = unknownField(input.params, new Set(["presetId", "expectedPresetsRevision"]));
+    const field = unknownField(input.params, new Set(["presetId"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     if (typeof input.params.presetId !== "string" || input.params.presetId.trim() === "") {
       return invalidParams("$.params.presetId", "presetId must be a non-empty string.");
-    }
-    if (
-      input.params.expectedPresetsRevision !== undefined &&
-      (!Number.isSafeInteger(input.params.expectedPresetsRevision) ||
-        input.params.expectedPresetsRevision < 0)
-    ) {
-      return invalidParams(
-        "$.params.expectedPresetsRevision",
-        "expectedPresetsRevision must be a non-negative safe integer."
-      );
     }
     return {
       ok: true,
@@ -89,9 +97,6 @@ export function normalizeAgentControlRequest(input) {
         method: input.method,
         params: {
           presetId: input.params.presetId,
-          ...(input.params.expectedPresetsRevision !== undefined
-            ? { expectedPresetsRevision: input.params.expectedPresetsRevision }
-            : {}),
         },
       },
     };
@@ -107,11 +112,12 @@ export function normalizeAgentControlRequest(input) {
     const allowed = new Set([
       ...(isReorder ? ["presetIds"] : ["presetId"]),
       ...(isRename ? ["name"] : []),
-      "expectedPresetsRevision",
+      "expectedRevision",
       "dryRun",
     ]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     if (
       !isReorder &&
       (typeof input.params.presetId !== "string" || input.params.presetId.trim() === "")
@@ -125,18 +131,19 @@ export function normalizeAgentControlRequest(input) {
       return invalidParams("$.params.presetIds", "presetIds must be an array.");
     }
     if (
-      input.params.expectedPresetsRevision !== undefined &&
-      (!Number.isSafeInteger(input.params.expectedPresetsRevision) ||
-        input.params.expectedPresetsRevision < 0)
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
     ) {
       return invalidParams(
-        "$.params.expectedPresetsRevision",
-        "expectedPresetsRevision must be a non-negative safe integer."
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
       );
     }
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
@@ -147,8 +154,8 @@ export function normalizeAgentControlRequest(input) {
             ? { presetIds: input.params.presetIds }
             : { presetId: input.params.presetId }),
           ...(isRename ? { name: input.params.name } : {}),
-          ...(input.params.expectedPresetsRevision !== undefined
-            ? { expectedPresetsRevision: input.params.expectedPresetsRevision }
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
             : {}),
           ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
         },
@@ -163,15 +170,13 @@ export function normalizeAgentControlRequest(input) {
   ) {
     const isSave = input.method === "preset.save";
     const targetKey = isSave ? "name" : "presetId";
-    const field = unknownField(
-      input.params,
-      new Set([targetKey, "expectedWorkspaceRevision", "expectedPresetsRevision", "dryRun"])
-    );
+    const field = unknownField(input.params, new Set([targetKey, "expectedRevision", "dryRun"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     if (typeof input.params[targetKey] !== "string" || input.params[targetKey].trim() === "") {
       return invalidParams(`$.params.${targetKey}`, `${targetKey} must be a non-empty string.`);
     }
-    for (const revisionKey of ["expectedWorkspaceRevision", "expectedPresetsRevision"]) {
+    for (const revisionKey of ["expectedRevision"]) {
       if (
         input.params[revisionKey] !== undefined &&
         (!Number.isSafeInteger(input.params[revisionKey]) || input.params[revisionKey] < 0)
@@ -185,6 +190,8 @@ export function normalizeAgentControlRequest(input) {
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
@@ -192,11 +199,8 @@ export function normalizeAgentControlRequest(input) {
         method: input.method,
         params: {
           [targetKey]: input.params[targetKey],
-          ...(input.params.expectedWorkspaceRevision !== undefined
-            ? { expectedWorkspaceRevision: input.params.expectedWorkspaceRevision }
-            : {}),
-          ...(input.params.expectedPresetsRevision !== undefined
-            ? { expectedPresetsRevision: input.params.expectedPresetsRevision }
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
             : {}),
           ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
         },
@@ -207,6 +211,7 @@ export function normalizeAgentControlRequest(input) {
   if (input.method === "workspace.applyLayout") {
     const field = unknownField(input.params, new Set(["layout", "expectedRevision", "dryRun"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     if (!isPlainJsonObject(input.params.layout)) {
       return invalidParams("$.params.layout", "Layout must be a plain JSON object.");
     }
@@ -222,6 +227,8 @@ export function normalizeAgentControlRequest(input) {
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
@@ -241,20 +248,20 @@ export function normalizeAgentControlRequest(input) {
   if (input.method === "settings.update") {
     const field = unknownField(
       input.params,
-      new Set(["patch", "expectedSettingsRevision", "allowMeasurementRestart", "dryRun"])
+      new Set(["patch", "expectedRevision", "allowMeasurementRestart", "dryRun"])
     );
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     if (!isPlainJsonObject(input.params.patch)) {
       return invalidParams("$.params.patch", "patch must be a plain JSON object.");
     }
     if (
-      input.params.expectedSettingsRevision !== undefined &&
-      (!Number.isSafeInteger(input.params.expectedSettingsRevision) ||
-        input.params.expectedSettingsRevision < 0)
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
     ) {
       return invalidParams(
-        "$.params.expectedSettingsRevision",
-        "expectedSettingsRevision must be a non-negative safe integer."
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
       );
     }
     if (
@@ -269,6 +276,8 @@ export function normalizeAgentControlRequest(input) {
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
@@ -276,8 +285,8 @@ export function normalizeAgentControlRequest(input) {
         method: input.method,
         params: {
           patch: input.params.patch,
-          ...(input.params.expectedSettingsRevision !== undefined
-            ? { expectedSettingsRevision: input.params.expectedSettingsRevision }
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
             : {}),
           ...(input.params.allowMeasurementRestart !== undefined
             ? { allowMeasurementRestart: input.params.allowMeasurementRestart }
@@ -289,22 +298,13 @@ export function normalizeAgentControlRequest(input) {
   }
 
   if (input.method === "app.wait") {
-    const revisionKeys = [
-      "workspaceRevision",
-      "presetsRevision",
-      "settingsRevision",
-      "transportRevision",
-    ];
-    const field = unknownField(input.params, new Set([...revisionKeys, "timeoutMs"]));
+    const field = unknownField(input.params, new Set(["afterRevision", "timeoutMs"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
-    const supplied = revisionKeys.filter((key) => input.params[key] !== undefined);
-    if (supplied.length === 0) {
-      return invalidParams("$.params", "At least one revision baseline is required.");
-    }
-    for (const key of supplied) {
-      if (!Number.isSafeInteger(input.params[key]) || input.params[key] < 0) {
-        return invalidParams(`$.params.${key}`, `${key} must be a non-negative safe integer.`);
-      }
+    if (!Number.isSafeInteger(input.params.afterRevision) || input.params.afterRevision < 0) {
+      return invalidParams(
+        "$.params.afterRevision",
+        "afterRevision must be a non-negative safe integer."
+      );
     }
     const timeoutMs = input.params.timeoutMs ?? 30000;
     if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300000) {
@@ -318,10 +318,7 @@ export function normalizeAgentControlRequest(input) {
       request: {
         id: input.id,
         method: input.method,
-        params: {
-          ...Object.fromEntries(supplied.map((key) => [key, input.params[key]])),
-          timeoutMs,
-        },
+        params: { afterRevision: input.params.afterRevision, timeoutMs },
       },
     };
   }
@@ -354,11 +351,12 @@ export function normalizeAgentControlRequest(input) {
       ...(needsPath ? ["path"] : []),
       ...(needsSession ? ["sessionId"] : []),
       ...(allowsStopFileAnalysis ? ["allowStopFileAnalysis"] : []),
-      "expectedTransportRevision",
+      "expectedRevision",
       "dryRun",
     ]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     const targetKey = needsPath ? "path" : needsSession ? "sessionId" : null;
     if (
       targetKey &&
@@ -367,13 +365,12 @@ export function normalizeAgentControlRequest(input) {
       return invalidParams(`$.params.${targetKey}`, `${targetKey} must be a non-empty string.`);
     }
     if (
-      input.params.expectedTransportRevision !== undefined &&
-      (!Number.isSafeInteger(input.params.expectedTransportRevision) ||
-        input.params.expectedTransportRevision < 0)
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
     ) {
       return invalidParams(
-        "$.params.expectedTransportRevision",
-        "expectedTransportRevision must be a non-negative safe integer."
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
       );
     }
     if (
@@ -388,6 +385,8 @@ export function normalizeAgentControlRequest(input) {
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
@@ -395,8 +394,8 @@ export function normalizeAgentControlRequest(input) {
         method: input.method,
         params: {
           ...(targetKey ? { [targetKey]: input.params[targetKey] } : {}),
-          ...(input.params.expectedTransportRevision !== undefined
-            ? { expectedTransportRevision: input.params.expectedTransportRevision }
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
             : {}),
           ...(input.params.allowStopFileAnalysis !== undefined
             ? { allowStopFileAnalysis: input.params.allowStopFileAnalysis }
@@ -436,11 +435,12 @@ export function normalizeAgentControlRequest(input) {
       ...(layout ? ["layout"] : []),
       ...(panel ? ["panelId"] : []),
       ...(update ? ["patch"] : []),
-      "expectedWorkspaceRevision",
+      "expectedRevision",
       "dryRun",
     ]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     if (layout && !isPlainJsonObject(input.params.layout)) {
       return invalidParams("$.params.layout", "layout must be a plain JSON object.");
     }
@@ -471,18 +471,19 @@ export function normalizeAgentControlRequest(input) {
       return invalidParams("$.params.height", "height must be an integer from 56 to 160.");
     }
     if (
-      input.params.expectedWorkspaceRevision !== undefined &&
-      (!Number.isSafeInteger(input.params.expectedWorkspaceRevision) ||
-        input.params.expectedWorkspaceRevision < 0)
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
     ) {
       return invalidParams(
-        "$.params.expectedWorkspaceRevision",
-        "expectedWorkspaceRevision must be a non-negative safe integer."
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
       );
     }
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
@@ -529,6 +530,7 @@ export function normalizeAgentControlRequest(input) {
     ]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     if (
       panelTarget &&
       (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "")
@@ -553,6 +555,8 @@ export function normalizeAgentControlRequest(input) {
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
@@ -578,6 +582,7 @@ export function normalizeAgentControlRequest(input) {
       new Set(["panelId", ...(isUpdate ? ["patch"] : []), "expectedRevision", "dryRun"])
     );
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
     if (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "") {
       return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
     }
@@ -596,6 +601,8 @@ export function normalizeAgentControlRequest(input) {
     if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
       return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
     }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
     return {
       ok: true,
       request: {
