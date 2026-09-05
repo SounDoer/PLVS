@@ -1562,35 +1562,17 @@ export function useAgentControlBridge({
         }
 
         const compiled = compileWorkspaceLayout(request.params.layout, workspace);
-        if (request.params.dryRun === true) {
-          return {
-            requestId,
-            result: {
-              revision: currentRevision,
-              dryRun: true,
-              changed: [],
-              layout: compiled.layout,
-              createdPanels: compiled.createdPanels,
-              persisted: false,
-            },
-          };
-        }
         const layoutIsUnchanged =
           Object.keys(compiled.createdPanels).length === 0 &&
           JSON.stringify(compiled.layout) === JSON.stringify(serializeWorkspaceLayout(workspace));
-        if (layoutIsUnchanged) {
-          return {
-            requestId,
-            result: {
-              revision: currentRevision,
-              dryRun: false,
-              changed: [],
-              layout: compiled.layout,
-              createdPanels: {},
-              persisted: false,
-            },
-          };
-        }
+        const result = {
+          revision: currentRevision,
+          dryRun: request.params.dryRun === true,
+          changed: !layoutIsUnchanged,
+          state: { workspace: { layout: compiled.layout } },
+          createdPanels: compiled.createdPanels,
+        };
+        if (request.params.dryRun === true || layoutIsUnchanged) return { requestId, result };
 
         const committed = new Promise((resolve, reject) => {
           settlementRef.current = {
@@ -1621,17 +1603,8 @@ export function useAgentControlBridge({
           );
         }
 
-        return {
-          requestId,
-          result: {
-            revision: committedRevision,
-            dryRun: false,
-            changed: ["workspace"],
-            layout: compiled.layout,
-            createdPanels: compiled.createdPanels,
-            persisted: true,
-          },
-        };
+        result.revision = committedRevision;
+        return { requestId, result };
       } catch (error) {
         const semantic =
           error instanceof WorkspaceLayoutError

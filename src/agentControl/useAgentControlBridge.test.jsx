@@ -1406,9 +1406,11 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       revision: 0,
       dryRun: true,
-      persisted: false,
+      changed: true,
+      state: { workspace: { layout: { type: "panel", panelId: "stereo-map" } } },
       createdPanels: { map: "stereo-map" },
     });
+    expect(response.result).not.toHaveProperty("persisted");
     expect(view.store.state).toBe(initialState);
     expect(flush).not.toHaveBeenCalled();
   });
@@ -1639,10 +1641,11 @@ describe("useAgentControlBridge", () => {
 
     expect(response.result).toMatchObject({
       revision: 1,
-      changed: ["workspace"],
-      persisted: true,
-      layout: { type: "panel", panelId: "spectrum" },
+      changed: true,
+      state: { workspace: { layout: { type: "panel", panelId: "spectrum" } } },
     });
+    expect(response.result).not.toHaveProperty("layout");
+    expect(response.result).not.toHaveProperty("persisted");
     expect(view.store.state.tree).toEqual({
       type: "leaf",
       tabs: ["spectrum"],
@@ -1666,7 +1669,11 @@ describe("useAgentControlBridge", () => {
       )
     );
 
-    expect(response.result).toMatchObject({ revision: 0, changed: [] });
+    expect(response.result).toMatchObject({
+      revision: 0,
+      changed: false,
+      state: { workspace: { layout: inspected.result.workspace.layout } },
+    });
     expect(view.store.state).toBe(initialState);
     expect(flush).not.toHaveBeenCalled();
   });
