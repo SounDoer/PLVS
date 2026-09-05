@@ -122,10 +122,7 @@ pub fn run() {
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
       let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
       let themes = store.get("plvs:themes").unwrap_or(serde_json::json!({}));
-      let agent_control_enabled = match store.get(agent_control::toggle::ENABLED_KEY) {
-        Some(serde_json::Value::Bool(value)) => value,
-        _ => agent_control::toggle::default_enabled(),
-      };
+      let agent_control_enabled = agent_control::toggle::read_enabled(app.handle());
       let agent_control = serde_json::json!({
         // `available` is platform support alone. Whether the endpoint is actually open is
         // `enabled`, which the user owns from Settings.

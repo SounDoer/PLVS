@@ -509,10 +509,7 @@ git commit -m "feat(agent-control): apply the toggle as one endpoint-and-PATH op
 - [ ] **Step 1: Split `available` from `enabled` in the injected state**
 
 ```rust
-      let agent_control_enabled = match store.get(agent_control::toggle::ENABLED_KEY) {
-        Some(serde_json::Value::Bool(value)) => value,
-        _ => agent_control::toggle::default_enabled(),
-      };
+      let agent_control_enabled = agent_control::toggle::read_enabled(app.handle());
       let agent_control = serde_json::json!({
         // `available` is platform support alone. Whether the endpoint is actually open is
         // `enabled`, which the user owns from Settings.

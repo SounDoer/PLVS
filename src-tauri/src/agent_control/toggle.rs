@@ -75,7 +75,7 @@ fn persist_enabled(app: &AppHandle, enabled: bool) -> Result<(), String> {
   store.save().map_err(|error| format!("store save: {error}"))
 }
 
-fn read_enabled(app: &AppHandle) -> bool {
+pub(crate) fn read_enabled(app: &AppHandle) -> bool {
   let Ok(store) = app.store(STORE_FILE) else {
     return default_enabled();
   };
