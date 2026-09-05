@@ -16,7 +16,8 @@ import { tmpdir } from "node:os";
 import {
   CAPTURE_DEVICE,
   RigError,
-  locateCli,
+  harnessArgs,
+  locateHarness,
   resolveRenderEndpointId,
   startPlayer,
   stopPlayer,
@@ -73,7 +74,7 @@ function rssMb(pid) {
 }
 
 try {
-  const cli = locateCli();
+  const harness = locateHarness();
   const endpoint = resolveRenderEndpointId();
   await synthesizeSignal(wav);
   player = startPlayer(endpoint, wav);
@@ -83,8 +84,8 @@ try {
   console.log(`Writing ${outPath}`);
 
   const child = spawn(
-    cli,
-    [
+    harness,
+    harnessArgs([
       "capture",
       "--device",
       CAPTURE_DEVICE,
@@ -93,7 +94,7 @@ try {
       "--every",
       String(every),
       "--json",
-    ],
+    ]),
     { stdio: ["ignore", "pipe", "pipe"] },
   );
 

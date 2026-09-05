@@ -21,7 +21,8 @@ import {
   RigError,
   TOLERANCE_DB,
   compareMetrics,
-  locateCli,
+  harnessArgs,
+  locateHarness,
   resolveRenderEndpointId,
   runCli,
   startPlayer,
@@ -58,13 +59,16 @@ function parseReport(label, { status, stdout, stderr }) {
 }
 
 try {
-  const cli = locateCli();
+  const harness = locateHarness();
   const endpoint = resolveRenderEndpointId();
 
   await synthesizeSignal(wav);
 
   // Ground truth from the already-trusted file path.
-  const truth = parseReport("analyze", runCli(cli, ["analyze", wav, "--json"])).summary;
+  const truth = parseReport(
+    "analyze",
+    runCli(harness, harnessArgs(["analyze", wav, "--json"])),
+  ).summary;
 
   player = startPlayer(endpoint, wav);
   // Let the loop reach the device before measuring.
@@ -72,14 +76,17 @@ try {
 
   const live = parseReport(
     "capture",
-    runCli(cli, [
-      "capture",
-      "--device",
-      CAPTURE_DEVICE,
-      "--seconds",
-      String(CAPTURE_SECONDS),
-      "--json",
-    ]),
+    runCli(
+      harness,
+      harnessArgs([
+        "capture",
+        "--device",
+        CAPTURE_DEVICE,
+        "--seconds",
+        String(CAPTURE_SECONDS),
+        "--json",
+      ]),
+    ),
   );
 
   const result = compareMetrics(truth, live.summary);

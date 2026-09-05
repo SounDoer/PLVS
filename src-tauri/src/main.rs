@@ -10,9 +10,24 @@ fn main() -> ExitCode {
   // means no console of our own is allocated.
   let mut args = std::env::args();
   args.next(); // executable path
-  if args.next().as_deref() == Some("--cli") {
-    let rest: Vec<String> = args.collect();
-    return app_lib::cli_main::run(&rest);
+  match args.next().as_deref() {
+    Some("--cli") => {
+      let rest: Vec<String> = args.collect();
+      return app_lib::cli_main::run(&rest);
+    }
+    Some("--harness") => {
+      #[cfg(feature = "capture-harness")]
+      {
+        let rest: Vec<String> = args.collect();
+        return app_lib::harness_main::run(&rest);
+      }
+      #[cfg(not(feature = "capture-harness"))]
+      {
+        eprintln!("The capture harness is not available in this build.");
+        return ExitCode::from(2);
+      }
+    }
+    _ => {}
   }
 
   app_lib::run();

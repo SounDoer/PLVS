@@ -24,6 +24,8 @@ path = "src/main.rs"
 # `--config src-tauri/tauri.dev.conf.json`, so build.rs reads the app identifier from the same
 # overlay Tauri does. See the comment on `emit_app_id` in build.rs.
 dev-identity = []
+# Repository-owned real capture verification. Production bundles never enable this.
+capture-harness = []
 
 [build-dependencies]
 cc = "1.2.61"

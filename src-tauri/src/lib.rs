@@ -20,6 +20,8 @@ mod dsp;
 mod engine;
 mod file_analysis;
 mod glass_effect;
+#[cfg(feature = "capture-harness")]
+pub mod harness_main;
 mod ipc;
 mod profile;
 mod sidecar;
