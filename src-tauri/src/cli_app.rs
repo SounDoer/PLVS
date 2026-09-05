@@ -1135,10 +1135,35 @@ impl CliAppFailure {
 
   fn app(_app: DescriptorApp, error: CliAppError, rpc_error_code: Option<i64>) -> Self {
     let exit_code = match (rpc_error_code, error.code.as_str()) {
-      (Some(-32602), _) | (_, "revisionRequired" | "resourceNotFound") => 3,
+      (Some(-32602), _)
+      | (
+        _,
+        "revisionRequired"
+        | "resourceNotFound"
+        | "panelNotFound"
+        | "axisNotFound"
+        | "presetNotFound"
+        | "fileSessionNotFound"
+        | "dockPanelNotFound"
+        | "monitorNotFound",
+      ) => 3,
       (
         _,
-        "revisionConflict" | "editorActive" | "busy" | "operationNotAllowed" | "waitLimitReached",
+        "revisionConflict"
+        | "editorActive"
+        | "busy"
+        | "operationNotAllowed"
+        | "waitLimitReached"
+        | "controlUnavailable"
+        | "controlsUnavailable"
+        | "axisUnavailable"
+        | "transitionInProgress"
+        | "analysisInProgress"
+        | "dockActive"
+        | "fileModeActive"
+        | "fileAnalysisNotActive"
+        | "confirmationRequired"
+        | "channelConfigurationChanged",
       ) => 4,
       (_, "timeout" | "cancelled") => 5,
       _ => 1,
@@ -2606,11 +2631,27 @@ mod tests {
     let cases = [
       ("revisionRequired", None, 3),
       ("resourceNotFound", None, 3),
+      ("panelNotFound", None, 3),
+      ("axisNotFound", None, 3),
+      ("presetNotFound", None, 3),
+      ("fileSessionNotFound", None, 3),
+      ("dockPanelNotFound", None, 3),
+      ("monitorNotFound", None, 3),
       ("revisionConflict", None, 4),
       ("editorActive", None, 4),
       ("operationNotAllowed", None, 4),
       ("waitLimitReached", None, 4),
       ("busy", None, 4),
+      ("controlUnavailable", None, 4),
+      ("controlsUnavailable", None, 4),
+      ("axisUnavailable", None, 4),
+      ("transitionInProgress", None, 4),
+      ("analysisInProgress", None, 4),
+      ("dockActive", None, 4),
+      ("fileModeActive", None, 4),
+      ("fileAnalysisNotActive", None, 4),
+      ("confirmationRequired", None, 4),
+      ("channelConfigurationChanged", None, 4),
       ("timeout", None, 5),
       ("cancelled", None, 5),
       ("unexpectedRuntimeFailure", None, 1),
