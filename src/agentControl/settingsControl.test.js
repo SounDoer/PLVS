@@ -61,6 +61,14 @@ describe("Settings Control", () => {
     });
   });
 
+  it("never exposes the Agent Control toggle to agents", () => {
+    const publicSettings = buildPublicSettings(
+      { agentControlEnabled: true, referenceLufs: -23 },
+      { channelCount: 2, channelLabelMode: "custom", channelLabelRoles: ["L", "R"] }
+    );
+    expect(publicSettings).not.toHaveProperty("agentControlEnabled");
+  });
+
   it("describes dynamic Theme and Channel Role options", () => {
     const schema = buildSettingsSchema(current, context);
     expect(schema.appearance.properties.themeId.options).toEqual(context.themeOptions);
