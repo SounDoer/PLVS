@@ -27,6 +27,10 @@ describe("changelog-release-body", () => {
     expect(body).toContain("### Added");
     expect(body).toContain("## 安装");
     expect(body).toContain("## Installation");
+    expect(body).toContain("PLVS-v0.9.4-x64-portable.zip");
+    expect(body).toContain("解压后运行 `plvs.exe`");
+    expect(body).toContain("extract it, then run `plvs.exe`");
+    expect(body).not.toContain("PLVS-v0.9.4-x64-portable.exe");
   });
 
   it("writes only the tagged changelog section in changelog-only mode", () => {

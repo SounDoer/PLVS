@@ -17,6 +17,7 @@ attach that ZIP instead of a renamed standalone executable.
 **Files:**
 
 - Create: `scripts/releaseWorkflowContract.test.js`
+- Modify: `scripts/changelog-release-body.test.mjs`
 
 - [x] Read `.github/workflows/release.yml` and `README.md`, then assert:
 
@@ -28,6 +29,9 @@ expect(releaseWorkflow).toContain("PLVS-${{ github.ref_name }}-x64-portable.zip"
 expect(releaseWorkflow).not.toContain("PLVS-${{ github.ref_name }}-x64-portable.exe");
 expect(readme).toContain("PLVS_x64-portable.zip");
 ```
+
+- [x] Extend the release-body test to require the versioned Portable ZIP name and bilingual
+      extraction instructions.
 
 - [x] Run:
 
@@ -43,6 +47,7 @@ Expected: FAIL because the workflow and README still describe one Portable EXE.
 
 - Modify: `.github/workflows/release.yml`
 - Modify: `README.md`
+- Modify: `scripts/changelog-release-body.mjs`
 
 - [x] Upload `plvs.exe` and `plvs-cli.exe` together for workflow-dispatch artifacts.
 
@@ -59,6 +64,9 @@ Compress-Archive -Path "$bundleDir\*" -DestinationPath "$bundleDir.zip"
 - [x] Change the README package table to `PLVS_x64-portable.zip` and explain that users extract the
       archive, launch `plvs.exe`, and keep `plvs-cli.exe` beside it.
 
+- [x] Update the bilingual installation block appended after each GitHub Release changelog to use
+      the versioned ZIP name and extraction instructions.
+
 - [x] Re-run the focused contract test and confirm it passes.
 
 - [x] Run:
@@ -73,6 +81,6 @@ Expected: the complete merge gate and whitespace validation pass.
 - [x] Commit:
 
 ```powershell
-git add .github/workflows/release.yml README.md scripts/releaseWorkflowContract.test.js docs/superpowers/plans/2026-09-05-windows-portable-cli-bundle-fix.md
+git add .github/workflows/release.yml README.md scripts/changelog-release-body.mjs scripts/changelog-release-body.test.mjs scripts/releaseWorkflowContract.test.js docs/superpowers/specs/2026-09-05-windows-portable-cli-bundle-fix-design.md docs/superpowers/plans/2026-09-05-windows-portable-cli-bundle-fix.md
 git commit -m "fix(release): bundle CLI with Windows portable"
 ```
