@@ -10,12 +10,12 @@ protocol.
 ```powershell
 npm run desktop:control -- preset list --json
 npm run desktop:control -- preset describe <preset-id> --json
-npm run desktop:control -- preset save <name> --json
-npm run desktop:control -- preset apply <preset-id> --json
-npm run desktop:control -- preset update <preset-id> --json
-npm run desktop:control -- preset rename <preset-id> <name> --json
-npm run desktop:control -- preset delete <preset-id> --json
-npm run desktop:control -- preset reorder <file|-> --json
+npm run desktop:control -- preset save <name> --expected-revision 12 --json
+npm run desktop:control -- preset apply <preset-id> --expected-revision 12 --json
+npm run desktop:control -- preset update <preset-id> --expected-revision 12 --json
+npm run desktop:control -- preset rename <preset-id> <name> --expected-revision 12 --json
+npm run desktop:control -- preset delete <preset-id> --expected-revision 12 --json
+npm run desktop:control -- preset reorder <file|-> --expected-revision 12 --json
 ```
 
 - `list` returns ordered `{ id, name }` summaries plus `activeId` and `dirty`.
@@ -30,8 +30,8 @@ npm run desktop:control -- preset reorder <file|-> --json
 - `reorder` changes only library order.
 
 There is no initial `duplicate` command because the GUI does not provide that operation. Individual
-Preset import/export remains outside this command family; whole-Profile import/export already owns
-portable backup and migration.
+Preset import/export remains outside this command family. Portable whole-configuration backup and
+migration belong to future `app config` control; no existing public command provides them.
 
 `app.inspect` continues to return only the compact active relationship. Call `preset list` for the
 library:
@@ -56,11 +56,12 @@ existing GUI:
    (`autoHideControls`, `compactPanels`, `borderless`), panel opacity, and glass state.
 3. **Dock:** enabled state, edge, monitor, reserve-space choice, height, Dock panels, order, sizes,
    and controls.
-4. **Loudness Profile selection:** only the selected Profile ID, not a copy of its rules or library.
+4. **Loudness Profile selection:** only the selected Loudness Profile ID, not a copy of its rules or
+   library.
 
 It does not capture Theme/Appearance, Dialogue Detection engine, History Length or other global
 Settings, audio device, capture state, open media, transport position, measurement/history data,
-accumulated maxima, Profile/Preset libraries, or transient UI state.
+accumulated maxima, Loudness Profile/Preset libraries, or transient UI state.
 
 ## Public description
 
@@ -99,43 +100,38 @@ Panel entries use the same public controls and axes as inspection, but contain n
 analysis runtime. `window.bounds` is null when it was unavailable at capture time rather than being
 fabricated. Machine-specific bounds and monitor identity are reported as saved because App Control
 is local. Loudness control availability inside the snapshot is interpreted using the Preset's saved
-Profile selection, not the Profile currently active in the application.
+Loudness Profile selection, not the Loudness Profile currently active in the application.
 
-## Revisions and dry run
+## Revision and dry run
 
-Preset Control uses two explicit optimistic-concurrency inputs:
+Every Preset mutation requires one optimistic-concurrency input:
 
 ```text
---expected-workspace-revision <n>
---expected-presets-revision <n>
+--expected-revision <n>
 ```
 
-`save`, `update`, and `apply` check both because they capture or replace the current Workspace and
-also depend on the Preset library. `rename`, `delete`, and `reorder` check only Presets revision.
-Read commands need no revision, though `describe` may optionally check Presets revision when a caller
-needs a stable read.
+It protects the complete public application state inspected by the caller. `save`, `update`, and
+`apply` depend on both the current scene and Preset library; `rename`, `delete`, and `reorder`
+depend on the library, but use the same global precondition. Read commands take no expected
+revision.
 
-Creating, updating, renaming, deleting, or reordering the library increments Presets revision. A
-change to `activeId` or `dirty` also increments it. One command increments each affected domain at
-most once. A Panel mutation that dirties the active Preset therefore increments Workspace revision
-once and Presets revision once.
+Creating, updating, renaming, deleting, or reordering the library increments the global revision.
+A change to `activeId`, `dirty`, or the applied scene uses that same counter. One observable command
+increments it at most once.
 
-Mutation results return both current values:
+Mutation results return the current value:
 
 ```json
 {
-  "revisions": {
-    "workspace": 13,
-    "presets": 6
-  }
+  "revision": 13
 }
 ```
 
 Every Preset mutation supports `--dry-run`. It performs the same ID/name, revision, snapshot,
 availability, reorder, warning, and final-state computation without writing state, changing active
-or dirty state, applying window/Dock state, or persisting. Returned revisions remain the real current
-values; the rest of the result describes the preview. A revision conflict is always side-effect
-free.
+or dirty state, applying window/Dock state, or persisting. The returned revision remains the real
+current value; the rest of the result describes the preview. A revision conflict is always
+side-effect free.
 
 ## Mutation results
 
@@ -145,30 +141,29 @@ Mutation commands return a compact operation result rather than duplicating the 
 ```json
 {
   "dryRun": false,
-  "changed": ["workspace", "presets.activeId", "presets.dirty"],
-  "preset": {
-    "id": "preset-1",
-    "name": "Mixing"
-  },
-  "presetState": {
-    "activeId": "preset-1",
-    "dirty": false
-  },
-  "revisions": {
-    "workspace": 13,
-    "presets": 6
+  "changed": true,
+  "revision": 13,
+  "state": {
+    "preset": {
+      "id": "preset-1",
+      "name": "Mixing"
+    },
+    "presets": {
+      "activeId": "preset-1",
+      "dirty": false
+    }
   },
   "warnings": []
 }
 ```
 
-`changed` contains the domains or precise public paths changed by the operation. `save`, `apply`,
-`update`, and `rename` return the affected Preset summary; `delete` returns `deletedPreset`; and
-`reorder` returns the final ordered ID list. Call `app.inspect` or `preset.describe` when the complete
-resulting state is needed.
+`changed` is a boolean. `save`, `apply`, `update`, and `rename` return the affected Preset summary
+under `state.preset`; compact library state is under `state.presets`; `delete` also returns
+`deletedPreset`; and `reorder` includes the final ordered ID list in `state.presets`. Call
+`app.inspect` or `preset.describe` when the complete resulting scene is needed.
 
 Dry-run uses the same result shape, reports the changes that a real execution would make, and leaves
-the returned revisions at their real current values. A dry-run of `save` returns `{ "id": null }`
+the returned revision at its real current value. A dry-run of `save` returns `{ "id": null }`
 because no persistent identity is allocated until the Preset is actually created.
 
 ## Input validation
@@ -191,7 +186,7 @@ The list must contain every current Preset ID exactly once, with no missing, dup
 ID. Invalid input fails atomically. Request-shape validation runs first, followed by expected-
 revision checking and then state-dependent validation such as target existence. A missing target is
 reported as `presetNotFound`, never collapsed into a successful `false` result. Every validation
-failure leaves the library, active/dirty state, revisions, Workspace, and persistence unchanged.
+failure leaves the library, active/dirty state, revision, Workspace, and persistence unchanged.
 
 ## Deletion safety
 
@@ -203,9 +198,8 @@ any unsaved divergence from that Preset, remains intact. Deleting the last Prese
 
 An active draft editor does not block deletion because deletion neither captures nor replaces the
 editing scene. The command requires an exact ID but no extra `--force` or interactive confirmation;
-dry-run and expected Presets revision provide preview and concurrency protection. A successful
-delete increments only Presets revision and returns `deletedPreset`, the final compact Preset state,
-and the paths actually changed.
+dry-run and the expected revision provide preview and concurrency protection. A successful delete
+increments the global revision and returns `deletedPreset` plus the final compact Preset state.
 
 ## Persistence settlement
 
@@ -214,23 +208,24 @@ completed. Success therefore carries no redundant `persisted: true` field. Dry-r
 perform no persistence work.
 
 If persistence fails after state has committed, the command fails with `persistenceFailed` and
-reports `stateCommitted: true` plus the resulting revisions. It does not attempt an automatic
-cross-domain rollback. The caller must inspect again before issuing another mutation; it must not
-continue from its earlier snapshot or revisions.
+reports `stateCommitted: true` plus the resulting revision. It does not attempt an automatic
+rollback. The caller must inspect again before issuing another mutation; it must not continue from
+its earlier snapshot or revision.
 
 ## Apply failure and partial state
 
 Preset Apply cannot promise absolute atomicity because Dock and window changes cross into operating-
 system APIs that may fail at execution time. It instead performs a complete side-effect-free
-preflight first: editor safety, revisions, target and snapshot validity, referenced-resource
+preflight first: editor safety, revision, target and snapshot validity, referenced-resource
 resolution, and every compatibility check that can be decided in advance.
 
-An execution-time failure does not trigger an automatic cross-domain rollback. The error reports
+An execution-time failure does not trigger an automatic rollback. The error reports
 `applicationFailed`, the failing `stage`, whether application was `partial`, the public paths already
-changed, the resulting revisions, and the final compact Preset state. A partially applied scene is
-not associated with either the old or target Preset: `activeId` is null and `dirty` is false. The
-caller must inspect again before continuing. Dry-run exercises the deterministic preflight but does
-not claim that future operating-system calls are guaranteed to succeed.
+changed under `error.details.changed`, the resulting revision, and the final compact Preset state.
+This string array is distinct from the boolean `result.changed` on success. A partially applied
+scene is not associated with either the old or target Preset: `activeId` is null and `dirty` is
+false. The caller must inspect again before continuing. Dry-run exercises the deterministic
+preflight but does not claim that future operating-system calls are guaranteed to succeed.
 
 ## Unavailable saved resources
 
@@ -256,7 +251,7 @@ GUI-facing boolean result.
 Preset mutations compare the complete effective result rather than assuming that every command
 changes state. Renaming to the same trimmed name, submitting the current order, updating with an
 identical snapshot while already active and clean, or applying a scene that is already active and
-clean succeeds with `changed: []`. A no-op increments no revision, performs no persistence, and
+clean succeeds with `changed: false`. A no-op increments no revision, performs no persistence, and
 does not repeat window or Dock operations.
 
 Matching scene content with a different `activeId` changes only Presets state. Matching scene
@@ -267,9 +262,10 @@ target is `presetNotFound`. Editor and expected-revision guards run before no-op
 ## Active editor safety
 
 Preset Control uses the application's shared scene-operation guard. While any draft-style editor is
-open, `save`, `apply`, and `update` fail before changing Workspace, window, Dock, Profile selection,
-Preset state, or persistence. The rule depends on whether an editor is open, not whether its draft
-is already dirty. Current blocking editors are the Loudness Profile Editor and Theme Editor.
+open, `save`, `apply`, and `update` fail before changing Workspace, window, Dock, Loudness Profile
+selection, Preset state, or persistence. The rule depends on whether an editor is open, not whether
+its draft is already dirty. Current blocking editors are the Loudness Profile Editor and Theme
+Editor.
 
 `list`, `describe`, `rename`, `delete`, and `reorder` remain available because they neither capture
 nor replace the current scene. Entering Dock is independently protected by the same guard.

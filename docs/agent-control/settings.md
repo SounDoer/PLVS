@@ -10,18 +10,19 @@ It does not treat every value stored in the settings persistence domain as a pub
 ```powershell
 npm run desktop:control -- settings describe --json
 npm run desktop:control -- settings inspect --json
-npm run desktop:control -- settings update <file|-> --json
+npm run desktop:control -- settings update <file|-> --expected-revision 12 --json
 ```
 
 - `describe` reports the public schema, defaults, options, current effective values, and dynamic
   availability.
 - `inspect` reports current effective public values without schema metadata.
 - `update` applies an atomic direct-field patch with expected revision, dry-run, no-op,
-  precise changed paths, warnings, and durable persistence settlement.
+  boolean changed status, warnings, and durable persistence settlement.
 
 There is no generic `settings reset` in the first version. Individual GUI resets and the destructive
 whole-configuration reset do not share one semantic boundary, and explicit updates can restore
-ordinary defaults. Configuration export/import remains owned by the installed `profile` CLI.
+ordinary defaults. Configuration export, import, and whole-configuration reset belong to future
+`app config` control; no existing public command provides them.
 
 ## First-version public scope
 
@@ -36,7 +37,7 @@ channel-role labels.
 The following are intentionally outside Settings Control:
 
 - Theme library creation, editing, duplication, and deletion; these belong to future Theme Control.
-- Loudness Profile library and selection; these belong to future Profile Control.
+- Loudness Profile library and selection; these belong to future Loudness Profile Control.
 - Workspace, panels, and axes.
 - Focus View, panel opacity, glass, window geometry, and Dock; these are working-scene state captured
   by Presets rather than ordinary global Settings.
@@ -77,9 +78,9 @@ Dry-run cannot reserve a chord and therefore cannot guarantee that another appli
 claim it before real execution. A no-op performs no registration work.
 
 While the GUI is displaying `Press a combo...`, only patches containing `clearShortcut` are
-temporarily unavailable; the recorder is not a global blocking editor. Profile and Theme editors do
-not block this field. The App Control implementation must expose persistence and registration errors
-currently swallowed by the GUI-oriented shortcut hook.
+temporarily unavailable; the recorder is not a global blocking editor. Loudness Profile and Theme
+editors do not block this field. The App Control implementation must expose persistence and
+registration errors currently swallowed by the GUI-oriented shortcut hook.
 
 ## Interface size
 
@@ -102,7 +103,7 @@ kind. A missing ID fails rather than silently selecting another Theme. Theme lib
 not part of Settings Control. While Theme Editor is open, every patch containing `appearance` is
 refused with `editorActive` before no-op detection or any other field mutation; Loudness Profile
 Editor does not block Appearance. An operating-system light/dark change in System mode changes only
-the read-only effective `resolvedThemeId`, not Settings revision or Preset dirty state.
+the read-only effective `resolvedThemeId`, not the global revision or Preset dirty state.
 
 ## History length
 
@@ -153,21 +154,22 @@ mutation waits for backend weight synchronization and Settings persistence.
 
 ## Revision, results, and dry run
 
-Settings is an independent process-local revision domain. GUI and App Control changes to public
-Settings increment `revisions.settings` once per command, regardless of how many fields change.
+Settings uses the application's single process-local revision. GUI and App Control changes to
+public Settings increment it once per command, regardless of how many fields change.
 No-op, dry-run, validation/refusal failure, operating-system appearance resolution, channel-count
 changes, and analysis-runtime demand changes do not increment it. These Settings do not increment
-Workspace or Presets revisions.
+a second counter.
 
-Mutation accepts `--expected-settings-revision`. Success and dry-run return the complete effective
-public Settings snapshot plus runtime and availability, `changed`, `effects`, `warnings`, and the
-current Settings revision. Dry-run places the predicted effective values in the same shape, leaves
-the real revision unchanged, performs no React, backend, operating-system, or persistence mutation,
-and reports any confirmation flag a real execution would require.
+Mutation requires `--expected-revision`. Success and dry-run return boolean `changed`, top-level
+`revision`, `effects`, `warnings`, and the complete effective or predicted public Settings snapshot
+under `state.settings`, with related runtime and availability in `state`. A no-op returns
+`changed: false`. Dry-run leaves the real revision unchanged, performs no React, backend,
+operating-system, or persistence mutation, and reports any confirmation flag a real execution
+would require.
 
 Successful real mutation waits for all relevant backend/OS acknowledgement and durable persistence.
 A persistence failure after commit reports `persistenceFailed`, `stateCommitted: true`, and the
-resulting Settings revision; the caller must inspect again before continuing.
+resulting revision; the caller must inspect again before continuing.
 
 ## Validation
 
@@ -181,7 +183,7 @@ Top-level fields are direct patches and supported nested objects use merge seman
 object must still be self-consistent. An empty object is a successful no-op. Null means reset only
 where a field explicitly admits null; it is not a general defaulting operator.
 
-Processing order is request-shape and static validation, expected Settings revision, dynamic
+Processing order is request-shape and static validation, expected revision, dynamic
 availability and editor guards, effective-diff/effect/confirmation computation, then dry-run or
 execution. Editor refusal precedes no-op detection. Measurement-restart confirmation is required
 only when the effective change actually causes that effect.
@@ -197,17 +199,18 @@ Execution first completes every fallible but reversible system/backend transitio
 React and durable Settings state, and leaves explicitly authorized irreversible effects until the
 latest safe point. Autostart, global-shortcut, VAD-engine, and loudness-weight transitions record
 compensating actions. If a later stage fails and compensation restores the original public state,
-the error reports `applicationFailed`, `partial: false`, `rollback: completed`, no changed paths, and
-an unchanged revision.
+the error reports `applicationFailed`, `partial: false`, `rollback: completed`,
+`error.details.changed: []`, and an unchanged revision.
 
 If compensation fails, the error reports `partial: true`, `rollback: failed`, the observed changed
-paths, and current revisions. History truncation and measurement restarts cannot be restored; a
-failure after either reports `rollback: notPossible` and the effects already performed. Every
-partial outcome requires a fresh Settings inspection before another mutation.
+paths under `error.details.changed`, and the current revision. This string array is distinct from
+the boolean `result.changed` on success. History truncation and measurement restarts cannot be
+restored; a failure after either reports `rollback: notPossible` and the effects already performed.
+Every partial outcome requires a fresh Settings inspection before another mutation.
 
 ## Describe, inspect, and global inspection
 
-`settings.describe` returns Settings revision and the compact PLVS schema used by Panel Control:
+`settings.describe` returns the top-level revision and the compact PLVS schema used by Panel Control:
 type, default, options, unit where relevant, current effective value, dynamic availability, and
 unavailable reason. Theme and Channel Role options are generated from the current catalogs;
 Dialogue Detection options may include their existing official links. It exposes no persistence
@@ -215,6 +218,8 @@ keys, component names, IPC commands, or complete custom Theme documents.
 
 `settings.inspect` omits schema metadata and returns revision, effective `settings`, `runtime`, and
 `availability`. `settings.update` returns the same complete focused snapshot plus mutation metadata.
-The global `app.inspect` also includes the compact Settings snapshot and `revisions.settings`, while
-the focused command avoids returning Workspace and panel state. `app.capabilities` advertises only
-the three Settings methods and their protocol version, not current values or dynamic option lists.
+The global `app.inspect` also includes the compact Settings snapshot and top-level `revision`, while
+the focused command avoids returning Workspace and panel state. Public CLI consumers discover
+Settings support through `app.capabilities` result fields `commands` and `features`; current values
+and dynamic option lists are not capability data. The frontend/RPC `methods` list may remain as
+internal compatibility data, but public consumers must not use it for capability selection.

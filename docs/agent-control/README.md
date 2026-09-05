@@ -34,8 +34,8 @@ The repository entrypoint automatically supplies the `plvs-cli app` prefix:
 ```powershell
 npm run desktop:control -- capabilities --json
 npm run desktop:control -- inspect --json
-npm run desktop:control -- wait --workspace-revision 0 --json
-npm run desktop:control -- workspace apply layout.json --json
+npm run desktop:control -- wait --after-revision 0 --timeout-ms 30000 --json
+npm run desktop:control -- workspace apply layout.json --expected-revision 0 --json
 npm run desktop:control -- panel describe spectrum --json
 npm run desktop:control -- settings inspect --json
 npm run desktop:control -- transport inspect --json
@@ -74,9 +74,9 @@ The last fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the
 
 Settings has no coverage guard of its own. There is no single definition of "every setting" to check
 `PUBLIC_FIELDS` against -- the settings persistence domain also holds Preset-captured scene state,
-the Theme and Profile libraries and window state, all of which `settings.md` places outside this
-contract -- so such a list would be a judgement call maintained by hand, which is the failure mode
-these guards exist to remove. What is checked instead is that Settings Control never restates an
+the Theme and Loudness Profile libraries and window state, all of which `settings.md` places outside
+this contract -- so such a list would be a judgement call maintained by hand, which is the failure
+mode these guards exist to remove. What is checked instead is that Settings Control never restates an
 option list or default: it imports the app's own from `src/settings/defaults.js` and
 `src/lib/dialogueVadEngines.js`. A value the GUI offers that App Control rejects would otherwise be
 invisible, because `settings describe` would tell the agent the value does not exist.
@@ -94,16 +94,41 @@ the question unanswered.
 
 ### `app.capabilities`
 
-This is the handshake and compatibility surface. It reports application identity, protocol version,
-available methods, and supported module kinds. It does not report live panel instances, mutable
-state, or a Workspace revision.
+This is the handshake and compatibility surface, with a deliberate distinction between the
+frontend wire payload and the public CLI result. The frontend JSON-RPC method returns the current
+`revision`, `appVersion`, `protocolVersion`, `commands`, `features`, `runtime`, `methods`, and
+`modules`. It does not contain `cliVersion`; Rust adapts that payload for
+`plvs-cli app capabilities --json` and independently injects the installed CLI version.
+
+The stable public result contains `revision`, `appVersion`, `cliVersion`, `protocolVersion`,
+`commands`, and `features`:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "result": {
+    "revision": 13,
+    "appVersion": "0.14.6",
+    "cliVersion": "0.14.6",
+    "protocolVersion": 1,
+    "commands": [],
+    "features": {}
+  }
+}
+```
+
+`runtime`, `methods`, and `modules` may remain as compatible extra fields, but public CLI consumers
+discover supported commands and features from `commands` and `features`. `appVersion` and
+`cliVersion` are independent build identities and must not be assumed equal. Capabilities does not
+report live panel instances or mutable state beyond the current revision.
 
 ### `app.inspect`
 
 This is a snapshot of the running application's mutable state. As command families are added, it
 reports the Workspace, panel instances, each panel's complete public controls, compact Preset and
-Settings state, Dock state, Transport state, and all domain revisions. It reports values, not
-control schemas.
+Settings state, Dock state, Transport state, and the current top-level `revision`. It reports
+values, not control schemas.
 
 Panels are an array in `panelOrder`; each entry contains `id`, `moduleId`, `title`, complete public
 `controls`, effective read-only `axes`, and module-specific `analysis`. The same panel shape is used
@@ -112,12 +137,13 @@ shared analysis such as Dialogue Detection and Spectral Waveform.
 
 Inspection deliberately omits measurement frames and history, canvas data, hover/fullscreen/sheet
 state, raw internal controls, React-only values, and field schemas. Preset state remains the compact
-`activeId`/`dirty` relationship until the Preset command family is designed.
+`activeId`/`dirty` relationship; the implemented Preset commands provide library listing,
+description, save, update, apply, rename, delete, and reorder operations.
 
 ### `panel.describe`
 
 This describes one live panel. It returns that panel's complete public controls and its dynamic
-schema, including constraints that depend on the current channel topology or Profile state.
+schema, including constraints that depend on the current channel topology or Loudness Profile state.
 Schema fields carry machine-readable constraints plus public `title`, `description`, and `unit`
 metadata where applicable. They do not expose UI implementation details such as widget type, CSS
 ordering, ARIA labels, React callbacks, or commit-on-release behavior.
@@ -126,25 +152,25 @@ The schema is a deliberately small PLVS format inspired by JSON Schema, not a cl
 Schema compatibility. It describes:
 
 - scalar and object types, defaults, numeric bounds, enum choices, titles, descriptions, and units;
-- dynamic choices derived from current Profile and channel-topology state;
+- dynamic choices derived from current Loudness Profile and channel-topology state;
 - current `effective` state and a stable `inactiveReason` for stored-but-dormant controls;
 - `patchMode: "replace"` for atomic objects and arrays, or `patchMode: "merge"` for nested partial
   patches such as Spectrogram `threeD` and Stats `metrics`;
 - relational constraints such as ordered ranges, minimum spans, or a required included value.
 
 Dynamic choices list only currently valid values. For example, Loudness omits `reference` when the
-Profile supplies no reference. Channel schemas include the currently valid object-valued choices
-and report `channelTopology.status` as `assumed` or `detected`.
+Loudness Profile supplies no reference. Channel schemas include the currently valid object-valued
+choices and report `channelTopology.status` as `assumed` or `detected`.
 
 ## Panel Control commands
 
 ```powershell
 npm run desktop:control -- panel describe <panel-id> --json
-npm run desktop:control -- panel update <panel-id> <file|-> --json
-npm run desktop:control -- panel reset <panel-id> --json
+npm run desktop:control -- panel update <panel-id> <file|-> --expected-revision 12 --json
+npm run desktop:control -- panel reset <panel-id> --expected-revision 12 --json
 ```
 
-`panel.update` and `panel.reset` also accept:
+`panel.update` and `panel.reset` require `--expected-revision` and support `--dry-run`:
 
 ```text
 --dry-run
@@ -176,75 +202,68 @@ A normal successful update means all of the following have completed before the 
 Persistence failure therefore fails the command. There is no `persisted` boolean in successful
 responses.
 
-An effective controls change increments the Workspace revision and marks the active Preset dirty.
+An effective controls change increments the global revision and marks the active Preset dirty.
 A no-op leaves the revision and Preset dirty state unchanged.
 
-`panel.update` and `panel.reset` share one result shape:
+Inside the public CLI success envelope, `panel.update` and `panel.reset` use this `result` object:
 
 ```json
 {
   "dryRun": false,
   "revision": 13,
-  "changed": ["controls.frequencyColor"],
+  "changed": true,
   "warnings": [],
-  "panel": {
-    "id": "waveform-1",
-    "moduleId": "waveform",
-    "controls": {},
-    "axes": {},
-    "analysis": {}
-  },
-  "preset": {
-    "activeId": "preset-1",
-    "dirty": true
+  "state": {
+    "panel": {
+      "id": "waveform-1",
+      "moduleId": "waveform",
+      "controls": {},
+      "axes": {},
+      "analysis": {}
+    },
+    "preset": {
+      "activeId": "preset-1",
+      "dirty": true
+    }
   }
 }
 ```
 
-- `panel` is the complete resulting public panel state, in the same shape used by `app.inspect`.
+- `state.panel` is the complete resulting public panel state, in the same shape used by
+  `app.inspect`.
   Unlike `panel.describe`, it does not include the schema.
-- `changed` contains only public leaf paths whose values actually changed, in public schema order.
-  It never exposes internal `panelControlsById` names. Reset may report an axis-link path such as
-  `axes.frequency.linked`.
+- `changed` is a boolean: `true` means at least one public value changed.
 - `warnings` describes valid but noteworthy results; it does not represent failure.
-- `preset` describes the resulting active-Preset relationship. `activeId` may be null.
+- `state.preset` describes the resulting active-Preset relationship. `activeId` may be null.
 - There is no `persisted` field. Successful non-dry-run completion implies durable persistence.
 
-A no-op is successful, returns an empty `changed` array and the complete unchanged panel, does not
+A no-op is successful, returns `changed: false` and the complete unchanged panel, does not
 increment revision, does not write persistence, does not dirty the Preset, and does not rebuild an
 analysis request.
 
-### Revision domains
+### Revision
 
 Revision is optimistic concurrency protection for one running PLVS process, not a durable document
 version. It resets when the application restarts, so callers inspect again after connecting to a new
 process.
 
-Inspection groups independently evolving persisted domains:
+Every public query and successful mutation reports one top-level revision. As a minimal fragment,
+the public CLI envelope's `result` contains:
 
 ```json
 {
-  "revisions": {
-    "workspace": 13
-  }
+  "revision": 13
 }
 ```
 
-Preset, Settings, and Transport Control add `presets`, `settings`, and `transport` counters. The
-first three describe durable domains; Transport revision is process-local runtime state. Dock is
-part of the Workspace scene and does not add a fifth counter. A specific single-domain command
-result can continue returning the unqualified `revision` because its command family identifies the
-domain. Cross-domain results return a `revisions` object.
-
 Workspace layout, panels, public panel controls, panel axis state, pin/title state, and a Preset
-application that changes the Workspace increment `revisions.workspace`. Equivalent user and agent
-mutations follow the same rule. One atomic operation increments once regardless of the number of
-changed fields.
+application that changes the Workspace increment the revision. Preset collection, Settings, Dock,
+and Transport lifecycle changes use the same counter. Equivalent user and agent mutations follow
+the same rule. One atomic operation increments once regardless of the number of changed fields.
 
 Dry runs, no-ops, validation failures, revision conflicts, live measurements, capture state, and
-transient UI state do not increment it. Settings and Preset-collection edits do not increment the
-Workspace counter. Preset dirty follows a Workspace mutation but does not add a second Workspace
-increment; it is a change in the separate Presets domain.
+transient UI state do not increment it. Changes that settle together as one observable operation
+produce one revision increment.
 
 If persistence fails after UI commit, the committed revision remains current and is returned with
 `stateCommitted: true`; it is not rolled back merely to make the counter look unchanged.
@@ -260,17 +279,16 @@ and diff calculation as a real update, but it does not:
 - persist anything;
 - create an analysis request or history slab.
 
-Dry run uses the same result shape. `revision` remains the current real revision, while `changed`,
-`panel`, and `preset` describe the result that a real execution would produce. No separate
-`wouldChange` or projected-revision vocabulary is used; `dryRun: true` establishes the preview
-semantics.
+Dry run uses the same result shape. `revision` remains the current real revision, while `changed`
+and `state` describe the result that a real execution would produce. No separate `wouldChange` or
+projected-revision vocabulary is used; `dryRun: true` establishes the preview semantics.
 
 ### Reset
 
 `panel.reset` exposes the same product behavior as the Reset button in the panel settings header. It
 resets the panel's public controls and its axis-link flags/default dormant local ranges. It does not
-change shared Workspace axis values, remove the panel, change the active Profile, or clear measured
-history and maxima.
+change shared Workspace axis values, remove the panel, change the active Loudness Profile, or clear
+measured history and maxima.
 
 ### Failure contract
 
@@ -280,22 +298,26 @@ together:
 
 ```json
 {
-  "reason": "invalidControls",
-  "message": "The panel controls are invalid.",
-  "details": {
-    "issues": [
-      {
-        "code": "outOfRange",
-        "path": "$.speedPercent",
-        "message": "speedPercent must be between 0 and 100."
-      }
-    ]
+  "schemaVersion": 1,
+  "ok": false,
+  "error": {
+    "code": "invalidControls",
+    "message": "The panel controls are invalid.",
+    "details": {
+      "issues": [
+        {
+          "code": "outOfRange",
+          "path": "$.speedPercent",
+          "message": "speedPercent must be between 0 and 100."
+        }
+      ]
+    }
   }
 }
 ```
 
 Each issue has a stable machine code, a path into the caller's submitted JSON, and a human-readable
-message. The initial stable reasons and issue codes are:
+message. The initial stable error and issue codes are:
 
 - `panelNotFound` for an unknown target panel;
 - `revisionConflict`, with both `expectedRevision` and `currentRevision` in details;
@@ -308,10 +330,15 @@ A persistence failure must state the partial outcome explicitly:
 
 ```json
 {
-  "reason": "persistenceFailed",
-  "details": {
-    "stateCommitted": true,
-    "revision": 13
+  "schemaVersion": 1,
+  "ok": false,
+  "error": {
+    "code": "persistenceFailed",
+    "message": "Panel controls committed but persistence failed.",
+    "details": {
+      "stateCommitted": true,
+      "revision": 13
+    }
   }
 }
 ```
@@ -319,16 +346,23 @@ A persistence failure must state the partial outcome explicitly:
 After a revision conflict or persistence failure, the caller should inspect current state rather
 than retry blindly.
 
-### Failures below the application
+Successful mutation `changed` and failure detail `changed` deliberately have different types.
+`result.changed` is always a boolean. When an execution or persistence error must identify a
+partial outcome, `error.details.changed` is an array of public path strings. The success envelope
+and error envelope make the two unambiguous.
+
+### Internal failures below the application
 
 A request can also fail before it reaches the application at all: Agent Control is disabled
 (`agentControlDisabled`), the on-disk descriptor exists but could not be read (`discoveryFailed`),
-the frontend is not ready yet, the broker's pending limit is full, the frontend did not answer in
-time, or the envelope was unreadable.
-These carry `"layer": "transport"` alongside their `reason`, because they are not a valid app result
-and must not be read as one — the same `busy` reason means the broker's request limit with the tag
-and a refused concurrent `app.wait` without it. The CLI maps a tagged failure to exit code `2`
-while keeping the reported reason; untagged errors are app results and exit `1`.
+its protocol version is incompatible (`protocolMismatch`), the frontend is not ready yet, the
+broker's pending limit is full, the frontend did not answer in time, or the envelope was
+unreadable.
+Inside the internal JSON-RPC error data, failures from this layer carry `"layer": "transport"`
+alongside an internal `reason`, because they are not valid app results and must not be read as one.
+The public CLI maps that internal distinction to its documented exit class and always emits the
+common `{ schemaVersion, ok: false, error: { code, message, details? } }` envelope. A refused
+concurrent `app.wait` is instead an application error with public code `waitLimitReached`.
 
 ### Conditional controls and warnings
 
@@ -341,8 +375,8 @@ changing `frequencyBandsHz` while Waveform Frequency Color remains off warns; ch
 the same patch that enables Frequency Color does not.
 
 This differs from a dynamically unavailable option. Loudness `reference` is not a valid option when
-the active Profile does not provide a reference, so submitting it fails with `controlUnavailable`
-instead of succeeding with a warning.
+the active Loudness Profile does not provide a reference, so submitting it fails with
+`controlUnavailable` instead of succeeding with a warning.
 
 ### Axes
 

@@ -10,18 +10,23 @@ than transport playback.
 
 ```powershell
 npm run desktop:control -- transport inspect --json
-npm run desktop:control -- transport source live --json
-npm run desktop:control -- transport source file --json
-npm run desktop:control -- transport live start --json
-npm run desktop:control -- transport live stop --json
-npm run desktop:control -- transport live clear --json
-npm run desktop:control -- transport file analyze <path> --json
-npm run desktop:control -- transport file reanalyze <session-id> --json
-npm run desktop:control -- transport file stop <session-id> --json
-npm run desktop:control -- transport file select <session-id> --json
-npm run desktop:control -- transport file remove <session-id> --json
-npm run desktop:control -- transport file clear --json
+npm run desktop:control -- transport source live --expected-revision 12 --json
+npm run desktop:control -- transport source file --expected-revision 12 --json
+npm run desktop:control -- transport live start --expected-revision 12 --json
+npm run desktop:control -- transport live stop --expected-revision 12 --json
+npm run desktop:control -- transport live clear --expected-revision 12 --json
+npm run desktop:control -- transport file analyze <path> --expected-revision 12 --json
+npm run desktop:control -- transport file reanalyze <session-id> --expected-revision 12 --json
+npm run desktop:control -- transport file stop <session-id> --expected-revision 12 --json
+npm run desktop:control -- transport file select <session-id> --expected-revision 12 --json
+npm run desktop:control -- transport file remove <session-id> --expected-revision 12 --json
+npm run desktop:control -- transport file clear --expected-revision 12 --json
 ```
+
+All Transport commands except `inspect` require `--expected-revision`. `source live`, `source file`,
+`live clear`, `file select`, `file remove`, and `file clear` are state mutations and support
+`--dry-run`. `live start`, `live stop`, `file analyze`, `file reanalyze`, and `file stop` are
+actions and reject `--dry-run`.
 
 Source commands change only the selected LIVE/FILE source and never open a native file picker or
 implicitly start capture/analysis. `live start` selects LIVE and starts capture. `live stop` retains
@@ -97,30 +102,37 @@ Already completed FILE results do not retroactively change with Settings or Pane
 changes. Commands that alter relevant configuration report `fileReanalysisRequired`; only an
 explicit reanalyze starts new work.
 
-## Transport revision and waiting
+## Revision and waiting
 
-Transport has an independent process-local `revisions.transport`. It increments on source changes,
-LIVE lifecycle transitions, FILE ledger/selection changes, and FILE lifecycle completion/error, but
-not for audio frames, progress percentages, elapsed clock ticks, or history viewport movement. An
-accepted async file run increments when it starts and again when it reaches a terminal state.
+Transport changes use the application's single process-local revision. It increments on source
+changes, LIVE lifecycle transitions, FILE ledger/selection changes, and FILE lifecycle
+completion/error, but not for audio frames, progress percentages, elapsed clock ticks, or history
+viewport movement. An accepted async file run increments when it starts and again when it reaches a
+terminal state.
 
-Every Transport mutation accepts `--expected-transport-revision`. Revision Wait consequently also
-accepts `--transport-revision`, enabling a caller to sleep until an analysis completes or another
-lifecycle change occurs without waking for every progress update.
+Every Transport mutation and action requires `--expected-revision`. `app wait --after-revision
+<n> --timeout-ms <n>` can sleep until an analysis completes or another observable state change
+occurs without waking for every progress update.
 
 Transport state is not durable, so commands wait for relevant native acknowledgements but not a
-persistence flush. All mutations support dry-run. Analyze dry-run may probe the file but allocates no
-session ID; clear/remove dry-run report the sessions that would be deleted. No-op and dry-run do not
-increment revision or call native transport operations.
+persistence flush. State-mutation dry-runs return predicted Transport state without calling native
+transport operations or incrementing revision. `file clear` and `file remove` previews report the
+sessions that would be deleted. Actions do not support dry-run. State-mutation no-ops return
+`changed: false` and do not increment revision or call native transport operations.
 
 ## Inspection and results
 
-`transport.inspect` returns Transport revision, selected source, LIVE lifecycle/device summary, and
-ordered public FILE session summaries with active/analyzing IDs. Mutation results return the same
-snapshot plus `dryRun`, deterministic `changed`, `effects`, `warnings`, and any affected/evicted
-session summaries. Progress is a bounded value from zero through one but is advisory; lifecycle is
-authoritative.
+`transport.inspect` returns top-level `revision`, selected source, LIVE lifecycle/device summary,
+and ordered public FILE session summaries with active/analyzing IDs.
 
-Predictable validation, revision, mode, confirmation, and busy failures are side-effect free.
-Execution failures report stage, partial state, changed paths, current Transport revision, and any
-session allocated before failure. The caller must inspect after a partial result.
+State mutations return `dryRun`, boolean `changed`, `revision`, `effects`, `warnings`, any
+affected/evicted session summaries, and the complete predicted or resulting snapshot under
+`state.transport`. Actions return `action`, `status`, `revision`, `effects`, `warnings`, any
+affected/evicted session summaries, and the resulting snapshot under `state.transport`. Progress is
+a bounded value from zero through one but is advisory; lifecycle is authoritative.
+
+Predictable validation, revision, mode, confirmation, and concurrency failures are side-effect free.
+Execution failures report stage, partial state, `error.details.changed` path strings, current
+revision, and any session allocated before failure. This array is distinct from the boolean
+`result.changed` used by successful state mutations. The caller must inspect after a partial
+result.
