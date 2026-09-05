@@ -5,7 +5,7 @@ Date: 2026-09-03
 Status: Living design record; Panel, Axis, Preset, Settings, Wait, Transport, and Dock Control
 decisions are approved unless explicitly marked otherwise
 
-This directory records the implemented developer-only App Control contract. It complements the
+This directory records the implemented App Control contract. It complements the
 first-slice design in
 [`../superpowers/specs/2026-09-02-agent-control-design.md`](../superpowers/specs/2026-09-02-agent-control-design.md).
 That document explains the transport and initial Workspace implementation; this directory is the
@@ -46,15 +46,15 @@ Every example here writes its report to stdout, where npm also prints its script
 `--silent` (or call `node scripts/run-desktop-control.mjs` directly) whenever the JSON is
 redirected or piped rather than read by a person.
 
-These commands are development-only. The installed release CLI neither displays nor accepts the
-`app` command family. Every mutation is delivered to the already-running React application and
-uses the same state, native integrations, safety guards, and persistence paths as the GUI.
+These commands require Agent Control to be enabled in PLVS Settings, which is off by default in
+release builds and on in development builds. Every mutation is delivered to the already-running
+React application and uses the same state, native integrations, safety guards, and persistence
+paths as the GUI.
 
 ## Implementation status
 
 The foundation, Panel Control, Axis Control, Presets, Settings, Revision Wait, Transport, and Dock
-Control are implemented. Production exposure and MCP integration remain deferred product
-decisions.
+Control are implemented. MCP integration remains a deferred product decision.
 
 ## Keeping this contract in step with the app
 
@@ -63,12 +63,12 @@ patch planner -- layered on one flat control record. Nothing in the app makes th
 control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no App Control
 change to look finished. Four guards make that omission fail instead:
 
-| Guard | Fails when |
-| --- | --- |
-| `src/agentControl/panelControlCoverage.test.js` | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal. |
-| `src/agentControl/panelControlContract.test.js` | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
-| `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own. |
-| `src/agentControl/publicSurfaceDocs.test.js` | `generated/` no longer matches the schema builders. |
+| Guard                                              | Fails when                                                                                                        |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `src/agentControl/panelControlCoverage.test.js`    | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal.                  |
+| `src/agentControl/panelControlContract.test.js`    | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
+| `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own.                        |
+| `src/agentControl/publicSurfaceDocs.test.js`       | `generated/` no longer matches the schema builders.                                                               |
 
 The last fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the pages.
 
@@ -321,8 +321,10 @@ than retry blindly.
 
 ### Failures below the application
 
-A request can also fail before it reaches the application at all: the frontend is not ready yet, the
-broker's pending limit is full, the frontend did not answer in time, or the envelope was unreadable.
+A request can also fail before it reaches the application at all: Agent Control is disabled
+(`agentControlDisabled`), the on-disk descriptor exists but could not be read (`discoveryFailed`),
+the frontend is not ready yet, the broker's pending limit is full, the frontend did not answer in
+time, or the envelope was unreadable.
 These carry `"layer": "transport"` alongside their `reason`, because they are not a valid app result
 and must not be read as one — the same `busy` reason means the broker's request limit with the tag
 and a refused concurrent `app.wait` without it. The CLI maps a tagged failure to exit code `2`
@@ -419,4 +421,4 @@ Control settings.
 
 ## Deferred decisions
 
-- Production exposure and MCP integration remain future product decisions.
+- MCP integration remains a future product decision.

@@ -3,9 +3,10 @@
 PLVS ships an installed command-line companion named `plvs-cli`. It is meant for agents, support workflows, and terminal automation that need PLVS analysis without opening the desktop UI.
 
 The audio-facing command surface does not route or modify audio. `profile import` can replace stored
-desktop configuration. A separate development-only `app` family can inspect and replace the live
-workspace of an already-running PLVS Dev window; installed/release builds do not expose that family
-in the first version.
+desktop configuration. The `app` family inspects and controls the live workspace of an
+already-running PLVS window; it requires Agent Control to be enabled in PLVS Settings, and is
+Windows-only for now. With Agent Control off, `app` commands fail with reason
+`agentControlDisabled` and exit with `Agent Control is disabled. Enable it in PLVS Settings.`
 
 ## Install Location
 
@@ -78,6 +79,7 @@ plvs-cli profile validate <file> [--json] [--out <file>]
 plvs-cli profile export [--out <file>]
 plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]
 plvs-cli report <analysis.json> --format markdown [--out <file>]
+plvs-cli app <command> [options]
 plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]
 ```
 
@@ -266,7 +268,8 @@ layout, keep a panel's `panelId` to preserve that instance, or declare a new pan
 `revision` through `--expected-revision` prevents overwriting a workspace that changed meanwhile.
 
 The existing standalone commands (`doctor`, `probe`, `analyze`, `capture`, `profile`, and others)
-keep their installed behavior. Release `plvs-cli --help` intentionally does not advertise `app` yet.
+keep their installed behavior. `plvs-cli --help` advertises `app` in every build; access is gated
+at runtime by the Agent Control setting, not by build type.
 
 ### Run standalone commands from source
 
