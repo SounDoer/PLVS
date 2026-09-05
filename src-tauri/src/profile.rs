@@ -382,4 +382,20 @@ mod tests {
     }))
     .is_err());
   }
+
+  #[test]
+  fn agent_control_is_neither_exported_nor_imported() {
+    use crate::agent_control::toggle::ENABLED_KEY;
+
+    let mut store = Map::new();
+    store.insert(ENABLED_KEY.into(), json!(true));
+    let snapshot = build_profile_snapshot_from_store(&store);
+    assert!(
+      snapshot.get(ENABLED_KEY).is_none(),
+      "a permission must not travel inside an exported configuration"
+    );
+
+    assert!(!DOMAIN_KEYS.contains(&ENABLED_KEY));
+    assert!(!SIBLING_KEYS.contains(&ENABLED_KEY));
+  }
 }
