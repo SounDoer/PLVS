@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PACK_KINDS, PACK_VERSION, buildPack } from "./packShape.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 
 describe("buildPack", () => {
   it("stamps the envelope for a loudness pack", () => {
@@ -41,5 +42,18 @@ describe("buildPack", () => {
   it("exposes one descriptor per kind", () => {
     expect(Object.keys(PACK_KINDS).sort()).toEqual(["loudness", "presets", "themes"]);
     expect(PACK_KINDS.themes.extension).toBe("plvstheme");
+  });
+
+  it("stamps the envelope for a theme pack", () => {
+    const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
+    const pack = buildPack("themes", [theme], { exportedAt: "x" });
+    expect(pack.kind).toBe("theme-pack");
+    expect(pack.items.length).toBe(1);
+    expect(pack.items[0].id).toBe("t1");
+  });
+
+  it("drops a malformed theme document", () => {
+    const pack = buildPack("themes", [{ version: 2, id: "bad" }], { exportedAt: "x" });
+    expect(pack.items).toEqual([]);
   });
 });
