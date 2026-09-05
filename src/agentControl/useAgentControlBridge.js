@@ -793,7 +793,14 @@ export function useAgentControlBridge({
           const action = isTransportAction(request.method);
           const result = {
             ...(action
-              ? { action: request.method, status: "completed" }
+              ? {
+                  action: request.method,
+                  status:
+                    request.method === "transport.file.analyze" ||
+                    request.method === "transport.file.reanalyze"
+                      ? "accepted"
+                      : "completed",
+                }
               : {
                   dryRun: request.params.dryRun === true,
                   changed: planned.changed.length > 0,

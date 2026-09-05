@@ -233,7 +233,7 @@ function Harness({
   onStore(store);
   const executeTransport =
     executeAgentTransport ??
-    (async (method) => {
+    (async (method, params) => {
       if (method === "transport.source.file") {
         setTransportState((current) => ({ ...current, source: "file" }));
       } else if (method === "transport.source.live") {
@@ -244,7 +244,32 @@ function Harness({
           source: "live",
           live: { ...current.live, state: "running", resolvedDeviceId: "device-1" },
         }));
+      } else if (method === "transport.file.analyze" || method === "transport.file.reanalyze") {
+        const sessionId = method === "transport.file.analyze" ? "file-new" : params.sessionId;
+        setTransportState((current) => {
+          const existing = current.files.sessions.find(({ id }) => id === sessionId);
+          const session = {
+            ...(existing ?? {
+              id: sessionId,
+              path: params.path,
+              fileName: "test.wav",
+            }),
+            state: "analyzing",
+            error: null,
+          };
+          return {
+            ...current,
+            source: "file",
+            files: {
+              activeId: sessionId,
+              analyzingId: sessionId,
+              sessions: [...current.files.sessions.filter(({ id }) => id !== sessionId), session],
+            },
+          };
+        });
+        return { sessionId };
       }
+      return {};
     });
   const executeDock =
     executeAgentDock ??
@@ -678,6 +703,42 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject(goldenResult("action.transportLiveStart"));
     expect(response.result).not.toHaveProperty("changed");
     expect(response.result).not.toHaveProperty("dryRun");
+  });
+
+  it.each([
+    ["transport.file.analyze", { path: "C:\\audio\\test.wav", expectedRevision: 0 }, transport],
+    [
+      "transport.file.reanalyze",
+      { sessionId: "file-1", expectedRevision: 0 },
+      {
+        ...transport,
+        source: "file",
+        files: {
+          activeId: "file-1",
+          analyzingId: null,
+          sessions: [
+            {
+              id: "file-1",
+              path: "C:\\audio\\test.wav",
+              fileName: "test.wav",
+              state: "complete",
+              error: null,
+            },
+          ],
+        },
+      },
+    ],
+  ])("reports accepted status for asynchronous %s", async (method, params, initialTransport) => {
+    mount({ agentTransport: initialTransport });
+    await waitUntilReady();
+
+    const response = await send(request(method, params, `${method}-accepted`));
+
+    expect(response.result).toMatchObject({
+      action: method,
+      status: "accepted",
+      revision: 1,
+    });
   });
 
   it("rejects stale Transport mutations before execution", async () => {
