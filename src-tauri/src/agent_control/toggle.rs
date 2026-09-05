@@ -1,3 +1,4 @@
+use serde::Serialize;
 use serde_json::{Map, Value};
 
 /// Top-level store key, a sibling of `windowBounds` rather than a member of `plvs:settings`.
@@ -28,6 +29,36 @@ pub fn read_enabled_from_disk() -> bool {
     return default_enabled();
   };
   enabled_from_store_map(&map)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentControlStatus {
+  /// The platform has a control endpoint at all. Windows only for now.
+  pub supported: bool,
+  pub enabled: bool,
+  pub cli_installed: bool,
+  pub on_path: bool,
+  pub message: String,
+}
+
+fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentControlStatus {
+  let message = if !supported {
+    "Agent Control is currently available on Windows only."
+  } else if !cli_installed {
+    "plvs-cli.exe was not found in this installation."
+  } else if enabled {
+    "Programs on this machine can control PLVS through plvs-cli."
+  } else {
+    "Allows programs on this machine to control PLVS through plvs-cli."
+  };
+  AgentControlStatus {
+    supported,
+    enabled: supported && cli_installed && enabled,
+    cli_installed,
+    on_path: false,
+    message: message.to_string(),
+  }
 }
 
 #[cfg(test)]
@@ -64,5 +95,44 @@ mod tests {
   #[test]
   fn release_builds_default_to_disabled() {
     assert!(!default_enabled());
+  }
+
+  #[test]
+  fn unsupported_platforms_report_a_windows_only_message() {
+    let status = compose_status(false, false, false);
+    assert!(!status.supported);
+    assert!(!status.enabled);
+    assert_eq!(
+      status.message,
+      "Agent Control is currently available on Windows only."
+    );
+  }
+
+  #[test]
+  fn a_missing_cli_is_reported_before_anything_else() {
+    let status = compose_status(true, false, false);
+    assert!(status.supported);
+    assert!(!status.cli_installed);
+    assert_eq!(
+      status.message,
+      "plvs-cli.exe was not found in this installation."
+    );
+  }
+
+  #[test]
+  fn the_message_says_plainly_what_being_on_means() {
+    let off = compose_status(true, true, false);
+    assert!(!off.enabled);
+    assert_eq!(
+      off.message,
+      "Allows programs on this machine to control PLVS through plvs-cli."
+    );
+
+    let on = compose_status(true, true, true);
+    assert!(on.enabled);
+    assert_eq!(
+      on.message,
+      "Programs on this machine can control PLVS through plvs-cli."
+    );
   }
 }
