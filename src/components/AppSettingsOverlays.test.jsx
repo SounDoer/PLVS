@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { AppSettingsOverlays } from "./AppSettingsOverlays.jsx";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
@@ -41,6 +41,7 @@ vi.mock("./SettingsPanel.jsx", () => ({
     setInterfaceSize,
     dialogueVadEngine,
     setDialogueVadEngine,
+    onSetAgentControlEnabled,
   }) => (
     <div data-testid="settings-panel">
       <span data-testid="theme-disabled">{String(themeControlsDisabled)}</span>
@@ -58,6 +59,13 @@ vi.mock("./SettingsPanel.jsx", () => ({
       </button>
       <button type="button" onClick={onOpenFeedback}>
         Feedback
+      </button>
+      <button
+        type="button"
+        data-testid="set-agent-control-enabled"
+        onClick={() => onSetAgentControlEnabled(true)}
+      >
+        Set agent control enabled
       </button>
     </div>
   ),
@@ -138,7 +146,7 @@ function makeSettings(overrides = {}) {
   };
 }
 
-function renderOverlays(settings = makeSettings(), updateOverrides = {}) {
+function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlayOverrides = {}) {
   const updateControls = {
     updateInfo: null,
     refreshUpdateCheck: vi.fn(),
@@ -161,6 +169,7 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}) {
       channelSettings={channelSettings}
       updateControls={updateControls}
       appVersion="0.0.0"
+      {...overlayOverrides}
     />
   );
 
@@ -288,6 +297,29 @@ describe("AppSettingsOverlays", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
     expect(install).toHaveBeenCalledWith(firstUpdate);
+  });
+
+  it("reports the settled enabled value when the agent-control toggle succeeds", async () => {
+    mocks.setAgentControlEnabled.mockResolvedValueOnce({ enabled: true });
+    const onAgentControlEnabledChange = vi.fn();
+    renderOverlays(makeSettings(), {}, { onAgentControlEnabledChange });
+
+    fireEvent.click(screen.getByTestId("set-agent-control-enabled"));
+
+    await waitFor(() => expect(onAgentControlEnabledChange).toHaveBeenCalledWith(true));
+  });
+
+  it("reports the settled (previous) value, not the requested one, when the toggle fails", async () => {
+    // The hook resolves rather than throws on a rejected IPC call, carrying the previous
+    // `enabled` -- here `false` -- even though the caller requested `true`.
+    mocks.setAgentControlEnabled.mockResolvedValueOnce({ enabled: false });
+    const onAgentControlEnabledChange = vi.fn();
+    renderOverlays(makeSettings(), {}, { onAgentControlEnabledChange });
+
+    fireEvent.click(screen.getByTestId("set-agent-control-enabled"));
+
+    await waitFor(() => expect(onAgentControlEnabledChange).toHaveBeenCalledWith(false));
+    expect(onAgentControlEnabledChange).not.toHaveBeenCalledWith(true);
   });
 
   it("renders the theme editor when custom theme editing is active", () => {

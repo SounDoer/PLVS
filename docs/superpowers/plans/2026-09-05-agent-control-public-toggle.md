@@ -1264,6 +1264,8 @@ settings overlay.
 - Modify: `src/agentControl/appSnapshot.test.js`
 - Modify: `src/App.jsx:620`, `src/App.jsx:1242`, `src/App.jsx:1966`
 - Modify: `src/components/AppSettingsOverlays.jsx`
+- Modify: `src/components/AppSettingsOverlays.test.jsx` — cover the wrapper reporting the settled
+  value, not the requested one.
 - Modify: `src/App.smoke.test.jsx` — its agent-control fixture predates `enabled` and needs the
   field added, or the bridge no longer mounts under it.
 
@@ -1363,7 +1365,25 @@ and replace the prop passed to `SettingsPanel`:
 
 The hook already returns the settled status (Task 10, Step 4).
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [ ] **Step 6: Cover the wrapper reporting the settled value, not the requested one**
+
+In `src/components/AppSettingsOverlays.test.jsx`, extend the mocked `SettingsPanel` stub to expose
+`onSetAgentControlEnabled` (e.g. a button with a `data-testid` that invokes it with `true`), and
+give the hoisted `setAgentControlEnabled` mock a per-test resolved value instead of a fixed one.
+Add two cases:
+
+- Success: `setAgentControlEnabled` resolves with `{ enabled: true }`; invoking
+  `onSetAgentControlEnabled(true)` must call `onAgentControlEnabledChange` with `true`.
+- Settled-not-requested: `setAgentControlEnabled` resolves with `{ enabled: false }` — the hook's
+  failure shape, carrying the previous value — while the caller requested `true`.
+  `onAgentControlEnabledChange` must be called with `false`, not `true`. This is the case that
+  would catch someone "simplifying" the wrapper to report `next` instead of `status?.enabled`.
+
+Sanity-check the second case by temporarily changing the wrapper to
+`onAgentControlEnabledChange(next === true)` and confirming that test goes red, then restore the
+wrapper exactly.
+
+- [ ] **Step 7: Run the tests to verify they pass**
 
 Run: `npx vitest run src/agentControl src/hooks/useAgentControlSettings.test.js src/components/AppSettingsOverlays.test.jsx`
 Expected: PASS.
@@ -1371,7 +1391,7 @@ Expected: PASS.
 Run: `npx vitest run src/App.smoke.test.jsx`
 Expected: FAIL — its fixture predates `enabled` and the bridge no longer mounts under it.
 
-- [ ] **Step 7: Fix the stale fixture in `src/App.smoke.test.jsx`**
+- [ ] **Step 8: Fix the stale fixture in `src/App.smoke.test.jsx`**
 
 Add `enabled: true` to the injected `agentControl` fixture in
 `"mounts the agent-control bridge only from Rust's injected development capability"`, alongside
@@ -1382,10 +1402,10 @@ old name is stale in the same way the fixture was.
 Run: `npx vitest run src/App.smoke.test.jsx`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/App.jsx src/agentControl/appSnapshot.js src/agentControl/appSnapshot.test.js src/components/AppSettingsOverlays.jsx src/App.smoke.test.jsx
+git add src/App.jsx src/agentControl/appSnapshot.js src/agentControl/appSnapshot.test.js src/components/AppSettingsOverlays.jsx src/components/AppSettingsOverlays.test.jsx src/App.smoke.test.jsx
 git commit -m "feat(agent-control): follow the toggle at runtime in the React bridge" -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
