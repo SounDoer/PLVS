@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import {
   CAPTURE_DEVICE,
   RigError,
+  assertSoakCaptureCompleted,
   harnessArgs,
   locateHarness,
   resolveRenderEndpointId,
@@ -144,12 +145,7 @@ try {
   out.end();
   await once(out, "close");
 
-  if (status === 2) {
-    throw new RigError("plvs-cli capture could not start; see output above.");
-  }
-  if (finalReport && finalReport.status !== "ok") {
-    throw new RigError(`plvs-cli capture failed mid-run: ${finalReport.error?.message}`);
-  }
+  assertSoakCaptureCompleted(status, finalReport);
 
   const settled = samples.filter((s) => s.t >= WARMUP_SECONDS && Number.isFinite(s.integratedLufs));
   const lufs = settled.map((s) => s.integratedLufs);
