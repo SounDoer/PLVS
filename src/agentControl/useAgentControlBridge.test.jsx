@@ -307,6 +307,14 @@ async function send(raw) {
   return adapter.responses.find((response) => response.requestId === raw.id);
 }
 
+function createDeferred() {
+  let resolve;
+  const promise = new Promise((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   localStorage.clear();
   adapter.handler = null;
@@ -1094,6 +1102,68 @@ describe("useAgentControlBridge", () => {
         details: { operation: "preset.save", editors: ["theme"] },
       },
     });
+    expect(flush).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["preset.save", { name: "Late Blocked" }],
+    ["preset.update", { presetId: "preset-1" }],
+    ["preset.apply", { presetId: "preset-1" }],
+  ])("refuses %s when a blocking editor opens during scene capture", async (method, params) => {
+    const flush = vi.fn(async () => {});
+    const snapshot = createDeferred();
+    const capturePresetSnapshot = vi.fn(() => snapshot.promise);
+    let editorOpen = false;
+    const view = mount({
+      flush,
+      capturePresetSnapshot,
+      assertPresetOperationAllowed: (operation) => {
+        if (editorOpen) throw new SceneOperationBlockedError(operation, ["theme"]);
+      },
+      applyPresetToWorkspace: true,
+      presets: {
+        list: [
+          {
+            id: "preset-1",
+            name: "Mix",
+            ...DEFAULT_WORKSPACE_STATE,
+            windowPinned: true,
+          },
+        ],
+        activeId: null,
+        dirty: false,
+      },
+    });
+    await waitUntilReady();
+    const beforePresets = await send(request("preset.list", {}, `${method}-before`));
+    const beforeWorkspace = JSON.stringify(view.store.state);
+    const raw = request(method, params, `${method}-late-blocked`);
+
+    act(() => adapter.handler(raw));
+    await waitFor(() => expect(capturePresetSnapshot).toHaveBeenCalledTimes(1));
+    editorOpen = true;
+    await act(async () => {
+      snapshot.resolve({
+        ...DEFAULT_WORKSPACE_STATE,
+        tree: { type: "leaf", tabs: ["captured"] },
+        windowPinned: false,
+      });
+    });
+    await waitFor(() =>
+      expect(adapter.responses.some(({ requestId }) => requestId === raw.id)).toBe(true)
+    );
+
+    const response = adapter.responses.find(({ requestId }) => requestId === raw.id);
+    expect(response.error).toMatchObject({
+      code: -32040,
+      data: {
+        reason: "editorActive",
+        details: { operation: method, editors: ["theme"] },
+      },
+    });
+    const afterPresets = await send(request("preset.list", {}, `${method}-after`));
+    expect(afterPresets.result).toEqual(beforePresets.result);
+    expect(JSON.stringify(view.store.state)).toBe(beforeWorkspace);
     expect(flush).not.toHaveBeenCalled();
   });
 
