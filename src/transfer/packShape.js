@@ -148,6 +148,8 @@ export function parsePack(raw, expectedType) {
     app: PACK_APP,
     kind: expected.kind,
     version: raw.version,
+    // Unlike `buildPack`, an invalid/missing value here defaults to "" rather than "now" -- a read
+    // path must not fabricate provenance for a file it did not write.
     exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "",
     items,
   };

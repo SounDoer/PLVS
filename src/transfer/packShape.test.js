@@ -92,6 +92,11 @@ describe("parsePack", () => {
     );
   });
 
+  it("falls back to the generic message when the kind matches nothing known", () => {
+    expect(() => parsePack({ ...good, kind: "widget-pack" }, "themes")).toThrow(/not a PLVS file/i);
+    expect(() => parsePack({ ...good, kind: 42 }, "themes")).toThrow(/not a PLVS file/i);
+  });
+
   it("rejects the whole-configuration file with its own message", () => {
     expect(() => parsePack({ ...good, kind: "configuration-profile" }, "themes")).toThrow(
       /whole configuration/i
