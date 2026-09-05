@@ -338,7 +338,7 @@ In `src-tauri/src/lib.rs`, replace the gated call with the same behaviour throug
 
 ```rust
       #[cfg(all(target_os = "windows", feature = "dev-identity"))]
-      if let Err(error) = agent_control::windows_pipe::start(&app.handle().clone()) {
+      if let Err(error) = agent_control::windows_pipe::start(app.handle()) {
         log::warn!("agent control unavailable; PLVS will continue normally: {error}");
       }
 ```
@@ -527,7 +527,7 @@ git commit -m "feat(agent-control): apply the toggle as one endpoint-and-PATH op
 ```rust
       #[cfg(target_os = "windows")]
       if agent_control_enabled {
-        if let Err(error) = agent_control::windows_pipe::start(&app.handle().clone()) {
+        if let Err(error) = agent_control::windows_pipe::start(app.handle()) {
           log::warn!("agent control unavailable; PLVS will continue normally: {error}");
         }
       }

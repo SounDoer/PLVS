@@ -235,7 +235,7 @@ pub fn run() {
       let _ = window.show();
 
       #[cfg(all(target_os = "windows", feature = "dev-identity"))]
-      if let Err(error) = agent_control::windows_pipe::start(&app.handle().clone()) {
+      if let Err(error) = agent_control::windows_pipe::start(app.handle()) {
         log::warn!("agent control unavailable; PLVS will continue normally: {error}");
       }
 
