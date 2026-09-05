@@ -1264,6 +1264,8 @@ settings overlay.
 - Modify: `src/agentControl/appSnapshot.test.js`
 - Modify: `src/App.jsx:620`, `src/App.jsx:1242`, `src/App.jsx:1966`
 - Modify: `src/components/AppSettingsOverlays.jsx`
+- Modify: `src/App.smoke.test.jsx` — its agent-control fixture predates `enabled` and needs the
+  field added, or the bridge no longer mounts under it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1367,12 +1369,23 @@ Run: `npx vitest run src/agentControl src/hooks/useAgentControlSettings.test.js 
 Expected: PASS.
 
 Run: `npx vitest run src/App.smoke.test.jsx`
+Expected: FAIL — its fixture predates `enabled` and the bridge no longer mounts under it.
+
+- [ ] **Step 7: Fix the stale fixture in `src/App.smoke.test.jsx`**
+
+Add `enabled: true` to the injected `agentControl` fixture in
+`"mounts the agent-control bridge only from Rust's injected development capability"`, alongside
+`available: true`. Rename the test to describe what it now pins, e.g. `"mounts the agent-control
+bridge only when Rust says the toggle is on"` — Agent Control is no longer development-only, so the
+old name is stale in the same way the fixture was.
+
+Run: `npx vitest run src/App.smoke.test.jsx`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/App.jsx src/agentControl/appSnapshot.js src/agentControl/appSnapshot.test.js src/components/AppSettingsOverlays.jsx
+git add src/App.jsx src/agentControl/appSnapshot.js src/agentControl/appSnapshot.test.js src/components/AppSettingsOverlays.jsx src/App.smoke.test.jsx
 git commit -m "feat(agent-control): follow the toggle at runtime in the React bridge" -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 

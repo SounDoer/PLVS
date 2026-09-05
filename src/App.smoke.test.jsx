@@ -282,10 +282,11 @@ describe("App smoke", () => {
     expect(screen.getByRole("button", { name: /start/i })).toBeTruthy();
   });
 
-  it("mounts the agent-control bridge only from Rust's injected development capability", async () => {
+  it("mounts the agent-control bridge only when Rust says the toggle is on", async () => {
     window.__PLVS_INITIAL_STATE__ = {
       agentControl: {
         available: true,
+        enabled: true,
         appName: "PLVS Dev",
         appVersion: "0.14.5",
         identifier: "com.soundoer.plvs.dev",
@@ -295,6 +296,23 @@ describe("App smoke", () => {
     render(<App />);
 
     await waitFor(() => expect(tauriEventHandlers.has("agent-control://request")).toBe(true));
+  });
+
+  it("does not mount the agent-control bridge when the platform supports it but the user's toggle is off", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      agentControl: {
+        available: true,
+        enabled: false,
+        appName: "PLVS Dev",
+        appVersion: "0.14.5",
+        identifier: "com.soundoer.plvs.dev",
+        platform: "windows",
+      },
+    };
+    render(<App />);
+    await screen.findByText("Ready");
+
+    expect(tauriEventHandlers.has("agent-control://request")).toBe(false);
   });
 
   it("START click settles back to Ready without crashing (browser branch)", async () => {
