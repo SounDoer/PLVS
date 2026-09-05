@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-06
+
+### Added
+
+- Agent Control on Windows: enable it in Settings to inspect and control the running app through the CLI, including panels, axes, presets, settings, transport, and dock.
+- Export and import individual presets, loudness profiles, and themes, with item selection, import review, and bundled preset dependencies.
+
+### Changed
+
+- Finalized the CLI v1 contract with consistent JSON responses, revision handling, and exit codes.
+- Windows portable downloads now include the app, CLI, and FFmpeg sidecars in a ZIP.
+- Separated whole-configuration transfer from reset in Settings.
+
+### Fixed
+
+- Imported profiles and themes appear immediately without restarting.
+- Dismissing the export save dialog preserves the item picker.
+- Preset operations recheck open editors before committing changes.
+- Capture verification rejects stale or incompatible harnesses and incomplete soak reports.
+
 ## [0.14.6] - 2026-09-04
 
 ### Added
