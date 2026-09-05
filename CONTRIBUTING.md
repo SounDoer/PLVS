@@ -34,18 +34,20 @@ npm run desktop:control -- inspect --json
 npm run desktop:control -- workspace apply layout.json --json
 ```
 
-`desktop:control` 会固定使用同一个 `dev-identity` 并自动补上 `plvs-cli app`；开发版 GUI 必须已经运行。它不依赖 Settings 中的 Command Line Tools / PATH，也不会发现或修改本机安装的正式版。当前只在 Windows 开发构建开放，release CLI 不显示 `app` 命令。
+`desktop:control` 会固定使用同一个 `dev-identity` 并自动补上 `plvs-cli app`；开发版 GUI 必须已经运行。它不依赖 Settings 中的 Agent Control / PATH，也不会发现或修改本机安装的正式版。公开的 release CLI 同样提供 `app` 命令，但使用正式版 identity 与已安装应用通信。App Control 当前只在 Windows 开放。
 
 NSIS 相关的脚本（`desktop:dev-nsis`、`desktop:release-nsis`）**不带**这个 overlay：注册表登记键 `HKCU\Software\SounDoer\PLVS` 是写死的，且 `scripts/generate-agent-discovery.mjs` 只读基础 `tauri.conf.json`，给它们套上 overlay 只会写出自相矛盾的登记。
 
-Windows 发布构建（与 CI `release.yml` 一致：NSIS 安装包 + `target/release/app.exe` 便携主程序）：
+Windows 发布构建（与 CI `release.yml` 一致：NSIS 安装包 + Portable ZIP）：
 
 ```bash
 npm run build
 npm run desktop:release-nsis
 ```
 
-产物：`src-tauri/target/release/bundle/nsis/` 下的安装程序，以及 `src-tauri/target/release/plvs.exe`（便携版依赖本机已安装 WebView2，与安装包相同）。
+原始产物：`src-tauri/target/release/bundle/nsis/` 下的安装程序，以及
+`src-tauri/target/release/plvs.exe` 和 `plvs-cli.exe`。Tag 发布工作流把后两者保持原名打包
+为 `PLVS-v<version>-x64-portable.zip`；便携版依赖本机已安装 WebView2，与安装包相同。
 
 Rust（在 `src-tauri` 目录下）：
 
