@@ -46,7 +46,9 @@ Tests sit next to the source file they cover, named `*.test.js` / `*.test.jsx` (
 
 **The capture layer is not covered by CI.** After changing `src-tauri/src/audio`, `dsp` or `engine`: neither `npm run check` nor CI touches that code, because the runners have no sound card. A bug there ships with an all-green board.
 
-`release:preflight` runs `npm run smoke:capture` at release time and will stop the release. It has no bypass flag, deliberately: a gate you can wave through is not a gate. Fixing it means fixing the rig — VB-Cable + VLC on the machine.
+`release:preflight` runs `npm run smoke:capture` when capture-smoke dependencies changed and will
+stop the release. It has no bypass flag, deliberately: a gate you can wave through is not a gate.
+Fixing it means fixing the harness build or the rig — VB-Cable + VLC on the machine.
 
 After capture-layer work, remind the user to run `npm run soak:capture` (4 hours by default). It is the only thing that surfaces leaks and metric drift, it does not gate releases, and it will therefore never run unless someone asks for it. Its drift threshold has not yet been calibrated against a real baseline run, so treat a red soak as a lead, not a verdict.
 
@@ -99,25 +101,25 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   *not* bring it back; two hours of polling returned zero devices. Setting the RDP client's audio
   to play on the remote computer exposes all the real devices, and they survive both disconnect and
   reconnect. Do not use PowerShell to check this: it resolves endpoints WASAPI cannot see, so the
-  two give opposite answers. Use `plvs-cli devices`. Second, and worse: **a player started before
-  the session detaches stops reaching VB-Cable, without dying and without erroring.** The capture
+  two give opposite answers. Use `plvs-cli doctor --json` and inspect the `device-enumeration`
+  check. Second, and worse: **a player started before the session detaches stops reaching VB-Cable,
+  without dying and without erroring.** The capture
   side stays perfectly healthy — device present, capture returns, `droppedChunks: 0` — and every
   sample's `integratedLufs` is `null`, because it is recording silence. A watchdog that checks
   "process alive / device present / no drops" stays green through the whole run and then hands you
   a signal-free record to conclude "no drift" from. Start the player *after* detaching, and check
   for `null` loudness explicitly.
 
-- **`smoke:capture` and `soak:capture` run whichever feature-gated `plvs.exe` harness is already
-  in `src-tauri/target/release/`, and nothing on the way there rebuilds it.** `npm run check`
-  builds the *debug* profile, so a release binary left by an earlier build can be older than
-  the commits under test — and since CI has no sound card, that binary is the capture layer's
-  only real verification. On the v0.14.5 release both the preflight smoke and the four-hour
-  soak ran a build predating the release's last DSP commit and printed OK; the sole tell was
-  `app.version` in the soak's trailing summary record, reading one version behind. `locateHarness`
-  now compares mtimes against `src-tauri/src`, `Cargo.toml` and `Cargo.lock` and refuses to run
-  when the binary is older, so the trap is closed — but the refusal is exit 2, the "rig unusable"
-  code, and it is expected the first time you run either script after touching `src-tauri`. Do
-  what it says:
+- **`smoke:capture` and `soak:capture` require a feature-gated `plvs.exe` harness in
+  `src-tauri/target/release/`, the same path a production build later replaces, and nothing on the
+  way there rebuilds it.** `npm run check` builds the *debug* profile, so the Release binary may
+  either omit `capture-harness` or predate the commits under test — and since CI has no sound card,
+  that binary is the capture layer's only real verification. On the v0.14.5 release both the
+  preflight smoke and the four-hour soak ran a build predating the release's last DSP commit and
+  printed OK; the sole tell was `app.version` in the soak's trailing summary record, reading one
+  version behind. `locateHarness` now probes `--harness capture --help` to verify the feature, then
+  compares mtimes against `src-tauri/src`, `Cargo.toml` and `Cargo.lock`; either refusal is exit 2,
+  the "rig unusable" code. Do what it says:
   `cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs --features capture-harness`,
   then re-run. It does not rebuild for you, deliberately — a release build costs two minutes
   that a script called "smoke" should not spend unasked.
