@@ -734,11 +734,11 @@ impl Drop for PipeServerState {
   }
 }
 
-pub fn start_for_app(app: &tauri::App) -> Result<(), String> {
+pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
   let token = generate_launch_token().map_err(|error| error.to_string())?;
   let identifier = env!("PLVS_APP_ID");
   let endpoint = endpoint_name(identifier);
-  let emitter = Arc::new(TauriFrontendEmitter::new(app.handle().clone()));
+  let emitter = Arc::new(TauriFrontendEmitter::new(app.clone()));
   let broker = Broker::new(
     emitter,
     DEFAULT_MAX_PENDING_REQUESTS,
@@ -755,7 +755,12 @@ pub fn start_for_app(app: &tauri::App) -> Result<(), String> {
     schema_version: super::discovery::DESCRIPTOR_SCHEMA_VERSION,
     protocol_version: super::protocol::PROTOCOL_VERSION,
     app: DescriptorApp {
-      name: "PLVS Dev".to_string(),
+      name: if cfg!(feature = "dev-identity") {
+        "PLVS Dev"
+      } else {
+        "PLVS"
+      }
+      .to_string(),
       version: env!("CARGO_PKG_VERSION").to_string(),
       identifier: identifier.to_string(),
     },
