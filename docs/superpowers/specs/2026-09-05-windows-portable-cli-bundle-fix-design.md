@@ -26,11 +26,12 @@ For workflow-dispatch builds, upload both executables in one `windows-portable` 
 builds, stage the two files in a directory, compress it, and attach the ZIP to the GitHub Release.
 Fail staging if either binary is absent.
 
-Update current README and workflow wording from a single Portable EXE to the ZIP bundle. Do not
-rewrite historical implementation plans or the separate dev-build workflow, which still describes
-its actual output.
+Update current README, workflow wording, and the bilingual installation block appended to GitHub
+Release notes from a single Portable EXE to the ZIP bundle. Do not rewrite historical
+implementation plans or the separate dev-build workflow, which still describes its actual output.
 
 ## Tests
 
 Add a source-contract test for the Release workflow. It must prove that both binaries are checked
-and copied, the ZIP is created and released, and the old single-EXE release name is absent.
+and copied, the ZIP is created and released, and the old single-EXE release name is absent. Extend
+the release-body test to require ZIP extraction instructions in both languages.
