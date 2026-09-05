@@ -130,16 +130,24 @@ describe("normalizeAgentControlRequest", () => {
   it.each([
     ["transport.source.live", { expectedRevision: 1, allowStopFileAnalysis: true, dryRun: true }],
     ["transport.source.file", { expectedRevision: 1, dryRun: true }],
-    ["transport.live.start", { expectedRevision: 1, allowStopFileAnalysis: true, dryRun: true }],
-    ["transport.live.stop", { expectedRevision: 1, dryRun: true }],
     ["transport.live.clear", { expectedRevision: 1, dryRun: true }],
-    ["transport.file.analyze", { path: "C:\\audio\\mix.wav", expectedRevision: 1, dryRun: true }],
-    ["transport.file.reanalyze", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
-    ["transport.file.stop", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
     ["transport.file.select", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
     ["transport.file.remove", { sessionId: "file-1", expectedRevision: 1, dryRun: true }],
     ["transport.file.clear", { expectedRevision: 1, dryRun: true }],
   ])("normalizes %s mutation options", (method, params) => {
+    expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method, params },
+    });
+  });
+
+  it.each([
+    ["transport.live.start", { expectedRevision: 1, allowStopFileAnalysis: true }],
+    ["transport.live.stop", { expectedRevision: 1 }],
+    ["transport.file.analyze", { path: "C:\\audio\\mix.wav", expectedRevision: 1 }],
+    ["transport.file.reanalyze", { sessionId: "file-1", expectedRevision: 1 }],
+    ["transport.file.stop", { sessionId: "file-1", expectedRevision: 1 }],
+  ])("normalizes %s action options without dry-run", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({
       ok: true,
       request: { id: "req-1", method, params },
@@ -291,6 +299,12 @@ describe("normalizeAgentControlRequest", () => {
       request("transport.live.stop", { expectedRevision: -1 }),
       "invalidParams",
       "$.params.expectedRevision",
+      -32602,
+    ],
+    [
+      request("transport.live.start", { expectedRevision: 0, dryRun: true }),
+      "invalidParams",
+      "$.params.dryRun",
       -32602,
     ],
     [
