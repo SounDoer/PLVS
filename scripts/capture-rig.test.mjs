@@ -3,7 +3,13 @@ import { readFileSync, mkdirSync, writeFileSync, utimesSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
-import { synthesizeSignal, compareMetrics, staleCliSources, SIGNAL } from "./capture-rig.mjs";
+import {
+  synthesizeSignal,
+  compareMetrics,
+  harnessArgs,
+  staleHarnessSources,
+  SIGNAL,
+} from "./capture-rig.mjs";
 
 describe("synthesizeSignal", () => {
   it("writes a WAV whose header matches the declared format", async () => {
@@ -119,7 +125,13 @@ describe("compareMetrics", () => {
   });
 });
 
-describe("staleCliSources", () => {
+describe("capture harness invocation", () => {
+  it("routes internal commands through the feature-gated host entry", () => {
+    expect(harnessArgs(["capture", "--json"])).toEqual(["--harness", "capture", "--json"]);
+  });
+});
+
+describe("staleHarnessSources", () => {
   // A built binary carries no record of what went into it, so the rig compares
   // mtimes. These fixtures set them explicitly: writing files in sequence gives
   // timestamps too close together to order reliably.
@@ -143,7 +155,7 @@ describe("staleCliSources", () => {
       "src-tauri/Cargo.toml": BUILT_AT - 60_000,
     });
     try {
-      expect(staleCliSources(BUILT_AT, root)).toEqual([]);
+      expect(staleHarnessSources(BUILT_AT, root)).toEqual([]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -155,7 +167,7 @@ describe("staleCliSources", () => {
       "src-tauri/src/dsp/spectrum.rs": BUILT_AT + 60_000,
     });
     try {
-      expect(staleCliSources(BUILT_AT, root)).toEqual(["src-tauri/src/dsp/spectrum.rs"]);
+      expect(staleHarnessSources(BUILT_AT, root)).toEqual(["src-tauri/src/dsp/spectrum.rs"]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -169,7 +181,7 @@ describe("staleCliSources", () => {
       "src-tauri/target/release/plvs-cli.exe": BUILT_AT + 60_000,
     });
     try {
-      expect(staleCliSources(BUILT_AT, root)).toEqual([]);
+      expect(staleHarnessSources(BUILT_AT, root)).toEqual([]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -181,7 +193,7 @@ describe("staleCliSources", () => {
       "src-tauri/Cargo.lock": BUILT_AT + 60_000,
     });
     try {
-      expect(staleCliSources(BUILT_AT, root)).toEqual(["src-tauri/Cargo.lock"]);
+      expect(staleHarnessSources(BUILT_AT, root)).toEqual(["src-tauri/Cargo.lock"]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

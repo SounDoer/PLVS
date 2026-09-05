@@ -104,6 +104,16 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
   parse_args_with_app(args, true)
 }
 
+#[cfg(any(feature = "capture-harness", test))]
+fn parse_harness_args(args: &[String]) -> Result<CliCommand, String> {
+  match args {
+    [command, rest @ ..] if command == "analyze" => parse_analyze_args(rest),
+    [command, rest @ ..] if command == "capture" => parse_capture_args(rest),
+    [command, ..] => Err(format!("Unknown harness command: {command}")),
+    [] => Err("Missing harness command.".to_string()),
+  }
+}
+
 fn parse_args_with_app(args: &[String], app_available: bool) -> Result<CliCommand, String> {
   match args {
     [flag] if flag == "--help" || flag == "-h" || flag == "help" => {
@@ -800,7 +810,22 @@ pub fn run(args: &[String]) -> ExitCode {
       return ExitCode::from(2);
     }
   };
+  execute(command)
+}
 
+#[cfg(feature = "capture-harness")]
+pub(crate) fn run_harness(args: &[String]) -> ExitCode {
+  let command = match parse_harness_args(args) {
+    Ok(command) => command,
+    Err(err) => {
+      eprintln!("{err}");
+      return ExitCode::from(2);
+    }
+  };
+  execute(command)
+}
+
+fn execute(command: CliCommand) -> ExitCode {
   match command {
     CliCommand::Help(topic) => {
       println!("{}", help_text(topic));
@@ -1147,6 +1172,21 @@ mod tests {
         out: None,
       })
     );
+  }
+
+  #[test]
+  fn internal_harness_accepts_only_analyze_and_capture() {
+    assert!(matches!(
+      parse_harness_args(&args(&["analyze", "mix.wav", "--json"])),
+      Ok(CliCommand::Analyze { .. })
+    ));
+    assert!(matches!(
+      parse_harness_args(&args(&["capture", "--seconds", "10", "--json"])),
+      Ok(CliCommand::CaptureJson { .. })
+    ));
+    for command in ["doctor", "app", "probe", "devices", "profile", "report"] {
+      assert!(parse_harness_args(&args(&[command])).is_err());
+    }
   }
 
   fn doctor_report(status: DoctorStatus) -> crate::doctor::DoctorReport {
