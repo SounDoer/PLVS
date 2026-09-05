@@ -1427,15 +1427,19 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       dryRun: false,
       revision: 1,
-      changed: ["controls.mode", "controls.playbackMax"],
+      changed: true,
       warnings: [],
-      panel: {
-        id: "levelMeter",
-        moduleId: "levelMeter",
-        controls: { mode: "rms", playbackMax: true },
+      state: {
+        panel: {
+          id: "levelMeter",
+          moduleId: "levelMeter",
+          controls: { mode: "rms", playbackMax: true },
+        },
+        preset: { activeId: null, dirty: false },
       },
-      preset: { activeId: null, dirty: false },
     });
+    expect(response.result).not.toHaveProperty("panel");
+    expect(response.result).not.toHaveProperty("preset");
     expect(response.result).not.toHaveProperty("persisted");
     expect(view.store.state.panelControlsById.levelMeter).toMatchObject({
       levelMeterMode: "rms",
@@ -1461,8 +1465,8 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       dryRun: true,
       revision: 0,
-      changed: ["controls.mode"],
-      panel: { controls: { mode: "rms" } },
+      changed: true,
+      state: { panel: { controls: { mode: "rms" } } },
     });
     expect(view.store.state).toBe(initialState);
     expect(flush).not.toHaveBeenCalled();
@@ -1514,8 +1518,8 @@ describe("useAgentControlBridge", () => {
     );
     expect(noOp.result).toMatchObject({
       revision: 0,
-      changed: [],
-      preset: { activeId: "preset-1", dirty: false },
+      changed: false,
+      state: { preset: { activeId: "preset-1", dirty: false } },
     });
     expect(view.store.state).toBe(initialState);
     expect(flush).not.toHaveBeenCalled();
@@ -1523,7 +1527,7 @@ describe("useAgentControlBridge", () => {
     const changed = await send(
       request("panel.update", { panelId: "levelMeter", patch: { mode: "rms" } }, "panel-dirty")
     );
-    expect(changed.result.preset).toEqual({ activeId: "preset-1", dirty: true });
+    expect(changed.result.state.preset).toEqual({ activeId: "preset-1", dirty: true });
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
@@ -1573,19 +1577,17 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       dryRun: false,
       revision: revision + 1,
-      changed: expect.arrayContaining([
-        "controls.maxMode",
-        "controls.speedPercent",
-        "axes.frequency.linked",
-      ]),
+      changed: true,
       warnings: [],
-      panel: {
-        id: "spectrum",
-        moduleId: "spectrum",
-        controls: { maxMode: "off", speedPercent: 25 },
-        axes: { frequency: { linked: true } },
+      state: {
+        panel: {
+          id: "spectrum",
+          moduleId: "spectrum",
+          controls: { maxMode: "off", speedPercent: 25 },
+          axes: { frequency: { linked: true } },
+        },
+        preset: { activeId: "preset-1", dirty: true },
       },
-      preset: { activeId: "preset-1", dirty: true },
     });
     expect(view.store.state.panelControlsById.spectrum).toMatchObject({
       spectrumMaxMode: "off",
@@ -1608,8 +1610,8 @@ describe("useAgentControlBridge", () => {
       request("panel.reset", { panelId: "levelMeter", dryRun: true }, "reset-dry")
     );
 
-    expect(noOp.result).toMatchObject({ revision: 0, changed: [], dryRun: false });
-    expect(dryRun.result).toMatchObject({ revision: 0, changed: [], dryRun: true });
+    expect(noOp.result).toMatchObject({ revision: 0, changed: false, dryRun: false });
+    expect(dryRun.result).toMatchObject({ revision: 0, changed: false, dryRun: true });
     expect(view.store.state).toBe(initialState);
     expect(flush).not.toHaveBeenCalled();
   });

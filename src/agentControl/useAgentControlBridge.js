@@ -1498,15 +1498,17 @@ export function useAgentControlBridge({
           const result = {
             dryRun: request.params.dryRun === true,
             revision: currentRevision,
-            changed: planned.changed,
+            changed: planned.changed.length > 0,
             warnings: planned.warnings,
-            panel: buildAgentControlPanelSnapshot({
-              workspace: nextWorkspace,
-              panelId,
-              hasLoudnessReference,
-              analysisContext,
-            }),
-            preset: panelResultPreset(presets, planned.changed),
+            state: {
+              panel: buildAgentControlPanelSnapshot({
+                workspace: nextWorkspace,
+                panelId,
+                hasLoudnessReference,
+                analysisContext,
+              }),
+              preset: panelResultPreset(presets, planned.changed),
+            },
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
             return { requestId, result };
