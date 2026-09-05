@@ -1,5 +1,7 @@
 use serde::Serialize;
 use serde_json::{Map, Value};
+use tauri::{AppHandle, Manager};
+use tauri_plugin_store::StoreExt;
 
 /// Top-level store key, a sibling of `windowBounds` rather than a member of `plvs:settings`.
 /// `profile.rs` copies `plvs:settings` wholesale between machines; a permission must not travel
@@ -59,6 +61,85 @@ fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentC
     on_path: false,
     message: message.to_string(),
   }
+}
+
+const STORE_FILE: &str = "plvs-settings.json";
+
+fn persist_enabled(app: &AppHandle, enabled: bool) -> Result<(), String> {
+  let store = app
+    .store(STORE_FILE)
+    .map_err(|error| format!("store load: {error}"))?;
+  store.set(ENABLED_KEY, Value::Bool(enabled));
+  store.save().map_err(|error| format!("store save: {error}"))
+}
+
+fn read_enabled(app: &AppHandle) -> bool {
+  let Ok(store) = app.store(STORE_FILE) else {
+    return default_enabled();
+  };
+  match store.get(ENABLED_KEY) {
+    Some(Value::Bool(value)) => value,
+    _ => default_enabled(),
+  }
+}
+
+fn current_status(app: &AppHandle) -> Result<AgentControlStatus, String> {
+  let path_status = crate::cli_path::cli_path_status()?;
+  let supported = cfg!(target_os = "windows") && path_status.supported;
+  let mut status = compose_status(supported, path_status.installed, read_enabled(app));
+  status.on_path = path_status.on_path;
+  Ok(status)
+}
+
+#[tauri::command]
+pub fn agent_control_status(app: AppHandle) -> Result<AgentControlStatus, String> {
+  current_status(&app)
+}
+
+#[tauri::command]
+pub fn set_agent_control_enabled(
+  app: AppHandle,
+  enabled: bool,
+) -> Result<AgentControlStatus, String> {
+  let before = current_status(&app)?;
+  if !before.supported || !before.cli_installed {
+    return Ok(before);
+  }
+
+  // PATH first when enabling and last when disabling, so a failure never leaves the endpoint open
+  // with no way to reach it, nor PATH pointing at an endpoint that is gone.
+  if enabled {
+    let _ = crate::cli_path::set_cli_path_enabled(true)?;
+    start_endpoint(&app)?;
+  } else {
+    stop_endpoint(&app);
+    let _ = crate::cli_path::set_cli_path_enabled(false)?;
+  }
+
+  persist_enabled(&app, enabled)?;
+  current_status(&app)
+}
+
+#[cfg(target_os = "windows")]
+fn start_endpoint(app: &AppHandle) -> Result<(), String> {
+  if app
+    .state::<crate::agent_control::windows_pipe::PipeServerState>()
+    .is_running()
+  {
+    return Ok(());
+  }
+  crate::agent_control::windows_pipe::start(app)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn start_endpoint(_app: &AppHandle) -> Result<(), String> {
+  Err("Agent Control is currently available on Windows only.".to_string())
+}
+
+fn stop_endpoint(app: &AppHandle) {
+  app
+    .state::<crate::agent_control::windows_pipe::PipeServerState>()
+    .stop();
 }
 
 #[cfg(test)]

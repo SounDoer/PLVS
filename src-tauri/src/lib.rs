@@ -101,6 +101,8 @@ pub fn run() {
       agent_control::broker::agent_control_frontend_ready,
       agent_control::broker::agent_control_frontend_not_ready,
       agent_control::broker::agent_control_respond,
+      agent_control::toggle::agent_control_status,
+      agent_control::toggle::set_agent_control_enabled,
     ])
     .setup(|app| {
       #[cfg(debug_assertions)]

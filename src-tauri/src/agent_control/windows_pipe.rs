@@ -722,6 +722,14 @@ impl PipeServerState {
       server.stop();
     }
   }
+
+  pub fn is_running(&self) -> bool {
+    self
+      .server
+      .lock()
+      .expect("agent-control server state poisoned")
+      .is_some()
+  }
 }
 
 impl Drop for PipeServerState {
