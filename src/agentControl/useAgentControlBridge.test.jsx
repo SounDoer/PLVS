@@ -1249,11 +1249,15 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toMatchObject({
       dryRun: false,
       revision: 1,
-      changed: ["shared.frequency.minHz", "shared.frequency.maxHz"],
+      changed: true,
       warnings: [],
-      axis: { shared: { frequency: { minHz: 200, maxHz: 5000 } } },
-      preset: { activeId: "preset-1", dirty: true },
+      state: {
+        axis: { shared: { frequency: { minHz: 200, maxHz: 5000 } } },
+        preset: { activeId: "preset-1", dirty: true },
+      },
     });
+    expect(response.result).not.toHaveProperty("axis");
+    expect(response.result).not.toHaveProperty("preset");
     expect(response.result).not.toHaveProperty("persisted");
     expect(view.store.state.axisViewports.frequency).toEqual({ min: 200, max: 5000 });
     expect(flush).toHaveBeenCalledTimes(1);
@@ -1292,16 +1296,18 @@ describe("useAgentControlBridge", () => {
     expect(dryRun.result).toMatchObject({
       dryRun: true,
       revision: 0,
-      changed: expect.arrayContaining(["panels.spectrum.frequency.linked"]),
-      axis: {
-        panels: expect.arrayContaining([
-          expect.objectContaining({
-            id: "spectrum",
-            axes: expect.objectContaining({
-              frequency: expect.objectContaining({ linked: false }),
+      changed: true,
+      state: {
+        axis: {
+          panels: expect.arrayContaining([
+            expect.objectContaining({
+              id: "spectrum",
+              axes: expect.objectContaining({
+                frequency: expect.objectContaining({ linked: false }),
+              }),
             }),
-          }),
-        ]),
+          ]),
+        },
       },
     });
     expect(invalid.error).toMatchObject({
@@ -1357,8 +1363,8 @@ describe("useAgentControlBridge", () => {
       )
     );
 
-    expect(panelReset.result.changed).toContain("panels.spectrum.frequency.linked");
-    expect(sharedReset.result.axis.shared.frequency).toEqual({ minHz: 20, maxHz: 20000 });
+    expect(panelReset.result.changed).toBe(true);
+    expect(sharedReset.result.state.axis.shared.frequency).toEqual({ minHz: 20, maxHz: 20000 });
     expect(unavailable.error).toMatchObject({
       code: -32012,
       data: { reason: "axisUnavailable", path: "$.params.kind" },

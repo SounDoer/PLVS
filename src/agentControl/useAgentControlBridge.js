@@ -1367,10 +1367,12 @@ export function useAgentControlBridge({
           const result = {
             dryRun: request.params.dryRun === true,
             revision: currentRevision,
-            changed: planned.changed,
+            changed: planned.changed.length > 0,
             warnings: planned.warnings,
-            axis: buildAxisInspection(planned.workspace),
-            preset: panelResultPreset(presets, planned.changed),
+            state: {
+              axis: buildAxisInspection(planned.workspace),
+              preset: panelResultPreset(presets, planned.changed),
+            },
           };
           if (request.params.dryRun === true || planned.changed.length === 0) {
             return { requestId, result };
