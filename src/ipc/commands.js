@@ -188,12 +188,12 @@ export function agentControlRespondCommand(response) {
   return invoke("agent_control_respond", { response });
 }
 
-export function cliPathStatusCommand() {
-  return invoke("cli_path_status");
+export function agentControlStatusCommand() {
+  return invoke("agent_control_status");
 }
 
-export function setCliPathEnabledCommand(enabled) {
-  return invoke("set_cli_path_enabled", { enabled });
+export function setAgentControlEnabledCommand(enabled) {
+  return invoke("set_agent_control_enabled", { enabled });
 }
 
 /** @param {import("./types.js").AnalysisRequests} requests */

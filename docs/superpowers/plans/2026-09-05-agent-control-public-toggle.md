@@ -68,7 +68,8 @@ The store file is `plvs-settings.json` in the config directory. The new key is a
 
 **Delete**
 
-- `src/hooks/useCliPathSettings.js` — superseded by `useAgentControlSettings.js`.
+- `src/hooks/useCliPathSettings.js`, `src/hooks/useCliPathSettings.test.jsx` — superseded by
+  `useAgentControlSettings.js`.
 
 ---
 
@@ -808,7 +809,7 @@ git commit -m "test(agent-control): pin the toggle out of agent-editable setting
 - Create: `src/hooks/useAgentControlSettings.js`
 - Create: `src/hooks/useAgentControlSettings.test.js`
 - Modify: `src/ipc/commands.js:191-197`
-- Delete: `src/hooks/useCliPathSettings.js`
+- Delete: `src/hooks/useCliPathSettings.js`, `src/hooks/useCliPathSettings.test.jsx`
 
 - [ ] **Step 1: Replace the IPC wrappers**
 
@@ -829,6 +830,7 @@ export function setAgentControlEnabledCommand(enabled) {
 Create `src/hooks/useAgentControlSettings.test.js`:
 
 ```js
+/** @vitest-environment jsdom */
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -902,6 +904,9 @@ describe("useAgentControlSettings", () => {
 });
 ```
 
+The pragma is required — `vite.config.js` defaults Vitest to `environment: "node"` and each test
+that needs a DOM opts in per file.
+
 - [ ] **Step 3: Run the test to verify it fails**
 
 Run: `npx vitest run src/hooks/useAgentControlSettings.test.js`
@@ -912,27 +917,38 @@ Expected: FAIL — cannot resolve `./useAgentControlSettings.js`.
 Create `src/hooks/useAgentControlSettings.js`:
 
 ```js
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { agentControlStatusCommand, setAgentControlEnabledCommand } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 
 export function useAgentControlSettings({ settingsOpen }) {
   const [agentControlStatus, setAgentControlStatus] = useState(undefined);
   const [agentControlBusy, setAgentControlBusy] = useState(false);
+  // The setter has to return the status it settled on, and a functional state updater cannot
+  // supply it: called from an async catch block it runs after the call has already returned, so
+  // a value captured inside it is still undefined by then. The ref carries the same value
+  // synchronously.
+  const statusRef = useRef(undefined);
+
+  const applyStatus = useCallback((next) => {
+    statusRef.current = next;
+    setAgentControlStatus(next);
+    return next;
+  }, []);
 
   useEffect(() => {
     if (!settingsOpen || !isTauri()) return;
     let disposed = false;
     queueMicrotask(() => {
-      if (!disposed) setAgentControlStatus(null);
+      if (!disposed) applyStatus(null);
     });
     agentControlStatusCommand()
       .then((nextStatus) => {
-        if (!disposed) setAgentControlStatus(nextStatus);
+        if (!disposed) applyStatus(nextStatus);
       })
       .catch(() => {
         if (!disposed) {
-          setAgentControlStatus({
+          applyStatus({
             supported: false,
             enabled: false,
             cliInstalled: false,
@@ -944,35 +960,32 @@ export function useAgentControlSettings({ settingsOpen }) {
     return () => {
       disposed = true;
     };
-  }, [settingsOpen]);
+  }, [applyStatus, settingsOpen]);
 
-  const setAgentControlEnabled = useCallback(async (enabled) => {
-    if (!isTauri()) return undefined;
-    setAgentControlBusy(true);
-    try {
-      const nextStatus = await setAgentControlEnabledCommand(enabled);
-      setAgentControlStatus(nextStatus);
-      return nextStatus;
-    } catch (_) {
-      // Leave `enabled` where it was: the endpoint did not move, and a switch that flips on a
-      // failed call tells the user they granted something they did not.
-      let settled;
-      setAgentControlStatus((current) => {
-        settled = {
+  const setAgentControlEnabled = useCallback(
+    async (enabled) => {
+      if (!isTauri()) return undefined;
+      setAgentControlBusy(true);
+      try {
+        return applyStatus(await setAgentControlEnabledCommand(enabled));
+      } catch (_) {
+        // Leave `enabled` where it was: the endpoint did not move, and a switch that flips on a
+        // failed call tells the user they granted something they did not.
+        const current = statusRef.current;
+        return applyStatus({
           ...(current ?? {}),
           supported: current?.supported ?? true,
           enabled: current?.enabled ?? false,
           cliInstalled: current?.cliInstalled ?? false,
           onPath: current?.onPath ?? false,
           message: "Agent Control could not be changed.",
-        };
-        return settled;
-      });
-      return settled;
-    } finally {
-      setAgentControlBusy(false);
-    }
-  }, []);
+        });
+      } finally {
+        setAgentControlBusy(false);
+      }
+    },
+    [applyStatus]
+  );
 
   return { agentControlStatus, agentControlBusy, setAgentControlEnabled };
 }
@@ -986,12 +999,15 @@ Expected: PASS, 4 tests.
 - [ ] **Step 6: Delete the superseded hook**
 
 ```bash
-git rm src/hooks/useCliPathSettings.js
+git rm src/hooks/useCliPathSettings.js src/hooks/useCliPathSettings.test.jsx
 ```
 
 Run: `npx vitest run`
-Expected: failures only in `src/components/AppSettingsOverlays.test.jsx` and
-`src/components/SettingsPanel.test.jsx`, which Tasks 11 and 12 fix.
+Expected: failures in `src/components/AppSettingsOverlays.test.jsx`,
+`src/components/AppSettingsOverlays.dialogueVadEngine.test.jsx` and `src/App.smoke.test.jsx` — every
+suite that loads `AppSettingsOverlays.jsx`, which still imports the deleted hook. Task 12 fixes all
+three. `src/components/SettingsPanel.test.jsx` keeps passing: the panel takes its status as props and
+never imports the hook, so it stays green until Task 11 rewrites the row and its test together.
 
 - [ ] **Step 7: Commit**
 
