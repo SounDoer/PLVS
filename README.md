@@ -76,8 +76,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 
 ### Installation notes
 
-For Windows Portable, extract the ZIP and launch `plvs.exe`; keep `plvs-cli.exe` beside it so the
-CLI can locate the application host.
+For Windows Portable, extract the ZIP, keep all extracted files together, and launch `plvs.exe`.
 
 <details>
 <summary><b>macOS — first launch warning</b></summary>

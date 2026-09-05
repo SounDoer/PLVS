@@ -107,7 +107,7 @@ Give the user the page URL (`<repo>/releases/tag/dev`) and the asset names:
 | Artifact | Filename |
 |----------|----------|
 | Installer | `PLVS_<version>-dev.<short-sha>_x64-setup.exe` |
-| Portable ZIP | `PLVS-v<version>-dev.<short-sha>-x64-portable.zip` (contains `plvs.exe` and `plvs-cli.exe`) |
+| Portable ZIP | `PLVS-v<version>-dev.<short-sha>-x64-portable.zip` (contains `plvs.exe`, `plvs-cli.exe`, `ffmpeg.exe`, and `ffprobe.exe`; keep all extracted files together) |
 
 The `<short-sha>` lets a tester tell two dev builds apart even after download.
 

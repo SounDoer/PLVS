@@ -29,7 +29,9 @@ describe("changelog-release-body", () => {
     expect(body).toContain("## Installation");
     expect(body).toContain("PLVS-v0.9.4-x64-portable.zip");
     expect(body).toContain("解压后运行 `plvs.exe`");
+    expect(body).toContain("将解压出的所有文件保留在同一目录");
     expect(body).toContain("extract it, then run `plvs.exe`");
+    expect(body).toContain("keep all extracted files together");
     expect(body).not.toContain("PLVS-v0.9.4-x64-portable.exe");
   });
 

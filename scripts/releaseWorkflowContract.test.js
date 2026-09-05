@@ -18,6 +18,8 @@ describe("Windows Portable Release", () => {
   it("publishes the GUI host and CLI forwarder together in one ZIP", () => {
     expect(releaseWorkflow).toContain("src-tauri/target/release/plvs.exe");
     expect(releaseWorkflow).toContain("src-tauri/target/release/plvs-cli.exe");
+    expect(releaseWorkflow).toContain("src-tauri/target/release/ffmpeg.exe");
+    expect(releaseWorkflow).toContain("src-tauri/target/release/ffprobe.exe");
     expect(releaseWorkflow).toContain("Compress-Archive");
     expect(releaseWorkflow).toContain("PLVS-${{ github.ref_name }}-x64-portable.zip");
     expect(releaseWorkflow).not.toContain("PLVS-${{ github.ref_name }}-x64-portable.exe");
@@ -25,7 +27,7 @@ describe("Windows Portable Release", () => {
 
   it("documents the Portable ZIP and sibling CLI requirement", () => {
     expect(readme).toContain("PLVS_x64-portable.zip");
-    expect(readme).toContain("keep `plvs-cli.exe` beside it");
+    expect(readme).toContain("keep all extracted files together");
   });
 });
 
@@ -33,6 +35,8 @@ describe("Windows Portable Dev Build", () => {
   it("publishes the GUI host and CLI forwarder together in one ZIP", () => {
     expect(devBuildWorkflow).toContain('Copy-Item "src-tauri/target/release/plvs.exe"');
     expect(devBuildWorkflow).toContain('Copy-Item "src-tauri/target/release/plvs-cli.exe"');
+    expect(devBuildWorkflow).toContain('Copy-Item "src-tauri/target/release/ffmpeg.exe"');
+    expect(devBuildWorkflow).toContain('Copy-Item "src-tauri/target/release/ffprobe.exe"');
     expect(devBuildWorkflow).toContain("Compress-Archive");
     expect(devBuildWorkflow).toContain('$portableDir = "PLVS-v${label}-x64-portable"');
     expect(devBuildWorkflow).toContain('DestinationPath "dev-dist/$portableDir.zip"');
@@ -43,5 +47,8 @@ describe("Windows Portable Dev Build", () => {
     expect(devBuildSkill).toContain("PLVS-v<version>-dev.<short-sha>-x64-portable.zip");
     expect(devBuildSkill).toContain("`plvs.exe`");
     expect(devBuildSkill).toContain("`plvs-cli.exe`");
+    expect(devBuildSkill).toContain("`ffmpeg.exe`");
+    expect(devBuildSkill).toContain("`ffprobe.exe`");
+    expect(devBuildSkill).toContain("keep all extracted files together");
   });
 });

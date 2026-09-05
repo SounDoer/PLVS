@@ -65,6 +65,8 @@ jobs:
           New-Item -ItemType Directory -Force $portableDir | Out-Null
           Copy-Item "src-tauri/target/release/plvs.exe" "$portableDir/plvs.exe"
           Copy-Item "src-tauri/target/release/plvs-cli.exe" "$portableDir/plvs-cli.exe"
+          Copy-Item "src-tauri/target/release/ffmpeg.exe" "$portableDir/ffmpeg.exe"
+          Copy-Item "src-tauri/target/release/ffprobe.exe" "$portableDir/ffprobe.exe"
           Compress-Archive -Path "$portableDir\*" -DestinationPath "dev-dist/$portableDir.zip"
           "label=$label" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
