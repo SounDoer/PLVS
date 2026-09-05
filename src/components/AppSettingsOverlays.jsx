@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { openExternalUrl } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
-import { useCliPathSettings } from "../hooks/useCliPathSettings.js";
+import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
@@ -29,7 +29,7 @@ export function AppSettingsOverlays({
     importConfiguration,
     resetConfiguration,
   } = useConfigurationProfileActions();
-  const { cliPathStatus, cliPathBusy, setCliPathEnabled } = useCliPathSettings({
+  const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
   });
   const { updateInfo, refreshUpdateCheck, installStatus, install, restartToApply, resetInstall } =
@@ -103,9 +103,9 @@ export function AppSettingsOverlays({
         onResetConfiguration={resetConfiguration}
         configurationBusy={configurationBusy}
         configurationStatus={configurationStatus}
-        cliPathStatus={cliPathStatus}
-        cliPathBusy={cliPathBusy}
-        onSetCliPathEnabled={setCliPathEnabled}
+        agentControlStatus={agentControlStatus}
+        agentControlBusy={agentControlBusy}
+        onSetAgentControlEnabled={setAgentControlEnabled}
         onOpenFeedback={() => {
           settings.setSettingsOpen(false);
           setFeedbackOpen(true);

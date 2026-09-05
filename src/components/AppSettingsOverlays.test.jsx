@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   exportConfiguration: vi.fn(),
   importConfiguration: vi.fn(),
   resetConfiguration: vi.fn(),
-  setCliPathEnabled: vi.fn(),
+  setAgentControlEnabled: vi.fn(),
 }));
 
 vi.mock("../hooks/useConfigurationProfileActions.js", () => ({
@@ -23,11 +23,11 @@ vi.mock("../hooks/useConfigurationProfileActions.js", () => ({
   }),
 }));
 
-vi.mock("../hooks/useCliPathSettings.js", () => ({
-  useCliPathSettings: () => ({
-    cliPathStatus: "ready",
-    cliPathBusy: false,
-    setCliPathEnabled: mocks.setCliPathEnabled,
+vi.mock("../hooks/useAgentControlSettings.js", () => ({
+  useAgentControlSettings: () => ({
+    agentControlStatus: { supported: true, enabled: false, cliInstalled: true, onPath: false },
+    agentControlBusy: false,
+    setAgentControlEnabled: mocks.setAgentControlEnabled,
   }),
 }));
 
@@ -36,7 +36,7 @@ vi.mock("./SettingsPanel.jsx", () => ({
     onOpenFeedback,
     onInstallUpdate,
     themeControlsDisabled,
-    cliPathStatus,
+    agentControlStatus,
     interfaceSize,
     setInterfaceSize,
     dialogueVadEngine,
@@ -44,7 +44,7 @@ vi.mock("./SettingsPanel.jsx", () => ({
   }) => (
     <div data-testid="settings-panel">
       <span data-testid="theme-disabled">{String(themeControlsDisabled)}</span>
-      <span data-testid="cli-status">{cliPathStatus}</span>
+      <span data-testid="agent-control-enabled">{String(agentControlStatus?.enabled)}</span>
       <span data-testid="interface-size">{interfaceSize}</span>
       <span data-testid="dialogue-vad-engine">{dialogueVadEngine}</span>
       <button type="button" onClick={() => setInterfaceSize("large")}>
