@@ -60,3 +60,22 @@ export async function saveFileAnalysisReportFile(defaultPath = "plvs-report.json
   });
   return typeof selected === "string" ? selected : null;
 }
+
+/** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+export async function pickPackFile(descriptor) {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: descriptor.filterName, extensions: [descriptor.extension] }],
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+/** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+export async function savePackFile(descriptor, defaultPath) {
+  const selected = await save({
+    defaultPath,
+    filters: [{ name: descriptor.filterName, extensions: [descriptor.extension] }],
+  });
+  return typeof selected === "string" ? selected : null;
+}
