@@ -1014,18 +1014,34 @@ trait ControlClient {
 
 struct LocalControlClient;
 
+/// A missing or stale descriptor has two causes and they need different sentences: an agent that
+/// cannot tell "you never turned this on" from "the app is closed" will report the wrong one to
+/// the user, and the user cannot act on it.
+fn missing_descriptor_failure(enabled: bool) -> CliAppFailure {
+  if enabled {
+    CliAppFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
+  } else {
+    CliAppFailure::transport(
+      "agentControlDisabled",
+      "Agent Control is disabled. Enable it in PLVS Settings.".to_string(),
+      None,
+    )
+  }
+}
+
 impl ControlClient for LocalControlClient {
   fn call(&self, request: JsonRpcRequest) -> Result<AppCall, CliAppFailure> {
     let path = descriptor_path()
       .map_err(|error| CliAppFailure::transport("appNotRunning", error.to_string(), None))?;
     let descriptor = read_descriptor_at(&path, env!("PLVS_APP_ID"), |_| true).map_err(|error| {
-      let reason = match error.kind {
+      match error.kind {
         DiscoveryErrorKind::Missing | DiscoveryErrorKind::Malformed | DiscoveryErrorKind::Stale => {
-          "appNotRunning"
+          missing_descriptor_failure(crate::agent_control::toggle::read_enabled_from_disk())
         }
-        DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => "discoveryFailed",
-      };
-      CliAppFailure::transport(reason, error.to_string(), None)
+        DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => {
+          CliAppFailure::transport("discoveryFailed", error.to_string(), None)
+        }
+      }
     })?;
     call_descriptor(&descriptor, &request)
   }
@@ -2696,5 +2712,19 @@ mod tests {
     assert!(encoded.contains("appNotRunning"));
     assert!(!encoded.contains("token"));
     assert!(!encoded.contains("securityDescriptor"));
+  }
+
+  #[test]
+  fn a_missing_descriptor_reads_differently_when_the_toggle_is_off() {
+    let disabled = missing_descriptor_failure(false);
+    assert_eq!(disabled.error.reason, "agentControlDisabled");
+    assert_eq!(
+      disabled.error.message,
+      "Agent Control is disabled. Enable it in PLVS Settings."
+    );
+
+    let not_running = missing_descriptor_failure(true);
+    assert_eq!(not_running.error.reason, "appNotRunning");
+    assert_eq!(not_running.error.message, "PLVS is not running.");
   }
 }
