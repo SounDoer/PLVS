@@ -32,6 +32,27 @@ function PlanRow({ entry }) {
   );
 }
 
+/// The bundled loudness profiles a preset pack carries, in both directions.
+///
+/// The heading names the kind and the line under it gives the reason, because the two questions a
+/// user asks here are different: a bare list of names says something is coming along but not what
+/// -- a profile's name is whatever its author typed, nothing about it says "loudness profile" --
+/// and even once named, nobody chose it, so it needs to say why it is here. Worded to fit both
+/// directions: on export these get written into the file, on import they get added to the library.
+function AlsoIncluded({ children }) {
+  return (
+    <section className="mt-3 border-t border-border pt-2">
+      <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
+        Also Included: Loudness Profiles
+      </h3>
+      <p className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+        Presets reference these, so they travel together.
+      </p>
+      <ul className="mt-1.5 flex flex-col gap-0.5">{children}</ul>
+    </section>
+  );
+}
+
 /// One dialog, two directions. `pick` chooses library items to write to a file; `review` shows what
 /// a parsed file would do before anything is written.
 ///
@@ -182,31 +203,21 @@ export function ItemPickerDialog({
             )}
 
             {mode === "pick" && shownDependencies.length > 0 ? (
-              <section className="mt-3 border-t border-border pt-2">
-                <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
-                  Also included
-                </h3>
-                <ul className="mt-1 flex flex-col gap-0.5">
-                  {shownDependencies.map((dep) => (
-                    <li key={dep.id} className="text-[length:var(--ui-fs-control)]">
-                      {dep.name}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <AlsoIncluded>
+                {shownDependencies.map((dep) => (
+                  <li key={dep.id} className="text-[length:var(--ui-fs-control)]">
+                    {dep.name}
+                  </li>
+                ))}
+              </AlsoIncluded>
             ) : null}
 
             {mode === "review" && profilePlan.length > 0 ? (
-              <section className="mt-3 border-t border-border pt-2">
-                <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
-                  Also included
-                </h3>
-                <ul className="mt-1 flex flex-col gap-0.5">
-                  {profilePlan.map((entry) => (
-                    <PlanRow key={entry.sourceId} entry={entry} />
-                  ))}
-                </ul>
-              </section>
+              <AlsoIncluded>
+                {profilePlan.map((entry) => (
+                  <PlanRow key={entry.sourceId} entry={entry} />
+                ))}
+              </AlsoIncluded>
             ) : null}
           </div>
 

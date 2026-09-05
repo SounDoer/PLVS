@@ -85,13 +85,15 @@ describe("ItemPickerDialog pick mode", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.queryByText("Also included")).toBeNull();
+    expect(screen.queryByText("Also Included: Loudness Profiles")).toBeNull();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "P2" }));
-    expect(screen.queryByText("Also included")).toBeNull();
+    expect(screen.queryByText("Also Included: Loudness Profiles")).toBeNull();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "P1" }));
-    expect(screen.getByText("Also included")).toBeTruthy();
+    expect(screen.getByText("Also Included: Loudness Profiles")).toBeTruthy();
+    // Naming the kind answers "what"; this line answers "why is something I did not pick here".
+    expect(screen.getByText("Presets reference these, so they travel together.")).toBeTruthy();
     expect(screen.getByText("Alpha")).toBeTruthy();
     expect(screen.queryByText("Beta")).toBeNull();
   });
@@ -149,7 +151,7 @@ describe("ItemPickerDialog review mode", () => {
         onClose={() => {}}
       />
     );
-    expect(screen.getByText("Also included")).toBeTruthy();
+    expect(screen.getByText("Also Included: Loudness Profiles")).toBeTruthy();
     expect(screen.getByText("Alpha")).toBeTruthy();
   });
 
