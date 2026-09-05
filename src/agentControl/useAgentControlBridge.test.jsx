@@ -1,4 +1,7 @@
 /** @vitest-environment jsdom */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { cwd } from "node:process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { StrictMode, useState } from "react";
@@ -7,6 +10,11 @@ import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
+
+const CLI_V1_FIXTURES = JSON.parse(
+  readFileSync(join(cwd(), "shared", "cli-v1-envelope-fixtures.json"), "utf8")
+);
+const goldenResult = (id) => CLI_V1_FIXTURES.find((fixture) => fixture.id === id).envelope.result;
 
 const adapter = vi.hoisted(() => ({
   handler: null,
@@ -372,9 +380,17 @@ describe("useAgentControlBridge", () => {
     const initialTree = view.store.state.tree;
 
     const capabilities = await send(request("app.capabilities", {}, "cap"));
-    expect(capabilities.result).toMatchObject({ protocolVersion: 1, revision: 0 });
+    expect(capabilities.result).toMatchObject({
+      appVersion: "0.14.5",
+      protocolVersion: 1,
+      revision: 0,
+      commands: expect.arrayContaining(["app.capabilities", "app.wait"]),
+      features: {},
+    });
+    expect(capabilities.result).not.toHaveProperty("cliVersion");
     expect(capabilities.result).not.toHaveProperty("revisions");
     const first = await send(request("app.inspect", {}, "inspect-1"));
+    expect(first.result).toMatchObject(goldenResult("query.appInspect"));
     expect(first.result.revision).toBe(0);
     expect(first.result).not.toHaveProperty("revisions");
     expect(view.store.state.tree).toBe(initialTree);
@@ -649,6 +665,7 @@ describe("useAgentControlBridge", () => {
         },
       },
     });
+    expect(response.result).toMatchObject(goldenResult("action.transportLiveStart"));
     expect(response.result).not.toHaveProperty("changed");
     expect(response.result).not.toHaveProperty("dryRun");
   });
@@ -829,6 +846,9 @@ describe("useAgentControlBridge", () => {
       matchedImmediately: false,
       revision: 1,
     });
+    expect(
+      adapter.responses.find(({ requestId }) => requestId === "wait-change").result
+    ).toMatchObject(goldenResult("wait.changed"));
   });
 
   it("releases a revision waiter immediately when its client disconnects", async () => {
@@ -854,6 +874,27 @@ describe("useAgentControlBridge", () => {
     expect(
       adapter.responses.filter(({ requestId }) => requestId.startsWith("remaining-"))
     ).toSatisfy((responses) => responses.every(({ error }) => error?.data?.reason === "timeout"));
+  });
+
+  it("refuses a fifth concurrent revision waiter with waitLimitReached", async () => {
+    mount();
+    await waitUntilReady();
+    for (let index = 0; index < 4; index += 1) {
+      act(() =>
+        adapter.handler(
+          request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, `active-${index}`)
+        )
+      );
+    }
+
+    const response = await send(
+      request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, "over-limit")
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32070,
+      data: { reason: "waitLimitReached" },
+    });
   });
 
   it("returns a timeout error with the current global revision", async () => {
@@ -1549,6 +1590,7 @@ describe("useAgentControlBridge", () => {
       changed: true,
       state: { panel: { controls: { mode: "rms" } } },
     });
+    expect(response.result).toMatchObject(goldenResult("mutation.panelDryRun"));
     expect(view.store.state).toBe(initialState);
     expect(flush).not.toHaveBeenCalled();
   });

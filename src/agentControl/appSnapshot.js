@@ -75,7 +75,10 @@ export function buildAgentControlPanelSnapshot({
 export function buildAgentControlCapabilities(runtime, revision) {
   return {
     revision,
+    appVersion: String(runtime.appVersion),
     protocolVersion: 1,
+    commands: [...METHODS],
+    features: {},
     runtime: {
       available: runtime.available === true,
       appName: String(runtime.appName),

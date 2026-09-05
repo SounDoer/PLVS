@@ -468,20 +468,36 @@ fn doctor_exit_code(status: DoctorStatus) -> u8 {
   }
 }
 
-fn serialize_parse_error(message: &str) -> (String, u8) {
-  let code =
-    if message.starts_with("Unknown command:") || message.starts_with("Unknown help topic:") {
-      "unknownCommand"
-    } else {
-      "invalidInput"
-    };
+fn serialize_cli_failure(code: &str, message: &str, exit_code: u8) -> (String, u8) {
   let encoded = serde_json::to_string(&ErrorEnvelope {
     schema_version: CLI_SCHEMA_VERSION,
     ok: false,
     error: ErrorBody { code, message },
   })
   .expect("the CLI error envelope contains only strings and integers");
-  (encoded, 3)
+  (encoded, exit_code)
+}
+
+fn serialize_parse_error(message: &str) -> (String, u8) {
+  let code = if message.starts_with("Unknown command:")
+    || message.starts_with("Unknown app subcommand:")
+    || message.starts_with("Unknown help topic:")
+  {
+    "unknownCommand"
+  } else {
+    "invalidArguments"
+  };
+  serialize_cli_failure(code, message, 3)
+}
+
+fn emit_cli_failure(code: &str, message: &str, json: bool, exit_code: u8) -> ExitCode {
+  if json {
+    let (encoded, _) = serialize_cli_failure(code, message, exit_code);
+    println!("{encoded}");
+  } else {
+    eprintln!("{message}");
+  }
+  ExitCode::from(exit_code)
 }
 
 fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String> {
@@ -495,10 +511,10 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli app <command> [options]\n\nAgent usage:\n  Add --json to doctor for stable machine-readable output.\n  Use --out to save the same output that is written to stdout.\n  Use app to inspect or control a running PLVS window; see plvs-cli app --help.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  command completed with errors\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli app <command> [options]\n\nAgent usage:\n  Add --json to doctor for stable machine-readable output.\n  Use --out to save the same output that is written to stdout.\n  Use app to inspect or control a running PLVS window; see plvs-cli app --help.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
     }
     HelpTopic::Doctor => {
-      "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error\n  2  invalid usage or CLI failure before a valid report"
+      "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error, or output failed\n  3  invalid command input"
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
@@ -557,20 +573,22 @@ fn execute(command: CliCommand) -> ExitCode {
         match serialize_doctor_json(&report) {
           Ok(json) => {
             if let Err(err) = emit_json(&json, out.as_deref(), "doctor") {
-              eprintln!("{err}");
-              return ExitCode::from(2);
+              return emit_cli_failure("outputWriteFailed", &err, true, 1);
             }
           }
           Err(err) => {
-            eprintln!("Failed to serialize doctor report: {err}");
-            return ExitCode::from(2);
+            return emit_cli_failure(
+              "internalError",
+              &format!("Failed to serialize doctor report: {err}"),
+              true,
+              1,
+            );
           }
         }
       } else {
         let text = render_doctor_text(&report);
         if let Err(err) = emit_text(&text, out.as_deref(), "doctor") {
-          eprintln!("{err}");
-          return ExitCode::from(2);
+          return emit_cli_failure("outputWriteFailed", &err, false, 1);
         }
       }
 
@@ -725,12 +743,17 @@ mod tests {
   }
 
   fn doctor_report(status: DoctorStatus) -> crate::doctor::DoctorReport {
+    let (warning, error) = match status {
+      DoctorStatus::Warning => (1, 0),
+      DoctorStatus::Error => (0, 1),
+      _ => (0, 0),
+    };
     crate::doctor::DoctorReport {
       status,
       summary: crate::doctor::DoctorSummary {
         ok: 1,
-        warning: 0,
-        error: 0,
+        warning,
+        error,
         skipped: 0,
       },
       app: crate::doctor::DoctorAppInfo {
@@ -755,6 +778,10 @@ mod tests {
     let encoded = serialize_doctor_json(&doctor_report(DoctorStatus::Warning)).unwrap();
     let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
 
+    assert_eq!(
+      json,
+      crate::cli_contract::golden_fixture("doctor.warning")["envelope"]
+    );
     assert_eq!(json["schemaVersion"], 1);
     assert_eq!(json["ok"], true);
     assert_eq!(json["result"]["report"]["status"], "warning");
@@ -764,6 +791,12 @@ mod tests {
 
   #[test]
   fn doctor_errors_keep_a_success_envelope_but_exit_one() {
+    let encoded = serialize_doctor_json(&doctor_report(DoctorStatus::Error)).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(
+      json,
+      crate::cli_contract::golden_fixture("doctor.error")["envelope"]
+    );
     assert_eq!(doctor_exit_code(DoctorStatus::Error), 1);
     assert_eq!(doctor_exit_code(DoctorStatus::Warning), 0);
   }
@@ -846,6 +879,17 @@ mod tests {
   }
 
   #[test]
+  fn root_help_lists_every_v1_exit_class() {
+    let text = help_text(HelpTopic::Root);
+    for code in 0..=5 {
+      assert!(
+        text.contains(&format!("  {code}  ")),
+        "missing exit code {code}"
+      );
+    }
+  }
+
+  #[test]
   fn removed_top_level_commands_and_help_topics_are_unreachable() {
     for invocation in [
       vec!["probe", "mix.wav", "--json"],
@@ -879,6 +923,47 @@ mod tests {
     assert_eq!(json["ok"], false);
     assert_eq!(json["error"]["code"], "unknownCommand");
     assert!(json.get("result").is_none());
+    assert_eq!(
+      json,
+      crate::cli_contract::golden_fixture("error.unknownCommand")["envelope"]
+    );
+  }
+
+  #[test]
+  fn invalid_root_arguments_use_the_v1_public_code_and_exit_three() {
+    let error = parse_args(&args(&["doctor", "extra", "--json"])).unwrap_err();
+    let (encoded, exit_code) = serialize_parse_error(&error);
+    let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+
+    assert_eq!(exit_code, 3);
+    assert_eq!(json["error"]["code"], "invalidArguments");
+  }
+
+  #[test]
+  fn public_unknown_subcommands_and_help_topics_use_unknown_command() {
+    for invocation in [vec!["app", "nonsense", "--json"], vec!["help", "nonsense"]] {
+      let error = parse_args(&args(&invocation)).unwrap_err();
+      let (encoded, exit_code) = serialize_parse_error(&error);
+      let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+
+      assert_eq!(exit_code, 3, "wrong exit for {invocation:?}");
+      assert_eq!(
+        json["error"]["code"], "unknownCommand",
+        "wrong code for {invocation:?}: {error}"
+      );
+    }
+  }
+
+  #[test]
+  fn output_write_failures_use_the_v1_error_envelope_and_exit_one() {
+    let (encoded, exit_code) =
+      serialize_cli_failure("outputWriteFailed", "Unable to write doctor output.", 1);
+    let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+
+    assert_eq!(json["schemaVersion"], 1);
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "outputWriteFailed");
+    assert_eq!(exit_code, 1);
   }
 
   #[test]

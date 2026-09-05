@@ -973,6 +973,11 @@ pub fn help_text() -> &'static str {
         "\n  plvs-cli app dock describe --json\n  plvs-cli app dock inspect --json\n  plvs-cli app dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock panel describe <panel-id> --json\n  plvs-cli app dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
         1,
       )
+      .replace("[--expected-revision <n>]", "--expected-revision <n>")
+      .replace(
+        "Exit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure",
+        "Exit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete",
+      )
     })
     .as_str()
 }
@@ -1025,6 +1030,9 @@ fn discovery_failure(error: &DiscoveryError, enabled: bool) -> CliAppFailure {
     // A descriptor naming a process that is gone: the app really is not running, and the
     // discovery text says which check decided that.
     DiscoveryErrorKind::Stale => CliAppFailure::transport("appNotRunning", error.to_string(), None),
+    DiscoveryErrorKind::ProtocolMismatch => {
+      CliAppFailure::transport("protocolMismatch", error.to_string(), None)
+    }
     DiscoveryErrorKind::Malformed | DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => {
       CliAppFailure::transport("discoveryFailed", error.to_string(), None)
     }
@@ -1114,11 +1122,25 @@ impl CliAppFailure {
     }
   }
 
-  fn app(_app: DescriptorApp, error: CliAppError) -> Self {
-    let exit_code = match error.code.as_str() {
-      "invalidParams" | "revisionRequired" | "resourceNotFound" => 3,
-      "revisionConflict" | "editorActive" | "busy" | "operationNotAllowed" => 4,
-      "timeout" | "cancelled" => 5,
+  fn invalid_arguments(message: impl Into<String>) -> Self {
+    Self {
+      error: Box::new(CliAppError {
+        code: "invalidArguments".to_string(),
+        message: message.into(),
+        details: None,
+      }),
+      exit_code: 3,
+    }
+  }
+
+  fn app(_app: DescriptorApp, error: CliAppError, rpc_error_code: Option<i64>) -> Self {
+    let exit_code = match (rpc_error_code, error.code.as_str()) {
+      (Some(-32602), _) | (_, "revisionRequired" | "resourceNotFound") => 3,
+      (
+        _,
+        "revisionConflict" | "editorActive" | "busy" | "operationNotAllowed" | "waitLimitReached",
+      ) => 4,
+      (_, "timeout" | "cancelled") => 5,
       _ => 1,
     };
     Self {
@@ -1225,8 +1247,8 @@ fn request_for_command<R: Read>(
         } else {
           "Dock panel controls"
         };
-        let document = read_json_document(input, stdin, subject)
-          .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+        let document =
+          read_json_document(input, stdin, subject).map_err(CliAppFailure::invalid_arguments)?;
         params.insert(
           if method == "dock.layout.apply" {
             "layout"
@@ -1269,11 +1291,9 @@ fn request_for_command<R: Read>(
       if let (Some(key), Some(value)) = (target_key, target) {
         let value = if method == "transport.file.analyze" {
           let canonical = fs::canonicalize(Path::new(value)).map_err(|error| {
-            CliAppFailure::transport(
-              "invalidInput",
-              format!("Unable to resolve audio path {value}: {error}"),
-              None,
-            )
+            CliAppFailure::invalid_arguments(format!(
+              "Unable to resolve audio path {value}: {error}"
+            ))
           })?;
           Value::String(canonical.to_string_lossy().into_owned())
         } else {
@@ -1350,16 +1370,14 @@ fn request_for_command<R: Read>(
       dry_run,
     } => {
       let document = read_json_document(input, stdin, "preset order")
-        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+        .map_err(CliAppFailure::invalid_arguments)?;
       let preset_ids = document
         .as_object()
         .and_then(|object| object.get("presetIds"))
         .cloned()
         .ok_or_else(|| {
-          CliAppFailure::transport(
-            "invalidInput",
-            "Preset order JSON must be an object containing presetIds.".to_string(),
-            None,
+          CliAppFailure::invalid_arguments(
+            "Preset order JSON must be an object containing presetIds.",
           )
         })?;
       mutation_params([("presetIds", preset_ids)], *expected_revision, *dry_run)
@@ -1371,7 +1389,7 @@ fn request_for_command<R: Read>(
       dry_run,
     } => {
       let patch = read_json_document(input, stdin, "Settings patch")
-        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+        .map_err(CliAppFailure::invalid_arguments)?;
       let mut params = serde_json::Map::from_iter([
         ("patch".to_string(), patch),
         ("dryRun".to_string(), Value::Bool(*dry_run)),
@@ -1397,8 +1415,7 @@ fn request_for_command<R: Read>(
       expected_revision,
       dry_run,
     } => {
-      let layout = read_layout(input, stdin)
-        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+      let layout = read_layout(input, stdin).map_err(CliAppFailure::invalid_arguments)?;
       let mut params = serde_json::Map::from_iter([
         ("layout".to_string(), layout),
         ("dryRun".to_string(), Value::Bool(*dry_run)),
@@ -1415,7 +1432,7 @@ fn request_for_command<R: Read>(
       dry_run,
     } => {
       let patch = read_json_document(input, stdin, "panel controls")
-        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+        .map_err(CliAppFailure::invalid_arguments)?;
       let mut params = serde_json::Map::from_iter([
         ("panelId".to_string(), Value::String(panel_id.clone())),
         ("patch".to_string(), patch),
@@ -1446,8 +1463,8 @@ fn request_for_command<R: Read>(
       expected_revision,
       dry_run,
     } => {
-      let range = read_json_document(input, stdin, "axis range")
-        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+      let range =
+        read_json_document(input, stdin, "axis range").map_err(CliAppFailure::invalid_arguments)?;
       mutation_params(
         [("kind", Value::String(kind.clone())), ("range", range)],
         *expected_revision,
@@ -1470,8 +1487,8 @@ fn request_for_command<R: Read>(
       expected_revision,
       dry_run,
     } => {
-      let patch = read_json_document(input, stdin, "panel axis")
-        .map_err(|error| CliAppFailure::transport("invalidInput", error, None))?;
+      let patch =
+        read_json_document(input, stdin, "panel axis").map_err(CliAppFailure::invalid_arguments)?;
       mutation_params(
         [
           ("panelId", Value::String(panel_id.clone())),
@@ -1558,11 +1575,20 @@ fn execute<R: Read>(
         return (failure_report(failure), 2);
       }
       if let Some(result) = call.response.get("result") {
+        let mut result = result.clone();
+        if command == &CliAppCommand::Capabilities {
+          if let Value::Object(fields) = &mut result {
+            fields.insert(
+              "cliVersion".to_string(),
+              Value::String(env!("CARGO_PKG_VERSION").to_string()),
+            );
+          }
+        }
         return (
           CliAppReport {
             schema_version: CLI_SCHEMA_VERSION,
             ok: true,
-            result: Some(result.clone()),
+            result: Some(result),
             error: None,
           },
           0,
@@ -1589,7 +1615,12 @@ fn execute<R: Read>(
         return (failure_report(failure), 2);
       }
       let error = CliAppError {
-        code: reason.to_string(),
+        code: if reason == "invalidParams" {
+          "invalidArguments"
+        } else {
+          reason
+        }
+        .to_string(),
         message: rpc_error
           .get("message")
           .and_then(Value::as_str)
@@ -1597,7 +1628,11 @@ fn execute<R: Read>(
           .to_string(),
         details: public_error_details(rpc_error.get("data").unwrap_or(&Value::Null)),
       };
-      let failure = CliAppFailure::app(call.app, error);
+      let failure = CliAppFailure::app(
+        call.app,
+        error,
+        rpc_error.get("code").and_then(Value::as_i64),
+      );
       let exit_code = failure.exit_code;
       (failure_report(failure), exit_code)
     }
@@ -2301,6 +2336,58 @@ mod tests {
   }
 
   #[test]
+  fn local_input_failures_use_invalid_arguments_json_and_exit_three() {
+    let unused_client = FakeClient {
+      response: Err(CliAppFailure::transport(
+        "shouldNotReachTransport",
+        "request construction should fail first",
+        None,
+      )),
+    };
+
+    let malformed = CliAppCommand::WorkspaceApply {
+      input: "-".to_string(),
+      expected_revision: Some(1),
+      dry_run: false,
+    };
+    let (report, exit) = execute(&malformed, &mut Cursor::new(b"not json"), &unused_client);
+    let json = serde_json::to_value(report).unwrap();
+    assert_eq!(exit, 3);
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "invalidArguments");
+
+    let missing_path = std::env::temp_dir()
+      .join(format!("plvs-missing-transport-{}.wav", std::process::id()))
+      .to_string_lossy()
+      .into_owned();
+    let missing_audio = CliAppCommand::TransportMutation {
+      method: "transport.file.analyze".to_string(),
+      target_key: Some("path".to_string()),
+      target: Some(missing_path),
+      expected_revision: Some(1),
+      allow_stop_file_analysis: false,
+      dry_run: false,
+    };
+    let (report, exit) = execute(&missing_audio, &mut Cursor::new([]), &unused_client);
+    let json = serde_json::to_value(report).unwrap();
+    assert_eq!(exit, 3);
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "invalidArguments");
+  }
+
+  #[test]
+  fn help_marks_revisions_as_required_and_lists_v1_exit_classes() {
+    let help = help_text();
+    assert!(!help.contains("[--expected-revision"));
+    for code in 0..=5 {
+      assert!(
+        help.contains(&format!("  {code}  ")),
+        "missing exit code {code}"
+      );
+    }
+  }
+
+  #[test]
   fn parses_and_builds_dock_commands() {
     assert!(help_text().contains("app dock layout apply"));
     assert_eq!(
@@ -2483,6 +2570,71 @@ mod tests {
   }
 
   #[test]
+  fn json_rpc_invalid_params_exit_three_and_only_rename_the_generic_reason() {
+    for (reason, public_code) in [
+      ("invalidParams", "invalidArguments"),
+      ("invalidControls", "invalidControls"),
+      ("invalidDockLayout", "invalidDockLayout"),
+    ] {
+      let client = FakeClient {
+        response: Ok(AppCall {
+          app: app(),
+          response: serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "replaced",
+            "error": {
+              "code": -32602,
+              "message": "Invalid method parameters.",
+              "data": { "reason": reason }
+            }
+          }),
+        }),
+      };
+
+      let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &client);
+      assert_eq!(exit, 3, "wrong exit for {reason}");
+      assert_eq!(
+        serde_json::to_value(report).unwrap()["error"]["code"],
+        public_code,
+        "wrong public code for {reason}"
+      );
+    }
+  }
+
+  #[test]
+  fn stable_app_error_classes_map_to_the_v1_exit_contract() {
+    let cases = [
+      ("revisionRequired", None, 3),
+      ("resourceNotFound", None, 3),
+      ("revisionConflict", None, 4),
+      ("editorActive", None, 4),
+      ("operationNotAllowed", None, 4),
+      ("waitLimitReached", None, 4),
+      ("busy", None, 4),
+      ("timeout", None, 5),
+      ("cancelled", None, 5),
+      ("unexpectedRuntimeFailure", None, 1),
+      ("invalidControls", Some(-32602), 3),
+    ];
+
+    for (public_code, rpc_code, expected_exit) in cases {
+      let failure = CliAppFailure::app(
+        app(),
+        CliAppError {
+          code: public_code.to_string(),
+          message: "test failure".to_string(),
+          details: None,
+        },
+        rpc_code,
+      );
+      assert_eq!(
+        failure.exit_code, expected_exit,
+        "wrong exit for {public_code} with RPC code {rpc_code:?}"
+      );
+    }
+  }
+
+  #[test]
   fn an_unattributed_server_error_keeps_its_reason_but_a_mismatched_reply_does_not() {
     // No request id could be recovered, so PLVS answered with the empty sentinel. The failure is
     // still real and its reason has to survive.
@@ -2513,9 +2665,7 @@ mod tests {
   }
 
   #[test]
-  fn a_failure_below_the_app_exits_two_while_an_app_result_exits_one() {
-    // Same reason string on both sides of the boundary: the broker's pending limit versus the
-    // frontend refusing a fifth concurrent wait. Only `layer` tells them apart.
+  fn broker_busy_exits_two_while_app_wait_limits_and_busy_exit_four() {
     let broker_busy = FakeClient {
       response: Ok(AppCall {
         app: app(),
@@ -2537,7 +2687,7 @@ mod tests {
       "busy"
     );
 
-    let frontend_busy = FakeClient {
+    let wait_limit_reached = FakeClient {
       response: Ok(AppCall {
         app: app(),
         response: serde_json::json!({
@@ -2546,7 +2696,7 @@ mod tests {
           "error": {
             "code": -32070,
             "message": "Too many revision waits are active.",
-            "data": { "reason": "busy" }
+            "data": { "reason": "waitLimitReached" }
           }
         }),
       }),
@@ -2554,13 +2704,79 @@ mod tests {
     let (report, exit) = execute(
       &CliAppCommand::Inspect,
       &mut Cursor::new([]),
-      &frontend_busy,
+      &wait_limit_reached,
     );
     assert_eq!(exit, 4);
     assert_eq!(
       serde_json::to_value(report).unwrap()["error"]["code"],
-      "busy"
+      "waitLimitReached"
     );
+
+    let busy = CliAppFailure::app(
+      app(),
+      CliAppError {
+        code: "busy".to_string(),
+        message: "Another app operation is busy.".to_string(),
+        details: None,
+      },
+      None,
+    );
+    assert_eq!(busy.exit_code, 4);
+  }
+
+  #[test]
+  fn capabilities_report_the_invoking_cli_version_independently_from_the_app() {
+    let golden = crate::cli_contract::golden_fixture("query.capabilities");
+    let mut app_result = golden["envelope"]["result"].clone();
+    app_result.as_object_mut().unwrap().remove("cliVersion");
+    let client = FakeClient {
+      response: Ok(AppCall {
+        app: app(),
+        response: serde_json::json!({
+          "jsonrpc": "2.0",
+          "id": "replaced",
+          "result": app_result
+        }),
+      }),
+    };
+
+    let (report, exit) = execute(&CliAppCommand::Capabilities, &mut Cursor::new([]), &client);
+    let report = serde_json::to_value(report).unwrap();
+    let result = report["result"].clone();
+
+    assert_eq!(exit, 0);
+    assert_eq!(report, golden["envelope"]);
+    assert_eq!(result["appVersion"], "99.99.99-app");
+    assert_eq!(result["cliVersion"], env!("CARGO_PKG_VERSION"));
+    assert_ne!(result["cliVersion"], result["appVersion"]);
+  }
+
+  #[test]
+  fn wait_timeout_matches_the_v1_golden_error() {
+    let golden = crate::cli_contract::golden_fixture("wait.timeout");
+    let client = FakeClient {
+      response: Ok(AppCall {
+        app: app(),
+        response: serde_json::json!({
+          "jsonrpc": "2.0",
+          "id": "replaced",
+          "error": {
+            "code": -32071,
+            "message": "The app revision did not change before the timeout.",
+            "data": {
+              "reason": "timeout",
+              "path": "$.params.timeoutMs",
+              "details": { "afterRevision": 44, "currentRevision": 44 }
+            }
+          }
+        }),
+      }),
+    };
+
+    let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &client);
+
+    assert_eq!(exit, golden["exitCode"].as_u64().unwrap() as u8);
+    assert_eq!(serde_json::to_value(report).unwrap(), golden["envelope"]);
   }
 
   #[test]
@@ -2672,5 +2888,22 @@ mod tests {
     );
     assert_eq!(stale.error.code, "appNotRunning");
     assert_eq!(stale.error.message, "pid 4321 is gone");
+  }
+
+  #[test]
+  fn protocol_mismatch_is_publicly_distinct_from_malformed_discovery() {
+    let mismatch = discovery_failure(
+      &DiscoveryError::new(DiscoveryErrorKind::ProtocolMismatch, "wrong protocol"),
+      true,
+    );
+    assert_eq!(mismatch.error.code, "protocolMismatch");
+    assert_eq!(mismatch.exit_code, 2);
+
+    let malformed = discovery_failure(
+      &DiscoveryError::new(DiscoveryErrorKind::Malformed, "wrong descriptor schema"),
+      true,
+    );
+    assert_eq!(malformed.error.code, "discoveryFailed");
+    assert_eq!(malformed.exit_code, 2);
   }
 }

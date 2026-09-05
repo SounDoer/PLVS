@@ -86,6 +86,7 @@ pub struct AgentControlDescriptor {
 pub enum DiscoveryErrorKind {
   Missing,
   Malformed,
+  ProtocolMismatch,
   Stale,
   Unavailable,
   Io,
@@ -161,7 +162,6 @@ pub fn parse_descriptor(
   })?;
 
   let valid = descriptor.schema_version == DESCRIPTOR_SCHEMA_VERSION
-    && descriptor.protocol_version == PROTOCOL_VERSION
     && descriptor.app.identifier == expected_identifier
     && !descriptor.app.name.is_empty()
     && !descriptor.app.version.is_empty()
@@ -172,6 +172,12 @@ pub fn parse_descriptor(
     return Err(DiscoveryError::new(
       DiscoveryErrorKind::Malformed,
       "The PLVS agent-control descriptor is invalid for this app identity.",
+    ));
+  }
+  if descriptor.protocol_version != PROTOCOL_VERSION {
+    return Err(DiscoveryError::new(
+      DiscoveryErrorKind::ProtocolMismatch,
+      "The PLVS agent-control protocol version is incompatible.",
     ));
   }
   Ok(descriptor)
@@ -308,6 +314,40 @@ mod tests {
 
     assert_eq!(
       parse_descriptor(&bytes, "com.soundoer.plvs")
+        .unwrap_err()
+        .kind,
+      DiscoveryErrorKind::Malformed
+    );
+  }
+
+  #[test]
+  fn distinguishes_protocol_mismatch_from_malformed_descriptor_shape_and_schema() {
+    let mut wrong_protocol = descriptor(generate_launch_token().unwrap());
+    wrong_protocol.protocol_version = PROTOCOL_VERSION + 1;
+    assert_eq!(
+      parse_descriptor(
+        &serde_json::to_vec(&wrong_protocol).unwrap(),
+        "com.soundoer.plvs.dev"
+      )
+      .unwrap_err()
+      .kind,
+      DiscoveryErrorKind::ProtocolMismatch
+    );
+
+    let mut wrong_schema = descriptor(generate_launch_token().unwrap());
+    wrong_schema.schema_version = DESCRIPTOR_SCHEMA_VERSION + 1;
+    assert_eq!(
+      parse_descriptor(
+        &serde_json::to_vec(&wrong_schema).unwrap(),
+        "com.soundoer.plvs.dev"
+      )
+      .unwrap_err()
+      .kind,
+      DiscoveryErrorKind::Malformed
+    );
+
+    assert_eq!(
+      parse_descriptor(br#"{"schemaVersion":1}"#, "com.soundoer.plvs.dev")
         .unwrap_err()
         .kind,
       DiscoveryErrorKind::Malformed

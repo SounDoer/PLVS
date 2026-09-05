@@ -42,7 +42,7 @@ fn main() -> ExitCode {
   // process cannot write to inherited console handles, so output would vanish
   // when plvs-cli is invoked from an interactive terminal. Relaying through
   // this console-subsystem process works for terminals and pipes alike.
-  // The host's exit code is forwarded unchanged (0/1/2 contract).
+  // The host's exit code is forwarded unchanged.
   let mut child = match Command::new(&host)
     .arg("--cli")
     .args(std::env::args_os().skip(1))

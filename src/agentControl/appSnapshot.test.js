@@ -23,6 +23,7 @@ describe("agent-control app snapshots", () => {
     const capabilities = buildAgentControlCapabilities(runtime, 11);
     expect(capabilities).toMatchObject({
       revision: 11,
+      appVersion: "0.14.5",
       protocolVersion: 1,
       runtime,
       methods: [
@@ -71,7 +72,11 @@ describe("agent-control app snapshots", () => {
         "dock.panel.update",
         "dock.panel.reset",
       ],
+      features: {},
     });
+    expect(capabilities).not.toHaveProperty("cliVersion");
+    expect(capabilities.commands).toEqual(capabilities.methods);
+    expect(capabilities.commands).not.toBe(capabilities.methods);
     expect(capabilities).not.toHaveProperty("revisions");
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
     expect(JSON.parse(JSON.stringify(capabilities))).toEqual(capabilities);
