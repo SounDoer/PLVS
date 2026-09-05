@@ -987,6 +987,7 @@ export function useAgentControlBridge({
           }
           const snapshot = await presets.captureSnapshot();
           assertRevisions();
+          presets.assertSceneOperationAllowed(request.method);
           let planned =
             request.method === "preset.save"
               ? planPresetSave(state, request.params.name, snapshot)
@@ -1114,6 +1115,7 @@ export function useAgentControlBridge({
           }
           const currentSnapshot = await presets.captureSnapshot();
           assertRevisions();
+          presets.assertSceneOperationAllowed(request.method);
           const scenePlan = planPresetApply(state, request.params.presetId, currentSnapshot);
           const planned = {
             ...scenePlan,
