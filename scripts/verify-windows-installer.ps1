@@ -172,6 +172,13 @@ try {
   if ($doctor.schemaVersion -ne 1) {
     throw "Installed CLI doctor returned unexpected schema version: $($doctor.schemaVersion)"
   }
+  if ($doctor.ok -ne $true) {
+    throw "Installed CLI doctor returned a failure envelope`n$doctorOutput"
+  }
+  $doctorStatus = $doctor.result.report.status
+  if ($doctorStatus -notin @("ok", "warning")) {
+    throw "Installed CLI doctor returned unexpected report status: $doctorStatus"
+  }
 
   $userPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
   if (Test-PathContainsEntry $userPath $installRoot) {

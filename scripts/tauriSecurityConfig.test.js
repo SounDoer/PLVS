@@ -16,6 +16,14 @@ const nsisAgentDiscovery = readFileSync(
   join(process.cwd(), "src-tauri", "nsis", "agent-discovery.nsh"),
   "utf8"
 );
+const windowsInstallerVerification = readFileSync(
+  join(process.cwd(), "scripts", "verify-windows-installer.ps1"),
+  "utf8"
+);
+const macosInstallerVerification = readFileSync(
+  join(process.cwd(), "scripts", "verify-macos-dmg.sh"),
+  "utf8"
+);
 const agentManifest = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "plvs-agent.json"), "utf8")
 );
@@ -91,6 +99,13 @@ describe("Tauri security configuration", () => {
         doctor: ["doctor", "--json"],
       },
     });
+  });
+
+  it("validates the doctor v1 envelope in installer smoke checks", () => {
+    expect(windowsInstallerVerification).toContain("$doctor.ok");
+    expect(windowsInstallerVerification).toContain("$doctor.result.report.status");
+    expect(macosInstallerVerification).toContain('doctor["ok"]');
+    expect(macosInstallerVerification).toContain('doctor["result"]["report"]["status"]');
   });
 
   it("writes installed CLI discovery to current-user Windows registry", () => {
