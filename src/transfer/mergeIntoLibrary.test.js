@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { planMerge } from "./mergeIntoLibrary.js";
+import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 
 function counter() {
   let n = 0;
@@ -80,6 +81,38 @@ describe("planMerge", () => {
       "skipped"
     );
     expect(planMerge([withRules], [different], { makeId: counter() }).plan[0].disposition).toBe(
+      "duplicated"
+    );
+  });
+
+  it("treats a rule's absent value key as distinct from a present one", () => {
+    // normalizeRuleDocument (src/lib/loudnessProfileNormalize.js) omits `rule.value` entirely
+    // when isUsableThreshold(raw.value) is false -- here, an unfilled row with no `value` in the
+    // raw input at all. So two otherwise-identical rule documents can differ in key set, not just
+    // in value.
+    const noValueDoc = normalizeRuleDocument({
+      id: "x",
+      name: "X",
+      referenceLufs: -23,
+      rules: [{ metricId: "truePeak", op: ">", severity: "fail" }],
+    });
+    const withValueDoc = normalizeRuleDocument({
+      id: "x",
+      name: "X",
+      referenceLufs: -23,
+      rules: [{ metricId: "truePeak", op: ">", severity: "fail", value: -0.5 }],
+    });
+
+    expect(noValueDoc.rules[0]).not.toHaveProperty("value");
+    expect(withValueDoc.rules[0].value).toBe(-0.5);
+
+    expect(
+      planMerge([noValueDoc], [{ ...noValueDoc }], { makeId: counter() }).plan[0].disposition
+    ).toBe("skipped");
+    expect(planMerge([noValueDoc], [withValueDoc], { makeId: counter() }).plan[0].disposition).toBe(
+      "duplicated"
+    );
+    expect(planMerge([withValueDoc], [noValueDoc], { makeId: counter() }).plan[0].disposition).toBe(
       "duplicated"
     );
   });
