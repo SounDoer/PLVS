@@ -4,13 +4,25 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { AppSettingsOverlays } from "./AppSettingsOverlays.jsx";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
-import { settingsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore } from "../persistence/index.js";
 
 const mocks = vi.hoisted(() => ({
   exportConfiguration: vi.fn(),
   importConfiguration: vi.fn(),
   resetConfiguration: vi.fn(),
   setAgentControlEnabled: vi.fn(),
+  // Default false, so every existing test keeps the browser-mode behaviour it was written
+  // against; the one test that needs the desktop save dialog flips it for its own duration.
+  isTauri: vi.fn(() => false),
+  savePackFile: vi.fn(),
+  writeProfileFile: vi.fn(),
+}));
+
+vi.mock("../ipc/env.js", () => ({ isTauri: () => mocks.isTauri() }));
+
+vi.mock("../ipc/fileDialog.js", () => ({
+  savePackFile: (...args) => mocks.savePackFile(...args),
+  pickPackFile: vi.fn(),
 }));
 
 vi.mock("../hooks/useConfigurationProfileActions.js", () => ({
@@ -209,6 +221,11 @@ describe("AppSettingsOverlays", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // `clearAllMocks` drops recorded calls but keeps implementations, so the desktop-mode test
+    // below would otherwise leave `isTauri` true for whatever runs after it. Restore the defaults
+    // here rather than in that test's own teardown, so test order never matters.
+    mocks.isTauri.mockReturnValue(false);
+    presetsStore.reset();
   });
 
   it("forwards the global dialogue detection engine setting", () => {
@@ -340,6 +357,28 @@ describe("AppSettingsOverlays", () => {
     fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
 
     expect(screen.getByRole("dialog", { name: "Export Presets" })).toBeTruthy();
+  });
+
+  // The picker used to close unconditionally once exportSelection resolved, so backing out of the
+  // native save dialog threw the selection away and the user had to check every row again.
+  it("keeps the export picker open when the save dialog is dismissed", async () => {
+    presetsStore.patch({
+      list: [{ id: "p1", name: "P1", loudnessProfileActive: "off" }],
+      activeId: null,
+      dirty: false,
+    });
+    mocks.isTauri.mockReturnValue(true);
+    mocks.savePackFile.mockResolvedValue(null);
+
+    renderOverlays();
+    fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "P1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+
+    await waitFor(() => expect(mocks.savePackFile).toHaveBeenCalled());
+    const dialog = screen.getByRole("dialog", { name: "Export Presets" });
+    // Still open, and still holding what the user had chosen.
+    expect(within(dialog).getByRole("checkbox", { name: "P1" }).checked).toBe(true);
   });
 
   it("surfaces the pack transfer status after an import attempt outside the desktop app", async () => {

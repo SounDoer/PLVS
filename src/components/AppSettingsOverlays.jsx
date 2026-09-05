@@ -146,8 +146,10 @@ export function AppSettingsOverlays({
           items={getAdapter(pickType).list()}
           dependencies={pickType === "presets" ? getAdapter("loudness").list() : []}
           onExport={async (ids) => {
-            await pack.exportSelection(pickType, ids);
-            setPickType(null);
+            // Stay open when the user backs out of the save dialog -- they are still choosing.
+            // A failure closes: its message lands on the status line behind this dialog.
+            const outcome = await pack.exportSelection(pickType, ids);
+            if (outcome !== "cancelled") setPickType(null);
           }}
           onClose={() => setPickType(null)}
         />

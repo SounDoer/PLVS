@@ -167,6 +167,53 @@ describe("usePackTransfer export", () => {
   });
 });
 
+// The caller decides whether to close its picker from this, so the three outcomes have to be
+// distinguishable -- a cancelled save dialog is not a finished export.
+describe("usePackTransfer export outcome", () => {
+  beforeEach(() => {
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: "off",
+        profiles: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      },
+    });
+  });
+
+  it("reports a written file", async () => {
+    savePackFile.mockResolvedValue("C:/out.plvsloudness");
+    const { result } = renderHook(() => usePackTransfer());
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.exportSelection("loudness", ["a"]);
+    });
+    expect(outcome).toBe("written");
+  });
+
+  it("reports a dismissed save dialog", async () => {
+    savePackFile.mockResolvedValue(null);
+    const { result } = renderHook(() => usePackTransfer());
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.exportSelection("loudness", ["a"]);
+    });
+    expect(outcome).toBe("cancelled");
+    expect(writeProfileFile).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("");
+  });
+
+  it("reports a failed write", async () => {
+    savePackFile.mockResolvedValue("C:/out.plvsloudness");
+    writeProfileFile.mockRejectedValue(new Error("disk full"));
+    const { result } = renderHook(() => usePackTransfer());
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.exportSelection("loudness", ["a"]);
+    });
+    expect(outcome).toBe("failed");
+    expect(result.current.status).toBe("Export failed");
+  });
+});
+
 describe("usePackTransfer import", () => {
   it("opens a review with the plan and writes nothing yet", async () => {
     readProfileFile.mockResolvedValue(

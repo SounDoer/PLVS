@@ -47,9 +47,14 @@ export function usePackTransfer() {
   // No `flushPersistence()` here: unlike `profile.js`'s `exportProfile()`, which round-trips
   // through a Rust command that reads the store file from disk, this hook's reads never leave
   // the in-memory JS store.
+  /**
+   * @returns {Promise<"written" | "cancelled" | "failed">} what happened, so the caller can decide
+   * whether to close its picker. Cancelling the save dialog must not discard the selection: the
+   * user was still choosing, and re-checking the same rows to try again is pure busywork.
+   */
   const exportSelection = useCallback(
     async (type, selectedIds) => {
-      if (busy) return;
+      if (busy) return "cancelled";
       setBusy(true);
       setStatus("");
       try {
@@ -73,14 +78,16 @@ export function usePackTransfer() {
         if (!isTauri()) {
           downloadInBrowser(fileName, contents);
           setStatus(`${descriptor.label} exported`);
-          return;
+          return "written";
         }
         const path = await savePackFile(descriptor, fileName);
-        if (!path) return;
+        if (!path) return "cancelled";
         await writeProfileFile(path, contents);
         setStatus(`${descriptor.label} exported`);
+        return "written";
       } catch (error) {
         setStatus(error instanceof PackValidationError ? error.message : "Export failed");
+        return "failed";
       } finally {
         setBusy(false);
       }
