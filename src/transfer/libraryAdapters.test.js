@@ -62,4 +62,17 @@ describe("themes adapter", () => {
     expect(Object.keys(raw.themes)).toEqual(["t1"]);
     expect(raw.order).toEqual(["t1"]);
   });
+
+  it("skips an item whose id already exists, leaving the existing entry untouched", () => {
+    getAdapter("themes").append([THEME]);
+    const collidingTheme = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "t1",
+      name: "Colliding",
+    };
+    getAdapter("themes").append([collidingTheme]);
+    const raw = themesStore.read();
+    expect(raw.themes.t1.name).toBe("T1");
+    expect(raw.order).toEqual(["t1"]);
+  });
 });

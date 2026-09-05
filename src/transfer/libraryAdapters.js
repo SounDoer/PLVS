@@ -3,12 +3,16 @@
 /// and `mergeIntoLibrary.js` deliberately never sees which is which.
 ///
 /// Import is append-only (see the spec), so two operations are enough. Nothing here removes or
-/// overwrites, and nothing here touches a selection: `active`, `activeId`, `dirty` and
-/// `settings.themeId` are all left exactly as they were.
+/// overwrites an existing entry, and nothing here touches a selection: `active`, `activeId`,
+/// `dirty` and `settings.themeId` are all left exactly as they were.
 
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
-import { listCustomThemesOrdered, upsertCustomTheme } from "../theme/customThemesRepo.js";
+import {
+  listCustomThemes,
+  listCustomThemesOrdered,
+  upsertCustomTheme,
+} from "../theme/customThemesRepo.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 
 const adapters = {
@@ -41,7 +45,16 @@ const adapters = {
       return listCustomThemesOrdered();
     },
     append(items) {
-      for (const theme of items) upsertCustomTheme(theme);
+      // `upsertCustomTheme` overwrites an existing id unconditionally -- correct for the theme
+      // editor, its other caller, but not for import. `planMerge` already mints a fresh id for
+      // any collision before `append` ever sees it, so this guard never fires today; it exists so
+      // this adapter enforces its own non-destructive contract instead of borrowing one from a
+      // caller that could change.
+      const existing = listCustomThemes();
+      for (const theme of items) {
+        if (theme && Object.hasOwn(existing, theme.id)) continue;
+        upsertCustomTheme(theme);
+      }
     },
   },
 };
