@@ -1,8 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CircleHelp, ExternalLink, RotateCcw, Terminal, X } from "lucide-react";
+import { CircleHelp, ExternalLink, RotateCcw, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -194,9 +193,9 @@ export function SettingsPanel({
   onResetConfiguration = () => {},
   configurationBusy = false,
   configurationStatus = "",
-  cliPathStatus = undefined,
-  cliPathBusy = false,
-  onSetCliPathEnabled = () => {},
+  agentControlStatus = undefined,
+  agentControlBusy = false,
+  onSetAgentControlEnabled = () => {},
   onOpenFeedback = () => {},
 }) {
   const reduceMotion = useReducedMotion();
@@ -213,12 +212,12 @@ export function SettingsPanel({
   } else if (updateStatus === "ok") {
     updateStatusText = hasUpdate && latestVersion ? `v${latestVersion} available` : "Up to date";
   }
-  const showCliPath = cliPathStatus !== undefined;
-  const cliPathSupported = !!cliPathStatus?.supported;
-  const cliPathInstalled = !!cliPathStatus?.installed;
-  const cliPathOnPath = !!cliPathStatus?.onPath;
-  const cliPathDisabled = cliPathBusy || !cliPathSupported || !cliPathInstalled;
-  const cliPathMessage = cliPathStatus?.message ?? "Checking command line tools...";
+  const showAgentControl = agentControlStatus !== undefined;
+  const agentControlSupported = !!agentControlStatus?.supported;
+  const agentControlInstalled = !!agentControlStatus?.cliInstalled;
+  const agentControlEnabled = !!agentControlStatus?.enabled;
+  const agentControlDisabled = agentControlBusy || !agentControlSupported || !agentControlInstalled;
+  const agentControlMessage = agentControlStatus?.message ?? "Checking Agent Control...";
   const selectedDialogueVadEngine =
     DIALOGUE_VAD_ENGINE_OPTIONS.find((option) => option.id === dialogueVadEngine) ??
     DIALOGUE_VAD_ENGINE_OPTIONS[0];
@@ -611,32 +610,23 @@ export function SettingsPanel({
                   ) : null}
                 </SettingsSection>
 
-                {showCliPath ? (
+                {showAgentControl ? (
                   <>
                     <SettingsDivider />
 
-                    {/* Command line */}
+                    {/* Agent control */}
                     <SettingsSection>
                       <SettingsRow
                         labelNode={
-                          <SettingsLabelWithTip label="Command Line" tip={cliPathMessage} />
+                          <SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />
                         }
-                        className="settings-row-stackable"
                       >
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={cliPathDisabled}
-                          aria-label={
-                            cliPathOnPath ? "Remove PLVS from user PATH" : "Add PLVS to user PATH"
-                          }
-                          onClick={() => onSetCliPathEnabled(!cliPathOnPath)}
-                          className="h-7 px-2 text-[length:var(--ui-fs-display)]"
-                        >
-                          <Terminal className="size-[1.15em]" />
-                          {cliPathOnPath ? "Remove PATH" : "Add PATH"}
-                        </Button>
+                        <SettingsSwitch
+                          aria-label="Agent Control"
+                          checked={agentControlEnabled}
+                          disabled={agentControlDisabled}
+                          onCheckedChange={(next) => onSetAgentControlEnabled(next)}
+                        />
                       </SettingsRow>
                     </SettingsSection>
                   </>

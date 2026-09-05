@@ -131,53 +131,54 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("Configuration exported")).toBeTruthy();
   });
 
-  it("renders command line PATH setup as an explicit action", () => {
-    const onSetCliPathEnabled = vi.fn();
+  it("renders Agent Control as a toggle with an honest tip", () => {
+    const onSetAgentControlEnabled = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        cliPathStatus={{
+        agentControlStatus={{
           supported: true,
-          installed: true,
+          enabled: false,
+          cliInstalled: true,
           onPath: false,
-          message: "Add PLVS to user PATH to call plvs-cli from new terminals.",
+          message: "Allows programs on this machine to control PLVS through plvs-cli.",
         }}
-        onSetCliPathEnabled={onSetCliPathEnabled}
+        onSetAgentControlEnabled={onSetAgentControlEnabled}
       />
     );
 
-    expect(screen.getByText("Command Line")).toBeTruthy();
-    const commandLineHelp = screen.getByRole("button", {
-      name: "Command Line help: Add PLVS to user PATH to call plvs-cli from new terminals.",
+    expect(screen.getByText("Agent Control")).toBeTruthy();
+    const help = screen.getByRole("button", {
+      name: "Agent Control help: Allows programs on this machine to control PLVS through plvs-cli.",
     });
+    fireEvent.mouseEnter(help);
     expect(
-      screen.queryByText("Add PLVS to user PATH to call plvs-cli from new terminals.")
-    ).toBeNull();
-    fireEvent.mouseEnter(commandLineHelp);
-    expect(
-      screen.getByText("Add PLVS to user PATH to call plvs-cli from new terminals.")
+      screen.getByText("Allows programs on this machine to control PLVS through plvs-cli.")
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Add PLVS to user PATH" }));
-    expect(onSetCliPathEnabled).toHaveBeenCalledWith(true);
+
+    const toggle = screen.getByRole("switch", { name: "Agent Control" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(toggle);
+    expect(onSetAgentControlEnabled).toHaveBeenCalledWith(true);
   });
 
-  it("renders command line PATH removal when already configured", () => {
-    const onSetCliPathEnabled = vi.fn();
+  it("disables Agent Control where the platform has no endpoint", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        cliPathStatus={{
-          supported: true,
-          installed: true,
-          onPath: true,
-          message: "Available in new terminals.",
+        agentControlStatus={{
+          supported: false,
+          enabled: false,
+          cliInstalled: false,
+          onPath: false,
+          message: "Agent Control is currently available on Windows only.",
         }}
-        onSetCliPathEnabled={onSetCliPathEnabled}
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove PLVS from user PATH" }));
-    expect(onSetCliPathEnabled).toHaveBeenCalledWith(false);
+    expect(screen.getByRole("switch", { name: "Agent Control" }).hasAttribute("disabled")).toBe(
+      true
+    );
   });
 
   it("confirms before resetting configuration", () => {
