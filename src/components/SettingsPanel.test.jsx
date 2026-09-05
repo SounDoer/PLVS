@@ -118,13 +118,11 @@ describe("SettingsPanel", () => {
       />
     );
 
-    expect(screen.getByText("Export")).toBeTruthy();
-    expect(screen.getByText("Import")).toBeTruthy();
-    expect(screen.getByText("Configuration").closest("[data-settings-row]").className).toContain(
+    expect(screen.getByText("Everything").closest("[data-settings-row]").className).toContain(
       "settings-row-stackable"
     );
-    fireEvent.click(screen.getByRole("button", { name: "Export configuration" }));
-    fireEvent.click(screen.getByRole("button", { name: "Import configuration" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export everything" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import everything" }));
 
     expect(onExportConfiguration).toHaveBeenCalledTimes(1);
     expect(onImportConfiguration).toHaveBeenCalledTimes(1);
@@ -181,15 +179,31 @@ describe("SettingsPanel", () => {
     );
   });
 
-  it("confirms before resetting configuration", () => {
+  it("confirms in a modal before resetting, and says what will be lost", () => {
     const onResetConfiguration = vi.fn();
     render(<SettingsPanel {...BASE_PROPS} onResetConfiguration={onResetConfiguration} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset configuration" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset PLVS to default" }));
     expect(onResetConfiguration).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm reset configuration" }));
+    // The two consequences a user would not otherwise expect.
+    const description = screen.getByText(/Every setting, preset, theme and loudness profile/);
+    expect(description.textContent).toContain("erased");
+    expect(description.textContent).toContain("restarts");
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset PLVS" }));
     expect(onResetConfiguration).toHaveBeenCalledTimes(1);
+  });
+
+  it("dismisses the reset modal without resetting", () => {
+    const onResetConfiguration = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} onResetConfiguration={onResetConfiguration} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset PLVS to default" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onResetConfiguration).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("shows theme actions inline with the theme select for custom themes", () => {
@@ -632,7 +646,7 @@ describe("SettingsPanel", () => {
     expect(onOpenFeedback).toHaveBeenCalledTimes(1);
   });
 
-  it("offers export and import for each library above the Configuration row", () => {
+  it("offers export and import for each library above the Everything row", () => {
     const onPackExport = vi.fn();
     render(<SettingsPanel {...BASE_PROPS} onPackExport={onPackExport} onPackImport={vi.fn()} />);
 
@@ -644,7 +658,8 @@ describe("SettingsPanel", () => {
     const rows = Array.from(document.querySelectorAll("[data-settings-row]"));
     const index = (label) => rows.findIndex((row) => row.textContent.startsWith(label));
     expect(index("Presets")).toBeGreaterThanOrEqual(0);
-    expect(index("Presets")).toBeLessThan(index("Configuration"));
+    expect(index("Everything")).toBeGreaterThanOrEqual(0);
+    expect(index("Presets")).toBeLessThan(index("Everything"));
 
     fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
     expect(onPackExport).toHaveBeenCalledWith("presets");

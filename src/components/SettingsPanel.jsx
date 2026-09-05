@@ -12,6 +12,7 @@ import {
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { HoverTip } from "@/components/HoverTip.jsx";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
 import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
@@ -213,6 +214,9 @@ export function SettingsPanel({
     typeof navigator !== "undefined" &&
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
+  // Reset wipes every library and relaunches, so it gets a modal that can say so. The lighter
+  // `InlineConfirm` still guards the two per-setting resets below, whose cost is one value.
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const closingIntentRef = useRef(false);
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
@@ -574,7 +578,7 @@ export function SettingsPanel({
 
                 <SettingsDivider />
 
-                {/* Configuration */}
+                {/* Import, export and reset */}
                 <SettingsSection>
                   {PACK_ROWS.map((row) => (
                     <SettingsRow
@@ -590,7 +594,7 @@ export function SettingsPanel({
                           aria-label={`Export ${row.aria}`}
                           className={CONFIG_TEXT_BTN_CLASS}
                         >
-                          Export…
+                          Export
                         </button>
                         <button
                           type="button"
@@ -599,7 +603,7 @@ export function SettingsPanel({
                           aria-label={`Import ${row.aria}`}
                           className={CONFIG_TEXT_BTN_CLASS}
                         >
-                          Import…
+                          Import
                         </button>
                       </div>
                     </SettingsRow>
@@ -609,13 +613,25 @@ export function SettingsPanel({
                       {packStatus}
                     </div>
                   ) : null}
-                  <SettingsRow label="Configuration" className="settings-row-stackable">
+                  {/* "Everything", not "Configuration": with three specific libraries listed above
+                      it, the old name read as a fourth sibling category rather than the whole of
+                      which those three are parts. The tip carries the other half of the
+                      distinction -- this file replaces a setup, the three above merge into one. */}
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="Everything"
+                        tip="One file holding every setting, preset, theme and profile. Importing it replaces your whole setup and restarts PLVS, rather than merging into what you have."
+                      />
+                    }
+                    className="settings-row-stackable"
+                  >
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
                         onClick={onExportConfiguration}
                         disabled={configurationBusy}
-                        aria-label="Export configuration"
+                        aria-label="Export everything"
                         className={CONFIG_TEXT_BTN_CLASS}
                       >
                         Export
@@ -624,27 +640,28 @@ export function SettingsPanel({
                         type="button"
                         onClick={onImportConfiguration}
                         disabled={configurationBusy}
-                        aria-label="Import configuration"
+                        aria-label="Import everything"
                         className={CONFIG_TEXT_BTN_CLASS}
                       >
                         Import
                       </button>
-                      <InlineConfirm
-                        onConfirm={onResetConfiguration}
-                        confirmLabel="Confirm reset configuration"
-                        cancelLabel="Cancel reset configuration"
-                        trigger={(arm) => (
-                          <IconButton
-                            onClick={arm}
-                            disabled={configurationBusy}
-                            aria-label="Reset configuration"
-                            className="hover:text-destructive focus-visible:text-destructive"
-                          >
-                            <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
-                          </IconButton>
-                        )}
-                      />
                     </div>
+                  </SettingsRow>
+                  {/* No label: the button says what it does, and leaving the label column empty
+                      keeps it on the same right-hand column as the Import buttons above. */}
+                  <SettingsRow label="" className="settings-row-stackable">
+                    <button
+                      type="button"
+                      onClick={() => setResetConfirmOpen(true)}
+                      disabled={configurationBusy}
+                      aria-label="Reset PLVS to default"
+                      className={cn(
+                        CONFIG_TEXT_BTN_CLASS,
+                        "hover:text-destructive focus-visible:text-destructive"
+                      )}
+                    >
+                      Reset PLVS to Default
+                    </button>
                   </SettingsRow>
                   {configurationStatus ? (
                     <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
@@ -753,6 +770,14 @@ export function SettingsPanel({
           ) : null}
         </AnimatePresence>
       </SheetContent>
+      <ConfirmDialog
+        open={resetConfirmOpen}
+        onOpenChange={setResetConfirmOpen}
+        title="Reset PLVS to Default?"
+        description="Every setting, preset, theme and loudness profile is erased and PLVS restarts. This cannot be undone."
+        confirmLabel="Reset PLVS"
+        onConfirm={onResetConfiguration}
+      />
     </Sheet>
   );
 }
