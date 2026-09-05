@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { agentControlStatusCommand, setAgentControlEnabledCommand } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+
+// Shape every answer the same way, so a caller can read `enabled` off whatever it gets back
+// without first checking which path produced it.
+const UNAVAILABLE = Object.freeze({
+  supported: false,
+  enabled: false,
+  cliInstalled: false,
+  onPath: false,
+  message: "Agent Control is unavailable.",
+});
 
 export function useAgentControlSettings({ settingsOpen }) {
   const [agentControlStatus, setAgentControlStatus] = useState(undefined);
   const [agentControlBusy, setAgentControlBusy] = useState(false);
-  // The setter has to return the status it settled on, and a functional state updater cannot
-  // supply it: called from an async catch block it runs after the call has already returned, so
-  // a value captured inside it is still undefined by then. The ref carries the same value
-  // synchronously.
-  const statusRef = useRef(undefined);
 
   const applyStatus = useCallback((next) => {
-    statusRef.current = next;
     setAgentControlStatus(next);
     return next;
   }, []);
@@ -28,15 +32,7 @@ export function useAgentControlSettings({ settingsOpen }) {
         if (!disposed) applyStatus(nextStatus);
       })
       .catch(() => {
-        if (!disposed) {
-          applyStatus({
-            supported: false,
-            enabled: false,
-            cliInstalled: false,
-            onPath: false,
-            message: "Agent Control is unavailable.",
-          });
-        }
+        if (!disposed) applyStatus({ ...UNAVAILABLE });
       });
     return () => {
       disposed = true;
@@ -45,27 +41,31 @@ export function useAgentControlSettings({ settingsOpen }) {
 
   const setAgentControlEnabled = useCallback(
     async (enabled) => {
-      if (!isTauri()) return undefined;
+      // Answer in the usual shape, but leave the status untouched: the panel shows this row only
+      // once the status is defined, and outside Tauri there is nothing to show.
+      if (!isTauri()) return { ...UNAVAILABLE };
       setAgentControlBusy(true);
       try {
         return applyStatus(await setAgentControlEnabledCommand(enabled));
       } catch (_) {
         // Leave `enabled` where it was: the endpoint did not move, and a switch that flips on a
-        // failed call tells the user they granted something they did not.
-        const current = statusRef.current;
+        // failed call tells the user they granted something they did not. `agentControlStatus` is
+        // read from this render's closure, which is the value the user was looking at when they
+        // clicked. It can also be undefined (never loaded) or null (still loading), so every
+        // field needs its own default, not just the spread.
         return applyStatus({
-          ...(current ?? {}),
-          supported: current?.supported ?? true,
-          enabled: current?.enabled ?? false,
-          cliInstalled: current?.cliInstalled ?? false,
-          onPath: current?.onPath ?? false,
+          ...(agentControlStatus ?? {}),
+          supported: agentControlStatus?.supported ?? true,
+          enabled: agentControlStatus?.enabled ?? false,
+          cliInstalled: agentControlStatus?.cliInstalled ?? false,
+          onPath: agentControlStatus?.onPath ?? false,
           message: "Agent Control could not be changed.",
         });
       } finally {
         setAgentControlBusy(false);
       }
     },
-    [applyStatus]
+    [agentControlStatus, applyStatus]
   );
 
   return { agentControlStatus, agentControlBusy, setAgentControlEnabled };
