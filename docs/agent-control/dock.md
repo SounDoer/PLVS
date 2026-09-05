@@ -11,16 +11,16 @@ capture lifecycle; those remain Transport Control responsibilities.
 ```powershell
 npm run desktop:control -- dock describe --json
 npm run desktop:control -- dock inspect --json
-npm run desktop:control -- dock enter --json
-npm run desktop:control -- dock enter --edge top --monitor <monitor-id> --height 72 --json
-npm run desktop:control -- dock exit --json
-npm run desktop:control -- dock layout apply <file|-> --json
+npm run desktop:control -- dock enter --expected-revision 12 --json
+npm run desktop:control -- dock enter --edge top --monitor <monitor-id> --height 72 --expected-revision 12 --json
+npm run desktop:control -- dock exit --expected-revision 12 --json
+npm run desktop:control -- dock layout apply <file|-> --expected-revision 12 --json
 npm run desktop:control -- dock panel describe <panel-id> --json
-npm run desktop:control -- dock panel update <panel-id> <file|-> --json
-npm run desktop:control -- dock panel reset <panel-id> --json
+npm run desktop:control -- dock panel update <panel-id> <file|-> --expected-revision 12 --json
+npm run desktop:control -- dock panel reset <panel-id> --expected-revision 12 --json
 ```
 
-Every mutation supports `--dry-run` and `--expected-workspace-revision`. Dock entry also accepts
+Every mutation supports `--dry-run` and requires `--expected-revision`. Dock entry also accepts
 `--reserve-space true|false`. App Control uses the normal Workspace and Dock persistence paths; it
 does not edit either store from Rust behind the running frontend.
 
@@ -36,7 +36,7 @@ schema for layout apply. It does not expose legacy persisted module IDs or React
 
 `dock.inspect` remains available even when Dock is unsupported and returns:
 
-- Workspace revision and compact active-Preset relationship;
+- top-level revision and compact active-Preset relationship;
 - `supported`, `enabled`, `edge`, resolved monitor, reserve-space setting, height, and read-only
   height mode (`compact`, `standard`, or `expanded`);
 - ordered Dock panels with ID, canonical module ID, resolved title, optional custom title, effective
@@ -156,30 +156,32 @@ or window form. Unknown or control-less targets use stable `dockPanelNotFound` o
 
 ## Revision, persistence, and Preset state
 
-Dock is part of the visible Workspace scene and therefore uses `revisions.workspace`, not a
-separate Dock revision. Effective form, layout, size, title, or control changes increment Workspace
-revision once per command. They also mark an active Preset dirty through the same GUI path; the
-result includes the resulting Preset relationship and current Presets revision where it changed.
+Dock is part of the visible Workspace scene but uses the same global revision as every other public
+control domain. Effective form, layout, size, title, or control changes increment it once per
+command. They also mark an active Preset dirty through the same GUI path; the result includes the
+resulting Preset relationship under `state.preset`.
 
-`--expected-workspace-revision` guards every mutation. A concurrent Preset Apply changes Workspace
-revision and is therefore caught; unrelated Preset collection edits do not prevent a Dock change.
-No-op, dry-run, validation failure, preview resizing, and internal suspend/resume do not increment
-revision or dirty the Preset.
+`--expected-revision` guards every mutation. Any concurrent observable state change, including a
+Preset Apply or Preset collection edit, is therefore caught. No-op, dry-run, validation failure,
+preview resizing, and internal suspend/resume do not increment revision or dirty the Preset.
 
 Normal success means React state, native Dock state where applicable, Workspace persistence, and
 Dock-form persistence have completed. There is no `persisted` boolean. If an unpredictable native
 or persistence failure occurs after a partial commit, the error reports `stage`, `partial`, changed
-paths, and current revisions; the caller inspects rather than blindly retrying.
+paths under `error.details.changed`, and the current revision; the caller inspects rather than
+blindly retrying.
 
 ## Results and dry-run
 
-Mutation results contain `dryRun`, current revisions, deterministic public `changed` paths,
-`warnings`, effects, the complete resulting Dock snapshot, and compact Preset relationship. A
-no-op has an empty changed list and performs no persistence or native call.
+Mutation results contain `dryRun`, boolean `changed`, top-level `revision`, `warnings`, effects,
+the complete resulting Dock snapshot under `state.dock`, and compact Preset relationship under
+`state.preset`. A no-op has `changed: false` and performs no persistence or native call.
+Successful `result.changed` is always boolean; the `error.details.changed` field used for a partial
+failure is an array of public path strings.
 
 Dry-run performs the same schema, dynamic option, editor, FILE-mode, revision, monitor, diff,
 warning, and analysis-request checks and returns the projected complete Dock snapshot. It does not
-change React/native state, allocate panel history, enter/exit Dock, increment revisions, dirty a
+change React/native state, allocate panel history, enter/exit Dock, increment revision, dirty a
 Preset, or persist. OS behavior that cannot be known until the native transition is attempted is
 not guaranteed by a successful dry-run.
 

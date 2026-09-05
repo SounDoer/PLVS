@@ -12,16 +12,16 @@ panel controls.
 ```powershell
 npm run desktop:control -- axis describe --json
 npm run desktop:control -- axis inspect --json
-npm run desktop:control -- axis shared update frequency <file|-> --json
-npm run desktop:control -- axis shared update time <file|-> --json
-npm run desktop:control -- axis shared reset frequency --json
-npm run desktop:control -- axis shared reset time --json
-npm run desktop:control -- axis panel update <panel-id> frequency <file|-> --json
-npm run desktop:control -- axis panel update <panel-id> time <file|-> --json
-npm run desktop:control -- axis panel reset <panel-id> <frequency|time> --json
+npm run desktop:control -- axis shared update frequency <file|-> --expected-revision 12 --json
+npm run desktop:control -- axis shared update time <file|-> --expected-revision 12 --json
+npm run desktop:control -- axis shared reset frequency --expected-revision 12 --json
+npm run desktop:control -- axis shared reset time --expected-revision 12 --json
+npm run desktop:control -- axis panel update <panel-id> frequency <file|-> --expected-revision 12 --json
+npm run desktop:control -- axis panel update <panel-id> time <file|-> --expected-revision 12 --json
+npm run desktop:control -- axis panel reset <panel-id> <frequency|time> --expected-revision 12 --json
 ```
 
-Every mutation supports `--dry-run` and `--expected-workspace-revision`. There is no generic screen
+Every mutation supports `--dry-run` and requires `--expected-revision`. There is no generic screen
 coordinate, wheel, drag, or zoom command; App Control expresses the final semantic viewport.
 
 ## Public model
@@ -78,7 +78,7 @@ panel. Joining still follows the group-seeding rule above. This is the axis port
 ## Description and inspection
 
 `axis.describe` returns the two axis schemas, defaults, dynamic time bounds, current source, and the
-canonical modules that may participate. `axis.inspect` returns Workspace revision, both stored
+canonical modules that may participate. `axis.inspect` returns top-level revision, both stored
 shared viewports, and for every participating panel: ID, module ID, linked state, effective source
 (`workspace` or `panel`), effective range, and dormant local range. It returns values rather than
 schema metadata.
@@ -93,14 +93,16 @@ Frequency and time viewport edits change display navigation only. They do not re
 reanalyze a FILE session, rebuild an analysis request, clear data, or allocate a history slab.
 Changing time range never changes Transport source or lifecycle.
 
-An effective shared/local range or membership change increments `revisions.workspace` once, marks
+An effective shared/local range or membership change increments the global revision once, marks
 an active Preset dirty, and persists through the normal Workspace path. The committed end of a GUI
 axis gesture follows the same rule; high-frequency pointer previews and the naturally moving LIVE
 edge do not increment revision. A no-op does none of these things.
 
-Results contain `dryRun`, Workspace revision, deterministic changed paths, warnings, the complete
-resulting axis snapshot, and compact Preset relationship. Normal success implies persistence; there
-is no `persisted` field.
+Results contain `dryRun`, boolean `changed`, top-level `revision`, warnings, the complete resulting
+axis snapshot under `state.axis`, and compact Preset relationship under `state.preset`. A no-op
+returns `changed: false`. Normal success implies persistence; there is no `persisted` field.
+Successful `result.changed` is a boolean; partial failures may instead use the unambiguous
+`error.details.changed` string array.
 
 Dry-run performs the same target, revision, membership, dynamic-bound, final-state, warning, and
 diff checks but does not change viewports, membership, revision, Preset state, or persistence.

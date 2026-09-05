@@ -63,11 +63,37 @@ describe("docs page content", () => {
     expect(html).toContain("isn't implemented yet");
   });
 
-  test("documents the installed CLI workflow", () => {
-    expect(html).toContain("plvs-cli doctor --json");
-    expect(html).toContain('plvs-cli analyze "C:\\path\\file.wav" --json');
-    expect(html).toContain("plvs-cli report analysis.json --format markdown");
-    expect(html).toContain("--out &lt;file&gt;");
+  test("documents only the v1 public CLI surface", () => {
+    const cliSection = html.match(
+      /<section class="docs-section" id="cli">[\s\S]*?<\/section>/
+    )?.[0];
+
+    expect(cliSection).toBeDefined();
+    expect(cliSection).toContain("plvs-cli doctor --json");
+    expect(cliSection).toContain("plvs-cli app capabilities --json");
+    expect(cliSection).toContain("plvs-cli app inspect --json");
+    expect(cliSection).toContain(
+      "plvs-cli app workspace apply layout.json --json --expected-revision 44"
+    );
+
+    for (const removedCommand of [
+      "probe",
+      "analyze",
+      "analyze-batch",
+      "capture",
+      "devices",
+      "profile",
+      "report",
+    ]) {
+      expect(cliSection).not.toContain(`plvs-cli ${removedCommand}`);
+      expect(html).not.toContain(`plvs-cli ${removedCommand}`);
+    }
+
+    expect(cliSection).not.toContain("analysis without opening the desktop UI");
+    expect(cliSection).not.toContain("<h3>File analysis</h3>");
+    expect(cliSection).not.toContain("<h3>Reports</h3>");
+    expect(cliSection).toContain("plvs-cli doctor --json --out &lt;file&gt;");
+    expect(cliSection?.match(/--out/g)).toHaveLength(1);
   });
 });
 

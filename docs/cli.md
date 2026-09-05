@@ -1,21 +1,26 @@
 # PLVS CLI
 
-PLVS ships an installed command-line companion named `plvs-cli`. It is meant for agents, support workflows, and terminal automation that need PLVS analysis without opening the desktop UI.
+PLVS installs `plvs-cli` for diagnosis and automation of the running desktop app. The public
+command tree has two roots:
 
-The audio-facing command surface does not route or modify audio. `profile import` can replace stored
-desktop configuration. The `app` family inspects and controls the live workspace of an
-already-running PLVS window; it requires Agent Control to be enabled in PLVS Settings, and is
-Windows-only for now. With Agent Control off, `app` commands fail with reason
-`agentControlDisabled` and exit with `Agent Control is disabled. Enable it in PLVS Settings.`
+```text
+plvs-cli doctor
+plvs-cli app ...
+```
+
+`doctor` works when PLVS is closed. Every `app` command controls or inspects the same state visible
+in an already-running PLVS window. It requires Agent Control to be enabled in Settings and is
+currently available only on Windows. The CLI never starts PLVS implicitly or edits its store behind
+the running app.
 
 ## Install Location
 
-Installed builds place the CLI next to the desktop app binary.
+Installed builds place the CLI next to the desktop binary.
 
 Windows:
 
 ```powershell
-$env:LOCALAPPDATA\PLVS\plvs-cli.exe
+& "$env:LOCALAPPDATA\PLVS\plvs-cli.exe" --help
 ```
 
 macOS:
@@ -25,17 +30,17 @@ macOS:
 ~/Applications/PLVS.app/Contents/MacOS/plvs-cli
 ```
 
-When PATH setup is enabled from Settings on Windows, a fresh terminal can also run:
+When PATH setup is enabled from Settings on Windows, a fresh terminal can run:
 
 ```powershell
 plvs-cli --help
 ```
 
-Portable builds may require calling the executable by its full path.
+Portable builds may require the executable's full path.
 
 ## Agent Discovery
 
-Agents should not assume `plvs-cli` is on `PATH`. Use this discovery order:
+Do not assume `plvs-cli` is on `PATH`. Use this order:
 
 1. Try `plvs-cli` from `PATH`.
 2. On Windows, read the installed CLI record:
@@ -45,191 +50,227 @@ $plvs = Get-ItemProperty HKCU:\Software\SounDoer\PLVS -ErrorAction SilentlyConti
 & $plvs.CliPath doctor --json
 ```
 
-3. On Windows, fall back to the default install path:
+3. On Windows, try the default install path:
 
 ```powershell
 & "$env:LOCALAPPDATA\PLVS\plvs-cli.exe" doctor --json
 ```
 
-4. On macOS, inspect the app bundle manifest:
+4. On macOS, inspect the app-bundle manifest and run its CLI:
 
 ```bash
 cat /Applications/PLVS.app/Contents/Resources/plvs-agent.json
 /Applications/PLVS.app/Contents/MacOS/plvs-cli doctor --json
 ```
 
-5. On macOS, fall back to the user Applications folder:
+5. On macOS, try the user Applications folder:
 
 ```bash
 ~/Applications/PLVS.app/Contents/MacOS/plvs-cli doctor --json
 ```
 
-Always run `doctor --json` first to verify that the installed runtime and sidecars are usable.
+Run `doctor --json` first to verify the installed runtime and bundled sidecars.
 
 ## Commands
 
 ```powershell
 plvs-cli doctor [--json] [--out <file>]
-plvs-cli probe <path> --json [--out <file>]
-plvs-cli analyze <path> [--json] [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]
-plvs-cli analyze-batch <paths...> --json [--concurrency <n>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [--track <index>] [QC options] [--out <file>]
-plvs-cli analyze-batch --manifest <file.json> --json [--concurrency <n>] [same options] [--out <file>]
-plvs-cli devices --json [--out <file>]
-plvs-cli profile validate <file> [--json] [--out <file>]
-plvs-cli profile export [--out <file>]
-plvs-cli profile import <file> [--include-window-bounds] [--include-capture-device] [--json] [--out <file>]
-plvs-cli report <analysis.json> --format markdown [--out <file>]
 plvs-cli app <command> [options]
-plvs-cli capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]
+plvs-cli --help
+plvs-cli --version
 ```
 
-Use `plvs-cli --help`, `plvs-cli help`, or `plvs-cli <command> --help` for the installed command reference.
+Use `plvs-cli app --help` for the complete live-control command list. The current families are:
 
-### probe
+- `inspect`, `capabilities`, and `wait`;
+- `workspace`, `panel`, and `axis`;
+- `preset` and `settings`;
+- `transport` and `dock`.
 
-`probe` reads media metadata without decoding the complete file. Its `source.audioTracks` array lists every audio track with its absolute ffprobe stream index, codec, sample rate, channel count, and language when available.
+Detailed payloads and behavior are documented in [Agent Control](agent-control/README.md).
 
-```powershell
-plvs-cli probe "C:\media\movie.mkv" --json
-plvs-cli analyze "C:\media\movie.mkv" --track 3 --json
-```
+## JSON Contract
 
-`analyze --track` accepts an index returned by `probe`. Without `--track`, analysis keeps the existing behavior and selects the first audio track.
+`doctor` defaults to concise human-readable output. Every `app` query, mutation, and action requires
+`--json`; help does not. In JSON mode, stdout contains exactly one UTF-8 JSON document followed by a
+newline, with no banners, progress text, or ANSI escapes.
 
-### analyze quality control
-
-Quality control is opt-in and entirely user-defined. PLVS does not write platform delivery targets into the measurement path.
-
-```powershell
-plvs-cli analyze mix.wav --target-lufs -14 --lufs-tolerance 1 --max-true-peak -1 --json
-```
-
-`--target-lufs` and `--lufs-tolerance` must be supplied together. They accept the measured Integrated LUFS value when it lies within `target ± tolerance`. `--max-true-peak` independently sets a dBTP ceiling.
-
-Without QC options, the report contains `qualityControl.status: "notEvaluated"` and the command does not make a pass/fail claim. With QC options, the status is `pass` or `fail`; a failed or unavailable requested metric returns exit code `1` while preserving the valid measurement report. The top-level analysis `status` remains `ok` because QC failure is not an analysis error.
-
-### analyze dialogue
-
-`--dialogue` enables dialogue-gated loudness using the same MeterPipeline / VAD path as the desktop file session. Without it, analysis stays on the lighter SummaryMeter path and dialogue fields remain `null`.
-
-```powershell
-plvs-cli analyze episode.wav --dialogue --json
-plvs-cli analyze episode.wav --dialogue --vad silero --reference-lufs -16 --json
-```
-
-`--vad` accepts `silero`, `firered`, or `ten` and requires `--dialogue`. Omitting `--vad` uses the same default as the desktop app (`firered`).
-
-`--reference-lufs` is a display reference only. When dialogue loudness is available, the report includes `summary.dialogueOffsetFromReferenceLu` (`dialogueIntegratedLufs - referenceLufs`). It does not judge pass/fail; use `--target-lufs` / `--lufs-tolerance` for QC gates.
-
-`analyze-batch` accepts the same dialogue, reference, track, and QC options and applies them to every file.
-
-### devices
-
-`devices --json` lists every capture row the CLI can open, with stable ids (`lb-*` / `cap-*`), labels, kind (`systemOutput` or `input`), default flag, sample rate, channel count, and backend. Use it when a script needs a stable selector instead of guessing a substring.
-
-```powershell
-plvs-cli devices --json
-plvs-cli capture --device "cap-…" --seconds 10 --json
-```
-
-Substring matching remains available for interactive use. Ambiguous substrings are still errors, and a failed substring match still prints the available device labels.
-
-### profile
-
-`profile` backs up and restores the installed desktop configuration store (`plvs-settings.json`) without opening the UI.
-
-```powershell
-plvs-cli profile export --out studio.plvsconfig.json
-plvs-cli profile validate studio.plvsconfig.json
-plvs-cli profile import studio.plvsconfig.json
-```
-
-`export` writes a `.plvsconfig`-compatible JSON document (same `app` / `kind` / `version` envelope as the Settings export).
-
-`import` updates settings, workspace, presets, themes, and clear-shortcut preferences. Window bounds and capture device id are **kept unchanged by default**, because they are machine-specific; pass `--include-window-bounds` and/or `--include-capture-device` to overwrite them. Restart the desktop app after import so it reloads the store.
-
-### capture
-
-`capture` measures **live audio from a device**, where `analyze` measures a file. It opens the real capture path the desktop app uses, without a window.
-
-It is unlike the other commands in two ways worth planning around:
-
-- **It blocks for `--seconds` of wall-clock time.** `capture --seconds 10` takes ten seconds. Every other command returns as fast as it can.
-- **It holds an audio device open** for that span. Still read-only — it never routes or modifies audio — but a device under exclusive-mode use by another application may refuse to open.
-
-`--device` accepts either a stable id from `devices --json` (`default`, `lb-*`, `cap-*`, or legacy `out:N` / `in:N`) or a case-insensitive substring of the device label that matches exactly one device; omit it for the system default. A substring that matches nothing prints the available devices. A substring matching several devices is an error rather than a guess — virtual cables commonly install as multiple rows (`CABLE Input`, `CABLE Output`, `CABLE In 16ch`), and picking the wrong one silently captures the wrong end of the loop.
-
-```powershell
-plvs-cli capture --seconds 10 --json                        # default device
-plvs-cli capture --device "CABLE Output" --seconds 10 --json
-```
-
-With `--every <n>`, output switches from a single report to **JSONL**: one line every `n` seconds, then the same final report as the non-streaming mode. Use it to see drift over a long run, which a single averaged number would hide.
-
-```powershell
-plvs-cli capture --device "CABLE Output" --seconds 14400 --every 10 --json --out soak.jsonl
-```
-
-Sample lines carry `t` (whole seconds elapsed), `integratedLufs`, and `droppedChunks`. A sample line is distinguishable from the final report by the presence of `t`. The final summary also includes LRA, Momentary Max, Short-term Max, True Peak Max, and combined/per-channel Sample Peak maxima. Process memory is deliberately absent — sample it externally against the PID if you need it.
-
-Silence reports `null` metrics, not `0`: an all-silent capture has no finite loudness, and non-finite values serialize to `null` as they do in `analyze`.
-
-## Agent Workflow
-
-- Use `doctor --json` first when you need to verify that the installed PLVS runtime and bundled sidecars are usable. Its checks include device enumeration (skipped on hosts with no sound card), bundled dialogue VAD engines, and the CLI capabilities summary for this build.
-- Use `probe <path> --json` when you need media metadata or an audio track index without running full analysis.
-- Use `devices --json` to discover stable capture ids before automating `capture`.
-- Use `profile export` / `profile import` to back up or deploy desktop configuration; keep window bounds and capture device excluded unless the target machine should inherit them.
-- Use `analyze <path> --json` for exactly one local media file.
-- Use `analyze-batch <paths...> --json` for two or more files.
-- Use `analyze-batch --manifest <file.json> --json` when paths are numerous, generated programmatically, or need reproducibility.
-- Use `report <analysis.json> --format markdown` when the user asks for a human-readable report, summary, table, or Markdown output.
-- Use `capture --seconds <n> --json` when the question is about **live audio on a device** rather than a file — "what level is coming in right now", or verifying that the capture path itself is healthy. Budget `<n>` seconds of wall clock for it.
-
-## JSON First, Markdown Second
-
-`doctor`, `analyze`, and `profile validate` / `profile import` default to concise human-readable text; add `--json` for their stable machine-readable reports. `profile export` always writes profile JSON. `probe`, `analyze-batch`, `devices`, and `capture` require `--json`. `report --format markdown` reads JSON produced by `analyze`, `analyze-batch`, or `capture` and renders a human-readable Markdown table.
-
-This split keeps the analysis commands stable for automation while still giving users readable output when needed.
-
-## Output Files
-
-`--out <file>` uses tee semantics: stdout stays intact, and the same JSON or Markdown payload is also written to disk.
-
-Examples:
-
-```powershell
-plvs-cli analyze "C:\media\mix.wav" --json --out analysis.json
-plvs-cli report analysis.json --format markdown --out report.md
-```
-
-For `capture`, the payload `--out` receives depends on the mode: the single report without `--every`, or the whole JSONL stream (samples plus the final report) with it. The file always mirrors what went to stdout.
-
-## Batch Manifests
-
-Manifest input is a JSON file with a `files` array:
+Every successful JSON response has:
 
 ```json
 {
-  "files": ["C:\\media\\a.wav", "C:\\media\\b.wav"]
+  "schemaVersion": 1,
+  "ok": true,
+  "result": {}
 }
 ```
 
-Do not mix positional paths with `--manifest`. Batch results preserve input order. `--concurrency` defaults to `2` and accepts values from `1` through `8`.
+Every failed JSON response has:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "error": {
+    "code": "agentControlDisabled",
+    "message": "Agent Control is disabled."
+  }
+}
+```
+
+Exactly one of `result` and `error` is present. `error.code` is stable machine-readable lower camel
+case; `error.message` is for people and must not be parsed. `error.details` may provide structured
+context. Consumers must ignore unknown fields. A conceptually present but unavailable value is
+`null`; an optional concept that does not apply is omitted. Timestamps are UTC RFC 3339 strings,
+and identifiers are opaque strings whose spelling carries no type or chronology.
+
+The canonical v1 examples live in
+[`shared/cli-v1-envelope-fixtures.json`](../shared/cli-v1-envelope-fixtures.json).
+
+### Doctor
+
+`doctor --json` returns its diagnostic report under `result.report`:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "result": {
+    "report": {
+      "status": "warning",
+      "summary": { "ok": 8, "warning": 1, "error": 0, "skipped": 0 },
+      "checks": []
+    }
+  }
+}
+```
+
+A completed report is a successful command even when it diagnoses an unhealthy installation. A
+report with a required check in `error` state therefore keeps `ok: true` and exits `1`. This is the
+only documented `ok: true` response with a nonzero exit code.
+
+### App queries and global revision
+
+Every `app` query returns one global `revision`:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "result": {
+    "revision": 44,
+    "workspace": {}
+  }
+}
+```
+
+The revision advances when observable Workspace, Preset, Settings, Transport, or Dock control state
+changes. It is an in-process concurrency token and resets when PLVS restarts. Meter frames and other
+continuously changing measurements do not advance it. Queries never accept
+`--expected-revision`.
+
+### State mutations
+
+Every state mutation requires `--expected-revision <n>` and supports `--dry-run`. A successful
+result includes:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "result": {
+    "dryRun": false,
+    "changed": true,
+    "revision": 45,
+    "warnings": [],
+    "state": {}
+  }
+}
+```
+
+`changed` is a boolean. A no-op returns `changed: false` without advancing revision. A dry-run
+performs validation and returns the predicted final `state`, but performs no native call,
+persistence, or revision increment.
+
+The CLI never retries a `revisionConflict`. Inspect again, reconcile the user's intervening change,
+and issue a new explicit mutation.
+
+### Actions
+
+Transport start/stop and file analyze/reanalyze/stop are actions rather than state mutations.
+Actions require `--expected-revision`, do not accept `--dry-run`, and return `action`, `status`, the
+latest revision, and final state:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "result": {
+    "action": "transport.live.start",
+    "status": "completed",
+    "revision": 45,
+    "state": { "transport": {} }
+  }
+}
+```
+
+Transport source live/file, live clear, and file select/remove/clear are state mutations. They
+require `--expected-revision` and support `--dry-run`.
+
+### Waiting for change
+
+Use the broad snapshot and global revision as a control loop:
+
+```powershell
+plvs-cli app inspect --json
+plvs-cli app wait --after-revision 44 --timeout-ms 30000 --json
+```
+
+`--after-revision` is required. `--timeout-ms` defaults to `30000` and accepts `100` through
+`300000`. Wait is a query: it accepts neither `--expected-revision` nor `--dry-run`.
+
+A change returns `outcome: "changed"`, `matchedImmediately`, and the latest `revision`. Timeout is
+an error with code `timeout` and exit `5`, not a successful unchanged result.
 
 ## Exit Codes
 
-| Code | Meaning                                                         |
-| ---- | --------------------------------------------------------------- |
-| `0`  | Success                                                         |
-| `1`  | Command produced an error result or a requested QC check failed |
-| `2`  | Invalid usage or CLI failure before a valid report              |
+| Code | Class | Examples |
+| ---: | --- | --- |
+| `0` | Success | Query or mutation completed; healthy or warning-only doctor report |
+| `1` | Runtime or system failure | Native operation failed; output write failed; doctor found a required error |
+| `2` | App unavailable for control | App not running; Agent Control disabled; frontend not ready |
+| `3` | Invalid command input | Unknown command; invalid argument; required revision omitted |
+| `4` | Current state refuses the operation | Revision conflict; blocking editor; wait limit reached |
+| `5` | Wait did not complete | Timeout or cancellation |
 
-For `doctor`, `ok` and `warning` reports exit `0`; an `error` report exits `1`.
+Under `--json`, every failure that reaches the CLI parser emits the error envelope as well as its
+nonzero process exit code. A thin-forwarder failure before the host starts can only report on
+stderr and exits `2`.
+
+## Output Files
+
+`doctor --out <file>` has tee semantics: stdout remains intact and the file receives the exact same
+bytes. `app` commands do not currently accept `--out`; capture their clean JSON stdout
+programmatically. In Windows PowerShell 5.1, use `cmd` for byte-preserving redirection because
+PowerShell's `>` transcodes native output to UTF-16LE:
+
+```powershell
+plvs-cli doctor --json --out doctor.json
+cmd /d /s /c "plvs-cli app inspect --json > inspect.json"
+```
+
+## Agent Workflow
+
+1. Discover the installed binary and run `doctor --json`.
+2. Ensure PLVS is running and Agent Control is enabled.
+3. Run `app capabilities --json` and use its stable `commands` and `features` fields.
+4. Run `app inspect --json` and retain its global revision.
+5. Dry-run a state mutation with that revision when a preview is useful.
+6. Apply the mutation with the same revision.
+7. On `revisionConflict`, inspect and reconcile; never retry blindly.
+8. Use `app wait` instead of polling when waiting for another visible state change.
 
 ## Development
-
-### Control the running development app
 
 Use two terminals:
 
@@ -243,61 +284,21 @@ npm run desktop:control -- capabilities --json
 npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
 ```
 
-`desktop:control` fixes both the `dev-identity` feature and the `plvs-cli app` prefix. The GUI must
-already be running. The command discovers the authenticated endpoint for
-`com.soundoer.plvs.dev`, so it neither reads nor controls an installed PLVS identity. Command Line
-Tools / PATH setup is unrelated to this repository command.
+`desktop:control` selects the development app identity and adds the `plvs-cli app` prefix. It
+controls only an already-running development app.
 
-The JSON report remains the authority for repository automation. The underlying development CLI
-uses exit codes `0`, `1`, and `2` as documented above; npm itself may normalize a nonzero lifecycle
-script result to `1`, so callers using `npm run desktop:control` should also inspect `status` and
-`error.reason`.
-
-npm also prints its own script banner on stdout, so redirecting or piping the report through
-`npm run` does not yield parseable JSON. Add `--silent`, or call the script directly:
+`npm run` prints its own banner, so use `--silent` or call the wrapper directly when stdout must be
+parseable JSON:
 
 ```powershell
-npm run --silent desktop:control -- inspect --json > inspect.json
-node scripts/run-desktop-control.mjs inspect --json > inspect.json
+cmd /d /s /c "npm run --silent desktop:control -- inspect --json > inspect.json"
+cmd /d /s /c "node scripts/run-desktop-control.mjs inspect --json > inspect.json"
 ```
 
-Workspace input is a complete declarative target layout. Use `inspect` to obtain the current public
-layout, keep a panel's `panelId` to preserve that instance, or declare a new panel with a temporary
-`key` and `moduleId`. Pass `-` instead of a filename to read one UTF-8 JSON document from stdin.
-`--dry-run` validates and reports planned panel IDs without changing the app. Supplying the latest
-`revision` through `--expected-revision` prevents overwriting a workspace that changed meanwhile.
+The repository's release smoke and soak checks use a feature-gated internal capture harness. That
+harness is not installed, advertised, or part of the public CLI.
 
-The existing standalone commands (`doctor`, `probe`, `analyze`, `capture`, `profile`, and others)
-keep their installed behavior. `plvs-cli --help` advertises `app` in every build; access is gated
-at runtime by the Agent Control setting, not by build type.
-
-### Run standalone commands from source
-
-Run the CLI from source with Cargo:
-
-```powershell
-cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- doctor --json
-cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- probe "C:\media\movie.mkv" --json
-cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- analyze "C:\media\mix.wav" --json
-cargo run --manifest-path src-tauri/Cargo.toml --bin plvs-cli -- capture --seconds 5 --json
-```
-
-Focused CLI tests:
-
-```powershell
-cargo test --manifest-path src-tauri/Cargo.toml --bin plvs-cli
-cargo test --manifest-path src-tauri/Cargo.toml cli_analyze
-cargo test --manifest-path src-tauri/Cargo.toml cli_probe
-cargo test --manifest-path src-tauri/Cargo.toml cli_devices
-cargo test --manifest-path src-tauri/Cargo.toml cli_profile
-cargo test --manifest-path src-tauri/Cargo.toml cli_analyze_batch
-cargo test --manifest-path src-tauri/Cargo.toml cli_report
-cargo test --manifest-path src-tauri/Cargo.toml cli_capture
-```
-
-`capture`'s device-touching code is not unit-tested and cannot be: CI runners have no sound card, so device enumeration returns an empty list and the code path is unreachable. Only the pure parts — substring matching, report shaping, argument parsing — carry tests. Verifying the rest needs real hardware.
-
-For installed Windows validation, build and verify the installer:
+For installed Windows validation:
 
 ```powershell
 npm run desktop:release-nsis

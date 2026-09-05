@@ -509,33 +509,38 @@
         <section class="docs-section" id="cli">
           <h2>CLI</h2>
           <p>
-            Installed builds include <code>plvs-cli</code> for agents, support workflows, and
-            terminal automation that need PLVS analysis without opening the desktop UI.
+            Installed Windows builds include <code>plvs-cli</code> for runtime diagnosis and
+            control of an already-running PLVS app. App control requires Agent Control to be
+            enabled in Settings and is not a headless replacement for the desktop app.
           </p>
           <div class="docs-item">
             <h3>Runtime check</h3>
             <p>
               Run <code>plvs-cli doctor --json</code> to verify the installed runtime and bundled
-              FFmpeg sidecars. Windows installer builds add <code>plvs-cli</code> to the current
-              user's PATH; portable builds may require the full executable path.
+              sidecars, even when PLVS is closed. Use
+              <code>plvs-cli doctor --json --out &lt;file&gt;</code> to write the same diagnostic
+              output to a file. Installer builds add <code>plvs-cli</code> to the current user's
+              PATH; portable builds may require the full executable path.
             </p>
           </div>
           <div class="docs-item">
-            <h3>File analysis</h3>
+            <h3>Running app control</h3>
             <p>
-              Use <code>plvs-cli analyze "C:\path\file.wav" --json</code> for one local media file,
-              or <code>plvs-cli analyze-batch "a.wav" "b.wav" --json</code> for multiple files.
-              Batch mode also supports a JSON manifest when paths are generated or need to be
-              reproducible.
+              Start PLVS, enable Agent Control in Settings, then discover the available surface
+              with <code>plvs-cli app capabilities --json</code>. Read the app's visible state with
+              <code>plvs-cli app inspect --json</code>. App control is currently available only on
+              Windows.
             </p>
           </div>
           <div class="docs-item">
-            <h3>Reports</h3>
+            <h3>Global revision workflow</h3>
             <p>
-              Analysis commands write machine-readable JSON. Use
-              <code>plvs-cli report analysis.json --format markdown</code> when you need a
-              human-readable Markdown table. With <code>--out &lt;file&gt;</code>, stdout stays
-              intact and the same output is also written to disk.
+              Queries return a global revision. Pass that value to every mutation, for example
+              <code>plvs-cli app workspace apply layout.json --json --expected-revision 44</code>.
+              If the revision conflicts, inspect again and reconcile the intervening change rather
+              than retrying blindly. See the
+              <a href="https://github.com/SounDoer/PLVS/blob/main/docs/cli.md">CLI reference</a> for
+              commands, JSON contracts, and exit codes.
             </p>
           </div>
         </section>
