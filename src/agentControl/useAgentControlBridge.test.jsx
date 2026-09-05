@@ -894,27 +894,33 @@ describe("useAgentControlBridge", () => {
 
     expect(renamed.result).toMatchObject({
       dryRun: false,
-      changed: ["presets.preset-1.name"],
-      preset: { id: "preset-1", name: "Final Mix" },
-      presetState: { activeId: "preset-1", dirty: true },
+      changed: true,
+      state: {
+        preset: { id: "preset-1", name: "Final Mix" },
+        presets: { activeId: "preset-1", dirty: true },
+      },
       revision: 1,
       warnings: [],
     });
-    expect(renamed.result).not.toHaveProperty("revisions");
+    expect(renamed.result).not.toHaveProperty("presetState");
     expect(reorderDryRun.result).toMatchObject({
       dryRun: true,
-      changed: ["presets.order"],
-      presetIds: ["preset-2", "preset-1"],
+      changed: true,
+      state: {
+        presets: {
+          activeId: "preset-1",
+          dirty: true,
+          presetIds: ["preset-2", "preset-1"],
+        },
+      },
       revision: 1,
     });
-    expect(reorderDryRun.result).not.toHaveProperty("revisions");
     expect(deleted.result).toMatchObject({
       deletedPreset: { id: "preset-1", name: "Final Mix" },
-      changed: ["presets.library", "presets.activeId", "presets.dirty"],
-      presetState: { activeId: null, dirty: false },
+      changed: true,
+      state: { presets: { activeId: null, dirty: false } },
       revision: 2,
     });
-    expect(deleted.result).not.toHaveProperty("revisions");
     expect(listed.result.presets).toEqual([{ id: "preset-2", name: "Mastering" }]);
     expect(flush).toHaveBeenCalledTimes(2);
   });
@@ -934,8 +940,14 @@ describe("useAgentControlBridge", () => {
       request("preset.reorder", { presetIds: ["missing"] }, "preset-reorder-invalid")
     );
 
-    expect(noOp.result).toMatchObject({ changed: [], revision: 0 });
-    expect(noOp.result).not.toHaveProperty("revisions");
+    expect(noOp.result).toMatchObject({
+      changed: false,
+      revision: 0,
+      state: {
+        preset: { id: "preset-1", name: "Mixing" },
+        presets: { activeId: null, dirty: false },
+      },
+    });
     expect(invalid.error).toMatchObject({
       code: -32602,
       data: {
@@ -962,7 +974,6 @@ describe("useAgentControlBridge", () => {
         {
           name: "  New Mix  ",
           expectedRevision: 0,
-          expectedRevision: 0,
         },
         "preset-save"
       )
@@ -972,7 +983,6 @@ describe("useAgentControlBridge", () => {
         "preset.update",
         {
           presetId: "preset-new",
-          expectedRevision: 0,
           expectedRevision: 1,
           dryRun: true,
         },
@@ -982,19 +992,22 @@ describe("useAgentControlBridge", () => {
 
     expect(saved.result).toMatchObject({
       dryRun: false,
-      changed: ["presets.library", "presets.activeId"],
-      preset: { id: "preset-new", name: "New Mix" },
-      presetState: { activeId: "preset-new", dirty: false },
+      changed: true,
+      state: {
+        preset: { id: "preset-new", name: "New Mix" },
+        presets: { activeId: "preset-new", dirty: false },
+      },
       revision: 1,
     });
-    expect(saved.result).not.toHaveProperty("revisions");
     expect(updateDryRun.result).toMatchObject({
       dryRun: true,
-      changed: [],
-      preset: { id: "preset-new", name: "New Mix" },
+      changed: false,
+      state: {
+        preset: { id: "preset-new", name: "New Mix" },
+        presets: { activeId: "preset-new", dirty: false },
+      },
       revision: 1,
     });
-    expect(updateDryRun.result).not.toHaveProperty("revisions");
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
@@ -1085,7 +1098,10 @@ describe("useAgentControlBridge", () => {
     const response = await send(request("preset.apply", { presetId: "preset-1" }, "preset-stale"));
 
     expect(response.error).toBeUndefined();
-    expect(response.result).toMatchObject({ dryRun: false, preset: { id: "preset-1" } });
+    expect(response.result).toMatchObject({
+      dryRun: false,
+      state: { preset: { id: "preset-1" } },
+    });
     expect(flush).toHaveBeenCalled();
 
     // The channel is still usable: a hung settlement used to block everything behind it.
@@ -1114,7 +1130,6 @@ describe("useAgentControlBridge", () => {
         {
           presetId: "preset-1",
           expectedRevision: 0,
-          expectedRevision: 0,
         },
         "preset-apply"
       )
@@ -1123,12 +1138,13 @@ describe("useAgentControlBridge", () => {
     expect(response.error).toBeUndefined();
     expect(response.result).toMatchObject({
       dryRun: false,
-      changed: ["presets.activeId"],
-      preset: { id: "preset-1", name: "Mix" },
-      presetState: { activeId: "preset-1", dirty: false },
+      changed: true,
+      state: {
+        preset: { id: "preset-1", name: "Mix" },
+        presets: { activeId: "preset-1", dirty: false },
+      },
       revision: 1,
     });
-    expect(response.result).not.toHaveProperty("revisions");
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
