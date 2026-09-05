@@ -11,6 +11,7 @@ use crate::agent_control::discovery::{
   DiscoveryErrorKind,
 };
 use crate::agent_control::protocol::JsonRpcRequest;
+use crate::cli_contract::CLI_SCHEMA_VERSION;
 
 const MAX_SAFE_REVISION: u64 = 9_007_199_254_740_991;
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
@@ -1559,7 +1560,7 @@ fn execute<R: Read>(
       if let Some(result) = call.response.get("result") {
         return (
           CliAppReport {
-            schema_version: 1,
+            schema_version: CLI_SCHEMA_VERSION,
             ok: true,
             result: Some(result.clone()),
             error: None,
@@ -1609,7 +1610,7 @@ fn execute<R: Read>(
 
 fn failure_report(failure: CliAppFailure) -> CliAppReport {
   CliAppReport {
-    schema_version: 1,
+    schema_version: CLI_SCHEMA_VERSION,
     ok: false,
     result: None,
     error: Some(*failure.error),

@@ -6,6 +6,8 @@
 use std::fs;
 use std::process::ExitCode;
 
+use serde::Serialize;
+
 use crate::audio::capture_summary::CaptureSample;
 use crate::cli_analyze::{
   run_analyze_with_options, CliAnalyzeOptions, CliAnalyzeStatus, CliDialogueOptions,
@@ -17,6 +19,7 @@ use crate::cli_analyze_batch::{
 };
 use crate::cli_app::{self, CliAppCommand};
 use crate::cli_capture::{run_capture, sample_line, CliCaptureStatus};
+use crate::cli_contract::CLI_SCHEMA_VERSION;
 use crate::cli_devices::{run_devices, CliDevicesStatus};
 use crate::cli_probe::{run_probe, CliProbeStatus};
 use crate::cli_profile::{
@@ -24,7 +27,7 @@ use crate::cli_profile::{
   run_profile_validate, CliProfileStatus,
 };
 use crate::cli_report::{render_analyze_text, render_doctor_text, render_markdown_report};
-use crate::doctor::{run_doctor, DoctorStatus};
+use crate::doctor::{run_doctor, DoctorReport, DoctorStatus};
 use crate::dsp::speech::VadEngineKind;
 use crate::profile::ProfileImportOptions;
 
@@ -720,6 +723,34 @@ fn emit_json(json: &str, out: Option<&str>, command: &str) -> Result<(), String>
   Ok(())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SuccessEnvelope<T> {
+  schema_version: u32,
+  ok: bool,
+  result: T,
+}
+
+#[derive(Serialize)]
+struct DoctorResult<'a> {
+  report: &'a DoctorReport,
+}
+
+fn serialize_doctor_json(report: &DoctorReport) -> Result<String, serde_json::Error> {
+  serde_json::to_string(&SuccessEnvelope {
+    schema_version: CLI_SCHEMA_VERSION,
+    ok: true,
+    result: DoctorResult { report },
+  })
+}
+
+fn doctor_exit_code(status: DoctorStatus) -> u8 {
+  match status {
+    DoctorStatus::Error => 1,
+    DoctorStatus::Ok | DoctorStatus::Warning | DoctorStatus::Skipped => 0,
+  }
+}
+
 fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String> {
   if let Some(path) = out {
     fs::write(path, text).map_err(|err| format!("Failed to write {command} output: {err}"))?;
@@ -783,7 +814,7 @@ pub fn run(args: &[String]) -> ExitCode {
     CliCommand::Doctor { json, out } => {
       let report = run_doctor();
       if json {
-        match serde_json::to_string(&report) {
+        match serialize_doctor_json(&report) {
           Ok(json) => {
             if let Err(err) = emit_json(&json, out.as_deref(), "doctor") {
               eprintln!("{err}");
@@ -803,10 +834,7 @@ pub fn run(args: &[String]) -> ExitCode {
         }
       }
 
-      match report.status {
-        DoctorStatus::Error => ExitCode::from(1),
-        DoctorStatus::Ok | DoctorStatus::Warning | DoctorStatus::Skipped => ExitCode::SUCCESS,
-      }
+      ExitCode::from(doctor_exit_code(report.status))
     }
     CliCommand::ProbeJson { path, out } => {
       let report = run_probe(&path);
@@ -1119,6 +1147,50 @@ mod tests {
         out: None,
       })
     );
+  }
+
+  fn doctor_report(status: DoctorStatus) -> crate::doctor::DoctorReport {
+    crate::doctor::DoctorReport {
+      status,
+      summary: crate::doctor::DoctorSummary {
+        ok: 1,
+        warning: 0,
+        error: 0,
+        skipped: 0,
+      },
+      app: crate::doctor::DoctorAppInfo {
+        name: "PLVS".to_string(),
+        version: "0.14.6".to_string(),
+        executable_path: None,
+      },
+      platform: crate::doctor::DoctorPlatformInfo {
+        os: "windows".to_string(),
+        arch: "x86_64".to_string(),
+      },
+      paths: crate::doctor::DoctorPaths {
+        config_dir: None,
+        data_dir: None,
+      },
+      checks: Vec::new(),
+    }
+  }
+
+  #[test]
+  fn wraps_doctor_json_in_the_v1_success_envelope() {
+    let encoded = serialize_doctor_json(&doctor_report(DoctorStatus::Warning)).unwrap();
+    let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+
+    assert_eq!(json["schemaVersion"], 1);
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["result"]["report"]["status"], "warning");
+    assert!(json["result"]["report"].get("schemaVersion").is_none());
+    assert!(json.get("error").is_none());
+  }
+
+  #[test]
+  fn doctor_errors_keep_a_success_envelope_but_exit_one() {
+    assert_eq!(doctor_exit_code(DoctorStatus::Error), 1);
+    assert_eq!(doctor_exit_code(DoctorStatus::Warning), 0);
   }
 
   #[test]
