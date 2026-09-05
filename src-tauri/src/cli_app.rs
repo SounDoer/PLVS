@@ -2767,7 +2767,8 @@ mod tests {
 
   #[test]
   fn capabilities_report_the_invoking_cli_version_independently_from_the_app() {
-    let golden = crate::cli_contract::golden_fixture("query.capabilities");
+    let mut golden = crate::cli_contract::golden_fixture("query.capabilities");
+    golden["envelope"]["result"]["cliVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
     let mut app_result = golden["envelope"]["result"].clone();
     app_result.as_object_mut().unwrap().remove("cliVersion");
     let client = FakeClient {
