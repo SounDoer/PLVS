@@ -200,11 +200,22 @@ export function harnessArgs(args) {
   return ["--harness", ...args];
 }
 
+export function verifyHarnessBuild(harness, run = runCli) {
+  const probe = run(harness, harnessArgs(["capture", "--help"]));
+  if (probe.status === 0) return;
+  const detail = probe.stderr.trim();
+  throw new RigError(
+    `The Release binary was not built with the capture harness.` +
+      `${detail ? `\nReported: ${detail}` : ""}\nRebuild first:\n  ${BUILD_HARNESS}`,
+  );
+}
+
 export function locateHarness() {
   const harness = join(ROOT, "src-tauri", "target", "release", "plvs.exe");
   if (!existsSync(harness)) {
     throw new RigError(`Capture harness not built. Run:\n  ${BUILD_HARNESS}`);
   }
+  verifyHarnessBuild(harness);
 
   // Nothing on the way here rebuilds it. `npm run check` builds the debug profile, and
   // CI runners have no sound card, so this rig is the capture layer's only real

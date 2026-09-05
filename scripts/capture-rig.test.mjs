@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFileSync, mkdirSync, writeFileSync, utimesSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
+import * as captureRig from "./capture-rig.mjs";
 import {
   synthesizeSignal,
   compareMetrics,
@@ -128,6 +129,27 @@ describe("compareMetrics", () => {
 describe("capture harness invocation", () => {
   it("routes internal commands through the feature-gated host entry", () => {
     expect(harnessArgs(["capture", "--json"])).toEqual(["--harness", "capture", "--json"]);
+  });
+
+  it("accepts a harness-enabled build", () => {
+    expect(captureRig.verifyHarnessBuild).toBeTypeOf("function");
+    const run = vi.fn(() => ({ status: 0, stdout: "help", stderr: "" }));
+
+    expect(() => captureRig.verifyHarnessBuild("plvs.exe", run)).not.toThrow();
+    expect(run).toHaveBeenCalledWith("plvs.exe", ["--harness", "capture", "--help"]);
+  });
+
+  it("rejects a production build without the harness feature", () => {
+    expect(captureRig.verifyHarnessBuild).toBeTypeOf("function");
+    const run = vi.fn(() => ({
+      status: 2,
+      stdout: "",
+      stderr: "The capture harness is not available in this build.",
+    }));
+
+    expect(() => captureRig.verifyHarnessBuild("plvs.exe", run)).toThrow(
+      /--features capture-harness/,
+    );
   });
 });
 
