@@ -7,12 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-09-06
+
+### Added
+
+- Agent Control can list, export, and import Presets, Themes, and Loudness Profiles through the CLI.
+
 ### Changed
 
 - Flattened Agent Control commands by removing the `app` command layer; for example,
   `plvs-cli app inspect` is now `plvs-cli inspect` with no legacy alias.
 - Agent Control capabilities now advertise wire operations through `methods` instead of the
   duplicate and misleading `commands` field.
+
+### Fixed
+
+- Large Agent Control responses no longer fail at named-pipe buffer boundaries.
+- Library imports wait for every affected store to settle and persist.
+- Persistence writes already in flight still finish after an Agent Control settlement timeout.
+- A failed `--out` library export keeps the pack recoverable from stdout.
+- Imported custom Themes appear immediately in the running app.
 
 ## [0.15.0] - 2026-09-06
 
