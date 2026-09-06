@@ -22,9 +22,21 @@ Read these before Task 1. Each cost a real commit to learn.
 
 3. **Never import `src/workspace/registry.jsx` from a logic module.** It evaluates all eight canvas panels and costs ~2s. `packShape.js` already imports `panelInstances.js` for exactly this reason. Import `workspace/moduleCatalog.js` if you need module ids.
 
-4. **`npm run check` is the merge gate** and it also runs Rust fmt/clippy/test. Some Vitest suites in `scripts/` read `src-tauri/tauri.conf.json`; you are not touching those, but if one goes red it is not an unrelated frontend failure.
+4. **A theme test fixture must be a real Theme V2 document.** `packShape.js`'s `normalizeThemeDocument` runs full Theme V2 validation, and a bare `{ id, name, tokens: {} }` fails it — silently. The normalizer returns `null`, `parsePack` and `buildPack` filter it out, and you get an empty `items` array with no error, so the assertion that fails is `changed: true` and it reads like a bug in the code under test. Build one the way `src/transfer/packShape.test.js` already does:
 
-5. **Do not edit `src/generated/` or `docs/agent-control/generated/` by hand.** This work adds no generated page (these commands have no field schema), so you should not need to run `npm run docs:agent-control` — but if `publicSurfaceDocs.test.js` goes red, that command is the fix, not an edit.
+```js
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+
+function makeTheme(id, name) {
+  return { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id, name };
+}
+```
+
+Every theme fixture in this plan's test code assumes `makeTheme` is defined in that file. Loudness profile and preset fixtures are not affected — their normalizers accept the plain shapes shown.
+
+5. **`npm run check` is the merge gate** and it also runs Rust fmt/clippy/test. Some Vitest suites in `scripts/` read `src-tauri/tauri.conf.json`; you are not touching those, but if one goes red it is not an unrelated frontend failure.
+
+6. **Do not edit `src/generated/` or `docs/agent-control/generated/` by hand.** This work adds no generated page (these commands have no field schema), so you should not need to run `npm run docs:agent-control` — but if `publicSurfaceDocs.test.js` goes red, that command is the fix, not an edit.
 
 ---
 
@@ -316,7 +328,7 @@ describe("planLibraryImport", () => {
   it("plans an addition without writing", () => {
     const planned = planLibraryImport(
       "theme",
-      themePack([{ id: "t-1", name: "Studio", tokens: {} }])
+      themePack([makeTheme("t-1", "Studio")])
     );
     expect(planned.changed).toBe(true);
     expect(planned.plan.items).toEqual([
@@ -332,7 +344,7 @@ describe("planLibraryImport", () => {
   });
 
   it("reports an identical entry as a no-op", () => {
-    const theme = { id: "t-1", name: "Studio", tokens: {} };
+    const theme = makeTheme("t-1", "Studio");
     planLibraryImport("theme", themePack([theme])).commit();
     const planned = planLibraryImport("theme", themePack([theme]));
     expect(planned.changed).toBe(false);
@@ -934,7 +946,7 @@ Append to `src/agentControl/useAgentControlBridge.test.jsx`, again adapting to t
   });
 
   it("exports the whole library", async () => {
-    seedThemeLibrary([{ id: "t-1", name: "Studio", tokens: {} }]);
+    seedThemeLibrary([makeTheme("t-1", "Studio")]);
     const harness = renderBridge({});
     const result = await harness.call("theme.export", { ids: null });
     expect(result.pack.kind).toBe("theme-pack");
@@ -942,7 +954,7 @@ Append to `src/agentControl/useAgentControlBridge.test.jsx`, again adapting to t
   });
 
   it("fails an export naming an id that is not in the library", async () => {
-    seedThemeLibrary([{ id: "t-1", name: "Studio", tokens: {} }]);
+    seedThemeLibrary([makeTheme("t-1", "Studio")]);
     const harness = renderBridge({});
     const failure = await harness.callExpectingError("theme.export", { ids: ["ghost", "gone"] });
     expect(failure.reason).toBe("themeNotFound");
@@ -958,7 +970,7 @@ Append to `src/agentControl/useAgentControlBridge.test.jsx`, again adapting to t
         kind: "theme-pack",
         version: 1,
         exportedAt: "",
-        items: [{ id: "t-1", name: "Studio", tokens: {} }],
+        items: [makeTheme("t-1", "Studio")],
       },
       expectedRevision: revision,
       dryRun: false,
@@ -977,7 +989,7 @@ Append to `src/agentControl/useAgentControlBridge.test.jsx`, again adapting to t
         kind: "theme-pack",
         version: 1,
         exportedAt: "",
-        items: [{ id: "t-1", name: "Studio", tokens: {} }],
+        items: [makeTheme("t-1", "Studio")],
       },
       expectedRevision: revision,
       dryRun: true,
@@ -989,7 +1001,7 @@ Append to `src/agentControl/useAgentControlBridge.test.jsx`, again adapting to t
   });
 
   it("treats an import of what is already there as a no-op", async () => {
-    const theme = { id: "t-1", name: "Studio", tokens: {} };
+    const theme = makeTheme("t-1", "Studio");
     seedThemeLibrary([theme]);
     const harness = renderBridge({});
     const revision = (await harness.call("app.capabilities")).revision;
@@ -1011,7 +1023,7 @@ Append to `src/agentControl/useAgentControlBridge.test.jsx`, again adapting to t
         kind: "theme-pack",
         version: 1,
         exportedAt: "",
-        items: [{ id: "t-1", name: "Studio", tokens: {} }],
+        items: [makeTheme("t-1", "Studio")],
       },
       expectedRevision: revision,
       dryRun: false,
@@ -1031,7 +1043,7 @@ Append to `src/agentControl/useAgentControlBridge.test.jsx`, again adapting to t
         kind: "theme-pack",
         version: 1,
         exportedAt: "",
-        items: [{ id: "t-1", name: "Studio", tokens: {} }],
+        items: [makeTheme("t-1", "Studio")],
       },
       expectedRevision: revision,
       dryRun: false,
@@ -1213,7 +1225,7 @@ The stale-list hazard is already closed by `notifyLocal` and covered at the adap
         kind: "theme-pack",
         version: 1,
         exportedAt: "",
-        items: [{ id: "t-1", name: "Studio", tokens: {} }],
+        items: [makeTheme("t-1", "Studio")],
       },
       expectedRevision: revision,
       dryRun: false,
