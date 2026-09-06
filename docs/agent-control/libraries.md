@@ -5,8 +5,9 @@ Status: Approved design contract
 Library Transfer shares the three libraries a PLVS installation accumulates — Presets, Themes, and
 Loudness Profiles — as pack files, using the same pack format, merge rules, and persistence paths as
 the GUI's per-library Export and Import rows. It owns sharing only. Creating, editing, renaming, and
-deleting entries belong to their own command families; Profile authoring and selection are defined
-by [Loudness Profile Control](loudness-profiles.md), while Theme Control remains separate.
+deleting entries belong to their own command families. Profile authoring and selection are defined
+by [Loudness Profile Control](loudness-profiles.md); Appearance, Theme discovery, and Theme
+authoring are defined by [Theme Control](themes.md).
 
 ## Commands
 
@@ -22,14 +23,14 @@ npm run desktop:control -- loudness-profile export --all --json
 npm run desktop:control -- loudness-profile import <file|-> --expected-revision 12 --json
 ```
 
-- `list` returns `{ id, name }` summaries of the library.
+- `list` returns compact discovery summaries. The richer `theme list` belongs to Theme Control and
+  includes built-ins plus Appearance; transfer export remains custom-only.
 - `export` produces a pack document for the whole library or a chosen subset.
 - `import` merges a pack document into the library.
 
-`preset list` is Preset Control's, not this family's: it returns the same summaries plus `activeId`
-and `dirty`, and is documented in [`presets.md`](presets.md). There is no `preset list` here, and no
-`theme describe` in the transfer contract. `loudness-profile describe` belongs to Loudness Profile
-Control rather than transfer.
+`preset list` is Preset Control's, not this family's: it returns summaries plus `activeId` and
+`dirty`, and is documented in [`presets.md`](presets.md). `theme list` and `theme describe` belong to
+Theme Control. `loudness-profile describe` belongs to Loudness Profile Control rather than transfer.
 
 ## Vocabulary
 
@@ -49,9 +50,10 @@ whose name suggests otherwise is the one that will be read wrongly.
 
 ## Listing
 
-`theme.list` reports the custom Theme library only. Built-in themes are not library entries, cannot
-be exported, and are already enumerated as Appearance choices by `settings describe`; this family
-does not restate them.
+`theme.list` is Theme Control's compact discovery query. It reports Appearance and lists built-ins
+first, followed by custom Themes in persisted order. Built-ins are not transferable library entries:
+`theme export --ids` rejects them with `themeNotExportable`, and `--all` exports custom Themes only.
+See [Theme Control](themes.md#inspection-and-discovery) for the result shape.
 
 `loudnessProfile.list` additionally reports `activeId`, the current selection. It is null for Off
 and also null when the selection points at a profile the library no longer holds. This family
@@ -95,9 +97,10 @@ empty segments are dropped, and a duplicated id exports one copy. A value that t
 all is an error. An id containing a comma cannot be expressed by this flag.
 
 An id in `--ids` that is not in the library fails with `presetNotFound`, `themeNotFound`, or
-`loudnessProfileNotFound`, whose details list every missing id at once. It does not export the
-subset that matched. The GUI cannot produce an unknown id because it exports from checkboxes, so
-this is a CLI-only failure mode and is explicit rather than repaired.
+`loudnessProfileNotFound`, whose details list every missing id at once. A built-in Theme instead
+fails with `themeNotExportable`. Neither case exports the subset that matched. The GUI cannot
+produce these targets because it exports from custom-entry checkboxes, so the CLI makes them
+explicit rather than repairing the request.
 
 A preset pack additionally bundles the Loudness Profiles its exported Presets refer to, exactly as
 the GUI does; the rule lives in `src/transfer/collectPackItems.js` and is shared by both callers.
@@ -218,6 +221,7 @@ This family reuses the existing envelope and codes and adds two:
 
 - `presetNotFound`, `themeNotFound`, `loudnessProfileNotFound` — an id in `--ids` is not in that
   library. `details.missingIds` lists all of them. Exit code 3.
+- `themeNotExportable` — a Theme export explicitly named a built-in Theme. Exit code 3.
 - `invalidPack` — the document is not a valid pack for this family. The message is the one written
   for a person who received a shared file, and distinguishes "not a PLVS file", a whole
   configuration file, another library's file, a missing version, and a file made by a newer version

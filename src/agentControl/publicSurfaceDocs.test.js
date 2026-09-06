@@ -144,7 +144,10 @@ function axesPage() {
   ].join("\n");
 }
 
-/** Public settings at their documented defaults; only the state-free half of the schema is shown. */
+/**
+ * Public Settings at their documented defaults; only the state-free half of the schema is shown.
+ * Appearance is intentionally absent because Theme Control owns that public CLI boundary.
+ */
 const SETTINGS_AT_DEFAULTS = {
   openAtLogin: false,
   closeBehavior: "ask",

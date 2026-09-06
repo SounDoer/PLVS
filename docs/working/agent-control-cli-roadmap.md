@@ -34,7 +34,9 @@ The running-app surface now covers:
 - global preferences: Settings Control;
 - source lifecycle: live and file Transport Control;
 - portable libraries: Preset, Theme, and Loudness Profile list/export/import;
-- Loudness Profile inspection, authoring, selection, deletion, and ordering.
+- Loudness Profile inspection, authoring, selection, deletion, and ordering;
+- Appearance inspection/selection and Theme inspection, authoring, duplication, deletion, and
+  ordering.
 
 The post-v0.15.0 work added Library Transfer end to end, including strict request validation,
 revision tracking for Theme and Loudness Profile libraries, large named-pipe frame delivery,
@@ -46,8 +48,8 @@ Important constraints of the current baseline:
 - Running-app commands are machine-first and require `--json`.
 - CLI `inspect` (wire method `app.inspect`) intentionally contains semantic state, not measurement
   frames or history.
-- configuration import/reset, device selection, library editing, and runtime measurement queries are
-  intentionally outside the existing contract.
+- configuration reset, device selection, Preset editing beyond its existing commands, and runtime
+  measurement queries are intentionally outside the existing contract.
 - the internal `analyze` and `capture` harness commands are release-verification tools, not public
   CLI promises.
 
@@ -92,8 +94,8 @@ the underlying data is reachable.
 The current working priority is deliberately narrower than the candidate backlog below:
 
 1. complete the fourth Settings transfer row with Configuration Transfer (done);
-2. add Loudness Profile inspection and editing commands (next);
-3. add custom Theme inspection and editing commands.
+2. add Loudness Profile inspection and editing commands (done);
+3. add Appearance and Theme inspection and editing commands (done).
 
 Preset editing is not part of this new work: Preset Control already supports describe, save,
 update, apply, rename, delete, and reorder. Its transfer commands are also complete.
@@ -165,17 +167,20 @@ Implemented GUI-matching semantics:
 `describe` and mutation validation must use the same normalized rule-document model that powers the
 editor preview and save path. Do not create an Agent-Control-only definition of a valid Profile.
 
-### Stage 3: Theme editing
+### Stage 3: Theme editing — complete
 
 Approved design and implementation plan:
 
 - [`superpowers/specs/2026-09-06-agent-control-theme-control-design.md`](superpowers/specs/2026-09-06-agent-control-theme-control-design.md)
 - [`superpowers/plans/2026-09-06-agent-control-theme-control-implementation.md`](superpowers/plans/2026-09-06-agent-control-theme-control-implementation.md)
 
-Proposed public shape:
+Implemented public shape:
 
 ```text
+plvs-cli theme inspect --json
 plvs-cli theme describe <id> --json
+plvs-cli theme select <id> --expected-revision <n> --json [--dry-run]
+plvs-cli theme follow-system --expected-revision <n> --json [--dry-run]
 plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]
 plvs-cli theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
 plvs-cli theme rename <id> <name> --expected-revision <n> --json [--dry-run]
@@ -184,20 +189,23 @@ plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
 plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
-Match the existing GUI semantics and ownership:
+Implemented GUI-matching semantics and ownership:
 
 - built-in Themes are describable and duplicable/customizable, but not updateable or deletable;
 - create and duplicate generate a new custom ID and select the new Theme, matching editor creation;
 - update and rename preserve library position and current Appearance selection;
 - deleting the active custom Theme must use the same fallback and persistence behavior as the GUI;
-- active Theme selection remains owned by `settings update appearance`, not a second `theme select`;
-- all library mutations are refused while the Theme editor is open;
+- Appearance belongs only to Theme Control: `select` chooses a fixed Theme and `follow-system`
+  restores System mode; Settings describe/inspect/update expose no Appearance field or alias;
+- select, follow-system, create, update, rename, duplicate, and delete are refused while the Theme
+  editor is open; reorder and append-only import remain allowed;
 - documents use the public Theme V2 authoring model, never compiled tokens, generated CSS, or editor
-  widget state.
+  widget state;
+- commands touching both Settings and Themes settle once, increment the global revision once, and
+  flush persistence once.
 
-Before implementation, extract or identify pure planners shared by the Theme picker/editor and
-Agent Control. The current repository helpers normalize repository writes, but full create/delete
-selection behavior is still composed above that layer.
+Theme picker/editor and Agent Control share the same pure planners and React-owned controller for
+selection, save, duplication, deletion fallback, and repository ordering.
 
 ## Broader candidate backlog
 
@@ -424,10 +432,10 @@ The following remain internal even if they are convenient during implementation:
 
 The smallest useful sequence is:
 
-1. **Loudness Profile editing:** describe/select/create/update/rename/delete/reorder, including
-   Preset-reference cleanup and multi-store settlement.
-2. **Theme editing:** describe/create/update/rename/duplicate/delete/reorder, reusing Theme V2
-   normalization and the GUI's selection/fallback behavior.
+1. **Loudness Profile editing — complete:** describe/select/create/update/rename/delete/reorder,
+   including Preset-reference cleanup and multi-store settlement.
+2. **Theme editing — complete:** Appearance plus describe/create/update/rename/duplicate/delete/
+   reorder, reusing Theme V2 normalization and the GUI's selection/fallback behavior.
 3. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
    queries, and generated completions.
 4. **File report and Device Control** as the next already-visible GUI workflows.
@@ -460,6 +468,6 @@ Every approved command family should include:
 
 ## Immediate design recommendation
 
-The next implementation stage is **Theme editing**. Configuration Transfer and Loudness Profile
-Control are complete; the approved Theme design extracts the remaining repository mutation,
-Appearance selection, runtime preview, and deletion fallback behavior into a shared semantic owner.
+The next implementation stage is **cross-platform and human-use foundation**. Configuration
+Transfer, Loudness Profile Control, and Theme Control are complete; macOS transport, explicit text
+rendering for queries, and generated completions are the next portability and usability gap.

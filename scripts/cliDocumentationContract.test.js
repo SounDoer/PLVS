@@ -75,6 +75,46 @@ describe("current CLI documentation", () => {
     expect(agentControl).toContain("loudnessProfile.describe / loudnessProfile.select");
     expect(libraries).toContain("[Loudness Profile Control](loudness-profiles.md)");
     expect(roadmap).toContain("### Stage 2: Loudness Profile editing — complete");
-    expect(roadmap).toContain("The next implementation stage is **Theme editing**");
+  });
+
+  it("publishes Theme Control as the only Agent Control owner of Appearance", () => {
+    const cli = read("docs", "cli.md");
+    const agentControl = read("docs", "agent-control", "README.md");
+    const themes = read("docs", "agent-control", "themes.md");
+    const settings = read("docs", "agent-control", "settings.md");
+    const generatedSettings = read("docs", "agent-control", "generated", "settings.md");
+    const libraries = read("docs", "agent-control", "libraries.md");
+    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
+
+    for (const command of [
+      "inspect",
+      "describe",
+      "select",
+      "follow-system",
+      "create",
+      "update",
+      "rename",
+      "duplicate",
+      "delete",
+      "reorder",
+    ]) {
+      expect(themes).toContain(`theme ${command}`);
+    }
+    expect(themes).toContain('"version": 2');
+    expect(themes).toContain('"colorScheme"');
+    expect(themes).toContain("themeNotMutable");
+    expect(themes).toContain("themeNotExportable");
+    expect(themes).toContain("invalidTheme");
+    expect(themes).toContain("invalidPermutation");
+    expect(themes).toContain("editorActive");
+    expect(cli).toContain("theme follow-system --expected-revision <n> --json");
+    expect(agentControl).toContain("theme.list / theme.inspect / theme.describe / theme.select");
+    expect(libraries).toContain("[Theme Control](themes.md)");
+    expect(settings).toContain("`appearance` is an unknown control");
+    expect(generatedSettings).not.toContain("appearance");
+    expect(roadmap).toContain("### Stage 3: Theme editing — complete");
+    expect(roadmap).toContain(
+      "The next implementation stage is **cross-platform and human-use foundation**"
+    );
   });
 });

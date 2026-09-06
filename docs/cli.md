@@ -113,7 +113,23 @@ plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry
 ```
 
 See [Loudness Profile Control](agent-control/loudness-profiles.md) for its document schema, mutation
-semantics, and errors. Theme has no authoring subcommands yet.
+semantics, and errors. Theme Control provides Appearance and authoring commands:
+
+```powershell
+plvs-cli theme inspect --json
+plvs-cli theme describe <id> --json
+plvs-cli theme select <id> --expected-revision <n> --json [--dry-run]
+plvs-cli theme follow-system --expected-revision <n> --json [--dry-run]
+plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli theme rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli theme duplicate <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+See [Theme Control](agent-control/themes.md) for Theme V2 authoring, built-in permissions, selection
+and fallback semantics, revision behavior, and editor blocking.
 
 Everything configuration export uses the same `.plvsconfig` document as Settings:
 

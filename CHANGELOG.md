@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   relaunching PLVS.
 - Agent Control can describe, select, create, update, rename, delete, and reorder Loudness Profiles
   through `plvs-cli loudness-profile`, with strict documents, dry-run plans, and revision guards.
+- Agent Control can inspect and select Appearance and describe, create, update, rename, duplicate,
+  delete, and reorder Themes through `plvs-cli theme`, using strict Theme V2 documents.
+
+### Changed
+
+- Appearance moved from Settings Control to Theme Control. `settings describe`, `settings inspect`,
+  and `settings update` no longer expose it, and no compatibility alias is retained.
 
 ### Fixed
 

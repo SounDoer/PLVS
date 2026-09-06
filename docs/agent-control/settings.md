@@ -31,23 +31,24 @@ Fields, types, defaults and options are generated from the schema:
 runtime state, reported by `settings inspect` rather than documented here.
 
 The public fields correspond to Open at Login, Close Behavior, the configurable Clear shortcut,
-Interface Size, Appearance and active Theme selection, History Length, Dialogue Detection, and
-channel-role labels.
+Interface Size, History Length, Dialogue Detection, and channel-role labels.
 
 The following are intentionally outside Settings Control:
 
-- Theme library creation, editing, duplication, and deletion; these belong to future Theme Control.
-  Sharing a Theme between machines is Library Transfer's ([`libraries.md`](libraries.md)).
-- Loudness Profile library editing and selection; these belong to future Loudness Profile Control.
-  Sharing a Loudness Profile is Library Transfer's ([`libraries.md`](libraries.md)).
+- Appearance selection and Theme library authoring; these belong exclusively to
+  [Theme Control](themes.md). Sharing a Theme between machines is Library Transfer's
+  ([`libraries.md`](libraries.md)).
+- Loudness Profile library editing and selection; these belong to
+  [Loudness Profile Control](loudness-profiles.md). Sharing a Loudness Profile is Library
+  Transfer's ([`libraries.md`](libraries.md)).
 - Workspace, panels, and axes.
 - Focus View, panel opacity, glass, window geometry, and Dock; these are working-scene state captured
   by Presets rather than ordinary global Settings.
 - Configuration export, import, and whole-configuration reset.
 - Fixed, non-configurable keyboard shortcuts.
 
-`settings update` is atomic. If any included field is invalid or unavailable, including an
-Appearance change blocked by an active Theme Editor, no other field in the patch may change.
+`settings update` is atomic. If any included field is invalid or unavailable, no other field in the
+patch may change. `appearance` is an unknown control rather than a compatibility alias.
 
 ## Behavior
 
@@ -61,8 +62,7 @@ swallowed by the GUI-oriented hook.
 
 `closeBehavior` accepts exactly `ask`, `tray`, or `quit`, with `ask` as the default. It changes only
 what a future close request does and never immediately hides or quits the app. Both fields remain
-available while a draft editor is open. If a larger atomic patch also contains a blocked Appearance
-change, the whole patch is refused before either Behavior field changes.
+available while a draft editor is open.
 
 ## Clear shortcut
 
@@ -91,21 +91,6 @@ default. It immediately changes text and related icon sizing in the normal UI bu
 Dock. It is global Settings state, is not captured by Presets, does not dirty a Preset, has no dynamic
 availability, and remains writable while either current draft editor is open. A no-op does not
 reapply document sizing, and successful mutation waits for persistence.
-
-## Appearance
-
-Appearance has writable `mode` and `themeId` fields plus read-only `resolvedThemeId`. `mode` accepts
-exactly `system` or `fixed`. In System mode, `themeId` must be omitted or null. Switching to Fixed
-mode requires an explicit currently available Theme ID; Agent Control does not copy the GUI's implicit
-choice of whichever Theme happens to be resolved at that instant. Supplying `themeId` alone does not
-implicitly change the mode, and writing `resolvedThemeId` fails with `readOnlyControl`.
-
-`settings describe` dynamically lists built-in and custom Theme IDs with their display names and
-kind. A missing ID fails rather than silently selecting another Theme. Theme library mutations are
-not part of Settings Control. While Theme Editor is open, every patch containing `appearance` is
-refused with `editorActive` before no-op detection or any other field mutation; Loudness Profile
-Editor does not block Appearance. An operating-system light/dark change in System mode changes only
-the read-only effective `resolvedThemeId`, not the global revision or Preset dirty state.
 
 ## History length
 
@@ -158,9 +143,8 @@ mutation waits for backend weight synchronization and Settings persistence.
 
 Settings uses the application's single process-local revision. GUI and Agent Control changes to
 public Settings increment it once per command, regardless of how many fields change.
-No-op, dry-run, validation/refusal failure, operating-system appearance resolution, channel-count
-changes, and analysis-runtime demand changes do not increment it. These Settings do not increment
-a second counter.
+No-op, dry-run, validation/refusal failure, channel-count changes, and analysis-runtime demand
+changes do not increment it. These Settings do not increment a second counter.
 
 Mutation requires `--expected-revision`. Success and dry-run return boolean `changed`, top-level
 `revision`, `effects`, `warnings`, and the complete effective or predicted public Settings snapshot
@@ -214,9 +198,9 @@ Every partial outcome requires a fresh Settings inspection before another mutati
 
 `settings.describe` returns the top-level revision and the compact PLVS schema used by Panel Control:
 type, default, options, unit where relevant, current effective value, dynamic availability, and
-unavailable reason. Theme and Channel Role options are generated from the current catalogs;
-Dialogue Detection options may include their existing official links. It exposes no persistence
-keys, component names, IPC commands, or complete custom Theme documents.
+unavailable reason. Channel Role options are generated from the current catalog; Dialogue Detection
+options may include their existing official links. It exposes no persistence keys, component names,
+IPC commands, Appearance state, or Theme documents.
 
 `settings.inspect` omits schema metadata and returns revision, effective `settings`, `runtime`, and
 `availability`. `settings.update` returns the same complete focused snapshot plus mutation metadata.
