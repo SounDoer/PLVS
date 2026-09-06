@@ -148,6 +148,47 @@ fn read_exact_until<R: Read>(
   Ok(())
 }
 
+/// A `PIPE_NOWAIT` write is all-or-nothing: `WriteFile` never writes part of the request, it
+/// succeeds with zero bytes written when the slice does not fit in the free buffer space. So a
+/// payload larger than the buffer must be sliced by the caller — retrying it whole would return
+/// zero forever — and the cap stays below `PIPE_BUFFER_BYTES` so a slice can fit without the peer
+/// having drained the buffer completely.
+const WRITE_CHUNK_BYTES: usize = PIPE_BUFFER_BYTES as usize / 2;
+
+/// The counterpart of `read_exact_until`, and needed for the same reason: on a non-blocking handle
+/// a frame larger than the kernel buffer cannot leave in one call. Zero bytes written and
+/// `WouldBlock` both mean "the peer has not drained yet", so the loop waits and resumes at
+/// `offset`. `write_all` reports both as failures, which is why it cannot be used here.
+fn write_all_until<W: Write>(
+  writer: &mut W,
+  payload: &[u8],
+  deadline: Instant,
+) -> Result<(), PipeError> {
+  let mut offset = 0;
+  while offset < payload.len() {
+    let end = payload.len().min(offset + WRITE_CHUNK_BYTES);
+    let stalled = match writer.write(&payload[offset..end]) {
+      Ok(0) => true,
+      Ok(count) => {
+        offset += count;
+        false
+      }
+      Err(error) if error.kind() == io::ErrorKind::WouldBlock => true,
+      Err(error) => return Err(error.into()),
+    };
+    if stalled {
+      if Instant::now() >= deadline {
+        return Err(PipeError::new(
+          PipeErrorReason::IoTimeout,
+          "The named-pipe frame was not accepted before the timeout.",
+        ));
+      }
+      thread::sleep(RETRY_DELAY);
+    }
+  }
+  Ok(())
+}
+
 fn read_frame<R: Read>(reader: &mut R, max_bytes: usize) -> Result<Vec<u8>, PipeError> {
   read_frame_with_timeout(reader, max_bytes, IO_TIMEOUT)
 }
@@ -209,8 +250,9 @@ fn write_frame<W: Write>(
       format!("Named-pipe frame exceeds the {max_bytes}-byte limit."),
     ));
   }
-  writer.write_all(&(payload.len() as u32).to_le_bytes())?;
-  writer.write_all(payload)?;
+  let deadline = Instant::now() + IO_TIMEOUT;
+  write_all_until(writer, &(payload.len() as u32).to_le_bytes(), deadline)?;
+  write_all_until(writer, payload, deadline)?;
   writer.flush()?;
   Ok(())
 }
@@ -523,7 +565,9 @@ fn handle_client(mut pipe: NamedPipe, token: LaunchToken, broker: Broker) {
   };
 
   if let Ok(encoded) = encode_response(&response) {
-    let _ = write_frame(&mut pipe, &encoded, MAX_RESPONSE_BYTES);
+    if let Err(error) = write_frame(&mut pipe, &encoded, MAX_RESPONSE_BYTES) {
+      log::warn!("agent-control response write failed: {error}");
+    }
   }
 }
 
@@ -1062,6 +1106,138 @@ mod tests {
     // No request was ever recovered, so there is nothing to attribute the failure to.
     assert_eq!(response["id"], "");
     assert!(response["error"]["code"].is_i64());
+
+    drop(client);
+    server.stop();
+  }
+
+  struct PayloadResponder {
+    broker: Mutex<Option<Broker>>,
+    reply: String,
+    received: Mutex<Vec<JsonRpcRequest>>,
+  }
+
+  impl FrontendEmitter for PayloadResponder {
+    fn emit(&self, request: &JsonRpcRequest) -> Result<(), String> {
+      self.received.lock().unwrap().push(request.clone());
+      self
+        .broker
+        .lock()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .respond(
+          &request.id,
+          FrontendOutcome::Success(serde_json::json!({ "payload": self.reply })),
+        )
+        .map_err(|error| error.to_string())
+    }
+  }
+
+  /// Non-uniform content, so a payload reassembled out of order fails as loudly as a truncated one.
+  fn filler(bytes: usize) -> String {
+    (0..bytes)
+      .map(|index| char::from(b'a' + (index % 26) as u8))
+      .collect()
+  }
+
+  /// One request/response exchange over a live endpoint, with both payload sizes under the caller's
+  /// control. Returns the decoded response and the request the server actually parsed.
+  fn exchange(request_payload: String, reply: String) -> (Value, JsonRpcRequest) {
+    let token = generate_launch_token().unwrap();
+    let endpoint = format!("plvs-agent-control-test-{}", &token.expose()[..16]);
+    let responder = Arc::new(PayloadResponder {
+      broker: Mutex::new(None),
+      reply,
+      received: Mutex::new(Vec::new()),
+    });
+    let broker = Broker::new(responder.clone(), 4, Duration::from_secs(5));
+    *responder.broker.lock().unwrap() = Some(broker.clone());
+    broker.frontend_ready().unwrap();
+    let mut server = PipeServer::bind(endpoint.clone(), token.clone(), broker).unwrap();
+
+    let client_handle = connect_client(&endpoint, Duration::from_secs(1)).unwrap();
+    let mut client = NamedPipe {
+      handle: client_handle,
+    };
+    client.set_nonblocking().unwrap();
+    let request = JsonRpcRequest {
+      id: "req-big".to_string(),
+      method: "app.inspect".to_string(),
+      params: serde_json::json!({ "payload": request_payload }),
+    };
+    let envelope = serde_json::to_vec(&OutgoingEnvelope {
+      token: token.expose(),
+      request: &request,
+    })
+    .unwrap();
+
+    write_frame(&mut client, &envelope, MAX_WIRE_REQUEST_BYTES).unwrap();
+    let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
+    let response: Value = serde_json::from_slice(&response).unwrap();
+    let received = responder.received.lock().unwrap()[0].clone();
+
+    drop(client);
+    server.stop();
+    (response, received)
+  }
+
+  #[test]
+  fn a_response_larger_than_the_pipe_buffer_round_trips_intact() {
+    let reply = filler(4 * PIPE_BUFFER_BYTES as usize);
+    let (response, _) = exchange("small".to_string(), reply.clone());
+
+    assert_eq!(response["id"], "req-big");
+    assert_eq!(response["result"]["payload"], Value::String(reply));
+  }
+
+  #[test]
+  fn a_request_larger_than_the_pipe_buffer_round_trips_intact() {
+    // Stays under MAX_REQUEST_BYTES, which the protocol layer enforces independently.
+    let payload = filler(3 * PIPE_BUFFER_BYTES as usize);
+    let (response, received) = exchange(payload.clone(), "small".to_string());
+
+    assert_eq!(received.params["payload"], Value::String(payload));
+    assert_eq!(response["result"]["payload"], "small");
+  }
+
+  #[test]
+  fn a_response_near_the_response_limit_round_trips_intact() {
+    // The envelope around the payload is under 100 bytes, so this lands just below the limit.
+    let reply = filler(MAX_RESPONSE_BYTES - 1024);
+    let (response, _) = exchange("small".to_string(), reply.clone());
+
+    assert_eq!(response["result"]["payload"], Value::String(reply));
+  }
+
+  #[test]
+  fn a_frame_above_the_limit_is_rejected_rather_than_retried() {
+    let token = generate_launch_token().unwrap();
+    let endpoint = format!("plvs-agent-control-test-{}", &token.expose()[16..32]);
+    // No request ever reaches the broker: the frame is refused before anything is written.
+    let broker = Broker::new(
+      Arc::new(AutoResponder::default()),
+      4,
+      Duration::from_secs(1),
+    );
+    let mut server = PipeServer::bind(endpoint.clone(), token.clone(), broker).unwrap();
+
+    let client_handle = connect_client(&endpoint, Duration::from_secs(1)).unwrap();
+    let mut client = NamedPipe {
+      handle: client_handle,
+    };
+    client.set_nonblocking().unwrap();
+
+    let started = Instant::now();
+    let oversized = vec![b'x'; MAX_WIRE_REQUEST_BYTES + 1];
+    assert_eq!(
+      write_frame(&mut client, &oversized, MAX_WIRE_REQUEST_BYTES)
+        .unwrap_err()
+        .reason,
+      PipeErrorReason::FrameTooLarge
+    );
+    // The retry loop must not turn the limit into a wait for the deadline.
+    assert!(started.elapsed() < IO_TIMEOUT);
 
     drop(client);
     server.stop();
