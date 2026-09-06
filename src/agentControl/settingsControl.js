@@ -24,7 +24,7 @@ export const PUBLIC_FIELDS = [
   "channelLabels",
 ];
 // Every option list and default below is the app's own, not a copy: a value the GUI offers that
-// App Control would reject is the failure this indirection exists to make impossible.
+// Agent Control would reject is the failure this indirection exists to make impossible.
 const CLOSE_BEHAVIORS = CLOSE_ACTION_OPTIONS;
 const INTERFACE_SIZES = INTERFACE_SIZE_OPTIONS.map(({ id }) => id);
 const HISTORY_LENGTHS = HISTORY_RETENTION_OPTIONS_SEC;

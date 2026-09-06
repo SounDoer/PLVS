@@ -1,6 +1,6 @@
 /// Resolves an export selection to the items and the extra pack options `buildPack` needs.
 ///
-/// Lives here rather than in `usePackTransfer.js` because App Control's export handler needs the
+/// Lives here rather than in `usePackTransfer.js` because Agent Control's export handler needs the
 /// same rule, and a pack's contents are pack-format logic, not GUI wiring.
 
 import { getAdapter } from "./libraryAdapters.js";

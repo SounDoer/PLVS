@@ -3,6 +3,10 @@
 **Date:** 2026-09-02  
 **Status:** Implemented and verified on Windows
 
+> The original `plvs-cli app ...` command hierarchy is superseded by
+> [Flat Agent Control CLI](2026-09-06-flat-agent-control-cli-design.md). This document remains the
+> design record for the transport, broker, discovery, and frontend ownership model.
+
 ## Summary
 
 Add a semantic, local-only control surface for a running PLVS desktop instance. The first delivery

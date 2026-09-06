@@ -22,7 +22,7 @@ npm run desktop:control -- axis panel reset <panel-id> <frequency|time> --expect
 ```
 
 Every mutation supports `--dry-run` and requires `--expected-revision`. There is no generic screen
-coordinate, wheel, drag, or zoom command; App Control expresses the final semantic viewport.
+coordinate, wheel, drag, or zoom command; Agent Control expresses the final semantic viewport.
 
 ## Public model
 
@@ -33,7 +33,7 @@ axis even though its visual orientation differs in each panel.
 `windowSec` is the visible duration; `offsetSec` is the non-negative distance back from the newest
 available sample, where zero means the live edge or the end of a FILE result. The maximum valid
 window and offset are dynamic, bounded by current history retention and available LIVE/selected FILE
-data, and `axis describe` reports the bounds that currently apply. App Control rejects an
+data, and `axis describe` reports the bounds that currently apply. Agent Control rejects an
 out-of-range request instead of silently clamping it, while an ordinary no-data state still accepts
 the default viewport for future samples.
 

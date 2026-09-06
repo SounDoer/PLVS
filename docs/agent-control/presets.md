@@ -2,7 +2,7 @@
 
 Status: Approved design contract
 
-Preset Control exposes the existing GUI Preset operations through the development App Control
+Preset Control exposes the existing GUI Preset operations through the development Agent Control
 protocol.
 
 ## Commands
@@ -66,7 +66,7 @@ accumulated maxima, Loudness Profile/Preset libraries, or transient UI state.
 
 ## Public description
 
-`preset.describe` converts the stored snapshot to public App Control shapes rather than returning
+`preset.describe` converts the stored snapshot to public Agent Control shapes rather than returning
 the internal persistence record:
 
 ```json
@@ -99,7 +99,7 @@ the internal persistence record:
 
 Panel entries use the same public controls and axes as inspection, but contain no control schema or
 analysis runtime. `window.bounds` is null when it was unavailable at capture time rather than being
-fabricated. Machine-specific bounds and monitor identity are reported as saved because App Control
+fabricated. Machine-specific bounds and monitor identity are reported as saved because Agent Control
 is local. Loudness control availability inside the snapshot is interpreted using the Preset's saved
 Loudness Profile selection, not the Loudness Profile currently active in the application.
 
@@ -173,7 +173,7 @@ Preset commands address Presets only by immutable ID; names are display labels a
 to resolve a target. Save and rename follow the existing GUI rule: the input must be a string whose
 trimmed value is non-empty, the trimmed value is stored, and duplicate names are allowed. App
 Control does not introduce a separate name length or character restriction. Any future restriction
-must be implemented as one shared GUI, Dock, and App Control rule.
+must be implemented as one shared GUI, Dock, and Agent Control rule.
 
 `preset reorder` accepts an object with an explicit ordered-ID field:
 
@@ -243,7 +243,7 @@ Preset Apply distinguishes a resource that has a safe fallback from a current-mo
   Apply reports the existing shared contract `code: fileModeActive`, `reason: fileMode`, and
   `operation: preset.apply`, and the preflight refusal has no side effects.
 
-Warnings report both requested and effective values where applicable. App Control must preserve
+Warnings report both requested and effective values where applicable. Agent Control must preserve
 the structured scene-refusal error from the shared controller rather than collapsing it into the
 GUI-facing boolean result.
 
@@ -271,9 +271,9 @@ Editor.
 `list`, `describe`, `rename`, `delete`, and `reorder` remain available because they neither capture
 nor replace the current scene. Entering Dock is independently protected by the same guard.
 
-The App Control CLI does not bypass this behavior or modify persisted Preset files directly. Rust
+The Agent Control CLI does not bypass this behavior or modify persisted Preset files directly. Rust
 delivers the request to the running React application, which executes the existing Preset business
-logic and returns its result. If PLVS is not running, App Control is unavailable by design.
+logic and returns its result. If PLVS is not running, Agent Control is unavailable by design.
 
 A refusal uses the stable `editorActive` reason and identifies both the requested operation and all
 active blocking editors. No command provides a flag that silently discards their drafts.

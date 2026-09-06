@@ -725,7 +725,7 @@ describe("usePresets", () => {
       );
       expect(applyDockPreset).not.toHaveBeenCalled();
       expect(result.current.workspace.state).toBe(before);
-      // A structured refusal, not a bare Error: the notice reads its message, and App Control will
+      // A structured refusal, not a bare Error: the notice reads its message, and Agent Control will
       // read `code` rather than parsing English.
       const [error] = onApplyError.mock.calls[0];
       expect(error.code).toBe("fileModeActive");
@@ -992,7 +992,7 @@ describe("usePresets Loudness Profile snapshot", () => {
 
 /// The scene guard. Apply replaces the scene, Save and Update capture it, so all three are refused
 /// while a draft-style editor is open -- open, not dirty. Refused here rather than in the popover
-/// so the dock, the tray and App Control get the same answer.
+/// so the dock, the tray and Agent Control get the same answer.
 describe("usePresets under an active blocking editor", () => {
   beforeEach(() => {
     localStorage.clear();

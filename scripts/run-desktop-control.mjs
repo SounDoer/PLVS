@@ -36,7 +36,7 @@ const executable = join(
   "debug",
   process.platform === "win32" ? "plvs-cli.exe" : "plvs-cli"
 );
-const child = spawnSync(executable, ["app", ...process.argv.slice(2)], { stdio: "inherit" });
+const child = spawnSync(executable, process.argv.slice(2), { stdio: "inherit" });
 if (child.error) {
   console.error(`Unable to launch the PLVS development CLI: ${child.error.message}`);
   process.exit(2);

@@ -1,6 +1,6 @@
-/// App Control's view of the three shareable libraries.
+/// Agent Control's view of the three shareable libraries.
 ///
-/// It owns only what App Control adds: the family names on the wire, which error code a missing id
+/// It owns only what Agent Control adds: the family names on the wire, which error code a missing id
 /// gets, and the result shapes. Everything about pack files -- the envelope, the merge rules, the
 /// renaming, the preset-to-profile bundling, the three libraries' container shapes -- stays in
 /// `src/transfer/`, which the GUI calls too. Nothing here restates any of it.
@@ -10,7 +10,7 @@ import { getAdapter } from "../transfer/libraryAdapters.js";
 import { buildPack, packDescriptor, parsePack } from "../transfer/packShape.js";
 import { planPackImport } from "../transfer/mergeIntoLibrary.js";
 
-/// Keyed by App Control family name; `packType` is `src/transfer/`'s internal name for the same
+/// Keyed by Agent Control family name; `packType` is `src/transfer/`'s internal name for the same
 /// library. The two vocabularies differ (`preset` vs `presets`, `loudnessProfile` vs `loudness`)
 /// and this is the only place that knows it.
 export const LIBRARY_FAMILIES = {

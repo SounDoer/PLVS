@@ -1,17 +1,19 @@
 # PLVS CLI
 
-PLVS installs `plvs-cli` for diagnosis and automation of the running desktop app. The public
-command tree has two roots:
+PLVS installs `plvs-cli` for diagnosis and automation of the running desktop app. Commands are
+organized directly by the product resource or operation they address:
 
 ```text
 plvs-cli doctor
-plvs-cli app ...
+plvs-cli inspect
+plvs-cli panel ...
+plvs-cli transport ...
 ```
 
-`doctor` works when PLVS is closed. Every `app` command controls or inspects the same state visible
-in an already-running PLVS window. It requires Agent Control to be enabled in Settings and is
-currently available only on Windows. The CLI never starts PLVS implicitly or edits its store behind
-the running app.
+`doctor` works when PLVS is closed. Every other current command controls or inspects the same state
+visible in an already-running PLVS window. Those commands require Agent Control to be enabled in
+Settings and are currently available only on Windows. The CLI never starts PLVS implicitly or
+edits its store behind the running app.
 
 ## Install Location
 
@@ -75,12 +77,12 @@ Run `doctor --json` first to verify the installed runtime and bundled sidecars.
 
 ```powershell
 plvs-cli doctor [--json] [--out <file>]
-plvs-cli app <command> [options]
+plvs-cli <command> [options]
 plvs-cli --help
 plvs-cli --version
 ```
 
-Use `plvs-cli app --help` for the complete live-control command list. The current families are:
+Use `plvs-cli --help` for the complete live-control command list. The current families are:
 
 - `inspect`, `capabilities`, and `wait`;
 - `workspace`, `panel`, and `axis`;
@@ -91,9 +93,9 @@ Use `plvs-cli app --help` for the complete live-control command list. The curren
 The library families share one shape:
 
 ```powershell
-plvs-cli app <preset|theme|loudness-profile> list --json
-plvs-cli app <preset|theme|loudness-profile> export <--all|--ids <id,...>> --json [--out <file>]
-plvs-cli app <preset|theme|loudness-profile> import <file|-> --json --expected-revision <n> [--dry-run]
+plvs-cli <preset|theme|loudness-profile> list --json
+plvs-cli <preset|theme|loudness-profile> export <--all|--ids <id,...>> --json [--out <file>]
+plvs-cli <preset|theme|loudness-profile> import <file|-> --json --expected-revision <n> [--dry-run]
 ```
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
@@ -103,9 +105,9 @@ Detailed payloads and behavior are documented in [Agent Control](agent-control/R
 
 ## JSON Contract
 
-`doctor` defaults to concise human-readable output. Every `app` query, mutation, and action requires
-`--json`; help does not. In JSON mode, stdout contains exactly one UTF-8 JSON document followed by a
-newline, with no banners, progress text, or ANSI escapes.
+`doctor` defaults to concise human-readable output. Every running-app query, mutation, and action
+requires `--json`; help does not. In JSON mode, stdout contains exactly one UTF-8 JSON document
+followed by a newline, with no banners, progress text, or ANSI escapes.
 
 Every successful JSON response has:
 
@@ -162,9 +164,9 @@ report with a required check in `error` state therefore keeps `ok: true` and exi
 of only two documented `ok: true` responses with a nonzero exit code; the other is a library export
 whose `--out` file could not be written, described under [Output Files](#output-files).
 
-### App queries and global revision
+### Running-app queries and global revision
 
-Every `app` query returns one global `revision`:
+Every running-app query returns one global `revision`:
 
 ```json
 {
@@ -235,8 +237,8 @@ require `--expected-revision` and support `--dry-run`.
 Use the broad snapshot and global revision as a control loop:
 
 ```powershell
-plvs-cli app inspect --json
-plvs-cli app wait --after-revision 44 --timeout-ms 30000 --json
+plvs-cli inspect --json
+plvs-cli wait --after-revision 44 --timeout-ms 30000 --json
 ```
 
 `--after-revision` is required. `--timeout-ms` defaults to `30000` and accepts `100` through
@@ -263,9 +265,9 @@ stderr and exits `2`.
 ## Output Files
 
 One flag, two semantics. `doctor --out <file>` **tees**: stdout remains intact and the file receives
-the exact same bytes. `app <library> export --out <file>` **moves**: the file receives the
+the exact same bytes. `<library> export --out <file>` **moves**: the file receives the
 pretty-printed pack, and `result.pack` is replaced by `result.out` in the envelope, so stdout does
-not carry the pack. The two fields never appear together. No other `app` command accepts `--out`;
+not carry the pack. The two fields never appear together. No other command accepts `--out`;
 capture their clean JSON stdout programmatically.
 
 If the pack cannot be written, the CLI prints one line on stderr and exits `1` while stdout still
@@ -279,20 +281,20 @@ transcodes native output to UTF-16LE:
 
 ```powershell
 plvs-cli doctor --json --out doctor.json
-plvs-cli app theme export --all --json --out themes.plvstheme
-cmd /d /s /c "plvs-cli app inspect --json > inspect.json"
+plvs-cli theme export --all --json --out themes.plvstheme
+cmd /d /s /c "plvs-cli inspect --json > inspect.json"
 ```
 
 ## Agent Workflow
 
 1. Discover the installed binary and run `doctor --json`.
 2. Ensure PLVS is running and Agent Control is enabled.
-3. Run `app capabilities --json` and use its stable `commands` and `features` fields.
-4. Run `app inspect --json` and retain its global revision.
+3. Run `capabilities --json` and use its stable `methods` and `features` fields.
+4. Run `inspect --json` and retain its global revision.
 5. Dry-run a state mutation with that revision when a preview is useful.
 6. Apply the mutation with the same revision.
 7. On `revisionConflict`, inspect and reconcile; never retry blindly.
-8. Use `app wait` instead of polling when waiting for another visible state change.
+8. Use `wait` instead of polling when waiting for another visible state change.
 
 ## Development
 
@@ -308,8 +310,8 @@ npm run desktop:control -- capabilities --json
 npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
 ```
 
-`desktop:control` selects the development app identity and adds the `plvs-cli app` prefix. It
-controls only an already-running development app.
+`desktop:control` selects the development app identity and forwards the supplied flat CLI command.
+It controls only an already-running development app.
 
 `npm run` prints its own banner, so use `--silent` or call the wrapper directly when stdout must be
 parseable JSON:

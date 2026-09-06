@@ -3,6 +3,10 @@
 Date: 2026-09-05
 Status: Approved product direction; implementation pending
 
+> The command hierarchy and capabilities discovery fields are superseded by
+> [Flat Agent Control CLI](2026-09-06-flat-agent-control-cli-design.md). Wire methods, envelopes,
+> revision semantics, errors, and exit classes remain authoritative here.
+
 ## Purpose
 
 PLVS CLI v1 turns the command line from a collection of standalone utilities into a stable control

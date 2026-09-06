@@ -8,7 +8,7 @@ function transitionError(lifecycle) {
 
 /**
  * Owns requested capture state plus the acknowledged LIVE lifecycle. GUI callers may ignore the
- * returned promises; App Control awaits them so success means the engine accepted the transition.
+ * returned promises; Agent Control awaits them so success means the engine accepted the transition.
  */
 export function useCaptureTransport({ display, getLiveIntake }) {
   const [running, setRunning] = useState(false);

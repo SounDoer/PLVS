@@ -45,7 +45,7 @@ agent from applying the current mode's destructive meaning by accident.
 
 LIVE exposes `stopped`, `starting`, `running`, `stopping`, or `error`, together with requested and
 resolved device identity, start time, whether the view is at the live edge, and a compact last error.
-App Control completion follows the native engine acknowledgement rather than the GUI's current
+Agent Control completion follows the native engine acknowledgement rather than the GUI's current
 optimistic `running` boolean.
 
 `live start` selects LIVE, retains prior LIVE data, and succeeds only after device resolution,
@@ -60,7 +60,7 @@ it clears history, statistics, maxima, and restarts the timeline without stoppin
 stopped it clears retained LIVE data. Its explicit destructive verb needs no additional force flag.
 Rust clear failures must propagate rather than being swallowed.
 
-GUI and App Control must use one asynchronous transport controller so a successful start means the
+GUI and Agent Control must use one asynchronous transport controller so a successful start means the
 engine is actually running and an error leaves an inspectable lifecycle state.
 
 ## FILE lifecycle
@@ -89,11 +89,11 @@ ledger. Their explicit destructive names need no additional force flag. Missing 
 `fileSessionNotFound`, never successful false values.
 
 The current GUI retains at most five FILE sessions and may evict the oldest completed, stopped, or
-error entry that is neither active nor analyzing when a new entry exceeds that limit. App Control
+error entry that is neither active nor analyzing when a new entry exceeds that limit. Agent Control
 keeps this behavior but never hides it: analyze returns `evictedSessions` summaries and dry-run
 previews them.
 
-Entering FILE by source, analyze, or select is refused while Dock is active; App Control never exits
+Entering FILE by source, analyze, or select is refused while Dock is active; Agent Control never exits
 Dock implicitly. Leaving an active FILE analysis for LIVE requires `--allow-stop-file-analysis` and
 retains partial results. Switching from LIVE to FILE stops capture but retains LIVE data and needs no
 extra confirmation.
@@ -110,7 +110,7 @@ completion/error, but not for audio frames, progress percentages, elapsed clock 
 viewport movement. An accepted async file run increments when it starts and again when it reaches a
 terminal state.
 
-Every Transport mutation and action requires `--expected-revision`. `app wait --after-revision
+Every Transport mutation and action requires `--expected-revision`. `wait --after-revision
 <n> --timeout-ms <n>` can sleep until an analysis completes or another observable state change
 occurs without waking for every progress update.
 

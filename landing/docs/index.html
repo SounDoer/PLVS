@@ -528,8 +528,8 @@
             <h3>Running app control</h3>
             <p>
               Start PLVS, enable Agent Control in Settings, then discover the available surface
-              with <code>plvs-cli app capabilities --json</code>. Read the app's visible state with
-              <code>plvs-cli app inspect --json</code>. App control is currently available only on
+              with <code>plvs-cli capabilities --json</code>. Read the app's visible state with
+              <code>plvs-cli inspect --json</code>. Agent Control is currently available only on
               Windows.
             </p>
           </div>
@@ -537,7 +537,7 @@
             <h3>Global revision workflow</h3>
             <p>
               Queries return a global revision. Pass that value to every mutation, for example
-              <code>plvs-cli app workspace apply layout.json --json --expected-revision 44</code>.
+              <code>plvs-cli workspace apply layout.json --json --expected-revision 44</code>.
               If the revision conflicts, inspect again and reconcile the intervening change rather
               than retrying blindly. See the
               <a href="https://github.com/SounDoer/PLVS/blob/main/docs/cli.md">CLI reference</a> for

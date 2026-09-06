@@ -15,10 +15,10 @@ use crate::cli_analyze::{
   run_analyze_with_options, CliAnalyzeOptions, CliAnalyzeStatus, CliDialogueOptions,
   CliQualityControlOptions,
 };
-use crate::cli_app::{self, CliAppCommand};
 #[cfg(any(feature = "capture-harness", test))]
 use crate::cli_capture::{run_capture, sample_line, CliCaptureStatus};
 use crate::cli_contract::CLI_SCHEMA_VERSION;
+use crate::cli_control::{self, ControlCommand};
 #[cfg(any(feature = "capture-harness", test))]
 use crate::cli_report::render_analyze_text;
 use crate::cli_report::render_doctor_text;
@@ -30,7 +30,7 @@ use crate::dsp::speech::VadEngineKind;
 enum CliCommand {
   Help(HelpTopic),
   Version,
-  App(CliAppCommand),
+  Control(ControlCommand),
   Doctor {
     json: bool,
     out: Option<String>,
@@ -59,11 +59,27 @@ enum HelpTopic {
   Analyze,
   #[cfg(any(feature = "capture-harness", test))]
   Capture,
-  App,
+  Control,
 }
 
 fn parse_args(args: &[String]) -> Result<CliCommand, String> {
-  parse_args_with_app(args, true)
+  match args {
+    [flag] if flag == "--help" || flag == "-h" || flag == "help" => {
+      Ok(CliCommand::Help(HelpTopic::Root))
+    }
+    [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
+    [command, ..] if cli_control::is_command(command) => {
+      cli_control::parse_control_args(args).map(CliCommand::Control)
+    }
+    [command, topic] if command == "help" => parse_help_topic(topic),
+    [command, ..] if command == "help" => {
+      Err("Usage: plvs-cli help [doctor|<control-command>]".to_string())
+    }
+    [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
+    [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
+    [command, ..] => Err(format!("Unknown command: {command}")),
+    [] => Err("Missing command. Try: plvs-cli --help".to_string()),
+  }
 }
 
 #[cfg(any(feature = "capture-harness", test))]
@@ -73,24 +89,6 @@ fn parse_harness_args(args: &[String]) -> Result<CliCommand, String> {
     [command, rest @ ..] if command == "capture" => parse_capture_args(rest),
     [command, ..] => Err(format!("Unknown harness command: {command}")),
     [] => Err("Missing harness command.".to_string()),
-  }
-}
-
-fn parse_args_with_app(args: &[String], app_available: bool) -> Result<CliCommand, String> {
-  match args {
-    [flag] if flag == "--help" || flag == "-h" || flag == "help" => {
-      Ok(CliCommand::Help(HelpTopic::Root))
-    }
-    [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
-    [command, rest @ ..] if command == "app" && app_available => {
-      cli_app::parse_app_args(rest).map(CliCommand::App)
-    }
-    [command, topic] if command == "help" => parse_help_topic(topic, app_available),
-    [command, ..] if command == "help" => Err("Usage: plvs-cli help [doctor|app]".to_string()),
-    [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
-    [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
-    [command, ..] => Err(format!("Unknown command: {command}")),
-    [] => Err("Missing command. Try: plvs-cli --help".to_string()),
   }
 }
 
@@ -322,10 +320,10 @@ fn parse_finite_number(value: &str, flag: &str) -> Result<f64, String> {
   Ok(parsed)
 }
 
-fn parse_help_topic(topic: &str, app_available: bool) -> Result<CliCommand, String> {
+fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
   match topic {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
-    "app" if app_available => Ok(CliCommand::Help(HelpTopic::App)),
+    topic if cli_control::is_command(topic) => Ok(CliCommand::Help(HelpTopic::Control)),
     _ => Err(format!("Unknown help topic: {topic}")),
   }
 }
@@ -480,7 +478,7 @@ fn serialize_cli_failure(code: &str, message: &str, exit_code: u8) -> (String, u
 
 fn serialize_parse_error(message: &str) -> (String, u8) {
   let code = if message.starts_with("Unknown command:")
-    || message.starts_with("Unknown app subcommand:")
+    || message.starts_with("Unknown control command:")
     || message.starts_with("Unknown help topic:")
   {
     "unknownCommand"
@@ -511,7 +509,7 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
 fn help_text(topic: HelpTopic) -> &'static str {
   match topic {
     HelpTopic::Root => {
-      "PLVS CLI\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n  plvs-cli app <command> [options]\n\nAgent usage:\n  Add --json to doctor for stable machine-readable output.\n  Use --out to save the same output that is written to stdout.\n  Use app to inspect or control a running PLVS window; see plvs-cli app --help.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
+      "PLVS CLI\n\nDiagnostics:\n  plvs-cli doctor [--json] [--out <file>]\n\nRunning app:\n  plvs-cli capabilities --json\n  plvs-cli inspect --json\n  plvs-cli wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli <workspace|panel|axis|preset|theme|loudness-profile|settings|transport|dock> ...\n\nAgent usage:\n  Add --json for stable machine-readable output.\n  Running-app commands require Agent Control to be enabled and never launch PLVS.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
     }
     HelpTopic::Doctor => {
       "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error, or output failed\n  3  invalid command input"
@@ -524,7 +522,7 @@ fn help_text(topic: HelpTopic) -> &'static str {
     HelpTopic::Capture => {
       "PLVS internal capture harness - capture\n\nUsage:\n  plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n\nRepository-owned live capture for smoke and soak verification. This is not a public CLI command."
     }
-    HelpTopic::App => cli_app::help_text(),
+    HelpTopic::Control => cli_control::help_text(),
   }
 }
 
@@ -566,7 +564,7 @@ fn execute(command: CliCommand) -> ExitCode {
       println!("PLVS {}", env!("CARGO_PKG_VERSION"));
       ExitCode::SUCCESS
     }
-    CliCommand::App(command) => cli_app::run(command),
+    CliCommand::Control(command) => cli_control::run(command),
     CliCommand::Doctor { json, out } => {
       let report = run_doctor();
       if json {
@@ -819,49 +817,46 @@ mod tests {
   }
 
   #[test]
-  fn gates_the_app_command_family_on_explicit_availability() {
+  fn parses_flat_control_commands_and_help_topics() {
     assert_eq!(
-      parse_args_with_app(&args(&["app", "inspect", "--json"]), true),
-      Ok(CliCommand::App(CliAppCommand::Inspect))
+      parse_args(&args(&["inspect", "--json"])),
+      Ok(CliCommand::Control(ControlCommand::Inspect))
     );
     assert_eq!(
-      parse_args_with_app(&args(&["app", "--help"]), true),
-      Ok(CliCommand::App(CliAppCommand::Help))
+      parse_args(&args(&["panel", "--help"])),
+      Ok(CliCommand::Control(ControlCommand::Help))
     );
     assert_eq!(
-      parse_args_with_app(&args(&["help", "app"]), true),
-      Ok(CliCommand::Help(HelpTopic::App))
+      parse_args(&args(&["help", "panel"])),
+      Ok(CliCommand::Help(HelpTopic::Control))
     );
+  }
+
+  #[test]
+  fn removes_the_app_command_family_without_an_alias() {
     assert_eq!(
-      parse_args_with_app(&args(&["app", "inspect", "--json"]), false),
+      parse_args(&args(&["app", "inspect", "--json"])),
       Err("Unknown command: app".to_string())
     );
     assert_eq!(
-      parse_args_with_app(&args(&["help", "app"]), false),
+      parse_args(&args(&["help", "app"])),
       Err("Unknown help topic: app".to_string())
     );
   }
 
   #[test]
-  fn exposes_the_app_command_family_in_every_build() {
-    assert!(parse_args(&args(&["app", "inspect", "--json"])).is_ok());
-    assert_eq!(
-      parse_args(&args(&["help", "app"])),
-      Ok(CliCommand::Help(HelpTopic::App))
-    );
-  }
-
-  #[test]
-  fn root_help_points_at_the_app_family() {
-    assert!(help_text(HelpTopic::Root).contains("plvs-cli app"));
-  }
-
-  #[test]
-  fn root_help_exposes_only_doctor_and_app() {
+  fn root_help_exposes_flat_control_families() {
     let text = help_text(HelpTopic::Root);
-    for command in ["plvs-cli doctor", "plvs-cli app"] {
+    for command in [
+      "plvs-cli doctor",
+      "plvs-cli capabilities",
+      "plvs-cli inspect",
+      "plvs-cli wait",
+      "workspace|panel|axis|preset|theme|loudness-profile|settings|transport|dock",
+    ] {
       assert!(text.contains(command), "missing public command: {command}");
     }
+    assert!(!text.contains("plvs-cli app"));
     for command in [
       "plvs-cli probe",
       "plvs-cli analyze",
@@ -941,7 +936,7 @@ mod tests {
 
   #[test]
   fn public_unknown_subcommands_and_help_topics_use_unknown_command() {
-    for invocation in [vec!["app", "nonsense", "--json"], vec!["help", "nonsense"]] {
+    for invocation in [vec!["app", "inspect", "--json"], vec!["help", "nonsense"]] {
       let error = parse_args(&args(&invocation)).unwrap_err();
       let (encoded, exit_code) = serialize_parse_error(&error);
       let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();

@@ -9,7 +9,7 @@ import { readPublicPanelControls } from "./panelControls.js";
 const MODULE_IDS = Object.keys(MODULE_CATALOG);
 const CONTEXT = { channelCount: 2, channelLabels: ["L", "R"], hasLoudnessReference: true };
 
-describe.each(MODULE_IDS)("App Control and the %s module", (moduleId) => {
+describe.each(MODULE_IDS)("Agent Control and the %s module", (moduleId) => {
   // Every entry point throws `Unsupported panel module` on an id it has no branch for, so a module
   // added to the catalog alone stays broken until whichever command a user happens to call first.
   it("describes, reads, patches and resets", () => {

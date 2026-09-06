@@ -4,7 +4,7 @@
 ///
 /// The refusal travels as an exception rather than a return value because these functions already
 /// use `true` / `false` / `null` for ordinary outcomes -- preset not found, nothing to do -- and a
-/// refusal is neither. Callers that render UI catch it; the App Control bridge maps `code` and
+/// refusal is neither. Callers that render UI catch it; the Agent Control bridge maps `code` and
 /// `operation` straight into its protocol error.
 
 export const SCENE_OPERATION_BLOCKED_MESSAGE = "Finish or cancel the active editor first.";

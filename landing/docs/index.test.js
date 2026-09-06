@@ -70,10 +70,10 @@ describe("docs page content", () => {
 
     expect(cliSection).toBeDefined();
     expect(cliSection).toContain("plvs-cli doctor --json");
-    expect(cliSection).toContain("plvs-cli app capabilities --json");
-    expect(cliSection).toContain("plvs-cli app inspect --json");
+    expect(cliSection).toContain("plvs-cli capabilities --json");
+    expect(cliSection).toContain("plvs-cli inspect --json");
     expect(cliSection).toContain(
-      "plvs-cli app workspace apply layout.json --json --expected-revision 44"
+      "plvs-cli workspace apply layout.json --json --expected-revision 44"
     );
 
     for (const removedCommand of [

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Flattened Agent Control commands by removing the `app` command layer; for example,
+  `plvs-cli app inspect` is now `plvs-cli inspect` with no legacy alias.
+- Agent Control capabilities now advertise wire operations through `methods` instead of the
+  duplicate and misleading `commands` field.
+
 ## [0.15.0] - 2026-09-06
 
 ### Added

@@ -105,7 +105,7 @@ describe("useRuntimeBackendSync", () => {
     expect(mocks.setAnalysisRequests).toHaveBeenCalledTimes(2);
   });
 
-  it("exposes awaited backend setters for App Control", async () => {
+  it("exposes awaited backend setters for Agent Control", async () => {
     mocks.isTauri.mockReturnValue(true);
     const { result } = renderSync({ running: true, loudnessWeights: [1, 1] });
     await flushPromises();

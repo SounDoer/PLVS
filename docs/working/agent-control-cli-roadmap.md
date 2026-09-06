@@ -19,11 +19,12 @@ persistence semantics as the visible app.
 
 ## Current main baseline
 
-As of `main` at `f662170e`, the public CLI has two roots:
+The public CLI organizes commands directly by product resource or operation:
 
 ```text
 plvs-cli doctor
-plvs-cli app ...
+plvs-cli inspect
+plvs-cli panel ...
 ```
 
 The running-app surface now covers:
@@ -40,8 +41,8 @@ durable settlement, recoverable `--out` failure behavior, and public documentati
 
 Important constraints of the current baseline:
 
-- App Control is public only on Windows; macOS transport is not implemented.
-- `app` commands are machine-first and require `--json`.
+- Agent Control is public only on Windows; macOS transport is not implemented.
+- Running-app commands are machine-first and require `--json`.
 - `app.inspect` intentionally contains semantic state, not measurement frames or history.
 - configuration backup/reset, device selection, library editing, and runtime measurement queries are
   intentionally outside the existing contract.
@@ -90,9 +91,9 @@ Keep `--json` exactly stable and continue requiring it for automation. Add an ex
 for read-oriented commands instead of changing the current default contract, for example:
 
 ```text
-plvs-cli app inspect --format text
-plvs-cli app device list --format table
-plvs-cli app measurement inspect --format text
+plvs-cli inspect --format text
+plvs-cli device list --format table
+plvs-cli measurement inspect --format text
 ```
 
 Mutation commands should remain JSON-first until their preview, warnings, and partial-failure
@@ -114,7 +115,7 @@ These commands have strong user value and mostly reuse stable product objects.
 Proposed shape:
 
 ```text
-plvs-cli app transport file report <session-id> --json [--out <file>]
+plvs-cli transport file report <session-id> --json [--out <file>]
 ```
 
 The GUI already builds a stable `fileAnalysis` report from a completed session. The CLI should call
@@ -136,9 +137,9 @@ report is read-only, while the CLI-side `--out` write can still fail after a suc
 Proposed shape:
 
 ```text
-plvs-cli app device describe --json
-plvs-cli app device inspect --json
-plvs-cli app device select <device-id> --expected-revision <n> --json \
+plvs-cli device describe --json
+plvs-cli device inspect --json
+plvs-cli device select <device-id> --expected-revision <n> --json \
   [--allow-measurement-restart] [--dry-run]
 ```
 
@@ -160,8 +161,8 @@ clicking the header selector.
 Start with the safe half:
 
 ```text
-plvs-cli app config export --json [--out <file>]
-plvs-cli app config validate <file|-> --json
+plvs-cli config export --json [--out <file>]
+plvs-cli config validate <file|-> --json
 ```
 
 This is distinct from library packs: a configuration contains all four public persistence domains
@@ -172,8 +173,8 @@ normalization pipeline as GUI import without writing anything.
 Defer mutation until its lifecycle is designed:
 
 ```text
-plvs-cli app config import <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli app config reset --expected-revision <n> --json --confirm-reset
+plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli config reset --expected-revision <n> --json --confirm-reset
 ```
 
 GUI import/reset relaunches PLVS because the boot-time persistence snapshot must be regenerated.
@@ -194,8 +195,8 @@ This is the largest new product capability and likely the most valuable to autom
 Proposed shape:
 
 ```text
-plvs-cli app measurement describe --json
-plvs-cli app measurement inspect --json [--source live|active-file]
+plvs-cli measurement describe --json
+plvs-cli measurement inspect --json [--source live|active-file]
 ```
 
 Return one coherent semantic sample, not frontend canvas data:
@@ -215,7 +216,7 @@ and would break the existing optimistic-concurrency and revision-wait model.
 After the snapshot contract is stable:
 
 ```text
-plvs-cli app measurement wait <predicate-file|-> --timeout-ms <n> --json
+plvs-cli measurement wait <predicate-file|-> --timeout-ms <n> --json
 ```
 
 Initial predicates should be a small allowlist, such as transport lifecycle, fresh-signal presence,
@@ -223,7 +224,7 @@ peak above/below a threshold, integrated loudness availability, and analysis com
 general expression language. Return the final coherent measurement snapshot that satisfied the
 predicate.
 
-This is a separate family from `app wait`: revision wait observes low-frequency controllable
+This is a separate family from `wait`: revision wait observes low-frequency controllable
 state; measurement wait observes runtime data. Conflating them would either busy-wake agents or
 weaken the meaning of the global revision.
 
@@ -244,13 +245,13 @@ through the same normalized domain operations as the GUI.
 Proposed progression:
 
 ```text
-plvs-cli app loudness-profile describe <id> --json
-plvs-cli app loudness-profile select <id|off> --expected-revision <n> --json [--dry-run]
-plvs-cli app loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli app loudness-profile update <id> <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli app loudness-profile rename <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli app loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
-plvs-cli app loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile describe <id> --json
+plvs-cli loudness-profile select <id|off> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
 Selection is particularly useful because Presets refer to it but Settings Control deliberately does
@@ -262,13 +263,13 @@ in dry-run output. Create/update/delete must be blocked while the Loudness Profi
 Proposed progression:
 
 ```text
-plvs-cli app theme describe <id> --json
-plvs-cli app theme create <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli app theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli app theme rename <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli app theme duplicate <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli app theme delete <id> --expected-revision <n> --json [--dry-run]
-plvs-cli app theme reorder <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli theme describe <id> --json
+plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli theme rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli theme duplicate <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
 Keep active Theme selection in `settings update appearance`; do not create a second selection
@@ -285,8 +286,8 @@ logic in Agent Control would create two definitions of a valid document.
 Proposed shape:
 
 ```text
-plvs-cli app schema list --json
-plvs-cli app schema get <command-or-resource> --json
+plvs-cli schema list --json
+plvs-cli schema get <command-or-resource> --json
 ```
 
 This should be generated from the schema builders and command manifest, not a raw dump of Rust or
@@ -298,7 +299,7 @@ adapter without making `capabilities` enormous.
 Proposed exploratory shape:
 
 ```text
-plvs-cli app batch <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli batch <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
 A batch is valuable for repeatable test setup, but only if the whole plan can be validated before

@@ -85,7 +85,6 @@ export function buildAgentControlCapabilities(runtime, revision) {
     revision,
     appVersion: String(runtime.appVersion),
     protocolVersion: 1,
-    commands: [...METHODS],
     features: {},
     runtime: {
       available: runtime.available === true,

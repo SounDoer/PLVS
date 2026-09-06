@@ -122,14 +122,14 @@ folder, use `.\plvs-cli.exe`.
 ```powershell
 plvs-cli --help
 plvs-cli doctor --json --out doctor.json
-plvs-cli app capabilities --json
-plvs-cli app inspect --json
-plvs-cli app workspace apply layout.json --json --expected-revision 44
+plvs-cli capabilities --json
+plvs-cli inspect --json
+plvs-cli workspace apply layout.json --json --expected-revision 44
 ```
 
-`doctor` works while PLVS is closed. Every `app` command requires PLVS to be running with Agent Control enabled in Settings; app control is currently available only on Windows. It controls or inspects the same state visible in PLVS and does not provide a headless replacement for the desktop app.
+`doctor` works while PLVS is closed. Every other current command requires PLVS to be running with Agent Control enabled in Settings; Agent Control is currently available only on Windows. It controls or inspects the same state visible in PLVS and does not provide a headless replacement for the desktop app.
 
-Run `app capabilities` to discover the supported surface, then `app inspect` to read the current state and global revision. Every mutation requires that revision through `--expected-revision`; on a conflict, inspect again and reconcile instead of retrying blindly. See [docs/cli.md](docs/cli.md) for the JSON contract, complete app-control surface, and exit codes.
+Run `capabilities` to discover the supported methods, then `inspect` to read the current state and global revision. Every mutation requires that revision through `--expected-revision`; on a conflict, inspect again and reconcile instead of retrying blindly. See [docs/cli.md](docs/cli.md) for the JSON contract, complete Agent Control surface, and exit codes.
 
 ---
 

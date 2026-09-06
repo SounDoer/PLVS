@@ -83,8 +83,7 @@ describe("agent-control app snapshots", () => {
       features: {},
     });
     expect(capabilities).not.toHaveProperty("cliVersion");
-    expect(capabilities.commands).toEqual(capabilities.methods);
-    expect(capabilities.commands).not.toBe(capabilities.methods);
+    expect(capabilities).not.toHaveProperty("commands");
     expect(capabilities).not.toHaveProperty("revisions");
     expect(capabilities.modules.map(({ moduleId }) => moduleId)).toContain("stereo-map");
     expect(JSON.parse(JSON.stringify(capabilities))).toEqual(capabilities);
@@ -179,7 +178,7 @@ describe("agent-control app snapshots", () => {
     expect(readAgentControlRuntime()).toMatchObject({ available: true, enabled: false });
   });
 
-  it("advertises the library transfer commands", () => {
+  it("advertises the library transfer methods", () => {
     const capabilities = buildAgentControlCapabilities(
       {
         available: true,
@@ -200,7 +199,7 @@ describe("agent-control app snapshots", () => {
       "loudnessProfile.export",
       "loudnessProfile.import",
     ]) {
-      expect(capabilities.commands).toContain(method);
+      expect(capabilities.methods).toContain(method);
     }
   });
 });

@@ -42,7 +42,7 @@ relaunch the caller must rediscover and inspect the new application session.
 
 Wait registration is independent from the serialized command/mutation queue, so a sleeping waiter
 cannot block inspect or update. Registration and its initial comparison are race-free. A completed
-App Control mutation publishes its revision change and then wakes every matching waiter once.
+Agent Control mutation publishes its revision change and then wakes every matching waiter once.
 
 At most four `app.wait` requests may be active concurrently. An additional wait fails immediately
 with `waitLimitReached`.

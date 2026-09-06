@@ -21,7 +21,7 @@ npm run desktop:control -- dock panel reset <panel-id> --expected-revision 12 --
 ```
 
 Every mutation supports `--dry-run` and requires `--expected-revision`. Dock entry also accepts
-`--reserve-space true|false`. App Control uses the normal Workspace and Dock persistence paths; it
+`--reserve-space true|false`. Agent Control uses the normal Workspace and Dock persistence paths; it
 does not edit either store from Rust behind the running frontend.
 
 The verbs deliberately separate configuration from window-mode transitions. `layout apply` may
@@ -53,7 +53,7 @@ Dock is supported on Windows and Linux and unavailable on macOS. Unsupported mut
 available only on Windows. Supplying it elsewhere is an error rather than silently coercing it.
 
 `dock enter` uses saved values for omitted options. Submitted edge is exactly `top` or `bottom`.
-Height is an integer from 56 through 160 CSS pixels; App Control rejects values outside this range
+Height is an integer from 56 through 160 CSS pixels; Agent Control rejects values outside this range
 instead of applying the GUI drag handle's clamp. If a monitor ID is explicitly submitted and no
 longer exists, entry fails with `monitorNotFound`. When it is omitted, PLVS deliberately resolves
 the saved monitor, then the current/primary monitor, and reports any fallback as a warning.
@@ -140,7 +140,7 @@ compatible with its meter mode. Transport has no public Dock controls.
 
 The complete document is validated before one state commit. Unknown fields, duplicate existing
 panel references or request keys, unknown modules, invalid controls, invalid channel selections,
-and out-of-range widths fail together as `invalidDockLayout` issues. App Control does not
+and out-of-range widths fail together as `invalidDockLayout` issues. Agent Control does not
 normalize, drop, clamp, or silently repair them.
 
 ## Individual panel control

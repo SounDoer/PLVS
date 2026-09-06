@@ -1,11 +1,11 @@
-# App Control Design
+# Agent Control Design
 
 Date: 2026-09-03
 
 Status: Living design record; Panel, Axis, Preset, Settings, Wait, Transport, and Dock Control
 decisions are approved unless explicitly marked otherwise
 
-This directory records the implemented App Control contract. It complements the
+This directory records the implemented Agent Control contract. It complements the
 first-slice design in
 [`../superpowers/specs/2026-09-02-agent-control-design.md`](../superpowers/specs/2026-09-02-agent-control-design.md).
 That document explains the transport and initial Workspace implementation; this directory is the
@@ -32,7 +32,7 @@ transport.inspect / transport source / transport live / transport file
 dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
 ```
 
-The repository entrypoint automatically supplies the `plvs-cli app` prefix:
+The repository entrypoint selects the development identity and forwards the flat CLI command:
 
 ```powershell
 npm run desktop:control -- capabilities --json
@@ -63,7 +63,7 @@ Control, and Library Transfer are implemented. MCP integration remains a deferre
 
 Panel Control is three hand-written lists of the same fields -- the schema, the read mapping and the
 patch planner -- layered on one flat control record. Nothing in the app makes them agree, and a
-control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no App Control
+control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no Agent Control
 change to look finished. Five guards make that omission fail instead:
 
 | Guard                                              | Fails when                                                                                                        |
@@ -82,7 +82,7 @@ the Theme and Loudness Profile libraries and window state, all of which `setting
 this contract -- so such a list would be a judgement call maintained by hand, which is the failure
 mode these guards exist to remove. What is checked instead is that Settings Control never restates an
 option list or default: it imports the app's own from `src/settings/defaults.js` and
-`src/lib/dialogueVadEngines.js`. A value the GUI offers that App Control rejects would otherwise be
+`src/lib/dialogueVadEngines.js`. A value the GUI offers that Agent Control rejects would otherwise be
 invisible, because `settings describe` would tell the agent the value does not exist.
 
 `generated/` holds the reference half of this directory: every field's type, unit, default and
@@ -90,7 +90,7 @@ bounds, rendered from the schema builders. It is not editable by hand. The pages
 what a schema cannot state -- atomicity, warning semantics, availability rules, analysis identity --
 and no longer restate numbers the generated tables own.
 
-Deciding that a control stays out of App Control is a normal outcome; record it by adding the key to
+Deciding that a control stays out of Agent Control is a normal outcome; record it by adding the key to
 `INTERNAL_ONLY_CONTROLS` in the coverage test, with the reason. What the guards forbid is leaving
 the question unanswered.
 
@@ -100,12 +100,12 @@ the question unanswered.
 
 This is the handshake and compatibility surface, with a deliberate distinction between the
 frontend wire payload and the public CLI result. The frontend JSON-RPC method returns the current
-`revision`, `appVersion`, `protocolVersion`, `commands`, `features`, `runtime`, `methods`, and
+`revision`, `appVersion`, `protocolVersion`, `features`, `runtime`, `methods`, and
 `modules`. It does not contain `cliVersion`; Rust adapts that payload for
-`plvs-cli app capabilities --json` and independently injects the installed CLI version.
+`plvs-cli capabilities --json` and independently injects the installed CLI version.
 
 The stable public result contains `revision`, `appVersion`, `cliVersion`, `protocolVersion`,
-`commands`, and `features`:
+`methods`, and `features`:
 
 ```json
 {
@@ -116,14 +116,14 @@ The stable public result contains `revision`, `appVersion`, `cliVersion`, `proto
     "appVersion": "0.14.6",
     "cliVersion": "0.14.6",
     "protocolVersion": 1,
-    "commands": [],
+    "methods": [],
     "features": {}
   }
 }
 ```
 
-`runtime`, `methods`, and `modules` may remain as compatible extra fields, but public CLI consumers
-discover supported commands and features from `commands` and `features`. `appVersion` and
+`runtime` and `modules` may remain as compatible extra fields, but public CLI consumers discover
+supported wire methods and features from `methods` and `features`. `appVersion` and
 `cliVersion` are independent build identities and must not be assumed equal. Capabilities does not
 report live panel instances or mutable state beyond the current revision.
 
@@ -455,10 +455,10 @@ Control settings.
 
 - Dialogue Detection engine selection is a global system setting, not a Stats panel control. The
   Settings contract owns `dialogueVadEngine`; Panel Control does not expose it.
-- App Control sends live mutations through the running React application; Rust does not edit
+- Agent Control sends live mutations through the running React application; Rust does not edit
   persisted Workspace or Preset records behind the frontend's state.
 - Loudness Profile and Theme editors register with the shared blocking-editor guard. Preset
-  save/apply/update and Dock entry are refused while either editor is open; no App Control flag may
+  save/apply/update and Dock entry are refused while either editor is open; no Agent Control flag may
   discard a draft.
 - FILE mode refuses direct Dock entry and any Preset Apply that requires Dock before mutation, using
   the shared `fileModeActive` scene-operation contract. Lack of platform Dock support instead

@@ -84,7 +84,7 @@ describe("the public Settings surface agrees with itself", () => {
 });
 
 describe("Settings Control reuses the application's own option lists", () => {
-  // A value the GUI offers and App Control rejects is invisible until an agent sends it: the
+  // A value the GUI offers and Agent Control rejects is invisible until an agent sends it: the
   // schema itself would be telling the agent the value does not exist.
   it.each([
     ["closeBehavior", CLOSE_ACTION_OPTIONS],

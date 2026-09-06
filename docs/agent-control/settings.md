@@ -56,7 +56,7 @@ Appearance change blocked by an active Theme Editor, no other field in the patch
 not ready or cannot be queried; it must not present the hook's temporary false initialization as a
 real value. Mutation waits for operating-system confirmation, and unavailable mutation fails with
 `controlUnavailable`. Dry-run checks availability without registering or unregistering autostart,
-and a no-op does not call the operating system. The App Control setter must expose errors currently
+and a no-op does not call the operating system. The Agent Control setter must expose errors currently
 swallowed by the GUI-oriented hook.
 
 `closeBehavior` accepts exactly `ask`, `tray`, or `quit`, with `ask` as the default. It changes only
@@ -81,7 +81,7 @@ claim it before real execution. A no-op performs no registration work.
 
 While the GUI is displaying `Press a combo...`, only patches containing `clearShortcut` are
 temporarily unavailable; the recorder is not a global blocking editor. Loudness Profile and Theme
-editors do not block this field. The App Control implementation must expose persistence and
+editors do not block this field. The Agent Control implementation must expose persistence and
 registration errors currently swallowed by the GUI-oriented shortcut hook.
 
 ## Interface size
@@ -96,7 +96,7 @@ reapply document sizing, and successful mutation waits for persistence.
 
 Appearance has writable `mode` and `themeId` fields plus read-only `resolvedThemeId`. `mode` accepts
 exactly `system` or `fixed`. In System mode, `themeId` must be omitted or null. Switching to Fixed
-mode requires an explicit currently available Theme ID; App Control does not copy the GUI's implicit
+mode requires an explicit currently available Theme ID; Agent Control does not copy the GUI's implicit
 choice of whichever Theme happens to be resolved at that instant. Supplying `themeId` alone does not
 implicitly change the mode, and writing `resolvedThemeId` fails with `readOnlyControl`.
 
@@ -156,7 +156,7 @@ mutation waits for backend weight synchronization and Settings persistence.
 
 ## Revision, results, and dry run
 
-Settings uses the application's single process-local revision. GUI and App Control changes to
+Settings uses the application's single process-local revision. GUI and Agent Control changes to
 public Settings increment it once per command, regardless of how many fields change.
 No-op, dry-run, validation/refusal failure, operating-system appearance resolution, channel-count
 changes, and analysis-runtime demand changes do not increment it. These Settings do not increment
@@ -222,6 +222,6 @@ keys, component names, IPC commands, or complete custom Theme documents.
 `availability`. `settings.update` returns the same complete focused snapshot plus mutation metadata.
 The global `app.inspect` also includes the compact Settings snapshot and top-level `revision`, while
 the focused command avoids returning Workspace and panel state. Public CLI consumers discover
-Settings support through `app.capabilities` result fields `commands` and `features`; current values
+Settings support through `app.capabilities` result fields `methods` and `features`; current values
 and dynamic option lists are not capability data. The frontend/RPC `methods` list may remain as
 internal compatibility data, but public consumers must not use it for capability selection.

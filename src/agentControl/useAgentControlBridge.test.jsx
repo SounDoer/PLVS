@@ -469,7 +469,7 @@ describe("useAgentControlBridge", () => {
       appVersion: "0.14.5",
       protocolVersion: 1,
       revision: 0,
-      commands: expect.arrayContaining(["app.capabilities", "app.wait"]),
+      methods: expect.arrayContaining(["app.capabilities", "app.wait"]),
       features: {},
     });
     expect(capabilities.result).not.toHaveProperty("cliVersion");

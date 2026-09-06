@@ -20,7 +20,7 @@ function makeTheme(id, name) {
 }
 
 describe("LIBRARY_FAMILIES", () => {
-  it("maps each App Control family to its pack type", () => {
+  it("maps each Agent Control family to its pack type", () => {
     expect(LIBRARY_FAMILIES.preset.packType).toBe("presets");
     expect(LIBRARY_FAMILIES.theme.packType).toBe("themes");
     expect(LIBRARY_FAMILIES.loudnessProfile.packType).toBe("loudness");
@@ -34,7 +34,7 @@ describe("LIBRARY_FAMILIES", () => {
     expect(LIBRARY_FAMILIES.loudnessProfile.stateKey).toBe("profiles");
   });
 
-  it("rejects a family outside App Control's wire vocabulary, naming it in the message", () => {
+  it("rejects a family outside Agent Control's wire vocabulary, naming it in the message", () => {
     // `src/transfer/`'s internal vocabulary (`presets`/`themes`/`loudness`) must not leak through
     // here: a typo'd or wrong-vocabulary family should fail with a message a CLI caller wrote.
     expect(() => libraryFamily("presets")).toThrow(/Unknown library family: presets/);

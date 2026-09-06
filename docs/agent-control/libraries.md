@@ -197,7 +197,7 @@ Preset relationship and gains no Theme or Loudness Profile library; callers use 
 Library import is allowed while the Theme Editor or the Loudness Profile Editor is open. It is not a
 scene operation and does not consult the shared blocking-editor guard.
 
-This is the exception to a rule that holds everywhere else in App Control, so it is stated rather
+This is the exception to a rule that holds everywhere else in Agent Control, so it is stated rather
 than left to be discovered. The guard exists because scene operations destroy an open draft; an
 append-only merge that moves no selection and dirties no Preset cannot. The GUI agrees: the Settings
 panel's Import buttons are disabled while a transfer is in flight, never on editor state, so

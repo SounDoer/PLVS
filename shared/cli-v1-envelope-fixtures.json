@@ -58,7 +58,7 @@
         "appVersion": "99.99.99-app",
         "cliVersion": "0.14.6",
         "protocolVersion": 1,
-        "commands": [],
+        "methods": [],
         "features": {}
       }
     }

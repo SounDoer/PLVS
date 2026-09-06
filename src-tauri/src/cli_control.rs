@@ -16,8 +16,27 @@ use crate::cli_contract::CLI_SCHEMA_VERSION;
 const MAX_SAFE_REVISION: u64 = 9_007_199_254_740_991;
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
+pub const COMMAND_NAMES: &[&str] = &[
+  "capabilities",
+  "inspect",
+  "wait",
+  "workspace",
+  "panel",
+  "axis",
+  "preset",
+  "theme",
+  "loudness-profile",
+  "settings",
+  "transport",
+  "dock",
+];
+
+pub fn is_command(command: &str) -> bool {
+  COMMAND_NAMES.contains(&command)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CliAppCommand {
+pub enum ControlCommand {
   Help,
   Capabilities,
   Inspect,
@@ -153,18 +172,19 @@ pub enum CliAppCommand {
   },
 }
 
-pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
+pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
   match args {
-    [flag] if is_help(flag) => return Ok(CliAppCommand::Help),
+    [flag] if is_help(flag) => return Ok(ControlCommand::Help),
+    [_, flag] if is_help(flag) => return Ok(ControlCommand::Help),
     [command, flag] if (command == "capabilities" || command == "inspect") && flag == "--json" => {
       return Ok(if command == "capabilities" {
-        CliAppCommand::Capabilities
+        ControlCommand::Capabilities
       } else {
-        CliAppCommand::Inspect
+        ControlCommand::Inspect
       });
     }
     [command, ..] if command == "capabilities" || command == "inspect" => {
-      return Err(format!("The app {command} command requires --json."));
+      return Err(format!("The {command} command requires --json."));
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
@@ -178,19 +198,19 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
     [command, rest @ ..] if command == "dock" => return parse_dock_args(rest),
     [command, rest @ ..] if command == "wait" => return parse_wait_args(rest),
-    [command, ..] => return Err(format!("Unknown app subcommand: {command}")),
+    [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli app <capabilities|inspect|workspace apply|panel|axis> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|wait|workspace|panel|axis|preset|theme|loudness-profile|settings|transport|dock> ...".to_string())
 }
 
-fn parse_dock_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   if let [action, json] = args {
     if matches!(action.as_str(), "describe" | "inspect") && json == "--json" {
-      return Ok(CliAppCommand::DockRead {
+      return Ok(ControlCommand::DockRead {
         method: format!("dock.{action}"),
       });
     }
@@ -213,7 +233,7 @@ fn parse_dock_args(args: &[String]) -> Result<CliAppCommand, String> {
       Some(input.clone()),
       4,
     ),
-    _ => return Err("Usage: plvs-cli app dock <describe|inspect|enter|exit|layout apply|panel describe|panel update|panel reset> ... --json".to_string()),
+    _ => return Err("Usage: plvs-cli dock <describe|inspect|enter|exit|layout apply|panel describe|panel update|panel reset> ... --json".to_string()),
   };
   let read_panel = method == "dock.panel.describe";
   let enter = method == "dock.enter";
@@ -298,14 +318,14 @@ fn parse_dock_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
   }
   if !json {
-    return Err("The app dock command requires --json.".to_string());
+    return Err("The dock command requires --json.".to_string());
   }
   if !read_panel && expected_revision.is_none() {
     return Err(format!(
       "The {method} command requires --expected-revision."
     ));
   }
-  Ok(CliAppCommand::DockCommand {
+  Ok(ControlCommand::DockCommand {
     method,
     panel_id,
     input,
@@ -318,15 +338,15 @@ fn parse_dock_args(args: &[String]) -> Result<CliAppCommand, String> {
   })
 }
 
-fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   if args.first().map(String::as_str) == Some("inspect") {
     return if args == ["inspect", "--json"] {
-      Ok(CliAppCommand::TransportInspect)
+      Ok(ControlCommand::TransportInspect)
     } else {
-      Err("Usage: plvs-cli app transport inspect --json".to_string())
+      Err("Usage: plvs-cli transport inspect --json".to_string())
     };
   }
 
@@ -361,7 +381,7 @@ fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
     _ => {
       return Err(
-        "Usage: plvs-cli app transport <inspect|source live|source file|live start|live stop|live clear|file analyze|file reanalyze|file stop|file select|file remove|file clear> ... --json"
+        "Usage: plvs-cli transport <inspect|source live|source file|live start|live stop|live clear|file analyze|file reanalyze|file stop|file select|file remove|file clear> ... --json"
           .to_string(),
       )
     }
@@ -416,14 +436,14 @@ fn parse_transport_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
   }
   if !json {
-    return Err("The app transport command requires --json.".to_string());
+    return Err("The transport command requires --json.".to_string());
   }
   if expected_revision.is_none() {
     return Err(format!(
       "The {method} command requires --expected-revision."
     ));
   }
-  Ok(CliAppCommand::TransportMutation {
+  Ok(ControlCommand::TransportMutation {
     method,
     target_key,
     target,
@@ -444,9 +464,9 @@ fn is_transport_action(method: &str) -> bool {
   )
 }
 
-fn parse_wait_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_wait_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   let mut after_revision = None;
   let mut timeout_ms = 30_000;
@@ -488,38 +508,36 @@ fn parse_wait_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
   }
   if !json {
-    return Err("The app wait command requires --json.".to_string());
+    return Err("The wait command requires --json.".to_string());
   }
   let after_revision =
-    after_revision.ok_or_else(|| "The app wait command requires --after-revision.".to_string())?;
+    after_revision.ok_or_else(|| "The wait command requires --after-revision.".to_string())?;
   if !(100..=300_000).contains(&timeout_ms) {
     return Err("The --timeout-ms value must be from 100 to 300000.".to_string());
   }
-  Ok(CliAppCommand::Wait {
+  Ok(ControlCommand::Wait {
     after_revision,
     timeout_ms,
   })
 }
 
-fn parse_settings_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_settings_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   match args {
     [command, json] if command == "describe" && json == "--json" => {
-      return Ok(CliAppCommand::SettingsDescribe);
+      return Ok(ControlCommand::SettingsDescribe);
     }
     [command, json] if command == "inspect" && json == "--json" => {
-      return Ok(CliAppCommand::SettingsInspect);
+      return Ok(ControlCommand::SettingsInspect);
     }
     [command, ..] if command == "describe" || command == "inspect" => {
-      return Err(format!(
-        "The app settings {command} command requires --json."
-      ));
+      return Err(format!("The settings {command} command requires --json."));
     }
     _ => {}
   }
-  const USAGE: &str = "Usage: plvs-cli app settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]";
+  const USAGE: &str = "Usage: plvs-cli settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]";
   if args.first().map(String::as_str) != Some("update") {
     return Err(USAGE.to_string());
   }
@@ -567,12 +585,12 @@ fn parse_settings_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
   }
   if !json {
-    return Err("The app settings update command requires --json.".to_string());
+    return Err("The settings update command requires --json.".to_string());
   }
   if expected_revision.is_none() {
-    return Err("The app settings update command requires --expected-revision.".to_string());
+    return Err("The settings update command requires --expected-revision.".to_string());
   }
-  Ok(CliAppCommand::SettingsUpdate {
+  Ok(ControlCommand::SettingsUpdate {
     input: input.ok_or_else(|| USAGE.to_string())?,
     expected_revision,
     allow_measurement_restart,
@@ -580,13 +598,13 @@ fn parse_settings_args(args: &[String]) -> Result<CliAppCommand, String> {
   })
 }
 
-fn parse_workspace_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_workspace_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   if args.first().map(String::as_str) != Some("apply") {
     return Err(
-      "Usage: plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]"
+      "Usage: plvs-cli workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]"
         .to_string(),
     );
   }
@@ -630,31 +648,31 @@ fn parse_workspace_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
   }
   if !json {
-    return Err("The app workspace apply command requires --json.".to_string());
+    return Err("The workspace apply command requires --json.".to_string());
   }
   if expected_revision.is_none() {
-    return Err("The app workspace apply command requires --expected-revision.".to_string());
+    return Err("The workspace apply command requires --expected-revision.".to_string());
   }
   let input = input.ok_or_else(|| {
-    "Usage: plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]"
+    "Usage: plvs-cli workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]"
       .to_string()
   })?;
-  Ok(CliAppCommand::WorkspaceApply {
+  Ok(ControlCommand::WorkspaceApply {
     input,
     expected_revision,
     dry_run,
   })
 }
 
-fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_panel_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   const UPDATE_USAGE: &str =
-    "Usage: plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]";
+    "Usage: plvs-cli panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]";
   const RESET_USAGE: &str =
-    "Usage: plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]";
-  const DESCRIBE_USAGE: &str = "Usage: plvs-cli app panel describe <panel-id> --json";
+    "Usage: plvs-cli panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]";
+  const DESCRIBE_USAGE: &str = "Usage: plvs-cli panel describe <panel-id> --json";
   let action = args.first().map(String::as_str);
   let usage = match action {
     Some("update") => UPDATE_USAGE,
@@ -708,13 +726,13 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
   }
   if !json {
     return Err(format!(
-      "The app panel {} command requires --json.",
+      "The panel {} command requires --json.",
       action.unwrap()
     ));
   }
   if action != Some("describe") && expected_revision.is_none() {
     return Err(format!(
-      "The app panel {} command requires --expected-revision.",
+      "The panel {} command requires --expected-revision.",
       action.unwrap()
     ));
   }
@@ -723,43 +741,43 @@ fn parse_panel_args(args: &[String]) -> Result<CliAppCommand, String> {
     return Err(usage.to_string());
   }
   match action {
-    Some("update") => Ok(CliAppCommand::PanelUpdate {
+    Some("update") => Ok(ControlCommand::PanelUpdate {
       panel_id: positionals[0].clone(),
       input: positionals[1].clone(),
       expected_revision,
       dry_run,
     }),
-    Some("reset") => Ok(CliAppCommand::PanelReset {
+    Some("reset") => Ok(ControlCommand::PanelReset {
       panel_id: positionals[0].clone(),
       expected_revision,
       dry_run,
     }),
-    Some("describe") => Ok(CliAppCommand::PanelDescribe {
+    Some("describe") => Ok(ControlCommand::PanelDescribe {
       panel_id: positionals[0].clone(),
     }),
     _ => unreachable!("panel action was validated above"),
   }
 }
 
-fn parse_axis_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_axis_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   match args {
     [command, json] if (command == "describe" || command == "inspect") && json == "--json" => {
       return Ok(if command == "describe" {
-        CliAppCommand::AxisDescribe
+        ControlCommand::AxisDescribe
       } else {
-        CliAppCommand::AxisInspect
+        ControlCommand::AxisInspect
       });
     }
     [command, ..] if command == "describe" || command == "inspect" => {
-      return Err(format!("The app axis {command} command requires --json."));
+      return Err(format!("The axis {command} command requires --json."));
     }
     _ => {}
   }
 
-  const USAGE: &str = "Usage:\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]";
+  const USAGE: &str = "Usage:\n  plvs-cli axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]";
   let scope = args.first().map(String::as_str);
   let action = args.get(1).map(String::as_str);
   if !matches!(scope, Some("shared" | "panel")) || !matches!(action, Some("update" | "reset")) {
@@ -805,13 +823,13 @@ fn parse_axis_args(args: &[String]) -> Result<CliAppCommand, String> {
   }
   if !json {
     return Err(format!(
-      "The app axis {} {} command requires --json.",
+      "The axis {} {} command requires --json.",
       scope.unwrap(),
       action.unwrap()
     ));
   }
   if expected_revision.is_none() {
-    return Err("The app axis mutation command requires --expected-revision.".to_string());
+    return Err("The axis mutation command requires --expected-revision.".to_string());
   }
   let expected_positionals = match (scope, action) {
     (Some("shared"), Some("update")) => 2,
@@ -827,25 +845,25 @@ fn parse_axis_args(args: &[String]) -> Result<CliAppCommand, String> {
   }
 
   match (scope, action) {
-    (Some("shared"), Some("update")) => Ok(CliAppCommand::AxisSharedUpdate {
+    (Some("shared"), Some("update")) => Ok(ControlCommand::AxisSharedUpdate {
       kind: positionals[0].clone(),
       input: positionals[1].clone(),
       expected_revision,
       dry_run,
     }),
-    (Some("shared"), Some("reset")) => Ok(CliAppCommand::AxisSharedReset {
+    (Some("shared"), Some("reset")) => Ok(ControlCommand::AxisSharedReset {
       kind: positionals[0].clone(),
       expected_revision,
       dry_run,
     }),
-    (Some("panel"), Some("update")) => Ok(CliAppCommand::AxisPanelUpdate {
+    (Some("panel"), Some("update")) => Ok(ControlCommand::AxisPanelUpdate {
       panel_id: positionals[0].clone(),
       kind: positionals[1].clone(),
       input: positionals[2].clone(),
       expected_revision,
       dry_run,
     }),
-    (Some("panel"), Some("reset")) => Ok(CliAppCommand::AxisPanelReset {
+    (Some("panel"), Some("reset")) => Ok(ControlCommand::AxisPanelReset {
       panel_id: positionals[0].clone(),
       kind: positionals[1].clone(),
       expected_revision,
@@ -855,20 +873,20 @@ fn parse_axis_args(args: &[String]) -> Result<CliAppCommand, String> {
   }
 }
 
-fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_preset_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   match args {
     [command, json] if command == "list" && json == "--json" => {
-      return Ok(CliAppCommand::PresetList);
+      return Ok(ControlCommand::PresetList);
     }
     [command, ..] if command == "list" => {
-      return Err("The app preset list command requires --json.".to_string());
+      return Err("The preset list command requires --json.".to_string());
     }
     _ => {}
   }
-  const USAGE: &str = "Usage: plvs-cli app preset <describe|save|apply|update|rename|delete|reorder|export|import> ... --json [--expected-revision <n>] [--dry-run]";
+  const USAGE: &str = "Usage: plvs-cli preset <describe|save|apply|update|rename|delete|reorder|export|import> ... --json [--expected-revision <n>] [--dry-run]";
   let command = args
     .first()
     .map(String::as_str)
@@ -928,7 +946,7 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
   }
   if !json {
-    return Err(format!("The app preset {command} command requires --json."));
+    return Err(format!("The preset {command} command requires --json."));
   }
   let expected_positionals = if command == "rename" { 2 } else { 1 };
   if positionals.len() != expected_positionals
@@ -937,47 +955,47 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
     return Err(USAGE.to_string());
   }
   if command == "describe" && dry_run {
-    return Err("The app preset describe command does not accept --dry-run.".to_string());
+    return Err("The preset describe command does not accept --dry-run.".to_string());
   }
   if command == "describe" && expected_revision.is_some() {
-    return Err("The app preset describe command does not accept --expected-revision.".to_string());
+    return Err("The preset describe command does not accept --expected-revision.".to_string());
   }
   if command != "describe" && expected_revision.is_none() {
     return Err(format!(
-      "The app preset {command} command requires --expected-revision."
+      "The preset {command} command requires --expected-revision."
     ));
   }
   Ok(match command {
-    "describe" => CliAppCommand::PresetDescribe {
+    "describe" => ControlCommand::PresetDescribe {
       preset_id: positionals.remove(0),
     },
-    "save" => CliAppCommand::PresetSave {
+    "save" => ControlCommand::PresetSave {
       name: positionals.remove(0),
       expected_revision,
       dry_run,
     },
-    "update" => CliAppCommand::PresetUpdate {
+    "update" => ControlCommand::PresetUpdate {
       preset_id: positionals.remove(0),
       expected_revision,
       dry_run,
     },
-    "apply" => CliAppCommand::PresetApply {
+    "apply" => ControlCommand::PresetApply {
       preset_id: positionals.remove(0),
       expected_revision,
       dry_run,
     },
-    "rename" => CliAppCommand::PresetRename {
+    "rename" => ControlCommand::PresetRename {
       preset_id: positionals.remove(0),
       name: positionals.remove(0),
       expected_revision,
       dry_run,
     },
-    "delete" => CliAppCommand::PresetDelete {
+    "delete" => ControlCommand::PresetDelete {
       preset_id: positionals.remove(0),
       expected_revision,
       dry_run,
     },
-    "reorder" => CliAppCommand::PresetReorder {
+    "reorder" => ControlCommand::PresetReorder {
       input: positionals.remove(0),
       expected_revision,
       dry_run,
@@ -988,9 +1006,9 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
 
 /// One parser for all three libraries. The CLI family word is the caller's business (`theme`,
 /// `loudness-profile`, `preset`); `family` here is already the wire name.
-fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, String> {
+fn parse_library_args(family: &str, args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
-    return Ok(CliAppCommand::Help);
+    return Ok(ControlCommand::Help);
   }
   // Every message a user reads names the word they typed, not the wire name: `loudnessProfile` is
   // not a command they can run.
@@ -999,7 +1017,7 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
   } else {
     family
   };
-  let usage = format!("Usage: plvs-cli app {label} <list|export|import> ... --json");
+  let usage = format!("Usage: plvs-cli {label} <list|export|import> ... --json");
   let command = args
     .first()
     .map(String::as_str)
@@ -1076,43 +1094,41 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
     }
   }
   if !json {
-    return Err(format!(
-      "The app {label} {command} command requires --json."
-    ));
+    return Err(format!("The {label} {command} command requires --json."));
   }
 
   match command {
     "list" => {
       if !positionals.is_empty() || all || ids.is_some() || out.is_some() || dry_run {
         return Err(format!(
-          "The app {label} list command takes no options other than --json."
+          "The {label} list command takes no options other than --json."
         ));
       }
       if expected_revision.is_some() {
         return Err(format!(
-          "The app {label} list command does not accept --expected-revision."
+          "The {label} list command does not accept --expected-revision."
         ));
       }
-      Ok(CliAppCommand::LibraryList {
+      Ok(ControlCommand::LibraryList {
         family: family.to_string(),
       })
     }
     "export" => {
       if !positionals.is_empty() {
         return Err(format!(
-          "The app {label} export command takes no positional arguments."
+          "The {label} export command takes no positional arguments."
         ));
       }
       // Export is a read: it cannot conflict, and there is nothing to preview.
       if expected_revision.is_some() || dry_run {
         return Err(format!(
-          "The app {label} export command does not accept --expected-revision or --dry-run."
+          "The {label} export command does not accept --expected-revision or --dry-run."
         ));
       }
       if all == ids.is_some() {
         return Err("Pass exactly one of --all or --ids.".to_string());
       }
-      Ok(CliAppCommand::LibraryExport {
+      Ok(ControlCommand::LibraryExport {
         family: family.to_string(),
         ids,
         out,
@@ -1121,20 +1137,20 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
     _ => {
       if positionals.len() != 1 || positionals[0].trim().is_empty() {
         return Err(format!(
-          "Usage: plvs-cli app {label} import <file|-> --json --expected-revision <n> [--dry-run]"
+          "Usage: plvs-cli {label} import <file|-> --json --expected-revision <n> [--dry-run]"
         ));
       }
       if all || ids.is_some() || out.is_some() {
         return Err(format!(
-          "The app {label} import command does not accept --all, --ids or --out."
+          "The {label} import command does not accept --all, --ids or --out."
         ));
       }
       if expected_revision.is_none() {
         return Err(format!(
-          "The app {label} import command requires --expected-revision."
+          "The {label} import command requires --expected-revision."
         ));
       }
-      Ok(CliAppCommand::LibraryImport {
+      Ok(ControlCommand::LibraryImport {
         family: family.to_string(),
         input: positionals.remove(0),
         expected_revision,
@@ -1149,7 +1165,7 @@ fn is_help(value: &str) -> bool {
 }
 
 fn base_help_text() -> &'static str {
-  "PLVS CLI - app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json\n  plvs-cli app preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli app preset import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli app theme list --json\n  plvs-cli app theme export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli app theme import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli app loudness-profile list --json\n  plvs-cli app loudness-profile export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli app loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli app transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli app transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli app transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - Agent Control\n\nUsage:\n  plvs-cli capabilities --json\n  plvs-cli inspect --json\n  plvs-cli workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel describe <panel-id> --json\n  plvs-cli panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis describe --json\n  plvs-cli axis inspect --json\n  plvs-cli axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset list --json\n  plvs-cli preset describe <preset-id> --json\n  plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli preset import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli theme list --json\n  plvs-cli theme export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli theme import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli loudness-profile list --json\n  plvs-cli loudness-profile export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli settings describe --json\n  plvs-cli settings inspect --json\n  plvs-cli settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli transport inspect --json\n  plvs-cli transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 pub fn help_text() -> &'static str {
@@ -1158,7 +1174,7 @@ pub fn help_text() -> &'static str {
     .get_or_init(|| {
       base_help_text().replacen(
         "\n\nControls the already-running",
-        "\n  plvs-cli app dock describe --json\n  plvs-cli app dock inspect --json\n  plvs-cli app dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock panel describe <panel-id> --json\n  plvs-cli app dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
+        "\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
         1,
       )
       .replace("[--expected-revision <n>]", "--expected-revision <n>")
@@ -1195,7 +1211,7 @@ struct AppCall {
 }
 
 trait ControlClient {
-  fn call(&self, request: JsonRpcRequest) -> Result<AppCall, CliAppFailure>;
+  fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure>;
 }
 
 struct LocalControlClient;
@@ -1205,32 +1221,34 @@ struct LocalControlClient;
 /// it is on and the app is closed, and an agent that cannot tell those apart sends the user to the
 /// wrong fix. Every other kind is specific, and reporting it as a setting would hide a real fault
 /// and point the user at a switch that is already on.
-fn discovery_failure(error: &DiscoveryError, enabled: bool) -> CliAppFailure {
+fn discovery_failure(error: &DiscoveryError, enabled: bool) -> ControlFailure {
   match error.kind {
     DiscoveryErrorKind::Missing if enabled => {
-      CliAppFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
+      ControlFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
     }
-    DiscoveryErrorKind::Missing => CliAppFailure::transport(
+    DiscoveryErrorKind::Missing => ControlFailure::transport(
       "agentControlDisabled",
       "Agent Control is disabled. Enable it in PLVS Settings.".to_string(),
       None,
     ),
     // A descriptor naming a process that is gone: the app really is not running, and the
     // discovery text says which check decided that.
-    DiscoveryErrorKind::Stale => CliAppFailure::transport("appNotRunning", error.to_string(), None),
+    DiscoveryErrorKind::Stale => {
+      ControlFailure::transport("appNotRunning", error.to_string(), None)
+    }
     DiscoveryErrorKind::ProtocolMismatch => {
-      CliAppFailure::transport("protocolMismatch", error.to_string(), None)
+      ControlFailure::transport("protocolMismatch", error.to_string(), None)
     }
     DiscoveryErrorKind::Malformed | DiscoveryErrorKind::Unavailable | DiscoveryErrorKind::Io => {
-      CliAppFailure::transport("discoveryFailed", error.to_string(), None)
+      ControlFailure::transport("discoveryFailed", error.to_string(), None)
     }
   }
 }
 
 impl ControlClient for LocalControlClient {
-  fn call(&self, request: JsonRpcRequest) -> Result<AppCall, CliAppFailure> {
+  fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure> {
     let path = descriptor_path()
-      .map_err(|error| CliAppFailure::transport("appNotRunning", error.to_string(), None))?;
+      .map_err(|error| ControlFailure::transport("appNotRunning", error.to_string(), None))?;
     let descriptor = read_descriptor_at(&path, env!("PLVS_APP_ID"), |_| true).map_err(|error| {
       discovery_failure(
         &error,
@@ -1245,7 +1263,7 @@ impl ControlClient for LocalControlClient {
 fn call_descriptor(
   descriptor: &AgentControlDescriptor,
   request: &JsonRpcRequest,
-) -> Result<AppCall, CliAppFailure> {
+) -> Result<AppCall, ControlFailure> {
   // The same budget the broker uses, plus a wider grace, so this end is always the last to give up
   // and the app's own answer is never replaced by a client-side timeout.
   let timeout = crate::agent_control::broker::frontend_budget(request)
@@ -1263,7 +1281,7 @@ fn call_descriptor(
       crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => "timeout",
       _ => "transportFailed",
     };
-    CliAppFailure::transport(reason, error.to_string(), Some(descriptor.app.clone()))
+    ControlFailure::transport(reason, error.to_string(), Some(descriptor.app.clone()))
   })?;
   Ok(AppCall {
     app: descriptor.app.clone(),
@@ -1275,8 +1293,8 @@ fn call_descriptor(
 fn call_descriptor(
   descriptor: &AgentControlDescriptor,
   _request: &JsonRpcRequest,
-) -> Result<AppCall, CliAppFailure> {
-  Err(CliAppFailure::transport(
+) -> Result<AppCall, ControlFailure> {
+  Err(ControlFailure::transport(
     "transportUnavailable",
     "Live app control is currently available only on Windows.",
     Some(descriptor.app.clone()),
@@ -1285,7 +1303,7 @@ fn call_descriptor(
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct CliAppError {
+struct ControlError {
   code: String,
   message: String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -1293,15 +1311,15 @@ struct CliAppError {
 }
 
 #[derive(Debug, Clone)]
-struct CliAppFailure {
-  error: Box<CliAppError>,
+struct ControlFailure {
+  error: Box<ControlError>,
   exit_code: u8,
 }
 
-impl CliAppFailure {
+impl ControlFailure {
   fn transport(code: &str, message: impl Into<String>, _app: Option<DescriptorApp>) -> Self {
     Self {
-      error: Box::new(CliAppError {
+      error: Box::new(ControlError {
         code: code.to_string(),
         message: message.into(),
         details: None,
@@ -1312,7 +1330,7 @@ impl CliAppFailure {
 
   fn invalid_arguments(message: impl Into<String>) -> Self {
     Self {
-      error: Box::new(CliAppError {
+      error: Box::new(ControlError {
         code: "invalidArguments".to_string(),
         message: message.into(),
         details: None,
@@ -1321,7 +1339,7 @@ impl CliAppFailure {
     }
   }
 
-  fn app(_app: DescriptorApp, error: CliAppError, rpc_error_code: Option<i64>) -> Self {
+  fn application(_app: DescriptorApp, error: ControlError, rpc_error_code: Option<i64>) -> Self {
     let exit_code = match (rpc_error_code, error.code.as_str()) {
       (Some(-32602), _)
       | (
@@ -1367,50 +1385,50 @@ impl CliAppFailure {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct CliAppReport {
+struct ControlReport {
   schema_version: u32,
   ok: bool,
   #[serde(skip_serializing_if = "Option::is_none")]
   result: Option<Value>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  error: Option<CliAppError>,
+  error: Option<ControlError>,
 }
 
-fn command_name(command: &CliAppCommand) -> String {
+fn command_name(command: &ControlCommand) -> String {
   match command {
-    CliAppCommand::Help => "app.help".to_string(),
-    CliAppCommand::Capabilities => "app.capabilities".to_string(),
-    CliAppCommand::Inspect => "app.inspect".to_string(),
-    CliAppCommand::PanelDescribe { .. } => "panel.describe".to_string(),
-    CliAppCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
-    CliAppCommand::PanelUpdate { .. } => "panel.update".to_string(),
-    CliAppCommand::PanelReset { .. } => "panel.reset".to_string(),
-    CliAppCommand::AxisDescribe => "axis.describe".to_string(),
-    CliAppCommand::AxisInspect => "axis.inspect".to_string(),
-    CliAppCommand::AxisSharedUpdate { .. } => "axis.shared.update".to_string(),
-    CliAppCommand::AxisSharedReset { .. } => "axis.shared.reset".to_string(),
-    CliAppCommand::AxisPanelUpdate { .. } => "axis.panel.update".to_string(),
-    CliAppCommand::AxisPanelReset { .. } => "axis.panel.reset".to_string(),
-    CliAppCommand::PresetList => "preset.list".to_string(),
-    CliAppCommand::PresetDescribe { .. } => "preset.describe".to_string(),
-    CliAppCommand::PresetSave { .. } => "preset.save".to_string(),
-    CliAppCommand::PresetUpdate { .. } => "preset.update".to_string(),
-    CliAppCommand::PresetApply { .. } => "preset.apply".to_string(),
-    CliAppCommand::PresetRename { .. } => "preset.rename".to_string(),
-    CliAppCommand::PresetDelete { .. } => "preset.delete".to_string(),
-    CliAppCommand::PresetReorder { .. } => "preset.reorder".to_string(),
-    CliAppCommand::LibraryList { family } => format!("{family}.list"),
-    CliAppCommand::LibraryExport { family, .. } => format!("{family}.export"),
-    CliAppCommand::LibraryImport { family, .. } => format!("{family}.import"),
-    CliAppCommand::SettingsDescribe => "settings.describe".to_string(),
-    CliAppCommand::SettingsInspect => "settings.inspect".to_string(),
-    CliAppCommand::TransportInspect => "transport.inspect".to_string(),
-    CliAppCommand::TransportMutation { method, .. } => method.clone(),
-    CliAppCommand::DockRead { method } | CliAppCommand::DockCommand { method, .. } => {
+    ControlCommand::Help => unreachable!("help does not have a wire method"),
+    ControlCommand::Capabilities => "app.capabilities".to_string(),
+    ControlCommand::Inspect => "app.inspect".to_string(),
+    ControlCommand::PanelDescribe { .. } => "panel.describe".to_string(),
+    ControlCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
+    ControlCommand::PanelUpdate { .. } => "panel.update".to_string(),
+    ControlCommand::PanelReset { .. } => "panel.reset".to_string(),
+    ControlCommand::AxisDescribe => "axis.describe".to_string(),
+    ControlCommand::AxisInspect => "axis.inspect".to_string(),
+    ControlCommand::AxisSharedUpdate { .. } => "axis.shared.update".to_string(),
+    ControlCommand::AxisSharedReset { .. } => "axis.shared.reset".to_string(),
+    ControlCommand::AxisPanelUpdate { .. } => "axis.panel.update".to_string(),
+    ControlCommand::AxisPanelReset { .. } => "axis.panel.reset".to_string(),
+    ControlCommand::PresetList => "preset.list".to_string(),
+    ControlCommand::PresetDescribe { .. } => "preset.describe".to_string(),
+    ControlCommand::PresetSave { .. } => "preset.save".to_string(),
+    ControlCommand::PresetUpdate { .. } => "preset.update".to_string(),
+    ControlCommand::PresetApply { .. } => "preset.apply".to_string(),
+    ControlCommand::PresetRename { .. } => "preset.rename".to_string(),
+    ControlCommand::PresetDelete { .. } => "preset.delete".to_string(),
+    ControlCommand::PresetReorder { .. } => "preset.reorder".to_string(),
+    ControlCommand::LibraryList { family } => format!("{family}.list"),
+    ControlCommand::LibraryExport { family, .. } => format!("{family}.export"),
+    ControlCommand::LibraryImport { family, .. } => format!("{family}.import"),
+    ControlCommand::SettingsDescribe => "settings.describe".to_string(),
+    ControlCommand::SettingsInspect => "settings.inspect".to_string(),
+    ControlCommand::TransportInspect => "transport.inspect".to_string(),
+    ControlCommand::TransportMutation { method, .. } => method.clone(),
+    ControlCommand::DockRead { method } | ControlCommand::DockCommand { method, .. } => {
       method.clone()
     }
-    CliAppCommand::SettingsUpdate { .. } => "settings.update".to_string(),
-    CliAppCommand::Wait { .. } => "app.wait".to_string(),
+    ControlCommand::SettingsUpdate { .. } => "settings.update".to_string(),
+    ControlCommand::Wait { .. } => "app.wait".to_string(),
   }
 }
 
@@ -1432,22 +1450,22 @@ fn mutation_params<const N: usize>(
 }
 
 fn request_for_command<R: Read>(
-  command: &CliAppCommand,
+  command: &ControlCommand,
   stdin: &mut R,
-) -> Result<JsonRpcRequest, CliAppFailure> {
+) -> Result<JsonRpcRequest, ControlFailure> {
   let method = command_name(command);
   let params = match command {
-    CliAppCommand::Capabilities
-    | CliAppCommand::Inspect
-    | CliAppCommand::AxisDescribe
-    | CliAppCommand::AxisInspect
-    | CliAppCommand::PresetList
-    | CliAppCommand::LibraryList { .. }
-    | CliAppCommand::SettingsDescribe
-    | CliAppCommand::SettingsInspect
-    | CliAppCommand::TransportInspect => serde_json::json!({}),
-    CliAppCommand::DockRead { .. } => serde_json::json!({}),
-    CliAppCommand::DockCommand {
+    ControlCommand::Capabilities
+    | ControlCommand::Inspect
+    | ControlCommand::AxisDescribe
+    | ControlCommand::AxisInspect
+    | ControlCommand::PresetList
+    | ControlCommand::LibraryList { .. }
+    | ControlCommand::SettingsDescribe
+    | ControlCommand::SettingsInspect
+    | ControlCommand::TransportInspect => serde_json::json!({}),
+    ControlCommand::DockRead { .. } => serde_json::json!({}),
+    ControlCommand::DockCommand {
       method,
       panel_id,
       input,
@@ -1469,7 +1487,7 @@ fn request_for_command<R: Read>(
           "Dock panel controls"
         };
         let document =
-          read_json_document(input, stdin, subject).map_err(CliAppFailure::invalid_arguments)?;
+          read_json_document(input, stdin, subject).map_err(ControlFailure::invalid_arguments)?;
         params.insert(
           if method == "dock.layout.apply" {
             "layout"
@@ -1500,7 +1518,7 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
-    CliAppCommand::TransportMutation {
+    ControlCommand::TransportMutation {
       method,
       target_key,
       target,
@@ -1512,7 +1530,7 @@ fn request_for_command<R: Read>(
       if let (Some(key), Some(value)) = (target_key, target) {
         let value = if method == "transport.file.analyze" {
           let canonical = fs::canonicalize(Path::new(value)).map_err(|error| {
-            CliAppFailure::invalid_arguments(format!(
+            ControlFailure::invalid_arguments(format!(
               "Unable to resolve audio path {value}: {error}"
             ))
           })?;
@@ -1533,10 +1551,10 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
-    CliAppCommand::PresetDescribe { preset_id } => {
+    ControlCommand::PresetDescribe { preset_id } => {
       serde_json::json!({ "presetId": preset_id })
     }
-    CliAppCommand::PresetSave {
+    ControlCommand::PresetSave {
       name,
       expected_revision,
       dry_run,
@@ -1545,7 +1563,7 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    CliAppCommand::PresetUpdate {
+    ControlCommand::PresetUpdate {
       preset_id,
       expected_revision,
       dry_run,
@@ -1554,7 +1572,7 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    CliAppCommand::PresetApply {
+    ControlCommand::PresetApply {
       preset_id,
       expected_revision,
       dry_run,
@@ -1563,7 +1581,7 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    CliAppCommand::PresetRename {
+    ControlCommand::PresetRename {
       preset_id,
       name,
       expected_revision,
@@ -1576,7 +1594,7 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    CliAppCommand::PresetDelete {
+    ControlCommand::PresetDelete {
       preset_id,
       expected_revision,
       dry_run,
@@ -1585,19 +1603,19 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    CliAppCommand::PresetReorder {
+    ControlCommand::PresetReorder {
       input,
       expected_revision,
       dry_run,
     } => {
       let document = read_json_document(input, stdin, "preset order")
-        .map_err(CliAppFailure::invalid_arguments)?;
+        .map_err(ControlFailure::invalid_arguments)?;
       let preset_ids = document
         .as_object()
         .and_then(|object| object.get("presetIds"))
         .cloned()
         .ok_or_else(|| {
-          CliAppFailure::invalid_arguments(
+          ControlFailure::invalid_arguments(
             "Preset order JSON must be an object containing presetIds.",
           )
         })?;
@@ -1605,28 +1623,28 @@ fn request_for_command<R: Read>(
     }
     // A whole-library export omits `ids` entirely: the frontend reads an absent `ids` as the whole
     // library and rejects any value that is not a non-empty array of ids.
-    CliAppCommand::LibraryExport { ids, .. } => match ids {
+    ControlCommand::LibraryExport { ids, .. } => match ids {
       Some(values) => serde_json::json!({ "ids": values }),
       None => serde_json::json!({}),
     },
-    CliAppCommand::LibraryImport {
+    ControlCommand::LibraryImport {
       input,
       expected_revision,
       dry_run,
       ..
     } => {
       let pack = read_json_document(input, stdin, "library pack")
-        .map_err(CliAppFailure::invalid_arguments)?;
+        .map_err(ControlFailure::invalid_arguments)?;
       mutation_params([("pack", pack)], *expected_revision, *dry_run)
     }
-    CliAppCommand::SettingsUpdate {
+    ControlCommand::SettingsUpdate {
       input,
       expected_revision,
       allow_measurement_restart,
       dry_run,
     } => {
       let patch = read_json_document(input, stdin, "Settings patch")
-        .map_err(CliAppFailure::invalid_arguments)?;
+        .map_err(ControlFailure::invalid_arguments)?;
       let mut params = serde_json::Map::from_iter([
         ("patch".to_string(), patch),
         ("dryRun".to_string(), Value::Bool(*dry_run)),
@@ -1640,19 +1658,19 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
-    CliAppCommand::Wait {
+    ControlCommand::Wait {
       after_revision,
       timeout_ms,
     } => serde_json::json!({ "afterRevision": after_revision, "timeoutMs": timeout_ms }),
-    CliAppCommand::PanelDescribe { panel_id } => {
+    ControlCommand::PanelDescribe { panel_id } => {
       serde_json::json!({ "panelId": panel_id })
     }
-    CliAppCommand::WorkspaceApply {
+    ControlCommand::WorkspaceApply {
       input,
       expected_revision,
       dry_run,
     } => {
-      let layout = read_layout(input, stdin).map_err(CliAppFailure::invalid_arguments)?;
+      let layout = read_layout(input, stdin).map_err(ControlFailure::invalid_arguments)?;
       let mut params = serde_json::Map::from_iter([
         ("layout".to_string(), layout),
         ("dryRun".to_string(), Value::Bool(*dry_run)),
@@ -1662,14 +1680,14 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
-    CliAppCommand::PanelUpdate {
+    ControlCommand::PanelUpdate {
       panel_id,
       input,
       expected_revision,
       dry_run,
     } => {
       let patch = read_json_document(input, stdin, "panel controls")
-        .map_err(CliAppFailure::invalid_arguments)?;
+        .map_err(ControlFailure::invalid_arguments)?;
       let mut params = serde_json::Map::from_iter([
         ("panelId".to_string(), Value::String(panel_id.clone())),
         ("patch".to_string(), patch),
@@ -1680,7 +1698,7 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
-    CliAppCommand::PanelReset {
+    ControlCommand::PanelReset {
       panel_id,
       expected_revision,
       dry_run,
@@ -1694,21 +1712,21 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
-    CliAppCommand::AxisSharedUpdate {
+    ControlCommand::AxisSharedUpdate {
       kind,
       input,
       expected_revision,
       dry_run,
     } => {
-      let range =
-        read_json_document(input, stdin, "axis range").map_err(CliAppFailure::invalid_arguments)?;
+      let range = read_json_document(input, stdin, "axis range")
+        .map_err(ControlFailure::invalid_arguments)?;
       mutation_params(
         [("kind", Value::String(kind.clone())), ("range", range)],
         *expected_revision,
         *dry_run,
       )
     }
-    CliAppCommand::AxisSharedReset {
+    ControlCommand::AxisSharedReset {
       kind,
       expected_revision,
       dry_run,
@@ -1717,15 +1735,15 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    CliAppCommand::AxisPanelUpdate {
+    ControlCommand::AxisPanelUpdate {
       panel_id,
       kind,
       input,
       expected_revision,
       dry_run,
     } => {
-      let patch =
-        read_json_document(input, stdin, "panel axis").map_err(CliAppFailure::invalid_arguments)?;
+      let patch = read_json_document(input, stdin, "panel axis")
+        .map_err(ControlFailure::invalid_arguments)?;
       mutation_params(
         [
           ("panelId", Value::String(panel_id.clone())),
@@ -1736,7 +1754,7 @@ fn request_for_command<R: Read>(
         *dry_run,
       )
     }
-    CliAppCommand::AxisPanelReset {
+    ControlCommand::AxisPanelReset {
       panel_id,
       kind,
       expected_revision,
@@ -1749,7 +1767,7 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    CliAppCommand::Help => unreachable!("help does not create a request"),
+    ControlCommand::Help => unreachable!("help does not create a request"),
   };
   Ok(JsonRpcRequest {
     id: format!(
@@ -1785,10 +1803,10 @@ fn public_error_details(data: &Value) -> Option<Value> {
 }
 
 fn execute<R: Read>(
-  command: &CliAppCommand,
+  command: &ControlCommand,
   stdin: &mut R,
   client: &dyn ControlClient,
-) -> (CliAppReport, u8) {
+) -> (ControlReport, u8) {
   let request = match request_for_command(command, stdin) {
     Ok(request) => request,
     Err(failure) => return (failure_report(failure.clone()), failure.exit_code),
@@ -1804,7 +1822,7 @@ fn execute<R: Read>(
       if call.response.get("jsonrpc").and_then(Value::as_str) != Some("2.0")
         || !(attributed || id == Some(""))
       {
-        let failure = CliAppFailure::transport(
+        let failure = ControlFailure::transport(
           "transportFailed",
           "PLVS returned a malformed or mismatched JSON-RPC response.",
           Some(call.app),
@@ -1813,7 +1831,7 @@ fn execute<R: Read>(
       }
       if let Some(result) = call.response.get("result") {
         let mut result = result.clone();
-        if command == &CliAppCommand::Capabilities {
+        if command == &ControlCommand::Capabilities {
           if let Value::Object(fields) = &mut result {
             fields.insert(
               "cliVersion".to_string(),
@@ -1822,7 +1840,7 @@ fn execute<R: Read>(
           }
         }
         return (
-          CliAppReport {
+          ControlReport {
             schema_version: CLI_SCHEMA_VERSION,
             ok: true,
             result: Some(result),
@@ -1845,13 +1863,13 @@ fn execute<R: Read>(
           .and_then(Value::as_str)
           .unwrap_or("PLVS could not deliver the command.");
         let failure = if reason == "unauthorized" {
-          CliAppFailure::transport("authenticationFailed", message, Some(call.app))
+          ControlFailure::transport("authenticationFailed", message, Some(call.app))
         } else {
-          CliAppFailure::transport(reason, message, Some(call.app))
+          ControlFailure::transport(reason, message, Some(call.app))
         };
         return (failure_report(failure), 2);
       }
-      let error = CliAppError {
+      let error = ControlError {
         code: if reason == "invalidParams" {
           "invalidArguments"
         } else {
@@ -1865,7 +1883,7 @@ fn execute<R: Read>(
           .to_string(),
         details: public_error_details(rpc_error.get("data").unwrap_or(&Value::Null)),
       };
-      let failure = CliAppFailure::app(
+      let failure = ControlFailure::application(
         call.app,
         error,
         rpc_error.get("code").and_then(Value::as_i64),
@@ -1880,8 +1898,8 @@ fn execute<R: Read>(
   }
 }
 
-fn failure_report(failure: CliAppFailure) -> CliAppReport {
-  CliAppReport {
+fn failure_report(failure: ControlFailure) -> ControlReport {
+  ControlReport {
     schema_version: CLI_SCHEMA_VERSION,
     ok: false,
     result: None,
@@ -1891,7 +1909,7 @@ fn failure_report(failure: CliAppFailure) -> CliAppReport {
 
 /// Moves `result.pack` out of the envelope and onto disk, leaving `result.out` behind. `pack` and
 /// `out` never appear together, so a script can tell which it got without inspecting sizes.
-fn write_pack_file(report: &mut CliAppReport, path: &str) -> Result<(), String> {
+fn write_pack_file(report: &mut ControlReport, path: &str) -> Result<(), String> {
   let Some(result) = report.result.as_mut().and_then(Value::as_object_mut) else {
     return Ok(());
   };
@@ -1913,8 +1931,8 @@ fn write_pack_file(report: &mut CliAppReport, path: &str) -> Result<(), String> 
 }
 
 /// The `--out` half of an export, kept out of `run` so it can be tested without a live app.
-fn finish_export(command: &CliAppCommand, report: &mut CliAppReport, exit_code: u8) -> u8 {
-  let CliAppCommand::LibraryExport {
+fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code: u8) -> u8 {
+  let ControlCommand::LibraryExport {
     out: Some(path), ..
   } = command
   else {
@@ -1932,8 +1950,8 @@ fn finish_export(command: &CliAppCommand, report: &mut CliAppReport, exit_code: 
   }
 }
 
-pub fn run(command: CliAppCommand) -> ExitCode {
-  if command == CliAppCommand::Help {
+pub fn run(command: ControlCommand) -> ExitCode {
+  if command == ControlCommand::Help {
     println!("{}", help_text());
     return ExitCode::SUCCESS;
   }
@@ -1961,20 +1979,20 @@ mod tests {
   #[test]
   fn parses_read_commands_and_requires_json() {
     assert_eq!(
-      parse_app_args(&args(&["capabilities", "--json"])),
-      Ok(CliAppCommand::Capabilities)
+      parse_control_args(&args(&["capabilities", "--json"])),
+      Ok(ControlCommand::Capabilities)
     );
     assert_eq!(
-      parse_app_args(&args(&["inspect", "--json"])),
-      Ok(CliAppCommand::Inspect)
+      parse_control_args(&args(&["inspect", "--json"])),
+      Ok(ControlCommand::Inspect)
     );
-    assert!(parse_app_args(&args(&["inspect"])).is_err());
+    assert!(parse_control_args(&args(&["inspect"])).is_err());
   }
 
   #[test]
   fn parses_workspace_apply_and_rejects_unsafe_or_ambiguous_input() {
     assert_eq!(
-      parse_app_args(&args(&[
+      parse_control_args(&args(&[
         "workspace",
         "apply",
         "layout.json",
@@ -1983,7 +2001,7 @@ mod tests {
         "42",
         "--dry-run"
       ])),
-      Ok(CliAppCommand::WorkspaceApply {
+      Ok(ControlCommand::WorkspaceApply {
         input: "layout.json".to_string(),
         expected_revision: Some(42),
         dry_run: true,
@@ -2011,14 +2029,14 @@ mod tests {
       args(&["workspace", "apply", "-", "--bogus", "--json"]),
       args(&["workspace", "apply", "-"]),
     ] {
-      assert!(parse_app_args(&invalid).is_err());
+      assert!(parse_control_args(&invalid).is_err());
     }
   }
 
   #[test]
   fn parses_panel_update_and_its_concurrency_options() {
     assert_eq!(
-      parse_app_args(&args(&[
+      parse_control_args(&args(&[
         "panel",
         "update",
         "levelMeter",
@@ -2028,7 +2046,7 @@ mod tests {
         "7",
         "--dry-run"
       ])),
-      Ok(CliAppCommand::PanelUpdate {
+      Ok(ControlCommand::PanelUpdate {
         panel_id: "levelMeter".to_string(),
         input: "controls.json".to_string(),
         expected_revision: Some(7),
@@ -2048,13 +2066,13 @@ mod tests {
       args(&["panel", "update", "levelMeter", "-", "--bogus", "--json"]),
       args(&["panel", "update", "levelMeter", "-"]),
     ] {
-      assert!(parse_app_args(&invalid).is_err());
+      assert!(parse_control_args(&invalid).is_err());
     }
   }
 
   #[test]
   fn builds_panel_update_request_from_stdin() {
-    let command = CliAppCommand::PanelUpdate {
+    let command = ControlCommand::PanelUpdate {
       panel_id: "levelMeter".to_string(),
       input: "-".to_string(),
       expected_revision: Some(7),
@@ -2076,7 +2094,7 @@ mod tests {
   #[test]
   fn parses_panel_reset_and_its_concurrency_options() {
     assert_eq!(
-      parse_app_args(&args(&[
+      parse_control_args(&args(&[
         "panel",
         "reset",
         "spectrum",
@@ -2085,7 +2103,7 @@ mod tests {
         "8",
         "--dry-run"
       ])),
-      Ok(CliAppCommand::PanelReset {
+      Ok(ControlCommand::PanelReset {
         panel_id: "spectrum".to_string(),
         expected_revision: Some(8),
         dry_run: true,
@@ -2097,13 +2115,13 @@ mod tests {
       args(&["panel", "reset", "spectrum", "--bogus", "--json"]),
       args(&["panel", "reset", "spectrum"]),
     ] {
-      assert!(parse_app_args(&invalid).is_err());
+      assert!(parse_control_args(&invalid).is_err());
     }
   }
 
   #[test]
   fn builds_panel_reset_request_without_an_input_document() {
-    let command = CliAppCommand::PanelReset {
+    let command = ControlCommand::PanelReset {
       panel_id: "spectrum".to_string(),
       expected_revision: Some(8),
       dry_run: true,
@@ -2119,10 +2137,10 @@ mod tests {
 
   #[test]
   fn parses_and_builds_panel_describe() {
-    let command = parse_app_args(&args(&["panel", "describe", "spectrum", "--json"])).unwrap();
+    let command = parse_control_args(&args(&["panel", "describe", "spectrum", "--json"])).unwrap();
     assert_eq!(
       command,
-      CliAppCommand::PanelDescribe {
+      ControlCommand::PanelDescribe {
         panel_id: "spectrum".to_string(),
       }
     );
@@ -2143,22 +2161,22 @@ mod tests {
         "--json",
       ]),
     ] {
-      assert!(parse_app_args(&invalid).is_err());
+      assert!(parse_control_args(&invalid).is_err());
     }
   }
 
   #[test]
   fn parses_axis_read_and_mutation_commands() {
     assert_eq!(
-      parse_app_args(&args(&["axis", "describe", "--json"])),
-      Ok(CliAppCommand::AxisDescribe)
+      parse_control_args(&args(&["axis", "describe", "--json"])),
+      Ok(ControlCommand::AxisDescribe)
     );
     assert_eq!(
-      parse_app_args(&args(&["axis", "inspect", "--json"])),
-      Ok(CliAppCommand::AxisInspect)
+      parse_control_args(&args(&["axis", "inspect", "--json"])),
+      Ok(ControlCommand::AxisInspect)
     );
     assert_eq!(
-      parse_app_args(&args(&[
+      parse_control_args(&args(&[
         "axis",
         "shared",
         "update",
@@ -2169,7 +2187,7 @@ mod tests {
         "3",
         "--dry-run",
       ])),
-      Ok(CliAppCommand::AxisSharedUpdate {
+      Ok(ControlCommand::AxisSharedUpdate {
         kind: "frequency".to_string(),
         input: "range.json".to_string(),
         expected_revision: Some(3),
@@ -2177,7 +2195,7 @@ mod tests {
       })
     );
     assert_eq!(
-      parse_app_args(&args(&[
+      parse_control_args(&args(&[
         "axis",
         "shared",
         "reset",
@@ -2186,14 +2204,14 @@ mod tests {
         "--expected-revision",
         "3",
       ])),
-      Ok(CliAppCommand::AxisSharedReset {
+      Ok(ControlCommand::AxisSharedReset {
         kind: "time".to_string(),
         expected_revision: Some(3),
         dry_run: false,
       })
     );
     assert_eq!(
-      parse_app_args(&args(&[
+      parse_control_args(&args(&[
         "axis",
         "panel",
         "update",
@@ -2204,7 +2222,7 @@ mod tests {
         "--expected-revision",
         "3",
       ])),
-      Ok(CliAppCommand::AxisPanelUpdate {
+      Ok(ControlCommand::AxisPanelUpdate {
         panel_id: "spectrum".to_string(),
         kind: "frequency".to_string(),
         input: "axis.json".to_string(),
@@ -2213,7 +2231,7 @@ mod tests {
       })
     );
     assert_eq!(
-      parse_app_args(&args(&[
+      parse_control_args(&args(&[
         "axis",
         "panel",
         "reset",
@@ -2223,7 +2241,7 @@ mod tests {
         "--expected-revision",
         "3",
       ])),
-      Ok(CliAppCommand::AxisPanelReset {
+      Ok(ControlCommand::AxisPanelReset {
         panel_id: "waveform".to_string(),
         kind: "time".to_string(),
         expected_revision: Some(3),
@@ -2235,7 +2253,7 @@ mod tests {
   #[test]
   fn builds_axis_requests_and_reads_update_documents() {
     let shared = request_for_command(
-      &CliAppCommand::AxisSharedUpdate {
+      &ControlCommand::AxisSharedUpdate {
         kind: "frequency".to_string(),
         input: "-".to_string(),
         expected_revision: Some(3),
@@ -2249,7 +2267,7 @@ mod tests {
     assert_eq!(shared.params["expectedRevision"], 3);
 
     let panel = request_for_command(
-      &CliAppCommand::AxisPanelUpdate {
+      &ControlCommand::AxisPanelUpdate {
         panel_id: "spectrum".to_string(),
         kind: "frequency".to_string(),
         input: "-".to_string(),
@@ -2264,7 +2282,7 @@ mod tests {
     assert_eq!(panel.params["patch"]["linked"], false);
 
     let reset = request_for_command(
-      &CliAppCommand::AxisPanelReset {
+      &ControlCommand::AxisPanelReset {
         panel_id: "waveform".to_string(),
         kind: "time".to_string(),
         expected_revision: None,
@@ -2294,20 +2312,21 @@ mod tests {
       args(&["axis", "panel", "reset", "spectrum", "--json"]),
       args(&["axis", "inspect", "--expected-revision", "1", "--json"]),
     ] {
-      assert!(parse_app_args(&invalid).is_err());
+      assert!(parse_control_args(&invalid).is_err());
     }
   }
 
   #[test]
   fn parses_and_builds_preset_read_commands() {
     assert_eq!(
-      parse_app_args(&args(&["preset", "list", "--json"])),
-      Ok(CliAppCommand::PresetList)
+      parse_control_args(&args(&["preset", "list", "--json"])),
+      Ok(ControlCommand::PresetList)
     );
-    let describe = parse_app_args(&args(&["preset", "describe", "preset-1", "--json"])).unwrap();
+    let describe =
+      parse_control_args(&args(&["preset", "describe", "preset-1", "--json"])).unwrap();
     assert_eq!(
       describe,
-      CliAppCommand::PresetDescribe {
+      ControlCommand::PresetDescribe {
         preset_id: "preset-1".to_string(),
       }
     );
@@ -2329,13 +2348,13 @@ mod tests {
         "--json",
       ]),
     ] {
-      assert!(parse_app_args(&invalid).is_err());
+      assert!(parse_control_args(&invalid).is_err());
     }
   }
 
   #[test]
   fn parses_and_builds_preset_mutation_commands() {
-    let save = parse_app_args(&args(&[
+    let save = parse_control_args(&args(&[
       "preset",
       "save",
       "New Mix",
@@ -2347,7 +2366,7 @@ mod tests {
     .unwrap();
     assert_eq!(
       save,
-      CliAppCommand::PresetSave {
+      ControlCommand::PresetSave {
         name: "New Mix".to_string(),
         expected_revision: Some(4),
         dry_run: true,
@@ -2359,7 +2378,7 @@ mod tests {
     assert_eq!(request.params["expectedRevision"], 4);
     assert_eq!(request.params["dryRun"], true);
 
-    let update = parse_app_args(&args(&[
+    let update = parse_control_args(&args(&[
       "preset",
       "update",
       "preset-1",
@@ -2368,7 +2387,7 @@ mod tests {
       "4",
     ]))
     .unwrap();
-    assert!(matches!(update, CliAppCommand::PresetUpdate { .. }));
+    assert!(matches!(update, ControlCommand::PresetUpdate { .. }));
     assert_eq!(
       request_for_command(&update, &mut Cursor::new([]))
         .unwrap()
@@ -2376,7 +2395,7 @@ mod tests {
       "preset.update"
     );
 
-    let apply = parse_app_args(&args(&[
+    let apply = parse_control_args(&args(&[
       "preset",
       "apply",
       "preset-1",
@@ -2391,7 +2410,7 @@ mod tests {
     assert_eq!(request.params["presetId"], "preset-1");
     assert_eq!(request.params["dryRun"], true);
 
-    let rename = parse_app_args(&args(&[
+    let rename = parse_control_args(&args(&[
       "preset",
       "rename",
       "preset-1",
@@ -2401,8 +2420,8 @@ mod tests {
       "4",
     ]))
     .unwrap();
-    assert!(matches!(rename, CliAppCommand::PresetRename { .. }));
-    let delete = parse_app_args(&args(&[
+    assert!(matches!(rename, ControlCommand::PresetRename { .. }));
+    let delete = parse_control_args(&args(&[
       "preset",
       "delete",
       "preset-1",
@@ -2411,9 +2430,9 @@ mod tests {
       "4",
     ]))
     .unwrap();
-    assert!(matches!(delete, CliAppCommand::PresetDelete { .. }));
+    assert!(matches!(delete, ControlCommand::PresetDelete { .. }));
 
-    let reorder = parse_app_args(&args(&[
+    let reorder = parse_control_args(&args(&[
       "preset",
       "reorder",
       "-",
@@ -2444,21 +2463,24 @@ mod tests {
       args(&["preset", "reorder", "--json"]),
       args(&["preset", "reorder", "file.json", "--json", "--unknown"]),
     ] {
-      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
     }
   }
 
   #[test]
   fn parses_and_builds_settings_commands() {
     assert_eq!(
-      parse_app_args(&args(&["settings", "describe", "--json"])),
-      Ok(CliAppCommand::SettingsDescribe)
+      parse_control_args(&args(&["settings", "describe", "--json"])),
+      Ok(ControlCommand::SettingsDescribe)
     );
     assert_eq!(
-      parse_app_args(&args(&["settings", "inspect", "--json"])),
-      Ok(CliAppCommand::SettingsInspect)
+      parse_control_args(&args(&["settings", "inspect", "--json"])),
+      Ok(ControlCommand::SettingsInspect)
     );
-    let update = parse_app_args(&args(&[
+    let update = parse_control_args(&args(&[
       "settings",
       "update",
       "-",
@@ -2490,13 +2512,16 @@ mod tests {
         "-1",
       ]),
     ] {
-      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
     }
   }
 
   #[test]
   fn parses_and_builds_revision_wait() {
-    let command = parse_app_args(&args(&[
+    let command = parse_control_args(&args(&[
       "wait",
       "--after-revision",
       "4",
@@ -2522,17 +2547,20 @@ mod tests {
         "--json",
       ]),
     ] {
-      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
     }
   }
 
   #[test]
   fn parses_and_builds_transport_commands() {
     assert_eq!(
-      parse_app_args(&args(&["transport", "inspect", "--json"])),
-      Ok(CliAppCommand::TransportInspect)
+      parse_control_args(&args(&["transport", "inspect", "--json"])),
+      Ok(ControlCommand::TransportInspect)
     );
-    let start = parse_app_args(&args(&[
+    let start = parse_control_args(&args(&[
       "transport",
       "live",
       "start",
@@ -2548,7 +2576,7 @@ mod tests {
     assert_eq!(request.params["allowStopFileAnalysis"], true);
     assert!(request.params.get("dryRun").is_none());
 
-    let select = parse_app_args(&args(&[
+    let select = parse_control_args(&args(&[
       "transport",
       "file",
       "select",
@@ -2591,7 +2619,10 @@ mod tests {
         "--json",
       ]),
     ] {
-      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
     }
   }
 
@@ -2599,7 +2630,7 @@ mod tests {
   fn canonicalizes_transport_analysis_paths_before_transport() {
     let path = std::env::temp_dir().join(format!("plvs-transport-{}.wav", std::process::id()));
     fs::write(&path, []).unwrap();
-    let command = CliAppCommand::TransportMutation {
+    let command = ControlCommand::TransportMutation {
       method: "transport.file.analyze".to_string(),
       target_key: Some("path".to_string()),
       target: Some(path.to_string_lossy().into_owned()),
@@ -2619,14 +2650,14 @@ mod tests {
   #[test]
   fn local_input_failures_use_invalid_arguments_json_and_exit_three() {
     let unused_client = FakeClient {
-      response: Err(CliAppFailure::transport(
+      response: Err(ControlFailure::transport(
         "shouldNotReachTransport",
         "request construction should fail first",
         None,
       )),
     };
 
-    let malformed = CliAppCommand::WorkspaceApply {
+    let malformed = ControlCommand::WorkspaceApply {
       input: "-".to_string(),
       expected_revision: Some(1),
       dry_run: false,
@@ -2641,7 +2672,7 @@ mod tests {
       .join(format!("plvs-missing-transport-{}.wav", std::process::id()))
       .to_string_lossy()
       .into_owned();
-    let missing_audio = CliAppCommand::TransportMutation {
+    let missing_audio = ControlCommand::TransportMutation {
       method: "transport.file.analyze".to_string(),
       target_key: Some("path".to_string()),
       target: Some(missing_path),
@@ -2670,14 +2701,14 @@ mod tests {
 
   #[test]
   fn parses_and_builds_dock_commands() {
-    assert!(help_text().contains("app dock layout apply"));
+    assert!(help_text().contains("plvs-cli dock layout apply"));
     assert_eq!(
-      parse_app_args(&args(&["dock", "inspect", "--json"])),
-      Ok(CliAppCommand::DockRead {
+      parse_control_args(&args(&["dock", "inspect", "--json"])),
+      Ok(ControlCommand::DockRead {
         method: "dock.inspect".to_string(),
       })
     );
-    let enter = parse_app_args(&args(&[
+    let enter = parse_control_args(&args(&[
       "dock",
       "enter",
       "--edge",
@@ -2702,7 +2733,7 @@ mod tests {
     assert_eq!(request.params["height"], 72);
     assert_eq!(request.params["expectedRevision"], 3);
 
-    let update = parse_app_args(&args(&[
+    let update = parse_control_args(&args(&[
       "dock",
       "panel",
       "update",
@@ -2726,7 +2757,10 @@ mod tests {
       args(&["dock", "layout", "apply", "--json"]),
       args(&["dock", "panel", "update", "level", "--json"]),
     ] {
-      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
     }
   }
 
@@ -2749,11 +2783,11 @@ mod tests {
   }
 
   struct FakeClient {
-    response: Result<AppCall, CliAppFailure>,
+    response: Result<AppCall, ControlFailure>,
   }
 
   impl ControlClient for FakeClient {
-    fn call(&self, request: JsonRpcRequest) -> Result<AppCall, CliAppFailure> {
+    fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure> {
       self.response.clone().map(|mut call| {
         call.response["id"] = Value::String(request.id);
         call
@@ -2761,7 +2795,7 @@ mod tests {
     }
   }
 
-  fn app() -> DescriptorApp {
+  fn descriptor_app() -> DescriptorApp {
     DescriptorApp {
       name: "PLVS Dev".to_string(),
       version: "0.14.5".to_string(),
@@ -2775,9 +2809,9 @@ mod tests {
   }
 
   impl ControlClient for FixedIdClient {
-    fn call(&self, _request: JsonRpcRequest) -> Result<AppCall, CliAppFailure> {
+    fn call(&self, _request: JsonRpcRequest) -> Result<AppCall, ControlFailure> {
       Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: self.response.clone(),
       })
     }
@@ -2799,7 +2833,7 @@ mod tests {
   fn reported_details_are_flat_and_do_not_repeat_the_reason() {
     let client = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -2817,7 +2851,7 @@ mod tests {
         }),
       }),
     };
-    let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &client);
+    let (report, exit) = execute(&ControlCommand::Inspect, &mut Cursor::new([]), &client);
     let json = serde_json::to_value(report).unwrap();
     assert_eq!(exit, 1);
     assert_eq!(json["error"]["code"], "invalidControls");
@@ -2830,7 +2864,7 @@ mod tests {
     // A payload with nothing but a reason reports no details at all rather than an echo.
     let bare = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -2842,7 +2876,7 @@ mod tests {
         }),
       }),
     };
-    let (report, _) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &bare);
+    let (report, _) = execute(&ControlCommand::Inspect, &mut Cursor::new([]), &bare);
     let json = serde_json::to_value(report).unwrap();
     assert_eq!(
       json["error"]["details"],
@@ -2859,7 +2893,7 @@ mod tests {
     ] {
       let client = FakeClient {
         response: Ok(AppCall {
-          app: app(),
+          app: descriptor_app(),
           response: serde_json::json!({
             "jsonrpc": "2.0",
             "id": "replaced",
@@ -2872,7 +2906,7 @@ mod tests {
         }),
       };
 
-      let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &client);
+      let (report, exit) = execute(&ControlCommand::Inspect, &mut Cursor::new([]), &client);
       assert_eq!(exit, 3, "wrong exit for {reason}");
       assert_eq!(
         serde_json::to_value(report).unwrap()["error"]["code"],
@@ -2915,9 +2949,9 @@ mod tests {
     ];
 
     for (public_code, rpc_code, expected_exit) in cases {
-      let failure = CliAppFailure::app(
-        app(),
-        CliAppError {
+      let failure = ControlFailure::application(
+        descriptor_app(),
+        ControlError {
           code: public_code.to_string(),
           message: "test failure".to_string(),
           details: None,
@@ -2936,7 +2970,7 @@ mod tests {
     // No request id could be recovered, so PLVS answered with the empty sentinel. The failure is
     // still real and its reason has to survive.
     let (report, exit) = execute(
-      &CliAppCommand::Inspect,
+      &ControlCommand::Inspect,
       &mut Cursor::new([]),
       &FixedIdClient {
         response: transport_error("", "invalidEnvelope"),
@@ -2948,7 +2982,7 @@ mod tests {
 
     // A non-empty id that belongs to someone else is a genuinely mismatched reply.
     let (report, exit) = execute(
-      &CliAppCommand::Inspect,
+      &ControlCommand::Inspect,
       &mut Cursor::new([]),
       &FixedIdClient {
         response: transport_error("someone-elses-request", "frontendNotReady"),
@@ -2965,7 +2999,7 @@ mod tests {
   fn broker_busy_exits_two_while_app_wait_limits_and_busy_exit_four() {
     let broker_busy = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -2977,7 +3011,7 @@ mod tests {
         }),
       }),
     };
-    let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &broker_busy);
+    let (report, exit) = execute(&ControlCommand::Inspect, &mut Cursor::new([]), &broker_busy);
     assert_eq!(exit, 2);
     assert_eq!(
       serde_json::to_value(report).unwrap()["error"]["code"],
@@ -2986,7 +3020,7 @@ mod tests {
 
     let wait_limit_reached = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -2999,7 +3033,7 @@ mod tests {
       }),
     };
     let (report, exit) = execute(
-      &CliAppCommand::Inspect,
+      &ControlCommand::Inspect,
       &mut Cursor::new([]),
       &wait_limit_reached,
     );
@@ -3009,9 +3043,9 @@ mod tests {
       "waitLimitReached"
     );
 
-    let busy = CliAppFailure::app(
-      app(),
-      CliAppError {
+    let busy = ControlFailure::application(
+      descriptor_app(),
+      ControlError {
         code: "busy".to_string(),
         message: "Another app operation is busy.".to_string(),
         details: None,
@@ -3022,14 +3056,14 @@ mod tests {
   }
 
   #[test]
-  fn capabilities_report_the_invoking_cli_version_independently_from_the_app() {
+  fn capabilities_report_the_invoking_cli_version_independently_from_the_descriptor_app() {
     let mut golden = crate::cli_contract::golden_fixture("query.capabilities");
     golden["envelope"]["result"]["cliVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
     let mut app_result = golden["envelope"]["result"].clone();
     app_result.as_object_mut().unwrap().remove("cliVersion");
     let client = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -3038,7 +3072,7 @@ mod tests {
       }),
     };
 
-    let (report, exit) = execute(&CliAppCommand::Capabilities, &mut Cursor::new([]), &client);
+    let (report, exit) = execute(&ControlCommand::Capabilities, &mut Cursor::new([]), &client);
     let report = serde_json::to_value(report).unwrap();
     let result = report["result"].clone();
 
@@ -3054,7 +3088,7 @@ mod tests {
     let golden = crate::cli_contract::golden_fixture("wait.timeout");
     let client = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -3071,7 +3105,7 @@ mod tests {
       }),
     };
 
-    let (report, exit) = execute(&CliAppCommand::Inspect, &mut Cursor::new([]), &client);
+    let (report, exit) = execute(&ControlCommand::Inspect, &mut Cursor::new([]), &client);
 
     assert_eq!(exit, golden["exitCode"].as_u64().unwrap() as u8);
     assert_eq!(serde_json::to_value(report).unwrap(), golden["envelope"]);
@@ -3079,10 +3113,10 @@ mod tests {
 
   #[test]
   fn reports_success_app_errors_and_transport_exit_codes_without_tokens() {
-    let command = CliAppCommand::Inspect;
+    let command = ControlCommand::Inspect;
     let ok_client = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -3100,7 +3134,7 @@ mod tests {
 
     let app_error = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -3121,7 +3155,7 @@ mod tests {
 
     let authentication_error = FakeClient {
       response: Ok(AppCall {
-        app: app(),
+        app: descriptor_app(),
         response: serde_json::json!({
           "jsonrpc": "2.0",
           "id": "replaced",
@@ -3141,7 +3175,7 @@ mod tests {
     );
 
     let transport = FakeClient {
-      response: Err(CliAppFailure::transport(
+      response: Err(ControlFailure::transport(
         "appNotRunning",
         "not running",
         None,
@@ -3190,15 +3224,15 @@ mod tests {
 
   #[test]
   fn parses_and_builds_library_commands() {
-    assert!(help_text().contains("app theme export"));
+    assert!(help_text().contains("plvs-cli theme export"));
     assert_eq!(
-      parse_app_args(&args(&["theme", "list", "--json"])),
-      Ok(CliAppCommand::LibraryList {
+      parse_control_args(&args(&["theme", "list", "--json"])),
+      Ok(ControlCommand::LibraryList {
         family: "theme".to_string(),
       })
     );
 
-    let export = parse_app_args(&args(&[
+    let export = parse_control_args(&args(&[
       "loudness-profile",
       "export",
       "--ids",
@@ -3210,7 +3244,7 @@ mod tests {
     .unwrap();
     assert_eq!(
       export,
-      CliAppCommand::LibraryExport {
+      ControlCommand::LibraryExport {
         family: "loudnessProfile".to_string(),
         ids: Some(vec!["p-1".to_string(), "p-2".to_string()]),
         out: Some("pack.json".to_string()),
@@ -3222,13 +3256,13 @@ mod tests {
 
     // A whole-library export omits `ids` rather than sending null: `protocol.js` reads an absent
     // `ids` as the whole library and rejects any non-array value it is given.
-    let all = parse_app_args(&args(&["theme", "export", "--all", "--json"])).unwrap();
+    let all = parse_control_args(&args(&["theme", "export", "--all", "--json"])).unwrap();
     let request = request_for_command(&all, &mut Cursor::new([])).unwrap();
     assert_eq!(request.method, "theme.export");
     assert_eq!(request.params, serde_json::json!({}));
 
     let list = request_for_command(
-      &CliAppCommand::LibraryList {
+      &ControlCommand::LibraryList {
         family: "preset".to_string(),
       },
       &mut Cursor::new([]),
@@ -3237,7 +3271,8 @@ mod tests {
     assert_eq!(list.method, "preset.list");
 
     // `preset export` reaches this parser through `parse_preset_args`, which has its own flag loop.
-    let preset_export = parse_app_args(&args(&["preset", "export", "--all", "--json"])).unwrap();
+    let preset_export =
+      parse_control_args(&args(&["preset", "export", "--all", "--json"])).unwrap();
     let request = request_for_command(&preset_export, &mut Cursor::new([])).unwrap();
     assert_eq!(request.method, "preset.export");
   }
@@ -3291,12 +3326,15 @@ mod tests {
       args(&["loudness-profile", "list"]),
       args(&["preset", "export", "--all"]),
     ] {
-      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
     }
 
     // Every message names the family word the user typed. `loudnessProfile` is the wire name and
     // is not a command anyone can run.
-    let rejected = parse_app_args(&args(&[
+    let rejected = parse_control_args(&args(&[
       "loudness-profile",
       "export",
       "--all",
@@ -3306,13 +3344,13 @@ mod tests {
     .unwrap_err();
     assert_eq!(
       rejected,
-      "The app loudness-profile export command does not accept --expected-revision or --dry-run."
+      "The loudness-profile export command does not accept --expected-revision or --dry-run."
     );
   }
 
   #[test]
   fn builds_a_library_import_request_from_a_document() {
-    let import = parse_app_args(&args(&[
+    let import = parse_control_args(&args(&[
       "preset",
       "import",
       "-",
@@ -3323,7 +3361,7 @@ mod tests {
     .unwrap();
     assert_eq!(
       import,
-      CliAppCommand::LibraryImport {
+      ControlCommand::LibraryImport {
         family: "preset".to_string(),
         input: "-".to_string(),
         expected_revision: Some(3),
@@ -3344,9 +3382,9 @@ mod tests {
   #[test]
   fn library_not_found_reasons_map_to_exit_three() {
     for reason in ["themeNotFound", "loudnessProfileNotFound"] {
-      let failure = CliAppFailure::app(
-        app(),
-        CliAppError {
+      let failure = ControlFailure::application(
+        descriptor_app(),
+        ControlError {
           code: reason.to_string(),
           message: "missing".to_string(),
           details: None,
@@ -3360,7 +3398,7 @@ mod tests {
   #[test]
   fn writing_the_pack_replaces_it_with_the_path_it_was_written_to() {
     let path = std::env::temp_dir().join(format!("plvs-pack-{}.json", std::process::id()));
-    let mut report = CliAppReport {
+    let mut report = ControlReport {
       schema_version: CLI_SCHEMA_VERSION,
       ok: true,
       result: Some(serde_json::json!({
@@ -3381,13 +3419,13 @@ mod tests {
     fs::remove_file(path).unwrap();
 
     // A failure report carries no pack, and asking for one is not an error.
-    let mut failed = failure_report(CliAppFailure::invalid_arguments("nope"));
+    let mut failed = failure_report(ControlFailure::invalid_arguments("nope"));
     write_pack_file(&mut failed, "unreachable.json").unwrap();
     assert!(failed.result.is_none());
   }
 
-  fn pack_report() -> CliAppReport {
-    CliAppReport {
+  fn pack_report() -> ControlReport {
+    ControlReport {
       schema_version: CLI_SCHEMA_VERSION,
       ok: true,
       result: Some(serde_json::json!({
@@ -3419,7 +3457,7 @@ mod tests {
 
   #[test]
   fn finishing_an_export_writes_out_and_reports_a_write_failure_as_exit_one() {
-    let export = |out: Option<&str>| CliAppCommand::LibraryExport {
+    let export = |out: Option<&str>| ControlCommand::LibraryExport {
       family: "theme".to_string(),
       ids: None,
       out: out.map(str::to_string),
@@ -3448,7 +3486,7 @@ mod tests {
     let mut other = pack_report();
     assert_eq!(
       finish_export(
-        &CliAppCommand::LibraryList {
+        &ControlCommand::LibraryList {
           family: "theme".to_string(),
         },
         &mut other,

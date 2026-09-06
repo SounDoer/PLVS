@@ -17,7 +17,7 @@ import { buildSettingsSchema } from "./settingsControl.js";
  */
 
 const BANNER =
-  "<!-- Generated from the App Control schema builders by src/agentControl/publicSurfaceDocs.test.js.\n" +
+  "<!-- Generated from the Agent Control schema builders by src/agentControl/publicSurfaceDocs.test.js.\n" +
   "     Do not edit by hand; run `npm run docs:agent-control` after changing the public surface. -->";
 
 const escapeCell = (text) => text.replaceAll("|", "\\|");
@@ -192,7 +192,7 @@ function stripState(field) {
   return rest;
 }
 
-describe("generated App Control reference", () => {
+describe("generated Agent Control reference", () => {
   it.each(Object.keys(MODULE_CATALOG))("documents the %s panel controls", async (moduleId) => {
     await expect(panelPage(moduleId)).toMatchFileSnapshot(
       `../../docs/agent-control/generated/panel-${moduleId}.md`

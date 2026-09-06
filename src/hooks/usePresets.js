@@ -70,7 +70,7 @@ export function usePresets({
   applyLoudnessProfileSnapshot = () => {},
   // Apply, Save and Update are scene operations: the first replaces the scene, the other two
   // capture it. All three are refused while a draft-style editor is open, and refused here rather
-  // than in the popover so the dock, the tray and App Control get the same answer. Throws a
+  // than in the popover so the dock, the tray and Agent Control get the same answer. Throws a
   // SceneOperationBlockedError; see `lib/sceneOperations.js`.
   assertSceneOperationAllowed = () => {},
   blockingEditors = [],

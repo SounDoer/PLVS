@@ -1,4 +1,4 @@
-<!-- Generated from the App Control schema builders by src/agentControl/publicSurfaceDocs.test.js.
+<!-- Generated from the Agent Control schema builders by src/agentControl/publicSurfaceDocs.test.js.
      Do not edit by hand; run `npm run docs:agent-control` after changing the public surface. -->
 
 # Spectrogram — Public Controls

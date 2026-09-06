@@ -129,7 +129,7 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   replace the whole scene, the third replaces the UI with the strip. They are refused while any
   editor with draft semantics is open, by `assertSceneOperationAllowed` from
   `hooks/BlockingEditorsContext.jsx` — in the business functions, before any mutation, so the
-  popover, the dock, the tray and App Control all get the same `editorActive` refusal and no entry
+  popover, the dock, the tray and Agent Control all get the same `editorActive` refusal and no entry
   point can be protected by greying a button alone. The rule keys on **open, not dirty**: dirty is
   invisible to the user, flips mid-interaction, and these operations destroy the editor rather than
   merely losing keystrokes. Nothing in this path may discard a draft to get itself through — that

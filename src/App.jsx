@@ -246,7 +246,7 @@ function AppContent() {
     useBlockingEditors();
   // FILE mode forbids the dock outright: it is a state conflict, not a missing capability, so it
   // refuses rather than degrading the way a platform without dock support does. Enforced here and
-  // not only on the disabled Dock control, so every entry point -- and App Control later -- gets
+  // not only on the disabled Dock control, so every entry point -- and Agent Control later -- gets
   // the same answer.
   const assertSceneOperationAllowed = useCallback(
     (operation) => {

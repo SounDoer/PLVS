@@ -4,7 +4,7 @@ import { AXIS_VIEWPORTS } from "../workspace/axisViewports.js";
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
 
 /**
- * Controls deliberately withheld from App Control, each with the reason it stays internal.
+ * Controls deliberately withheld from Agent Control, each with the reason it stays internal.
  *
  * Empty is the correct state: every control PLVS has today is reachable through Panel Control or
  * Axis Control. A new entry here is a decision, not a formality -- see the test below.
@@ -65,7 +65,7 @@ function axisControlKeys() {
 }
 
 describe("panel control coverage", () => {
-  it("exposes every panel control through App Control, or records why it is withheld", () => {
+  it("exposes every panel control through Agent Control, or records why it is withheld", () => {
     const panel = panelControlKeys();
     const axis = axisControlKeys();
     const unhandled = Object.keys(DEFAULT_PANEL_CONTROLS).filter(

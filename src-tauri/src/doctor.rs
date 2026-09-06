@@ -378,11 +378,13 @@ fn path_to_string(path: PathBuf) -> String {
 }
 
 fn check_capabilities() -> DoctorCheck {
+  let mut commands = vec!["doctor"];
+  commands.extend_from_slice(crate::cli_control::COMMAND_NAMES);
   info_check(
     "capabilities",
     "CLI capabilities for this build",
     json!({
-      "commands": ["doctor", "app"],
+      "commands": commands,
       "profileImport": true,
       "profileExport": true,
       "fileAnalysis": true,
@@ -548,7 +550,24 @@ mod tests {
   #[test]
   fn capabilities_report_only_public_cli_commands() {
     let check = check_capabilities();
-    assert_eq!(check.details["commands"], json!(["doctor", "app"]));
+    assert_eq!(
+      check.details["commands"],
+      json!([
+        "doctor",
+        "capabilities",
+        "inspect",
+        "wait",
+        "workspace",
+        "panel",
+        "axis",
+        "preset",
+        "theme",
+        "loudness-profile",
+        "settings",
+        "transport",
+        "dock"
+      ])
+    );
   }
 
   #[test]

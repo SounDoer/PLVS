@@ -65,7 +65,7 @@ describe("useSettings", () => {
     expect(result.current.editor.draft.name).toBe("Custom");
   });
 
-  // App Control's `theme.import` settles by watching `settings.customThemes` change, so the field
+  // Agent Control's `theme.import` settles by watching `settings.customThemes` change, so the field
   // has to survive the trip out of `useThemeSettings`. Asserting on the hook that owns the state
   // would pass while `useSettings` drops it on the floor, and so would a store read: the picker
   // re-renders off an unrelated `listCustomThemeDocumentsOrdered()` call, which is why nothing on
