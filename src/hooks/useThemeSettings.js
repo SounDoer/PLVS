@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   applyThemeToDocument,
   readPersistedShellThemeFields,
@@ -16,6 +16,10 @@ export function useThemeSettings() {
   const [themeId, setThemeIdState] = useState(() => readPersistedShellThemeFields().themeId);
   const [systemPrefersDark, setSystemPrefersDark] = useState(() => readSystemPrefersDark());
   const [customThemes, setCustomThemes] = useState(() => listCustomThemes());
+  const appearanceRef = useRef(appearance);
+  const themeIdRef = useRef(themeId);
+  const systemPrefersDarkRef = useRef(systemPrefersDark);
+  const customThemesRef = useRef(customThemes);
 
   const resolvedThemeId = useMemo(
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark, customThemes),
@@ -28,13 +32,51 @@ export function useThemeSettings() {
 
   function setAppearance(nextAppearance) {
     const next = nextAppearance === "fixed" ? "fixed" : "system";
+    appearanceRef.current = next;
     setAppearanceState(next);
-    if (next === "system") setThemeIdState(null);
+    if (next === "system") {
+      themeIdRef.current = null;
+      setThemeIdState(null);
+    }
   }
 
   function setThemeId(nextThemeId) {
-    setThemeIdState(nextThemeId == null || nextThemeId === "" ? null : String(nextThemeId));
+    const next = nextThemeId == null || nextThemeId === "" ? null : String(nextThemeId);
+    themeIdRef.current = next;
+    setThemeIdState(next);
   }
+
+  const setCustomThemesFromController = useCallback((documents) => {
+    const next = Object.fromEntries(documents.map((theme) => [theme.id, theme]));
+    customThemesRef.current = next;
+    setCustomThemes(next);
+  }, []);
+
+  const readAppearanceForControl = useCallback(() => {
+    const mode = appearanceRef.current;
+    const selectedThemeId = mode === "fixed" ? themeIdRef.current : null;
+    return {
+      mode,
+      selectedThemeId,
+      resolvedThemeId: resolveThemeId(
+        { appearance: mode, themeId: selectedThemeId },
+        systemPrefersDarkRef.current,
+        customThemesRef.current
+      ),
+    };
+  }, []);
+
+  const applyAppearanceForControl = useCallback((next) => {
+    appearanceRef.current = next.mode;
+    themeIdRef.current = next.mode === "fixed" ? next.selectedThemeId : null;
+    setAppearanceState(appearanceRef.current);
+    setThemeIdState(themeIdRef.current);
+  }, []);
+
+  const resolvedSystemThemeIdForControl = useCallback(
+    () => (systemPrefersDarkRef.current ? "plvs-dark" : "plvs-light"),
+    []
+  );
 
   /** ADR 0002 §6: switching system → fixed seeds `themeId` from the resolved builtin at that moment. */
   function setAppearanceMode(mode) {
@@ -62,7 +104,10 @@ export function useThemeSettings() {
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setSystemPrefersDark(mq.matches);
+    const onChange = () => {
+      systemPrefersDarkRef.current = mq.matches;
+      setSystemPrefersDark(mq.matches);
+    };
     onChange();
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -83,13 +128,23 @@ export function useThemeSettings() {
     () =>
       settingsStore.subscribe(() => {
         const next = readPersistedShellThemeFields();
+        appearanceRef.current = next.appearance;
+        themeIdRef.current = next.themeId;
         setAppearanceState(next.appearance);
         setThemeIdState(next.themeId);
       }),
     []
   );
 
-  useEffect(() => themesStore.subscribe(() => setCustomThemes(listCustomThemes())), []);
+  useEffect(
+    () =>
+      themesStore.subscribe(() => {
+        const next = listCustomThemes();
+        customThemesRef.current = next;
+        setCustomThemes(next);
+      }),
+    []
+  );
 
   return {
     appearance,
@@ -103,5 +158,9 @@ export function useThemeSettings() {
     fixedThemeSelectValue,
     customThemes,
     setCustomThemes,
+    setCustomThemesFromController,
+    readAppearanceForControl,
+    applyAppearanceForControl,
+    resolvedSystemThemeIdForControl,
   };
 }

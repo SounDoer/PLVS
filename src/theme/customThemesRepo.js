@@ -60,6 +60,22 @@ export function upsertCustomTheme(theme) {
   });
 }
 
+/** Replace the complete ordered custom Theme library and notify its React owner once. */
+export function replaceCustomThemesOrdered(documents, { notify = true } = {}) {
+  if (!Array.isArray(documents)) return false;
+  const themes = {};
+  const order = [];
+  for (const document of documents) {
+    const normalized = normalizeThemeDocument(document);
+    if (!normalized || themes[normalized.id]) return false;
+    themes[normalized.id] = normalized;
+    order.push(normalized.id);
+  }
+  themesStore.patch({ themes, order });
+  if (notify) themesStore.notifyLocal();
+  return true;
+}
+
 export function removeCustomTheme(id) {
   const { themes, order } = readState();
   const { [id]: _drop, ...rest } = themes;

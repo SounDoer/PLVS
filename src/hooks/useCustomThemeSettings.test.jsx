@@ -5,6 +5,8 @@ import { useCustomThemeSettings } from "./useCustomThemeSettings.js";
 import { useThemeSettings } from "./useThemeSettings.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { upsertCustomTheme } from "../theme/customThemesRepo.js";
+import { settingsStore, themesStore } from "../persistence/index.js";
+import { themeRuntime } from "../theme/themeRuntime.js";
 import { BlockingEditorsProvider, useBlockingEditors } from "./BlockingEditorsContext.jsx";
 
 function mockMatchMedia(matches) {
@@ -16,12 +18,13 @@ function mockMatchMedia(matches) {
   }));
 }
 
-function renderCustomThemeSettings() {
+function renderCustomThemeSettings(makeId) {
   return renderHook(() => {
     const themeSettings = useThemeSettings();
     return useCustomThemeSettings({
       themeSettings,
       setSettingsOpen: vi.fn(),
+      makeId,
     });
   });
 }
@@ -135,5 +138,47 @@ describe("useCustomThemeSettings", () => {
     act(() => result.current.custom.deleteCustomTheme("custom-light"));
 
     expect(result.current.themeSettings.themeId).toBe("plvs-light");
+  });
+
+  it("commits GUI editor Save and command-grade create through identical planner state", () => {
+    const document = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+    delete document.id;
+    document.name = "Created";
+
+    const command = renderCustomThemeSettings(() => "custom-created");
+    act(() => command.result.current.control.create(document));
+    const commandState = command.result.current.control.readState();
+    command.unmount();
+
+    localStorage.clear();
+    const gui = renderCustomThemeSettings(() => "custom-created");
+    act(() => gui.result.current.editor.beginCreate("Created"));
+    act(() => gui.result.current.editor.save());
+
+    expect(gui.result.current.control.readState()).toEqual(commandState);
+  });
+
+  it("refuses conflicting control before state, persistence, preview, notification, or ID allocation", () => {
+    const publish = vi.spyOn(themeRuntime, "publishAuthoring");
+    const notify = vi.spyOn(themesStore, "notifyLocal");
+    const makeId = vi.fn(() => "custom-command");
+    const { result } = renderCustomThemeSettings(() => "custom-draft");
+    act(() => result.current.editor.beginCreate("Draft"));
+    publish.mockClear();
+    notify.mockClear();
+    const beforeState = structuredClone(result.current.control.readState());
+    const beforeDraft = structuredClone(result.current.editor.draft);
+    const beforeSettings = settingsStore.read();
+    const beforeThemes = themesStore.read();
+    const { id: _id, ...document } = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+
+    expect(() => result.current.control.create(document, { makeId })).toThrow(/Finish or cancel/);
+    expect(makeId).not.toHaveBeenCalled();
+    expect(result.current.control.readState()).toEqual(beforeState);
+    expect(result.current.editor.draft).toEqual(beforeDraft);
+    expect(settingsStore.read()).toEqual(beforeSettings);
+    expect(themesStore.read()).toEqual(beforeThemes);
+    expect(publish).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
   });
 });

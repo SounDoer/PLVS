@@ -1,11 +1,12 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { themesStore } from "../persistence/index.js";
 import { makeCustomThemeFromBase } from "./customTheme.js";
 import { BUILTIN_THEMES } from "./builtinThemes.js";
 import {
   listCustomThemes,
   listCustomThemesOrdered,
+  replaceCustomThemesOrdered,
   upsertCustomTheme,
   removeCustomTheme,
 } from "./customThemesRepo.js";
@@ -64,5 +65,12 @@ describe("customThemesRepo", () => {
       order: ["custom-b", "custom-b", "missing"],
     });
     expect(listCustomThemesOrdered().map((theme) => theme.id)).toEqual(["custom-b", "custom-a"]);
+  });
+
+  it("replaces a complete ordered library and notifies same-context subscribers once", () => {
+    const notify = vi.spyOn(themesStore, "notifyLocal");
+    expect(replaceCustomThemesOrdered([mk("custom-b", "B"), mk("custom-a", "A")])).toBe(true);
+    expect(listCustomThemesOrdered().map(({ id }) => id)).toEqual(["custom-b", "custom-a"]);
+    expect(notify).toHaveBeenCalledTimes(1);
   });
 });

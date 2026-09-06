@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
-import { upsertCustomTheme } from "../theme/customThemesRepo.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
 import { applyPalettePreset } from "../theme/palettePresets.js";
 import { normalizeThemeName, normalizeThemeV2 } from "../theme/themeSchema.js";
@@ -10,21 +9,13 @@ const noop = () => {};
 /**
  * @param {{
  *   activeTheme: object,
- *   setThemeId: (id: string) => void,
- *   setAppearance: (a: string) => void,
+ *   onSave: (theme: object, options: {isNew: boolean}) => boolean|void,
  *   publish?: (theme: object) => void,
  *   makeId?: () => string,
  * }} opts
  */
 export function useThemeEditor(opts) {
-  const {
-    activeTheme,
-    setThemeId,
-    setAppearance,
-    publish: publishOverride,
-    makeId,
-    onChange,
-  } = opts;
+  const { activeTheme, onSave, publish: publishOverride, makeId, onChange } = opts;
   const publish = publishOverride ?? themeRuntime.publishAuthoring;
   const notify = onChange ?? noop;
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
@@ -249,17 +240,11 @@ export function useThemeEditor(opts) {
   const save = useCallback(() => {
     cancelScheduledPublication();
     const d = draftRef.current;
-    if (d) {
-      upsertCustomTheme(d);
-      if (wasNewRef.current) {
-        setAppearance("fixed");
-        setThemeId(d.id);
-      }
-    }
+    if (d && onSave?.(d, { isNew: wasNewRef.current }) === false) return;
     setDraftBoth(null);
     setDirty(false);
-    notify();
-  }, [cancelScheduledPublication, notify, setAppearance, setDraftBoth, setThemeId]);
+    if (d) notify();
+  }, [cancelScheduledPublication, notify, onSave, setDraftBoth]);
 
   const cancel = useCallback(() => {
     cancelScheduledPublication();
@@ -288,5 +273,6 @@ export function useThemeEditor(opts) {
     redo,
     save,
     cancel,
+    isEditingNow: () => draftRef.current != null,
   };
 }
