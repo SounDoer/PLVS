@@ -1270,7 +1270,7 @@ function AppContent() {
       monitorInventoryReady: agentControlMonitorInventoryReady,
     },
     executeDock: executeAgentControlDock,
-    loudnessProfiles: loudnessProfile.profiles,
+    loudnessProfile,
     customThemes: settings.customThemes,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,

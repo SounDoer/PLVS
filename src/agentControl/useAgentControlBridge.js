@@ -138,12 +138,12 @@ function librarySignature(entries) {
   );
 }
 
-function loudnessProfileStateSignature(profiles) {
+function loudnessProfileStateSignature(profiles, activeSelection) {
   const normalizedProfiles = (Array.isArray(profiles) ? profiles : [])
     .map((profile) => normalizeRuleDocument(profile))
     .filter(Boolean);
   return JSON.stringify({
-    activeId: activeLoudnessProfileId(normalizedProfiles),
+    activeId: activeLoudnessProfileId(normalizedProfiles, activeSelection),
     profiles: normalizedProfiles,
   });
 }
@@ -155,9 +155,21 @@ function loudnessProfileStateSignature(profiles) {
 /// (`loudnessProfiles`) and never the selection, and `LoudnessProfileContext` writes every
 /// selection change straight through to that store. It is also where the loudness adapter reads
 /// the library from, so both halves of this result come from one source.
-function activeLoudnessProfileId(profiles) {
-  const { id } = parseSelection(settingsStore.read().loudnessProfiles?.active);
+function activeLoudnessProfileId(
+  profiles,
+  selection = settingsStore.read().loudnessProfiles?.active
+) {
+  const { id } = parseSelection(selection);
   return id !== null && profiles.some((profile) => profile.id === id) ? id : null;
+}
+
+function compactLoudnessProfileState(state, previewDocument = null) {
+  const profiles = state.profiles.map(({ id, name }) => ({ id, name }));
+  if (previewDocument) profiles.push({ id: null, name: previewDocument.name });
+  return {
+    profiles,
+    activeId: previewDocument ? null : activeLoudnessProfileId(state.profiles, state.active),
+  };
 }
 
 /// Compares the live Workspace against the view a Preset becomes once applied.
@@ -327,7 +339,8 @@ export function useAgentControlBridge({
   dock,
   dockContext = {},
   executeDock = async () => {},
-  loudnessProfiles = [],
+  loudnessProfiles: loudnessProfilesInput = [],
+  loudnessProfile = null,
   customThemes = {},
   hasLoudnessReference = false,
   analysisContext = {},
@@ -337,13 +350,15 @@ export function useAgentControlBridge({
   normalizeConfiguration = normalizeImportedProfile,
   relaunchAfterConfigurationChange = reloadAfterProfileChange,
 }) {
+  const loudnessProfiles = loudnessProfile?.profiles ?? loudnessProfilesInput;
+  const loudnessActive = loudnessProfile?.active;
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
   const previousWorkspaceRef = useRef(workspace);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
   const previousThemeLibrarySignatureRef = useRef(librarySignature(customThemes));
-  const loudnessSignature = loudnessProfileStateSignature(loudnessProfiles);
+  const loudnessSignature = loudnessProfileStateSignature(loudnessProfiles, loudnessActive);
   const previousLoudnessLibrarySignatureRef = useRef(loudnessSignature);
   const previousOrdinarySettingsSignatureRef = useRef(ordinarySettingsStateSignature(settings));
   const openAtLoginTrackingRef = useRef({
@@ -1128,6 +1143,195 @@ export function useAgentControlBridge({
               "persistenceFailed",
               "$",
               `Settings committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revision: result.revision }
+            );
+          }
+          return { requestId, result };
+        }
+
+        if (request.method === "loudnessProfile.describe") {
+          const index = loudnessProfiles.findIndex(({ id }) => id === request.params.profileId);
+          if (index < 0) {
+            throw semanticFailure(
+              "loudnessProfileNotFound",
+              "$.params.profileId",
+              `Loudness Profile ${request.params.profileId} was not found.`,
+              -32020
+            );
+          }
+          const profile = normalizeRuleDocument(loudnessProfiles[index]);
+          return {
+            requestId,
+            result: {
+              revision: controlRevisionRef.current,
+              profile,
+              active: activeLoudnessProfileId(loudnessProfiles, loudnessActive) === profile.id,
+              index,
+            },
+          };
+        }
+
+        if (
+          request.method === "loudnessProfile.select" ||
+          request.method === "loudnessProfile.create" ||
+          request.method === "loudnessProfile.update" ||
+          request.method === "loudnessProfile.rename" ||
+          request.method === "loudnessProfile.delete" ||
+          request.method === "loudnessProfile.reorder"
+        ) {
+          const currentRevision = controlRevisionRef.current;
+          if (request.params.expectedRevision !== currentRevision) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `Loudness Profiles changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedRevision, currentRevision }
+            );
+          }
+          const control = loudnessProfile?.control;
+          if (!control) {
+            throw semanticFailure(
+              "controlUnavailable",
+              "$",
+              "Loudness Profile Control is unavailable.",
+              -32012
+            );
+          }
+          if (request.method !== "loudnessProfile.reorder") {
+            control.assertAllowed(request.method);
+          }
+
+          let planned =
+            request.method === "loudnessProfile.select"
+              ? control.planSelect(request.params.profileId)
+              : request.method === "loudnessProfile.create"
+                ? control.planCreate(request.params.document)
+                : request.method === "loudnessProfile.update"
+                  ? control.planUpdate(request.params.profileId, request.params.document)
+                  : request.method === "loudnessProfile.rename"
+                    ? control.planRename(request.params.profileId, request.params.name)
+                    : request.method === "loudnessProfile.delete"
+                      ? control.planDelete(request.params.profileId)
+                      : control.planReorder(request.params.profileIds);
+          if (planned.issues.length > 0) {
+            const missing = planned.issues.find(({ code }) => code === "loudnessProfileNotFound");
+            const permutation = planned.issues.find(({ code }) => code === "invalidPermutation");
+            if (missing) {
+              throw semanticFailure(
+                "loudnessProfileNotFound",
+                "$.params.profileId",
+                missing.message,
+                -32020
+              );
+            }
+            if (permutation) {
+              throw semanticFailure(
+                "invalidPermutation",
+                "$.params.profileIds",
+                permutation.message,
+                -32602,
+                { issues: planned.issues }
+              );
+            }
+            throw semanticFailure(
+              "invalidProfile",
+              request.method === "loudnessProfile.rename" ? "$.params.name" : "$.params.document",
+              "The Loudness Profile document is invalid.",
+              -32602,
+              { issues: planned.issues }
+            );
+          }
+
+          const profilePlan = () =>
+            request.method === "loudnessProfile.select"
+              ? { from: planned.from, to: planned.to }
+              : request.method === "loudnessProfile.create"
+                ? {
+                    document: planned.document,
+                    selectCreated: true,
+                    ...(planned.profile ? { profile: planned.profile } : {}),
+                  }
+                : request.method === "loudnessProfile.delete"
+                  ? {
+                      deletedProfile: planned.deletedProfile,
+                      selectionFallsBackToOff: planned.selectionFallsBackToOff,
+                      affectedPresetIds: planned.affectedPresetIds,
+                    }
+                  : request.method === "loudnessProfile.reorder"
+                    ? { profileIds: planned.profileIds }
+                    : { profile: planned.profile };
+          const dryRun = request.params.dryRun === true;
+          const result = {
+            dryRun,
+            revision: currentRevision,
+            changed: planned.changed.length > 0,
+            warnings: planned.warnings,
+            plan: profilePlan(),
+            state: compactLoudnessProfileState(
+              planned.loudnessProfiles,
+              dryRun && request.method === "loudnessProfile.create" ? planned.document : null
+            ),
+          };
+          if (dryRun || planned.changed.length === 0) return { requestId, result };
+
+          const registerSettlement = (commitPlan) => {
+            const expected = {
+              loudnessProfile: loudnessProfileStateSignature(
+                commitPlan.loudnessProfiles.profiles,
+                commitPlan.loudnessProfiles.active
+              ),
+            };
+            if (
+              commitPlan.presets &&
+              presetStateSignature(commitPlan.presets) !== presetStateSignature(presets)
+            ) {
+              expected.presets = presetStateSignature(commitPlan.presets);
+            }
+            const committed = new Promise((resolve, reject) => {
+              loudnessProfileSettlementRef.current = {
+                expected,
+                observed: new Set(),
+                resolve,
+                reject,
+              };
+            });
+            return committed;
+          };
+
+          let committed;
+          if (request.method === "loudnessProfile.create") {
+            planned = control.create(request.params.document);
+            if (planned.issues.length > 0 || !planned.profile) {
+              throw semanticFailure(
+                "commandFailed",
+                "$",
+                "Loudness Profile could not be created.",
+                -32050
+              );
+            }
+            committed = registerSettlement(planned);
+          } else {
+            committed = registerSettlement(planned);
+            control.commit(planned);
+          }
+          result.plan = profilePlan();
+          result.state = compactLoudnessProfileState(planned.loudnessProfiles);
+          result.revision = await awaitSettlement(
+            committed,
+            () => {
+              loudnessProfileSettlementRef.current = null;
+            },
+            "The Loudness Profile change"
+          );
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Loudness Profile committed but persistence failed: ${error?.message || String(error)}`,
               -32030,
               { stateCommitted: true, revision: result.revision }
             );
@@ -2071,6 +2275,8 @@ export function useAgentControlBridge({
     relaunchAfterConfigurationChange,
     bumpControlRevision,
     hasLoudnessReference,
+    loudnessActive,
+    loudnessProfile,
     loudnessProfiles,
     analysisContext,
     applySettings,

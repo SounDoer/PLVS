@@ -13,6 +13,7 @@ import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { useThemeSettings } from "../hooks/useThemeSettings.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
+import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 
@@ -137,6 +138,12 @@ const MUTATION_METHODS = new Set([
   "preset.import",
   "theme.import",
   "loudnessProfile.import",
+  "loudnessProfile.select",
+  "loudnessProfile.create",
+  "loudnessProfile.update",
+  "loudnessProfile.rename",
+  "loudnessProfile.delete",
+  "loudnessProfile.reorder",
 ]);
 
 /// A theme fixture has to survive Theme V2 validation: `normalizeThemeDocument` drops a bare
@@ -174,6 +181,7 @@ function Harness({
   analysisContext = {},
   loudnessProfiles = [],
   loudnessProfilesFromStore = false,
+  loudnessProfile = null,
   customThemes = null,
   capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
   assertPresetOperationAllowed = () => {},
@@ -206,11 +214,8 @@ function Harness({
   useEffect(() => themesStore.subscribe(() => setSubscribedThemes(listCustomThemes())), []);
   // The same wiring for Presets, which `usePresets` gets from a `presetsStore` subscription. Off
   // by default: most tests here drive the Preset list through the controlled object below.
-  const [subscribedPresets, setSubscribedPresets] = useState(() => presetsStore.read().list ?? []);
-  useEffect(
-    () => presetsStore.subscribe(() => setSubscribedPresets(presetsStore.read().list ?? [])),
-    []
-  );
+  const [subscribedPresets, setSubscribedPresets] = useState(() => presetsStore.read());
+  useEffect(() => presetsStore.subscribe(() => setSubscribedPresets(presetsStore.read())), []);
   // And for Loudness Profiles, which `LoudnessProfileContext` keeps in sync with `plvs:settings`.
   // Off by default for the same reason as Presets: most tests pass the library as a static prop.
   const [subscribedProfiles, setSubscribedProfiles] = useState(() => getAdapter("loudness").list());
@@ -225,7 +230,7 @@ function Harness({
   const [dockState, setDockState] = useState(agentDock);
   const controlledPresets = {
     ...presetState,
-    ...(presetLibraryFromStore ? { list: subscribedPresets } : {}),
+    ...(presetLibraryFromStore ? subscribedPresets : {}),
     rename: (id, name) =>
       setPresetState((current) => ({
         ...current,
@@ -356,6 +361,7 @@ function Harness({
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles: loudnessProfilesFromStore ? subscribedProfiles : loudnessProfiles,
+    loudnessProfile,
     customThemes: customThemes ?? subscribedThemes,
     flush,
     ...(exportConfiguration ? { exportConfiguration } : {}),
@@ -364,6 +370,37 @@ function Harness({
     ...(relaunchAfterConfigurationChange ? { relaunchAfterConfigurationChange } : {}),
   });
   return null;
+}
+
+function ProfileHarness({ onProfile = () => {}, ...props }) {
+  const loudnessProfile = useLoudnessProfile();
+  onProfile(loudnessProfile);
+  return <Harness {...props} loudnessProfile={loudnessProfile} presetLibraryFromStore />;
+}
+
+function mountWithProfiles(options = {}) {
+  let store = null;
+  let profile = null;
+  const rendered = render(
+    <WorkspaceProvider>
+      <LoudnessProfileProvider>
+        <ProfileHarness
+          {...options}
+          onStore={(next) => (store = next)}
+          onProfile={(next) => (profile = next)}
+        />
+      </LoudnessProfileProvider>
+    </WorkspaceProvider>
+  );
+  return {
+    ...rendered,
+    get store() {
+      return store;
+    },
+    get profile() {
+      return profile;
+    },
+  };
 }
 
 function mount(options = {}) {
@@ -2872,6 +2909,381 @@ describe("useAgentControlBridge", () => {
       );
 
       expect(Object.keys(themes.result.current.customThemes)).toContain("t-1");
+    });
+  });
+
+  describe("Loudness Profile control", () => {
+    const PROFILE_A = { id: "prof-a", name: "A", referenceLufs: -23, rules: [] };
+    const PROFILE_B = { id: "prof-b", name: "B", referenceLufs: null, rules: [] };
+    const DOCUMENT = {
+      name: "Broadcast",
+      referenceLufs: -24,
+      rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "warn" }],
+    };
+
+    function seedProfiles(active = "off") {
+      settingsStore.patch({ loudnessProfiles: { active, profiles: [PROFILE_A, PROFILE_B] } });
+    }
+
+    it("describes a complete normalized Profile", async () => {
+      seedProfiles("profile:prof-a");
+      mountWithProfiles();
+      await waitUntilReady();
+
+      const response = await send(
+        request("loudnessProfile.describe", { profileId: "prof-a" }, "profile-describe")
+      );
+      expect(response.result).toEqual({
+        revision: 0,
+        profile: PROFILE_A,
+        active: true,
+        index: 0,
+      });
+    });
+
+    it("executes select/create/update/rename/reorder/delete with one revision and flush each", async () => {
+      seedProfiles();
+      presetsStore.patch({
+        list: [{ id: "preset-a", loudnessProfileActive: "profile:prof-a" }],
+        activeId: "preset-a",
+        dirty: false,
+      });
+      const flush = vi.fn(async () => {});
+      mountWithProfiles({ flush });
+      await waitUntilReady();
+
+      const selected = await send(
+        request(
+          "loudnessProfile.select",
+          { profileId: "prof-a", expectedRevision: 0 },
+          "profile-select"
+        )
+      );
+      expect(selected.result).toMatchObject({
+        dryRun: false,
+        revision: 1,
+        changed: true,
+        plan: { from: null, to: "prof-a" },
+        state: { activeId: "prof-a" },
+      });
+
+      const created = await send(
+        request(
+          "loudnessProfile.create",
+          { document: DOCUMENT, expectedRevision: 1 },
+          "profile-create"
+        )
+      );
+      const createdId = created.result.plan.profile.id;
+      expect(created.result).toMatchObject({
+        revision: 2,
+        plan: { document: DOCUMENT, selectCreated: true },
+        state: { activeId: createdId },
+      });
+
+      const updated = await send(
+        request(
+          "loudnessProfile.update",
+          { profileId: "prof-a", document: DOCUMENT, expectedRevision: 2 },
+          "profile-update"
+        )
+      );
+      expect(updated.result).toMatchObject({
+        revision: 3,
+        plan: { profile: { id: "prof-a", ...DOCUMENT } },
+        state: { activeId: createdId },
+      });
+
+      const renamed = await send(
+        request(
+          "loudnessProfile.rename",
+          { profileId: "prof-a", name: "  Renamed  ", expectedRevision: 3 },
+          "profile-rename"
+        )
+      );
+      expect(renamed.result).toMatchObject({
+        revision: 4,
+        plan: { profile: { id: "prof-a", name: "Renamed" } },
+      });
+
+      const reordered = await send(
+        request(
+          "loudnessProfile.reorder",
+          { profileIds: [createdId, "prof-b", "prof-a"], expectedRevision: 4 },
+          "profile-reorder"
+        )
+      );
+      expect(reordered.result).toMatchObject({
+        revision: 5,
+        plan: { profileIds: [createdId, "prof-b", "prof-a"] },
+      });
+
+      const deleted = await send(
+        request(
+          "loudnessProfile.delete",
+          { profileId: "prof-a", expectedRevision: 5 },
+          "profile-delete"
+        )
+      );
+      expect(deleted.result).toMatchObject({
+        revision: 6,
+        plan: {
+          deletedProfile: { id: "prof-a", name: "Renamed" },
+          selectionFallsBackToOff: false,
+          affectedPresetIds: ["preset-a"],
+        },
+      });
+      expect(presetsStore.read().list[0].loudnessProfileActive).toBe("off");
+      expect(flush).toHaveBeenCalledTimes(6);
+    });
+
+    it("dry-runs and no-ops without allocation, mutation, revision, or persistence", async () => {
+      seedProfiles("profile:prof-a");
+      const flush = vi.fn(async () => {});
+      mountWithProfiles({ flush });
+      await waitUntilReady();
+      const before = structuredClone(settingsStore.read());
+
+      const dryRun = await send(
+        request(
+          "loudnessProfile.create",
+          { document: DOCUMENT, expectedRevision: 0, dryRun: true },
+          "profile-create-dry"
+        )
+      );
+      expect(dryRun.result).toMatchObject({
+        dryRun: true,
+        revision: 0,
+        changed: true,
+        plan: { document: DOCUMENT, selectCreated: true },
+      });
+      expect(dryRun.result.plan).not.toHaveProperty("profile");
+
+      const noOp = await send(
+        request(
+          "loudnessProfile.select",
+          { profileId: "prof-a", expectedRevision: 0 },
+          "profile-select-noop"
+        )
+      );
+      expect(noOp.result).toMatchObject({ changed: false, revision: 0 });
+      expect(settingsStore.read()).toEqual(before);
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it("dry-runs every mutation through its real planner without changing either store", async () => {
+      seedProfiles();
+      presetsStore.patch({
+        list: [{ id: "preset-a", loudnessProfileActive: "profile:prof-a" }],
+        activeId: "preset-a",
+        dirty: false,
+      });
+      const flush = vi.fn(async () => {});
+      mountWithProfiles({ flush });
+      await waitUntilReady();
+      const settingsBefore = structuredClone(settingsStore.read());
+      const presetsBefore = structuredClone(presetsStore.read());
+      const cases = [
+        ["loudnessProfile.select", { profileId: "prof-a" }],
+        ["loudnessProfile.create", { document: DOCUMENT }],
+        ["loudnessProfile.update", { profileId: "prof-a", document: DOCUMENT }],
+        ["loudnessProfile.rename", { profileId: "prof-a", name: "Renamed" }],
+        ["loudnessProfile.delete", { profileId: "prof-a" }],
+        ["loudnessProfile.reorder", { profileIds: ["prof-b", "prof-a"] }],
+      ];
+
+      for (const [method, params] of cases) {
+        const response = await send(
+          request(method, { ...params, expectedRevision: 0, dryRun: true }, `dry-${method}`)
+        );
+        expect(response.result).toMatchObject({
+          dryRun: true,
+          revision: 0,
+          changed: true,
+          warnings: [],
+          plan: expect.any(Object),
+          state: { profiles: expect.any(Array) },
+        });
+      }
+      expect(settingsStore.read()).toEqual(settingsBefore);
+      expect(presetsStore.read()).toEqual(presetsBefore);
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it("detects normalized select, update, rename, and reorder no-ops", async () => {
+      seedProfiles("profile:prof-a");
+      const flush = vi.fn(async () => {});
+      mountWithProfiles({ flush });
+      await waitUntilReady();
+      for (const [method, params] of [
+        ["loudnessProfile.select", { profileId: "prof-a" }],
+        [
+          "loudnessProfile.update",
+          {
+            profileId: "prof-a",
+            document: { name: " A ", referenceLufs: -23, rules: [] },
+          },
+        ],
+        ["loudnessProfile.rename", { profileId: "prof-a", name: " A " }],
+        ["loudnessProfile.reorder", { profileIds: ["prof-a", "prof-b"] }],
+      ]) {
+        const response = await send(
+          request(method, { ...params, expectedRevision: 0 }, `noop-${method}`)
+        );
+        expect(response.result).toMatchObject({ dryRun: false, changed: false, revision: 0 });
+      }
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it("rejects a stale revision before planning every mutation", async () => {
+      seedProfiles();
+      const settingsBefore = structuredClone(settingsStore.read());
+      mountWithProfiles();
+      await waitUntilReady();
+      for (const [method, params] of [
+        ["loudnessProfile.select", { profileId: "prof-a" }],
+        ["loudnessProfile.create", { document: DOCUMENT }],
+        ["loudnessProfile.update", { profileId: "prof-a", document: DOCUMENT }],
+        ["loudnessProfile.rename", { profileId: "prof-a", name: "Renamed" }],
+        ["loudnessProfile.delete", { profileId: "prof-a" }],
+        ["loudnessProfile.reorder", { profileIds: ["prof-b", "prof-a"] }],
+      ]) {
+        const response = await send(
+          request(method, { ...params, expectedRevision: 9 }, `stale-${method}`)
+        );
+        expect(response.error.data.reason).toBe("revisionConflict");
+      }
+      expect(settingsStore.read()).toEqual(settingsBefore);
+    });
+
+    it("maps validation, missing target, permutation, and stale revision failures", async () => {
+      seedProfiles();
+      mountWithProfiles();
+      await waitUntilReady();
+      const invalid = await send(
+        request(
+          "loudnessProfile.create",
+          { document: { name: "", referenceLufs: 4, rules: [] }, expectedRevision: 0 },
+          "profile-invalid"
+        )
+      );
+      expect(invalid.error.data).toMatchObject({
+        reason: "invalidProfile",
+        details: { issues: expect.any(Array) },
+      });
+      const missing = await send(
+        request(
+          "loudnessProfile.delete",
+          { profileId: "missing", expectedRevision: 0 },
+          "profile-missing"
+        )
+      );
+      expect(missing.error.data.reason).toBe("loudnessProfileNotFound");
+      const permutation = await send(
+        request(
+          "loudnessProfile.reorder",
+          { profileIds: ["prof-a"], expectedRevision: 0 },
+          "profile-permutation"
+        )
+      );
+      expect(permutation.error.data.reason).toBe("invalidPermutation");
+      const stale = await send(
+        request(
+          "loudnessProfile.select",
+          { profileId: "off", expectedRevision: 9 },
+          "profile-stale"
+        )
+      );
+      expect(stale.error.data.reason).toBe("revisionConflict");
+    });
+
+    it("refuses blocked mutations before Settings or Presets change while allowing reorder", async () => {
+      seedProfiles();
+      presetsStore.patch({ list: [], activeId: null, dirty: false });
+      const view = mountWithProfiles();
+      await waitUntilReady();
+      act(() => view.profile.beginEdit("prof-a"));
+      const settingsBefore = structuredClone(settingsStore.read());
+      const presetsBefore = structuredClone(presetsStore.read());
+
+      for (const [method, params] of [
+        ["loudnessProfile.select", { profileId: "prof-a" }],
+        ["loudnessProfile.create", { document: DOCUMENT }],
+        ["loudnessProfile.update", { profileId: "prof-a", document: DOCUMENT }],
+        ["loudnessProfile.rename", { profileId: "prof-a", name: "Name" }],
+        ["loudnessProfile.delete", { profileId: "prof-a" }],
+      ]) {
+        const response = await send(
+          request(method, { ...params, expectedRevision: 0 }, `blocked-${method}`)
+        );
+        expect(response.error.data).toMatchObject({
+          reason: "editorActive",
+          details: { editors: ["loudnessProfile"] },
+        });
+        expect(settingsStore.read()).toEqual(settingsBefore);
+        expect(presetsStore.read()).toEqual(presetsBefore);
+      }
+
+      const reorder = await send(
+        request(
+          "loudnessProfile.reorder",
+          { profileIds: ["prof-b", "prof-a"], expectedRevision: 0 },
+          "blocked-reorder"
+        )
+      );
+      expect(reorder.result.changed).toBe(true);
+      expect(view.profile.draft).not.toBe(null);
+    });
+
+    it("reports persistence failure after a committed Profile mutation", async () => {
+      seedProfiles();
+      const flush = vi.fn(async () => {
+        throw new Error("disk full");
+      });
+      mountWithProfiles({ flush });
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "loudnessProfile.rename",
+          { profileId: "prof-a", name: "Renamed", expectedRevision: 0 },
+          "profile-persistence"
+        )
+      );
+      expect(response.error).toMatchObject({
+        data: {
+          reason: "persistenceFailed",
+          details: { stateCommitted: true, revision: 1 },
+        },
+      });
+      expect(settingsStore.read().loudnessProfiles.profiles[0].name).toBe("Renamed");
+    });
+
+    it.each([
+      ["select", "loudnessProfile.select", { profileId: "prof-a" }],
+      ["create", "loudnessProfile.create", { document: DOCUMENT }],
+      ["update", "loudnessProfile.update", { profileId: "prof-a", document: DOCUMENT }],
+      ["rename", "loudnessProfile.rename", { profileId: "prof-a", name: "Renamed" }],
+      ["delete", "loudnessProfile.delete", { profileId: "prof-a" }],
+      ["reorder", "loudnessProfile.reorder", { profileIds: ["prof-b", "prof-a"] }],
+    ])("reports committed revision when %s persistence fails", async (_name, method, params) => {
+      seedProfiles();
+      presetsStore.patch({ list: [], activeId: "preset-a", dirty: false });
+      const flush = vi.fn(async () => {
+        throw new Error("disk full");
+      });
+      mountWithProfiles({ flush });
+      await waitUntilReady();
+
+      const response = await send(
+        request(method, { ...params, expectedRevision: 0 }, `flush-${method}`)
+      );
+      expect(response.error).toMatchObject({
+        data: {
+          reason: "persistenceFailed",
+          details: { stateCommitted: true, revision: 1 },
+        },
+      });
     });
   });
 });
