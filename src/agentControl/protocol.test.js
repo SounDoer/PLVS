@@ -431,3 +431,46 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 });
+
+describe("library transfer requests", () => {
+  it("accepts the three list methods with no params", () => {
+    for (const method of ["theme.list", "loudnessProfile.list"]) {
+      const normalized = normalizeAgentControlRequest(request(method));
+      expect(normalized.request.method).toBe(method);
+      expect(normalized.request.params).toEqual({});
+    }
+  });
+
+  it("accepts an export with no ids as a whole-library export", () => {
+    const normalized = normalizeAgentControlRequest(request("theme.export", {}));
+    expect(normalized.request.params.ids).toBeNull();
+  });
+
+  it("accepts an export with a string id list", () => {
+    const normalized = normalizeAgentControlRequest(
+      request("theme.export", { ids: ["t-1", "t-2"] })
+    );
+    expect(normalized.request.params.ids).toEqual(["t-1", "t-2"]);
+  });
+
+  it("rejects an export whose ids are not strings", () => {
+    const normalized = normalizeAgentControlRequest(request("theme.export", { ids: [1] }));
+    expect(normalized.error).toBeTruthy();
+  });
+
+  it("accepts an import carrying a pack object", () => {
+    const normalized = normalizeAgentControlRequest(
+      request("theme.import", { pack: { app: "PLVS" }, expectedRevision: 3, dryRun: true })
+    );
+    expect(normalized.request.params.pack).toEqual({ app: "PLVS" });
+    expect(normalized.request.params.expectedRevision).toBe(3);
+    expect(normalized.request.params.dryRun).toBe(true);
+  });
+
+  it("rejects an import with no pack", () => {
+    const normalized = normalizeAgentControlRequest(
+      request("theme.import", { expectedRevision: 3 })
+    );
+    expect(normalized.error).toBeTruthy();
+  });
+});

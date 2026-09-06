@@ -6,6 +6,8 @@ const TRANSPORT_ACTIONS = new Set([
   "transport.file.reanalyze",
   "transport.file.stop",
 ]);
+const LIBRARY_EXPORT_METHODS = new Set(["preset.export", "theme.export", "loudnessProfile.export"]);
+const LIBRARY_IMPORT_METHODS = new Set(["preset.import", "theme.import", "loudnessProfile.import"]);
 
 export function isTransportAction(method) {
   return TRANSPORT_ACTIONS.has(method);
@@ -81,6 +83,8 @@ export function normalizeAgentControlRequest(input) {
     input.method === "axis.describe" ||
     input.method === "axis.inspect" ||
     input.method === "preset.list" ||
+    input.method === "theme.list" ||
+    input.method === "loudnessProfile.list" ||
     input.method === "settings.describe" ||
     input.method === "settings.inspect" ||
     input.method === "transport.inspect" ||
@@ -629,6 +633,68 @@ export function normalizeAgentControlRequest(input) {
         params: {
           panelId: input.params.panelId,
           ...(isUpdate ? { patch: input.params.patch } : {}),
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
+            : {}),
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
+    };
+  }
+
+  if (LIBRARY_EXPORT_METHODS.has(input.method)) {
+    const field = unknownField(input.params, new Set(["ids"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
+    if (input.params.ids === undefined) {
+      return {
+        ok: true,
+        request: { id: input.id, method: input.method, params: { ids: null } },
+      };
+    }
+    // An explicit empty array is a caller asking for nothing, and is rejected rather than
+    // quietly exporting the whole library.
+    if (
+      !Array.isArray(input.params.ids) ||
+      input.params.ids.length === 0 ||
+      input.params.ids.some((id) => typeof id !== "string" || id === "")
+    ) {
+      return invalidParams("$.params.ids", "ids must be a non-empty array of non-empty strings.");
+    }
+    return {
+      ok: true,
+      request: { id: input.id, method: input.method, params: { ids: input.params.ids } },
+    };
+  }
+
+  if (LIBRARY_IMPORT_METHODS.has(input.method)) {
+    const field = unknownField(input.params, new Set(["pack", "expectedRevision", "dryRun"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
+    if (!isPlainJsonObject(input.params.pack)) {
+      return invalidParams("$.params.pack", "pack must be a plain JSON object.");
+    }
+    if (
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
+      );
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          pack: input.params.pack,
           ...(input.params.expectedRevision !== undefined
             ? { expectedRevision: input.params.expectedRevision }
             : {}),
