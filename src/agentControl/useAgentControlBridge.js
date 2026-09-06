@@ -377,7 +377,11 @@ export function useAgentControlBridge({
     scheduleWaitWake();
   }, [bumpControlRevision, scheduleWaitWake]);
 
-  /// Resolved by the watcher for the library a `*.import` just wrote.
+  /// Resolved by the watcher for a library the `*.import` in flight actually wrote -- which is
+  /// `planLibraryImport`'s `writes`, not the family the request named. A Preset pack can write the
+  /// Loudness library alone, and waiting on the Preset watcher there times out on a commit that
+  /// succeeded. `commit` writes both stores synchronously, so when it writes two libraries both
+  /// watchers fire in the same React commit and the first to arrive is the right answer.
   ///
   /// Import does not bump the revision itself. Every library it can write is watched -- the two
   /// `librarySignature` effects below and the Preset effect -- and each watcher bumps when the
@@ -387,7 +391,7 @@ export function useAgentControlBridge({
   /// except that every later `--expected-revision` starts conflicting.
   const resolveLibrarySettlement = useCallback((family) => {
     const settlement = librarySettlementRef.current;
-    if (!settlement || settlement.family !== family) return;
+    if (!settlement || !settlement.families.includes(family)) return;
     librarySettlementRef.current = null;
     settlement.resolve(controlRevisionRef.current);
   }, []);
@@ -1543,7 +1547,7 @@ export function useAgentControlBridge({
           }
 
           const committed = new Promise((resolve, reject) => {
-            librarySettlementRef.current = { family, resolve, reject };
+            librarySettlementRef.current = { families: planned.writes, resolve, reject };
           });
           planned.commit();
           result.state = { [stateKey]: buildLibraryList(family) };

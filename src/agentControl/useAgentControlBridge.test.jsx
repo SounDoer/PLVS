@@ -172,6 +172,7 @@ function Harness({
   hasLoudnessReference = false,
   analysisContext = {},
   loudnessProfiles = [],
+  loudnessProfilesFromStore = false,
   customThemes = null,
   capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
   assertPresetOperationAllowed = () => {},
@@ -201,6 +202,13 @@ function Harness({
   const [subscribedPresets, setSubscribedPresets] = useState(() => presetsStore.read().list ?? []);
   useEffect(
     () => presetsStore.subscribe(() => setSubscribedPresets(presetsStore.read().list ?? [])),
+    []
+  );
+  // And for Loudness Profiles, which `LoudnessProfileContext` keeps in sync with `plvs:settings`.
+  // Off by default for the same reason as Presets: most tests pass the library as a static prop.
+  const [subscribedProfiles, setSubscribedProfiles] = useState(() => getAdapter("loudness").list());
+  useEffect(
+    () => settingsStore.subscribe(() => setSubscribedProfiles(getAdapter("loudness").list())),
     []
   );
   const [presetState, setPresetState] = useState(presets);
@@ -340,7 +348,7 @@ function Harness({
     executeDock,
     hasLoudnessReference,
     analysisContext,
-    loudnessProfiles,
+    loudnessProfiles: loudnessProfilesFromStore ? subscribedProfiles : loudnessProfiles,
     customThemes: customThemes ?? subscribedThemes,
     flush,
   });
@@ -2430,6 +2438,87 @@ describe("useAgentControlBridge", () => {
       expect(response.result.state.presets).toEqual([{ id: "p-1", name: "Mix" }]);
     });
 
+    it("imports a Loudness Profile pack through the Loudness library", async () => {
+      // The Loudness family settles on the `loudnessProfiles` prop, which `LoudnessProfileContext`
+      // feeds from `plvs:settings`. Without a test that reproduces that subscription, removing the
+      // watcher's `resolveLibrarySettlement` call leaves the suite green and every import in
+      // production hanging until the settlement times out.
+      mount({ loudnessProfilesFromStore: true });
+      await waitUntilReady();
+      const before = (await send(request("app.capabilities", {}, "loudness-import-before"))).result
+        .revision;
+
+      const response = await send(
+        request(
+          "loudnessProfile.import",
+          {
+            pack: {
+              app: "PLVS",
+              kind: "loudness-pack",
+              version: 1,
+              exportedAt: "",
+              items: [PROFILE_A],
+            },
+            expectedRevision: before,
+          },
+          "loudness-import"
+        )
+      );
+
+      expect(response.error).toBeUndefined();
+      expect(response.result.changed).toBe(true);
+      expect(response.result.state.profiles).toEqual([{ id: "prof-a", name: "EBU R128" }]);
+      expect(response.result.revision).toBe(before + 1);
+    });
+
+    it("settles a Preset import whose only write is a bundled Loudness Profile", async () => {
+      // A shared pack re-imported after the recipient deleted the Profile it carries: the Preset is
+      // byte-identical to the local one and is skipped, so `presetsStore` is never written and the
+      // Preset watcher never fires. Settling on the requested family would time out here and report
+      // a successful import as `commitNotObserved`.
+      const preset = {
+        id: "p-1",
+        name: "Mix",
+        panelOrder: [],
+        panelsById: {},
+        loudnessProfileActive: "profile:prof-a",
+      };
+      presetsStore.patch({ list: [preset] });
+      mount({
+        presetLibraryFromStore: true,
+        loudnessProfilesFromStore: true,
+        presets: { list: [], activeId: null, dirty: false },
+      });
+      await waitUntilReady();
+      const before = (await send(request("app.capabilities", {}, "bundled-before"))).result
+        .revision;
+
+      const response = await send(
+        request(
+          "preset.import",
+          {
+            pack: {
+              app: "PLVS",
+              kind: "preset-pack",
+              version: 1,
+              exportedAt: "",
+              items: [preset],
+              loudnessProfiles: [PROFILE_A],
+            },
+            expectedRevision: before,
+          },
+          "bundled-profile-import"
+        )
+      );
+
+      expect(response.error).toBeUndefined();
+      expect(response.result.changed).toBe(true);
+      expect(response.result.plan.items[0].disposition).toBe("skipped");
+      expect(response.result.plan.loudnessProfiles[0].disposition).toBe("added");
+      expect(response.result.revision).toBe(before + 1);
+      expect(getAdapter("loudness").list()).toHaveLength(1);
+    });
+
     it("refuses an import that names a stale revision", async () => {
       mount();
       await waitUntilReady();
@@ -2453,6 +2542,10 @@ describe("useAgentControlBridge", () => {
     });
 
     it("does not dirty the active preset", async () => {
+      // Asserted against the store, not the controlled Preset object `app.inspect` reports: the
+      // claim is that the import path wrote no `dirty`, and a `presetsStore.patch` from inside it
+      // would never reach that object.
+      presetsStore.patch({ list: [], activeId: "preset-1", dirty: false });
       mount({ presets: { list: [], activeId: "preset-1", dirty: false } });
       await waitUntilReady();
 
@@ -2460,6 +2553,7 @@ describe("useAgentControlBridge", () => {
         request("theme.import", { pack: themePack([makeTheme("t-1", "Studio")]) }, "no-dirty")
       );
 
+      expect(presetsStore.read().dirty).toBe(false);
       const inspection = await send(request("app.inspect", {}, "no-dirty-inspect"));
       expect(inspection.result.preset).toEqual({ activeId: "preset-1", dirty: false });
     });

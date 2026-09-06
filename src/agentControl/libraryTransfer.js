@@ -54,8 +54,9 @@ export function planLibraryExport(family, ids) {
  * is not a valid pack for this family; its message is written for a person who received a shared
  * file and is passed through verbatim.
  *
- * @returns {{ changed: boolean, plan: { items: object[], loudnessProfiles: object[] },
- *   commit: () => void }} `commit` performs the append; a dry run simply never calls it.
+ * @returns {{ changed: boolean, writes: string[], plan: { items: object[],
+ *   loudnessProfiles: object[] }, commit: () => void }} `commit` performs the append; a dry run
+ *   simply never calls it. `writes` names the families `commit` will actually write.
  */
 export function planLibraryImport(family, raw) {
   const { packType } = libraryFamily(family);
@@ -65,10 +66,20 @@ export function planLibraryImport(family, raw) {
     existingProfiles: packType === "presets" ? getAdapter("loudness").list() : [],
   });
 
-  const changed = planned.itemAdditions.length > 0 || planned.profileAdditions.length > 0;
+  /// A Preset pack carries Loudness Profiles, so the families a commit writes are not the family
+  /// that was asked for: a pack whose Presets are all identical to local ones and whose Profile is
+  /// missing locally writes the Loudness library and nothing else. Reported here rather than left
+  /// for the caller to infer -- the profile bundling and the family vocabulary both live in this
+  /// module, and a caller watching the requested family alone would wait for a write that never
+  /// comes.
+  const writes = [
+    ...(planned.itemAdditions.length > 0 ? [family] : []),
+    ...(planned.profileAdditions.length > 0 ? ["loudnessProfile"] : []),
+  ];
 
   return {
-    changed,
+    changed: writes.length > 0,
+    writes,
     plan: {
       items: planned.itemPlan,
       loudnessProfiles: planned.profilePlan,
