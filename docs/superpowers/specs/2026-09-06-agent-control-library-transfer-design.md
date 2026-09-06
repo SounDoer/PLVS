@@ -238,11 +238,13 @@ Reuses the existing envelope and codes. New:
 
 - `themeNotFound`, `loudnessProfileNotFound` — an id in `--ids` is not in that library. Details list
   every missing id. `presetNotFound` already exists and is reused for preset export.
-- `invalidPack` — the document is not a valid pack for this family. `details.issues` carries the
-  reason, sourced from `PackValidationError`'s existing messages, which already distinguish "not a
-  PLVS file", "this is a whole configuration file", "this is a *different library's* file", "missing
-  a version" and "made by a newer version of PLVS". Those messages are written for a person who
-  received a shared file and are worth keeping verbatim.
+- `invalidPack` — the document is not a valid pack for this family. The reason is the error
+  `message`, passed through from `PackValidationError` verbatim; those messages already distinguish
+  "not a PLVS file", "this is a whole configuration file", "this is a *different library's* file",
+  "missing a version" and "made by a newer version of PLVS", and they are written for a person who
+  received a shared file. This paragraph originally put the reason in `details.issues` as well; the
+  implementation carries no `details` for this code, because a second copy of the same sentence is
+  not a second piece of information. `libraries.md` documents the shipped behaviour.
 
 `revisionConflict`, `persistenceFailed` and `commandFailed` behave as they do everywhere else.
 
