@@ -1189,7 +1189,16 @@ Insert this block in the request dispatch, immediately after the `preset.rename 
         }
 ```
 
-`bumpControlRevision` is called directly here rather than waiting on a state settlement, because the adapters write the store synchronously and the same-turn guard inside `bumpControlRevision` collapses this with the effect from Task 6 that fires on the resulting re-render — so one import produces exactly one increment either way.
+**The revision bump here is the one thing in this task you must not take on faith.** Two things can bump it for a single import: this direct call, and the library signature effect Task 6 added, which fires when the store write reaches React. `bumpControlRevision`'s same-turn guard collapses repeat calls within one turn and resets itself in a `queueMicrotask` — but this handler runs in an async request continuation while the re-render lands later, and whether those are the same turn depends on React 19's batching against that microtask. Do not reason it out; pin it:
+
+```js
+  it("increments the revision exactly once for one import", async () => {
+    // ... capabilities before, import one new theme, capabilities after
+    expect(after).toBe(before + 1);
+  });
+```
+
+If that test says +2, drop the direct `bumpControlRevision()` and await a settlement on the library signature instead, the way the `preset.rename` branch awaits `presetStateSignature` — the machinery is already in the file. Whichever way it goes, the test stays. A revision that moves by two is not a visible failure: every later `--expected-revision` just starts conflicting, and the number in the response looks perfectly ordinary.
 
 Add the small helper beside `presetStateSignature`:
 
