@@ -1742,6 +1742,12 @@ Take the wording from the spec's corresponding sections. Do not restate the merg
 
 Add one thing the spec does not cover, found in Task 2's review: **a pack whose every item fails validation imports as a successful no-op, not an error.** `parsePack` filters invalid items silently, which is what the GUI does too, so a corrupted file reports `changed: false` and an empty plan rather than telling the caller the file was bad. That is consistent behaviour, not a defect, but a caller who does not know it will read "nothing changed" as "already up to date".
 
+Three more facts, from Task 7's review. Each is a contract a caller can otherwise only discover by being surprised:
+
+- **`warnings` is always an empty array today.** Nothing populates it, including the case where a Preset's Loudness Profile reference cannot be carried over and `remapPresetProfile` degrades it to Off — a change to the imported Preset that the caller is not told about. Document the field as reserved, and say that a profile reference may be downgraded silently.
+- **`loudnessProfile.list`'s `activeId` does not participate in the revision.** `librarySignature` tracks only ids and names, so a user switching the active profile in the GUI changes `activeId` while the revision stays put. This matches `app.inspect`, which has always reported the field on the same terms, but it means `activeId` cannot be guarded with `--expected-revision`.
+- **A dry run and a no-op both return the revision from *before* the request and never call `flush()`.** They return early, so there is nothing to persist; a caller must not read the returned revision as "the state was written".
+
 - [ ] **Step 2: Update `docs/agent-control/README.md`**
 
 In the command families code block, add:
@@ -1839,6 +1845,11 @@ npm run desktop:control --silent -- theme list --json
 ```
 
 Then export, re-import into a fresh profile, and confirm the imported theme appears in the Settings theme picker **without restarting** — that is the `notifyLocal` path, and it is the one thing the suite cannot prove end to end.
+
+Two more, both raised by Task 7's review because both are green in CI either way:
+
+- **`loudnessProfile import`, then check the Loudness Profile list refreshes on the spot.** Until Task 7's F2 fix this family had no bridge-level test at all, so the automated suite says nothing useful about it.
+- **The cross-library preset import.** Import a preset pack whose Preset the machine already has byte-identical but whose bundled Loudness Profile it does not. This is the F1 bug: it must return promptly with `changed: true`, not spin for five seconds and come back with `commitNotObserved` after having written the data anyway. The fix is unit-tested, but this is the path a real shared file takes.
 
 - [ ] **Step 4: Commit anything the check regenerated**
 
