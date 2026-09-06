@@ -101,6 +101,21 @@ pub enum CliAppCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  LibraryList {
+    family: String,
+  },
+  LibraryExport {
+    family: String,
+    /// None exports the whole library.
+    ids: Option<Vec<String>>,
+    out: Option<String>,
+  },
+  LibraryImport {
+    family: String,
+    input: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
   SettingsDescribe,
   SettingsInspect,
   TransportInspect,
@@ -155,6 +170,10 @@ pub fn parse_app_args(args: &[String]) -> Result<CliAppCommand, String> {
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
+    [command, rest @ ..] if command == "theme" => return parse_library_args("theme", rest),
+    [command, rest @ ..] if command == "loudness-profile" => {
+      return parse_library_args("loudnessProfile", rest)
+    }
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
     [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
     [command, rest @ ..] if command == "dock" => return parse_dock_args(rest),
@@ -849,16 +868,27 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
     }
     _ => {}
   }
-  const USAGE: &str = "Usage: plvs-cli app preset <describe|save|apply|update|rename|delete|reorder> ... --json [--expected-revision <n>] [--dry-run]";
+  const USAGE: &str = "Usage: plvs-cli app preset <describe|save|apply|update|rename|delete|reorder|export|import> ... --json [--expected-revision <n>] [--dry-run]";
   let command = args
     .first()
     .map(String::as_str)
     .ok_or_else(|| USAGE.to_string())?;
   if !matches!(
     command,
-    "describe" | "save" | "apply" | "update" | "rename" | "delete" | "reorder"
+    "describe"
+      | "save"
+      | "apply"
+      | "update"
+      | "rename"
+      | "delete"
+      | "reorder"
+      | "export"
+      | "import"
   ) {
     return Err(USAGE.to_string());
+  }
+  if command == "export" || command == "import" {
+    return parse_library_args("preset", args);
   }
   let mut positionals = Vec::new();
   let mut expected_revision = None;
@@ -956,12 +986,170 @@ fn parse_preset_args(args: &[String]) -> Result<CliAppCommand, String> {
   })
 }
 
+/// One parser for all three libraries. The CLI family word is the caller's business (`theme`,
+/// `loudness-profile`, `preset`); `family` here is already the wire name.
+fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(CliAppCommand::Help);
+  }
+  let usage = format!(
+    "Usage: plvs-cli app {} <list|export|import> ... --json",
+    if family == "loudnessProfile" {
+      "loudness-profile"
+    } else {
+      family
+    }
+  );
+  let command = args
+    .first()
+    .map(String::as_str)
+    .ok_or_else(|| usage.clone())?;
+  if !matches!(command, "list" | "export" | "import") {
+    return Err(usage);
+  }
+
+  let mut positionals = Vec::new();
+  let mut json = false;
+  let mut dry_run = false;
+  let mut all = false;
+  let mut ids: Option<Vec<String>> = None;
+  let mut out = None;
+  let mut expected_revision = None;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--all" => {
+        all = true;
+        index += 1;
+      }
+      "--ids" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --ids.".to_string())?;
+        let parsed: Vec<String> = raw
+          .split(',')
+          .map(str::trim)
+          .filter(|value| !value.is_empty())
+          .map(str::to_string)
+          .collect();
+        if parsed.is_empty() {
+          return Err("The --ids value must list at least one id.".to_string());
+        }
+        ids = Some(parsed);
+        index += 2;
+      }
+      "--out" => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --out.".to_string())?;
+        out = Some(value.clone());
+        index += 2;
+      }
+      "--expected-revision" => {
+        let raw = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-revision.".to_string())?;
+        let revision = raw.parse::<u64>().map_err(|_| {
+          "The --expected-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if revision > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-revision value must be a non-negative safe integer.".to_string(),
+          );
+        }
+        expected_revision = Some(revision);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value => {
+        positionals.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+  if !json {
+    return Err(format!(
+      "The app {family} {command} command requires --json."
+    ));
+  }
+
+  match command {
+    "list" => {
+      if !positionals.is_empty() || all || ids.is_some() || out.is_some() || dry_run {
+        return Err(format!(
+          "The app {family} list command takes no options other than --json."
+        ));
+      }
+      if expected_revision.is_some() {
+        return Err(format!(
+          "The app {family} list command does not accept --expected-revision."
+        ));
+      }
+      Ok(CliAppCommand::LibraryList {
+        family: family.to_string(),
+      })
+    }
+    "export" => {
+      if !positionals.is_empty() {
+        return Err(format!(
+          "The app {family} export command takes no positional arguments."
+        ));
+      }
+      // Export is a read: it cannot conflict, and there is nothing to preview.
+      if expected_revision.is_some() || dry_run {
+        return Err(format!(
+          "The app {family} export command does not accept --expected-revision or --dry-run."
+        ));
+      }
+      if all == ids.is_some() {
+        return Err("Pass exactly one of --all or --ids.".to_string());
+      }
+      Ok(CliAppCommand::LibraryExport {
+        family: family.to_string(),
+        ids,
+        out,
+      })
+    }
+    _ => {
+      if positionals.len() != 1 || positionals[0].trim().is_empty() {
+        return Err(format!(
+          "Usage: plvs-cli app {family} import <file|-> --json --expected-revision <n> [--dry-run]"
+        ));
+      }
+      if all || ids.is_some() || out.is_some() {
+        return Err(format!(
+          "The app {family} import command does not accept --all, --ids or --out."
+        ));
+      }
+      if expected_revision.is_none() {
+        return Err(format!(
+          "The app {family} import command requires --expected-revision."
+        ));
+      }
+      Ok(CliAppCommand::LibraryImport {
+        family: family.to_string(),
+        input: positionals.remove(0),
+        expected_revision,
+        dry_run,
+      })
+    }
+  }
+}
+
 fn is_help(value: &str) -> bool {
   matches!(value, "--help" | "-h" | "help")
 }
 
 fn base_help_text() -> &'static str {
-  "PLVS CLI - app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json\n  plvs-cli app preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli app transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli app transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli app transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - app control\n\nUsage:\n  plvs-cli app capabilities --json\n  plvs-cli app inspect --json\n  plvs-cli app workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel describe <panel-id> --json\n  plvs-cli app panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis describe --json\n  plvs-cli app axis inspect --json\n  plvs-cli app axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset list --json\n  plvs-cli app preset describe <preset-id> --json\n  plvs-cli app preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli app preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app preset export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli app preset import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli app theme list --json\n  plvs-cli app theme export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli app theme import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli app loudness-profile list --json\n  plvs-cli app loudness-profile export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli app loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli app settings describe --json\n  plvs-cli app settings inspect --json\n  plvs-cli app settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli app wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli app transport inspect --json\n  plvs-cli app transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli app transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli app transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli app transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli app transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli app transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 pub fn help_text() -> &'static str {
@@ -1143,6 +1331,8 @@ impl CliAppFailure {
         | "panelNotFound"
         | "axisNotFound"
         | "presetNotFound"
+        | "themeNotFound"
+        | "loudnessProfileNotFound"
         | "fileSessionNotFound"
         | "dockPanelNotFound"
         | "monitorNotFound",
@@ -1186,36 +1376,41 @@ struct CliAppReport {
   error: Option<CliAppError>,
 }
 
-fn command_name(command: &CliAppCommand) -> &str {
+fn command_name(command: &CliAppCommand) -> String {
   match command {
-    CliAppCommand::Help => "app.help",
-    CliAppCommand::Capabilities => "app.capabilities",
-    CliAppCommand::Inspect => "app.inspect",
-    CliAppCommand::PanelDescribe { .. } => "panel.describe",
-    CliAppCommand::WorkspaceApply { .. } => "workspace.applyLayout",
-    CliAppCommand::PanelUpdate { .. } => "panel.update",
-    CliAppCommand::PanelReset { .. } => "panel.reset",
-    CliAppCommand::AxisDescribe => "axis.describe",
-    CliAppCommand::AxisInspect => "axis.inspect",
-    CliAppCommand::AxisSharedUpdate { .. } => "axis.shared.update",
-    CliAppCommand::AxisSharedReset { .. } => "axis.shared.reset",
-    CliAppCommand::AxisPanelUpdate { .. } => "axis.panel.update",
-    CliAppCommand::AxisPanelReset { .. } => "axis.panel.reset",
-    CliAppCommand::PresetList => "preset.list",
-    CliAppCommand::PresetDescribe { .. } => "preset.describe",
-    CliAppCommand::PresetSave { .. } => "preset.save",
-    CliAppCommand::PresetUpdate { .. } => "preset.update",
-    CliAppCommand::PresetApply { .. } => "preset.apply",
-    CliAppCommand::PresetRename { .. } => "preset.rename",
-    CliAppCommand::PresetDelete { .. } => "preset.delete",
-    CliAppCommand::PresetReorder { .. } => "preset.reorder",
-    CliAppCommand::SettingsDescribe => "settings.describe",
-    CliAppCommand::SettingsInspect => "settings.inspect",
-    CliAppCommand::TransportInspect => "transport.inspect",
-    CliAppCommand::TransportMutation { method, .. } => method,
-    CliAppCommand::DockRead { method } | CliAppCommand::DockCommand { method, .. } => method,
-    CliAppCommand::SettingsUpdate { .. } => "settings.update",
-    CliAppCommand::Wait { .. } => "app.wait",
+    CliAppCommand::Help => "app.help".to_string(),
+    CliAppCommand::Capabilities => "app.capabilities".to_string(),
+    CliAppCommand::Inspect => "app.inspect".to_string(),
+    CliAppCommand::PanelDescribe { .. } => "panel.describe".to_string(),
+    CliAppCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
+    CliAppCommand::PanelUpdate { .. } => "panel.update".to_string(),
+    CliAppCommand::PanelReset { .. } => "panel.reset".to_string(),
+    CliAppCommand::AxisDescribe => "axis.describe".to_string(),
+    CliAppCommand::AxisInspect => "axis.inspect".to_string(),
+    CliAppCommand::AxisSharedUpdate { .. } => "axis.shared.update".to_string(),
+    CliAppCommand::AxisSharedReset { .. } => "axis.shared.reset".to_string(),
+    CliAppCommand::AxisPanelUpdate { .. } => "axis.panel.update".to_string(),
+    CliAppCommand::AxisPanelReset { .. } => "axis.panel.reset".to_string(),
+    CliAppCommand::PresetList => "preset.list".to_string(),
+    CliAppCommand::PresetDescribe { .. } => "preset.describe".to_string(),
+    CliAppCommand::PresetSave { .. } => "preset.save".to_string(),
+    CliAppCommand::PresetUpdate { .. } => "preset.update".to_string(),
+    CliAppCommand::PresetApply { .. } => "preset.apply".to_string(),
+    CliAppCommand::PresetRename { .. } => "preset.rename".to_string(),
+    CliAppCommand::PresetDelete { .. } => "preset.delete".to_string(),
+    CliAppCommand::PresetReorder { .. } => "preset.reorder".to_string(),
+    CliAppCommand::LibraryList { family } => format!("{family}.list"),
+    CliAppCommand::LibraryExport { family, .. } => format!("{family}.export"),
+    CliAppCommand::LibraryImport { family, .. } => format!("{family}.import"),
+    CliAppCommand::SettingsDescribe => "settings.describe".to_string(),
+    CliAppCommand::SettingsInspect => "settings.inspect".to_string(),
+    CliAppCommand::TransportInspect => "transport.inspect".to_string(),
+    CliAppCommand::TransportMutation { method, .. } => method.clone(),
+    CliAppCommand::DockRead { method } | CliAppCommand::DockCommand { method, .. } => {
+      method.clone()
+    }
+    CliAppCommand::SettingsUpdate { .. } => "settings.update".to_string(),
+    CliAppCommand::Wait { .. } => "app.wait".to_string(),
   }
 }
 
@@ -1247,6 +1442,7 @@ fn request_for_command<R: Read>(
     | CliAppCommand::AxisDescribe
     | CliAppCommand::AxisInspect
     | CliAppCommand::PresetList
+    | CliAppCommand::LibraryList { .. }
     | CliAppCommand::SettingsDescribe
     | CliAppCommand::SettingsInspect
     | CliAppCommand::TransportInspect => serde_json::json!({}),
@@ -1407,6 +1603,22 @@ fn request_for_command<R: Read>(
         })?;
       mutation_params([("presetIds", preset_ids)], *expected_revision, *dry_run)
     }
+    // A whole-library export omits `ids` entirely: the frontend reads an absent `ids` as the whole
+    // library and rejects any value that is not a non-empty array of ids.
+    CliAppCommand::LibraryExport { ids, .. } => match ids {
+      Some(values) => serde_json::json!({ "ids": values }),
+      None => serde_json::json!({}),
+    },
+    CliAppCommand::LibraryImport {
+      input,
+      expected_revision,
+      dry_run,
+      ..
+    } => {
+      let pack = read_json_document(input, stdin, "library pack")
+        .map_err(CliAppFailure::invalid_arguments)?;
+      mutation_params([("pack", pack)], *expected_revision, *dry_run)
+    }
     CliAppCommand::SettingsUpdate {
       input,
       expected_revision,
@@ -1545,7 +1757,7 @@ fn request_for_command<R: Read>(
       std::process::id(),
       REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed)
     ),
-    method: method.to_string(),
+    method,
     params,
   })
 }
@@ -1677,12 +1889,44 @@ fn failure_report(failure: CliAppFailure) -> CliAppReport {
   }
 }
 
+/// Moves `result.pack` out of the envelope and onto disk, leaving `result.out` behind. `pack` and
+/// `out` never appear together, so a script can tell which it got without inspecting sizes.
+fn write_pack_file(report: &mut CliAppReport, path: &str) -> Result<(), String> {
+  let Some(result) = report.result.as_mut().and_then(Value::as_object_mut) else {
+    return Ok(());
+  };
+  let Some(pack) = result.remove("pack") else {
+    return Ok(());
+  };
+  let contents = format!(
+    "{}\n",
+    serde_json::to_string_pretty(&pack)
+      .map_err(|error| format!("Unable to serialize pack: {error}"))?
+  );
+  fs::write(Path::new(path), contents)
+    .map_err(|error| format!("Unable to write the pack to {path}: {error}"))?;
+  result.insert("out".to_string(), Value::String(path.to_string()));
+  Ok(())
+}
+
 pub fn run(command: CliAppCommand) -> ExitCode {
   if command == CliAppCommand::Help {
     println!("{}", help_text());
     return ExitCode::SUCCESS;
   }
-  let (report, exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
+  let (mut report, mut exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
+  if let CliAppCommand::LibraryExport {
+    out: Some(path), ..
+  } = &command
+  {
+    if let Err(failure) = write_pack_file(&mut report, path) {
+      eprintln!("{failure}");
+      // 1, not 2: the app answered and the pack is in hand, so this is a local write failure, which
+      // `docs/cli.md`'s exit-code table lists under 1. Reporting 2 would tell a script the app is
+      // unreachable and send it into a retry that a full disk cannot satisfy.
+      exit_code = 1;
+    }
+  }
   match serde_json::to_string(&report) {
     Ok(json) => println!("{json}"),
     Err(error) => {
@@ -2930,6 +3174,178 @@ mod tests {
     );
     assert_eq!(stale.error.code, "appNotRunning");
     assert_eq!(stale.error.message, "pid 4321 is gone");
+  }
+
+  #[test]
+  fn parses_and_builds_library_commands() {
+    assert!(help_text().contains("app theme export"));
+    assert_eq!(
+      parse_app_args(&args(&["theme", "list", "--json"])),
+      Ok(CliAppCommand::LibraryList {
+        family: "theme".to_string(),
+      })
+    );
+
+    let export = parse_app_args(&args(&[
+      "loudness-profile",
+      "export",
+      "--ids",
+      "p-1,p-2",
+      "--out",
+      "pack.json",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      export,
+      CliAppCommand::LibraryExport {
+        family: "loudnessProfile".to_string(),
+        ids: Some(vec!["p-1".to_string(), "p-2".to_string()]),
+        out: Some("pack.json".to_string()),
+      }
+    );
+    let request = request_for_command(&export, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "loudnessProfile.export");
+    assert_eq!(request.params, serde_json::json!({ "ids": ["p-1", "p-2"] }));
+
+    // A whole-library export omits `ids` rather than sending null: `protocol.js` reads an absent
+    // `ids` as the whole library and rejects any non-array value it is given.
+    let all = parse_app_args(&args(&["theme", "export", "--all", "--json"])).unwrap();
+    let request = request_for_command(&all, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "theme.export");
+    assert_eq!(request.params, serde_json::json!({}));
+
+    let list = request_for_command(
+      &CliAppCommand::LibraryList {
+        family: "preset".to_string(),
+      },
+      &mut Cursor::new([]),
+    )
+    .unwrap();
+    assert_eq!(list.method, "preset.list");
+  }
+
+  #[test]
+  fn rejects_invalid_library_commands() {
+    for invalid in [
+      args(&["theme", "list"]),
+      args(&["theme", "list", "--expected-revision", "3", "--json"]),
+      args(&["theme", "export", "--json"]),
+      args(&["theme", "export", "--all", "--ids", "t-1", "--json"]),
+      args(&["theme", "export", "--all", "--dry-run", "--json"]),
+      args(&[
+        "theme",
+        "export",
+        "--all",
+        "--expected-revision",
+        "3",
+        "--json",
+      ]),
+      args(&["theme", "export", "--all", "extra", "--json"]),
+      args(&["theme", "export", "--ids", " , ", "--json"]),
+      args(&["theme", "import", "pack.json", "--json"]),
+      args(&["theme", "import", "--expected-revision", "3", "--json"]),
+      args(&[
+        "theme",
+        "import",
+        "pack.json",
+        "--out",
+        "copy.json",
+        "--expected-revision",
+        "3",
+        "--json",
+      ]),
+      args(&[
+        "theme",
+        "import",
+        "pack.json",
+        "--all",
+        "--expected-revision",
+        "3",
+        "--json",
+      ]),
+      args(&["theme", "reorder", "order.json", "--json"]),
+      args(&["loudness-profile", "list"]),
+      args(&["preset", "export", "--all"]),
+    ] {
+      assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
+    }
+  }
+
+  #[test]
+  fn builds_a_library_import_request_from_a_document() {
+    let import = parse_app_args(&args(&[
+      "preset",
+      "import",
+      "-",
+      "--expected-revision",
+      "3",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      import,
+      CliAppCommand::LibraryImport {
+        family: "preset".to_string(),
+        input: "-".to_string(),
+        expected_revision: Some(3),
+        dry_run: false,
+      }
+    );
+    let request = request_for_command(
+      &import,
+      &mut Cursor::new(br#"{"app":"PLVS","kind":"presets-pack","version":1,"items":[]}"#),
+    )
+    .unwrap();
+    assert_eq!(request.method, "preset.import");
+    assert_eq!(request.params["pack"]["kind"], "presets-pack");
+    assert_eq!(request.params["expectedRevision"], 3);
+    assert_eq!(request.params["dryRun"], false);
+  }
+
+  #[test]
+  fn library_not_found_reasons_map_to_exit_three() {
+    for reason in ["themeNotFound", "loudnessProfileNotFound"] {
+      let failure = CliAppFailure::app(
+        app(),
+        CliAppError {
+          code: reason.to_string(),
+          message: "missing".to_string(),
+          details: None,
+        },
+        None,
+      );
+      assert_eq!(failure.exit_code, 3, "wrong exit for {reason}");
+    }
+  }
+
+  #[test]
+  fn writing_the_pack_replaces_it_with_the_path_it_was_written_to() {
+    let path = std::env::temp_dir().join(format!("plvs-pack-{}.json", std::process::id()));
+    let mut report = CliAppReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({
+        "revision": 4,
+        "pack": { "app": "PLVS", "kind": "theme-pack", "items": [] }
+      })),
+      error: None,
+    };
+
+    write_pack_file(&mut report, path.to_str().unwrap()).unwrap();
+
+    let written: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(written["kind"], "theme-pack");
+    let result = report.result.unwrap();
+    assert_eq!(result["out"], path.to_str().unwrap());
+    assert!(result.get("pack").is_none());
+    assert_eq!(result["revision"], 4);
+    fs::remove_file(path).unwrap();
+
+    // A failure report carries no pack, and asking for one is not an error.
+    let mut failed = failure_report(CliAppFailure::invalid_arguments("nope"));
+    write_pack_file(&mut failed, "unreachable.json").unwrap();
+    assert!(failed.result.is_none());
   }
 
   #[test]

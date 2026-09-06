@@ -147,5 +147,26 @@
         }
       }
     }
+  },
+  {
+    "id": "mutation.libraryImportDryRun",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "dryRun": true,
+        "revision": 13,
+        "changed": true,
+        "warnings": [],
+        "plan": {
+          "items": [
+            { "sourceId": "t-1", "finalId": "t-1", "name": "Studio", "disposition": "added" }
+          ],
+          "loudnessProfiles": []
+        },
+        "state": { "themes": [] }
+      }
+    }
   }
 ]
