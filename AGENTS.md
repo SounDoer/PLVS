@@ -6,6 +6,9 @@ This file records only what an agent cannot infer from the code. Details live in
 | Topic | Where |
 | --- | --- |
 | Architecture, audio pipeline, IPC, theming | `docs/architecture.md` |
+| Engineering traps and incident context | `docs/engineering-pitfalls.md` |
+| Agent Control CLI commands and JSON contract | `docs/cli.md` |
+| Agent Control implementation contract | `docs/agent-control/README.md` |
 | Product scope and boundaries | `docs/prd.md` |
 | Design tokens | `docs/design-tokens.md` |
 | Architecture decisions | `docs/adr/` |
@@ -13,16 +16,40 @@ This file records only what an agent cannot infer from the code. Details live in
 
 When the docs and the code disagree, **the code on `main` wins**.
 
+Add a pitfall here only when code cannot reveal it, automation cannot reliably prevent it, and the
+failure cost is high. Keep the entry to an actionable summary and put investigation history in
+`docs/engineering-pitfalls.md`.
+
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
 | `npm run desktop` | Run the real app (Tauri). Audio capture only works here. |
+| `npm run desktop:control -- <command>` | Build and run the dev-identity CLI against a running development app. |
 | `npm run dev` | Vite only, in a browser. No Tauri APIs, no audio capture. |
 | `npm run check` | The merge gate: version + format + lint + test + build + Rust fmt/clippy/test. |
 | `npm test` | Vitest, single run. |
 | `npm run smoke:capture` | Real capture smoke test. Needs VB-Cable + VLC on the machine. |
 | `npm run soak:capture` | Long-running capture soak, 4 hours by default. |
+
+## Agent Control
+
+Agent Control is the supported way for agents and automation to inspect or change the state visible
+in a running PLVS window. It is currently Windows-only.
+
+- Start the development GUI with `npm run desktop`, then use a second terminal for commands such as
+  `npm run desktop:control -- inspect --json`. The wrapper builds `plvs-cli` with `dev-identity` and
+  targets only the development app; it neither starts the GUI nor controls an installed release.
+- Discover the live surface with `capabilities`, then `inspect` and retain its global revision.
+  Mutations require `--expected-revision`; after a conflict, inspect and reconcile instead of
+  retrying blindly. Use `--dry-run` where the command supports it.
+- Live mutations must pass through the running React application's existing business functions,
+  safety guards, native integrations, and persistence paths. Do not mutate stores or native state
+  directly to add a CLI shortcut.
+- When extending Agent Control, follow the synchronization checklist in
+  `docs/agent-control/README.md` and update the schema, read/patch mapping, documentation, capability
+  declaration, and contract tests that cover the changed surface. Never hand-edit
+  `docs/agent-control/generated/`.
 
 ## Project structure
 
@@ -83,187 +110,28 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 
 ## Known pitfalls
 
-Traps that cost a real commit to learn, because the code either says nothing or says something misleading.
+Read the relevant section of `docs/engineering-pitfalls.md` before touching these areas. The short
+rules below are the working set; the incident history and rationale live there.
 
-- **Some Vitest suites guard the Rust and installer side.** `scripts/tauriSecurityConfig.test.js` and `scripts/tauriDependencyContract.test.js` read `src-tauri/tauri.conf.json`, `tauri.windows.conf.json` and the NSIS hooks, and Vitest collects every `*.test.js` in the repo. So a change to Tauri config or to the installer breaks a JavaScript test, which reads like an unrelated frontend failure and is not one. Fix the config, not the test.
-- **Persistence is split into domains**, each with its own export / reset / migrate behaviour. Read `src/persistence/index.js` and pick the right domain before adding a persisted key — the cost of guessing wrong is not a crash, it is a reset quietly taking the wrong data with it. The deprecated `plvs.ui` adapter is not a fallback; it only survives in `cleanupLegacyKeys.js`.
-- **Logic-only modules must not reach `workspace/registry.jsx`.** That file pairs each module's identity with its React half, so importing it evaluates all eight canvas panels plus the icon library — about 2s. The chain is easy to enter by accident: `hasKnownModulesOnly` and `resolvePanelDisplayName` sound like pure helpers, and until the catalog split they lived in a file that imported the registry, which put the panel tree behind profile validation, preset filtering and the workspace reducer. Nothing fails when this happens; it only gets slower, until a test crosses Vitest's 5s per-test timeout and `npm run check` goes red somewhere that looks unrelated — `src/persistence/profile.test.js` was the one that finally did, at 2159ms in a single case. Import `workspace/moduleCatalog.js` when you need module ids, titles or drag minimums; only code that renders a panel may touch the registry.
-- **Windows text scaling exists only inside the webview.** `devicePixelRatio` is the monitor's DPI scale *multiplied by* the Accessibility → Text size factor; Rust's `scale_factor()` only ever reports the DPI half. So a CSS-pixel length that crosses into Rust must be converted with a ratio the frontend sends (`set_dock_accessories`'s `webviewScale`) — convert it with `scale_factor()` and the window comes out short by exactly the text-scaling ratio, then clips its own content with no way to recover, because the DOM's CSS-pixel width never changes and the measure/resize loop just re-reports the same number. Text scaling does not enlarge fonts: `getComputedStyle` still says `12px`. The trap is that **changing Display Scale never reproduces any of this** — it moves both numbers together, so 100/125/150/200% all look fine. Only Text size splits them, and nobody thinks to touch that slider.
-- **Window geometry is stored and restored in physical pixels**, never logical ones. Getting this wrong grows the window on every relaunch, and only on scaled displays — an unscaled dev machine will never show you the bug. The full reasoning is in the comment at `src-tauri/src/lib.rs`; the same rule governs `src-tauri/src/window_state.rs`.
-- **Window chrome must be applied before window geometry.** Geometry is stored as an outer position paired with an inner size, so both ends of a save/restore have to wear the same frame. Decorations and the platform shadow each change that frame — flip either one between save and restore and the window drifts by the difference: a title bar's worth of overshoot, a shadow's worth of gap. Every path that restores a normal window already orders it this way, each differently: boot passes `startup_window_is_frameless` to the window builder before restoring bounds, dock exit hands `decorations` to `exit_dock`, and preset apply awaits `setWindowDecorations` before `applyWindowBounds`. React state is not a way to do this — `setFocusView` only schedules the flip for `useFocusViewWindow`'s effect, which lands a commit too late. The shadow is Rust-owned (normal windows always have it, the docked strip never does); JS must not touch it.
-
-- **A fresh worktree cannot build Rust until the sidecar binaries are there.** `src-tauri/binaries/` is gitignored (the FFmpeg sidecars are Release assets, never committed), so a new worktree starts without them and `npm run check` fails in the Rust half. The trap is the error: cargo reports `could not compile serde_derive`, naming a third-party proc-macro nobody touched, and the real cause — `resource path binariesfmpeg-x86_64-pc-windows-msvc.exe doesn't exist` — is buried in the build-script stdout above it. Run `npm run ffmpeg:fetch` in the worktree; do not go debugging the dependency tree, and do not copy the files by hand from another checkout, which skips the script's checksum verification.
-
-- **The capture rig can run in a detached RDP session, but only if you set it up in the right
-  order — and getting it wrong fails silently.** Two facts, both counter-intuitive, both measured
-  (`docs/working/perf/protocol.md` §10.3). First: under the default RDP audio redirection the
-  engine sees only "Remote Audio" and VB-Cable is invisible to WASAPI — and disconnecting does
-  *not* bring it back; two hours of polling returned zero devices. Setting the RDP client's audio
-  to play on the remote computer exposes all the real devices, and they survive both disconnect and
-  reconnect. Do not use PowerShell to check this: it resolves endpoints WASAPI cannot see, so the
-  two give opposite answers. Use `plvs-cli doctor --json` and inspect the `device-enumeration`
-  check. Second, and worse: **a player started before the session detaches stops reaching VB-Cable,
-  without dying and without erroring.** The capture
-  side stays perfectly healthy — device present, capture returns, `droppedChunks: 0` — and every
-  sample's `integratedLufs` is `null`, because it is recording silence. A watchdog that checks
-  "process alive / device present / no drops" stays green through the whole run and then hands you
-  a signal-free record to conclude "no drift" from. Start the player *after* detaching, and check
-  for `null` loudness explicitly.
-
-- **`smoke:capture` and `soak:capture` require a feature-gated `plvs.exe` harness in
-  `src-tauri/target/release/`, the same path a production build later replaces, and nothing on the
-  way there rebuilds it.** `npm run check` builds the *debug* profile, so the Release binary may
-  either omit `capture-harness` or predate the commits under test — and since CI has no sound card,
-  that binary is the capture layer's only real verification. On the v0.14.5 release both the
-  preflight smoke and the four-hour soak ran a build predating the release's last DSP commit and
-  printed OK; the sole tell was `app.version` in the soak's trailing summary record, reading one
-  version behind. `locateHarness` now probes `--harness capture --help` to verify the feature, then
-  compares mtimes against `src-tauri/src`, `Cargo.toml` and `Cargo.lock`; either refusal is exit 2,
-  the "rig unusable" code. Do what it says:
-  `cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs --features capture-harness`,
-  then re-run. It does not rebuild for you, deliberately — a release build costs two minutes
-  that a script called "smoke" should not spend unasked.
-
-- **A draft-style editor must be registered as a blocking editor, or nothing protects its draft.**
-  Preset apply / save / update and dock entry are *scene operations*: the first two capture or
-  replace the whole scene, the third replaces the UI with the strip. They are refused while any
-  editor with draft semantics is open, by `assertSceneOperationAllowed` from
-  `hooks/BlockingEditorsContext.jsx` — in the business functions, before any mutation, so the
-  popover, the dock, the tray and Agent Control all get the same `editorActive` refusal and no entry
-  point can be protected by greying a button alone. The rule keys on **open, not dirty**: dirty is
-  invisible to the user, flips mid-interaction, and these operations destroy the editor rather than
-  merely losing keystrokes. Nothing in this path may discard a draft to get itself through — that
-  is what `applyPresetSnapshot` used to do, and a single missed guard upstream then destroyed user
-  content silently. The trap is that a new editor which forgets `useBlockingEditor` looks entirely
-  correct: every existing test still passes, the buttons still work, and the loss only shows up as
-  a user's unsaved work vanishing on a click they did not think of as destructive.
-
-- **A control value that is part of an analysis request key costs memory to change.** Visual history
-  is stored one slab per key (`FrameIntake`), so every distinct key mints a slab — at a four-hour
-  retention one Spectrum slab is 1.38 GB and one Stereo Map slab is 4.37 GB. That is why Spectrum
-  speed, Spectrum tilt and Stereo Map speed carry `commitOnRelease` while every other slider commits
-  per pointer move: a single two-second drag committing per step stranded 754 MB. Slabs are dropped
-  once no open panel needs the key, but the set of keys worth keeping comes from
-  `deriveRetainedAnalysisKeys`, **not** from the request list handed to Rust — that list is capped at
-  four, reshuffled by the dock, and gated on a channel count read from the live frame shape, so using
-  it would delete history on a device blip or a dock toggle. The set goes to the intakes that
-  *ingest* frames (`ingestingIntakes` in `useIntakeRouting`), never to the displayed one: `intakeRef`
-  is a stable ref, so an effect keyed on it never re-fires across a source switch and the live intake
-  would sweep against a stale key set, deleting a still-visible panel's history.
-
-- **History is stored in Float32 columns, so test fixtures must use values Float32 can hold
-  exactly.** The scalar and visual history layers pack their rows into typed arrays (`FrameIntake`'s
-  slabs, `RaggedFloatColumn`, `PowerOfTwoMinMaxIndex`'s levels). Real data survives that unharmed —
-  waveform extrema, loudness and spectrum values all reach the frontend as Rust `f32` — but a
-  fixture written with round decimals does not: `Math.fround(-0.4)` is `-0.4000000059604645`, so
-  `expect(Array.from(view)).toEqual([-0.5, -0.4])` fails against a *correct* implementation. The
-  trap is that the failure reads like a storage bug, and the tempting fix — loosening the assertion
-  to a tolerance — hides real errors along with the rounding. Write fixtures with `Math.fround`, or
-  with values that are exact anyway (0.25, 0.5, 0.875, or divisors that are powers of two); reach
-  for a per-element `toBeCloseTo` only where an exact value genuinely cannot be arranged. A second
-  reason to prefer exact values: a `PowerOfTwoMinMaxIndex` range query merges summary buckets with
-  raw rows, and those two stores do not have to agree on precision, so data that needs rounding
-  turns an assertion about indexing into an assertion about float representation.
-
-- **A dock-disabled preset stores a strip layout it will never restore, and that asymmetry is
-  correct.** `captureSnapshot` writes `panelsById` / `panelOrder` / `panelSizesById` /
-  `controlsByPanelId` unconditionally, but `applyDockPreset` (`App.jsx`) calls
-  `dockLayout.setPanels` only inside its `presetDock.enabled` branch — so for a windowed preset
-  those four fields are parsed out of the record and dropped. It reads like a missed branch. It is
-  not: every entry point that edits the strip lives in the dock accessory windows
-  (`dock/accessories/DockEditorApp.jsx`), which exist only while docked, so the layout a windowed
-  preset carries was never authored *for* that preset — it is whatever happened to be in
-  `workspaceStore` when the user, sitting in a normal window, pressed Save. Restoring it would
-  silently overwrite a strip the user did hand-tune, and the overwrite is invisible because the
-  strip is not on screen at apply time. Dock-*enabled* presets round-trip their layout fine; this
-  is dead data in the record, not a lost setting. The near-miss argument for "fix" is that a strip
-  edit patches `presetsStore` `dirty`, which looks like the preset claiming ownership — but such an
-  edit can only happen while docked, and if the active preset is windowed the scene is already
-  dirty on `dock.enabled` alone, so that flag is redundant there, never wrong. Investigated
-  2026-09-05; deliberately left as is.
-
-- **Writing a domain store from outside the React state that owns it changes nothing on screen,
-  and says nothing about it.** A store's same-context subscribers are only called when it was
-  built with `notifySameContext`, and of the four in `persistence/index.js` only `presetsStore`
-  was. Nothing else fills the gap: in the desktop build `pluginStoreBackend.subscribe()` is a
-  literal no-op (single window, single writer, no events to publish), and in the browser the
-  `storage` event fires by spec only in *other* documents, never the one that wrote. This stays
-  invisible day to day because the writer is normally the hook that owns the state — it sets its
-  own state and writes the store as persistence, needing no notification. The trap is code that
-  writes from outside that owner: per-item import does, through `transfer/libraryAdapters.js`,
-  which is a plain module with no React to update. The failure has no error and no warning — the
-  data reaches disk correctly and the list keeps rendering what it had, so a second import of the
-  same file reports it as already in the library. That shipped. Use `store.notifyLocal()` from the
-  writer rather than turning `notifySameContext` on for the store: `plvs:settings` is written
-  through `patchCoalesced` during an opacity drag, and every subscriber re-reading four times a
-  second is a cost the ordinary path should not pay for an occasional import. Note where the
-  existing code sits on this — `useCustomThemeSettings` calls `setCustomThemes(listCustomThemes())`
-  by hand after each write — so the convention is upheld by memory, not by the type system, and a
-  test that asserts on store contents passes either way. Cover it where it breaks: render the
-  owner and assert the rendered list.
-
-- **`plvs-settings.json` is not the settings file; it is the only file.** It holds `plvs:settings`,
-  `plvs:workspace`, `plvs:presets` and `plvs:themes` side by side, plus Rust-owned siblings
-  (`windowBounds`, `captureDeviceId`, `clearShortcut`, `clearGlobal`, `agentControlEnabled`). The
-  name predates the other three domains, so "settings" names one key inside the file rather than
-  the file. Do not rename it: the mechanical part is small — 14 references across 8 files, several
-  written inline rather than through a constant, and three JS modules each declaring the same
-  constant independently — but it needs a migration of every installed user's only copy of their
-  data, in Rust, on the boot path *before* the first `app.store(...)` call that restores window
-  geometry. Get it wrong and the app opens empty and default, which reads to the user as the
-  update having eaten everything, with nothing on screen pointing at AppData. A downgrade is worse
-  either way: renamed, the old build finds nothing; copied, both files exist and the two builds
-  edit different ones in silence. None of that is verifiable by `npm run check`, which can test
-  the migration function but not the ordering, the locked file, or the permission failure that
-  would actually bite. The name misleads; the fix costs more than the confusion. Also note that
-  importing a whole configuration does *not* overwrite this file — `import_profile` inserts the
-  four domain keys and some siblings, and `agentControlEnabled` stays out of both `DOMAIN_KEYS`
-  and `SIBLING_KEYS` on purpose, so a shared configuration cannot carry a permission onto someone
-  else's machine.
-
-- **A Vite reload rewinds the entire persistence cache to a snapshot taken at boot, and the next
- write makes that permanent.** `pluginStoreBackend` states it plainly — "Reads never hit disk" —
- because its synchronous cache is seeded entirely from `window.__PLVS_INITIAL_STATE__`. Rust
- formats that snapshot **once**, in `setup`, and registers it as the window's
- `initialization_script`; initialization scripts re-run on every page load, so each HMR reload
- re-seeds the cache with the *boot* state rather than the current file. The app then works from
- the rewound copy, and the first write after that persists it over whatever newer data is on
- disk. Nothing errors and the UI looks right, so the tell is only visible by comparing a `*.list`
- result against `plvs-settings.json` — they disagree. This destroyed three hand-made themes on
- 2026-09-06: created and flushed, then a reload rewound the library, then a later `theme.import`
- wrote the rewound version back. Production is unaffected **by design, not by luck** — the sole
- reload path, `reloadAfterProfileChange`, calls `relaunch()` under Tauri so Rust recomputes the
- snapshot, and `importProfile` calls `suspendPluginStorePersistence()` first against exactly this
- hazard; `window.location.reload()` there is the browser-only fallback, where no seed exists at
- all. The consequence is that **no manual dev check of persistence is valid across a reload**:
- restart the app before concluding anything reached disk, and read the file rather than trusting
- `*.list`. This matters most for the code CI cannot cover, where hand verification is the only
- verification there is.
-
- **Do not try to fix this by re-injecting a fresh snapshot from `on_page_load`.** It was built and
- measured on 2026-09-06 and the timing does not hold. `PageLoadEvent::Started` maps to WebView2's
- `ContentLoading`, but `eval` goes through `ExecuteScriptAsync`, documented only as running
- "around the time" `ContentLoading` does — where `initialization_script` guarantees it runs
- *before any other script included by the HTML document*. That wording gap is the whole answer: on
- 9 of 9 page loads the eval landed 6–26 ms **after** the earliest inline script in `index.html`,
- and a zero-payload eval was equally late, so the cause is the non-blocking notification rather
- than the snapshot's size. It nevertheless passes end to end in dev, because Vite's module graph
- takes 741–810 ms to reach the read — roughly 700 ms of accidental slack. A production bundle
- evaluates within milliseconds of `DOMContentLoaded`, i.e. inside the contested window, so
- shipping it "generally, as defence in depth" would add a coin-flip race to the one build that
- does not have this bug at all. Worse, the global has three independent readers that evaluate at
- different points in the module graph — `pluginStoreBackend.js`, `useDockMode.js` and
- `agentControl/appSnapshot.js` — so an eval landing mid-flight can hand them different generations
- of the same snapshot.
-
-- **Two things about this repo's Vitest setup will fail you confusingly rather than clearly.**
-  First, `vite.config.js` sets the environment to `node` by default to avoid jsdom's setup cost
-  across the whole suite, so any test that renders React or touches a persistence store needs
-  `/** @vitest-environment jsdom */` as its first line — about 134 files carry it. Omit it and
-  there is no error: `localStorage` is undefined, `localStorageBackend` silently no-ops every read
-  and write, and the assertions fail against default values, which reads like a bug in the code
-  under test. Second, `@testing-library/jest-dom` is **not** a dependency here, so
-  `toBeInTheDocument()` and `toBeDisabled()` do not exist; the repo's own idiom is a bare
-  `getBy*` (which throws when absent), `expect(x).toBeTruthy()`, `expect(queryBy*(...)).toBeNull()`
-  and `expect(el.disabled).toBe(true)`. Both are easy to import from a plan or another codebase
-  without noticing.
+- **Tests and tooling:** Vitest also guards Tauri and installer files. React or persistence tests
+  need `/** @vitest-environment jsdom */`; jest-dom matchers are unavailable. A fresh worktree needs
+  `npm run ffmpeg:fetch` before the Rust build.
+- **Module boundaries:** logic-only code imports `workspace/moduleCatalog.js`, never
+  `workspace/registry.jsx`.
+- **Windows and dock geometry:** frontend CSS lengths crossing into Rust use the frontend-provided
+  `webviewScale`; persisted geometry remains physical pixels; apply chrome before geometry.
+- **Capture rig:** verify the `device-enumeration` check from `plvs-cli doctor --json`. In detached
+  RDP, expose remote machine audio, start the player after detaching, and reject runs whose loudness
+  remains `null`. Build the current feature-gated `capture-harness` Release binary when smoke or
+  soak reports exit 2.
+- **Scene editors:** blocking is based on an editor being open, not dirty. Guard scene operations in
+  the business function before mutation; never discard a draft to make an operation proceed.
+- **Analysis history:** changing a request key creates a history slab. Key-changing sliders commit
+  on release, retention comes from `deriveRetainedAnalysisKeys`, and eviction targets every
+  ingesting intake. Use exactly representable Float32 values in exact-equality fixtures.
+- **Dock presets:** a dock-disabled preset deliberately does not restore the strip layout stored in
+  its snapshot.
+- **Persistence:** choose the domain in `src/persistence/index.js`; external writers must notify the
+  owning React state. `plvs-settings.json` is the shared store and must not be casually renamed.
+  During desktop development, never validate persistence across a Vite reload—restart the app and
+  inspect the file. Do not refresh the boot snapshot from `on_page_load`.

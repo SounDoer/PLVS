@@ -404,7 +404,7 @@ describe("PowerOfTwoMinMaxIndex", () => {
     const rows = [];
     for (let i = 0; i < 600; i += 1) {
       // Float32 columns: a fixture written in plain decimals fails against a correct index.
-      // See AGENTS.md.
+      // See docs/engineering-pitfalls.md.
       const value = Math.fround(Math.sin(i * 0.37) * 40 - 20);
       rows.push(value);
       index.append(i, [value], [value]);

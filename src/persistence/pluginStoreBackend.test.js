@@ -47,7 +47,8 @@ describe("pluginStoreBackend", () => {
   // "Reads never hit disk" is what makes a stale seed dangerous rather than merely wrong: the
   // cache is authoritative, so anything that moved the file on since boot is invisible to reads
   // and the next write persists the older copy over it. That is the shape of the data loss on
-  // 2026-09-06 (see AGENTS.md), so pin it rather than leave the design comment as the only record.
+  // 2026-09-06 (see docs/engineering-pitfalls.md), so pin it rather than leave the design comment
+  // as the only record.
   it("reads never hit disk, so a store change made outside the backend is invisible", async () => {
     const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
     const backend = createPluginStoreBackend();

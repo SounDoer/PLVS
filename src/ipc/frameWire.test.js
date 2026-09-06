@@ -37,7 +37,7 @@ const binRef = (bin, dtype, len) => ({ $bin: bin, dtype, len });
 describe("decodeFrameWire", () => {
   it("swaps every descriptor for a view over the section it names", () => {
     // Powers of two: a fixture written with round decimals would assert float representation
-    // rather than layout (see AGENTS.md).
+    // rather than layout (see docs/engineering-pitfalls.md).
     const smooth = Float32Array.from([0.25, -0.5, 0.875]);
     const buffer = encode(
       {
