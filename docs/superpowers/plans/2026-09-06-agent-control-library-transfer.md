@@ -1727,6 +1727,8 @@ Cover, in this order: the command list; that `theme.list` reports custom themes 
 
 Take the wording from the spec's corresponding sections. Do not restate the merge rules in prose — link to the behaviour, state the contract.
 
+Add one thing the spec does not cover, found in Task 2's review: **a pack whose every item fails validation imports as a successful no-op, not an error.** `parsePack` filters invalid items silently, which is what the GUI does too, so a corrupted file reports `changed: false` and an empty plan rather than telling the caller the file was bad. That is consistent behaviour, not a defect, but a caller who does not know it will read "nothing changed" as "already up to date".
+
 - [ ] **Step 2: Update `docs/agent-control/README.md`**
 
 In the command families code block, add:
