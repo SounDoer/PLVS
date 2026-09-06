@@ -657,7 +657,7 @@ export function normalizeAgentControlRequest(input) {
     if (
       !Array.isArray(input.params.ids) ||
       input.params.ids.length === 0 ||
-      input.params.ids.some((id) => typeof id !== "string" || id === "")
+      input.params.ids.some((id) => typeof id !== "string" || id.trim() === "")
     ) {
       return invalidParams("$.params.ids", "ids must be a non-empty array of non-empty strings.");
     }

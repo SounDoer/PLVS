@@ -405,6 +405,9 @@ describe("normalizeAgentControlRequest", () => {
     ["settings.update", { patch: {} }],
     ["transport.live.stop", {}],
     ["dock.exit", {}],
+    ["preset.import", { pack: { app: "PLVS" } }],
+    ["theme.import", { pack: { app: "PLVS" } }],
+    ["loudnessProfile.import", { pack: { app: "PLVS" } }],
   ])("requires expectedRevision for %s", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({
       ok: false,
@@ -430,47 +433,128 @@ describe("normalizeAgentControlRequest", () => {
       error: expect.objectContaining({ reason: "invalidParams", path: "$.params" }),
     });
   });
-});
 
-describe("library transfer requests", () => {
-  it("accepts the three list methods with no params", () => {
-    for (const method of ["theme.list", "loudnessProfile.list"]) {
-      const normalized = normalizeAgentControlRequest(request(method));
-      expect(normalized.request.method).toBe(method);
-      expect(normalized.request.params).toEqual({});
-    }
-  });
+  describe("library transfer requests", () => {
+    const EXPORT_METHODS = ["preset.export", "theme.export", "loudnessProfile.export"];
+    const IMPORT_METHODS = ["preset.import", "theme.import", "loudnessProfile.import"];
 
-  it("accepts an export with no ids as a whole-library export", () => {
-    const normalized = normalizeAgentControlRequest(request("theme.export", {}));
-    expect(normalized.request.params.ids).toBeNull();
-  });
+    it("accepts the theme and loudnessProfile list methods with no params", () => {
+      for (const method of ["theme.list", "loudnessProfile.list"]) {
+        const normalized = normalizeAgentControlRequest(request(method));
+        expect(normalized.request.method).toBe(method);
+        expect(normalized.request.params).toEqual({});
+      }
+    });
 
-  it("accepts an export with a string id list", () => {
-    const normalized = normalizeAgentControlRequest(
-      request("theme.export", { ids: ["t-1", "t-2"] })
+    it.each(EXPORT_METHODS)(
+      "accepts an export with no ids as a whole-library export (%s)",
+      (method) => {
+        const normalized = normalizeAgentControlRequest(request(method, {}));
+        expect(normalized.request.params.ids).toBeNull();
+      }
     );
-    expect(normalized.request.params.ids).toEqual(["t-1", "t-2"]);
-  });
 
-  it("rejects an export whose ids are not strings", () => {
-    const normalized = normalizeAgentControlRequest(request("theme.export", { ids: [1] }));
-    expect(normalized.error).toBeTruthy();
-  });
+    it.each(EXPORT_METHODS)("accepts an export with a string id list (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(request(method, { ids: ["t-1", "t-2"] }));
+      expect(normalized.request.params.ids).toEqual(["t-1", "t-2"]);
+    });
 
-  it("accepts an import carrying a pack object", () => {
-    const normalized = normalizeAgentControlRequest(
-      request("theme.import", { pack: { app: "PLVS" }, expectedRevision: 3, dryRun: true })
+    it.each(EXPORT_METHODS)("rejects an export whose ids are not strings (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(request(method, { ids: [1] }));
+      expect(normalized.error).toBeTruthy();
+    });
+
+    it.each(EXPORT_METHODS)(
+      "rejects an empty ids array as nothing-to-export, not the whole library (%s)",
+      (method) => {
+        const normalized = normalizeAgentControlRequest(request(method, { ids: [] }));
+        expect(normalized).toEqual({
+          ok: false,
+          error: expect.objectContaining({
+            reason: "invalidParams",
+            path: "$.params.ids",
+            code: -32602,
+          }),
+        });
+      }
     );
-    expect(normalized.request.params.pack).toEqual({ app: "PLVS" });
-    expect(normalized.request.params.expectedRevision).toBe(3);
-    expect(normalized.request.params.dryRun).toBe(true);
-  });
 
-  it("rejects an import with no pack", () => {
-    const normalized = normalizeAgentControlRequest(
-      request("theme.import", { expectedRevision: 3 })
-    );
-    expect(normalized.error).toBeTruthy();
+    it.each(EXPORT_METHODS)("rejects a whitespace-only id (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(request(method, { ids: ["   "] }));
+      expect(normalized).toEqual({
+        ok: false,
+        error: expect.objectContaining({
+          reason: "invalidParams",
+          path: "$.params.ids",
+          code: -32602,
+        }),
+      });
+    });
+
+    it.each(EXPORT_METHODS)("rejects an empty-string id (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(request(method, { ids: [""] }));
+      expect(normalized).toEqual({
+        ok: false,
+        error: expect.objectContaining({
+          reason: "invalidParams",
+          path: "$.params.ids",
+          code: -32602,
+        }),
+      });
+    });
+
+    it.each(EXPORT_METHODS)("rejects an explicit null ids, unlike an absent one (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(request(method, { ids: null }));
+      expect(normalized).toEqual({
+        ok: false,
+        error: expect.objectContaining({
+          reason: "invalidParams",
+          path: "$.params.ids",
+          code: -32602,
+        }),
+      });
+    });
+
+    it.each(IMPORT_METHODS)("accepts an import carrying a pack object (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(
+        request(method, { pack: { app: "PLVS" }, expectedRevision: 3, dryRun: true })
+      );
+      expect(normalized.request.params.pack).toEqual({ app: "PLVS" });
+      expect(normalized.request.params.expectedRevision).toBe(3);
+      expect(normalized.request.params.dryRun).toBe(true);
+    });
+
+    it.each(IMPORT_METHODS)("rejects an import with no pack (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(request(method, { expectedRevision: 3 }));
+      expect(normalized.error).toBeTruthy();
+    });
+
+    it.each(IMPORT_METHODS)("rejects a null pack (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(
+        request(method, { pack: null, expectedRevision: 3 })
+      );
+      expect(normalized).toEqual({
+        ok: false,
+        error: expect.objectContaining({
+          reason: "invalidParams",
+          path: "$.params.pack",
+          code: -32602,
+        }),
+      });
+    });
+
+    it.each(IMPORT_METHODS)("rejects an array pack (%s)", (method) => {
+      const normalized = normalizeAgentControlRequest(
+        request(method, { pack: [], expectedRevision: 3 })
+      );
+      expect(normalized).toEqual({
+        ok: false,
+        error: expect.objectContaining({
+          reason: "invalidParams",
+          path: "$.params.pack",
+          code: -32602,
+        }),
+      });
+    });
   });
 });
