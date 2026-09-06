@@ -2370,8 +2370,9 @@ describe("useAgentControlBridge", () => {
     };
     const view = mount({ themeState: system });
     await waitUntilReady();
-    let revision = (await send(request("app.capabilities", {}, "theme-state-start"))).result
-      .revision;
+    const initialRevision = (await send(request("app.capabilities", {}, "theme-state-start")))
+      .result.revision;
+    expect(initialRevision).toBe(0);
 
     const rerender = async (themeState, id) => {
       view.rerender(
@@ -2382,7 +2383,7 @@ describe("useAgentControlBridge", () => {
       return (await send(request("app.capabilities", {}, id))).result.revision;
     };
 
-    revision = await rerender(
+    let revision = await rerender(
       { ...system, appearance: { ...system.appearance, resolvedThemeId: "plvs-light" } },
       "theme-resolution"
     );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   announceAgentControlFrontendNotReady,
   announceAgentControlFrontendReady,
@@ -392,13 +392,18 @@ export function useAgentControlBridge({
 }) {
   const loudnessProfiles = loudnessProfile?.profiles ?? loudnessProfilesInput;
   const loudnessActive = loudnessProfile?.active;
-  const themeState = theme?.state ?? {
-    appearance: { mode: "system", selectedThemeId: null, resolvedThemeId: "plvs-dark" },
-    themes: Object.values(customThemes ?? {}),
-  };
+  const providedThemeState = theme?.state;
+  const themeState = useMemo(
+    () =>
+      providedThemeState ?? {
+        appearance: { mode: "system", selectedThemeId: null, resolvedThemeId: "plvs-dark" },
+        themes: Object.values(customThemes ?? {}),
+      },
+    [customThemes, providedThemeState]
+  );
+  const themeControl = theme?.control ?? null;
   const themeSignature = themeStateSignature(themeState);
-  const latestThemeRef = useRef({ state: themeState, control: theme?.control ?? null });
-  latestThemeRef.current = { state: themeState, control: theme?.control ?? null };
+  const latestThemeRef = useRef({ state: themeState, control: themeControl });
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
@@ -551,6 +556,7 @@ export function useAgentControlBridge({
   ]);
 
   useEffect(() => {
+    latestThemeRef.current = { state: themeState, control: themeControl };
     if (themeSignature !== previousThemeStateSignatureRef.current) {
       previousThemeStateSignatureRef.current = themeSignature;
       bumpControlRevision();
@@ -562,7 +568,14 @@ export function useAgentControlBridge({
       themeSettlementRef.current = null;
       settlement.resolve(controlRevisionRef.current);
     }
-  }, [bumpControlRevision, resolveLibrarySettlement, scheduleWaitWake, themeSignature]);
+  }, [
+    bumpControlRevision,
+    resolveLibrarySettlement,
+    scheduleWaitWake,
+    themeControl,
+    themeSignature,
+    themeState,
+  ]);
 
   useEffect(() => {
     if (loudnessSignature !== previousLoudnessLibrarySignatureRef.current) {
