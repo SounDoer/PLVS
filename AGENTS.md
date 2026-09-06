@@ -221,6 +221,25 @@ Traps that cost a real commit to learn, because the code either says nothing or 
   and `SIBLING_KEYS` on purpose, so a shared configuration cannot carry a permission onto someone
   else's machine.
 
+- **A Vite reload rewinds the entire persistence cache to a snapshot taken at boot, and the next
+ write makes that permanent.** `pluginStoreBackend` states it plainly — "Reads never hit disk" —
+ because its synchronous cache is seeded entirely from `window.__PLVS_INITIAL_STATE__`. Rust
+ formats that snapshot **once**, in `setup`, and registers it as the window's
+ `initialization_script`; initialization scripts re-run on every page load, so each HMR reload
+ re-seeds the cache with the *boot* state rather than the current file. The app then works from
+ the rewound copy, and the first write after that persists it over whatever newer data is on
+ disk. Nothing errors and the UI looks right, so the tell is only visible by comparing a `*.list`
+ result against `plvs-settings.json` — they disagree. This destroyed three hand-made themes on
+ 2026-09-06: created and flushed, then a reload rewound the library, then a later `theme.import`
+ wrote the rewound version back. Production is unaffected **by design, not by luck** — the sole
+ reload path, `reloadAfterProfileChange`, calls `relaunch()` under Tauri so Rust recomputes the
+ snapshot, and `importProfile` calls `suspendPluginStorePersistence()` first against exactly this
+ hazard; `window.location.reload()` there is the browser-only fallback, where no seed exists at
+ all. The consequence is that **no manual dev check of persistence is valid across a reload**:
+ restart the app before concluding anything reached disk, and read the file rather than trusting
+ `*.list`. This matters most for the code CI cannot cover, where hand verification is the only
+ verification there is.
+
 - **Two things about this repo's Vitest setup will fail you confusingly rather than clearly.**
   First, `vite.config.js` sets the environment to `node` by default to avoid jsdom's setup cost
   across the whole suite, so any test that renders React or touches a persistence store needs
