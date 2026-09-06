@@ -14,7 +14,6 @@ import {
   LOUDNESS_PROFILE_OFF,
   createProfileDraft,
   parseSelection,
-  profileSelectionId,
   resolveActiveDocument,
 } from "../lib/loudnessProfileCatalog.js";
 import {

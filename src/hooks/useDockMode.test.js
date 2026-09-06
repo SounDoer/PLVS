@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
+  readPresets: vi.fn(() => ({ list: [], activeId: null, dirty: false })),
   patchPresets: vi.fn(),
 }));
 
@@ -25,7 +26,7 @@ vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
 // Only presetsStore is faked; the dock/profile hand-off below drives the real settingsStore.
 vi.mock("../persistence/index.js", async () => ({
   ...(await vi.importActual("../persistence/index.js")),
-  presetsStore: { patch: mocks.patchPresets },
+  presetsStore: { read: mocks.readPresets, patch: mocks.patchPresets },
 }));
 
 import { createElement } from "react";
@@ -55,6 +56,7 @@ describe("useDockMode", () => {
     mocks.setDockHeight.mockReset().mockImplementation(async ({ height }) => height);
     mocks.setDockSuspended.mockReset().mockResolvedValue(undefined);
     mocks.isTauri.mockReturnValue(true);
+    mocks.readPresets.mockClear();
     mocks.patchPresets.mockClear();
     Object.defineProperty(navigator, "platform", { configurable: true, value: "Win32" });
     delete window.__PLVS_INITIAL_STATE__;
