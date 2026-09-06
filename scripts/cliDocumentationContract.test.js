@@ -46,4 +46,35 @@ describe("current CLI documentation", () => {
     expect(agents).toContain("capture-harness");
     expect(agents).toContain("capture-smoke dependencies");
   });
+
+  it("publishes the complete Loudness Profile Control contract", () => {
+    const cli = read("docs", "cli.md");
+    const agentControl = read("docs", "agent-control", "README.md");
+    const profiles = read("docs", "agent-control", "loudness-profiles.md");
+    const libraries = read("docs", "agent-control", "libraries.md");
+    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
+
+    for (const command of [
+      "describe",
+      "select",
+      "create",
+      "update",
+      "rename",
+      "delete",
+      "reorder",
+    ]) {
+      expect(profiles).toContain(`loudness-profile ${command}`);
+    }
+    expect(profiles).toContain('"referenceLufs"');
+    expect(profiles).toContain('"metricId"');
+    expect(profiles).toContain("affectedPresetIds");
+    expect(profiles).toContain("invalidProfile");
+    expect(profiles).toContain("invalidPermutation");
+    expect(profiles).toContain("editorActive");
+    expect(cli).toContain("loudness-profile describe <id> --json");
+    expect(agentControl).toContain("loudnessProfile.describe / loudnessProfile.select");
+    expect(libraries).toContain("[Loudness Profile Control](loudness-profiles.md)");
+    expect(roadmap).toContain("### Stage 2: Loudness Profile editing — complete");
+    expect(roadmap).toContain("The next implementation stage is **Theme editing**");
+  });
 });

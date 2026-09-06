@@ -5,8 +5,8 @@ Status: Approved design contract
 Library Transfer shares the three libraries a PLVS installation accumulates — Presets, Themes, and
 Loudness Profiles — as pack files, using the same pack format, merge rules, and persistence paths as
 the GUI's per-library Export and Import rows. It owns sharing only. Creating, editing, renaming, and
-deleting entries belong to their own command families; Theme Control and Loudness Profile Control do
-not exist yet.
+deleting entries belong to their own command families; Profile authoring and selection are defined
+by [Loudness Profile Control](loudness-profiles.md), while Theme Control remains separate.
 
 ## Commands
 
@@ -28,7 +28,8 @@ npm run desktop:control -- loudness-profile import <file|-> --expected-revision 
 
 `preset list` is Preset Control's, not this family's: it returns the same summaries plus `activeId`
 and `dirty`, and is documented in [`presets.md`](presets.md). There is no `preset list` here, and no
-`theme describe` or `loudness-profile describe` in the first version.
+`theme describe` in the transfer contract. `loudness-profile describe` belongs to Loudness Profile
+Control rather than transfer.
 
 ## Vocabulary
 
@@ -183,7 +184,7 @@ reports `changed: false` and an empty plan rather than an error. That is consist
 defect, but a caller must not read "nothing changed" as "already up to date": compare `plan.items`
 against the item count of the file it submitted.
 
-A dry run and a no-op both return the revision from *before* the request, and neither flushes
+A dry run and a no-op both return the revision from _before_ the request, and neither flushes
 persistence, because both return before any write exists to persist. The returned revision is never
 evidence that state was written.
 

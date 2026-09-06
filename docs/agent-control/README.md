@@ -2,8 +2,8 @@
 
 Date: 2026-09-03
 
-Status: Living design record; Panel, Axis, Preset, Settings, Wait, Transport, and Dock Control
-decisions are approved unless explicitly marked otherwise
+Status: Living design record; Panel, Axis, Preset, Loudness Profile, Settings, Wait, Transport, and
+Dock Control decisions are approved unless explicitly marked otherwise
 
 This directory records the implemented Agent Control contract. It complements the
 first-slice design in
@@ -26,7 +26,8 @@ preset.list / preset.describe / preset save / preset update / preset apply
 preset.rename / preset.delete / preset.reorder
 preset export / preset import
 theme.list / theme export / theme import
-loudnessProfile.list / loudnessProfile export / loudnessProfile import
+loudnessProfile.list / loudnessProfile.describe / loudnessProfile.select
+loudnessProfile create / update / rename / delete / reorder / export / import
 config export / config import
 settings.describe / settings.inspect / settings.update
 transport.inspect / transport source / transport live / transport file
@@ -57,9 +58,10 @@ paths as the GUI.
 
 ## Implementation status
 
-The foundation, Panel Control, Axis Control, Presets, Settings, Revision Wait, Transport, Dock
-Control, Library Transfer, and Configuration Transfer are implemented. MCP integration remains a
-deferred product decision.
+The foundation, Panel Control, Axis Control, Presets, Loudness Profile Control, Settings, Revision
+Wait, Transport, Dock Control, Library Transfer, and Configuration Transfer are implemented. See
+[`loudness-profiles.md`](loudness-profiles.md) for the Profile authoring contract. MCP integration
+remains a deferred product decision.
 
 ## Keeping this contract in step with the app
 

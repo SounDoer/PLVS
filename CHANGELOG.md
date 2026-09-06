@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent Control can export and import the complete Everything configuration through
   `plvs-cli config export` and `plvs-cli config import`; import acknowledges response delivery before
   relaunching PLVS.
+- Agent Control can describe, select, create, update, rename, delete, and reorder Loudness Profiles
+  through `plvs-cli loudness-profile`, with strict documents, dry-run plans, and revision guards.
 
 ### Fixed
 
@@ -139,24 +141,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.14.2] - 2026-08-28
 
 ### Changed
+
 - Long-session memory: scalar history - loudness, audio snaps, and the waveform and loudness min/max indexes - is stored in packed Float32 columns instead of one object per row. At four-hour retention the scalar layer's live heap drops from ~205 MB to ~13 MB, and the longest GC pause from 40-124 ms to 3.6-5.3 ms.
 
 ### Fixed
+
 - File-analysis coverage no longer breaks when a history timestamp is non-finite.
 
 ## [0.14.1] - 2026-08-27
 
 ### Added
+
 - Linked axis viewports: Spectrum's X, Spectrogram's frequency Y and Stereo Map's X now navigate one shared frequency range, linked by default, with a link toggle on each panel's own Frequency Range row. The three timeline panels share their time viewport the same way. Membership and the shared range persist, and presets carry both.
 - Time Range is now a settings row on the three panels that have a time axis, editable as the two numbers written at the ends of the rail - time-ago when live, absolute media time in file mode.
 - Spectrum Max Hold: a cumulative per-band maximum drawn as one held outline per curve, in the curve's own color, clearable by clicking the held line. It works in snapshot mode, showing the hold as it stood at the selected row, and the Dock strip holds the spectrum peak too. The old decaying peak envelope stays, renamed Max Decay, and sits beside it.
 - Stereo Map's level axis is editable by wheel and drag in Mono Loss and M/S Ratio, not just from the settings panel. Position and Correlation always show their whole range, so their rail stays inert.
 
 ### Changed
+
 - Long-running panel histories are packed into chunked storage and freed once no open panel needs them or they age out of the retention window, cutting memory on long sessions.
 - Sliders that change an analysis request key - Spectrum speed and tilt, Stereo Map speed - commit on release instead of on every pointer move.
 
 ### Fixed
+
 - Idle CPU: a re-render loop in the Dock accessory visibility hook kept every non-docked session in a ~250 Hz render/effect churn, present since v0.10.0. Renderer CPU when idle drops from ~0.57 of a logical core to effectively zero.
 - Idle Spectrogram animation polling stopped, and 3D ridge projection no longer allocates per vertex.
 - Title-bar drags no longer strand event listeners for the life of the session.
@@ -167,12 +174,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.14.0] - 2026-08-21
 
 ### Added
+
 - Waveform spectral coloring: two independent, opt-in toggles - Frequency Color (dominant frequency selects the hue, spectral tonality controls saturation) and Centroid (a spectral-centroid trace on a logarithmic frequency axis). Workspace and Dock persist their own settings, both default to Off, and the classic waveform stays the default look.
 - Theme V2: themes are now authored as six core color roles with everything else derived, with editable palettes, curated Advanced role overrides, undo/redo on the unsaved draft, and inline theme actions plus Add Theme in the Theme Picker.
 - Split dividers snap to the midpoint while dragging.
 - Frameless header supports a double-click maximize gesture.
 
 ### Changed
+
 - Less visual furniture: the Spectrum grid, Waveform zero line, Stereo Map baseline and Loudness grid are gone, and the Vectorscope diagonals are wider. Every remaining grid is painted in the color the theme gives it.
 - Focus is consistent: default focus outlines are gone everywhere, replaced by a themed focus ring on every focusable element.
 - Theme editor: every Advanced section is collapsed by default, and the Interface palette moved to the end of Palettes.
@@ -180,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Radii settled on a three-rung ladder; hover and active settled on two states.
 
 ### Fixed
+
 - Stereo Map y axis labels no longer overlap on short rails.
 - Floating editors scale with Interface Size, and the rule selects fit their labels at any Interface Size.
 - Popovers inside the settings sheet stay clickable.
@@ -188,22 +198,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.13.1] - 2026-08-10
 
 ### Added
+
 - Loudness Profile editor's rule list is drag-to-reorder, with a ring highlight on the row being dragged.
 
 ### Fixed
+
 - Dialogue Integrated no longer shows the same warn color as an actual rule breach when dialogue coverage is too low to judge it; it's now evaluated the moment the engine has a value, the same as Integrated.
 
 ## [0.13.0] - 2026-08-05
 
 ### Added
+
 - Spectrogram gained a 3D Surface view mode alongside 2D and 3D Ridges, with adjustable height scale, elevation, floor grid, and a dB floor shared with the 2D view.
 - Toolbar and Dock highlight the Presets trigger while its popover is open, matching the active-preset highlight.
 - Spectrogram settings sliders apply live while dragging, instead of only on release.
 
 ### Changed
+
 - Shortcuts/help popover dropped the axis letter chip; axis gestures and range controls are now named after the axis they act on.
 
 ### Fixed
+
 - Toolbar Presets icon no longer highlights while dirty, and correctly highlights when a preset is active.
 - Dock's module settings accessory no longer inherits the wrong Loudness Profile provider.
 - Fullscreen overlay no longer shows a default focus ring.
@@ -211,6 +226,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.12.2] - 2026-07-29
 
 ### Fixed
+
 - Presets and Loudness Profile drag-to-reorder now reliably commits the new order instead of sometimes reverting or leaving other views showing a stale list.
 - Spectrogram in file mode no longer paints spurious blank gap stripes between frames.
 - High-frequency setting changes (e.g. dragging in Presets/Loudness Profile lists) no longer trigger a full-file rewrite on every pointer move.
@@ -219,14 +235,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.12.1] - 2026-07-28
 
 ### Added
+
 - Each panel tab now has its own close control, so a single tab can be closed without hiding every tab in a shared slot.
 - Add Module rows in Workspace mode support drag-to-place, dropping a new panel exactly where you release it instead of only at a fixed default split.
 - Presets and Loudness Profile lists support drag-to-reorder.
 
 ### Changed
+
 - Add Module (Workspace and Dock) now swaps into a picker view instead of opening a nested or floating popover, and wording is unified as "Add Module" in both modes; Dock's Modules editor gained a Reset to defaults control.
 
 ### Fixed
+
 - Adding a panel via Add Module now gives it a modest ~30% slice instead of collapsing the existing layout to half the window.
 - Dock's flexible-growth modules (Spectrum, Waveform, Spectrogram, Stereo Map) no longer auto-grow past their defined preferred max width.
 - Dock preset drag-reorder now syncs to the main window instead of being silently dropped.
@@ -235,23 +254,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.12.0] - 2026-07-28
 
 ### Added
+
 - Stereo Map: a new frequency-domain stereo-analysis panel (Workspace panel and Dock module) showing where each frequency region sits in the stereo field, channel-pair correlation, mono fold-down phase cancellation, and Mid/Side energy dominance, with live capture, file analysis, history, and snapshot support.
 
 ### Changed
+
 - Renamed Vectorscope Polar Level's `Peak hold` to `Max hold` and Stereo Map's `Hold` to `Max hold`, matching Vectorscope's always-on running-maximum behavior; renamed Spectrum's `Max hold` to `Max decay` to distinguish its decaying peak from the other two panels' non-decaying hold.
 - All panel settings labels now use Title Case.
 - Stereo Map rendering and history performance improved (canvas-based curve drawing, chunked hold reconstruction, cached hold summaries).
 
 ### Fixed
+
 - Stereo Map no longer shows its mono-only message before capture has started.
 
 ## [0.11.3] - 2026-07-25
 
 ### Added
+
 - Tray menu now includes a device switcher and preset selection.
 - The update dialog shows every version's notes across a multi-release upgrade.
 
 ### Fixed
+
 - Tray menu no longer freezes while audio devices load, and now marks the active preset.
 - Update dialog heading fits multi-version notes.
 - Native right-click menu is suppressed in dock accessory windows.
@@ -260,16 +284,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.11.2] - 2026-07-24
 
 ### Fixed
+
 - Dock Modules and Presets menus now use the same adaptive, capped width as the header popovers, so long custom module names no longer burst the panel; overflowing names truncate with a clipped-only hover tip.
 
 ## [0.11.1] - 2026-07-24
 
 ### Changed
+
 - Unified all editor rename forms behind one shared component.
 - Unified add/new entry points behind a single AddButton.
 - Rule metric order in the profile editor now derives from the Stats panel.
 
 ### Fixed
+
 - Long names no longer truncate incorrectly in capped popovers.
 - Rename inputs no longer widen w-max list panels.
 - Profile editor rule columns align on a shared grid; Reference is folded into the grid to reclaim metric width.
@@ -279,14 +306,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.11.0] - 2026-07-23
 
 ### Added
+
 - Loudness Profile: a rule-based profile editor (per-metric tolerances, reference line, watched-metric marking) replacing the old single numeric reference, with active-profile status surfaced in Stats, the footer, and the Level Meter TP Max marker, and profiles snapshotted into layout presets.
 - History storage keeps an exact min-max summary index so zoomed-out views stay accurate without rescanning raw samples.
 
 ### Changed
+
 - Loudness, Spectrum, Spectrogram, Vectorscope, and Waveform history rendering now scale to long capture sessions (chunked storage, binary-search timestamp resolution, ring buffers) instead of scanning or copying the full retained history on every frame.
 - Toolbar popovers use tighter adaptive layouts.
 
 ### Fixed
+
 - Waveform envelope keeps full vertical resolution and no longer flickers while idle, and preserves non-finite gaps correctly.
 - Spectrogram and Spectrum history correctly preserve gap boundaries and retained tail rows.
 - Stats metric labels no longer clip descenders.
@@ -295,14 +325,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.10.0] - 2026-07-21
 
 ### Added
+
 - Vectorscope Polar display modes (Polar Level, Polar Sample) for both the panel and Dock, including click-to-reset Peak hold and Peak hold reconstruction while scrubbing snapshots.
 - In-app updater now shows a changelog confirmation dialog before installing and relaunches automatically after install.
 
 ### Changed
+
 - Polar Level now reads on a consistent Ozone/PAZ-style scale instead of shrinking whenever Peak hold is enabled.
 - Snapshot Peak hold reconstruction uses ~25x less memory on long retention windows.
 
 ### Fixed
+
 - Vectorscope pair-label alignment, spacing, and Dock behavior are unified across display modes.
 - Snapshot Peak hold no longer shows a look-ahead of future samples.
 - Updater release notes stay focused on actual changes.
@@ -310,15 +343,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.4] - 2026-07-20
 
 ### Added
+
 - CLI commands for probing media tracks and applying opt-in loudness and true-peak quality-control thresholds.
 - CLI device listing and richer doctor diagnostics for capture devices, bundled VAD engines, and build capabilities.
 - Dialogue-gated CLI analysis with selectable VAD engines, dialogue metrics, reference offsets, and batch-analysis support.
 - CLI profile validation, export, and import for managing desktop configuration without launching the UI.
 
 ### Changed
+
 - Dock mode is now limited to Windows and disabled on macOS.
 
 ### Fixed
+
 - Keyboard shortcuts are captured consistently regardless of the currently focused control.
 - Dock accessory windows remain open reliably while moving the pointer between related windows.
 - Hidden Dock editors are measured before display, preventing incorrect initial sizing.
@@ -327,9 +363,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.3] - 2026-07-17
 
 ### Changed
+
 - Loudness, vectorscope, waveform, and spectrum trace stroke widths are now driven consistently by their theme tokens and rendered at true CSS-pixel widths, instead of some curves scaling incorrectly or ignoring the configured width.
 
 ### Fixed
+
 - Window chrome (decorations/shadow) and geometry are now applied in the correct order across Dock, presets, and relaunch, fixing window drift and shadow inconsistencies.
 - Dock accessory windows size correctly under Windows Text Size scaling instead of clipping their content.
 - Panel settings menu stays within the viewport.
@@ -339,12 +377,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.2] - 2026-07-16
 
 ### Fixed
+
 - Restored macOS packaging by aligning the direct `window-vibrancy` dependency with Tauri.
 - Kept the Dock AppBar anchored to its original monitor work area when Windows temporarily moves a minimized window offscreen.
 
 ## [0.9.1] - 2026-07-16
 
 ### Added
+
 - Dock Mode with top and bottom placement, Windows work-area reservation, resizable modules, accessory editors, and preset integration.
 - Dock modules for transport, level, loudness, stats, correlation, spectrum, vectorscope, waveform, and spectrogram monitoring.
 - `plvs-cli capture` for recording live input into the shared summary metrics JSON contract.
@@ -352,11 +392,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fractional-octave spectrum smoothing, tracked peak labels, and Max Hold controls.
 
 ### Changed
+
 - Standardized normal-mode typography, iconography, and chart-axis geometry on semantic design tokens.
 - Made the Settings drawer width and layout adapt to interface size and narrow application windows.
 - Renamed Spectrum temporal `Smoothing` to `Speed` and `Peak hold` to `Max hold`.
 
 ### Fixed
+
 - Stabilized Dock startup, edge transitions, AppBar reservation, accessory windows, and preset restoration.
 - Kept Dock history, waveform, spectrogram, stats, and level displays responsive across module sizes.
 - Improved Spectrum peak-label tracking and synchronized octave-smoothing analysis requests.
@@ -366,6 +408,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.0] - 2026-07-16
 
 ### Added
+
 - Dock Mode with top and bottom placement, Windows work-area reservation, resizable modules, accessory editors, and preset integration.
 - Dock modules for transport, level, loudness, stats, correlation, spectrum, vectorscope, waveform, and spectrogram monitoring.
 - `plvs-cli capture` for recording live input into the shared summary metrics JSON contract.
@@ -373,11 +416,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fractional-octave spectrum smoothing, tracked peak labels, and Max Hold controls.
 
 ### Changed
+
 - Standardized normal-mode typography, iconography, and chart-axis geometry on semantic design tokens.
 - Made the Settings drawer width and layout adapt to interface size and narrow application windows.
 - Renamed Spectrum temporal `Smoothing` to `Speed` and `Peak hold` to `Max hold`.
 
 ### Fixed
+
 - Stabilized Dock startup, edge transitions, AppBar reservation, accessory windows, and preset restoration.
 - Kept Dock history, waveform, spectrogram, stats, and level displays responsive across module sizes.
 - Improved Spectrum peak-label tracking and synchronized octave-smoothing analysis requests.
@@ -386,28 +431,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.1] - 2026-07-10
 
 ### Added
+
 - Vectorscope hold now shows a phosphor-style persistence trace of recent samples instead of a smoothed live trace.
 
 ### Fixed
+
 - Loudness history curve no longer freezes once a session exceeds the configured retention window.
 - Timeline hover no longer shows Loudness/Waveform values over regions without real data.
 
 ## [0.8.0] - 2026-07-10
 
 ### Added
+
 - History Length control in System Settings to configure how much history is retained.
 - Vectorscope hold-to-slow: holding the plot briefly activates a smoothed trace display.
 
 ### Changed
+
 - Loudness history and vectorscope rendering now scale to long capture sessions without degrading frame rate when zoomed out.
 
 ### Fixed
+
 - Timeline zoom and live capture now stay aligned with the configured history retention window.
 - History rings rebuild immediately when the retention capacity setting changes.
 
 ## [0.7.5] - 2026-07-09
 
 ### Fixed
+
 - Windows Rust tests no longer panic when pre-expiring `Instant`-based meter timers.
 - Vectorscope traces are easier to read during live monitoring.
 - Live snapshot timestamps now stay aligned with the active transport session.
@@ -415,32 +466,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.7.4] - 2026-07-09
 
 ### Added
+
 - A header notice now surfaces transport errors directly, replacing the removed status broadcast path.
 
 ### Changed
+
 - The runtime context value is memoized so meter-frame-rate re-renders no longer cascade to every consumer.
 
 ### Fixed
+
 - Clearing peaks and history now also resets the live timestamp origin.
 
 ## [0.7.3] - 2026-07-08
 
 ### Fixed
+
 - macOS DMG smoke verification now accepts the per-platform agent discovery manifest format.
 
 ## [0.7.2] - 2026-07-08
 
 ### Fixed
+
 - macOS release builds now use the same `window-vibrancy` version as Tauri, avoiding duplicate symbol failures during DMG packaging.
 
 ## [0.7.1] - 2026-07-08
 
 ### Changed
+
 - PLVS CLI now ships as a thin forwarder into the main binary, reducing duplicate installer weight.
 - Added a size-focused release profile.
 - Refactored shared BS.1770 DSP math into reusable gating and filter modules.
 
 ### Fixed
+
 - Agent discovery manifest now reports truthful per-platform CLI paths.
 - File history selection is clamped to the available sample range.
 - Version bumps now regenerate the agent discovery manifest automatically.
@@ -448,16 +506,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.7.0] - 2026-07-08
 
 ### Added
+
 - In-app auto-update: check, download, verify, and install updates directly from Settings, backed by signed release artifacts and a published update manifest.
 - PLVS CLI: `analyze` (single file), `analyze-batch`, `doctor`, and markdown/JSON report output.
 - CLI added to the user PATH via the Windows installer, with a Settings control to add/remove it.
 - File-mode analysis report export.
 
 ### Changed
+
 - Polished vectorscope correlation marker smoothing.
 - Polished file analysis summary and source transport chrome.
 
 ### Fixed
+
 - Rejected unexpected bundled executables and slimmed the CLI installer to avoid stray PATH hooks.
 - Windows-only Path/PathBuf import gating for the CLI path module.
 - Shortened the report export button in file mode.
@@ -465,33 +526,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.4] - 2026-07-05
 
 ### Added
+
 - RMS mode for the Level Meter panel.
 - macOS Glass effect support with a Views switch, settings persistence, and preset capture / apply support.
 
 ### Changed
+
 - Polished range slider styling and moved the Glass switch below the Opacity slider.
 
 ### Fixed
+
 - Kept macOS vibrancy setup idempotent and macOS-only, with Glass disabled on Windows.
 - Corrected transparent window opacity and reduced Acrylic tint interference.
 
 ## [0.6.3] - 2026-07-03
 
 ### Added
+
 - In-app feedback entry in Settings with a feedback dialog and submission client.
 - Docs link in the Settings footer.
 - Latest-edge hint on the timeline.
 
 ### Changed
+
 - Enhanced vectorscope stereo metrics and aligned the correlation axis styling.
 - Polished panel help and the loudness HUD.
 - Kept panel resizing local when pinned sizes are active.
 - Softened landing-page typography.
 
 ### Removed
+
 - Removed vectorscope display toggles.
 
 ### Fixed
+
 - Mounted the feedback dialog outside the Settings sheet so it opens correctly.
 - Reserved Level Meter TP Max marker axis width.
 - Matched Level Meter M / ST sentinel readouts to Stats formatting.
@@ -499,16 +567,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.2] - 2026-07-02
 
 ### Added
+
 - Level Meter playback max readout with per-metric TP Max reset.
 - Landing-site docs entry and newsletter subscribe form.
 
 ### Changed
+
 - FireRedVAD is now the default dialogue VAD engine.
 - Loudness reference control now lives in Loudness panel settings.
 - Landing page visuals, copy, and docs navigation were refreshed.
 - Level Meter TP Max marker and readout toggles now default off.
 
 ### Fixed
+
 - Disabled the spacebar start / stop shortcut.
 - Preset edits now preserve the active preset id and track panel divergence.
 - Settings, modules popover, shortcut rows, and small-screen docs navigation were polished.
@@ -517,16 +588,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.1] - 2026-06-30
 
 ### Changed
+
 - Tightened narrow-panel metric labels in Stats and Level Meter panels.
 - Polished Level Meter markers and mode labels.
 - Replaced the vectorscope correlation footer with a rail and removed the marker glow.
 
 ### Fixed
+
 - Corrected loudness hover guide layer selection.
 
 ## [0.6.0] - 2026-06-29
 
 ### Added
+
 - File analysis now decodes through a bundled FFmpeg / ffprobe sidecar (replacing Symphonia), with wider file-picker format support.
 - Dialogue VAD engine selection — choose among multiple voice-activity-detection adapters for dialogue gating.
 - File-list popover gains a stop control and progress indicator; the pill follows the active file and disables analyze during background work.
@@ -534,10 +608,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trimmed file-mode summary region (filename, metadata, three delivery chips) and a clearer file-list trigger icon.
 
 ### Changed
+
 - Optimized request-keyed file analysis; polished the file-analysis summary UI and aligned level-meter axis label styling.
 - Greyed-out transport action when it cannot run.
 
 ### Fixed
+
 - Preserve history cadence during file analysis — the time axis no longer compresses on large FFmpeg read chunks.
 - Stop background analysis from driving the active file's panels.
 - Hide FFmpeg sidecars from the file picker, reuse probe metadata, and reject unexpected Windows bundle executables.
@@ -545,11 +621,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.3] - 2026-06-27
 
 ### Changed
+
 - Close confirmation dialog now uses a more compact layout
 - Pinned panel state now uses the PinOff icon instead of accent fill
 - Range endpoint labels now use `-` as the separator
 
 ### Fixed
+
 - Persist the close dialog "don't ask again" setting reliably
 - Preserve dialogue-active state in snapshot playback history
 - Scope pinned panel size changes to the nearest matching-direction split
@@ -557,6 +635,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.2] - 2026-06-26
 
 ### Added
+
 - Interactive zoom/pan axes with adaptive nice-number ticks
 - Spectrum hold smoothing
 - Chart help moved into panel toolbar
@@ -564,16 +643,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live chart hover probe refresh
 
 ### Fixed
+
 - Smooth waveform fullscreen interactions and reduce resize stalls
 - Sync package-lock.json version in bump script
 
 ## [0.5.1] - 2026-06-21
 
 ### Added
+
 - Panel size pinning for workspace panels
 - Hide Chrome toggle with native context menu suppression
 
 ### Fixed
+
 - Preserve subpixel panel pin sizes
 - Bold value marker now hidden when below scale range
 - Lower default spectrum display shaping
@@ -582,6 +664,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-06-25
 
 ### Added
+
 - File mode: local audio-file analysis with probe, decode, media-time history, scrub support, and in-memory session history.
 - Analysis: per-instance panel controls, request-keyed live results, and over-cap analysis panels.
 - Theme: custom themes, theme editor, derived instrument colors, and theme-driven spectrogram colormap.
@@ -590,12 +673,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Panels: unified panel settings entry, level meter value marker, and Stats panel abstraction.
 
 ### Changed
+
 - UI: renamed Focus View to Views and tightened app chrome, headers, panels, settings, and compact layouts.
 - Settings: centralized defaults, persistence, and reusable settings primitives.
 - Spectrogram: read history through slab/frozen view interfaces instead of rebuilding arrays per tick.
 - File analysis: active source is modeled as a single backend source and shares decode/probe helpers.
 
 ### Fixed
+
 - Release: build macOS DMG by limiting transparent-window builder setup to Windows.
 - Spectrogram: preserve history across capture restart, align live timeline rendering, and mark missing data inside gaps.
 - File mode: keep history selector visible, isolate live/file history, and render panels correctly during file analysis.
@@ -606,15 +691,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2026-06-18
 
 ### Added
+
 - Loudness: replace reference line with over-reference gradient on M/ST curves
 - UI: add Focus View controls
 - Layout: lower panel drag-resize minimums to reduce stuck feeling
 - Release: auto-append bilingual install guide to GitHub Release notes
 
 ### Changed
+
 - UI: unify Devices toolbar picker with other popover buttons
 
 ### Fixed
+
 - Settings: allow free editing of the loudness reference input
 - UI: keep Focus View controls visible during popovers
 - UI: allow Focus View frameless window controls
@@ -622,14 +710,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.7] - 2026-06-18
 
 ### Added
+
 - Presets: settings-managed view snapshots
 - Presets: toolbar popover for preset management (moved out of Settings)
 
 ### Changed
+
 - Presets: remove Presets block from SettingsPanel (moved to toolbar)
 - UI: update icon tooltips
 
 ### Fixed
+
 - Presets: clarify rename and active row layout
 - UI: restore missing PresetsPopoverContent import in App.jsx
 - UI: improve presets popover accessibility
@@ -638,6 +729,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.6] - 2026-06-17
 
 ### Added
+
 - Window: persist window geometry on move/resize
 - Window: inject persisted state pre-paint and restore window bounds
 - Window: add window-bounds clamp helper with tests
@@ -650,6 +742,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Persistence: add localStorage backend
 
 ### Changed
+
 - Persistence: single-source panelControls in workspace state
 - Persistence: move theme/referenceLufs/channelLabelOverrides to settings domain
 - Persistence: move closeAction/windowPinned to settings domain
@@ -657,6 +750,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Layout: remove vestigial ratio layout (PanelSet, useLayoutDrag)
 
 ### Fixed
+
 - Engine: bound UI frame backlog with ack-based backpressure
 - Panel: stabilize updatePanelControls to stop render loop on Start
 - Window: restore bounds in physical pixels to stop HiDPI growth
@@ -665,6 +759,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.5] - 2026-06-16
 
 ### Added
+
 - Waveform: sub-block precision with pixel-decimated envelope rendering
 - Waveform: column-indexed hover dBFS with window-based time label
 - Waveform: absolute-anchored pixel-width decimation for scroll stability
@@ -673,11 +768,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loudness: configurable stats metric ordering via panel controls
 
 ### Changed
+
 - Waveform: grow envelope from the right like loudness history
 - Spectrogram: emit exactly W columns (1:1 pixel) to fully anchor scroll
 - Workspace: make all panel bodies non-selectable at the leaf shell
 
 ### Fixed
+
 - Vectorscope: hide center dot until capture starts
 - Loudness: restore m max / st max / dialogue stats in snapshot mode
 - Loudness: prevent text selection while dragging stat rows

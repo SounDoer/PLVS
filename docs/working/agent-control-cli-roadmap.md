@@ -33,7 +33,8 @@ The running-app surface now covers:
 - scene construction: Workspace, Panel, Axis, Preset, and Dock Control;
 - global preferences: Settings Control;
 - source lifecycle: live and file Transport Control;
-- portable libraries: Preset, Theme, and Loudness Profile list/export/import.
+- portable libraries: Preset, Theme, and Loudness Profile list/export/import;
+- Loudness Profile inspection, authoring, selection, deletion, and ordering.
 
 The post-v0.15.0 work added Library Transfer end to end, including strict request validation,
 revision tracking for Theme and Loudness Profile libraries, large named-pipe frame delivery,
@@ -54,12 +55,12 @@ Important constraints of the current baseline:
 
 The Settings UI presents four transfer rows. Their current status is:
 
-| Settings row | GUI export/import | CLI export/import | Import behavior |
-| --- | --- | --- | --- |
-| Loudness Profiles | Complete | Complete | Append; preserve selection |
-| Presets | Complete | Complete | Append; include required custom Theme/Profile dependencies |
-| Theme | Complete | Complete | Append; preserve active Theme |
-| Everything | Complete | Complete | Replace the whole setup and relaunch PLVS |
+| Settings row      | GUI export/import | CLI export/import | Import behavior                                            |
+| ----------------- | ----------------- | ----------------- | ---------------------------------------------------------- |
+| Loudness Profiles | Complete          | Complete          | Append; preserve selection                                 |
+| Presets           | Complete          | Complete          | Append; include required custom Theme/Profile dependencies |
+| Theme             | Complete          | Complete          | Append; preserve active Theme                              |
+| Everything        | Complete          | Complete          | Replace the whole setup and relaunch PLVS                  |
 
 Therefore all four Settings transfer rows are complete in the CLI. Everything is represented
 technically by the versioned `.plvsconfig` configuration profile; unlike the three libraries, it is
@@ -131,14 +132,14 @@ has completed booting.
 Do not include `config reset` in this stage. It is destructive, does not complete the requested
 transfer parity, and deserves a separate confirmation design if terminal demand appears.
 
-### Stage 2: Loudness Profile editing
+### Stage 2: Loudness Profile editing — complete
 
-Draft design and implementation plan:
+Approved design and completed implementation plan:
 
 - [`superpowers/specs/2026-09-06-agent-control-loudness-profile-design.md`](superpowers/specs/2026-09-06-agent-control-loudness-profile-design.md)
 - [`superpowers/plans/2026-09-06-agent-control-loudness-profile-implementation.md`](superpowers/plans/2026-09-06-agent-control-loudness-profile-implementation.md)
 
-Proposed public shape:
+Implemented public shape:
 
 ```text
 plvs-cli loudness-profile describe <id> --json
@@ -150,7 +151,7 @@ plvs-cli loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
 plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
-Match the existing GUI semantics:
+Implemented GUI-matching semantics:
 
 - create generates an ID, inserts the document, and selects it;
 - update replaces the document in place and preserves the selection that existed before editing;
@@ -165,6 +166,11 @@ Match the existing GUI semantics:
 editor preview and save path. Do not create an Agent-Control-only definition of a valid Profile.
 
 ### Stage 3: Theme editing
+
+Approved design and implementation plan:
+
+- [`superpowers/specs/2026-09-06-agent-control-theme-control-design.md`](superpowers/specs/2026-09-06-agent-control-theme-control-design.md)
+- [`superpowers/plans/2026-09-06-agent-control-theme-control-implementation.md`](superpowers/plans/2026-09-06-agent-control-theme-control-implementation.md)
 
 Proposed public shape:
 
@@ -454,8 +460,6 @@ Every approved command family should include:
 
 ## Immediate design recommendation
 
-The next implementation design should cover **Loudness Profile editing**. Configuration Transfer is
-complete; Profile behavior already has one React owner with explicit
-create/edit/select/delete/order semantics. Theme creation, repository mutation, Appearance
-selection, runtime preview, and deletion fallback are spread across more owners and need a little
-more extraction before they form one safe Agent Control planner.
+The next implementation stage is **Theme editing**. Configuration Transfer and Loudness Profile
+Control are complete; the approved Theme design extracts the remaining repository mutation,
+Appearance selection, runtime preview, and deletion fallback behavior into a shared semantic owner.

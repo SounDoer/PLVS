@@ -100,7 +100,20 @@ plvs-cli <preset|theme|loudness-profile> import <file|-> --json --expected-revis
 ```
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
-Library Transfer. `theme` and `loudness-profile` have no other subcommands.
+Library Transfer. Loudness Profile Control additionally provides:
+
+```powershell
+plvs-cli loudness-profile describe <id> --json
+plvs-cli loudness-profile select <id|off> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+See [Loudness Profile Control](agent-control/loudness-profiles.md) for its document schema, mutation
+semantics, and errors. Theme has no authoring subcommands yet.
 
 Everything configuration export uses the same `.plvsconfig` document as Settings:
 
@@ -261,14 +274,14 @@ an error with code `timeout` and exit `5`, not a successful unchanged result.
 
 ## Exit Codes
 
-| Code | Class | Examples |
-| ---: | --- | --- |
-| `0` | Success | Query or mutation completed; healthy or warning-only doctor report |
-| `1` | Runtime or system failure | Native operation failed; output write failed; doctor found a required error |
-| `2` | App unavailable for control | App not running; Agent Control disabled; frontend not ready |
-| `3` | Invalid command input | Unknown command; invalid argument; required revision omitted |
-| `4` | Current state refuses the operation | Revision conflict; blocking editor; wait limit reached |
-| `5` | Wait did not complete | Timeout or cancellation |
+| Code | Class                               | Examples                                                                    |
+| ---: | ----------------------------------- | --------------------------------------------------------------------------- |
+|  `0` | Success                             | Query or mutation completed; healthy or warning-only doctor report          |
+|  `1` | Runtime or system failure           | Native operation failed; output write failed; doctor found a required error |
+|  `2` | App unavailable for control         | App not running; Agent Control disabled; frontend not ready                 |
+|  `3` | Invalid command input               | Unknown command; invalid argument; required revision omitted                |
+|  `4` | Current state refuses the operation | Revision conflict; blocking editor; wait limit reached                      |
+|  `5` | Wait did not complete               | Timeout or cancellation                                                     |
 
 Under `--json`, every failure that reaches the CLI parser emits the error envelope as well as its
 nonzero process exit code. A thin-forwarder failure before the host starts can only report on
