@@ -2265,6 +2265,57 @@ describe("useAgentControlBridge", () => {
     expect(after).toBe(before + 1);
   });
 
+  it("tracks active selection and every normalized Loudness Profile field in revision identity", async () => {
+    const base = {
+      id: "p-1",
+      name: "EBU R128",
+      referenceLufs: -23,
+      rules: [{ metricId: "integrated", op: ">", value: -22.5, severity: "fail" }],
+    };
+    settingsStore.patch({
+      loudnessProfiles: { active: "off", profiles: [base] },
+    });
+    const view = mount({ loudnessProfiles: [base] });
+    await waitUntilReady();
+    let revision = (await send(request("app.capabilities", {}, "profile-revision-start"))).result
+      .revision;
+
+    const expectOneBump = async (profiles, active, id) => {
+      settingsStore.patch({ loudnessProfiles: { active, profiles } });
+      view.rerender(
+        <WorkspaceProvider>
+          <Harness loudnessProfiles={profiles} />
+        </WorkspaceProvider>
+      );
+      await waitFor(async () => {
+        const next = (await send(request("app.capabilities", {}, id))).result.revision;
+        expect(next).toBe(revision + 1);
+        revision = next;
+      });
+    };
+
+    await expectOneBump([base], "profile:p-1", "profile-selection");
+    const ruleEdited = {
+      ...base,
+      rules: [{ ...base.rules[0], value: -21.5, severity: "warn" }],
+    };
+    await expectOneBump([ruleEdited], "profile:p-1", "profile-rule");
+    const renamed = { ...ruleEdited, name: "Renamed" };
+    await expectOneBump([renamed], "profile:p-1", "profile-rename");
+    const created = { id: "p-2", name: "Second", referenceLufs: null, rules: [] };
+    await expectOneBump([renamed, created], "profile:p-1", "profile-create");
+    await expectOneBump([created, renamed], "profile:p-1", "profile-reorder");
+    await expectOneBump([renamed], "profile:p-1", "profile-delete");
+
+    view.rerender(
+      <WorkspaceProvider>
+        <Harness loudnessProfiles={structuredClone([renamed])} />
+      </WorkspaceProvider>
+    );
+    const noOp = (await send(request("app.capabilities", {}, "profile-noop"))).result.revision;
+    expect(noOp).toBe(revision);
+  });
+
   it("exports the normalized Everything configuration without changing revision", async () => {
     const configuration = {
       app: "PLVS",

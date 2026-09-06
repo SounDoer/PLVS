@@ -60,10 +60,11 @@ reports it and never writes it.
 { "revision": 13, "profiles": [{ "id": "p-1", "name": "EBU R128" }], "activeId": "p-1" }
 ```
 
-`activeId` does not participate in the revision. The revision tracks each library's ids and names
-only, so a user switching the active profile in the GUI changes `activeId` while the revision stays
-put. `activeId` therefore cannot be guarded with `--expected-revision`, and `app.inspect` has always
-reported the Preset relationship on the same terms.
+`activeId` participates in the revision, as does each normalized Profile's complete content and
+library order. A GUI selection, rename, reference change, rule edit, create, delete, or reorder
+therefore advances the global revision even though append-only transfer import never changes the
+selection. This stronger identity prevents a later Profile Control mutation from accepting a
+revision that predates an edit to the rules it would replace.
 
 ## Export
 

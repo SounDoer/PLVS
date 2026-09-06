@@ -9,6 +9,7 @@ import { flushPersistence, settingsStore } from "../persistence/index.js";
 import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
 import { normalizeImportedProfile, ProfileValidationError } from "../persistence/profileShape.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
+import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
 import {
@@ -135,6 +136,16 @@ function librarySignature(entries) {
       name,
     ])
   );
+}
+
+function loudnessProfileStateSignature(profiles) {
+  const normalizedProfiles = (Array.isArray(profiles) ? profiles : [])
+    .map((profile) => normalizeRuleDocument(profile))
+    .filter(Boolean);
+  return JSON.stringify({
+    activeId: activeLoudnessProfileId(normalizedProfiles),
+    profiles: normalizedProfiles,
+  });
 }
 
 /// The live Loudness Profile selection, as `loudnessProfile.list` reports it. Off is null, and so
@@ -332,7 +343,8 @@ export function useAgentControlBridge({
   const previousWorkspaceRef = useRef(workspace);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
   const previousThemeLibrarySignatureRef = useRef(librarySignature(customThemes));
-  const previousLoudnessLibrarySignatureRef = useRef(librarySignature(loudnessProfiles));
+  const loudnessSignature = loudnessProfileStateSignature(loudnessProfiles);
+  const previousLoudnessLibrarySignatureRef = useRef(loudnessSignature);
   const previousOrdinarySettingsSignatureRef = useRef(ordinarySettingsStateSignature(settings));
   const openAtLoginTrackingRef = useRef({
     ready: settingsContext.autostartReady === true,
@@ -345,6 +357,7 @@ export function useAgentControlBridge({
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
   const librarySettlementRef = useRef(null);
+  const loudnessProfileSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
   const latestTransportRef = useRef(transport);
@@ -428,6 +441,16 @@ export function useAgentControlBridge({
     settlement.resolve(controlRevisionRef.current);
   }, []);
 
+  const observeLoudnessProfileSettlement = useCallback((store, signature) => {
+    const settlement = loudnessProfileSettlementRef.current;
+    if (!settlement || settlement.expected[store] !== signature) return;
+    settlement.observed.add(store);
+    if (Object.keys(settlement.expected).every((key) => settlement.observed.has(key))) {
+      loudnessProfileSettlementRef.current = null;
+      settlement.resolve(controlRevisionRef.current);
+    }
+  }, []);
+
   useEffect(() => {
     if (!controllableWorkspaceMatches(previousWorkspaceRef.current, workspace)) {
       previousWorkspaceRef.current = workspace;
@@ -455,7 +478,14 @@ export function useAgentControlBridge({
       presetSettlementRef.current = null;
       settlement.resolve(controlRevisionRef.current);
     }
-  }, [bumpControlRevision, presets, resolveLibrarySettlement, scheduleWaitWake]);
+    observeLoudnessProfileSettlement("presets", signature);
+  }, [
+    bumpControlRevision,
+    observeLoudnessProfileSettlement,
+    presets,
+    resolveLibrarySettlement,
+    scheduleWaitWake,
+  ]);
 
   useEffect(() => {
     const signature = librarySignature(customThemes);
@@ -467,13 +497,20 @@ export function useAgentControlBridge({
   }, [bumpControlRevision, customThemes, resolveLibrarySettlement, scheduleWaitWake]);
 
   useEffect(() => {
-    const signature = librarySignature(loudnessProfiles);
-    if (signature === previousLoudnessLibrarySignatureRef.current) return;
-    previousLoudnessLibrarySignatureRef.current = signature;
-    bumpControlRevision();
-    scheduleWaitWake();
-    resolveLibrarySettlement("loudnessProfile");
-  }, [bumpControlRevision, loudnessProfiles, resolveLibrarySettlement, scheduleWaitWake]);
+    if (loudnessSignature !== previousLoudnessLibrarySignatureRef.current) {
+      previousLoudnessLibrarySignatureRef.current = loudnessSignature;
+      bumpControlRevision();
+      scheduleWaitWake();
+      resolveLibrarySettlement("loudnessProfile");
+    }
+    observeLoudnessProfileSettlement("loudnessProfile", loudnessSignature);
+  }, [
+    bumpControlRevision,
+    loudnessSignature,
+    observeLoudnessProfileSettlement,
+    resolveLibrarySettlement,
+    scheduleWaitWake,
+  ]);
 
   useEffect(() => {
     const signature = settingsStateSignature(settings);
@@ -2126,6 +2163,9 @@ export function useAgentControlBridge({
       const librarySettlement = librarySettlementRef.current;
       librarySettlementRef.current = null;
       librarySettlement?.reject(new Error("Agent-control bridge unmounted."));
+      const loudnessProfileSettlement = loudnessProfileSettlementRef.current;
+      loudnessProfileSettlementRef.current = null;
+      loudnessProfileSettlement?.reject(new Error("Agent-control bridge unmounted."));
       const settingsSettlement = settingsSettlementRef.current;
       settingsSettlementRef.current = null;
       settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));
