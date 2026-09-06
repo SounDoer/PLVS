@@ -41,6 +41,9 @@ import {
   planLibraryImport,
 } from "./libraryTransfer.js";
 import { PackValidationError } from "../transfer/packShape.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { listThemeSummaries } from "../theme/themeLibrary.js";
+import { normalizeThemeV2 } from "../theme/themeSchema.js";
 import {
   planPresetApply,
   planPresetApplyResources,
@@ -133,8 +136,49 @@ function themeStateSignature(state) {
       selectedThemeId:
         state?.appearance?.mode === "fixed" ? (state.appearance.selectedThemeId ?? null) : null,
     },
-    themes: Array.isArray(state?.themes) ? state.themes : [],
+    themes: (Array.isArray(state?.themes) ? state.themes : [])
+      .map((theme) => normalizeThemeV2(theme))
+      .filter(Boolean),
   });
+}
+
+function compactThemeState(state) {
+  return {
+    appearance: state.appearance,
+    themes: listThemeSummaries(state),
+  };
+}
+
+function themePlanResult(method, planned) {
+  if (method === "theme.select" || method === "theme.followSystem") {
+    return {
+      previousAppearance: planned.previousAppearance,
+      appearance: planned.appearance,
+    };
+  }
+  if (method === "theme.create") {
+    return {
+      document: planned.document,
+      selectCreated: true,
+      ...(planned.theme ? { theme: planned.theme } : {}),
+    };
+  }
+  if (method === "theme.duplicate") {
+    return {
+      source: planned.source,
+      name: planned.name,
+      selectCreated: true,
+      ...(planned.theme ? { theme: planned.theme } : {}),
+    };
+  }
+  if (method === "theme.delete") {
+    return {
+      deletedTheme: planned.deletedTheme,
+      ...(planned.fallbackThemeId ? { fallbackThemeId: planned.fallbackThemeId } : {}),
+    };
+  }
+  if (method === "theme.reorder") return { themeIds: planned.themeIds };
+  return { theme: planned.theme };
 }
 
 function loudnessProfileStateSignature(profiles, activeSelection) {
@@ -353,6 +397,8 @@ export function useAgentControlBridge({
     themes: Object.values(customThemes ?? {}),
   };
   const themeSignature = themeStateSignature(themeState);
+  const latestThemeRef = useRef({ state: themeState, control: theme?.control ?? null });
+  latestThemeRef.current = { state: themeState, control: theme?.control ?? null };
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
@@ -1747,6 +1793,164 @@ export function useAgentControlBridge({
           return { requestId, result };
         }
 
+        if (request.method === "theme.inspect" || request.method === "theme.list") {
+          const currentTheme = latestThemeRef.current.state;
+          return {
+            requestId,
+            result: {
+              revision: controlRevisionRef.current,
+              appearance: currentTheme.appearance,
+              ...(request.method === "theme.list"
+                ? { themes: listThemeSummaries(currentTheme) }
+                : {}),
+            },
+          };
+        }
+
+        if (request.method === "theme.describe") {
+          const currentTheme = latestThemeRef.current.state;
+          const builtin = BUILTIN_THEMES_V2[request.params.themeId];
+          const index = currentTheme.themes.findIndex(({ id }) => id === request.params.themeId);
+          const document = builtin ?? (index >= 0 ? currentTheme.themes[index] : null);
+          if (!document) {
+            throw semanticFailure(
+              "themeNotFound",
+              "$.params.themeId",
+              `Theme ${request.params.themeId} was not found.`,
+              -32020
+            );
+          }
+          return {
+            requestId,
+            result: {
+              revision: controlRevisionRef.current,
+              theme: structuredClone(document),
+              kind: builtin ? "builtin" : "custom",
+              active: currentTheme.appearance.resolvedThemeId === document.id,
+              index: builtin ? null : index,
+            },
+          };
+        }
+
+        const themeMutations = new Set([
+          "theme.select",
+          "theme.followSystem",
+          "theme.create",
+          "theme.update",
+          "theme.rename",
+          "theme.duplicate",
+          "theme.delete",
+          "theme.reorder",
+        ]);
+        if (themeMutations.has(request.method)) {
+          const currentRevision = controlRevisionRef.current;
+          if (request.params.expectedRevision !== currentRevision) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `Themes changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedRevision, currentRevision }
+            );
+          }
+          const control = latestThemeRef.current.control;
+          if (!control) {
+            throw semanticFailure(
+              "controlUnavailable",
+              "$",
+              "Theme Control is unavailable.",
+              -32012
+            );
+          }
+          if (request.method !== "theme.reorder") control.assertAllowed(request.method);
+
+          const dryRun = request.params.dryRun === true;
+          const makeId = () => `custom-${crypto.randomUUID()}`;
+          const planned =
+            request.method === "theme.select"
+              ? control.planSelect(request.params.themeId)
+              : request.method === "theme.followSystem"
+                ? control.planFollowSystem()
+                : request.method === "theme.create"
+                  ? control.planCreate(request.params.document, dryRun ? undefined : { makeId })
+                  : request.method === "theme.update"
+                    ? control.planUpdate(request.params.themeId, request.params.document)
+                    : request.method === "theme.rename"
+                      ? control.planRename(request.params.themeId, request.params.name)
+                      : request.method === "theme.duplicate"
+                        ? control.planDuplicate(
+                            request.params.themeId,
+                            request.params.name,
+                            dryRun ? undefined : { makeId }
+                          )
+                        : request.method === "theme.delete"
+                          ? control.planDelete(request.params.themeId)
+                          : control.planReorder(request.params.themeIds);
+
+          if (planned.issues.length > 0) {
+            const first = planned.issues[0];
+            const paths = {
+              themeNotFound: "$.params.themeId",
+              themeNotMutable: "$.params.themeId",
+              invalidPermutation: "$.params.themeIds",
+              invalidName: "$.params.name",
+            };
+            const codes = {
+              themeNotFound: -32020,
+              themeNotMutable: -32602,
+              invalidPermutation: -32602,
+              invalidName: -32602,
+            };
+            const reason = paths[first.code] ? first.code : "invalidTheme";
+            throw semanticFailure(
+              reason,
+              paths[first.code] ?? "$.params.document",
+              reason === "invalidTheme" ? "The Theme document is invalid." : first.message,
+              codes[first.code] ?? -32602,
+              { issues: planned.issues }
+            );
+          }
+
+          const result = {
+            dryRun,
+            revision: currentRevision,
+            changed: planned.changed.length > 0,
+            warnings: planned.warnings,
+            plan: themePlanResult(request.method, planned),
+            state: compactThemeState(planned.state),
+          };
+          if (dryRun || planned.changed.length === 0) return { requestId, result };
+
+          const committed = new Promise((resolve, reject) => {
+            themeSettlementRef.current = {
+              signature: themeStateSignature(planned.state),
+              resolve,
+              reject,
+            };
+          });
+          control.commit(planned);
+          result.revision = await awaitSettlement(
+            committed,
+            () => {
+              themeSettlementRef.current = null;
+            },
+            "The Theme change"
+          );
+          result.state = compactThemeState(latestThemeRef.current.state);
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Theme committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revision: result.revision }
+            );
+          }
+          return { requestId, result };
+        }
+
         // `preset.list` is handled above and keeps its own richer shape; the guard is here so a
         // later reordering of these branches cannot silently swap it for the generic one.
         const libraryMatch = /^(preset|theme|loudnessProfile)\.(list|export|import)$/.exec(
@@ -1771,6 +1975,21 @@ export function useAgentControlBridge({
           }
 
           if (action === "export") {
+            if (
+              family === "theme" &&
+              request.params.ids?.some((id) => Object.hasOwn(BUILTIN_THEMES_V2, id))
+            ) {
+              const builtinIds = request.params.ids.filter((id) =>
+                Object.hasOwn(BUILTIN_THEMES_V2, id)
+              );
+              throw semanticFailure(
+                "themeNotExportable",
+                "$.params.ids",
+                `Built-in Themes cannot be exported: ${builtinIds.join(", ")}.`,
+                -32602,
+                { themeIds: builtinIds }
+              );
+            }
             const planned = planLibraryExport(family, request.params.ids);
             if (planned.missingIds.length > 0) {
               throw semanticFailure(
@@ -2285,8 +2504,6 @@ export function useAgentControlBridge({
     loudnessActive,
     loudnessProfile,
     loudnessProfiles,
-    theme,
-    themeSignature,
     analysisContext,
     applySettings,
     executeTransport,

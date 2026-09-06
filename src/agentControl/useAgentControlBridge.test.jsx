@@ -11,6 +11,8 @@ import { getAdapter } from "../transfer/libraryAdapters.js";
 import { listCustomThemes } from "../theme/customThemesRepo.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { useThemeSettings } from "../hooks/useThemeSettings.js";
+import { useCustomThemeSettings } from "../hooks/useCustomThemeSettings.js";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
@@ -137,6 +139,14 @@ const MUTATION_METHODS = new Set([
   "dock.panel.reset",
   "preset.import",
   "theme.import",
+  "theme.select",
+  "theme.followSystem",
+  "theme.create",
+  "theme.update",
+  "theme.rename",
+  "theme.duplicate",
+  "theme.delete",
+  "theme.reorder",
   "loudnessProfile.import",
   "loudnessProfile.select",
   "loudnessProfile.create",
@@ -184,6 +194,7 @@ function Harness({
   loudnessProfile = null,
   customThemes = null,
   themeState = null,
+  themeControl = null,
   capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
   assertPresetOperationAllowed = () => {},
   agentSettings = publicSettings,
@@ -364,7 +375,7 @@ function Harness({
     loudnessProfiles: loudnessProfilesFromStore ? subscribedProfiles : loudnessProfiles,
     loudnessProfile,
     customThemes: customThemes ?? subscribedThemes,
-    theme: themeState ? { state: themeState } : null,
+    theme: themeState ? { state: themeState, control: themeControl } : null,
     flush,
     ...(exportConfiguration ? { exportConfiguration } : {}),
     ...(importConfiguration ? { importConfiguration } : {}),
@@ -401,6 +412,40 @@ function mountWithProfiles(options = {}) {
     },
     get profile() {
       return profile;
+    },
+  };
+}
+
+function ThemeHarness({ onTheme = () => {}, ...props }) {
+  const themeSettings = useThemeSettings();
+  const theme = useCustomThemeSettings({
+    themeSettings,
+    setSettingsOpen: vi.fn(),
+    makeId: () => "custom-editor",
+  });
+  onTheme(theme);
+  return (
+    <Harness
+      {...props}
+      themeState={theme.themeControl.readState()}
+      themeControl={theme.themeControl}
+    />
+  );
+}
+
+function mountWithThemes(options = {}) {
+  let theme = null;
+  const rendered = render(
+    <WorkspaceProvider>
+      <BlockingEditorsProvider>
+        <ThemeHarness {...options} onTheme={(next) => (theme = next)} />
+      </BlockingEditorsProvider>
+    </WorkspaceProvider>
+  );
+  return {
+    ...rendered,
+    get theme() {
+      return theme;
     },
   };
 }
@@ -442,6 +487,11 @@ function createDeferred() {
 
 beforeEach(() => {
   localStorage.clear();
+  window.matchMedia = vi.fn(() => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
   adapter.handler = null;
   adapter.order.length = 0;
   adapter.responses.length = 0;
@@ -2292,7 +2342,7 @@ describe("useAgentControlBridge", () => {
   });
 
   it("bumps the revision when the theme library changes outside a command", async () => {
-    const view = mount({ customThemes: { "t-1": { id: "t-1", name: "Studio" } } });
+    const view = mount({ customThemes: { "t-1": makeTheme("t-1", "Studio") } });
     await waitUntilReady();
     const before = (await send(request("app.capabilities", {}, "theme-before"))).result.revision;
 
@@ -2300,8 +2350,8 @@ describe("useAgentControlBridge", () => {
       <WorkspaceProvider>
         <Harness
           customThemes={{
-            "t-1": { id: "t-1", name: "Studio" },
-            "t-2": { id: "t-2", name: "Night" },
+            "t-1": makeTheme("t-1", "Studio"),
+            "t-2": makeTheme("t-2", "Night"),
           }}
         />
       </WorkspaceProvider>
@@ -2568,6 +2618,255 @@ describe("useAgentControlBridge", () => {
     expect(importConfiguration).not.toHaveBeenCalled();
   });
 
+  describe("Theme Control", () => {
+    function authoring(name = "Studio", overrides = {}) {
+      const { id: _id, ...document } = makeTheme("unused", name);
+      return { ...document, ...overrides };
+    }
+
+    it("inspects Appearance and describes built-in and custom V2 documents", async () => {
+      seedThemeLibrary([makeTheme("custom-studio", "Studio")]);
+      mountWithThemes();
+      await waitUntilReady();
+
+      const inspected = await send(request("theme.inspect", {}, "theme-inspect"));
+      const builtin = await send(
+        request("theme.describe", { themeId: "plvs-dark" }, "theme-describe-builtin")
+      );
+      const custom = await send(
+        request("theme.describe", { themeId: "custom-studio" }, "theme-describe-custom")
+      );
+
+      expect(inspected.result).toEqual({
+        revision: 0,
+        appearance: { mode: "system", selectedThemeId: null, resolvedThemeId: "plvs-dark" },
+      });
+      expect(builtin.result).toMatchObject({
+        revision: 0,
+        theme: { id: "plvs-dark", version: 2 },
+        kind: "builtin",
+        active: true,
+        index: null,
+      });
+      expect(custom.result).toMatchObject({
+        theme: { id: "custom-studio", name: "Studio", version: 2 },
+        kind: "custom",
+        active: false,
+        index: 0,
+      });
+      expect(builtin.result.theme).not.toHaveProperty("roles");
+      const missing = await send(
+        request("theme.describe", { themeId: "missing" }, "theme-describe-missing")
+      );
+      expect(missing.error.data.reason).toBe("themeNotFound");
+    });
+
+    it("selects, follows System, creates, updates, renames, duplicates, reorders, and deletes", async () => {
+      const flush = vi.fn(async () => {});
+      mountWithThemes({ flush });
+      await waitUntilReady();
+      let revision = 0;
+
+      let response = await send(
+        request(
+          "theme.select",
+          { themeId: "plvs-light", expectedRevision: revision },
+          "theme-select"
+        )
+      );
+      revision = response.result.revision;
+      expect(response.result.state.appearance).toMatchObject({
+        mode: "fixed",
+        selectedThemeId: "plvs-light",
+      });
+
+      response = await send(
+        request("theme.followSystem", { expectedRevision: revision }, "theme-follow")
+      );
+      revision = response.result.revision;
+      expect(response.result.state.appearance.mode).toBe("system");
+
+      response = await send(
+        request(
+          "theme.create",
+          { document: authoring("Created"), expectedRevision: revision },
+          "theme-create"
+        )
+      );
+      expect(response.error).toBeUndefined();
+      revision = response.result.revision;
+      const createdId = response.result.plan.theme.id;
+      expect(createdId).toMatch(/^custom-/);
+      expect(response.result.state.appearance.selectedThemeId).toBe(createdId);
+
+      response = await send(
+        request(
+          "theme.update",
+          {
+            themeId: createdId,
+            document: authoring("Updated", {
+              core: { ...authoring().core, workspace: "#111111" },
+            }),
+            expectedRevision: revision,
+          },
+          "theme-update"
+        )
+      );
+      revision = response.result.revision;
+      expect(response.result.plan.theme).toMatchObject({ id: createdId, name: "Updated" });
+      expect(response.result.state.appearance.selectedThemeId).toBe(createdId);
+
+      response = await send(
+        request(
+          "theme.rename",
+          { themeId: createdId, name: "Renamed", expectedRevision: revision },
+          "theme-rename"
+        )
+      );
+      revision = response.result.revision;
+      expect(response.result.plan.theme.name).toBe("Renamed");
+
+      response = await send(
+        request(
+          "theme.duplicate",
+          { themeId: "plvs-dark", name: "Dark Copy", expectedRevision: revision },
+          "theme-duplicate"
+        )
+      );
+      revision = response.result.revision;
+      const duplicateId = response.result.plan.theme.id;
+      expect(response.result.plan.source.kind).toBe("builtin");
+      expect(response.result.state.appearance.selectedThemeId).toBe(duplicateId);
+
+      response = await send(
+        request(
+          "theme.reorder",
+          { themeIds: [duplicateId, createdId], expectedRevision: revision },
+          "theme-reorder"
+        )
+      );
+      revision = response.result.revision;
+      expect(response.result.plan.themeIds).toEqual([duplicateId, createdId]);
+
+      response = await send(
+        request(
+          "theme.delete",
+          { themeId: duplicateId, expectedRevision: revision },
+          "theme-delete"
+        )
+      );
+      expect(response.result.plan.fallbackThemeId).toBe("plvs-dark");
+      expect(response.result.state.appearance).toMatchObject({
+        mode: "fixed",
+        selectedThemeId: "plvs-dark",
+      });
+      expect(response.result.revision).toBe(8);
+      expect(flush).toHaveBeenCalledTimes(8);
+    });
+
+    it("keeps dry-run and no-op side-effect free and enforces revision and permissions", async () => {
+      const flush = vi.fn(async () => {});
+      mountWithThemes({ flush });
+      await waitUntilReady();
+
+      const preview = await send(
+        request(
+          "theme.create",
+          { document: authoring("Preview"), expectedRevision: 0, dryRun: true },
+          "theme-create-preview"
+        )
+      );
+      expect(preview.result).toMatchObject({ dryRun: true, revision: 0, changed: true });
+      expect(preview.result.plan).not.toHaveProperty("theme");
+      expect(preview.result.state.themes.filter(({ kind }) => kind === "custom")).toEqual([]);
+
+      const noOp = await send(
+        request("theme.followSystem", { expectedRevision: 0 }, "theme-follow-noop")
+      );
+      expect(noOp.result).toMatchObject({ changed: false, revision: 0 });
+
+      const stale = await send(
+        request("theme.select", { themeId: "plvs-dark", expectedRevision: 9 }, "theme-select-stale")
+      );
+      expect(stale.error.data.reason).toBe("revisionConflict");
+
+      const immutable = await send(
+        request(
+          "theme.update",
+          { themeId: "plvs-dark", document: authoring(), expectedRevision: 0 },
+          "theme-update-builtin"
+        )
+      );
+      expect(immutable.error.data.reason).toBe("themeNotMutable");
+
+      const invalid = await send(
+        request(
+          "theme.create",
+          { document: { ...authoring(), id: "claimed" }, expectedRevision: 0 },
+          "theme-create-invalid"
+        )
+      );
+      expect(invalid.error.data).toMatchObject({
+        reason: "invalidTheme",
+        details: { issues: [expect.objectContaining({ path: "$.id" })] },
+      });
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it("blocks conflicting mutations before draft, stores, preview, ID, or persistence changes", async () => {
+      const flush = vi.fn(async () => {});
+      const view = mountWithThemes({ flush });
+      await waitUntilReady();
+      act(() => view.theme.editor.beginCreate("Draft"));
+      const beforeDraft = structuredClone(view.theme.editor.draft);
+      const beforeSettings = settingsStore.read();
+      const beforeThemes = themesStore.read();
+
+      const response = await send(
+        request(
+          "theme.create",
+          { document: authoring("Blocked"), expectedRevision: 0 },
+          "theme-create-blocked"
+        )
+      );
+      expect(response.error.data).toMatchObject({
+        reason: "editorActive",
+        details: { editors: ["theme"] },
+      });
+      expect(view.theme.editor.draft).toEqual(beforeDraft);
+      expect(settingsStore.read()).toEqual(beforeSettings);
+      expect(themesStore.read()).toEqual(beforeThemes);
+      expect(flush).not.toHaveBeenCalled();
+
+      const reordered = await send(
+        request("theme.reorder", { themeIds: [], expectedRevision: 0 }, "theme-reorder-editor")
+      );
+      expect(reordered.result.changed).toBe(false);
+    });
+
+    it("reports committed state and revision when persistence fails", async () => {
+      const flush = vi.fn(async () => {
+        throw new Error("disk full");
+      });
+      mountWithThemes({ flush });
+      await waitUntilReady();
+      const response = await send(
+        request(
+          "theme.select",
+          { themeId: "plvs-light", expectedRevision: 0 },
+          "theme-persistence-failure"
+        )
+      );
+      expect(response.error).toMatchObject({
+        code: -32030,
+        data: {
+          reason: "persistenceFailed",
+          details: { stateCommitted: true, revision: 1 },
+        },
+      });
+    });
+  });
+
   describe("library transfer", () => {
     const PROFILE_A = { id: "prof-a", name: "EBU R128", referenceLufs: -23, rules: [] };
     const PROFILE_B = { id: "prof-b", name: "ATSC A/85", referenceLufs: -24, rules: [] };
@@ -2602,14 +2901,21 @@ describe("useAgentControlBridge", () => {
       expect(response.result.activeId).toBe("prof-b");
     });
 
-    it("lists the custom Theme library", async () => {
+    it("lists built-in and custom Themes with current Appearance", async () => {
       seedThemeLibrary([makeTheme("t-1", "Studio")]);
       mount();
       await waitUntilReady();
 
       const response = await send(request("theme.list", {}, "theme-list"));
 
-      expect(response.result.themes).toEqual([{ id: "t-1", name: "Studio" }]);
+      expect(response.result).toMatchObject({
+        appearance: { mode: "system", selectedThemeId: null, resolvedThemeId: "plvs-dark" },
+        themes: [
+          { id: "plvs-dark", name: "Dark", kind: "builtin", colorScheme: "dark" },
+          { id: "plvs-light", name: "Light", kind: "builtin", colorScheme: "light" },
+          { id: "t-1", name: "Studio", kind: "custom", colorScheme: "dark" },
+        ],
+      });
     });
 
     it("exports the whole library", async () => {
@@ -2638,6 +2944,22 @@ describe("useAgentControlBridge", () => {
           reason: "themeNotFound",
           path: "$.params.ids",
           details: { missingIds: ["ghost", "gone"] },
+        },
+      });
+    });
+
+    it("rejects built-in Theme export separately from a missing custom Theme", async () => {
+      mount();
+      await waitUntilReady();
+      const response = await send(
+        request("theme.export", { ids: ["plvs-dark"] }, "theme-export-builtin")
+      );
+      expect(response.error).toMatchObject({
+        code: -32602,
+        data: {
+          reason: "themeNotExportable",
+          path: "$.params.ids",
+          details: { themeIds: ["plvs-dark"] },
         },
       });
     });

@@ -366,7 +366,7 @@ function generatedTheme(state, document, makeId) {
       ]),
     };
   }
-  return { theme: { id, ...document } };
+  return { theme: normalizeThemeV2({ id, ...document }) };
 }
 
 export function planThemeCreate(state, rawDocument, { makeId } = {}) {
@@ -402,8 +402,8 @@ export function planThemeUpdate(state, themeId, rawDocument) {
   const target = mutableTheme(state, themeId);
   if (target.error) return target.error;
   return validatedPlan(state, rawDocument, (document) => {
-    const theme = { id: themeId, ...document };
-    if (JSON.stringify(theme) === JSON.stringify(target.theme))
+    const theme = normalizeThemeV2({ id: themeId, ...document });
+    if (JSON.stringify(theme) === JSON.stringify(normalizeThemeV2(target.theme)))
       return { ...invalid(state, []), theme };
     return {
       state: { ...state, themes: state.themes.map((item) => (item.id === themeId ? theme : item)) },
