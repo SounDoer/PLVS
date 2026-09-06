@@ -12,10 +12,10 @@ export const CORE_COLOR_KEYS = Object.freeze([
   "secondaryData",
 ]);
 
-const STATUS_KEYS = Object.freeze(["good", "warning", "critical"]);
-const INTERFACE_KEYS = Object.freeze(["critical"]);
-const FREQUENCY_KEYS = Object.freeze(["low", "mid", "high"]);
-const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+export const STATUS_COLOR_KEYS = Object.freeze(["good", "warning", "critical"]);
+export const INTERFACE_COLOR_KEYS = Object.freeze(["critical"]);
+export const FREQUENCY_COLOR_KEYS = Object.freeze(["low", "mid", "high"]);
+export const THEME_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export function normalizeThemeName(raw) {
   if (typeof raw !== "string") return null;
@@ -23,10 +23,10 @@ export function normalizeThemeName(raw) {
   return name && name.length <= THEME_NAME_MAX_LENGTH ? name : null;
 }
 
-function normalizeId(raw) {
+export function normalizeThemeId(raw) {
   if (typeof raw !== "string") return null;
   const id = raw.trim();
-  return ID_PATTERN.test(id) ? id : null;
+  return THEME_ID_PATTERN.test(id) ? id : null;
 }
 
 function normalizeColorRecord(raw, keys) {
@@ -42,7 +42,7 @@ function normalizeColorRecord(raw, keys) {
 
 function normalizePresetId(raw) {
   if (raw == null || raw === "") return null;
-  return normalizeId(raw);
+  return normalizeThemeId(raw);
 }
 
 function normalizeIntensity(raw) {
@@ -88,7 +88,7 @@ function normalizeOverrides(raw) {
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
   const result = {};
   for (const [rawRoleId, rawOverride] of Object.entries(raw)) {
-    const roleId = normalizeId(rawRoleId);
+    const roleId = normalizeThemeId(rawRoleId);
     if (!roleId || !rawOverride || typeof rawOverride !== "object") return null;
     if (rawOverride.kind === "color") {
       const value = normalizeOpaqueColor(rawOverride.value);
@@ -97,7 +97,7 @@ function normalizeOverrides(raw) {
       continue;
     }
     if (rawOverride.kind === "reference") {
-      const source = normalizeId(rawOverride.source);
+      const source = normalizeThemeId(rawOverride.source);
       if (!source) return null;
       result[roleId] = { kind: "reference", source };
       continue;
@@ -132,14 +132,14 @@ function normalizeOverrides(raw) {
 export function normalizeThemeV2(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   if (raw.version !== THEME_DOCUMENT_VERSION) return null;
-  const id = normalizeId(raw.id);
+  const id = normalizeThemeId(raw.id);
   const name = normalizeThemeName(raw.name);
   const colorScheme =
     raw.colorScheme === "light" || raw.colorScheme === "dark" ? raw.colorScheme : null;
   const core = normalizeColorRecord(raw.core, CORE_COLOR_KEYS);
-  const status = normalizeSimplePalette(raw.palettes?.status, STATUS_KEYS);
+  const status = normalizeSimplePalette(raw.palettes?.status, STATUS_COLOR_KEYS);
   const intensity = normalizeIntensity(raw.palettes?.intensity);
-  const frequency = normalizeSimplePalette(raw.palettes?.frequency, FREQUENCY_KEYS);
+  const frequency = normalizeSimplePalette(raw.palettes?.frequency, FREQUENCY_COLOR_KEYS);
   const overrides = normalizeOverrides(raw.overrides);
   if (!id || !name || !colorScheme || !core || !status || !intensity || !frequency || !overrides) {
     return null;
@@ -151,7 +151,7 @@ export function normalizeThemeV2(raw) {
   const interfacePalette =
     raw.palettes?.interface == null
       ? interfaceDefault
-      : normalizeSimplePalette(raw.palettes.interface, INTERFACE_KEYS);
+      : normalizeSimplePalette(raw.palettes.interface, INTERFACE_COLOR_KEYS);
   if (!interfacePalette) return null;
   return {
     version: THEME_DOCUMENT_VERSION,
