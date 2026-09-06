@@ -84,6 +84,7 @@ export function normalizeAgentControlRequest(input) {
     input.method === "axis.inspect" ||
     input.method === "preset.list" ||
     input.method === "theme.list" ||
+    input.method === "theme.inspect" ||
     input.method === "loudnessProfile.list" ||
     input.method === "config.export" ||
     input.method === "settings.describe" ||
@@ -165,6 +166,103 @@ export function normalizeAgentControlRequest(input) {
         id: input.id,
         method: input.method,
         params: { profileId: input.params.profileId },
+      },
+    };
+  }
+
+  if (input.method === "theme.describe") {
+    const field = unknownField(input.params, new Set(["themeId"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (
+      typeof input.params.themeId !== "string" ||
+      input.params.themeId.trim() === "" ||
+      input.params.themeId.length > 256
+    ) {
+      return invalidParams(
+        "$.params.themeId",
+        "themeId must be a non-empty string of at most 256 characters."
+      );
+    }
+    return {
+      ok: true,
+      request: { id: input.id, method: input.method, params: { themeId: input.params.themeId } },
+    };
+  }
+
+  const themeMutations = new Set([
+    "theme.select",
+    "theme.followSystem",
+    "theme.create",
+    "theme.update",
+    "theme.rename",
+    "theme.duplicate",
+    "theme.delete",
+    "theme.reorder",
+  ]);
+  if (themeMutations.has(input.method)) {
+    const select = input.method === "theme.select";
+    const create = input.method === "theme.create";
+    const update = input.method === "theme.update";
+    const rename = input.method === "theme.rename";
+    const duplicate = input.method === "theme.duplicate";
+    const reorder = input.method === "theme.reorder";
+    const hasThemeId = select || update || rename || duplicate || input.method === "theme.delete";
+    const allowed = new Set([
+      ...(hasThemeId ? ["themeId"] : []),
+      ...(create || update ? ["document"] : []),
+      ...(rename || duplicate ? ["name"] : []),
+      ...(reorder ? ["themeIds"] : []),
+      "expectedRevision",
+      "dryRun",
+    ]);
+    const field = unknownField(input.params, allowed);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (
+      hasThemeId &&
+      (typeof input.params.themeId !== "string" ||
+        input.params.themeId.trim() === "" ||
+        input.params.themeId.length > 256)
+    ) {
+      return invalidParams(
+        "$.params.themeId",
+        "themeId must be a non-empty string of at most 256 characters."
+      );
+    }
+    if ((create || update) && !isPlainJsonObject(input.params.document)) {
+      return invalidParams("$.params.document", "document must be a plain JSON object.");
+    }
+    if (
+      (rename || duplicate) &&
+      (typeof input.params.name !== "string" ||
+        input.params.name.trim() === "" ||
+        input.params.name.length > 64)
+    ) {
+      return invalidParams(
+        "$.params.name",
+        "name must be a non-empty string of at most 64 characters."
+      );
+    }
+    if (reorder && !Array.isArray(input.params.themeIds)) {
+      return invalidParams("$.params.themeIds", "themeIds must be an array.");
+    }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          ...(hasThemeId ? { themeId: input.params.themeId } : {}),
+          ...(create || update ? { document: input.params.document } : {}),
+          ...(rename || duplicate ? { name: input.params.name } : {}),
+          ...(reorder ? { themeIds: input.params.themeIds } : {}),
+          expectedRevision: input.params.expectedRevision,
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
       },
     };
   }

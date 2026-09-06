@@ -11,6 +11,7 @@ describe("normalizeAgentControlRequest", () => {
     "app.inspect",
     "axis.describe",
     "axis.inspect",
+    "theme.inspect",
     "config.export",
     "settings.describe",
     "settings.inspect",
@@ -98,6 +99,42 @@ describe("normalizeAgentControlRequest", () => {
     }
   });
 
+  it("normalizes Theme queries and every mutation shape", () => {
+    const document = { version: 2, name: "Studio" };
+    const cases = [
+      ["theme.describe", { themeId: "plvs-dark" }],
+      ["theme.select", { themeId: "plvs-light", expectedRevision: 2, dryRun: true }],
+      ["theme.followSystem", { expectedRevision: 2, dryRun: true }],
+      ["theme.create", { document, expectedRevision: 2, dryRun: true }],
+      ["theme.update", { themeId: "custom-1", document, expectedRevision: 2, dryRun: true }],
+      ["theme.rename", { themeId: "custom-1", name: "Studio", expectedRevision: 2, dryRun: true }],
+      [
+        "theme.duplicate",
+        { themeId: "plvs-dark", name: "Copy", expectedRevision: 2, dryRun: true },
+      ],
+      ["theme.delete", { themeId: "custom-1", expectedRevision: 2, dryRun: true }],
+      ["theme.reorder", { themeIds: ["custom-2", "custom-1"], expectedRevision: 2, dryRun: true }],
+    ];
+    for (const [method, params] of cases) {
+      expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+        ok: true,
+        request: { id: "req-1", method, params },
+      });
+    }
+  });
+
+  it("leaves Theme document semantics to the shared planner", () => {
+    const document = { version: 99, unknown: true };
+    expect(
+      normalizeAgentControlRequest(request("theme.create", { document, expectedRevision: 0 }))
+        .request.params.document
+    ).toBe(document);
+    expect(
+      normalizeAgentControlRequest(request("theme.create", { document: [], expectedRevision: 0 }))
+        .error.path
+    ).toBe("$.params.document");
+  });
+
   it("leaves authoring semantics to the shared planner but requires a plain document", () => {
     const semanticallyInvalid = { name: "", referenceLufs: 99, rules: "no" };
     expect(
@@ -116,6 +153,15 @@ describe("normalizeAgentControlRequest", () => {
   });
 
   it.each([
+    ["theme.describe", { themeId: "plvs-dark" }],
+    ["theme.select", { themeId: "plvs-dark", expectedRevision: 0 }],
+    ["theme.followSystem", { expectedRevision: 0 }],
+    ["theme.create", { document: {}, expectedRevision: 0 }],
+    ["theme.update", { themeId: "custom-1", document: {}, expectedRevision: 0 }],
+    ["theme.rename", { themeId: "custom-1", name: "Name", expectedRevision: 0 }],
+    ["theme.duplicate", { themeId: "plvs-dark", name: "Copy", expectedRevision: 0 }],
+    ["theme.delete", { themeId: "custom-1", expectedRevision: 0 }],
+    ["theme.reorder", { themeIds: [], expectedRevision: 0 }],
     ["loudnessProfile.describe", { profileId: "profile-1" }],
     ["loudnessProfile.select", { profileId: "off", expectedRevision: 0 }],
     ["loudnessProfile.create", { document: {}, expectedRevision: 0 }],
@@ -370,6 +416,24 @@ describe("normalizeAgentControlRequest", () => {
     [request("preset.reorder", {}), "invalidParams", "$.params.presetIds", -32602],
     [request("preset.save", {}), "invalidParams", "$.params.name", -32602],
     [request("preset.update", {}), "invalidParams", "$.params.presetId", -32602],
+    [request("theme.describe", {}), "invalidParams", "$.params.themeId", -32602],
+    [request("theme.select", { themeId: " " }), "invalidParams", "$.params.themeId", -32602],
+    [request("theme.create", {}), "invalidParams", "$.params.document", -32602],
+    [
+      request("theme.update", { themeId: "custom-1", document: [] }),
+      "invalidParams",
+      "$.params.document",
+      -32602,
+    ],
+    [request("theme.rename", { themeId: "custom-1" }), "invalidParams", "$.params.name", -32602],
+    [
+      request("theme.duplicate", { themeId: "plvs-dark", name: " " }),
+      "invalidParams",
+      "$.params.name",
+      -32602,
+    ],
+    [request("theme.delete", {}), "invalidParams", "$.params.themeId", -32602],
+    [request("theme.reorder", {}), "invalidParams", "$.params.themeIds", -32602],
     [
       request("loudnessProfile.describe", { profileId: "off" }),
       "invalidParams",
@@ -534,6 +598,14 @@ describe("normalizeAgentControlRequest", () => {
     ["dock.exit", {}],
     ["preset.import", { pack: { app: "PLVS" } }],
     ["theme.import", { pack: { app: "PLVS" } }],
+    ["theme.select", { themeId: "plvs-dark" }],
+    ["theme.followSystem", {}],
+    ["theme.create", { document: {} }],
+    ["theme.update", { themeId: "custom-1", document: {} }],
+    ["theme.rename", { themeId: "custom-1", name: "Name" }],
+    ["theme.duplicate", { themeId: "plvs-dark", name: "Copy" }],
+    ["theme.delete", { themeId: "custom-1" }],
+    ["theme.reorder", { themeIds: [] }],
     ["loudnessProfile.import", { pack: { app: "PLVS" } }],
     ["loudnessProfile.select", { profileId: "off" }],
     ["loudnessProfile.create", { document: {} }],
