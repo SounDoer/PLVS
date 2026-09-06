@@ -1,0 +1,414 @@
+# Agent Control CLI: Next-Surface Roadmap
+
+Date: 2026-09-06
+
+Status: Brainstorm and sequencing proposal; not an approved public contract
+
+## Why this document exists
+
+Agent Control has reached the point where adding another command is mechanically straightforward,
+but every public command also creates a compatibility and safety obligation. This note inventories
+the useful gaps after the Library Transfer work and proposes an order that benefits both:
+
+- people using PLVS from a terminal, scripts, stream-deck-style launchers, or support workflows;
+- contributors and agents developing and testing PLVS itself.
+
+The goal is not to mirror every button. A command belongs in the public CLI when it exposes a
+stable product concept, has a real non-GUI workflow, and can preserve the same safety and
+persistence semantics as the visible app.
+
+## Current main baseline
+
+As of `main` at `f662170e`, the public CLI has two roots:
+
+```text
+plvs-cli doctor
+plvs-cli app ...
+```
+
+The running-app surface now covers:
+
+- handshake and observation: `capabilities`, `inspect`, and revision `wait`;
+- scene construction: Workspace, Panel, Axis, Preset, and Dock Control;
+- global preferences: Settings Control;
+- source lifecycle: live and file Transport Control;
+- portable libraries: Preset, Theme, and Loudness Profile list/export/import.
+
+The post-v0.15.0 work added Library Transfer end to end, including strict request validation,
+revision tracking for Theme and Loudness Profile libraries, large named-pipe frame delivery,
+durable settlement, recoverable `--out` failure behavior, and public documentation.
+
+Important constraints of the current baseline:
+
+- App Control is public only on Windows; macOS transport is not implemented.
+- `app` commands are machine-first and require `--json`.
+- `app.inspect` intentionally contains semantic state, not measurement frames or history.
+- configuration backup/reset, device selection, library editing, and runtime measurement queries are
+  intentionally outside the existing contract.
+- the internal `analyze` and `capture` harness commands are release-verification tools, not public
+  CLI promises.
+
+## Decision filter for new commands
+
+Score a candidate against the following questions before designing it:
+
+1. **User job:** Does it complete a task somebody reasonably performs without opening a panel?
+2. **Developer leverage:** Does it replace fragile GUI setup or make an important behavior
+   reproducible in tests and bug reports?
+3. **Semantic owner:** Is there an existing app-layer operation to reuse, or can one be introduced
+   without bypassing React state, native side effects, scene guards, or persistence settlement?
+4. **Bounded output:** Can it return a compact stable document rather than canvas buffers,
+   unbounded history, or implementation-shaped state?
+5. **Concurrency:** Is the operation clearly a query, mutation, or action, with revision behavior
+   that fits the current contract?
+6. **Cross-platform meaning:** Does the command make sense on both product platforms, with explicit
+   availability where OS behavior differs?
+7. **Long-term support:** Would we still want to support its nouns and flags after the current UI is
+   redesigned?
+
+Commands that fail the semantic-owner or bounded-output test should not be exposed merely because
+the underlying data is reachable.
+
+## Recommended roadmap
+
+### P0: Make the existing surface genuinely user-ready
+
+This is foundation work rather than command breadth, but it has the highest product leverage.
+
+#### macOS local transport
+
+Implement the Unix-domain-socket transport already anticipated by the protocol design, preserving
+the same descriptor, authentication, framing, timeout, and JSON-RPC semantics. Capability names and
+CLI envelopes must remain platform-independent.
+
+Why first: every later public command otherwise becomes a Windows-only feature despite PLVS's equal
+Windows/macOS product intent.
+
+#### Optional human-readable output
+
+Keep `--json` exactly stable and continue requiring it for automation. Add an explicit human mode
+for read-oriented commands instead of changing the current default contract, for example:
+
+```text
+plvs-cli app inspect --format text
+plvs-cli app device list --format table
+plvs-cli app measurement inspect --format text
+```
+
+Mutation commands should remain JSON-first until their preview, warnings, and partial-failure
+semantics can be rendered without hiding information. Color must be disabled when output is not a
+TTY and by `NO_COLOR`.
+
+#### Shell completions and documentation examples
+
+Generate PowerShell, zsh, and bash completions from the real parser or a checked command manifest.
+Do not maintain another handwritten command tree. Add copyable workflows, not merely one example
+per leaf command.
+
+### P1: Complete workflows that already exist in the GUI
+
+These commands have strong user value and mostly reuse stable product objects.
+
+#### 1. File-analysis report export
+
+Proposed shape:
+
+```text
+plvs-cli app transport file report <session-id> --json [--out <file>]
+```
+
+The GUI already builds a stable `fileAnalysis` report from a completed session. The CLI should call
+the same builder and use Library Transfer's move-to-file `--out` semantics. Without `--out`, the
+report lives in `result.report`; with it, stdout carries `result.out` and not a duplicate report.
+
+Why it is a good first slice:
+
+- it turns existing file analysis into an end-to-end terminal workflow;
+- it is useful to users, support, release checks, and fixture generation;
+- it exposes a bounded result rather than raw history;
+- it requires no new measurement algorithm.
+
+Open design question: whether report generation is a query or a file-writing action. The app-side
+report is read-only, while the CLI-side `--out` write can still fail after a successful response.
+
+#### 2. Audio device control
+
+Proposed shape:
+
+```text
+plvs-cli app device describe --json
+plvs-cli app device inspect --json
+plvs-cli app device select <device-id> --expected-revision <n> --json \
+  [--allow-measurement-restart] [--dry-run]
+```
+
+`describe` reports the selection schema and availability. `inspect` returns the requested device,
+resolved device, enumerated inputs/outputs, channel count, default sample rate, and stable IDs. It
+must not expose backend-specific handles.
+
+Selecting a device while LIVE is running can restart capture and therefore requires an explicit
+confirmation flag. A dry run validates current availability and predicts the requested selection,
+but cannot guarantee the device will remain present. Device-list changes should advance the public
+revision only if device inventory becomes part of ordinary inspect state; otherwise add a dedicated
+device-generation token and avoid waking unrelated revision waiters.
+
+Developer payoff: capture-rig setup and device-migration behavior become reproducible without
+clicking the header selector.
+
+#### 3. Whole-configuration export and validation
+
+Start with the safe half:
+
+```text
+plvs-cli app config export --json [--out <file>]
+plvs-cli app config validate <file|-> --json
+```
+
+This is distinct from library packs: a configuration contains all four public persistence domains
+and selected siblings, while deliberately excluding `agentControlEnabled`. Export helps users make
+backups and gives bug reports a reproducible setup. Validation should run the same migration and
+normalization pipeline as GUI import without writing anything.
+
+Defer mutation until its lifecycle is designed:
+
+```text
+plvs-cli app config import <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli app config reset --expected-revision <n> --json --confirm-reset
+```
+
+GUI import/reset relaunches PLVS because the boot-time persistence snapshot must be regenerated.
+That means a successful command may intentionally destroy its own control connection. We must
+choose and document either an `accepted` response before relaunch plus a new-session verification
+workflow, or a live multi-domain apply that updates every React owner before returning. It must not
+write stores behind React and claim the visible app changed.
+
+Reset should remain deferred even after import if it adds little beyond the GUI and creates a large
+accidental-loss surface.
+
+### P2: Add a bounded measurement API
+
+This is the largest new product capability and likely the most valuable to automation.
+
+#### Latest semantic measurement
+
+Proposed shape:
+
+```text
+plvs-cli app measurement describe --json
+plvs-cli app measurement inspect --json [--source live|active-file]
+```
+
+Return one coherent semantic sample, not frontend canvas data:
+
+- capture/source state, sample timestamp, age, and trust/health status;
+- per-channel peak and true peak;
+- momentary, short-term, and integrated loudness plus LRA when available;
+- correlation and other scalar Stats metrics already computed for the active analysis request;
+- explicit `null` for conceptually present but unavailable values;
+- the measurement generation or sequence used to prove fields came from one snapshot.
+
+Do not add measurement changes to the global configuration revision. They are high-frequency data
+and would break the existing optimistic-concurrency and revision-wait model.
+
+#### Runtime wait predicates
+
+After the snapshot contract is stable:
+
+```text
+plvs-cli app measurement wait <predicate-file|-> --timeout-ms <n> --json
+```
+
+Initial predicates should be a small allowlist, such as transport lifecycle, fresh-signal presence,
+peak above/below a threshold, integrated loudness availability, and analysis completion. Avoid a
+general expression language. Return the final coherent measurement snapshot that satisfied the
+predicate.
+
+This is a separate family from `app wait`: revision wait observes low-frequency controllable
+state; measurement wait observes runtime data. Conflating them would either busy-wake agents or
+weaken the meaning of the global revision.
+
+#### Explicit non-goal: raw history export in the first slice
+
+History is multi-resolution, source-specific, potentially gigabytes large, and partly keyed by
+panel analysis configuration. Do not expose internal slabs or `app.inspect --include-history`.
+If a real user workflow emerges, design a separate bounded export with an explicit time range,
+sample interval, metric list, maximum rows, and streaming/file semantics.
+
+### P3: Turn transferred libraries into editable libraries
+
+Library Transfer can move objects between installations but cannot author them. Add editing only
+through the same normalized domain operations as the GUI.
+
+#### Loudness Profile Control
+
+Proposed progression:
+
+```text
+plvs-cli app loudness-profile describe <id> --json
+plvs-cli app loudness-profile select <id|off> --expected-revision <n> --json [--dry-run]
+plvs-cli app loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli app loudness-profile update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli app loudness-profile rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli app loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli app loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+Selection is particularly useful because Presets refer to it but Settings Control deliberately does
+not own it. Delete must preserve the GUI's preset-reference cleanup behavior and surface its impact
+in dry-run output. Create/update/delete must be blocked while the Loudness Profile editor is open.
+
+#### Theme Control
+
+Proposed progression:
+
+```text
+plvs-cli app theme describe <id> --json
+plvs-cli app theme create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli app theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli app theme rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli app theme duplicate <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli app theme delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli app theme reorder <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+Keep active Theme selection in `settings update appearance`; do not create a second selection
+owner. Built-in themes are describable and duplicable but not mutable or deletable. Theme patches
+should use the public role/override schema, not generated CSS or internal fallback tokens.
+
+This phase should wait until the editor models expose reusable pure planners. Reimplementing editor
+logic in Agent Control would create two definitions of a valid document.
+
+### P4: Developer and power-user leverage
+
+#### Machine-readable schema export
+
+Proposed shape:
+
+```text
+plvs-cli app schema list --json
+plvs-cli app schema get <command-or-resource> --json
+```
+
+This should be generated from the schema builders and command manifest, not a raw dump of Rust or
+React types. It enables validation, typed client generation, better completions, and a future MCP
+adapter without making `capabilities` enormous.
+
+#### Declarative batch/transaction
+
+Proposed exploratory shape:
+
+```text
+plvs-cli app batch <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+A batch is valuable for repeatable test setup, but only if the whole plan can be validated before
+the first mutation and committed with defined atomicity. A sequential macro that can fail halfway
+is not a transaction and should not be named one. Start with operations that can share one
+app-layer planner; do not attempt rollback of native side effects by replaying inverse commands.
+
+#### Ergonomic workspace operations
+
+Possible commands include panel add/remove/rename and tabs/split helpers. They are convenient for
+humans, but lower priority because `workspace apply` is already complete and atomic. Prefer
+CLI-side helpers that compile to the existing public layout document over new protocol methods,
+provided they still require a caller-supplied expected revision and never auto-retry conflicts.
+
+#### Public headless file analysis
+
+There is clear user value in:
+
+```text
+plvs-cli analyze <audio-file> --json [quality-control options] [--out <file>]
+```
+
+The repository already has an internal analysis harness, but promoting it is not a parser change.
+It needs a separately reviewed public report schema, version/sidecar compatibility, resource and
+cancellation behavior, track-selection semantics, install footprint, and support policy. Public
+analysis must not inherit rig-oriented flags or imply that the capture harness is supported.
+
+#### Diagnostic support bundle
+
+Possible shape:
+
+```text
+plvs-cli doctor bundle --out <archive>
+```
+
+This could package the doctor report, version/build metadata, sanitized configuration, recent
+user-visible errors, and device capabilities. It must preview exactly what will be included, redact
+paths/device names where appropriate, contain no audio or measurement history by default, and
+remain fully local. This is useful but exceeds the PRD's current minimum diagnostic commitment.
+
+### P5: Consider only after concrete demand
+
+- **Window commands:** show/hide, focus, bounds, Always On Top, and Focus View are useful for kiosk
+  launchers, but are intrusive OS actions and partially overlap Presets/Dock.
+- **Screenshot/export image:** useful for support and reports, but platform reliability, window
+  visibility, DPI, sensitive content, and completion-after-paint need a dedicated contract.
+- **Update install/restart:** high-impact network and lifecycle actions should not be added merely
+  because the GUI has buttons.
+- **MCP host:** `plvs-cli mcp` can reuse the command schemas after the measurement and editing
+  surfaces settle. It should adapt the public semantic API, not become a second control API.
+- **Multi-session selection:** only when PLVS supports or users demonstrably run multiple
+  controllable instances. Preserve room for `--session` in discovery design.
+
+## Commands not to expose
+
+The following remain internal even if they are convenient during implementation:
+
+- raw Tauri `invoke`, Event, Channel, reducer action, persistence key, or JavaScript forwarding;
+- arbitrary file read/write or shell execution through the running app;
+- internal capture-harness commands and callback-thread diagnostics;
+- raw history slabs, canvas buffers, WebView DOM state, hover state, or generated CSS;
+- an option that disables revision checks, silently retries conflicts, or discards an open draft;
+- direct store mutation that bypasses the React state owner;
+- generic expression evaluation for waits.
+
+## Proposed delivery order
+
+The smallest useful sequence is:
+
+1. **Cross-platform and human-use foundation:** macOS transport decision/implementation, explicit
+   text rendering for queries, generated completions.
+2. **File report vertical slice:** `transport file report`, including `--out`, fixtures, docs, and
+   real desktop acceptance.
+3. **Device Control:** describe/inspect/select with capture-restart confirmation and hot-plug tests.
+4. **Configuration safe half:** export and validate; separately approve import/relaunch semantics.
+5. **Measurement read slice:** describe/inspect with coherent snapshots and no revision churn.
+6. **Measurement wait:** a bounded predicate allowlist after real consumers validate the snapshot.
+7. **Loudness Profile editing**, then **Theme editing**, reusing editor planners.
+8. **Schema export and batch** only after at least two external consumers need them.
+9. Re-evaluate public headless analysis, support bundles, MCP, screenshots, and window control from
+   actual usage rather than surface-completeness pressure.
+
+If near-term work should stay entirely within the existing Windows transport, start at step 2 and
+track macOS parity as a release blocker for claiming the expanded CLI is cross-platform.
+
+## Definition of done for every new family
+
+Every approved command family should include:
+
+- one semantic owner shared with the GUI, with no direct engine access from components and no
+  persistence writes behind React;
+- strict unknown-field rejection, payload/time/count bounds, and stable machine-readable errors;
+- query/mutation/action classification, revision rules, dry-run behavior, and no-op behavior;
+- blocking-editor and destructive-confirmation behavior before any mutation;
+- durable-settlement semantics and explicit reporting when visible state changed but persistence
+  did not settle;
+- capabilities advertisement and a coverage guard tying advertised commands to handlers;
+- CLI parser, stdin/file, JSON envelope, exit-code, and output-file tests;
+- frontend planner and bridge tests, including refusal before mutation;
+- generated or hand-written public docs as appropriate, plus documentation contract coverage;
+- real desktop acceptance on every supported transport;
+- `npm run check` before merge, and capture smoke/soak only when the capture/DSP/engine boundary is
+  actually crossed.
+
+## Immediate design recommendation
+
+The next implementation design should be **File-analysis Report Export**. It is narrow, already has
+a stable GUI-domain report builder, completes a visible user workflow, and exercises the newly
+hardened large-response and `--out` paths without introducing high-frequency measurement state.
+
+In parallel at the product-planning level, decide whether the next milestone promises macOS Agent
+Control parity. That decision changes how every subsequent command should be described and accepted,
+even though it does not change their semantic API.
