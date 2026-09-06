@@ -314,6 +314,124 @@ describe("draft versus library actions", () => {
     );
     expect(result.current.document).toEqual(mine);
   });
+
+  it("refuses every command-grade document or selection mutation before either store changes", () => {
+    const mine = profile("mine", "Mine", -20);
+    seed([mine]);
+    presetsStore.patch({
+      list: [{ id: "preset", loudnessProfileActive: profileSelectionId(mine.id) }],
+      activeId: "preset",
+      dirty: false,
+    });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginEdit(mine.id));
+    const settingsBefore = structuredClone(settingsStore.read());
+    const presetsBefore = structuredClone(presetsStore.read());
+    const calls = [
+      () => result.current.control.select("mine"),
+      () =>
+        result.current.control.create(
+          { name: "New", referenceLufs: null, rules: [] },
+          { makeId: () => "new" }
+        ),
+      () =>
+        result.current.control.update("mine", {
+          name: "Updated",
+          referenceLufs: null,
+          rules: [],
+        }),
+      () => result.current.control.rename("mine", "Renamed"),
+      () => result.current.control.delete("mine"),
+    ];
+
+    for (const call of calls) {
+      let thrown;
+      act(() => {
+        try {
+          call();
+        } catch (error) {
+          thrown = error;
+        }
+      });
+      expect(thrown?.code).toBe("editorActive");
+      expect(thrown?.editors).toEqual(["loudnessProfile"]);
+      expect(settingsStore.read()).toEqual(settingsBefore);
+      expect(presetsStore.read()).toEqual(presetsBefore);
+    }
+
+    act(() => result.current.control.reorder(["mine"]));
+    expect(result.current.draft).not.toBe(null);
+  });
+});
+
+describe("shared command-grade operations", () => {
+  it("produces the same Settings and Preset state as GUI select, edit, reorder, and delete", () => {
+    const a = profile("a", "A", -23);
+    const b = profile("b", "B", -18);
+    const presets = {
+      list: [{ id: "preset", loudnessProfileActive: profileSelectionId("a") }],
+      activeId: "preset",
+      dirty: false,
+    };
+    seed([a, b]);
+    presetsStore.patch(presets);
+    const gui = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => gui.result.current.select(profileSelectionId("a")));
+    act(() => gui.result.current.beginEdit("a"));
+    act(() => gui.result.current.editDraft((document) => ({ ...document, name: "Updated" })));
+    act(() => gui.result.current.saveDraft());
+    act(() => gui.result.current.reorderProfiles(["b", "a"]));
+    act(() => gui.result.current.removeProfile("a"));
+    const guiSettings = structuredClone(settingsStore.read());
+    const guiPresets = structuredClone(presetsStore.read());
+    gui.unmount();
+
+    settingsStore.reset();
+    presetsStore.reset();
+    seed([a, b]);
+    presetsStore.patch(presets);
+    const command = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => command.result.current.control.select("a"));
+    act(() =>
+      command.result.current.control.update("a", {
+        name: "Updated",
+        referenceLufs: -23,
+        rules: [],
+      })
+    );
+    act(() => command.result.current.control.reorder(["b", "a"]));
+    act(() => command.result.current.control.delete("a"));
+
+    expect(settingsStore.read()).toEqual(guiSettings);
+    expect(presetsStore.read()).toEqual(guiPresets);
+  });
+
+  it("creates, selects, renames, updates, and returns the committed pure plans", () => {
+    seed([]);
+    presetsStore.patch({ list: [], activeId: "preset", dirty: false });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    let created;
+    act(() => {
+      created = result.current.control.create(
+        { name: "  New  ", referenceLufs: null, rules: [] },
+        { makeId: () => "new-id" }
+      );
+    });
+    expect(created.profile).toEqual({
+      id: "new-id",
+      name: "New",
+      referenceLufs: null,
+      rules: [],
+    });
+    expect(result.current.active).toBe(profileSelectionId("new-id"));
+
+    let renamed;
+    act(() => {
+      renamed = result.current.control.rename("new-id", "  Renamed  ");
+    });
+    expect(renamed.profile.name).toBe("Renamed");
+    expect(result.current.active).toBe(profileSelectionId("new-id"));
+  });
 });
 
 describe("profile deletion", () => {

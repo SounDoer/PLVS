@@ -13,9 +13,18 @@ import { SCENE_OPERATIONS, SceneOperationBlockedError } from "../lib/sceneOperat
 import {
   LOUDNESS_PROFILE_OFF,
   createProfileDraft,
+  parseSelection,
   profileSelectionId,
   resolveActiveDocument,
 } from "../lib/loudnessProfileCatalog.js";
+import {
+  planLoudnessProfileCreate,
+  planLoudnessProfileDelete,
+  planLoudnessProfileRename,
+  planLoudnessProfileReorder,
+  planLoudnessProfileSelect,
+  planLoudnessProfileUpdate,
+} from "../lib/loudnessProfileLibrary.js";
 import {
   normalizeLoudnessProfiles,
   normalizeRuleDocument,
@@ -40,16 +49,14 @@ function writeState(next) {
   settingsStore.patch({ loudnessProfiles: next });
 }
 
-function replacePresetProfileSelection(selection) {
+function readPresets() {
   const raw = presetsStore.read();
-  const list = Array.isArray(raw.list) ? raw.list : [];
-  let changed = false;
-  const nextList = list.map((preset) => {
-    if (preset?.loudnessProfileActive !== selection) return preset;
-    changed = true;
-    return { ...preset, loudnessProfileActive: LOUDNESS_PROFILE_OFF };
-  });
-  if (changed) presetsStore.patch({ list: nextList });
+  return {
+    ...raw,
+    list: Array.isArray(raw.list) ? raw.list : [],
+    activeId: typeof raw.activeId === "string" ? raw.activeId : null,
+    dirty: raw.dirty === true,
+  };
 }
 
 export function LoudnessProfileProvider({ children }) {
@@ -136,6 +143,12 @@ export function LoudnessProfileProvider({ children }) {
   /// see the edit. See the `draftRef` comment above.
   const draftBlocks = useCallback(() => draftRef.current != null, []);
 
+  const assertProfileActionAllowed = useCallback((operation) => {
+    if (draftRef.current) {
+      throw new SceneOperationBlockedError(operation, ["loudnessProfile"]);
+    }
+  }, []);
+
   /// This editor is a blocking editor: while a draft is open, preset apply / save / update and
   /// dock entry are all refused. Registered from the provider so it holds for every surface that
   /// can open the draft.
@@ -183,24 +196,121 @@ export function LoudnessProfileProvider({ children }) {
   /// does not contain the id matches nothing, so Save would write nothing and still close the
   /// panel: the user's whole profile, gone with no error. The guards above should keep the draft
   /// and the library in step; this is what happens when they do not.
+  const commitPlan = useCallback((planned) => {
+    if (!planned || planned.issues?.length > 0) return planned;
+    const currentProfiles = stateRef.current;
+    if (
+      planned.loudnessProfiles &&
+      JSON.stringify(planned.loudnessProfiles) !== JSON.stringify(currentProfiles)
+    ) {
+      const next = normalizeLoudnessProfiles(planned.loudnessProfiles);
+      stateRef.current = next;
+      setState(next);
+      writeState(next);
+    }
+    if (planned.presets) {
+      const currentPresets = readPresets();
+      if (JSON.stringify(planned.presets) !== JSON.stringify(currentPresets)) {
+        const patch = {};
+        for (const key of Object.keys(planned.presets)) {
+          if (JSON.stringify(planned.presets[key]) !== JSON.stringify(currentPresets[key])) {
+            patch[key] = planned.presets[key];
+          }
+        }
+        presetsStore.patch(patch);
+      }
+    }
+    return planned;
+  }, []);
+
+  const planSelect = useCallback((profileId) => {
+    return planLoudnessProfileSelect(stateRef.current, readPresets(), profileId);
+  }, []);
+
+  const planCreate = useCallback((document, options) => {
+    return planLoudnessProfileCreate(stateRef.current, readPresets(), document, options);
+  }, []);
+
+  const planUpdate = useCallback((profileId, document) => {
+    return planLoudnessProfileUpdate(stateRef.current, profileId, document);
+  }, []);
+
+  const planRename = useCallback((profileId, name) => {
+    return planLoudnessProfileRename(stateRef.current, profileId, name);
+  }, []);
+
+  const planDelete = useCallback((profileId) => {
+    return planLoudnessProfileDelete(stateRef.current, readPresets(), profileId);
+  }, []);
+
+  const planReorder = useCallback((profileIds) => {
+    return planLoudnessProfileReorder(stateRef.current, profileIds);
+  }, []);
+
+  const controlSelect = useCallback(
+    (profileId) => {
+      assertProfileActionAllowed("loudnessProfile.select");
+      return commitPlan(planSelect(profileId));
+    },
+    [assertProfileActionAllowed, commitPlan, planSelect]
+  );
+
+  const controlCreate = useCallback(
+    (document, { makeId = () => crypto.randomUUID() } = {}) => {
+      assertProfileActionAllowed("loudnessProfile.create");
+      return commitPlan(planCreate(document, { makeId }));
+    },
+    [assertProfileActionAllowed, commitPlan, planCreate]
+  );
+
+  const controlUpdate = useCallback(
+    (profileId, document) => {
+      assertProfileActionAllowed("loudnessProfile.update");
+      return commitPlan(planUpdate(profileId, document));
+    },
+    [assertProfileActionAllowed, commitPlan, planUpdate]
+  );
+
+  const controlRename = useCallback(
+    (profileId, name) => {
+      assertProfileActionAllowed("loudnessProfile.rename");
+      return commitPlan(planRename(profileId, name));
+    },
+    [assertProfileActionAllowed, commitPlan, planRename]
+  );
+
+  const controlDelete = useCallback(
+    (profileId) => {
+      assertProfileActionAllowed("loudnessProfile.delete");
+      return commitPlan(planDelete(profileId));
+    },
+    [assertProfileActionAllowed, commitPlan, planDelete]
+  );
+
+  const controlReorder = useCallback(
+    (profileIds) => commitPlan(planReorder(profileIds)),
+    [commitPlan, planReorder]
+  );
+
   const saveDraft = useCallback(() => {
     const current = draftRef.current;
     if (!current) return;
-    const id = current.editingId ?? crypto.randomUUID();
-    const saved = { ...current.document, id };
-    // An edit restores the selection it began under, so changing a profile's rules never changes
-    // which profile -- or whether any profile -- is being monitored. A new draft has no prior
-    // selection to keep and selects what it created.
-    const nextActive = current.editingId ? current.resumeSelection : profileSelectionId(id);
-    commit((prev) => ({
-      ...prev,
-      active: nextActive,
-      profiles: prev.profiles.some((profile) => profile.id === id)
-        ? prev.profiles.map((profile) => (profile.id === id ? saved : profile))
-        : [...prev.profiles, saved],
-    }));
+    const normalized = normalizeRuleDocument(current.document);
+    if (!normalized) return;
+    const { id: _id, ...document } = normalized;
+    const planned = current.editingId
+      ? planUpdate(current.editingId, document)
+      : planCreate(document, { makeId: () => crypto.randomUUID() });
+    if (current.editingId && current.resumeSelection !== stateRef.current.active) {
+      planned.loudnessProfiles = {
+        ...planned.loudnessProfiles,
+        active: current.resumeSelection,
+      };
+      planned.changed = [...planned.changed, "loudnessProfiles.active"];
+    }
+    commitPlan(planned);
     putDraft(null);
-  }, [commit, putDraft]);
+  }, [commitPlan, planCreate, planUpdate, putDraft]);
 
   // The draft outranks the selection: while one exists, Stats colours, the reference line, the
   // footer and the TP Max marker all follow what the user is typing.
@@ -219,9 +329,10 @@ export function LoudnessProfileProvider({ children }) {
   const select = useCallback(
     (selection) => {
       if (draftBlocks()) return;
-      commit((prev) => ({ ...prev, active: selection }));
+      const { kind, id } = parseSelection(selection);
+      commitPlan(planSelect(kind === "profile" ? id : LOUDNESS_PROFILE_OFF));
     },
-    [commit, draftBlocks]
+    [commitPlan, draftBlocks, planSelect]
   );
 
   const selectOff = useCallback(() => select(LOUDNESS_PROFILE_OFF), [select]);
@@ -236,27 +347,16 @@ export function LoudnessProfileProvider({ children }) {
   const removeProfile = useCallback(
     (id) => {
       if (draftBlocks()) return;
-      const selection = profileSelectionId(id);
-      commit((prev) => ({
-        ...prev,
-        active: prev.active === selection ? LOUDNESS_PROFILE_OFF : prev.active,
-        profiles: prev.profiles.filter((profile) => profile.id !== id),
-      }));
-      replacePresetProfileSelection(selection);
+      commitPlan(planDelete(id));
     },
-    [commit, draftBlocks]
+    [commitPlan, draftBlocks, planDelete]
   );
 
   /// Pure reordering of the library: never touches `active`, so it cannot dirty a preset and
   /// never needs to consult the draft-blocking rule the other library actions enforce.
   const reorderProfiles = useCallback(
-    (nextIds) => {
-      const byId = new Map(stateRef.current.profiles.map((profile) => [profile.id, profile]));
-      const reordered = nextIds.map((id) => byId.get(id)).filter(Boolean);
-      if (reordered.length !== stateRef.current.profiles.length) return;
-      commit((prev) => ({ ...prev, profiles: reordered }));
-    },
-    [commit]
+    (nextIds) => commitPlan(planReorder(nextIds)),
+    [commitPlan, planReorder]
   );
 
   /// Layout presets snapshot which profile was active, never the library itself -- the same way
@@ -307,6 +407,22 @@ export function LoudnessProfileProvider({ children }) {
       reorderProfiles,
       snapshotForPreset,
       applyPresetSnapshot,
+      control: {
+        assertAllowed: assertProfileActionAllowed,
+        planSelect,
+        planCreate,
+        planUpdate,
+        planRename,
+        planDelete,
+        planReorder,
+        commit: commitPlan,
+        select: controlSelect,
+        create: controlCreate,
+        update: controlUpdate,
+        rename: controlRename,
+        delete: controlDelete,
+        reorder: controlReorder,
+      },
     }),
     [
       state,
@@ -323,6 +439,20 @@ export function LoudnessProfileProvider({ children }) {
       reorderProfiles,
       snapshotForPreset,
       applyPresetSnapshot,
+      assertProfileActionAllowed,
+      planSelect,
+      planCreate,
+      planUpdate,
+      planRename,
+      planDelete,
+      planReorder,
+      commitPlan,
+      controlSelect,
+      controlCreate,
+      controlUpdate,
+      controlRename,
+      controlDelete,
+      controlReorder,
     ]
   );
 
