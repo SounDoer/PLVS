@@ -116,6 +116,7 @@ const MUTATION_METHODS = new Set([
   "preset.rename",
   "preset.delete",
   "preset.reorder",
+  "config.import",
   "settings.update",
   "transport.source.live",
   "transport.source.file",
@@ -190,6 +191,9 @@ function Harness({
   applyPresetToWorkspace = false,
   presetApplyBarrier = null,
   exportConfiguration,
+  importConfiguration,
+  normalizeConfiguration,
+  relaunchAfterConfigurationChange,
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
@@ -355,6 +359,9 @@ function Harness({
     customThemes: customThemes ?? subscribedThemes,
     flush,
     ...(exportConfiguration ? { exportConfiguration } : {}),
+    ...(importConfiguration ? { importConfiguration } : {}),
+    ...(normalizeConfiguration ? { normalizeConfiguration } : {}),
+    ...(relaunchAfterConfigurationChange ? { relaunchAfterConfigurationChange } : {}),
   });
   return null;
 }
@@ -2283,6 +2290,92 @@ describe("useAgentControlBridge", () => {
     expect(response.result).toEqual({ revision: before, configuration });
     expect(after).toBe(before);
     expect(exportConfiguration).toHaveBeenCalledTimes(1);
+  });
+
+  it("validates configuration imports without writing or relaunching in dry-run", async () => {
+    const configuration = { app: "PLVS", kind: "configuration-profile", version: 1 };
+    const normalized = { ...configuration, settings: {}, workspace: {} };
+    const normalizeConfiguration = vi.fn(() => normalized);
+    const importConfiguration = vi.fn();
+    const relaunchAfterConfigurationChange = vi.fn();
+    mount({ normalizeConfiguration, importConfiguration, relaunchAfterConfigurationChange });
+    await waitUntilReady();
+
+    const response = await send(
+      request("config.import", { configuration, expectedRevision: 0, dryRun: true }, "config-dry")
+    );
+
+    expect(response.result).toEqual({
+      dryRun: true,
+      revision: 0,
+      changed: true,
+      relaunch: false,
+      configuration: normalized,
+    });
+    expect(normalizeConfiguration).toHaveBeenCalledWith(configuration);
+    expect(importConfiguration).not.toHaveBeenCalled();
+    expect(relaunchAfterConfigurationChange).not.toHaveBeenCalled();
+  });
+
+  it("relaunches only after the CLI has received a persisted configuration result", async () => {
+    const configuration = { app: "PLVS", kind: "configuration-profile", version: 1 };
+    const delivery = createDeferred();
+    const order = [];
+    const importConfiguration = vi.fn(async () => order.push("persisted"));
+    const relaunchAfterConfigurationChange = vi.fn(async () => order.push("relaunched"));
+    adapter.respond.mockImplementationOnce(async (response) => {
+      adapter.responses.push(response);
+      order.push("response-started");
+      await delivery.promise;
+      order.push("response-delivered");
+    });
+    mount({
+      importConfiguration,
+      normalizeConfiguration: (value) => value,
+      relaunchAfterConfigurationChange,
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("config.import", { configuration, expectedRevision: 0 }, "config-import")
+    );
+    expect(response).toEqual({
+      requestId: "config-import",
+      result: { dryRun: false, revision: 0, changed: true, relaunch: true },
+      awaitDelivery: true,
+    });
+    expect(order).toEqual(["persisted", "response-started"]);
+
+    delivery.resolve();
+    await waitFor(() => expect(relaunchAfterConfigurationChange).toHaveBeenCalledTimes(1));
+    expect(order).toEqual(["persisted", "response-started", "response-delivered", "relaunched"]);
+  });
+
+  it("refuses configuration import before mutation while a blocking editor is open", async () => {
+    const importConfiguration = vi.fn();
+    mount({
+      importConfiguration,
+      normalizeConfiguration: (value) => value,
+      assertPresetOperationAllowed: (operation) => {
+        throw new SceneOperationBlockedError(operation, ["theme"]);
+      },
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "config.import",
+        {
+          configuration: { app: "PLVS", kind: "configuration-profile", version: 1 },
+          expectedRevision: 0,
+        },
+        "config-blocked"
+      )
+    );
+
+    expect(response.error.data.reason).toBe("editorActive");
+    expect(response.error.data.details.editors).toEqual(["theme"]);
+    expect(importConfiguration).not.toHaveBeenCalled();
   });
 
   describe("library transfer", () => {

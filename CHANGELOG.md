@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Agent Control can export the complete Everything configuration through `plvs-cli config export`.
+- Agent Control can export and import the complete Everything configuration through
+  `plvs-cli config export` and `plvs-cli config import`; import acknowledges response delivery before
+  relaunching PLVS.
 
 ### Fixed
 

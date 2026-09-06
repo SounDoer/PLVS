@@ -1,6 +1,6 @@
 # Configuration Transfer
 
-Status: Approved export contract; import is not yet implemented
+Status: Implemented
 
 Configuration Transfer exposes the Settings **Everything** export as a running-app command. The
 portable resource is the same versioned `.plvsconfig` document produced by the GUI.
@@ -41,6 +41,22 @@ can be recovered without asking the app to produce it again.
 
 ## Import
 
-`config import` is reserved but not implemented. GUI Everything import replaces the complete setup
-and relaunches PLVS. The public command will be added only with a transport-level guarantee that the
-successful response is delivered before relaunch closes the Agent Control endpoint.
+```powershell
+npm run desktop:control -- config import backup.plvsconfig --expected-revision 12 --json --dry-run
+npm run desktop:control -- config import backup.plvsconfig --expected-revision 12 --json
+Get-Content backup.plvsconfig -Raw | npm run desktop:control -- config import - --expected-revision 12 --json
+```
+
+Import validates and normalizes the complete document before the first write. It is revision
+guarded and is refused while a blocking editor is open, because replacing the complete setup would
+destroy that editor's draft.
+
+Dry-run performs validation and returns the normalized configuration without writing or
+relaunching. A successful real import replaces the same four domains and machine-specific siblings
+as Settings **Everything**, preserves the local `agentControlEnabled` permission, and returns
+`relaunch: true`.
+
+The successful response is not merely queued. Rust flushes the named-pipe response and waits until
+the CLI has read every buffered byte; only then does the frontend relaunch PLVS. The revision in the
+result belongs to the ending process. Rediscover the relaunched app and call `inspect` rather than
+comparing revisions across the two sessions.

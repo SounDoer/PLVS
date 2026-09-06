@@ -100,6 +100,34 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "config.import") {
+    const field = unknownField(
+      input.params,
+      new Set(["configuration", "expectedRevision", "dryRun"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (!isPlainJsonObject(input.params.configuration)) {
+      return invalidParams("$.params.configuration", "configuration must be a plain JSON object.");
+    }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          configuration: input.params.configuration,
+          expectedRevision: input.params.expectedRevision,
+          dryRun: input.params.dryRun === true,
+        },
+      },
+    };
+  }
+
   if (input.method === "preset.describe") {
     const field = unknownField(input.params, new Set(["presetId"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

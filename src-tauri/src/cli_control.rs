@@ -140,6 +140,11 @@ pub enum ControlCommand {
   ConfigExport {
     out: Option<String>,
   },
+  ConfigImport {
+    input: String,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
   SettingsDescribe,
   SettingsInspect,
   TransportInspect,
@@ -219,8 +224,25 @@ fn parse_config_args(args: &[String]) -> Result<ControlCommand, String> {
     return Ok(ControlCommand::FamilyHelp("config".to_string()));
   }
   let [action, rest @ ..] = args else {
-    return Err("Usage: plvs-cli config export --json [--out <file>]".to_string());
+    return Err("Usage: plvs-cli config <export|import> ... --json".to_string());
   };
+  if action == "import" {
+    let Some(input) = rest.first() else {
+      return Err(
+        "Usage: plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]"
+          .to_string(),
+      );
+    };
+    let (expected_revision, dry_run, json) = parse_mutation_flags(&rest[1..], "config import")?;
+    if !json {
+      return Err("The config import command requires --json.".to_string());
+    }
+    return Ok(ControlCommand::ConfigImport {
+      input: input.clone(),
+      expected_revision,
+      dry_run,
+    });
+  }
   if action != "export" {
     return Err(format!("Unknown config subcommand: {action}"));
   }
@@ -250,6 +272,50 @@ fn parse_config_args(args: &[String]) -> Result<ControlCommand, String> {
     return Err("The config export command requires --json.".to_string());
   }
   Ok(ControlCommand::ConfigExport { out })
+}
+
+fn parse_mutation_flags(
+  args: &[String],
+  command: &str,
+) -> Result<(Option<u64>, bool, bool), String> {
+  let mut expected_revision = None;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = 0;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--expected-revision" => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-revision.".to_string())?;
+        let parsed = value.parse::<u64>().map_err(|_| {
+          "The --expected-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if parsed > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-revision value must be a non-negative safe integer.".to_string(),
+          );
+        }
+        expected_revision = Some(parsed);
+        index += 2;
+      }
+      value => return Err(format!("Unexpected {command} argument: {value}")),
+    }
+  }
+  if expected_revision.is_none() {
+    return Err(format!(
+      "The {command} command requires --expected-revision."
+    ));
+  }
+  Ok((expected_revision, dry_run, json))
 }
 
 fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1227,7 +1293,7 @@ pub fn help_text() -> &'static str {
       )
       .replacen(
         "\n  plvs-cli settings describe",
-        "\n  plvs-cli config export --json [--out <file>]\n  plvs-cli settings describe",
+        "\n  plvs-cli config export --json [--out <file>]\n  plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli settings describe",
         1,
       )
       .replace("[--expected-revision <n>]", "--expected-revision <n>")
@@ -1490,6 +1556,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::LibraryExport { family, .. } => format!("{family}.export"),
     ControlCommand::LibraryImport { family, .. } => format!("{family}.import"),
     ControlCommand::ConfigExport { .. } => "config.export".to_string(),
+    ControlCommand::ConfigImport { .. } => "config.import".to_string(),
     ControlCommand::SettingsDescribe => "settings.describe".to_string(),
     ControlCommand::SettingsInspect => "settings.inspect".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
@@ -1535,6 +1602,19 @@ fn request_for_command<R: Read>(
     | ControlCommand::SettingsDescribe
     | ControlCommand::SettingsInspect
     | ControlCommand::TransportInspect => serde_json::json!({}),
+    ControlCommand::ConfigImport {
+      input,
+      expected_revision,
+      dry_run,
+    } => {
+      let configuration = read_json_document(input, stdin, "configuration")
+        .map_err(ControlFailure::invalid_arguments)?;
+      mutation_params(
+        [("configuration", configuration)],
+        *expected_revision,
+        *dry_run,
+      )
+    }
     ControlCommand::DockRead { .. } => serde_json::json!({}),
     ControlCommand::DockCommand {
       method,
@@ -3443,6 +3523,8 @@ mod tests {
   #[test]
   fn parses_and_builds_config_export() {
     assert!(help_text().contains("plvs-cli config export --json [--out <file>]"));
+    assert!(help_text()
+      .contains("plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]"));
     assert_eq!(
       parse_control_args(&args(&[
         "config",
@@ -3468,6 +3550,63 @@ mod tests {
       args(&["config", "export", "--json", "--dry-run"]),
       args(&["config", "export", "--json", "extra"]),
       args(&["config", "import", "all.plvsconfig", "--json"]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn parses_and_builds_config_import() {
+    let command = parse_control_args(&args(&[
+      "config",
+      "import",
+      "-",
+      "--expected-revision",
+      "7",
+      "--json",
+      "--dry-run",
+    ]))
+    .unwrap();
+    assert_eq!(
+      command,
+      ControlCommand::ConfigImport {
+        input: "-".to_string(),
+        expected_revision: Some(7),
+        dry_run: true,
+      }
+    );
+    let mut stdin =
+      Cursor::new(br#"{"app":"PLVS","kind":"configuration-profile","version":1}"#.to_vec());
+    let request = request_for_command(&command, &mut stdin).unwrap();
+    assert_eq!(request.method, "config.import");
+    assert_eq!(request.params["expectedRevision"], 7);
+    assert_eq!(request.params["dryRun"], true);
+    assert_eq!(
+      request.params["configuration"]["kind"],
+      "configuration-profile"
+    );
+
+    for invalid in [
+      args(&["config", "import", "file.plvsconfig", "--json"]),
+      args(&[
+        "config",
+        "import",
+        "file.plvsconfig",
+        "--expected-revision",
+        "0",
+      ]),
+      args(&[
+        "config",
+        "import",
+        "file.plvsconfig",
+        "--expected-revision",
+        "0",
+        "--json",
+        "extra",
+      ]),
     ] {
       assert!(
         parse_control_args(&invalid).is_err(),

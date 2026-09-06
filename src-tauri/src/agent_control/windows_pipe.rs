@@ -23,8 +23,8 @@ use windows_sys::Win32::Security::{
   GetTokenInformation, TokenUser, SECURITY_ATTRIBUTES, TOKEN_QUERY, TOKEN_USER,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-  CreateFileW, ReadFile, WriteFile, FILE_ATTRIBUTE_NORMAL, FILE_FLAG_FIRST_PIPE_INSTANCE,
-  OPEN_EXISTING, PIPE_ACCESS_DUPLEX,
+  CreateFileW, FlushFileBuffers, ReadFile, WriteFile, FILE_ATTRIBUTE_NORMAL,
+  FILE_FLAG_FIRST_PIPE_INSTANCE, OPEN_EXISTING, PIPE_ACCESS_DUPLEX,
 };
 use windows_sys::Win32::System::Pipes::{
   ConnectNamedPipe, CreateNamedPipeW, PeekNamedPipe, SetNamedPipeHandleState, WaitNamedPipeW,
@@ -36,8 +36,8 @@ use windows_sys::Win32::System::Threading::{
 };
 
 use super::broker::{
-  AgentControlState, Broker, BrokerErrorReason, TauriFrontendEmitter, DEFAULT_MAX_PENDING_REQUESTS,
-  DEFAULT_RESPONSE_TIMEOUT,
+  AgentControlState, Broker, BrokerError, BrokerErrorReason, TauriFrontendEmitter,
+  DEFAULT_MAX_PENDING_REQUESTS, DEFAULT_RESPONSE_TIMEOUT,
 };
 use super::discovery::{
   descriptor_path, endpoint_name, generate_launch_token, parse_descriptor,
@@ -532,7 +532,11 @@ impl Write for NamedPipe {
   }
 
   fn flush(&mut self) -> io::Result<()> {
-    Ok(())
+    if unsafe { FlushFileBuffers(self.handle.0) } != 0 {
+      Ok(())
+    } else {
+      Err(io::Error::last_os_error())
+    }
   }
 }
 
@@ -544,6 +548,7 @@ fn unattributed_error_response(error: JsonRpcError) -> JsonRpcResponse {
 }
 
 fn handle_client(mut pipe: NamedPipe, token: LaunchToken, broker: Broker) {
+  let mut pending_delivery = None;
   let response = match read_frame(&mut pipe, MAX_WIRE_REQUEST_BYTES)
     .and_then(|bytes| decode_authenticated_request(&bytes, &token))
   {
@@ -552,8 +557,12 @@ fn handle_client(mut pipe: NamedPipe, token: LaunchToken, broker: Broker) {
       // would leave the client unable to tell the real reason from a mismatched reply.
       let request_id = request.id.clone();
       match broker.dispatch(request) {
-        Ok(mut pending) => match pending.wait_until(|| !pipe.is_connected()) {
-          Ok(response) => response,
+        Ok(mut pending) => match pending.wait_with_delivery_until(|| !pipe.is_connected()) {
+          Ok(delivery) => {
+            let response = delivery.response.clone();
+            pending_delivery = Some(delivery);
+            response
+          }
           Err(error) if error.reason == BrokerErrorReason::ClientDisconnected => return,
           Err(error) => JsonRpcResponse::error(request_id, error.rpc_error()),
         },
@@ -564,10 +573,28 @@ fn handle_client(mut pipe: NamedPipe, token: LaunchToken, broker: Broker) {
     Err(error) => unattributed_error_response(error.rpc_error()),
   };
 
-  if let Ok(encoded) = encode_response(&response) {
-    if let Err(error) = write_frame(&mut pipe, &encoded, MAX_RESPONSE_BYTES) {
-      log::warn!("agent-control response write failed: {error}");
-    }
+  let await_delivery = pending_delivery.is_some();
+  let delivered = encode_response(&response)
+    .map_err(|error| error.to_string())
+    .and_then(|encoded| {
+      write_frame(&mut pipe, &encoded, MAX_RESPONSE_BYTES).map_err(|error| error.to_string())
+    })
+    // On the server side this waits until the client has read every buffered response byte. That
+    // is the acknowledgement needed by commands which relaunch only after their result is safe.
+    .and_then(|_| {
+      if await_delivery {
+        pipe.flush().map_err(|error| error.to_string())
+      } else {
+        Ok(())
+      }
+    });
+  if let Err(error) = &delivered {
+    log::warn!("agent-control response delivery failed: {error}");
+  }
+  if let Some(delivery) = pending_delivery {
+    delivery.confirm_delivery(
+      delivered.map_err(|message| BrokerError::new(BrokerErrorReason::DeliveryFailed, message)),
+    );
   }
 }
 
@@ -1134,6 +1161,26 @@ mod tests {
     }
   }
 
+  struct DeliveryResponder {
+    broker: Mutex<Option<Broker>>,
+    completion: Mutex<Option<JoinHandle<Result<(), BrokerError>>>>,
+  }
+
+  impl FrontendEmitter for DeliveryResponder {
+    fn emit(&self, request: &JsonRpcRequest) -> Result<(), String> {
+      let broker = self.broker.lock().unwrap().as_ref().unwrap().clone();
+      let request_id = request.id.clone();
+      let handle = thread::spawn(move || {
+        broker.respond_and_wait_for_delivery(
+          &request_id,
+          FrontendOutcome::Success(serde_json::json!({ "persisted": true })),
+        )
+      });
+      *self.completion.lock().unwrap() = Some(handle);
+      Ok(())
+    }
+  }
+
   /// Non-uniform content, so a payload reassembled out of order fails as loudly as a truncated one.
   fn filler(bytes: usize) -> String {
     (0..bytes)
@@ -1183,6 +1230,45 @@ mod tests {
   }
 
   #[test]
+  fn delivery_aware_response_completes_only_after_the_client_reads_it() {
+    let token = generate_launch_token().unwrap();
+    let endpoint = format!("plvs-agent-control-test-{}", &token.expose()[..16]);
+    let responder = Arc::new(DeliveryResponder {
+      broker: Mutex::new(None),
+      completion: Mutex::new(None),
+    });
+    let broker = Broker::new(responder.clone(), 4, Duration::from_secs(5));
+    *responder.broker.lock().unwrap() = Some(broker.clone());
+    broker.frontend_ready().unwrap();
+    let mut server = PipeServer::bind(endpoint.clone(), token.clone(), broker).unwrap();
+    let client_handle = connect_client(&endpoint, Duration::from_secs(1)).unwrap();
+    let mut client = NamedPipe {
+      handle: client_handle,
+    };
+    client.set_nonblocking().unwrap();
+    let request = JsonRpcRequest {
+      id: "delivery-aware".to_string(),
+      method: "config.import".to_string(),
+      params: serde_json::json!({}),
+    };
+    let envelope = serde_json::to_vec(&OutgoingEnvelope {
+      token: token.expose(),
+      request: &request,
+    })
+    .unwrap();
+
+    write_frame(&mut client, &envelope, MAX_WIRE_REQUEST_BYTES).unwrap();
+    let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
+    let response: Value = serde_json::from_slice(&response).unwrap();
+    assert_eq!(response["result"]["persisted"], true);
+    let completion = responder.completion.lock().unwrap().take().unwrap();
+    assert!(completion.join().unwrap().is_ok());
+
+    drop(client);
+    server.stop();
+  }
+
+  #[test]
   fn a_response_larger_than_the_pipe_buffer_round_trips_intact() {
     let reply = filler(4 * PIPE_BUFFER_BYTES as usize);
     let (response, _) = exchange("small".to_string(), reply.clone());
@@ -1194,7 +1280,7 @@ mod tests {
   #[test]
   fn a_request_larger_than_the_pipe_buffer_round_trips_intact() {
     // Stays under MAX_REQUEST_BYTES, which the protocol layer enforces independently.
-    let payload = filler(3 * PIPE_BUFFER_BYTES as usize);
+    let payload = filler(8 * PIPE_BUFFER_BYTES as usize);
     let (response, received) = exchange(payload.clone(), "small".to_string());
 
     assert_eq!(received.params["payload"], Value::String(payload));

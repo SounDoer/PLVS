@@ -59,11 +59,11 @@ The Settings UI presents four transfer rows. Their current status is:
 | Loudness Profiles | Complete | Complete | Append; preserve selection |
 | Presets | Complete | Complete | Append; include required custom Theme/Profile dependencies |
 | Theme | Complete | Complete | Append; preserve active Theme |
-| Everything | Complete | Export complete; import missing | Replace the whole setup and relaunch PLVS |
+| Everything | Complete | Complete | Replace the whole setup and relaunch PLVS |
 
-Therefore the three library families are complete at the basic transfer level, and Everything
-export is complete. The remaining CLI parity gap is **Everything import**, represented technically
-by the versioned `.plvsconfig` configuration profile. It is not another append-only library pack.
+Therefore all four Settings transfer rows are complete in the CLI. Everything is represented
+technically by the versioned `.plvsconfig` configuration profile; unlike the three libraries, it is
+a whole-setup replacement rather than an append-only pack.
 
 ## Decision filter for new commands
 
@@ -90,17 +90,16 @@ the underlying data is reachable.
 
 The current working priority is deliberately narrower than the candidate backlog below:
 
-1. finish the fourth Settings transfer row in the CLI with `config import` (`config export` is
-   complete);
-2. add Loudness Profile inspection and editing commands;
+1. complete the fourth Settings transfer row with Configuration Transfer (done);
+2. add Loudness Profile inspection and editing commands (next);
 3. add custom Theme inspection and editing commands.
 
 Preset editing is not part of this new work: Preset Control already supports describe, save,
 update, apply, rename, delete, and reorder. Its transfer commands are also complete.
 
-### Stage 1: Everything transfer
+### Stage 1: Everything transfer — complete
 
-Proposed public shape:
+Implemented public shape:
 
 ```text
 plvs-cli config export --json [--out <file>]
@@ -117,19 +116,17 @@ recoverable from stdout if the file write fails.
 
 `config import --dry-run` validates, migrates, and reports the normalized replacement without
 writing or relaunching. A real import replaces the same domains and siblings as the GUI and then
-relaunches PLVS. The response lifecycle needs an explicit contract:
+relaunches PLVS. The implemented response lifecycle is:
 
 1. validate the entire input and recheck `expectedRevision` before the first write;
 2. persist the replacement through the existing native profile command;
-3. send a successful `accepted` result containing `relaunch: true` and enough identity for the
-   caller to rediscover the new session;
-4. relaunch only after the broker has accepted the response for delivery;
+3. send a successful result containing `relaunch: true`;
+4. flush the Windows named pipe and wait until the CLI has read every response byte;
 5. require the caller to rediscover and inspect rather than comparing revisions across sessions.
 
-The implementation design must prove that step 4 cannot close the pipe before the response is
-delivered. If the current response bridge provides no such acknowledgement, add one rather than a
-timing delay. A successful response means the replacement was durably written; it does not claim
-the next process has completed booting.
+The delivery-aware response bridge makes step 4 an acknowledgement rather than a timing delay. A
+successful response means the replacement was durably written; it does not claim the next process
+has completed booting.
 
 Do not include `config reset` in this stage. It is destructive, does not complete the requested
 transfer parity, and deserves a separate confirmation design if terminal demand appears.
@@ -416,21 +413,19 @@ The following remain internal even if they are convenient during implementation:
 
 The smallest useful sequence is:
 
-1. **Everything import:** specify and implement validation, replacement, durable write, acknowledged
-   response, and relaunch as one lifecycle.
-2. **Loudness Profile editing:** describe/select/create/update/rename/delete/reorder, including
+1. **Loudness Profile editing:** describe/select/create/update/rename/delete/reorder, including
    Preset-reference cleanup and multi-store settlement.
-3. **Theme editing:** describe/create/update/rename/duplicate/delete/reorder, reusing Theme V2
+2. **Theme editing:** describe/create/update/rename/duplicate/delete/reorder, reusing Theme V2
    normalization and the GUI's selection/fallback behavior.
-4. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
+3. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
    queries, and generated completions.
-5. **File report and Device Control** as the next already-visible GUI workflows.
-6. **Measurement inspect/wait** after the high-frequency snapshot contract is separately approved.
-7. **Schema export and batch** only after at least two external consumers need them.
-8. Re-evaluate public headless analysis, support bundles, MCP, screenshots, and window control from
+4. **File report and Device Control** as the next already-visible GUI workflows.
+5. **Measurement inspect/wait** after the high-frequency snapshot contract is separately approved.
+6. **Schema export and batch** only after at least two external consumers need them.
+7. Re-evaluate public headless analysis, support bundles, MCP, screenshots, and window control from
    actual usage rather than surface-completeness pressure.
 
-The first three steps may ship on the existing Windows transport. Track macOS parity as a release
+The first two steps may ship on the existing Windows transport. Track macOS parity as a release
 blocker for claiming the expanded Agent Control CLI is cross-platform.
 
 ## Definition of done for every new family
@@ -454,11 +449,8 @@ Every approved command family should include:
 
 ## Immediate design recommendation
 
-The next implementation design should cover **Everything import**. `config export` is complete, so
-the remaining work is the acknowledged-response-before-relaunch contract and replacement semantics.
-
-After both slices pass real-desktop acceptance, design Loudness Profile editing before Theme
-editing. Profile behavior already has one React owner with explicit create/edit/select/delete/order
-semantics; Theme creation, repository mutation, Appearance selection, runtime preview, and deletion
-fallback are spread across more owners and need a little more extraction before they form one safe
-Agent Control planner.
+The next implementation design should cover **Loudness Profile editing**. Configuration Transfer is
+complete; Profile behavior already has one React owner with explicit
+create/edit/select/delete/order semantics. Theme creation, repository mutation, Appearance
+selection, runtime preview, and deletion fallback are spread across more owners and need a little
+more extraction before they form one safe Agent Control planner.

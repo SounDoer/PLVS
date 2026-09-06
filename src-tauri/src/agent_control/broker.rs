@@ -129,7 +129,14 @@ impl fmt::Display for BrokerError {
 
 impl std::error::Error for BrokerError {}
 
-type PendingSender = SyncSender<Result<FrontendOutcome, BrokerError>>;
+type DeliverySender = SyncSender<Result<(), BrokerError>>;
+
+struct FrontendSubmission {
+  outcome: FrontendOutcome,
+  delivery: Option<DeliverySender>,
+}
+
+type PendingSender = SyncSender<Result<FrontendSubmission, BrokerError>>;
 
 struct BrokerInner {
   ready: bool,
@@ -280,6 +287,35 @@ impl Broker {
   }
 
   pub fn respond(&self, request_id: &str, outcome: FrontendOutcome) -> Result<(), BrokerError> {
+    self.submit_response(request_id, outcome, None)
+  }
+
+  pub fn respond_and_wait_for_delivery(
+    &self,
+    request_id: &str,
+    outcome: FrontendOutcome,
+  ) -> Result<(), BrokerError> {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    self.submit_response(request_id, outcome, Some(sender))?;
+    match receiver.recv_timeout(CLIENT_GRACE) {
+      Ok(result) => result,
+      Err(RecvTimeoutError::Timeout) => Err(BrokerError::new(
+        BrokerErrorReason::DeliveryFailed,
+        "The agent-control client did not receive the response before the delivery timeout.",
+      )),
+      Err(RecvTimeoutError::Disconnected) => Err(BrokerError::new(
+        BrokerErrorReason::DeliveryFailed,
+        "The response delivery confirmation channel closed.",
+      )),
+    }
+  }
+
+  fn submit_response(
+    &self,
+    request_id: &str,
+    outcome: FrontendOutcome,
+    delivery: Option<DeliverySender>,
+  ) -> Result<(), BrokerError> {
     let sender = self
       .core
       .inner
@@ -293,12 +329,14 @@ impl Broker {
           format!("Request ID {request_id} is not pending."),
         )
       })?;
-    sender.send(Ok(outcome)).map_err(|_| {
-      BrokerError::new(
-        BrokerErrorReason::UnknownRequest,
-        format!("Request ID {request_id} is no longer waiting."),
-      )
-    })
+    sender
+      .send(Ok(FrontendSubmission { outcome, delivery }))
+      .map_err(|_| {
+        BrokerError::new(
+          BrokerErrorReason::UnknownRequest,
+          format!("Request ID {request_id} is no longer waiting."),
+        )
+      })
   }
 
   fn cancel(&self, request_id: &str) {
@@ -329,7 +367,7 @@ impl Broker {
 
 pub struct PendingRequest {
   request_id: String,
-  receiver: Option<Receiver<Result<FrontendOutcome, BrokerError>>>,
+  receiver: Option<Receiver<Result<FrontendSubmission, BrokerError>>>,
   core: Arc<BrokerCore>,
   response_timeout: Duration,
   completed: bool,
@@ -346,13 +384,37 @@ impl fmt::Debug for PendingRequest {
 
 impl PendingRequest {
   pub fn wait(mut self) -> Result<JsonRpcResponse, BrokerError> {
-    self.wait_until(|| false)
+    self
+      .wait_submission_until(|| false)
+      .map(|submission| submission.response)
   }
 
   pub fn wait_until<F>(
     &mut self,
     mut client_disconnected: F,
   ) -> Result<JsonRpcResponse, BrokerError>
+  where
+    F: FnMut() -> bool,
+  {
+    self
+      .wait_submission_until(&mut client_disconnected)
+      .map(|submission| submission.response)
+  }
+
+  pub(crate) fn wait_with_delivery_until<F>(
+    &mut self,
+    client_disconnected: F,
+  ) -> Result<PendingResponse, BrokerError>
+  where
+    F: FnMut() -> bool,
+  {
+    self.wait_submission_until(client_disconnected)
+  }
+
+  fn wait_submission_until<F>(
+    &mut self,
+    mut client_disconnected: F,
+  ) -> Result<PendingResponse, BrokerError>
   where
     F: FnMut() -> bool,
   {
@@ -370,13 +432,25 @@ impl PendingRequest {
       }
       let remaining = self.response_timeout - elapsed;
       match receiver.recv_timeout(remaining.min(poll_interval)) {
-        Ok(Ok(FrontendOutcome::Success(result))) => {
+        Ok(Ok(FrontendSubmission {
+          outcome: FrontendOutcome::Success(result),
+          delivery,
+        })) => {
           self.completed = true;
-          return Ok(JsonRpcResponse::success(self.request_id.clone(), result));
+          return Ok(PendingResponse {
+            response: JsonRpcResponse::success(self.request_id.clone(), result),
+            delivery,
+          });
         }
-        Ok(Ok(FrontendOutcome::Error(error))) => {
+        Ok(Ok(FrontendSubmission {
+          outcome: FrontendOutcome::Error(error),
+          delivery,
+        })) => {
           self.completed = true;
-          return Ok(JsonRpcResponse::error(self.request_id.clone(), error));
+          return Ok(PendingResponse {
+            response: JsonRpcResponse::error(self.request_id.clone(), error),
+            delivery,
+          });
         }
         Ok(Err(error)) => {
           self.completed = true;
@@ -414,6 +488,19 @@ impl PendingRequest {
       let _ = self.core.emitter.cancel(&self.request_id);
     }
     self.completed = true;
+  }
+}
+
+pub(crate) struct PendingResponse {
+  pub response: JsonRpcResponse,
+  delivery: Option<DeliverySender>,
+}
+
+impl PendingResponse {
+  pub fn confirm_delivery(self, result: Result<(), BrokerError>) {
+    if let Some(sender) = self.delivery {
+      let _ = sender.send(result);
+    }
   }
 }
 
@@ -490,6 +577,8 @@ pub struct FrontendResponse {
   pub request_id: String,
   pub result: Option<Value>,
   pub error: Option<JsonRpcError>,
+  #[serde(default)]
+  pub await_delivery: bool,
 }
 
 fn main_broker(window_label: &str, state: &AgentControlState) -> Result<Broker, String> {
@@ -541,9 +630,13 @@ pub fn agent_control_respond(
       )
     }
   };
-  main_broker(window.label(), &state)?
-    .respond(&response.request_id, outcome)
-    .map_err(|error| error.to_string())
+  let broker = main_broker(window.label(), &state)?;
+  let result = if response.await_delivery {
+    broker.respond_and_wait_for_delivery(&response.request_id, outcome)
+  } else {
+    broker.respond(&response.request_id, outcome)
+  };
+  result.map_err(|error| error.to_string())
 }
 
 #[cfg(test)]
@@ -618,6 +711,29 @@ mod tests {
         .reason,
       BrokerErrorReason::FrontendNotReady
     );
+  }
+
+  #[test]
+  fn delivery_aware_response_waits_for_the_transport_confirmation() {
+    let (broker, _) = broker(4, Duration::from_secs(1));
+    broker.frontend_ready().unwrap();
+    let mut pending = broker.dispatch(request("delivery-aware")).unwrap();
+    let responder = broker.clone();
+    let response_thread = std::thread::spawn(move || {
+      responder.respond_and_wait_for_delivery(
+        "delivery-aware",
+        FrontendOutcome::Success(json!({ "persisted": true })),
+      )
+    });
+
+    let delivery = pending.wait_with_delivery_until(|| false).unwrap();
+    assert_eq!(
+      serde_json::to_value(&delivery.response).unwrap()["result"],
+      json!({ "persisted": true })
+    );
+    assert!(!response_thread.is_finished());
+    delivery.confirm_delivery(Ok(()));
+    assert!(response_thread.join().unwrap().is_ok());
   }
 
   #[test]

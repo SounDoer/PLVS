@@ -106,10 +106,12 @@ Everything configuration export uses the same `.plvsconfig` document as Settings
 
 ```powershell
 plvs-cli config export --json [--out <file>]
+plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
-Configuration import is not yet exposed through the CLI because a successful import relaunches the
-app; its response-delivery-before-relaunch contract is being designed separately.
+Configuration import validates or replaces the complete setup. A real import relaunches PLVS only
+after the CLI has received its successful response; rediscover the new app session before issuing
+another command.
 
 Detailed payloads and behavior are documented in [Agent Control](agent-control/README.md).
 

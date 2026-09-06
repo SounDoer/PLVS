@@ -6,7 +6,8 @@ import {
   respondToAgentControlRequest,
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence, settingsStore } from "../persistence/index.js";
-import { exportProfile } from "../persistence/profile.js";
+import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
+import { normalizeImportedProfile, ProfileValidationError } from "../persistence/profileShape.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
@@ -321,6 +322,9 @@ export function useAgentControlBridge({
   analysisContext = {},
   flush = flushPersistence,
   exportConfiguration = exportProfile,
+  importConfiguration = importProfile,
+  normalizeConfiguration = normalizeImportedProfile,
+  relaunchAfterConfigurationChange = reloadAfterProfileChange,
 }) {
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
@@ -1611,6 +1615,68 @@ export function useAgentControlBridge({
           };
         }
 
+        if (request.method === "config.import") {
+          const currentRevision = controlRevisionRef.current;
+          if (request.params.expectedRevision !== currentRevision) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `App state changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedRevision, currentRevision }
+            );
+          }
+          presets.assertSceneOperationAllowed(request.method);
+
+          let configuration;
+          try {
+            configuration = normalizeConfiguration(request.params.configuration);
+          } catch (error) {
+            if (!(error instanceof ProfileValidationError)) throw error;
+            throw semanticFailure(
+              "invalidConfiguration",
+              "$.params.configuration",
+              error.message,
+              -32602
+            );
+          }
+
+          if (request.params.dryRun === true) {
+            return {
+              requestId,
+              result: {
+                dryRun: true,
+                revision: currentRevision,
+                changed: true,
+                relaunch: false,
+                configuration,
+              },
+            };
+          }
+
+          try {
+            await importConfiguration(configuration);
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Configuration import failed: ${error?.message || String(error)}`,
+              -32030
+            );
+          }
+          return {
+            requestId,
+            result: {
+              dryRun: false,
+              revision: currentRevision,
+              changed: true,
+              relaunch: true,
+            },
+            awaitDelivery: true,
+            afterResponse: relaunchAfterConfigurationChange,
+          };
+        }
+
         if (request.method === "axis.describe" || request.method === "axis.inspect") {
           const inspection = buildAxisInspection(workspace);
           return {
@@ -1963,6 +2029,9 @@ export function useAgentControlBridge({
   }, [
     flush,
     exportConfiguration,
+    importConfiguration,
+    normalizeConfiguration,
+    relaunchAfterConfigurationChange,
     bumpControlRevision,
     hasLoudnessReference,
     loudnessProfiles,
@@ -2010,9 +2079,11 @@ export function useAgentControlBridge({
         }
         const respond = (processing) =>
           processing
-            .then((response) => {
-              if (response && aliveRef.current) return respondToAgentControlRequest(response);
-              return undefined;
+            .then(async (response) => {
+              if (!response || !aliveRef.current) return;
+              const { afterResponse, ...wireResponse } = response;
+              await respondToAgentControlRequest(wireResponse);
+              if (afterResponse && aliveRef.current) await afterResponse();
             })
             .catch(() => undefined);
         if (request?.method === "app.wait") {

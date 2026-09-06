@@ -33,6 +33,7 @@ describe("current CLI documentation", () => {
     expect(readme).toContain("plvs-cli inspect --json");
     expect(cli).toContain("plvs-cli inspect --json");
     expect(cli).toContain("plvs-cli config export --json");
+    expect(cli).toContain("plvs-cli config import <file|-> --expected-revision <n> --json");
     expect(readme).toContain("plvs-cli workspace apply");
     expect(agentControl).toContain("`methods`, and `features`");
   });

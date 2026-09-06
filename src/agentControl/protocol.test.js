@@ -24,6 +24,34 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes configuration imports as revision-guarded mutations", () => {
+    const configuration = {
+      app: "PLVS",
+      kind: "configuration-profile",
+      version: 1,
+    };
+    expect(
+      normalizeAgentControlRequest(
+        request("config.import", { configuration, expectedRevision: 3, dryRun: true })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "config.import",
+        params: { configuration, expectedRevision: 3, dryRun: true },
+      },
+    });
+    expect(
+      normalizeAgentControlRequest(request("config.import", { configuration })).error.path
+    ).toBe("$.params.expectedRevision");
+    expect(
+      normalizeAgentControlRequest(
+        request("config.import", { configuration: [], expectedRevision: 3 })
+      ).error.path
+    ).toBe("$.params.configuration");
+  });
+
   it("normalizes Preset read commands", () => {
     expect(normalizeAgentControlRequest(request("preset.list"))).toEqual({
       ok: true,

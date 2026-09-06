@@ -4,7 +4,9 @@ use serde_json::{Map, Value};
 use std::fmt;
 
 pub const PROTOCOL_VERSION: u32 = 1;
-pub const MAX_REQUEST_BYTES: usize = 256 * 1024;
+// Configuration import must accept the same bounded document that configuration export can return.
+// Keep request and response ceilings aligned so a successful export is not too large to restore.
+pub const MAX_REQUEST_BYTES: usize = 1024 * 1024;
 pub const MAX_RESPONSE_BYTES: usize = 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq)]
