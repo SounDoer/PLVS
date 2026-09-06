@@ -36,6 +36,7 @@ export function useSettings({ onClearRef } = {}) {
     setAppearanceMode: themeSettings.setAppearanceMode,
     setFixedThemeIdFromPicker: themeSettings.setFixedThemeIdFromPicker,
     fixedThemeSelectValue: themeSettings.fixedThemeSelectValue,
+    customThemes: themeSettings.customThemes,
     ...meterSettings,
     ...closeActionSetting,
     ...dialogueVadEngineSetting,

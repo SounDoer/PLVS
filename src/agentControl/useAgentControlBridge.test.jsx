@@ -192,9 +192,11 @@ function Harness({
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
-  // What App.jsx really passes: `settings.customThemes`, which `useThemeSettings` keeps in sync
-  // with `themesStore`. A test that needs the revision to see its own import has to reproduce that
-  // subscription -- with a static prop the library signature effect can never fire.
+  // A live library prop, so that a test needing the revision to see its own import gets one: with
+  // a static prop the library signature effect can never fire. This stands in for App.jsx's chain
+  // rather than reproducing it -- App.jsx reads `settings.customThemes` off `useSettings`, and the
+  // hop out of `useThemeSettings` is exactly where `theme.import` once lost the update. That link
+  // is covered by `hooks/useSettings.rtl.test.jsx`; do not read this harness as proof of it.
   const [subscribedThemes, setSubscribedThemes] = useState(() => listCustomThemes());
   useEffect(() => themesStore.subscribe(() => setSubscribedThemes(listCustomThemes())), []);
   // The same wiring for Presets, which `usePresets` gets from a `presetsStore` subscription. Off

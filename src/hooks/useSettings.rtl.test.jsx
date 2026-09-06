@@ -2,6 +2,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { presetsStore } from "../persistence/index.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { getAdapter } from "../transfer/libraryAdapters.js";
 import { useSettings } from "./useSettings.js";
 
 function mockMatchMedia(matches) {
@@ -61,6 +63,28 @@ describe("useSettings", () => {
     });
 
     expect(result.current.editor.draft.name).toBe("Custom");
+  });
+
+  // App Control's `theme.import` settles by watching `settings.customThemes` change, so the field
+  // has to survive the trip out of `useThemeSettings`. Asserting on the hook that owns the state
+  // would pass while `useSettings` drops it on the floor, and so would a store read: the picker
+  // re-renders off an unrelated `listCustomThemeDocumentsOrdered()` call, which is why nothing on
+  // screen shows the gap.
+  it("re-exports the custom theme library, tracking an import written outside React", async () => {
+    const { result } = renderHook(() => useSettings());
+    await waitFor(() => {
+      expect(result.current.resolvedThemeId).toBe("plvs-dark");
+    });
+
+    act(() => {
+      getAdapter("themes").append([
+        { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t-1", name: "Imported" },
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.customThemes?.["t-1"]?.name).toBe("Imported");
+    });
   });
 
   it("exposes no loudness reference: the active Loudness Profile owns it", () => {
