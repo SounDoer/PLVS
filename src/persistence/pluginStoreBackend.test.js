@@ -5,12 +5,14 @@ const saved = [];
 const storeSet = vi.fn(async (k, v) => saved.push([k, v]));
 const storeSave = vi.fn(async () => {});
 const storeDelete = vi.fn(async (k) => saved.push(["__delete__", k]));
+const storeGet = vi.fn(async () => null);
 vi.mock("@tauri-apps/plugin-store", () => ({
   Store: {
     load: vi.fn(async () => ({
       set: storeSet,
       save: storeSave,
       delete: storeDelete,
+      get: storeGet,
     })),
   },
 }));
@@ -22,6 +24,7 @@ describe("pluginStoreBackend", () => {
     storeSet.mockReset().mockImplementation(async (k, v) => saved.push([k, v]));
     storeSave.mockReset().mockImplementation(async () => {});
     storeDelete.mockReset().mockImplementation(async (k) => saved.push(["__delete__", k]));
+    storeGet.mockReset().mockImplementation(async () => null);
     globalThis.window = globalThis.window || {};
     window.__PLVS_INITIAL_STATE__ = {
       "plvs:settings": { referenceLufs: -20 },
@@ -39,6 +42,25 @@ describe("pluginStoreBackend", () => {
     expect(backend.get("plvs:settings")).toEqual({ referenceLufs: -20 });
     expect(backend.get("plvs:presets")).toEqual({ list: [], activeId: null });
     expect(backend.get("plvs:workspace")).toBeNull();
+  });
+
+  // "Reads never hit disk" is what makes a stale seed dangerous rather than merely wrong: the
+  // cache is authoritative, so anything that moved the file on since boot is invisible to reads
+  // and the next write persists the older copy over it. That is the shape of the data loss on
+  // 2026-09-06 (see AGENTS.md), so pin it rather than leave the design comment as the only record.
+  it("reads never hit disk, so a store change made outside the backend is invisible", async () => {
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    // Someone else moved the file on after the seed was taken.
+    storeGet.mockImplementation(async (key) =>
+      key === "plvs:settings" ? { referenceLufs: -8 } : null
+    );
+    // A write opens the store, so the backend now holds a handle it could have read through.
+    backend.set("plvs:presets", { list: [], activeId: null });
+    await backend.flush();
+
+    expect(backend.get("plvs:settings")).toEqual({ referenceLufs: -20 });
+    expect(storeGet).not.toHaveBeenCalled();
   });
 
   it("set updates the cache synchronously and schedules an async persist", async () => {

@@ -42,6 +42,33 @@ use crate::window_state::{
 };
 use state::AppState;
 
+/// The pre-paint snapshot the webview reads synchronously, as an initialization script.
+///
+/// Three independent readers take one slice each, at different points in the module graph:
+/// `persistence/pluginStoreBackend.js` (the four `plvs:*` domain keys), `hooks/useDockMode.js`
+/// (`dockState`) and `agentControl/appSnapshot.js` (`agentControl`). A misspelled or dropped key
+/// does not fail anywhere -- the reader sees `undefined` and falls back to its defaults, which
+/// reaches the user as an app that came up empty. Kept separate from `setup` so the key set and
+/// the pass-through can be tested; `setup` only supplies the values.
+fn initial_state_script(
+  settings: &serde_json::Value,
+  workspace: &serde_json::Value,
+  presets: &serde_json::Value,
+  themes: &serde_json::Value,
+  dock_state: &Option<dock::DockStateRecord>,
+  agent_control: &serde_json::Value,
+) -> String {
+  let initial = serde_json::json!({
+    "plvs:settings": settings,
+    "plvs:workspace": workspace,
+    "plvs:presets": presets,
+    "plvs:themes": themes,
+    "dockState": dock_state,
+    "agentControl": agent_control,
+  });
+  format!("window.__PLVS_INITIAL_STATE__ = {};", initial)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -144,15 +171,14 @@ pub fn run() {
       if let Some(state) = dock_state.as_ref() {
         dock::write_dock_state(app.handle(), state);
       }
-      let initial = serde_json::json!({
-        "plvs:settings": settings,
-        "plvs:workspace": workspace,
-        "plvs:presets": presets,
-        "plvs:themes": themes,
-        "dockState": dock_state,
-        "agentControl": agent_control,
-      });
-      let init_script = format!("window.__PLVS_INITIAL_STATE__ = {};", initial);
+      let init_script = initial_state_script(
+        &settings,
+        &workspace,
+        &presets,
+        &themes,
+        &dock_state,
+        &agent_control,
+      );
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
       // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
@@ -338,4 +364,105 @@ pub fn run() {
     })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use serde_json::json;
+
+  /// Reads the snapshot back the way the webview does: the global's name is part of the
+  /// contract, so parse through it rather than around it.
+  fn parse_snapshot(script: &str) -> serde_json::Value {
+    let body = script
+      .strip_prefix("window.__PLVS_INITIAL_STATE__ = ")
+      .and_then(|rest| rest.strip_suffix(';'))
+      .unwrap_or_else(|| panic!("script does not assign the global the frontend reads: {script}"));
+    serde_json::from_str(body).expect("snapshot body is JSON")
+  }
+
+  fn dock_record() -> dock::DockStateRecord {
+    dock::DockStateRecord {
+      enabled: true,
+      edge: dock::DockEdge::Top,
+      monitor: Some("\\\\.\\DISPLAY1".into()),
+      reserve_space: true,
+      height: 96,
+    }
+  }
+
+  #[test]
+  fn injects_every_key_the_frontend_reads() {
+    let snapshot = parse_snapshot(&initial_state_script(
+      &json!({}),
+      &json!({}),
+      &json!({}),
+      &json!({}),
+      &None,
+      &json!({}),
+    ));
+    let mut keys: Vec<&String> = snapshot
+      .as_object()
+      .expect("snapshot is an object")
+      .keys()
+      .collect();
+    keys.sort();
+    assert_eq!(
+      keys,
+      vec![
+        "agentControl",
+        "dockState",
+        "plvs:presets",
+        "plvs:settings",
+        "plvs:themes",
+        "plvs:workspace",
+      ]
+    );
+  }
+
+  #[test]
+  fn passes_each_domain_value_through_unreshaped() {
+    let settings = json!({ "referenceLufs": -20, "nested": { "a": [1, 2] } });
+    let workspace = json!({ "panelOrder": ["loudness", "spectrum"] });
+    let presets = json!({ "list": [{ "id": "p1" }], "activeId": "p1" });
+    let themes = json!({ "custom": [] });
+    let agent_control = json!({ "available": true, "enabled": false });
+    let snapshot = parse_snapshot(&initial_state_script(
+      &settings,
+      &workspace,
+      &presets,
+      &themes,
+      &None,
+      &agent_control,
+    ));
+    assert_eq!(snapshot["plvs:settings"], settings);
+    assert_eq!(snapshot["plvs:workspace"], workspace);
+    assert_eq!(snapshot["plvs:presets"], presets);
+    assert_eq!(snapshot["plvs:themes"], themes);
+    assert_eq!(snapshot["agentControl"], agent_control);
+  }
+
+  #[test]
+  fn carries_dock_state_under_the_field_names_the_frontend_reads() {
+    let snapshot = parse_snapshot(&initial_state_script(
+      &json!({}),
+      &json!({}),
+      &json!({}),
+      &json!({}),
+      &Some(dock_record()),
+      &json!({}),
+    ));
+    // `normalizeDockState` in hooks/useDockMode.js reads exactly these names, and a mismatch
+    // reads as a default rather than an error -- `reserveSpace` even defaults to the opposite.
+    assert_eq!(
+      snapshot["dockState"],
+      json!({
+        "enabled": true,
+        "edge": "top",
+        "monitor": "\\\\.\\DISPLAY1",
+        "reserveSpace": true,
+        "height": 96,
+      })
+    );
+  }
 }
