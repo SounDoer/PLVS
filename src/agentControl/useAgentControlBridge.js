@@ -115,6 +115,18 @@ function presetStateSignature(presets) {
   });
 }
 
+/// Identity and name only: those are what `theme.list` and `loudnessProfile.list` report, so those
+/// are what a revision must track. A theme's tokens changing is an edit inside an entry, which the
+/// future Theme Control will account for; it is invisible to this family.
+function librarySignature(entries) {
+  return JSON.stringify(
+    (Array.isArray(entries) ? entries : Object.values(entries ?? {})).map(({ id, name }) => [
+      id,
+      name,
+    ])
+  );
+}
+
 /// Compares the live Workspace against the view a Preset becomes once applied.
 ///
 /// Never compare against the stored Preset itself: applying migrates its controls, so a Preset
@@ -257,6 +269,7 @@ export function useAgentControlBridge({
   dockContext = {},
   executeDock = async () => {},
   loudnessProfiles = [],
+  customThemes = {},
   hasLoudnessReference = false,
   analysisContext = {},
   flush = flushPersistence,
@@ -266,6 +279,8 @@ export function useAgentControlBridge({
   const controlRevisionBumpedThisTurnRef = useRef(false);
   const previousWorkspaceRef = useRef(workspace);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
+  const previousThemeLibrarySignatureRef = useRef(librarySignature(customThemes));
+  const previousLoudnessLibrarySignatureRef = useRef(librarySignature(loudnessProfiles));
   const previousOrdinarySettingsSignatureRef = useRef(ordinarySettingsStateSignature(settings));
   const openAtLoginTrackingRef = useRef({
     ready: settingsContext.autostartReady === true,
@@ -368,6 +383,22 @@ export function useAgentControlBridge({
       settlement.resolve(controlRevisionRef.current);
     }
   }, [bumpControlRevision, presets, scheduleWaitWake]);
+
+  useEffect(() => {
+    const signature = librarySignature(customThemes);
+    if (signature === previousThemeLibrarySignatureRef.current) return;
+    previousThemeLibrarySignatureRef.current = signature;
+    bumpControlRevision();
+    scheduleWaitWake();
+  }, [bumpControlRevision, customThemes, scheduleWaitWake]);
+
+  useEffect(() => {
+    const signature = librarySignature(loudnessProfiles);
+    if (signature === previousLoudnessLibrarySignatureRef.current) return;
+    previousLoudnessLibrarySignatureRef.current = signature;
+    bumpControlRevision();
+    scheduleWaitWake();
+  }, [bumpControlRevision, loudnessProfiles, scheduleWaitWake]);
 
   useEffect(() => {
     const signature = settingsStateSignature(settings);

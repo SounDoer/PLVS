@@ -148,6 +148,7 @@ function Harness({
   hasLoudnessReference = false,
   analysisContext = {},
   loudnessProfiles = [],
+  customThemes = {},
   capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
   assertPresetOperationAllowed = () => {},
   agentSettings = publicSettings,
@@ -302,6 +303,7 @@ function Harness({
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
+    customThemes,
     flush,
   });
   return null;
@@ -2164,5 +2166,45 @@ describe("useAgentControlBridge", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(adapter.responses).toHaveLength(0);
+  });
+
+  it("bumps the revision when the theme library changes outside a command", async () => {
+    const view = mount({ customThemes: { "t-1": { id: "t-1", name: "Studio" } } });
+    await waitUntilReady();
+    const before = (await send(request("app.capabilities", {}, "theme-before"))).result.revision;
+
+    view.rerender(
+      <WorkspaceProvider>
+        <Harness
+          customThemes={{
+            "t-1": { id: "t-1", name: "Studio" },
+            "t-2": { id: "t-2", name: "Night" },
+          }}
+        />
+      </WorkspaceProvider>
+    );
+
+    const after = (await send(request("app.capabilities", {}, "theme-after"))).result.revision;
+    expect(after).toBe(before + 1);
+  });
+
+  it("bumps the revision when the loudness profile library changes outside a command", async () => {
+    const view = mount({ loudnessProfiles: [{ id: "p-1", name: "EBU R128", rules: [] }] });
+    await waitUntilReady();
+    const before = (await send(request("app.capabilities", {}, "loudness-before"))).result.revision;
+
+    view.rerender(
+      <WorkspaceProvider>
+        <Harness
+          loudnessProfiles={[
+            { id: "p-1", name: "EBU R128", rules: [] },
+            { id: "p-2", name: "ATSC A/85", rules: [] },
+          ]}
+        />
+      </WorkspaceProvider>
+    );
+
+    const after = (await send(request("app.capabilities", {}, "loudness-after"))).result.revision;
+    expect(after).toBe(before + 1);
   });
 });

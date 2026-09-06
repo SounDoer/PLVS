@@ -1271,6 +1271,7 @@ function AppContent() {
     },
     executeDock: executeAgentControlDock,
     loudnessProfiles: loudnessProfile.profiles,
+    customThemes: settings.customThemes,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
   });
