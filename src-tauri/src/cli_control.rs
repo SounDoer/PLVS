@@ -137,6 +137,17 @@ pub enum ControlCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  LoudnessProfileDescribe {
+    profile_id: String,
+  },
+  LoudnessProfileMutation {
+    method: String,
+    profile_id: Option<String>,
+    name: Option<String>,
+    input: Option<String>,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
   ConfigExport {
     out: Option<String>,
   },
@@ -206,7 +217,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
     [command, rest @ ..] if command == "theme" => return parse_library_args("theme", rest),
     [command, rest @ ..] if command == "loudness-profile" => {
-      return parse_library_args("loudnessProfile", rest)
+      return parse_loudness_profile_args(rest)
     }
     [command, rest @ ..] if command == "config" => return parse_config_args(rest),
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
@@ -1118,6 +1129,114 @@ fn parse_preset_args(args: &[String]) -> Result<ControlCommand, String> {
   })
 }
 
+fn parse_loudness_profile_args(args: &[String]) -> Result<ControlCommand, String> {
+  let Some(action) = args.first().map(String::as_str) else {
+    return Err("Usage: plvs-cli loudness-profile <list|describe|select|create|update|rename|delete|reorder|export|import> ... --json".to_string());
+  };
+  if matches!(action, "list" | "export" | "import") {
+    return parse_library_args("loudnessProfile", args);
+  }
+  const USAGE: &str = "Usage: plvs-cli loudness-profile <describe|select|create|update|rename|delete|reorder> ... --json --expected-revision <n> [--dry-run]";
+  if !matches!(
+    action,
+    "describe" | "select" | "create" | "update" | "rename" | "delete" | "reorder"
+  ) {
+    return Err(USAGE.to_string());
+  }
+
+  let mut positionals = Vec::new();
+  let mut expected_revision = None;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--expected-revision" => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-revision.".to_string())?;
+        let parsed = value.parse::<u64>().map_err(|_| {
+          "The --expected-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if parsed > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-revision value must be a non-negative safe integer.".to_string(),
+          );
+        }
+        expected_revision = Some(parsed);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value => {
+        positionals.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+  if !json {
+    return Err(format!(
+      "The loudness-profile {action} command requires --json."
+    ));
+  }
+  let expected_positionals = if matches!(action, "update" | "rename") {
+    2
+  } else {
+    1
+  };
+  if positionals.len() != expected_positionals
+    || positionals.iter().any(|value| value.trim().is_empty())
+  {
+    return Err(USAGE.to_string());
+  }
+  if action == "describe" {
+    if dry_run || expected_revision.is_some() {
+      return Err(
+        "The loudness-profile describe command does not accept mutation options.".to_string(),
+      );
+    }
+    return Ok(ControlCommand::LoudnessProfileDescribe {
+      profile_id: positionals.remove(0),
+    });
+  }
+  if expected_revision.is_none() {
+    return Err(format!(
+      "The loudness-profile {action} command requires --expected-revision."
+    ));
+  }
+
+  let (profile_id, name, input) = match action {
+    "select" | "delete" => (Some(positionals.remove(0)), None, None),
+    "create" | "reorder" => (None, None, Some(positionals.remove(0))),
+    "update" => (
+      Some(positionals.remove(0)),
+      None,
+      Some(positionals.remove(0)),
+    ),
+    "rename" => (
+      Some(positionals.remove(0)),
+      Some(positionals.remove(0)),
+      None,
+    ),
+    _ => unreachable!("loudness-profile action was validated above"),
+  };
+  Ok(ControlCommand::LoudnessProfileMutation {
+    method: format!("loudnessProfile.{action}"),
+    profile_id,
+    name,
+    input,
+    expected_revision,
+    dry_run,
+  })
+}
+
 /// One parser for all three libraries. The CLI family word is the caller's business (`theme`,
 /// `loudness-profile`, `preset`); `family` here is already the wire name.
 fn parse_library_args(family: &str, args: &[String]) -> Result<ControlCommand, String> {
@@ -1294,6 +1413,11 @@ pub fn help_text() -> &'static str {
       .replacen(
         "\n  plvs-cli settings describe",
         "\n  plvs-cli config export --json [--out <file>]\n  plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli settings describe",
+        1,
+      )
+      .replacen(
+        "\n  plvs-cli loudness-profile export",
+        "\n  plvs-cli loudness-profile describe <profile-id> --json\n  plvs-cli loudness-profile select <profile-id|off> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile update <profile-id> <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile rename <profile-id> <name> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile delete <profile-id> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile export",
         1,
       )
       .replace("[--expected-revision <n>]", "--expected-revision <n>")
@@ -1484,6 +1608,8 @@ impl ControlFailure {
         | "presetNotFound"
         | "themeNotFound"
         | "loudnessProfileNotFound"
+        | "invalidProfile"
+        | "invalidPermutation"
         | "fileSessionNotFound"
         | "dockPanelNotFound"
         | "monitorNotFound",
@@ -1555,6 +1681,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::LibraryList { family } => format!("{family}.list"),
     ControlCommand::LibraryExport { family, .. } => format!("{family}.export"),
     ControlCommand::LibraryImport { family, .. } => format!("{family}.import"),
+    ControlCommand::LoudnessProfileDescribe { .. } => "loudnessProfile.describe".to_string(),
+    ControlCommand::LoudnessProfileMutation { method, .. } => method.clone(),
     ControlCommand::ConfigExport { .. } => "config.export".to_string(),
     ControlCommand::ConfigImport { .. } => "config.import".to_string(),
     ControlCommand::SettingsDescribe => "settings.describe".to_string(),
@@ -1602,6 +1730,52 @@ fn request_for_command<R: Read>(
     | ControlCommand::SettingsDescribe
     | ControlCommand::SettingsInspect
     | ControlCommand::TransportInspect => serde_json::json!({}),
+    ControlCommand::LoudnessProfileDescribe { profile_id } => {
+      serde_json::json!({ "profileId": profile_id })
+    }
+    ControlCommand::LoudnessProfileMutation {
+      method,
+      profile_id,
+      name,
+      input,
+      expected_revision,
+      dry_run,
+    } => {
+      let mut params = serde_json::Map::new();
+      if let Some(profile_id) = profile_id {
+        params.insert("profileId".to_string(), Value::String(profile_id.clone()));
+      }
+      if let Some(name) = name {
+        params.insert("name".to_string(), Value::String(name.clone()));
+      }
+      if let Some(input) = input {
+        let document = read_json_document(
+          input,
+          stdin,
+          if method == "loudnessProfile.reorder" {
+            "Loudness Profile order"
+          } else {
+            "Loudness Profile document"
+          },
+        )
+        .map_err(ControlFailure::invalid_arguments)?;
+        if method == "loudnessProfile.reorder" {
+          if !document.is_array() {
+            return Err(ControlFailure::invalid_arguments(
+              "Loudness Profile order JSON must be an array of Profile IDs.",
+            ));
+          }
+          params.insert("profileIds".to_string(), document);
+        } else {
+          params.insert("document".to_string(), document);
+        }
+      }
+      params.insert("dryRun".to_string(), Value::Bool(*dry_run));
+      if let Some(revision) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      Value::Object(params)
+    }
     ControlCommand::ConfigImport {
       input,
       expected_revision,
@@ -3450,6 +3624,170 @@ mod tests {
   }
 
   #[test]
+  fn parses_loudness_profile_control_commands_and_help() {
+    assert!(help_text().contains("plvs-cli loudness-profile describe <profile-id> --json"));
+    assert!(family_help_text("loudness-profile")
+      .contains("loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]"));
+
+    assert_eq!(
+      parse_control_args(&args(&["loudness-profile", "describe", "prof-a", "--json"])),
+      Ok(ControlCommand::LoudnessProfileDescribe {
+        profile_id: "prof-a".to_string(),
+      })
+    );
+    for (action, positionals) in [
+      ("select", vec!["off"]),
+      ("create", vec!["profile.json"]),
+      ("update", vec!["prof-a", "profile.json"]),
+      ("rename", vec!["prof-a", "Broadcast"]),
+      ("delete", vec!["prof-a"]),
+      ("reorder", vec!["order.json"]),
+    ] {
+      let mut command = vec!["loudness-profile", action];
+      command.extend(positionals);
+      command.extend(["--expected-revision", "7", "--json", "--dry-run"]);
+      let parsed = parse_control_args(&args(&command)).unwrap();
+      assert_eq!(command_name(&parsed), format!("loudnessProfile.{action}"));
+    }
+  }
+
+  #[test]
+  fn builds_loudness_profile_document_and_reorder_requests_from_stdin() {
+    let create = parse_control_args(&args(&[
+      "loudness-profile",
+      "create",
+      "-",
+      "--expected-revision",
+      "3",
+      "--json",
+      "--dry-run",
+    ]))
+    .unwrap();
+    let mut create_stdin = Cursor::new(
+      b"\xef\xbb\xbf{\"name\":\"Broadcast\",\"referenceLufs\":-23,\"rules\":[]}".to_vec(),
+    );
+    let request = request_for_command(&create, &mut create_stdin).unwrap();
+    assert_eq!(request.method, "loudnessProfile.create");
+    assert_eq!(request.params["document"]["name"], "Broadcast");
+    assert_eq!(request.params["expectedRevision"], 3);
+    assert_eq!(request.params["dryRun"], true);
+
+    let update = parse_control_args(&args(&[
+      "loudness-profile",
+      "update",
+      "prof-a",
+      "-",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(
+      &update,
+      &mut Cursor::new(br#"{"name":"Updated","referenceLufs":null,"rules":[]}"#),
+    )
+    .unwrap();
+    assert_eq!(request.method, "loudnessProfile.update");
+    assert_eq!(request.params["profileId"], "prof-a");
+    assert_eq!(request.params["document"]["name"], "Updated");
+
+    let reorder = parse_control_args(&args(&[
+      "loudness-profile",
+      "reorder",
+      "-",
+      "--expected-revision",
+      "5",
+      "--json",
+    ]))
+    .unwrap();
+    let request =
+      request_for_command(&reorder, &mut Cursor::new(br#"["prof-b","prof-a"]"#)).unwrap();
+    assert_eq!(request.method, "loudnessProfile.reorder");
+    assert_eq!(
+      request.params["profileIds"],
+      serde_json::json!(["prof-b", "prof-a"])
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_loudness_profile_control_forms() {
+    for invalid in [
+      args(&["loudness-profile", "describe", "prof-a"]),
+      args(&[
+        "loudness-profile",
+        "describe",
+        "prof-a",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&["loudness-profile", "select", "off", "--json"]),
+      args(&[
+        "loudness-profile",
+        "create",
+        "profile.json",
+        "--expected-revision",
+        "0",
+        "--all",
+        "--json",
+      ]),
+      args(&[
+        "loudness-profile",
+        "update",
+        "prof-a",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&[
+        "loudness-profile",
+        "rename",
+        "prof-a",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&[
+        "loudness-profile",
+        "delete",
+        "prof-a",
+        "extra",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&[
+        "loudness-profile",
+        "reorder",
+        "order.json",
+        "--out",
+        "copy.json",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+
+    let command = parse_control_args(&args(&[
+      "loudness-profile",
+      "reorder",
+      "-",
+      "--expected-revision",
+      "0",
+      "--json",
+    ]))
+    .unwrap();
+    let failure =
+      request_for_command(&command, &mut Cursor::new(br#"{"profileIds":[]}"#)).unwrap_err();
+    assert_eq!(failure.error.code, "invalidArguments");
+  }
+
+  #[test]
   fn rejects_invalid_library_commands() {
     for invalid in [
       args(&["theme", "list"]),
@@ -3648,7 +3986,12 @@ mod tests {
 
   #[test]
   fn library_not_found_reasons_map_to_exit_three() {
-    for reason in ["themeNotFound", "loudnessProfileNotFound"] {
+    for reason in [
+      "themeNotFound",
+      "loudnessProfileNotFound",
+      "invalidProfile",
+      "invalidPermutation",
+    ] {
       let failure = ControlFailure::application(
         descriptor_app(),
         ControlError {
