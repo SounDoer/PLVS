@@ -2386,8 +2386,7 @@ describe("useAgentControlBridge", () => {
         )
       );
 
-      expect(response.result.dryRun).toBe(true);
-      expect(response.result.plan.items[0].disposition).toBe("added");
+      expect(response.result).toMatchObject(goldenResult("mutation.libraryImportDryRun"));
       expect(response.result.revision).toBe(revision);
       expect(readThemeLibrary()).toEqual([]);
       expect(flush).not.toHaveBeenCalled();

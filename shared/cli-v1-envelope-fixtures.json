@@ -156,7 +156,7 @@
       "ok": true,
       "result": {
         "dryRun": true,
-        "revision": 13,
+        "revision": 0,
         "changed": true,
         "warnings": [],
         "plan": {

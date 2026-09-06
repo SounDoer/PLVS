@@ -992,14 +992,14 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(CliAppCommand::Help);
   }
-  let usage = format!(
-    "Usage: plvs-cli app {} <list|export|import> ... --json",
-    if family == "loudnessProfile" {
-      "loudness-profile"
-    } else {
-      family
-    }
-  );
+  // Every message a user reads names the word they typed, not the wire name: `loudnessProfile` is
+  // not a command they can run.
+  let label = if family == "loudnessProfile" {
+    "loudness-profile"
+  } else {
+    family
+  };
+  let usage = format!("Usage: plvs-cli app {label} <list|export|import> ... --json");
   let command = args
     .first()
     .map(String::as_str)
@@ -1077,7 +1077,7 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
   }
   if !json {
     return Err(format!(
-      "The app {family} {command} command requires --json."
+      "The app {label} {command} command requires --json."
     ));
   }
 
@@ -1085,12 +1085,12 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
     "list" => {
       if !positionals.is_empty() || all || ids.is_some() || out.is_some() || dry_run {
         return Err(format!(
-          "The app {family} list command takes no options other than --json."
+          "The app {label} list command takes no options other than --json."
         ));
       }
       if expected_revision.is_some() {
         return Err(format!(
-          "The app {family} list command does not accept --expected-revision."
+          "The app {label} list command does not accept --expected-revision."
         ));
       }
       Ok(CliAppCommand::LibraryList {
@@ -1100,13 +1100,13 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
     "export" => {
       if !positionals.is_empty() {
         return Err(format!(
-          "The app {family} export command takes no positional arguments."
+          "The app {label} export command takes no positional arguments."
         ));
       }
       // Export is a read: it cannot conflict, and there is nothing to preview.
       if expected_revision.is_some() || dry_run {
         return Err(format!(
-          "The app {family} export command does not accept --expected-revision or --dry-run."
+          "The app {label} export command does not accept --expected-revision or --dry-run."
         ));
       }
       if all == ids.is_some() {
@@ -1121,17 +1121,17 @@ fn parse_library_args(family: &str, args: &[String]) -> Result<CliAppCommand, St
     _ => {
       if positionals.len() != 1 || positionals[0].trim().is_empty() {
         return Err(format!(
-          "Usage: plvs-cli app {family} import <file|-> --json --expected-revision <n> [--dry-run]"
+          "Usage: plvs-cli app {label} import <file|-> --json --expected-revision <n> [--dry-run]"
         ));
       }
       if all || ids.is_some() || out.is_some() {
         return Err(format!(
-          "The app {family} import command does not accept --all, --ids or --out."
+          "The app {label} import command does not accept --all, --ids or --out."
         ));
       }
       if expected_revision.is_none() {
         return Err(format!(
-          "The app {family} import command requires --expected-revision."
+          "The app {label} import command requires --expected-revision."
         ));
       }
       Ok(CliAppCommand::LibraryImport {
@@ -1895,18 +1895,41 @@ fn write_pack_file(report: &mut CliAppReport, path: &str) -> Result<(), String> 
   let Some(result) = report.result.as_mut().and_then(Value::as_object_mut) else {
     return Ok(());
   };
-  let Some(pack) = result.remove("pack") else {
+  let Some(pack) = result.get("pack") else {
     return Ok(());
   };
   let contents = format!(
     "{}\n",
-    serde_json::to_string_pretty(&pack)
+    serde_json::to_string_pretty(pack)
       .map_err(|error| format!("Unable to serialize pack: {error}"))?
   );
+  // The swap happens only once the bytes are on disk. Taking `pack` out first loses the export
+  // entirely on a write failure: no file, and an exit-1 envelope with neither `pack` nor `out`.
   fs::write(Path::new(path), contents)
     .map_err(|error| format!("Unable to write the pack to {path}: {error}"))?;
+  result.remove("pack");
   result.insert("out".to_string(), Value::String(path.to_string()));
   Ok(())
+}
+
+/// The `--out` half of an export, kept out of `run` so it can be tested without a live app.
+fn finish_export(command: &CliAppCommand, report: &mut CliAppReport, exit_code: u8) -> u8 {
+  let CliAppCommand::LibraryExport {
+    out: Some(path), ..
+  } = command
+  else {
+    return exit_code;
+  };
+  match write_pack_file(report, path) {
+    Ok(()) => exit_code,
+    Err(failure) => {
+      eprintln!("{failure}");
+      // 1, not 2: the app answered and the pack is in hand, so this is a local write failure, which
+      // `docs/cli.md`'s exit-code table lists under 1. Reporting 2 would tell a script the app is
+      // unreachable and send it into a retry that a full disk cannot satisfy.
+      1
+    }
+  }
 }
 
 pub fn run(command: CliAppCommand) -> ExitCode {
@@ -1914,19 +1937,8 @@ pub fn run(command: CliAppCommand) -> ExitCode {
     println!("{}", help_text());
     return ExitCode::SUCCESS;
   }
-  let (mut report, mut exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
-  if let CliAppCommand::LibraryExport {
-    out: Some(path), ..
-  } = &command
-  {
-    if let Err(failure) = write_pack_file(&mut report, path) {
-      eprintln!("{failure}");
-      // 1, not 2: the app answered and the pack is in hand, so this is a local write failure, which
-      // `docs/cli.md`'s exit-code table lists under 1. Reporting 2 would tell a script the app is
-      // unreachable and send it into a retry that a full disk cannot satisfy.
-      exit_code = 1;
-    }
-  }
+  let (mut report, exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
+  let exit_code = finish_export(&command, &mut report, exit_code);
   match serde_json::to_string(&report) {
     Ok(json) => println!("{json}"),
     Err(error) => {
@@ -3223,6 +3235,11 @@ mod tests {
     )
     .unwrap();
     assert_eq!(list.method, "preset.list");
+
+    // `preset export` reaches this parser through `parse_preset_args`, which has its own flag loop.
+    let preset_export = parse_app_args(&args(&["preset", "export", "--all", "--json"])).unwrap();
+    let request = request_for_command(&preset_export, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "preset.export");
   }
 
   #[test]
@@ -3230,6 +3247,12 @@ mod tests {
     for invalid in [
       args(&["theme", "list"]),
       args(&["theme", "list", "--expected-revision", "3", "--json"]),
+      // A list that quietly accepted the export and import options would answer a user who asked
+      // to export with a listing instead.
+      args(&["theme", "list", "--all", "--json"]),
+      args(&["theme", "list", "--out", "pack.json", "--json"]),
+      args(&["theme", "list", "--dry-run", "--json"]),
+      args(&["theme", "list", "extra", "--json"]),
       args(&["theme", "export", "--json"]),
       args(&["theme", "export", "--all", "--ids", "t-1", "--json"]),
       args(&["theme", "export", "--all", "--dry-run", "--json"]),
@@ -3270,6 +3293,21 @@ mod tests {
     ] {
       assert!(parse_app_args(&invalid).is_err(), "accepted {invalid:?}");
     }
+
+    // Every message names the family word the user typed. `loudnessProfile` is the wire name and
+    // is not a command anyone can run.
+    let rejected = parse_app_args(&args(&[
+      "loudness-profile",
+      "export",
+      "--all",
+      "--dry-run",
+      "--json",
+    ]))
+    .unwrap_err();
+    assert_eq!(
+      rejected,
+      "The app loudness-profile export command does not accept --expected-revision or --dry-run."
+    );
   }
 
   #[test]
@@ -3346,6 +3384,79 @@ mod tests {
     let mut failed = failure_report(CliAppFailure::invalid_arguments("nope"));
     write_pack_file(&mut failed, "unreachable.json").unwrap();
     assert!(failed.result.is_none());
+  }
+
+  fn pack_report() -> CliAppReport {
+    CliAppReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({
+        "revision": 4,
+        "pack": { "app": "PLVS", "kind": "theme-pack", "items": [] }
+      })),
+      error: None,
+    }
+  }
+
+  /// A directory is never writable as a file, on Windows or elsewhere.
+  fn unwritable_path() -> String {
+    std::env::temp_dir().to_str().unwrap().to_string()
+  }
+
+  #[test]
+  fn a_failed_pack_write_leaves_the_pack_in_the_envelope() {
+    let mut report = pack_report();
+
+    let error = write_pack_file(&mut report, &unwritable_path()).unwrap_err();
+
+    assert!(error.starts_with("Unable to write the pack to"), "{error}");
+    let result = report.result.unwrap();
+    // The point of the ordering: an exit-1 envelope still carries the export, so a script can
+    // recover it from stdout instead of re-running the command.
+    assert_eq!(result["pack"]["kind"], "theme-pack");
+    assert!(result.get("out").is_none());
+  }
+
+  #[test]
+  fn finishing_an_export_writes_out_and_reports_a_write_failure_as_exit_one() {
+    let export = |out: Option<&str>| CliAppCommand::LibraryExport {
+      family: "theme".to_string(),
+      ids: None,
+      out: out.map(str::to_string),
+    };
+
+    let path = std::env::temp_dir().join(format!("plvs-finish-{}.json", std::process::id()));
+    let mut written = pack_report();
+    assert_eq!(
+      finish_export(&export(Some(path.to_str().unwrap())), &mut written, 0),
+      0
+    );
+    assert_eq!(written.result.unwrap()["out"], path.to_str().unwrap());
+    fs::remove_file(path).unwrap();
+
+    // 1, not 2: the app answered, so a script must not be told to retry the connection.
+    let mut failed = pack_report();
+    assert_eq!(
+      finish_export(&export(Some(&unwritable_path())), &mut failed, 0),
+      1
+    );
+
+    // Without --out, and for any other command, the report and the app's exit code pass through.
+    let mut without_out = pack_report();
+    assert_eq!(finish_export(&export(None), &mut without_out, 4), 4);
+    assert_eq!(without_out.result.unwrap()["pack"]["kind"], "theme-pack");
+    let mut other = pack_report();
+    assert_eq!(
+      finish_export(
+        &CliAppCommand::LibraryList {
+          family: "theme".to_string(),
+        },
+        &mut other,
+        0
+      ),
+      0
+    );
+    assert_eq!(other.result.unwrap()["pack"]["kind"], "theme-pack");
   }
 
   #[test]
