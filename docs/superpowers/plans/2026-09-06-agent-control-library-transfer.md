@@ -1803,6 +1803,14 @@ with:
 
 Add the nine commands to whatever `plvs-cli app` reference that file carries, matching its existing formatting.
 
+Then fix `docs/cli.md:252-253`, which Task 8 has just made wrong in two ways. It currently says `app`
+commands do not accept `--out`, and it describes `--out` as tee semantics — stdout intact, the file
+receiving the same bytes. That is `doctor --out`. **`app ... export --out` is different: it moves the
+pack.** `result.pack` is removed from the envelope and `result.out` takes its place, so the two never
+appear together and stdout does not carry the pack. Say this explicitly; one flag with two semantics
+is exactly the thing a script author will assume away, and the failure is a caller reading stdout for
+a pack that is not there.
+
 - [ ] **Step 6: Commit**
 
 ```bash
