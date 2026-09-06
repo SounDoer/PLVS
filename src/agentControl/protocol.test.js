@@ -69,6 +69,66 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes Loudness Profile describe and every mutation shape", () => {
+    const document = { name: "EBU R128", referenceLufs: -23, rules: [] };
+    const cases = [
+      ["loudnessProfile.describe", { profileId: "profile-1" }],
+      ["loudnessProfile.select", { profileId: "off", expectedRevision: 2, dryRun: true }],
+      ["loudnessProfile.create", { document, expectedRevision: 2, dryRun: true }],
+      [
+        "loudnessProfile.update",
+        { profileId: "profile-1", document, expectedRevision: 2, dryRun: true },
+      ],
+      [
+        "loudnessProfile.rename",
+        { profileId: "profile-1", name: "Broadcast", expectedRevision: 2, dryRun: true },
+      ],
+      ["loudnessProfile.delete", { profileId: "profile-1", expectedRevision: 2, dryRun: true }],
+      [
+        "loudnessProfile.reorder",
+        { profileIds: ["profile-2", "profile-1"], expectedRevision: 2, dryRun: true },
+      ],
+    ];
+
+    for (const [method, params] of cases) {
+      expect(normalizeAgentControlRequest(request(method, params))).toEqual({
+        ok: true,
+        request: { id: "req-1", method, params },
+      });
+    }
+  });
+
+  it("leaves authoring semantics to the shared planner but requires a plain document", () => {
+    const semanticallyInvalid = { name: "", referenceLufs: 99, rules: "no" };
+    expect(
+      normalizeAgentControlRequest(
+        request("loudnessProfile.create", {
+          document: semanticallyInvalid,
+          expectedRevision: 0,
+        })
+      ).request.params.document
+    ).toBe(semanticallyInvalid);
+    expect(
+      normalizeAgentControlRequest(
+        request("loudnessProfile.create", { document: [], expectedRevision: 0 })
+      ).error.path
+    ).toBe("$.params.document");
+  });
+
+  it.each([
+    ["loudnessProfile.describe", { profileId: "profile-1" }],
+    ["loudnessProfile.select", { profileId: "off", expectedRevision: 0 }],
+    ["loudnessProfile.create", { document: {}, expectedRevision: 0 }],
+    ["loudnessProfile.update", { profileId: "profile-1", document: {}, expectedRevision: 0 }],
+    ["loudnessProfile.rename", { profileId: "profile-1", name: "Name", expectedRevision: 0 }],
+    ["loudnessProfile.delete", { profileId: "profile-1", expectedRevision: 0 }],
+    ["loudnessProfile.reorder", { profileIds: [], expectedRevision: 0 }],
+  ])("rejects an unknown field on %s at its own path", (method, params) => {
+    expect(
+      normalizeAgentControlRequest(request(method, { ...params, extra: true })).error
+    ).toMatchObject({ reason: "invalidParams", path: "$.params.extra" });
+  });
+
   it.each([
     [
       "preset.rename",
@@ -310,6 +370,44 @@ describe("normalizeAgentControlRequest", () => {
     [request("preset.reorder", {}), "invalidParams", "$.params.presetIds", -32602],
     [request("preset.save", {}), "invalidParams", "$.params.name", -32602],
     [request("preset.update", {}), "invalidParams", "$.params.presetId", -32602],
+    [
+      request("loudnessProfile.describe", { profileId: "off" }),
+      "invalidParams",
+      "$.params.profileId",
+      -32602,
+    ],
+    [
+      request("loudnessProfile.select", { profileId: " " }),
+      "invalidParams",
+      "$.params.profileId",
+      -32602,
+    ],
+    [request("loudnessProfile.create", {}), "invalidParams", "$.params.document", -32602],
+    [
+      request("loudnessProfile.update", { profileId: "profile-1", document: [] }),
+      "invalidParams",
+      "$.params.document",
+      -32602,
+    ],
+    [
+      request("loudnessProfile.rename", { profileId: "profile-1" }),
+      "invalidParams",
+      "$.params.name",
+      -32602,
+    ],
+    [
+      request("loudnessProfile.delete", { profileId: "off" }),
+      "invalidParams",
+      "$.params.profileId",
+      -32602,
+    ],
+    [request("loudnessProfile.reorder", {}), "invalidParams", "$.params.profileIds", -32602],
+    [
+      request("loudnessProfile.reorder", { profileIds: [], extra: true }),
+      "invalidParams",
+      "$.params.extra",
+      -32602,
+    ],
     [request("settings.update", {}), "invalidParams", "$.params.patch", -32602],
     [request("app.wait", {}), "invalidParams", "$.params.afterRevision", -32602],
     [request("transport.file.analyze", {}), "invalidParams", "$.params.path", -32602],
@@ -437,6 +535,12 @@ describe("normalizeAgentControlRequest", () => {
     ["preset.import", { pack: { app: "PLVS" } }],
     ["theme.import", { pack: { app: "PLVS" } }],
     ["loudnessProfile.import", { pack: { app: "PLVS" } }],
+    ["loudnessProfile.select", { profileId: "off" }],
+    ["loudnessProfile.create", { document: {} }],
+    ["loudnessProfile.update", { profileId: "profile-1", document: {} }],
+    ["loudnessProfile.rename", { profileId: "profile-1", name: "Name" }],
+    ["loudnessProfile.delete", { profileId: "profile-1" }],
+    ["loudnessProfile.reorder", { profileIds: [] }],
   ])("requires expectedRevision for %s", (method, params) => {
     expect(normalizeAgentControlRequest(request(method, params))).toEqual({
       ok: false,

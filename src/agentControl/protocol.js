@@ -146,6 +146,96 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "loudnessProfile.describe") {
+    const field = unknownField(input.params, new Set(["profileId"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (
+      typeof input.params.profileId !== "string" ||
+      input.params.profileId.trim() === "" ||
+      input.params.profileId === "off"
+    ) {
+      return invalidParams(
+        "$.params.profileId",
+        "profileId must be a non-empty Profile ID other than off."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { profileId: input.params.profileId },
+      },
+    };
+  }
+
+  const loudnessProfileMutations = new Set([
+    "loudnessProfile.select",
+    "loudnessProfile.create",
+    "loudnessProfile.update",
+    "loudnessProfile.rename",
+    "loudnessProfile.delete",
+    "loudnessProfile.reorder",
+  ]);
+  if (loudnessProfileMutations.has(input.method)) {
+    const create = input.method === "loudnessProfile.create";
+    const update = input.method === "loudnessProfile.update";
+    const rename = input.method === "loudnessProfile.rename";
+    const reorder = input.method === "loudnessProfile.reorder";
+    const select = input.method === "loudnessProfile.select";
+    const hasProfileId = !create && !reorder;
+    const allowed = new Set([
+      ...(hasProfileId ? ["profileId"] : []),
+      ...(create || update ? ["document"] : []),
+      ...(rename ? ["name"] : []),
+      ...(reorder ? ["profileIds"] : []),
+      "expectedRevision",
+      "dryRun",
+    ]);
+    const field = unknownField(input.params, allowed);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+
+    if (
+      hasProfileId &&
+      (typeof input.params.profileId !== "string" || input.params.profileId.trim() === "")
+    ) {
+      return invalidParams("$.params.profileId", "profileId must be a non-empty string.");
+    }
+    if (hasProfileId && !select && input.params.profileId === "off") {
+      return invalidParams("$.params.profileId", "off is only valid for Profile selection.");
+    }
+    if ((create || update) && !isPlainJsonObject(input.params.document)) {
+      return invalidParams("$.params.document", "document must be a plain JSON object.");
+    }
+    if (rename && typeof input.params.name !== "string") {
+      return invalidParams("$.params.name", "name must be a string.");
+    }
+    if (reorder && !Array.isArray(input.params.profileIds)) {
+      return invalidParams("$.params.profileIds", "profileIds must be an array.");
+    }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          ...(hasProfileId ? { profileId: input.params.profileId } : {}),
+          ...(create || update ? { document: input.params.document } : {}),
+          ...(rename ? { name: input.params.name } : {}),
+          ...(reorder ? { profileIds: input.params.profileIds } : {}),
+          expectedRevision: input.params.expectedRevision,
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
+    };
+  }
+
   if (
     input.method === "preset.rename" ||
     input.method === "preset.delete" ||
