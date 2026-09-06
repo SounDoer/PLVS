@@ -5,7 +5,8 @@ import {
   listenForAgentControlRequests,
   respondToAgentControlRequest,
 } from "../ipc/agentControlEvents.js";
-import { flushPersistence } from "../persistence/index.js";
+import { flushPersistence, settingsStore } from "../persistence/index.js";
+import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
 import {
@@ -30,6 +31,13 @@ import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelContro
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
+import {
+  buildLibraryList,
+  libraryFamily,
+  planLibraryExport,
+  planLibraryImport,
+} from "./libraryTransfer.js";
+import { PackValidationError } from "../transfer/packShape.js";
 import {
   planPresetApply,
   planPresetApplyResources,
@@ -125,6 +133,18 @@ function librarySignature(entries) {
       name,
     ])
   );
+}
+
+/// The live Loudness Profile selection, as `loudnessProfile.list` reports it. Off is null, and so
+/// is a selection pointing at a profile the library no longer holds.
+///
+/// Read from `plvs:settings` rather than a prop: the bridge is handed the profile *library*
+/// (`loudnessProfiles`) and never the selection, and `LoudnessProfileContext` writes every
+/// selection change straight through to that store. It is also where the loudness adapter reads
+/// the library from, so both halves of this result come from one source.
+function activeLoudnessProfileId(profiles) {
+  const { id } = parseSelection(settingsStore.read().loudnessProfiles?.active);
+  return id !== null && profiles.some((profile) => profile.id === id) ? id : null;
 }
 
 /// Compares the live Workspace against the view a Preset becomes once applied.
@@ -292,6 +312,7 @@ export function useAgentControlBridge({
   });
   const settlementRef = useRef(null);
   const presetSettlementRef = useRef(null);
+  const librarySettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
   const latestTransportRef = useRef(transport);
@@ -356,6 +377,21 @@ export function useAgentControlBridge({
     scheduleWaitWake();
   }, [bumpControlRevision, scheduleWaitWake]);
 
+  /// Resolved by the watcher for the library a `*.import` just wrote.
+  ///
+  /// Import does not bump the revision itself. Every library it can write is watched -- the two
+  /// `librarySignature` effects below and the Preset effect -- and each watcher bumps when the
+  /// write reaches React. Doing both moved the revision by two for a single import (measured, not
+  /// reasoned about: `bumpControlRevision`'s same-turn guard has already reset by the time the
+  /// re-render lands). Nothing about that is visible -- no error, an ordinary-looking number --
+  /// except that every later `--expected-revision` starts conflicting.
+  const resolveLibrarySettlement = useCallback((family) => {
+    const settlement = librarySettlementRef.current;
+    if (!settlement || settlement.family !== family) return;
+    librarySettlementRef.current = null;
+    settlement.resolve(controlRevisionRef.current);
+  }, []);
+
   useEffect(() => {
     if (!controllableWorkspaceMatches(previousWorkspaceRef.current, workspace)) {
       previousWorkspaceRef.current = workspace;
@@ -376,13 +412,14 @@ export function useAgentControlBridge({
       previousPresetsSignatureRef.current = signature;
       bumpControlRevision();
       scheduleWaitWake();
+      resolveLibrarySettlement("preset");
     }
     const settlement = presetSettlementRef.current;
     if (settlement && signature === settlement.signature) {
       presetSettlementRef.current = null;
       settlement.resolve(controlRevisionRef.current);
     }
-  }, [bumpControlRevision, presets, scheduleWaitWake]);
+  }, [bumpControlRevision, presets, resolveLibrarySettlement, scheduleWaitWake]);
 
   useEffect(() => {
     const signature = librarySignature(customThemes);
@@ -390,7 +427,8 @@ export function useAgentControlBridge({
     previousThemeLibrarySignatureRef.current = signature;
     bumpControlRevision();
     scheduleWaitWake();
-  }, [bumpControlRevision, customThemes, scheduleWaitWake]);
+    resolveLibrarySettlement("theme");
+  }, [bumpControlRevision, customThemes, resolveLibrarySettlement, scheduleWaitWake]);
 
   useEffect(() => {
     const signature = librarySignature(loudnessProfiles);
@@ -398,7 +436,8 @@ export function useAgentControlBridge({
     previousLoudnessLibrarySignatureRef.current = signature;
     bumpControlRevision();
     scheduleWaitWake();
-  }, [bumpControlRevision, loudnessProfiles, scheduleWaitWake]);
+    resolveLibrarySettlement("loudnessProfile");
+  }, [bumpControlRevision, loudnessProfiles, resolveLibrarySettlement, scheduleWaitWake]);
 
   useEffect(() => {
     const signature = settingsStateSignature(settings);
@@ -1424,6 +1463,111 @@ export function useAgentControlBridge({
           return { requestId, result };
         }
 
+        // `preset.list` is handled above and keeps its own richer shape; the guard is here so a
+        // later reordering of these branches cannot silently swap it for the generic one.
+        const libraryMatch = /^(preset|theme|loudnessProfile)\.(list|export|import)$/.exec(
+          request.method
+        );
+        if (libraryMatch && !(libraryMatch[1] === "preset" && libraryMatch[2] === "list")) {
+          const [, family, action] = libraryMatch;
+          const { stateKey, notFoundCode } = libraryFamily(family);
+
+          if (action === "list") {
+            const entries = buildLibraryList(family);
+            return {
+              requestId,
+              result: {
+                revision: controlRevisionRef.current,
+                [stateKey]: entries,
+                ...(family === "loudnessProfile"
+                  ? { activeId: activeLoudnessProfileId(entries) }
+                  : {}),
+              },
+            };
+          }
+
+          if (action === "export") {
+            const planned = planLibraryExport(family, request.params.ids);
+            if (planned.missingIds.length > 0) {
+              throw semanticFailure(
+                notFoundCode,
+                "$.params.ids",
+                `These ids are not in the library: ${planned.missingIds.join(", ")}.`,
+                -32020,
+                { missingIds: planned.missingIds }
+              );
+            }
+            return {
+              requestId,
+              result: { revision: controlRevisionRef.current, pack: planned.pack },
+            };
+          }
+
+          // Import is deliberately not a scene operation: the merge only appends, moves no
+          // selection and dirties no Preset, so it cannot destroy an open editor's draft. The
+          // GUI's own Import buttons are not disabled by editor state either.
+          const currentRevision = controlRevisionRef.current;
+          if (
+            request.params.expectedRevision !== undefined &&
+            request.params.expectedRevision !== currentRevision
+          ) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `App state changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedRevision, currentRevision }
+            );
+          }
+
+          let planned;
+          try {
+            planned = planLibraryImport(family, request.params.pack);
+          } catch (error) {
+            if (!(error instanceof PackValidationError)) throw error;
+            // The message is the one a recipient of a shared file needs -- which library the file
+            // belongs to, or that it is a whole configuration -- so it is passed through verbatim.
+            throw semanticFailure("invalidPack", "$.params.pack", error.message, -32602);
+          }
+
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            changed: planned.changed,
+            warnings: [],
+            plan: planned.plan,
+            state: { [stateKey]: buildLibraryList(family) },
+          };
+          if (result.dryRun || !planned.changed) {
+            return { requestId, result };
+          }
+
+          const committed = new Promise((resolve, reject) => {
+            librarySettlementRef.current = { family, resolve, reject };
+          });
+          planned.commit();
+          result.state = { [stateKey]: buildLibraryList(family) };
+          result.revision = await awaitSettlement(
+            committed,
+            () => {
+              librarySettlementRef.current = null;
+            },
+            "The library import"
+          );
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `Library committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revision: result.revision }
+            );
+          }
+          return { requestId, result };
+        }
+
         if (request.method === "axis.describe" || request.method === "axis.inspect") {
           const inspection = buildAxisInspection(workspace);
           return {
@@ -1855,6 +1999,9 @@ export function useAgentControlBridge({
       const presetSettlement = presetSettlementRef.current;
       presetSettlementRef.current = null;
       presetSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      const librarySettlement = librarySettlementRef.current;
+      librarySettlementRef.current = null;
+      librarySettlement?.reject(new Error("Agent-control bridge unmounted."));
       const settingsSettlement = settingsSettlementRef.current;
       settingsSettlementRef.current = null;
       settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));

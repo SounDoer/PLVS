@@ -3,9 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { StrictMode, useState } from "react";
+import { act, cleanup, render, renderHook, waitFor } from "@testing-library/react";
+import { StrictMode, useEffect, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
+import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import { getAdapter } from "../transfer/libraryAdapters.js";
+import { listCustomThemes } from "../theme/customThemesRepo.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { useThemeSettings } from "../hooks/useThemeSettings.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
@@ -128,7 +133,26 @@ const MUTATION_METHODS = new Set([
   "dock.layout.apply",
   "dock.panel.update",
   "dock.panel.reset",
+  "preset.import",
+  "theme.import",
+  "loudnessProfile.import",
 ]);
+
+/// A theme fixture has to survive Theme V2 validation: `normalizeThemeDocument` drops a bare
+/// `{ id, name }` silently, so a pack built from one arrives with an empty `items` array.
+function makeTheme(id, name) {
+  return { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id, name };
+}
+
+function seedThemeLibrary(themes) {
+  getAdapter("themes").append(themes);
+}
+
+function readThemeLibrary() {
+  return getAdapter("themes")
+    .list()
+    .map(({ id, name }) => ({ id, name }));
+}
 
 function request(method, params = {}, id = "req-1") {
   return {
@@ -148,7 +172,7 @@ function Harness({
   hasLoudnessReference = false,
   analysisContext = {},
   loudnessProfiles = [],
-  customThemes = {},
+  customThemes = null,
   capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
   assertPresetOperationAllowed = () => {},
   agentSettings = publicSettings,
@@ -161,11 +185,24 @@ function Harness({
   controlledAgentSettings = false,
   executeAgentTransport,
   presets = { activeId: null, dirty: false },
+  presetLibraryFromStore = false,
   applyPresetToWorkspace = false,
   presetApplyBarrier = null,
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
+  // What App.jsx really passes: `settings.customThemes`, which `useThemeSettings` keeps in sync
+  // with `themesStore`. A test that needs the revision to see its own import has to reproduce that
+  // subscription -- with a static prop the library signature effect can never fire.
+  const [subscribedThemes, setSubscribedThemes] = useState(() => listCustomThemes());
+  useEffect(() => themesStore.subscribe(() => setSubscribedThemes(listCustomThemes())), []);
+  // The same wiring for Presets, which `usePresets` gets from a `presetsStore` subscription. Off
+  // by default: most tests here drive the Preset list through the controlled object below.
+  const [subscribedPresets, setSubscribedPresets] = useState(() => presetsStore.read().list ?? []);
+  useEffect(
+    () => presetsStore.subscribe(() => setSubscribedPresets(presetsStore.read().list ?? [])),
+    []
+  );
   const [presetState, setPresetState] = useState(presets);
   const [settingsState, setSettingsState] = useState(agentSettings);
   const effectiveSettings = controlledAgentSettings ? agentSettings : settingsState;
@@ -173,6 +210,7 @@ function Harness({
   const [dockState, setDockState] = useState(agentDock);
   const controlledPresets = {
     ...presetState,
+    ...(presetLibraryFromStore ? { list: subscribedPresets } : {}),
     rename: (id, name) =>
       setPresetState((current) => ({
         ...current,
@@ -303,7 +341,7 @@ function Harness({
     hasLoudnessReference,
     analysisContext,
     loudnessProfiles,
-    customThemes,
+    customThemes: customThemes ?? subscribedThemes,
     flush,
   });
   return null;
@@ -2206,5 +2244,283 @@ describe("useAgentControlBridge", () => {
 
     const after = (await send(request("app.capabilities", {}, "loudness-after"))).result.revision;
     expect(after).toBe(before + 1);
+  });
+
+  describe("library transfer", () => {
+    const PROFILE_A = { id: "prof-a", name: "EBU R128", referenceLufs: -23, rules: [] };
+    const PROFILE_B = { id: "prof-b", name: "ATSC A/85", referenceLufs: -24, rules: [] };
+
+    function themePack(items) {
+      return { app: "PLVS", kind: "theme-pack", version: 1, exportedAt: "", items };
+    }
+
+    it("lists a library", async () => {
+      getAdapter("loudness").append([PROFILE_A, PROFILE_B]);
+      mount();
+      await waitUntilReady();
+
+      const response = await send(request("loudnessProfile.list", {}, "loudness-list"));
+
+      expect(response.result.profiles).toEqual([
+        { id: "prof-a", name: "EBU R128" },
+        { id: "prof-b", name: "ATSC A/85" },
+      ]);
+      expect(response.result.activeId).toBeNull();
+    });
+
+    it("reports the active Loudness Profile selection", async () => {
+      settingsStore.patch({
+        loudnessProfiles: { profiles: [PROFILE_A, PROFILE_B], active: "profile:prof-b" },
+      });
+      mount();
+      await waitUntilReady();
+
+      const response = await send(request("loudnessProfile.list", {}, "loudness-active"));
+
+      expect(response.result.activeId).toBe("prof-b");
+    });
+
+    it("lists the custom Theme library", async () => {
+      seedThemeLibrary([makeTheme("t-1", "Studio")]);
+      mount();
+      await waitUntilReady();
+
+      const response = await send(request("theme.list", {}, "theme-list"));
+
+      expect(response.result.themes).toEqual([{ id: "t-1", name: "Studio" }]);
+    });
+
+    it("exports the whole library", async () => {
+      seedThemeLibrary([makeTheme("t-1", "Studio")]);
+      mount();
+      await waitUntilReady();
+
+      const response = await send(request("theme.export", {}, "theme-export"));
+
+      expect(response.result.pack.kind).toBe("theme-pack");
+      expect(response.result.pack.items.map((item) => item.id)).toEqual(["t-1"]);
+    });
+
+    it("fails an export naming an id that is not in the library", async () => {
+      seedThemeLibrary([makeTheme("t-1", "Studio")]);
+      mount();
+      await waitUntilReady();
+
+      const response = await send(
+        request("theme.export", { ids: ["ghost", "gone"] }, "theme-export-missing")
+      );
+
+      expect(response.error).toMatchObject({
+        code: -32020,
+        data: {
+          reason: "themeNotFound",
+          path: "$.params.ids",
+          details: { missingIds: ["ghost", "gone"] },
+        },
+      });
+    });
+
+    it("imports a pack and reports the plan", async () => {
+      const flush = vi.fn(async () => {});
+      mount({ flush });
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "theme.import",
+          { pack: themePack([makeTheme("t-1", "Studio")]), dryRun: false },
+          "theme-import"
+        )
+      );
+
+      expect(response.result.changed).toBe(true);
+      expect(response.result.plan.items[0].disposition).toBe("added");
+      expect(response.result.state.themes).toEqual([{ id: "t-1", name: "Studio" }]);
+      expect(readThemeLibrary()).toEqual([{ id: "t-1", name: "Studio" }]);
+      expect(flush).toHaveBeenCalledTimes(1);
+    });
+
+    it("increments the revision exactly once for one import", async () => {
+      // Two things can move the revision for a single import: a bump in the handler and the
+      // library signature effect that fires once the write reaches React. The harness subscribes
+      // to `themesStore` the way App.jsx does, so this is the case that measured +2.
+      mount();
+      await waitUntilReady();
+      const before = (await send(request("app.capabilities", {}, "rev-before"))).result.revision;
+
+      await send(
+        request(
+          "theme.import",
+          { pack: themePack([makeTheme("t-1", "Studio")]), expectedRevision: before },
+          "rev-import"
+        )
+      );
+
+      const after = (await send(request("app.capabilities", {}, "rev-after"))).result.revision;
+      expect(after).toBe(before + 1);
+    });
+
+    it("writes nothing on a dry run", async () => {
+      const flush = vi.fn(async () => {});
+      mount({ flush });
+      await waitUntilReady();
+      const revision = (await send(request("app.capabilities", {}, "dry-before"))).result.revision;
+
+      const response = await send(
+        request(
+          "theme.import",
+          {
+            pack: themePack([makeTheme("t-1", "Studio")]),
+            expectedRevision: revision,
+            dryRun: true,
+          },
+          "theme-import-dry"
+        )
+      );
+
+      expect(response.result.dryRun).toBe(true);
+      expect(response.result.plan.items[0].disposition).toBe("added");
+      expect(response.result.revision).toBe(revision);
+      expect(readThemeLibrary()).toEqual([]);
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it("treats an import of what is already there as a no-op", async () => {
+      const theme = makeTheme("t-1", "Studio");
+      seedThemeLibrary([theme]);
+      const flush = vi.fn(async () => {});
+      mount({ flush });
+      await waitUntilReady();
+      const revision = (await send(request("app.capabilities", {}, "noop-before"))).result.revision;
+
+      const response = await send(
+        request("theme.import", { pack: themePack([theme]), expectedRevision: revision }, "noop")
+      );
+
+      expect(response.result.changed).toBe(false);
+      expect(response.result.plan.items[0].disposition).toBe("skipped");
+      expect(response.result.revision).toBe(revision);
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it("imports a Preset pack through the Preset library", async () => {
+      // The Preset family settles on a different watcher from the other two -- `usePresets`
+      // re-reads `presetsStore` and the Preset signature effect is what bumps -- so it needs its
+      // own coverage or an import there would simply hang until the settlement timed out.
+      mount({ presetLibraryFromStore: true, presets: { list: [], activeId: null, dirty: false } });
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "preset.import",
+          {
+            pack: {
+              app: "PLVS",
+              kind: "preset-pack",
+              version: 1,
+              exportedAt: "",
+              items: [{ id: "p-1", name: "Mix", panelOrder: [], panelsById: {} }],
+            },
+          },
+          "preset-import"
+        )
+      );
+
+      expect(response.result.changed).toBe(true);
+      expect(response.result.state.presets).toEqual([{ id: "p-1", name: "Mix" }]);
+    });
+
+    it("refuses an import that names a stale revision", async () => {
+      mount();
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "theme.import",
+          { pack: themePack([makeTheme("t-1", "Studio")]), expectedRevision: 7 },
+          "stale"
+        )
+      );
+
+      expect(response.error).toMatchObject({
+        code: -32004,
+        data: {
+          reason: "revisionConflict",
+          details: { expectedRevision: 7, currentRevision: 0 },
+        },
+      });
+      expect(readThemeLibrary()).toEqual([]);
+    });
+
+    it("does not dirty the active preset", async () => {
+      mount({ presets: { list: [], activeId: "preset-1", dirty: false } });
+      await waitUntilReady();
+
+      await send(
+        request("theme.import", { pack: themePack([makeTheme("t-1", "Studio")]) }, "no-dirty")
+      );
+
+      const inspection = await send(request("app.inspect", {}, "no-dirty-inspect"));
+      expect(inspection.result.preset).toEqual({ activeId: "preset-1", dirty: false });
+    });
+
+    it("imports while a blocking editor is open", async () => {
+      // Not a scene operation: an append-only merge that moves no selection cannot destroy a
+      // draft, and the GUI's Import buttons are not disabled by editor state either. The guard
+      // throws if the handler touches it, so calling `assertSceneOperationAllowed` fails this.
+      mount({
+        assertPresetOperationAllowed: (operation) => {
+          throw new SceneOperationBlockedError(operation, ["theme"]);
+        },
+        agentDockContext: { activeEditors: ["theme"] },
+      });
+      await waitUntilReady();
+
+      const response = await send(
+        request("theme.import", { pack: themePack([makeTheme("t-1", "Studio")]) }, "editor-open")
+      );
+
+      expect(response.error).toBeUndefined();
+      expect(response.result.changed).toBe(true);
+    });
+
+    it("rejects a pack of the wrong kind", async () => {
+      mount();
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "theme.import",
+          { pack: { app: "PLVS", kind: "preset-pack", version: 1, items: [] } },
+          "wrong-kind"
+        )
+      );
+
+      expect(response.error.code).toBe(-32602);
+      expect(response.error.data.reason).toBe("invalidPack");
+      expect(response.error.message).toMatch(/Presets file/);
+      expect(readThemeLibrary()).toEqual([]);
+    });
+
+    it("shows an imported theme in the library the editor renders", async () => {
+      // The assertion has to be on rendered state: a store read would pass whether or not the
+      // write went through the adapters, and it is `notifyLocal` inside them that makes the
+      // theme list re-read at all.
+      window.matchMedia = vi.fn((query) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }));
+      mount();
+      await waitUntilReady();
+      const themes = renderHook(() => useThemeSettings());
+
+      await send(
+        request("theme.import", { pack: themePack([makeTheme("t-1", "Studio")]) }, "renders")
+      );
+
+      expect(Object.keys(themes.result.current.customThemes)).toContain("t-1");
+    });
   });
 });
