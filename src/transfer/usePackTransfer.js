@@ -10,15 +10,10 @@ import { useTransientStatus } from "../hooks/useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { pickPackFile, savePackFile } from "../ipc/fileDialog.js";
+import { collectPackItems } from "./collectPackItems.js";
 import { getAdapter } from "./libraryAdapters.js";
 import { planPackImport } from "./mergeIntoLibrary.js";
-import {
-  PackValidationError,
-  buildPack,
-  packDescriptor,
-  parsePack,
-  referencedProfileIds,
-} from "./packShape.js";
+import { PackValidationError, buildPack, packDescriptor, parsePack } from "./packShape.js";
 
 function defaultFileName(descriptor, items) {
   const base = items.length === 1 ? items[0].name : descriptor.defaultBaseName;
@@ -59,18 +54,7 @@ export function usePackTransfer() {
       setStatus("");
       try {
         const descriptor = packDescriptor(type);
-        const chosen = new Set(selectedIds);
-        const items = getAdapter(type)
-          .list()
-          .filter((item) => chosen.has(item.id));
-
-        const options = {};
-        if (type === "presets") {
-          const wanted = referencedProfileIds(items);
-          options.loudnessProfiles = getAdapter("loudness")
-            .list()
-            .filter((profile) => wanted.has(profile.id));
-        }
+        const { items, options } = collectPackItems(type, [...selectedIds]);
 
         const contents = `${JSON.stringify(buildPack(type, items, options), null, 2)}\n`;
         const fileName = defaultFileName(descriptor, items);
