@@ -5,6 +5,7 @@ import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import {
   LIBRARY_FAMILIES,
   buildLibraryList,
+  libraryFamily,
   planLibraryExport,
   planLibraryImport,
 } from "./libraryTransfer.js";
@@ -31,6 +32,12 @@ describe("LIBRARY_FAMILIES", () => {
     expect(LIBRARY_FAMILIES.loudnessProfile.notFoundCode).toBe("loudnessProfileNotFound");
     expect(LIBRARY_FAMILIES.theme.stateKey).toBe("themes");
     expect(LIBRARY_FAMILIES.loudnessProfile.stateKey).toBe("profiles");
+  });
+
+  it("rejects a family outside App Control's wire vocabulary, naming it in the message", () => {
+    // `src/transfer/`'s internal vocabulary (`presets`/`themes`/`loudness`) must not leak through
+    // here: a typo'd or wrong-vocabulary family should fail with a message a CLI caller wrote.
+    expect(() => libraryFamily("presets")).toThrow(/Unknown library family: presets/);
   });
 });
 
@@ -59,6 +66,13 @@ describe("planLibraryExport", () => {
     const planned = planLibraryExport("loudnessProfile", ["prof-a", "ghost"]);
     expect(planned.missingIds).toEqual(["ghost"]);
     expect(planned.pack).toBeNull();
+  });
+
+  it("treats an empty ids array as 'export nothing', distinct from the whole library", () => {
+    settingsStore.patch({ loudnessProfiles: { profiles: [PROFILE_A] } });
+    const planned = planLibraryExport("loudnessProfile", []);
+    expect(planned.missingIds).toEqual([]);
+    expect(planned.pack.items).toEqual([]);
   });
 });
 
