@@ -137,6 +137,18 @@ pub enum ControlCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  ThemeRead {
+    method: String,
+    theme_id: Option<String>,
+  },
+  ThemeMutation {
+    method: String,
+    theme_id: Option<String>,
+    name: Option<String>,
+    input: Option<String>,
+    expected_revision: Option<u64>,
+    dry_run: bool,
+  },
   LoudnessProfileDescribe {
     profile_id: String,
   },
@@ -215,7 +227,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
-    [command, rest @ ..] if command == "theme" => return parse_library_args("theme", rest),
+    [command, rest @ ..] if command == "theme" => return parse_theme_args(rest),
     [command, rest @ ..] if command == "loudness-profile" => {
       return parse_loudness_profile_args(rest)
     }
@@ -1237,6 +1249,128 @@ fn parse_loudness_profile_args(args: &[String]) -> Result<ControlCommand, String
   })
 }
 
+fn parse_theme_args(args: &[String]) -> Result<ControlCommand, String> {
+  let Some(action) = args.first().map(String::as_str) else {
+    return Err("Usage: plvs-cli theme <list|inspect|describe|select|follow-system|create|update|rename|duplicate|delete|reorder|export|import> ... --json".to_string());
+  };
+  if matches!(action, "list" | "export" | "import") {
+    return parse_library_args("theme", args);
+  }
+  const USAGE: &str = "Usage: plvs-cli theme <inspect|describe|select|follow-system|create|update|rename|duplicate|delete|reorder> ... --json --expected-revision <n> [--dry-run]";
+  if !matches!(
+    action,
+    "inspect"
+      | "describe"
+      | "select"
+      | "follow-system"
+      | "create"
+      | "update"
+      | "rename"
+      | "duplicate"
+      | "delete"
+      | "reorder"
+  ) {
+    return Err(USAGE.to_string());
+  }
+
+  let mut positionals = Vec::new();
+  let mut expected_revision = None;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--expected-revision" => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-revision.".to_string())?;
+        let parsed = value.parse::<u64>().map_err(|_| {
+          "The --expected-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if parsed > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-revision value must be a non-negative safe integer.".to_string(),
+          );
+        }
+        expected_revision = Some(parsed);
+        index += 2;
+      }
+      value if value.starts_with("--") => return Err(format!("Unknown option: {value}")),
+      value => {
+        positionals.push(value.to_string());
+        index += 1;
+      }
+    }
+  }
+  if !json {
+    return Err(format!("The theme {action} command requires --json."));
+  }
+  let expected_positionals = match action {
+    "inspect" | "follow-system" => 0,
+    "update" | "rename" | "duplicate" => 2,
+    _ => 1,
+  };
+  if positionals.len() != expected_positionals
+    || positionals.iter().any(|value| value.trim().is_empty())
+  {
+    return Err(USAGE.to_string());
+  }
+  if matches!(action, "inspect" | "describe") {
+    if dry_run || expected_revision.is_some() {
+      return Err(format!(
+        "The theme {action} command does not accept mutation options."
+      ));
+    }
+    return Ok(ControlCommand::ThemeRead {
+      method: format!("theme.{action}"),
+      theme_id: (action == "describe").then(|| positionals.remove(0)),
+    });
+  }
+  if expected_revision.is_none() {
+    return Err(format!(
+      "The theme {action} command requires --expected-revision."
+    ));
+  }
+
+  let wire_action = if action == "follow-system" {
+    "followSystem"
+  } else {
+    action
+  };
+  let (theme_id, name, input) = match action {
+    "follow-system" => (None, None, None),
+    "select" | "delete" => (Some(positionals.remove(0)), None, None),
+    "create" | "reorder" => (None, None, Some(positionals.remove(0))),
+    "update" => (
+      Some(positionals.remove(0)),
+      None,
+      Some(positionals.remove(0)),
+    ),
+    "rename" | "duplicate" => (
+      Some(positionals.remove(0)),
+      Some(positionals.remove(0)),
+      None,
+    ),
+    _ => unreachable!("theme action was validated above"),
+  };
+  Ok(ControlCommand::ThemeMutation {
+    method: format!("theme.{wire_action}"),
+    theme_id,
+    name,
+    input,
+    expected_revision,
+    dry_run,
+  })
+}
+
 /// One parser for all three libraries. The CLI family word is the caller's business (`theme`,
 /// `loudness-profile`, `preset`); `family` here is already the wire name.
 fn parse_library_args(family: &str, args: &[String]) -> Result<ControlCommand, String> {
@@ -1413,6 +1547,11 @@ pub fn help_text() -> &'static str {
       .replacen(
         "\n  plvs-cli settings describe",
         "\n  plvs-cli config export --json [--out <file>]\n  plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli settings describe",
+        1,
+      )
+      .replacen(
+        "\n  plvs-cli theme export",
+        "\n  plvs-cli theme inspect --json\n  plvs-cli theme describe <theme-id> --json\n  plvs-cli theme select <theme-id> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme follow-system --expected-revision <n> --json [--dry-run]\n  plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme update <theme-id> <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme rename <theme-id> <name> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme duplicate <theme-id> <name> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme delete <theme-id> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme export",
         1,
       )
       .replacen(
@@ -1681,6 +1820,9 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::LibraryList { family } => format!("{family}.list"),
     ControlCommand::LibraryExport { family, .. } => format!("{family}.export"),
     ControlCommand::LibraryImport { family, .. } => format!("{family}.import"),
+    ControlCommand::ThemeRead { method, .. } | ControlCommand::ThemeMutation { method, .. } => {
+      method.clone()
+    }
     ControlCommand::LoudnessProfileDescribe { .. } => "loudnessProfile.describe".to_string(),
     ControlCommand::LoudnessProfileMutation { method, .. } => method.clone(),
     ControlCommand::ConfigExport { .. } => "config.export".to_string(),
@@ -1730,6 +1872,53 @@ fn request_for_command<R: Read>(
     | ControlCommand::SettingsDescribe
     | ControlCommand::SettingsInspect
     | ControlCommand::TransportInspect => serde_json::json!({}),
+    ControlCommand::ThemeRead { theme_id, .. } => match theme_id {
+      Some(theme_id) => serde_json::json!({ "themeId": theme_id }),
+      None => serde_json::json!({}),
+    },
+    ControlCommand::ThemeMutation {
+      method,
+      theme_id,
+      name,
+      input,
+      expected_revision,
+      dry_run,
+    } => {
+      let mut params = serde_json::Map::new();
+      if let Some(theme_id) = theme_id {
+        params.insert("themeId".to_string(), Value::String(theme_id.clone()));
+      }
+      if let Some(name) = name {
+        params.insert("name".to_string(), Value::String(name.clone()));
+      }
+      if let Some(input) = input {
+        let document = read_json_document(
+          input,
+          stdin,
+          if method == "theme.reorder" {
+            "Theme order"
+          } else {
+            "Theme document"
+          },
+        )
+        .map_err(ControlFailure::invalid_arguments)?;
+        if method == "theme.reorder" {
+          if !document.is_array() {
+            return Err(ControlFailure::invalid_arguments(
+              "Theme order JSON must be an array of Theme IDs.",
+            ));
+          }
+          params.insert("themeIds".to_string(), document);
+        } else {
+          params.insert("document".to_string(), document);
+        }
+      }
+      params.insert("dryRun".to_string(), Value::Bool(*dry_run));
+      if let Some(revision) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      Value::Object(params)
+    }
     ControlCommand::LoudnessProfileDescribe { profile_id } => {
       serde_json::json!({ "profileId": profile_id })
     }
@@ -3621,6 +3810,195 @@ mod tests {
       parse_control_args(&args(&["preset", "export", "--all", "--json"])).unwrap();
     let request = request_for_command(&preset_export, &mut Cursor::new([])).unwrap();
     assert_eq!(request.method, "preset.export");
+  }
+
+  #[test]
+  fn parses_theme_control_commands_and_help() {
+    assert!(help_text().contains("plvs-cli theme inspect --json"));
+    assert!(family_help_text("theme")
+      .contains("theme duplicate <theme-id> <name> --expected-revision <n> --json [--dry-run]"));
+
+    assert_eq!(
+      parse_control_args(&args(&["theme", "inspect", "--json"])),
+      Ok(ControlCommand::ThemeRead {
+        method: "theme.inspect".to_string(),
+        theme_id: None,
+      })
+    );
+    assert_eq!(
+      parse_control_args(&args(&["theme", "describe", "plvs-dark", "--json"])),
+      Ok(ControlCommand::ThemeRead {
+        method: "theme.describe".to_string(),
+        theme_id: Some("plvs-dark".to_string()),
+      })
+    );
+    for (action, positionals, method) in [
+      ("select", vec!["plvs-light"], "theme.select"),
+      ("follow-system", vec![], "theme.followSystem"),
+      ("create", vec!["theme.json"], "theme.create"),
+      ("update", vec!["custom-a", "theme.json"], "theme.update"),
+      ("rename", vec!["custom-a", "Studio"], "theme.rename"),
+      (
+        "duplicate",
+        vec!["plvs-dark", "Dark Copy"],
+        "theme.duplicate",
+      ),
+      ("delete", vec!["custom-a"], "theme.delete"),
+      ("reorder", vec!["order.json"], "theme.reorder"),
+    ] {
+      let mut command = vec!["theme", action];
+      command.extend(positionals);
+      command.extend(["--expected-revision", "7", "--json", "--dry-run"]);
+      let parsed = parse_control_args(&args(&command)).unwrap();
+      assert_eq!(command_name(&parsed), method);
+    }
+  }
+
+  #[test]
+  fn builds_theme_document_and_reorder_requests_from_stdin() {
+    let create = parse_control_args(&args(&[
+      "theme",
+      "create",
+      "-",
+      "--expected-revision",
+      "3",
+      "--json",
+      "--dry-run",
+    ]))
+    .unwrap();
+    let mut create_stdin = Cursor::new(b"\xef\xbb\xbf{\"version\":2,\"name\":\"Studio\"}".to_vec());
+    let request = request_for_command(&create, &mut create_stdin).unwrap();
+    assert_eq!(request.method, "theme.create");
+    assert_eq!(request.params["document"]["name"], "Studio");
+    assert_eq!(request.params["expectedRevision"], 3);
+    assert_eq!(request.params["dryRun"], true);
+
+    let update = parse_control_args(&args(&[
+      "theme",
+      "update",
+      "custom-a",
+      "-",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(
+      &update,
+      &mut Cursor::new(br#"{"version":2,"name":"Updated"}"#),
+    )
+    .unwrap();
+    assert_eq!(request.method, "theme.update");
+    assert_eq!(request.params["themeId"], "custom-a");
+    assert_eq!(request.params["document"]["name"], "Updated");
+
+    let reorder = parse_control_args(&args(&[
+      "theme",
+      "reorder",
+      "-",
+      "--expected-revision",
+      "5",
+      "--json",
+    ]))
+    .unwrap();
+    let request =
+      request_for_command(&reorder, &mut Cursor::new(br#"["custom-b","custom-a"]"#)).unwrap();
+    assert_eq!(request.method, "theme.reorder");
+    assert_eq!(
+      request.params["themeIds"],
+      serde_json::json!(["custom-b", "custom-a"])
+    );
+  }
+
+  #[test]
+  fn rejects_invalid_theme_control_forms_before_transport() {
+    for invalid in [
+      args(&["theme", "inspect"]),
+      args(&[
+        "theme",
+        "describe",
+        "plvs-dark",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&["theme", "follow-system", "--json"]),
+      args(&[
+        "theme",
+        "create",
+        "theme.json",
+        "--expected-revision",
+        "0",
+        "--all",
+        "--json",
+      ]),
+      args(&[
+        "theme",
+        "update",
+        "custom-a",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&[
+        "theme",
+        "rename",
+        "custom-a",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&[
+        "theme",
+        "duplicate",
+        "plvs-dark",
+        "Copy",
+        "--out",
+        "copy.json",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+      args(&[
+        "theme",
+        "delete",
+        "custom-a",
+        "extra",
+        "--expected-revision",
+        "0",
+        "--json",
+      ]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+
+    let command = parse_control_args(&args(&[
+      "theme",
+      "reorder",
+      "-",
+      "--expected-revision",
+      "0",
+      "--json",
+    ]))
+    .unwrap();
+    let failure =
+      request_for_command(&command, &mut Cursor::new(br#"{"themeIds":[]}"#)).unwrap_err();
+    assert_eq!(failure.error.code, "invalidArguments");
+
+    let command = parse_control_args(&args(&[
+      "theme",
+      "create",
+      "-",
+      "--expected-revision",
+      "0",
+      "--json",
+    ]))
+    .unwrap();
+    let failure = request_for_command(&command, &mut Cursor::new(b"not-json")).unwrap_err();
+    assert_eq!(failure.error.code, "invalidArguments");
   }
 
   #[test]
