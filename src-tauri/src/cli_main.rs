@@ -59,7 +59,6 @@ enum HelpTopic {
   Analyze,
   #[cfg(any(feature = "capture-harness", test))]
   Capture,
-  Control,
 }
 
 fn parse_args(args: &[String]) -> Result<CliCommand, String> {
@@ -323,7 +322,9 @@ fn parse_finite_number(value: &str, flag: &str) -> Result<f64, String> {
 fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
   match topic {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
-    topic if cli_control::is_command(topic) => Ok(CliCommand::Help(HelpTopic::Control)),
+    topic if cli_control::is_command(topic) => Ok(CliCommand::Control(ControlCommand::FamilyHelp(
+      topic.to_string(),
+    ))),
     _ => Err(format!("Unknown help topic: {topic}")),
   }
 }
@@ -522,7 +523,6 @@ fn help_text(topic: HelpTopic) -> &'static str {
     HelpTopic::Capture => {
       "PLVS internal capture harness - capture\n\nUsage:\n  plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n\nRepository-owned live capture for smoke and soak verification. This is not a public CLI command."
     }
-    HelpTopic::Control => cli_control::help_text(),
   }
 }
 
@@ -824,12 +824,28 @@ mod tests {
     );
     assert_eq!(
       parse_args(&args(&["panel", "--help"])),
-      Ok(CliCommand::Control(ControlCommand::Help))
+      Ok(CliCommand::Control(ControlCommand::FamilyHelp(
+        "panel".to_string()
+      )))
     );
     assert_eq!(
       parse_args(&args(&["help", "panel"])),
-      Ok(CliCommand::Help(HelpTopic::Control))
+      Ok(CliCommand::Control(ControlCommand::FamilyHelp(
+        "panel".to_string()
+      )))
     );
+  }
+
+  #[test]
+  fn control_family_help_is_scoped_to_that_family() {
+    let panel = cli_control::family_help_text("panel");
+    assert!(panel.contains("plvs-cli panel describe"));
+    assert!(panel.contains("plvs-cli panel update"));
+    assert!(!panel.contains("plvs-cli theme export"));
+
+    let theme = cli_control::family_help_text("theme");
+    assert!(theme.contains("plvs-cli theme export"));
+    assert!(!theme.contains("plvs-cli panel update"));
   }
 
   #[test]

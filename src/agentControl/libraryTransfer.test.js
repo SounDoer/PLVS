@@ -83,6 +83,17 @@ describe("planLibraryImport", () => {
     return { app: "PLVS", kind: "theme-pack", version: 1, exportedAt: "", items };
   }
 
+  function presetPack(items) {
+    return {
+      app: "PLVS",
+      kind: "preset-pack",
+      version: 1,
+      exportedAt: "",
+      items,
+      loudnessProfiles: [],
+    };
+  }
+
   it("plans an addition without writing", () => {
     const planned = planLibraryImport("theme", themePack([makeTheme("t-1", "Studio")]));
     expect(planned.changed).toBe(true);
@@ -102,6 +113,16 @@ describe("planLibraryImport", () => {
     const theme = makeTheme("t-1", "Studio");
     planLibraryImport("theme", themePack([theme])).commit();
     const planned = planLibraryImport("theme", themePack([theme]));
+    expect(planned.changed).toBe(false);
+    expect(planned.plan.items[0].disposition).toBe("skipped");
+  });
+
+  it("re-imports a legacy Preset with an omitted Off profile as a no-op", () => {
+    const preset = { id: "p-1", name: "Legacy", panelOrder: [], panelsById: {} };
+    presetsStore.patch({ list: [preset] });
+
+    const planned = planLibraryImport("preset", presetPack([preset]));
+
     expect(planned.changed).toBe(false);
     expect(planned.plan.items[0].disposition).toBe("skipped");
   });

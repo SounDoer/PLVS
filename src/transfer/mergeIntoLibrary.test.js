@@ -187,6 +187,21 @@ describe("planPackImport", () => {
     expect(result.itemAdditions[0].loudnessProfileActive).toBe("off");
   });
 
+  it("treats a legacy omitted Off selection as identical on re-import", () => {
+    const legacyPreset = { id: "p1", name: "Legacy" };
+    const result = planPackImport("presets", presetPack([legacyPreset], []), {
+      existingItems: [legacyPreset],
+      existingProfiles: [],
+      makeId: counter(),
+    });
+
+    expect(result.itemAdditions).toEqual([]);
+    expect(result.itemPlan).toEqual([
+      { sourceId: "p1", finalId: "p1", name: "Legacy", disposition: "skipped" },
+    ]);
+    expect(legacyPreset).not.toHaveProperty("loudnessProfileActive");
+  });
+
   // Our own exporter never bundles a profile no preset references (buildPack filters through
   // referencedProfileIds), but planPackImport is a pure function that does not enforce that --
   // a hand-edited or third-party file could carry one, and it should still import.

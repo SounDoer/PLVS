@@ -87,6 +87,13 @@ function remapPresetProfile(preset, idMap) {
   };
 }
 
+function canonicalizeStoredPresetProfile(preset) {
+  // Presets saved before this field existed represent Off by omitting it. Import remapping writes
+  // the canonical `off`, so compare local legacy records in that same form without mutating them.
+  const { kind } = parseSelection(preset.loudnessProfileActive);
+  return kind === "profile" ? preset : { ...preset, loudnessProfileActive: LOUDNESS_PROFILE_OFF };
+}
+
 /**
  * The whole import decision for one pack, without writing anything.
  *
@@ -114,7 +121,8 @@ export function planPackImport(
   const profiles = planMerge(existingProfiles, pack.loudnessProfiles ?? [], { makeId });
   const idMap = new Map(profiles.plan.map((entry) => [entry.sourceId, entry.finalId]));
   const remapped = pack.items.map((preset) => remapPresetProfile(preset, idMap));
-  const items = planMerge(existingItems, remapped, { makeId });
+  const comparableExisting = existingItems.map(canonicalizeStoredPresetProfile);
+  const items = planMerge(comparableExisting, remapped, { makeId });
 
   return {
     profileAdditions: profiles.additions,

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Agent Control command-family help now shows only that family's relevant usage.
+- Re-importing an exported legacy Preset no longer creates a duplicate when its Off loudness
+  profile selection was stored as an omitted field.
+
 ## [0.15.1] - 2026-09-06
 
 ### Added

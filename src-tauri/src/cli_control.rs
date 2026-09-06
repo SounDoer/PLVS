@@ -38,6 +38,7 @@ pub fn is_command(command: &str) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlCommand {
   Help,
+  FamilyHelp(String),
   Capabilities,
   Inspect,
   PanelDescribe {
@@ -175,7 +176,11 @@ pub enum ControlCommand {
 pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
   match args {
     [flag] if is_help(flag) => return Ok(ControlCommand::Help),
-    [_, flag] if is_help(flag) => return Ok(ControlCommand::Help),
+    [command, rest @ ..]
+      if is_command(command) && rest.iter().any(|argument| is_help(argument)) =>
+    {
+      return Ok(ControlCommand::FamilyHelp(command.clone()));
+    }
     [command, flag] if (command == "capabilities" || command == "inspect") && flag == "--json" => {
       return Ok(if command == "capabilities" {
         ControlCommand::Capabilities
@@ -1186,6 +1191,20 @@ pub fn help_text() -> &'static str {
     .as_str()
 }
 
+pub fn family_help_text(command: &str) -> String {
+  let prefix = format!("  plvs-cli {command}");
+  let usage = help_text()
+    .lines()
+    .filter(|line| line.starts_with(&prefix))
+    .collect::<Vec<_>>()
+    .join("\n");
+
+  debug_assert!(!usage.is_empty(), "missing help lines for {command}");
+  format!(
+    "PLVS CLI - {command}\n\nUsage:\n{usage}\n\nAdd --json for stable machine-readable output. Use - to read one JSON document from stdin.\nRunning-app commands require Agent Control to be enabled and never launch PLVS.\nUse plvs-cli --help to list every command family."
+  )
+}
+
 fn read_layout<R: Read>(input: &str, stdin: &mut R) -> Result<Value, String> {
   read_json_document(input, stdin, "layout")
 }
@@ -1396,7 +1415,9 @@ struct ControlReport {
 
 fn command_name(command: &ControlCommand) -> String {
   match command {
-    ControlCommand::Help => unreachable!("help does not have a wire method"),
+    ControlCommand::Help | ControlCommand::FamilyHelp(_) => {
+      unreachable!("help does not have a wire method")
+    }
     ControlCommand::Capabilities => "app.capabilities".to_string(),
     ControlCommand::Inspect => "app.inspect".to_string(),
     ControlCommand::PanelDescribe { .. } => "panel.describe".to_string(),
@@ -1767,7 +1788,9 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    ControlCommand::Help => unreachable!("help does not create a request"),
+    ControlCommand::Help | ControlCommand::FamilyHelp(_) => {
+      unreachable!("help does not create a request")
+    }
   };
   Ok(JsonRpcRequest {
     id: format!(
@@ -1951,9 +1974,16 @@ fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code
 }
 
 pub fn run(command: ControlCommand) -> ExitCode {
-  if command == ControlCommand::Help {
-    println!("{}", help_text());
-    return ExitCode::SUCCESS;
+  match &command {
+    ControlCommand::Help => {
+      println!("{}", help_text());
+      return ExitCode::SUCCESS;
+    }
+    ControlCommand::FamilyHelp(family) => {
+      println!("{}", family_help_text(family));
+      return ExitCode::SUCCESS;
+    }
+    _ => {}
   }
   let (mut report, exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
   let exit_code = finish_export(&command, &mut report, exit_code);
