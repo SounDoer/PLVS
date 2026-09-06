@@ -37,7 +37,9 @@ channel-role labels.
 The following are intentionally outside Settings Control:
 
 - Theme library creation, editing, duplication, and deletion; these belong to future Theme Control.
-- Loudness Profile library and selection; these belong to future Loudness Profile Control.
+  Sharing a Theme between machines is Library Transfer's ([`libraries.md`](libraries.md)).
+- Loudness Profile library editing and selection; these belong to future Loudness Profile Control.
+  Sharing a Loudness Profile is Library Transfer's ([`libraries.md`](libraries.md)).
 - Workspace, panels, and axes.
 - Focus View, panel opacity, glass, window geometry, and Dock; these are working-scene state captured
   by Presets rather than ordinary global Settings.

@@ -85,7 +85,19 @@ Use `plvs-cli app --help` for the complete live-control command list. The curren
 - `inspect`, `capabilities`, and `wait`;
 - `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
+- `theme` and `loudness-profile`;
 - `transport` and `dock`.
+
+The library families share one shape:
+
+```powershell
+plvs-cli app <preset|theme|loudness-profile> list --json
+plvs-cli app <preset|theme|loudness-profile> export <--all|--ids <id,...>> --json [--out <file>]
+plvs-cli app <preset|theme|loudness-profile> import <file|-> --json --expected-revision <n> [--dry-run]
+```
+
+`preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
+Library Transfer. `theme` and `loudness-profile` have no other subcommands.
 
 Detailed payloads and behavior are documented in [Agent Control](agent-control/README.md).
 
@@ -146,8 +158,9 @@ The canonical v1 examples live in
 ```
 
 A completed report is a successful command even when it diagnoses an unhealthy installation. A
-report with a required check in `error` state therefore keeps `ok: true` and exits `1`. This is the
-only documented `ok: true` response with a nonzero exit code.
+report with a required check in `error` state therefore keeps `ok: true` and exits `1`. This is one
+of only two documented `ok: true` responses with a nonzero exit code; the other is a library export
+whose `--out` file could not be written, described under [Output Files](#output-files).
 
 ### App queries and global revision
 
@@ -249,13 +262,24 @@ stderr and exits `2`.
 
 ## Output Files
 
-`doctor --out <file>` has tee semantics: stdout remains intact and the file receives the exact same
-bytes. `app` commands do not currently accept `--out`; capture their clean JSON stdout
-programmatically. In Windows PowerShell 5.1, use `cmd` for byte-preserving redirection because
-PowerShell's `>` transcodes native output to UTF-16LE:
+One flag, two semantics. `doctor --out <file>` **tees**: stdout remains intact and the file receives
+the exact same bytes. `app <library> export --out <file>` **moves**: the file receives the
+pretty-printed pack, and `result.pack` is replaced by `result.out` in the envelope, so stdout does
+not carry the pack. The two fields never appear together. No other `app` command accepts `--out`;
+capture their clean JSON stdout programmatically.
+
+If the pack cannot be written, the CLI prints one line on stderr and exits `1` while stdout still
+carries the full `ok: true` envelope *including* `result.pack` — the swap happens only after the
+bytes are on disk, so the export is recoverable from stdout without re-running the command. This is
+the second of the two documented `ok: true` responses with a nonzero exit code; the other is an
+unhealthy doctor report.
+
+In Windows PowerShell 5.1, use `cmd` for byte-preserving redirection because PowerShell's `>`
+transcodes native output to UTF-16LE:
 
 ```powershell
 plvs-cli doctor --json --out doctor.json
+plvs-cli app theme export --all --json --out themes.plvstheme
 cmd /d /s /c "plvs-cli app inspect --json > inspect.json"
 ```
 

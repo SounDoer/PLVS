@@ -24,6 +24,9 @@ panel.describe / panel.update / panel.reset
 axis.describe / axis.inspect / axis shared / axis panel
 preset.list / preset.describe / preset save / preset update / preset apply
 preset.rename / preset.delete / preset.reorder
+preset export / preset import
+theme.list / theme export / theme import
+loudnessProfile.list / loudnessProfile export / loudnessProfile import
 settings.describe / settings.inspect / settings.update
 transport.inspect / transport source / transport live / transport file
 dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
@@ -53,21 +56,22 @@ paths as the GUI.
 
 ## Implementation status
 
-The foundation, Panel Control, Axis Control, Presets, Settings, Revision Wait, Transport, and Dock
-Control are implemented. MCP integration remains a deferred product decision.
+The foundation, Panel Control, Axis Control, Presets, Settings, Revision Wait, Transport, Dock
+Control, and Library Transfer are implemented. MCP integration remains a deferred product decision.
 
 ## Keeping this contract in step with the app
 
 Panel Control is three hand-written lists of the same fields -- the schema, the read mapping and the
 patch planner -- layered on one flat control record. Nothing in the app makes them agree, and a
 control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no App Control
-change to look finished. Four guards make that omission fail instead:
+change to look finished. Five guards make that omission fail instead:
 
 | Guard                                              | Fails when                                                                                                        |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `src/agentControl/panelControlCoverage.test.js`    | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal.                  |
 | `src/agentControl/panelControlContract.test.js`    | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
 | `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own.                        |
+| `src/agentControl/libraryTransferContract.test.js` | A library has a pack format but no command family, or the reverse.                                                |
 | `src/agentControl/publicSurfaceDocs.test.js`       | `generated/` no longer matches the schema builders.                                                               |
 
 The last fails as a snapshot mismatch; `npm run docs:agent-control` rewrites the pages.
@@ -439,6 +443,7 @@ Control settings.
 - [`wait.md`](wait.md) — approved Revision Wait contract
 - [`transport.md`](transport.md) — approved Transport Control contract
 - [`dock.md`](dock.md) — approved Dock Control contract
+- [`libraries.md`](libraries.md) — approved Library Transfer contract
 
 ## Resolved cross-module ownership
 
