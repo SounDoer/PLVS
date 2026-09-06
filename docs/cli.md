@@ -88,6 +88,7 @@ Use `plvs-cli --help` for the complete live-control command list. The current fa
 - `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
+- `config`;
 - `transport` and `dock`.
 
 The library families share one shape:
@@ -100,6 +101,15 @@ plvs-cli <preset|theme|loudness-profile> import <file|-> --json --expected-revis
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
 Library Transfer. `theme` and `loudness-profile` have no other subcommands.
+
+Everything configuration export uses the same `.plvsconfig` document as Settings:
+
+```powershell
+plvs-cli config export --json [--out <file>]
+```
+
+Configuration import is not yet exposed through the CLI because a successful import relaunches the
+app; its response-delivery-before-relaunch contract is being designed separately.
 
 Detailed payloads and behavior are documented in [Agent Control](agent-control/README.md).
 
@@ -265,16 +275,17 @@ stderr and exits `2`.
 ## Output Files
 
 One flag, two semantics. `doctor --out <file>` **tees**: stdout remains intact and the file receives
-the exact same bytes. `<library> export --out <file>` **moves**: the file receives the
-pretty-printed pack, and `result.pack` is replaced by `result.out` in the envelope, so stdout does
-not carry the pack. The two fields never appear together. No other command accepts `--out`;
-capture their clean JSON stdout programmatically.
+the exact same bytes. `<library> export --out <file>` and `config export --out <file>` **move**: the
+file receives the pretty-printed exported document, and `result.pack` or `result.configuration` is
+replaced by `result.out` in the envelope, so stdout does not carry a duplicate. The document and
+`out` fields never appear together. No other command accepts `--out`; capture its clean JSON stdout
+programmatically.
 
-If the pack cannot be written, the CLI prints one line on stderr and exits `1` while stdout still
-carries the full `ok: true` envelope *including* `result.pack` — the swap happens only after the
-bytes are on disk, so the export is recoverable from stdout without re-running the command. This is
-the second of the two documented `ok: true` responses with a nonzero exit code; the other is an
-unhealthy doctor report.
+If an exported document cannot be written, the CLI prints one line on stderr and exits `1` while
+stdout still carries the full `ok: true` envelope, including `result.pack` or
+`result.configuration` — the swap happens only after the bytes are on disk, so the export is
+recoverable from stdout without re-running the command. This is the second of the two documented
+`ok: true` responses with a nonzero exit code; the other is an unhealthy doctor report.
 
 In Windows PowerShell 5.1, use `cmd` for byte-preserving redirection because PowerShell's `>`
 transcodes native output to UTF-16LE:
@@ -282,6 +293,7 @@ transcodes native output to UTF-16LE:
 ```powershell
 plvs-cli doctor --json --out doctor.json
 plvs-cli theme export --all --json --out themes.plvstheme
+plvs-cli config export --json --out plvs-configuration.plvsconfig
 cmd /d /s /c "plvs-cli inspect --json > inspect.json"
 ```
 

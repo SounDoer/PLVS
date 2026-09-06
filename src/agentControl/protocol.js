@@ -85,6 +85,7 @@ export function normalizeAgentControlRequest(input) {
     input.method === "preset.list" ||
     input.method === "theme.list" ||
     input.method === "loudnessProfile.list" ||
+    input.method === "config.export" ||
     input.method === "settings.describe" ||
     input.method === "settings.inspect" ||
     input.method === "transport.inspect" ||

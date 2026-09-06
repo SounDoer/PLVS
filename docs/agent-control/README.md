@@ -27,6 +27,7 @@ preset.rename / preset.delete / preset.reorder
 preset export / preset import
 theme.list / theme export / theme import
 loudnessProfile.list / loudnessProfile export / loudnessProfile import
+config export
 settings.describe / settings.inspect / settings.update
 transport.inspect / transport source / transport live / transport file
 dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
@@ -57,7 +58,8 @@ paths as the GUI.
 ## Implementation status
 
 The foundation, Panel Control, Axis Control, Presets, Settings, Revision Wait, Transport, Dock
-Control, and Library Transfer are implemented. MCP integration remains a deferred product decision.
+Control, Library Transfer, and Configuration export are implemented. Configuration import and MCP
+integration remain deferred product decisions.
 
 ## Keeping this contract in step with the app
 
@@ -450,6 +452,7 @@ Control settings.
 - [`transport.md`](transport.md) — approved Transport Control contract
 - [`dock.md`](dock.md) — approved Dock Control contract
 - [`libraries.md`](libraries.md) — approved Library Transfer contract
+- [`config.md`](config.md) — approved Everything configuration export contract
 
 ## Resolved cross-module ownership
 

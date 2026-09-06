@@ -563,6 +563,7 @@ mod tests {
         "preset",
         "theme",
         "loudness-profile",
+        "config",
         "settings",
         "transport",
         "dock"

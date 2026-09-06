@@ -35,6 +35,7 @@ const METHODS = [
   "loudnessProfile.list",
   "loudnessProfile.export",
   "loudnessProfile.import",
+  "config.export",
   "settings.describe",
   "settings.inspect",
   "settings.update",

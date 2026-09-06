@@ -11,6 +11,7 @@ describe("normalizeAgentControlRequest", () => {
     "app.inspect",
     "axis.describe",
     "axis.inspect",
+    "config.export",
     "settings.describe",
     "settings.inspect",
     "transport.inspect",

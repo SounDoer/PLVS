@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Agent Control can export the complete Everything configuration through `plvs-cli config export`.
+
 ### Fixed
 
 - Agent Control command-family help now shows only that family's relevant usage.

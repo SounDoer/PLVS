@@ -26,6 +26,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "preset",
   "theme",
   "loudness-profile",
+  "config",
   "settings",
   "transport",
   "dock",
@@ -136,6 +137,9 @@ pub enum ControlCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  ConfigExport {
+    out: Option<String>,
+  },
   SettingsDescribe,
   SettingsInspect,
   TransportInspect,
@@ -199,6 +203,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "loudness-profile" => {
       return parse_library_args("loudnessProfile", rest)
     }
+    [command, rest @ ..] if command == "config" => return parse_config_args(rest),
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
     [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
     [command, rest @ ..] if command == "dock" => return parse_dock_args(rest),
@@ -206,7 +211,45 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|wait|workspace|panel|axis|preset|theme|loudness-profile|settings|transport|dock> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|dock> ...".to_string())
+}
+
+fn parse_config_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| is_help(argument)) {
+    return Ok(ControlCommand::FamilyHelp("config".to_string()));
+  }
+  let [action, rest @ ..] = args else {
+    return Err("Usage: plvs-cli config export --json [--out <file>]".to_string());
+  };
+  if action != "export" {
+    return Err(format!("Unknown config subcommand: {action}"));
+  }
+  let mut json = false;
+  let mut out = None;
+  let mut index = 0;
+  while index < rest.len() {
+    match rest[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--out" => {
+        let value = rest
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --out.".to_string())?;
+        if value.starts_with("--") || value.is_empty() {
+          return Err("Missing value for --out.".to_string());
+        }
+        out = Some(value.clone());
+        index += 2;
+      }
+      value => return Err(format!("Unexpected config export argument: {value}")),
+    }
+  }
+  if !json {
+    return Err("The config export command requires --json.".to_string());
+  }
+  Ok(ControlCommand::ConfigExport { out })
 }
 
 fn parse_dock_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1182,6 +1225,11 @@ pub fn help_text() -> &'static str {
         "\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
         1,
       )
+      .replacen(
+        "\n  plvs-cli settings describe",
+        "\n  plvs-cli config export --json [--out <file>]\n  plvs-cli settings describe",
+        1,
+      )
       .replace("[--expected-revision <n>]", "--expected-revision <n>")
       .replace(
         "Exit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure",
@@ -1441,6 +1489,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::LibraryList { family } => format!("{family}.list"),
     ControlCommand::LibraryExport { family, .. } => format!("{family}.export"),
     ControlCommand::LibraryImport { family, .. } => format!("{family}.import"),
+    ControlCommand::ConfigExport { .. } => "config.export".to_string(),
     ControlCommand::SettingsDescribe => "settings.describe".to_string(),
     ControlCommand::SettingsInspect => "settings.inspect".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
@@ -1482,6 +1531,7 @@ fn request_for_command<R: Read>(
     | ControlCommand::AxisInspect
     | ControlCommand::PresetList
     | ControlCommand::LibraryList { .. }
+    | ControlCommand::ConfigExport { .. }
     | ControlCommand::SettingsDescribe
     | ControlCommand::SettingsInspect
     | ControlCommand::TransportInspect => serde_json::json!({}),
@@ -1930,38 +1980,50 @@ fn failure_report(failure: ControlFailure) -> ControlReport {
   }
 }
 
-/// Moves `result.pack` out of the envelope and onto disk, leaving `result.out` behind. `pack` and
-/// `out` never appear together, so a script can tell which it got without inspecting sizes.
-fn write_pack_file(report: &mut ControlReport, path: &str) -> Result<(), String> {
+/// Moves one exported document out of the envelope and onto disk, leaving `result.out` behind. The
+/// document and `out` never appear together, so a script can tell which it got without inspecting
+/// sizes.
+fn write_export_file(
+  report: &mut ControlReport,
+  path: &str,
+  field: &str,
+  subject: &str,
+) -> Result<(), String> {
   let Some(result) = report.result.as_mut().and_then(Value::as_object_mut) else {
     return Ok(());
   };
-  let Some(pack) = result.get("pack") else {
+  let Some(document) = result.get(field) else {
     return Ok(());
   };
   let contents = format!(
     "{}\n",
-    serde_json::to_string_pretty(pack)
-      .map_err(|error| format!("Unable to serialize pack: {error}"))?
+    serde_json::to_string_pretty(document)
+      .map_err(|error| format!("Unable to serialize {subject}: {error}"))?
   );
-  // The swap happens only once the bytes are on disk. Taking `pack` out first loses the export
-  // entirely on a write failure: no file, and an exit-1 envelope with neither `pack` nor `out`.
+  // The swap happens only once the bytes are on disk. Taking the document out first loses the
+  // export entirely on a write failure: no file, and an exit-1 envelope with no recoverable copy.
   fs::write(Path::new(path), contents)
-    .map_err(|error| format!("Unable to write the pack to {path}: {error}"))?;
-  result.remove("pack");
+    .map_err(|error| format!("Unable to write the {subject} to {path}: {error}"))?;
+  result.remove(field);
   result.insert("out".to_string(), Value::String(path.to_string()));
   Ok(())
 }
 
+#[cfg(test)]
+fn write_pack_file(report: &mut ControlReport, path: &str) -> Result<(), String> {
+  write_export_file(report, path, "pack", "pack")
+}
+
 /// The `--out` half of an export, kept out of `run` so it can be tested without a live app.
 fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code: u8) -> u8 {
-  let ControlCommand::LibraryExport {
-    out: Some(path), ..
-  } = command
-  else {
-    return exit_code;
+  let (path, field, subject) = match command {
+    ControlCommand::LibraryExport {
+      out: Some(path), ..
+    } => (path, "pack", "pack"),
+    ControlCommand::ConfigExport { out: Some(path) } => (path, "configuration", "configuration"),
+    _ => return exit_code,
   };
-  match write_pack_file(report, path) {
+  match write_export_file(report, path, field, subject) {
     Ok(()) => exit_code,
     Err(failure) => {
       eprintln!("{failure}");
@@ -3379,6 +3441,42 @@ mod tests {
   }
 
   #[test]
+  fn parses_and_builds_config_export() {
+    assert!(help_text().contains("plvs-cli config export --json [--out <file>]"));
+    assert_eq!(
+      parse_control_args(&args(&[
+        "config",
+        "export",
+        "--json",
+        "--out",
+        "all.plvsconfig"
+      ])),
+      Ok(ControlCommand::ConfigExport {
+        out: Some("all.plvsconfig".to_string()),
+      })
+    );
+    let request = request_for_command(
+      &ControlCommand::ConfigExport { out: None },
+      &mut Cursor::new([]),
+    )
+    .unwrap();
+    assert_eq!(request.method, "config.export");
+    assert_eq!(request.params, serde_json::json!({}));
+
+    for invalid in [
+      args(&["config", "export"]),
+      args(&["config", "export", "--json", "--dry-run"]),
+      args(&["config", "export", "--json", "extra"]),
+      args(&["config", "import", "all.plvsconfig", "--json"]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+  }
+
+  #[test]
   fn builds_a_library_import_request_from_a_document() {
     let import = parse_control_args(&args(&[
       "preset",
@@ -3452,6 +3550,36 @@ mod tests {
     let mut failed = failure_report(ControlFailure::invalid_arguments("nope"));
     write_pack_file(&mut failed, "unreachable.json").unwrap();
     assert!(failed.result.is_none());
+  }
+
+  #[test]
+  fn writing_a_configuration_replaces_it_with_the_path_it_was_written_to() {
+    let path = std::env::temp_dir().join(format!("plvs-config-{}.json", std::process::id()));
+    let command = ControlCommand::ConfigExport {
+      out: Some(path.to_string_lossy().into_owned()),
+    };
+    let mut report = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({
+        "revision": 4,
+        "configuration": {
+          "app": "PLVS",
+          "kind": "configuration-profile",
+          "version": 1
+        }
+      })),
+      error: None,
+    };
+
+    assert_eq!(finish_export(&command, &mut report, 0), 0);
+    let written: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(written["kind"], "configuration-profile");
+    let result = report.result.unwrap();
+    assert_eq!(result["out"], path.to_string_lossy().as_ref());
+    assert!(result.get("configuration").is_none());
+    assert_eq!(result["revision"], 4);
+    fs::remove_file(path).unwrap();
   }
 
   fn pack_report() -> ControlReport {

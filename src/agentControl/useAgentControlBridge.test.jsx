@@ -189,6 +189,7 @@ function Harness({
   presetLibraryFromStore = false,
   applyPresetToWorkspace = false,
   presetApplyBarrier = null,
+  exportConfiguration,
   onStore = () => {},
 }) {
   const store = useWorkspaceStore();
@@ -353,6 +354,7 @@ function Harness({
     loudnessProfiles: loudnessProfilesFromStore ? subscribedProfiles : loudnessProfiles,
     customThemes: customThemes ?? subscribedThemes,
     flush,
+    ...(exportConfiguration ? { exportConfiguration } : {}),
   });
   return null;
 }
@@ -2254,6 +2256,33 @@ describe("useAgentControlBridge", () => {
 
     const after = (await send(request("app.capabilities", {}, "loudness-after"))).result.revision;
     expect(after).toBe(before + 1);
+  });
+
+  it("exports the normalized Everything configuration without changing revision", async () => {
+    const configuration = {
+      app: "PLVS",
+      kind: "configuration-profile",
+      version: 1,
+      settings: { interfaceSize: "large" },
+      workspace: {},
+      presets: { list: [], activeId: null },
+      themes: { themes: {}, order: [] },
+      windowBounds: null,
+      captureDeviceId: "default",
+      clearShortcut: "CmdOrCtrl+K",
+      clearGlobal: false,
+    };
+    const exportConfiguration = vi.fn(async () => configuration);
+    mount({ exportConfiguration });
+    await waitUntilReady();
+
+    const before = (await send(request("app.capabilities", {}, "config-before"))).result.revision;
+    const response = await send(request("config.export", {}, "config-export"));
+    const after = (await send(request("app.capabilities", {}, "config-after"))).result.revision;
+
+    expect(response.result).toEqual({ revision: before, configuration });
+    expect(after).toBe(before);
+    expect(exportConfiguration).toHaveBeenCalledTimes(1);
   });
 
   describe("library transfer", () => {

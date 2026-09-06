@@ -55,6 +55,7 @@ describe("agent-control app snapshots", () => {
         "loudnessProfile.list",
         "loudnessProfile.export",
         "loudnessProfile.import",
+        "config.export",
         "settings.describe",
         "settings.inspect",
         "settings.update",
@@ -198,6 +199,7 @@ describe("agent-control app snapshots", () => {
       "loudnessProfile.list",
       "loudnessProfile.export",
       "loudnessProfile.import",
+      "config.export",
     ]) {
       expect(capabilities.methods).toContain(method);
     }

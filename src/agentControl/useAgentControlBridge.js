@@ -6,6 +6,7 @@ import {
   respondToAgentControlRequest,
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence, settingsStore } from "../persistence/index.js";
+import { exportProfile } from "../persistence/profile.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
@@ -319,6 +320,7 @@ export function useAgentControlBridge({
   hasLoudnessReference = false,
   analysisContext = {},
   flush = flushPersistence,
+  exportConfiguration = exportProfile,
 }) {
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
@@ -1598,6 +1600,17 @@ export function useAgentControlBridge({
           return { requestId, result };
         }
 
+        if (request.method === "config.export") {
+          const configuration = await exportConfiguration();
+          return {
+            requestId,
+            result: {
+              revision: controlRevisionRef.current,
+              configuration,
+            },
+          };
+        }
+
         if (request.method === "axis.describe" || request.method === "axis.inspect") {
           const inspection = buildAxisInspection(workspace);
           return {
@@ -1949,6 +1962,7 @@ export function useAgentControlBridge({
     };
   }, [
     flush,
+    exportConfiguration,
     bumpControlRevision,
     hasLoudnessReference,
     loudnessProfiles,

@@ -43,11 +43,27 @@ Important constraints of the current baseline:
 
 - Agent Control is public only on Windows; macOS transport is not implemented.
 - Running-app commands are machine-first and require `--json`.
-- `app.inspect` intentionally contains semantic state, not measurement frames or history.
-- configuration backup/reset, device selection, library editing, and runtime measurement queries are
+- CLI `inspect` (wire method `app.inspect`) intentionally contains semantic state, not measurement
+  frames or history.
+- configuration import/reset, device selection, library editing, and runtime measurement queries are
   intentionally outside the existing contract.
 - the internal `analyze` and `capture` harness commands are release-verification tools, not public
   CLI promises.
+
+### Settings transfer audit
+
+The Settings UI presents four transfer rows. Their current status is:
+
+| Settings row | GUI export/import | CLI export/import | Import behavior |
+| --- | --- | --- | --- |
+| Loudness Profiles | Complete | Complete | Append; preserve selection |
+| Presets | Complete | Complete | Append; include required custom Theme/Profile dependencies |
+| Theme | Complete | Complete | Append; preserve active Theme |
+| Everything | Complete | Export complete; import missing | Replace the whole setup and relaunch PLVS |
+
+Therefore the three library families are complete at the basic transfer level, and Everything
+export is complete. The remaining CLI parity gap is **Everything import**, represented technically
+by the versioned `.plvsconfig` configuration profile. It is not another append-only library pack.
 
 ## Decision filter for new commands
 
@@ -70,9 +86,114 @@ Score a candidate against the following questions before designing it:
 Commands that fail the semantic-owner or bounded-output test should not be exposed merely because
 the underlying data is reachable.
 
-## Recommended roadmap
+## Agreed near-term focus
 
-### P0: Make the existing surface genuinely user-ready
+The current working priority is deliberately narrower than the candidate backlog below:
+
+1. finish the fourth Settings transfer row in the CLI with `config import` (`config export` is
+   complete);
+2. add Loudness Profile inspection and editing commands;
+3. add custom Theme inspection and editing commands.
+
+Preset editing is not part of this new work: Preset Control already supports describe, save,
+update, apply, rename, delete, and reorder. Its transfer commands are also complete.
+
+### Stage 1: Everything transfer
+
+Proposed public shape:
+
+```text
+plvs-cli config export --json [--out <file>]
+plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+Use `config` in the CLI because it names the portable technical resource; keep **Everything** as the
+friendlier Settings label. Both refer to the existing versioned `.plvsconfig` document.
+
+`config export` must use the same profile builder as the GUI, flush pending persistence first, and
+continue excluding `agentControlEnabled`. Its `--out` behavior should match library export: move the
+pretty-printed document to the file while leaving a compact result on stdout, with the full document
+recoverable from stdout if the file write fails.
+
+`config import --dry-run` validates, migrates, and reports the normalized replacement without
+writing or relaunching. A real import replaces the same domains and siblings as the GUI and then
+relaunches PLVS. The response lifecycle needs an explicit contract:
+
+1. validate the entire input and recheck `expectedRevision` before the first write;
+2. persist the replacement through the existing native profile command;
+3. send a successful `accepted` result containing `relaunch: true` and enough identity for the
+   caller to rediscover the new session;
+4. relaunch only after the broker has accepted the response for delivery;
+5. require the caller to rediscover and inspect rather than comparing revisions across sessions.
+
+The implementation design must prove that step 4 cannot close the pipe before the response is
+delivered. If the current response bridge provides no such acknowledgement, add one rather than a
+timing delay. A successful response means the replacement was durably written; it does not claim
+the next process has completed booting.
+
+Do not include `config reset` in this stage. It is destructive, does not complete the requested
+transfer parity, and deserves a separate confirmation design if terminal demand appears.
+
+### Stage 2: Loudness Profile editing
+
+Proposed public shape:
+
+```text
+plvs-cli loudness-profile describe <id> --json
+plvs-cli loudness-profile select <id|off> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+Match the existing GUI semantics:
+
+- create generates an ID, inserts the document, and selects it;
+- update replaces the document in place and preserves the selection that existed before editing;
+- select changes the working-scene Profile selection and dirties the active Preset when applicable;
+- deleting the active Profile selects Off and removes matching references from every Preset;
+- dry-run delete reports affected Preset IDs before mutation;
+- create, update, rename, select, and delete are refused while the Profile editor draft is open;
+- reorder changes only order and follows the GUI's existing draft behavior;
+- every result settles both Settings and Presets when the operation touches both stores.
+
+`describe` and mutation validation must use the same normalized rule-document model that powers the
+editor preview and save path. Do not create an Agent-Control-only definition of a valid Profile.
+
+### Stage 3: Theme editing
+
+Proposed public shape:
+
+```text
+plvs-cli theme describe <id> --json
+plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli theme rename <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli theme duplicate <id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
+plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
+```
+
+Match the existing GUI semantics and ownership:
+
+- built-in Themes are describable and duplicable/customizable, but not updateable or deletable;
+- create and duplicate generate a new custom ID and select the new Theme, matching editor creation;
+- update and rename preserve library position and current Appearance selection;
+- deleting the active custom Theme must use the same fallback and persistence behavior as the GUI;
+- active Theme selection remains owned by `settings update appearance`, not a second `theme select`;
+- all library mutations are refused while the Theme editor is open;
+- documents use the public Theme V2 authoring model, never compiled tokens, generated CSS, or editor
+  widget state.
+
+Before implementation, extract or identify pure planners shared by the Theme picker/editor and
+Agent Control. The current repository helpers normalize repository writes, but full create/delete
+selection behavior is still composed above that layer.
+
+## Broader candidate backlog
+
+### Cross-platform and human-use foundation
 
 This is foundation work rather than command breadth, but it has the highest product leverage.
 
@@ -106,7 +227,7 @@ Generate PowerShell, zsh, and bash completions from the real parser or a checked
 Do not maintain another handwritten command tree. Add copyable workflows, not merely one example
 per leaf command.
 
-### P1: Complete workflows that already exist in the GUI
+### Other workflows that already exist in the GUI
 
 These commands have strong user value and mostly reuse stable product objects.
 
@@ -156,37 +277,7 @@ device-generation token and avoid waking unrelated revision waiters.
 Developer payoff: capture-rig setup and device-migration behavior become reproducible without
 clicking the header selector.
 
-#### 3. Whole-configuration export and validation
-
-Start with the safe half:
-
-```text
-plvs-cli config export --json [--out <file>]
-plvs-cli config validate <file|-> --json
-```
-
-This is distinct from library packs: a configuration contains all four public persistence domains
-and selected siblings, while deliberately excluding `agentControlEnabled`. Export helps users make
-backups and gives bug reports a reproducible setup. Validation should run the same migration and
-normalization pipeline as GUI import without writing anything.
-
-Defer mutation until its lifecycle is designed:
-
-```text
-plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli config reset --expected-revision <n> --json --confirm-reset
-```
-
-GUI import/reset relaunches PLVS because the boot-time persistence snapshot must be regenerated.
-That means a successful command may intentionally destroy its own control connection. We must
-choose and document either an `accepted` response before relaunch plus a new-session verification
-workflow, or a live multi-domain apply that updates every React owner before returning. It must not
-write stores behind React and claim the visible app changed.
-
-Reset should remain deferred even after import if it adds little beyond the GUI and creates a large
-accidental-loss surface.
-
-### P2: Add a bounded measurement API
+### Add a bounded measurement API
 
 This is the largest new product capability and likely the most valuable to automation.
 
@@ -231,55 +322,11 @@ weaken the meaning of the global revision.
 #### Explicit non-goal: raw history export in the first slice
 
 History is multi-resolution, source-specific, potentially gigabytes large, and partly keyed by
-panel analysis configuration. Do not expose internal slabs or `app.inspect --include-history`.
+panel analysis configuration. Do not expose internal slabs or `inspect --include-history`.
 If a real user workflow emerges, design a separate bounded export with an explicit time range,
 sample interval, metric list, maximum rows, and streaming/file semantics.
 
-### P3: Turn transferred libraries into editable libraries
-
-Library Transfer can move objects between installations but cannot author them. Add editing only
-through the same normalized domain operations as the GUI.
-
-#### Loudness Profile Control
-
-Proposed progression:
-
-```text
-plvs-cli loudness-profile describe <id> --json
-plvs-cli loudness-profile select <id|off> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile update <id> <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile rename <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
-```
-
-Selection is particularly useful because Presets refer to it but Settings Control deliberately does
-not own it. Delete must preserve the GUI's preset-reference cleanup behavior and surface its impact
-in dry-run output. Create/update/delete must be blocked while the Loudness Profile editor is open.
-
-#### Theme Control
-
-Proposed progression:
-
-```text
-plvs-cli theme describe <id> --json
-plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli theme rename <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli theme duplicate <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
-plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
-```
-
-Keep active Theme selection in `settings update appearance`; do not create a second selection
-owner. Built-in themes are describable and duplicable but not mutable or deletable. Theme patches
-should use the public role/override schema, not generated CSS or internal fallback tokens.
-
-This phase should wait until the editor models expose reusable pure planners. Reimplementing editor
-logic in Agent Control would create two definitions of a valid document.
-
-### P4: Developer and power-user leverage
+### Developer and power-user leverage
 
 #### Machine-readable schema export
 
@@ -340,7 +387,7 @@ user-visible errors, and device capabilities. It must preview exactly what will 
 paths/device names where appropriate, contain no audio or measurement history by default, and
 remain fully local. This is useful but exceeds the PRD's current minimum diagnostic commitment.
 
-### P5: Consider only after concrete demand
+### Consider only after concrete demand
 
 - **Window commands:** show/hide, focus, bounds, Always On Top, and Focus View are useful for kiosk
   launchers, but are intrusive OS actions and partially overlap Presets/Dock.
@@ -369,21 +416,22 @@ The following remain internal even if they are convenient during implementation:
 
 The smallest useful sequence is:
 
-1. **Cross-platform and human-use foundation:** macOS transport decision/implementation, explicit
-   text rendering for queries, generated completions.
-2. **File report vertical slice:** `transport file report`, including `--out`, fixtures, docs, and
-   real desktop acceptance.
-3. **Device Control:** describe/inspect/select with capture-restart confirmation and hot-plug tests.
-4. **Configuration safe half:** export and validate; separately approve import/relaunch semantics.
-5. **Measurement read slice:** describe/inspect with coherent snapshots and no revision churn.
-6. **Measurement wait:** a bounded predicate allowlist after real consumers validate the snapshot.
-7. **Loudness Profile editing**, then **Theme editing**, reusing editor planners.
-8. **Schema export and batch** only after at least two external consumers need them.
-9. Re-evaluate public headless analysis, support bundles, MCP, screenshots, and window control from
+1. **Everything import:** specify and implement validation, replacement, durable write, acknowledged
+   response, and relaunch as one lifecycle.
+2. **Loudness Profile editing:** describe/select/create/update/rename/delete/reorder, including
+   Preset-reference cleanup and multi-store settlement.
+3. **Theme editing:** describe/create/update/rename/duplicate/delete/reorder, reusing Theme V2
+   normalization and the GUI's selection/fallback behavior.
+4. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
+   queries, and generated completions.
+5. **File report and Device Control** as the next already-visible GUI workflows.
+6. **Measurement inspect/wait** after the high-frequency snapshot contract is separately approved.
+7. **Schema export and batch** only after at least two external consumers need them.
+8. Re-evaluate public headless analysis, support bundles, MCP, screenshots, and window control from
    actual usage rather than surface-completeness pressure.
 
-If near-term work should stay entirely within the existing Windows transport, start at step 2 and
-track macOS parity as a release blocker for claiming the expanded CLI is cross-platform.
+The first three steps may ship on the existing Windows transport. Track macOS parity as a release
+blocker for claiming the expanded Agent Control CLI is cross-platform.
 
 ## Definition of done for every new family
 
@@ -406,10 +454,11 @@ Every approved command family should include:
 
 ## Immediate design recommendation
 
-The next implementation design should be **File-analysis Report Export**. It is narrow, already has
-a stable GUI-domain report builder, completes a visible user workflow, and exercises the newly
-hardened large-response and `--out` paths without introducing high-frequency measurement state.
+The next implementation design should cover **Everything import**. `config export` is complete, so
+the remaining work is the acknowledged-response-before-relaunch contract and replacement semantics.
 
-In parallel at the product-planning level, decide whether the next milestone promises macOS Agent
-Control parity. That decision changes how every subsequent command should be described and accepted,
-even though it does not change their semantic API.
+After both slices pass real-desktop acceptance, design Loudness Profile editing before Theme
+editing. Profile behavior already has one React owner with explicit create/edit/select/delete/order
+semantics; Theme creation, repository mutation, Appearance selection, runtime preview, and deletion
+fallback are spread across more owners and need a little more extraction before they form one safe
+Agent Control planner.
