@@ -23,16 +23,16 @@ export function collectPackItems(type, ids) {
     missingIds = ids.filter((id) => !byId.has(id));
     // Library order, not selection order: a pack is a snapshot of part of a library, and two
     // exports of the same set must produce the same file.
-    const wanted = new Set(ids);
-    items = library.filter((item) => wanted.has(item.id));
+    const selectedIds = new Set(ids);
+    items = library.filter((item) => selectedIds.has(item.id));
   }
 
   const options = {};
   if (type === "presets") {
-    const wanted = referencedProfileIds(items);
+    const referenced = referencedProfileIds(items);
     options.loudnessProfiles = getAdapter("loudness")
       .list()
-      .filter((profile) => wanted.has(profile.id));
+      .filter((profile) => referenced.has(profile.id));
   }
 
   return { items, options, missingIds };

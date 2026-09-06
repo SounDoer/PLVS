@@ -54,4 +54,10 @@ describe("collectPackItems", () => {
     expect(result.items.map((item) => item.id)).toEqual(["p-1", "p-2"]);
     expect(result.missingIds).toEqual([]);
   });
+
+  it("returns items in library order regardless of the order the ids were given", () => {
+    seedPresets();
+    const result = collectPackItems("presets", ["p-2", "p-1"]);
+    expect(result.items.map((item) => item.id)).toEqual(["p-1", "p-2"]);
+  });
 });
