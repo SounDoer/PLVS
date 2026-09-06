@@ -50,7 +50,8 @@ Read these before Task 1. Each cost a real commit to learn.
 | `src/agentControl/protocol.js` | Accept and shape-check the nine new methods. |
 | `src/agentControl/useAgentControlBridge.js` | Dispatch the nine methods; add theme/loudness revision tracking; accept a `customThemes` prop. |
 | `src/App.jsx:1246` | Pass `customThemes`. |
-| `src-tauri/src/cli_app.rs` | New command variants, `parse_library_args`, method/params mapping, `--out` writing, help text, error-code allowlist. |
+| `src-tauri/src/cli_app.rs` | New command variants, `parse_library_args`, method/params mapping, `--out` writing, help text, exit-code classification. |
+| `shared/cli-v1-envelope-fixtures.json` | One added fixture pinning the import result's `plan` shape. |
 | `docs/agent-control/README.md`, `presets.md`, `settings.md`, `docs/cli.md` | Contract text. |
 
 ---
@@ -1569,15 +1570,20 @@ In the params builder (the `match` around line 1340), add:
 
 Match `mutation_params`' actual signature — read how `PresetReorder` calls it just above.
 
-- [ ] **Step 7: Allow the new error codes**
+- [ ] **Step 7: Classify the new error codes**
 
-Add to the error-code allowlist near line 1145, beside `"presetNotFound"`:
+The `match` near line 1145 is the v1 exit-code classifier, not an allowlist. Its classes are documented in `docs/cli.md:235`: 1 runtime/system failure, 2 app unavailable, 3 invalid command input, 4 the current state refuses the operation, 5 wait did not complete. An unlisted code falls to 1.
+
+Add the two not-found codes to the **exit-3** arm, beside `"presetNotFound"`:
 
 ```rust
         | "themeNotFound"
         | "loudnessProfileNotFound"
-        | "invalidPack"
 ```
+
+Do **not** add `invalidPack`. The handler throws it with RPC code `-32602`, and the classifier's first arm — `(Some(-32602), _) => 3` — already puts it in the same class. Listing it by name as well would suggest it needs a special case when it does not.
+
+`revisionConflict` is already in the exit-4 arm and needs nothing.
 
 - [ ] **Step 8: Write the pack file for `--out`**
 
@@ -1593,7 +1599,10 @@ pub fn run(command: CliAppCommand) -> ExitCode {
   if let CliAppCommand::LibraryExport { out: Some(path), .. } = &command {
     if let Err(failure) = write_pack_file(&mut report, path) {
       eprintln!("{failure}");
-      exit_code = 2;
+      // 1, not 2: the app answered and the pack is in hand, so this is a local write failure --
+      // `docs/cli.md`'s exit-code table names "output write failed" under 1. Reporting 2 would tell
+      // a script the app is unreachable and send it into a retry that a full disk cannot satisfy.
+      exit_code = 1;
     }
   }
   match serde_json::to_string(&report) {
@@ -1643,7 +1652,39 @@ In `help_text()`, add these lines to the usage block, after the preset lines:
   plvs-cli app loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]
 ```
 
-- [ ] **Step 10: Run the Rust tests**
+- [ ] **Step 10: Add a golden envelope fixture for the import result**
+
+`shared/cli-v1-envelope-fixtures.json` pins the shape of each v1 response class, and `cli_contract.rs` asserts the envelope invariants over every entry. The nine required ids stay as they are — this adds a tenth entry, which the test permits (ids only have to be unique). It is worth adding because `plan` is a field no other command returns, so nothing else would notice if its shape changed.
+
+Append to the array in `shared/cli-v1-envelope-fixtures.json`:
+
+```json
+  {
+    "id": "mutation.libraryImportDryRun",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "dryRun": true,
+        "revision": 13,
+        "changed": true,
+        "warnings": [],
+        "plan": {
+          "items": [
+            { "sourceId": "t-1", "finalId": "t-1", "name": "Studio", "disposition": "added" }
+          ],
+          "loudnessProfiles": []
+        },
+        "state": { "themes": [] }
+      }
+    }
+  }
+```
+
+Match the file's existing entry formatting — read the last entry before appending, and keep the array's trailing punctuation valid.
+
+- [ ] **Step 11: Run the Rust tests**
 
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml
@@ -1653,10 +1694,10 @@ cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
 Expected: all PASS.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
-git add src-tauri/src/cli_app.rs
+git add src-tauri/src/cli_app.rs shared/cli-v1-envelope-fixtures.json
 git commit -m "feat(cli): add the library transfer commands"
 ```
 
