@@ -36,7 +36,11 @@ Every theme fixture in this plan's test code assumes `makeTheme` is defined in t
 
 5. **`npm run check` is the merge gate** and it also runs Rust fmt/clippy/test. Some Vitest suites in `scripts/` read `src-tauri/tauri.conf.json`; you are not touching those, but if one goes red it is not an unrelated frontend failure.
 
-6. **Do not edit `src/generated/` or `docs/agent-control/generated/` by hand.** This work adds no generated page (these commands have no field schema), so you should not need to run `npm run docs:agent-control` — but if `publicSurfaceDocs.test.js` goes red, that command is the fix, not an edit.
+6. **A JSON-RPC request `id` must be a string.** `protocol.js`'s envelope validator rejects `id: 1` with `invalidRequest` before method dispatch ever runs, so a test that builds a raw request object with a numeric id fails for a reason that has nothing to do with what it meant to test. Use the test file's own `request(method, params)` helper, which supplies a valid id.
+
+7. **`expectedRevision` is required, not optional, for every mutation.** `protocol.js` type-checks it when present and then calls `validateExpectedRevision` unconditionally, which returns `revisionRequired` if it is absent. So by the time a request reaches the bridge it is guaranteed present. The bridge's existing branches still write `expectedRevision !== undefined && expectedRevision !== currentRevision` — keep that shape for consistency with the neighbouring code, but understand the first half is belt-and-braces, not a real optional path.
+
+8. **Do not edit `src/generated/` or `docs/agent-control/generated/` by hand.** This work adds no generated page (these commands have no field schema), so you should not need to run `npm run docs:agent-control` — but if `publicSurfaceDocs.test.js` goes red, that command is the fix, not an edit.
 
 ---
 
