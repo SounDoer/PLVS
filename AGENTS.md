@@ -240,6 +240,22 @@ Traps that cost a real commit to learn, because the code either says nothing or 
  `*.list`. This matters most for the code CI cannot cover, where hand verification is the only
  verification there is.
 
+ **Do not try to fix this by re-injecting a fresh snapshot from `on_page_load`.** It was built and
+ measured on 2026-09-06 and the timing does not hold. `PageLoadEvent::Started` maps to WebView2's
+ `ContentLoading`, but `eval` goes through `ExecuteScriptAsync`, documented only as running
+ "around the time" `ContentLoading` does — where `initialization_script` guarantees it runs
+ *before any other script included by the HTML document*. That wording gap is the whole answer: on
+ 9 of 9 page loads the eval landed 6–26 ms **after** the earliest inline script in `index.html`,
+ and a zero-payload eval was equally late, so the cause is the non-blocking notification rather
+ than the snapshot's size. It nevertheless passes end to end in dev, because Vite's module graph
+ takes 741–810 ms to reach the read — roughly 700 ms of accidental slack. A production bundle
+ evaluates within milliseconds of `DOMContentLoaded`, i.e. inside the contested window, so
+ shipping it "generally, as defence in depth" would add a coin-flip race to the one build that
+ does not have this bug at all. Worse, the global has three independent readers that evaluate at
+ different points in the module graph — `pluginStoreBackend.js`, `useDockMode.js` and
+ `agentControl/appSnapshot.js` — so an eval landing mid-flight can hand them different generations
+ of the same snapshot.
+
 - **Two things about this repo's Vitest setup will fail you confusingly rather than clearly.**
   First, `vite.config.js` sets the environment to `node` by default to avoid jsdom's setup cost
   across the whole suite, so any test that renders React or touches a persistence store needs
