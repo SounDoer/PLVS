@@ -1881,3 +1881,45 @@ git status
 ```
 
 Expected: clean. If not, commit what `npm run check` produced.
+
+## Findings
+
+- **A settlement timeout used to skip persistence, and said the opposite.** Every mutation handler
+  in `useAgentControlBridge.js` writes state, awaits the settlement, then calls `flush()`. When the
+  settlement timed out the `throw` jumped over that `flush()` straight to the outer `catch`, so the
+  write lived in memory and never reached `plvs-settings.json` — while the failure reported
+  `stateCommitted: true`, which reads as a durability promise. Three hand-made themes were lost to
+  this on a live dev profile: each `theme.import` wrote the theme, timed out, skipped the flush, and
+  the CLI reported failure while the GUI showed the new theme, so nothing pointed at persistence.
+  The rescue flush now lives in the outer `catch`, gated on `isCommitNotObserved(error)`.
+
+- **`commitNotObserved` is a safe gate because nothing else can produce that `reason`.** It is
+  minted in exactly one place, `awaitSettlement`'s timer. The underlying settlement promise's own
+  rejections propagate unchanged through `committed.then(resolve, reject)` — unmount rejects with a
+  plain `Error("Agent-control bridge unmounted.")`, which carries no `reason` at all. The other two
+  error families that carry a `reason` cannot collide: `WorkspaceLayoutError` uses validation
+  reasons like `invalid_node`, and `SceneOperationUnavailableError.reason` is `fileMode`. So the
+  gate is a timeout gate, and every pre-commit failure — validation, `revisionConflict`,
+  `editorActive`, unknown method, dry run, no-op — still reaches the caller without touching disk.
+
+- **The failure stays `commitNotObserved` when the rescue flush also fails.** Reclassifying it as
+  `persistenceFailed` would hide the more informative fact, that React never observed the commit.
+  Durability moved into its own field instead: `details.persisted` is `true` or `false`, and on
+  `false` the message names the persistence error. `stateCommitted: true` is kept because it is
+  literally true — the store write happened — but it no longer has to carry the durability claim
+  on its own.
+
+- **A test that cannot fail is the same as no test.** Both new assertions were checked by breaking
+  the implementation: removing the rescue flush makes the timeout test fail on
+  `expect(flush).toHaveBeenCalledTimes(1)` (`called 0 times`), and widening the gate to flush on
+  every error makes the `revisionConflict` test fail on `expect(flush).not.toHaveBeenCalled()`
+  (`been called 1 times`).
+
+- **Correct today, guarded by nothing.** Three neighbours of this bug have no test:
+  `waitForWorkspacePersistenceEnqueue` is awaited bare — not through `awaitSettlement` — in the
+  axis, `panel.update` and workspace-layout handlers, so a rejection there propagates raw and
+  becomes `internalError` with no persistence rescue at all. `dock.exit`'s inner `catch` rethrows
+  `commitNotObserved` deliberately, and nothing asserts that it still does. And the transport
+  handlers never call `flush()` on their success path, so a transport settlement timeout now
+  triggers a flush the happy path does not — harmless, since flushing only drains pending writes,
+  but it is behaviour no test states.

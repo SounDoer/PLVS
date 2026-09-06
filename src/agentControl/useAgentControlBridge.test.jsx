@@ -2521,7 +2521,8 @@ describe("useAgentControlBridge", () => {
     });
 
     it("refuses an import that names a stale revision", async () => {
-      mount();
+      const flush = vi.fn(async () => {});
+      mount({ flush });
       await waitUntilReady();
 
       const response = await send(
@@ -2540,6 +2541,88 @@ describe("useAgentControlBridge", () => {
         },
       });
       expect(readThemeLibrary()).toEqual([]);
+      // The settlement-timeout rescue below must not widen into a flush on every failure: a
+      // refusal that never wrote anything has nothing to persist.
+      expect(flush).not.toHaveBeenCalled();
+    });
+
+    it("persists an import whose commit is never observed", async () => {
+      // The loss this guards: `commit()` writes the library synchronously, but the handler's own
+      // `await flush()` sits after the settlement, so a timeout skipped it and the themes were
+      // gone at the next launch while the error claimed the state was committed.
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        const flush = vi.fn(async () => {});
+        // A static library prop, so the signature effect never fires and the settlement never
+        // matches -- exactly the shape of the live failure.
+        mount({ flush, customThemes: {} });
+        await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
+
+        act(() =>
+          adapter.handler(
+            request(
+              "theme.import",
+              { pack: themePack([makeTheme("t-1", "Studio")]) },
+              "import-unobserved"
+            )
+          )
+        );
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(6000);
+        });
+
+        expect(flush).toHaveBeenCalledTimes(1);
+        expect(readThemeLibrary()).toEqual([{ id: "t-1", name: "Studio" }]);
+        const response = adapter.responses.find(
+          ({ requestId }) => requestId === "import-unobserved"
+        );
+        expect(response?.error).toMatchObject({
+          code: -32031,
+          data: {
+            reason: "commitNotObserved",
+            details: { stateCommitted: true, persisted: true },
+          },
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("reports an unobserved commit that could not be persisted either", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        const flush = vi.fn(async () => {
+          throw new Error("disk full");
+        });
+        mount({ flush, customThemes: {} });
+        await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
+
+        act(() =>
+          adapter.handler(
+            request(
+              "theme.import",
+              { pack: themePack([makeTheme("t-1", "Studio")]) },
+              "import-unpersisted"
+            )
+          )
+        );
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(6000);
+        });
+
+        const response = adapter.responses.find(
+          ({ requestId }) => requestId === "import-unpersisted"
+        );
+        // Still the unobserved commit: reclassifying it as `persistenceFailed` would hide that
+        // React never saw the change. Only the durability claim changes.
+        expect(response?.error.code).toBe(-32031);
+        expect(response?.error.data.reason).toBe("commitNotObserved");
+        expect(response?.error.data.details.persisted).toBe(false);
+        expect(response?.error.message).toMatch(/disk full/);
+        expect(flush).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("does not dirty the active preset", async () => {

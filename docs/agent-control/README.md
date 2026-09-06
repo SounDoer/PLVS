@@ -328,7 +328,8 @@ message. The initial stable error and issue codes are:
 - `invalidControls`, containing `issues` such as `unknownControl`, `invalidType`, `invalidEnum`,
   `outOfRange`, and `controlUnavailable`;
 - `commandFailed` for an unexpected commit failure;
-- `persistenceFailed` when UI state committed but durable saving failed.
+- `persistenceFailed` when UI state committed but durable saving failed;
+- `commitNotObserved` when the state was written but the UI was not observed to render it in time.
 
 A persistence failure must state the partial outcome explicitly:
 
@@ -346,6 +347,11 @@ A persistence failure must state the partial outcome explicitly:
   }
 }
 ```
+
+`commitNotObserved` reports a write that happened while the settlement wait timed out, so its
+`stateCommitted: true` describes memory only. Durability is a separate claim: `details.persisted`
+is `true` when the change was written to disk anyway, and `false` when that write also failed, in
+which case the message names the persistence error.
 
 After a revision conflict or persistence failure, the caller should inspect current state rather
 than retry blindly.

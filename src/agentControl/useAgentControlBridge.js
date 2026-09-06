@@ -205,6 +205,32 @@ function isCommitNotObserved(error) {
   return error?.reason === COMMIT_NOT_OBSERVED;
 }
 
+/// Persists the write a settlement timeout is reporting on, and says in the failure whether that
+/// worked.
+///
+/// Every mutation handler writes its state first and calls `flush()` only after the settlement, so
+/// a timeout used to skip persistence entirely: the change was live in memory, absent from
+/// `plvs-settings.json`, and the failure still said `stateCommitted: true`. Three hand-made themes
+/// were lost that way. The failure stays `commitNotObserved` -- that React never observed the
+/// commit is the more informative fact, and calling it `persistenceFailed` would bury it -- so
+/// `persisted` is what tells the two outcomes apart.
+async function persistUnobservedCommit(error, flush) {
+  try {
+    await flush();
+  } catch (persistenceError) {
+    return {
+      ...error,
+      message: `${error.message} Persisting it then failed: ${persistenceError?.message || String(persistenceError)}.`,
+      details: { ...error.details, persisted: false },
+    };
+  }
+  return {
+    ...error,
+    message: `${error.message} The change was persisted.`,
+    details: { ...error.details, persisted: true },
+  };
+}
+
 function awaitSettlement(committed, clear, subject) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -1894,6 +1920,15 @@ export function useAgentControlBridge({
         result.revision = committedRevision;
         return { requestId, result };
       } catch (error) {
+        // One place rather than nine: `isCommitNotObserved` is true only for the settlement
+        // timeout, so every pre-commit failure -- validation, `revisionConflict`, `editorActive`,
+        // a refused scene operation -- still reaches here without touching the disk.
+        if (isCommitNotObserved(error)) {
+          return {
+            requestId,
+            error: agentControlRpcError(await persistUnobservedCommit(error, flush)),
+          };
+        }
         const semantic =
           error instanceof WorkspaceLayoutError
             ? semanticFailure(error.reason, error.path, error.message, -32602)
