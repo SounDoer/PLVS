@@ -101,10 +101,10 @@ The result carries the pack document itself:
 }
 ```
 
-`--out <file>` makes the CLI write `result.pack` to that path as the pack file, following
-`plvs-cli doctor --out`. The success envelope still goes to stdout, with `result.pack` replaced by
-the written path so a script can chain on it. **The frontend never performs file IO for these
-commands.** A CLI
+`--out <file>` makes the CLI write the pack to that path, following `plvs-cli doctor --out`. The
+success envelope still goes to stdout, but `result` becomes `{ "revision": 13, "out": "<path>" }` —
+`pack` and `out` never appear together, so a script can tell which it got without inspecting sizes.
+**The frontend never performs file IO for these commands.** A CLI
 caller's path is relative to the caller's working directory, not the app's, and the app's own file
 access for this feature is a user-driven save dialog. Rust reads and writes; the frontend only
 produces and consumes documents.
@@ -172,6 +172,12 @@ and every `list` leave it alone.
 This is the first time the Theme and Loudness Profile libraries enter revision semantics at all;
 until now neither was public state. Their entry is limited to what `list` reports.
 
+The bump must come from a state signature the bridge watches, not from the import handler, so that a
+GUI import bumps the revision exactly as an agent import does — "equivalent user and agent mutations
+follow the same rule". The Preset library already works this way (`presetStateSignature`); the two
+new libraries need the same treatment, which means the bridge has to receive the custom Theme
+library as a prop the way it already receives `loudnessProfiles`.
+
 **Import never marks the active Preset dirty.** The dirty flag tracks the working scene, and a
 library merge changes no scene state — it does not even move a selection. This is not a judgement
 call layered on top of the adapters; it is what the adapters already do.
@@ -190,10 +196,12 @@ that touches no selection cannot. And the GUI already permits it — the Setting
 buttons are disabled only on `packBusy`, never on editor state — so refusing here would make the CLI
 stricter than the button it mirrors, for no protective gain.
 
-The real hazard in this area is not the draft but the display: `plvs:themes` and `plvs:settings` do
-not notify their own context, so a library written from outside the owning React state can leave an
-editor rendering a stale list. The adapters already call `notifyLocal()` for exactly this reason.
-This must be covered by test, not by inspection — see [Testing](#testing).
+The adjacent hazard — a library written from outside the owning React state leaving a stale list on
+screen, because `plvs:themes` and `plvs:settings` do not notify their own context — is already
+closed: the adapters call `notifyLocal()`, `useThemeSettings.js:92` and `LoudnessProfileContext.jsx:66`
+subscribe, and `eef93f67` covered both. This family inherits that by writing through
+`getAdapter().append()` and nothing else. What still needs a test is that it does; see
+[Testing](#testing).
 
 ## Shared logic
 
@@ -264,11 +272,13 @@ touches a persistence store, and the repo's bare-`getBy*` idiom rather than `jes
   dry-run writes nothing, no-op import does not bump the revision, preset import remaps bundled
   profiles.
 - The contract guard above.
-- **The stale-display test, which is the one that earns its place**: render the owner of the library
-  state — the theme editor's settings hook, and the loudness profile list — dispatch an import
-  through the bridge with the editor open, and assert the rendered list shows the imported entry and
-  the open draft is unchanged. Asserting on store contents would pass either way; this is the repo's
-  own stated rule for `notifyLocal`.
+- **Do not re-test `notifyLocal`.** `eef93f67` closed that loop and covered it in
+  `libraryAdapters.test.js` and `LoudnessProfileContext.test.jsx`, and `useThemeSettings.js:92`
+  subscribes to `themesStore`. What is worth one test is that this family writes through
+  `getAdapter().append()` rather than reaching a store directly: render the theme library's owner,
+  dispatch a theme import through the bridge with the editor open, and assert both that the rendered
+  list shows the imported theme and that the open draft is unchanged. One family is enough — the
+  adapters are what differ, and they already have their own coverage.
 - Rust: `cli_app.rs` argument parsing and method mapping for the nine new commands, in the style of
   `parses_and_builds_preset_read_commands`; `--all`/`--ids` mutual exclusion; `--out` handling.
 
