@@ -1748,6 +1748,13 @@ Three more facts, from Task 7's review. Each is a contract a caller can otherwis
 - **`loudnessProfile.list`'s `activeId` does not participate in the revision.** `librarySignature` tracks only ids and names, so a user switching the active profile in the GUI changes `activeId` while the revision stays put. This matches `app.inspect`, which has always reported the field on the same terms, but it means `activeId` cannot be guarded with `--expected-revision`.
 - **A dry run and a no-op both return the revision from *before* the request and never call `flush()`.** They return early, so there is nothing to persist; a caller must not read the returned revision as "the state was written".
 
+And from Task 8's review, four more. The first is the one most likely to cost someone an afternoon:
+
+- **Each family names itself differently on five surfaces, and one of them is a trap.** For the Loudness library: the CLI word is `loudness-profile`, the wire method is `loudnessProfile.*`, the `state` key is `profiles`, the pack `kind` is `loudness-pack` (extension `.plvsloudness`), and inside `plan` its entries appear under **`items`**. Meanwhile `plan.loudnessProfiles` — the field whose name suggests it holds them — is the *bundled* profiles a Preset pack carries, and is therefore **always an empty array for a `loudnessProfile.import`**. Give `libraries.md` a table of all five per family; a reader must not be left to derive any of them from the method name.
+- **`--out` failure is silent three ways over.** The file is not written, and stdout still says `ok: true`; the only signals are stderr and exit 1. Even with the write-ordering fix that keeps `result.pack` in the envelope, the `ok: true` needs saying out loud, because the rest of the `app` family trains a reader to expect exit ≠ 0 to imply `ok: false`. (`doctor.error` sets the precedent, but nobody carries `doctor`'s rules over to `app`.)
+- **`--ids` is silently lenient**: segments are trimmed, empty segments are dropped, duplicate ids export one copy, and an id containing a comma cannot be expressed at all.
+- **Whole-library export is "omit `ids`", not "`ids: null`".** `protocol.js` rejects a non-array, so `null` fails with `invalidParams`. This is invisible to CLI users and unavoidable for anyone hand-writing JSON-RPC — it is the single point in this contract that is wrong-by-default.
+
 - [ ] **Step 2: Update `docs/agent-control/README.md`**
 
 In the command families code block, add:
@@ -1858,6 +1865,14 @@ Two more, both raised by Task 7's review because both are green in CI either way
 
 - **`loudnessProfile import`, then check the Loudness Profile list refreshes on the spot.** Until Task 7's F2 fix this family had no bridge-level test at all, so the automated suite says nothing useful about it.
 - **The cross-library preset import.** Import a preset pack whose Preset the machine already has byte-identical but whose bundled Loudness Profile it does not. This is the F1 bug: it must return promptly with `changed: true`, not spin for five seconds and come back with `commitNotObserved` after having written the data anyway. The fix is unit-tested, but this is the path a real shared file takes.
+
+Five more from Task 8's review, all on CLI paths the Rust tests cannot reach:
+
+- `theme export --all --out <unwritable path>` — stderr says something, exit code is 1, and the envelope on stdout still carries `result.pack`.
+- `theme export --all --out ok.json` — the file is pretty-printed, ends in a newline, and stdout's `result` has `out` and no `pack`.
+- `loudness-profile list --json` — the key is `profiles`, and `activeId` is present.
+- `preset export --all --json` — this parse path reaches the shared parser by delegation out of `parse_preset_args`; exercise it once for real.
+- One `theme import` as a dry run and then for real, comparing `plan`'s field names against the tenth golden fixture.
 
 - [ ] **Step 4: Commit anything the check regenerated**
 
