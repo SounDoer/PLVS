@@ -146,8 +146,8 @@ describe("useCustomThemeSettings", () => {
     document.name = "Created";
 
     const command = renderCustomThemeSettings(() => "custom-created");
-    act(() => command.result.current.control.create(document));
-    const commandState = command.result.current.control.readState();
+    act(() => command.result.current.themeControl.create(document));
+    const commandState = command.result.current.themeControl.readState();
     command.unmount();
 
     localStorage.clear();
@@ -155,7 +155,7 @@ describe("useCustomThemeSettings", () => {
     act(() => gui.result.current.editor.beginCreate("Created"));
     act(() => gui.result.current.editor.save());
 
-    expect(gui.result.current.control.readState()).toEqual(commandState);
+    expect(gui.result.current.themeControl.readState()).toEqual(commandState);
   });
 
   it("refuses conflicting control before state, persistence, preview, notification, or ID allocation", () => {
@@ -166,15 +166,17 @@ describe("useCustomThemeSettings", () => {
     act(() => result.current.editor.beginCreate("Draft"));
     publish.mockClear();
     notify.mockClear();
-    const beforeState = structuredClone(result.current.control.readState());
+    const beforeState = structuredClone(result.current.themeControl.readState());
     const beforeDraft = structuredClone(result.current.editor.draft);
     const beforeSettings = settingsStore.read();
     const beforeThemes = themesStore.read();
     const { id: _id, ...document } = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
 
-    expect(() => result.current.control.create(document, { makeId })).toThrow(/Finish or cancel/);
+    expect(() => result.current.themeControl.create(document, { makeId })).toThrow(
+      /Finish or cancel/
+    );
     expect(makeId).not.toHaveBeenCalled();
-    expect(result.current.control.readState()).toEqual(beforeState);
+    expect(result.current.themeControl.readState()).toEqual(beforeState);
     expect(result.current.editor.draft).toEqual(beforeDraft);
     expect(settingsStore.read()).toEqual(beforeSettings);
     expect(themesStore.read()).toEqual(beforeThemes);

@@ -177,6 +177,13 @@ An import that adds at least one entry increments the global revision once, no m
 entries it added. It is bumped from the library's own state signature, so a GUI import moves it
 identically.
 
+The Theme signature is stronger than the transfer list: it includes Appearance mode and fixed
+selection, custom Theme order, and every complete normalized Theme V2 document. Built-in documents
+and the system-resolved light/dark Theme are excluded. A GUI or Theme Control selection or authoring
+change therefore invalidates a stale revision even though append-only import still preserves the
+selection, and a command touching both Settings and Themes advances the one global revision only
+once.
+
 An import whose every item is `skipped` is a successful no-op: `changed: false`, no revision
 increment, no persistence write. So is an import whose every item **failed validation** — pack
 parsing filters unreadable items silently, matching the GUI, so a corrupted or partly foreign file

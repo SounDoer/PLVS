@@ -223,6 +223,6 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     duplicateCustomTheme,
     deleteCustomTheme,
     activeIsCustom: isCustomThemeId(themeSettings.resolvedThemeId),
-    control,
+    themeControl: control,
   };
 }

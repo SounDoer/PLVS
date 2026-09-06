@@ -126,16 +126,15 @@ function presetStateSignature(presets) {
   });
 }
 
-/// Identity and name only: those are what `theme.list` and `loudnessProfile.list` report, so those
-/// are what a revision must track. A theme's tokens changing is an edit inside an entry, which the
-/// future Theme Control will account for; it is invisible to this family.
-function librarySignature(entries) {
-  return JSON.stringify(
-    (Array.isArray(entries) ? entries : Object.values(entries ?? {})).map(({ id, name }) => [
-      id,
-      name,
-    ])
-  );
+function themeStateSignature(state) {
+  return JSON.stringify({
+    appearance: {
+      mode: state?.appearance?.mode,
+      selectedThemeId:
+        state?.appearance?.mode === "fixed" ? (state.appearance.selectedThemeId ?? null) : null,
+    },
+    themes: Array.isArray(state?.themes) ? state.themes : [],
+  });
 }
 
 function loudnessProfileStateSignature(profiles, activeSelection) {
@@ -338,6 +337,7 @@ export function useAgentControlBridge({
   loudnessProfiles: loudnessProfilesInput = [],
   loudnessProfile = null,
   customThemes = {},
+  theme = null,
   hasLoudnessReference = false,
   analysisContext = {},
   flush = flushPersistence,
@@ -348,12 +348,17 @@ export function useAgentControlBridge({
 }) {
   const loudnessProfiles = loudnessProfile?.profiles ?? loudnessProfilesInput;
   const loudnessActive = loudnessProfile?.active;
+  const themeState = theme?.state ?? {
+    appearance: { mode: "system", selectedThemeId: null, resolvedThemeId: "plvs-dark" },
+    themes: Object.values(customThemes ?? {}),
+  };
+  const themeSignature = themeStateSignature(themeState);
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
   const previousWorkspaceRef = useRef(workspace);
   const previousPresetsSignatureRef = useRef(presetStateSignature(presets));
-  const previousThemeLibrarySignatureRef = useRef(librarySignature(customThemes));
+  const previousThemeStateSignatureRef = useRef(themeSignature);
   const loudnessSignature = loudnessProfileStateSignature(loudnessProfiles, loudnessActive);
   const previousLoudnessLibrarySignatureRef = useRef(loudnessSignature);
   const previousOrdinarySettingsSignatureRef = useRef(ordinarySettingsStateSignature(settings));
@@ -369,6 +374,7 @@ export function useAgentControlBridge({
   const presetSettlementRef = useRef(null);
   const librarySettlementRef = useRef(null);
   const loudnessProfileSettlementRef = useRef(null);
+  const themeSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
   const latestTransportRef = useRef(transport);
@@ -499,13 +505,18 @@ export function useAgentControlBridge({
   ]);
 
   useEffect(() => {
-    const signature = librarySignature(customThemes);
-    if (signature === previousThemeLibrarySignatureRef.current) return;
-    previousThemeLibrarySignatureRef.current = signature;
-    bumpControlRevision();
-    scheduleWaitWake();
-    resolveLibrarySettlement("theme");
-  }, [bumpControlRevision, customThemes, resolveLibrarySettlement, scheduleWaitWake]);
+    if (themeSignature !== previousThemeStateSignatureRef.current) {
+      previousThemeStateSignatureRef.current = themeSignature;
+      bumpControlRevision();
+      scheduleWaitWake();
+      resolveLibrarySettlement("theme");
+    }
+    const settlement = themeSettlementRef.current;
+    if (settlement && settlement.signature === themeSignature) {
+      themeSettlementRef.current = null;
+      settlement.resolve(controlRevisionRef.current);
+    }
+  }, [bumpControlRevision, resolveLibrarySettlement, scheduleWaitWake, themeSignature]);
 
   useEffect(() => {
     if (loudnessSignature !== previousLoudnessLibrarySignatureRef.current) {
@@ -2274,6 +2285,8 @@ export function useAgentControlBridge({
     loudnessActive,
     loudnessProfile,
     loudnessProfiles,
+    theme,
+    themeSignature,
     analysisContext,
     applySettings,
     executeTransport,
@@ -2368,6 +2381,9 @@ export function useAgentControlBridge({
       const loudnessProfileSettlement = loudnessProfileSettlementRef.current;
       loudnessProfileSettlementRef.current = null;
       loudnessProfileSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      const themeSettlement = themeSettlementRef.current;
+      themeSettlementRef.current = null;
+      themeSettlement?.reject(new Error("Agent-control bridge unmounted."));
       const settingsSettlement = settingsSettlementRef.current;
       settingsSettlementRef.current = null;
       settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));

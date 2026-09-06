@@ -183,6 +183,7 @@ function Harness({
   loudnessProfilesFromStore = false,
   loudnessProfile = null,
   customThemes = null,
+  themeState = null,
   capturePresetSnapshot = async () => ({ tree: { type: "leaf" }, windowPinned: false }),
   assertPresetOperationAllowed = () => {},
   agentSettings = publicSettings,
@@ -363,6 +364,7 @@ function Harness({
     loudnessProfiles: loudnessProfilesFromStore ? subscribedProfiles : loudnessProfiles,
     loudnessProfile,
     customThemes: customThemes ?? subscribedThemes,
+    theme: themeState ? { state: themeState } : null,
     flush,
     ...(exportConfiguration ? { exportConfiguration } : {}),
     ...(importConfiguration ? { importConfiguration } : {}),
@@ -2307,6 +2309,79 @@ describe("useAgentControlBridge", () => {
 
     const after = (await send(request("app.capabilities", {}, "theme-after"))).result.revision;
     expect(after).toBe(before + 1);
+  });
+
+  it("tracks Appearance, custom order, and complete Theme documents but not system resolution", async () => {
+    const first = makeTheme("custom-a", "A");
+    const second = makeTheme("custom-b", "B");
+    const system = {
+      appearance: { mode: "system", selectedThemeId: null, resolvedThemeId: "plvs-dark" },
+      themes: [first, second],
+    };
+    const view = mount({ themeState: system });
+    await waitUntilReady();
+    let revision = (await send(request("app.capabilities", {}, "theme-state-start"))).result
+      .revision;
+
+    const rerender = async (themeState, id) => {
+      view.rerender(
+        <WorkspaceProvider>
+          <Harness themeState={themeState} />
+        </WorkspaceProvider>
+      );
+      return (await send(request("app.capabilities", {}, id))).result.revision;
+    };
+
+    revision = await rerender(
+      { ...system, appearance: { ...system.appearance, resolvedThemeId: "plvs-light" } },
+      "theme-resolution"
+    );
+    expect(revision).toBe(0);
+
+    const fixed = {
+      ...system,
+      appearance: { mode: "fixed", selectedThemeId: "custom-a", resolvedThemeId: "custom-a" },
+    };
+    revision = await rerender(fixed, "theme-selection");
+    expect(revision).toBe(1);
+
+    const edited = {
+      ...fixed,
+      themes: [{ ...first, core: { ...first.core, workspace: "#111111" } }, second],
+    };
+    revision = await rerender(edited, "theme-document");
+    expect(revision).toBe(2);
+
+    revision = await rerender({ ...edited, themes: [...edited.themes].reverse() }, "theme-order");
+    expect(revision).toBe(3);
+  });
+
+  it("increments the global revision once for a simultaneous Theme library and Appearance commit", async () => {
+    const before = {
+      appearance: { mode: "system", selectedThemeId: null, resolvedThemeId: "plvs-dark" },
+      themes: [],
+    };
+    const view = mount({ themeState: before });
+    await waitUntilReady();
+    const created = makeTheme("custom-created", "Created");
+    view.rerender(
+      <WorkspaceProvider>
+        <Harness
+          themeState={{
+            appearance: {
+              mode: "fixed",
+              selectedThemeId: created.id,
+              resolvedThemeId: created.id,
+            },
+            themes: [created],
+          }}
+        />
+      </WorkspaceProvider>
+    );
+
+    const revision = (await send(request("app.capabilities", {}, "theme-cross-store"))).result
+      .revision;
+    expect(revision).toBe(1);
   });
 
   it("bumps the revision when the loudness profile library changes outside a command", async () => {

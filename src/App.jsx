@@ -1252,6 +1252,10 @@ function AppContent() {
     executeDock: executeAgentControlDock,
     loudnessProfile,
     customThemes: settings.customThemes,
+    theme: {
+      control: settings.themeControl,
+      state: settings.themeControl.readState(),
+    },
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
   });
