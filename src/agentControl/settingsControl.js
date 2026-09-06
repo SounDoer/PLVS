@@ -18,7 +18,6 @@ export const PUBLIC_FIELDS = [
   "closeBehavior",
   "clearShortcut",
   "interfaceSize",
-  "appearance",
   "historyRetentionSec",
   "dialogueVadEngine",
   "channelLabels",
@@ -29,7 +28,6 @@ const CLOSE_BEHAVIORS = CLOSE_ACTION_OPTIONS;
 const INTERFACE_SIZES = INTERFACE_SIZE_OPTIONS.map(({ id }) => id);
 const HISTORY_LENGTHS = HISTORY_RETENTION_OPTIONS_SEC;
 const VAD_ENGINES = DIALOGUE_VAD_ENGINE_OPTIONS.map(({ id }) => id);
-const APPEARANCE_MODES = ["system", "fixed"];
 const CHANNEL_ROLES = new Set(CHANNEL_ROLE_VOCABULARY.map(({ id }) => id));
 
 function isObject(value) {
@@ -53,11 +51,6 @@ export function buildPublicSettings(settings, context) {
       global: settings.clearGlobal === true,
     },
     interfaceSize: settings.interfaceSize,
-    appearance: {
-      mode: settings.appearance,
-      themeId: settings.appearance === "system" ? null : settings.themeId,
-      resolvedThemeId: settings.resolvedThemeId,
-    },
     historyRetentionSec: settings.historyRetentionSec,
     dialogueVadEngine: settings.dialogueVadEngine,
     channelLabels: {
@@ -101,30 +94,6 @@ export function buildSettingsSchema(settings, context) {
       current: settings.interfaceSize,
       options: INTERFACE_SIZES,
     },
-    appearance: {
-      type: "object",
-      properties: {
-        mode: {
-          type: "enum",
-          default: "system",
-          current: settings.appearance.mode,
-          options: APPEARANCE_MODES,
-        },
-        themeId: {
-          type: "enum",
-          default: null,
-          current: settings.appearance.themeId,
-          options: context.themeOptions,
-          nullable: true,
-        },
-        resolvedThemeId: {
-          type: "string",
-          current: settings.appearance.resolvedThemeId,
-          writable: false,
-        },
-      },
-      availability: inspection.availability.appearance,
-    },
     historyRetentionSec: {
       type: "enum",
       default: DEFAULT_HISTORY_RETENTION_SEC,
@@ -160,7 +129,6 @@ export function buildSettingsSchema(settings, context) {
 export function buildSettingsInspection(settings, context) {
   const autostartWritable = context.autostartReady === true;
   const shortcutWritable = context.clearShortcutCapturing !== true;
-  const appearanceWritable = !context.activeEditors?.includes("theme");
   const channelWritable = settings.channelLabels.channelCount > 0;
   return {
     settings,
@@ -187,10 +155,6 @@ export function buildSettingsInspection(settings, context) {
       clearShortcut: {
         writable: shortcutWritable,
         reason: shortcutWritable ? null : "shortcutCaptureActive",
-      },
-      appearance: {
-        writable: appearanceWritable,
-        reason: appearanceWritable ? null : "editorActive",
       },
       channelLabels: {
         writable: channelWritable,
@@ -251,46 +215,6 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     issues.push(issue("invalidOption", "$.interfaceSize", "interfaceSize is not supported."));
   }
 
-  let nextAppearance = current.appearance;
-  if ("appearance" in patch) {
-    if (!isObject(patch.appearance)) {
-      issues.push(issue("invalidType", "$.appearance", "appearance must be an object."));
-    } else {
-      for (const key of Object.keys(patch.appearance)) {
-        if (!new Set(["mode", "themeId"]).has(key)) {
-          issues.push(
-            issue(
-              key === "resolvedThemeId" ? "readOnlyControl" : "unknownControl",
-              `$.appearance.${key}`,
-              `${key} is not writable.`
-            )
-          );
-        }
-      }
-      nextAppearance = { ...current.appearance, ...patch.appearance };
-      if (!APPEARANCE_MODES.includes(nextAppearance.mode)) {
-        issues.push(
-          issue("invalidOption", "$.appearance.mode", "appearance.mode is not supported.")
-        );
-      } else if (nextAppearance.mode === "system" && nextAppearance.themeId !== null) {
-        issues.push(
-          issue(
-            "themeNotAllowed",
-            "$.appearance.themeId",
-            "System appearance requires themeId null."
-          )
-        );
-      } else if (nextAppearance.mode === "fixed") {
-        if (!("themeId" in patch.appearance) && current.appearance.mode !== "fixed") {
-          issues.push(
-            issue("themeRequired", "$.appearance.themeId", "Fixed appearance requires a themeId.")
-          );
-        } else if (!context.themeOptions.some(({ id }) => id === nextAppearance.themeId)) {
-          issues.push(issue("themeNotFound", "$.appearance.themeId", "The Theme was not found."));
-        }
-      }
-    }
-  }
   if ("historyRetentionSec" in patch && !HISTORY_LENGTHS.includes(patch.historyRetentionSec)) {
     issues.push(
       issue("invalidOption", "$.historyRetentionSec", "historyRetentionSec is not supported.")
@@ -362,16 +286,6 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
   if (issues.length > 0) {
     return { settings: current, changed: [], effects: [], warnings: [], issues, refusal: null };
   }
-  if ("appearance" in patch && context.activeEditors?.includes("theme")) {
-    return {
-      settings: current,
-      changed: [],
-      effects: [],
-      warnings: [],
-      issues: [],
-      refusal: { code: "editorActive", editors: ["theme"] },
-    };
-  }
   if ("openAtLogin" in patch && context.autostartReady !== true) {
     return {
       settings: current,
@@ -424,17 +338,6 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     ...(Object.hasOwn(patch, "closeBehavior") ? { closeBehavior: patch.closeBehavior } : {}),
     ...(Object.hasOwn(patch, "clearShortcut") ? { clearShortcut: nextShortcut } : {}),
     ...(Object.hasOwn(patch, "interfaceSize") ? { interfaceSize: patch.interfaceSize } : {}),
-    ...(Object.hasOwn(patch, "appearance")
-      ? {
-          appearance: {
-            ...nextAppearance,
-            resolvedThemeId:
-              nextAppearance.mode === "fixed"
-                ? nextAppearance.themeId
-                : current.appearance.resolvedThemeId,
-          },
-        }
-      : {}),
     ...(Object.hasOwn(patch, "historyRetentionSec")
       ? { historyRetentionSec: patch.historyRetentionSec }
       : {}),
@@ -459,18 +362,6 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     settings.clearShortcut.global
   );
   changedValue(changed, "settings.interfaceSize", current.interfaceSize, settings.interfaceSize);
-  changedValue(
-    changed,
-    "settings.appearance.mode",
-    current.appearance.mode,
-    settings.appearance.mode
-  );
-  changedValue(
-    changed,
-    "settings.appearance.themeId",
-    current.appearance.themeId,
-    settings.appearance.themeId
-  );
   changedValue(
     changed,
     "settings.historyRetentionSec",

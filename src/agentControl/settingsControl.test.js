@@ -11,7 +11,6 @@ const current = {
   closeBehavior: "ask",
   clearShortcut: { accelerator: "CmdOrCtrl+K", global: false },
   interfaceSize: "default",
-  appearance: { mode: "system", themeId: null, resolvedThemeId: "plvs-dark" },
   historyRetentionSec: 3600,
   dialogueVadEngine: "firered",
   channelLabels: { channelCount: 2, mode: "auto", roles: ["L", "R"] },
@@ -21,11 +20,6 @@ const context = {
   autostartReady: true,
   clearShortcutReady: true,
   clearShortcutCapturing: false,
-  themeOptions: [
-    { id: "plvs-dark", name: "Dark", kind: "builtin" },
-    { id: "custom", name: "Custom", kind: "custom" },
-  ],
-  activeEditors: [],
   dialogueDetectionActive: false,
   sourceMode: "live",
   channelAutoRoles: ["L", "R"],
@@ -41,9 +35,6 @@ describe("Settings Control", () => {
           clearShortcut: "CmdOrCtrl+L",
           clearGlobal: true,
           interfaceSize: "large",
-          appearance: "fixed",
-          themeId: "custom",
-          resolvedThemeId: "custom",
           historyRetentionSec: 7200,
           dialogueVadEngine: "silero",
         },
@@ -54,7 +45,6 @@ describe("Settings Control", () => {
       closeBehavior: "tray",
       clearShortcut: { accelerator: "CmdOrCtrl+L", global: true },
       interfaceSize: "large",
-      appearance: { mode: "fixed", themeId: "custom", resolvedThemeId: "custom" },
       historyRetentionSec: 7200,
       dialogueVadEngine: "silero",
       channelLabels: { channelCount: 2, mode: "custom", roles: ["L", "R"] },
@@ -69,9 +59,9 @@ describe("Settings Control", () => {
     expect(publicSettings).not.toHaveProperty("agentControlEnabled");
   });
 
-  it("describes dynamic Theme and Channel Role options", () => {
+  it("describes dynamic Channel Role options without Appearance", () => {
     const schema = buildSettingsSchema(current, context);
-    expect(schema.appearance.properties.themeId.options).toEqual(context.themeOptions);
+    expect(schema).not.toHaveProperty("appearance");
     expect(schema.channelLabels.properties.roles.items.options).toContainEqual({
       id: "LFE",
       name: "LFE",
@@ -95,7 +85,6 @@ describe("Settings Control", () => {
       availability: {
         openAtLogin: { writable: true, reason: null },
         clearShortcut: { writable: true, reason: null },
-        appearance: { writable: true, reason: null },
         channelLabels: { writable: true, reason: null },
       },
     });
@@ -118,10 +107,10 @@ describe("Settings Control", () => {
     expect(planned.changed).toEqual([]);
     expect(planned.issues.map(({ code }) => code)).toEqual([
       "unknownControl",
+      "unknownControl",
       "invalidOption",
       "invalidShortcut",
       "invalidOption",
-      "themeRequired",
       "invalidOption",
       "invalidOption",
     ]);
@@ -133,7 +122,6 @@ describe("Settings Control", () => {
       {
         closeBehavior: "tray",
         clearShortcut: { global: true },
-        appearance: { mode: "fixed", themeId: "custom" },
         historyRetentionSec: 1800,
       },
       context
@@ -142,14 +130,11 @@ describe("Settings Control", () => {
     expect(planned.settings).toMatchObject({
       closeBehavior: "tray",
       clearShortcut: { accelerator: "CmdOrCtrl+K", global: true },
-      appearance: { mode: "fixed", themeId: "custom", resolvedThemeId: "custom" },
       historyRetentionSec: 1800,
     });
     expect(planned.changed).toEqual([
       "settings.closeBehavior",
       "settings.clearShortcut.global",
-      "settings.appearance.mode",
-      "settings.appearance.themeId",
       "settings.historyRetentionSec",
     ]);
     expect(planned.warnings).toEqual([
@@ -161,17 +146,10 @@ describe("Settings Control", () => {
     ]);
   });
 
-  it("refuses appearance and shortcut capture dynamically before no-op detection", () => {
-    expect(
-      planSettingsUpdate(
-        current,
-        { appearance: { mode: "system" } },
-        {
-          ...context,
-          activeEditors: ["theme"],
-        }
-      ).refusal
-    ).toEqual({ code: "editorActive", editors: ["theme"] });
+  it("rejects Appearance as an unknown control and still refuses shortcut capture", () => {
+    expect(planSettingsUpdate(current, { appearance: { mode: "system" } }, context).issues).toEqual(
+      [expect.objectContaining({ code: "unknownControl", path: "$.appearance" })]
+    );
     expect(
       planSettingsUpdate(
         current,

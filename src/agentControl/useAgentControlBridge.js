@@ -192,10 +192,6 @@ function settingsStateForSignature(settings) {
   if (!settings) return null;
   return {
     ...settings,
-    appearance: {
-      mode: settings.appearance?.mode,
-      themeId: settings.appearance?.themeId ?? null,
-    },
     channelLabels: {
       mode: settings.channelLabels?.mode,
       ...(settings.channelLabels?.mode === "custom" ? { roles: settings.channelLabels.roles } : {}),

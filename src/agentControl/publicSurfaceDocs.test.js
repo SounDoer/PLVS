@@ -150,7 +150,6 @@ const SETTINGS_AT_DEFAULTS = {
   closeBehavior: "ask",
   clearShortcut: { accelerator: "CmdOrCtrl+K", global: false },
   interfaceSize: "default",
-  appearance: { mode: "system", themeId: null, resolvedThemeId: "plvs-dark" },
   historyRetentionSec: 3600,
   dialogueVadEngine: "firered",
   channelLabels: { channelCount: 2, mode: "auto", roles: ["L", "R"] },
@@ -162,7 +161,6 @@ function settingsPage() {
     channelCount: 2,
     channelLabelMode: "auto",
     channelLabelRoles: ["L", "R"],
-    themeOptions: ["<theme ids, from the theme library>"],
   });
   const withoutState = Object.fromEntries(
     Object.entries(schema).map(([name, field]) => [name, stripState(field)])
@@ -173,7 +171,7 @@ function settingsPage() {
     "# Settings Control — Public Fields",
     "",
     "Current values and writability are runtime state and are reported by `settings.inspect`, not",
-    "here. `appearance.resolvedThemeId` is read-only.",
+    "here.",
     "",
     table(withoutState),
     "",

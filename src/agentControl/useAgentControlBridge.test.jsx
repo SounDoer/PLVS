@@ -920,6 +920,33 @@ describe("useAgentControlBridge", () => {
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects Appearance through Settings without applying or persisting it", async () => {
+    const apply = vi.fn(async () => {});
+    const flush = vi.fn(async () => {});
+    mount({ applyAgentSettings: apply, flush });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "settings.update",
+        { patch: { appearance: { mode: "fixed", themeId: "plvs-light" } }, expectedRevision: 0 },
+        "settings-appearance-removed"
+      )
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32602,
+      data: {
+        reason: "invalidSettings",
+        details: {
+          issues: [expect.objectContaining({ code: "unknownControl", path: "$.appearance" })],
+        },
+      },
+    });
+    expect(apply).not.toHaveBeenCalled();
+    expect(flush).not.toHaveBeenCalled();
+  });
+
   it("reports Settings application failures at the global revision", async () => {
     const view = mount({
       applyAgentSettings: vi.fn(async () => Promise.reject(new Error("setting refused"))),

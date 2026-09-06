@@ -4,7 +4,7 @@
 # Settings Control — Public Fields
 
 Current values and writability are runtime state and are reported by `settings.inspect`, not
-here. `appearance.resolvedThemeId` is read-only.
+here.
 
 | Field | Type | Unit | Default | Allowed | In the default state |
 | --- | --- | --- | --- | --- | --- |
@@ -14,10 +14,6 @@ here. `appearance.resolvedThemeId` is read-only.
 | `clearShortcut.accelerator` | accelerator | - | `"CmdOrCtrl+K"` | - | - |
 | `clearShortcut.global` | boolean | - | `false` | - | - |
 | `interfaceSize` | enum | - | `"default"` | "small", "default", "large", "extra-large" | - |
-| `appearance` | object | - | - | - | - |
-| `appearance.mode` | enum | - | `"system"` | "system", "fixed" | - |
-| `appearance.themeId` | enum | - | `null` | "<theme ids, from the theme library>" | - |
-| `appearance.resolvedThemeId` | string | - | - | - | - |
 | `historyRetentionSec` | enum | s | `3600` | 1800, 3600, 7200, 14400 | - |
 | `dialogueVadEngine` | enum | - | `"firered"` | "firered", "silero", "ten" | - |
 | `channelLabels` | object | - | - | - | - |

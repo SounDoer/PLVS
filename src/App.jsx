@@ -88,7 +88,6 @@ import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
 import { buildPublicSettings } from "./agentControl/settingsControl.js";
 import { buildTransportSnapshot } from "./agentControl/transportControl.js";
-import { BUILTIN_THEMES_V2 } from "./theme/builtinThemesV2.js";
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
@@ -968,19 +967,6 @@ function AppContent() {
       clearShortcutReady: settings.clearReady,
       clearShortcutCapturing: settings.clearCapturing,
       clearShortcutRegistrationError: settings.registrationError,
-      themeOptions: [
-        ...Object.values(BUILTIN_THEMES_V2).map(({ id, name }) => ({
-          id,
-          name,
-          kind: "builtin",
-        })),
-        ...Object.values(settings.customThemes ?? {}).map(({ id, name }) => ({
-          id,
-          name,
-          kind: "custom",
-        })),
-      ],
-      activeEditors: activeBlockingEditors,
       dialogueDetectionRequested: dialogueGating,
       dialogueDetectionActive: dialogueGating && running,
       hasCompletedFileAnalysis: fileSessions.some((session) => session.state === "complete"),
@@ -991,7 +977,6 @@ function AppContent() {
       channelAutoRoles: seedTokensFromLabels(channelLabelRuntime.channelAutoLabels),
     }),
     [
-      activeBlockingEditors,
       channelCount,
       channelLabelOverride,
       channelLabelRuntime.channelAutoLabels,
@@ -1002,7 +987,6 @@ function AppContent() {
       settings.autostartReady,
       settings.clearCapturing,
       settings.clearReady,
-      settings.customThemes,
       settings.registrationError,
       sourceMode,
     ]
@@ -1102,10 +1086,6 @@ function AppContent() {
       }
       if (changed.includes("settings.interfaceSize")) {
         settings.setInterfaceSize(next.interfaceSize);
-      }
-      if (changed.some((path) => path.startsWith("settings.appearance."))) {
-        settings.setThemeId(next.appearance.themeId);
-        settings.setAppearance(next.appearance.mode);
       }
       if (changed.includes("settings.historyRetentionSec")) {
         settings.setHistoryRetentionSec(next.historyRetentionSec);

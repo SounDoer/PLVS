@@ -23,9 +23,6 @@ const RAW_SETTINGS = {
   clearShortcut: "CmdOrCtrl+K",
   clearGlobal: false,
   interfaceSize: DEFAULT_INTERFACE_SIZE,
-  appearance: "system",
-  themeId: null,
-  resolvedThemeId: "plvs-dark",
   historyRetentionSec: DEFAULT_HISTORY_RETENTION_SEC,
   dialogueVadEngine: DEFAULT_DIALOGUE_VAD_ENGINE,
 };
@@ -34,8 +31,6 @@ const CONTEXT = {
   autostartReady: true,
   clearShortcutReady: true,
   clearShortcutCapturing: false,
-  themeOptions: [{ id: "plvs-dark", name: "Dark", kind: "builtin" }],
-  activeEditors: [],
   channelCount: 2,
   channelLabelMode: "auto",
   channelLabelRoles: ["L", "R"],
@@ -57,18 +52,14 @@ describe("the public Settings surface agrees with itself", () => {
   it("accepts a patch of every field it describes", () => {
     const current = publicSettings();
     for (const field of PUBLIC_FIELDS) {
-      // Two fields are not round-trippable by construction: appearance reports a read-only
-      // resolvedThemeId, and automatic channel labels report the roles they derive but refuse
-      // to be given them back.
+      // Automatic channel labels report the roles they derive but refuse to be given them back.
       const value =
-        field === "appearance"
-          ? { mode: current.appearance.mode, themeId: current.appearance.themeId }
-          : field === "channelLabels"
-            ? {
-                channelCount: current.channelLabels.channelCount,
-                mode: current.channelLabels.mode,
-              }
-            : current[field];
+        field === "channelLabels"
+          ? {
+              channelCount: current.channelLabels.channelCount,
+              mode: current.channelLabels.mode,
+            }
+          : current[field];
       const { issues } = planSettingsUpdate(current, { [field]: value }, CONTEXT);
       expect(issues, field).toEqual([]);
     }
