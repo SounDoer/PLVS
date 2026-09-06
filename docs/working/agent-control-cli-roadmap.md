@@ -133,6 +133,11 @@ transfer parity, and deserves a separate confirmation design if terminal demand 
 
 ### Stage 2: Loudness Profile editing
 
+Draft design and implementation plan:
+
+- [`superpowers/specs/2026-09-06-agent-control-loudness-profile-design.md`](superpowers/specs/2026-09-06-agent-control-loudness-profile-design.md)
+- [`superpowers/plans/2026-09-06-agent-control-loudness-profile-implementation.md`](superpowers/plans/2026-09-06-agent-control-loudness-profile-implementation.md)
+
 Proposed public shape:
 
 ```text
