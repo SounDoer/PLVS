@@ -47,6 +47,14 @@ describe("agent-control app snapshots", () => {
         "preset.save",
         "preset.update",
         "preset.apply",
+        "preset.export",
+        "preset.import",
+        "theme.list",
+        "theme.export",
+        "theme.import",
+        "loudnessProfile.list",
+        "loudnessProfile.export",
+        "loudnessProfile.import",
         "settings.describe",
         "settings.inspect",
         "settings.update",
@@ -169,5 +177,30 @@ describe("agent-control app snapshots", () => {
       },
     };
     expect(readAgentControlRuntime()).toMatchObject({ available: true, enabled: false });
+  });
+
+  it("advertises the library transfer commands", () => {
+    const capabilities = buildAgentControlCapabilities(
+      {
+        available: true,
+        appName: "PLVS",
+        appVersion: "0.15.0",
+        identifier: "x",
+        platform: "windows",
+      },
+      7
+    );
+    for (const method of [
+      "preset.export",
+      "preset.import",
+      "theme.list",
+      "theme.export",
+      "theme.import",
+      "loudnessProfile.list",
+      "loudnessProfile.export",
+      "loudnessProfile.import",
+    ]) {
+      expect(capabilities.commands).toContain(method);
+    }
   });
 });
