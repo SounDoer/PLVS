@@ -418,6 +418,15 @@ mod tests {
         "plvs:workspace",
       ]
     );
+    // `dockState` is spelled twice in Rust: as the literal above and as `dock::DOCK_STATE_KEY`,
+    // which is what `store.get` reads -- the injected value *is* that key's value. Nothing else
+    // ties the two together, so renaming one alone still compiles and the only symptom is dock
+    // state failing to come back at boot.
+    assert!(
+      keys.iter().any(|key| key.as_str() == dock::DOCK_STATE_KEY),
+      "the injected snapshot must carry the key `store.get` reads: {}",
+      dock::DOCK_STATE_KEY
+    );
   }
 
   #[test]
