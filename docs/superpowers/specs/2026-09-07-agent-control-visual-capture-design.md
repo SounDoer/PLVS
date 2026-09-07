@@ -122,7 +122,7 @@ or mutate the user's UI.
     "container": "mp4",
     "videoCodec": "h264",
     "audioSources": ["none", "measuredSource"],
-    "defaultAudioSource": "none",
+    "defaultAudioSource": "measuredSource",
     "defaultFps": 30,
     "supportedFps": [15, 30, 60],
     "defaultMaxDurationSeconds": 60,
@@ -233,8 +233,10 @@ and staging file, starts capture, and returns promptly:
 }
 ```
 
-`--audio` defaults to `none`. `--fps` defaults to 30 and accepts 15, 30, or 60. Maximum duration
-defaults to 60 seconds and accepts an integer from 1 through 1800. The hard file limit is 2 GiB.
+When `--audio` is omitted it defaults to `measuredSource` while Live is selected and to `none`
+while File is selected. An explicit `measured-source` request still fails while File is selected.
+`--fps` defaults to 30 and accepts 15, 30, or 60. Maximum duration defaults to 60 seconds and
+accepts an integer from 1 through 1800. The hard file limit is 2 GiB.
 Whichever limit is reached first initiates a normal finalization and records `stopReason` as
 `durationLimit` or `sizeLimit`.
 
@@ -457,8 +459,9 @@ Callers inspect rather than starting another recording blindly.
 4. Windows ships first. Unsupported platforms report capabilities rather than accepting a request
    and failing late.
 5. PNG is the only still format; H.264 MP4 is the only video format in v1.
-6. Audio defaults to `none`; `measuredSource` is optional and Live-only. File analysis is always
-   audio-none.
+6. Audio defaults to `measuredSource` when Live is selected and to `none` when File is selected.
+   `measuredSource` is Live-only; File analysis is always audio-none. Callers may explicitly request
+   `none` in either source mode.
 7. Default recording duration is 60 seconds, hard maximum is 30 minutes, and hard artifact limit is
    2 GiB.
 8. Media is staged by the app and copied by the CLI. It never travels in JSON.

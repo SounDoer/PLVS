@@ -482,7 +482,9 @@ refactor(audio): expose bounded measured PCM subscription
 - Modify: `src/agentControl/useAgentControlBridge.js`
 - Modify: related frontend and Rust tests
 
-- [ ] Add `measuredSource` validation while keeping `none` the default.
+- [ ] Add `measuredSource` validation while keeping explicit `none` support.
+- [ ] Change the final default to `measuredSource` while Live is selected; keep `none` as the File
+      default and as an explicit option in both source modes.
 - [ ] Reject measured-source start whenever File is the selected source mode.
 - [ ] Attach/detach the PCM subscriber as Live starts, stops, restarts, changes device, or yields to
       File without ever ingesting File decoder PCM.
