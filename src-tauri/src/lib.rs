@@ -87,6 +87,7 @@ pub fn run() {
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::windows_pipe::PipeServerState::default())
     .manage(visual_capture::ScreenshotCaptureState::default())
+    .manage(visual_capture::recording::RecordingController::default())
     .manage(dock::DockedFlag(std::sync::Arc::new(
       std::sync::atomic::AtomicBool::new(false),
     )))
@@ -137,6 +138,10 @@ pub fn run() {
       agent_control::toggle::set_agent_control_enabled,
       visual_capture::visual_capture_capabilities,
       visual_capture::visual_capture_screenshot,
+      visual_capture::visual_recording_start,
+      visual_capture::visual_recording_inspect,
+      visual_capture::visual_recording_update_geometry,
+      visual_capture::visual_recording_stop,
     ])
     .setup(|app| {
       #[cfg(debug_assertions)]
@@ -293,6 +298,9 @@ pub fn run() {
         let handle = app.handle().clone();
         window.on_window_event(move |event| {
           if matches!(event, tauri::WindowEvent::Destroyed) {
+            handle
+              .state::<visual_capture::recording::RecordingController>()
+              .shutdown_and_wait(Duration::from_secs(2));
             handle
               .state::<agent_control::windows_pipe::PipeServerState>()
               .stop();

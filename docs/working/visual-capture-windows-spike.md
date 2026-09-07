@@ -5,41 +5,34 @@
 
 ## Decision
 
-Implement the production recorder directly with the repository's `windows` crate bindings:
+Implement the production recorder with a deliberately narrow split:
 
-- create a `GraphicsCaptureItem` for the Tauri `main` HWND through
-  `IGraphicsCaptureItemInterop::CreateForWindow`, without a picker;
-- use `Direct3D11CaptureFramePool::CreateFreeThreaded` with BGRA8 frames;
-- cache a D3D11 video processor and fixed-size BGRA output textures for semantic crop,
-  aspect-fit scaling, and black letterboxing;
-- pass those textures to a Media Foundation Sink Writer through
-  `MFCreateDXGISurfaceBuffer`, with one H.264 stream and an optional AAC stream;
+- use `windows-capture` only to create and run Windows Graphics Capture against the exact Tauri
+  `main` HWND, without a picker;
+- use direct D3D11 video-processor calls for semantic crop, aspect-fit scaling, and black
+  letterboxing into a fixed BGRA output canvas;
+- hand completed BGRA frames through a bounded queue to a dedicated direct Media Foundation Sink
+  Writer worker, with one H.264 stream and, later, an optional AAC stream;
 - add no audio stream at all for `audio: none`.
 
-The `windows-capture` crate is retained only as a probe dependency. Its WGC bootstrap is useful for
-repeatable experiments, but its public compositor only top-left crops/pads, and disabling audio in
-its encoder still produced an AAC stream on this machine. Both conflict with the approved contract.
+The `windows-capture` encoder and compositor are not used: its public compositor only top-left
+crops/pads, and disabling audio in its encoder still produced an AAC stream on this machine. Both
+conflict with the approved contract. Its capture-session bootstrap does not impose either behavior
+and is retained in production to avoid duplicating the HWND-to-WGC lifecycle.
 
 ## Required production `windows` features
 
-The current `windows = 0.61.3` dependency needs these additional features for Task 9:
+The existing `windows = 0.61.3` dependency remains pinned for WebView2 compatibility. Production
+recording isolates the following direct APIs behind the `windows62` alias already used by
+`windows-capture`:
 
-- `Graphics_Capture`
-- `Graphics_DirectX`
-- `Graphics_DirectX_Direct3D11`
 - `Win32_Foundation`
-- `Win32_Graphics_Direct3D`
 - `Win32_Graphics_Direct3D11`
-- `Win32_Graphics_Dxgi`
 - `Win32_Graphics_Dxgi_Common`
 - `Win32_Media_MediaFoundation`
-- `Win32_System_Com`
-- `Win32_System_WinRT`
-- `Win32_System_WinRT_Direct3D11`
-- `Win32_System_WinRT_Graphics_Capture`
 
-The retained example uses an aliased `windows 0.62.2` only because `windows-capture 2.0.1` owns that
-version. Production must not expose types from the probe or mix the two versions across its API.
+No Windows crate types cross the recording module's public API, which prevents the 0.61 and 0.62
+types from being mixed.
 
 ## Probe and environment
 
@@ -61,8 +54,8 @@ Observed environment:
 The probe locates the exact PLVS window title and creates its WGC item directly, so no system picker
 or arbitrary desktop target is involved. Each frame is inset by eight pixels, passed through a
 D3D11 video processor, aspect-fitted into a fixed 960 x 540 BGRA render target with black
-letterboxing, read back for the probe only, and submitted to a direct Media Foundation Sink Writer.
-The production path will remove the readback and submit the cached D3D surface directly.
+letterboxing, read back into a bounded BGRA handoff, and submitted to a direct Media Foundation Sink
+Writer. Production keeps that bounded handoff so Media Foundation never runs on the WGC callback.
 
 ## Results
 

@@ -27,9 +27,9 @@ impl VisualCapturePlatform for WindowsPlatform {
         targets: vec!["main", "workspace", "panel", "dockHeader", "dockEditor"],
       },
       recording: RecordingCapabilities {
-        available: false,
-        targets: Vec::new(),
-        audio_sources: Vec::new(),
+        available: true,
+        targets: vec!["main", "workspace"],
+        audio_sources: vec!["none"],
       },
     }
   }

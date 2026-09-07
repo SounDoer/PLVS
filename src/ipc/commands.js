@@ -205,6 +205,26 @@ export function captureVisualScreenshot(request) {
   return invoke("visual_capture_screenshot", { request });
 }
 
+/** Start a native video-only recording from settled semantic geometry. */
+export function startVisualRecording(request) {
+  return invoke("visual_recording_start", { request });
+}
+
+/** Read the latest process-local native recording state. */
+export function inspectVisualRecording(recordingId) {
+  return invoke("visual_recording_inspect", { request: { recordingId } });
+}
+
+/** Forward a private ResizeObserver update to the active native session. */
+export function updateVisualRecordingGeometry(request) {
+  return invoke("visual_recording_update_geometry", { request });
+}
+
+/** Request idempotent native stop and bounded finalization. */
+export function stopVisualRecording(recordingId) {
+  return invoke("visual_recording_stop", { request: { recordingId } });
+}
+
 /** @param {import("./types.js").AnalysisRequests} requests */
 export function setAnalysisRequests(requests) {
   return invoke("set_analysis_requests", { requests });

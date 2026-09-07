@@ -25,6 +25,10 @@ import {
   setDockHeight,
   setDockSuspended,
   setLoudnessWeights,
+  startVisualRecording,
+  inspectVisualRecording,
+  updateVisualRecordingGeometry,
+  stopVisualRecording,
   startFileAnalysis,
   stopFileAnalysis,
 } from "./commands.js";
@@ -142,6 +146,40 @@ describe("agent-control command seam", () => {
     expect(invoke).toHaveBeenNthCalledWith(2, "visual_capture_screenshot", { request });
     expect(invoke.mock.calls[1][1]).not.toHaveProperty("out");
     expect(invoke.mock.calls[1][1]).not.toHaveProperty("path");
+  });
+
+  it("maps the native recording lifecycle and keeps geometry updates private", async () => {
+    const request = {
+      windowLabel: "main",
+      rect: { x: 0, y: 0, width: 640, height: 480 },
+      viewport: { width: 800, height: 600 },
+      devicePixelRatio: 1.25,
+      fps: 30,
+      maxDurationSeconds: 60,
+    };
+    await startVisualRecording(request);
+    await inspectVisualRecording("rec-1");
+    await updateVisualRecordingGeometry({
+      recordingId: "rec-1",
+      rect: request.rect,
+      viewport: request.viewport,
+    });
+    await stopVisualRecording("rec-1");
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "visual_recording_start", { request });
+    expect(invoke).toHaveBeenNthCalledWith(2, "visual_recording_inspect", {
+      request: { recordingId: "rec-1" },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(3, "visual_recording_update_geometry", {
+      request: {
+        recordingId: "rec-1",
+        rect: request.rect,
+        viewport: request.viewport,
+      },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(4, "visual_recording_stop", {
+      request: { recordingId: "rec-1" },
+    });
   });
 });
 

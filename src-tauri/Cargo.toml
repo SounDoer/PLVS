@@ -81,9 +81,16 @@ window-vibrancy = "0.6"
 [target.'cfg(target_os = "windows")'.dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
 webview2-com = "0.38.2"
+windows-capture = "2.0.1"
 windows = { version = "0.61.3", features = [
   "Win32_System_Com",
   "Win32_UI_Shell",
+] }
+windows62 = { package = "windows", version = "0.62.2", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_Media_MediaFoundation",
 ] }
 winreg = "0.56"
 windows-sys = { version = "0.61", features = [
@@ -110,18 +117,6 @@ panic = "abort"
 
 [dev-dependencies]
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
-
-[target.'cfg(target_os = "windows")'.dev-dependencies]
-# Task 8 probe only. Production visual capture uses the repository's direct `windows` bindings;
-# this wrapper lets the spike measure WGC/Media Foundation behavior without pre-committing the
-# production controller to its lifecycle or compositor abstractions.
-windows-capture = "2.0.1"
-windows62 = { package = "windows", version = "0.62.2", features = [
-  "Win32_Foundation",
-  "Win32_Graphics_Direct3D11",
-  "Win32_Graphics_Dxgi_Common",
-  "Win32_Media_MediaFoundation",
-] }
 
 [[bench]]
 name = "spectral_fft_count"

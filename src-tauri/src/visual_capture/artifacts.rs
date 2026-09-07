@@ -166,7 +166,7 @@ impl ArtifactStore {
     .map_err(io::Error::other)?
   }
 
-  fn publish_blocking(
+  pub(crate) fn publish_blocking(
     &self,
     pending: PendingArtifact,
     width: u32,
