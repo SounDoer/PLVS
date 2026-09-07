@@ -27,6 +27,7 @@ mod profile;
 mod sidecar;
 mod state;
 pub mod vad;
+pub mod visual_capture;
 mod window_state;
 
 use std::time::Duration;
@@ -141,6 +142,15 @@ pub fn run() {
           .level(log::LevelFilter::Info)
           .build(),
       )?;
+
+      let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(
+        &app
+          .path()
+          .app_data_dir()
+          .map_err(|error| error.to_string())?,
+      )
+      .map_err(|error| format!("agent artifact storage: {error}"))?;
+      app.manage(artifact_store);
 
       // --- Persistence: read store, inject initial state, restore window (pre-paint) ---
       // Note: the JS pluginStoreBackend uses "plvs:settings" / "plvs:workspace" as store keys.
