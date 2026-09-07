@@ -81,6 +81,7 @@ vi.mock("./ipc/commands.js", () => ({
   startVisualRecording: vi.fn().mockResolvedValue(undefined),
   inspectVisualRecording: vi.fn().mockResolvedValue(undefined),
   updateVisualRecordingGeometry: vi.fn().mockResolvedValue(undefined),
+  updateVisualRecordingAudioState: vi.fn().mockResolvedValue(undefined),
   stopVisualRecording: vi.fn().mockResolvedValue(undefined),
   agentControlFrontendReadyCommand: vi.fn().mockResolvedValue(undefined),
   agentControlFrontendNotReadyCommand: vi.fn().mockResolvedValue(undefined),

@@ -55,6 +55,10 @@ impl Default for MeasuredPcmSubscriptions {
 }
 
 impl MeasuredPcmSubscriptions {
+  pub fn timestamp_ns(&self) -> u64 {
+    self.epoch.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64
+  }
+
   pub fn subscribe(&self, capacity: usize) -> Result<MeasuredPcmReceiver, &'static str> {
     if capacity == 0 {
       return Err("subscriberCapacityZero");
@@ -87,7 +91,15 @@ impl MeasuredPcmSubscriptions {
     channels: u16,
     channel_layout: ChannelLayoutSetting,
   ) {
-    let timestamp_ns = self.epoch.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
+    let frame_count = samples.len() / usize::from(channels.max(1));
+    let duration_ns = if sample_rate == 0 {
+      0
+    } else {
+      (frame_count as u64).saturating_mul(1_000_000_000) / u64::from(sample_rate)
+    };
+    // The worker observes a completed device buffer. Backdate to its first sample so the recorder
+    // does not add one callback-buffer of A/V latency.
+    let timestamp_ns = self.timestamp_ns().saturating_sub(duration_ns);
     let sequence = self.sequence.fetch_add(1, Ordering::Relaxed);
     let Ok(mut subscribers) = self.subscribers.lock() else {
       return;

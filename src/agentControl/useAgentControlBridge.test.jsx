@@ -619,7 +619,7 @@ function visualControl(overrides = {}) {
       windowForm: "normal",
       sourceMode: "live",
       availableScreenshotTargets: ["main", "workspace", "panel"],
-      availableAudioSources: [],
+      availableAudioSources: ["none", "measuredSource"],
     }),
     settle: vi.fn(async (target, { expectedRevision, getRevision }) => {
       const revision = getRevision();
@@ -649,10 +649,11 @@ function visualControl(overrides = {}) {
       sha256: "a".repeat(64),
       createdAt: "2026-09-07T12:00:00Z",
     })),
-    startRecording: vi.fn(async () => ({
+    startRecording: vi.fn(async ({ audio } = {}) => ({
       recordingId: `rec-${"a".repeat(32)}`,
       state: "recording",
       video: { width: 376, height: 250, fps: 30, codec: "h264" },
+      audio: { source: audio ?? "none" },
       limits: { maxDurationSeconds: 60, maxArtifactBytes: 2147483648 },
     })),
     inspectRecording: vi.fn(async (recordingId) => ({
@@ -665,6 +666,7 @@ function visualControl(overrides = {}) {
     })),
     stopRecording: vi.fn(async (recordingId) => ({ recordingId, state: "stopping" })),
     updateRecordingGeometry: vi.fn(async () => {}),
+    updateRecordingAudioState: vi.fn(async () => {}),
     subscribe: vi.fn(() => vi.fn()),
     setRecordingState: vi.fn(),
     ...overrides,
@@ -858,14 +860,18 @@ describe("useAgentControlBridge", () => {
       expect(visual.captureScreenshot).not.toHaveBeenCalled();
     });
 
-    it("starts a silent recording, advertises its methods, and forwards resize privately", async () => {
+    it("defaults Live recording to measured source and forwards resize privately", async () => {
       const recordingId = `rec-${"a".repeat(32)}`;
       let publishGeometry;
       const visual = visualControl({
         platformCapabilities: {
           platform: "windows",
           screenshot: { available: true, targets: ["main", "workspace"] },
-          recording: { available: true, targets: ["main", "workspace"], audioSources: ["none"] },
+          recording: {
+            available: true,
+            targets: ["main", "workspace"],
+            audioSources: ["none", "measuredSource"],
+          },
         },
         subscribe: vi.fn((_target, onGeometry) => {
           publishGeometry = onGeometry;
@@ -899,13 +905,16 @@ describe("useAgentControlBridge", () => {
         devicePixelRatio: 1.25,
         fps: 30,
         maxDurationSeconds: 5,
+        audio: "measuredSource",
+        sourceMode: "live",
+        audioState: "liveStopped",
       });
       expect(response.result.recording).toMatchObject({
         recordingId,
         state: "recording",
         target: { kind: "workspace" },
         startedRevision: 0,
-        audio: { source: "none" },
+        audio: { source: "measuredSource" },
       });
       act(() =>
         publishGeometry({
@@ -921,6 +930,51 @@ describe("useAgentControlBridge", () => {
         })
       );
       expect(visual.setRecordingState).toHaveBeenCalledWith("recording");
+    });
+
+    it("defaults File recording to none and rejects explicit measured-source audio", async () => {
+      const visual = visualControl({
+        platformCapabilities: {
+          platform: "windows",
+          screenshot: { available: true, targets: ["main"] },
+          recording: {
+            available: true,
+            targets: ["main"],
+            audioSources: ["none", "measuredSource"],
+          },
+        },
+        getRuntime: () => ({
+          windowForm: "normal",
+          sourceMode: "file",
+          availableScreenshotTargets: ["main"],
+          availableAudioSources: ["none"],
+        }),
+      });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+
+      const started = await send(
+        request("visual.recording.start", { target: { kind: "main" } }, "file-default-audio")
+      );
+      expect(started.result.recording.audio).toEqual({ source: "none" });
+      expect(visual.startRecording).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audio: "none",
+          sourceMode: "file",
+          audioState: "sourceModeFile",
+        })
+      );
+
+      visual.startRecording.mockClear();
+      const rejected = await send(
+        request(
+          "visual.recording.start",
+          { target: { kind: "main" }, audio: "measuredSource" },
+          "file-measured-audio"
+        )
+      );
+      expect(rejected.error).toMatchObject({ data: { reason: "audioUnavailable" } });
+      expect(visual.startRecording).not.toHaveBeenCalled();
     });
 
     it("keeps recording wait outside the mutation queue and returns terminal correlation metadata", async () => {

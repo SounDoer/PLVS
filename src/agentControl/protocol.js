@@ -148,8 +148,11 @@ export function normalizeAgentControlRequest(input) {
         "Recording target.kind must be one of: main, workspace."
       );
     }
-    if (input.params.audio !== undefined && input.params.audio !== "none") {
-      return invalidParams("$.params.audio", "audio must be none during silent recording.");
+    if (
+      input.params.audio !== undefined &&
+      !["none", "measuredSource"].includes(input.params.audio)
+    ) {
+      return invalidParams("$.params.audio", "audio must be none or measuredSource.");
     }
     const fps = input.params.fps ?? 30;
     if (![15, 30, 60].includes(fps)) {
@@ -182,7 +185,7 @@ export function normalizeAgentControlRequest(input) {
         method: input.method,
         params: {
           target: normalizedTarget.target,
-          audio: "none",
+          ...(input.params.audio !== undefined ? { audio: input.params.audio } : {}),
           fps,
           maxDurationSeconds,
           ...(input.params.expectedRevision !== undefined

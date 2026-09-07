@@ -94,6 +94,7 @@ export function buildVisualDescription({ revision, platform, runtime }) {
   const audioSources = recordingAvailable
     ? retainKnown(platform.recording.audioSources, VISUAL_AUDIO_SOURCES)
     : [];
+  const sourceMode = runtime?.sourceMode === "file" ? "file" : "live";
 
   return {
     revision,
@@ -110,7 +111,7 @@ export function buildVisualDescription({ revision, platform, runtime }) {
       container: RECORDING_CONTAINER,
       videoCodec: RECORDING_VIDEO_CODEC,
       audioSources,
-      defaultAudioSource: "none",
+      defaultAudioSource: sourceMode === "live" ? "measuredSource" : "none",
       defaultFps: 30,
       supportedFps: [...SUPPORTED_FPS],
       defaultMaxDurationSeconds: 60,
@@ -120,7 +121,7 @@ export function buildVisualDescription({ revision, platform, runtime }) {
     },
     runtime: {
       windowForm: runtime?.windowForm === "dock" ? "dock" : "normal",
-      sourceMode: runtime?.sourceMode === "file" ? "file" : "live",
+      sourceMode,
       availableScreenshotTargets: retainKnown(
         runtime?.availableScreenshotTargets,
         screenshotTargets

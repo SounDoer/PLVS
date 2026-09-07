@@ -17,9 +17,10 @@ use artifacts::{ArtifactKind, ArtifactMetadata, ArtifactStore};
 #[cfg(not(target_os = "windows"))]
 use platform::UnsupportedPlatform;
 use platform::{CaptureError, PlatformCapabilities, ScreenshotRequest, VisualCapturePlatform};
-use recording::state::{RecordingSnapshot, StopReason};
+use recording::state::{RecordingAudioSource, RecordingSnapshot, StopReason};
 use recording::{
-  RecordingController, RecordingGeometryRequest, RecordingIdRequest, RecordingStartRequest,
+  RecordingAudioStateRequest, RecordingController, RecordingGeometryRequest, RecordingIdRequest,
+  RecordingSourceMode, RecordingStartRequest,
 };
 #[cfg(target_os = "windows")]
 use windows::WindowsPlatform;
@@ -196,6 +197,7 @@ pub async fn visual_recording_start(
   app: AppHandle,
   artifact_store: State<'_, ArtifactStore>,
   controller: State<'_, RecordingController>,
+  engine_state: State<'_, crate::state::AppState>,
   request: RecordingStartRequest,
 ) -> Result<RecordingSnapshot, NativeCaptureError> {
   if request.window_label != "main" {
@@ -204,10 +206,25 @@ pub async fn visual_recording_start(
       "Recordings can only capture the PLVS main window.",
     ));
   }
+  let audio_source = request.resolved_audio_source();
+  if audio_source == RecordingAudioSource::MeasuredSource
+    && request.source_mode == RecordingSourceMode::File
+  {
+    return Err(NativeCaptureError::recording(
+      "audioUnavailable",
+      "Measured-source audio is unavailable while File is selected.",
+    ));
+  }
   let (width, height) = output_canvas(&request)?;
   let created = controller
     .registry()
-    .create(width, height, request.fps, request.max_duration_seconds)
+    .create(
+      width,
+      height,
+      request.fps,
+      request.max_duration_seconds,
+      audio_source,
+    )
     .map_err(|reason| {
       NativeCaptureError::recording(reason, "The recording request is invalid or busy.")
     })?;
@@ -254,6 +271,25 @@ pub async fn visual_recording_start(
     let viewport = request.viewport;
     let fps = request.fps;
     let max_duration_seconds = request.max_duration_seconds;
+    let measured_pcm = engine_state.inner().measured_pcm.clone();
+    let audio_origin_ns = measured_pcm.timestamp_ns();
+    let audio_receiver = if audio_source == RecordingAudioSource::MeasuredSource {
+      match measured_pcm.subscribe(8) {
+        Ok(receiver) => Some(receiver),
+        Err(reason) => {
+          controller.registry().fail(
+            &created.recording_id,
+            "Measured-source audio could not be attached.",
+          );
+          return Err(NativeCaptureError::recording(
+            reason,
+            "Measured-source audio could not be attached.",
+          ));
+        }
+      }
+    } else {
+      None
+    };
     let session_result = tauri::async_runtime::spawn_blocking(move || {
       recording::windows::start_recording(
         hwnd as *mut std::ffi::c_void,
@@ -266,6 +302,10 @@ pub async fn visual_recording_start(
         pending,
         store,
         registry,
+        audio_source,
+        audio_origin_ns,
+        audio_receiver,
+        request.audio_state.silence_reason(),
       )
     })
     .await;
@@ -312,6 +352,16 @@ pub async fn visual_recording_start(
       "Visual recording is unavailable on this platform.",
     ))
   }
+}
+
+#[tauri::command]
+pub fn visual_recording_update_audio_state(
+  controller: State<'_, RecordingController>,
+  request: RecordingAudioStateRequest,
+) -> Result<(), NativeCaptureError> {
+  controller.update_audio_state(request).map_err(|reason| {
+    NativeCaptureError::recording(reason, "The recording audio state could not be updated.")
+  })
 }
 
 #[tauri::command]
@@ -391,6 +441,9 @@ mod tests {
       device_pixel_ratio: 1.25,
       fps: 30,
       max_duration_seconds: 60,
+      audio: Some(RecordingAudioSource::None),
+      source_mode: RecordingSourceMode::Live,
+      audio_state: recording::RecordingAudioState::Active,
     };
     assert_eq!(output_canvas(&request).unwrap(), (126, 64));
   }

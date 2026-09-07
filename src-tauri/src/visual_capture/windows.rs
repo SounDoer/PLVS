@@ -29,7 +29,7 @@ impl VisualCapturePlatform for WindowsPlatform {
       recording: RecordingCapabilities {
         available: true,
         targets: vec!["main", "workspace"],
-        audio_sources: vec!["none"],
+        audio_sources: vec!["none", "measuredSource"],
       },
     }
   }

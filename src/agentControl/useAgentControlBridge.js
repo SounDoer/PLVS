@@ -135,9 +135,18 @@ function visualSemanticFailure(error) {
   return semanticFailure(reason, "$", messages[reason], -32080, error?.details);
 }
 
-function publicSilentRecording(recording) {
-  const { audioSource: _nativeAudioSource, ...publicRecording } = recording ?? {};
-  return { ...publicRecording, audio: { source: "none" } };
+function publicRecording(recording) {
+  const { audioSource, ...publicValue } = recording ?? {};
+  return {
+    ...publicValue,
+    audio: recording?.audio ?? { source: audioSource === "measuredSource" ? audioSource : "none" },
+  };
+}
+
+function measuredAudioState(runtime, transport) {
+  if (runtime?.sourceMode === "file") return "sourceModeFile";
+  if (transport?.live?.state !== "running") return "liveStopped";
+  return "active";
 }
 
 function workspaceMatches(workspace, view) {
@@ -768,6 +777,15 @@ export function useAgentControlBridge({
 
   useEffect(() => {
     latestTransportRef.current = transport;
+    const visualControl = latestVisualRef.current;
+    const runtime = visualControl?.getRuntime?.() ?? {};
+    const audioState = measuredAudioState(runtime, transport);
+    for (const [recordingId, metadata] of visualRecordingsRef.current) {
+      if (metadata.audio !== "measuredSource") continue;
+      void visualControl
+        ?.updateRecordingAudioState?.({ recordingId, state: audioState })
+        .catch(() => undefined);
+    }
     const signature = transportLifecycleSignature(transport);
     if (signature !== previousTransportSignatureRef.current) {
       previousTransportSignatureRef.current = signature;
@@ -783,6 +801,18 @@ export function useAgentControlBridge({
 
   useEffect(() => {
     latestDeviceRef.current = device;
+    const visualControl = latestVisualRef.current;
+    const runtime = visualControl?.getRuntime?.() ?? {};
+    const audioState =
+      device?.live?.transition != null
+        ? "liveRestart"
+        : measuredAudioState(runtime, latestTransportRef.current);
+    for (const [recordingId, metadata] of visualRecordingsRef.current) {
+      if (metadata.audio !== "measuredSource") continue;
+      void visualControl
+        ?.updateRecordingAudioState?.({ recordingId, state: audioState })
+        .catch(() => undefined);
+    }
     const requestedId = requestedDeviceSignature(device);
     if (requestedId !== previousRequestedDeviceRef.current) {
       previousRequestedDeviceRef.current = requestedId;
@@ -977,6 +1007,13 @@ export function useAgentControlBridge({
           if (!availableTargets.includes(request.params.target.kind)) {
             throw visualSemanticFailure({ reason: "targetUnavailable" });
           }
+          const runtime = visualControl.getRuntime?.() ?? {};
+          const audio =
+            request.params.audio ?? (runtime.sourceMode === "file" ? "none" : "measuredSource");
+          if (!(runtime.availableAudioSources ?? []).includes(audio)) {
+            throw visualSemanticFailure({ reason: "audioUnavailable" });
+          }
+          const audioState = measuredAudioState(runtime, latestTransportRef.current);
           const controller = new AbortController();
           ownedVisualCaptures.set(requestId, controller);
           try {
@@ -992,12 +1029,16 @@ export function useAgentControlBridge({
               devicePixelRatio: settled.devicePixelRatio,
               fps: request.params.fps,
               maxDurationSeconds: request.params.maxDurationSeconds,
+              audio,
+              sourceMode: runtime.sourceMode === "file" ? "file" : "live",
+              audioState,
             });
             const metadata = {
               target: request.params.target,
               startedRevision: settled.revision,
               startedAt: new Date().toISOString(),
               unsubscribe: null,
+              audio,
             };
             visualRecordingsRef.current.set(recording.recordingId, metadata);
             metadata.unsubscribe = visualControl.subscribe?.(
@@ -1036,7 +1077,7 @@ export function useAgentControlBridge({
               result: {
                 revision: settled.revision,
                 recording: {
-                  ...publicSilentRecording(recording),
+                  ...publicRecording(recording),
                   target: request.params.target,
                   startedAt: metadata.startedAt,
                   startedRevision: settled.revision,
@@ -1070,7 +1111,7 @@ export function useAgentControlBridge({
               visualControl.setRecordingState?.(recording.state);
             }
             return {
-              ...publicSilentRecording(recording),
+              ...publicRecording(recording),
               ...(metadata?.target ? { target: metadata.target } : {}),
               ...(metadata?.startedAt ? { startedAt: metadata.startedAt } : {}),
               ...(Number.isSafeInteger(metadata?.startedRevision)

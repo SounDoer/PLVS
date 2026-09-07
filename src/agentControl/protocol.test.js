@@ -119,7 +119,7 @@ describe("normalizeAgentControlRequest", () => {
   describe("visual recording requests", () => {
     const recordingId = `rec-${"a".repeat(32)}`;
 
-    it("normalizes silent start defaults and both supported targets", () => {
+    it("leaves the source-dependent audio default to execution and accepts both targets", () => {
       for (const kind of ["main", "workspace"]) {
         expect(
           normalizeAgentControlRequest(request("visual.recording.start", { target: { kind } }))
@@ -130,7 +130,6 @@ describe("normalizeAgentControlRequest", () => {
             method: "visual.recording.start",
             params: {
               target: { kind },
-              audio: "none",
               fps: 30,
               maxDurationSeconds: 60,
             },
@@ -139,9 +138,17 @@ describe("normalizeAgentControlRequest", () => {
       }
     });
 
+    it.each(["none", "measuredSource"])("preserves explicit %s audio", (audio) => {
+      expect(
+        normalizeAgentControlRequest(
+          request("visual.recording.start", { target: { kind: "main" }, audio })
+        ).request.params.audio
+      ).toBe(audio);
+    });
+
     it.each([
       [{ target: { kind: "panel", panelId: "peak-1" } }, "$.params.target.kind"],
-      [{ target: { kind: "main" }, audio: "measuredSource" }, "$.params.audio"],
+      [{ target: { kind: "main" }, audio: "microphone" }, "$.params.audio"],
       [{ target: { kind: "main" }, fps: 24 }, "$.params.fps"],
       [{ target: { kind: "main" }, maxDurationSeconds: 0 }, "$.params.maxDurationSeconds"],
       [{ target: { kind: "main" }, out: "capture.mp4" }, "$.params.out"],

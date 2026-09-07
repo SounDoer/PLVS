@@ -72,6 +72,7 @@ import {
   resetTruePeakMax,
   startVisualRecording,
   stopVisualRecording,
+  updateVisualRecordingAudioState,
   updateVisualRecordingGeometry,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
@@ -1274,6 +1275,7 @@ function AppContent() {
       inspectRecording: inspectVisualRecording,
       stopRecording: stopVisualRecording,
       updateRecordingGeometry: updateVisualRecordingGeometry,
+      updateRecordingAudioState: updateVisualRecordingAudioState,
       subscribe: visualCaptureSurfaces.subscribe,
       setRecordingState: setVisualRecordingState,
     }),

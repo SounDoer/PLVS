@@ -1,3 +1,4 @@
+pub mod audio;
 pub mod state;
 pub mod windows;
 
@@ -7,9 +8,39 @@ use std::sync::Mutex;
 use serde::Deserialize;
 
 use super::platform::{CssRect, CssViewport};
+use audio::SilenceReason;
 use state::{
-  RecordingRegistry, RecordingSnapshot, StopReason, DEFAULT_FPS, DEFAULT_MAX_DURATION_SECONDS,
+  RecordingAudioSource, RecordingRegistry, RecordingSnapshot, StopReason, DEFAULT_FPS,
+  DEFAULT_MAX_DURATION_SECONDS,
 };
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum RecordingSourceMode {
+  #[default]
+  Live,
+  File,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum RecordingAudioState {
+  Active,
+  #[default]
+  LiveStopped,
+  LiveRestart,
+  SourceModeFile,
+}
+
+impl RecordingAudioState {
+  pub fn silence_reason(self) -> SilenceReason {
+    match self {
+      Self::Active | Self::LiveRestart => SilenceReason::LiveRestart,
+      Self::LiveStopped => SilenceReason::LiveStopped,
+      Self::SourceModeFile => SilenceReason::SourceModeFile,
+    }
+  }
+}
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,6 +53,21 @@ pub struct RecordingStartRequest {
   pub fps: u32,
   #[serde(default = "default_max_duration")]
   pub max_duration_seconds: u32,
+  #[serde(default)]
+  pub audio: Option<RecordingAudioSource>,
+  #[serde(default)]
+  pub source_mode: RecordingSourceMode,
+  #[serde(default)]
+  pub audio_state: RecordingAudioState,
+}
+
+impl RecordingStartRequest {
+  pub fn resolved_audio_source(&self) -> RecordingAudioSource {
+    self.audio.unwrap_or(match self.source_mode {
+      RecordingSourceMode::Live => RecordingAudioSource::MeasuredSource,
+      RecordingSourceMode::File => RecordingAudioSource::None,
+    })
+  }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -30,6 +76,13 @@ pub struct RecordingGeometryRequest {
   pub recording_id: String,
   pub rect: CssRect,
   pub viewport: CssViewport,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordingAudioStateRequest {
+  pub recording_id: String,
+  pub state: RecordingAudioState,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -99,6 +152,31 @@ impl RecordingController {
     }
   }
 
+  pub fn update_audio_state(
+    &self,
+    request: RecordingAudioStateRequest,
+  ) -> Result<(), &'static str> {
+    #[cfg(target_os = "windows")]
+    {
+      let sessions = self.sessions.lock().map_err(|_| "stateUnavailable")?;
+      let session = sessions
+        .get(&request.recording_id)
+        .ok_or("recordingNotFound")?;
+      session.update_audio_silence_reason(request.state.silence_reason())?;
+      self.registry.record_event(
+        &request.recording_id,
+        "audioState",
+        format!("Measured-source state changed to {:?}.", request.state),
+      );
+      Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+      let _ = request;
+      Err("visualUnavailable")
+    }
+  }
+
   #[cfg(target_os = "windows")]
   pub fn insert_session(&self, session: windows::RecordingSession) -> Result<(), &'static str> {
     self
@@ -158,7 +236,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn request_defaults_match_the_silent_phase_contract() {
+  fn request_defaults_to_measured_source_in_live_mode() {
     let request: RecordingStartRequest = serde_json::from_value(serde_json::json!({
       "windowLabel": "main",
       "rect": { "x": 0, "y": 0, "width": 640, "height": 480 },
@@ -168,5 +246,25 @@ mod tests {
     .unwrap();
     assert_eq!(request.fps, DEFAULT_FPS);
     assert_eq!(request.max_duration_seconds, DEFAULT_MAX_DURATION_SECONDS);
+    assert_eq!(
+      request.resolved_audio_source(),
+      RecordingAudioSource::MeasuredSource
+    );
+  }
+
+  #[test]
+  fn file_mode_defaults_to_none_but_preserves_explicit_none() {
+    for audio in [None, Some(RecordingAudioSource::None)] {
+      let mut request: RecordingStartRequest = serde_json::from_value(serde_json::json!({
+        "windowLabel": "main",
+        "rect": { "x": 0, "y": 0, "width": 640, "height": 480 },
+        "viewport": { "width": 640, "height": 480 },
+        "devicePixelRatio": 1,
+        "sourceMode": "file"
+      }))
+      .unwrap();
+      request.audio = audio;
+      assert_eq!(request.resolved_audio_source(), RecordingAudioSource::None);
+    }
   }
 }

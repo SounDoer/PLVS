@@ -28,12 +28,16 @@ mod windows_backend {
     DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_RATIONAL, DXGI_SAMPLE_DESC,
   };
   use windows62::Win32::Media::MediaFoundation::{
-    IMFAttributes, IMFByteStream, IMFMediaBuffer, IMFSample, IMFSinkWriter, MFCreateAttributes,
-    MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample, MFCreateSinkWriterFromURL,
-    MFMediaType_Video, MFStartup, MFTranscodeContainerType_MPEG4, MFVideoFormat_H264,
-    MFVideoFormat_RGB32, MFVideoInterlace_Progressive, MFSTARTUP_FULL, MF_MT_AVG_BITRATE,
-    MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE,
-    MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_TRANSCODE_CONTAINERTYPE, MF_VERSION,
+    IMFAttributes, IMFByteStream, IMFMediaBuffer, IMFSample, IMFSinkWriter, MFAudioFormat_AAC,
+    MFAudioFormat_PCM, MFCreateAttributes, MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample,
+    MFCreateSinkWriterFromURL, MFMediaType_Audio, MFMediaType_Video, MFStartup,
+    MFTranscodeContainerType_MPEG4, MFVideoFormat_H264, MFVideoFormat_RGB32,
+    MFVideoInterlace_Progressive, MFSTARTUP_FULL, MF_MT_AAC_AUDIO_PROFILE_LEVEL_INDICATION,
+    MF_MT_AAC_PAYLOAD_TYPE, MF_MT_ALL_SAMPLES_INDEPENDENT, MF_MT_AUDIO_AVG_BYTES_PER_SECOND,
+    MF_MT_AUDIO_BITS_PER_SAMPLE, MF_MT_AUDIO_BLOCK_ALIGNMENT, MF_MT_AUDIO_NUM_CHANNELS,
+    MF_MT_AUDIO_SAMPLES_PER_SECOND, MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE,
+    MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE,
+    MF_TRANSCODE_CONTAINERTYPE, MF_VERSION,
   };
   use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
   use windows_capture::frame::Frame;
@@ -49,7 +53,13 @@ mod windows_backend {
 
   use super::super::super::artifacts::{ArtifactStore, PendingArtifact};
   use super::super::super::platform::{calculate_pixel_crop, CssRect, CssViewport, PixelCrop};
-  use super::super::state::{RecordingRegistry, StopReason, MAX_ARTIFACT_BYTES};
+  use super::super::audio::{
+    AudioPacket, AudioTimeline, SilenceReason, AAC_BITRATE, OUTPUT_CHANNELS, OUTPUT_SAMPLE_RATE,
+  };
+  use super::super::state::{
+    RecordingAudioSource, RecordingRegistry, StopReason, MAX_ARTIFACT_BYTES,
+  };
+  use crate::audio::MeasuredPcmReceiver;
 
   #[derive(Clone, Debug)]
   struct ProbeSettings {
@@ -71,6 +81,7 @@ mod windows_backend {
   struct MediaFoundationEncoder {
     writer: IMFSinkWriter,
     stream: u32,
+    audio_stream: Option<u32>,
     width: u32,
     height: u32,
     frame_duration: i64,
@@ -86,6 +97,7 @@ mod windows_backend {
       width: u32,
       height: u32,
       fps: u32,
+      audio_enabled: bool,
     ) -> Result<Self, windows62::core::Error> {
       unsafe { MFStartup(MF_VERSION, MFSTARTUP_FULL)? };
       let wide_path = output_path
@@ -133,15 +145,81 @@ mod windows_backend {
         input.SetUINT64(&MF_MT_FRAME_RATE, u64::from(fps) << 32 | 1)?;
         input.SetUINT64(&MF_MT_PIXEL_ASPECT_RATIO, 1_u64 << 32 | 1)?;
         writer.SetInputMediaType(stream, &input, Option::<&IMFAttributes>::None)?;
+      }
+
+      let audio_stream = if audio_enabled {
+        let output = unsafe { MFCreateMediaType()? };
+        unsafe {
+          output.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Audio)?;
+          output.SetGUID(&MF_MT_SUBTYPE, &MFAudioFormat_AAC)?;
+          output.SetUINT32(&MF_MT_AUDIO_NUM_CHANNELS, u32::from(OUTPUT_CHANNELS))?;
+          output.SetUINT32(&MF_MT_AUDIO_SAMPLES_PER_SECOND, OUTPUT_SAMPLE_RATE)?;
+          output.SetUINT32(&MF_MT_AUDIO_BITS_PER_SAMPLE, 16)?;
+          output.SetUINT32(&MF_MT_AUDIO_AVG_BYTES_PER_SECOND, AAC_BITRATE / 8)?;
+          output.SetUINT32(&MF_MT_AUDIO_BLOCK_ALIGNMENT, 1)?;
+          output.SetUINT32(&MF_MT_AAC_PAYLOAD_TYPE, 0)?;
+          output.SetUINT32(&MF_MT_AAC_AUDIO_PROFILE_LEVEL_INDICATION, 0x29)?;
+        }
+        let stream = unsafe { writer.AddStream(&output)? };
+        let input = unsafe { MFCreateMediaType()? };
+        unsafe {
+          input.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Audio)?;
+          input.SetGUID(&MF_MT_SUBTYPE, &MFAudioFormat_PCM)?;
+          input.SetUINT32(&MF_MT_AUDIO_NUM_CHANNELS, u32::from(OUTPUT_CHANNELS))?;
+          input.SetUINT32(&MF_MT_AUDIO_SAMPLES_PER_SECOND, OUTPUT_SAMPLE_RATE)?;
+          input.SetUINT32(&MF_MT_AUDIO_BITS_PER_SAMPLE, 16)?;
+          input.SetUINT32(&MF_MT_AUDIO_BLOCK_ALIGNMENT, u32::from(OUTPUT_CHANNELS) * 2)?;
+          input.SetUINT32(
+            &MF_MT_AUDIO_AVG_BYTES_PER_SECOND,
+            OUTPUT_SAMPLE_RATE * u32::from(OUTPUT_CHANNELS) * 2,
+          )?;
+          input.SetUINT32(&MF_MT_ALL_SAMPLES_INDEPENDENT, 1)?;
+          writer.SetInputMediaType(stream, &input, Option::<&IMFAttributes>::None)?;
+        }
+        Some(stream)
+      } else {
+        None
+      };
+      unsafe {
         writer.BeginWriting()?;
       }
       Ok(Self {
         writer,
         stream,
+        audio_stream,
         width,
         height,
         frame_duration: 10_000_000 / i64::from(fps),
       })
+    }
+
+    fn write_audio_packet(&self, packet: &AudioPacket) -> Result<(), windows62::core::Error> {
+      let Some(stream) = self.audio_stream else {
+        return Ok(());
+      };
+      let bytes = packet
+        .samples
+        .len()
+        .saturating_mul(std::mem::size_of::<i16>());
+      let buffer: IMFMediaBuffer = unsafe { MFCreateMemoryBuffer(bytes as u32)? };
+      let mut destination = ptr::null_mut();
+      unsafe {
+        buffer.Lock(&mut destination, None, None)?;
+        ptr::copy_nonoverlapping(packet.samples.as_ptr().cast::<u8>(), destination, bytes);
+        buffer.Unlock()?;
+        buffer.SetCurrentLength(bytes as u32)?;
+      }
+      let sample: IMFSample = unsafe { MFCreateSample()? };
+      let start = packet.start_frame.saturating_mul(10_000_000) / u64::from(OUTPUT_SAMPLE_RATE);
+      let duration =
+        packet.frame_count().saturating_mul(10_000_000) / u64::from(OUTPUT_SAMPLE_RATE);
+      unsafe {
+        sample.AddBuffer(&buffer)?;
+        sample.SetSampleTime(i64::try_from(start).unwrap_or(i64::MAX))?;
+        sample.SetSampleDuration(i64::try_from(duration).unwrap_or(i64::MAX))?;
+        self.writer.WriteSample(stream, &sample)?;
+      }
+      Ok(())
     }
 
     fn write_frame(&self, bytes: &[u8], frame_index: u64) -> Result<(), windows62::core::Error> {
@@ -360,6 +438,7 @@ mod windows_backend {
         settings.width,
         settings.height,
         settings.fps,
+        false,
       )?;
       println!(
         "{{\"event\":\"initialized\",\"width\":{},\"height\":{},\"fps\":{},\"latencyMs\":{}}}",
@@ -492,6 +571,7 @@ mod windows_backend {
     recording_id: String,
     stop_reason: Arc<Mutex<Option<StopReason>>>,
     geometry: Arc<Mutex<RecordingGeometry>>,
+    audio_silence_reason: Arc<Mutex<SilenceReason>>,
     finished: Arc<AtomicBool>,
   }
 
@@ -509,6 +589,14 @@ mod windows_backend {
     pub fn update_geometry(&self, geometry: RecordingGeometry) -> Result<(), &'static str> {
       validate_geometry(geometry)?;
       *self.geometry.lock().map_err(|_| "stateUnavailable")? = geometry;
+      Ok(())
+    }
+
+    pub fn update_audio_silence_reason(&self, reason: SilenceReason) -> Result<(), &'static str> {
+      *self
+        .audio_silence_reason
+        .lock()
+        .map_err(|_| "stateUnavailable")? = reason;
       Ok(())
     }
 
@@ -611,18 +699,27 @@ mod windows_backend {
     finished: Arc<AtomicBool>,
     frames: Receiver<Vec<u8>>,
     initialized: SyncSender<Result<(), String>>,
+    audio_source: RecordingAudioSource,
+    audio_origin_ns: u64,
+    audio_receiver: Option<MeasuredPcmReceiver>,
+    audio_silence_reason: Arc<Mutex<SilenceReason>>,
   ) {
-    let encoder =
-      match MediaFoundationEncoder::new(pending.path(), output_width, output_height, fps) {
-        Ok(encoder) => encoder,
-        Err(error) => {
-          let message = format!("Media Foundation initialization failed: {error}");
-          let _ = initialized.send(Err(message.clone()));
-          registry.fail(&recording_id, message);
-          finished.store(true, Ordering::Release);
-          return;
-        }
-      };
+    let encoder = match MediaFoundationEncoder::new(
+      pending.path(),
+      output_width,
+      output_height,
+      fps,
+      audio_source == RecordingAudioSource::MeasuredSource,
+    ) {
+      Ok(encoder) => encoder,
+      Err(error) => {
+        let message = format!("Media Foundation initialization failed: {error}");
+        let _ = initialized.send(Err(message.clone()));
+        registry.fail(&recording_id, message);
+        finished.store(true, Ordering::Release);
+        return;
+      }
+    };
     registry.mark_recording(&recording_id);
     let _ = initialized.send(Ok(()));
 
@@ -631,6 +728,9 @@ mod windows_backend {
     let mut latest = None;
     let mut frame_index = 0_u64;
     let mut failure = None;
+    let mut audio_timeline = (audio_source == RecordingAudioSource::MeasuredSource)
+      .then(|| AudioTimeline::new(audio_origin_ns));
+    let mut deferred_audio = None;
     loop {
       if stop_reason.lock().ok().and_then(|reason| *reason).is_some() {
         break;
@@ -670,6 +770,46 @@ mod windows_backend {
               }
             }
           }
+          if let (Some(receiver), Some(timeline)) =
+            (audio_receiver.as_ref(), audio_timeline.as_mut())
+          {
+            let reason = audio_silence_reason
+              .lock()
+              .map(|reason| *reason)
+              .unwrap_or(SilenceReason::LiveRestart);
+            let video_audio_frames =
+              frame_index.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps);
+            let settled_audio_frames = video_audio_frames.saturating_sub(4_800);
+            if let Err(error) = drain_audio_until(
+              receiver,
+              &mut deferred_audio,
+              timeline,
+              &encoder,
+              reason,
+              settled_audio_frames,
+            ) {
+              failure = Some(format!("Media Foundation audio write failed: {error}"));
+              if let Ok(mut stop) = stop_reason.lock() {
+                stop.get_or_insert(StopReason::CaptureFailure);
+              }
+              break;
+            }
+            if let Err(error) = write_audio_packets(
+              &encoder,
+              timeline.insert_silence_to(settled_audio_frames, reason),
+            ) {
+              failure = Some(format!("Media Foundation audio write failed: {error}"));
+              if let Ok(mut stop) = stop_reason.lock() {
+                stop.get_or_insert(StopReason::CaptureFailure);
+              }
+              break;
+            }
+            registry.update_audio(
+              &recording_id,
+              timeline.silent_duration_ms(),
+              timeline.interruptions().to_vec(),
+            );
+          }
           next_frame += frame_interval;
           if next_frame < Instant::now() {
             next_frame = Instant::now();
@@ -688,6 +828,36 @@ mod windows_backend {
     let terminal_reason = stop_reason.lock().ok().and_then(|reason| *reason);
     if let Some(reason) = terminal_reason {
       registry.request_stop(&recording_id, reason);
+    }
+    if let (Some(receiver), Some(timeline)) = (audio_receiver.as_ref(), audio_timeline.as_mut()) {
+      let reason = audio_silence_reason
+        .lock()
+        .map(|reason| *reason)
+        .unwrap_or(SilenceReason::LiveRestart);
+      let video_audio_frames =
+        frame_index.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / u64::from(fps);
+      if let Err(error) = drain_audio_until(
+        receiver,
+        &mut deferred_audio,
+        timeline,
+        &encoder,
+        reason,
+        video_audio_frames,
+      )
+      .and_then(|_| {
+        write_audio_packets(
+          &encoder,
+          timeline.insert_silence_to(video_audio_frames, reason),
+        )
+      }) {
+        failure
+          .get_or_insert_with(|| format!("Media Foundation audio finalization failed: {error}"));
+      }
+      registry.update_audio(
+        &recording_id,
+        timeline.silent_duration_ms(),
+        timeline.interruptions().to_vec(),
+      );
     }
     if let Err(error) = encoder.finish() {
       registry.fail(
@@ -715,6 +885,48 @@ mod windows_backend {
       ),
     }
     finished.store(true, Ordering::Release);
+  }
+
+  fn write_audio_packets(
+    encoder: &MediaFoundationEncoder,
+    packets: Vec<AudioPacket>,
+  ) -> Result<(), windows62::core::Error> {
+    for packet in &packets {
+      encoder.write_audio_packet(packet)?;
+    }
+    Ok(())
+  }
+
+  fn drain_audio_until(
+    receiver: &MeasuredPcmReceiver,
+    deferred: &mut Option<crate::audio::PcmFrame>,
+    timeline: &mut AudioTimeline,
+    encoder: &MediaFoundationEncoder,
+    reason: SilenceReason,
+    max_frame: u64,
+  ) -> Result<(), windows62::core::Error> {
+    while let Some(frame) = deferred.take().or_else(|| receiver.try_recv()) {
+      let input_frames = frame.samples.len() / usize::from(frame.channels.max(1));
+      let relative_ns = frame
+        .timestamp_ns
+        .saturating_sub(timeline_origin_ns(timeline));
+      let start_frame = relative_ns.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / 1_000_000_000;
+      let estimated_frames = (input_frames as u64)
+        .saturating_mul(u64::from(OUTPUT_SAMPLE_RATE))
+        .div_ceil(u64::from(frame.sample_rate.max(1)));
+      if start_frame.saturating_add(estimated_frames) > max_frame {
+        *deferred = Some(frame);
+        break;
+      }
+      let packets = timeline.ingest(&frame, reason);
+      receiver.recycle(frame);
+      write_audio_packets(encoder, packets)?;
+    }
+    Ok(())
+  }
+
+  fn timeline_origin_ns(timeline: &AudioTimeline) -> u64 {
+    timeline.origin_ns()
   }
 
   fn validate_geometry(geometry: RecordingGeometry) -> Result<(), &'static str> {
@@ -813,15 +1025,21 @@ mod windows_backend {
     pending: PendingArtifact,
     store: ArtifactStore,
     registry: RecordingRegistry,
+    audio_source: RecordingAudioSource,
+    audio_origin_ns: u64,
+    audio_receiver: Option<MeasuredPcmReceiver>,
+    initial_audio_silence_reason: SilenceReason,
   ) -> Result<RecordingSession, String> {
     validate_geometry(geometry).map_err(str::to_owned)?;
     let stop_reason = Arc::new(Mutex::new(None));
     let geometry = Arc::new(Mutex::new(geometry));
     let finished = Arc::new(AtomicBool::new(false));
+    let audio_silence_reason = Arc::new(Mutex::new(initial_audio_silence_reason));
     let session = RecordingSession {
       recording_id: recording_id.clone(),
       stop_reason: Arc::clone(&stop_reason),
       geometry: Arc::clone(&geometry),
+      audio_silence_reason: Arc::clone(&audio_silence_reason),
       finished: Arc::clone(&finished),
     };
     let (frame_sender, frame_receiver) = sync_channel(2);
@@ -830,6 +1048,7 @@ mod windows_backend {
     let encoder_registry = registry.clone();
     let encoder_stop_reason = Arc::clone(&stop_reason);
     let encoder_finished = Arc::clone(&finished);
+    let encoder_audio_silence_reason = Arc::clone(&audio_silence_reason);
     std::thread::Builder::new()
       .name("visual-recording-encoder".into())
       .spawn(move || {
@@ -845,6 +1064,10 @@ mod windows_backend {
           encoder_finished,
           frame_receiver,
           initialized_sender,
+          audio_source,
+          audio_origin_ns,
+          audio_receiver,
+          encoder_audio_silence_reason,
         );
       })
       .map_err(|error| format!("Recording encoder worker could not start: {error}"))?;
@@ -997,6 +1220,24 @@ mod windows_backend {
           Err("invalidGeometry")
         );
       }
+    }
+
+    #[test]
+    fn media_foundation_muxes_h264_and_aac_into_a_staged_suffix() {
+      let path = std::env::temp_dir().join(format!("plvs-mf-av-{}.mp4.tmp", std::process::id()));
+      let encoder = MediaFoundationEncoder::new(&path, 64, 64, 30, true).expect("A/V encoder");
+      encoder
+        .write_frame(&vec![0; 64 * 64 * 4], 0)
+        .expect("video sample");
+      encoder
+        .write_audio_packet(&AudioPacket {
+          start_frame: 0,
+          samples: vec![0; 4_800 * 2],
+        })
+        .expect("audio sample");
+      encoder.finish().expect("A/V finalization");
+      assert!(std::fs::metadata(&path).expect("MP4 metadata").len() > 0);
+      let _ = std::fs::remove_file(path);
     }
   }
 }

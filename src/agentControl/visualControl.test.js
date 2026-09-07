@@ -96,7 +96,7 @@ describe("visual control contract", () => {
         container: "mp4",
         videoCodec: "h264",
         audioSources: ["none", "measuredSource"],
-        defaultAudioSource: "none",
+        defaultAudioSource: "measuredSource",
         defaultFps: 30,
         supportedFps: [15, 30, 60],
         defaultMaxDurationSeconds: 60,

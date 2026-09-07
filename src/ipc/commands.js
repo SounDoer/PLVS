@@ -220,6 +220,11 @@ export function updateVisualRecordingGeometry(request) {
   return invoke("visual_recording_update_geometry", { request });
 }
 
+/** Forward the current Live/File lifecycle state to measured-source silence accounting. */
+export function updateVisualRecordingAudioState(request) {
+  return invoke("visual_recording_update_audio_state", { request });
+}
+
 /** Request idempotent native stop and bounded finalization. */
 export function stopVisualRecording(recordingId) {
   return invoke("visual_recording_stop", { request: { recordingId } });

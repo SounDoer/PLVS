@@ -28,6 +28,7 @@ import {
   startVisualRecording,
   inspectVisualRecording,
   updateVisualRecordingGeometry,
+  updateVisualRecordingAudioState,
   stopVisualRecording,
   startFileAnalysis,
   stopFileAnalysis,
@@ -164,6 +165,7 @@ describe("agent-control command seam", () => {
       rect: request.rect,
       viewport: request.viewport,
     });
+    await updateVisualRecordingAudioState({ recordingId: "rec-1", state: "liveRestart" });
     await stopVisualRecording("rec-1");
 
     expect(invoke).toHaveBeenNthCalledWith(1, "visual_recording_start", { request });
@@ -177,7 +179,10 @@ describe("agent-control command seam", () => {
         viewport: request.viewport,
       },
     });
-    expect(invoke).toHaveBeenNthCalledWith(4, "visual_recording_stop", {
+    expect(invoke).toHaveBeenNthCalledWith(4, "visual_recording_update_audio_state", {
+      request: { recordingId: "rec-1", state: "liveRestart" },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(5, "visual_recording_stop", {
       request: { recordingId: "rec-1" },
     });
   });

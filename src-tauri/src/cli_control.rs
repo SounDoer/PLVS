@@ -239,6 +239,7 @@ pub enum ControlCommand {
   },
   VisualRecordingStart {
     target: String,
+    audio: Option<String>,
     fps: u32,
     max_duration_seconds: u32,
     expected_revision: Option<u64>,
@@ -413,7 +414,7 @@ fn valid_recording_id(value: &str) -> bool {
 }
 
 fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli visual recording start --target <main|workspace> [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json";
+  const USAGE: &str = "Usage:\n  plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json";
   let Some(action) = args.first().map(String::as_str) else {
     return Err(USAGE.to_string());
   };
@@ -422,6 +423,7 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
   }
   let mut positionals = Vec::new();
   let mut target = None;
+  let mut audio = None;
   let mut fps = 30_u32;
   let mut max_duration_seconds = 60_u32;
   let mut expected_revision = None;
@@ -443,6 +445,7 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
     if matches!(
       flag,
       "--target"
+        | "--audio"
         | "--fps"
         | "--max-duration-seconds"
         | "--expected-revision"
@@ -458,6 +461,13 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
         .ok_or_else(|| format!("The {flag} option requires a value."))?;
       match flag {
         "--target" => target = Some(value.clone()),
+        "--audio" => {
+          audio = Some(match value.as_str() {
+            "none" => "none".to_string(),
+            "measured-source" => "measuredSource".to_string(),
+            _ => return Err("The --audio value must be none or measured-source.".to_string()),
+          })
+        }
         "--fps" => {
           fps = value
             .parse()
@@ -521,6 +531,7 @@ fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String
     }
     return Ok(ControlCommand::VisualRecordingStart {
       target,
+      audio,
       fps,
       max_duration_seconds,
       expected_revision,
@@ -2130,7 +2141,7 @@ pub fn help_text() -> &'static str {
       )
       .replacen(
         "\n\nControls the already-running",
-        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli visual describe --json\n  plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json\n  plvs-cli visual recording start --target <main|workspace> [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json\n\nControls the already-running",
+        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli visual describe --json\n  plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json\n  plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json\n\nControls the already-running",
         1,
       )
       .replacen(
@@ -2673,6 +2684,7 @@ fn request_for_command<R: Read>(
     }
     ControlCommand::VisualRecordingStart {
       target,
+      audio,
       fps,
       max_duration_seconds,
       expected_revision,
@@ -2687,6 +2699,9 @@ fn request_for_command<R: Read>(
       ]);
       if let Some(revision) = expected_revision {
         params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      if let Some(audio) = audio {
+        params.insert("audio".to_string(), Value::String(audio.clone()));
       }
       Value::Object(params)
     }
@@ -5885,6 +5900,8 @@ mod tests {
         "start",
         "--target",
         target,
+        "--audio",
+        "measured-source",
         "--fps",
         "60",
         "--max-duration-seconds",
@@ -5900,6 +5917,7 @@ mod tests {
         request.params,
         serde_json::json!({
           "target": { "kind": target },
+          "audio": "measuredSource",
           "fps": 60,
           "maxDurationSeconds": 90,
           "expectedRevision": 42
@@ -5907,6 +5925,24 @@ mod tests {
       );
       assert!(request.params.get("out").is_none());
     }
+
+    let silent = parse_control_args(&args(&[
+      "visual",
+      "recording",
+      "start",
+      "--target",
+      "main",
+      "--audio",
+      "none",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      request_for_command(&silent, &mut Cursor::new([]))
+        .unwrap()
+        .params["audio"],
+      "none"
+    );
 
     let inspect = parse_control_args(&args(&[
       "visual",
@@ -5978,6 +6014,16 @@ mod tests {
         "start",
         "--target",
         "panel",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--audio",
+        "microphone",
         "--json",
       ]),
       args(&[
