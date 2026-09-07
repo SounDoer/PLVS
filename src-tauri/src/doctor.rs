@@ -566,6 +566,7 @@ mod tests {
         "config",
         "settings",
         "transport",
+        "device",
         "dock"
       ])
     );
