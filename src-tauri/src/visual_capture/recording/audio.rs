@@ -264,7 +264,9 @@ mod tests {
     assert_eq!(packets[0].frame_count(), 480);
     assert!(packets[0]
       .samples
-      .chunks_exact(2)
+      .as_chunks::<2>()
+      .0
+      .iter()
       .all(|pair| pair[0] == pair[1]));
   }
 
