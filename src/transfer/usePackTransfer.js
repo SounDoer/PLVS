@@ -76,7 +76,7 @@ export function usePackTransfer() {
         setBusy(false);
       }
     },
-    [busy]
+    [busy, setStatus]
   );
 
   const beginImport = useCallback(
@@ -119,7 +119,7 @@ export function usePackTransfer() {
         setBusy(false);
       }
     },
-    [busy]
+    [busy, setStatus]
   );
 
   const confirmImport = useCallback(() => {
@@ -129,7 +129,7 @@ export function usePackTransfer() {
     getAdapter(type).append(itemAdditions);
     setStatus(`${packDescriptor(type).label} imported`);
     setReview(null);
-  }, [review]);
+  }, [review, setStatus]);
 
   const cancelImport = useCallback(() => setReview(null), []);
 

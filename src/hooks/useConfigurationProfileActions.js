@@ -43,7 +43,7 @@ export function useConfigurationProfileActions() {
     } finally {
       setConfigurationBusy(false);
     }
-  }, [configurationBusy]);
+  }, [configurationBusy, setConfigurationStatus]);
 
   const importConfiguration = useCallback(async () => {
     if (configurationBusy) return;
@@ -67,7 +67,7 @@ export function useConfigurationProfileActions() {
     } finally {
       setConfigurationBusy(false);
     }
-  }, [configurationBusy]);
+  }, [configurationBusy, setConfigurationStatus]);
 
   const resetConfiguration = useCallback(async () => {
     if (configurationBusy) return;
@@ -80,7 +80,7 @@ export function useConfigurationProfileActions() {
       setConfigurationStatus("Reset failed");
       setConfigurationBusy(false);
     }
-  }, [configurationBusy]);
+  }, [configurationBusy, setConfigurationStatus]);
 
   return {
     configurationBusy,
