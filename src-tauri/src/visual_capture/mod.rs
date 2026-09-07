@@ -113,9 +113,13 @@ pub async fn visual_capture_screenshot(
   })?;
 
   #[cfg(target_os = "windows")]
-  WindowsPlatform
+  if let Err(error) = WindowsPlatform
     .capture_preview(&app, &request.window_label, pending.path())
-    .await?;
+    .await
+  {
+    log::warn!("visual screenshot failed: {error}");
+    return Err(error.into());
+  }
   #[cfg(not(target_os = "windows"))]
   UnsupportedPlatform
     .capture_preview(&app, &request.window_label, pending.path())
@@ -126,9 +130,15 @@ pub async fn visual_capture_screenshot(
     let path = pending.path().to_owned();
     let viewport = request.viewport;
     let rect = request.rect;
-    tauri::async_runtime::spawn_blocking(move || windows::crop_preview_png(&path, viewport, rect))
-      .await
-      .map_err(|_| NativeCaptureError::new("captureFailed", "The PNG crop worker failed."))??
+    let result = tauri::async_runtime::spawn_blocking(move || {
+      windows::crop_preview_png(&path, viewport, rect)
+    })
+    .await
+    .map_err(|_| NativeCaptureError::new("captureFailed", "The PNG crop worker failed."))?;
+    if let Err(error) = &result {
+      log::warn!("visual screenshot crop failed: {error}");
+    }
+    result?
   };
   #[cfg(not(target_os = "windows"))]
   let (width, height) = unreachable!();

@@ -570,7 +570,8 @@ mod tests {
         "settings",
         "transport",
         "device",
-        "dock"
+        "dock",
+        "visual"
       ])
     );
   }

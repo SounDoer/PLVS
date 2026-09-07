@@ -741,6 +741,27 @@ describe("useAgentControlBridge", () => {
       expect(after.result.revision).toBe(0);
     });
 
+    it("rejects a currently unavailable semantic target before settlement", async () => {
+      const visual = visualControl({
+        getRuntime: () => ({
+          windowForm: "dock",
+          sourceMode: "live",
+          availableScreenshotTargets: ["main"],
+          availableAudioSources: ["none"],
+        }),
+      });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+
+      const response = await send(
+        request("visual.screenshot", { target: { kind: "workspace" } }, "visual-unavailable")
+      );
+
+      expect(response.error).toMatchObject({ data: { reason: "targetUnavailable" } });
+      expect(visual.settle).not.toHaveBeenCalled();
+      expect(visual.captureScreenshot).not.toHaveBeenCalled();
+    });
+
     it.each([
       ["panelNotFound", "settle"],
       ["panelNotVisible", "settle"],

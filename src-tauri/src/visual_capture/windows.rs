@@ -8,7 +8,7 @@ use tauri::{AppHandle, Manager};
 use webview2_com::CapturePreviewCompletedHandler;
 use webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG;
 use windows::core::PCWSTR;
-use windows::Win32::System::Com::{STGM_CREATE, STGM_SHARE_EXCLUSIVE, STGM_WRITE};
+use windows::Win32::System::Com::{STGC_DEFAULT, STGM_CREATE, STGM_READWRITE};
 use windows::Win32::UI::Shell::SHCreateStreamOnFileEx;
 
 use super::platform::{
@@ -75,21 +75,31 @@ async fn capture_webview_preview(
         let stream = unsafe {
           SHCreateStreamOnFileEx(
             PCWSTR(wide_path.as_ptr()),
-            STGM_CREATE.0 | STGM_WRITE.0 | STGM_SHARE_EXCLUSIVE.0,
+            STGM_CREATE.0 | STGM_READWRITE.0,
             0,
             true,
             None,
           )
         }
-        .map_err(|_| CaptureError::failed("WebView preview stream creation failed."))?;
-        let webview = unsafe { platform_webview.controller().CoreWebView2() }
-          .map_err(|_| CaptureError::failed("The WebView2 controller is unavailable."))?;
+        .map_err(|error| {
+          CaptureError::failed(format!("WebView preview stream creation failed: {error}"))
+        })?;
+        let webview = unsafe { platform_webview.controller().CoreWebView2() }.map_err(|error| {
+          CaptureError::failed(format!("The WebView2 controller is unavailable: {error}"))
+        })?;
         let completion_sender = callback_sender.clone();
         let completion_stream = stream.clone();
         let handler = CapturePreviewCompletedHandler::create(Box::new(move |result| {
+          let outcome = result
+            .map_err(|error| {
+              CaptureError::failed(format!("WebView2 preview capture failed: {error}"))
+            })
+            .and_then(|_| {
+              unsafe { completion_stream.Commit(STGC_DEFAULT) }.map_err(|error| {
+                CaptureError::failed(format!("WebView preview stream commit failed: {error}"))
+              })
+            });
           drop(completion_stream);
-          let outcome =
-            result.map_err(|_| CaptureError::failed("WebView2 preview capture failed."));
           let _ = completion_sender.send(outcome);
           Ok(())
         }));
@@ -100,7 +110,9 @@ async fn capture_webview_preview(
             &handler,
           )
         }
-        .map_err(|_| CaptureError::failed("WebView2 rejected the preview capture."))?;
+        .map_err(|error| {
+          CaptureError::failed(format!("WebView2 rejected the preview capture: {error}"))
+        })?;
         Ok(())
       })();
       if let Err(error) = invoke {
@@ -120,8 +132,19 @@ pub fn crop_preview_png(
   viewport: CssViewport,
   rect: CssRect,
 ) -> Result<(u32, u32), CaptureError> {
-  let image = image::open(path)
-    .map_err(|_| CaptureError::failed("The WebView preview PNG could not be decoded."))?;
+  // Staged artifact names deliberately end in `.png.tmp`, so decoding must use the known capture
+  // format instead of asking `image` to infer a format from the final extension.
+  let mut reader = image::ImageReader::open(path).map_err(|error| {
+    CaptureError::failed(format!(
+      "The WebView preview PNG could not be decoded: {error}"
+    ))
+  })?;
+  reader.set_format(image::ImageFormat::Png);
+  let image = reader.decode().map_err(|error| {
+    CaptureError::failed(format!(
+      "The WebView preview PNG could not be decoded: {error}"
+    ))
+  })?;
   let (image_width, image_height) = image.dimensions();
   let crop = calculate_pixel_crop(image_width, image_height, viewport, rect)?;
   let cropped = image.crop_imm(crop.x, crop.y, crop.width, crop.height);
@@ -143,7 +166,7 @@ mod tests {
       let mut random = [0_u8; 8];
       getrandom::fill(&mut random).unwrap();
       Self(std::env::temp_dir().join(format!(
-        "plvs-crop-{}.png",
+        "plvs-crop-{}.png.tmp",
         random
           .iter()
           .map(|byte| format!("{byte:02x}"))
@@ -164,7 +187,9 @@ mod tests {
     let mut source = RgbaImage::new(4, 3);
     source.put_pixel(1, 1, Rgba([10, 20, 30, 0]));
     source.put_pixel(2, 1, Rgba([40, 50, 60, 128]));
-    source.save(&file.0).unwrap();
+    source
+      .save_with_format(&file.0, image::ImageFormat::Png)
+      .unwrap();
 
     assert_eq!(
       crop_preview_png(
@@ -183,7 +208,12 @@ mod tests {
       .unwrap(),
       (2, 1)
     );
-    let output = image::open(&file.0).unwrap().to_rgba8();
+    let output = image::load_from_memory_with_format(
+      &std::fs::read(&file.0).unwrap(),
+      image::ImageFormat::Png,
+    )
+    .unwrap()
+    .to_rgba8();
     assert_eq!(output.dimensions(), (2, 1));
     assert_eq!(*output.get_pixel(0, 0), Rgba([10, 20, 30, 0]));
     assert_eq!(*output.get_pixel(1, 0), Rgba([40, 50, 60, 128]));

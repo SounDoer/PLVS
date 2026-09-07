@@ -795,6 +795,7 @@ export function useAgentControlBridge({
   }, [bumpWorkspaceRevision, dock]);
 
   useEffect(() => {
+    const ownedVisualCaptures = visualCapturesRef.current;
     const buildCurrentMeasurement = (liveOverride) => {
       const currentMeasurement = latestMeasurementContextRef.current;
       const currentProfile = latestMeasurementProfileRef.current;
@@ -904,12 +905,16 @@ export function useAgentControlBridge({
           if (visualControl?.platformCapabilities?.screenshot?.available !== true) {
             throw visualSemanticFailure({ reason: "visualUnavailable" });
           }
+          const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
+          if (!availableTargets.includes(request.params.target.kind)) {
+            throw visualSemanticFailure({ reason: "targetUnavailable" });
+          }
           if (visualCaptureActiveRef.current) {
             throw visualSemanticFailure({ reason: "captureBusy" });
           }
           const controller = new AbortController();
           visualCaptureActiveRef.current = true;
-          visualCapturesRef.current.set(requestId, controller);
+          ownedVisualCaptures.set(requestId, controller);
           try {
             const settled = await visualControl.settle(request.params.target, {
               expectedRevision: request.params.expectedRevision,
@@ -943,7 +948,7 @@ export function useAgentControlBridge({
           } catch (error) {
             throw visualSemanticFailure(error);
           } finally {
-            visualCapturesRef.current.delete(requestId);
+            ownedVisualCaptures.delete(requestId);
             visualCaptureActiveRef.current = false;
           }
         }
@@ -3349,6 +3354,7 @@ export function useAgentControlBridge({
   useEffect(() => {
     if (!enabled) return undefined;
     const waiters = waitersRef.current;
+    const ownedVisualCaptures = visualCapturesRef.current;
     aliveRef.current = true;
     // Per-run, unlike `aliveRef`: a remount sets that shared ref back to true, so an install left
     // over from the previous run cannot use it to tell that its own run was torn down. Believing
@@ -3360,7 +3366,7 @@ export function useAgentControlBridge({
     const install = async () => {
       const stop = await listenForAgentControlRequests((request) => {
         if (request?.type === "cancel" && typeof request.requestId === "string") {
-          visualCapturesRef.current.get(request.requestId)?.abort();
+          ownedVisualCaptures.get(request.requestId)?.abort();
           const waiter = waiters.get(request.requestId);
           if (waiter) {
             clearTimeout(waiter.timer);
@@ -3450,8 +3456,8 @@ export function useAgentControlBridge({
         waiter.reject(new Error("Agent-control bridge unmounted."));
       }
       waiters.clear();
-      for (const controller of visualCapturesRef.current.values()) controller.abort();
-      visualCapturesRef.current.clear();
+      for (const controller of ownedVisualCaptures.values()) controller.abort();
+      ownedVisualCaptures.clear();
       unlisten?.();
       unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();
