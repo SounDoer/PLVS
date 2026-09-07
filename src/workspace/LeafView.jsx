@@ -251,6 +251,8 @@ export function LeafView({ node, path, style }) {
       ref={leafRef}
       data-leaf
       data-leaf-path={pathAttr}
+      data-visual-panel-id={activeTab}
+      data-visual-capture-ready={activeTab ? "true" : undefined}
       className={cn(
         "relative flex min-h-0 flex-col overflow-hidden rounded-md shadow-sm backdrop-blur-[24px] transition-[border-color,box-shadow] duration-150",
         "border border-[color:color-mix(in_srgb,var(--border)_var(--panel-opacity),transparent)] hover:border-border",

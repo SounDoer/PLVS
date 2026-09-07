@@ -26,6 +26,8 @@ export function DockHeader({ state, onAction, onPointer }) {
   return (
     <div
       data-testid="dock-header"
+      data-visual-capture-surface="dockHeader"
+      data-visual-capture-ready="true"
       onPointerEnter={() => onPointer(true)}
       onPointerLeave={() => onPointer(false)}
       className="flex h-[44px] w-screen select-none items-center justify-center border-y border-border/60 bg-background/90 px-2 text-foreground backdrop-blur-sm"

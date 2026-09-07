@@ -90,6 +90,7 @@ import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import packageInfo from "../package.json";
 import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
+import { useVisualCaptureSurfaces } from "./agentControl/useVisualCaptureSurfaces.js";
 import { buildPublicSettings } from "./agentControl/settingsControl.js";
 import { buildTransportSnapshot } from "./agentControl/transportControl.js";
 
@@ -156,6 +157,7 @@ function AppContent() {
     setPanelControlsForPanel,
     setAxisViewport,
   } = useWorkspaceStore();
+  useVisualCaptureSurfaces({ workspace: workspaceState });
   const sharedTimeViewport = useMemo(
     () => normalizeAxisViewport("time", workspaceState.axisViewports?.time),
     [workspaceState.axisViewports?.time]

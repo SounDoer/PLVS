@@ -354,6 +354,8 @@ function FullscreenOverlay() {
 
   return (
     <div
+      data-visual-panel-id={fullscreenId}
+      data-visual-capture-ready="true"
       className="absolute inset-0 z-50 flex flex-col outline-none"
       style={{
         backgroundColor: "color-mix(in srgb, var(--background) var(--panel-opacity), transparent)",
@@ -449,7 +451,11 @@ function SplitContent() {
   }, []);
 
   return (
-    <main className="relative flex min-h-0 flex-1 overflow-hidden">
+    <main
+      data-visual-capture-surface="workspace"
+      data-visual-capture-ready="true"
+      className="relative flex min-h-0 flex-1 overflow-hidden"
+    >
       {tree ? (
         <SplitView
           node={tree}

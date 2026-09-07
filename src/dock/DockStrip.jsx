@@ -25,6 +25,8 @@ export function DockStrip({
   return (
     <div
       data-testid="dock-strip"
+      data-visual-capture-surface="main"
+      data-visual-capture-ready="true"
       data-height-mode={heightMode}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}

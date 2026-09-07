@@ -141,6 +141,8 @@ export function DockEditorApp() {
     <div
       ref={rootRef}
       data-testid="dock-editor"
+      data-visual-capture-surface="dockEditor"
+      data-visual-capture-ready="true"
       onPointerEnter={() => pointer(true)}
       onPointerLeave={() => pointer(false)}
       className={cn(

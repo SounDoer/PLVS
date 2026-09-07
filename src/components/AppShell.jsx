@@ -64,7 +64,11 @@ export function AppShell({
       ) : (
         <>
           <FileDropOverlay {...fileDropProps} />
-          <div className={SHELL_PAGE}>
+          <div
+            data-visual-capture-surface="main"
+            data-visual-capture-ready="true"
+            className={SHELL_PAGE}
+          >
             <DragProvider onDrop={onDrop}>
               <div
                 className={autoHideControls ? SHELL_INNER_FOCUS : SHELL_INNER}
