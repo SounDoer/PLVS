@@ -237,6 +237,24 @@ pub enum ControlCommand {
     expected_revision: Option<u64>,
     out: String,
   },
+  VisualRecordingStart {
+    target: String,
+    fps: u32,
+    max_duration_seconds: u32,
+    expected_revision: Option<u64>,
+  },
+  VisualRecordingInspect {
+    recording_id: String,
+  },
+  VisualRecordingWait {
+    recording_id: String,
+    timeout_ms: u64,
+    out: Option<String>,
+  },
+  VisualRecordingStop {
+    recording_id: String,
+    out: Option<String>,
+  },
   SettingsUpdate {
     input: String,
     expected_revision: Option<u64>,
@@ -301,10 +319,13 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
     }
   }
   let [action, rest @ ..] = args else {
-    return Err("Usage: plvs-cli visual <describe|screenshot> ... --json".to_string());
+    return Err("Usage: plvs-cli visual <describe|screenshot|recording> ... --json".to_string());
   };
+  if action == "recording" {
+    return parse_visual_recording_args(rest);
+  }
   if action != "screenshot" {
-    return Err("Usage: plvs-cli visual <describe|screenshot> ... --json".to_string());
+    return Err("Usage: plvs-cli visual <describe|screenshot|recording> ... --json".to_string());
   }
 
   let mut target = None;
@@ -381,6 +402,155 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
     expected_revision,
     out,
   })
+}
+
+fn valid_recording_id(value: &str) -> bool {
+  value.len() == 36
+    && value.starts_with("rec-")
+    && value[4..]
+      .bytes()
+      .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+}
+
+fn parse_visual_recording_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage:\n  plvs-cli visual recording start --target <main|workspace> [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json";
+  let Some(action) = args.first().map(String::as_str) else {
+    return Err(USAGE.to_string());
+  };
+  if !matches!(action, "start" | "inspect" | "wait" | "stop") {
+    return Err(USAGE.to_string());
+  }
+  let mut positionals = Vec::new();
+  let mut target = None;
+  let mut fps = 30_u32;
+  let mut max_duration_seconds = 60_u32;
+  let mut expected_revision = None;
+  let mut timeout_ms = 30_000_u64;
+  let mut out = None;
+  let mut json = false;
+  let mut seen = std::collections::HashSet::new();
+  let mut index = 1;
+  while index < args.len() {
+    let flag = args[index].as_str();
+    if flag == "--json" {
+      if !seen.insert(flag) {
+        return Err("The --json option may be specified only once.".to_string());
+      }
+      json = true;
+      index += 1;
+      continue;
+    }
+    if matches!(
+      flag,
+      "--target"
+        | "--fps"
+        | "--max-duration-seconds"
+        | "--expected-revision"
+        | "--timeout-ms"
+        | "--out"
+    ) {
+      if !seen.insert(flag) {
+        return Err(format!("The {flag} option may be specified only once."));
+      }
+      let value = args
+        .get(index + 1)
+        .filter(|value| !value.trim().is_empty() && !value.starts_with("--"))
+        .ok_or_else(|| format!("The {flag} option requires a value."))?;
+      match flag {
+        "--target" => target = Some(value.clone()),
+        "--fps" => {
+          fps = value
+            .parse()
+            .map_err(|_| "The --fps value must be 15, 30, or 60.".to_string())?
+        }
+        "--max-duration-seconds" => {
+          max_duration_seconds = value.parse().map_err(|_| {
+            "The --max-duration-seconds value must be an integer from 1 through 1800.".to_string()
+          })?
+        }
+        "--expected-revision" => {
+          let revision = value.parse::<u64>().map_err(|_| {
+            "The --expected-revision option must be a non-negative safe integer.".to_string()
+          })?;
+          if revision > MAX_SAFE_REVISION {
+            return Err(
+              "The --expected-revision option must be a non-negative safe integer.".to_string(),
+            );
+          }
+          expected_revision = Some(revision);
+        }
+        "--timeout-ms" => {
+          timeout_ms = value.parse().map_err(|_| {
+            "The --timeout-ms value must be an integer from 100 through 300000.".to_string()
+          })?
+        }
+        "--out" => out = Some(value.clone()),
+        _ => unreachable!(),
+      }
+      index += 2;
+      continue;
+    }
+    if flag.starts_with("--") {
+      return Err(format!("Unknown visual recording option: {flag}"));
+    }
+    positionals.push(args[index].clone());
+    index += 1;
+  }
+  if !json {
+    return Err(format!(
+      "The visual recording {action} command requires --json."
+    ));
+  }
+
+  if action == "start" {
+    if !positionals.is_empty() || out.is_some() || seen.contains("--timeout-ms") {
+      return Err(USAGE.to_string());
+    }
+    let target =
+      target.ok_or_else(|| "The visual recording start command requires --target.".to_string())?;
+    if !matches!(target.as_str(), "main" | "workspace") {
+      return Err("The recording target must be main or workspace.".to_string());
+    }
+    if !matches!(fps, 15 | 30 | 60) {
+      return Err("The --fps value must be 15, 30, or 60.".to_string());
+    }
+    if !(1..=1800).contains(&max_duration_seconds) {
+      return Err(
+        "The --max-duration-seconds value must be an integer from 1 through 1800.".to_string(),
+      );
+    }
+    return Ok(ControlCommand::VisualRecordingStart {
+      target,
+      fps,
+      max_duration_seconds,
+      expected_revision,
+    });
+  }
+
+  if positionals.len() != 1 || !valid_recording_id(&positionals[0]) || target.is_some() {
+    return Err(USAGE.to_string());
+  }
+  if expected_revision.is_some()
+    || seen.contains("--fps")
+    || seen.contains("--max-duration-seconds")
+  {
+    return Err(USAGE.to_string());
+  }
+  let recording_id = positionals.remove(0);
+  match action {
+    "inspect" if out.is_none() && !seen.contains("--timeout-ms") => {
+      Ok(ControlCommand::VisualRecordingInspect { recording_id })
+    }
+    "wait" if (100..=300_000).contains(&timeout_ms) => Ok(ControlCommand::VisualRecordingWait {
+      recording_id,
+      timeout_ms,
+      out,
+    }),
+    "stop" if !seen.contains("--timeout-ms") => {
+      Ok(ControlCommand::VisualRecordingStop { recording_id, out })
+    }
+    _ => Err(USAGE.to_string()),
+  }
 }
 
 fn parse_module_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1960,7 +2130,7 @@ pub fn help_text() -> &'static str {
       )
       .replacen(
         "\n\nControls the already-running",
-        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli visual describe --json\n  plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json\n\nControls the already-running",
+        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli visual describe --json\n  plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json\n  plvs-cli visual recording start --target <main|workspace> [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json\n\nControls the already-running",
         1,
       )
       .replacen(
@@ -2273,6 +2443,10 @@ fn command_name(command: &ControlCommand) -> String {
     }
     ControlCommand::VisualDescribe => "visual.describe".to_string(),
     ControlCommand::VisualScreenshot { .. } => "visual.screenshot".to_string(),
+    ControlCommand::VisualRecordingStart { .. } => "visual.recording.start".to_string(),
+    ControlCommand::VisualRecordingInspect { .. } => "visual.recording.inspect".to_string(),
+    ControlCommand::VisualRecordingWait { .. } => "visual.recording.wait".to_string(),
+    ControlCommand::VisualRecordingStop { .. } => "visual.recording.stop".to_string(),
     ControlCommand::SettingsUpdate { .. } => "settings.update".to_string(),
     ControlCommand::Wait { .. } => "app.wait".to_string(),
   }
@@ -2497,6 +2671,35 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
+    ControlCommand::VisualRecordingStart {
+      target,
+      fps,
+      max_duration_seconds,
+      expected_revision,
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        ("target".to_string(), serde_json::json!({ "kind": target })),
+        ("fps".to_string(), Value::from(*fps)),
+        (
+          "maxDurationSeconds".to_string(),
+          Value::from(*max_duration_seconds),
+        ),
+      ]);
+      if let Some(revision) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      Value::Object(params)
+    }
+    ControlCommand::VisualRecordingInspect { recording_id }
+    | ControlCommand::VisualRecordingStop {
+      recording_id,
+      out: _,
+    } => serde_json::json!({ "recordingId": recording_id }),
+    ControlCommand::VisualRecordingWait {
+      recording_id,
+      timeout_ms,
+      ..
+    } => serde_json::json!({ "recordingId": recording_id, "timeoutMs": timeout_ms }),
     ControlCommand::TransportMutation {
       method,
       target_key,
@@ -3003,41 +3206,73 @@ fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code
   }
 }
 
-fn copy_visual_artifact(report: &mut ControlReport, out: &str) -> Result<(), String> {
+fn copy_visual_artifact(
+  report: &mut ControlReport,
+  out: &str,
+  recording: bool,
+) -> Result<(), String> {
+  let artifact_pointer = if recording {
+    "/recording/artifact"
+  } else {
+    "/artifact"
+  };
+  if recording
+    && report
+      .result
+      .as_ref()
+      .and_then(|result| result.pointer(artifact_pointer))
+      .is_none()
+  {
+    let state = report
+      .result
+      .as_ref()
+      .and_then(|result| result.pointer("/recording/state"))
+      .and_then(Value::as_str);
+    return if state == Some("completed") {
+      Err("PLVS returned a completed recording without an artifact.".to_string())
+    } else {
+      Ok(())
+    };
+  }
   let artifact = report
     .result
     .as_ref()
-    .and_then(|result| result.get("artifact"))
+    .and_then(|result| result.pointer(artifact_pointer))
     .and_then(Value::as_object)
-    .ok_or_else(|| "PLVS returned no screenshot artifact to copy.".to_string())?;
-  if artifact.get("kind").and_then(Value::as_str) != Some("screenshot") {
+    .ok_or_else(|| "PLVS returned no visual artifact to copy.".to_string())?;
+  let expected_kind = if recording { "recording" } else { "screenshot" };
+  let expected_media_type = if recording { "video/mp4" } else { "image/png" };
+  let subject = if recording { "recording" } else { "screenshot" };
+  if artifact.get("kind").and_then(Value::as_str) != Some(expected_kind) {
     return Err("PLVS returned an artifact with an unexpected kind.".to_string());
   }
-  if artifact.get("mediaType").and_then(Value::as_str) != Some("image/png") {
-    return Err("PLVS returned a screenshot with an unexpected media type.".to_string());
+  if artifact.get("mediaType").and_then(Value::as_str) != Some(expected_media_type) {
+    return Err(format!(
+      "PLVS returned a {subject} with an unexpected media type."
+    ));
   }
   let staged_path = artifact
     .get("stagedPath")
     .and_then(Value::as_str)
     .filter(|path| !path.is_empty())
-    .ok_or_else(|| "PLVS returned a screenshot without a staged path.".to_string())?
+    .ok_or_else(|| format!("PLVS returned a {subject} without a staged path."))?
     .to_string();
   let expected_bytes = artifact
     .get("bytes")
     .and_then(Value::as_u64)
-    .ok_or_else(|| "PLVS returned a screenshot without a valid byte count.".to_string())?;
+    .ok_or_else(|| format!("PLVS returned a {subject} without a valid byte count."))?;
   let expected_sha256 = artifact
     .get("sha256")
     .and_then(Value::as_str)
     .filter(|hash| hash.len() == 64 && hash.bytes().all(|byte| byte.is_ascii_hexdigit()))
-    .ok_or_else(|| "PLVS returned a screenshot without a valid SHA-256 digest.".to_string())?
+    .ok_or_else(|| format!("PLVS returned a {subject} without a valid SHA-256 digest."))?
     .to_string();
 
   let contents = fs::read(Path::new(&staged_path))
-    .map_err(|error| format!("Unable to read the staged screenshot at {staged_path}: {error}"))?;
+    .map_err(|error| format!("Unable to read the staged {subject} at {staged_path}: {error}"))?;
   if contents.len() as u64 != expected_bytes {
     return Err(format!(
-      "The staged screenshot byte count did not match: expected {expected_bytes}, found {}.",
+      "The staged {subject} byte count did not match: expected {expected_bytes}, found {}.",
       contents.len()
     ));
   }
@@ -3046,19 +3281,21 @@ fn copy_visual_artifact(report: &mut ControlReport, out: &str) -> Result<(), Str
     .map(|byte| format!("{byte:02x}"))
     .collect::<String>();
   if !actual_sha256.eq_ignore_ascii_case(&expected_sha256) {
-    return Err("The staged screenshot SHA-256 digest did not match.".to_string());
+    return Err(format!(
+      "The staged {subject} SHA-256 digest did not match."
+    ));
   }
 
   // Do not remove the recoverable staged path until the caller's copy has reached disk. Existing
   // destinations are overwritten, matching the CLI's document-export behavior.
   fs::write(Path::new(out), &contents)
-    .map_err(|error| format!("Unable to write the screenshot to {out}: {error}"))?;
+    .map_err(|error| format!("Unable to write the {subject} to {out}: {error}"))?;
   let artifact = report
     .result
     .as_mut()
-    .and_then(|result| result.get_mut("artifact"))
+    .and_then(|result| result.pointer_mut(artifact_pointer))
     .and_then(Value::as_object_mut)
-    .expect("validated screenshot artifact changed before metadata update");
+    .expect("validated visual artifact changed before metadata update");
   artifact.remove("stagedPath");
   artifact.insert("out".to_string(), Value::String(out.to_string()));
   Ok(())
@@ -3066,13 +3303,16 @@ fn copy_visual_artifact(report: &mut ControlReport, out: &str) -> Result<(), Str
 
 /// Materializes successful screenshot artifacts without ever sending the caller's path to PLVS.
 fn finish_visual_output(command: &ControlCommand, report: &mut ControlReport, exit_code: u8) -> u8 {
-  let ControlCommand::VisualScreenshot { out, .. } = command else {
-    return exit_code;
+  let (out, recording) = match command {
+    ControlCommand::VisualScreenshot { out, .. } => (out, false),
+    ControlCommand::VisualRecordingWait { out: Some(out), .. }
+    | ControlCommand::VisualRecordingStop { out: Some(out), .. } => (out, true),
+    _ => return exit_code,
   };
   if exit_code != 0 {
     return exit_code;
   }
-  match copy_visual_artifact(report, out) {
+  match copy_visual_artifact(report, out, recording) {
     Ok(()) => exit_code,
     Err(failure) => {
       eprintln!("{failure}");
@@ -5635,6 +5875,167 @@ mod tests {
     );
   }
 
+  #[test]
+  fn parses_visual_recording_lifecycle_and_builds_bounded_requests() {
+    let recording_id = format!("rec-{}", "a".repeat(32));
+    for target in ["main", "workspace"] {
+      let command = parse_control_args(&args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        target,
+        "--fps",
+        "60",
+        "--max-duration-seconds",
+        "90",
+        "--expected-revision",
+        "42",
+        "--json",
+      ]))
+      .unwrap();
+      let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
+      assert_eq!(request.method, "visual.recording.start");
+      assert_eq!(
+        request.params,
+        serde_json::json!({
+          "target": { "kind": target },
+          "fps": 60,
+          "maxDurationSeconds": 90,
+          "expectedRevision": 42
+        })
+      );
+      assert!(request.params.get("out").is_none());
+    }
+
+    let inspect = parse_control_args(&args(&[
+      "visual",
+      "recording",
+      "inspect",
+      &recording_id,
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      request_for_command(&inspect, &mut Cursor::new([]))
+        .unwrap()
+        .method,
+      "visual.recording.inspect"
+    );
+    let wait = parse_control_args(&args(&[
+      "visual",
+      "recording",
+      "wait",
+      &recording_id,
+      "--timeout-ms",
+      "45000",
+      "--out",
+      "capture.mp4",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&wait, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "visual.recording.wait");
+    assert_eq!(
+      request.params,
+      serde_json::json!({ "recordingId": recording_id, "timeoutMs": 45000 })
+    );
+    let stop = parse_control_args(&args(&[
+      "visual",
+      "recording",
+      "stop",
+      &recording_id,
+      "--out",
+      "capture.mp4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      request_for_command(&stop, &mut Cursor::new([]))
+        .unwrap()
+        .method,
+      "visual.recording.stop"
+    );
+  }
+
+  #[test]
+  fn visual_recording_parser_rejects_malformed_ids_and_misplaced_options() {
+    let recording_id = format!("rec-{}", "b".repeat(32));
+    let help = family_help_text("visual");
+    for line in [
+      "visual recording start",
+      "visual recording inspect",
+      "visual recording wait",
+      "visual recording stop",
+    ] {
+      assert!(help.contains(line));
+    }
+    for invalid in [
+      args(&["visual", "recording", "inspect", "rec-short", "--json"]),
+      args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "panel",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--fps",
+        "24",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--out",
+        "x.mp4",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "inspect",
+        &recording_id,
+        "--out",
+        "x.mp4",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "stop",
+        &recording_id,
+        "--timeout-ms",
+        "100",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "recording",
+        "wait",
+        &recording_id,
+        "--timeout-ms",
+        "99",
+        "--json",
+      ]),
+      args(&["visual", "recording", "wait", &recording_id]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+  }
+
   fn screenshot_report(staged_path: &Path, contents: &[u8]) -> ControlReport {
     let sha256 = Sha256::digest(contents)
       .iter()
@@ -5667,6 +6068,33 @@ mod tests {
       panel_id: None,
       expected_revision: None,
       out: out.to_string_lossy().into_owned(),
+    }
+  }
+
+  fn recording_report(staged_path: &Path, contents: &[u8]) -> ControlReport {
+    let sha256 = Sha256::digest(contents)
+      .iter()
+      .map(|byte| format!("{byte:02x}"))
+      .collect::<String>();
+    ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({
+        "outcome": "terminal",
+        "recording": {
+          "recordingId": format!("rec-{}", "c".repeat(32)),
+          "state": "completed",
+          "artifact": {
+            "artifactId": "art-recording",
+            "kind": "recording",
+            "mediaType": "video/mp4",
+            "stagedPath": staged_path,
+            "bytes": contents.len(),
+            "sha256": sha256
+          }
+        }
+      })),
+      error: None,
     }
   }
 
@@ -5752,6 +6180,47 @@ mod tests {
         .is_some());
     }
     fs::remove_file(staged).unwrap();
+  }
+
+  #[test]
+  fn terminal_recording_output_is_verified_and_timeout_writes_nothing() {
+    let nonce = REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let staged = std::env::temp_dir().join(format!("plvs-staged-recording-{nonce}.mp4"));
+    let out = std::env::temp_dir().join(format!("plvs-out-recording-{nonce}.mp4"));
+    let contents = b"verified-mp4-test-bytes";
+    fs::write(&staged, contents).unwrap();
+    let recording_id = format!("rec-{}", "c".repeat(32));
+    let command = ControlCommand::VisualRecordingWait {
+      recording_id: recording_id.clone(),
+      timeout_ms: 30_000,
+      out: Some(out.to_string_lossy().into_owned()),
+    };
+    let mut report = recording_report(&staged, contents);
+    assert_eq!(finish_visual_output(&command, &mut report, 0), 0);
+    assert_eq!(fs::read(&out).unwrap(), contents);
+    let artifact = &report.result.unwrap()["recording"]["artifact"];
+    assert_eq!(artifact["out"], out.to_string_lossy().as_ref());
+    assert!(artifact.get("stagedPath").is_none());
+
+    let mut timeout = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({
+        "outcome": "timeout",
+        "recording": { "recordingId": recording_id, "state": "recording" }
+      })),
+      error: None,
+    };
+    let absent = std::env::temp_dir().join(format!("plvs-timeout-recording-{nonce}.mp4"));
+    let timeout_command = ControlCommand::VisualRecordingWait {
+      recording_id: format!("rec-{}", "c".repeat(32)),
+      timeout_ms: 100,
+      out: Some(absent.to_string_lossy().into_owned()),
+    };
+    assert_eq!(finish_visual_output(&timeout_command, &mut timeout, 0), 0);
+    assert!(!absent.exists());
+    fs::remove_file(staged).unwrap();
+    fs::remove_file(out).unwrap();
   }
 
   #[test]
