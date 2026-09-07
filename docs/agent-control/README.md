@@ -146,6 +146,10 @@ reports the Workspace, panel instances, each panel's complete public controls, c
 Settings state, Dock state, Transport state, Device selection state, and the current top-level
 `revision`. It reports values, not control schemas.
 
+The snapshot also includes compact Appearance and Loudness Profile selection state as
+`appearance { mode, selectedThemeId, resolvedThemeId }` and `loudnessProfile { activeId }`. Theme
+documents and Loudness Profile rules remain in their dedicated command families.
+
 Panels are an array in `panelOrder`; each entry contains `id`, `moduleId`, `title`, complete public
 `controls`, effective read-only `axes`, and module-specific `analysis`. The same panel shape is used
 by successful Panel Control responses. The top-level `runtime` summarizes channel topology and
@@ -380,6 +384,8 @@ A request can also fail before it reaches the application at all: Agent Control 
 its protocol version is incompatible (`protocolMismatch`), the frontend is not ready yet, the
 broker's pending limit is full, the frontend did not answer in time, or the envelope was
 unreadable.
+The thin CLI companion also refuses to invoke an adjacent application binary built for another app
+identity (`cliHostIdentityMismatch`), before that host can discover or contact a running app.
 Inside the internal JSON-RPC error data, failures from this layer carry `"layer": "transport"`
 alongside an internal `reason`, because they are not valid app results and must not be read as one.
 The public CLI maps that internal distinction to its documented exit class and always emits the

@@ -7,10 +7,21 @@
 //! IMPORTANT: this binary must not reference `app_lib`, or the full engine gets
 //! statically linked right back into it.
 
+use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode, Stdio};
 use std::thread;
+
+fn forwarded_arguments(user_arguments: impl IntoIterator<Item = OsString>) -> Vec<OsString> {
+  std::iter::once(OsString::from("--cli"))
+    // The host owns the CLI implementation and discovery identity. Pass the forwarder's
+    // independently compiled identity first so a stale adjacent host cannot route a development
+    // command to an installed release app (or the reverse).
+    .chain(std::iter::once(OsString::from(env!("PLVS_APP_ID"))))
+    .chain(user_arguments)
+    .collect()
+}
 
 fn host_binary_path() -> Result<PathBuf, String> {
   let own_path =
@@ -44,8 +55,7 @@ fn main() -> ExitCode {
   // this console-subsystem process works for terminals and pipes alike.
   // The host's exit code is forwarded unchanged.
   let mut child = match Command::new(&host)
-    .arg("--cli")
-    .args(std::env::args_os().skip(1))
+    .args(forwarded_arguments(std::env::args_os().skip(1)))
     .stdout(Stdio::piped())
     .stderr(Stdio::piped())
     .spawn()
@@ -79,5 +89,20 @@ fn main() -> ExitCode {
       eprintln!("Failed to wait for {}: {err}", host.display());
       ExitCode::from(2)
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn forwards_its_compiled_identity_before_the_public_command() {
+    let arguments = forwarded_arguments([OsString::from("capabilities"), OsString::from("--json")]);
+
+    assert_eq!(arguments[0], "--cli");
+    assert_eq!(arguments[1], env!("PLVS_APP_ID"));
+    assert_eq!(arguments[2], "capabilities");
+    assert_eq!(arguments[3], "--json");
   }
 }

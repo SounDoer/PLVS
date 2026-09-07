@@ -119,7 +119,13 @@ export function buildMeasurementInspection({
   const peaks = Array.isArray(audio.peakDb) ? audio.peakDb : [];
   const rms = Array.isArray(audio.rmsDb) ? audio.rmsDb : [];
   const channelCount = noSample ? 0 : Math.max(peaks.length, rms.length);
-  const missingReason = noSample ? "noSample" : "notReady";
+  // A real engine silence reading uses finite floor values or -Infinity. Keep malformed/non-finite
+  // payloads and audible warm-up distinct: those still mean the metric is not ready.
+  const belowSignalFloor =
+    peaks.length > 0 &&
+    peaks.every((value) => value === -Infinity || Number.isFinite(value)) &&
+    !hasCorrelationSignal(audio);
+  const missingReason = noSample ? "noSample" : belowSignalFloor ? "belowSignalFloor" : "notReady";
   const channels = Array.from({ length: channelCount }, (_, index) => ({
     index,
     label: String(labels[index] ?? `Ch ${index + 1}`),

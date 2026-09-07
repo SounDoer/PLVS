@@ -477,6 +477,35 @@ fn serialize_cli_failure(code: &str, message: &str, exit_code: u8) -> (String, u
   (encoded, exit_code)
 }
 
+fn host_identity_mismatch_message(expected_identifier: &str) -> &'static str {
+  if expected_identifier.ends_with(".dev") {
+    "The development CLI found a PLVS host built for another app identity. Start PLVS Dev with `npm run desktop` and retry."
+  } else {
+    "The PLVS CLI and its adjacent application binary were built for different app identities. Reinstall the matching PLVS build and retry."
+  }
+}
+
+fn serialize_host_identity_mismatch(
+  expected_identifier: &str,
+  host_identifier: &str,
+) -> (String, u8) {
+  let message = host_identity_mismatch_message(expected_identifier);
+  let encoded = serde_json::to_string(&serde_json::json!({
+    "schemaVersion": CLI_SCHEMA_VERSION,
+    "ok": false,
+    "error": {
+      "code": "cliHostIdentityMismatch",
+      "message": message,
+      "details": {
+        "expectedIdentifier": expected_identifier,
+        "hostIdentifier": host_identifier,
+      }
+    }
+  }))
+  .expect("the CLI host identity error contains only strings and integers");
+  (encoded, 2)
+}
+
 fn serialize_parse_error(message: &str) -> (String, u8) {
   let code = if message.starts_with("Unknown command:")
     || message.starts_with("Unknown control command:")
@@ -540,6 +569,29 @@ pub fn run(args: &[String]) -> ExitCode {
     }
   };
   execute(command)
+}
+
+/// Run a command forwarded by the companion `plvs-cli` binary.
+///
+/// The thin forwarder and the host are built independently into the same directory. Checking both
+/// compiled identities here prevents a stale host artifact from discovering and controlling the
+/// other PLVS identity before the public command is parsed or executed.
+pub fn run_forwarded(expected_app_identifier: &str, args: &[String]) -> ExitCode {
+  let host_app_identifier = env!("PLVS_APP_ID");
+  if expected_app_identifier != host_app_identifier {
+    let (encoded, exit_code) =
+      serialize_host_identity_mismatch(expected_app_identifier, host_app_identifier);
+    if args.iter().any(|arg| arg == "--json") {
+      println!("{encoded}");
+    } else {
+      eprintln!(
+        "{}",
+        host_identity_mismatch_message(expected_app_identifier)
+      );
+    }
+    return ExitCode::from(exit_code);
+  }
+  run(args)
 }
 
 #[cfg(feature = "capture-harness")]
@@ -690,6 +742,27 @@ mod tests {
 
   fn args(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| value.to_string()).collect()
+  }
+
+  #[test]
+  fn forwarded_cli_rejects_a_host_built_for_another_app_identity() {
+    let (encoded, exit_code) =
+      serialize_host_identity_mismatch("com.soundoer.plvs.dev", "com.soundoer.plvs");
+    let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+
+    assert_eq!(exit_code, 2);
+    assert_eq!(json["schemaVersion"], 1);
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "cliHostIdentityMismatch");
+    assert_eq!(
+      json["error"]["details"]["expectedIdentifier"],
+      "com.soundoer.plvs.dev"
+    );
+    assert_eq!(
+      json["error"]["details"]["hostIdentifier"],
+      "com.soundoer.plvs"
+    );
+    assert!(json.get("result").is_none());
   }
 
   #[test]

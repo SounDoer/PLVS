@@ -851,6 +851,10 @@ export function useAgentControlBridge({
               revision: controlRevisionRef.current,
               workspace,
               presets,
+              appearance: latestThemeRef.current.state.appearance,
+              loudnessProfile: {
+                activeId: activeLoudnessProfileId(loudnessProfiles, loudnessActive),
+              },
               settings,
               transport,
               device: device ? deviceInspection(device) : null,

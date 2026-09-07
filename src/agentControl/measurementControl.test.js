@@ -177,6 +177,31 @@ describe("Measurement Control", () => {
     expect(result.unavailable["loudness.rangeLu"]).toBe("notReady");
   });
 
+  it("distinguishes digital silence from audible measurement warm-up", () => {
+    const silent = inspect({
+      record: record({
+        audio: {
+          peakDb: [-Infinity, -Infinity],
+          rmsDb: [-Infinity, -Infinity],
+          truePeakL: -Infinity,
+          truePeakR: -Infinity,
+          momentary: -Infinity,
+          shortTerm: -Infinity,
+        },
+      }),
+    });
+    expect(silent.unavailable["levels.channels[0].peakDbfs"]).toBe("belowSignalFloor");
+    expect(silent.unavailable["levels.truePeak.leftDbtp"]).toBe("belowSignalFloor");
+    expect(silent.unavailable["loudness.momentaryLufs"]).toBe("belowSignalFloor");
+    expect(silent.unavailable["stereo.correlation"]).toBe("belowSignalFloor");
+
+    const warmingUp = inspect({
+      record: record({ audio: { momentary: -Infinity, shortTerm: -Infinity } }),
+    });
+    expect(warmingUp.unavailable["loudness.momentaryLufs"]).toBe("notReady");
+    expect(warmingUp.unavailable["loudness.shortTermLufs"]).toBe("notReady");
+  });
+
   it("evaluates the effective saved or preview profile with the canonical evaluator", () => {
     const document = {
       rules: [

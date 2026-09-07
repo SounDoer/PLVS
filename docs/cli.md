@@ -320,7 +320,7 @@ an error with code `timeout` and exit `5`, not a successful unchanged result.
 | ---: | ----------------------------------- | --------------------------------------------------------------------------- |
 |  `0` | Success                             | Query or mutation completed; healthy or warning-only doctor report          |
 |  `1` | Runtime or system failure           | Native operation failed; output write failed; doctor found a required error |
-|  `2` | App unavailable for control         | App not running; Agent Control disabled; frontend not ready                 |
+|  `2` | App unavailable for control         | App not running; Agent Control disabled; frontend not ready; CLI/host identity mismatch |
 |  `3` | Invalid command input               | Unknown command; invalid argument; required revision omitted                |
 |  `4` | Current state refuses the operation | Revision conflict; blocking editor; wait limit reached                      |
 |  `5` | Wait did not complete               | Timeout or cancellation                                                     |
@@ -381,7 +381,9 @@ npm run desktop:control -- workspace apply layout.json --json --expected-revisio
 ```
 
 `desktop:control` selects the development app identity and forwards the supplied flat CLI command.
-It controls only an already-running development app.
+It controls only an already-running development app. If its thin CLI companion finds a stale
+release-identity host binary in the shared Cargo target directory, it fails with
+`cliHostIdentityMismatch` before parsing or executing the requested command.
 
 `npm run` prints its own banner, so use `--silent` or call the wrapper directly when stdout must be
 parseable JSON:

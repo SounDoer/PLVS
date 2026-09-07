@@ -7,8 +7,8 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::agent_control::discovery::{
-  descriptor_path, read_descriptor_at, AgentControlDescriptor, DescriptorApp, DiscoveryError,
-  DiscoveryErrorKind,
+  descriptor_path, is_process_alive, read_descriptor_at, AgentControlDescriptor, DescriptorApp,
+  DiscoveryError, DiscoveryErrorKind,
 };
 use crate::agent_control::protocol::JsonRpcRequest;
 use crate::cli_contract::CLI_SCHEMA_VERSION;
@@ -1757,10 +1757,8 @@ fn discovery_failure(error: &DiscoveryError, enabled: bool) -> ControlFailure {
       "Agent Control is disabled. Enable it in PLVS Settings.".to_string(),
       None,
     ),
-    // A descriptor naming a process that is gone: the app really is not running, and the
-    // discovery text says which check decided that.
     DiscoveryErrorKind::Stale => {
-      ControlFailure::transport("appNotRunning", error.to_string(), None)
+      ControlFailure::transport("appNotRunning", "PLVS is not running.".to_string(), None)
     }
     DiscoveryErrorKind::ProtocolMismatch => {
       ControlFailure::transport("protocolMismatch", error.to_string(), None)
@@ -1775,12 +1773,13 @@ impl ControlClient for LocalControlClient {
   fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure> {
     let path = descriptor_path()
       .map_err(|error| ControlFailure::transport("appNotRunning", error.to_string(), None))?;
-    let descriptor = read_descriptor_at(&path, env!("PLVS_APP_ID"), |_| true).map_err(|error| {
-      discovery_failure(
-        &error,
-        crate::agent_control::toggle::read_enabled_from_disk(),
-      )
-    })?;
+    let descriptor =
+      read_descriptor_at(&path, env!("PLVS_APP_ID"), is_process_alive).map_err(|error| {
+        discovery_failure(
+          &error,
+          crate::agent_control::toggle::read_enabled_from_disk(),
+        )
+      })?;
     call_descriptor(&descriptor, &request)
   }
 }
@@ -1801,13 +1800,19 @@ fn call_descriptor(
     timeout,
   )
   .map_err(|error| {
-    let reason = match error.reason {
-      crate::agent_control::windows_pipe::PipeErrorReason::Unauthorized => "authenticationFailed",
-      crate::agent_control::windows_pipe::PipeErrorReason::ConnectionFailed => "appNotRunning",
-      crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => "timeout",
-      _ => "transportFailed",
+    let (reason, message) = match error.reason {
+      crate::agent_control::windows_pipe::PipeErrorReason::Unauthorized => {
+        ("authenticationFailed", error.to_string())
+      }
+      crate::agent_control::windows_pipe::PipeErrorReason::ConnectionFailed => {
+        ("appNotRunning", "PLVS is not running.".to_string())
+      }
+      crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => {
+        ("timeout", error.to_string())
+      }
+      _ => ("transportFailed", error.to_string()),
     };
-    ControlFailure::transport(reason, error.to_string(), Some(descriptor.app.clone()))
+    ControlFailure::transport(reason, message, Some(descriptor.app.clone()))
   })?;
   Ok(AppCall {
     app: descriptor.app.clone(),
@@ -4127,7 +4132,7 @@ mod tests {
   }
 
   #[test]
-  fn a_descriptor_that_exists_but_fails_keeps_its_diagnostic() {
+  fn malformed_discovery_keeps_its_diagnostic_but_a_stale_process_reads_as_not_running() {
     let malformed = discovery_failure(
       &DiscoveryError::new(DiscoveryErrorKind::Malformed, "bad token"),
       true,
@@ -4140,7 +4145,7 @@ mod tests {
       true,
     );
     assert_eq!(stale.error.code, "appNotRunning");
-    assert_eq!(stale.error.message, "pid 4321 is gone");
+    assert_eq!(stale.error.message, "PLVS is not running.");
   }
 
   #[test]

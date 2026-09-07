@@ -65,6 +65,9 @@ belowSignalFloor
 Channel peak and RMS rows use the same resolved auto/custom labels as the GUI. Loudness, dynamics,
 Dialogue, and True Peak Max use the same canonical Stats mapping. Stereo values describe only the
 first Vectorscope request already active in the engine; Measurement Control never creates one.
+For a received frame whose channel peaks are all at or below the signal floor, unavailable level
+and loudness metrics use `belowSignalFloor`; `notReady` is reserved for audible warm-up or an
+otherwise valid metric that has not produced a finite value yet.
 
 The `profile` object evaluates the effective Loudness Profile through the app's shared evaluator.
 Its mode is `off`, `saved`, or `preview`; an open editor draft therefore produces the same preview

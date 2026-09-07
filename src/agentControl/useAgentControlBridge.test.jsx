@@ -1086,6 +1086,12 @@ describe("useAgentControlBridge", () => {
     const first = await send(request("app.inspect", {}, "inspect-1"));
     expect(first.result).toMatchObject(goldenResult("query.appInspect"));
     expect(first.result.revision).toBe(0);
+    expect(first.result.appearance).toEqual({
+      mode: "system",
+      selectedThemeId: null,
+      resolvedThemeId: "plvs-dark",
+    });
+    expect(first.result.loudnessProfile).toEqual({ activeId: null });
     expect(first.result).not.toHaveProperty("revisions");
     expect(view.store.state.tree).toBe(initialTree);
 

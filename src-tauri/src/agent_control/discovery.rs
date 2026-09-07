@@ -119,6 +119,30 @@ pub fn endpoint_name(app_identifier: &str) -> String {
   format!("plvs-control-{app_identifier}")
 }
 
+#[cfg(target_os = "windows")]
+pub fn is_process_alive(pid: u32) -> bool {
+  use windows_sys::Win32::Foundation::{CloseHandle, ERROR_INVALID_PARAMETER, STILL_ACTIVE};
+  use windows_sys::Win32::System::Threading::{
+    GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+  };
+
+  let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+  if handle.is_null() {
+    // A missing PID reports ERROR_INVALID_PARAMETER. Be conservative for access failures: the
+    // process may still be alive, and the authenticated pipe connection remains authoritative.
+    return std::io::Error::last_os_error().raw_os_error() != Some(ERROR_INVALID_PARAMETER as i32);
+  }
+  let mut exit_code = 0_u32;
+  let queried = unsafe { GetExitCodeProcess(handle, &mut exit_code) };
+  unsafe { CloseHandle(handle) };
+  queried == 0 || exit_code == STILL_ACTIVE as u32
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn is_process_alive(_pid: u32) -> bool {
+  true
+}
+
 pub fn descriptor_path_in(config_dir: &Path) -> PathBuf {
   config_dir.join(DESCRIPTOR_FILE_NAME)
 }
@@ -400,6 +424,13 @@ mod tests {
       DiscoveryErrorKind::Stale
     );
     fs::remove_dir_all(dir).unwrap();
+  }
+
+  #[cfg(target_os = "windows")]
+  #[test]
+  fn process_liveness_distinguishes_the_current_process_from_an_invalid_pid() {
+    assert!(is_process_alive(std::process::id()));
+    assert!(!is_process_alive(u32::MAX));
   }
 
   #[test]
