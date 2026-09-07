@@ -196,6 +196,15 @@ export function setAgentControlEnabledCommand(enabled) {
   return invoke("set_agent_control_enabled", { enabled });
 }
 
+export function getVisualCaptureCapabilities() {
+  return invoke("visual_capture_capabilities");
+}
+
+/** Capture one settled PLVS WebView region into the app-owned artifact staging directory. */
+export function captureVisualScreenshot(request) {
+  return invoke("visual_capture_screenshot", { request });
+}
+
 /** @param {import("./types.js").AnalysisRequests} requests */
 export function setAnalysisRequests(requests) {
   return invoke("set_analysis_requests", { requests });

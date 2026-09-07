@@ -13,8 +13,10 @@ import {
   agentControlFrontendNotReadyCommand,
   agentControlFrontendReadyCommand,
   agentControlRespondCommand,
+  captureVisualScreenshot,
   cursorOverDockSurfaces,
   getUiFrameDiagnostics,
+  getVisualCaptureCapabilities,
   probeFileAnalysis,
   getDockState,
   setDialogueGating,
@@ -124,6 +126,22 @@ describe("agent-control command seam", () => {
     expect(invoke).toHaveBeenNthCalledWith(1, "agent_control_frontend_ready");
     expect(invoke).toHaveBeenNthCalledWith(2, "agent_control_respond", { response });
     expect(invoke).toHaveBeenNthCalledWith(3, "agent_control_frontend_not_ready");
+  });
+
+  it("queries native visual support and forwards settled geometry without a caller path", async () => {
+    const request = {
+      windowLabel: "main",
+      rect: { x: 10, y: 20, width: 300, height: 200 },
+      viewport: { width: 800, height: 600 },
+      devicePixelRatio: 1.25,
+    };
+    await getVisualCaptureCapabilities();
+    await captureVisualScreenshot(request);
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "visual_capture_capabilities");
+    expect(invoke).toHaveBeenNthCalledWith(2, "visual_capture_screenshot", { request });
+    expect(invoke.mock.calls[1][1]).not.toHaveProperty("out");
+    expect(invoke.mock.calls[1][1]).not.toHaveProperty("path");
   });
 });
 

@@ -78,6 +78,7 @@ impl Drop for PendingArtifact {
       protected.remove(&self.temporary_path);
       protected.remove(&self.final_path);
     }
+    let _ = fs::remove_file(&self.temporary_path);
   }
 }
 

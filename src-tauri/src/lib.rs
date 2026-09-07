@@ -86,6 +86,7 @@ pub fn run() {
     .manage(AppState::default())
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::windows_pipe::PipeServerState::default())
+    .manage(visual_capture::ScreenshotCaptureState::default())
     .manage(dock::DockedFlag(std::sync::Arc::new(
       std::sync::atomic::AtomicBool::new(false),
     )))
@@ -134,6 +135,8 @@ pub fn run() {
       agent_control::broker::agent_control_respond,
       agent_control::toggle::agent_control_status,
       agent_control::toggle::set_agent_control_enabled,
+      visual_capture::visual_capture_capabilities,
+      visual_capture::visual_capture_screenshot,
     ])
     .setup(|app| {
       #[cfg(debug_assertions)]

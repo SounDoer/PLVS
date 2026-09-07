@@ -3499,6 +3499,7 @@ dependencies = [
  "crossbeam-queue",
  "firered-vad",
  "getrandom 0.4.3",
+ "image",
  "log",
  "realfft",
  "rubato 5.0.0",
@@ -3520,7 +3521,9 @@ dependencies = [
  "ten-vad-rs",
  "time",
  "voice_activity_detector",
+ "webview2-com",
  "window-vibrancy",
+ "windows 0.61.3",
  "windows-sys 0.61.2",
  "winreg 0.56.0",
 ]
