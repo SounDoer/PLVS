@@ -31,8 +31,8 @@ npm run desktop:control -- preset reorder <file|-> --expected-revision 12 --json
 
 There is no initial `duplicate` command because the GUI does not provide that operation. Individual
 Preset import and export belong to Library Transfer; see [`libraries.md`](libraries.md). Portable
-whole-configuration backup and migration belong to future `app config` control; no existing public
-command provides them.
+whole-configuration backup and migration are implemented by
+[Configuration Transfer](config.md).
 
 `app.inspect` continues to return only the compact active relationship. Call `preset list` for the
 library:

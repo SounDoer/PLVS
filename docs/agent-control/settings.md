@@ -19,12 +19,13 @@ npm run desktop:control -- settings update <file|-> --expected-revision 12 --jso
 - `update` applies an atomic direct-field patch with expected revision, dry-run, no-op,
   boolean changed status, warnings, and durable persistence settlement.
 
-There is no generic `settings reset` in the first version. Individual GUI resets and the destructive
-whole-configuration reset do not share one semantic boundary, and explicit updates can restore
-ordinary defaults. Configuration export, import, and whole-configuration reset belong to future
-`app config` control; no existing public command provides them.
+There is no generic `settings reset`. Individual GUI resets and a destructive whole-configuration
+reset do not share one semantic boundary, and explicit updates can restore ordinary defaults.
+Portable whole-configuration export and import are implemented by
+[Configuration Transfer](config.md); there is currently no public whole-configuration reset
+command.
 
-## First-version public scope
+## Public scope
 
 Fields, types, defaults and options are generated from the schema:
 [`generated/settings.md`](generated/settings.md). Current values and dynamic availability are
@@ -44,7 +45,8 @@ The following are intentionally outside Settings Control:
 - Workspace, panels, and axes.
 - Focus View, panel opacity, glass, window geometry, and Dock; these are working-scene state captured
   by Presets rather than ordinary global Settings.
-- Configuration export, import, and whole-configuration reset.
+- Portable configuration export and import, which belong to
+  [Configuration Transfer](config.md), and whole-configuration reset, which has no public command.
 - Fixed, non-configurable keyboard shortcuts.
 
 `settings update` is atomic. If any included field is invalid or unavailable, no other field in the
