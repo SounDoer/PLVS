@@ -3,8 +3,8 @@
 Date: 2026-09-07
 
 Status: Living design record; Module, Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
-Transport, Device, Dock, Measurement Control, Measurement Wait, and View Control decisions are
-approved unless explicitly marked otherwise
+Transport, Device, Dock, Measurement Control, Measurement Wait, View Control, and Visual Capture
+decisions are approved unless explicitly marked otherwise
 
 This directory records the implemented Agent Control contract and explicitly marked approved-next
 contracts. It complements the
@@ -472,6 +472,8 @@ Control settings.
 ## Follow-on module specifications
 
 - [`modules.md`](modules.md) — implemented Module discovery contract
+- [Visual Capture design](../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md) —
+  approved `visual` family contract; implementation pending
 - [`presets.md`](presets.md) — approved Preset Control contract
 - [`axes.md`](axes.md) — approved Axis Control contract
 - [`settings.md`](settings.md) — approved Settings Control contract
