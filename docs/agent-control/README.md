@@ -1,12 +1,13 @@
 # Agent Control Design
 
-Date: 2026-09-03
+Date: 2026-09-07
 
 Status: Living design record; Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
-Transport, Device, Dock, and Measurement Control decisions are approved unless explicitly marked
-otherwise
+Transport, Device, Dock, Measurement Control, Measurement Wait, and View Control decisions are
+approved unless explicitly marked otherwise
 
-This directory records the implemented Agent Control contract. It complements the
+This directory records the implemented Agent Control contract and explicitly marked approved-next
+contracts. It complements the
 first-slice design in
 [`../superpowers/specs/2026-09-02-agent-control-design.md`](../superpowers/specs/2026-09-02-agent-control-design.md).
 That document explains the transport and initial Workspace implementation; this directory is the
@@ -71,6 +72,10 @@ Transfer, and Configuration Transfer are implemented. See [`measurements.md`](me
 [`devices.md`](devices.md), [`themes.md`](themes.md), and
 [`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration remains
 a deferred product decision.
+
+The next approved slices are [Measurement Wait](measurement-wait.md) followed by
+[View Control](view.md). Their contracts are approved but their commands are not implemented and
+must not be advertised by `app.capabilities` or the CLI until the corresponding code lands.
 
 ## Keeping this contract in step with the app
 

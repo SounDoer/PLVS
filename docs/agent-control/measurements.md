@@ -15,7 +15,9 @@ Vectorscope or Dialogue analysis.
 ## Scope
 
 V1 is LIVE-only. It does not expose File measurements, history, raw waveform points, Spectrum or
-Spectrogram bands, Vectorscope paths, Stereo Map bands, or a measurement wait operation.
+Spectrogram bands, Vectorscope paths, Stereo Map bands, or a measurement wait operation in the
+current implementation. The approved next extension is specified in
+[Measurement Wait](measurement-wait.md).
 `app.inspect` continues to report controllable application state rather than high-rate measurement
 data; use `measurement inspect` for readings.
 
