@@ -1,3 +1,5 @@
+import { normalizeVisualTarget } from "./visualControl.js";
+
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
 const TRANSPORT_ACTIONS = new Set([
   "transport.live.start",
@@ -88,6 +90,46 @@ export function normalizeAgentControlRequest(input) {
   }
   if (!isPlainJsonObject(input.params)) {
     return invalidParams("$.params", "Request params must be a plain JSON object.");
+  }
+
+  if (input.method === "visual.describe") {
+    const field = Object.keys(input.params)[0];
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    return {
+      ok: true,
+      request: { id: input.id, method: input.method, params: {} },
+    };
+  }
+
+  if (input.method === "visual.screenshot") {
+    const field = unknownField(input.params, new Set(["target", "expectedRevision"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const normalizedTarget = normalizeVisualTarget(input.params.target);
+    if (!normalizedTarget.ok) {
+      return invalidParams(`$.params.target${normalizedTarget.path}`, normalizedTarget.message);
+    }
+    if (
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          target: normalizedTarget.target,
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
+            : {}),
+        },
+      },
+    };
   }
 
   if (

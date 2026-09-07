@@ -281,4 +281,31 @@ describe("agent-control app snapshots", () => {
       expect(normalizeAgentControlRequest(request(method, params)).ok).toBe(true);
     }
   });
+
+  it("advertises visual methods and dynamic feature flags without inferring Windows support", () => {
+    const unavailable = buildAgentControlCapabilities(runtime, 4);
+    expect(unavailable.features).toEqual({});
+    expect(unavailable.methods).not.toContain("visual.describe");
+
+    const available = buildAgentControlCapabilities(
+      { ...runtime, visual: { screenshot: true, recording: false } },
+      4
+    );
+    expect(available.features.visual).toEqual({ screenshot: true, recording: false });
+    for (const [method, params] of [
+      ["visual.describe", {}],
+      ["visual.screenshot", { target: { kind: "main" } }],
+    ]) {
+      expect(available.methods).toContain(method);
+      expect(normalizeAgentControlRequest(request(method, params)).ok).toBe(true);
+    }
+
+    const knownUnsupported = buildAgentControlCapabilities(
+      { ...runtime, visual: { screenshot: false, recording: false } },
+      4
+    );
+    expect(knownUnsupported.features.visual).toEqual({ screenshot: false, recording: false });
+    expect(knownUnsupported.methods).toContain("visual.describe");
+    expect(knownUnsupported.methods).not.toContain("visual.screenshot");
+  });
 });

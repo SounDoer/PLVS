@@ -29,10 +29,90 @@ describe("normalizeAgentControlRequest", () => {
     "transport.inspect",
     "dock.describe",
     "dock.inspect",
+    "visual.describe",
   ])("accepts %s with empty params", (method) => {
     expect(normalizeAgentControlRequest(request(method))).toEqual({
       ok: true,
       request: { id: "req-1", method, params: {} },
+    });
+  });
+
+  describe("visual screenshot requests", () => {
+    it.each([
+      [{ kind: "main" }],
+      [{ kind: "workspace" }],
+      [{ kind: "panel", panelId: "spectrum-2" }],
+      [{ kind: "dockHeader" }],
+      [{ kind: "dockEditor" }],
+    ])("normalizes semantic target %j", (target) => {
+      expect(
+        normalizeAgentControlRequest(request("visual.screenshot", { target, expectedRevision: 18 }))
+      ).toEqual({
+        ok: true,
+        request: {
+          id: "req-1",
+          method: "visual.screenshot",
+          params: { target, expectedRevision: 18 },
+        },
+      });
+    });
+
+    it("allows the revision to be omitted", () => {
+      expect(
+        normalizeAgentControlRequest(
+          request("visual.screenshot", { target: { kind: "workspace" } })
+        )
+      ).toEqual({
+        ok: true,
+        request: {
+          id: "req-1",
+          method: "visual.screenshot",
+          params: { target: { kind: "workspace" } },
+        },
+      });
+    });
+
+    it.each([
+      [{}, "$.params.target.kind"],
+      ["#workspace", "$.params.target"],
+      [{ kind: "panel" }, "$.params.target.panelId"],
+      [{ kind: "main", panelId: "spectrum" }, "$.params.target.panelId"],
+      [{ kind: "main", hwnd: 42 }, "$.params.target.hwnd"],
+      [{ kind: "main", url: "https://example.com" }, "$.params.target.url"],
+      [{ kind: "main", path: "capture.png" }, "$.params.target.path"],
+    ])("rejects non-semantic target %j", (target, path) => {
+      expect(
+        normalizeAgentControlRequest(request("visual.screenshot", { target })).error
+      ).toMatchObject({ reason: "invalidParams", path, code: -32602 });
+    });
+
+    it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1, "18", null])(
+      "rejects invalid optional revision %j",
+      (expectedRevision) => {
+        expect(
+          normalizeAgentControlRequest(
+            request("visual.screenshot", {
+              target: { kind: "main" },
+              expectedRevision,
+            })
+          ).error
+        ).toMatchObject({
+          reason: "invalidParams",
+          path: "$.params.expectedRevision",
+          code: -32602,
+        });
+      }
+    );
+
+    it("rejects exact-allowlist violations", () => {
+      expect(
+        normalizeAgentControlRequest(request("visual.describe", { platform: "windows" })).error.path
+      ).toBe("$.params.platform");
+      expect(
+        normalizeAgentControlRequest(
+          request("visual.screenshot", { target: { kind: "main" }, out: "capture.png" })
+        ).error.path
+      ).toBe("$.params.out");
     });
   });
 

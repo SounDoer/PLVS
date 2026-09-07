@@ -6,6 +6,7 @@ import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { DEVICE_CONTROL_METHODS } from "./protocol.js";
 import { buildModuleList } from "./moduleControl.js";
+import { VISUAL_SCREENSHOT_METHODS } from "./visualControl.js";
 
 const METHODS = [
   "app.capabilities",
@@ -111,11 +112,19 @@ export function buildAgentControlPanelSnapshot({
 }
 
 export function buildAgentControlCapabilities(runtime, revision) {
+  const visual = runtime?.visual;
   return {
     revision,
     appVersion: String(runtime.appVersion),
     protocolVersion: 1,
-    features: {},
+    features: visual
+      ? {
+          visual: {
+            screenshot: visual.screenshot === true,
+            recording: visual.recording === true,
+          },
+        }
+      : {},
     runtime: {
       available: runtime.available === true,
       appName: String(runtime.appName),
@@ -123,7 +132,14 @@ export function buildAgentControlCapabilities(runtime, revision) {
       identifier: String(runtime.identifier),
       platform: String(runtime.platform),
     },
-    methods: [...METHODS],
+    methods: [
+      ...METHODS,
+      ...(visual
+        ? VISUAL_SCREENSHOT_METHODS.filter(
+            (method) => method === "visual.describe" || visual.screenshot === true
+          )
+        : []),
+    ],
     modules: buildModuleList(),
   };
 }
