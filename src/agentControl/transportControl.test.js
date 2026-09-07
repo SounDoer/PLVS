@@ -105,6 +105,21 @@ describe("Transport Control", () => {
     ).toEqual({ requiredFlag: "allowStopFileAnalysis" });
   });
 
+  it("refuses Transport mutations during a Device restart", () => {
+    const snapshot = buildTransportSnapshot(runtime, context);
+    expect(
+      planTransportMutation(
+        snapshot,
+        "transport.live.stop",
+        {},
+        {
+          ...context,
+          deviceTransitioning: true,
+        }
+      ).refusal
+    ).toEqual({ code: "transitionInProgress", state: "restarting" });
+  });
+
   it("validates file targets and refuses FILE entry while docked", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     expect(

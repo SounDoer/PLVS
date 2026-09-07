@@ -124,6 +124,9 @@ function result(overrides = {}) {
 }
 
 export function planTransportMutation(snapshot, method, params = {}, context = {}) {
+  if (context.deviceTransitioning === true) {
+    return result({ refusal: { code: "transitionInProgress", state: "restarting" } });
+  }
   const targetId = params.sessionId;
   const target = targetId
     ? snapshot.files.sessions.find((session) => session.id === targetId)

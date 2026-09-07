@@ -14,9 +14,11 @@ import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
 import { isSceneOperationRefused } from "../lib/sceneOperations.js";
 import {
   agentControlRpcError,
+  DEVICE_CONTROL_METHODS,
   isTransportAction,
   normalizeAgentControlRequest,
 } from "./protocol.js";
+import { buildDeviceInspection, buildDeviceList, planDeviceSelection } from "./deviceControl.js";
 import {
   buildAxisInspection,
   buildAxisSchema,
@@ -253,6 +255,23 @@ function ordinarySettingsStateSignature(settings) {
   return JSON.stringify(ordinary);
 }
 
+function requestedDeviceSignature(device) {
+  return device?.snapshot?.requestedId ?? "default";
+}
+
+function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {
+  return buildDeviceInspection(
+    { ...device.snapshot, requestedId },
+    {
+      ...device.live,
+      usingRequestedSelection:
+        requestedId === device.snapshot.requestedId
+          ? device.live?.usingRequestedSelection
+          : device.live?.state === "running",
+    }
+  );
+}
+
 /// A settlement waits only for React to render a change that has already been applied, so anything
 /// near a second means the predicate will never match. Kept well under the broker's own budget so
 /// the caller gets this specific failure instead of a transport timeout.
@@ -375,6 +394,7 @@ export function useAgentControlBridge({
   transport,
   transportContext = {},
   executeTransport = async () => ({}),
+  device = null,
   dock,
   dockContext = {},
   executeDock = async () => {},
@@ -430,6 +450,9 @@ export function useAgentControlBridge({
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
   const latestTransportRef = useRef(transport);
   const transportSettlementRef = useRef(null);
+  const latestDeviceRef = useRef(device);
+  const previousRequestedDeviceRef = useRef(requestedDeviceSignature(device));
+  const deviceSettlementRef = useRef(null);
   const previousDockSignatureRef = useRef(dockStateSignature(dock));
   const latestDockRef = useRef(dock);
   const dockSettlementRef = useRef(null);
@@ -654,6 +677,21 @@ export function useAgentControlBridge({
   }, [bumpControlRevision, scheduleWaitWake, transport]);
 
   useEffect(() => {
+    latestDeviceRef.current = device;
+    const requestedId = requestedDeviceSignature(device);
+    if (requestedId !== previousRequestedDeviceRef.current) {
+      previousRequestedDeviceRef.current = requestedId;
+      bumpControlRevision();
+      scheduleWaitWake();
+    }
+    const settlement = deviceSettlementRef.current;
+    if (settlement && requestedId === settlement.requestedId) {
+      deviceSettlementRef.current = null;
+      settlement.resolve(controlRevisionRef.current);
+    }
+  }, [bumpControlRevision, device, scheduleWaitWake]);
+
+  useEffect(() => {
     latestDockRef.current = dock;
     const signature = dockStateSignature(dock);
     if (signature !== previousDockSignatureRef.current) {
@@ -761,11 +799,276 @@ export function useAgentControlBridge({
               presets,
               settings,
               transport,
+              device: device ? deviceInspection(device) : null,
               dock: buildDockSnapshot(dock, dockContext),
               hasLoudnessReference,
               analysisContext,
             }),
           };
+        }
+
+        if (DEVICE_CONTROL_METHODS.includes(request.method)) {
+          const currentDevice = latestDeviceRef.current;
+          if (!currentDevice?.snapshot) {
+            throw semanticFailure(
+              "deviceControlUnavailable",
+              "$.method",
+              "Device Control is unavailable in the current app state.",
+              -32064
+            );
+          }
+          if (request.method === "device.list") {
+            return {
+              requestId,
+              result: {
+                revision: controlRevisionRef.current,
+                ...buildDeviceList(currentDevice.snapshot),
+              },
+            };
+          }
+          if (request.method === "device.inspect") {
+            return {
+              requestId,
+              result: {
+                revision: controlRevisionRef.current,
+                ...deviceInspection(currentDevice),
+              },
+            };
+          }
+
+          const currentRevision = controlRevisionRef.current;
+          if (request.params.expectedRevision !== currentRevision) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `Device selection changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedRevision, currentRevision }
+            );
+          }
+          if (currentDevice.runtimeUnavailable === true) {
+            throw semanticFailure(
+              "transitionInProgress",
+              "$.params",
+              "Runtime changes are unavailable while an update is being applied.",
+              -32081,
+              { state: "update" }
+            );
+          }
+
+          const planOrThrow = (controller) => {
+            const planned = planDeviceSelection(
+              controller.snapshot,
+              request.params,
+              controller.live
+            );
+            if (planned.issues.length > 0) {
+              const problem = planned.issues[0];
+              const codes = {
+                deviceNotFound: -32060,
+                deviceInventoryChanged: -32061,
+                deviceUnavailable: -32062,
+              };
+              throw semanticFailure(
+                problem.code,
+                problem.path,
+                problem.message,
+                codes[problem.code] ?? -32602,
+                problem.details
+              );
+            }
+            if (planned.refusal) {
+              throw semanticFailure(
+                planned.refusal.code,
+                "$.params",
+                "Device selection is unavailable during a Live transition.",
+                -32081,
+                planned.refusal
+              );
+            }
+            if (
+              request.params.dryRun !== true &&
+              planned.confirmationsRequired.includes("allowMeasurementRestart")
+            ) {
+              throw semanticFailure(
+                "confirmationRequired",
+                "$.params.allowMeasurementRestart",
+                "Changing the running Live device requires measurement-restart confirmation.",
+                -32041,
+                { requiredFlag: "allowMeasurementRestart" }
+              );
+            }
+            return planned;
+          };
+
+          const previewOrThrow = async (controller, planned) => {
+            if (!planned.changed) return planned;
+            try {
+              await controller.previewSelection(request.params.deviceId);
+              return planned;
+            } catch (error) {
+              if (request.params.deviceId === "default" && controller.live?.state !== "running") {
+                return {
+                  ...planned,
+                  warnings: Array.from(
+                    new Set([...planned.warnings, "automaticCurrentlyUnavailable"])
+                  ),
+                };
+              }
+              throw semanticFailure(
+                "deviceUnavailable",
+                "$.params.deviceId",
+                `The requested device is unavailable: ${error?.message || String(error)}`,
+                -32062
+              );
+            }
+          };
+
+          let planned = planOrThrow(currentDevice);
+          planned = await previewOrThrow(currentDevice, planned);
+          const predicted = deviceInspection(
+            currentDevice,
+            planned.changed ? request.params.deviceId : currentDevice.snapshot.requestedId
+          );
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            generation: currentDevice.snapshot.generation,
+            changed: planned.changed,
+            effects: planned.effects,
+            warnings: planned.warnings,
+            ...(request.params.dryRun === true
+              ? { confirmationsRequired: planned.confirmationsRequired }
+              : {}),
+            plan: planned.plan,
+            state: {
+              selection: predicted.selection,
+              live: predicted.live,
+            },
+          };
+          if (request.params.dryRun === true || !planned.changed) {
+            return { requestId, result };
+          }
+
+          const finalDevice = latestDeviceRef.current;
+          planned = planOrThrow(finalDevice);
+          planned = await previewOrThrow(finalDevice, planned);
+          const commitDevice = latestDeviceRef.current;
+          planned = planOrThrow(commitDevice);
+          if (request.params.expectedRevision !== controlRevisionRef.current) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `Device selection changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedRevision,
+                currentRevision: controlRevisionRef.current,
+              }
+            );
+          }
+          if (commitDevice.runtimeUnavailable === true) {
+            throw semanticFailure(
+              "transitionInProgress",
+              "$.params",
+              "Runtime changes became unavailable while an update was being applied.",
+              -32081,
+              { state: "update" }
+            );
+          }
+          result.effects = planned.effects;
+          result.warnings = planned.warnings;
+          result.plan = planned.plan;
+
+          const committed = new Promise((resolve, reject) => {
+            deviceSettlementRef.current = {
+              requestedId: request.params.deviceId,
+              resolve,
+              reject,
+            };
+          });
+          let restart = null;
+          try {
+            restart = planned.plan.restartLive ? commitDevice.beginRestart() : null;
+          } catch (error) {
+            deviceSettlementRef.current = null;
+            throw semanticFailure(
+              error?.code === "transitionInProgress" ? "transitionInProgress" : "commandFailed",
+              "$.params",
+              `Device restart could not begin: ${error?.message || String(error)}`,
+              error?.code === "transitionInProgress" ? -32081 : -32050
+            );
+          }
+          const restartSettlement = restart
+            ? restart.then(
+                () => null,
+                (error) => error
+              )
+            : null;
+
+          let persistenceError = null;
+          try {
+            await commitDevice.commitSelection(request.params.deviceId);
+          } catch (error) {
+            persistenceError = error;
+          }
+
+          let committedRevision = controlRevisionRef.current;
+          if (persistenceError?.stateCommitted === true) {
+            committedRevision = await awaitSettlement(
+              committed,
+              () => {
+                deviceSettlementRef.current = null;
+              },
+              "The Device selection"
+            );
+          } else if (persistenceError) {
+            deviceSettlementRef.current = null;
+          } else {
+            committedRevision = await awaitSettlement(
+              committed,
+              () => {
+                deviceSettlementRef.current = null;
+              },
+              "The Device selection"
+            );
+          }
+
+          const restartError = restartSettlement ? await restartSettlement : null;
+          const resultingDevice = latestDeviceRef.current;
+          const inspection = deviceInspection(resultingDevice);
+          if (persistenceError) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$.params.deviceId",
+              `Device selection committed but persistence failed: ${persistenceError?.message || String(persistenceError)}`,
+              -32030,
+              {
+                stateCommitted: persistenceError.stateCommitted === true,
+                revision: committedRevision,
+                generation: resultingDevice.snapshot.generation,
+                state: { selection: inspection.selection, live: inspection.live },
+              }
+            );
+          }
+          if (restartError) {
+            throw semanticFailure(
+              "deviceStartFailed",
+              "$.params.deviceId",
+              `Device selection committed but Live restart failed: ${restartError?.message || String(restartError)}`,
+              -32063,
+              {
+                stateCommitted: true,
+                revision: committedRevision,
+                generation: resultingDevice.snapshot.generation,
+                state: { selection: inspection.selection, live: inspection.live },
+              }
+            );
+          }
+          result.revision = committedRevision;
+          result.generation = resultingDevice.snapshot.generation;
+          result.state = { selection: inspection.selection, live: inspection.live };
+          return { requestId, result };
         }
 
         if (request.method === "settings.describe" || request.method === "settings.inspect") {
@@ -2520,6 +2823,7 @@ export function useAgentControlBridge({
     analysisContext,
     applySettings,
     executeTransport,
+    device,
     dock,
     dockContext,
     executeDock,

@@ -174,8 +174,12 @@ export function planDeviceSelection(snapshot, params, live = {}) {
   }
 
   const liveState = live.state ?? (live.running ? "running" : "stopped");
-  if (["starting", "stopping", "restarting"].includes(liveState)) {
-    result.refusal = { code: "transitionInProgress", state: liveState };
+  const liveTransition = live.transition ?? null;
+  if (liveTransition || ["starting", "stopping", "restarting"].includes(liveState)) {
+    result.refusal = {
+      code: "transitionInProgress",
+      state: liveTransition ?? liveState,
+    };
     return result;
   }
 

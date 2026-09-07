@@ -105,6 +105,47 @@ const dock = {
   controlsByPanelId: {},
 };
 
+const DEVICE_OUTPUT_ID = "lb-0123456789abcdef0123456789abcdef";
+const DEVICE_INPUT_ID = "cap-fedcba9876543210fedcba9876543210";
+const deviceRows = [
+  {
+    id: DEVICE_OUTPUT_ID,
+    label: "Speakers",
+    kind: "systemOutput",
+    direction: "output",
+    loopback: true,
+    sampleRateHz: 48_000,
+    channelCount: 2,
+  },
+  {
+    id: DEVICE_INPUT_ID,
+    label: "Microphone",
+    kind: "input",
+    direction: "input",
+    loopback: false,
+    sampleRateHz: 48_000,
+    channelCount: 2,
+  },
+];
+const deviceSnapshot = {
+  generation: 1,
+  observedAt: "2026-09-07T10:12:40.000Z",
+  automatic: {
+    id: "default",
+    label: "Automatic",
+    available: true,
+    resolved: { label: "Speakers", sampleRateHz: 48_000, channelCount: 2 },
+  },
+  devices: deviceRows,
+  truncated: false,
+  allDevices: deviceRows,
+  signature: "device-fixture",
+  requestedId: "default",
+  migrationState: null,
+  inventoryReady: true,
+};
+const deviceLiveStopped = { state: "stopped", transition: null, usingRequestedSelection: false };
+
 const MUTATION_METHODS = new Set([
   "workspace.applyLayout",
   "panel.update",
@@ -121,6 +162,7 @@ const MUTATION_METHODS = new Set([
   "preset.reorder",
   "config.import",
   "settings.update",
+  "device.select",
   "transport.source.live",
   "transport.source.file",
   "transport.live.start",
@@ -206,6 +248,13 @@ function Harness({
   executeAgentDock,
   controlledAgentSettings = false,
   executeAgentTransport,
+  agentDevice = deviceSnapshot,
+  agentDeviceLive = deviceLiveStopped,
+  previewAgentDevice,
+  commitAgentDevice,
+  beginAgentDeviceRestart,
+  deviceRuntimeUnavailable = false,
+  onDeviceState = () => {},
   presets = { activeId: null, dirty: false },
   presetLibraryFromStore = false,
   applyPresetToWorkspace = false,
@@ -239,7 +288,17 @@ function Harness({
   const [settingsState, setSettingsState] = useState(agentSettings);
   const effectiveSettings = controlledAgentSettings ? agentSettings : settingsState;
   const [transportState, setTransportState] = useState(agentTransport);
+  const [deviceState, setDeviceState] = useState(() => structuredClone(agentDevice));
+  const [deviceLiveState, setDeviceLiveState] = useState(agentDeviceLive);
   const [dockState, setDockState] = useState(agentDock);
+  useEffect(() => setDeviceState(structuredClone(agentDevice)), [agentDevice]);
+  useEffect(() => setDeviceLiveState(agentDeviceLive), [agentDeviceLive]);
+  onDeviceState({
+    state: deviceState,
+    live: deviceLiveState,
+    setState: setDeviceState,
+    setLive: setDeviceLiveState,
+  });
   const controlledPresets = {
     ...presetState,
     ...(presetLibraryFromStore ? subscribedPresets : {}),
@@ -361,6 +420,39 @@ function Harness({
     transport: transportState,
     transportContext: { docked: false },
     executeTransport,
+    device: {
+      snapshot: deviceState,
+      live: deviceLiveState,
+      runtimeUnavailable: deviceRuntimeUnavailable,
+      previewSelection: previewAgentDevice
+        ? (deviceId) => previewAgentDevice(deviceId, { setDeviceState, setDeviceLiveState })
+        : async (deviceId) => {
+            if (deviceId === "default") {
+              return { label: "Speakers", sampleRateHz: 48_000, channels: 2 };
+            }
+            const match = deviceState.allDevices.find(({ id }) => id === deviceId);
+            if (!match) throw new Error("device missing");
+            return {
+              label: match.label,
+              sampleRateHz: match.sampleRateHz,
+              channels: match.channelCount,
+            };
+          },
+      commitSelection: commitAgentDevice
+        ? (deviceId) => commitAgentDevice(deviceId, { setDeviceState, setDeviceLiveState })
+        : async (deviceId) => setDeviceState((current) => ({ ...current, requestedId: deviceId })),
+      beginRestart: beginAgentDeviceRestart
+        ? () => beginAgentDeviceRestart({ setDeviceState, setDeviceLiveState })
+        : () => {
+            setDeviceLiveState((current) => ({
+              ...current,
+              state: "running",
+              transition: null,
+              usingRequestedSelection: true,
+            }));
+            return Promise.resolve();
+          },
+    },
     dock: dockState,
     dockContext: {
       platform: "windows",
@@ -516,6 +608,423 @@ describe("useAgentControlBridge", () => {
     view.unmount();
     expect(adapter.unlisten).toHaveBeenCalledTimes(1);
     expect(adapter.notReady).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Device Control", () => {
+    it("handles every advertised Device query with bounded public state", async () => {
+      mount();
+      await waitUntilReady();
+      const capabilities = await send(request("app.capabilities"));
+      for (const method of ["device.list", "device.inspect", "device.select"]) {
+        expect(capabilities.result.methods).toContain(method);
+      }
+
+      const listed = await send(request("device.list", {}, "device-list"));
+      expect(listed.result).toMatchObject({
+        revision: 0,
+        generation: 1,
+        automatic: { id: "default", available: true },
+        devices: [
+          { id: DEVICE_OUTPUT_ID, kind: "systemOutput" },
+          { id: DEVICE_INPUT_ID, kind: "input" },
+        ],
+        truncated: false,
+      });
+      expect(listed.result).not.toHaveProperty("allDevices");
+      expect(listed.result).not.toHaveProperty("signature");
+
+      const inspected = await send(request("device.inspect", {}, "device-inspect"));
+      expect(inspected.result).toMatchObject({
+        revision: 0,
+        generation: 1,
+        selection: { requestedId: "default", mode: "automatic", available: true },
+        live: { running: false, transition: null, usingRequestedSelection: false },
+      });
+    });
+
+    it("selects an exact stopped device after two preflight checks and advances revision once", async () => {
+      const preview = vi.fn(async () => ({
+        label: "Microphone",
+        sampleRateHz: 48_000,
+        channels: 2,
+      }));
+      const commit = vi.fn(async (deviceId, { setDeviceState }) => {
+        setDeviceState((current) => ({ ...current, requestedId: deviceId }));
+      });
+      mount({ previewAgentDevice: preview, commitAgentDevice: commit });
+      await waitUntilReady();
+      const selected = await send(
+        request("device.select", {
+          deviceId: DEVICE_INPUT_ID,
+          expectedGeneration: 1,
+        })
+      );
+      expect(preview).toHaveBeenCalledTimes(2);
+      expect(commit).toHaveBeenCalledOnce();
+      expect(selected.result).toMatchObject({
+        dryRun: false,
+        revision: 1,
+        generation: 1,
+        changed: true,
+        effects: [],
+        warnings: [],
+        plan: { from: "default", to: DEVICE_INPUT_ID, restartLive: false },
+        state: {
+          selection: { requestedId: DEVICE_INPUT_ID, mode: "exact", available: true },
+          live: { running: false },
+        },
+      });
+      const transportAfter = await send(request("transport.inspect", {}, "transport-after-device"));
+      expect(transportAfter.result.live.state).toBe("stopped");
+      expect(transportAfter.result.files.sessions).toEqual([]);
+    });
+
+    it("dry-runs a running switch without confirmation or mutation", async () => {
+      const preview = vi.fn(async () => ({}));
+      const commit = vi.fn();
+      const beginRestart = vi.fn();
+      mount({
+        agentDeviceLive: {
+          state: "running",
+          transition: null,
+          usingRequestedSelection: true,
+        },
+        previewAgentDevice: preview,
+        commitAgentDevice: commit,
+        beginAgentDeviceRestart: beginRestart,
+      });
+      await waitUntilReady();
+      const response = await send(
+        request("device.select", {
+          deviceId: DEVICE_INPUT_ID,
+          expectedGeneration: 1,
+          dryRun: true,
+        })
+      );
+      expect(response.result).toMatchObject({
+        dryRun: true,
+        revision: 0,
+        changed: true,
+        effects: ["measurementRestart"],
+        confirmationsRequired: ["allowMeasurementRestart"],
+        state: { live: { running: true, usingRequestedSelection: true } },
+      });
+      expect(preview).toHaveBeenCalledOnce();
+      expect(commit).not.toHaveBeenCalled();
+      expect(beginRestart).not.toHaveBeenCalled();
+    });
+
+    it("treats a running exact no-op as side-effect free", async () => {
+      const selected = { ...structuredClone(deviceSnapshot), requestedId: DEVICE_INPUT_ID };
+      const preview = vi.fn();
+      const commit = vi.fn();
+      const beginRestart = vi.fn();
+      mount({
+        agentDevice: selected,
+        agentDeviceLive: {
+          state: "running",
+          transition: null,
+          usingRequestedSelection: true,
+        },
+        previewAgentDevice: preview,
+        commitAgentDevice: commit,
+        beginAgentDeviceRestart: beginRestart,
+      });
+      await waitUntilReady();
+      const response = await send(
+        request("device.select", { deviceId: DEVICE_INPUT_ID, expectedGeneration: 1 })
+      );
+      expect(response.result).toMatchObject({
+        revision: 0,
+        changed: false,
+        effects: [],
+        warnings: [],
+      });
+      expect(preview).not.toHaveBeenCalled();
+      expect(commit).not.toHaveBeenCalled();
+      expect(beginRestart).not.toHaveBeenCalled();
+    });
+
+    it("waits for real running restart readiness before success", async () => {
+      const ready = createDeferred();
+      const beginRestart = vi.fn(() => ready.promise);
+      mount({
+        agentDeviceLive: {
+          state: "running",
+          transition: null,
+          usingRequestedSelection: true,
+        },
+        beginAgentDeviceRestart: beginRestart,
+      });
+      await waitUntilReady();
+      const raw = request(
+        "device.select",
+        {
+          deviceId: DEVICE_INPUT_ID,
+          expectedGeneration: 1,
+          allowMeasurementRestart: true,
+        },
+        "device-ready"
+      );
+      act(() => adapter.handler(raw));
+      await waitFor(() => expect(beginRestart).toHaveBeenCalledOnce());
+      expect(adapter.responses.some(({ requestId }) => requestId === raw.id)).toBe(false);
+      ready.resolve();
+      await waitFor(() =>
+        expect(adapter.responses.some(({ requestId }) => requestId === raw.id)).toBe(true)
+      );
+      const response = adapter.responses.find(({ requestId }) => requestId === raw.id);
+      expect(response.result).toMatchObject({
+        revision: 1,
+        changed: true,
+        effects: ["measurementRestart"],
+      });
+    });
+
+    it("rejects stale revision, stale generation, missing IDs, and transition before mutation", async () => {
+      const preview = vi.fn();
+      const commit = vi.fn();
+      mount({ previewAgentDevice: preview, commitAgentDevice: commit });
+      await waitUntilReady();
+      const cases = [
+        [
+          { deviceId: DEVICE_INPUT_ID, expectedRevision: 9, expectedGeneration: 1 },
+          "revisionConflict",
+        ],
+        [{ deviceId: DEVICE_INPUT_ID, expectedGeneration: 9 }, "deviceInventoryChanged"],
+        [{ deviceId: "cap-missing", expectedGeneration: 1 }, "deviceNotFound"],
+      ];
+      for (const [params, code] of cases) {
+        const response = await send(request("device.select", params, `device-${code}`));
+        expect(response.error.data.reason).toBe(code);
+      }
+      expect(preview).not.toHaveBeenCalled();
+      expect(commit).not.toHaveBeenCalled();
+    });
+
+    it("requires confirmation before preflight or mutation while Live is running", async () => {
+      const preview = vi.fn();
+      const commit = vi.fn();
+      mount({
+        agentDeviceLive: {
+          state: "running",
+          transition: null,
+          usingRequestedSelection: true,
+        },
+        previewAgentDevice: preview,
+        commitAgentDevice: commit,
+      });
+      await waitUntilReady();
+      const response = await send(
+        request("device.select", { deviceId: DEVICE_INPUT_ID, expectedGeneration: 1 })
+      );
+      expect(response.error.data.reason).toBe("confirmationRequired");
+      expect(preview).not.toHaveBeenCalled();
+      expect(commit).not.toHaveBeenCalled();
+    });
+
+    it("refuses unavailable Automatic while running and an existing restart transition", async () => {
+      const unavailable = {
+        ...structuredClone(deviceSnapshot),
+        requestedId: DEVICE_INPUT_ID,
+        automatic: { id: "default", label: "Automatic", available: false, resolved: null },
+      };
+      const commit = vi.fn();
+      mount({
+        agentDevice: unavailable,
+        agentDeviceLive: {
+          state: "running",
+          transition: null,
+          usingRequestedSelection: true,
+        },
+        commitAgentDevice: commit,
+      });
+      await waitUntilReady();
+      const unavailableResponse = await send(
+        request(
+          "device.select",
+          {
+            deviceId: "default",
+            expectedGeneration: 1,
+            allowMeasurementRestart: true,
+          },
+          "automatic-running"
+        )
+      );
+      expect(unavailableResponse.error.data.reason).toBe("deviceUnavailable");
+      expect(commit).not.toHaveBeenCalled();
+
+      cleanup();
+      adapter.handler = null;
+      adapter.responses.length = 0;
+      adapter.ready.mockClear();
+      mount({
+        agentDeviceLive: {
+          state: "running",
+          transition: "restarting",
+          usingRequestedSelection: false,
+        },
+        commitAgentDevice: commit,
+      });
+      await waitUntilReady();
+      const transition = await send(
+        request("device.select", { deviceId: DEVICE_INPUT_ID, expectedGeneration: 1 })
+      );
+      expect(transition.error.data.reason).toBe("transitionInProgress");
+      expect(commit).not.toHaveBeenCalled();
+    });
+
+    it("persists for a selected File session without modifying it", async () => {
+      const fileTransport = {
+        ...structuredClone(transport),
+        source: "file",
+        files: {
+          activeId: "file-1",
+          analyzingId: null,
+          sessions: [
+            { id: "file-1", path: "C:/audio.wav", fileName: "audio.wav", state: "complete" },
+          ],
+        },
+      };
+      mount({ agentTransport: fileTransport });
+      await waitUntilReady();
+      const response = await send(
+        request("device.select", { deviceId: DEVICE_INPUT_ID, expectedGeneration: 1 })
+      );
+      expect(response.result).toMatchObject({ changed: true, effects: [] });
+      const after = await send(request("transport.inspect", {}, "file-after-device"));
+      expect(after.result).toMatchObject({
+        source: "file",
+        files: { activeId: "file-1", analyzingId: null },
+      });
+    });
+
+    it("rechecks generation after preview and fails a hotplug race before restart or commit", async () => {
+      const commit = vi.fn();
+      const beginRestart = vi.fn();
+      const secondPreview = createDeferred();
+      const preview = vi.fn().mockResolvedValueOnce({}).mockReturnValueOnce(secondPreview.promise);
+      let owner;
+      mount({
+        previewAgentDevice: preview,
+        commitAgentDevice: commit,
+        beginAgentDeviceRestart: beginRestart,
+        onDeviceState: (next) => (owner = next),
+      });
+      await waitUntilReady();
+      const raw = request(
+        "device.select",
+        { deviceId: DEVICE_INPUT_ID, expectedGeneration: 1 },
+        "hotplug-race"
+      );
+      act(() => adapter.handler(raw));
+      await waitFor(() => expect(preview).toHaveBeenCalledTimes(2));
+      act(() =>
+        owner.setState((current) => ({
+          ...current,
+          generation: 2,
+          devices: current.devices.filter(({ id }) => id !== DEVICE_INPUT_ID),
+          allDevices: current.allDevices.filter(({ id }) => id !== DEVICE_INPUT_ID),
+        }))
+      );
+      secondPreview.resolve({});
+      await waitFor(() =>
+        expect(adapter.responses.some(({ requestId }) => requestId === raw.id)).toBe(true)
+      );
+      const response = adapter.responses.find(({ requestId }) => requestId === raw.id);
+      expect(response.error.data.reason).toBe("deviceInventoryChanged");
+      expect(commit).not.toHaveBeenCalled();
+      expect(beginRestart).not.toHaveBeenCalled();
+    });
+
+    it("allows unavailable Automatic only while stopped and returns its warning", async () => {
+      const unavailable = {
+        ...structuredClone(deviceSnapshot),
+        requestedId: DEVICE_INPUT_ID,
+        automatic: { id: "default", label: "Automatic", available: false, resolved: null },
+      };
+      const preview = vi.fn(async () => {
+        throw new Error("no default output");
+      });
+      mount({ agentDevice: unavailable, previewAgentDevice: preview });
+      await waitUntilReady();
+      const response = await send(
+        request("device.select", { deviceId: "default", expectedGeneration: 1 })
+      );
+      expect(response.result).toMatchObject({
+        changed: true,
+        warnings: ["automaticCurrentlyUnavailable"],
+        state: { selection: { requestedId: "default", available: false } },
+      });
+    });
+
+    it("reports persistence and restart failures with committed state", async () => {
+      const persistence = vi.fn(async (deviceId, { setDeviceState }) => {
+        setDeviceState((current) => ({ ...current, requestedId: deviceId }));
+        const error = new Error("disk full");
+        error.stateCommitted = true;
+        throw error;
+      });
+      mount({ commitAgentDevice: persistence });
+      await waitUntilReady();
+      const persisted = await send(
+        request("device.select", { deviceId: DEVICE_INPUT_ID, expectedGeneration: 1 })
+      );
+      expect(persisted.error.data).toMatchObject({
+        reason: "persistenceFailed",
+        details: { stateCommitted: true, revision: 1 },
+      });
+
+      cleanup();
+      adapter.handler = null;
+      adapter.responses.length = 0;
+      adapter.ready.mockClear();
+      const failedRestart = vi.fn(async ({ setDeviceLiveState }) => {
+        setDeviceLiveState({ state: "error", transition: null, usingRequestedSelection: false });
+        throw new Error("device busy");
+      });
+      mount({
+        agentDeviceLive: {
+          state: "running",
+          transition: null,
+          usingRequestedSelection: true,
+        },
+        beginAgentDeviceRestart: failedRestart,
+      });
+      await waitUntilReady();
+      const restarted = await send(
+        request("device.select", {
+          deviceId: DEVICE_INPUT_ID,
+          expectedGeneration: 1,
+          allowMeasurementRestart: true,
+        })
+      );
+      expect(restarted.error.data).toMatchObject({
+        reason: "deviceStartFailed",
+        details: {
+          stateCommitted: true,
+          revision: 1,
+          state: { selection: { requestedId: DEVICE_INPUT_ID }, live: { running: false } },
+        },
+      });
+    });
+
+    it("separates GUI selection revision from inventory generation changes", async () => {
+      let owner;
+      mount({ onDeviceState: (next) => (owner = next) });
+      await waitUntilReady();
+      act(() => owner.setState((current) => ({ ...current, generation: 2 })));
+      const hotplug = await send(request("device.list", {}, "hotplug"));
+      expect(hotplug.result).toMatchObject({ revision: 0, generation: 2 });
+
+      act(() => owner.setState((current) => ({ ...current, requestedId: DEVICE_INPUT_ID })));
+      const gui = await send(request("device.inspect", {}, "gui-selection"));
+      expect(gui.result).toMatchObject({
+        revision: 1,
+        generation: 2,
+        selection: { requestedId: DEVICE_INPUT_ID },
+      });
+    });
   });
 
   it("attaches one listener when StrictMode re-runs the effect mid-installation", async () => {

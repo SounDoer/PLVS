@@ -231,5 +231,12 @@ describe("Device Control selection planner", () => {
       planDeviceSelection(state, { deviceId: CAP, expectedGeneration: 1 }, { state: "restarting" })
         .refusal
     ).toEqual({ code: "transitionInProgress", state: "restarting" });
+    expect(
+      planDeviceSelection(
+        state,
+        { deviceId: CAP, expectedGeneration: 1 },
+        { state: "running", transition: "restarting" }
+      ).refusal
+    ).toEqual({ code: "transitionInProgress", state: "restarting" });
   });
 });

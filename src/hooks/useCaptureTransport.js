@@ -70,7 +70,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
 
   const beginDeviceRestartForControl = () => {
     if (lifecycleRef.current !== "running" || deviceTransitionRef.current) {
-      return Promise.reject(transitionError(deviceTransitionRef.current ?? lifecycleRef.current));
+      throw transitionError(deviceTransitionRef.current ?? lifecycleRef.current);
     }
     deviceTransitionRef.current = "restarting";
     setDeviceTransition("restarting");

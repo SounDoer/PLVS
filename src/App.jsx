@@ -348,10 +348,13 @@ function AppContent() {
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
 
   const {
+    snapshot: audioDeviceSnapshot,
     audioDevices,
     captureDeviceId,
     safeAudioDeviceId,
     selectCaptureDevice,
+    commitCaptureDevice,
+    previewSelection,
     defaultOutputFormatSig,
     defaultOutputLabel,
   } = useAudioDevices({
@@ -1020,6 +1023,34 @@ function AppContent() {
       }),
     [captureDeviceId, docked, meterRuntime, selectedOffset]
   );
+  const agentControlDevice = useMemo(
+    () => ({
+      snapshot: audioDeviceSnapshot,
+      live: {
+        state: meterRuntime.liveLifecycle,
+        transition: meterRuntime.liveDeviceTransition,
+        usingRequestedSelection:
+          meterRuntime.liveLifecycle === "running" &&
+          meterRuntime.liveDeviceTransition === null &&
+          (captureDeviceId === "default" || meterRuntime.liveResolvedDeviceId === captureDeviceId),
+      },
+      previewSelection,
+      commitSelection: commitCaptureDevice,
+      beginRestart: beginDeviceRestartForControl,
+      runtimeUnavailable: updateBusy,
+    }),
+    [
+      audioDeviceSnapshot,
+      beginDeviceRestartForControl,
+      captureDeviceId,
+      commitCaptureDevice,
+      meterRuntime.liveDeviceTransition,
+      meterRuntime.liveLifecycle,
+      meterRuntime.liveResolvedDeviceId,
+      previewSelection,
+      updateBusy,
+    ]
+  );
   const agentControlDock = useMemo(
     () => ({
       supported: supportsDockMode(),
@@ -1251,8 +1282,12 @@ function AppContent() {
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
     transport: agentControlTransport,
-    transportContext: { docked },
+    transportContext: {
+      docked,
+      deviceTransitioning: meterRuntime.liveDeviceTransition !== null,
+    },
     executeTransport: executeAgentControlTransport,
+    device: agentControlDevice,
     dock: agentControlDock,
     dockContext: {
       platform: agentControlRuntime.platform,
