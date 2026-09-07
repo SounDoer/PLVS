@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAgentControlRequest } from "./protocol.js";
+import {
+  DEVICE_CONTROL_METHODS,
+  isDeviceMutation,
+  isDeviceQuery,
+  normalizeAgentControlRequest,
+} from "./protocol.js";
 
 function request(method, params = {}) {
   return { jsonrpc: "2.0", id: "req-1", method, params };
@@ -15,6 +20,8 @@ describe("normalizeAgentControlRequest", () => {
     "config.export",
     "settings.describe",
     "settings.inspect",
+    "device.list",
+    "device.inspect",
     "transport.inspect",
     "dock.describe",
     "dock.inspect",
@@ -23,6 +30,72 @@ describe("normalizeAgentControlRequest", () => {
       ok: true,
       request: { id: "req-1", method, params: {} },
     });
+  });
+
+  it("normalizes Device selection and classifies every Device method", () => {
+    const params = {
+      deviceId: "cap-fedcba9876543210fedcba9876543210",
+      expectedRevision: 7,
+      expectedGeneration: 3,
+      allowMeasurementRestart: true,
+      dryRun: true,
+    };
+    expect(normalizeAgentControlRequest(request("device.select", params))).toEqual({
+      ok: true,
+      request: { id: "req-1", method: "device.select", params },
+    });
+    expect(DEVICE_CONTROL_METHODS.filter(isDeviceQuery)).toEqual(["device.list", "device.inspect"]);
+    expect(DEVICE_CONTROL_METHODS.filter(isDeviceMutation)).toEqual(["device.select"]);
+  });
+
+  it.each([
+    [{ deviceId: "", expectedRevision: 1, expectedGeneration: 1 }, "$.params.deviceId"],
+    [
+      { deviceId: "x".repeat(257), expectedRevision: 1, expectedGeneration: 1 },
+      "$.params.deviceId",
+    ],
+    [{ deviceId: "default", expectedGeneration: 1 }, "$.params.expectedRevision"],
+    [{ deviceId: "default", expectedRevision: 1 }, "$.params.expectedGeneration"],
+    [
+      { deviceId: "default", expectedRevision: 1, expectedGeneration: Number.MAX_SAFE_INTEGER + 1 },
+      "$.params.expectedGeneration",
+    ],
+    [
+      {
+        deviceId: "default",
+        expectedRevision: 1,
+        expectedGeneration: 1,
+        allowMeasurementRestart: 1,
+      },
+      "$.params.allowMeasurementRestart",
+    ],
+    [
+      { deviceId: "default", expectedRevision: 1, expectedGeneration: 1, dryRun: "yes" },
+      "$.params.dryRun",
+    ],
+    [
+      { deviceId: "default", expectedRevision: 1, expectedGeneration: 1, label: "Speakers" },
+      "$.params.label",
+    ],
+    [
+      { deviceId: "default", expectedRevision: 1, expectedGeneration: 1, index: 0 },
+      "$.params.index",
+    ],
+    [
+      { deviceId: "default", expectedRevision: 1, expectedGeneration: 1, migrate: true },
+      "$.params.migrate",
+    ],
+    [
+      {
+        deviceId: "default",
+        expectedRevision: 1,
+        expectedGeneration: 1,
+        allowStopFileAnalysis: true,
+      },
+      "$.params.allowStopFileAnalysis",
+    ],
+  ])("rejects malformed or unrelated Device parameters %#", (params, path) => {
+    expect(normalizeAgentControlRequest(request("device.select", params)).error.path).toBe(path);
   });
 
   it("normalizes configuration imports as revision-guarded mutations", () => {

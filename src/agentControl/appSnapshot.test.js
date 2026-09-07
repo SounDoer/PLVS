@@ -5,6 +5,11 @@ import {
   buildAgentControlSnapshot,
   readAgentControlRuntime,
 } from "./appSnapshot.js";
+import { normalizeAgentControlRequest } from "./protocol.js";
+
+function request(method, params = {}) {
+  return { jsonrpc: "2.0", id: "req-1", method, params };
+}
 
 const runtime = {
   available: true,
@@ -77,6 +82,9 @@ describe("agent-control app snapshots", () => {
         "settings.describe",
         "settings.inspect",
         "settings.update",
+        "device.list",
+        "device.inspect",
+        "device.select",
         "app.wait",
         "transport.inspect",
         "transport.source.live",
@@ -238,6 +246,18 @@ describe("agent-control app snapshots", () => {
       "config.import",
     ]) {
       expect(capabilities.methods).toContain(method);
+    }
+  });
+
+  it("advertises every validated Device Control method", () => {
+    const capabilities = buildAgentControlCapabilities(runtime, 4);
+    for (const method of ["device.list", "device.inspect", "device.select"]) {
+      expect(capabilities.methods).toContain(method);
+      const params =
+        method === "device.select"
+          ? { deviceId: "default", expectedRevision: 4, expectedGeneration: 1 }
+          : {};
+      expect(normalizeAgentControlRequest(request(method, params)).ok).toBe(true);
     }
   });
 });

@@ -5,6 +5,7 @@ import { readPublicPanelAnalysis } from "./panelAnalysis.js";
 import { readPublicPanelAxes } from "./panelAxes.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
+import { DEVICE_CONTROL_METHODS } from "./protocol.js";
 
 const METHODS = [
   "app.capabilities",
@@ -57,6 +58,7 @@ const METHODS = [
   "settings.describe",
   "settings.inspect",
   "settings.update",
+  ...DEVICE_CONTROL_METHODS,
   "app.wait",
   "transport.inspect",
   "transport.source.live",

@@ -8,6 +8,19 @@ const TRANSPORT_ACTIONS = new Set([
 ]);
 const LIBRARY_EXPORT_METHODS = new Set(["preset.export", "theme.export", "loudnessProfile.export"]);
 const LIBRARY_IMPORT_METHODS = new Set(["preset.import", "theme.import", "loudnessProfile.import"]);
+export const DEVICE_CONTROL_METHODS = Object.freeze([
+  "device.list",
+  "device.inspect",
+  "device.select",
+]);
+
+export function isDeviceQuery(method) {
+  return method === "device.list" || method === "device.inspect";
+}
+
+export function isDeviceMutation(method) {
+  return method === "device.select";
+}
 
 export function isTransportAction(method) {
   return TRANSPORT_ACTIONS.has(method);
@@ -89,6 +102,7 @@ export function normalizeAgentControlRequest(input) {
     input.method === "config.export" ||
     input.method === "settings.describe" ||
     input.method === "settings.inspect" ||
+    isDeviceQuery(input.method) ||
     input.method === "transport.inspect" ||
     input.method === "dock.describe" ||
     input.method === "dock.inspect"
@@ -98,6 +112,69 @@ export function normalizeAgentControlRequest(input) {
     return {
       ok: true,
       request: { id: input.id, method: input.method, params: {} },
+    };
+  }
+
+  if (isDeviceMutation(input.method)) {
+    const field = unknownField(
+      input.params,
+      new Set([
+        "deviceId",
+        "expectedRevision",
+        "expectedGeneration",
+        "allowMeasurementRestart",
+        "dryRun",
+      ])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (
+      typeof input.params.deviceId !== "string" ||
+      input.params.deviceId.trim() === "" ||
+      Array.from(input.params.deviceId).length > 256
+    ) {
+      return invalidParams(
+        "$.params.deviceId",
+        "deviceId must be a non-empty string of at most 256 Unicode scalar values."
+      );
+    }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (
+      !Number.isSafeInteger(input.params.expectedGeneration) ||
+      input.params.expectedGeneration < 0
+    ) {
+      return invalidParams(
+        "$.params.expectedGeneration",
+        "expectedGeneration must be a non-negative safe integer."
+      );
+    }
+    if (
+      input.params.allowMeasurementRestart !== undefined &&
+      typeof input.params.allowMeasurementRestart !== "boolean"
+    ) {
+      return invalidParams(
+        "$.params.allowMeasurementRestart",
+        "allowMeasurementRestart must be a boolean."
+      );
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          deviceId: input.params.deviceId,
+          expectedRevision: input.params.expectedRevision,
+          expectedGeneration: input.params.expectedGeneration,
+          ...(input.params.allowMeasurementRestart !== undefined
+            ? { allowMeasurementRestart: input.params.allowMeasurementRestart }
+            : {}),
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
     };
   }
 
