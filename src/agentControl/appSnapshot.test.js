@@ -34,6 +34,8 @@ describe("agent-control app snapshots", () => {
       methods: [
         "app.capabilities",
         "app.inspect",
+        "measurement.describe",
+        "measurement.inspect",
         "workspace.applyLayout",
         "axis.describe",
         "axis.inspect",

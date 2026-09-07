@@ -10,6 +10,8 @@ import { DEVICE_CONTROL_METHODS } from "./protocol.js";
 const METHODS = [
   "app.capabilities",
   "app.inspect",
+  "measurement.describe",
+  "measurement.inspect",
   "workspace.applyLayout",
   "axis.describe",
   "axis.inspect",

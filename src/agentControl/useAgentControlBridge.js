@@ -35,6 +35,7 @@ import {
 import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
+import { buildMeasurementDescription, buildMeasurementInspection } from "./measurementControl.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
 import {
   buildLibraryList,
@@ -404,6 +405,7 @@ export function useAgentControlBridge({
   theme = null,
   hasLoudnessReference = false,
   analysisContext = {},
+  measurementContext = {},
   flush = flushPersistence,
   exportConfiguration = exportProfile,
   importConfiguration = importProfile,
@@ -735,6 +737,58 @@ export function useAgentControlBridge({
             requestId,
             result: buildAgentControlCapabilities(runtime, controlRevisionRef.current),
           };
+        }
+        if (request.method === "measurement.describe") {
+          return {
+            requestId,
+            result: buildMeasurementDescription(controlRevisionRef.current),
+          };
+        }
+        if (request.method === "measurement.inspect") {
+          try {
+            const live = measurementContext.getLiveMeasurement?.() ?? {
+              generation: 0,
+              record: null,
+            };
+            const record = live.record ?? null;
+            const labels = measurementContext.getChannelLabels?.(record) ?? [];
+            const selection = parseSelection(loudnessActive);
+            const preview = loudnessProfile?.draft != null;
+            const profileDocument = loudnessProfile?.document ?? null;
+            const profile = profileDocument
+              ? {
+                  mode: preview ? "preview" : "saved",
+                  id: preview
+                    ? (loudnessProfile.draft.editingId ?? null)
+                    : selection.kind === "profile"
+                      ? selection.id
+                      : null,
+                  name: profileDocument.name ?? null,
+                  document: profileDocument,
+                }
+              : null;
+            return {
+              requestId,
+              result: buildMeasurementInspection({
+                revision: controlRevisionRef.current,
+                observedAtMs: Date.now(),
+                liveState: measurementContext.liveState,
+                sessionGeneration: live.generation,
+                record,
+                channelLabels: labels,
+                vectorscopeRequest: measurementContext.vectorscopeRequests?.[0] ?? null,
+                dialogueActive: measurementContext.dialogueActive === true,
+                profile,
+              }),
+            };
+          } catch (error) {
+            throw semanticFailure(
+              "measurementSnapshotFailed",
+              "$",
+              `The LIVE measurement snapshot could not be formed: ${error?.message || String(error)}`,
+              -32072
+            );
+          }
         }
         if (request.method === "app.wait") {
           const activeBatch = revisionBatchRef.current;
@@ -2821,6 +2875,7 @@ export function useAgentControlBridge({
     loudnessProfile,
     loudnessProfiles,
     analysisContext,
+    measurementContext,
     applySettings,
     executeTransport,
     device,
@@ -2872,7 +2927,11 @@ export function useAgentControlBridge({
               if (afterResponse && aliveRef.current) await afterResponse();
             })
             .catch(() => undefined);
-        if (request?.method === "app.wait") {
+        if (
+          request?.method === "app.wait" ||
+          request?.method === "measurement.describe" ||
+          request?.method === "measurement.inspect"
+        ) {
           void respond(processRef.current(request));
           return;
         }

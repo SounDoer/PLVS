@@ -107,6 +107,25 @@ describe("buildTauriFrameApply", () => {
     expect(latestAudioRef.current).toBe(audioState);
   });
 
+  it("publishes the raw frame and complete reduced audio in the same handler turn", () => {
+    const onReducedFrame = vi.fn();
+    const latestAudioRef = makeOptions().latestAudioRef;
+    const frame = { seq: 8, peakDb: [-7], rmsDb: [-20], integrated: -23 };
+    const { applyFrame } = buildTauriFrameApply(
+      makeOptions({ latestAudioRef, onReducedFrame, shouldPublishDisplay: () => false })
+    );
+
+    applyFrame(frame);
+
+    expect(onReducedFrame).toHaveBeenCalledOnce();
+    expect(onReducedFrame).toHaveBeenCalledWith(frame, latestAudioRef.current);
+    expect(latestAudioRef.current).toMatchObject({
+      peakDb: [-7],
+      rmsDb: [-20],
+      integrated: -23,
+    });
+  });
+
   it("acks the latest seq every 6th frame so the bridge can bound its backlog", () => {
     const ackFrames = vi.fn();
     const { applyFrame } = buildTauriFrameApply(makeOptions({ ackFrames }));

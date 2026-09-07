@@ -51,7 +51,11 @@ import {
   clampSpectrumChannelToAvailable,
 } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
-import { roleTokensToLoudnessWeights, seedTokensFromLabels } from "./math/channelRoles.js";
+import {
+  roleTokensToLabels,
+  roleTokensToLoudnessWeights,
+  seedTokensFromLabels,
+} from "./math/channelRoles.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -1023,6 +1027,35 @@ function AppContent() {
       }),
     [captureDeviceId, docked, meterRuntime, selectedOffset]
   );
+  const measurementChannelLabels = useCallback(
+    (record) => {
+      const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
+      if (count <= 0) return [];
+      const override = channelLabelOverrides[count];
+      return getPeakMeterChannelLabels(count, {
+        channelLayout: "auto",
+        resolvedLayout: record?.loudnessLayout ?? "unknown",
+        overrideLabels: override ? roleTokensToLabels(override) : null,
+      });
+    },
+    [channelLabelOverrides]
+  );
+  const agentControlMeasurementContext = useMemo(
+    () => ({
+      getLiveMeasurement: meterRuntime.getLiveMeasurement,
+      getChannelLabels: measurementChannelLabels,
+      liveState: meterRuntime.liveLifecycle,
+      vectorscopeRequests: analysisRequests.vectorscope,
+      dialogueActive: dialogueGating,
+    }),
+    [
+      analysisRequests.vectorscope,
+      dialogueGating,
+      measurementChannelLabels,
+      meterRuntime.getLiveMeasurement,
+      meterRuntime.liveLifecycle,
+    ]
+  );
   const agentControlDevice = useMemo(
     () => ({
       snapshot: audioDeviceSnapshot,
@@ -1309,6 +1342,7 @@ function AppContent() {
     },
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
+    measurementContext: agentControlMeasurementContext,
   });
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;

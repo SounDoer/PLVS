@@ -114,6 +114,7 @@ export function applyBandGrid(frame, cache) {
  * @param {import("./FrameIntake.js").FrameIntake} opts.intake
  * @param {import("react").MutableRefObject<number>} opts.frameRef
  * @param {import("react").MutableRefObject<number | undefined>} opts.defaultSampleRateRef
+ * @param {(frame: object, audio: object) => void} [opts.onReducedFrame]
  */
 export function buildTauriFrameApply({
   histMaxSamples,
@@ -129,6 +130,7 @@ export function buildTauriFrameApply({
   // shared `audio` state that the non-scrub panels render from. Defaults to always-on for live mode.
   shouldDriveDisplay = () => true,
   shouldPublishDisplay = () => true,
+  onReducedFrame,
 }) {
   // One cache per handler: a new capture session builds a new handler, and the grid cannot outlive
   // the sample rate that produced it.
@@ -156,6 +158,7 @@ export function buildTauriFrameApply({
 
     const next = reduceMeterAudioFrame(latestAudioRef.current, f);
     latestAudioRef.current = next;
+    onReducedFrame?.(f, next);
     if (!shouldPublishDisplay()) return;
     setAudio(next);
   };

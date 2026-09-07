@@ -6,6 +6,7 @@ import { useMeterDisplay } from "../hooks/useMeterDisplay.js";
 import { clearAudioHistory } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { FrameIntake } from "../lib/FrameIntake.js";
+import { createLiveMeasurementOwner } from "./liveMeasurementOwner.js";
 
 const MeterRuntimeContext = createContext(null);
 const MeterRuntimeAssemblyContext = createContext(null);
@@ -23,6 +24,10 @@ export function MeterRuntimeProvider({ children }) {
 
   const liveIntakeRef = useRef(null);
   if (liveIntakeRef.current === null) liveIntakeRef.current = new FrameIntake();
+  const liveMeasurementOwnerRef = useRef(null);
+  if (liveMeasurementOwnerRef.current === null) {
+    liveMeasurementOwnerRef.current = createLiveMeasurementOwner();
+  }
 
   const transport = useCaptureTransport({
     display,
@@ -82,6 +87,7 @@ export function MeterRuntimeProvider({ children }) {
       }
     }
     liveIntakeRef.current.reset();
+    liveMeasurementOwnerRef.current.clear();
     if (sourceMode === "live") {
       display.clearAudio();
       display.setSelectedOffset(-1);
@@ -262,6 +268,7 @@ export function MeterRuntimeProvider({ children }) {
       liveResolvedDeviceId: transport.resolvedDeviceId,
       liveStartedAt: transport.startedAt,
       liveLastError: transport.lastError,
+      getLiveMeasurement: liveMeasurementOwnerRef.current.read,
       fileSessions,
       activeFileSession,
       analyzingFileSession,
@@ -295,6 +302,7 @@ export function MeterRuntimeProvider({ children }) {
     transport,
     routing,
     liveIntakeRef,
+    liveMeasurementOwner: liveMeasurementOwnerRef.current,
     audioRef,
     defaultSampleRateRef,
     stopFileAnalysisRef,

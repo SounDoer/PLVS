@@ -556,6 +556,7 @@ mod tests {
         "doctor",
         "capabilities",
         "inspect",
+        "measurement",
         "wait",
         "workspace",
         "panel",

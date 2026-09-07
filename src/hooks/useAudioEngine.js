@@ -55,6 +55,7 @@ export function useAudioEngine({
   transport,
   display,
   defaultSampleRateRef: externalDefaultSampleRateRef,
+  measurementOwner = null,
 }) {
   const { running, lifecycle, halt, markStarted, markStopped, markStopFailed } = transport;
   const rafRef = useRef(0);
@@ -169,6 +170,10 @@ export function useAudioEngine({
             ackFrames: (seq) => {
               void ackFrames(seq);
             },
+            onReducedFrame: (frame, nextAudio) =>
+              measurementOwner?.capture(frame, nextAudio, {
+                dialogueActive: dialogueGatingRef?.current === true,
+              }),
           });
           const applyFrame = (f) => {
             if (!mounted) return;
@@ -189,11 +194,21 @@ export function useAudioEngine({
             );
           } catch (_) {}
 
-          await startAudioCapture({
-            deviceId: engineDeviceId,
-            onFrame: applyFrame,
-          });
-          if (!mounted) return;
+          measurementOwner?.beginSession();
+          try {
+            await startAudioCapture({
+              deviceId: engineDeviceId,
+              onFrame: applyFrame,
+            });
+          } catch (error) {
+            measurementOwner?.abortSession();
+            throw error;
+          }
+          if (!mounted) {
+            measurementOwner?.abortSession();
+            return;
+          }
+          measurementOwner?.commitSession();
           audioRef.current = { mode: "tauri", unsubs };
           markStarted?.({ resolvedDeviceId: resolvedDevice.id ?? engineDeviceId });
           return;

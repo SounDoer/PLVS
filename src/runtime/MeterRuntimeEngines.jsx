@@ -19,6 +19,7 @@ export function MeterRuntimeEngines({
     transport,
     routing,
     liveIntakeRef,
+    liveMeasurementOwner,
     audioRef,
     defaultSampleRateRef,
     stopFileAnalysisRef,
@@ -66,6 +67,7 @@ export function MeterRuntimeEngines({
     dialogueVadEngineRef,
     transport,
     display,
+    measurementOwner: liveMeasurementOwner,
   });
 
   return null;

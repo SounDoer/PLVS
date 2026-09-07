@@ -14,6 +14,8 @@ describe("normalizeAgentControlRequest", () => {
   it.each([
     "app.capabilities",
     "app.inspect",
+    "measurement.describe",
+    "measurement.inspect",
     "axis.describe",
     "axis.inspect",
     "theme.inspect",

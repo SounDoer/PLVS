@@ -85,7 +85,7 @@ plvs-cli --version
 
 Use `plvs-cli --help` for the complete live-control command list. The current families are:
 
-- `inspect`, `capabilities`, and `wait`;
+- `inspect`, `capabilities`, `measurement`, and `wait`;
 - `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
@@ -99,6 +99,17 @@ plvs-cli <preset|theme|loudness-profile> list --json
 plvs-cli <preset|theme|loudness-profile> export <--all|--ids <id,...>> --json [--out <file>]
 plvs-cli <preset|theme|loudness-profile> import <file|-> --json --expected-revision <n> [--dry-run]
 ```
+
+Measurement Control reads the latest unscrumbed LIVE semantic sample:
+
+```powershell
+plvs-cli measurement describe --json
+plvs-cli measurement inspect --json
+```
+
+It never starts capture or optional analysis and does not expose File results, history, or raw
+visual data. See [Measurement Control](agent-control/measurements.md) for freshness, null reasons,
+profile evaluation, and revision behavior.
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
 Library Transfer. Loudness Profile Control additionally provides:
@@ -365,6 +376,7 @@ npm run desktop
 # Terminal B
 npm run desktop:control -- inspect --json
 npm run desktop:control -- capabilities --json
+npm run desktop:control -- measurement inspect --json
 npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
 ```
 

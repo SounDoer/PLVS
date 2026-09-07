@@ -191,6 +191,61 @@ describe("useAudioEngine", () => {
     );
   });
 
+  it("commits a LIVE measurement session only after native start succeeds", async () => {
+    const measurementOwner = {
+      beginSession: vi.fn(),
+      commitSession: vi.fn(),
+      abortSession: vi.fn(),
+      capture: vi.fn(),
+    };
+    const props = {
+      measurementOwner,
+      intake: { reset: vi.fn(), pushFrame: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    renderHook((p) => useHarness(p), { initialProps: props });
+    await waitFor(() => expect(measurementOwner.commitSession).toHaveBeenCalledOnce());
+    expect(measurementOwner.beginSession).toHaveBeenCalledBefore(measurementOwner.commitSession);
+    expect(measurementOwner.abortSession).not.toHaveBeenCalled();
+
+    const onFrame = startAudioCapture.mock.calls[0][0].onFrame;
+    act(() => onFrame({ seq: 1, peakDb: [-4], rmsDb: [-16] }));
+    expect(measurementOwner.capture).toHaveBeenCalledWith(
+      expect.objectContaining({ seq: 1 }),
+      expect.objectContaining({ peakDb: [-4], rmsDb: [-16] }),
+      { dialogueActive: false }
+    );
+  });
+
+  it("aborts a pending LIVE measurement session when native start fails", async () => {
+    startAudioCapture.mockRejectedValueOnce(new Error("start failed"));
+    const measurementOwner = {
+      beginSession: vi.fn(),
+      commitSession: vi.fn(),
+      abortSession: vi.fn(),
+      capture: vi.fn(),
+    };
+    renderHook(() =>
+      useHarness({
+        measurementOwner,
+        intake: { reset: vi.fn(), pushFrame: vi.fn() },
+        setAudio: vi.fn(),
+        raiseNotice: vi.fn(),
+        halt: vi.fn(),
+        setSelectedOffset: vi.fn(),
+        resetTimer: vi.fn(),
+        setShowClock: vi.fn(),
+      })
+    );
+    await waitFor(() => expect(measurementOwner.abortSession).toHaveBeenCalledOnce());
+    expect(measurementOwner.commitSession).not.toHaveBeenCalled();
+  });
+
   it("awaits native shutdown before starting the newly selected running device", async () => {
     let releaseStop;
     stopAudioCapture.mockReturnValueOnce(

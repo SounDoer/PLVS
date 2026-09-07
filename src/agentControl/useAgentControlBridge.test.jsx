@@ -231,6 +231,7 @@ function Harness({
   flush = vi.fn(async () => {}),
   hasLoudnessReference = false,
   analysisContext = {},
+  measurementContext = {},
   loudnessProfiles = [],
   loudnessProfilesFromStore = false,
   loudnessProfile = null,
@@ -464,6 +465,7 @@ function Harness({
     executeDock,
     hasLoudnessReference,
     analysisContext,
+    measurementContext,
     loudnessProfiles: loudnessProfilesFromStore ? subscribedProfiles : loudnessProfiles,
     loudnessProfile,
     customThemes: customThemes ?? subscribedThemes,
@@ -1091,6 +1093,92 @@ describe("useAgentControlBridge", () => {
     const second = await send(request("app.inspect", {}, "inspect-2"));
     expect(second.result.revision).toBe(1);
     expect(second.result.workspace.layout).toEqual({ type: "panel", panelId: "spectrum" });
+  });
+
+  it("describes and inspects the retained LIVE measurement without changing revision", async () => {
+    const getLiveMeasurement = vi.fn(() => ({
+      generation: 3,
+      record: {
+        generation: 3,
+        sequence: 7,
+        elapsedMs: 1200,
+        receivedAtMs: Date.now(),
+        loudnessLayout: "stereo",
+        loudnessLayoutKnown: true,
+        dialogueActive: false,
+        audio: {
+          peakDb: [-4, -5],
+          rmsDb: [-18, -19],
+          truePeakL: -3,
+          truePeakR: -4,
+          tpMax: -1,
+          momentary: -18,
+          shortTerm: -19,
+          integrated: -20,
+          mMax: -14,
+          stMax: -16,
+          lra: 5,
+          correlation: -Infinity,
+          sideToMidDb: -Infinity,
+          vectorscopePairX: 0,
+          vectorscopePairY: 1,
+          dialogueIntegrated: -Infinity,
+          dialogueLra: 0,
+          dialoguePercent: null,
+          dialogueActiveNow: false,
+        },
+      },
+    }));
+    mount({
+      measurementContext: {
+        getLiveMeasurement,
+        getChannelLabels: () => ["Left", "Right"],
+        liveState: "running",
+        vectorscopeRequests: [],
+        dialogueActive: false,
+      },
+    });
+    await waitUntilReady();
+
+    const description = await send(request("measurement.describe", {}, "measurement-describe"));
+    const first = await send(request("measurement.inspect", {}, "measurement-first"));
+    const second = await send(request("measurement.inspect", {}, "measurement-second"));
+
+    expect(description.result).toMatchObject({
+      revision: 0,
+      schemaVersion: 1,
+      source: "live",
+      freshnessThresholdMs: 2000,
+    });
+    expect(first.result).toMatchObject({
+      revision: 0,
+      source: { kind: "live", state: "running", sessionGeneration: 3 },
+      sample: { sequence: 7, elapsedMs: 1200, freshness: "fresh" },
+      topology: { channelLabels: ["Left", "Right"] },
+      levels: { channels: [{ peakDbfs: -4 }, { peakDbfs: -5 }] },
+      stereo: { pair: null, correlation: null, sideToMidDb: null },
+      dialogue: { active: false },
+    });
+    expect(first.result.unavailable["stereo.correlation"]).toBe("analysisInactive");
+    expect(second.result.revision).toBe(0);
+    expect(getLiveMeasurement).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns no-sample Measurement inspection as a successful query", async () => {
+    mount({
+      measurementContext: {
+        getLiveMeasurement: () => ({ generation: 4, record: null }),
+        liveState: "stopped",
+      },
+    });
+    await waitUntilReady();
+    const response = await send(request("measurement.inspect", {}, "measurement-empty"));
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({
+      revision: 0,
+      source: { state: "stopped", sessionGeneration: 4 },
+      sample: { sequence: null, freshness: "unavailable" },
+    });
   });
 
   it("lists and describes saved Presets through public shapes", async () => {

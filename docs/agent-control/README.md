@@ -3,7 +3,8 @@
 Date: 2026-09-03
 
 Status: Living design record; Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
-Transport, Device, and Dock Control decisions are approved unless explicitly marked otherwise
+Transport, Device, Dock, and Measurement Control decisions are approved unless explicitly marked
+otherwise
 
 This directory records the implemented Agent Control contract. It complements the
 first-slice design in
@@ -19,6 +20,7 @@ The development-identity build exposes all approved command families:
 app.capabilities
 app.inspect
 app.wait
+measurement.describe / measurement.inspect
 workspace.applyLayout
 panel.describe / panel.update / panel.reset
 axis.describe / axis.inspect / axis shared / axis panel
@@ -42,6 +44,7 @@ The repository entrypoint selects the development identity and forwards the flat
 npm run desktop:control -- capabilities --json
 npm run desktop:control -- inspect --json
 npm run desktop:control -- wait --after-revision 0 --timeout-ms 30000 --json
+npm run desktop:control -- measurement inspect --json
 npm run desktop:control -- workspace apply layout.json --expected-revision 0 --json
 npm run desktop:control -- panel describe spectrum --json
 npm run desktop:control -- settings inspect --json
@@ -62,10 +65,11 @@ paths as the GUI.
 ## Implementation status
 
 The foundation, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
-Settings, Revision Wait, Transport, Device Control, Dock Control, Library Transfer, and
-Configuration Transfer are implemented. See [`devices.md`](devices.md), [`themes.md`](themes.md),
-and [`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration
-remains a deferred product decision.
+Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Library
+Transfer, and Configuration Transfer are implemented. See [`measurements.md`](measurements.md),
+[`devices.md`](devices.md), [`themes.md`](themes.md), and
+[`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration remains
+a deferred product decision.
 
 ## Keeping this contract in step with the app
 

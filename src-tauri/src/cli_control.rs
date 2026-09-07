@@ -19,6 +19,7 @@ static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 pub const COMMAND_NAMES: &[&str] = &[
   "capabilities",
   "inspect",
+  "measurement",
   "wait",
   "workspace",
   "panel",
@@ -43,6 +44,9 @@ pub enum ControlCommand {
   FamilyHelp(String),
   Capabilities,
   Inspect,
+  MeasurementRead {
+    method: String,
+  },
   PanelDescribe {
     panel_id: String,
   },
@@ -235,6 +239,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
       return Err(format!("The {command} command requires --json."));
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
+    [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
@@ -251,7 +256,18 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|measurement|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
+}
+
+fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
+  if let [action, flag] = args {
+    if matches!(action.as_str(), "describe" | "inspect") && flag == "--json" {
+      return Ok(ControlCommand::MeasurementRead {
+        method: format!("measurement.{action}"),
+      });
+    }
+  }
+  Err("Usage: plvs-cli measurement <describe|inspect> --json".to_string())
 }
 
 fn parse_device_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1646,7 +1662,7 @@ fn is_help(value: &str) -> bool {
 }
 
 fn base_help_text() -> &'static str {
-  "PLVS CLI - Agent Control\n\nUsage:\n  plvs-cli capabilities --json\n  plvs-cli inspect --json\n  plvs-cli workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel describe <panel-id> --json\n  plvs-cli panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis describe --json\n  plvs-cli axis inspect --json\n  plvs-cli axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset list --json\n  plvs-cli preset describe <preset-id> --json\n  plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli preset import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli theme list --json\n  plvs-cli theme export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli theme import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli loudness-profile list --json\n  plvs-cli loudness-profile export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli settings describe --json\n  plvs-cli settings inspect --json\n  plvs-cli settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli transport inspect --json\n  plvs-cli transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
+  "PLVS CLI - Agent Control\n\nUsage:\n  plvs-cli capabilities --json\n  plvs-cli inspect --json\n  plvs-cli measurement describe --json\n  plvs-cli measurement inspect --json\n  plvs-cli workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel describe <panel-id> --json\n  plvs-cli panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis describe --json\n  plvs-cli axis inspect --json\n  plvs-cli axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset list --json\n  plvs-cli preset describe <preset-id> --json\n  plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli preset import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli theme list --json\n  plvs-cli theme export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli theme import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli loudness-profile list --json\n  plvs-cli loudness-profile export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli settings describe --json\n  plvs-cli settings inspect --json\n  plvs-cli settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli transport inspect --json\n  plvs-cli transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
 }
 
 pub fn help_text() -> &'static str {
@@ -1916,6 +1932,7 @@ fn command_name(command: &ControlCommand) -> String {
     }
     ControlCommand::Capabilities => "app.capabilities".to_string(),
     ControlCommand::Inspect => "app.inspect".to_string(),
+    ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::PanelDescribe { .. } => "panel.describe".to_string(),
     ControlCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
     ControlCommand::PanelUpdate { .. } => "panel.update".to_string(),
@@ -1983,6 +2000,7 @@ fn request_for_command<R: Read>(
   let params = match command {
     ControlCommand::Capabilities
     | ControlCommand::Inspect
+    | ControlCommand::MeasurementRead { .. }
     | ControlCommand::AxisDescribe
     | ControlCommand::AxisInspect
     | ControlCommand::PresetList
@@ -2665,6 +2683,57 @@ mod tests {
       Ok(ControlCommand::Inspect)
     );
     assert!(parse_control_args(&args(&["inspect"])).is_err());
+  }
+
+  #[test]
+  fn parses_measurement_queries_and_rejects_every_extra_option() {
+    assert_eq!(
+      parse_control_args(&args(&["measurement", "describe", "--json"])),
+      Ok(ControlCommand::MeasurementRead {
+        method: "measurement.describe".to_string(),
+      })
+    );
+    assert_eq!(
+      parse_control_args(&args(&["measurement", "inspect", "--json"])),
+      Ok(ControlCommand::MeasurementRead {
+        method: "measurement.inspect".to_string(),
+      })
+    );
+    for invalid in [
+      args(&["measurement", "inspect"]),
+      args(&["measurement", "inspect", "--json", "--source", "file"]),
+      args(&["measurement", "inspect", "--json", "--dry-run"]),
+      args(&[
+        "measurement",
+        "inspect",
+        "--json",
+        "--expected-revision",
+        "1",
+      ]),
+      args(&["measurement", "wait", "--json"]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn measurement_help_and_requests_use_the_public_wire_methods() {
+    let help = family_help_text("measurement");
+    assert!(help.contains("plvs-cli measurement describe --json"));
+    assert!(help.contains("plvs-cli measurement inspect --json"));
+
+    for (action, method) in [
+      ("describe", "measurement.describe"),
+      ("inspect", "measurement.inspect"),
+    ] {
+      let command = parse_control_args(&args(&["measurement", action, "--json"])).unwrap();
+      let request = request_for_command(&command, &mut Cursor::new(Vec::<u8>::new())).unwrap();
+      assert_eq!(request.method, method);
+      assert_eq!(request.params, serde_json::json!({}));
+    }
   }
 
   #[test]

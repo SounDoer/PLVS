@@ -93,6 +93,8 @@ export function normalizeAgentControlRequest(input) {
   if (
     input.method === "app.capabilities" ||
     input.method === "app.inspect" ||
+    input.method === "measurement.describe" ||
+    input.method === "measurement.inspect" ||
     input.method === "axis.describe" ||
     input.method === "axis.inspect" ||
     input.method === "preset.list" ||

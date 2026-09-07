@@ -293,20 +293,20 @@ Why it is a good first slice:
 Open design question: whether report generation is a query or a file-writing action. The app-side
 report is read-only, while the CLI-side `--out` write can still fail after a successful response.
 
-### Add a bounded measurement API
+### Bounded Measurement API — V1 complete
 
 This is the largest new product capability and likely the most valuable to automation.
 
 #### Latest semantic measurement
 
-Proposed shape:
+Implemented V1 shape:
 
 ```text
 plvs-cli measurement describe --json
-plvs-cli measurement inspect --json [--source live|active-file]
+plvs-cli measurement inspect --json
 ```
 
-Return one coherent semantic sample, not frontend canvas data:
+V1 returns one coherent latest LIVE semantic sample, not frontend canvas data:
 
 - capture/source state, sample timestamp, age, and trust/health status;
 - per-channel peak and true peak;
@@ -318,7 +318,9 @@ Return one coherent semantic sample, not frontend canvas data:
 Do not add measurement changes to the global configuration revision. They are high-frequency data
 and would break the existing optimistic-concurrency and revision-wait model.
 
-#### Runtime wait predicates
+File measurements remain a separate later slice; V1 deliberately has no `--source` option.
+
+#### Runtime wait predicates — deferred
 
 After the snapshot contract is stable:
 
