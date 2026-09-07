@@ -29,6 +29,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "config",
   "settings",
   "transport",
+  "device",
   "dock",
 ];
 
@@ -170,6 +171,16 @@ pub enum ControlCommand {
   },
   SettingsDescribe,
   SettingsInspect,
+  DeviceRead {
+    method: String,
+  },
+  DeviceSelect {
+    device_id: String,
+    expected_revision: Option<u64>,
+    expected_generation: Option<u64>,
+    allow_measurement_restart: bool,
+    dry_run: bool,
+  },
   TransportInspect,
   TransportMutation {
     method: String,
@@ -234,12 +245,115 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "config" => return parse_config_args(rest),
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
     [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
+    [command, rest @ ..] if command == "device" => return parse_device_args(rest),
     [command, rest @ ..] if command == "dock" => return parse_dock_args(rest),
     [command, rest @ ..] if command == "wait" => return parse_wait_args(rest),
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|dock> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
+}
+
+fn parse_device_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| is_help(argument)) {
+    return Ok(ControlCommand::FamilyHelp("device".to_string()));
+  }
+  if let [action, flag] = args {
+    if matches!(action.as_str(), "list" | "inspect") && flag == "--json" {
+      return Ok(ControlCommand::DeviceRead {
+        method: format!("device.{action}"),
+      });
+    }
+  }
+
+  let [action, device_id, rest @ ..] = args else {
+    return Err("Usage: plvs-cli device <list|inspect|select> ... --json".to_string());
+  };
+  if action != "select" {
+    return Err("Usage: plvs-cli device <list|inspect|select> ... --json".to_string());
+  }
+  if !is_device_id(device_id) {
+    return Err(
+      "The device ID must be default or an exact lb-<32 lowercase hex> / cap-<32 lowercase hex> ID returned by device list."
+        .to_string(),
+    );
+  }
+
+  let mut expected_revision = None;
+  let mut expected_generation = None;
+  let mut allow_measurement_restart = false;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = 0;
+  while index < rest.len() {
+    match rest[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--allow-measurement-restart" => {
+        allow_measurement_restart = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--expected-revision" | "--expected-generation" => {
+        let option = rest[index].clone();
+        let raw = rest
+          .get(index + 1)
+          .ok_or_else(|| format!("Missing value for {option}."))?;
+        let parsed = raw
+          .parse::<u64>()
+          .map_err(|_| format!("The {option} value must be a non-negative safe integer."))?;
+        if parsed > MAX_SAFE_REVISION {
+          return Err(format!(
+            "The {option} value must be a non-negative safe integer."
+          ));
+        }
+        if option == "--expected-revision" {
+          expected_revision = Some(parsed);
+        } else {
+          expected_generation = Some(parsed);
+        }
+        index += 2;
+      }
+      value => return Err(format!("Unexpected device argument: {value}")),
+    }
+  }
+  if !json {
+    return Err("The device command requires --json.".to_string());
+  }
+  if expected_revision.is_none() {
+    return Err("The device.select command requires --expected-revision.".to_string());
+  }
+  if expected_generation.is_none() {
+    return Err("The device.select command requires --expected-generation.".to_string());
+  }
+  Ok(ControlCommand::DeviceSelect {
+    device_id: device_id.clone(),
+    expected_revision,
+    expected_generation,
+    allow_measurement_restart,
+    dry_run,
+  })
+}
+
+fn is_device_id(value: &str) -> bool {
+  if value == "default" {
+    return true;
+  }
+  let Some(hex) = value
+    .strip_prefix("lb-")
+    .or_else(|| value.strip_prefix("cap-"))
+  else {
+    return false;
+  };
+  hex.len() == 32
+    && hex
+      .bytes()
+      .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn parse_config_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1541,7 +1655,7 @@ pub fn help_text() -> &'static str {
     .get_or_init(|| {
       base_help_text().replacen(
         "\n\nControls the already-running",
-        "\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
+        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
         1,
       )
       .replacen(
@@ -1747,6 +1861,7 @@ impl ControlFailure {
         | "presetNotFound"
         | "themeNotFound"
         | "loudnessProfileNotFound"
+        | "deviceNotFound"
         | "invalidProfile"
         | "invalidPermutation"
         | "fileSessionNotFound"
@@ -1769,7 +1884,9 @@ impl ControlFailure {
         | "fileModeActive"
         | "fileAnalysisNotActive"
         | "confirmationRequired"
-        | "channelConfigurationChanged",
+        | "channelConfigurationChanged"
+        | "deviceInventoryChanged"
+        | "deviceUnavailable",
       ) => 4,
       (_, "timeout" | "cancelled") => 5,
       _ => 1,
@@ -1829,6 +1946,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::ConfigImport { .. } => "config.import".to_string(),
     ControlCommand::SettingsDescribe => "settings.describe".to_string(),
     ControlCommand::SettingsInspect => "settings.inspect".to_string(),
+    ControlCommand::DeviceRead { method } => method.clone(),
+    ControlCommand::DeviceSelect { .. } => "device.select".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
     ControlCommand::TransportMutation { method, .. } => method.clone(),
     ControlCommand::DockRead { method } | ControlCommand::DockCommand { method, .. } => {
@@ -1871,6 +1990,7 @@ fn request_for_command<R: Read>(
     | ControlCommand::ConfigExport { .. }
     | ControlCommand::SettingsDescribe
     | ControlCommand::SettingsInspect
+    | ControlCommand::DeviceRead { .. }
     | ControlCommand::TransportInspect => serde_json::json!({}),
     ControlCommand::ThemeRead { theme_id, .. } => match theme_id {
       Some(theme_id) => serde_json::json!({ "themeId": theme_id }),
@@ -2062,6 +2182,29 @@ fn request_for_command<R: Read>(
       }
       if *allow_stop_file_analysis {
         params.insert("allowStopFileAnalysis".to_string(), Value::Bool(true));
+      }
+      Value::Object(params)
+    }
+    ControlCommand::DeviceSelect {
+      device_id,
+      expected_revision,
+      expected_generation,
+      allow_measurement_restart,
+      dry_run,
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        ("deviceId".to_string(), Value::String(device_id.clone())),
+        ("dryRun".to_string(), Value::Bool(*dry_run)),
+        (
+          "allowMeasurementRestart".to_string(),
+          Value::Bool(*allow_measurement_restart),
+        ),
+      ]);
+      if let Some(revision) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      if let Some(generation) = expected_generation {
+        params.insert("expectedGeneration".to_string(), Value::from(*generation));
       }
       Value::Object(params)
     }
@@ -3183,6 +3326,176 @@ mod tests {
   }
 
   #[test]
+  fn parses_and_builds_device_commands() {
+    assert_eq!(
+      parse_control_args(&args(&["device", "list", "--json"])),
+      Ok(ControlCommand::DeviceRead {
+        method: "device.list".to_string(),
+      })
+    );
+    assert_eq!(
+      parse_control_args(&args(&["device", "inspect", "--json"])),
+      Ok(ControlCommand::DeviceRead {
+        method: "device.inspect".to_string(),
+      })
+    );
+
+    let select = parse_control_args(&args(&[
+      "device",
+      "select",
+      "lb-0123456789abcdef0123456789abcdef",
+      "--expected-revision",
+      "4",
+      "--expected-generation",
+      "7",
+      "--allow-measurement-restart",
+      "--dry-run",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&select, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "device.select");
+    assert_eq!(
+      request.params["deviceId"],
+      "lb-0123456789abcdef0123456789abcdef"
+    );
+    assert_eq!(request.params["expectedRevision"], 4);
+    assert_eq!(request.params["expectedGeneration"], 7);
+    assert_eq!(request.params["allowMeasurementRestart"], true);
+    assert_eq!(request.params["dryRun"], true);
+
+    let automatic = parse_control_args(&args(&[
+      "device",
+      "select",
+      "default",
+      "--expected-revision",
+      "0",
+      "--expected-generation",
+      "0",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&automatic, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.params["deviceId"], "default");
+    assert_eq!(request.params["allowMeasurementRestart"], false);
+    assert_eq!(request.params["dryRun"], false);
+  }
+
+  #[test]
+  fn device_commands_reject_ambiguous_ids_missing_guards_and_unrelated_flags() {
+    for invalid in [
+      args(&["devices", "list", "--json"]),
+      args(&["device", "list"]),
+      args(&["device", "inspect", "--json", "extra"]),
+      args(&["device", "describe", "default", "--json"]),
+      args(&[
+        "device",
+        "select",
+        "Speakers",
+        "--expected-revision",
+        "1",
+        "--expected-generation",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "out:0",
+        "--expected-revision",
+        "1",
+        "--expected-generation",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "LB-0123456789ABCDEF0123456789ABCDEF",
+        "--expected-revision",
+        "1",
+        "--expected-generation",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "default",
+        "--expected-generation",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "default",
+        "--expected-revision",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "default",
+        "--expected-revision",
+        "9007199254740992",
+        "--expected-generation",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "default",
+        "--expected-revision",
+        "1",
+        "--expected-generation",
+        "-1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "default",
+        "--expected-revision",
+        "1",
+        "--expected-generation",
+        "1",
+        "--out",
+        "devices.json",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "default",
+        "--expected-revision",
+        "1",
+        "--expected-generation",
+        "1",
+        "--allow-stop-file-analysis",
+        "--json",
+      ]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+  }
+
+  #[test]
+  fn device_help_is_scoped_and_lists_both_concurrency_guards() {
+    let help = family_help_text("device");
+    assert!(help.contains("plvs-cli device list --json"));
+    assert!(help.contains("plvs-cli device inspect --json"));
+    assert!(help.contains("--expected-revision <n> --expected-generation <n>"));
+    assert!(help.contains("--allow-measurement-restart"));
+    assert!(!help.contains("plvs-cli transport"));
+  }
+
+  #[test]
   fn local_input_failures_use_invalid_arguments_json_and_exit_three() {
     let unused_client = FakeClient {
       response: Err(ControlFailure::transport(
@@ -3459,6 +3772,7 @@ mod tests {
       ("panelNotFound", None, 3),
       ("axisNotFound", None, 3),
       ("presetNotFound", None, 3),
+      ("deviceNotFound", None, 3),
       ("fileSessionNotFound", None, 3),
       ("dockPanelNotFound", None, 3),
       ("monitorNotFound", None, 3),
@@ -3477,9 +3791,12 @@ mod tests {
       ("fileAnalysisNotActive", None, 4),
       ("confirmationRequired", None, 4),
       ("channelConfigurationChanged", None, 4),
+      ("deviceInventoryChanged", None, 4),
+      ("deviceUnavailable", None, 4),
       ("timeout", None, 5),
       ("cancelled", None, 5),
       ("unexpectedRuntimeFailure", None, 1),
+      ("deviceStartFailed", None, 1),
       ("invalidControls", Some(-32602), 3),
     ];
 
