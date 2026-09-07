@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use super::capture::{AudioCapture, AudioCaptureSession};
+use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
 use super::device::DeviceInfo;
 #[cfg(target_os = "windows")]
 use super::device_enum::is_loopback_capture;
@@ -66,6 +66,7 @@ impl AudioCapture for CpalBackend {
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+    measured_pcm: Arc<MeasuredPcmSubscriptions>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     Ok(Box::new(CaptureSession::start(
       device_id,
@@ -75,6 +76,7 @@ impl AudioCapture for CpalBackend {
       loudness_weights,
       dialogue_gating,
       dialogue_vad_engine,
+      measured_pcm,
     )?))
   }
 }
@@ -115,6 +117,7 @@ impl CaptureSession {
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+    measured_pcm: Arc<MeasuredPcmSubscriptions>,
   ) -> Result<Self, String> {
     let (device, supported) = resolve_device(device_id)?;
     let sample_rate = supported.sample_rate();
@@ -145,6 +148,7 @@ impl CaptureSession {
           loudness_weights,
           dialogue_gating,
           dialogue_vad_engine,
+          measured_pcm,
           dropped_chunks,
         })
       })
@@ -174,6 +178,7 @@ struct RunCaptureArgs {
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+  measured_pcm: Arc<MeasuredPcmSubscriptions>,
   dropped_chunks: Arc<AtomicU64>,
 }
 
@@ -444,6 +449,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+  measured_pcm: Arc<MeasuredPcmSubscriptions>,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
 ) {
@@ -499,6 +505,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       .lock()
       .map(|g| *g)
       .unwrap_or(ChannelLayoutSetting::Auto);
+    measured_pcm.publish(&floats, sample_rate, channels, layout);
     let requests = analysis_requests
       .lock()
       .map(|g| g.clone())
@@ -753,6 +760,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     loudness_weights,
     dialogue_gating,
     dialogue_vad_engine,
+    measured_pcm,
     dropped_chunks,
   } = args;
   let bridge_dropped = dropped_chunks.clone();
@@ -780,6 +788,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
         loudness_weights,
         dialogue_gating,
         dialogue_vad_engine,
+        measured_pcm,
         bridge_dropped,
         pool,
       );
@@ -1193,6 +1202,7 @@ mod pcm_buffer_pool_tests {
       .expect("callback forwarder boundary");
     for forbidden in [
       "PcmDeliveryQueue",
+      "MeasuredPcm",
       "SyncSender",
       "mpsc",
       "Mutex",
@@ -1207,6 +1217,24 @@ mod pcm_buffer_pool_tests {
         "callback forwarder still has {forbidden} capability"
       );
     }
+
+    let worker_source = source
+      .split("pub(crate) fn run_meter_pipeline_bridge_thread")
+      .nth(1)
+      .expect("meter worker source")
+      .split("fn create_silence_stream")
+      .next()
+      .expect("meter worker boundary");
+    let publish = worker_source
+      .find("measured_pcm.publish")
+      .expect("measured PCM is published on the worker");
+    let dsp = worker_source
+      .find("pipeline.push_pcm_f32_with_requests")
+      .expect("DSP runs on the worker");
+    assert!(
+      publish < dsp,
+      "measured PCM must be copied before DSP mutation"
+    );
   }
 
   #[test]

@@ -2,7 +2,7 @@
 
 use tauri::AppHandle;
 
-use super::capture::{AudioCapture, AudioCaptureSession};
+use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
 #[cfg(not(target_os = "macos"))]
 use super::cpal_backend::CpalBackend;
 use super::device::DeviceInfo;
@@ -36,6 +36,7 @@ impl AudioCapture for AppAudioBackend {
     loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: std::sync::Arc<std::sync::Mutex<VadEngineKind>>,
+    measured_pcm: std::sync::Arc<MeasuredPcmSubscriptions>,
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     #[cfg(target_os = "macos")]
     {
@@ -47,6 +48,7 @@ impl AudioCapture for AppAudioBackend {
         loudness_weights,
         dialogue_gating,
         dialogue_vad_engine,
+        measured_pcm,
       )
     }
     #[cfg(not(target_os = "macos"))]
@@ -59,6 +61,7 @@ impl AudioCapture for AppAudioBackend {
         loudness_weights,
         dialogue_gating,
         dialogue_vad_engine,
+        measured_pcm,
       )
     }
   }

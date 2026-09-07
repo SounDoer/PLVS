@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use crate::audio::capture::AudioCaptureSession;
+use crate::audio::capture::{AudioCaptureSession, MeasuredPcmSubscriptions};
 use crate::dsp::speech::VadEngineKind;
 use crate::file_analysis::session::FileAnalysisSession;
 use crate::ipc::types::{AnalysisRequests, FrameSubscribers};
@@ -91,6 +91,9 @@ pub struct AppState {
   pub dialogue_gating_enabled: Arc<Mutex<bool>>,
   /// VAD engine used by dialogue-gated stats.
   pub dialogue_vad_engine: Arc<Mutex<VadEngineKind>>,
+  /// Worker-side fan-out for bounded consumers of the current Live source PCM. File analysis never
+  /// publishes here.
+  pub measured_pcm: Arc<MeasuredPcmSubscriptions>,
 }
 
 impl Default for AppState {
@@ -104,6 +107,7 @@ impl Default for AppState {
       loudness_weights: Arc::new(Mutex::new(None)),
       dialogue_gating_enabled: Arc::new(Mutex::new(false)),
       dialogue_vad_engine: Arc::new(Mutex::new(VadEngineKind::default())),
+      measured_pcm: Arc::new(MeasuredPcmSubscriptions::default()),
     }
   }
 }

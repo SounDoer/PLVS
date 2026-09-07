@@ -10,6 +10,8 @@ pub mod device_id;
 pub mod macos;
 mod platform_backend;
 
-pub use capture::{AudioCapture, AudioCaptureSession, PcmFrame};
+pub use capture::{
+  AudioCapture, AudioCaptureSession, MeasuredPcmReceiver, MeasuredPcmSubscriptions, PcmFrame,
+};
 pub use device::DeviceInfo;
 pub use platform_backend::AppAudioBackend;

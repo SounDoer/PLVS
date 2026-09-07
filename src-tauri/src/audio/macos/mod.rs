@@ -11,7 +11,7 @@ use std::thread::JoinHandle;
 
 use tauri::AppHandle;
 
-use super::capture::{AudioCapture, AudioCaptureSession};
+use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
 use super::cpal_backend::{
   append_input_devices, collect_outputs, device_id_key, device_list_label, pick_output_by_index,
   pooled_pcm_buffer_capacity, resolve_default_output, run_meter_pipeline_bridge_thread,
@@ -155,6 +155,7 @@ struct MacosTapWorkerArgs {
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+  measured_pcm: Arc<MeasuredPcmSubscriptions>,
   dropped_chunks: Arc<AtomicU64>,
 }
 
@@ -170,6 +171,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
     loudness_weights,
     dialogue_gating,
     dialogue_vad_engine,
+    measured_pcm,
     dropped_chunks,
   } = args;
 
@@ -197,6 +199,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
       loudness_weights,
       dialogue_gating,
       dialogue_vad_engine,
+      measured_pcm,
       dropped_for_thread,
       bridge_pool,
     );
@@ -281,6 +284,7 @@ impl MacosTapCaptureSession {
     loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+    measured_pcm: Arc<MeasuredPcmSubscriptions>,
   ) -> Result<Self, String> {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let clear_peak_history = Arc::new(AtomicBool::new(false));
@@ -303,6 +307,7 @@ impl MacosTapCaptureSession {
           loudness_weights,
           dialogue_gating,
           dialogue_vad_engine,
+          measured_pcm,
           dropped_chunks,
         })
       })
@@ -331,6 +336,7 @@ pub fn start_session(
   loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+  measured_pcm: Arc<MeasuredPcmSubscriptions>,
 ) -> Result<Box<dyn AudioCaptureSession>, String> {
   if is_macos_loopback_selection(device_id) {
     Ok(Box::new(MacosTapCaptureSession::start(
@@ -341,6 +347,7 @@ pub fn start_session(
       loudness_weights,
       dialogue_gating,
       dialogue_vad_engine,
+      measured_pcm,
     )?))
   } else {
     CpalBackend.start_session(
@@ -351,6 +358,7 @@ pub fn start_session(
       loudness_weights,
       dialogue_gating,
       dialogue_vad_engine,
+      measured_pcm,
     )
   }
 }

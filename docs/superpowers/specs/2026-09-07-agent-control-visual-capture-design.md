@@ -309,7 +309,8 @@ ownership of the live output file.
 
 Two audio sources exist:
 
-- `none` writes a video-only MP4 track set and is the default.
+- `none` writes a video-only MP4 track set. It is the default while File is selected and remains an
+  explicit option in either source mode.
 - `measuredSource` records only the same current Live Capture PCM source PLVS is measuring. It does
   not add a microphone, mix other system devices, or capture File analysis audio.
 
@@ -426,7 +427,8 @@ Callers inspect rather than starting another recording blindly.
 - Only PLVS-created WebViews are resolved internally by stable window label.
 - Agent Control's existing current-user pipe ACL, launch token, enable switch, request bounds, and
   activity visibility remain mandatory.
-- The default is silent recording. Microphone and arbitrary system-audio options do not exist.
+- Live defaults to measured-source recording and File defaults to silent recording. Microphone and
+  arbitrary system-audio options do not exist.
 - An active recording is visibly indicated to the user and stops safely when its source window is
   destroyed.
 

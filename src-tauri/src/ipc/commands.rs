@@ -118,6 +118,7 @@ pub fn audio_start(
     loudness_weights,
     dialogue_gating,
     dialogue_vad_engine,
+    state.inner().measured_pcm.clone(),
   )?;
   {
     let mut source = state

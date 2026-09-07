@@ -35,7 +35,10 @@ use std::time::Duration;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 
-pub use audio::{AppAudioBackend, AudioCapture, AudioCaptureSession, DeviceInfo, PcmFrame};
+pub use audio::{
+  AppAudioBackend, AudioCapture, AudioCaptureSession, DeviceInfo, MeasuredPcmReceiver,
+  MeasuredPcmSubscriptions, PcmFrame,
+};
 
 use crate::window_state::{
   clamp_to_visible, clean_active_preset_window_bounds, startup_window_is_frameless, MonitorRect,
