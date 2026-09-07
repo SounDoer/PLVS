@@ -15,6 +15,7 @@ export const LEGACY_CAPTURE_DEVICE_LS_KEY = "plvs.captureDeviceId";
 
 function validateId(raw) {
   if (raw === "default") return "default";
+  if (typeof raw === "string" && /^(lb|cap)-[0-9a-f]{32}$/.test(raw)) return raw;
   if (typeof raw === "string" && /^(in|out):\d+$/.test(raw)) return raw;
   return "default";
 }

@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  advanceDeviceGeneration,
+  normalizeDeviceInventory,
+} from "../agentControl/deviceControl.js";
 import { listAudioDevices, migrateCaptureDeviceId, previewAudioDevice } from "../ipc/commands.js";
 import {
   loadCaptureDeviceId,
@@ -8,111 +12,223 @@ import {
 import { onDeviceListChanged } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
 
+function emptyInventory() {
+  return {
+    generation: 0,
+    observedAt: new Date(0).toISOString(),
+    automatic: { id: "default", label: "Automatic", available: false, resolved: null },
+    devices: [],
+    allDevices: [],
+    truncated: false,
+    signature: "",
+    requestedId: readCaptureDeviceIdFromLocalStorage(),
+    migrationState: null,
+    inventoryReady: false,
+  };
+}
+
 /**
- * Tauri capture device list, persisted selection, default-route format signature, and migration when IDs change.
+ * Shared owner for device inventory, Automatic preview, persisted selection, and legacy migration.
+ * GUI, tray, engine runtime, and Agent Control all consume this one coherent controller.
  */
 export function useAudioDevices() {
-  const [audioDevices, setAudioDevices] = useState([]);
-  const [captureDeviceId, setCaptureDeviceId] = useState(() =>
-    readCaptureDeviceIdFromLocalStorage()
+  const [snapshot, setSnapshot] = useState(emptyInventory);
+  const snapshotRef = useRef(snapshot);
+  const refreshSequenceRef = useRef(0);
+  const migrationSequenceRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  const publish = useCallback((next) => {
+    snapshotRef.current = next;
+    if (mountedRef.current) setSnapshot(next);
+  }, []);
+
+  const updateSnapshot = useCallback(
+    (updater) => {
+      publish(updater(snapshotRef.current));
+    },
+    [publish]
   );
-  const [defaultOutputFormatSig, setDefaultOutputFormatSig] = useState("");
-  const [defaultOutputLabel, setDefaultOutputLabel] = useState("");
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    void previewAudioDevice("default").then(
-      (p) => {
-        if (cancelled || !p || !Number.isFinite(p.channels) || !Number.isFinite(p.sampleRateHz))
-          return;
-        setDefaultOutputFormatSig(`${p.channels}:${p.sampleRateHz}`);
-        if (typeof p.label === "string" && p.label.length > 0) {
-          setDefaultOutputLabel(p.label);
+  const selectCaptureDevice = useCallback(
+    async (nextId, options = {}) => {
+      const current = snapshotRef.current;
+      if (current.requestedId === nextId) {
+        if (options.migrationState && current.migrationState !== null) {
+          updateSnapshot((latest) => ({ ...latest, migrationState: null }));
         }
-      },
-      () => {}
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [audioDevices]);
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = await listAudioDevices();
-        if (!cancelled) setAudioDevices(Array.isArray(list) ? list : []);
-      } catch (_) {
-        if (!cancelled) setAudioDevices([]);
+        return { changed: false, requestedId: nextId };
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      publish({
+        ...current,
+        requestedId: nextId,
+        migrationState: options.migrationState ?? null,
+      });
+      try {
+        await saveCaptureDeviceId(nextId);
+        if (snapshotRef.current.requestedId === nextId) {
+          updateSnapshot((latest) => ({ ...latest, migrationState: null }));
+        }
+        return { changed: true, requestedId: nextId };
+      } catch (error) {
+        if (snapshotRef.current.requestedId === nextId) {
+          updateSnapshot((latest) => ({
+            ...latest,
+            migrationState: options.migrationState
+              ? { state: "failed", requestedId: options.migrationState.requestedId }
+              : null,
+          }));
+        }
+        const failure = error instanceof Error ? error : new Error(String(error));
+        failure.stateCommitted = true;
+        throw failure;
+      }
+    },
+    [publish, updateSnapshot]
+  );
+
+  const previewSelection = useCallback(async (deviceId) => previewAudioDevice(deviceId), []);
+
+  const refreshInventory = useCallback(
+    async (providedDevices) => {
+      if (!isTauri()) return snapshotRef.current;
+      const sequence = ++refreshSequenceRef.current;
+      let devices;
+      try {
+        devices = providedDevices === undefined ? await listAudioDevices() : providedDevices;
+      } catch (_) {
+        devices = [];
+      }
+      let automaticPreview = null;
+      try {
+        automaticPreview = await previewAudioDevice("default");
+      } catch (_) {}
+      if (!mountedRef.current || sequence !== refreshSequenceRef.current) {
+        return snapshotRef.current;
+      }
+      const normalized = normalizeDeviceInventory(
+        Array.isArray(devices) ? devices : [],
+        automaticPreview,
+        new Date()
+      );
+      const advanced = advanceDeviceGeneration(snapshotRef.current, normalized);
+      const next = {
+        ...advanced,
+        requestedId: snapshotRef.current.requestedId,
+        migrationState: snapshotRef.current.migrationState,
+        inventoryReady: true,
+      };
+      publish(next);
+      return next;
+    },
+    [publish]
+  );
 
   useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    void loadCaptureDeviceId().then((id) => {
-      if (!cancelled) setCaptureDeviceId(id);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isTauri()) return;
+    mountedRef.current = true;
+    if (!isTauri()) return () => void (mountedRef.current = false);
     let disposed = false;
     let unlisten = () => {};
-    (async () => {
-      const u = await onDeviceListChanged((list) => {
-        if (!disposed) setAudioDevices(Array.isArray(list) ? list : []);
-      });
-      if (!disposed) unlisten = u;
-      else u();
-    })();
+    void refreshInventory();
+    void onDeviceListChanged((devices) => {
+      if (!disposed) void refreshInventory(Array.isArray(devices) ? devices : []);
+    }).then((stop) => {
+      if (disposed) stop();
+      else unlisten = stop;
+    });
     return () => {
       disposed = true;
+      mountedRef.current = false;
+      refreshSequenceRef.current += 1;
+      migrationSequenceRef.current += 1;
       unlisten();
     };
-  }, []);
+  }, [refreshInventory]);
 
   useEffect(() => {
-    if (!isTauri() || !audioDevices.length) return;
-    if (captureDeviceId === "default") return;
-    if (audioDevices.some((d) => d.id === captureDeviceId)) return;
+    if (!isTauri()) return;
     let cancelled = false;
-    void migrateCaptureDeviceId(captureDeviceId).then((newId) => {
-      if (cancelled) return;
-      if (typeof newId === "string" && newId.length > 0) {
-        setCaptureDeviceId(newId);
-        void saveCaptureDeviceId(newId);
-        return;
+    void loadCaptureDeviceId().then((requestedId) => {
+      if (!cancelled && mountedRef.current) {
+        updateSnapshot((current) => ({ ...current, requestedId }));
       }
-      setCaptureDeviceId("default");
-      void saveCaptureDeviceId("default");
     });
     return () => {
       cancelled = true;
     };
-  }, [audioDevices, captureDeviceId]);
+  }, [updateSnapshot]);
 
-  function setCaptureDeviceIdAndPersist(nextId) {
-    setCaptureDeviceId(nextId);
-    void saveCaptureDeviceId(nextId);
-  }
+  useEffect(() => {
+    if (!isTauri() || !snapshot.inventoryReady || snapshot.requestedId === "default") return;
+    if (snapshot.allDevices.some((device) => device.id === snapshot.requestedId)) return;
+    if (snapshot.migrationState?.state === "migrating") return;
+    if (
+      snapshot.migrationState?.state === "failed" &&
+      snapshot.migrationState.requestedId === snapshot.requestedId
+    )
+      return;
+    const requestedId = snapshot.requestedId;
+    const sequence = ++migrationSequenceRef.current;
+    updateSnapshot((current) => ({
+      ...current,
+      migrationState: { state: "migrating", requestedId },
+    }));
+    void migrateCaptureDeviceId(requestedId).then(
+      async (migratedId) => {
+        if (
+          !mountedRef.current ||
+          sequence !== migrationSequenceRef.current ||
+          snapshotRef.current.requestedId !== requestedId
+        )
+          return;
+        const nextId = typeof migratedId === "string" && migratedId ? migratedId : "default";
+        try {
+          await selectCaptureDevice(nextId, {
+            migrationState: { state: "migrating", requestedId },
+          });
+        } catch (_) {}
+      },
+      () => {
+        if (mountedRef.current && sequence === migrationSequenceRef.current) {
+          updateSnapshot((current) => ({
+            ...current,
+            migrationState: { state: "failed", requestedId },
+          }));
+        }
+      }
+    );
+  }, [selectCaptureDevice, snapshot, updateSnapshot]);
+
+  const safeAudioDeviceId = useMemo(() => {
+    const allowed = new Set(["default", ...snapshot.allDevices.map((device) => device.id)]);
+    return allowed.has(snapshot.requestedId) ? snapshot.requestedId : "default";
+  }, [snapshot.allDevices, snapshot.requestedId]);
+
+  const audioDevices = useMemo(
+    () =>
+      snapshot.allDevices.map((device) => ({
+        id: device.id,
+        label: device.label,
+        isSystemOutputMonitor: device.kind === "systemOutput",
+        isLoopback: device.loopback,
+        defaultSampleRate: device.sampleRateHz,
+        channels: device.channelCount,
+      })),
+    [snapshot.allDevices]
+  );
 
   return {
+    snapshot,
     audioDevices,
-    captureDeviceId,
-    setCaptureDeviceId,
-    setCaptureDeviceIdAndPersist,
-    defaultOutputFormatSig,
-    defaultOutputLabel,
+    captureDeviceId: snapshot.requestedId,
+    safeAudioDeviceId,
+    selectCaptureDevice,
+    setCaptureDeviceIdAndPersist: selectCaptureDevice,
+    previewSelection,
+    refreshInventory,
+    defaultOutputFormatSig: snapshot.automatic.resolved
+      ? `${snapshot.automatic.resolved.channelCount}:${snapshot.automatic.resolved.sampleRateHz}`
+      : "",
+    defaultOutputLabel: snapshot.automatic.resolved?.label ?? "",
   };
 }

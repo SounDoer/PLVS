@@ -349,7 +349,8 @@ function AppContent() {
   const {
     audioDevices,
     captureDeviceId,
-    setCaptureDeviceIdAndPersist,
+    safeAudioDeviceId,
+    selectCaptureDevice,
     defaultOutputFormatSig,
     defaultOutputLabel,
   } = useAudioDevices();
@@ -391,11 +392,6 @@ function AppContent() {
     () => (audioDevices || []).filter((d) => !d.isSystemOutputMonitor),
     [audioDevices]
   );
-  const safeAudioDeviceId = useMemo(() => {
-    const allowed = new Set(["default", ...(audioDevices || []).map((d) => d.id)]);
-    return allowed.has(captureDeviceId) ? captureDeviceId : "default";
-  }, [audioDevices, captureDeviceId]);
-
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
   const { display, routing } = useMeterRuntimeAssembly();
@@ -411,6 +407,22 @@ function AppContent() {
     showClock,
   } = display;
   const { elapsedMsRef } = display.clock;
+
+  const onSelectCaptureDevice = useCallback(
+    async (deviceId) => {
+      clearNotice();
+      try {
+        await selectCaptureDevice(deviceId);
+      } catch (error) {
+        raiseNotice(
+          "error",
+          "Could not save the audio device selection.",
+          errorDetails("Device selection failed", error)
+        );
+      }
+    },
+    [clearNotice, raiseNotice, selectCaptureDevice]
+  );
 
   // Dock transitions. Exit restores the user's TRUE normal-form attributes
   // (override-not-overwrite): decorations follow focusView, always-on-top follows
@@ -1704,7 +1716,7 @@ function AppContent() {
     audioInputs,
     safeAudioDeviceId,
     defaultOutputLabel,
-    onSelectDevice: setCaptureDeviceIdAndPersist,
+    onSelectDevice: onSelectCaptureDevice,
     presets,
   });
 
@@ -1865,7 +1877,7 @@ function AppContent() {
     audioOutputs,
     audioInputs,
     safeAudioDeviceId,
-    setCaptureDeviceId: setCaptureDeviceIdAndPersist,
+    setCaptureDeviceId: onSelectCaptureDevice,
     holdFocusControls,
     focusView,
     focusViewActive,
