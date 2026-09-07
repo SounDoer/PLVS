@@ -28,11 +28,12 @@ mod windows_backend {
     DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_RATIONAL, DXGI_SAMPLE_DESC,
   };
   use windows62::Win32::Media::MediaFoundation::{
-    IMFAttributes, IMFByteStream, IMFMediaBuffer, IMFSample, IMFSinkWriter, MFCreateMediaType,
-    MFCreateMemoryBuffer, MFCreateSample, MFCreateSinkWriterFromURL, MFMediaType_Video, MFStartup,
-    MFVideoFormat_H264, MFVideoFormat_RGB32, MFVideoInterlace_Progressive, MFSTARTUP_FULL,
-    MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE,
-    MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_VERSION,
+    IMFAttributes, IMFByteStream, IMFMediaBuffer, IMFSample, IMFSinkWriter, MFCreateAttributes,
+    MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample, MFCreateSinkWriterFromURL,
+    MFMediaType_Video, MFStartup, MFTranscodeContainerType_MPEG4, MFVideoFormat_H264,
+    MFVideoFormat_RGB32, MFVideoInterlace_Progressive, MFSTARTUP_FULL,
+    MF_TRANSCODE_CONTAINERTYPE, MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE,
+    MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_VERSION,
   };
   use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
   use windows_capture::frame::Frame;
@@ -92,11 +93,17 @@ mod windows_backend {
         .encode_wide()
         .chain(std::iter::once(0))
         .collect::<Vec<_>>();
+      let mut attributes = None;
+      unsafe { MFCreateAttributes(&mut attributes, 1)? };
+      let attributes = attributes.expect("Media Foundation returned no attribute store");
+      unsafe {
+        attributes.SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_MPEG4)?;
+      }
       let writer = unsafe {
         MFCreateSinkWriterFromURL(
           PCWSTR(wide_path.as_ptr()),
           Option::<&IMFByteStream>::None,
-          Option::<&IMFAttributes>::None,
+          Some(&attributes),
         )?
       };
       let output = unsafe { MFCreateMediaType()? };

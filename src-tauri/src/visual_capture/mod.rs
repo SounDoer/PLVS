@@ -272,6 +272,7 @@ pub async fn visual_recording_start(
     let session = match session_result {
       Ok(Ok(session)) => session,
       Ok(Err(message)) => {
+        log::warn!("visual recording start failed: {message}");
         controller
           .registry()
           .fail(&created.recording_id, message.clone());
