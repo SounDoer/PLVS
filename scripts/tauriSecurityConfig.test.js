@@ -8,6 +8,9 @@ const tauriConfig = JSON.parse(
 const tauriWindowsConfig = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "tauri.windows.conf.json"), "utf8")
 );
+const tauriCliSidecarConfig = JSON.parse(
+  readFileSync(join(process.cwd(), "src-tauri", "tauri.cli-sidecar.conf.json"), "utf8")
+);
 const nsisInstallerHooks = readFileSync(
   join(process.cwd(), "src-tauri", "nsis", "installer-hooks.nsh"),
   "utf8"
@@ -99,6 +102,14 @@ describe("Tauri security configuration", () => {
         doctor: ["doctor", "--json"],
       },
     });
+  });
+
+  it("stages the isolated CLI as a Tauri external binary", () => {
+    expect(tauriCliSidecarConfig.bundle.externalBin).toEqual([
+      "binaries/ffmpeg",
+      "binaries/ffprobe",
+      "binaries/plvs-cli",
+    ]);
   });
 
   it("validates the doctor v1 envelope in installer smoke checks", () => {

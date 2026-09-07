@@ -77,11 +77,11 @@ jobs:
 
       - name: Clippy
         working-directory: src-tauri
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Test
         working-directory: src-tauri
-        run: cargo test
+        run: cargo test --workspace
 
   rust-windows:
     runs-on: windows-latest
@@ -103,8 +103,8 @@ jobs:
 
       - name: Clippy
         working-directory: src-tauri
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Test
         working-directory: src-tauri
-        run: cargo test
+        run: cargo test --workspace

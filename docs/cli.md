@@ -380,9 +380,10 @@ npm run desktop:control -- measurement inspect --json
 npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
 ```
 
-`desktop:control` selects the development app identity and forwards the supplied flat CLI command.
-It controls only an already-running development app. If its thin CLI companion finds a stale
-release-identity host binary in the shared Cargo target directory, it fails with
+`desktop:control` quietly rebuilds only the independent `src-tauri/plvs-cli` workspace package,
+selects the development app identity, and forwards the supplied flat CLI command. It controls only
+an already-running development app. If its thin CLI companion finds a stale release-identity host
+binary in the shared Cargo target directory, it fails with
 `cliHostIdentityMismatch` before parsing or executing the requested command.
 
 `npm run` prints its own banner, so use `--silent` or call the wrapper directly when stdout must be
@@ -402,3 +403,9 @@ For installed Windows validation:
 npm run desktop:release-nsis
 npm run desktop:verify-windows-installer
 ```
+
+Desktop build commands use `scripts/build-plvs-cli.mjs` to build the matching identity and stage a
+target-triple-named Tauri external binary. Tauri installs it beside the host under the stable public
+name `plvs-cli.exe` on Windows or `Contents/MacOS/plvs-cli` on macOS. The installer and DMG smoke
+checks execute the installed CLI rather than relying on an unrelated artifact in Cargo's target
+directory.

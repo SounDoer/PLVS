@@ -244,7 +244,7 @@ node scripts/bump-version.mjs <version>
 | File | Field |
 |------|-------|
 | `package.json` | `version` |
-| `src-tauri/Cargo.toml` | `[package].version` |
+| `src-tauri/Cargo.toml` | `[workspace.package].version` (inherited by `plvs` and `plvs-cli`) |
 | `src-tauri/tauri.conf.json` | `version` |
 | `src-tauri/Cargo.lock` | (via `cargo update`) |
 | `src-tauri/plvs-agent.json`, `src-tauri/nsis/agent-discovery.nsh`, `src-tauri/nsis/installer-hooks.nsh` | (via `npm run agent:generate`) |
@@ -602,8 +602,8 @@ cannot cover:
 | Gate | Platform | Checks |
 |------|----------|--------|
 | `npm run smoke:file-analysis` | Windows + macOS | Fetches FFmpeg sidecars, stages runtime names, and runs real file-analysis Rust tests |
-| `npm run desktop:verify-windows-installer` | Windows | Silent-installs NSIS output and checks app binary, FFmpeg / ffprobe sidecars, and no diagnostic binary |
-| `npm run desktop:verify-macos-dmg` | macOS | Mounts the DMG and checks the `.app`, main binary, FFmpeg / ffprobe sidecars, and no diagnostic binary |
+| `npm run desktop:verify-windows-installer` | Windows | Silent-installs NSIS output and checks the app, independently built CLI, `doctor --json`, discovery registry values, and FFmpeg / ffprobe sidecars |
+| `npm run desktop:verify-macos-dmg` | macOS | Mounts the DMG and checks the `.app`, main binary, independently built CLI, `doctor --json`, and FFmpeg / ffprobe sidecars |
 
 ### Build Matrix
 

@@ -38,7 +38,8 @@ device.list / device.inspect / device.select
 dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
 ```
 
-The repository entrypoint selects the development identity and forwards the flat CLI command:
+The repository entrypoint quietly builds the independent `src-tauri/plvs-cli` workspace package,
+selects the development identity, and forwards the flat CLI command:
 
 ```powershell
 npm run desktop:control -- capabilities --json

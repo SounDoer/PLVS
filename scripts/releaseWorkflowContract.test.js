@@ -4,15 +4,32 @@ import { cwd } from "node:process";
 import { describe, expect, it } from "vitest";
 
 const releaseWorkflow = readFileSync(join(cwd(), ".github", "workflows", "release.yml"), "utf8");
-const devBuildWorkflow = readFileSync(
-  join(cwd(), ".github", "workflows", "dev-build.yml"),
-  "utf8",
-);
-const devBuildSkill = readFileSync(
-  join(cwd(), "skills", "plvs-dev-build", "SKILL.md"),
-  "utf8",
-);
+const devBuildWorkflow = readFileSync(join(cwd(), ".github", "workflows", "dev-build.yml"), "utf8");
+const devBuildSkill = readFileSync(join(cwd(), "skills", "plvs-dev-build", "SKILL.md"), "utf8");
 const readme = readFileSync(join(cwd(), "README.md"), "utf8");
+const packageJson = JSON.parse(readFileSync(join(cwd(), "package.json"), "utf8"));
+
+describe("CLI packaging", () => {
+  it("stages the development identity for local desktop commands", () => {
+    expect(packageJson.scripts.desktop).toContain(
+      "build-plvs-cli.mjs --profile debug --identity development --stage"
+    );
+    expect(packageJson.scripts["desktop:build"]).toContain(
+      "build-plvs-cli.mjs --profile release --identity development --stage"
+    );
+    expect(packageJson.scripts.desktop).toContain("tauri.cli-sidecar.conf.json");
+    expect(packageJson.scripts["desktop:build"]).toContain("tauri.cli-sidecar.conf.json");
+  });
+
+  it("stages the matching release CLI before every desktop bundle", () => {
+    for (const script of ["desktop:dev-nsis", "desktop:release-nsis", "desktop:release-dmg"]) {
+      expect(packageJson.scripts[script]).toContain(
+        "build-plvs-cli.mjs --profile release --identity release --stage"
+      );
+      expect(packageJson.scripts[script]).toContain("tauri.cli-sidecar.conf.json");
+    }
+  });
+});
 
 describe("Windows Portable Release", () => {
   it("publishes the GUI host and CLI forwarder together in one ZIP", () => {

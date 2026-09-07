@@ -6,11 +6,13 @@ Proposed
 
 ## Implementation status
 
-Development-build checkpoint complete (2026-09-07); packaging rollout pending. `plvs-cli` is now a
-separate standard-library-only runtime package, and `desktop:control` quietly builds that package on
-every invocation. Workspace-wide quality commands, explicit Tauri staging, installer/portable/App/
-DMG verification, and the related documentation updates remain to be delivered before this ADR can
-be marked Accepted.
+Implementation complete (2026-09-07); final cross-platform verification pending. `plvs-cli` is now
+a separate standard-library-only runtime package, and `desktop:control` quietly builds that package
+on every invocation. Workspace-wide quality commands cover both packages, and one repository script
+builds and stages the matching CLI identity as an explicit Tauri external binary. Windows NSIS,
+installed `doctor --json`, registry discovery, and Portable layout passed locally. The macOS App/DMG
+check and the release-CLI/development-host live mismatch direction still require their platform/host
+verification before this ADR is marked Accepted.
 
 The checkpoint measured about 1.64 seconds for the first invocation after the package move and
 0.80 seconds for an immediate cached invocation on the development machine, versus the roughly

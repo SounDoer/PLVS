@@ -33,17 +33,17 @@ tauriConf.version = newVersion;
 writeFileSync(tauriConfPath, JSON.stringify(tauriConf, null, 2) + "\n", "utf8");
 console.log(`tauri.conf.json:       ${oldVersion} → ${newVersion}`);
 
-// src-tauri/Cargo.toml — replace only the [package] block's version line
+// src-tauri/Cargo.toml — replace only the shared [workspace.package] version line
 const cargoPath = join(root, "src-tauri", "Cargo.toml");
 const cargo = readFileSync(cargoPath, "utf8");
-const pkgIdx = cargo.indexOf("[package]");
+const pkgIdx = cargo.indexOf("[workspace.package]");
 if (pkgIdx === -1) {
-  console.error("Cargo.toml: [package] section not found");
+  console.error("Cargo.toml: [workspace.package] section not found");
   process.exit(1);
 }
 const before = cargo.slice(0, pkgIdx);
 const after = cargo.slice(pkgIdx);
-const nextSection = after.search(/\n\[(?!package)/);
+const nextSection = after.search(/\n\[(?!workspace\.package)/);
 const block = nextSection === -1 ? after : after.slice(0, nextSection);
 const rest = nextSection === -1 ? "" : after.slice(nextSection);
 const updatedBlock = block.replace(/^(\s*version\s*=\s*)"[^"]+"/m, `$1"${newVersion}"`);

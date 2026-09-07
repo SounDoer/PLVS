@@ -44,14 +44,14 @@ official releases. They are not fully verified, but they are not compile-only:
 
 - `npm run smoke:file-analysis` proves the real FFmpeg sidecar decode path.
 - `npm run desktop:verify-windows-installer` silently installs the NSIS output
-  and checks the app binary, FFmpeg / ffprobe sidecars, and no diagnostic
-  binary.
+  and checks the app binary, independently built CLI, FFmpeg / ffprobe sidecars,
+  installed `doctor --json`, and Agent discovery registry values.
 
 A green dev build means the selected ref compiled, the real file-analysis
 sidecar path worked, and the Windows installer passed the package smoke.
 
-The build first runs `npm run ffmpeg:fetch` through the desktop build scripts.
-That downloads the SHA-256-pinned FFmpeg sidecar binaries from the
+The desktop build script runs `npm run ffmpeg:fetch`, then builds and stages the release-identity
+CLI package. The fetch step downloads the SHA-256-pinned FFmpeg sidecar binaries from the
 `ffmpeg-sidecar-<version>` release into `src-tauri/binaries/`, which is needed
 because they are gitignored. This is automatic; see
 `docs/ffmpeg-sidecar-build.md` if a fetch ever fails.

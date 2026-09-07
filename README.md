@@ -155,6 +155,7 @@ npm run desktop:release-nsis  # Windows NSIS installer
 npm run desktop:release-dmg   # macOS DMG
 npm run check          # full pre-merge gate (version + format + lint + test + build + Rust)
 npm run rust:check     # Rust only: fmt + clippy + test (already part of check)
+npm run cli:build      # build only the thin plvs-cli workspace package
 npm run smoke:file-analysis   # file-mode analysis smoke test
 npm run soak:capture          # 4h capture soak; the only check that surfaces leaks and metric drift
 ```

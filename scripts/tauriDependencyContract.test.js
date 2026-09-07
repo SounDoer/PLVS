@@ -29,7 +29,6 @@ describe("Tauri dependency contracts", () => {
     expect(cargoToml).toContain('exclude = ["vendor/voice_activity_detector"]');
     expect(cliCargoToml).not.toMatch(/^\[dependencies\]$/m);
     expect(cliCargoToml).not.toMatch(/app_lib|tauri|cpal|voice_activity_detector/);
-    expect(desktopControl).toContain('const manifestPath = "src-tauri/plvs-cli/Cargo.toml"');
-    expect(desktopControl).toContain('"build", "--quiet"');
+    expect(desktopControl).toContain('buildPlvsCli({ identity: "development" })');
   });
 });
