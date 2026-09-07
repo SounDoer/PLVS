@@ -401,6 +401,9 @@ impl PendingRequest {
       .map(|submission| submission.response)
   }
 
+  // Delivery acknowledgement belongs to the Windows pipe transport. Keep it in test builds so
+  // the broker contract remains covered on every platform without exposing dead production code.
+  #[cfg(any(target_os = "windows", test))]
   pub(crate) fn wait_with_delivery_until<F>(
     &mut self,
     client_disconnected: F,
@@ -434,22 +437,24 @@ impl PendingRequest {
       match receiver.recv_timeout(remaining.min(poll_interval)) {
         Ok(Ok(FrontendSubmission {
           outcome: FrontendOutcome::Success(result),
-          delivery,
+          delivery: _delivery,
         })) => {
           self.completed = true;
           return Ok(PendingResponse {
             response: JsonRpcResponse::success(self.request_id.clone(), result),
-            delivery,
+            #[cfg(any(target_os = "windows", test))]
+            delivery: _delivery,
           });
         }
         Ok(Ok(FrontendSubmission {
           outcome: FrontendOutcome::Error(error),
-          delivery,
+          delivery: _delivery,
         })) => {
           self.completed = true;
           return Ok(PendingResponse {
             response: JsonRpcResponse::error(self.request_id.clone(), error),
-            delivery,
+            #[cfg(any(target_os = "windows", test))]
+            delivery: _delivery,
           });
         }
         Ok(Err(error)) => {
@@ -493,10 +498,12 @@ impl PendingRequest {
 
 pub(crate) struct PendingResponse {
   pub response: JsonRpcResponse,
+  #[cfg(any(target_os = "windows", test))]
   delivery: Option<DeliverySender>,
 }
 
 impl PendingResponse {
+  #[cfg(any(target_os = "windows", test))]
   pub fn confirm_delivery(self, result: Result<(), BrokerError>) {
     if let Some(sender) = self.delivery {
       let _ = sender.send(result);
