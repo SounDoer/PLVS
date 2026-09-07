@@ -2,17 +2,21 @@
 
 ## Status
 
-Proposed
+Accepted (Windows delivery scope confirmed by the owner, 2026-09-07)
 
 ## Implementation status
 
-Implementation complete (2026-09-07); final cross-platform verification pending. `plvs-cli` is now
-a separate standard-library-only runtime package, and `desktop:control` quietly builds that package
-on every invocation. Workspace-wide quality commands cover both packages, and one repository script
-builds and stages the matching CLI identity as an explicit Tauri external binary. Windows NSIS,
-installed `doctor --json`, registry discovery, and Portable layout passed locally. The macOS App/DMG
-check and the release-CLI/development-host live mismatch direction still require their platform/host
-verification before this ADR is marked Accepted.
+Delivered and verified on Windows (2026-09-07). `plvs-cli` is a separate standard-library-only
+runtime package, and `desktop:control` quietly builds that package on every invocation.
+Workspace-wide quality commands cover both packages, and one repository script builds and stages
+the matching CLI identity as an explicit Tauri external binary. Local and clean-run Dev Build
+verification covered NSIS, installed `doctor --json`, registry discovery, Portable layout, matching
+release identities, and both cross-identity rejection directions. The downloaded Portable artifact
+also passed isolated live `capabilities` and `inspect` calls.
+
+macOS live CLI delivery is not part of this acceptance. The owner deferred it until macOS has the
+corresponding CLI product functionality; its packaging path may remain prepared but is not a gate
+for this Windows-scoped decision.
 
 The checkpoint measured about 1.64 seconds for the first invocation after the package move and
 0.80 seconds for an immediate cached invocation on the development machine, versus the roughly
@@ -112,22 +116,20 @@ cargo build --quiet --manifest-path src-tauri/plvs-cli/Cargo.toml --features dev
 The wrapper continues using Cargo metadata to honor a configured target directory instead of
 assuming that `src-tauri/target` is always the output location.
 
-### 6. Package the CLI explicitly with every desktop distribution
+### 6. Package the CLI explicitly with every Windows desktop distribution
 
 Once the CLI becomes a sibling package, Tauri must not be expected to discover it as another binary
 of the application package. A repository-owned build/staging script builds the matching CLI first
 and stages it as a Tauri external binary for the current target.
 
-The staging step handles Tauri's target-triple input naming. The installed public names remain
-fixed:
+The staging step handles Tauri's target-triple input naming. The Windows public names remain fixed:
 
 - Windows install and Portable ZIP: `plvs-cli.exe` beside `plvs.exe`
-- macOS App/DMG: `Contents/MacOS/plvs-cli` beside `Contents/MacOS/plvs`
 
 The generated Agent discovery manifest and the Windows `CliPath` registry value continue pointing
-to those public names. If the external-binary mechanism cannot preserve them on either platform,
-the packaging integration must be adjusted before this ADR is marked Accepted; a target-triple
-suffix must not leak into the installed discovery path.
+to that public name. A target-triple suffix must not leak into the installed discovery path.
+macOS CLI packaging and verification are deferred until that platform exposes the corresponding
+product functionality.
 
 ### 7. Make Rust quality gates workspace-wide
 
@@ -151,7 +153,7 @@ Release and development workflows must not rely on an earlier unrelated build ha
    command experience before changing packaging.
 4. Update workspace-wide Rust checks and version validation.
 5. Add explicit CLI staging to development installers and release builds.
-6. Verify Windows NSIS, Windows Portable ZIP, macOS App, and macOS DMG contents and execution.
+6. Verify Windows NSIS and Windows Portable ZIP contents and execution.
 7. Update `docs/cli.md`, `docs/agent-control/README.md`, `CONTRIBUTING.md`, and workflow contract
    tests where their build description changes.
 
@@ -171,8 +173,6 @@ isolation solves the original latency/noise problem before expanding the release
 - Windows installer verification proves that `plvs-cli.exe` is installed, registered, and can run
   `doctor --json`.
 - Windows Portable ZIP contains `plvs.exe` and `plvs-cli.exe` together.
-- macOS verification proves that `Contents/MacOS/plvs-cli` exists, is executable, and can run
-  `doctor --json` from the installed App/DMG.
 - `npm run check` passes with workspace-wide Rust coverage.
 
 Wall-clock timing is recorded before and after the change as supporting evidence, not as a brittle
@@ -188,9 +188,7 @@ performance contract.
   unrelated binary target.
 - Release packaging becomes more explicit and therefore slightly more complex. This is preferable
   to relying on an incidental same-package binary build.
-- Windows and macOS packaging are part of the change even though live Agent Control is currently
-  Windows-only, because `plvs-cli doctor` and Agent discovery are shipped and verified on both
-  platforms.
+- macOS live CLI delivery and its packaging verification remain a separate future product decision.
 
 ## Alternatives considered
 
