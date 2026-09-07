@@ -1,5 +1,6 @@
 use serde::Serialize;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{self, Read};
 use std::path::Path;
@@ -34,6 +35,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "transport",
   "device",
   "dock",
+  "visual",
 ];
 
 pub fn is_command(command: &str) -> bool {
@@ -228,6 +230,13 @@ pub enum ControlCommand {
     expected_revision: Option<u64>,
     dry_run: bool,
   },
+  VisualDescribe,
+  VisualScreenshot {
+    target: String,
+    panel_id: Option<String>,
+    expected_revision: Option<u64>,
+    out: String,
+  },
   SettingsUpdate {
     input: String,
     expected_revision: Option<u64>,
@@ -274,11 +283,104 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
     [command, rest @ ..] if command == "device" => return parse_device_args(rest),
     [command, rest @ ..] if command == "dock" => return parse_dock_args(rest),
+    [command, rest @ ..] if command == "visual" => return parse_visual_args(rest),
     [command, rest @ ..] if command == "wait" => return parse_wait_args(rest),
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+}
+
+fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| is_help(argument)) {
+    return Ok(ControlCommand::FamilyHelp("visual".to_string()));
+  }
+  if let [action, json] = args {
+    if action == "describe" && json == "--json" {
+      return Ok(ControlCommand::VisualDescribe);
+    }
+  }
+  let [action, rest @ ..] = args else {
+    return Err("Usage: plvs-cli visual <describe|screenshot> ... --json".to_string());
+  };
+  if action != "screenshot" {
+    return Err("Usage: plvs-cli visual <describe|screenshot> ... --json".to_string());
+  }
+
+  let mut target = None;
+  let mut panel_id = None;
+  let mut expected_revision = None;
+  let mut out = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < rest.len() {
+    let flag = rest[index].as_str();
+    match flag {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      "--target" | "--panel-id" | "--expected-revision" | "--out" => {
+        let Some(value) = rest.get(index + 1) else {
+          return Err(format!("The {flag} option requires a value."));
+        };
+        if value.trim().is_empty() || value.starts_with("--") {
+          return Err(format!("The {flag} option requires a value."));
+        }
+        match flag {
+          "--target" if target.is_none() => target = Some(value.clone()),
+          "--panel-id" if panel_id.is_none() => panel_id = Some(value.clone()),
+          "--out" if out.is_none() => out = Some(value.clone()),
+          "--expected-revision" if expected_revision.is_none() => {
+            let revision = value.parse::<u64>().map_err(|_| {
+              "The --expected-revision option must be a non-negative integer.".to_string()
+            })?;
+            if revision > MAX_SAFE_REVISION {
+              return Err(format!(
+                "The --expected-revision option must be at most {MAX_SAFE_REVISION}."
+              ));
+            }
+            expected_revision = Some(revision);
+          }
+          _ => return Err(format!("The {flag} option may be specified only once.")),
+        }
+        index += 2;
+      }
+      _ => return Err(format!("Unknown visual screenshot option: {flag}")),
+    }
+  }
+  if !json {
+    return Err("The visual screenshot command requires --json.".to_string());
+  }
+  let target = match target.as_deref() {
+    Some("main") => "main",
+    Some("workspace") => "workspace",
+    Some("panel") => "panel",
+    Some("dock-header") => "dockHeader",
+    Some("dock-editor") => "dockEditor",
+    Some(value) => {
+      return Err(format!(
+        "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, or dock-editor."
+      ))
+    }
+    None => return Err("The visual screenshot command requires --target.".to_string()),
+  };
+  if target == "panel" && panel_id.is_none() {
+    return Err("The panel target requires --panel-id.".to_string());
+  }
+  if target != "panel" && panel_id.is_some() {
+    return Err("The --panel-id option is valid only with --target panel.".to_string());
+  }
+  let Some(out) = out else {
+    return Err("The visual screenshot command requires --out.".to_string());
+  };
+
+  Ok(ControlCommand::VisualScreenshot {
+    target: target.to_string(),
+    panel_id,
+    expected_revision,
+    out,
+  })
 }
 
 fn parse_module_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1858,7 +1960,7 @@ pub fn help_text() -> &'static str {
       )
       .replacen(
         "\n\nControls the already-running",
-        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
+        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli visual describe --json\n  plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json\n\nControls the already-running",
         1,
       )
       .replacen(
@@ -2169,6 +2271,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::DockRead { method } | ControlCommand::DockCommand { method, .. } => {
       method.clone()
     }
+    ControlCommand::VisualDescribe => "visual.describe".to_string(),
+    ControlCommand::VisualScreenshot { .. } => "visual.screenshot".to_string(),
     ControlCommand::SettingsUpdate { .. } => "settings.update".to_string(),
     ControlCommand::Wait { .. } => "app.wait".to_string(),
   }
@@ -2210,7 +2314,8 @@ fn request_for_command<R: Read>(
     | ControlCommand::SettingsDescribe
     | ControlCommand::SettingsInspect
     | ControlCommand::DeviceRead { .. }
-    | ControlCommand::TransportInspect => serde_json::json!({}),
+    | ControlCommand::TransportInspect
+    | ControlCommand::VisualDescribe => serde_json::json!({}),
     ControlCommand::ModuleDescribe { module_id } => {
       serde_json::json!({ "moduleId": module_id })
     }
@@ -2371,6 +2476,24 @@ fn request_for_command<R: Read>(
         if let Some(revision) = expected_revision {
           params.insert("expectedRevision".to_string(), Value::from(*revision));
         }
+      }
+      Value::Object(params)
+    }
+    ControlCommand::VisualScreenshot {
+      target,
+      panel_id,
+      expected_revision,
+      ..
+    } => {
+      let mut target_value =
+        serde_json::Map::from_iter([("kind".to_string(), Value::String(target.clone()))]);
+      if let Some(panel_id) = panel_id {
+        target_value.insert("panelId".to_string(), Value::String(panel_id.clone()));
+      }
+      let mut params =
+        serde_json::Map::from_iter([("target".to_string(), Value::Object(target_value))]);
+      if let Some(revision) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*revision));
       }
       Value::Object(params)
     }
@@ -2880,6 +3003,84 @@ fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code
   }
 }
 
+fn copy_visual_artifact(report: &mut ControlReport, out: &str) -> Result<(), String> {
+  let artifact = report
+    .result
+    .as_ref()
+    .and_then(|result| result.get("artifact"))
+    .and_then(Value::as_object)
+    .ok_or_else(|| "PLVS returned no screenshot artifact to copy.".to_string())?;
+  if artifact.get("kind").and_then(Value::as_str) != Some("screenshot") {
+    return Err("PLVS returned an artifact with an unexpected kind.".to_string());
+  }
+  if artifact.get("mediaType").and_then(Value::as_str) != Some("image/png") {
+    return Err("PLVS returned a screenshot with an unexpected media type.".to_string());
+  }
+  let staged_path = artifact
+    .get("stagedPath")
+    .and_then(Value::as_str)
+    .filter(|path| !path.is_empty())
+    .ok_or_else(|| "PLVS returned a screenshot without a staged path.".to_string())?
+    .to_string();
+  let expected_bytes = artifact
+    .get("bytes")
+    .and_then(Value::as_u64)
+    .ok_or_else(|| "PLVS returned a screenshot without a valid byte count.".to_string())?;
+  let expected_sha256 = artifact
+    .get("sha256")
+    .and_then(Value::as_str)
+    .filter(|hash| hash.len() == 64 && hash.bytes().all(|byte| byte.is_ascii_hexdigit()))
+    .ok_or_else(|| "PLVS returned a screenshot without a valid SHA-256 digest.".to_string())?
+    .to_string();
+
+  let contents = fs::read(Path::new(&staged_path))
+    .map_err(|error| format!("Unable to read the staged screenshot at {staged_path}: {error}"))?;
+  if contents.len() as u64 != expected_bytes {
+    return Err(format!(
+      "The staged screenshot byte count did not match: expected {expected_bytes}, found {}.",
+      contents.len()
+    ));
+  }
+  let actual_sha256 = Sha256::digest(&contents)
+    .iter()
+    .map(|byte| format!("{byte:02x}"))
+    .collect::<String>();
+  if !actual_sha256.eq_ignore_ascii_case(&expected_sha256) {
+    return Err("The staged screenshot SHA-256 digest did not match.".to_string());
+  }
+
+  // Do not remove the recoverable staged path until the caller's copy has reached disk. Existing
+  // destinations are overwritten, matching the CLI's document-export behavior.
+  fs::write(Path::new(out), &contents)
+    .map_err(|error| format!("Unable to write the screenshot to {out}: {error}"))?;
+  let artifact = report
+    .result
+    .as_mut()
+    .and_then(|result| result.get_mut("artifact"))
+    .and_then(Value::as_object_mut)
+    .expect("validated screenshot artifact changed before metadata update");
+  artifact.remove("stagedPath");
+  artifact.insert("out".to_string(), Value::String(out.to_string()));
+  Ok(())
+}
+
+/// Materializes successful screenshot artifacts without ever sending the caller's path to PLVS.
+fn finish_visual_output(command: &ControlCommand, report: &mut ControlReport, exit_code: u8) -> u8 {
+  let ControlCommand::VisualScreenshot { out, .. } = command else {
+    return exit_code;
+  };
+  if exit_code != 0 {
+    return exit_code;
+  }
+  match copy_visual_artifact(report, out) {
+    Ok(()) => exit_code,
+    Err(failure) => {
+      eprintln!("{failure}");
+      1
+    }
+  }
+}
+
 pub fn run(command: ControlCommand) -> ExitCode {
   match &command {
     ControlCommand::Help => {
@@ -2894,6 +3095,7 @@ pub fn run(command: ControlCommand) -> ExitCode {
   }
   let (mut report, exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
   let exit_code = finish_export(&command, &mut report, exit_code);
+  let exit_code = finish_visual_output(&command, &mut report, exit_code);
   match serde_json::to_string(&report) {
     Ok(json) => println!("{json}"),
     Err(error) => {
@@ -5299,6 +5501,257 @@ mod tests {
       0
     );
     assert_eq!(other.result.unwrap()["pack"]["kind"], "theme-pack");
+  }
+
+  #[test]
+  fn parses_visual_commands_builds_every_target_shape_and_keeps_out_local() {
+    let describe = parse_control_args(&args(&["visual", "describe", "--json"])).unwrap();
+    assert_eq!(describe, ControlCommand::VisualDescribe);
+    let request = request_for_command(&describe, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "visual.describe");
+    assert_eq!(request.params, serde_json::json!({}));
+
+    for (cli_target, wire_target) in [
+      ("main", "main"),
+      ("workspace", "workspace"),
+      ("dock-header", "dockHeader"),
+      ("dock-editor", "dockEditor"),
+    ] {
+      let command = parse_control_args(&args(&[
+        "visual",
+        "screenshot",
+        "--target",
+        cli_target,
+        "--out",
+        "capture.png",
+        "--json",
+      ]))
+      .unwrap();
+      let request = request_for_command(&command, &mut Cursor::new([])).unwrap();
+      assert_eq!(request.method, "visual.screenshot");
+      assert_eq!(
+        request.params,
+        serde_json::json!({ "target": { "kind": wire_target } })
+      );
+      assert!(request.params.get("out").is_none());
+    }
+
+    let panel = parse_control_args(&args(&[
+      "visual",
+      "screenshot",
+      "--target",
+      "panel",
+      "--panel-id",
+      "spectrum-2",
+      "--expected-revision",
+      "42",
+      "--out",
+      "panel.png",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&panel, &mut Cursor::new([])).unwrap();
+    assert_eq!(
+      request.params,
+      serde_json::json!({
+        "target": { "kind": "panel", "panelId": "spectrum-2" },
+        "expectedRevision": 42
+      })
+    );
+    assert!(request.params.get("out").is_none());
+  }
+
+  #[test]
+  fn visual_parser_enforces_panel_output_json_and_closed_options() {
+    let help = family_help_text("visual");
+    assert!(help.contains("plvs-cli visual describe --json"));
+    assert!(help.contains("plvs-cli visual screenshot --target"));
+    assert!(help_text().contains("dock-header|dock-editor"));
+
+    for invalid in [
+      args(&["visual", "describe"]),
+      args(&["visual", "describe", "--json", "extra"]),
+      args(&[
+        "visual",
+        "screenshot",
+        "--target",
+        "panel",
+        "--out",
+        "x.png",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "screenshot",
+        "--target",
+        "main",
+        "--panel-id",
+        "spectrum-2",
+        "--out",
+        "x.png",
+        "--json",
+      ]),
+      args(&["visual", "screenshot", "--target", "main", "--json"]),
+      args(&["visual", "screenshot", "--target", "main", "--out", "x.png"]),
+      args(&[
+        "visual",
+        "screenshot",
+        "--target",
+        "desktop",
+        "--out",
+        "x.png",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "screenshot",
+        "--target",
+        "main",
+        "--out",
+        "x.png",
+        "--bogus",
+        "--json",
+      ]),
+      args(&[
+        "visual",
+        "screenshot",
+        "--target",
+        "main",
+        "--expected-revision",
+        "9007199254740992",
+        "--out",
+        "x.png",
+        "--json",
+      ]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+    assert_eq!(
+      parse_control_args(&args(&["visual", "--help"])),
+      Ok(ControlCommand::FamilyHelp("visual".to_string()))
+    );
+  }
+
+  fn screenshot_report(staged_path: &Path, contents: &[u8]) -> ControlReport {
+    let sha256 = Sha256::digest(contents)
+      .iter()
+      .map(|byte| format!("{byte:02x}"))
+      .collect::<String>();
+    ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({
+        "revision": 9,
+        "artifact": {
+          "artifactId": "art-test",
+          "kind": "screenshot",
+          "mediaType": "image/png",
+          "stagedPath": staged_path,
+          "width": 2,
+          "height": 1,
+          "bytes": contents.len(),
+          "sha256": sha256,
+          "createdAt": "2026-09-07T12:00:00Z"
+        }
+      })),
+      error: None,
+    }
+  }
+
+  fn visual_screenshot_command(out: &Path) -> ControlCommand {
+    ControlCommand::VisualScreenshot {
+      target: "main".to_string(),
+      panel_id: None,
+      expected_revision: None,
+      out: out.to_string_lossy().into_owned(),
+    }
+  }
+
+  #[test]
+  fn visual_output_verifies_and_overwrites_before_replacing_staged_path() {
+    let nonce = REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let staged = std::env::temp_dir().join(format!("plvs-staged-{nonce}.png"));
+    let out = std::env::temp_dir().join(format!("plvs-out-{nonce}.png"));
+    let contents = b"not-a-real-png-but-verified-test-bytes";
+    fs::write(&staged, contents).unwrap();
+    fs::write(&out, b"old contents").unwrap();
+    let mut report = screenshot_report(&staged, contents);
+
+    assert_eq!(
+      finish_visual_output(&visual_screenshot_command(&out), &mut report, 0),
+      0
+    );
+    assert_eq!(fs::read(&out).unwrap(), contents);
+    let artifact = &report.result.unwrap()["artifact"];
+    assert_eq!(artifact["out"], out.to_string_lossy().as_ref());
+    assert!(artifact.get("stagedPath").is_none());
+    assert_eq!(artifact["bytes"], contents.len());
+    assert_eq!(artifact["kind"], "screenshot");
+    fs::remove_file(staged).unwrap();
+    fs::remove_file(out).unwrap();
+  }
+
+  #[test]
+  fn visual_output_failures_exit_one_and_preserve_recoverable_metadata() {
+    let nonce = REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let staged = std::env::temp_dir().join(format!("plvs-staged-failure-{nonce}.png"));
+    let missing = std::env::temp_dir().join(format!("plvs-missing-{nonce}.png"));
+    let out = std::env::temp_dir().join(format!("plvs-unused-{nonce}.png"));
+    let contents = b"screenshot";
+
+    let mut missing_report = screenshot_report(&missing, contents);
+    assert_eq!(
+      finish_visual_output(&visual_screenshot_command(&out), &mut missing_report, 0),
+      1
+    );
+    assert_eq!(
+      missing_report.result.as_ref().unwrap()["artifact"]["stagedPath"],
+      missing.to_string_lossy().as_ref()
+    );
+
+    fs::write(&staged, contents).unwrap();
+    let mut hash_mismatch = screenshot_report(&staged, contents);
+    hash_mismatch.result.as_mut().unwrap()["artifact"]["sha256"] = Value::String("0".repeat(64));
+    assert_eq!(
+      finish_visual_output(&visual_screenshot_command(&out), &mut hash_mismatch, 0),
+      1
+    );
+    assert!(hash_mismatch.result.as_ref().unwrap()["artifact"]
+      .get("stagedPath")
+      .is_some());
+    assert!(!out.exists());
+
+    let mut write_failure = screenshot_report(&staged, contents);
+    assert_eq!(
+      finish_visual_output(
+        &visual_screenshot_command(Path::new(&unwritable_path())),
+        &mut write_failure,
+        0
+      ),
+      1
+    );
+    assert!(write_failure.result.as_ref().unwrap()["artifact"]
+      .get("stagedPath")
+      .is_some());
+    assert!(write_failure.result.as_ref().unwrap()["artifact"]
+      .get("out")
+      .is_none());
+
+    for (field, value) in [("kind", "recording"), ("mediaType", "video/mp4")] {
+      let mut wrong_type = screenshot_report(&staged, contents);
+      wrong_type.result.as_mut().unwrap()["artifact"][field] = Value::String(value.to_string());
+      assert_eq!(
+        finish_visual_output(&visual_screenshot_command(&out), &mut wrong_type, 0),
+        1
+      );
+      assert!(wrong_type.result.as_ref().unwrap()["artifact"]
+        .get("stagedPath")
+        .is_some());
+    }
+    fs::remove_file(staged).unwrap();
   }
 
   #[test]
