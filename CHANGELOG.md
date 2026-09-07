@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through `plvs-cli loudness-profile`, with strict documents, dry-run plans, and revision guards.
 - Agent Control can inspect and select Appearance and describe, create, update, rename, duplicate,
   delete, and reorder Themes through `plvs-cli theme`, using strict Theme V2 documents.
+- Agent Control can list and inspect the current audio-device inventory and select an exact device
+  or Automatic through `plvs-cli device`, with independent hotplug generations and confirmed Live
+  restart settlement.
 
 ### Changed
 

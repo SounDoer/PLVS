@@ -3,7 +3,7 @@
 Date: 2026-09-03
 
 Status: Living design record; Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
-Transport, and Dock Control decisions are approved unless explicitly marked otherwise
+Transport, Device, and Dock Control decisions are approved unless explicitly marked otherwise
 
 This directory records the implemented Agent Control contract. It complements the
 first-slice design in
@@ -32,6 +32,7 @@ loudnessProfile create / update / rename / delete / reorder / export / import
 config export / config import
 settings.describe / settings.inspect / settings.update
 transport.inspect / transport source / transport live / transport file
+device.list / device.inspect / device.select
 dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
 ```
 
@@ -45,6 +46,7 @@ npm run desktop:control -- workspace apply layout.json --expected-revision 0 --j
 npm run desktop:control -- panel describe spectrum --json
 npm run desktop:control -- settings inspect --json
 npm run desktop:control -- transport inspect --json
+npm run desktop:control -- device list --json
 npm run desktop:control -- dock inspect --json
 ```
 
@@ -60,9 +62,10 @@ paths as the GUI.
 ## Implementation status
 
 The foundation, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
-Settings, Revision Wait, Transport, Dock Control, Library Transfer, and Configuration Transfer are
-implemented. See [`themes.md`](themes.md) and [`loudness-profiles.md`](loudness-profiles.md) for the
-full authoring contracts. MCP integration remains a deferred product decision.
+Settings, Revision Wait, Transport, Device Control, Dock Control, Library Transfer, and
+Configuration Transfer are implemented. See [`devices.md`](devices.md), [`themes.md`](themes.md),
+and [`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration
+remains a deferred product decision.
 
 ## Keeping this contract in step with the app
 
@@ -136,8 +139,8 @@ report live panel instances or mutable state beyond the current revision.
 
 This is a snapshot of the running application's mutable state. As command families are added, it
 reports the Workspace, panel instances, each panel's complete public controls, compact Preset and
-Settings state, Dock state, Transport state, and the current top-level `revision`. It reports
-values, not control schemas.
+Settings state, Dock state, Transport state, Device selection state, and the current top-level
+`revision`. It reports values, not control schemas.
 
 Panels are an array in `panelOrder`; each entry contains `id`, `moduleId`, `title`, complete public
 `controls`, effective read-only `axes`, and module-specific `analysis`. The same panel shape is used

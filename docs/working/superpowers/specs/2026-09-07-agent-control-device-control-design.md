@@ -1,7 +1,7 @@
 # Agent Control Device Control — Design
 
 Date: 2026-09-07
-Status: Draft for discussion
+Status: Approved design contract
 
 ## 1. Goal
 

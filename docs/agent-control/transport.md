@@ -41,6 +41,12 @@ There is no context-sensitive generic start, stop, or clear command. The GUI's c
 button is appropriate for a visible human surface, while explicit LIVE and FILE verbs prevent an
 agent from applying the current mode's destructive meaning by accident.
 
+Transport owns source and lifecycle; [Device Control](devices.md) owns the persisted requested
+capture device. `device select` may restart an already-running Live session after explicit
+confirmation, but it does not replace `transport live start/stop`, change the LIVE/FILE source, or
+stop File analysis. Doctor's `device-enumeration` check diagnoses the installed capture rig and is
+not a running-app selection command.
+
 ## LIVE lifecycle
 
 LIVE exposes `stopped`, `starting`, `running`, `stopping`, or `error`, together with requested and

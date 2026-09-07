@@ -33,6 +33,7 @@ The running-app surface now covers:
 - scene construction: Workspace, Panel, Axis, Preset, and Dock Control;
 - global preferences: Settings Control;
 - source lifecycle: live and file Transport Control;
+- audio-source inventory, inspection, and exact/Automatic Device Control;
 - portable libraries: Preset, Theme, and Loudness Profile list/export/import;
 - Loudness Profile inspection, authoring, selection, deletion, and ordering;
 - Appearance inspection/selection and Theme inspection, authoring, duplication, deletion, and
@@ -48,8 +49,8 @@ Important constraints of the current baseline:
 - Running-app commands are machine-first and require `--json`.
 - CLI `inspect` (wire method `app.inspect`) intentionally contains semantic state, not measurement
   frames or history.
-- configuration reset, device selection, Preset editing beyond its existing commands, and runtime
-  measurement queries are intentionally outside the existing contract.
+- configuration reset and runtime measurement queries are intentionally outside the existing
+  contract.
 - the internal `analyze` and `capture` harness commands are release-verification tools, not public
   CLI promises.
 
@@ -95,7 +96,8 @@ The current working priority is deliberately narrower than the candidate backlog
 
 1. complete the fourth Settings transfer row with Configuration Transfer (done);
 2. add Loudness Profile inspection and editing commands (done);
-3. add Appearance and Theme inspection and editing commands (done).
+3. add Appearance and Theme inspection and editing commands (done);
+4. add bounded Device Control with independent hotplug concurrency (done).
 
 Preset editing is not part of this new work: Preset Control already supports describe, save,
 update, apply, rename, delete, and reorder. Its transfer commands are also complete.
@@ -207,6 +209,28 @@ Implemented GUI-matching semantics and ownership:
 Theme picker/editor and Agent Control share the same pure planners and React-owned controller for
 selection, save, duplication, deletion fallback, and repository ordering.
 
+### Stage 4: Device Control — complete
+
+Approved design and implementation plan:
+
+- [`superpowers/specs/2026-09-07-agent-control-device-control-design.md`](superpowers/specs/2026-09-07-agent-control-device-control-design.md)
+- [`superpowers/plans/2026-09-07-agent-control-device-control-implementation.md`](superpowers/plans/2026-09-07-agent-control-device-control-implementation.md)
+
+Implemented public shape:
+
+```text
+plvs-cli device list --json
+plvs-cli device inspect --json
+plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]
+```
+
+The first slice deliberately has no `device describe`: `list` is the bounded dynamic selection
+schema. It accepts only exact IDs returned by the current list plus literal `default`. Requested
+selection uses global revision, while inventory/hotplug changes use an independent generation and
+do not wake unrelated waiters. Header, tray, and Agent Control share one React-owned asynchronous
+selection path. Running Live changes require restart confirmation and settle through native capture
+readiness; a restart failure retains and reports the newly persisted selection.
+
 ## Broader candidate backlog
 
 ### Cross-platform and human-use foundation
@@ -268,30 +292,6 @@ Why it is a good first slice:
 
 Open design question: whether report generation is a query or a file-writing action. The app-side
 report is read-only, while the CLI-side `--out` write can still fail after a successful response.
-
-#### 2. Audio device control
-
-Proposed shape:
-
-```text
-plvs-cli device describe --json
-plvs-cli device inspect --json
-plvs-cli device select <device-id> --expected-revision <n> --json \
-  [--allow-measurement-restart] [--dry-run]
-```
-
-`describe` reports the selection schema and availability. `inspect` returns the requested device,
-resolved device, enumerated inputs/outputs, channel count, default sample rate, and stable IDs. It
-must not expose backend-specific handles.
-
-Selecting a device while LIVE is running can restart capture and therefore requires an explicit
-confirmation flag. A dry run validates current availability and predicts the requested selection,
-but cannot guarantee the device will remain present. Device-list changes should advance the public
-revision only if device inventory becomes part of ordinary inspect state; otherwise add a dedicated
-device-generation token and avoid waking unrelated revision waiters.
-
-Developer payoff: capture-rig setup and device-migration behavior become reproducible without
-clicking the header selector.
 
 ### Add a bounded measurement API
 
@@ -438,7 +438,7 @@ The smallest useful sequence is:
    reorder, reusing Theme V2 normalization and the GUI's selection/fallback behavior.
 3. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
    queries, and generated completions.
-4. **File report and Device Control** as the next already-visible GUI workflows.
+4. **Device Control — complete; File report remains** as the next already-visible GUI workflow.
 5. **Measurement inspect/wait** after the high-frequency snapshot contract is separately approved.
 6. **Schema export and batch** only after at least two external consumers need them.
 7. Re-evaluate public headless analysis, support bundles, MCP, screenshots, and window control from
@@ -469,5 +469,7 @@ Every approved command family should include:
 ## Immediate design recommendation
 
 The next implementation stage is **cross-platform and human-use foundation**. Configuration
-Transfer, Loudness Profile Control, and Theme Control are complete; macOS transport, explicit text
-rendering for queries, and generated completions are the next portability and usability gap.
+Transfer, Loudness Profile Control, Theme Control, and Device Control are complete; macOS transport,
+explicit text rendering for queries, and generated completions are the next portability and
+usability gap. File-analysis report export remains the next command-family candidate after that
+foundation work.

@@ -117,4 +117,37 @@ describe("current CLI documentation", () => {
       "The next implementation stage is **cross-platform and human-use foundation**"
     );
   });
+
+  it("publishes the complete Device Control contract and safety flags", () => {
+    const cli = read("docs", "cli.md");
+    const agentControl = read("docs", "agent-control", "README.md");
+    const devices = read("docs", "agent-control", "devices.md");
+    const transport = read("docs", "agent-control", "transport.md");
+    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
+
+    for (const command of ["list", "inspect", "select"]) {
+      expect(devices).toContain(`device ${command}`);
+    }
+    expect(devices).not.toContain("plvs-cli device describe");
+    expect(devices).toContain("--expected-revision");
+    expect(devices).toContain("--expected-generation");
+    expect(devices).toContain("--allow-measurement-restart");
+    expect(devices).toContain("--dry-run");
+    expect(devices).toContain("automaticCurrentlyUnavailable");
+    expect(devices).toContain("deviceInventoryChanged");
+    expect(devices).toContain("deviceStartFailed");
+    expect(devices).toContain("stateCommitted: true");
+    expect(cli).toContain("device list --json");
+    expect(cli).toContain(
+      "device select <device-id|default> --expected-revision <n> --expected-generation <n>"
+    );
+    expect(agentControl).toContain("device.list / device.inspect / device.select");
+    expect(transport).toContain("[Device Control](devices.md)");
+    expect(transport).toContain("device-enumeration");
+    expect(roadmap).toContain("### Stage 4: Device Control — complete");
+    expect(roadmap).not.toContain("plvs-cli device describe");
+    expect(roadmap).toContain(
+      "The next implementation stage is **cross-platform and human-use foundation**"
+    );
+  });
 });

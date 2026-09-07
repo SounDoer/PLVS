@@ -8,6 +8,7 @@ plvs-cli doctor
 plvs-cli inspect
 plvs-cli panel ...
 plvs-cli transport ...
+plvs-cli device ...
 ```
 
 `doctor` works when PLVS is closed. Every other current command controls or inspects the same state
@@ -89,7 +90,7 @@ Use `plvs-cli --help` for the complete live-control command list. The current fa
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
 - `config`;
-- `transport` and `dock`.
+- `transport`, `device`, and `dock`.
 
 The library families share one shape:
 
@@ -141,6 +142,19 @@ plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]
 Configuration import validates or replaces the complete setup. A real import relaunches PLVS only
 after the CLI has received its successful response; rediscover the new app session before issuing
 another command.
+
+Device Control uses the running app's same device-selection owner:
+
+```powershell
+plvs-cli device list --json
+plvs-cli device inspect --json
+plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]
+```
+
+Selection accepts only `default` or an exact ID returned by `device list`. Inventory changes use a
+separate generation token and do not advance the global revision. A running Live switch requires
+`--allow-measurement-restart`. See [Device Control](agent-control/devices.md) for inventory fields,
+Automatic semantics, dry-run, persistence/restart settlement, and copyable workflows.
 
 Detailed payloads and behavior are documented in [Agent Control](agent-control/README.md).
 
@@ -220,9 +234,10 @@ Every running-app query returns one global `revision`:
 }
 ```
 
-The revision advances when observable Workspace, Preset, Settings, Transport, or Dock control state
-changes. It is an in-process concurrency token and resets when PLVS restarts. Meter frames and other
-continuously changing measurements do not advance it. Queries never accept
+The revision advances when observable Workspace, Preset, Settings, requested Device selection,
+Transport, or Dock control state changes. It is an in-process concurrency token and resets when
+PLVS restarts. Device inventory generations, meter frames, and other continuously changing
+measurements do not advance it. Queries never accept
 `--expected-revision`.
 
 ### State mutations

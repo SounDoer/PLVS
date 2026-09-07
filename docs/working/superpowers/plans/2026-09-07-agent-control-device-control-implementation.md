@@ -1,6 +1,6 @@
 # Agent Control Device Control — Implementation Plan
 
-> Draft plan. Do not implement until the paired design is approved.
+> Approved implementation plan.
 
 **Goal:** Implement live-app `device list/inspect/select` with exact dynamic inventory, Automatic
 selection, optimistic generation checks, shared GUI semantics, confirmed Live restart, and durable
