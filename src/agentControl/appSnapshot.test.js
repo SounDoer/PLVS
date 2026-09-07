@@ -41,6 +41,8 @@ describe("agent-control app snapshots", () => {
         "view.inspect",
         "view.update",
         "view.reset",
+        "module.list",
+        "module.describe",
         "workspace.applyLayout",
         "axis.describe",
         "axis.inspect",

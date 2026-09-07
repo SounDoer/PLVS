@@ -22,6 +22,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "measurement",
   "view",
   "wait",
+  "module",
   "workspace",
   "panel",
   "axis",
@@ -61,6 +62,10 @@ pub enum ControlCommand {
     input: Option<String>,
     expected_revision: Option<u64>,
     dry_run: bool,
+  },
+  ModuleList,
+  ModuleDescribe {
+    module_id: String,
   },
   PanelDescribe {
     panel_id: String,
@@ -256,6 +261,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
     [command, rest @ ..] if command == "view" => return parse_view_args(rest),
+    [command, rest @ ..] if command == "module" => return parse_module_args(rest),
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
@@ -272,7 +278,27 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|measurement|view|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
+}
+
+fn parse_module_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| is_help(argument)) {
+    return Ok(ControlCommand::FamilyHelp("module".to_string()));
+  }
+  match args {
+    [action, json] if action == "list" && json == "--json" => Ok(ControlCommand::ModuleList),
+    [action, module_id, json]
+      if action == "describe" && !module_id.trim().is_empty() && json == "--json" =>
+    {
+      Ok(ControlCommand::ModuleDescribe {
+        module_id: module_id.clone(),
+      })
+    }
+    _ => Err(
+      "Usage:\n  plvs-cli module list --json\n  plvs-cli module describe <module-id> --json"
+        .to_string(),
+    ),
+  }
 }
 
 fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1820,7 +1846,11 @@ pub fn help_text() -> &'static str {
   static HELP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
   HELP
     .get_or_init(|| {
-      base_help_text()
+      base_help_text().replacen(
+        "\n  plvs-cli workspace apply",
+        "\n  plvs-cli module list --json\n  plvs-cli module describe <module-id> --json\n  plvs-cli workspace apply",
+        1,
+      )
       .replacen(
         "\n  plvs-cli workspace apply",
         "\n  plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json\n  plvs-cli view describe --json\n  plvs-cli view inspect --json\n  plvs-cli view update <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli view reset --expected-revision <n> --json [--dry-run]\n  plvs-cli workspace apply",
@@ -2034,6 +2064,7 @@ impl ControlFailure {
         _,
         "revisionRequired"
         | "resourceNotFound"
+        | "moduleNotFound"
         | "panelNotFound"
         | "axisNotFound"
         | "presetNotFound"
@@ -2099,6 +2130,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::ViewRead { method } | ControlCommand::ViewMutation { method, .. } => {
       method.clone()
     }
+    ControlCommand::ModuleList => "module.list".to_string(),
+    ControlCommand::ModuleDescribe { .. } => "module.describe".to_string(),
     ControlCommand::PanelDescribe { .. } => "panel.describe".to_string(),
     ControlCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
     ControlCommand::PanelUpdate { .. } => "panel.update".to_string(),
@@ -2168,6 +2201,7 @@ fn request_for_command<R: Read>(
     | ControlCommand::Inspect
     | ControlCommand::MeasurementRead { .. }
     | ControlCommand::ViewRead { .. }
+    | ControlCommand::ModuleList
     | ControlCommand::AxisDescribe
     | ControlCommand::AxisInspect
     | ControlCommand::PresetList
@@ -2177,6 +2211,9 @@ fn request_for_command<R: Read>(
     | ControlCommand::SettingsInspect
     | ControlCommand::DeviceRead { .. }
     | ControlCommand::TransportInspect => serde_json::json!({}),
+    ControlCommand::ModuleDescribe { module_id } => {
+      serde_json::json!({ "moduleId": module_id })
+    }
     ControlCommand::ThemeRead { theme_id, .. } => match theme_id {
       Some(theme_id) => serde_json::json!({ "themeId": theme_id }),
       None => serde_json::json!({}),
@@ -3064,6 +3101,47 @@ mod tests {
       args(&["workspace", "apply", "-"]),
     ] {
       assert!(parse_control_args(&invalid).is_err());
+    }
+  }
+
+  #[test]
+  fn parses_module_queries_and_builds_public_requests() {
+    let list = parse_control_args(&args(&["module", "list", "--json"])).unwrap();
+    assert_eq!(list, ControlCommand::ModuleList);
+    let request = request_for_command(&list, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "module.list");
+    assert_eq!(request.params, serde_json::json!({}));
+
+    let describe =
+      parse_control_args(&args(&["module", "describe", "spectrum", "--json"])).unwrap();
+    assert_eq!(
+      describe,
+      ControlCommand::ModuleDescribe {
+        module_id: "spectrum".to_string(),
+      }
+    );
+    let request = request_for_command(&describe, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "module.describe");
+    assert_eq!(
+      request.params,
+      serde_json::json!({ "moduleId": "spectrum" })
+    );
+
+    let help = family_help_text("module");
+    assert!(help.contains("plvs-cli module list --json"));
+    assert!(help.contains("plvs-cli module describe <module-id> --json"));
+
+    for invalid in [
+      args(&["module", "list"]),
+      args(&["module", "list", "extra", "--json"]),
+      args(&["module", "describe", "--json"]),
+      args(&["module", "describe", "spectrum"]),
+      args(&["module", "describe", "spectrum", "--dry-run", "--json"]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
     }
   }
 
@@ -5072,6 +5150,7 @@ mod tests {
   #[test]
   fn library_not_found_reasons_map_to_exit_three() {
     for reason in [
+      "moduleNotFound",
       "themeNotFound",
       "loudnessProfileNotFound",
       "invalidProfile",

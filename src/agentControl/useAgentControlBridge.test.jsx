@@ -1126,6 +1126,54 @@ describe("useAgentControlBridge", () => {
     expect(second.result.workspace.layout).toEqual({ type: "panel", panelId: "spectrum" });
   });
 
+  it("lists and describes Modules before a Panel instance exists", async () => {
+    mount({
+      analysisContext: { channelCount: 6 },
+      hasLoudnessReference: true,
+    });
+    await waitUntilReady();
+
+    const listed = await send(request("module.list", {}, "module-list"));
+    expect(listed.result).toMatchObject({
+      revision: 0,
+      modules: expect.arrayContaining([
+        { moduleId: "spectrum", title: "Spectrum" },
+        { moduleId: "waveform", title: "Waveform" },
+      ]),
+    });
+
+    const described = await send(
+      request("module.describe", { moduleId: "spectrum" }, "module-describe")
+    );
+    expect(described.result).toMatchObject({
+      revision: 0,
+      schemaBasis: "defaultControls",
+      context: {
+        channelTopology: { status: "detected", channelCount: 6 },
+        hasLoudnessReference: true,
+      },
+      module: {
+        moduleId: "spectrum",
+        title: "Spectrum",
+        layout: {
+          hardMinimumWidth: 32,
+          hardMinimumHeight: 36,
+          unit: "logicalPx",
+        },
+        axisKinds: ["frequency"],
+        defaultControls: expect.any(Object),
+        controlsSchema: expect.any(Object),
+      },
+    });
+
+    const missing = await send(
+      request("module.describe", { moduleId: "missing" }, "module-missing")
+    );
+    expect(missing.error).toMatchObject({
+      data: { reason: "moduleNotFound", path: "$.params.moduleId" },
+    });
+  });
+
   it("describes and inspects the retained LIVE measurement without changing revision", async () => {
     const getLiveMeasurement = vi.fn(() => ({
       generation: 3,

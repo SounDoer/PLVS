@@ -318,6 +318,23 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes Module queries", () => {
+    expect(normalizeAgentControlRequest(request("module.list"))).toEqual({
+      ok: true,
+      request: { id: "req-1", method: "module.list", params: {} },
+    });
+    expect(
+      normalizeAgentControlRequest(request("module.describe", { moduleId: "spectrum" }))
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "module.describe",
+        params: { moduleId: "spectrum" },
+      },
+    });
+  });
+
   it("normalizes settings.update options", () => {
     const params = {
       patch: { closeBehavior: "tray", interfaceSize: "large" },
@@ -659,6 +676,9 @@ describe("normalizeAgentControlRequest", () => {
       -32602,
     ],
     [request("app.inspect", []), "invalidParams", "$.params", -32602],
+    [request("module.list", { extra: true }), "invalidParams", "$.params.extra", -32602],
+    [request("module.describe", {}), "invalidParams", "$.params.moduleId", -32602],
+    [request("module.describe", { moduleId: "" }), "invalidParams", "$.params.moduleId", -32602],
     [request("workspace.applyLayout", {}), "invalidParams", "$.params.layout", -32602],
     [request("workspace.applyLayout", { layout: [] }), "invalidParams", "$.params.layout", -32602],
     [

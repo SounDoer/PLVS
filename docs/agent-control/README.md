@@ -2,7 +2,7 @@
 
 Date: 2026-09-07
 
-Status: Living design record; Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
+Status: Living design record; Module, Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
 Transport, Device, Dock, Measurement Control, Measurement Wait, and View Control decisions are
 approved unless explicitly marked otherwise
 
@@ -23,6 +23,7 @@ app.inspect
 app.wait
 measurement.describe / measurement.inspect / measurement.wait
 view.describe / view.inspect / view.update / view.reset
+module.list / module.describe
 workspace.applyLayout
 panel.describe / panel.update / panel.reset
 axis.describe / axis.inspect / axis shared / axis panel
@@ -50,6 +51,7 @@ npm run desktop:control -- wait --after-revision 0 --timeout-ms 30000 --json
 npm run desktop:control -- measurement inspect --json
 npm run desktop:control -- measurement wait --after-generation 0 --timeout-ms 30000 --json
 npm run desktop:control -- view inspect --json
+npm run desktop:control -- module describe spectrum --json
 npm run desktop:control -- workspace apply layout.json --expected-revision 0 --json
 npm run desktop:control -- panel describe spectrum --json
 npm run desktop:control -- settings inspect --json
@@ -69,7 +71,7 @@ paths as the GUI.
 
 ## Implementation status
 
-The foundation, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
+The foundation, Module Control, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
 Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Measurement
 Wait, View Control, Library Transfer, and Configuration Transfer are implemented. See
 [`measurements.md`](measurements.md),
@@ -89,7 +91,7 @@ change to look finished. Six guards make that omission fail instead:
 | `src/agentControl/panelControlCoverage.test.js`    | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal.                  |
 | `src/agentControl/panelControlContract.test.js`    | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
 | `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own.                        |
-| `src/agentControl/viewControl.test.js`             | View schema, strict planning, platform availability, reset, or Dock warning behavior changes.                   |
+| `src/agentControl/viewControl.test.js`             | View schema, strict planning, platform availability, reset, or Dock warning behavior changes.                     |
 | `src/agentControl/libraryTransferContract.test.js` | A library has a pack format but no command family, or the reverse.                                                |
 | `src/agentControl/publicSurfaceDocs.test.js`       | `generated/` no longer matches the schema builders.                                                               |
 
@@ -469,6 +471,7 @@ Control settings.
 
 ## Follow-on module specifications
 
+- [`modules.md`](modules.md) — implemented Module discovery contract
 - [`presets.md`](presets.md) — approved Preset Control contract
 - [`axes.md`](axes.md) — approved Axis Control contract
 - [`settings.md`](settings.md) — approved Settings Control contract

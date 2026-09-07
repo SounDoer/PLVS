@@ -559,6 +559,7 @@ mod tests {
         "measurement",
         "view",
         "wait",
+        "module",
         "workspace",
         "panel",
         "axis",

@@ -1,4 +1,3 @@
-import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
 import { getPanelControls } from "../workspace/panelControlInstances.js";
 import { resolvePanelDisplayName } from "../workspace/panelInstances.js";
 import { readPublicPanelAnalysis } from "./panelAnalysis.js";
@@ -6,6 +5,7 @@ import { readPublicPanelAxes } from "./panelAxes.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { DEVICE_CONTROL_METHODS } from "./protocol.js";
+import { buildModuleList } from "./moduleControl.js";
 
 const METHODS = [
   "app.capabilities",
@@ -17,6 +17,8 @@ const METHODS = [
   "view.inspect",
   "view.update",
   "view.reset",
+  "module.list",
+  "module.describe",
   "workspace.applyLayout",
   "axis.describe",
   "axis.inspect",
@@ -122,10 +124,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
       platform: String(runtime.platform),
     },
     methods: [...METHODS],
-    modules: Object.values(MODULE_CATALOG).map((module) => ({
-      moduleId: module.id,
-      title: module.title,
-    })),
+    modules: buildModuleList(),
   };
 }
 

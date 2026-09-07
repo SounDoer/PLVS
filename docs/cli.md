@@ -86,7 +86,7 @@ plvs-cli --version
 Use `plvs-cli --help` for the complete live-control command list. The current families are:
 
 - `inspect`, `capabilities`, `measurement`, `view`, and `wait`;
-- `workspace`, `panel`, and `axis`;
+- `module`, `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
 - `config`;
@@ -331,14 +331,14 @@ an error with code `timeout` and exit `5`, not a successful unchanged result.
 
 ## Exit Codes
 
-| Code | Class                               | Examples                                                                    |
-| ---: | ----------------------------------- | --------------------------------------------------------------------------- |
-|  `0` | Success                             | Query or mutation completed; healthy or warning-only doctor report          |
-|  `1` | Runtime or system failure           | Native operation failed; output write failed; doctor found a required error |
+| Code | Class                               | Examples                                                                                |
+| ---: | ----------------------------------- | --------------------------------------------------------------------------------------- |
+|  `0` | Success                             | Query or mutation completed; healthy or warning-only doctor report                      |
+|  `1` | Runtime or system failure           | Native operation failed; output write failed; doctor found a required error             |
 |  `2` | App unavailable for control         | App not running; Agent Control disabled; frontend not ready; CLI/host identity mismatch |
-|  `3` | Invalid command input               | Unknown command; invalid argument; required revision omitted                |
-|  `4` | Current state refuses the operation | Revision conflict; blocking editor; wait limit reached                      |
-|  `5` | Wait did not complete               | Timeout or cancellation                                                     |
+|  `3` | Invalid command input               | Unknown command; invalid argument; required revision omitted                            |
+|  `4` | Current state refuses the operation | Revision conflict; blocking editor; wait limit reached                                  |
+|  `5` | Wait did not complete               | Timeout or cancellation                                                                 |
 
 Under `--json`, every failure that reaches the CLI parser emits the error envelope as well as its
 nonzero process exit code. A thin-forwarder failure before the host starts can only report on
@@ -394,6 +394,8 @@ npm run desktop:control -- capabilities --json
 npm run desktop:control -- measurement inspect --json
 npm run desktop:control -- measurement wait --after-generation 0 --timeout-ms 30000 --json
 npm run desktop:control -- view inspect --json
+npm run desktop:control -- module list --json
+npm run desktop:control -- module describe spectrum --json
 npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
 ```
 

@@ -97,6 +97,7 @@ export function normalizeAgentControlRequest(input) {
     input.method === "measurement.inspect" ||
     input.method === "view.describe" ||
     input.method === "view.inspect" ||
+    input.method === "module.list" ||
     input.method === "axis.describe" ||
     input.method === "axis.inspect" ||
     input.method === "preset.list" ||
@@ -116,6 +117,22 @@ export function normalizeAgentControlRequest(input) {
     return {
       ok: true,
       request: { id: input.id, method: input.method, params: {} },
+    };
+  }
+
+  if (input.method === "module.describe") {
+    const field = unknownField(input.params, new Set(["moduleId"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params.moduleId !== "string" || input.params.moduleId.trim() === "") {
+      return invalidParams("$.params.moduleId", "moduleId must be a non-empty string.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { moduleId: input.params.moduleId },
+      },
     };
   }
 
