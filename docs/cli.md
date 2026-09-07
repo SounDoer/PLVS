@@ -105,11 +105,13 @@ Measurement Control reads the latest unscrumbed LIVE semantic sample:
 ```powershell
 plvs-cli measurement describe --json
 plvs-cli measurement inspect --json
+plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json
 ```
 
-It never starts capture or optional analysis and does not expose File results, history, or raw
-visual data. See [Measurement Control](agent-control/measurements.md) for freshness, null reasons,
-profile evaluation, and revision behavior.
+These commands never start capture or optional analysis and do not expose File results, history,
+or raw visual data. See [Measurement Control](agent-control/measurements.md) for freshness, null
+reasons, profile evaluation, and revision behavior, and
+[Measurement Wait](agent-control/measurement-wait.md) for wait identity and timeout semantics.
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
 Library Transfer. Loudness Profile Control additionally provides:
@@ -377,6 +379,7 @@ npm run desktop
 npm run desktop:control -- inspect --json
 npm run desktop:control -- capabilities --json
 npm run desktop:control -- measurement inspect --json
+npm run desktop:control -- measurement wait --after-generation 0 --timeout-ms 30000 --json
 npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
 ```
 

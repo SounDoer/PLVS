@@ -67,4 +67,28 @@ describe("liveMeasurementOwner", () => {
     expect(audio).not.toHaveProperty("vectorscopeResultsByKey");
     expect(audio).not.toHaveProperty("stereoMapResultsByKey");
   });
+
+  it("notifies subscribers only when public LIVE state changes", () => {
+    const owner = createLiveMeasurementOwner();
+    const observed = [];
+    const unsubscribe = owner.subscribe((snapshot) => observed.push(snapshot));
+
+    owner.beginSession();
+    owner.capture({ seq: 1 }, { peakDb: [-1] });
+    expect(observed).toEqual([]);
+
+    owner.commitSession();
+    owner.capture({ seq: 2 }, { peakDb: [-2] });
+    owner.clear();
+    unsubscribe();
+    owner.capture({ seq: 3 }, { peakDb: [-3] });
+
+    expect(
+      observed.map(({ generation, record }) => [generation, record?.sequence ?? null])
+    ).toEqual([
+      [1, 1],
+      [1, 2],
+      [2, null],
+    ]);
+  });
 });

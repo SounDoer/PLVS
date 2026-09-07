@@ -12,6 +12,7 @@ const METHODS = [
   "app.inspect",
   "measurement.describe",
   "measurement.inspect",
+  "measurement.wait",
   "workspace.applyLayout",
   "axis.describe",
   "axis.inspect",

@@ -337,6 +337,31 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes measurement.wait identity baselines and default timeout", () => {
+    expect(
+      normalizeAgentControlRequest(
+        request("measurement.wait", { afterGeneration: 2, afterSequence: 19 })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "measurement.wait",
+        params: { afterGeneration: 2, afterSequence: 19, timeoutMs: 30000 },
+      },
+    });
+    expect(
+      normalizeAgentControlRequest(request("measurement.wait", { afterGeneration: 0 }))
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "measurement.wait",
+        params: { afterGeneration: 0, timeoutMs: 30000 },
+      },
+    });
+  });
+
   it.each([
     ["transport.source.live", { expectedRevision: 1, allowStopFileAnalysis: true, dryRun: true }],
     ["transport.source.file", { expectedRevision: 1, dryRun: true }],
@@ -549,6 +574,13 @@ describe("normalizeAgentControlRequest", () => {
     ],
     [request("settings.update", {}), "invalidParams", "$.params.patch", -32602],
     [request("app.wait", {}), "invalidParams", "$.params.afterRevision", -32602],
+    [request("measurement.wait", {}), "invalidParams", "$.params.afterGeneration", -32602],
+    [
+      request("measurement.wait", { afterGeneration: 0, afterSequence: -1 }),
+      "invalidParams",
+      "$.params.afterSequence",
+      -32602,
+    ],
     [request("transport.file.analyze", {}), "invalidParams", "$.params.path", -32602],
     [request("transport.file.select", {}), "invalidParams", "$.params.sessionId", -32602],
     [request("dock.layout.apply", {}), "invalidParams", "$.params.layout", -32602],
@@ -575,6 +607,12 @@ describe("normalizeAgentControlRequest", () => {
     ],
     [
       request("app.wait", { afterRevision: 0, timeoutMs: 99 }),
+      "invalidParams",
+      "$.params.timeoutMs",
+      -32602,
+    ],
+    [
+      request("measurement.wait", { afterGeneration: 0, timeoutMs: 300001 }),
       "invalidParams",
       "$.params.timeoutMs",
       -32602,

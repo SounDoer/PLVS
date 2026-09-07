@@ -149,6 +149,51 @@
     }
   },
   {
+    "id": "measurementWait.sample",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "outcome": "sample",
+        "matchedImmediately": false,
+        "measurement": {
+          "revision": 14,
+          "schemaVersion": 1,
+          "source": {
+            "kind": "live",
+            "state": "running",
+            "sessionGeneration": 3
+          },
+          "sample": {
+            "sequence": 128,
+            "freshness": "fresh"
+          }
+        }
+      }
+    }
+  },
+  {
+    "id": "measurementWait.timeout",
+    "exitCode": 5,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": false,
+      "error": {
+        "code": "timeout",
+        "message": "No different LIVE measurement sample was published before the timeout.",
+        "details": {
+          "path": "$.params.timeoutMs",
+          "afterGeneration": 3,
+          "afterSequence": 127,
+          "currentGeneration": 3,
+          "currentSequence": 127,
+          "liveState": "stopped"
+        }
+      }
+    }
+  },
+  {
     "id": "mutation.libraryImportDryRun",
     "exitCode": 0,
     "envelope": {

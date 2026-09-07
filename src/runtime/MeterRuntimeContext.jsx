@@ -269,6 +269,7 @@ export function MeterRuntimeProvider({ children }) {
       liveStartedAt: transport.startedAt,
       liveLastError: transport.lastError,
       getLiveMeasurement: liveMeasurementOwnerRef.current.read,
+      subscribeLiveMeasurement: liveMeasurementOwnerRef.current.subscribe,
       fileSessions,
       activeFileSession,
       analyzingFileSession,

@@ -13,9 +13,10 @@ pub const AGENT_CONTROL_REQUEST_EVENT: &str = "agent-control://request";
 pub const DEFAULT_MAX_PENDING_REQUESTS: usize = 8;
 pub const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Long-poll method whose frontend budget is set by the caller, not by the default above.
-const WAIT_METHOD: &str = "app.wait";
-/// Mirrors the `app.wait` contract the frontend validates (`docs/agent-control/wait.md`).
+/// Long-poll methods whose frontend budget is set by the caller, not by the default above.
+const APP_WAIT_METHOD: &str = "app.wait";
+const MEASUREMENT_WAIT_METHOD: &str = "measurement.wait";
+/// Mirrors the long-wait contracts the frontend validates.
 const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
 const MIN_WAIT_TIMEOUT_MS: u64 = 100;
 const MAX_WAIT_TIMEOUT_MS: u64 = 300_000;
@@ -28,8 +29,8 @@ pub const CLIENT_GRACE: Duration = Duration::from_secs(2);
 /// How long the frontend itself may take to answer this request.
 ///
 /// Every layer between the caller and the frontend has to agree on this, or whichever one gives up
-/// first replaces the real outcome with its own error. `app.wait` is the only method that
-/// deliberately holds a request open, so it is the only one that needs more than the default.
+/// first replaces the real outcome with its own error. Long-poll methods deliberately hold a
+/// request open, so they need more than the default.
 /// The value is clamped rather than trusted: the frontend rejects an out-of-range `timeoutMs`, but
 /// the broker has to pick its own deadline before the frontend ever sees the request, and an
 /// unbounded one would pin a pending slot.
@@ -37,10 +38,13 @@ pub fn frontend_budget(request: &JsonRpcRequest) -> Duration {
   wait_budget(request).unwrap_or(DEFAULT_RESPONSE_TIMEOUT)
 }
 
-/// The caller-supplied budget, for the one method that has one. `None` for every other method,
+/// The caller-supplied budget for long-poll methods. `None` for every other method,
 /// which leaves the broker free to keep using its own configured default.
 fn wait_budget(request: &JsonRpcRequest) -> Option<Duration> {
-  if request.method != WAIT_METHOD {
+  if !matches!(
+    request.method.as_str(),
+    APP_WAIT_METHOD | MEASUREMENT_WAIT_METHOD
+  ) {
     return None;
   }
   let milliseconds = request
@@ -753,10 +757,10 @@ mod tests {
     assert!(main_broker("", &state).is_err());
   }
 
-  fn wait_request(id: &str, params: Value) -> JsonRpcRequest {
+  fn wait_request(id: &str, method: &str, params: Value) -> JsonRpcRequest {
     JsonRpcRequest {
       id: id.to_string(),
-      method: WAIT_METHOD.to_string(),
+      method: method.to_string(),
       params,
     }
   }
@@ -766,23 +770,36 @@ mod tests {
     assert_eq!(frontend_budget(&request("plain")), DEFAULT_RESPONSE_TIMEOUT);
     // The documented default, for a caller that omits the field entirely.
     assert_eq!(
-      frontend_budget(&wait_request("default", json!({ "workspaceRevision": 0 }))),
+      frontend_budget(&wait_request(
+        "default",
+        APP_WAIT_METHOD,
+        json!({ "afterRevision": 0 })
+      )),
       Duration::from_millis(DEFAULT_WAIT_TIMEOUT_MS)
     );
     assert_eq!(
-      frontend_budget(&wait_request("explicit", json!({ "timeoutMs": 30_000 }))),
+      frontend_budget(&wait_request(
+        "explicit",
+        MEASUREMENT_WAIT_METHOD,
+        json!({ "timeoutMs": 30_000 })
+      )),
       Duration::from_millis(30_000)
     );
     // Never trusted: the broker picks its deadline before the frontend can reject the value.
     assert_eq!(
       frontend_budget(&wait_request(
         "huge",
+        APP_WAIT_METHOD,
         json!({ "timeoutMs": 999_999_999_u64 })
       )),
       Duration::from_millis(MAX_WAIT_TIMEOUT_MS)
     );
     assert_eq!(
-      frontend_budget(&wait_request("tiny", json!({ "timeoutMs": 1 }))),
+      frontend_budget(&wait_request(
+        "tiny",
+        MEASUREMENT_WAIT_METHOD,
+        json!({ "timeoutMs": 1 })
+      )),
       Duration::from_millis(MIN_WAIT_TIMEOUT_MS)
     );
   }
@@ -795,7 +812,11 @@ mod tests {
     broker.frontend_ready().unwrap();
 
     let pending = broker
-      .dispatch(wait_request("wait-1", json!({ "timeoutMs": 100 })))
+      .dispatch(wait_request(
+        "wait-1",
+        APP_WAIT_METHOD,
+        json!({ "timeoutMs": 100 }),
+      ))
       .unwrap();
     let responder = broker.clone();
     let answered = std::thread::spawn(move || {

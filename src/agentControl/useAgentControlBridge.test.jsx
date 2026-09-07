@@ -1187,6 +1187,148 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("waits for a different published LIVE measurement outside the command queue", async () => {
+    let live = { generation: 3, record: null };
+    const listeners = new Set();
+    const measurementContext = {
+      getLiveMeasurement: () => live,
+      subscribeLiveMeasurement: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      getChannelLabels: () => ["Left", "Right"],
+      liveState: "running",
+      vectorscopeRequests: [],
+      dialogueActive: false,
+    };
+    mount({ measurementContext });
+    await waitUntilReady();
+
+    const waitRequest = request(
+      "measurement.wait",
+      { afterGeneration: 3, timeoutMs: 1000 },
+      "measurement-wait"
+    );
+    act(() => adapter.handler(waitRequest));
+    const inspection = await send(request("measurement.inspect", {}, "inspect-during-measurement"));
+    expect(inspection.result.sample.sequence).toBeNull();
+
+    live = {
+      generation: 3,
+      record: {
+        generation: 3,
+        sequence: 1,
+        elapsedMs: 10,
+        receivedAtMs: Date.now(),
+        loudnessLayout: "stereo",
+        loudnessLayoutKnown: true,
+        dialogueActive: false,
+        audio: { peakDb: [-4, -5], rmsDb: [-18, -19] },
+      },
+    };
+    act(() => {
+      for (const listener of listeners) listener(live);
+    });
+
+    await waitFor(() =>
+      expect(adapter.responses.some(({ requestId }) => requestId === waitRequest.id)).toBe(true)
+    );
+    expect(
+      adapter.responses.find(({ requestId }) => requestId === waitRequest.id).result
+    ).toMatchObject({
+      outcome: "sample",
+      matchedImmediately: false,
+      measurement: {
+        revision: 0,
+        source: { sessionGeneration: 3 },
+        sample: { sequence: 1 },
+      },
+    });
+  });
+
+  it("does not satisfy measurement.wait with a generation clear that has no sample", async () => {
+    let live = { generation: 2, record: null };
+    const listeners = new Set();
+    mount({
+      measurementContext: {
+        getLiveMeasurement: () => live,
+        subscribeLiveMeasurement: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        liveState: "stopped",
+      },
+    });
+    await waitUntilReady();
+    const waitRequest = request(
+      "measurement.wait",
+      { afterGeneration: 2, timeoutMs: 100 },
+      "measurement-clear"
+    );
+    act(() => adapter.handler(waitRequest));
+    live = { generation: 3, record: null };
+    act(() => {
+      for (const listener of listeners) listener(live);
+    });
+
+    await waitFor(() =>
+      expect(adapter.responses.some(({ requestId }) => requestId === waitRequest.id)).toBe(true)
+    );
+    expect(
+      adapter.responses.find(({ requestId }) => requestId === waitRequest.id).error
+    ).toMatchObject({
+      code: -32071,
+      data: {
+        reason: "timeout",
+        details: {
+          afterGeneration: 2,
+          afterSequence: null,
+          currentGeneration: 3,
+          currentSequence: null,
+          liveState: "stopped",
+        },
+      },
+    });
+  });
+
+  it("returns immediately when the published measurement identity already differs", async () => {
+    mount({
+      measurementContext: {
+        getLiveMeasurement: () => ({
+          generation: 4,
+          record: {
+            generation: 4,
+            sequence: 2,
+            elapsedMs: 20,
+            receivedAtMs: Date.now(),
+            loudnessLayout: "mono",
+            loudnessLayoutKnown: true,
+            dialogueActive: false,
+            audio: { peakDb: [-3], rmsDb: [-12] },
+          },
+        }),
+        liveState: "running",
+      },
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "measurement.wait",
+        { afterGeneration: 3, afterSequence: 1, timeoutMs: 1000 },
+        "measurement-immediate"
+      )
+    );
+    expect(response.result).toMatchObject({
+      outcome: "sample",
+      matchedImmediately: true,
+      measurement: {
+        source: { sessionGeneration: 4 },
+        sample: { sequence: 2 },
+      },
+    });
+  });
+
   it("lists and describes saved Presets through public shapes", async () => {
     const stored = {
       id: "preset-1",
@@ -1806,6 +1948,37 @@ describe("useAgentControlBridge", () => {
       request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, "over-limit")
     );
 
+    expect(response.error).toMatchObject({
+      code: -32070,
+      data: { reason: "waitLimitReached" },
+    });
+  });
+
+  it("shares the four-request limit between revision and measurement waits", async () => {
+    mount({
+      measurementContext: {
+        getLiveMeasurement: () => ({ generation: 0, record: null }),
+        subscribeLiveMeasurement: () => () => {},
+        liveState: "stopped",
+      },
+    });
+    await waitUntilReady();
+    for (let index = 0; index < 3; index += 1) {
+      act(() =>
+        adapter.handler(
+          request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, `shared-app-${index}`)
+        )
+      );
+    }
+    act(() =>
+      adapter.handler(
+        request("measurement.wait", { afterGeneration: 0, timeoutMs: 1000 }, "shared-measurement")
+      )
+    );
+
+    const response = await send(
+      request("app.wait", { afterRevision: 0, timeoutMs: 1000 }, "shared-over-limit")
+    );
     expect(response.error).toMatchObject({
       code: -32070,
       data: { reason: "waitLimitReached" },

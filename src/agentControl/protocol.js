@@ -634,6 +634,50 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "measurement.wait") {
+    const field = unknownField(
+      input.params,
+      new Set(["afterGeneration", "afterSequence", "timeoutMs"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (!Number.isSafeInteger(input.params.afterGeneration) || input.params.afterGeneration < 0) {
+      return invalidParams(
+        "$.params.afterGeneration",
+        "afterGeneration must be a non-negative safe integer."
+      );
+    }
+    if (
+      input.params.afterSequence !== undefined &&
+      (!Number.isSafeInteger(input.params.afterSequence) || input.params.afterSequence < 0)
+    ) {
+      return invalidParams(
+        "$.params.afterSequence",
+        "afterSequence must be a non-negative safe integer when provided."
+      );
+    }
+    const timeoutMs = input.params.timeoutMs ?? 30000;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300000) {
+      return invalidParams(
+        "$.params.timeoutMs",
+        "timeoutMs must be an integer from 100 to 300000."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          afterGeneration: input.params.afterGeneration,
+          ...(input.params.afterSequence !== undefined
+            ? { afterSequence: input.params.afterSequence }
+            : {}),
+          timeoutMs,
+        },
+      },
+    };
+  }
+
   const transportCommands = new Set([
     "transport.source.live",
     "transport.source.file",

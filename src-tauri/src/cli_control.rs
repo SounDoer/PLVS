@@ -47,6 +47,11 @@ pub enum ControlCommand {
   MeasurementRead {
     method: String,
   },
+  MeasurementWait {
+    after_generation: u64,
+    after_sequence: Option<u64>,
+    timeout_ms: u64,
+  },
   PanelDescribe {
     panel_id: String,
   },
@@ -260,6 +265,9 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
 }
 
 fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| is_help(argument)) {
+    return Ok(ControlCommand::FamilyHelp("measurement".to_string()));
+  }
   if let [action, flag] = args {
     if matches!(action.as_str(), "describe" | "inspect") && flag == "--json" {
       return Ok(ControlCommand::MeasurementRead {
@@ -267,7 +275,67 @@ fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
       });
     }
   }
-  Err("Usage: plvs-cli measurement <describe|inspect> --json".to_string())
+  let [action, rest @ ..] = args else {
+    return Err("Usage: plvs-cli measurement <describe|inspect|wait> ... --json".to_string());
+  };
+  if action != "wait" {
+    return Err("Usage: plvs-cli measurement <describe|inspect|wait> ... --json".to_string());
+  }
+  let mut after_generation = None;
+  let mut after_sequence = None;
+  let mut timeout_ms = 30_000;
+  let mut json = false;
+  let mut index = 0;
+  while index < rest.len() {
+    match rest[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      option @ ("--after-generation" | "--after-sequence") => {
+        let raw = rest
+          .get(index + 1)
+          .ok_or_else(|| format!("Missing value for {option}."))?;
+        let value = raw
+          .parse::<u64>()
+          .map_err(|_| format!("The {option} value must be a non-negative safe integer."))?;
+        if value > MAX_SAFE_REVISION {
+          return Err(format!(
+            "The {option} value must be a non-negative safe integer."
+          ));
+        }
+        if option == "--after-generation" {
+          after_generation = Some(value);
+        } else {
+          after_sequence = Some(value);
+        }
+        index += 2;
+      }
+      "--timeout-ms" => {
+        let raw = rest
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --timeout-ms.".to_string())?;
+        timeout_ms = raw
+          .parse::<u64>()
+          .map_err(|_| "The --timeout-ms value must be an integer.".to_string())?;
+        index += 2;
+      }
+      value => return Err(format!("Unknown measurement wait option: {value}")),
+    }
+  }
+  if !json {
+    return Err("The measurement wait command requires --json.".to_string());
+  }
+  let after_generation = after_generation
+    .ok_or_else(|| "The measurement wait command requires --after-generation.".to_string())?;
+  if !(100..=300_000).contains(&timeout_ms) {
+    return Err("The --timeout-ms value must be from 100 to 300000.".to_string());
+  }
+  Ok(ControlCommand::MeasurementWait {
+    after_generation,
+    after_sequence,
+    timeout_ms,
+  })
 }
 
 fn parse_device_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1669,7 +1737,13 @@ pub fn help_text() -> &'static str {
   static HELP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
   HELP
     .get_or_init(|| {
-      base_help_text().replacen(
+      base_help_text()
+      .replacen(
+        "\n  plvs-cli workspace apply",
+        "\n  plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json\n  plvs-cli workspace apply",
+        1,
+      )
+      .replacen(
         "\n\nControls the already-running",
         "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running",
         1,
@@ -1938,6 +2012,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::Capabilities => "app.capabilities".to_string(),
     ControlCommand::Inspect => "app.inspect".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
+    ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
     ControlCommand::PanelDescribe { .. } => "panel.describe".to_string(),
     ControlCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
     ControlCommand::PanelUpdate { .. } => "panel.update".to_string(),
@@ -2342,6 +2417,23 @@ fn request_for_command<R: Read>(
       after_revision,
       timeout_ms,
     } => serde_json::json!({ "afterRevision": after_revision, "timeoutMs": timeout_ms }),
+    ControlCommand::MeasurementWait {
+      after_generation,
+      after_sequence,
+      timeout_ms,
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        (
+          "afterGeneration".to_string(),
+          Value::from(*after_generation),
+        ),
+        ("timeoutMs".to_string(), Value::from(*timeout_ms)),
+      ]);
+      if let Some(sequence) = after_sequence {
+        params.insert("afterSequence".to_string(), Value::from(*sequence));
+      }
+      Value::Object(params)
+    }
     ControlCommand::PanelDescribe { panel_id } => {
       serde_json::json!({ "panelId": panel_id })
     }
@@ -2729,6 +2821,7 @@ mod tests {
     let help = family_help_text("measurement");
     assert!(help.contains("plvs-cli measurement describe --json"));
     assert!(help.contains("plvs-cli measurement inspect --json"));
+    assert!(help.contains("plvs-cli measurement wait --after-generation <n>"));
 
     for (action, method) in [
       ("describe", "measurement.describe"),
@@ -2739,6 +2832,29 @@ mod tests {
       assert_eq!(request.method, method);
       assert_eq!(request.params, serde_json::json!({}));
     }
+
+    let wait = parse_control_args(&args(&[
+      "measurement",
+      "wait",
+      "--after-generation",
+      "3",
+      "--after-sequence",
+      "127",
+      "--timeout-ms",
+      "5000",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&wait, &mut Cursor::new(Vec::<u8>::new())).unwrap();
+    assert_eq!(request.method, "measurement.wait");
+    assert_eq!(
+      request.params,
+      serde_json::json!({
+        "afterGeneration": 3,
+        "afterSequence": 127,
+        "timeoutMs": 5000
+      })
+    );
   }
 
   #[test]
@@ -4025,6 +4141,40 @@ mod tests {
               "reason": "timeout",
               "path": "$.params.timeoutMs",
               "details": { "afterRevision": 44, "currentRevision": 44 }
+            }
+          }
+        }),
+      }),
+    };
+
+    let (report, exit) = execute(&ControlCommand::Inspect, &mut Cursor::new([]), &client);
+
+    assert_eq!(exit, golden["exitCode"].as_u64().unwrap() as u8);
+    assert_eq!(serde_json::to_value(report).unwrap(), golden["envelope"]);
+  }
+
+  #[test]
+  fn measurement_wait_timeout_matches_the_v1_golden_error() {
+    let golden = crate::cli_contract::golden_fixture("measurementWait.timeout");
+    let client = FakeClient {
+      response: Ok(AppCall {
+        app: descriptor_app(),
+        response: serde_json::json!({
+          "jsonrpc": "2.0",
+          "id": "replaced",
+          "error": {
+            "code": -32071,
+            "message": "No different LIVE measurement sample was published before the timeout.",
+            "data": {
+              "reason": "timeout",
+              "path": "$.params.timeoutMs",
+              "details": {
+                "afterGeneration": 3,
+                "afterSequence": 127,
+                "currentGeneration": 3,
+                "currentSequence": 127,
+                "liveState": "stopped"
+              }
             }
           }
         }),

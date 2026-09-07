@@ -344,6 +344,12 @@ function awaitSettlement(committed, clear, subject) {
 
 const WAIT_CANCELLED = Symbol("waitCancelled");
 
+function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
+  const sequence = live?.record?.sequence;
+  if (!Number.isSafeInteger(sequence)) return false;
+  return live.generation !== afterGeneration || sequence !== (afterSequence ?? null);
+}
+
 function transportMutationMatches(method, params, execution, snapshot) {
   const sessionId = execution?.sessionId ?? params.sessionId;
   if (method === "transport.source.live") {
@@ -426,6 +432,8 @@ export function useAgentControlBridge({
   const themeControl = theme?.control ?? null;
   const themeSignature = themeStateSignature(themeState);
   const latestThemeRef = useRef({ state: themeState, control: themeControl });
+  const latestMeasurementContextRef = useRef(measurementContext);
+  const latestMeasurementProfileRef = useRef({ active: loudnessActive, profile: loudnessProfile });
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
@@ -465,12 +473,18 @@ export function useAgentControlBridge({
   const processRef = useRef(null);
   const queueRef = useRef(Promise.resolve());
 
+  useEffect(() => {
+    latestMeasurementContextRef.current = measurementContext;
+    latestMeasurementProfileRef.current = { active: loudnessActive, profile: loudnessProfile };
+  }, [loudnessActive, loudnessProfile, measurementContext]);
+
   const publishWaitWake = useCallback(() => {
     if (waitWakeScheduledRef.current) return;
     waitWakeScheduledRef.current = true;
     queueMicrotask(() => {
       waitWakeScheduledRef.current = false;
       for (const [id, waiter] of waitersRef.current) {
+        if (waiter.kind !== "revision") continue;
         if (controlRevisionRef.current === waiter.afterRevision) continue;
         clearTimeout(waiter.timer);
         waitersRef.current.delete(id);
@@ -708,6 +722,56 @@ export function useAgentControlBridge({
   }, [bumpWorkspaceRevision, dock]);
 
   useEffect(() => {
+    const buildCurrentMeasurement = (liveOverride) => {
+      const currentMeasurement = latestMeasurementContextRef.current;
+      const currentProfile = latestMeasurementProfileRef.current;
+      const live = liveOverride ??
+        currentMeasurement.getLiveMeasurement?.() ?? {
+          generation: 0,
+          record: null,
+        };
+      const record = live.record ?? null;
+      const labels = currentMeasurement.getChannelLabels?.(record) ?? [];
+      const selection = parseSelection(currentProfile.active);
+      const preview = currentProfile.profile?.draft != null;
+      const profileDocument = currentProfile.profile?.document ?? null;
+      const profile = profileDocument
+        ? {
+            mode: preview ? "preview" : "saved",
+            id: preview
+              ? (currentProfile.profile.draft.editingId ?? null)
+              : selection.kind === "profile"
+                ? selection.id
+                : null,
+            name: profileDocument.name ?? null,
+            document: profileDocument,
+          }
+        : null;
+      return buildMeasurementInspection({
+        revision: controlRevisionRef.current,
+        observedAtMs: Date.now(),
+        liveState: currentMeasurement.liveState,
+        sessionGeneration: live.generation,
+        record,
+        channelLabels: labels,
+        vectorscopeRequest: currentMeasurement.vectorscopeRequests?.[0] ?? null,
+        dialogueActive: currentMeasurement.dialogueActive === true,
+        profile,
+      });
+    };
+    const buildMeasurementOrFail = (liveOverride) => {
+      try {
+        return buildCurrentMeasurement(liveOverride);
+      } catch (error) {
+        throw semanticFailure(
+          "measurementSnapshotFailed",
+          "$",
+          `The LIVE measurement snapshot could not be formed: ${error?.message || String(error)}`,
+          -32072
+        );
+      }
+    };
+
     processRef.current = async (rawRequest) => {
       const normalized = normalizeAgentControlRequest(rawRequest);
       const requestId =
@@ -745,50 +809,103 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "measurement.inspect") {
-          try {
-            const live = measurementContext.getLiveMeasurement?.() ?? {
-              generation: 0,
-              record: null,
-            };
-            const record = live.record ?? null;
-            const labels = measurementContext.getChannelLabels?.(record) ?? [];
-            const selection = parseSelection(loudnessActive);
-            const preview = loudnessProfile?.draft != null;
-            const profileDocument = loudnessProfile?.document ?? null;
-            const profile = profileDocument
-              ? {
-                  mode: preview ? "preview" : "saved",
-                  id: preview
-                    ? (loudnessProfile.draft.editingId ?? null)
-                    : selection.kind === "profile"
-                      ? selection.id
-                      : null,
-                  name: profileDocument.name ?? null,
-                  document: profileDocument,
-                }
-              : null;
+          return {
+            requestId,
+            result: buildMeasurementOrFail(),
+          };
+        }
+        if (request.method === "measurement.wait") {
+          const currentMeasurement = latestMeasurementContextRef.current;
+          const initialLive = currentMeasurement.getLiveMeasurement?.() ?? {
+            generation: 0,
+            record: null,
+          };
+          if (
+            isDifferentPublishedMeasurement(
+              initialLive,
+              request.params.afterGeneration,
+              request.params.afterSequence
+            )
+          ) {
             return {
               requestId,
-              result: buildMeasurementInspection({
-                revision: controlRevisionRef.current,
-                observedAtMs: Date.now(),
-                liveState: measurementContext.liveState,
-                sessionGeneration: live.generation,
-                record,
-                channelLabels: labels,
-                vectorscopeRequest: measurementContext.vectorscopeRequests?.[0] ?? null,
-                dialogueActive: measurementContext.dialogueActive === true,
-                profile,
-              }),
+              result: {
+                outcome: "sample",
+                matchedImmediately: true,
+                measurement: buildMeasurementOrFail(initialLive),
+              },
             };
-          } catch (error) {
+          }
+          if (waitersRef.current.size >= 4) {
             throw semanticFailure(
-              "measurementSnapshotFailed",
+              "waitLimitReached",
               "$",
-              `The LIVE measurement snapshot could not be formed: ${error?.message || String(error)}`,
-              -32072
+              "Too many long waits are active.",
+              -32070
             );
           }
+          const result = await new Promise((resolve, reject) => {
+            const waiter = {
+              kind: "measurement",
+              timer: null,
+              unsubscribe: () => {},
+              resolve,
+              reject,
+            };
+            const finish = (value) => {
+              clearTimeout(waiter.timer);
+              waiter.unsubscribe();
+              waitersRef.current.delete(requestId);
+              resolve(value);
+            };
+            const observe = (live) => {
+              if (
+                !isDifferentPublishedMeasurement(
+                  live,
+                  request.params.afterGeneration,
+                  request.params.afterSequence
+                )
+              ) {
+                return;
+              }
+              finish({ outcome: "sample", matchedImmediately: false, live });
+            };
+            waiter.timer = setTimeout(() => {
+              const live = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+                generation: 0,
+                record: null,
+              };
+              finish({ outcome: "timeout", live });
+            }, request.params.timeoutMs);
+            waitersRef.current.set(requestId, waiter);
+            waiter.unsubscribe =
+              currentMeasurement.subscribeLiveMeasurement?.(observe) ?? (() => {});
+            observe(currentMeasurement.getLiveMeasurement?.() ?? { generation: 0, record: null });
+          });
+          if (result === WAIT_CANCELLED) return null;
+          if (result.outcome === "timeout") {
+            throw semanticFailure(
+              "timeout",
+              "$.params.timeoutMs",
+              "No different LIVE measurement sample was published before the timeout.",
+              -32071,
+              {
+                afterGeneration: request.params.afterGeneration,
+                afterSequence: request.params.afterSequence ?? null,
+                currentGeneration: result.live.generation,
+                currentSequence: result.live.record?.sequence ?? null,
+                liveState: latestMeasurementContextRef.current.liveState,
+              }
+            );
+          }
+          return {
+            requestId,
+            result: {
+              outcome: "sample",
+              matchedImmediately: result.matchedImmediately,
+              measurement: buildMeasurementOrFail(result.live),
+            },
+          };
         }
         if (request.method === "app.wait") {
           const activeBatch = revisionBatchRef.current;
@@ -809,7 +926,7 @@ export function useAgentControlBridge({
             throw semanticFailure(
               "waitLimitReached",
               "$",
-              "Too many revision waits are active.",
+              "Too many long waits are active.",
               -32070
             );
           }
@@ -822,6 +939,7 @@ export function useAgentControlBridge({
               });
             }, request.params.timeoutMs);
             waitersRef.current.set(requestId, {
+              kind: "revision",
               afterRevision: request.params.afterRevision,
               timer,
               resolve,
@@ -2917,6 +3035,7 @@ export function useAgentControlBridge({
           const waiter = waiters.get(request.requestId);
           if (waiter) {
             clearTimeout(waiter.timer);
+            waiter.unsubscribe?.();
             waiters.delete(request.requestId);
             waiter.resolve(WAIT_CANCELLED);
           }
@@ -2933,6 +3052,7 @@ export function useAgentControlBridge({
             .catch(() => undefined);
         if (
           request?.method === "app.wait" ||
+          request?.method === "measurement.wait" ||
           request?.method === "measurement.describe" ||
           request?.method === "measurement.inspect"
         ) {
@@ -2992,6 +3112,7 @@ export function useAgentControlBridge({
       dockSettlement?.reject(new Error("Agent-control bridge unmounted."));
       for (const waiter of waiters.values()) {
         clearTimeout(waiter.timer);
+        waiter.unsubscribe?.();
         waiter.reject(new Error("Agent-control bridge unmounted."));
       }
       waiters.clear();

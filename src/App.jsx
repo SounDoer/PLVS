@@ -1043,6 +1043,7 @@ function AppContent() {
   const agentControlMeasurementContext = useMemo(
     () => ({
       getLiveMeasurement: meterRuntime.getLiveMeasurement,
+      subscribeLiveMeasurement: meterRuntime.subscribeLiveMeasurement,
       getChannelLabels: measurementChannelLabels,
       liveState: meterRuntime.liveLifecycle,
       vectorscopeRequests: analysisRequests.vectorscope,
@@ -1053,6 +1054,7 @@ function AppContent() {
       dialogueGating,
       measurementChannelLabels,
       meterRuntime.getLiveMeasurement,
+      meterRuntime.subscribeLiveMeasurement,
       meterRuntime.liveLifecycle,
     ]
   );

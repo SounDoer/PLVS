@@ -6,7 +6,7 @@ Revision Wait lets an agent sleep until the public state revision changes instea
 polling inspection endpoints. The first version waits only for revision changes; arbitrary field
 expressions and high-frequency runtime events are deferred.
 
-This document covers `app.wait`. The approved [Measurement Wait](measurement-wait.md) extension
+This document covers `app.wait`. The [Measurement Wait](measurement-wait.md) companion command
 waits for a different LIVE semantic sample without changing the meaning of the global revision.
 
 ## Command
@@ -47,9 +47,8 @@ Wait registration is independent from the serialized command/mutation queue, so 
 cannot block inspect or update. Registration and its initial comparison are race-free. A completed
 Agent Control mutation publishes its revision change and then wakes every matching waiter once.
 
-At most four `app.wait` requests may currently be active concurrently. When Measurement Wait is
-implemented, both long-poll methods share that limit; an additional wait fails immediately with
-`waitLimitReached`.
+At most four long-poll requests may be active concurrently across `app.wait` and
+`measurement.wait`; an additional wait fails immediately with `waitLimitReached`.
 
 A waiter is removed immediately after change, timeout, client disconnect/cancellation, frontend
 unmount, or application shutdown. Returned revision values always come from committed state.

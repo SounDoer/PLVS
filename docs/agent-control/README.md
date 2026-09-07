@@ -21,7 +21,7 @@ The development-identity build exposes all approved command families:
 app.capabilities
 app.inspect
 app.wait
-measurement.describe / measurement.inspect
+measurement.describe / measurement.inspect / measurement.wait
 workspace.applyLayout
 panel.describe / panel.update / panel.reset
 axis.describe / axis.inspect / axis shared / axis panel
@@ -47,6 +47,7 @@ npm run desktop:control -- capabilities --json
 npm run desktop:control -- inspect --json
 npm run desktop:control -- wait --after-revision 0 --timeout-ms 30000 --json
 npm run desktop:control -- measurement inspect --json
+npm run desktop:control -- measurement wait --after-generation 0 --timeout-ms 30000 --json
 npm run desktop:control -- workspace apply layout.json --expected-revision 0 --json
 npm run desktop:control -- panel describe spectrum --json
 npm run desktop:control -- settings inspect --json
@@ -67,15 +68,15 @@ paths as the GUI.
 ## Implementation status
 
 The foundation, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
-Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Library
-Transfer, and Configuration Transfer are implemented. See [`measurements.md`](measurements.md),
+Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Measurement
+Wait, Library Transfer, and Configuration Transfer are implemented. See
+[`measurements.md`](measurements.md),
 [`devices.md`](devices.md), [`themes.md`](themes.md), and
 [`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration remains
 a deferred product decision.
 
-The next approved slices are [Measurement Wait](measurement-wait.md) followed by
-[View Control](view.md). Their contracts are approved but their commands are not implemented and
-must not be advertised by `app.capabilities` or the CLI until the corresponding code lands.
+The next approved slice is [View Control](view.md). Its commands are not implemented and must not
+be advertised by `app.capabilities` or the CLI until the corresponding code lands.
 
 ## Keeping this contract in step with the app
 
@@ -395,8 +396,9 @@ identity (`cliHostIdentityMismatch`), before that host can discover or contact a
 Inside the internal JSON-RPC error data, failures from this layer carry `"layer": "transport"`
 alongside an internal `reason`, because they are not valid app results and must not be read as one.
 The public CLI maps that internal distinction to its documented exit class and always emits the
-common `{ schemaVersion, ok: false, error: { code, message, details? } }` envelope. A refused
-concurrent `app.wait` is instead an application error with public code `waitLimitReached`.
+common `{ schemaVersion, ok: false, error: { code, message, details? } }` envelope. A long wait
+refused by the shared concurrency limit is instead an application error with public code
+`waitLimitReached`.
 
 ### Conditional controls and warnings
 
@@ -471,6 +473,7 @@ Control settings.
 - [`axes.md`](axes.md) — approved Axis Control contract
 - [`settings.md`](settings.md) — approved Settings Control contract
 - [`wait.md`](wait.md) — approved Revision Wait contract
+- [`measurement-wait.md`](measurement-wait.md) — implemented Measurement Wait contract
 - [`transport.md`](transport.md) — approved Transport Control contract
 - [`dock.md`](dock.md) — approved Dock Control contract
 - [`libraries.md`](libraries.md) — approved Library Transfer contract

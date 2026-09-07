@@ -45,6 +45,19 @@ export function createLiveMeasurementOwner({ now = () => Date.now() } = {}) {
   let generation = 0;
   let latest = null;
   let pending = null;
+  const listeners = new Set();
+
+  const read = () => Object.freeze({ generation, record: latest });
+  const publish = () => {
+    const snapshot = read();
+    for (const listener of listeners) {
+      try {
+        listener(snapshot);
+      } catch {
+        // Measurement observers must never interrupt frame publication.
+      }
+    }
+  };
 
   return {
     beginSession() {
@@ -57,6 +70,7 @@ export function createLiveMeasurementOwner({ now = () => Date.now() } = {}) {
       generation = pending.generation;
       latest = pending.latest;
       pending = null;
+      publish();
       return generation;
     },
     abortSession() {
@@ -66,17 +80,23 @@ export function createLiveMeasurementOwner({ now = () => Date.now() } = {}) {
       const targetGeneration = pending?.generation ?? generation;
       const record = freezeRecord(frame, audio, targetGeneration, now(), dialogueActive);
       if (pending) pending.latest = record;
-      else latest = record;
+      else {
+        latest = record;
+        publish();
+      }
       return record;
     },
     clear() {
       generation += 1;
       latest = null;
       pending = null;
+      publish();
       return generation;
     },
-    read() {
-      return Object.freeze({ generation, record: latest });
+    read,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
   };
 }

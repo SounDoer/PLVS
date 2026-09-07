@@ -32,6 +32,8 @@ mod tests {
       "action.transportLiveStart",
       "wait.changed",
       "wait.timeout",
+      "measurementWait.sample",
+      "measurementWait.timeout",
     ];
     let mut ids = HashSet::new();
 
