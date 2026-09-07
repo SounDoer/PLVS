@@ -1,11 +1,7 @@
 //! Thin forwarder for the agent-facing CLI. The actual implementation lives in
-//! the main `plvs` binary behind the internal `--cli` flag (src/cli_main.rs);
-//! this keeps the `plvs-cli` executable name, path, and usage stable for the
-//! agent discovery surface (plvs-agent.json, registry CliPath, PATH toggle)
-//! while the engine (ONNX runtime, VAD models, DSP) ships only once.
-//!
-//! IMPORTANT: this binary must not reference `app_lib`, or the full engine gets
-//! statically linked right back into it.
+//! the main `plvs` binary behind the internal `--cli` flag (`src/cli_main.rs`).
+//! This package deliberately stays independent from the application crate and
+//! its Tauri, audio, and DSP dependency graph.
 
 use std::ffi::OsString;
 use std::io;

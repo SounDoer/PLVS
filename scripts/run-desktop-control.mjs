@@ -1,10 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
-const manifestPath = "src-tauri/Cargo.toml";
+const manifestPath = "src-tauri/plvs-cli/Cargo.toml";
 const build = spawnSync(
   "cargo",
-  ["build", "--manifest-path", manifestPath, "--features", "dev-identity", "--bin", "plvs-cli"],
+  ["build", "--quiet", "--manifest-path", manifestPath, "--features", "dev-identity"],
   { stdio: "inherit", shell: process.platform === "win32" }
 );
 if (build.error) {

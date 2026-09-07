@@ -3526,6 +3526,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "plvs-cli"
+version = "0.15.1"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "png"
 version = "0.17.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"

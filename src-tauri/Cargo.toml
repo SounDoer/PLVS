@@ -1,12 +1,23 @@
-[package]
-name = "plvs"
+[workspace]
+members = ["plvs-cli"]
+exclude = ["vendor/voice_activity_detector"]
+resolver = "2"
+
+[workspace.package]
 version = "0.15.1"
-description = "PLVS — real-time audio metering (Tauri desktop shell)"
-authors = ["SounDoer"]
-license = "MIT"
-repository = "https://github.com/SounDoer/PLVS"
 edition = "2021"
 rust-version = "1.95"
+license = "MIT"
+
+[package]
+name = "plvs"
+version.workspace = true
+description = "PLVS — real-time audio metering (Tauri desktop shell)"
+authors = ["SounDoer"]
+license.workspace = true
+repository = "https://github.com/SounDoer/PLVS"
+edition.workspace = true
+rust-version.workspace = true
 default-run = "plvs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
