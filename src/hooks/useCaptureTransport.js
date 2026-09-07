@@ -16,9 +16,12 @@ export function useCaptureTransport({ display, getLiveIntake }) {
   const [resolvedDeviceId, setResolvedDeviceId] = useState(null);
   const [startedAt, setStartedAt] = useState(null);
   const [lastError, setLastError] = useState(null);
+  const [deviceTransition, setDeviceTransition] = useState(null);
   const lifecycleRef = useRef("stopped");
+  const deviceTransitionRef = useRef(null);
   const pendingStartRef = useRef(null);
   const pendingStopRef = useRef(null);
+  const pendingDeviceRestartRef = useRef(null);
 
   const publishLifecycle = (next) => {
     lifecycleRef.current = next;
@@ -27,8 +30,12 @@ export function useCaptureTransport({ display, getLiveIntake }) {
 
   const startLiveForControl = () => {
     if (lifecycleRef.current === "running") return Promise.resolve();
-    if (lifecycleRef.current === "starting" || lifecycleRef.current === "stopping") {
-      return Promise.reject(transitionError(lifecycleRef.current));
+    if (
+      lifecycleRef.current === "starting" ||
+      lifecycleRef.current === "stopping" ||
+      deviceTransitionRef.current
+    ) {
+      return Promise.reject(transitionError(deviceTransitionRef.current ?? lifecycleRef.current));
     }
     display.clearNotice();
     getLiveIntake().beginCaptureSession();
@@ -44,8 +51,12 @@ export function useCaptureTransport({ display, getLiveIntake }) {
 
   const stopLiveForControl = () => {
     if (lifecycleRef.current === "stopped") return Promise.resolve();
-    if (lifecycleRef.current === "starting" || lifecycleRef.current === "stopping") {
-      return Promise.reject(transitionError(lifecycleRef.current));
+    if (
+      lifecycleRef.current === "starting" ||
+      lifecycleRef.current === "stopping" ||
+      deviceTransitionRef.current
+    ) {
+      return Promise.reject(transitionError(deviceTransitionRef.current ?? lifecycleRef.current));
     }
     display.clearNotice();
     publishLifecycle("stopping");
@@ -57,14 +68,30 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     });
   };
 
+  const beginDeviceRestartForControl = () => {
+    if (lifecycleRef.current !== "running" || deviceTransitionRef.current) {
+      return Promise.reject(transitionError(deviceTransitionRef.current ?? lifecycleRef.current));
+    }
+    deviceTransitionRef.current = "restarting";
+    setDeviceTransition("restarting");
+    return new Promise((resolve, reject) => {
+      pendingDeviceRestartRef.current = { resolve, reject };
+    });
+  };
+
   const markStarted = ({ resolvedDeviceId: nextDeviceId = null } = {}) => {
     setResolvedDeviceId(nextDeviceId);
     setStartedAt(Date.now());
     setLastError(null);
     publishLifecycle("running");
+    deviceTransitionRef.current = null;
+    setDeviceTransition(null);
     const pending = pendingStartRef.current;
     pendingStartRef.current = null;
     pending?.resolve();
+    const pendingRestart = pendingDeviceRestartRef.current;
+    pendingDeviceRestartRef.current = null;
+    pendingRestart?.resolve();
   };
 
   const markStartFailed = (error) => {
@@ -73,26 +100,41 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     setStartedAt(null);
     setLastError({ message: error?.message || String(error) });
     publishLifecycle("error");
+    deviceTransitionRef.current = null;
+    setDeviceTransition(null);
     const pending = pendingStartRef.current;
     pendingStartRef.current = null;
     pending?.reject(error);
+    const pendingRestart = pendingDeviceRestartRef.current;
+    pendingDeviceRestartRef.current = null;
+    pendingRestart?.reject(error);
   };
 
   const markStopped = () => {
     setRunning(false);
     setResolvedDeviceId(null);
     publishLifecycle("stopped");
+    deviceTransitionRef.current = null;
+    setDeviceTransition(null);
     const pending = pendingStopRef.current;
     pendingStopRef.current = null;
     pending?.resolve();
+    const pendingRestart = pendingDeviceRestartRef.current;
+    pendingDeviceRestartRef.current = null;
+    pendingRestart?.reject(new Error("LIVE capture stopped during device restart."));
   };
 
   const markStopFailed = (error) => {
     setLastError({ message: error?.message || String(error) });
     publishLifecycle("error");
+    deviceTransitionRef.current = null;
+    setDeviceTransition(null);
     const pending = pendingStopRef.current;
     pendingStopRef.current = null;
     pending?.reject(error);
+    const pendingRestart = pendingDeviceRestartRef.current;
+    pendingDeviceRestartRef.current = null;
+    pendingRestart?.reject(error);
   };
 
   const halt = (error) => {
@@ -122,6 +164,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
   return {
     running,
     lifecycle,
+    deviceTransition,
     resolvedDeviceId,
     startedAt,
     lastError,
@@ -130,6 +173,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     stopLive,
     startLiveForControl,
     stopLiveForControl,
+    beginDeviceRestartForControl,
     markStarted,
     markStartFailed,
     markStopped,

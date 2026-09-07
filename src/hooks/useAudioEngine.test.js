@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef } from "react";
 import { useAudioEngine } from "./useAudioEngine.js";
@@ -189,6 +189,74 @@ describe("useAudioEngine", () => {
     await waitFor(() =>
       expect(props.raiseNotice).toHaveBeenCalledWith("error", "Error: Audio unavailable")
     );
+  });
+
+  it("awaits native shutdown before starting the newly selected running device", async () => {
+    let releaseStop;
+    stopAudioCapture.mockReturnValueOnce(
+      new Promise((resolve) => {
+        releaseStop = resolve;
+      })
+    );
+    const transport = {
+      running: true,
+      lifecycle: "running",
+      halt: vi.fn(),
+      markStarted: vi.fn(),
+      markStopped: vi.fn(),
+      markStopFailed: vi.fn(),
+    };
+    const props = {
+      captureDeviceId: "default",
+      captureFormatSignature: "2:48000",
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: transport.halt,
+      transport,
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    const { rerender } = renderHook((p) => useHarness(p), { initialProps: props });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    vi.clearAllMocks();
+
+    rerender({ ...props, captureDeviceId: "lb-main" });
+    await waitFor(() => expect(stopAudioCapture).toHaveBeenCalledOnce());
+    expect(startAudioCapture).not.toHaveBeenCalled();
+    await act(async () => releaseStop());
+    await waitFor(() =>
+      expect(startAudioCapture).toHaveBeenCalledWith(
+        expect.objectContaining({ deviceId: "lb-main" })
+      )
+    );
+    expect(props.intake.reset).toHaveBeenCalledOnce();
+    expect(transport.markStarted).toHaveBeenCalledWith({ resolvedDeviceId: "lb-main" });
+  });
+
+  it("does not start capture while Live is stopped", async () => {
+    renderHook(() =>
+      useHarness({
+        transport: {
+          running: false,
+          lifecycle: "stopped",
+          halt: vi.fn(),
+          markStarted: vi.fn(),
+          markStopped: vi.fn(),
+          markStopFailed: vi.fn(),
+        },
+        intake: { reset: vi.fn() },
+        setAudio: vi.fn(),
+        raiseNotice: vi.fn(),
+        halt: vi.fn(),
+        setSelectedOffset: vi.fn(),
+        resetTimer: vi.fn(),
+        setShowClock: vi.fn(),
+      })
+    );
+    await Promise.resolve();
+    expect(startAudioCapture).not.toHaveBeenCalled();
   });
 
   it("keeps reducing active live frames without publishing while snapshot is open", async () => {

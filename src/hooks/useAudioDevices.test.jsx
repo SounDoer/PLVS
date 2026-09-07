@@ -92,7 +92,7 @@ describe("useAudioDevices", () => {
     act(() => {
       selection = result.current.selectCaptureDevice(CAP).then(() => (settled = true));
     });
-    expect(result.current.captureDeviceId).toBe(CAP);
+    await waitFor(() => expect(result.current.captureDeviceId).toBe(CAP));
     expect(settled).toBe(false);
     await act(async () => save.resolve());
     await selection;
@@ -108,8 +108,66 @@ describe("useAudioDevices", () => {
     act(() => {
       selection = result.current.selectCaptureDevice(CAP);
     });
-    await expect(selection).rejects.toMatchObject({ message: "disk full", stateCommitted: true });
+    await act(async () => {
+      await expect(selection).rejects.toMatchObject({ message: "disk full", stateCommitted: true });
+    });
     expect(result.current.captureDeviceId).toBe(CAP);
+  });
+
+  it("preflights and awaits the normal Live restart around a running selection", async () => {
+    const restart = deferred();
+    const beginDeviceRestartForControl = vi.fn(() => restart.promise);
+    const { result } = renderHook(() =>
+      useAudioDevices({ liveLifecycle: "running", beginDeviceRestartForControl })
+    );
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+    let settled = false;
+    let selection;
+    act(() => {
+      selection = result.current.selectCaptureDevice(CAP).then(() => (settled = true));
+    });
+    await waitFor(() => expect(beginDeviceRestartForControl).toHaveBeenCalledOnce());
+    expect(mocks.previewAudioDevice).toHaveBeenCalledWith(CAP);
+    expect(mocks.saveCaptureDeviceId).toHaveBeenCalledWith(CAP);
+    expect(settled).toBe(false);
+    await act(async () => restart.resolve());
+    await selection;
+    expect(settled).toBe(true);
+  });
+
+  it("leaves the current Live session untouched when preflight fails", async () => {
+    const beginDeviceRestartForControl = vi.fn();
+    const { result } = renderHook(() =>
+      useAudioDevices({ liveLifecycle: "running", beginDeviceRestartForControl })
+    );
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+    mocks.previewAudioDevice.mockRejectedValueOnce(new Error("device vanished"));
+    await expect(result.current.selectCaptureDevice(CAP)).rejects.toMatchObject({
+      code: "deviceUnavailable",
+    });
+    expect(beginDeviceRestartForControl).not.toHaveBeenCalled();
+    expect(mocks.saveCaptureDeviceId).not.toHaveBeenCalled();
+    expect(result.current.captureDeviceId).toBe("default");
+  });
+
+  it("keeps a committed selection when the normal Live restart fails", async () => {
+    const restart = deferred();
+    const { result } = renderHook(() =>
+      useAudioDevices({
+        liveLifecycle: "running",
+        beginDeviceRestartForControl: () => restart.promise,
+      })
+    );
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+    const selection = result.current.selectCaptureDevice(CAP);
+    const failedSelection = expect(selection).rejects.toThrow("device busy");
+    await waitFor(() => expect(result.current.captureDeviceId).toBe(CAP));
+    await act(async () => restart.reject(new Error("device busy")));
+    await act(async () => {
+      await failedSelection;
+    });
+    expect(result.current.captureDeviceId).toBe(CAP);
+    expect(mocks.saveCaptureDeviceId).toHaveBeenCalledWith(CAP);
   });
 
   it("advances generation for hotplug without changing the requested selection", async () => {

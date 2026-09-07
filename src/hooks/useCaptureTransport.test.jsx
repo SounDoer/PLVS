@@ -50,4 +50,52 @@ describe("useCaptureTransport lifecycle", () => {
     await stopping;
     expect(result.current.lifecycle).toBe("stopped");
   });
+
+  it("exposes device restart settlement and blocks overlapping Transport actions", async () => {
+    const { result } = setup();
+    let starting;
+    act(() => {
+      starting = result.current.startLiveForControl();
+      result.current.markStarted({ resolvedDeviceId: "device-1" });
+    });
+    await starting;
+
+    let settled = false;
+    let restart;
+    act(() => {
+      restart = result.current.beginDeviceRestartForControl().then(() => (settled = true));
+    });
+    expect(result.current.lifecycle).toBe("running");
+    expect(result.current.deviceTransition).toBe("restarting");
+    expect(settled).toBe(false);
+    await expect(result.current.stopLiveForControl()).rejects.toMatchObject({
+      code: "transitionInProgress",
+    });
+    act(() => result.current.markStarted({ resolvedDeviceId: "device-2" }));
+    await restart;
+    expect(settled).toBe(true);
+    expect(result.current.deviceTransition).toBeNull();
+    expect(result.current.resolvedDeviceId).toBe("device-2");
+  });
+
+  it("preserves a failed restart as stopped/error and rejects its settlement", async () => {
+    const { result } = setup();
+    let starting;
+    act(() => {
+      starting = result.current.startLiveForControl();
+      result.current.markStarted({ resolvedDeviceId: "device-1" });
+    });
+    await starting;
+
+    let restart;
+    act(() => {
+      restart = result.current.beginDeviceRestartForControl();
+      result.current.markStartFailed(new Error("new device busy"));
+    });
+    await expect(restart).rejects.toThrow("new device busy");
+    expect(result.current.running).toBe(false);
+    expect(result.current.lifecycle).toBe("error");
+    expect(result.current.deviceTransition).toBeNull();
+    expect(result.current.lastError).toEqual({ message: "new device busy" });
+  });
 });

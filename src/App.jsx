@@ -195,6 +195,7 @@ function AppContent() {
     stopLive,
     startLiveForControl,
     stopLiveForControl,
+    beginDeviceRestartForControl,
     stopFileAnalysis,
     switchSource,
     clearActiveSource,
@@ -353,7 +354,10 @@ function AppContent() {
     selectCaptureDevice,
     defaultOutputFormatSig,
     defaultOutputLabel,
-  } = useAudioDevices();
+  } = useAudioDevices({
+    liveLifecycle: meterRuntime.liveLifecycle,
+    beginDeviceRestartForControl,
+  });
 
   const onHideWindow = useCallback(async () => {
     if (!isTauri()) return;
@@ -416,7 +420,7 @@ function AppContent() {
       } catch (error) {
         raiseNotice(
           "error",
-          "Could not save the audio device selection.",
+          "Could not switch the audio device.",
           errorDetails("Device selection failed", error)
         );
       }

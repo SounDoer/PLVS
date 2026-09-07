@@ -31,11 +31,15 @@ function emptyInventory() {
  * Shared owner for device inventory, Automatic preview, persisted selection, and legacy migration.
  * GUI, tray, engine runtime, and Agent Control all consume this one coherent controller.
  */
-export function useAudioDevices() {
+export function useAudioDevices({
+  liveLifecycle = "stopped",
+  beginDeviceRestartForControl = null,
+} = {}) {
   const [snapshot, setSnapshot] = useState(emptyInventory);
   const snapshotRef = useRef(snapshot);
   const refreshSequenceRef = useRef(0);
   const migrationSequenceRef = useRef(0);
+  const selectionSequenceRef = useRef(0);
   const mountedRef = useRef(true);
 
   const publish = useCallback((next) => {
@@ -50,7 +54,7 @@ export function useAudioDevices() {
     [publish]
   );
 
-  const selectCaptureDevice = useCallback(
+  const commitCaptureDevice = useCallback(
     async (nextId, options = {}) => {
       const current = snapshotRef.current;
       if (current.requestedId === nextId) {
@@ -59,6 +63,7 @@ export function useAudioDevices() {
         }
         return { changed: false, requestedId: nextId };
       }
+      selectionSequenceRef.current += 1;
       publish({
         ...current,
         requestedId: nextId,
@@ -88,6 +93,53 @@ export function useAudioDevices() {
   );
 
   const previewSelection = useCallback(async (deviceId) => previewAudioDevice(deviceId), []);
+
+  const selectCaptureDevice = useCallback(
+    async (nextId, options = {}) => {
+      if (snapshotRef.current.requestedId === nextId) {
+        return commitCaptureDevice(nextId, options);
+      }
+      if (["starting", "stopping"].includes(liveLifecycle)) {
+        const error = new Error(`LIVE transport is ${liveLifecycle}.`);
+        error.code = "transitionInProgress";
+        throw error;
+      }
+
+      try {
+        await previewSelection(nextId);
+      } catch (error) {
+        if (nextId !== "default" || liveLifecycle === "running") {
+          const failure = error instanceof Error ? error : new Error(String(error));
+          failure.code = "deviceUnavailable";
+          throw failure;
+        }
+      }
+
+      const restart =
+        liveLifecycle === "running" && beginDeviceRestartForControl
+          ? beginDeviceRestartForControl()
+          : null;
+      const restartSettlement = restart
+        ? restart.then(
+            () => null,
+            (error) => error
+          )
+        : null;
+      let committed;
+      let persistenceError = null;
+      try {
+        committed = await commitCaptureDevice(nextId, options);
+      } catch (error) {
+        persistenceError = error;
+      }
+      let restartError = null;
+      if (restartSettlement) restartError = await restartSettlement;
+      if (persistenceError) throw persistenceError;
+      if (restartError) throw restartError;
+      return committed;
+    },
+    [beginDeviceRestartForControl, commitCaptureDevice, liveLifecycle, previewSelection]
+  );
 
   const refreshInventory = useCallback(
     async (providedDevices) => {
@@ -148,8 +200,9 @@ export function useAudioDevices() {
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
+    const sequence = selectionSequenceRef.current;
     void loadCaptureDeviceId().then((requestedId) => {
-      if (!cancelled && mountedRef.current) {
+      if (!cancelled && mountedRef.current && sequence === selectionSequenceRef.current) {
         updateSnapshot((current) => ({ ...current, requestedId }));
       }
     });
@@ -223,6 +276,7 @@ export function useAudioDevices() {
     captureDeviceId: snapshot.requestedId,
     safeAudioDeviceId,
     selectCaptureDevice,
+    commitCaptureDevice,
     setCaptureDeviceIdAndPersist: selectCaptureDevice,
     previewSelection,
     refreshInventory,

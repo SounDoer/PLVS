@@ -56,8 +56,10 @@ export function useAudioEngine({
   display,
   defaultSampleRateRef: externalDefaultSampleRateRef,
 }) {
-  const { running, halt, markStarted, markStopped, markStopFailed } = transport;
+  const { running, lifecycle, halt, markStarted, markStopped, markStopFailed } = transport;
   const rafRef = useRef(0);
+  const stopInFlightRef = useRef(Promise.resolve());
+  const stoppedAudioRef = useRef(null);
   const {
     frameRef,
     selectedOffsetRef,
@@ -106,15 +108,8 @@ export function useAudioEngine({
   /* eslint-disable react-hooks/exhaustive-deps, react-hooks/immutability */
   useEffect(() => {
     if (!running) {
-      let stopResult = Promise.resolve();
-      if (audioRef.current?.mode === "tauri") {
-        stopResult = stopAudioCapture();
-        for (const u of audioRef.current?.unsubs || []) {
-          try {
-            u();
-          } catch (_) {}
-        }
-      }
+      const stopResult = stopInFlightRef.current;
+      stopInFlightRef.current = Promise.resolve();
       if (audioRef.current) {
         try {
           audioRef.current.stream?.getTracks()?.forEach((t) => t.stop());
@@ -123,9 +118,13 @@ export function useAudioEngine({
           audioRef.current.ctx?.close();
         } catch (_) {}
       }
-      audioRef.current = null;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      void stopResult.then(() => markStopped?.()).catch((error) => markStopFailed?.(error));
+      void stopResult
+        .then(() => {
+          audioRef.current = null;
+          if (lifecycle !== "error") markStopped?.();
+        })
+        .catch((error) => markStopFailed?.(error));
       return;
     }
     if (isTauri() && audioRef.current?.mode === "tauri") {
@@ -134,6 +133,10 @@ export function useAudioEngine({
     let mounted = true;
     const init = async () => {
       try {
+        const stopResult = stopInFlightRef.current;
+        stopInFlightRef.current = Promise.resolve();
+        await stopResult;
+        if (!mounted) return;
         if (isTauri()) {
           const devices = await listAudioDevices();
           if (!mounted) return;
@@ -213,20 +216,22 @@ export function useAudioEngine({
       mounted = false;
       const rafId = rafRef.current;
       if (rafId) cancelAnimationFrame(rafId);
-      if (audioRef.current?.mode === "tauri") {
-        void stopAudioCapture();
-        for (const u of audioRef.current?.unsubs || []) {
+      const currentAudio = audioRef.current;
+      if (currentAudio?.mode === "tauri" && stoppedAudioRef.current !== currentAudio) {
+        stoppedAudioRef.current = currentAudio;
+        stopInFlightRef.current = Promise.resolve(stopAudioCapture());
+        for (const u of currentAudio.unsubs || []) {
           try {
             u();
           } catch (_) {}
         }
       }
-      if (audioRef.current) {
+      if (currentAudio) {
         try {
-          audioRef.current.stream?.getTracks()?.forEach((t) => t.stop());
+          currentAudio.stream?.getTracks()?.forEach((t) => t.stop());
         } catch (_) {}
         try {
-          audioRef.current.ctx?.close();
+          currentAudio.ctx?.close();
         } catch (_) {}
       }
     };
