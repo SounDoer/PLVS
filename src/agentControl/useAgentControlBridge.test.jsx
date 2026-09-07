@@ -253,6 +253,7 @@ function Harness({
   applyAgentSettings,
   agentView = defaultView,
   agentViewContext = {},
+  agentVisual = null,
   applyAgentView,
   agentTransport = transport,
   agentDock = dock,
@@ -442,6 +443,7 @@ function Harness({
           setPresetState((current) => ({ ...current, dirty: true }));
         }),
     },
+    visual: agentVisual,
     transport: transportState,
     transportContext: { docked: false },
     executeTransport,
@@ -603,6 +605,54 @@ function createDeferred() {
   return { promise, resolve };
 }
 
+function visualControl(overrides = {}) {
+  return {
+    platformCapabilities: {
+      platform: "windows",
+      screenshot: {
+        available: true,
+        targets: ["main", "workspace", "panel", "dockHeader", "dockEditor"],
+      },
+      recording: { available: false, targets: [], audioSources: [] },
+    },
+    getRuntime: () => ({
+      windowForm: "normal",
+      sourceMode: "live",
+      availableScreenshotTargets: ["main", "workspace", "panel"],
+      availableAudioSources: [],
+    }),
+    settle: vi.fn(async (target, { expectedRevision, getRevision }) => {
+      const revision = getRevision();
+      if (expectedRevision !== undefined && revision !== expectedRevision) {
+        throw {
+          reason: "revisionConflict",
+          details: { expectedRevision, currentRevision: revision },
+        };
+      }
+      return {
+        target,
+        windowLabel: "main",
+        rect: { x: 10, y: 20, width: 300, height: 200 },
+        viewport: { width: 800, height: 600 },
+        devicePixelRatio: 1.25,
+        revision,
+      };
+    }),
+    captureScreenshot: vi.fn(async () => ({
+      artifactId: "art-1",
+      kind: "screenshot",
+      mediaType: "image/png",
+      stagedPath: "C:\\private\\agent-artifacts\\art-1.png",
+      width: 375,
+      height: 250,
+      bytes: 1234,
+      sha256: "a".repeat(64),
+      createdAt: "2026-09-07T12:00:00Z",
+    })),
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   localStorage.clear();
   window.matchMedia = vi.fn(() => ({
@@ -634,6 +684,140 @@ describe("useAgentControlBridge", () => {
     view.unmount();
     expect(adapter.unlisten).toHaveBeenCalledTimes(1);
     expect(adapter.notReady).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Visual Capture", () => {
+    it("describes runtime availability and returns screenshot metadata without mutating state", async () => {
+      const visual = visualControl();
+      const measurementContext = {
+        getLiveMeasurement: () => ({ generation: 7, record: { sequence: 412 } }),
+      };
+      const view = mount({ agentVisual: visual, measurementContext });
+      await waitUntilReady();
+      const beforeWorkspace = view.store.state;
+
+      const capabilities = await send(request("app.capabilities", {}, "visual-capabilities"));
+      expect(capabilities.result.features.visual).toEqual({ screenshot: true, recording: false });
+      expect(capabilities.result.methods).toEqual(
+        expect.arrayContaining(["visual.describe", "visual.screenshot"])
+      );
+      const described = await send(request("visual.describe", {}, "visual-describe"));
+      expect(described.result).toMatchObject({
+        revision: 0,
+        platform: "windows",
+        screenshot: { available: true, format: "png" },
+        recording: { available: false },
+        runtime: {
+          windowForm: "normal",
+          availableScreenshotTargets: ["main", "workspace", "panel"],
+        },
+      });
+
+      const screenshot = await send(
+        request(
+          "visual.screenshot",
+          { target: { kind: "workspace" }, expectedRevision: 0 },
+          "visual-shot"
+        )
+      );
+      expect(visual.settle).toHaveBeenCalledWith(
+        { kind: "workspace" },
+        expect.objectContaining({ expectedRevision: 0, signal: expect.any(AbortSignal) })
+      );
+      expect(visual.captureScreenshot).toHaveBeenCalledWith({
+        windowLabel: "main",
+        rect: { x: 10, y: 20, width: 300, height: 200 },
+        viewport: { width: 800, height: 600 },
+        devicePixelRatio: 1.25,
+      });
+      expect(screenshot.result).toMatchObject({
+        revision: 0,
+        measurement: { generation: 7, sequence: 412 },
+        artifact: { artifactId: "art-1", kind: "screenshot", mediaType: "image/png" },
+        target: { kind: "workspace" },
+      });
+      expect(view.store.state).toBe(beforeWorkspace);
+      const after = await send(request("app.capabilities", {}, "visual-after"));
+      expect(after.result.revision).toBe(0);
+    });
+
+    it.each([
+      ["panelNotFound", "settle"],
+      ["panelNotVisible", "settle"],
+      ["revisionConflict", "settle"],
+      ["renderNotSettled", "settle"],
+      ["captureFailed", "capture"],
+      ["artifactWriteFailed", "capture"],
+    ])("maps %s to a stable public failure without an artifact", async (reason, stage) => {
+      const visual = visualControl();
+      if (stage === "settle") {
+        visual.settle.mockRejectedValueOnce({ reason });
+      } else {
+        visual.captureScreenshot.mockRejectedValueOnce({ reason });
+      }
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+      const response = await send(
+        request("visual.screenshot", { target: { kind: "main" } }, `visual-${reason}`)
+      );
+      expect(response.error).toMatchObject({ data: { reason } });
+      if (stage === "settle") expect(visual.captureScreenshot).not.toHaveBeenCalled();
+    });
+
+    it("keeps screenshot work outside the mutation queue and rejects a concurrent capture", async () => {
+      const firstSettlement = createDeferred();
+      const visual = visualControl({ settle: vi.fn(() => firstSettlement.promise) });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+
+      act(() =>
+        adapter.handler(request("visual.screenshot", { target: { kind: "main" } }, "visual-first"))
+      );
+      await waitFor(() => expect(visual.settle).toHaveBeenCalledTimes(1));
+      const busy = await send(
+        request("visual.screenshot", { target: { kind: "workspace" } }, "visual-busy")
+      );
+      expect(busy.error).toMatchObject({ data: { reason: "captureBusy" } });
+
+      const inspection = await send(request("app.inspect", {}, "during-visual"));
+      expect(inspection.result.revision).toBe(0);
+
+      firstSettlement.resolve({
+        windowLabel: "main",
+        rect: { x: 0, y: 0, width: 800, height: 600 },
+        viewport: { width: 800, height: 600 },
+        devicePixelRatio: 1,
+        revision: 0,
+      });
+      await waitFor(() =>
+        expect(adapter.responses.some(({ requestId }) => requestId === "visual-first")).toBe(true)
+      );
+    });
+
+    it("cancels an owned screenshot settlement when the bridge unmounts", async () => {
+      let observedSignal;
+      const visual = visualControl({
+        settle: vi.fn((_target, { signal }) => {
+          observedSignal = signal;
+          return new Promise((_, reject) => {
+            signal.addEventListener("abort", () => reject({ reason: "captureFailed" }), {
+              once: true,
+            });
+          });
+        }),
+      });
+      const view = mount({ agentVisual: visual });
+      await waitUntilReady();
+      act(() =>
+        adapter.handler(
+          request("visual.screenshot", { target: { kind: "main" } }, "visual-unmount")
+        )
+      );
+      await waitFor(() => expect(observedSignal).toBeInstanceOf(AbortSignal));
+      view.unmount();
+      expect(observedSignal.aborted).toBe(true);
+      expect(visual.captureScreenshot).not.toHaveBeenCalled();
+    });
   });
 
   describe("Device Control", () => {

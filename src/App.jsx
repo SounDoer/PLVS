@@ -65,7 +65,11 @@ import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests, deriveRetainedAnalysisKeys } from "./analysis/analysisRequests.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
-import { resetTruePeakMax } from "./ipc/commands.js";
+import {
+  captureVisualScreenshot,
+  getVisualCaptureCapabilities,
+  resetTruePeakMax,
+} from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import {
   availableMonitors,
@@ -96,6 +100,52 @@ import { buildTransportSnapshot } from "./agentControl/transportControl.js";
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
+
+function nextPaint(signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Visual settlement was cancelled.", "AbortError"));
+      return;
+    }
+    const onAbort = () => {
+      cancelAnimationFrame(frame);
+      reject(new DOMException("Visual settlement was cancelled.", "AbortError"));
+    };
+    const frame = requestAnimationFrame(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    });
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function settleDockAccessory(target, runtime, options) {
+  const geometry = runtime?.accessoryGeometry?.[target.kind];
+  if (!geometry?.visible || !(geometry.width > 0 && geometry.height > 0)) {
+    throw Object.assign(new Error("The requested Dock accessory is unavailable."), {
+      reason: "targetUnavailable",
+    });
+  }
+  await document.fonts?.ready;
+  await nextPaint(options.signal);
+  await nextPaint(options.signal);
+  const revision = options.getRevision();
+  if (options.expectedRevision !== undefined && revision !== options.expectedRevision) {
+    throw Object.assign(new Error("The Agent Control revision changed before capture."), {
+      reason: "revisionConflict",
+      details: { expectedRevision: options.expectedRevision, currentRevision: revision },
+    });
+  }
+  const viewport = { width: geometry.width, height: geometry.height };
+  return {
+    target,
+    windowLabel: target.kind === "dockHeader" ? "dock-header" : "dock-editor",
+    rect: { x: 0, y: 0, ...viewport },
+    viewport,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    revision,
+  };
+}
 
 export function historyPerformanceHarnessOptionsFromSearch(search) {
   const params = new URLSearchParams(search);
@@ -157,7 +207,8 @@ function AppContent() {
     setPanelControlsForPanel,
     setAxisViewport,
   } = useWorkspaceStore();
-  useVisualCaptureSurfaces({ workspace: workspaceState });
+  const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
+  const visualRuntimeRef = useRef(null);
   const sharedTimeViewport = useMemo(
     () => normalizeAxisViewport("time", workspaceState.axisViewports?.time),
     [workspaceState.axisViewports?.time]
@@ -749,6 +800,27 @@ function AppContent() {
     blockingEditors: activeBlockingEditors,
   });
   const agentControlRuntime = useMemo(readAgentControlRuntime, []);
+  const [visualPlatformCapabilities, setVisualPlatformCapabilities] = useState(null);
+  useEffect(() => {
+    if (agentControlRuntime.available !== true) return undefined;
+    let cancelled = false;
+    getVisualCaptureCapabilities()
+      .then((capabilities) => {
+        if (!cancelled) setVisualPlatformCapabilities(capabilities);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setVisualPlatformCapabilities({
+            platform: agentControlRuntime.platform ?? "unknown",
+            screenshot: { available: false, targets: [] },
+            recording: { available: false, targets: [], audioSources: [] },
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agentControlRuntime]);
   const [agentControlEnabled, setAgentControlEnabled] = useState(
     () => agentControlRuntime.enabled === true
   );
@@ -1184,6 +1256,18 @@ function AppContent() {
       pinned,
     ]
   );
+  const agentControlVisual = useMemo(
+    () => ({
+      platformCapabilities: visualPlatformCapabilities,
+      getRuntime: () => visualRuntimeRef.current,
+      settle: (target, options) =>
+        target.kind === "dockHeader" || target.kind === "dockEditor"
+          ? settleDockAccessory(target, visualRuntimeRef.current, options)
+          : visualCaptureSurfaces.settle(target, options),
+      captureScreenshot: captureVisualScreenshot,
+    }),
+    [visualCaptureSurfaces, visualPlatformCapabilities]
+  );
   const agentControlDevice = useMemo(
     () => ({
       snapshot: audioDeviceSnapshot,
@@ -1432,7 +1516,10 @@ function AppContent() {
     [dockLayout, enterDockMode, exitDockRestoringAttributes, setSelectedOffset]
   );
   useAgentControlBridge({
-    enabled: agentControlRuntime.available === true && agentControlEnabled,
+    enabled:
+      agentControlRuntime.available === true &&
+      agentControlEnabled &&
+      visualPlatformCapabilities !== null,
     runtime: agentControlRuntime,
     workspace: workspaceState,
     replaceWorkspace,
@@ -1472,6 +1559,7 @@ function AppContent() {
     analysisContext: agentControlAnalysisContext,
     measurementContext: agentControlMeasurementContext,
     viewContext: agentControlViewContext,
+    visual: agentControlVisual,
   });
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
@@ -1746,6 +1834,30 @@ function AppContent() {
     forceHeaderVisible: notice?.kind === "error",
     onError: onDockAccessoryError,
   });
+  visualRuntimeRef.current = {
+    windowForm: docked ? "dock" : "normal",
+    sourceMode,
+    availableScreenshotTargets: docked
+      ? [
+          "main",
+          ...(dockAccessoryVisibility.headerVisible ? ["dockHeader"] : []),
+          ...(dockAccessoryVisibility.editorVisible ? ["dockEditor"] : []),
+        ]
+      : ["main", "workspace", "panel"],
+    availableAudioSources: sourceMode === "live" ? ["none", "measuredSource"] : ["none"],
+    accessoryGeometry: {
+      dockHeader: {
+        visible: docked && !dockSuspended && dockAccessoryVisibility.headerVisible,
+        width: window.innerWidth,
+        height: 44,
+      },
+      dockEditor: {
+        visible: docked && !dockSuspended && dockAccessoryVisibility.editorVisible,
+        width: dockAccessoryVisibility.editorSize.width,
+        height: dockAccessoryVisibility.editorSize.height,
+      },
+    },
+  };
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
   const onDockHeightChange = useCallback(
     async (height, options) => {

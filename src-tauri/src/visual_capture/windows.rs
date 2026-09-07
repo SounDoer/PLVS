@@ -49,14 +49,14 @@ async fn capture_webview_preview(
   window_label: &str,
   output_path: &Path,
 ) -> Result<(), CaptureError> {
-  let window = app
-    .get_webview_window(window_label)
-    .ok_or_else(|| CaptureError::failed("The requested PLVS WebView does not exist."))?;
+  let window = app.get_webview_window(window_label).ok_or_else(|| {
+    CaptureError::target_unavailable("The requested PLVS WebView does not exist.")
+  })?;
   if !window
     .is_visible()
     .map_err(|_| CaptureError::failed("The requested PLVS WebView visibility is unavailable."))?
   {
-    return Err(CaptureError::failed(
+    return Err(CaptureError::target_unavailable(
       "The requested PLVS WebView is not visible.",
     ));
   }

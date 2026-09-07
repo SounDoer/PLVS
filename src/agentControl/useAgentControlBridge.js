@@ -41,6 +41,7 @@ import {
 } from "./moduleControl.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { buildMeasurementDescription, buildMeasurementInspection } from "./measurementControl.js";
+import { buildVisualDescription } from "./visualControl.js";
 import {
   buildPublicView,
   buildViewDescription,
@@ -94,6 +95,34 @@ import {
 
 function semanticFailure(reason, path, message, code, details) {
   return { reason, path, message, code, ...(details ? { details } : {}) };
+}
+
+const VISUAL_ERROR_REASONS = new Set([
+  "visualUnavailable",
+  "targetUnavailable",
+  "panelNotFound",
+  "panelNotVisible",
+  "revisionConflict",
+  "renderNotSettled",
+  "captureBusy",
+  "captureFailed",
+  "artifactWriteFailed",
+]);
+
+function visualSemanticFailure(error) {
+  const reason = VISUAL_ERROR_REASONS.has(error?.reason) ? error.reason : "captureFailed";
+  const messages = {
+    visualUnavailable: "Visual capture is unavailable on this platform.",
+    targetUnavailable: "The requested visual target is unavailable.",
+    panelNotFound: "The requested Panel does not exist.",
+    panelNotVisible: "The requested Panel is not currently rendered.",
+    revisionConflict: "The Agent Control revision changed before capture.",
+    renderNotSettled: "The visual target did not settle before the capture deadline.",
+    captureBusy: "A screenshot is already in progress.",
+    captureFailed: "The rendered PLVS surface could not be captured.",
+    artifactWriteFailed: "The screenshot artifact could not be written.",
+  };
+  return semanticFailure(reason, "$", messages[reason], -32080, error?.details);
 }
 
 function workspaceMatches(workspace, view) {
@@ -433,6 +462,7 @@ export function useAgentControlBridge({
   analysisContext = {},
   measurementContext = {},
   viewContext = {},
+  visual = null,
   flush = flushPersistence,
   exportConfiguration = exportProfile,
   importConfiguration = importProfile,
@@ -456,6 +486,9 @@ export function useAgentControlBridge({
   const latestMeasurementContextRef = useRef(measurementContext);
   const latestMeasurementProfileRef = useRef({ active: loudnessActive, profile: loudnessProfile });
   const latestViewRef = useRef(viewContext);
+  const latestVisualRef = useRef(visual);
+  const visualCapturesRef = useRef(new Map());
+  const visualCaptureActiveRef = useRef(false);
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
@@ -500,7 +533,8 @@ export function useAgentControlBridge({
   useEffect(() => {
     latestMeasurementContextRef.current = measurementContext;
     latestMeasurementProfileRef.current = { active: loudnessActive, profile: loudnessProfile };
-  }, [loudnessActive, loudnessProfile, measurementContext]);
+    latestVisualRef.current = visual;
+  }, [loudnessActive, loudnessProfile, measurementContext, visual]);
 
   const publishWaitWake = useCallback(() => {
     if (waitWakeScheduledRef.current) return;
@@ -826,7 +860,7 @@ export function useAgentControlBridge({
 
       const { request } = normalized;
       const revisionBatch =
-        request.params.expectedRevision === undefined
+        request.method.startsWith("visual.") || request.params.expectedRevision === undefined
           ? null
           : {
               startRevision: controlRevisionRef.current,
@@ -836,10 +870,82 @@ export function useAgentControlBridge({
       if (revisionBatch) revisionBatchRef.current = revisionBatch;
       try {
         if (request.method === "app.capabilities") {
+          const visualControl = latestVisualRef.current;
+          const capabilityRuntime = visualControl
+            ? {
+                ...runtime,
+                visual: {
+                  screenshot: visualControl.platformCapabilities?.screenshot?.available === true,
+                  recording: visualControl.platformCapabilities?.recording?.available === true,
+                },
+              }
+            : runtime;
           return {
             requestId,
-            result: buildAgentControlCapabilities(runtime, controlRevisionRef.current),
+            result: buildAgentControlCapabilities(capabilityRuntime, controlRevisionRef.current),
           };
+        }
+        if (request.method === "visual.describe") {
+          const visualControl = latestVisualRef.current;
+          if (!visualControl?.platformCapabilities) {
+            throw visualSemanticFailure({ reason: "visualUnavailable" });
+          }
+          return {
+            requestId,
+            result: buildVisualDescription({
+              revision: controlRevisionRef.current,
+              platform: visualControl.platformCapabilities,
+              runtime: visualControl.getRuntime(),
+            }),
+          };
+        }
+        if (request.method === "visual.screenshot") {
+          const visualControl = latestVisualRef.current;
+          if (visualControl?.platformCapabilities?.screenshot?.available !== true) {
+            throw visualSemanticFailure({ reason: "visualUnavailable" });
+          }
+          if (visualCaptureActiveRef.current) {
+            throw visualSemanticFailure({ reason: "captureBusy" });
+          }
+          const controller = new AbortController();
+          visualCaptureActiveRef.current = true;
+          visualCapturesRef.current.set(requestId, controller);
+          try {
+            const settled = await visualControl.settle(request.params.target, {
+              expectedRevision: request.params.expectedRevision,
+              getRevision: () => controlRevisionRef.current,
+              signal: controller.signal,
+            });
+            const artifact = await visualControl.captureScreenshot({
+              windowLabel: settled.windowLabel,
+              rect: settled.rect,
+              viewport: settled.viewport,
+              devicePixelRatio: settled.devicePixelRatio,
+            });
+            const live = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+              generation: 0,
+              record: null,
+            };
+            return {
+              requestId,
+              result: {
+                revision: settled.revision,
+                measurement: {
+                  generation: Number.isSafeInteger(live.generation) ? live.generation : 0,
+                  sequence: Number.isSafeInteger(live.record?.sequence)
+                    ? live.record.sequence
+                    : null,
+                },
+                artifact,
+                target: request.params.target,
+              },
+            };
+          } catch (error) {
+            throw visualSemanticFailure(error);
+          } finally {
+            visualCapturesRef.current.delete(requestId);
+            visualCaptureActiveRef.current = false;
+          }
         }
         if (request.method === "measurement.describe") {
           return {
@@ -3219,6 +3325,7 @@ export function useAgentControlBridge({
     analysisContext,
     measurementContext,
     viewContext,
+    visual,
     applySettings,
     executeTransport,
     device,
@@ -3253,6 +3360,7 @@ export function useAgentControlBridge({
     const install = async () => {
       const stop = await listenForAgentControlRequests((request) => {
         if (request?.type === "cancel" && typeof request.requestId === "string") {
+          visualCapturesRef.current.get(request.requestId)?.abort();
           const waiter = waiters.get(request.requestId);
           if (waiter) {
             clearTimeout(waiter.timer);
@@ -3275,7 +3383,9 @@ export function useAgentControlBridge({
           request?.method === "app.wait" ||
           request?.method === "measurement.wait" ||
           request?.method === "measurement.describe" ||
-          request?.method === "measurement.inspect"
+          request?.method === "measurement.inspect" ||
+          request?.method === "visual.describe" ||
+          request?.method === "visual.screenshot"
         ) {
           void respond(processRef.current(request));
           return;
@@ -3340,6 +3450,8 @@ export function useAgentControlBridge({
         waiter.reject(new Error("Agent-control bridge unmounted."));
       }
       waiters.clear();
+      for (const controller of visualCapturesRef.current.values()) controller.abort();
+      visualCapturesRef.current.clear();
       unlisten?.();
       unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();

@@ -81,6 +81,13 @@ impl CaptureError {
       message: message.into(),
     }
   }
+
+  pub fn target_unavailable(message: impl Into<String>) -> Self {
+    Self {
+      reason: "targetUnavailable",
+      message: message.into(),
+    }
+  }
 }
 
 impl std::fmt::Display for CaptureError {

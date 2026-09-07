@@ -224,6 +224,8 @@ export function useDockAccessoryVisibility({
   return {
     headerVisible,
     editorView,
+    editorVisible: editorView !== null && measuredEditorView === editorView,
+    editorSize,
     onStripPointerEnter: () => updatePresence("stripInside", true),
     onStripPointerLeave: () => updatePresence("stripInside", false),
     onAccessoryPointer: ({ surface, inside }) => {

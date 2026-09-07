@@ -72,6 +72,12 @@ vi.mock("./ipc/commands.js", () => ({
   setDockHeight: vi.fn(async ({ height }) => height),
   setDockSuspended: vi.fn().mockResolvedValue(undefined),
   setDockAccessories: vi.fn().mockResolvedValue(undefined),
+  getVisualCaptureCapabilities: vi.fn().mockResolvedValue({
+    platform: "windows",
+    screenshot: { available: true, targets: ["main", "workspace", "panel"] },
+    recording: { available: false, targets: [], audioSources: [] },
+  }),
+  captureVisualScreenshot: vi.fn().mockResolvedValue(undefined),
   agentControlFrontendReadyCommand: vi.fn().mockResolvedValue(undefined),
   agentControlFrontendNotReadyCommand: vi.fn().mockResolvedValue(undefined),
   agentControlRespondCommand: vi.fn().mockResolvedValue(undefined),
