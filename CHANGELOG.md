@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent Control can list and inspect the current audio-device inventory and select an exact device
   or Automatic through `plvs-cli device`, with independent hotplug generations and confirmed Live
   restart settlement.
+- Agent Control Visual Capture can save rendered Windows screenshots and bounded H.264 MP4
+  recordings through `plvs-cli visual`, with optional Live measured-source AAC audio.
 
 ### Changed
 

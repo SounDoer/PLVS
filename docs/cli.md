@@ -85,7 +85,7 @@ plvs-cli --version
 
 Use `plvs-cli --help` for the complete live-control command list. The current families are:
 
-- `inspect`, `capabilities`, `measurement`, `view`, and `wait`;
+- `inspect`, `capabilities`, `measurement`, `view`, `visual`, and `wait`;
 - `module`, `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
@@ -125,6 +125,22 @@ plvs-cli view reset --expected-revision <n> --json [--dry-run]
 It covers Always on Top (`pinned`), Focus View, panel opacity, and macOS Glass. See
 [View Control](agent-control/view.md) for strict patch validation, platform availability, Dock
 suspension, and native rollback behavior.
+
+Visual Capture saves the actual rendered pixels of the running Windows app:
+
+```powershell
+plvs-cli visual describe --json
+plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <id>] [--expected-revision <n>] --out <file.png> --json
+plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
+plvs-cli visual recording inspect <recording-id> --json
+plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json
+plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
+```
+
+Live recordings default to the measured source; File recordings default to `none`, and an explicit
+File `measured-source` request fails. Recording output is finalized by `wait` or `stop`, not
+`start`. See [Visual Capture](agent-control/visual.md) for target meaning, revision correlation,
+audio gaps, lifecycle, limits, retention, output-file behavior, and stable errors.
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
 Library Transfer. Loudness Profile Control additionally provides:

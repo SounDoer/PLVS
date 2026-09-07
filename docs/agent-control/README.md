@@ -39,6 +39,8 @@ settings.describe / settings.inspect / settings.update
 transport.inspect / transport source / transport live / transport file
 device.list / device.inspect / device.select
 dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
+visual.describe / visual.screenshot
+visual.recording.start / visual.recording.inspect / visual.recording.wait / visual.recording.stop
 ```
 
 The repository entrypoint quietly builds the independent `src-tauri/plvs-cli` workspace package,
@@ -58,6 +60,8 @@ npm run desktop:control -- settings inspect --json
 npm run desktop:control -- transport inspect --json
 npm run desktop:control -- device list --json
 npm run desktop:control -- dock inspect --json
+npm run desktop:control -- visual describe --json
+npm run desktop:control -- visual screenshot --target workspace --out workspace.png --json
 ```
 
 Every example here writes its report to stdout, where npm also prints its script banner, so add
@@ -73,9 +77,9 @@ paths as the GUI.
 
 The foundation, Module Control, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
 Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Measurement
-Wait, View Control, Library Transfer, and Configuration Transfer are implemented. See
+Wait, View Control, Visual Capture, Library Transfer, and Configuration Transfer are implemented. See
 [`measurements.md`](measurements.md),
-[`devices.md`](devices.md), [`themes.md`](themes.md), and
+[`devices.md`](devices.md), [`themes.md`](themes.md), [`visual.md`](visual.md), and
 [`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration remains
 a deferred product decision.
 
@@ -472,8 +476,9 @@ Control settings.
 ## Follow-on module specifications
 
 - [`modules.md`](modules.md) — implemented Module discovery contract
+- [`visual.md`](visual.md) — implemented Windows Visual Capture contract
 - [Visual Capture design](../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md) —
-  approved `visual` family contract; implementation pending
+  approved `visual` family design record
 - [`presets.md`](presets.md) — approved Preset Control contract
 - [`axes.md`](axes.md) — approved Axis Control contract
 - [`settings.md`](settings.md) — approved Settings Control contract

@@ -98,6 +98,7 @@ The current working priority is deliberately narrower than the candidate backlog
 2. add Loudness Profile inspection and editing commands (done);
 3. add Appearance and Theme inspection and editing commands (done);
 4. add bounded Device Control with independent hotplug concurrency (done).
+5. add Windows Visual Capture for screenshots and bounded MP4 recording (done).
 
 Preset editing is not part of this new work: Preset Control already supports describe, save,
 update, apply, rename, delete, and reorder. Its transfer commands are also complete.
@@ -230,6 +231,19 @@ selection uses global revision, while inventory/hotplug changes use an independe
 do not wake unrelated waiters. Header, tray, and Agent Control share one React-owned asynchronous
 selection path. Running Live changes require restart confirmation and settle through native capture
 readiness; a restart failure retains and reports the newly persisted selection.
+
+### Stage 5: Visual Capture — complete
+
+Approved design and completed implementation plan:
+
+- [`superpowers/specs/2026-09-07-agent-control-visual-capture-design.md`](superpowers/specs/2026-09-07-agent-control-visual-capture-design.md)
+- [`superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md`](superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md)
+
+The implemented Windows-only `visual` family provides `describe` and screenshot plus asynchronous
+recording `start`, `inspect`, `wait`, and `stop`. It captures closed semantic targets, stages media
+outside JSON, supports explicit silent recording, and defaults Live recording to the measured
+source while File remains silent. The complete public contract is
+[`agent-control/visual.md`](agent-control/visual.md).
 
 ## Broader candidate backlog
 

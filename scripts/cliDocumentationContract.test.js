@@ -150,4 +150,36 @@ describe("current CLI documentation", () => {
       "The next implementation stage is **cross-platform and human-use foundation**"
     );
   });
+
+  it("publishes the complete Visual Capture contract and bounded media rules", () => {
+    const cli = read("docs", "cli.md");
+    const agentControl = read("docs", "agent-control", "README.md");
+    const visual = read("docs", "agent-control", "visual.md");
+    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
+
+    for (const command of [
+      "visual describe",
+      "visual screenshot",
+      "visual recording start",
+      "visual recording inspect",
+      "visual recording wait",
+      "visual recording stop",
+    ]) {
+      expect(cli).toContain(command);
+      expect(visual).toContain(command);
+    }
+    expect(visual).toContain("actual rendered pixels");
+    expect(visual).toContain("--expected-revision");
+    expect(visual).toContain("--audio <none|measured-source>");
+    expect(visual).toContain("Live defaults");
+    expect(visual).toContain("File defaults");
+    expect(visual).toContain("2 GiB");
+    expect(visual).toContain("30 minutes");
+    expect(visual).toContain("24-hour");
+    expect(visual).toContain("4 GiB");
+    expect(visual).toContain("Windows only");
+    expect(visual).toContain("File decoder PCM is never recorded");
+    expect(agentControl).toContain("visual.recording.start / visual.recording.inspect");
+    expect(roadmap).toContain("### Stage 5: Visual Capture — complete");
+  });
 });
