@@ -29,6 +29,7 @@ mod tests {
       "query.capabilities",
       "query.appInspect",
       "mutation.panelDryRun",
+      "mutation.viewDryRun",
       "action.transportLiveStart",
       "wait.changed",
       "wait.timeout",

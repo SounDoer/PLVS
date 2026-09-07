@@ -98,6 +98,40 @@
     }
   },
   {
+    "id": "mutation.viewDryRun",
+    "exitCode": 0,
+    "envelope": {
+      "schemaVersion": 1,
+      "ok": true,
+      "result": {
+        "dryRun": true,
+        "revision": 12,
+        "changed": true,
+        "effects": ["alwaysOnTop", "compactPanels"],
+        "warnings": [],
+        "runtime": {
+          "windowPresentation": { "state": "active", "owner": "view" }
+        },
+        "availability": {
+          "glassEnabled": { "writable": false, "active": false, "reason": "platformUnsupported" }
+        },
+        "state": {
+          "view": {
+            "pinned": true,
+            "focusView": {
+              "autoHideControls": false,
+              "compactPanels": true,
+              "borderless": false
+            },
+            "panelOpacity": 100,
+            "glassEnabled": false
+          },
+          "preset": { "activeId": "preset-1", "dirty": true }
+        }
+      }
+    }
+  },
+  {
     "id": "action.transportLiveStart",
     "exitCode": 0,
     "envelope": {

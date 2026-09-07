@@ -20,6 +20,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "capabilities",
   "inspect",
   "measurement",
+  "view",
   "wait",
   "workspace",
   "panel",
@@ -51,6 +52,15 @@ pub enum ControlCommand {
     after_generation: u64,
     after_sequence: Option<u64>,
     timeout_ms: u64,
+  },
+  ViewRead {
+    method: String,
+  },
+  ViewMutation {
+    method: String,
+    input: Option<String>,
+    expected_revision: Option<u64>,
+    dry_run: bool,
   },
   PanelDescribe {
     panel_id: String,
@@ -245,6 +255,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "measurement" => return parse_measurement_args(rest),
+    [command, rest @ ..] if command == "view" => return parse_view_args(rest),
     [command, rest @ ..] if command == "panel" => return parse_panel_args(rest),
     [command, rest @ ..] if command == "axis" => return parse_axis_args(rest),
     [command, rest @ ..] if command == "preset" => return parse_preset_args(rest),
@@ -261,7 +272,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|measurement|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|measurement|view|wait|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock> ...".to_string())
 }
 
 fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -335,6 +346,78 @@ fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
     after_generation,
     after_sequence,
     timeout_ms,
+  })
+}
+
+fn parse_view_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage: plvs-cli view <describe|inspect|update|reset> ... --json";
+  if args.iter().any(|argument| is_help(argument)) {
+    return Ok(ControlCommand::FamilyHelp("view".to_string()));
+  }
+  if let [action, flag] = args {
+    if matches!(action.as_str(), "describe" | "inspect") && flag == "--json" {
+      return Ok(ControlCommand::ViewRead {
+        method: format!("view.{action}"),
+      });
+    }
+  }
+  let [action, rest @ ..] = args else {
+    return Err(USAGE.to_string());
+  };
+  if !matches!(action.as_str(), "update" | "reset") {
+    return Err(USAGE.to_string());
+  }
+  let (input, options) = if action == "update" {
+    let [input, options @ ..] = rest else {
+      return Err(USAGE.to_string());
+    };
+    (Some(input.clone()), options)
+  } else {
+    (None, rest)
+  };
+  let mut expected_revision = None;
+  let mut dry_run = false;
+  let mut json = false;
+  let mut index = 0;
+  while index < options.len() {
+    match options[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--dry-run" => {
+        dry_run = true;
+        index += 1;
+      }
+      "--expected-revision" => {
+        let raw = options
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --expected-revision.".to_string())?;
+        let revision = raw.parse::<u64>().map_err(|_| {
+          "The --expected-revision value must be a non-negative safe integer.".to_string()
+        })?;
+        if revision > MAX_SAFE_REVISION {
+          return Err(
+            "The --expected-revision value must be a non-negative safe integer.".to_string(),
+          );
+        }
+        expected_revision = Some(revision);
+        index += 2;
+      }
+      value => return Err(format!("Unknown view option: {value}")),
+    }
+  }
+  if !json {
+    return Err("The view command requires --json.".to_string());
+  }
+  if expected_revision.is_none() {
+    return Err("The view mutation requires --expected-revision.".to_string());
+  }
+  Ok(ControlCommand::ViewMutation {
+    method: format!("view.{action}"),
+    input,
+    expected_revision,
+    dry_run,
   })
 }
 
@@ -1740,7 +1823,7 @@ pub fn help_text() -> &'static str {
       base_help_text()
       .replacen(
         "\n  plvs-cli workspace apply",
-        "\n  plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json\n  plvs-cli workspace apply",
+        "\n  plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json\n  plvs-cli view describe --json\n  plvs-cli view inspect --json\n  plvs-cli view update <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli view reset --expected-revision <n> --json [--dry-run]\n  plvs-cli workspace apply",
         1,
       )
       .replacen(
@@ -2013,6 +2096,9 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::Inspect => "app.inspect".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
+    ControlCommand::ViewRead { method } | ControlCommand::ViewMutation { method, .. } => {
+      method.clone()
+    }
     ControlCommand::PanelDescribe { .. } => "panel.describe".to_string(),
     ControlCommand::WorkspaceApply { .. } => "workspace.applyLayout".to_string(),
     ControlCommand::PanelUpdate { .. } => "panel.update".to_string(),
@@ -2081,6 +2167,7 @@ fn request_for_command<R: Read>(
     ControlCommand::Capabilities
     | ControlCommand::Inspect
     | ControlCommand::MeasurementRead { .. }
+    | ControlCommand::ViewRead { .. }
     | ControlCommand::AxisDescribe
     | ControlCommand::AxisInspect
     | ControlCommand::PresetList
@@ -2431,6 +2518,26 @@ fn request_for_command<R: Read>(
       ]);
       if let Some(sequence) = after_sequence {
         params.insert("afterSequence".to_string(), Value::from(*sequence));
+      }
+      Value::Object(params)
+    }
+    ControlCommand::ViewMutation {
+      input,
+      expected_revision,
+      dry_run,
+      ..
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        (
+          "expectedRevision".to_string(),
+          Value::from(*expected_revision),
+        ),
+        ("dryRun".to_string(), Value::Bool(*dry_run)),
+      ]);
+      if let Some(input) = input {
+        let patch = read_json_document(input, stdin, "View patch")
+          .map_err(ControlFailure::invalid_arguments)?;
+        params.insert("patch".to_string(), patch);
       }
       Value::Object(params)
     }
@@ -2855,6 +2962,65 @@ mod tests {
         "timeoutMs": 5000
       })
     );
+  }
+
+  #[test]
+  fn parses_view_queries_mutations_and_scoped_help() {
+    let help = family_help_text("view");
+    assert!(help.contains("plvs-cli view describe --json"));
+    assert!(help.contains("plvs-cli view update <file|-> --expected-revision <n>"));
+
+    for (action, method) in [("describe", "view.describe"), ("inspect", "view.inspect")] {
+      let command = parse_control_args(&args(&["view", action, "--json"])).unwrap();
+      let request = request_for_command(&command, &mut Cursor::new(Vec::<u8>::new())).unwrap();
+      assert_eq!(request.method, method);
+      assert_eq!(request.params, serde_json::json!({}));
+    }
+
+    let update = parse_control_args(&args(&[
+      "view",
+      "update",
+      "-",
+      "--expected-revision",
+      "12",
+      "--dry-run",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(
+      &update,
+      &mut Cursor::new(br#"{"focusView":{"compactPanels":true}}"#),
+    )
+    .unwrap();
+    assert_eq!(request.method, "view.update");
+    assert_eq!(request.params["expectedRevision"], 12);
+    assert_eq!(request.params["dryRun"], true);
+    assert_eq!(request.params["patch"]["focusView"]["compactPanels"], true);
+
+    let reset = parse_control_args(&args(&[
+      "view",
+      "reset",
+      "--expected-revision",
+      "13",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&reset, &mut Cursor::new([])).unwrap();
+    assert_eq!(request.method, "view.reset");
+    assert_eq!(request.params["expectedRevision"], 13);
+    assert!(request.params.get("patch").is_none());
+
+    for invalid in [
+      args(&["view", "describe"]),
+      args(&["view", "update", "view.json", "--json"]),
+      args(&["view", "reset", "--json"]),
+      args(&["view", "inspect", "--json", "--dry-run"]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
   }
 
   #[test]

@@ -1,13 +1,10 @@
 # View Control
 
-Status: Approved design contract; implementation pending
+Status: Implemented
 
 View Control exposes the persistent working-view state shown in the GUI's Views popover. These
 values are part of the scene captured by Presets, but they are not ordinary global Settings and
 currently have no focused Agent Control surface.
-
-This document specifies the command family that will be implemented. Until it appears in
-`app.capabilities`, callers must not assume the current CLI supports it.
 
 ## Commands
 
@@ -21,7 +18,7 @@ npm run desktop:control -- view reset --expected-revision 12 --json
 `describe` returns schema, current values, platform availability, and runtime application state.
 `inspect` returns the focused current snapshot without field schema. `update` applies an atomic
 direct-field patch. `reset` restores View defaults. Both mutations require expected revision and
-support dry-run.
+support dry-run. The generated field table is in [`generated/view.md`](generated/view.md).
 
 ## Public state
 

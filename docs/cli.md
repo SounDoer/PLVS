@@ -85,7 +85,7 @@ plvs-cli --version
 
 Use `plvs-cli --help` for the complete live-control command list. The current families are:
 
-- `inspect`, `capabilities`, `measurement`, and `wait`;
+- `inspect`, `capabilities`, `measurement`, `view`, and `wait`;
 - `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
@@ -112,6 +112,19 @@ These commands never start capture or optional analysis and do not expose File r
 or raw visual data. See [Measurement Control](agent-control/measurements.md) for freshness, null
 reasons, profile evaluation, and revision behavior, and
 [Measurement Wait](agent-control/measurement-wait.md) for wait identity and timeout semantics.
+
+View Control reads and changes the persistent working-view scene:
+
+```powershell
+plvs-cli view describe --json
+plvs-cli view inspect --json
+plvs-cli view update <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli view reset --expected-revision <n> --json [--dry-run]
+```
+
+It covers Always on Top (`pinned`), Focus View, panel opacity, and macOS Glass. See
+[View Control](agent-control/view.md) for strict patch validation, platform availability, Dock
+suspension, and native rollback behavior.
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
 Library Transfer. Loudness Profile Control additionally provides:
@@ -247,7 +260,7 @@ Every running-app query returns one global `revision`:
 }
 ```
 
-The revision advances when observable Workspace, Preset, Settings, requested Device selection,
+The revision advances when observable Workspace, Preset, Settings, View, requested Device selection,
 Transport, or Dock control state changes. It is an in-process concurrency token and resets when
 PLVS restarts. Device inventory generations, meter frames, and other continuously changing
 measurements do not advance it. Queries never accept
@@ -380,6 +393,7 @@ npm run desktop:control -- inspect --json
 npm run desktop:control -- capabilities --json
 npm run desktop:control -- measurement inspect --json
 npm run desktop:control -- measurement wait --after-generation 0 --timeout-ms 30000 --json
+npm run desktop:control -- view inspect --json
 npm run desktop:control -- workspace apply layout.json --json --expected-revision 4
 ```
 

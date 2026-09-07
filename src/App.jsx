@@ -59,7 +59,7 @@ import {
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
-import { supportsDockMode } from "./lib/platform.js";
+import { isMacOS, supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests, deriveRetainedAnalysisKeys } from "./analysis/analysisRequests.js";
@@ -77,8 +77,8 @@ import { useTray } from "./hooks/useTray.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
-import { useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
-import { useGlassEffect } from "./hooks/useGlassEffect.js";
+import { setWindowDecorations, useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
+import { setGlassEffect, useGlassEffect } from "./hooks/useGlassEffect.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
@@ -223,15 +223,12 @@ function AppContent() {
     clearShortcut,
     focusView,
     setFocusView,
-    setAutoHideControls,
-    setCompactPanels,
-    setBorderless,
     channelLabelOverrides,
     setChannelLabelOverrides,
     panelOpacity,
-    setPanelOpacity,
+    setPanelOpacity: setPanelOpacityStored,
     glassEnabled,
-    setGlassEnabled,
+    setGlassEnabled: setGlassEnabledStored,
   } = settings;
   // Hoisted above useDockMode and usePresets: dock entry cancels an open profile
   // draft, and preset capture and apply both need its snapshot helpers. One
@@ -346,10 +343,120 @@ function AppContent() {
   // Suspended while docked: a preset apply may flip the stored pin to false
   // while the strip must stay topmost; when docked flips false the effect
   // re-asserts the user's value.
-  const { pinned, setPinned } = useAlwaysOnTop({ suspended: docked });
+  const { pinned, setPinned: setPinnedStored } = useAlwaysOnTop({ suspended: docked });
   // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
   // when docked flips false the effect re-runs and re-asserts the user's values.
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
+
+  const applyViewState = useCallback(
+    async (next, { changed = [] } = {}) => {
+      const rollback = [];
+      try {
+        if (!docked && isTauri()) {
+          const win = getCurrentWindow();
+          if (changed.includes("view.pinned")) {
+            await win.setAlwaysOnTop(next.pinned === true);
+            rollback.push(() => win.setAlwaysOnTop(pinned === true));
+          }
+          if (
+            changed.includes("view.focusView.autoHideControls") ||
+            changed.includes("view.focusView.borderless")
+          ) {
+            const applied = await setWindowDecorations(
+              !(next.focusView.autoHideControls || next.focusView.borderless)
+            );
+            if (applied) {
+              rollback.push(() =>
+                setWindowDecorations(!(focusView.autoHideControls || focusView.borderless))
+              );
+            }
+          }
+        }
+        if (isMacOS() && changed.includes("view.glassEnabled")) {
+          await setGlassEffect(next.glassEnabled, resolvedTheme.colorScheme === "dark");
+          rollback.push(() => setGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark"));
+        }
+      } catch (error) {
+        let rollbackCompleted = true;
+        for (const compensate of rollback.reverse()) {
+          try {
+            await compensate();
+          } catch {
+            rollbackCompleted = false;
+          }
+        }
+        const failure = error instanceof Error ? error : new Error(String(error));
+        failure.partial = !rollbackCompleted;
+        failure.rollback = rollbackCompleted ? "completed" : "partial";
+        failure.changed = [];
+        throw failure;
+      }
+
+      if (changed.includes("view.pinned")) setPinnedStored(next.pinned);
+      if (changed.some((path) => path.startsWith("view.focusView."))) {
+        setFocusView(next.focusView);
+      }
+      if (changed.includes("view.panelOpacity")) setPanelOpacityStored(next.panelOpacity);
+      if (changed.includes("view.glassEnabled")) setGlassEnabledStored(next.glassEnabled);
+    },
+    [
+      docked,
+      focusView,
+      glassEnabled,
+      pinned,
+      resolvedTheme.colorScheme,
+      setFocusView,
+      setGlassEnabledStored,
+      setPanelOpacityStored,
+      setPinnedStored,
+    ]
+  );
+  const setPinned = useCallback(
+    (value) =>
+      void applyViewState(
+        { pinned: value === true, focusView, panelOpacity, glassEnabled },
+        { changed: ["view.pinned"] }
+      ).catch(() => {}),
+    [applyViewState, focusView, glassEnabled, panelOpacity]
+  );
+  const setFocusField = useCallback(
+    (field, value) =>
+      void applyViewState(
+        {
+          pinned,
+          focusView: { ...focusView, [field]: value === true },
+          panelOpacity,
+          glassEnabled,
+        },
+        { changed: [`view.focusView.${field}`] }
+      ).catch(() => {}),
+    [applyViewState, focusView, glassEnabled, panelOpacity, pinned]
+  );
+  const setAutoHideControls = useCallback(
+    (value) => setFocusField("autoHideControls", value),
+    [setFocusField]
+  );
+  const setCompactPanels = useCallback(
+    (value) => setFocusField("compactPanels", value),
+    [setFocusField]
+  );
+  const setBorderless = useCallback((value) => setFocusField("borderless", value), [setFocusField]);
+  const setPanelOpacity = useCallback(
+    (value) =>
+      void applyViewState(
+        { pinned, focusView, panelOpacity: value, glassEnabled },
+        { changed: ["view.panelOpacity"] }
+      ).catch(() => {}),
+    [applyViewState, focusView, glassEnabled, pinned]
+  );
+  const setGlassEnabled = useCallback(
+    (value) =>
+      void applyViewState(
+        { pinned, focusView, panelOpacity, glassEnabled: value === true },
+        { changed: ["view.glassEnabled"] }
+      ).catch(() => {}),
+    [applyViewState, focusView, panelOpacity, pinned]
+  );
 
   const {
     snapshot: audioDeviceSnapshot,
@@ -618,13 +725,13 @@ function AppContent() {
 
   const presets = usePresets({
     windowPinned: pinned,
-    setWindowPinned: setPinned,
+    setWindowPinned: setPinnedStored,
     focusView,
     setFocusView,
     panelOpacity,
-    setPanelOpacity,
+    setPanelOpacity: setPanelOpacityStored,
     glassEnabled,
-    setGlassEnabled,
+    setGlassEnabled: setGlassEnabledStored,
     dock: presetDockState,
     applyDockPreset,
     // A platform without dock support is not a refusal: applyDockPreset drops the dock and applies
@@ -1058,6 +1165,23 @@ function AppContent() {
       meterRuntime.liveLifecycle,
     ]
   );
+  const agentControlViewContext = useMemo(
+    () => ({
+      view: { pinned, focusView, panelOpacity, glassEnabled },
+      platform: agentControlRuntime.platform,
+      docked,
+      applyView: applyViewState,
+    }),
+    [
+      agentControlRuntime.platform,
+      applyViewState,
+      docked,
+      focusView,
+      glassEnabled,
+      panelOpacity,
+      pinned,
+    ]
+  );
   const agentControlDevice = useMemo(
     () => ({
       snapshot: audioDeviceSnapshot,
@@ -1345,6 +1469,7 @@ function AppContent() {
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
     measurementContext: agentControlMeasurementContext,
+    viewContext: agentControlViewContext,
   });
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;

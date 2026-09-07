@@ -13,6 +13,10 @@ const METHODS = [
   "measurement.describe",
   "measurement.inspect",
   "measurement.wait",
+  "view.describe",
+  "view.inspect",
+  "view.update",
+  "view.reset",
   "workspace.applyLayout",
   "axis.describe",
   "axis.inspect",
@@ -136,6 +140,7 @@ export function buildAgentControlSnapshot({
   transport,
   device,
   dock,
+  view,
   hasLoudnessReference = false,
   analysisContext = {},
 }) {
@@ -182,6 +187,7 @@ export function buildAgentControlSnapshot({
     ...(transport ? { transport } : {}),
     ...(device ? { device } : {}),
     ...(dock ? { dock } : {}),
+    ...(view ? { view } : {}),
   };
 }
 

@@ -36,6 +36,14 @@ import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelContro
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { buildMeasurementDescription, buildMeasurementInspection } from "./measurementControl.js";
+import {
+  buildPublicView,
+  buildViewDescription,
+  buildViewInspection,
+  planViewReset,
+  planViewUpdate,
+  viewStateSignature,
+} from "./viewControl.js";
 import { planPresetDelete, planPresetRename, planPresetReorder } from "./presetLibrary.js";
 import {
   buildLibraryList,
@@ -110,6 +118,13 @@ function panelResultPreset(presets, changed) {
   return {
     activeId,
     dirty: presets?.dirty === true || (activeId !== null && changed.length > 0),
+  };
+}
+
+function viewResultPreset(presets, changed) {
+  return {
+    activeId: typeof presets?.activeId === "string" ? presets.activeId : null,
+    dirty: presets?.dirty === true || changed.length > 0,
   };
 }
 
@@ -412,6 +427,7 @@ export function useAgentControlBridge({
   hasLoudnessReference = false,
   analysisContext = {},
   measurementContext = {},
+  viewContext = {},
   flush = flushPersistence,
   exportConfiguration = exportProfile,
   importConfiguration = importProfile,
@@ -434,6 +450,7 @@ export function useAgentControlBridge({
   const latestThemeRef = useRef({ state: themeState, control: themeControl });
   const latestMeasurementContextRef = useRef(measurementContext);
   const latestMeasurementProfileRef = useRef({ active: loudnessActive, profile: loudnessProfile });
+  const latestViewRef = useRef(viewContext);
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
@@ -443,6 +460,7 @@ export function useAgentControlBridge({
   const loudnessSignature = loudnessProfileStateSignature(loudnessProfiles, loudnessActive);
   const previousLoudnessLibrarySignatureRef = useRef(loudnessSignature);
   const previousOrdinarySettingsSignatureRef = useRef(ordinarySettingsStateSignature(settings));
+  const previousViewSignatureRef = useRef(viewStateSignature(viewContext.view));
   const openAtLoginTrackingRef = useRef({
     ready: settingsContext.autostartReady === true,
     value: settings?.openAtLogin,
@@ -457,6 +475,7 @@ export function useAgentControlBridge({
   const loudnessProfileSettlementRef = useRef(null);
   const themeSettlementRef = useRef(null);
   const settingsSettlementRef = useRef(null);
+  const viewSettlementRef = useRef(null);
   const previousTransportSignatureRef = useRef(transportLifecycleSignature(transport));
   const latestTransportRef = useRef(transport);
   const transportSettlementRef = useRef(null);
@@ -528,6 +547,21 @@ export function useAgentControlBridge({
     });
     scheduleWaitWake();
   }, [bumpControlRevision, scheduleWaitWake]);
+
+  useEffect(() => {
+    latestViewRef.current = viewContext;
+    const signature = viewStateSignature(viewContext.view);
+    if (signature !== previousViewSignatureRef.current) {
+      previousViewSignatureRef.current = signature;
+      bumpControlRevision();
+      scheduleWaitWake();
+    }
+    const settlement = viewSettlementRef.current;
+    if (settlement && settlement.signature === signature) {
+      viewSettlementRef.current = null;
+      settlement.resolve(controlRevisionRef.current);
+    }
+  }, [bumpControlRevision, scheduleWaitWake, viewContext]);
 
   /// Resolved by the watcher for a library the `*.import` in flight actually wrote -- which is
   /// `planLibraryImport`'s `writes`, not the family the request named. A Preset pack can write the
@@ -977,6 +1011,7 @@ export function useAgentControlBridge({
               transport,
               device: device ? deviceInspection(device) : null,
               dock: buildDockSnapshot(dock, dockContext),
+              view: buildPublicView(latestViewRef.current.view),
               hasLoudnessReference,
               analysisContext,
             }),
@@ -1257,6 +1292,21 @@ export function useAgentControlBridge({
               ...(request.method === "settings.describe"
                 ? { schema: buildSettingsSchema(settings, settingsContext) }
                 : {}),
+            },
+          };
+        }
+        if (request.method === "view.describe" || request.method === "view.inspect") {
+          const context = latestViewRef.current;
+          const inspection =
+            request.method === "view.describe"
+              ? buildViewDescription(context.view, context)
+              : buildViewInspection(context.view, context);
+          return {
+            requestId,
+            result: {
+              revision: controlRevisionRef.current,
+              preset: viewResultPreset(presets, []),
+              ...inspection,
             },
           };
         }
@@ -1688,6 +1738,139 @@ export function useAgentControlBridge({
               "persistenceFailed",
               "$",
               `Settings committed but persistence failed: ${error?.message || String(error)}`,
+              -32030,
+              { stateCommitted: true, revision: result.revision }
+            );
+          }
+          return { requestId, result };
+        }
+
+        if (request.method === "view.update" || request.method === "view.reset") {
+          const currentRevision = controlRevisionRef.current;
+          if (request.params.expectedRevision !== currentRevision) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `View state changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              { expectedRevision: request.params.expectedRevision, currentRevision }
+            );
+          }
+          const context = latestViewRef.current;
+          const plan = (candidate) =>
+            request.method === "view.reset"
+              ? planViewReset(candidate.view, candidate)
+              : planViewUpdate(candidate.view, request.params.patch, candidate);
+          let planned = plan(context);
+          if (planned.issues.length > 0) {
+            throw semanticFailure(
+              "invalidView",
+              "$.params.patch",
+              "The View patch is invalid.",
+              -32602,
+              { issues: planned.issues }
+            );
+          }
+          if (planned.refusal) {
+            throw semanticFailure(
+              planned.refusal.code,
+              "$.params.patch",
+              "A View control is unavailable.",
+              -32012,
+              planned.refusal
+            );
+          }
+          const inspection = buildViewInspection(planned.view, context);
+          const result = {
+            dryRun: request.params.dryRun === true,
+            revision: currentRevision,
+            changed: planned.changed.length > 0,
+            effects: planned.effects,
+            warnings: planned.warnings,
+            runtime: inspection.runtime,
+            availability: inspection.availability,
+            state: {
+              view: inspection.view,
+              preset: viewResultPreset(presets, planned.changed),
+            },
+          };
+          if (request.params.dryRun === true || planned.changed.length === 0) {
+            return { requestId, result };
+          }
+
+          const commitContext = latestViewRef.current;
+          planned = plan(commitContext);
+          if (planned.issues.length > 0 || planned.refusal) {
+            throw semanticFailure(
+              planned.refusal?.code ?? "invalidView",
+              "$.params.patch",
+              planned.refusal ? "A View control is unavailable." : "The View patch is invalid.",
+              planned.refusal ? -32012 : -32602,
+              planned.refusal ?? { issues: planned.issues }
+            );
+          }
+          if (request.params.expectedRevision !== controlRevisionRef.current) {
+            throw semanticFailure(
+              "revisionConflict",
+              "$.params.expectedRevision",
+              `View state changed after revision ${request.params.expectedRevision}.`,
+              -32004,
+              {
+                expectedRevision: request.params.expectedRevision,
+                currentRevision: controlRevisionRef.current,
+              }
+            );
+          }
+          const committed = new Promise((resolve, reject) => {
+            viewSettlementRef.current = {
+              signature: viewStateSignature(planned.view),
+              resolve,
+              reject,
+            };
+          });
+          try {
+            await commitContext.applyView(planned.view, {
+              changed: planned.changed,
+              effects: planned.effects,
+            });
+          } catch (error) {
+            viewSettlementRef.current = null;
+            throw semanticFailure(
+              "applicationFailed",
+              "$",
+              `View application failed: ${error?.message || String(error)}`,
+              -32050,
+              {
+                partial: error?.partial === true,
+                rollback: error?.rollback ?? "completed",
+                changed: error?.changed ?? [],
+                effects: error?.effects ?? planned.effects,
+                revision: controlRevisionRef.current,
+              }
+            );
+          }
+          result.revision = await awaitSettlement(
+            committed,
+            () => {
+              viewSettlementRef.current = null;
+            },
+            "The View change"
+          );
+          const resultingContext = latestViewRef.current;
+          const resultingInspection = buildViewInspection(resultingContext.view, resultingContext);
+          result.runtime = resultingInspection.runtime;
+          result.availability = resultingInspection.availability;
+          result.state = {
+            view: resultingInspection.view,
+            preset: viewResultPreset(presets, planned.changed),
+          };
+          try {
+            await flush();
+          } catch (error) {
+            throw semanticFailure(
+              "persistenceFailed",
+              "$",
+              `View committed but persistence failed: ${error?.message || String(error)}`,
               -32030,
               { stateCommitted: true, revision: result.revision }
             );
@@ -2998,6 +3181,7 @@ export function useAgentControlBridge({
     loudnessProfiles,
     analysisContext,
     measurementContext,
+    viewContext,
     applySettings,
     executeTransport,
     device,
@@ -3104,6 +3288,9 @@ export function useAgentControlBridge({
       const settingsSettlement = settingsSettlementRef.current;
       settingsSettlementRef.current = null;
       settingsSettlement?.reject(new Error("Agent-control bridge unmounted."));
+      const viewSettlement = viewSettlementRef.current;
+      viewSettlementRef.current = null;
+      viewSettlement?.reject(new Error("Agent-control bridge unmounted."));
       const transportSettlement = transportSettlementRef.current;
       transportSettlementRef.current = null;
       transportSettlement?.reject(new Error("Agent-control bridge unmounted."));

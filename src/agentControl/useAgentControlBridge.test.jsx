@@ -145,6 +145,12 @@ const deviceSnapshot = {
   inventoryReady: true,
 };
 const deviceLiveStopped = { state: "stopped", transition: null, usingRequestedSelection: false };
+const defaultView = {
+  pinned: false,
+  focusView: { autoHideControls: false, compactPanels: false, borderless: false },
+  panelOpacity: 100,
+  glassEnabled: false,
+};
 
 const MUTATION_METHODS = new Set([
   "workspace.applyLayout",
@@ -162,6 +168,8 @@ const MUTATION_METHODS = new Set([
   "preset.reorder",
   "config.import",
   "settings.update",
+  "view.update",
+  "view.reset",
   "device.select",
   "transport.source.live",
   "transport.source.file",
@@ -243,6 +251,9 @@ function Harness({
   agentSettings = publicSettings,
   agentSettingsContext = settingsContext,
   applyAgentSettings,
+  agentView = defaultView,
+  agentViewContext = {},
+  applyAgentView,
   agentTransport = transport,
   agentDock = dock,
   agentDockContext = {},
@@ -287,6 +298,7 @@ function Harness({
   );
   const [presetState, setPresetState] = useState(presets);
   const [settingsState, setSettingsState] = useState(agentSettings);
+  const [viewState, setViewState] = useState(agentView);
   const effectiveSettings = controlledAgentSettings ? agentSettings : settingsState;
   const [transportState, setTransportState] = useState(agentTransport);
   const [deviceState, setDeviceState] = useState(() => structuredClone(agentDevice));
@@ -418,6 +430,18 @@ function Harness({
     settings: effectiveSettings,
     settingsContext: agentSettingsContext,
     applySettings: applyAgentSettings ?? (async (next) => setSettingsState(next)),
+    viewContext: {
+      view: viewState,
+      platform: "windows",
+      docked: false,
+      ...agentViewContext,
+      applyView:
+        applyAgentView ??
+        (async (next) => {
+          setViewState(next);
+          setPresetState((current) => ({ ...current, dirty: true }));
+        }),
+    },
     transport: transportState,
     transportContext: { docked: false },
     executeTransport,
@@ -1092,6 +1116,7 @@ describe("useAgentControlBridge", () => {
       resolvedThemeId: "plvs-dark",
     });
     expect(first.result.loudnessProfile).toEqual({ activeId: null });
+    expect(first.result.view).toEqual(defaultView);
     expect(first.result).not.toHaveProperty("revisions");
     expect(view.store.state.tree).toBe(initialTree);
 
@@ -1327,6 +1352,121 @@ describe("useAgentControlBridge", () => {
         sample: { sequence: 2 },
       },
     });
+  });
+
+  it("describes, inspects, dry-runs, and commits the focused View resource", async () => {
+    const flush = vi.fn(async () => {});
+    mount({ flush, presets: { activeId: "preset-1", dirty: false } });
+    await waitUntilReady();
+
+    const described = await send(request("view.describe", {}, "view-describe"));
+    expect(described.result).toMatchObject({
+      revision: 0,
+      view: defaultView,
+      runtime: { windowPresentation: { state: "active", owner: "view" } },
+      availability: { glassEnabled: { writable: false, reason: "platformUnsupported" } },
+      schema: { panelOpacity: { type: "integer", minimum: 0, maximum: 100 } },
+    });
+
+    const dryRun = await send(
+      request(
+        "view.update",
+        { patch: { pinned: true, focusView: { compactPanels: true } }, dryRun: true },
+        "view-dry-run"
+      )
+    );
+    expect(dryRun.result).toMatchObject({
+      dryRun: true,
+      revision: 0,
+      changed: true,
+      effects: ["alwaysOnTop", "compactPanels"],
+      state: {
+        view: { pinned: true, focusView: { compactPanels: true } },
+        preset: { activeId: "preset-1", dirty: true },
+      },
+    });
+    const unchanged = await send(request("view.inspect", {}, "view-after-dry-run"));
+    expect(unchanged.result).toMatchObject({ revision: 0, view: defaultView });
+
+    const committed = await send(
+      request("view.update", { patch: { pinned: true, panelOpacity: 82 } }, "view-update")
+    );
+    expect(committed.error).toBeUndefined();
+    expect(committed.result).toMatchObject({
+      dryRun: false,
+      revision: 1,
+      changed: true,
+      effects: ["alwaysOnTop", "panelOpacity"],
+      state: {
+        view: { pinned: true, panelOpacity: 82 },
+        preset: { activeId: "preset-1", dirty: true },
+      },
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
+    const inspected = await send(request("view.inspect", {}, "view-after-update"));
+    expect(inspected.result).toMatchObject({
+      revision: 1,
+      view: { pinned: true, panelOpacity: 82 },
+    });
+  });
+
+  it("enforces View validation and platform availability before applying", async () => {
+    const applyAgentView = vi.fn();
+    mount({ applyAgentView });
+    await waitUntilReady();
+
+    const invalid = await send(
+      request("view.update", { patch: { panelOpacity: 80.5 } }, "view-invalid")
+    );
+    expect(invalid.error).toMatchObject({
+      code: -32602,
+      data: {
+        reason: "invalidView",
+        details: { issues: [{ code: "invalidRange", path: "$.panelOpacity" }] },
+      },
+    });
+    const unavailable = await send(
+      request("view.update", { patch: { glassEnabled: true } }, "view-unavailable")
+    );
+    expect(unavailable.error).toMatchObject({
+      code: -32012,
+      data: { reason: "controlUnavailable", details: { reason: "platformUnsupported" } },
+    });
+    expect(applyAgentView).not.toHaveBeenCalled();
+  });
+
+  it("allows View reset to clear stale Glass state on an unsupported platform", async () => {
+    mount({ agentView: { ...defaultView, pinned: true, glassEnabled: true } });
+    await waitUntilReady();
+    const response = await send(request("view.reset", {}, "view-reset"));
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({
+      revision: 1,
+      changed: true,
+      state: { view: defaultView },
+    });
+  });
+
+  it("reports View native application failure without committing public state", async () => {
+    const failure = Object.assign(new Error("native failed"), {
+      rollback: "completed",
+      partial: false,
+      changed: [],
+    });
+    mount({ applyAgentView: vi.fn(async () => Promise.reject(failure)) });
+    await waitUntilReady();
+    const response = await send(
+      request("view.update", { patch: { pinned: true } }, "view-native-failure")
+    );
+    expect(response.error).toMatchObject({
+      code: -32050,
+      data: {
+        reason: "applicationFailed",
+        details: { partial: false, rollback: "completed", changed: [], revision: 0 },
+      },
+    });
+    const inspected = await send(request("view.inspect", {}, "view-after-native-failure"));
+    expect(inspected.result).toMatchObject({ revision: 0, view: defaultView });
   });
 
   it("lists and describes saved Presets through public shapes", async () => {

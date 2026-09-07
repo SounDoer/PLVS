@@ -95,6 +95,8 @@ export function normalizeAgentControlRequest(input) {
     input.method === "app.inspect" ||
     input.method === "measurement.describe" ||
     input.method === "measurement.inspect" ||
+    input.method === "view.describe" ||
+    input.method === "view.inspect" ||
     input.method === "axis.describe" ||
     input.method === "axis.inspect" ||
     input.method === "preset.list" ||
@@ -602,6 +604,35 @@ export function normalizeAgentControlRequest(input) {
           ...(input.params.allowMeasurementRestart !== undefined
             ? { allowMeasurementRestart: input.params.allowMeasurementRestart }
             : {}),
+          ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
+        },
+      },
+    };
+  }
+
+  if (input.method === "view.update" || input.method === "view.reset") {
+    const update = input.method === "view.update";
+    const field = unknownField(
+      input.params,
+      new Set([...(update ? ["patch"] : []), "expectedRevision", "dryRun"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (update && !isPlainJsonObject(input.params.patch)) {
+      return invalidParams("$.params.patch", "patch must be a plain JSON object.");
+    }
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          ...(update ? { patch: input.params.patch } : {}),
+          expectedRevision: input.params.expectedRevision,
           ...(input.params.dryRun !== undefined ? { dryRun: input.params.dryRun } : {}),
         },
       },

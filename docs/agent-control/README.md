@@ -22,6 +22,7 @@ app.capabilities
 app.inspect
 app.wait
 measurement.describe / measurement.inspect / measurement.wait
+view.describe / view.inspect / view.update / view.reset
 workspace.applyLayout
 panel.describe / panel.update / panel.reset
 axis.describe / axis.inspect / axis shared / axis panel
@@ -48,6 +49,7 @@ npm run desktop:control -- inspect --json
 npm run desktop:control -- wait --after-revision 0 --timeout-ms 30000 --json
 npm run desktop:control -- measurement inspect --json
 npm run desktop:control -- measurement wait --after-generation 0 --timeout-ms 30000 --json
+npm run desktop:control -- view inspect --json
 npm run desktop:control -- workspace apply layout.json --expected-revision 0 --json
 npm run desktop:control -- panel describe spectrum --json
 npm run desktop:control -- settings inspect --json
@@ -69,27 +71,25 @@ paths as the GUI.
 
 The foundation, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
 Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Measurement
-Wait, Library Transfer, and Configuration Transfer are implemented. See
+Wait, View Control, Library Transfer, and Configuration Transfer are implemented. See
 [`measurements.md`](measurements.md),
 [`devices.md`](devices.md), [`themes.md`](themes.md), and
 [`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration remains
 a deferred product decision.
-
-The next approved slice is [View Control](view.md). Its commands are not implemented and must not
-be advertised by `app.capabilities` or the CLI until the corresponding code lands.
 
 ## Keeping this contract in step with the app
 
 Panel Control is three hand-written lists of the same fields -- the schema, the read mapping and the
 patch planner -- layered on one flat control record. Nothing in the app makes them agree, and a
 control added to `src/lib/panelControls.js` and rendered in Panel Settings needs no Agent Control
-change to look finished. Five guards make that omission fail instead:
+change to look finished. Six guards make that omission fail instead:
 
 | Guard                                              | Fails when                                                                                                        |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `src/agentControl/panelControlCoverage.test.js`    | A panel control is neither exposed by Panel or Axis Control nor listed as deliberately internal.                  |
 | `src/agentControl/panelControlContract.test.js`    | A module in `MODULE_CATALOG` has no branch in describe / read / patch / reset, or the three field lists disagree. |
 | `src/agentControl/settingsControlContract.test.js` | Settings read / describe / patch disagree, or an option list stops matching the app's own.                        |
+| `src/agentControl/viewControl.test.js`             | View schema, strict planning, platform availability, reset, or Dock warning behavior changes.                   |
 | `src/agentControl/libraryTransferContract.test.js` | A library has a pack format but no command family, or the reverse.                                                |
 | `src/agentControl/publicSurfaceDocs.test.js`       | `generated/` no longer matches the schema builders.                                                               |
 
@@ -149,8 +149,8 @@ report live panel instances or mutable state beyond the current revision.
 ### `app.inspect`
 
 This is a snapshot of the running application's mutable state. As command families are added, it
-reports the Workspace, panel instances, each panel's complete public controls, compact Preset and
-Settings state, Dock state, Transport state, Device selection state, and the current top-level
+reports the Workspace, panel instances, each panel's complete public controls, compact Preset,
+Settings, and View state, Dock state, Transport state, Device selection state, and the current top-level
 `revision`. It reports values, not control schemas.
 
 The snapshot also includes compact Appearance and Loudness Profile selection state as
@@ -474,6 +474,7 @@ Control settings.
 - [`settings.md`](settings.md) — approved Settings Control contract
 - [`wait.md`](wait.md) — approved Revision Wait contract
 - [`measurement-wait.md`](measurement-wait.md) — implemented Measurement Wait contract
+- [`view.md`](view.md) — implemented View Control contract
 - [`transport.md`](transport.md) — approved Transport Control contract
 - [`dock.md`](dock.md) — approved Dock Control contract
 - [`libraries.md`](libraries.md) — approved Library Transfer contract

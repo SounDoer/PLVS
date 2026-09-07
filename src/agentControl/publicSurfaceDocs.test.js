@@ -6,6 +6,7 @@ import { buildAxisSchema } from "./axisControl.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { buildSettingsSchema } from "./settingsControl.js";
+import { buildViewDescription, DEFAULT_VIEW } from "./viewControl.js";
 
 /**
  * The reference half of `docs/agent-control/` is written from the schema builders rather than by
@@ -181,6 +182,24 @@ function settingsPage() {
   ].join("\n");
 }
 
+function viewPage() {
+  const schema = buildViewDescription(DEFAULT_VIEW, { platform: "macos", docked: false }).schema;
+  const withoutState = Object.fromEntries(
+    Object.entries(schema).map(([name, field]) => [name, stripState(field)])
+  );
+  return [
+    BANNER,
+    "",
+    "# View Control — Public Fields",
+    "",
+    "Current values, platform writability, and Dock ownership are runtime state and are reported by",
+    "`view describe` and `view inspect`, not here.",
+    "",
+    table(withoutState),
+    "",
+  ].join("\n");
+}
+
 function stripState(field) {
   const { current, availability, ...rest } = field;
   void current;
@@ -208,5 +227,9 @@ describe("generated Agent Control reference", () => {
     await expect(settingsPage()).toMatchFileSnapshot(
       "../../docs/agent-control/generated/settings.md"
     );
+  });
+
+  it("documents the View fields", async () => {
+    await expect(viewPage()).toMatchFileSnapshot("../../docs/agent-control/generated/view.md");
   });
 });

@@ -16,6 +16,8 @@ describe("normalizeAgentControlRequest", () => {
     "app.inspect",
     "measurement.describe",
     "measurement.inspect",
+    "view.describe",
+    "view.inspect",
     "axis.describe",
     "axis.inspect",
     "theme.inspect",
@@ -337,6 +339,37 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes View mutations", () => {
+    expect(
+      normalizeAgentControlRequest(
+        request("view.update", {
+          patch: { focusView: { compactPanels: true } },
+          expectedRevision: 2,
+          dryRun: true,
+        })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "view.update",
+        params: {
+          patch: { focusView: { compactPanels: true } },
+          expectedRevision: 2,
+          dryRun: true,
+        },
+      },
+    });
+    expect(normalizeAgentControlRequest(request("view.reset", { expectedRevision: 3 }))).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "view.reset",
+        params: { expectedRevision: 3 },
+      },
+    });
+  });
+
   it("normalizes measurement.wait identity baselines and default timeout", () => {
     expect(
       normalizeAgentControlRequest(
@@ -573,6 +606,8 @@ describe("normalizeAgentControlRequest", () => {
       -32602,
     ],
     [request("settings.update", {}), "invalidParams", "$.params.patch", -32602],
+    [request("view.update", {}), "invalidParams", "$.params.patch", -32602],
+    [request("view.reset", { patch: {} }), "invalidParams", "$.params.patch", -32602],
     [request("app.wait", {}), "invalidParams", "$.params.afterRevision", -32602],
     [request("measurement.wait", {}), "invalidParams", "$.params.afterGeneration", -32602],
     [

@@ -557,6 +557,7 @@ mod tests {
         "capabilities",
         "inspect",
         "measurement",
+        "view",
         "wait",
         "workspace",
         "panel",
