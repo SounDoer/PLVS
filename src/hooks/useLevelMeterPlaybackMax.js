@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- Audio frame effects intentionally publish tracker state from stable value keys. */
+/* eslint-disable react-hooks/exhaustive-deps -- Audio frame effects intentionally publish tracker state from stable value keys. */
 import { useEffect, useRef, useState } from "react";
 
 const PLAYBACK_SIGNAL_FLOOR_DB = -70;
@@ -31,19 +31,20 @@ export function useLevelMeterPlaybackMax({ enabled, mode, value, displayAudio })
 
   useEffect(() => {
     const tracker = trackerRef.current;
-    if (tracker.mode !== mode) {
-      tracker.mode = mode;
+    const reset = () => {
+      const changed = tracker.playbackMax !== -Infinity;
       tracker.active = false;
       tracker.silentSince = null;
       tracker.playbackMax = -Infinity;
-      setPlaybackMax(-Infinity);
+      if (changed) setPlaybackMax(-Infinity);
+    };
+    if (tracker.mode !== mode) {
+      tracker.mode = mode;
+      reset();
     }
 
     if (!enabled) {
-      tracker.active = false;
-      tracker.silentSince = null;
-      tracker.playbackMax = -Infinity;
-      setPlaybackMax(-Infinity);
+      reset();
       return;
     }
 
@@ -61,8 +62,10 @@ export function useLevelMeterPlaybackMax({ enabled, mode, value, displayAudio })
         : Number.isFinite(value)
           ? Math.max(tracker.playbackMax, value)
           : tracker.playbackMax;
-      tracker.playbackMax = Number.isFinite(nextMax) ? nextMax : -Infinity;
-      setPlaybackMax(tracker.playbackMax);
+      const normalizedMax = Number.isFinite(nextMax) ? nextMax : -Infinity;
+      const changed = !Object.is(normalizedMax, tracker.playbackMax);
+      tracker.playbackMax = normalizedMax;
+      if (changed) setPlaybackMax(normalizedMax);
       return;
     }
 
@@ -79,19 +82,20 @@ export function useLevelMeterPlaybackMaxChannels({ enabled, mode, values }) {
 
   useEffect(() => {
     const tracker = trackerRef.current;
-    if (tracker.mode !== mode) {
-      tracker.mode = mode;
+    const reset = () => {
+      const changed = tracker.playbackMax.length > 0;
       tracker.active = false;
       tracker.silentSince = null;
       tracker.playbackMax = [];
-      setPlaybackMax([]);
+      if (changed) setPlaybackMax([]);
+    };
+    if (tracker.mode !== mode) {
+      tracker.mode = mode;
+      reset();
     }
 
     if (!enabled) {
-      tracker.active = false;
-      tracker.silentSince = null;
-      tracker.playbackMax = [];
-      setPlaybackMax([]);
+      reset();
       return;
     }
 
@@ -122,10 +126,7 @@ export function useLevelMeterPlaybackMaxChannels({ enabled, mode, values }) {
       if (tracker.silentSince == null) {
         tracker.silentSince = now;
       } else if (silenceElapsed) {
-        tracker.active = false;
-        tracker.silentSince = null;
-        tracker.playbackMax = [];
-        setPlaybackMax([]);
+        reset();
       }
     }
   }, [enabled, mode, valuesKey]);
