@@ -8,6 +8,7 @@ import { DragProvider } from "../workspace/DragContext.jsx";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { PanelDataProviders } from "../workspace/PanelDataProviders.jsx";
 import { DockStrip } from "../dock/DockStrip.jsx";
+import { RecordingIndicator } from "./RecordingIndicator.jsx";
 import {
   FOOTER_DIVIDER,
   FOOTER_LABEL,
@@ -38,6 +39,7 @@ export function AppShell({
   docked = false,
   dockProps = null,
   children,
+  recordingState = null,
 }) {
   const autoHideControls = focusView.autoHideControls;
   const controlsVisible = !autoHideControls || focusControlsVisible;
@@ -60,7 +62,7 @@ export function AppShell({
     >
       <MeterRuntimeEngines {...runtimeEnginesProps} />
       {docked ? (
-        <DockStrip {...dockProps} />
+        <DockStrip {...dockProps} recordingState={recordingState} />
       ) : (
         <>
           <FileDropOverlay {...fileDropProps} />
@@ -151,6 +153,7 @@ export function AppShell({
             </DragProvider>
 
             {children}
+            <RecordingIndicator state={recordingState} />
           </div>
         </>
       )}

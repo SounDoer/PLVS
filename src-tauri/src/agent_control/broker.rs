@@ -16,6 +16,9 @@ pub const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 /// Long-poll methods whose frontend budget is set by the caller, not by the default above.
 const APP_WAIT_METHOD: &str = "app.wait";
 const MEASUREMENT_WAIT_METHOD: &str = "measurement.wait";
+const VISUAL_RECORDING_WAIT_METHOD: &str = "visual.recording.wait";
+const VISUAL_RECORDING_STOP_METHOD: &str = "visual.recording.stop";
+const VISUAL_RECORDING_STOP_TIMEOUT: Duration = Duration::from_secs(10);
 /// Mirrors the long-wait contracts the frontend validates.
 const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
 const MIN_WAIT_TIMEOUT_MS: u64 = 100;
@@ -41,9 +44,12 @@ pub fn frontend_budget(request: &JsonRpcRequest) -> Duration {
 /// The caller-supplied budget for long-poll methods. `None` for every other method,
 /// which leaves the broker free to keep using its own configured default.
 fn wait_budget(request: &JsonRpcRequest) -> Option<Duration> {
+  if request.method == VISUAL_RECORDING_STOP_METHOD {
+    return Some(VISUAL_RECORDING_STOP_TIMEOUT);
+  }
   if !matches!(
     request.method.as_str(),
-    APP_WAIT_METHOD | MEASUREMENT_WAIT_METHOD
+    APP_WAIT_METHOD | MEASUREMENT_WAIT_METHOD | VISUAL_RECORDING_WAIT_METHOD
   ) {
     return None;
   }
@@ -766,7 +772,7 @@ mod tests {
   }
 
   #[test]
-  fn only_the_long_poll_method_carries_its_own_frontend_budget() {
+  fn long_polls_and_recording_stop_carry_bounded_frontend_budgets() {
     assert_eq!(frontend_budget(&request("plain")), DEFAULT_RESPONSE_TIMEOUT);
     // The documented default, for a caller that omits the field entirely.
     assert_eq!(
@@ -801,6 +807,22 @@ mod tests {
         json!({ "timeoutMs": 1 })
       )),
       Duration::from_millis(MIN_WAIT_TIMEOUT_MS)
+    );
+    assert_eq!(
+      frontend_budget(&wait_request(
+        "visual-wait",
+        VISUAL_RECORDING_WAIT_METHOD,
+        json!({ "timeoutMs": 45_000 })
+      )),
+      Duration::from_millis(45_000)
+    );
+    assert_eq!(
+      frontend_budget(&wait_request(
+        "visual-stop",
+        VISUAL_RECORDING_STOP_METHOD,
+        json!({})
+      )),
+      VISUAL_RECORDING_STOP_TIMEOUT
     );
   }
 

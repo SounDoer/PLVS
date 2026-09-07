@@ -68,7 +68,11 @@ import { isTauri } from "./ipc/env.js";
 import {
   captureVisualScreenshot,
   getVisualCaptureCapabilities,
+  inspectVisualRecording,
   resetTruePeakMax,
+  startVisualRecording,
+  stopVisualRecording,
+  updateVisualRecordingGeometry,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import {
@@ -801,6 +805,7 @@ function AppContent() {
   });
   const agentControlRuntime = useMemo(readAgentControlRuntime, []);
   const [visualPlatformCapabilities, setVisualPlatformCapabilities] = useState(null);
+  const [visualRecordingState, setVisualRecordingState] = useState(null);
   useEffect(() => {
     if (agentControlRuntime.available !== true) return undefined;
     let cancelled = false;
@@ -1265,6 +1270,12 @@ function AppContent() {
           ? settleDockAccessory(target, visualRuntimeRef.current, options)
           : visualCaptureSurfaces.settle(target, options),
       captureScreenshot: captureVisualScreenshot,
+      startRecording: startVisualRecording,
+      inspectRecording: inspectVisualRecording,
+      stopRecording: stopVisualRecording,
+      updateRecordingGeometry: updateVisualRecordingGeometry,
+      subscribe: visualCaptureSurfaces.subscribe,
+      setRecordingState: setVisualRecordingState,
     }),
     [visualCaptureSurfaces, visualPlatformCapabilities]
   );
@@ -2278,6 +2289,7 @@ function AppContent() {
       fileSummaryProps={fileSummaryProps}
       panelChromeData={panelChromeData}
       footer={footer}
+      recordingState={visualRecordingState}
     >
       <AppSettingsOverlays
         settings={settings}

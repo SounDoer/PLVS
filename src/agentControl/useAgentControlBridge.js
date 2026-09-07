@@ -107,6 +107,11 @@ const VISUAL_ERROR_REASONS = new Set([
   "captureBusy",
   "captureFailed",
   "artifactWriteFailed",
+  "recordingNotFound",
+  "audioUnavailable",
+  "recordingFailed",
+  "artifactExpired",
+  "waitLimitReached",
 ]);
 
 function visualSemanticFailure(error) {
@@ -121,8 +126,18 @@ function visualSemanticFailure(error) {
     captureBusy: "A screenshot is already in progress.",
     captureFailed: "The rendered PLVS surface could not be captured.",
     artifactWriteFailed: "The screenshot artifact could not be written.",
+    recordingNotFound: "The recording ID is unknown.",
+    audioUnavailable: "The requested recording audio source is unavailable.",
+    recordingFailed: "The visual recording failed.",
+    artifactExpired: "The recording artifact has expired or disappeared.",
+    waitLimitReached: "The visual recording wait limit is full.",
   };
   return semanticFailure(reason, "$", messages[reason], -32080, error?.details);
+}
+
+function publicSilentRecording(recording) {
+  const { audioSource: _nativeAudioSource, ...publicRecording } = recording ?? {};
+  return { ...publicRecording, audio: { source: "none" } };
 }
 
 function workspaceMatches(workspace, view) {
@@ -489,6 +504,7 @@ export function useAgentControlBridge({
   const latestVisualRef = useRef(visual);
   const visualCapturesRef = useRef(new Map());
   const visualCaptureActiveRef = useRef(false);
+  const visualRecordingsRef = useRef(new Map());
   const aliveRef = useRef(false);
   const controlRevisionRef = useRef(0);
   const controlRevisionBumpedThisTurnRef = useRef(false);
@@ -950,6 +966,171 @@ export function useAgentControlBridge({
           } finally {
             ownedVisualCaptures.delete(requestId);
             visualCaptureActiveRef.current = false;
+          }
+        }
+        if (request.method === "visual.recording.start") {
+          const visualControl = latestVisualRef.current;
+          if (visualControl?.platformCapabilities?.recording?.available !== true) {
+            throw visualSemanticFailure({ reason: "visualUnavailable" });
+          }
+          const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
+          if (!availableTargets.includes(request.params.target.kind)) {
+            throw visualSemanticFailure({ reason: "targetUnavailable" });
+          }
+          const controller = new AbortController();
+          ownedVisualCaptures.set(requestId, controller);
+          try {
+            const settled = await visualControl.settle(request.params.target, {
+              expectedRevision: request.params.expectedRevision,
+              getRevision: () => controlRevisionRef.current,
+              signal: controller.signal,
+            });
+            const recording = await visualControl.startRecording({
+              windowLabel: settled.windowLabel,
+              rect: settled.rect,
+              viewport: settled.viewport,
+              devicePixelRatio: settled.devicePixelRatio,
+              fps: request.params.fps,
+              maxDurationSeconds: request.params.maxDurationSeconds,
+            });
+            const metadata = {
+              target: request.params.target,
+              startedRevision: settled.revision,
+              startedAt: new Date().toISOString(),
+              unsubscribe: null,
+            };
+            visualRecordingsRef.current.set(recording.recordingId, metadata);
+            metadata.unsubscribe = visualControl.subscribe?.(
+              request.params.target,
+              (geometry) => {
+                void visualControl
+                  .updateRecordingGeometry({
+                    recordingId: recording.recordingId,
+                    rect: geometry.rect,
+                    viewport: geometry.viewport,
+                  })
+                  .catch(() => undefined);
+              },
+              { signal: controller.signal }
+            );
+            visualControl.setRecordingState?.(recording.state);
+            void (async () => {
+              while (visualRecordingsRef.current.has(recording.recordingId)) {
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                try {
+                  const latest = await visualControl.inspectRecording(recording.recordingId);
+                  if (latest.state === "completed" || latest.state === "failed") {
+                    metadata.unsubscribe?.();
+                    metadata.unsubscribe = null;
+                    visualControl.setRecordingState?.(null);
+                    return;
+                  }
+                  visualControl.setRecordingState?.(latest.state);
+                } catch {
+                  return;
+                }
+              }
+            })();
+            return {
+              requestId,
+              result: {
+                revision: settled.revision,
+                recording: {
+                  ...publicSilentRecording(recording),
+                  target: request.params.target,
+                  startedAt: metadata.startedAt,
+                  startedRevision: settled.revision,
+                },
+              },
+            };
+          } catch (error) {
+            throw visualSemanticFailure(error);
+          } finally {
+            ownedVisualCaptures.delete(requestId);
+          }
+        }
+        if (
+          request.method === "visual.recording.inspect" ||
+          request.method === "visual.recording.wait" ||
+          request.method === "visual.recording.stop"
+        ) {
+          const visualControl = latestVisualRef.current;
+          if (visualControl?.platformCapabilities?.recording?.available !== true) {
+            throw visualSemanticFailure({ reason: "visualUnavailable" });
+          }
+          const recordingId = request.params.recordingId;
+          const metadata = visualRecordingsRef.current.get(recordingId);
+          const decorate = (recording) => {
+            const terminal = recording.state === "completed" || recording.state === "failed";
+            if (terminal) {
+              metadata?.unsubscribe?.();
+              if (metadata) metadata.unsubscribe = null;
+              visualControl.setRecordingState?.(null);
+            } else {
+              visualControl.setRecordingState?.(recording.state);
+            }
+            return {
+              ...publicSilentRecording(recording),
+              ...(metadata?.target ? { target: metadata.target } : {}),
+              ...(metadata?.startedAt ? { startedAt: metadata.startedAt } : {}),
+              ...(Number.isSafeInteger(metadata?.startedRevision)
+                ? { startedRevision: metadata.startedRevision }
+                : {}),
+              currentRevision: controlRevisionRef.current,
+              ...(terminal ? { endedRevision: controlRevisionRef.current } : {}),
+            };
+          };
+          try {
+            if (request.method === "visual.recording.inspect") {
+              return {
+                requestId,
+                result: {
+                  revision: controlRevisionRef.current,
+                  recording: decorate(await visualControl.inspectRecording(recordingId)),
+                },
+              };
+            }
+            if (request.method === "visual.recording.stop") {
+              await visualControl.stopRecording(recordingId);
+            }
+            const timeoutMs =
+              request.method === "visual.recording.wait" ? request.params.timeoutMs : 9000;
+            const deadline = Date.now() + timeoutMs;
+            while (true) {
+              const recording = await visualControl.inspectRecording(recordingId);
+              if (recording.state === "completed" || recording.state === "failed") {
+                return {
+                  requestId,
+                  result: {
+                    ...(request.method === "visual.recording.wait" ? { outcome: "terminal" } : {}),
+                    revision: controlRevisionRef.current,
+                    recording: decorate(recording),
+                  },
+                };
+              }
+              if (Date.now() >= deadline) {
+                if (request.method === "visual.recording.stop") {
+                  throw {
+                    reason: "recordingFailed",
+                    details: {
+                      finalizationTimedOut: true,
+                      recording: decorate(recording),
+                    },
+                  };
+                }
+                return {
+                  requestId,
+                  result: {
+                    ...(request.method === "visual.recording.wait" ? { outcome: "timeout" } : {}),
+                    revision: controlRevisionRef.current,
+                    recording: decorate(recording),
+                  },
+                };
+              }
+              await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+          } catch (error) {
+            throw visualSemanticFailure(error);
           }
         }
         if (request.method === "measurement.describe") {
@@ -3355,6 +3536,7 @@ export function useAgentControlBridge({
     if (!enabled) return undefined;
     const waiters = waitersRef.current;
     const ownedVisualCaptures = visualCapturesRef.current;
+    const visualRecordings = visualRecordingsRef.current;
     aliveRef.current = true;
     // Per-run, unlike `aliveRef`: a remount sets that shared ref back to true, so an install left
     // over from the previous run cannot use it to tell that its own run was torn down. Believing
@@ -3390,8 +3572,7 @@ export function useAgentControlBridge({
           request?.method === "measurement.wait" ||
           request?.method === "measurement.describe" ||
           request?.method === "measurement.inspect" ||
-          request?.method === "visual.describe" ||
-          request?.method === "visual.screenshot"
+          request?.method?.startsWith("visual.")
         ) {
           void respond(processRef.current(request));
           return;
@@ -3458,6 +3639,15 @@ export function useAgentControlBridge({
       waiters.clear();
       for (const controller of ownedVisualCaptures.values()) controller.abort();
       ownedVisualCaptures.clear();
+      const visualControl = latestVisualRef.current;
+      for (const [recordingId, metadata] of visualRecordings) {
+        metadata.unsubscribe?.();
+        metadata.unsubscribe = null;
+        void visualControl?.stopRecording?.(recordingId).catch(() => undefined);
+      }
+      if (visualRecordings.size > 0) {
+        visualControl?.setRecordingState?.("stopping");
+      }
       unlisten?.();
       unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();

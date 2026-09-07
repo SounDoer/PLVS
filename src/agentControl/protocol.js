@@ -1,4 +1,4 @@
-import { normalizeVisualTarget } from "./visualControl.js";
+import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
 const TRANSPORT_ACTIONS = new Set([
@@ -128,6 +128,112 @@ export function normalizeAgentControlRequest(input) {
             ? { expectedRevision: input.params.expectedRevision }
             : {}),
         },
+      },
+    };
+  }
+
+  if (input.method === "visual.recording.start") {
+    const field = unknownField(
+      input.params,
+      new Set(["target", "audio", "fps", "maxDurationSeconds", "expectedRevision"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const normalizedTarget = normalizeVisualTarget(input.params.target);
+    if (!normalizedTarget.ok) {
+      return invalidParams(`$.params.target${normalizedTarget.path}`, normalizedTarget.message);
+    }
+    if (!VISUAL_RECORDING_TARGET_KINDS.includes(normalizedTarget.target.kind)) {
+      return invalidParams(
+        "$.params.target.kind",
+        "Recording target.kind must be one of: main, workspace."
+      );
+    }
+    if (input.params.audio !== undefined && input.params.audio !== "none") {
+      return invalidParams("$.params.audio", "audio must be none during silent recording.");
+    }
+    const fps = input.params.fps ?? 30;
+    if (![15, 30, 60].includes(fps)) {
+      return invalidParams("$.params.fps", "fps must be one of: 15, 30, 60.");
+    }
+    const maxDurationSeconds = input.params.maxDurationSeconds ?? 60;
+    if (
+      !Number.isInteger(maxDurationSeconds) ||
+      maxDurationSeconds < 1 ||
+      maxDurationSeconds > 1800
+    ) {
+      return invalidParams(
+        "$.params.maxDurationSeconds",
+        "maxDurationSeconds must be an integer from 1 through 1800."
+      );
+    }
+    if (
+      input.params.expectedRevision !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedRevision) || input.params.expectedRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          target: normalizedTarget.target,
+          audio: "none",
+          fps,
+          maxDurationSeconds,
+          ...(input.params.expectedRevision !== undefined
+            ? { expectedRevision: input.params.expectedRevision }
+            : {}),
+        },
+      },
+    };
+  }
+
+  if (["visual.recording.inspect", "visual.recording.stop"].includes(input.method)) {
+    const field = unknownField(input.params, new Set(["recordingId"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (
+      typeof input.params.recordingId !== "string" ||
+      !/^rec-[0-9a-f]{32}$/.test(input.params.recordingId)
+    ) {
+      return invalidParams("$.params.recordingId", "recordingId must be an exact recording ID.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { recordingId: input.params.recordingId },
+      },
+    };
+  }
+
+  if (input.method === "visual.recording.wait") {
+    const field = unknownField(input.params, new Set(["recordingId", "timeoutMs"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (
+      typeof input.params.recordingId !== "string" ||
+      !/^rec-[0-9a-f]{32}$/.test(input.params.recordingId)
+    ) {
+      return invalidParams("$.params.recordingId", "recordingId must be an exact recording ID.");
+    }
+    const timeoutMs = input.params.timeoutMs ?? 30000;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300000) {
+      return invalidParams(
+        "$.params.timeoutMs",
+        "timeoutMs must be an integer from 100 through 300000."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { recordingId: input.params.recordingId, timeoutMs },
       },
     };
   }

@@ -116,6 +116,65 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  describe("visual recording requests", () => {
+    const recordingId = `rec-${"a".repeat(32)}`;
+
+    it("normalizes silent start defaults and both supported targets", () => {
+      for (const kind of ["main", "workspace"]) {
+        expect(
+          normalizeAgentControlRequest(request("visual.recording.start", { target: { kind } }))
+        ).toEqual({
+          ok: true,
+          request: {
+            id: "req-1",
+            method: "visual.recording.start",
+            params: {
+              target: { kind },
+              audio: "none",
+              fps: 30,
+              maxDurationSeconds: 60,
+            },
+          },
+        });
+      }
+    });
+
+    it.each([
+      [{ target: { kind: "panel", panelId: "peak-1" } }, "$.params.target.kind"],
+      [{ target: { kind: "main" }, audio: "measuredSource" }, "$.params.audio"],
+      [{ target: { kind: "main" }, fps: 24 }, "$.params.fps"],
+      [{ target: { kind: "main" }, maxDurationSeconds: 0 }, "$.params.maxDurationSeconds"],
+      [{ target: { kind: "main" }, out: "capture.mp4" }, "$.params.out"],
+    ])("rejects invalid start params %#", (params, path) => {
+      expect(
+        normalizeAgentControlRequest(request("visual.recording.start", params)).error.path
+      ).toBe(path);
+    });
+
+    it("normalizes inspect, wait, and stop with exact recording IDs", () => {
+      expect(
+        normalizeAgentControlRequest(request("visual.recording.inspect", { recordingId })).request
+          .params
+      ).toEqual({ recordingId });
+      expect(
+        normalizeAgentControlRequest(request("visual.recording.wait", { recordingId })).request
+          .params
+      ).toEqual({ recordingId, timeoutMs: 30000 });
+      expect(
+        normalizeAgentControlRequest(request("visual.recording.stop", { recordingId })).request
+          .params
+      ).toEqual({ recordingId });
+    });
+
+    it.each([
+      ["visual.recording.inspect", { recordingId: "rec-nope" }, "$.params.recordingId"],
+      ["visual.recording.wait", { recordingId, timeoutMs: 99 }, "$.params.timeoutMs"],
+      ["visual.recording.stop", { recordingId, timeoutMs: 100 }, "$.params.timeoutMs"],
+    ])("rejects malformed %s requests", (method, params, path) => {
+      expect(normalizeAgentControlRequest(request(method, params)).error.path).toBe(path);
+    });
+  });
+
   it("normalizes Device selection and classifies every Device method", () => {
     const params = {
       deviceId: "cap-fedcba9876543210fedcba9876543210",

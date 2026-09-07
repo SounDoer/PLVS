@@ -6,7 +6,7 @@ import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { DEVICE_CONTROL_METHODS } from "./protocol.js";
 import { buildModuleList } from "./moduleControl.js";
-import { VISUAL_SCREENSHOT_METHODS } from "./visualControl.js";
+import { VISUAL_RECORDING_METHODS, VISUAL_SCREENSHOT_METHODS } from "./visualControl.js";
 
 const METHODS = [
   "app.capabilities",
@@ -139,6 +139,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
             (method) => method === "visual.describe" || visual.screenshot === true
           )
         : []),
+      ...(visual?.recording === true ? VISUAL_RECORDING_METHODS : []),
     ],
     modules: buildModuleList(),
   };

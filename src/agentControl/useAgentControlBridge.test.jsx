@@ -649,6 +649,24 @@ function visualControl(overrides = {}) {
       sha256: "a".repeat(64),
       createdAt: "2026-09-07T12:00:00Z",
     })),
+    startRecording: vi.fn(async () => ({
+      recordingId: `rec-${"a".repeat(32)}`,
+      state: "recording",
+      video: { width: 376, height: 250, fps: 30, codec: "h264" },
+      limits: { maxDurationSeconds: 60, maxArtifactBytes: 2147483648 },
+    })),
+    inspectRecording: vi.fn(async (recordingId) => ({
+      recordingId,
+      state: "recording",
+      durationMs: 100,
+      capturedFrames: 3,
+      droppedFrames: 0,
+      bytes: 1000,
+    })),
+    stopRecording: vi.fn(async (recordingId) => ({ recordingId, state: "stopping" })),
+    updateRecordingGeometry: vi.fn(async () => {}),
+    subscribe: vi.fn(() => vi.fn()),
+    setRecordingState: vi.fn(),
     ...overrides,
   };
 }
@@ -838,6 +856,132 @@ describe("useAgentControlBridge", () => {
       view.unmount();
       expect(observedSignal.aborted).toBe(true);
       expect(visual.captureScreenshot).not.toHaveBeenCalled();
+    });
+
+    it("starts a silent recording, advertises its methods, and forwards resize privately", async () => {
+      const recordingId = `rec-${"a".repeat(32)}`;
+      let publishGeometry;
+      const visual = visualControl({
+        platformCapabilities: {
+          platform: "windows",
+          screenshot: { available: true, targets: ["main", "workspace"] },
+          recording: { available: true, targets: ["main", "workspace"], audioSources: ["none"] },
+        },
+        subscribe: vi.fn((_target, onGeometry) => {
+          publishGeometry = onGeometry;
+          return vi.fn();
+        }),
+      });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+
+      const capabilities = await send(request("app.capabilities", {}, "recording-capabilities"));
+      expect(capabilities.result.features.visual.recording).toBe(true);
+      expect(capabilities.result.methods).toEqual(
+        expect.arrayContaining([
+          "visual.recording.start",
+          "visual.recording.inspect",
+          "visual.recording.wait",
+          "visual.recording.stop",
+        ])
+      );
+      const response = await send(
+        request(
+          "visual.recording.start",
+          { target: { kind: "workspace" }, fps: 30, maxDurationSeconds: 5 },
+          "recording-start"
+        )
+      );
+      expect(visual.startRecording).toHaveBeenCalledWith({
+        windowLabel: "main",
+        rect: { x: 10, y: 20, width: 300, height: 200 },
+        viewport: { width: 800, height: 600 },
+        devicePixelRatio: 1.25,
+        fps: 30,
+        maxDurationSeconds: 5,
+      });
+      expect(response.result.recording).toMatchObject({
+        recordingId,
+        state: "recording",
+        target: { kind: "workspace" },
+        startedRevision: 0,
+        audio: { source: "none" },
+      });
+      act(() =>
+        publishGeometry({
+          rect: { x: 1, y: 2, width: 400, height: 300 },
+          viewport: { width: 900, height: 700 },
+        })
+      );
+      await waitFor(() =>
+        expect(visual.updateRecordingGeometry).toHaveBeenCalledWith({
+          recordingId,
+          rect: { x: 1, y: 2, width: 400, height: 300 },
+          viewport: { width: 900, height: 700 },
+        })
+      );
+      expect(visual.setRecordingState).toHaveBeenCalledWith("recording");
+    });
+
+    it("keeps recording wait outside the mutation queue and returns terminal correlation metadata", async () => {
+      const recordingId = `rec-${"b".repeat(32)}`;
+      const inspected = createDeferred();
+      const visual = visualControl({
+        platformCapabilities: {
+          platform: "windows",
+          screenshot: { available: true, targets: ["main"] },
+          recording: { available: true, targets: ["main"], audioSources: ["none"] },
+        },
+        inspectRecording: vi.fn(() => inspected.promise),
+      });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+      act(() =>
+        adapter.handler(
+          request("visual.recording.wait", { recordingId, timeoutMs: 1000 }, "recording-wait")
+        )
+      );
+      await waitFor(() => expect(visual.inspectRecording).toHaveBeenCalled());
+      const inspection = await send(request("app.inspect", {}, "during-recording-wait"));
+      expect(inspection.result.revision).toBe(0);
+      inspected.resolve({ recordingId, state: "completed", artifact: { artifactId: "art-2" } });
+      await waitFor(() =>
+        expect(adapter.responses.some(({ requestId }) => requestId === "recording-wait")).toBe(true)
+      );
+      const response = adapter.responses.find(({ requestId }) => requestId === "recording-wait");
+      expect(response.result).toMatchObject({
+        outcome: "terminal",
+        revision: 0,
+        recording: { recordingId, state: "completed", endedRevision: 0 },
+      });
+      expect(visual.setRecordingState).toHaveBeenCalledWith(null);
+    });
+
+    it("requests idempotent stop and returns the finalized recording", async () => {
+      const recordingId = `rec-${"c".repeat(32)}`;
+      const visual = visualControl({
+        platformCapabilities: {
+          platform: "windows",
+          screenshot: { available: true, targets: ["main"] },
+          recording: { available: true, targets: ["main"], audioSources: ["none"] },
+        },
+        inspectRecording: vi.fn(async () => ({
+          recordingId,
+          state: "completed",
+          artifact: { artifactId: "art-3" },
+        })),
+      });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+      const response = await send(
+        request("visual.recording.stop", { recordingId }, "recording-stop")
+      );
+      expect(visual.stopRecording).toHaveBeenCalledWith(recordingId);
+      expect(response.result.recording).toMatchObject({
+        recordingId,
+        state: "completed",
+        endedRevision: 0,
+      });
     });
   });
 

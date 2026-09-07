@@ -18,6 +18,12 @@ export const VISUAL_RECORDING_STATES = Object.freeze([
 ]);
 
 export const VISUAL_SCREENSHOT_METHODS = Object.freeze(["visual.describe", "visual.screenshot"]);
+export const VISUAL_RECORDING_METHODS = Object.freeze([
+  "visual.recording.start",
+  "visual.recording.inspect",
+  "visual.recording.wait",
+  "visual.recording.stop",
+]);
 
 const SCREENSHOT_FORMAT = "png";
 const RECORDING_CONTAINER = "mp4";

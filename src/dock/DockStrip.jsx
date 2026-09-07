@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { DockHeightResizeHandle } from "./DockHeightResizeHandle.jsx";
 import { DockPanelResizeHandle } from "./DockPanelResizeHandle.jsx";
 import { dockHeightMode } from "./dockSizing.js";
+import { RecordingIndicator } from "../components/RecordingIndicator.jsx";
 
 /** The resizable meter strip. Accessory chrome lives in sibling windows. */
 export function DockStrip({
@@ -20,6 +21,7 @@ export function DockStrip({
   onPanelResizeReset,
   onPointerEnter,
   onPointerLeave,
+  recordingState = null,
 }) {
   const heightMode = dockHeightMode(height);
   return (
@@ -94,6 +96,7 @@ export function DockStrip({
           );
         })}
       </div>
+      <RecordingIndicator state={recordingState} />
     </div>
   );
 }
