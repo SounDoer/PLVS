@@ -219,7 +219,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 
 ### A.3 缺口与路线图（与第 5 节对齐）
 
-- **PCM tap（录音/内录）**、**数据导出（CSV/截图等）**、**自动更新/签名/公证**：架构层已有候选，但 **不作为当前 PRD 交付承诺**，除非单独开里程碑修订本文。  
+- **Agent Control Visual Capture 已交付（Windows）**：支持 PLVS 界面截图及可选 Live measured-source 音频的 MP4 录制；它不是通用录音、桌面捕获或 GUI 导出工作流。**CSV/历史数据导出**、面向普通用户的通用导出入口、**自动更新/签名/公证**仍不作为当前 PRD 交付承诺，除非单独开里程碑修订本文。
 - **无障碍增强**：非短期主线（见 5.11）。  
 - **一键诊断导出**：非承诺项（见 5.9）。  
 

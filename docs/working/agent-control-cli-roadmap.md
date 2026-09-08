@@ -34,10 +34,13 @@ The running-app surface now covers:
 - global preferences: Settings Control;
 - source lifecycle: live and file Transport Control;
 - audio-source inventory, inspection, and exact/Automatic Device Control;
+- bounded LIVE Measurement inspection and sample-identity waiting;
+- persistent View Control and Windows Visual Capture;
 - portable libraries: Preset, Theme, and Loudness Profile list/export/import;
 - Loudness Profile inspection, authoring, selection, deletion, and ordering;
 - Appearance inspection/selection and Theme inspection, authoring, duplication, deletion, and
-  ordering.
+  ordering;
+- whole-setup Configuration Transfer.
 
 The post-v0.15.0 work added Library Transfer end to end, including strict request validation,
 revision tracking for Theme and Loudness Profile libraries, large named-pipe frame delivery,
@@ -49,8 +52,8 @@ Important constraints of the current baseline:
 - Running-app commands are machine-first and require `--json`.
 - CLI `inspect` (wire method `app.inspect`) intentionally contains semantic state, not measurement
   frames or history.
-- configuration reset and runtime measurement queries are intentionally outside the existing
-  contract.
+- configuration reset, FILE measurement queries, raw history, and visual buffers are intentionally
+  outside the existing contract.
 - the internal `analyze` and `capture` harness commands are release-verification tools, not public
   CLI promises.
 
@@ -236,8 +239,8 @@ readiness; a restart failure retains and reports the newly persisted selection.
 
 Approved design and completed implementation plan:
 
-- [`superpowers/specs/2026-09-07-agent-control-visual-capture-design.md`](superpowers/specs/2026-09-07-agent-control-visual-capture-design.md)
-- [`superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md`](superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md)
+- [`../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md`](../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md)
+- [`../superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md`](../superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md)
 
 The implemented Windows-only `visual` family provides `describe` and screenshot plus asynchronous
 recording `start`, `inspect`, `wait`, and `stop`. It captures closed semantic targets, stages media
@@ -362,6 +365,11 @@ sample interval, metric list, maximum rows, and streaming/file semantics.
 
 #### Machine-readable schema export
 
+Proposed design and implementation plan:
+
+- [`../superpowers/specs/2026-09-08-agent-control-command-manifest-schema-design.md`](../superpowers/specs/2026-09-08-agent-control-command-manifest-schema-design.md)
+- [`../superpowers/plans/2026-09-08-agent-control-command-manifest-schema-implementation.md`](../superpowers/plans/2026-09-08-agent-control-command-manifest-schema-implementation.md)
+
 Proposed shape:
 
 ```text
@@ -448,11 +456,14 @@ The following remain internal even if they are convenient during implementation:
 
 The smallest useful sequence is:
 
-1. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
+1. **Command manifest and offline schema foundation:** consolidate catalog facts, generate help and
+   command reference, and expose `schema list/get` before adding more command families.
+2. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
    queries, and generated completions.
-2. **File report export** as the next already-visible GUI workflow after the portability foundation.
-3. **Schema export and batch** only after at least two external consumers need them.
-4. Re-evaluate public headless analysis, support bundles, MCP, and window control from
+3. **File report export** as the next already-visible GUI workflow after the foundations.
+4. **Batch execution** only after at least two external consumers need it and atomicity can be
+   defined honestly.
+5. Re-evaluate public headless analysis, support bundles, MCP, and window control from
    actual usage rather than surface-completeness pressure.
 
 Configuration Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement
@@ -480,8 +491,9 @@ Every approved command family should include:
 
 ## Immediate design recommendation
 
-The next implementation stage is **cross-platform and human-use foundation**. Configuration
-Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement inspect/wait, and
-Visual Capture are complete; macOS transport, explicit text rendering for queries, and generated
-completions are the next portability and usability gap. File-analysis report export remains the
-next command-family candidate after that foundation work.
+The next implementation stage is the **command manifest and offline schema foundation**. It closes
+the catalog drift risk before more command families are added and provides the checked input for
+future help, completion, SDK, and MCP work. Configuration Transfer, Loudness Profile Control, Theme
+Control, Device Control, Measurement inspect/wait, and Visual Capture are complete. macOS transport
+remains the next product-portability foundation, and File-analysis report export remains the next
+user-workflow command-family candidate.

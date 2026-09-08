@@ -114,7 +114,7 @@ describe("current CLI documentation", () => {
     expect(generatedSettings).not.toContain("appearance");
     expect(roadmap).toContain("### Stage 3: Theme editing — complete");
     expect(roadmap).toContain(
-      "The next implementation stage is **cross-platform and human-use foundation**"
+      "The next implementation stage is the **command manifest and offline schema foundation**"
     );
   });
 
@@ -147,7 +147,7 @@ describe("current CLI documentation", () => {
     expect(roadmap).toContain("### Stage 4: Device Control — complete");
     expect(roadmap).not.toContain("plvs-cli device describe");
     expect(roadmap).toContain(
-      "The next implementation stage is **cross-platform and human-use foundation**"
+      "The next implementation stage is the **command manifest and offline schema foundation**"
     );
   });
 
