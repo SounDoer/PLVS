@@ -3333,10 +3333,75 @@ pub fn run(command: ControlCommand) -> ExitCode {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::collections::BTreeSet;
   use std::io::Cursor;
 
   fn args(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| value.to_string()).collect()
+  }
+
+  fn canonical_argument(token: &str) -> String {
+    match token.trim_matches(|character| character == '<' || character == '>') {
+      "file|-" => "-".to_string(),
+      "file" => "output.bin".to_string(),
+      "module-id" => "spectrum".to_string(),
+      "panel-id" => "spectrum".to_string(),
+      "frequency|time" => "frequency".to_string(),
+      "preset-id" => "preset-1".to_string(),
+      "theme-id" => "custom-1".to_string(),
+      "profile-id" => "profile-1".to_string(),
+      "profile-id|off" => "off".to_string(),
+      "device-id|default" => "default".to_string(),
+      "name" => "Name".to_string(),
+      "session-id" => "file-1".to_string(),
+      "recording-id" => format!("rec-{}", "a".repeat(32)),
+      "main|workspace" | "main|workspace|panel|dock-header|dock-editor" => "main".to_string(),
+      "n" => "0".to_string(),
+      other => panic!("missing canonical argument for <{other}>"),
+    }
+  }
+
+  fn canonical_argv(entry: &crate::cli_manifest::CommandEntry) -> Vec<String> {
+    if entry.id.ends_with(".export") && entry.id != "config.export" {
+      let mut argv = entry.path.clone();
+      argv.extend(["--all".to_string(), "--json".to_string()]);
+      return argv;
+    }
+    let mut argv = Vec::new();
+    let mut skipping_optional = false;
+    for raw in entry.usage.split_whitespace().skip(1) {
+      if skipping_optional {
+        if raw.ends_with(']') {
+          skipping_optional = false;
+        }
+        continue;
+      }
+      if raw.starts_with('[') {
+        if !raw.ends_with(']') {
+          skipping_optional = true;
+        }
+        continue;
+      }
+      argv.push(if raw == "<path>" {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+          .join("Cargo.toml")
+          .to_string_lossy()
+          .into_owned()
+      } else if raw.starts_with('<') {
+        canonical_argument(raw)
+      } else {
+        raw.to_string()
+      });
+    }
+    argv
+  }
+
+  fn canonical_stdin(method: &str) -> &'static [u8] {
+    match method {
+      "preset.reorder" => br#"{"presetIds":[]}"#,
+      "theme.reorder" | "loudnessProfile.reorder" => br#"[]"#,
+      _ => br#"{}"#,
+    }
   }
 
   #[test]
@@ -4443,6 +4508,70 @@ mod tests {
         "advertised internal command: {internal}"
       );
     }
+  }
+
+  #[test]
+  fn every_running_manifest_leaf_parses_and_builds_its_declared_wire_method() {
+    let manifest = crate::cli_manifest::command_manifest().unwrap();
+    let mut parsed_methods = BTreeSet::new();
+    for entry in manifest
+      .commands
+      .iter()
+      .filter(|entry| entry.execution == "runningApp")
+    {
+      let argv = canonical_argv(entry);
+      let parsed = parse_control_args(&argv)
+        .unwrap_or_else(|error| panic!("{} did not parse from {argv:?}: {error}", entry.id));
+      let method = command_name(&parsed);
+      assert_eq!(
+        Some(method.as_str()),
+        entry.wire_method.as_deref(),
+        "wrong mapping for {}",
+        entry.id
+      );
+      let mut stdin = Cursor::new(canonical_stdin(&method));
+      let request = request_for_command(&parsed, &mut stdin).unwrap_or_else(|error| {
+        panic!(
+          "{} did not build a request: {}",
+          entry.id, error.error.message
+        )
+      });
+      assert_eq!(request.method, method);
+      let declared = entry
+        .wire_params
+        .properties
+        .as_ref()
+        .expect("wireParams object has properties");
+      let actual = request
+        .params
+        .as_object()
+        .expect("request params are an object");
+      for key in actual.keys() {
+        assert!(
+          declared.contains_key(key),
+          "{} emitted undeclared wire param {key}",
+          entry.id
+        );
+      }
+      assert!(
+        parsed_methods.insert(method),
+        "duplicate parsed method for {}",
+        entry.id
+      );
+    }
+    let manifest_methods = manifest
+      .commands
+      .iter()
+      .filter_map(|entry| entry.wire_method.clone())
+      .collect::<BTreeSet<_>>();
+    assert_eq!(parsed_methods, manifest_methods);
+
+    let mut orphaned = manifest_methods.clone();
+    orphaned.insert("orphan.command".to_string());
+    assert_ne!(
+      parsed_methods, orphaned,
+      "the coverage guard must reject an orphaned entry"
+    );
   }
 
   #[test]

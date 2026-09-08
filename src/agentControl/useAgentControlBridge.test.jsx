@@ -18,6 +18,8 @@ import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
+import { runningAppCommandEntries } from "./commandManifest.js";
+import { canonicalManifestParams } from "./commandManifestTestFixtures.js";
 
 const CLI_V1_FIXTURES = JSON.parse(
   readFileSync(join(cwd(), "shared", "cli-v1-envelope-fixtures.json"), "utf8")
@@ -705,6 +707,66 @@ describe("useAgentControlBridge", () => {
     expect(adapter.unlisten).toHaveBeenCalledTimes(1);
     expect(adapter.notReady).toHaveBeenCalledTimes(1);
   });
+
+  it("routes every advertised manifest method through a concrete bridge path", async () => {
+    const visual = visualControl({
+      platformCapabilities: {
+        platform: "windows",
+        screenshot: {
+          available: true,
+          targets: ["main", "workspace", "panel", "dockHeader", "dockEditor"],
+        },
+        recording: {
+          available: true,
+          targets: ["main", "workspace"],
+          audioSources: ["none", "measuredSource"],
+          cursorModes: ["none", "visible"],
+        },
+      },
+      inspectRecording: vi.fn(async (recordingId) => ({
+        recordingId,
+        state: "completed",
+        artifact: { artifactId: "art-recording" },
+      })),
+    });
+    mount({
+      agentVisual: visual,
+      exportConfiguration: () => ({}),
+      importConfiguration: async () => {},
+      normalizeConfiguration: (configuration) => configuration,
+      relaunchAfterConfigurationChange: async () => {},
+      measurementContext: {
+        getLiveMeasurement: () => ({ generation: 1, record: { generation: 1, sequence: 1 } }),
+        liveState: "stopped",
+      },
+    });
+    await waitUntilReady();
+
+    const capabilities = await send(request("app.capabilities", {}, "catalog-capabilities"));
+    expect(capabilities.result.methods).toEqual(
+      runningAppCommandEntries.map(({ wireMethod }) => wireMethod)
+    );
+
+    for (const [index, entry] of runningAppCommandEntries.entries()) {
+      let response;
+      try {
+        response = await send(
+          request(entry.wireMethod, canonicalManifestParams(entry), `catalog-${index}`)
+        );
+      } catch (error) {
+        throw new Error(`No bridge response for ${entry.id}`, { cause: error });
+      }
+      expect(response, entry.id).toBeDefined();
+      expect(response.error?.data?.reason, entry.id).not.toBe("methodNotFound");
+      expect(response.error?.data?.reason, entry.id).not.toBe("unsupportedMethod");
+    }
+
+    const advertised = new Set(capabilities.result.methods);
+    advertised.add("orphan.command");
+    expect(advertised).not.toEqual(
+      new Set(runningAppCommandEntries.map(({ wireMethod }) => wireMethod))
+    );
+  }, 30_000);
 
   describe("Visual Capture", () => {
     it("describes runtime availability and returns screenshot metadata without mutating state", async () => {

@@ -159,7 +159,9 @@
           "required": false,
           "value": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
           },
           "mapsTo": "timeoutMs"
         },
@@ -186,7 +188,9 @@
           },
           "timeoutMs": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
           }
         }
       }
@@ -264,7 +268,17 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
-      "positionals": [],
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "patch",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "view.patch"
+          }
+        }
+      ],
       "options": [
         {
           "name": "--expected-revision",
@@ -294,13 +308,16 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["expectedRevision"],
+        "required": ["patch", "expectedRevision"],
         "properties": {
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "patch": {
+            "schemaRef": "view.patch"
           }
         }
       }
@@ -583,7 +600,7 @@
         },
         {
           "name": "file|-",
-          "mapsTo": "axis",
+          "mapsTo": "range",
           "required": true,
           "value": {
             "type": "string",
@@ -620,19 +637,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "axis", "expectedRevision"],
+        "required": ["kind", "range", "expectedRevision"],
         "properties": {
           "kind": {
             "type": "string"
-          },
-          "axis": {
-            "schemaRef": "axis.patch.runtime"
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "range": {
+            "schemaRef": "axis.patch.runtime"
           }
         }
       }
@@ -735,7 +752,7 @@
         },
         {
           "name": "file|-",
-          "mapsTo": "axis",
+          "mapsTo": "patch",
           "required": true,
           "value": {
             "type": "string",
@@ -772,7 +789,7 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["panelId", "kind", "axis", "expectedRevision"],
+        "required": ["panelId", "kind", "patch", "expectedRevision"],
         "properties": {
           "panelId": {
             "type": "string"
@@ -780,14 +797,14 @@
           "kind": {
             "type": "string"
           },
-          "axis": {
-            "schemaRef": "axis.patch.runtime"
-          },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "patch": {
+            "schemaRef": "axis.patch.runtime"
           }
         }
       }
@@ -936,7 +953,7 @@
         },
         {
           "name": "file|-",
-          "mapsTo": "controls",
+          "mapsTo": "patch",
           "required": true,
           "value": {
             "type": "string",
@@ -973,19 +990,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["panelId", "controls", "expectedRevision"],
+        "required": ["panelId", "patch", "expectedRevision"],
         "properties": {
           "panelId": {
             "type": "string"
-          },
-          "controls": {
-            "schemaRef": "panel.patch.runtime"
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "patch": {
+            "schemaRef": "panel.patch.runtime"
           }
         }
       }
@@ -1288,7 +1305,7 @@
       "positionals": [
         {
           "name": "file|-",
-          "mapsTo": "order",
+          "mapsTo": "presetIds",
           "required": true,
           "value": {
             "type": "string",
@@ -1325,16 +1342,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["order", "expectedRevision"],
+        "required": ["presetIds", "expectedRevision"],
         "properties": {
-          "order": {
-            "schemaRef": "preset.order"
-          },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "presetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
@@ -1905,7 +1925,7 @@
       "positionals": [
         {
           "name": "file|-",
-          "mapsTo": "theme",
+          "mapsTo": "document",
           "required": true,
           "value": {
             "type": "string",
@@ -1942,16 +1962,16 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["theme", "expectedRevision"],
+        "required": ["document", "expectedRevision"],
         "properties": {
-          "theme": {
-            "schemaRef": "theme.document.v2"
-          },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "document": {
+            "schemaRef": "theme.document.v2"
           }
         }
       }
@@ -1980,7 +2000,7 @@
         },
         {
           "name": "file|-",
-          "mapsTo": "theme",
+          "mapsTo": "document",
           "required": true,
           "value": {
             "type": "string",
@@ -2017,19 +2037,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["themeId", "theme", "expectedRevision"],
+        "required": ["themeId", "document", "expectedRevision"],
         "properties": {
           "themeId": {
             "type": "string"
-          },
-          "theme": {
-            "schemaRef": "theme.document.v2"
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "document": {
+            "schemaRef": "theme.document.v2"
           }
         }
       }
@@ -2270,7 +2290,7 @@
       "positionals": [
         {
           "name": "file|-",
-          "mapsTo": "order",
+          "mapsTo": "themeIds",
           "required": true,
           "value": {
             "type": "string",
@@ -2307,16 +2327,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["order", "expectedRevision"],
+        "required": ["themeIds", "expectedRevision"],
         "properties": {
-          "order": {
-            "schemaRef": "theme.order"
-          },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "themeIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
@@ -2605,7 +2628,7 @@
       "positionals": [
         {
           "name": "file|-",
-          "mapsTo": "profile",
+          "mapsTo": "document",
           "required": true,
           "value": {
             "type": "string",
@@ -2642,16 +2665,16 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["profile", "expectedRevision"],
+        "required": ["document", "expectedRevision"],
         "properties": {
-          "profile": {
-            "schemaRef": "loudnessProfile.document"
-          },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "document": {
+            "schemaRef": "loudnessProfile.document"
           }
         }
       }
@@ -2680,7 +2703,7 @@
         },
         {
           "name": "file|-",
-          "mapsTo": "profile",
+          "mapsTo": "document",
           "required": true,
           "value": {
             "type": "string",
@@ -2717,19 +2740,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["profileId", "profile", "expectedRevision"],
+        "required": ["profileId", "document", "expectedRevision"],
         "properties": {
           "profileId": {
             "type": "string"
-          },
-          "profile": {
-            "schemaRef": "loudnessProfile.document"
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "document": {
+            "schemaRef": "loudnessProfile.document"
           }
         }
       }
@@ -2893,7 +2916,7 @@
       "positionals": [
         {
           "name": "file|-",
-          "mapsTo": "order",
+          "mapsTo": "profileIds",
           "required": true,
           "value": {
             "type": "string",
@@ -2930,16 +2953,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["order", "expectedRevision"],
+        "required": ["profileIds", "expectedRevision"],
         "properties": {
-          "order": {
-            "schemaRef": "loudnessProfile.order"
-          },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "profileIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
@@ -3250,7 +3276,17 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
-      "positionals": [],
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "patch",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "settings.patch"
+          }
+        }
+      ],
       "options": [
         {
           "name": "--json",
@@ -3288,7 +3324,7 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["expectedRevision"],
+        "required": ["patch", "expectedRevision"],
         "properties": {
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
@@ -3298,6 +3334,9 @@
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "patch": {
+            "schemaRef": "settings.patch"
           }
         }
       }
@@ -3481,7 +3520,9 @@
           "required": false,
           "value": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
           },
           "mapsTo": "timeoutMs"
         },
@@ -3504,7 +3545,9 @@
           },
           "timeoutMs": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
           }
         }
       }
@@ -4246,7 +4289,7 @@
       "id": "dock.enter",
       "family": "dock",
       "path": ["dock", "enter"],
-      "usage": "plvs-cli dock enter [--edge <top|bottom>] [--monitor <id>] [--reserve-space <true|false>] [--height <n>] --json --expected-revision <n> [--dry-run]",
+      "usage": "plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json --expected-revision <n> [--dry-run]",
       "summary": "Enter Dock mode.",
       "execution": "runningApp",
       "operation": "mutation",
@@ -4533,7 +4576,7 @@
         },
         {
           "name": "file|-",
-          "mapsTo": "controls",
+          "mapsTo": "patch",
           "required": true,
           "value": {
             "type": "string",
@@ -4570,19 +4613,19 @@
       "wireParams": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["panelId", "controls", "expectedRevision"],
+        "required": ["panelId", "patch", "expectedRevision"],
         "properties": {
           "panelId": {
             "type": "string"
-          },
-          "controls": {
-            "schemaRef": "dock.panel.patch"
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
           },
           "dryRun": {
             "type": "boolean"
+          },
+          "patch": {
+            "schemaRef": "dock.panel.patch"
           }
         }
       }
@@ -4794,7 +4837,8 @@
           "required": false,
           "value": {
             "type": "string",
-            "enum": ["none", "visible"]
+            "enum": ["none", "visible"],
+            "default": "none"
           },
           "mapsTo": "cursor"
         },
@@ -4802,8 +4846,9 @@
           "name": "--fps",
           "required": false,
           "value": {
-            "type": "string",
-            "enum": ["15", "30", "60"]
+            "type": "integer",
+            "enum": [15, 30, 60],
+            "default": 30
           },
           "mapsTo": "fps"
         },
@@ -4813,7 +4858,8 @@
           "value": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 1800
+            "maximum": 1800,
+            "default": 60
           },
           "mapsTo": "maxDurationSeconds"
         },
@@ -4848,16 +4894,19 @@
           },
           "cursor": {
             "type": "string",
-            "enum": ["none", "visible"]
+            "enum": ["none", "visible"],
+            "default": "none"
           },
           "fps": {
-            "type": "string",
-            "enum": ["15", "30", "60"]
+            "type": "integer",
+            "enum": [15, 30, 60],
+            "default": 30
           },
           "maxDurationSeconds": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 1800
+            "maximum": 1800,
+            "default": 60
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"
@@ -4940,7 +4989,8 @@
           "value": {
             "type": "integer",
             "minimum": 100,
-            "maximum": 300000
+            "maximum": 300000,
+            "default": 30000
           },
           "mapsTo": "timeoutMs"
         },
@@ -4969,7 +5019,9 @@
           },
           "timeoutMs": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
           }
         }
       }

@@ -5,12 +5,34 @@ import {
   isDeviceQuery,
   normalizeAgentControlRequest,
 } from "./protocol.js";
+import { runningAppCommandEntries } from "./commandManifest.js";
+import { canonicalManifestParams } from "./commandManifestTestFixtures.js";
 
 function request(method, params = {}) {
   return { jsonrpc: "2.0", id: "req-1", method, params };
 }
 
 describe("normalizeAgentControlRequest", () => {
+  it("normalizes one safe canonical request for every manifest wire method", () => {
+    const normalizedMethods = new Set();
+    for (const entry of runningAppCommandEntries) {
+      const normalized = normalizeAgentControlRequest(
+        request(entry.wireMethod, canonicalManifestParams(entry))
+      );
+      expect(normalized, entry.id).toMatchObject({ ok: true });
+      normalizedMethods.add(normalized.request.method);
+    }
+    expect(normalizedMethods).toEqual(
+      new Set(runningAppCommandEntries.map(({ wireMethod }) => wireMethod))
+    );
+
+    const orphan = normalizeAgentControlRequest(request("orphan.command"));
+    expect(orphan).toMatchObject({
+      ok: false,
+      error: { reason: "methodNotFound", path: "$.method", code: -32601 },
+    });
+  });
+
   it.each([
     "app.capabilities",
     "app.inspect",
