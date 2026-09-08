@@ -171,6 +171,8 @@ describe("current CLI documentation", () => {
     expect(visual).toContain("actual rendered pixels");
     expect(visual).toContain("--expected-revision");
     expect(visual).toContain("--audio <none|measured-source>");
+    expect(visual).toContain("--cursor <none|visible>");
+    expect(visual).toContain("system pointer is excluded by default");
     expect(visual).toContain("Live defaults");
     expect(visual).toContain("File defaults");
     expect(visual).toContain("2 GiB");

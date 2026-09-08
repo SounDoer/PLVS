@@ -311,6 +311,8 @@ docs(capture): record Windows recording spike
 - [ ] Enforce one active recording, supported FPS, 1–1800-second duration, and 2-GiB byte limit.
 - [ ] Capture the `main` HWND and apply the frontend's current target crop to a fixed initial output
       canvas.
+- [ ] Exclude the Windows pointer by default, allow explicit `visible` pointer capture, and retain
+      the selected mode in recording metadata.
 - [ ] Accept bounded ResizeObserver geometry updates and aspect-fit/letterbox without changing
       encoder dimensions.
 - [ ] Implement explicit stop, duration/size auto-stop, window-loss stop, finalization, hashing, and
@@ -356,6 +358,8 @@ feat(capture): record PLVS surfaces on Windows
 
 - [ ] Normalize start/inspect/wait/stop requests and advertise them only when native recording is
       supported.
+- [ ] Advertise `none` / `visible` cursor modes, default start requests to `none`, and forward the
+      normalized mode to native capture.
 - [ ] Start only `main`/`workspace`, with `audio: "none"` initially, after target settlement and
       optional revision recheck.
 - [ ] Forward active ResizeObserver geometry to native recording state without using public RPC.
@@ -391,7 +395,7 @@ feat(agent-control): control visual recordings
 
 - Modify: `src-tauri/src/cli_control.rs`
 
-- [ ] Parse start target/FPS/duration/optional revision; reject Panel/Dock recording targets.
+- [ ] Parse start target/cursor/FPS/duration/optional revision; reject Panel/Dock recording targets.
 - [ ] Parse exact process-local recording IDs for inspect, wait, and stop.
 - [ ] Support bounded `--timeout-ms` on wait and no timeout flag on inspect/start.
 - [ ] Support `--out` only on terminal wait/stop; reject it on start/inspect.
@@ -422,6 +426,8 @@ feat(cli): add visual recording commands
       open/close overlays during recording.
 - [ ] Verify fixed output dimensions, aspect ratio, letterboxing, frame/drop counters, and indicator
       inclusion rules.
+- [ ] Verify default recordings exclude the Windows pointer and `--cursor visible` includes it only
+      while it is over the captured PLVS window.
 - [ ] Exercise explicit stop, automatic duration stop, simulated size stop, repeated stop, app
       shutdown, window loss, encoder failure, and full/unwritable disk behavior.
 - [ ] Validate every MP4 with Media Foundation playback plus an independent probe/player.

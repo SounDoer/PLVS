@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or Automatic through `plvs-cli device`, with independent hotplug generations and confirmed Live
   restart settlement.
 - Agent Control Visual Capture can save rendered Windows screenshots and bounded H.264 MP4
-  recordings through `plvs-cli visual`, with optional Live measured-source AAC audio.
+  recordings through `plvs-cli visual`, with optional Live measured-source AAC audio and optional
+  system-pointer inclusion (off by default).
 
 ### Changed
 

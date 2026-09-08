@@ -9,6 +9,7 @@ export const VISUAL_TARGET_KINDS = Object.freeze([
 export const VISUAL_SCREENSHOT_TARGET_KINDS = VISUAL_TARGET_KINDS;
 export const VISUAL_RECORDING_TARGET_KINDS = Object.freeze(["main", "workspace"]);
 export const VISUAL_AUDIO_SOURCES = Object.freeze(["none", "measuredSource"]);
+export const VISUAL_CURSOR_MODES = Object.freeze(["none", "visible"]);
 export const VISUAL_RECORDING_STATES = Object.freeze([
   "starting",
   "recording",
@@ -94,6 +95,9 @@ export function buildVisualDescription({ revision, platform, runtime }) {
   const audioSources = recordingAvailable
     ? retainKnown(platform.recording.audioSources, VISUAL_AUDIO_SOURCES)
     : [];
+  const cursorModes = recordingAvailable
+    ? retainKnown(platform.recording.cursorModes, VISUAL_CURSOR_MODES)
+    : [];
   const sourceMode = runtime?.sourceMode === "file" ? "file" : "live";
 
   return {
@@ -112,6 +116,8 @@ export function buildVisualDescription({ revision, platform, runtime }) {
       videoCodec: RECORDING_VIDEO_CODEC,
       audioSources,
       defaultAudioSource: sourceMode === "live" ? "measuredSource" : "none",
+      cursorModes,
+      defaultCursorMode: "none",
       defaultFps: 30,
       supportedFps: [...SUPPORTED_FPS],
       defaultMaxDurationSeconds: 60,

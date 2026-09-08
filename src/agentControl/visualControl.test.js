@@ -71,6 +71,7 @@ describe("visual control contract", () => {
           available: true,
           targets: ["workspace", "main", "panel"],
           audioSources: ["measuredSource", "none", "microphone"],
+          cursorModes: ["visible", "none", "system"],
         },
       },
       runtime: {
@@ -97,6 +98,8 @@ describe("visual control contract", () => {
         videoCodec: "h264",
         audioSources: ["none", "measuredSource"],
         defaultAudioSource: "measuredSource",
+        cursorModes: ["none", "visible"],
+        defaultCursorMode: "none",
         defaultFps: 30,
         supportedFps: [15, 30, 60],
         defaultMaxDurationSeconds: 60,
@@ -123,7 +126,13 @@ describe("visual control contract", () => {
       })
     ).toMatchObject({
       screenshot: { available: false, targets: [] },
-      recording: { available: false, targets: [], audioSources: [] },
+      recording: {
+        available: false,
+        targets: [],
+        audioSources: [],
+        cursorModes: [],
+        defaultCursorMode: "none",
+      },
       runtime: { availableScreenshotTargets: [], availableAudioSources: [] },
     });
   });

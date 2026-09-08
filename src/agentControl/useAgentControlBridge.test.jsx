@@ -613,7 +613,7 @@ function visualControl(overrides = {}) {
         available: true,
         targets: ["main", "workspace", "panel", "dockHeader", "dockEditor"],
       },
-      recording: { available: false, targets: [], audioSources: [] },
+      recording: { available: false, targets: [], audioSources: [], cursorModes: [] },
     },
     getRuntime: () => ({
       windowForm: "normal",
@@ -871,6 +871,7 @@ describe("useAgentControlBridge", () => {
             available: true,
             targets: ["main", "workspace"],
             audioSources: ["none", "measuredSource"],
+            cursorModes: ["none", "visible"],
           },
         },
         subscribe: vi.fn((_target, onGeometry) => {
@@ -906,6 +907,7 @@ describe("useAgentControlBridge", () => {
         fps: 30,
         maxDurationSeconds: 5,
         audio: "measuredSource",
+        cursor: "none",
         sourceMode: "live",
         audioState: "liveStopped",
       });
@@ -941,6 +943,7 @@ describe("useAgentControlBridge", () => {
             available: true,
             targets: ["main"],
             audioSources: ["none", "measuredSource"],
+            cursorModes: ["none", "visible"],
           },
         },
         getRuntime: () => ({
@@ -954,12 +957,17 @@ describe("useAgentControlBridge", () => {
       await waitUntilReady();
 
       const started = await send(
-        request("visual.recording.start", { target: { kind: "main" } }, "file-default-audio")
+        request(
+          "visual.recording.start",
+          { target: { kind: "main" }, cursor: "visible" },
+          "file-default-audio"
+        )
       );
       expect(started.result.recording.audio).toEqual({ source: "none" });
       expect(visual.startRecording).toHaveBeenCalledWith(
         expect.objectContaining({
           audio: "none",
+          cursor: "visible",
           sourceMode: "file",
           audioState: "sourceModeFile",
         })
@@ -984,7 +992,12 @@ describe("useAgentControlBridge", () => {
         platformCapabilities: {
           platform: "windows",
           screenshot: { available: true, targets: ["main"] },
-          recording: { available: true, targets: ["main"], audioSources: ["none"] },
+          recording: {
+            available: true,
+            targets: ["main"],
+            audioSources: ["none"],
+            cursorModes: ["none", "visible"],
+          },
         },
         inspectRecording: vi.fn(() => inspected.promise),
       });
@@ -1017,7 +1030,12 @@ describe("useAgentControlBridge", () => {
         platformCapabilities: {
           platform: "windows",
           screenshot: { available: true, targets: ["main"] },
-          recording: { available: true, targets: ["main"], audioSources: ["none"] },
+          recording: {
+            available: true,
+            targets: ["main"],
+            audioSources: ["none"],
+            cursorModes: ["none", "visible"],
+          },
         },
         inspectRecording: vi.fn(async () => ({
           recordingId,

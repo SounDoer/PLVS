@@ -53,7 +53,8 @@ plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-edito
   [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json
 
 plvs-cli visual recording start --target <main|workspace> `
-  [--audio <none|measured-source>] [--fps <n>] [--max-duration <seconds>] `
+  [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <n>] `
+  [--max-duration <seconds>] `
   [--expected-revision <n>] --json
 
 plvs-cli visual recording inspect <recording-id> --json
@@ -123,6 +124,8 @@ or mutate the user's UI.
     "videoCodec": "h264",
     "audioSources": ["none", "measuredSource"],
     "defaultAudioSource": "measuredSource",
+    "cursorModes": ["none", "visible"],
+    "defaultCursorMode": "none",
     "defaultFps": 30,
     "supportedFps": [15, 30, 60],
     "defaultMaxDurationSeconds": 60,
@@ -226,7 +229,7 @@ and staging file, starts capture, and returns promptly:
     "target": { "kind": "workspace" },
     "startedAt": "2026-09-07T12:00:00Z",
     "startedRevision": 18,
-    "video": { "width": 1280, "height": 720, "fps": 30, "codec": "h264" },
+    "video": { "width": 1280, "height": 720, "fps": 30, "codec": "h264", "cursor": "none" },
     "audio": { "source": "measuredSource", "codec": "aac", "sampleRate": 48000, "channels": 2 },
     "limits": { "maxDurationSeconds": 60, "maxArtifactBytes": 2147483648 }
   }
@@ -235,7 +238,8 @@ and staging file, starts capture, and returns promptly:
 
 When `--audio` is omitted it defaults to `measuredSource` while Live is selected and to `none`
 while File is selected. An explicit `measured-source` request still fails while File is selected.
-`--fps` defaults to 30 and accepts 15, 30, or 60. Maximum duration defaults to 60 seconds and
+`--cursor` defaults to `none` and accepts `none` or `visible`. `--fps` defaults to 30 and accepts
+15, 30, or 60. Maximum duration defaults to 60 seconds and
 accepts an integer from 1 through 1800. The hard file limit is 2 GiB.
 Whichever limit is reached first initiates a normal finalization and records `stopReason` as
 `durationLimit` or `sizeLimit`.
@@ -337,6 +341,14 @@ The PCM tap is strictly downstream of the realtime device callback. The callback
 preallocated buffer to the existing bounded queue. Copying, downmixing, resampling, timestamp-gap
 repair, and encoding happen on ordinary worker threads. No recording path may allocate, lock,
 perform file IO, call Media Foundation, or make a syscall from the audio callback.
+
+## Cursor contract
+
+Two system-pointer modes exist. `none` is the default and excludes the Windows pointer from the
+recording. `visible` includes it while it is over the captured PLVS window. This choice is
+independent of PLVS-rendered cursors, hover state, selection hints, menus, and overlays, which are
+ordinary application pixels and remain pixel-faithful in both modes. Recording inspection reports
+the selected mode as `video.cursor`.
 
 ## Native implementation boundary
 
@@ -445,6 +457,8 @@ Callers inspect rather than starting another recording blindly.
 - Recording start is asynchronous; inspect, unrelated mutations, and long-poll wait remain usable.
 - Resize preserves fixed encoder dimensions and aspect ratio.
 - Automatic duration/size stop and explicit stop produce a playable, hashed MP4.
+- Recording defaults to `video.cursor: "none"`; explicit `visible` capture includes the Windows
+  pointer while it is over the PLVS window.
 - `none` produces no audio track; `measuredSource` contains Live PCM, never File PCM, and reports
   silence/interruption accounting.
 - Callback-reachable source retains the no-allocation/no-lock/no-syscall guard, capture smoke passes,

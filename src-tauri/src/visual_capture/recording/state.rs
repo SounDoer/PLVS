@@ -23,6 +23,14 @@ pub enum RecordingAudioSource {
   MeasuredSource,
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RecordingCursorMode {
+  #[default]
+  None,
+  Visible,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioMetadata {
@@ -94,6 +102,7 @@ pub struct VideoMetadata {
   pub height: u32,
   pub fps: u32,
   pub codec: &'static str,
+  pub cursor: RecordingCursorMode,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -163,6 +172,7 @@ impl RecordingRegistry {
     fps: u32,
     max_duration_seconds: u32,
     audio_source: RecordingAudioSource,
+    cursor: RecordingCursorMode,
   ) -> Result<RecordingSnapshot, &'static str> {
     if width == 0 || height == 0 || !width.is_multiple_of(2) || !height.is_multiple_of(2) {
       return Err("invalidGeometry");
@@ -190,6 +200,7 @@ impl RecordingRegistry {
         height,
         fps,
         codec: "h264",
+        cursor,
       },
       audio: AudioMetadata::new(audio_source),
       limits: RecordingLimits {
@@ -412,40 +423,89 @@ mod tests {
     let registry = RecordingRegistry::default();
     assert_eq!(
       registry
-        .create(0, 2, 30, 60, RecordingAudioSource::None)
+        .create(
+          0,
+          2,
+          30,
+          60,
+          RecordingAudioSource::None,
+          RecordingCursorMode::None
+        )
         .unwrap_err(),
       "invalidGeometry"
     );
     assert_eq!(
       registry
-        .create(3, 2, 30, 60, RecordingAudioSource::None)
+        .create(
+          3,
+          2,
+          30,
+          60,
+          RecordingAudioSource::None,
+          RecordingCursorMode::None
+        )
         .unwrap_err(),
       "invalidGeometry"
     );
     assert_eq!(
       registry
-        .create(2, 2, 24, 60, RecordingAudioSource::None)
+        .create(
+          2,
+          2,
+          24,
+          60,
+          RecordingAudioSource::None,
+          RecordingCursorMode::None
+        )
         .unwrap_err(),
       "invalidFps"
     );
     assert_eq!(
       registry
-        .create(2, 2, 30, 0, RecordingAudioSource::None)
+        .create(
+          2,
+          2,
+          30,
+          0,
+          RecordingAudioSource::None,
+          RecordingCursorMode::None
+        )
         .unwrap_err(),
       "invalidDuration"
     );
     let first = registry
-      .create(640, 480, 30, 60, RecordingAudioSource::None)
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
       .unwrap();
     assert_eq!(
       registry
-        .create(640, 480, 30, 60, RecordingAudioSource::None)
+        .create(
+          640,
+          480,
+          30,
+          60,
+          RecordingAudioSource::None,
+          RecordingCursorMode::None
+        )
         .unwrap_err(),
       "captureBusy"
     );
     registry.fail(&first.recording_id, "failed");
     assert!(registry
-      .create(640, 480, 30, 60, RecordingAudioSource::None)
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None
+      )
       .is_ok());
   }
 
@@ -453,7 +513,14 @@ mod tests {
   fn stop_is_idempotent_and_terminal_records_remain_inspectable() {
     let registry = RecordingRegistry::default();
     let created = registry
-      .create(640, 480, 30, 60, RecordingAudioSource::None)
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
       .unwrap();
     registry.mark_recording(&created.recording_id);
     registry.add_frame(&created.recording_id, 10, 2);
@@ -487,7 +554,14 @@ mod tests {
   fn failures_release_concurrency_and_preserve_stable_error_shape() {
     let registry = RecordingRegistry::default();
     let created = registry
-      .create(640, 480, 60, 1, RecordingAudioSource::None)
+      .create(
+        640,
+        480,
+        60,
+        1,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
       .unwrap();
     registry.fail(&created.recording_id, "encoder unavailable");
     let failed = registry.inspect(&created.recording_id).unwrap();
@@ -500,7 +574,8 @@ mod tests {
         480,
         15,
         MAX_DURATION_SECONDS,
-        RecordingAudioSource::None
+        RecordingAudioSource::None,
+        RecordingCursorMode::None
       )
       .is_ok());
   }
@@ -509,7 +584,14 @@ mod tests {
   fn event_ledger_is_bounded_and_keeps_the_newest_events() {
     let registry = RecordingRegistry::default();
     let created = registry
-      .create(640, 480, 30, 60, RecordingAudioSource::None)
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
       .unwrap();
     for index in 0..(MAX_LEDGER_EVENTS + 5) {
       registry.record_event(&created.recording_id, "resize", index.to_string());
@@ -524,7 +606,14 @@ mod tests {
   fn aggregate_counters_saturate_and_bytes_can_advance_without_a_frame() {
     let registry = RecordingRegistry::default();
     let created = registry
-      .create(640, 480, 30, 60, RecordingAudioSource::None)
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
       .unwrap();
     registry.add_dropped_frames(&created.recording_id, u64::MAX);
     registry.add_dropped_frames(&created.recording_id, 1);
@@ -538,7 +627,14 @@ mod tests {
   fn measured_source_reports_fixed_aac_shape_and_silence_history() {
     let registry = RecordingRegistry::default();
     let created = registry
-      .create(640, 480, 30, 60, RecordingAudioSource::MeasuredSource)
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::MeasuredSource,
+        RecordingCursorMode::Visible,
+      )
       .unwrap();
     let interruptions = (0..(MAX_LEDGER_EVENTS + 5))
       .map(|index| AudioInterruption {
@@ -556,13 +652,28 @@ mod tests {
     assert_eq!(audio.bitrate, Some(192_000));
     assert_eq!(audio.silent_duration_ms, Some(37));
     assert_eq!(audio.interruptions, interruptions);
+    assert_eq!(
+      registry
+        .inspect(&created.recording_id)
+        .unwrap()
+        .video
+        .cursor,
+      RecordingCursorMode::Visible
+    );
   }
 
   #[test]
   fn finalized_artifact_is_retained_when_capture_ends_in_failure() {
     let registry = RecordingRegistry::default();
     let created = registry
-      .create(640, 480, 30, 60, RecordingAudioSource::None)
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
       .unwrap();
     registry.fail_with_artifact(&created.recording_id, "window lost", artifact());
     let snapshot = registry.inspect(&created.recording_id).unwrap();

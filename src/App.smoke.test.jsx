@@ -75,7 +75,7 @@ vi.mock("./ipc/commands.js", () => ({
   getVisualCaptureCapabilities: vi.fn().mockResolvedValue({
     platform: "windows",
     screenshot: { available: true, targets: ["main", "workspace", "panel"] },
-    recording: { available: false, targets: [], audioSources: [] },
+    recording: { available: false, targets: [], audioSources: [], cursorModes: [] },
   }),
   captureVisualScreenshot: vi.fn().mockResolvedValue(undefined),
   startVisualRecording: vi.fn().mockResolvedValue(undefined),

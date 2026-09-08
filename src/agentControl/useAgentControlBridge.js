@@ -1008,6 +1008,13 @@ export function useAgentControlBridge({
             throw visualSemanticFailure({ reason: "targetUnavailable" });
           }
           const runtime = visualControl.getRuntime?.() ?? {};
+          if (
+            !(visualControl.platformCapabilities.recording.cursorModes ?? []).includes(
+              request.params.cursor
+            )
+          ) {
+            throw visualSemanticFailure({ reason: "visualUnavailable" });
+          }
           const audio =
             request.params.audio ?? (runtime.sourceMode === "file" ? "none" : "measuredSource");
           if (!(runtime.availableAudioSources ?? []).includes(audio)) {
@@ -1030,6 +1037,7 @@ export function useAgentControlBridge({
               fps: request.params.fps,
               maxDurationSeconds: request.params.maxDurationSeconds,
               audio,
+              cursor: request.params.cursor,
               sourceMode: runtime.sourceMode === "file" ? "file" : "live",
               audioState,
             });

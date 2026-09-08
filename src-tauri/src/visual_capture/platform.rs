@@ -26,6 +26,7 @@ pub struct RecordingCapabilities {
   pub available: bool,
   pub targets: Vec<&'static str>,
   pub audio_sources: Vec<&'static str>,
+  pub cursor_modes: Vec<&'static str>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
@@ -125,6 +126,7 @@ impl VisualCapturePlatform for UnsupportedPlatform {
         available: false,
         targets: Vec::new(),
         audio_sources: Vec::new(),
+        cursor_modes: Vec::new(),
       },
     }
   }

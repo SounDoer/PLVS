@@ -227,6 +227,7 @@ pub async fn visual_recording_start(
       request.fps,
       request.max_duration_seconds,
       audio_source,
+      request.cursor,
     )
     .map_err(|reason| {
       NativeCaptureError::recording(reason, "The recording request is invalid or busy.")
@@ -309,6 +310,7 @@ pub async fn visual_recording_start(
         store,
         registry,
         audio_source,
+        request.cursor,
         audio_origin_ns,
         audio_receiver,
         request.audio_state.silence_reason(),
@@ -428,6 +430,14 @@ mod tests {
       capabilities.recording.available,
       cfg!(target_os = "windows")
     );
+    assert_eq!(
+      capabilities.recording.cursor_modes,
+      if cfg!(target_os = "windows") {
+        vec!["none", "visible"]
+      } else {
+        Vec::new()
+      }
+    );
   }
 
   #[test]
@@ -448,6 +458,7 @@ mod tests {
       fps: 30,
       max_duration_seconds: 60,
       audio: Some(RecordingAudioSource::None),
+      cursor: recording::state::RecordingCursorMode::None,
       source_mode: RecordingSourceMode::Live,
       audio_state: recording::RecordingAudioState::Active,
     };

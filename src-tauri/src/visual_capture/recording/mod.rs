@@ -10,8 +10,8 @@ use serde::Deserialize;
 use super::platform::{CssRect, CssViewport};
 use audio::SilenceReason;
 use state::{
-  RecordingAudioSource, RecordingRegistry, RecordingSnapshot, StopReason, DEFAULT_FPS,
-  DEFAULT_MAX_DURATION_SECONDS,
+  RecordingAudioSource, RecordingCursorMode, RecordingRegistry, RecordingSnapshot, StopReason,
+  DEFAULT_FPS, DEFAULT_MAX_DURATION_SECONDS,
 };
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
@@ -55,6 +55,8 @@ pub struct RecordingStartRequest {
   pub max_duration_seconds: u32,
   #[serde(default)]
   pub audio: Option<RecordingAudioSource>,
+  #[serde(default)]
+  pub cursor: RecordingCursorMode,
   #[serde(default)]
   pub source_mode: RecordingSourceMode,
   #[serde(default)]
@@ -246,6 +248,7 @@ mod tests {
     .unwrap();
     assert_eq!(request.fps, DEFAULT_FPS);
     assert_eq!(request.max_duration_seconds, DEFAULT_MAX_DURATION_SECONDS);
+    assert_eq!(request.cursor, RecordingCursorMode::None);
     assert_eq!(
       request.resolved_audio_source(),
       RecordingAudioSource::MeasuredSource
@@ -266,5 +269,18 @@ mod tests {
       request.audio = audio;
       assert_eq!(request.resolved_audio_source(), RecordingAudioSource::None);
     }
+  }
+
+  #[test]
+  fn request_preserves_visible_cursor_mode() {
+    let request: RecordingStartRequest = serde_json::from_value(serde_json::json!({
+      "windowLabel": "main",
+      "rect": { "x": 0, "y": 0, "width": 640, "height": 480 },
+      "viewport": { "width": 640, "height": 480 },
+      "devicePixelRatio": 1,
+      "cursor": "visible"
+    }))
+    .unwrap();
+    assert_eq!(request.cursor, RecordingCursorMode::Visible);
   }
 }

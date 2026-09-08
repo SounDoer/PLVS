@@ -819,7 +819,7 @@ function AppContent() {
           setVisualPlatformCapabilities({
             platform: agentControlRuntime.platform ?? "unknown",
             screenshot: { available: false, targets: [] },
-            recording: { available: false, targets: [], audioSources: [] },
+            recording: { available: false, targets: [], audioSources: [], cursorModes: [] },
           });
         }
       });

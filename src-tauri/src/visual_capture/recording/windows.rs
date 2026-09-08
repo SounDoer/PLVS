@@ -57,7 +57,7 @@ mod windows_backend {
     AudioPacket, AudioTimeline, SilenceReason, AAC_BITRATE, OUTPUT_CHANNELS, OUTPUT_SAMPLE_RATE,
   };
   use super::super::state::{
-    RecordingAudioSource, RecordingRegistry, StopReason, MAX_ARTIFACT_BYTES,
+    RecordingAudioSource, RecordingCursorMode, RecordingRegistry, StopReason, MAX_ARTIFACT_BYTES,
   };
   use crate::audio::MeasuredPcmReceiver;
 
@@ -1029,6 +1029,7 @@ mod windows_backend {
     store: ArtifactStore,
     registry: RecordingRegistry,
     audio_source: RecordingAudioSource,
+    cursor: RecordingCursorMode,
     audio_origin_ns: u64,
     audio_receiver: Option<MeasuredPcmReceiver>,
     initial_audio_silence_reason: SilenceReason,
@@ -1079,7 +1080,10 @@ mod windows_backend {
       .map_err(|_| "Media Foundation initialization timed out.".to_owned())??;
     let settings = Settings::new(
       Window::from_raw_hwnd(hwnd),
-      CursorCaptureSettings::WithCursor,
+      match cursor {
+        RecordingCursorMode::None => CursorCaptureSettings::WithoutCursor,
+        RecordingCursorMode::Visible => CursorCaptureSettings::WithCursor,
+      },
       DrawBorderSettings::WithoutBorder,
       SecondaryWindowSettings::Default,
       MinimumUpdateIntervalSettings::Default,

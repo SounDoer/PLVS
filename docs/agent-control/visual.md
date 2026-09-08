@@ -10,15 +10,15 @@ microphones, arbitrary system audio, other windows, or raw canvas/DOM data.
 ```powershell
 plvs-cli visual describe --json
 plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <id>] [--expected-revision <n>] --out <file.png> --json
-plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
+plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 plvs-cli visual recording inspect <recording-id> --json
 plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json
 plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 ```
 
 `visual describe` is the discovery query. It reports platform support, current runtime
-availability, formats, codecs, audio sources, frame rates, duration and size limits, and the
-current global revision. It creates no capture session or artifact.
+availability, formats, codecs, audio sources, cursor modes, frame rates, duration and size limits,
+and the current global revision. It creates no capture session or artifact.
 
 ## Targets and pixels
 
@@ -73,6 +73,9 @@ plvs-cli visual recording stop $live.result.recording.recordingId --out .\live.m
 
 # The same Live choice can be made explicitly.
 plvs-cli visual recording start --target workspace --audio measured-source --json
+
+# Include the system pointer while it is over the captured PLVS window.
+plvs-cli visual recording start --target workspace --cursor visible --json
 ```
 
 The initial target fixes the encoded canvas size. Later target resizing is aspect-fitted with
@@ -83,6 +86,10 @@ is inside `main` and outside `workspace`.
 Frame rate defaults to 30 and accepts 15, 30, or 60. Duration defaults to 60 seconds, accepts 1
 through 1800 seconds, and is capped at 30 minutes. The hard artifact limit is 2 GiB. Duration or
 size exhaustion performs normal finalization with `durationLimit` or `sizeLimit`.
+
+The system pointer is excluded by default. `--cursor visible` includes it while it is over the
+captured PLVS window. This option does not alter PLVS-rendered cursors, hover state, or overlays;
+those are ordinary application pixels and are always preserved.
 
 ## Audio
 
