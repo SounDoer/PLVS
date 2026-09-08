@@ -2,6 +2,11 @@
 
 > Approved implementation plan.
 
+> **Implementation status (2026-09-08):** Delivered across Phases A-D. The unchecked task boxes
+> below preserve the approved plan as written; they are not the live completion record. See
+> `docs/agent-control/visual.md` for the implemented public contract and
+> `docs/working/agent-control-cli-roadmap.md` for current roadmap status.
+
 **Goal:** Implement Windows-first, app-only screenshots and asynchronous H.264 MP4 recording for
 the Agent Control `visual` family, with optional Live measured-source audio and bounded artifacts.
 

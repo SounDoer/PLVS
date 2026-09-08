@@ -448,20 +448,16 @@ The following remain internal even if they are convenient during implementation:
 
 The smallest useful sequence is:
 
-1. **Loudness Profile editing — complete:** describe/select/create/update/rename/delete/reorder,
-   including Preset-reference cleanup and multi-store settlement.
-2. **Theme editing — complete:** Appearance plus describe/create/update/rename/duplicate/delete/
-   reorder, reusing Theme V2 normalization and the GUI's selection/fallback behavior.
-3. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
+1. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
    queries, and generated completions.
-4. **Device Control — complete; File report remains** as the next already-visible GUI workflow.
-5. **Measurement inspect/wait** after the high-frequency snapshot contract is separately approved.
-6. **Schema export and batch** only after at least two external consumers need them.
-7. Re-evaluate public headless analysis, support bundles, MCP, screenshots, and window control from
+2. **File report export** as the next already-visible GUI workflow after the portability foundation.
+3. **Schema export and batch** only after at least two external consumers need them.
+4. Re-evaluate public headless analysis, support bundles, MCP, and window control from
    actual usage rather than surface-completeness pressure.
 
-The first two steps may ship on the existing Windows transport. Track macOS parity as a release
-blocker for claiming the expanded Agent Control CLI is cross-platform.
+Configuration Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement
+inspect/wait, and Visual Capture are complete on the existing Windows transport. Track macOS parity
+as a release blocker for claiming the expanded Agent Control CLI is cross-platform.
 
 ## Definition of done for every new family
 
@@ -485,7 +481,7 @@ Every approved command family should include:
 ## Immediate design recommendation
 
 The next implementation stage is **cross-platform and human-use foundation**. Configuration
-Transfer, Loudness Profile Control, Theme Control, and Device Control are complete; macOS transport,
-explicit text rendering for queries, and generated completions are the next portability and
-usability gap. File-analysis report export remains the next command-family candidate after that
-foundation work.
+Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement inspect/wait, and
+Visual Capture are complete; macOS transport, explicit text rendering for queries, and generated
+completions are the next portability and usability gap. File-analysis report export remains the
+next command-family candidate after that foundation work.

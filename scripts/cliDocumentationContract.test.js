@@ -156,6 +156,12 @@ describe("current CLI documentation", () => {
     const agentControl = read("docs", "agent-control", "README.md");
     const visual = read("docs", "agent-control", "visual.md");
     const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
+    const implementationPlan = read(
+      "docs",
+      "superpowers",
+      "plans",
+      "2026-09-07-agent-control-visual-capture-implementation.md"
+    );
 
     for (const command of [
       "visual describe",
@@ -183,5 +189,9 @@ describe("current CLI documentation", () => {
     expect(visual).toContain("File decoder PCM is never recorded");
     expect(agentControl).toContain("visual.recording.start / visual.recording.inspect");
     expect(roadmap).toContain("### Stage 5: Visual Capture — complete");
+    expect(roadmap).not.toContain("**Measurement inspect/wait** after");
+    expect(roadmap).not.toContain("MCP, screenshots, and window control");
+    expect(implementationPlan).toContain("Implementation status (2026-09-08)");
+    expect(implementationPlan).toContain("Delivered across Phases A-D");
   });
 });
