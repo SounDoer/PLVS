@@ -550,30 +550,15 @@ mod tests {
   #[test]
   fn capabilities_report_only_public_cli_commands() {
     let check = check_capabilities();
-    assert_eq!(
-      check.details["commands"],
-      json!([
-        "doctor",
-        "capabilities",
-        "inspect",
-        "measurement",
-        "view",
-        "wait",
-        "module",
-        "workspace",
-        "panel",
-        "axis",
-        "preset",
-        "theme",
-        "loudness-profile",
-        "config",
-        "settings",
-        "transport",
-        "device",
-        "dock",
-        "visual"
-      ])
-    );
+    let mut expected = crate::cli_manifest::command_families("offline");
+    expected.extend(crate::cli_manifest::command_families("runningApp"));
+
+    assert_eq!(check.details["commands"], json!(expected));
+    assert!(check.details["commands"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .any(|family| family == "schema"));
   }
 
   #[test]
