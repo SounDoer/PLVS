@@ -29,6 +29,13 @@ fn emit_app_id() {
 fn main() {
   emit_app_id();
 
+  const COMMAND_MANIFEST: &str = "../src/agentControl/commandManifest.json";
+  println!("cargo:rerun-if-changed={COMMAND_MANIFEST}");
+  let manifest = std::fs::read_to_string(COMMAND_MANIFEST)
+    .unwrap_or_else(|err| panic!("failed to read {COMMAND_MANIFEST}: {err}"));
+  serde_json::from_str::<serde_json::Value>(&manifest)
+    .unwrap_or_else(|err| panic!("failed to parse {COMMAND_MANIFEST}: {err}"));
+
   let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
   if target_os == "macos" {
     println!("cargo:rerun-if-changed=native/macos/tap_bridge.m");

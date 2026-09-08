@@ -9,6 +9,7 @@ pub mod cli_contract;
 pub mod cli_control;
 pub mod cli_devices;
 pub mod cli_main;
+pub mod cli_manifest;
 mod cli_path;
 pub mod cli_probe;
 pub mod cli_profile;
