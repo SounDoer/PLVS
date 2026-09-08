@@ -1,0 +1,5065 @@
+{
+  "manifestVersion": 1,
+  "commands": [
+    {
+      "id": "app.capabilities",
+      "family": "capabilities",
+      "path": ["capabilities"],
+      "usage": "plvs-cli capabilities --json",
+      "summary": "Report the running app compatibility and capability surface.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "app.capabilities",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "app.inspect",
+      "family": "inspect",
+      "path": ["inspect"],
+      "usage": "plvs-cli inspect --json",
+      "summary": "Inspect the running application's public mutable state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "app.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "measurement.describe",
+      "family": "measurement",
+      "path": ["measurement", "describe"],
+      "usage": "plvs-cli measurement describe --json",
+      "summary": "Describe the measurement read contract.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "measurement.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "measurement.inspect",
+      "family": "measurement",
+      "path": ["measurement", "inspect"],
+      "usage": "plvs-cli measurement inspect --json",
+      "summary": "Inspect the latest measurement state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "measurement.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "measurement.wait",
+      "family": "measurement",
+      "path": ["measurement", "wait"],
+      "usage": "plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json",
+      "summary": "Wait for a newer measurement frame.",
+      "execution": "runningApp",
+      "operation": "wait",
+      "wireMethod": "measurement.wait",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--after-generation",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "afterGeneration"
+        },
+        {
+          "name": "--after-sequence",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "afterSequence"
+        },
+        {
+          "name": "--timeout-ms",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "timeoutMs"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["afterGeneration"],
+        "properties": {
+          "afterGeneration": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "afterSequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "view.describe",
+      "family": "view",
+      "path": ["view", "describe"],
+      "usage": "plvs-cli view describe --json",
+      "summary": "Describe public view controls.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "view.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "view.inspect",
+      "family": "view",
+      "path": ["view", "inspect"],
+      "usage": "plvs-cli view inspect --json",
+      "summary": "Inspect public view state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "view.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "view.update",
+      "family": "view",
+      "path": ["view", "update"],
+      "usage": "plvs-cli view update <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Update public view state.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "view.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "view.reset",
+      "family": "view",
+      "path": ["view", "reset"],
+      "usage": "plvs-cli view reset --expected-revision <n> --json [--dry-run]",
+      "summary": "Reset public view state.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "view.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "module.list",
+      "family": "module",
+      "path": ["module", "list"],
+      "usage": "plvs-cli module list --json",
+      "summary": "List available panel modules.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "module.list",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "module.describe",
+      "family": "module",
+      "path": ["module", "describe"],
+      "usage": "plvs-cli module describe <module-id> --json",
+      "summary": "Describe an available panel module.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "module.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "module-id",
+          "mapsTo": "moduleId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["moduleId"],
+        "properties": {
+          "moduleId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "workspace.applyLayout",
+      "family": "workspace",
+      "path": ["workspace", "apply"],
+      "usage": "plvs-cli workspace apply <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Apply a workspace layout document.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "workspace.applyLayout",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "layout",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "workspace.layout"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["layout", "expectedRevision"],
+        "properties": {
+          "layout": {
+            "schemaRef": "workspace.layout"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "panel.describe",
+      "family": "panel",
+      "path": ["panel", "describe"],
+      "usage": "plvs-cli panel describe <panel-id> --json",
+      "summary": "Describe one live panel.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "panel.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "panel.update",
+      "family": "panel",
+      "path": ["panel", "update"],
+      "usage": "plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Update one live panel's public controls.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "panel.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "file|-",
+          "mapsTo": "controls",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "panel.patch.runtime"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "controls", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "controls": {
+            "schemaRef": "panel.patch.runtime"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "panel.reset",
+      "family": "panel",
+      "path": ["panel", "reset"],
+      "usage": "plvs-cli panel reset <panel-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Reset one live panel's public controls.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "panel.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "axis.describe",
+      "family": "axis",
+      "path": ["axis", "describe"],
+      "usage": "plvs-cli axis describe --json",
+      "summary": "Describe public axis controls.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "axis.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "axis.inspect",
+      "family": "axis",
+      "path": ["axis", "inspect"],
+      "usage": "plvs-cli axis inspect --json",
+      "summary": "Inspect public axis state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "axis.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "axis.shared.update",
+      "family": "axis",
+      "path": ["axis", "shared", "update"],
+      "usage": "plvs-cli axis shared update <frequency|time> <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Update a shared workspace axis.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "axis.shared.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "frequency|time",
+          "mapsTo": "kind",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "file|-",
+          "mapsTo": "axis",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "axis.patch.runtime"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "axis", "expectedRevision"],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "axis": {
+            "schemaRef": "axis.patch.runtime"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "axis.shared.reset",
+      "family": "axis",
+      "path": ["axis", "shared", "reset"],
+      "usage": "plvs-cli axis shared reset <frequency|time> --json --expected-revision <n> [--dry-run]",
+      "summary": "Reset a shared workspace axis.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "axis.shared.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "frequency|time",
+          "mapsTo": "kind",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "expectedRevision"],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "axis.panel.update",
+      "family": "axis",
+      "path": ["axis", "panel", "update"],
+      "usage": "plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Update a panel-local axis.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "axis.panel.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "frequency|time",
+          "mapsTo": "kind",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "file|-",
+          "mapsTo": "axis",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "axis.patch.runtime"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "kind", "axis", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "axis": {
+            "schemaRef": "axis.patch.runtime"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "axis.panel.reset",
+      "family": "axis",
+      "path": ["axis", "panel", "reset"],
+      "usage": "plvs-cli axis panel reset <panel-id> <frequency|time> --json --expected-revision <n> [--dry-run]",
+      "summary": "Reset a panel-local axis.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "axis.panel.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "frequency|time",
+          "mapsTo": "kind",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "kind", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.list",
+      "family": "preset",
+      "path": ["preset", "list"],
+      "usage": "plvs-cli preset list --json",
+      "summary": "List presets.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.list",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "preset.describe",
+      "family": "preset",
+      "path": ["preset", "describe"],
+      "usage": "plvs-cli preset describe <preset-id> --json",
+      "summary": "Describe a preset.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "preset-id",
+          "mapsTo": "presetId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["presetId"],
+        "properties": {
+          "presetId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.save",
+      "family": "preset",
+      "path": ["preset", "save"],
+      "usage": "plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]",
+      "summary": "Save the current scene as a preset.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.save",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "name",
+          "mapsTo": "name",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "expectedRevision"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.update",
+      "family": "preset",
+      "path": ["preset", "update"],
+      "usage": "plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Update a preset from the current scene.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "preset-id",
+          "mapsTo": "presetId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["presetId", "expectedRevision"],
+        "properties": {
+          "presetId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.apply",
+      "family": "preset",
+      "path": ["preset", "apply"],
+      "usage": "plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Apply a preset.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.apply",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "preset-id",
+          "mapsTo": "presetId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["presetId", "expectedRevision"],
+        "properties": {
+          "presetId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.rename",
+      "family": "preset",
+      "path": ["preset", "rename"],
+      "usage": "plvs-cli preset rename <preset-id> <name> --json --expected-revision <n> [--dry-run]",
+      "summary": "Rename a preset.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.rename",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "preset-id",
+          "mapsTo": "presetId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "mapsTo": "name",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["presetId", "name", "expectedRevision"],
+        "properties": {
+          "presetId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.delete",
+      "family": "preset",
+      "path": ["preset", "delete"],
+      "usage": "plvs-cli preset delete <preset-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Delete a preset.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.delete",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "preset-id",
+          "mapsTo": "presetId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["presetId", "expectedRevision"],
+        "properties": {
+          "presetId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.reorder",
+      "family": "preset",
+      "path": ["preset", "reorder"],
+      "usage": "plvs-cli preset reorder <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Reorder presets.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.reorder",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "order",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "preset.order"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "expectedRevision"],
+        "properties": {
+          "order": {
+            "schemaRef": "preset.order"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.export",
+      "family": "preset",
+      "path": ["preset", "export"],
+      "usage": "plvs-cli preset export <--all|--ids <id,...>> --json [--out <file>]",
+      "summary": "Export presets as a library pack.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.export",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--all",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--ids",
+          "required": false,
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mapsTo": "ids"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.import",
+      "family": "preset",
+      "path": ["preset", "import"],
+      "usage": "plvs-cli preset import <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Import a preset library pack.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.import",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "pack",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "preset.pack"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pack", "expectedRevision"],
+        "properties": {
+          "pack": {
+            "schemaRef": "preset.pack"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.list",
+      "family": "theme",
+      "path": ["theme", "list"],
+      "usage": "plvs-cli theme list --json",
+      "summary": "List themes.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "theme.list",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "theme.inspect",
+      "family": "theme",
+      "path": ["theme", "inspect"],
+      "usage": "plvs-cli theme inspect --json",
+      "summary": "Inspect the active theme state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "theme.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "theme.describe",
+      "family": "theme",
+      "path": ["theme", "describe"],
+      "usage": "plvs-cli theme describe <theme-id> --json",
+      "summary": "Describe a theme.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "theme.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "theme-id",
+          "mapsTo": "themeId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["themeId"],
+        "properties": {
+          "themeId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.select",
+      "family": "theme",
+      "path": ["theme", "select"],
+      "usage": "plvs-cli theme select <theme-id> --expected-revision <n> --json [--dry-run]",
+      "summary": "Select a theme.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.select",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "theme-id",
+          "mapsTo": "themeId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["themeId", "expectedRevision"],
+        "properties": {
+          "themeId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.followSystem",
+      "family": "theme",
+      "path": ["theme", "follow-system"],
+      "usage": "plvs-cli theme follow-system --expected-revision <n> --json [--dry-run]",
+      "summary": "Follow the system appearance mode.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.followSystem",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.create",
+      "family": "theme",
+      "path": ["theme", "create"],
+      "usage": "plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Create a theme.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.create",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "theme",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "theme.document.v2"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["theme", "expectedRevision"],
+        "properties": {
+          "theme": {
+            "schemaRef": "theme.document.v2"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.update",
+      "family": "theme",
+      "path": ["theme", "update"],
+      "usage": "plvs-cli theme update <theme-id> <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Update a theme.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "theme-id",
+          "mapsTo": "themeId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "file|-",
+          "mapsTo": "theme",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "theme.document.v2"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["themeId", "theme", "expectedRevision"],
+        "properties": {
+          "themeId": {
+            "type": "string"
+          },
+          "theme": {
+            "schemaRef": "theme.document.v2"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.rename",
+      "family": "theme",
+      "path": ["theme", "rename"],
+      "usage": "plvs-cli theme rename <theme-id> <name> --expected-revision <n> --json [--dry-run]",
+      "summary": "Rename a theme.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.rename",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "theme-id",
+          "mapsTo": "themeId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "mapsTo": "name",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["themeId", "name", "expectedRevision"],
+        "properties": {
+          "themeId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.duplicate",
+      "family": "theme",
+      "path": ["theme", "duplicate"],
+      "usage": "plvs-cli theme duplicate <theme-id> <name> --expected-revision <n> --json [--dry-run]",
+      "summary": "Duplicate a theme.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.duplicate",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "theme-id",
+          "mapsTo": "themeId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "mapsTo": "name",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["themeId", "name", "expectedRevision"],
+        "properties": {
+          "themeId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.delete",
+      "family": "theme",
+      "path": ["theme", "delete"],
+      "usage": "plvs-cli theme delete <theme-id> --expected-revision <n> --json [--dry-run]",
+      "summary": "Delete a theme.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.delete",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "theme-id",
+          "mapsTo": "themeId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["themeId", "expectedRevision"],
+        "properties": {
+          "themeId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.reorder",
+      "family": "theme",
+      "path": ["theme", "reorder"],
+      "usage": "plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Reorder themes.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.reorder",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "order",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "theme.order"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "expectedRevision"],
+        "properties": {
+          "order": {
+            "schemaRef": "theme.order"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.export",
+      "family": "theme",
+      "path": ["theme", "export"],
+      "usage": "plvs-cli theme export <--all|--ids <id,...>> --json [--out <file>]",
+      "summary": "Export themes as a library pack.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "theme.export",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--all",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--ids",
+          "required": false,
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mapsTo": "ids"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "theme.import",
+      "family": "theme",
+      "path": ["theme", "import"],
+      "usage": "plvs-cli theme import <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Import a theme library pack.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "theme.import",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "pack",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "theme.pack"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pack", "expectedRevision"],
+        "properties": {
+          "pack": {
+            "schemaRef": "theme.pack"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.list",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "list"],
+      "usage": "plvs-cli loudness-profile list --json",
+      "summary": "List loudness profiles.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "loudnessProfile.list",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "loudnessProfile.describe",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "describe"],
+      "usage": "plvs-cli loudness-profile describe <profile-id> --json",
+      "summary": "Describe a loudness profile.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "loudnessProfile.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "profile-id",
+          "mapsTo": "profileId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileId"],
+        "properties": {
+          "profileId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.select",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "select"],
+      "usage": "plvs-cli loudness-profile select <profile-id|off> --expected-revision <n> --json [--dry-run]",
+      "summary": "Select or disable a loudness profile.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "loudnessProfile.select",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "profile-id|off",
+          "mapsTo": "profileId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileId", "expectedRevision"],
+        "properties": {
+          "profileId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.create",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "create"],
+      "usage": "plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Create a loudness profile.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "loudnessProfile.create",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "profile",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "loudnessProfile.document"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profile", "expectedRevision"],
+        "properties": {
+          "profile": {
+            "schemaRef": "loudnessProfile.document"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.update",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "update"],
+      "usage": "plvs-cli loudness-profile update <profile-id> <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Update a loudness profile.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "loudnessProfile.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "profile-id",
+          "mapsTo": "profileId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "file|-",
+          "mapsTo": "profile",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "loudnessProfile.document"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileId", "profile", "expectedRevision"],
+        "properties": {
+          "profileId": {
+            "type": "string"
+          },
+          "profile": {
+            "schemaRef": "loudnessProfile.document"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.rename",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "rename"],
+      "usage": "plvs-cli loudness-profile rename <profile-id> <name> --expected-revision <n> --json [--dry-run]",
+      "summary": "Rename a loudness profile.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "loudnessProfile.rename",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "profile-id",
+          "mapsTo": "profileId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "mapsTo": "name",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileId", "name", "expectedRevision"],
+        "properties": {
+          "profileId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.delete",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "delete"],
+      "usage": "plvs-cli loudness-profile delete <profile-id> --expected-revision <n> --json [--dry-run]",
+      "summary": "Delete a loudness profile.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "loudnessProfile.delete",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "profile-id",
+          "mapsTo": "profileId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profileId", "expectedRevision"],
+        "properties": {
+          "profileId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.reorder",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "reorder"],
+      "usage": "plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Reorder loudness profiles.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "loudnessProfile.reorder",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "order",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "loudnessProfile.order"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "expectedRevision"],
+        "properties": {
+          "order": {
+            "schemaRef": "loudnessProfile.order"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.export",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "export"],
+      "usage": "plvs-cli loudness-profile export <--all|--ids <id,...>> --json [--out <file>]",
+      "summary": "Export loudness profiles as a library pack.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "loudnessProfile.export",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--all",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--ids",
+          "required": false,
+          "value": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mapsTo": "ids"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "loudnessProfile.import",
+      "family": "loudness-profile",
+      "path": ["loudness-profile", "import"],
+      "usage": "plvs-cli loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Import a loudness profile library pack.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "loudnessProfile.import",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "pack",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "loudnessProfile.pack"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pack", "expectedRevision"],
+        "properties": {
+          "pack": {
+            "schemaRef": "loudnessProfile.pack"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "config.export",
+      "family": "config",
+      "path": ["config", "export"],
+      "usage": "plvs-cli config export --json [--out <file>]",
+      "summary": "Export the complete public configuration.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "config.export",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "config.import",
+      "family": "config",
+      "path": ["config", "import"],
+      "usage": "plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]",
+      "summary": "Import the complete public configuration.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "config.import",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "configuration",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "configurationProfile.v1"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["configuration", "expectedRevision"],
+        "properties": {
+          "configuration": {
+            "schemaRef": "configurationProfile.v1"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "settings.describe",
+      "family": "settings",
+      "path": ["settings", "describe"],
+      "usage": "plvs-cli settings describe --json",
+      "summary": "Describe public settings.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "settings.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "settings.inspect",
+      "family": "settings",
+      "path": ["settings", "inspect"],
+      "usage": "plvs-cli settings inspect --json",
+      "summary": "Inspect public settings.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "settings.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "settings.update",
+      "family": "settings",
+      "path": ["settings", "update"],
+      "usage": "plvs-cli settings update <file|-> --json --expected-revision <n> [--allow-measurement-restart] [--dry-run]",
+      "summary": "Update public settings.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "settings.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--allow-measurement-restart",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "allowMeasurementRestart"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "allowMeasurementRestart": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "device.list",
+      "family": "device",
+      "path": ["device", "list"],
+      "usage": "plvs-cli device list --json",
+      "summary": "List audio capture devices.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "device.list",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "device.inspect",
+      "family": "device",
+      "path": ["device", "inspect"],
+      "usage": "plvs-cli device inspect --json",
+      "summary": "Inspect audio device selection.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "device.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "device.select",
+      "family": "device",
+      "path": ["device", "select"],
+      "usage": "plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]",
+      "summary": "Select an audio capture device.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "device.select",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "device-id|default",
+          "mapsTo": "deviceId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--expected-generation",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedGeneration"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--allow-measurement-restart",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "allowMeasurementRestart"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["deviceId", "expectedRevision", "expectedGeneration"],
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "expectedGeneration": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "allowMeasurementRestart": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "app.wait",
+      "family": "wait",
+      "path": ["wait"],
+      "usage": "plvs-cli wait --after-revision <n> [--timeout-ms <n>] --json",
+      "summary": "Wait for a newer application revision.",
+      "execution": "runningApp",
+      "operation": "wait",
+      "wireMethod": "app.wait",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--after-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "afterRevision"
+        },
+        {
+          "name": "--timeout-ms",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "timeoutMs"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["afterRevision"],
+        "properties": {
+          "afterRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.inspect",
+      "family": "transport",
+      "path": ["transport", "inspect"],
+      "usage": "plvs-cli transport inspect --json",
+      "summary": "Inspect transport state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "transport.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "transport.source.live",
+      "family": "transport",
+      "path": ["transport", "source", "live"],
+      "usage": "plvs-cli transport source live --json --expected-revision <n> [--allow-stop-file-analysis] [--dry-run]",
+      "summary": "Switch transport to the live source.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.source.live",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--allow-stop-file-analysis",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "allowStopFileAnalysis"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "allowStopFileAnalysis": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.source.file",
+      "family": "transport",
+      "path": ["transport", "source", "file"],
+      "usage": "plvs-cli transport source file --json --expected-revision <n> [--allow-stop-file-analysis] [--dry-run]",
+      "summary": "Switch transport to the file source.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.source.file",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--allow-stop-file-analysis",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "allowStopFileAnalysis"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "allowStopFileAnalysis": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.live.start",
+      "family": "transport",
+      "path": ["transport", "live", "start"],
+      "usage": "plvs-cli transport live start --json --expected-revision <n> [--allow-stop-file-analysis]",
+      "summary": "Start live measurement.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.live.start",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--allow-stop-file-analysis",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "allowStopFileAnalysis"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "allowStopFileAnalysis": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.live.stop",
+      "family": "transport",
+      "path": ["transport", "live", "stop"],
+      "usage": "plvs-cli transport live stop --json --expected-revision <n> [--allow-stop-file-analysis]",
+      "summary": "Stop live measurement.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.live.stop",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--allow-stop-file-analysis",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "allowStopFileAnalysis"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "allowStopFileAnalysis": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.live.clear",
+      "family": "transport",
+      "path": ["transport", "live", "clear"],
+      "usage": "plvs-cli transport live clear --json --expected-revision <n> [--dry-run]",
+      "summary": "Clear live measurements.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.live.clear",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.analyze",
+      "family": "transport",
+      "path": ["transport", "file", "analyze"],
+      "usage": "plvs-cli transport file analyze <path> --json --expected-revision <n>",
+      "summary": "Start file analysis.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.analyze",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "path",
+          "mapsTo": "path",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "expectedRevision"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.reanalyze",
+      "family": "transport",
+      "path": ["transport", "file", "reanalyze"],
+      "usage": "plvs-cli transport file reanalyze <session-id> --json --expected-revision <n>",
+      "summary": "Reanalyze a file session.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.reanalyze",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "session-id",
+          "mapsTo": "sessionId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "expectedRevision"],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.stop",
+      "family": "transport",
+      "path": ["transport", "file", "stop"],
+      "usage": "plvs-cli transport file stop <session-id> --json --expected-revision <n>",
+      "summary": "Stop file analysis.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.stop",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "session-id",
+          "mapsTo": "sessionId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "expectedRevision"],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.select",
+      "family": "transport",
+      "path": ["transport", "file", "select"],
+      "usage": "plvs-cli transport file select <session-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Select a file session.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.file.select",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "session-id",
+          "mapsTo": "sessionId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "expectedRevision"],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.remove",
+      "family": "transport",
+      "path": ["transport", "file", "remove"],
+      "usage": "plvs-cli transport file remove <session-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Remove a file session.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.file.remove",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "session-id",
+          "mapsTo": "sessionId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "expectedRevision"],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.clear",
+      "family": "transport",
+      "path": ["transport", "file", "clear"],
+      "usage": "plvs-cli transport file clear --json --expected-revision <n> [--dry-run]",
+      "summary": "Clear file sessions.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "transport.file.clear",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "dock.describe",
+      "family": "dock",
+      "path": ["dock", "describe"],
+      "usage": "plvs-cli dock describe --json",
+      "summary": "Describe Dock controls.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "dock.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "dock.inspect",
+      "family": "dock",
+      "path": ["dock", "inspect"],
+      "usage": "plvs-cli dock inspect --json",
+      "summary": "Inspect Dock state.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "dock.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "dock.enter",
+      "family": "dock",
+      "path": ["dock", "enter"],
+      "usage": "plvs-cli dock enter [--edge <top|bottom>] [--monitor <id>] [--reserve-space <true|false>] [--height <n>] --json --expected-revision <n> [--dry-run]",
+      "summary": "Enter Dock mode.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "dock.enter",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--edge",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["top", "bottom"]
+          },
+          "mapsTo": "edge"
+        },
+        {
+          "name": "--monitor",
+          "required": false,
+          "value": {
+            "type": "string"
+          },
+          "mapsTo": "monitor"
+        },
+        {
+          "name": "--reserve-space",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["true", "false"]
+          },
+          "mapsTo": "reserveSpace"
+        },
+        {
+          "name": "--height",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "height"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "edge": {
+            "type": "string",
+            "enum": ["top", "bottom"]
+          },
+          "monitor": {
+            "type": "string"
+          },
+          "reserveSpace": {
+            "type": "boolean"
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "dock.exit",
+      "family": "dock",
+      "path": ["dock", "exit"],
+      "usage": "plvs-cli dock exit --json --expected-revision <n> [--dry-run]",
+      "summary": "Exit Dock mode.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "dock.exit",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "dock.layout.apply",
+      "family": "dock",
+      "path": ["dock", "layout", "apply"],
+      "usage": "plvs-cli dock layout apply <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Apply a Dock strip layout.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "dock.layout.apply",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "layout",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "dock.layout"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["layout", "expectedRevision"],
+        "properties": {
+          "layout": {
+            "schemaRef": "dock.layout"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "dock.panel.describe",
+      "family": "dock",
+      "path": ["dock", "panel", "describe"],
+      "usage": "plvs-cli dock panel describe <panel-id> --json",
+      "summary": "Describe a Dock panel.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "dock.panel.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "dock.panel.update",
+      "family": "dock",
+      "path": ["dock", "panel", "update"],
+      "usage": "plvs-cli dock panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Update a Dock panel.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "dock.panel.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "file|-",
+          "mapsTo": "controls",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "dock.panel.patch"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "controls", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "controls": {
+            "schemaRef": "dock.panel.patch"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "dock.panel.reset",
+      "family": "dock",
+      "path": ["dock", "panel", "reset"],
+      "usage": "plvs-cli dock panel reset <panel-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Reset a Dock panel.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "dock.panel.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "visual.describe",
+      "family": "visual",
+      "path": ["visual", "describe"],
+      "usage": "plvs-cli visual describe --json",
+      "summary": "Describe Visual Capture availability.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "visual.describe",
+      "featureGate": "visual",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "visual.screenshot",
+      "family": "visual",
+      "path": ["visual", "screenshot"],
+      "usage": "plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json",
+      "summary": "Capture a PLVS surface screenshot.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "visual.screenshot",
+      "featureGate": "visual.screenshot",
+      "json": "required",
+      "expectedRevision": "optional",
+      "dryRun": false,
+      "outputFile": "required",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--target",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["main", "workspace", "panel", "dock-header", "dock-editor"]
+          },
+          "mapsTo": "target.kind"
+        },
+        {
+          "name": "--panel-id",
+          "required": false,
+          "value": {
+            "type": "string"
+          },
+          "mapsTo": "target.panelId"
+        },
+        {
+          "name": "--expected-revision",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--out",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target"],
+        "properties": {
+          "target": {
+            "schemaRef": "visual.target"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "visual.recording.start",
+      "family": "visual",
+      "path": ["visual", "recording", "start"],
+      "usage": "plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json",
+      "summary": "Start one bounded PLVS surface recording.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "visual.recording.start",
+      "featureGate": "visual.recording",
+      "json": "required",
+      "expectedRevision": "optional",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--target",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["main", "workspace"]
+          },
+          "mapsTo": "target.kind"
+        },
+        {
+          "name": "--audio",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["none", "measured-source"]
+          },
+          "mapsTo": "audio"
+        },
+        {
+          "name": "--cursor",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["none", "visible"]
+          },
+          "mapsTo": "cursor"
+        },
+        {
+          "name": "--fps",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["15", "30", "60"]
+          },
+          "mapsTo": "fps"
+        },
+        {
+          "name": "--max-duration-seconds",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1800
+          },
+          "mapsTo": "maxDurationSeconds"
+        },
+        {
+          "name": "--expected-revision",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target"],
+        "properties": {
+          "target": {
+            "schemaRef": "visual.target"
+          },
+          "audio": {
+            "type": "string",
+            "enum": ["none", "measuredSource"]
+          },
+          "cursor": {
+            "type": "string",
+            "enum": ["none", "visible"]
+          },
+          "fps": {
+            "type": "string",
+            "enum": ["15", "30", "60"]
+          },
+          "maxDurationSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1800
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "visual.recording.inspect",
+      "family": "visual",
+      "path": ["visual", "recording", "inspect"],
+      "usage": "plvs-cli visual recording inspect <recording-id> --json",
+      "summary": "Inspect a Visual recording.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "visual.recording.inspect",
+      "featureGate": "visual.recording",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "recording-id",
+          "mapsTo": "recordingId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["recordingId"],
+        "properties": {
+          "recordingId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "visual.recording.wait",
+      "family": "visual",
+      "path": ["visual", "recording", "wait"],
+      "usage": "plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json",
+      "summary": "Wait for a Visual recording to finish.",
+      "execution": "runningApp",
+      "operation": "wait",
+      "wireMethod": "visual.recording.wait",
+      "featureGate": "visual.recording",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [
+        {
+          "name": "recording-id",
+          "mapsTo": "recordingId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--timeout-ms",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 300000
+          },
+          "mapsTo": "timeoutMs"
+        },
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["recordingId"],
+        "properties": {
+          "recordingId": {
+            "type": "string"
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "visual.recording.stop",
+      "family": "visual",
+      "path": ["visual", "recording", "stop"],
+      "usage": "plvs-cli visual recording stop <recording-id> [--out <file>] --json",
+      "summary": "Stop a Visual recording.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "visual.recording.stop",
+      "featureGate": "visual.recording",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [
+        {
+          "name": "recording-id",
+          "mapsTo": "recordingId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["recordingId"],
+        "properties": {
+          "recordingId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "doctor",
+      "family": "doctor",
+      "path": ["doctor"],
+      "usage": "plvs-cli doctor [--json] [--out <file>]",
+      "summary": "Run installed-runtime health checks without launching PLVS.",
+      "execution": "offline",
+      "operation": "query",
+      "json": "optional",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    }
+  ]
+}
