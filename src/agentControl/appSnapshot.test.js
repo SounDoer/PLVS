@@ -307,5 +307,19 @@ describe("agent-control app snapshots", () => {
     expect(knownUnsupported.features.visual).toEqual({ screenshot: false, recording: false });
     expect(knownUnsupported.methods).toContain("visual.describe");
     expect(knownUnsupported.methods).not.toContain("visual.screenshot");
+
+    const fullyAvailable = buildAgentControlCapabilities(
+      { ...runtime, visual: { screenshot: true, recording: true } },
+      4
+    );
+    expect(fullyAvailable.methods.filter((method) => method.startsWith("visual."))).toEqual([
+      "visual.describe",
+      "visual.screenshot",
+      "visual.recording.start",
+      "visual.recording.inspect",
+      "visual.recording.wait",
+      "visual.recording.stop",
+    ]);
+    expect(fullyAvailable.methods).not.toContain("doctor");
   });
 });

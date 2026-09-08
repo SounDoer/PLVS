@@ -1,4 +1,5 @@
 import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
+import { commandEntriesForFamily } from "./commandManifest.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
 const TRANSPORT_ACTIONS = new Set([
@@ -10,11 +11,9 @@ const TRANSPORT_ACTIONS = new Set([
 ]);
 const LIBRARY_EXPORT_METHODS = new Set(["preset.export", "theme.export", "loudnessProfile.export"]);
 const LIBRARY_IMPORT_METHODS = new Set(["preset.import", "theme.import", "loudnessProfile.import"]);
-export const DEVICE_CONTROL_METHODS = Object.freeze([
-  "device.list",
-  "device.inspect",
-  "device.select",
-]);
+export const DEVICE_CONTROL_METHODS = Object.freeze(
+  commandEntriesForFamily("device").map(({ wireMethod }) => wireMethod)
+);
 
 export function isDeviceQuery(method) {
   return method === "device.list" || method === "device.inspect";

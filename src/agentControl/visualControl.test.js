@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   VISUAL_AUDIO_SOURCES,
+  VISUAL_RECORDING_METHODS,
   VISUAL_RECORDING_STATES,
   VISUAL_RECORDING_TARGET_KINDS,
+  VISUAL_SCREENSHOT_METHODS,
   VISUAL_SCREENSHOT_TARGET_KINDS,
   buildVisualDescription,
   normalizeVisualTarget,
@@ -34,6 +36,16 @@ describe("visual control contract", () => {
     ]) {
       expect(Object.isFrozen(vocabulary)).toBe(true);
     }
+  });
+
+  it("derives Visual method membership from manifest feature gates", () => {
+    expect(VISUAL_SCREENSHOT_METHODS).toEqual(["visual.describe", "visual.screenshot"]);
+    expect(VISUAL_RECORDING_METHODS).toEqual([
+      "visual.recording.start",
+      "visual.recording.inspect",
+      "visual.recording.wait",
+      "visual.recording.stop",
+    ]);
   });
 
   it("accepts only closed semantic target objects", () => {

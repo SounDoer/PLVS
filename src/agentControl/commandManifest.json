@@ -500,193 +500,6 @@
       }
     },
     {
-      "id": "panel.describe",
-      "family": "panel",
-      "path": ["panel", "describe"],
-      "usage": "plvs-cli panel describe <panel-id> --json",
-      "summary": "Describe one live panel.",
-      "execution": "runningApp",
-      "operation": "query",
-      "wireMethod": "panel.describe",
-      "json": "required",
-      "expectedRevision": "none",
-      "dryRun": false,
-      "outputFile": "none",
-      "positionals": [
-        {
-          "name": "panel-id",
-          "mapsTo": "panelId",
-          "required": true,
-          "value": {
-            "type": "string"
-          }
-        }
-      ],
-      "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        }
-      ],
-      "wireParams": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["panelId"],
-        "properties": {
-          "panelId": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    {
-      "id": "panel.update",
-      "family": "panel",
-      "path": ["panel", "update"],
-      "usage": "plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run]",
-      "summary": "Update one live panel's public controls.",
-      "execution": "runningApp",
-      "operation": "mutation",
-      "wireMethod": "panel.update",
-      "json": "required",
-      "expectedRevision": "required",
-      "dryRun": true,
-      "outputFile": "none",
-      "positionals": [
-        {
-          "name": "panel-id",
-          "mapsTo": "panelId",
-          "required": true,
-          "value": {
-            "type": "string"
-          }
-        },
-        {
-          "name": "file|-",
-          "mapsTo": "controls",
-          "required": true,
-          "value": {
-            "type": "string",
-            "schemaRef": "panel.patch.runtime"
-          }
-        }
-      ],
-      "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
-        {
-          "name": "--expected-revision",
-          "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "mapsTo": "expectedRevision"
-        },
-        {
-          "name": "--dry-run",
-          "required": false,
-          "value": {
-            "type": "boolean"
-          },
-          "mapsTo": "dryRun"
-        }
-      ],
-      "wireParams": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["panelId", "controls", "expectedRevision"],
-        "properties": {
-          "panelId": {
-            "type": "string"
-          },
-          "controls": {
-            "schemaRef": "panel.patch.runtime"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          }
-        }
-      }
-    },
-    {
-      "id": "panel.reset",
-      "family": "panel",
-      "path": ["panel", "reset"],
-      "usage": "plvs-cli panel reset <panel-id> --json --expected-revision <n> [--dry-run]",
-      "summary": "Reset one live panel's public controls.",
-      "execution": "runningApp",
-      "operation": "mutation",
-      "wireMethod": "panel.reset",
-      "json": "required",
-      "expectedRevision": "required",
-      "dryRun": true,
-      "outputFile": "none",
-      "positionals": [
-        {
-          "name": "panel-id",
-          "mapsTo": "panelId",
-          "required": true,
-          "value": {
-            "type": "string"
-          }
-        }
-      ],
-      "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
-        {
-          "name": "--expected-revision",
-          "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "mapsTo": "expectedRevision"
-        },
-        {
-          "name": "--dry-run",
-          "required": false,
-          "value": {
-            "type": "boolean"
-          },
-          "mapsTo": "dryRun"
-        }
-      ],
-      "wireParams": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["panelId", "expectedRevision"],
-        "properties": {
-          "panelId": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          }
-        }
-      }
-    },
-    {
       "id": "axis.describe",
       "family": "axis",
       "path": ["axis", "describe"],
@@ -1057,6 +870,193 @@
       }
     },
     {
+      "id": "panel.describe",
+      "family": "panel",
+      "path": ["panel", "describe"],
+      "usage": "plvs-cli panel describe <panel-id> --json",
+      "summary": "Describe one live panel.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "panel.describe",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "panel.update",
+      "family": "panel",
+      "path": ["panel", "update"],
+      "usage": "plvs-cli panel update <panel-id> <file|-> --json --expected-revision <n> [--dry-run]",
+      "summary": "Update one live panel's public controls.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "panel.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "file|-",
+          "mapsTo": "controls",
+          "required": true,
+          "value": {
+            "type": "string",
+            "schemaRef": "panel.patch.runtime"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "controls", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "controls": {
+            "schemaRef": "panel.patch.runtime"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "panel.reset",
+      "family": "panel",
+      "path": ["panel", "reset"],
+      "usage": "plvs-cli panel reset <panel-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Reset one live panel's public controls.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "panel.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
       "id": "preset.list",
       "family": "preset",
       "path": ["preset", "list"],
@@ -1125,204 +1125,6 @@
         "properties": {
           "presetId": {
             "type": "string"
-          }
-        }
-      }
-    },
-    {
-      "id": "preset.save",
-      "family": "preset",
-      "path": ["preset", "save"],
-      "usage": "plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]",
-      "summary": "Save the current scene as a preset.",
-      "execution": "runningApp",
-      "operation": "mutation",
-      "wireMethod": "preset.save",
-      "json": "required",
-      "expectedRevision": "required",
-      "dryRun": true,
-      "outputFile": "none",
-      "positionals": [
-        {
-          "name": "name",
-          "mapsTo": "name",
-          "required": true,
-          "value": {
-            "type": "string"
-          }
-        }
-      ],
-      "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
-        {
-          "name": "--expected-revision",
-          "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "mapsTo": "expectedRevision"
-        },
-        {
-          "name": "--dry-run",
-          "required": false,
-          "value": {
-            "type": "boolean"
-          },
-          "mapsTo": "dryRun"
-        }
-      ],
-      "wireParams": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["name", "expectedRevision"],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          }
-        }
-      }
-    },
-    {
-      "id": "preset.update",
-      "family": "preset",
-      "path": ["preset", "update"],
-      "usage": "plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]",
-      "summary": "Update a preset from the current scene.",
-      "execution": "runningApp",
-      "operation": "mutation",
-      "wireMethod": "preset.update",
-      "json": "required",
-      "expectedRevision": "required",
-      "dryRun": true,
-      "outputFile": "none",
-      "positionals": [
-        {
-          "name": "preset-id",
-          "mapsTo": "presetId",
-          "required": true,
-          "value": {
-            "type": "string"
-          }
-        }
-      ],
-      "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
-        {
-          "name": "--expected-revision",
-          "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "mapsTo": "expectedRevision"
-        },
-        {
-          "name": "--dry-run",
-          "required": false,
-          "value": {
-            "type": "boolean"
-          },
-          "mapsTo": "dryRun"
-        }
-      ],
-      "wireParams": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["presetId", "expectedRevision"],
-        "properties": {
-          "presetId": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
-          }
-        }
-      }
-    },
-    {
-      "id": "preset.apply",
-      "family": "preset",
-      "path": ["preset", "apply"],
-      "usage": "plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]",
-      "summary": "Apply a preset.",
-      "execution": "runningApp",
-      "operation": "mutation",
-      "wireMethod": "preset.apply",
-      "json": "required",
-      "expectedRevision": "required",
-      "dryRun": true,
-      "outputFile": "none",
-      "positionals": [
-        {
-          "name": "preset-id",
-          "mapsTo": "presetId",
-          "required": true,
-          "value": {
-            "type": "string"
-          }
-        }
-      ],
-      "options": [
-        {
-          "name": "--json",
-          "required": true,
-          "value": {
-            "type": "boolean"
-          }
-        },
-        {
-          "name": "--expected-revision",
-          "required": true,
-          "value": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "mapsTo": "expectedRevision"
-        },
-        {
-          "name": "--dry-run",
-          "required": false,
-          "value": {
-            "type": "boolean"
-          },
-          "mapsTo": "dryRun"
-        }
-      ],
-      "wireParams": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["presetId", "expectedRevision"],
-        "properties": {
-          "presetId": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "schemaRef": "agentControl.revision"
-          },
-          "dryRun": {
-            "type": "boolean"
           }
         }
       }
@@ -1527,6 +1329,204 @@
         "properties": {
           "order": {
             "schemaRef": "preset.order"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.save",
+      "family": "preset",
+      "path": ["preset", "save"],
+      "usage": "plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]",
+      "summary": "Save the current scene as a preset.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.save",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "name",
+          "mapsTo": "name",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "expectedRevision"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.update",
+      "family": "preset",
+      "path": ["preset", "update"],
+      "usage": "plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Update a preset from the current scene.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.update",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "preset-id",
+          "mapsTo": "presetId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["presetId", "expectedRevision"],
+        "properties": {
+          "presetId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "preset.apply",
+      "family": "preset",
+      "path": ["preset", "apply"],
+      "usage": "plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]",
+      "summary": "Apply a preset.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "preset.apply",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "preset-id",
+          "mapsTo": "presetId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["presetId", "expectedRevision"],
+        "properties": {
+          "presetId": {
+            "type": "string"
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"

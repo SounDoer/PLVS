@@ -4,93 +4,16 @@ import { readPublicPanelAnalysis } from "./panelAnalysis.js";
 import { readPublicPanelAxes } from "./panelAxes.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
-import { DEVICE_CONTROL_METHODS } from "./protocol.js";
+import { runningAppCommandEntries } from "./commandManifest.js";
 import { buildModuleList } from "./moduleControl.js";
-import { VISUAL_RECORDING_METHODS, VISUAL_SCREENSHOT_METHODS } from "./visualControl.js";
 
-const METHODS = [
-  "app.capabilities",
-  "app.inspect",
-  "measurement.describe",
-  "measurement.inspect",
-  "measurement.wait",
-  "view.describe",
-  "view.inspect",
-  "view.update",
-  "view.reset",
-  "module.list",
-  "module.describe",
-  "workspace.applyLayout",
-  "axis.describe",
-  "axis.inspect",
-  "axis.shared.update",
-  "axis.shared.reset",
-  "axis.panel.update",
-  "axis.panel.reset",
-  "panel.describe",
-  "panel.update",
-  "panel.reset",
-  "preset.list",
-  "preset.describe",
-  "preset.rename",
-  "preset.delete",
-  "preset.reorder",
-  "preset.save",
-  "preset.update",
-  "preset.apply",
-  "preset.export",
-  "preset.import",
-  "theme.list",
-  "theme.inspect",
-  "theme.describe",
-  "theme.select",
-  "theme.followSystem",
-  "theme.create",
-  "theme.update",
-  "theme.rename",
-  "theme.duplicate",
-  "theme.delete",
-  "theme.reorder",
-  "theme.export",
-  "theme.import",
-  "loudnessProfile.list",
-  "loudnessProfile.describe",
-  "loudnessProfile.select",
-  "loudnessProfile.create",
-  "loudnessProfile.update",
-  "loudnessProfile.rename",
-  "loudnessProfile.delete",
-  "loudnessProfile.reorder",
-  "loudnessProfile.export",
-  "loudnessProfile.import",
-  "config.export",
-  "config.import",
-  "settings.describe",
-  "settings.inspect",
-  "settings.update",
-  ...DEVICE_CONTROL_METHODS,
-  "app.wait",
-  "transport.inspect",
-  "transport.source.live",
-  "transport.source.file",
-  "transport.live.start",
-  "transport.live.stop",
-  "transport.live.clear",
-  "transport.file.analyze",
-  "transport.file.reanalyze",
-  "transport.file.stop",
-  "transport.file.select",
-  "transport.file.remove",
-  "transport.file.clear",
-  "dock.describe",
-  "dock.inspect",
-  "dock.enter",
-  "dock.exit",
-  "dock.layout.apply",
-  "dock.panel.describe",
-  "dock.panel.update",
-  "dock.panel.reset",
-];
+function featureGateAvailable(featureGate, visual) {
+  if (featureGate === undefined) return true;
+  if (featureGate === "visual") return visual !== undefined;
+  if (featureGate === "visual.screenshot") return visual?.screenshot === true;
+  if (featureGate === "visual.recording") return visual?.recording === true;
+  return false;
+}
 
 export function buildAgentControlPanelSnapshot({
   workspace,
@@ -132,15 +55,9 @@ export function buildAgentControlCapabilities(runtime, revision) {
       identifier: String(runtime.identifier),
       platform: String(runtime.platform),
     },
-    methods: [
-      ...METHODS,
-      ...(visual
-        ? VISUAL_SCREENSHOT_METHODS.filter(
-            (method) => method === "visual.describe" || visual.screenshot === true
-          )
-        : []),
-      ...(visual?.recording === true ? VISUAL_RECORDING_METHODS : []),
-    ],
+    methods: runningAppCommandEntries
+      .filter(({ featureGate }) => featureGateAvailable(featureGate, visual))
+      .map(({ wireMethod }) => wireMethod),
     modules: buildModuleList(),
   };
 }

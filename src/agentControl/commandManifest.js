@@ -189,4 +189,13 @@ export const commandEntries = commandManifest.commands;
 export const runningAppCommandEntries = Object.freeze(
   commandEntries.filter(({ execution }) => execution === "runningApp")
 );
+export const runningAppWireMethods = Object.freeze(
+  runningAppCommandEntries.map(({ wireMethod }) => wireMethod)
+);
+export function commandEntriesForFamily(family) {
+  return runningAppCommandEntries.filter((entry) => entry.family === family);
+}
+export function commandEntriesForFeatureGate(featureGate) {
+  return runningAppCommandEntries.filter((entry) => entry.featureGate === featureGate);
+}
 export const commandEntryById = new Map(commandEntries.map((entry) => [entry.id, entry]));

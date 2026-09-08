@@ -18,13 +18,13 @@ export const VISUAL_RECORDING_STATES = Object.freeze([
   "failed",
 ]);
 
-export const VISUAL_SCREENSHOT_METHODS = Object.freeze(["visual.describe", "visual.screenshot"]);
-export const VISUAL_RECORDING_METHODS = Object.freeze([
-  "visual.recording.start",
-  "visual.recording.inspect",
-  "visual.recording.wait",
-  "visual.recording.stop",
+export const VISUAL_SCREENSHOT_METHODS = Object.freeze([
+  ...commandEntriesForFeatureGate("visual").map(({ wireMethod }) => wireMethod),
+  ...commandEntriesForFeatureGate("visual.screenshot").map(({ wireMethod }) => wireMethod),
 ]);
+export const VISUAL_RECORDING_METHODS = Object.freeze(
+  commandEntriesForFeatureGate("visual.recording").map(({ wireMethod }) => wireMethod)
+);
 
 const SCREENSHOT_FORMAT = "png";
 const RECORDING_CONTAINER = "mp4";
@@ -136,3 +136,4 @@ export function buildVisualDescription({ revision, platform, runtime }) {
     },
   };
 }
+import { commandEntriesForFeatureGate } from "./commandManifest.js";
