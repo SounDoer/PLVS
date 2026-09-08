@@ -6,6 +6,7 @@ pub mod windows;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+#[cfg(target_os = "windows")]
 use std::time::SystemTime;
 
 use serde::Serialize;
@@ -128,40 +129,47 @@ pub async fn visual_capture_screenshot(
   })?;
 
   #[cfg(target_os = "windows")]
-  if let Err(error) = WindowsPlatform
-    .capture_preview(&app, &request.window_label, pending.path())
-    .await
   {
-    log::warn!("visual screenshot failed: {error}");
-    return Err(error.into());
+    if let Err(error) = WindowsPlatform
+      .capture_preview(&app, &request.window_label, pending.path())
+      .await
+    {
+      log::warn!("visual screenshot failed: {error}");
+      return Err(error.into());
+    }
+    let (width, height) = {
+      let path = pending.path().to_owned();
+      let viewport = request.viewport;
+      let rect = request.rect;
+      let result = tauri::async_runtime::spawn_blocking(move || {
+        windows::crop_preview_png(&path, viewport, rect)
+      })
+      .await
+      .map_err(|_| NativeCaptureError::new("captureFailed", "The PNG crop worker failed."))?;
+      if let Err(error) = &result {
+        log::warn!("visual screenshot crop failed: {error}");
+      }
+      result?
+    };
+
+    store
+      .publish(pending, width, height, SystemTime::now())
+      .await
+      .map_err(|_| NativeCaptureError::artifact("The screenshot artifact could not be published."))
   }
   #[cfg(not(target_os = "windows"))]
-  UnsupportedPlatform
-    .capture_preview(&app, &request.window_label, pending.path())
-    .await?;
-
-  #[cfg(target_os = "windows")]
-  let (width, height) = {
-    let path = pending.path().to_owned();
-    let viewport = request.viewport;
-    let rect = request.rect;
-    let result = tauri::async_runtime::spawn_blocking(move || {
-      windows::crop_preview_png(&path, viewport, rect)
-    })
-    .await
-    .map_err(|_| NativeCaptureError::new("captureFailed", "The PNG crop worker failed."))?;
-    if let Err(error) = &result {
-      log::warn!("visual screenshot crop failed: {error}");
+  {
+    match UnsupportedPlatform
+      .capture_preview(&app, &request.window_label, pending.path())
+      .await
+    {
+      Ok(()) => Err(NativeCaptureError::new(
+        "captureFailed",
+        "The unsupported capture backend returned unexpectedly.",
+      )),
+      Err(error) => Err(error.into()),
     }
-    result?
-  };
-  #[cfg(not(target_os = "windows"))]
-  let (width, height) = unreachable!();
-
-  store
-    .publish(pending, width, height, SystemTime::now())
-    .await
-    .map_err(|_| NativeCaptureError::artifact("The screenshot artifact could not be published."))
+  }
 }
 
 fn output_canvas(request: &RecordingStartRequest) -> Result<(u32, u32), NativeCaptureError> {
@@ -200,7 +208,7 @@ pub async fn visual_recording_start(
   app: AppHandle,
   artifact_store: State<'_, ArtifactStore>,
   controller: State<'_, RecordingController>,
-  engine_state: State<'_, crate::state::AppState>,
+  _engine_state: State<'_, crate::state::AppState>,
   request: RecordingStartRequest,
 ) -> Result<RecordingSnapshot, NativeCaptureError> {
   if request.window_label != "main" {
@@ -275,7 +283,7 @@ pub async fn visual_recording_start(
     let viewport = request.viewport;
     let fps = request.fps;
     let max_duration_seconds = request.max_duration_seconds;
-    let measured_pcm = engine_state.inner().measured_pcm.clone();
+    let measured_pcm = _engine_state.inner().measured_pcm.clone();
     let audio_origin_ns = measured_pcm.timestamp_ns();
     let audio_receiver = if audio_source == RecordingAudioSource::MeasuredSource {
       // Windows devices may deliver one-millisecond buffers while the encoder drains on the video

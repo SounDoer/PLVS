@@ -2,7 +2,9 @@ pub mod audio;
 pub mod state;
 pub mod windows;
 
+#[cfg(target_os = "windows")]
 use std::collections::HashMap;
+#[cfg(target_os = "windows")]
 use std::sync::Mutex;
 
 use serde::Deserialize;
