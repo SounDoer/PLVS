@@ -5,16 +5,18 @@ organized directly by the product resource or operation they address:
 
 ```text
 plvs-cli doctor
+plvs-cli schema list --json
+plvs-cli schema get app.inspect --json
 plvs-cli inspect
 plvs-cli panel ...
 plvs-cli transport ...
 plvs-cli device ...
 ```
 
-`doctor` works when PLVS is closed. Every other current command controls or inspects the same state
-visible in an already-running PLVS window. Those commands require Agent Control to be enabled in
-Settings and are currently available only on Windows. The CLI never starts PLVS implicitly or
-edits its store behind the running app.
+`doctor` and `schema list/get` work when PLVS is closed or Agent Control is disabled. Every
+running-app command controls or inspects the same state visible in an already-running PLVS window.
+Those commands require Agent Control to be enabled in Settings and are currently available only on
+Windows. The CLI never starts PLVS implicitly or edits its store behind the running app.
 
 ## Install Location
 
@@ -78,12 +80,16 @@ Run `doctor --json` first to verify the installed runtime and bundled sidecars.
 
 ```powershell
 plvs-cli doctor [--json] [--out <file>]
+plvs-cli schema list --json
+plvs-cli schema get <command-id> --json
 plvs-cli <command> [options]
 plvs-cli --help
 plvs-cli --version
 ```
 
-Use `plvs-cli --help` for the complete live-control command list. The current families are:
+Use `plvs-cli --help` for the command families. The generated
+[command catalog](agent-control/generated/commands.md) is the complete static reference for CLI
+paths, options, policies, and top-level wire parameters. The current families are:
 
 - `inspect`, `capabilities`, `measurement`, `view`, `visual`, and `wait`;
 - `module`, `workspace`, `panel`, and `axis`;
@@ -91,6 +97,27 @@ Use `plvs-cli --help` for the complete live-control command list. The current fa
 - `theme` and `loudness-profile`;
 - `config`;
 - `transport`, `device`, and `dock`.
+
+### Offline command schema
+
+`schema list` returns a compact ordered catalog; `schema get` returns one full manifest entry:
+
+```powershell
+plvs-cli schema list --json
+plvs-cli schema get visual.recording.start --json
+```
+
+These commands describe the installed CLI and never contact PLVS, so they work with PLVS closed,
+Agent Control disabled, a different running app version, and on platforms without live-control
+transport. An unknown command ID or option returns `invalidArguments` and exit `3`.
+
+Static schema, runtime capabilities, and dynamic descriptions answer different questions:
+
+1. `schema` reports syntax and structural input known by the installed CLI.
+2. `capabilities` reports methods and feature availability accepted by the running app.
+3. Family `describe` commands report current resources, choices, limits, and effective state.
+
+`appVersion` and `cliVersion` in capabilities are independent build identities and may differ.
 
 The library families share one shape:
 

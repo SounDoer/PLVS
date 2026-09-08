@@ -7,6 +7,7 @@ import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { buildSettingsSchema } from "./settingsControl.js";
 import { buildViewDescription, DEFAULT_VIEW } from "./viewControl.js";
+import { commandEntries, commandManifest } from "./commandManifest.js";
 
 /**
  * The reference half of `docs/agent-control/` is written from the schema builders rather than by
@@ -200,6 +201,87 @@ function viewPage() {
   ].join("\n");
 }
 
+function commandValue(schema) {
+  const parts = [schema.type, schema.schemaRef ? `ref ${schema.schemaRef}` : null].filter(Boolean);
+  if (schema.enum) parts.push(`one of ${schema.enum.map(json).join(", ")}`);
+  if (schema.minimum !== undefined || schema.maximum !== undefined) {
+    parts.push(`${schema.minimum ?? "-inf"} to ${schema.maximum ?? "inf"}`);
+  }
+  if (schema.default !== undefined) parts.push(`default ${json(schema.default)}`);
+  return escapeCell(parts.join("; "));
+}
+
+function commandArgumentTable(arguments_) {
+  if (arguments_.length === 0) return "None.";
+  return [
+    "| Name | Maps to | Required | Value |",
+    "| --- | --- | --- | --- |",
+    ...arguments_.map(
+      (argument) =>
+        `| \`${escapeCell(argument.name)}\` | ${argument.mapsTo ? `\`${argument.mapsTo}\`` : "local only"} | ${argument.required ? "yes" : "no"} | ${commandValue(argument.value)} |`
+    ),
+  ].join("\n");
+}
+
+function collectSchemaRefs(schema, found = new Set()) {
+  if (schema?.schemaRef) found.add(schema.schemaRef);
+  for (const child of Object.values(schema?.properties ?? {})) collectSchemaRefs(child, found);
+  if (schema?.items) collectSchemaRefs(schema.items, found);
+  return found;
+}
+
+function commandPage() {
+  const summaryRows = commandEntries.map(
+    (entry) =>
+      `| \`${entry.id}\` | \`${entry.path.join(" ")}\` | ${entry.execution} / ${entry.operation} | ${entry.expectedRevision} | ${entry.dryRun ? "yes" : "no"} | ${entry.outputFile} |`
+  );
+  return [
+    BANNER,
+    "",
+    "# Agent Control — Command Catalog",
+    "",
+    `Manifest version \`${commandManifest.manifestVersion}\`. Entries are shown in stable presentation order.`,
+    "",
+    "| Command ID | CLI path | Execution / operation | Revision | Dry run | Output file |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...summaryRows,
+    "",
+    ...commandEntries.flatMap((entry) => {
+      const references = new Set();
+      collectSchemaRefs(entry.wireParams, references);
+      entry.positionals.forEach(({ value }) => collectSchemaRefs(value, references));
+      entry.options.forEach(({ value }) => collectSchemaRefs(value, references));
+      return [
+        `## \`${entry.id}\``,
+        "",
+        entry.summary,
+        "",
+        `- CLI path: \`${entry.path.join(" ")}\``,
+        `- Execution: \`${entry.execution}\`; operation: \`${entry.operation}\``,
+        `- JSON: \`${entry.json}\`; expected revision: \`${entry.expectedRevision}\`; dry-run: \`${entry.dryRun}\`; output file: \`${entry.outputFile}\``,
+        ...(entry.wireMethod ? [`- Wire method: \`${entry.wireMethod}\``] : []),
+        ...(entry.featureGate ? [`- Feature gate: \`${entry.featureGate}\``] : []),
+        ...(references.size > 0
+          ? [`- Schema references: ${[...references].map((ref) => `\`${ref}\``).join(", ")}`]
+          : []),
+        "",
+        "```text",
+        entry.usage,
+        "```",
+        "",
+        "### Positionals",
+        "",
+        commandArgumentTable(entry.positionals),
+        "",
+        "### Options",
+        "",
+        commandArgumentTable(entry.options),
+        "",
+      ];
+    }),
+  ].join("\n");
+}
+
 function stripState(field) {
   const { current, availability, ...rest } = field;
   void current;
@@ -231,5 +313,11 @@ describe("generated Agent Control reference", () => {
 
   it("documents the View fields", async () => {
     await expect(viewPage()).toMatchFileSnapshot("../../docs/agent-control/generated/view.md");
+  });
+
+  it("documents every public CLI command from the manifest", async () => {
+    await expect(commandPage()).toMatchFileSnapshot(
+      "../../docs/agent-control/generated/commands.md"
+    );
   });
 });

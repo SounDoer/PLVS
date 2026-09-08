@@ -15,33 +15,23 @@ source of truth for the complete public control surface.
 
 ## Current implementation
 
-The development-identity build exposes all approved command families:
+The development-identity build exposes all approved Agent Control families. The generated
+[command catalog](generated/commands.md) is the complete source-derived reference for command IDs,
+CLI paths, policies, arguments, and top-level wire parameters; the handwritten pages in this
+directory own workflows, safety behavior, and dynamic semantics.
 
-```text
-app.capabilities
-app.inspect
-app.wait
-measurement.describe / measurement.inspect / measurement.wait
-view.describe / view.inspect / view.update / view.reset
-module.list / module.describe
-workspace.applyLayout
-panel.describe / panel.update / panel.reset
-axis.describe / axis.inspect / axis shared / axis panel
-preset.list / preset.describe / preset save / preset update / preset apply
-preset.rename / preset.delete / preset.reorder
-preset export / preset import
-theme.list / theme.inspect / theme.describe / theme.select / theme.followSystem
-theme create / update / rename / duplicate / delete / reorder / export / import
-loudnessProfile.list / loudnessProfile.describe / loudnessProfile.select
-loudnessProfile create / update / rename / delete / reorder / export / import
-config export / config import
-settings.describe / settings.inspect / settings.update
-transport.inspect / transport source / transport live / transport file
-device.list / device.inspect / device.select
-dock.describe / dock.inspect / dock enter / dock exit / dock layout / dock panel
-visual.describe / visual.screenshot
-visual.recording.start / visual.recording.inspect / visual.recording.wait / visual.recording.stop
+The installed CLI also exposes offline discovery:
+
+```powershell
+npm run desktop:control -- schema list --json
+npm run desktop:control -- schema get visual.recording.start --json
 ```
+
+`schema` describes the installed CLI without contacting PLVS. `app.capabilities` describes the
+methods and features accepted by the running app, while family `describe` methods report current
+dynamic resources, choices, and limits. Version skew is valid: `cliVersion` identifies the CLI and
+`appVersion` identifies the running app; callers must use capabilities rather than assuming they
+match.
 
 The repository entrypoint quietly builds the independent `src-tauri/plvs-cli` workspace package,
 selects the development identity, and forwards the flat CLI command:
@@ -75,7 +65,7 @@ paths as the GUI.
 
 ## Implementation status
 
-The foundation, Module Control, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
+The foundation, command manifest and offline schema export, Module Control, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
 Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Measurement
 Wait, View Control, Visual Capture, Library Transfer, and Configuration Transfer are implemented. See
 [`measurements.md`](measurements.md),

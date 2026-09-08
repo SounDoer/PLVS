@@ -34,8 +34,13 @@ describe("current CLI documentation", () => {
     expect(cli).toContain("plvs-cli inspect --json");
     expect(cli).toContain("plvs-cli config export --json");
     expect(cli).toContain("plvs-cli config import <file|-> --expected-revision <n> --json");
+    expect(cli).toContain("plvs-cli schema list --json");
+    expect(cli).toContain("plvs-cli schema get <command-id> --json");
+    expect(cli).toContain("agent-control/generated/commands.md");
     expect(readme).toContain("plvs-cli workspace apply");
     expect(agentControl).toContain("`methods`, and `features`");
+    expect(agentControl).toContain("generated/commands.md");
+    expect(agentControl).toContain("`cliVersion`");
   });
 
   it("uses current device discovery and harness validation guidance", () => {
@@ -52,6 +57,7 @@ describe("current CLI documentation", () => {
     const agentControl = read("docs", "agent-control", "README.md");
     const profiles = read("docs", "agent-control", "loudness-profiles.md");
     const libraries = read("docs", "agent-control", "libraries.md");
+    const commands = read("docs", "agent-control", "generated", "commands.md");
     const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
 
     for (const command of [
@@ -72,7 +78,8 @@ describe("current CLI documentation", () => {
     expect(profiles).toContain("invalidPermutation");
     expect(profiles).toContain("editorActive");
     expect(cli).toContain("loudness-profile describe <id> --json");
-    expect(agentControl).toContain("loudnessProfile.describe / loudnessProfile.select");
+    expect(commands).toContain("## `loudnessProfile.describe`");
+    expect(commands).toContain("## `loudnessProfile.select`");
     expect(libraries).toContain("[Loudness Profile Control](loudness-profiles.md)");
     expect(roadmap).toContain("### Stage 2: Loudness Profile editing — complete");
   });
@@ -84,6 +91,7 @@ describe("current CLI documentation", () => {
     const settings = read("docs", "agent-control", "settings.md");
     const generatedSettings = read("docs", "agent-control", "generated", "settings.md");
     const libraries = read("docs", "agent-control", "libraries.md");
+    const commands = read("docs", "agent-control", "generated", "commands.md");
     const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
 
     for (const command of [
@@ -108,7 +116,8 @@ describe("current CLI documentation", () => {
     expect(themes).toContain("invalidPermutation");
     expect(themes).toContain("editorActive");
     expect(cli).toContain("theme follow-system --expected-revision <n> --json");
-    expect(agentControl).toContain("theme.list / theme.inspect / theme.describe / theme.select");
+    expect(commands).toContain("## `theme.list`");
+    expect(commands).toContain("## `theme.select`");
     expect(libraries).toContain("[Theme Control](themes.md)");
     expect(settings).toContain("`appearance` is an unknown control");
     expect(generatedSettings).not.toContain("appearance");
@@ -123,6 +132,7 @@ describe("current CLI documentation", () => {
     const agentControl = read("docs", "agent-control", "README.md");
     const devices = read("docs", "agent-control", "devices.md");
     const transport = read("docs", "agent-control", "transport.md");
+    const commands = read("docs", "agent-control", "generated", "commands.md");
     const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
 
     for (const command of ["list", "inspect", "select"]) {
@@ -141,7 +151,8 @@ describe("current CLI documentation", () => {
     expect(cli).toContain(
       "device select <device-id|default> --expected-revision <n> --expected-generation <n>"
     );
-    expect(agentControl).toContain("device.list / device.inspect / device.select");
+    expect(commands).toContain("## `device.list`");
+    expect(commands).toContain("## `device.select`");
     expect(transport).toContain("[Device Control](devices.md)");
     expect(transport).toContain("device-enumeration");
     expect(roadmap).toContain("### Stage 4: Device Control — complete");
@@ -155,6 +166,7 @@ describe("current CLI documentation", () => {
     const cli = read("docs", "cli.md");
     const agentControl = read("docs", "agent-control", "README.md");
     const visual = read("docs", "agent-control", "visual.md");
+    const commands = read("docs", "agent-control", "generated", "commands.md");
     const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
     const implementationPlan = read(
       "docs",
@@ -187,7 +199,8 @@ describe("current CLI documentation", () => {
     expect(visual).toContain("4 GiB");
     expect(visual).toContain("Windows only");
     expect(visual).toContain("File decoder PCM is never recorded");
-    expect(agentControl).toContain("visual.recording.start / visual.recording.inspect");
+    expect(commands).toContain("## `visual.recording.start`");
+    expect(commands).toContain("## `visual.recording.inspect`");
     expect(roadmap).toContain("### Stage 5: Visual Capture — complete");
     expect(roadmap).not.toContain("**Measurement inspect/wait** after");
     expect(roadmap).not.toContain("MCP, screenshots, and window control");
