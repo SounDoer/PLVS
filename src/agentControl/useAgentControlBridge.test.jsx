@@ -18,7 +18,7 @@ import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
-import { runningAppCommandEntries } from "./commandManifest.js";
+import { commandEntriesForFamily, runningAppCommandEntries } from "./commandManifest.js";
 import { canonicalManifestParams } from "./commandManifestTestFixtures.js";
 
 const CLI_V1_FIXTURES = JSON.parse(
@@ -1124,7 +1124,7 @@ describe("useAgentControlBridge", () => {
       mount();
       await waitUntilReady();
       const capabilities = await send(request("app.capabilities"));
-      for (const method of ["device.list", "device.inspect", "device.select"]) {
+      for (const { wireMethod: method } of commandEntriesForFamily("device")) {
         expect(capabilities.result.methods).toContain(method);
       }
 

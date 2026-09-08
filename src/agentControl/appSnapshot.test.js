@@ -6,6 +6,7 @@ import {
   readAgentControlRuntime,
 } from "./appSnapshot.js";
 import { normalizeAgentControlRequest } from "./protocol.js";
+import { commandEntriesForFamily } from "./commandManifest.js";
 
 function request(method, params = {}) {
   return { jsonrpc: "2.0", id: "req-1", method, params };
@@ -272,7 +273,7 @@ describe("agent-control app snapshots", () => {
 
   it("advertises every validated Device Control method", () => {
     const capabilities = buildAgentControlCapabilities(runtime, 4);
-    for (const method of ["device.list", "device.inspect", "device.select"]) {
+    for (const { wireMethod: method } of commandEntriesForFamily("device")) {
       expect(capabilities.methods).toContain(method);
       const params =
         method === "device.select"
