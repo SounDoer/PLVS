@@ -125,6 +125,13 @@ impl MeasuredPcmSubscriptions {
     channels: u16,
     channel_layout: ChannelLayoutSetting,
   ) {
+    let Ok(mut subscribers) = self.subscribers.lock() else {
+      return;
+    };
+    subscribers.retain(|subscriber| subscriber.strong_count() > 0);
+    if subscribers.is_empty() {
+      return;
+    }
     let frame_count = samples.len() / usize::from(channels.max(1));
     // The device callback cadence jitters even when its PCM is continuous. Anchor the first buffer
     // to the worker's monotonic clock, then advance by sample count until a real gap or sample-rate
@@ -137,9 +144,6 @@ impl MeasuredPcmSubscriptions {
       .map(|mut clock| clock.place(observed_end_ns, frame_count, sample_rate))
       .unwrap_or(observed_end_ns);
     let sequence = self.sequence.fetch_add(1, Ordering::Relaxed);
-    let Ok(mut subscribers) = self.subscribers.lock() else {
-      return;
-    };
     subscribers.retain(|subscriber| {
       let Some(subscriber) = subscriber.upgrade() else {
         return false;
