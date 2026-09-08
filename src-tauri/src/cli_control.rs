@@ -17,29 +17,8 @@ use crate::cli_contract::CLI_SCHEMA_VERSION;
 const MAX_SAFE_REVISION: u64 = 9_007_199_254_740_991;
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
-pub const COMMAND_NAMES: &[&str] = &[
-  "capabilities",
-  "inspect",
-  "measurement",
-  "view",
-  "wait",
-  "module",
-  "workspace",
-  "panel",
-  "axis",
-  "preset",
-  "theme",
-  "loudness-profile",
-  "config",
-  "settings",
-  "transport",
-  "device",
-  "dock",
-  "visual",
-];
-
 pub fn is_command(command: &str) -> bool {
-  COMMAND_NAMES.contains(&command)
+  crate::cli_manifest::command_families("runningApp").contains(&command)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2134,60 +2113,35 @@ fn is_help(value: &str) -> bool {
   matches!(value, "--help" | "-h" | "help")
 }
 
-fn base_help_text() -> &'static str {
-  "PLVS CLI - Agent Control\n\nUsage:\n  plvs-cli capabilities --json\n  plvs-cli inspect --json\n  plvs-cli measurement describe --json\n  plvs-cli measurement inspect --json\n  plvs-cli workspace apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel describe <panel-id> --json\n  plvs-cli panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis describe --json\n  plvs-cli axis inspect --json\n  plvs-cli axis shared update <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis shared reset <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel update <panel-id> <frequency|time> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli axis panel reset <panel-id> <frequency|time> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset list --json\n  plvs-cli preset describe <preset-id> --json\n  plvs-cli preset save <name> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset update <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]\n  plvs-cli preset rename <preset-id> <name> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset delete <preset-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset reorder <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli preset export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli preset import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli theme list --json\n  plvs-cli theme export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli theme import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli loudness-profile list --json\n  plvs-cli loudness-profile export <--all|--ids <id,...>> --json [--out <file>]\n  plvs-cli loudness-profile import <file|-> --json --expected-revision <n> [--dry-run]\n  plvs-cli settings describe --json\n  plvs-cli settings inspect --json\n  plvs-cli settings update <file|-> --json [--expected-revision <n>] [--allow-measurement-restart] [--dry-run]\n  plvs-cli wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli transport inspect --json\n  plvs-cli transport source <live|file> --json [--expected-revision <n>] [--allow-stop-file-analysis] [--dry-run]\n  plvs-cli transport live <start|stop> --json [--expected-revision <n>] [--allow-stop-file-analysis]\n  plvs-cli transport live clear --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file analyze <path> --json [--expected-revision <n>]\n  plvs-cli transport file <reanalyze|stop> <session-id> --json [--expected-revision <n>]\n  plvs-cli transport file <select|remove> <session-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli transport file clear --json [--expected-revision <n>] [--dry-run]\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure"
-}
-
-pub fn help_text() -> &'static str {
-  static HELP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-  HELP
-    .get_or_init(|| {
-      base_help_text().replacen(
-        "\n  plvs-cli workspace apply",
-        "\n  plvs-cli module list --json\n  plvs-cli module describe <module-id> --json\n  plvs-cli workspace apply",
-        1,
-      )
-      .replacen(
-        "\n  plvs-cli workspace apply",
-        "\n  plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json\n  plvs-cli view describe --json\n  plvs-cli view inspect --json\n  plvs-cli view update <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli view reset --expected-revision <n> --json [--dry-run]\n  plvs-cli workspace apply",
-        1,
-      )
-      .replacen(
-        "\n\nControls the already-running",
-        "\n  plvs-cli device list --json\n  plvs-cli device inspect --json\n  plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]\n  plvs-cli dock describe --json\n  plvs-cli dock inspect --json\n  plvs-cli dock enter [--edge top|bottom] [--monitor <id>] [--reserve-space true|false] [--height <n>] --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock exit --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock layout apply <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel describe <panel-id> --json\n  plvs-cli dock panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli dock panel reset <panel-id> --json [--expected-revision <n>] [--dry-run]\n  plvs-cli visual describe --json\n  plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json\n  plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json\n  plvs-cli visual recording inspect <recording-id> --json\n  plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file>] --json\n  plvs-cli visual recording stop <recording-id> [--out <file>] --json\n\nControls the already-running",
-        1,
-      )
-      .replacen(
-        "\n  plvs-cli settings describe",
-        "\n  plvs-cli config export --json [--out <file>]\n  plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli settings describe",
-        1,
-      )
-      .replacen(
-        "\n  plvs-cli theme export",
-        "\n  plvs-cli theme inspect --json\n  plvs-cli theme describe <theme-id> --json\n  plvs-cli theme select <theme-id> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme follow-system --expected-revision <n> --json [--dry-run]\n  plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme update <theme-id> <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme rename <theme-id> <name> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme duplicate <theme-id> <name> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme delete <theme-id> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli theme export",
-        1,
-      )
-      .replacen(
-        "\n  plvs-cli loudness-profile export",
-        "\n  plvs-cli loudness-profile describe <profile-id> --json\n  plvs-cli loudness-profile select <profile-id|off> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile update <profile-id> <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile rename <profile-id> <name> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile delete <profile-id> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]\n  plvs-cli loudness-profile export",
-        1,
-      )
-      .replace("[--expected-revision <n>]", "--expected-revision <n>")
-      .replace(
-        "Exit codes:\n  0  command completed successfully\n  1  the running app returned a valid command error\n  2  invalid input, discovery, authentication, or transport failure",
-        "Exit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete",
-      )
+pub fn help_text() -> String {
+  let usage = crate::cli_manifest::command_manifest()
+    .map(|manifest| {
+      manifest
+        .commands
+        .iter()
+        .filter(|entry| entry.execution == "runningApp")
+        .map(|entry| format!("  {}", entry.usage))
+        .collect::<Vec<_>>()
+        .join("\n")
     })
-    .as_str()
+    .unwrap_or_default();
+  format!(
+    "PLVS CLI - Agent Control\n\nUsage:\n{usage}\n\nControls the already-running PLVS GUI with the same app identity as this CLI through its authenticated local endpoint.\nUse - to read one JSON document from stdin. This command family requires Agent Control\nto be enabled in PLVS Settings; it does not launch PLVS and does not use PATH discovery.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
+  )
 }
 
 pub fn family_help_text(command: &str) -> String {
-  let prefix = format!("  plvs-cli {command}");
-  let usage = help_text()
-    .lines()
-    .filter(|line| line.starts_with(&prefix))
-    .collect::<Vec<_>>()
-    .join("\n");
+  let usage = crate::cli_manifest::command_manifest()
+    .map(|manifest| {
+      manifest
+        .commands
+        .iter()
+        .filter(|entry| entry.execution == "runningApp" && entry.family == command)
+        .map(|entry| format!("  {}", entry.usage))
+        .collect::<Vec<_>>()
+        .join("\n")
+    })
+    .unwrap_or_default();
 
   debug_assert!(!usage.is_empty(), "missing help lines for {command}");
   format!(
@@ -4442,13 +4396,51 @@ mod tests {
   }
 
   #[test]
-  fn help_marks_revisions_as_required_and_lists_v1_exit_classes() {
+  fn help_matches_manifest_revision_policies_and_lists_v1_exit_classes() {
     let help = help_text();
-    assert!(!help.contains("[--expected-revision"));
+    for entry in crate::cli_manifest::command_manifest()
+      .unwrap()
+      .commands
+      .iter()
+      .filter(|entry| entry.execution == "runningApp")
+    {
+      match entry.expected_revision.as_str() {
+        "required" => assert!(entry.usage.contains(" --expected-revision <n>")),
+        "optional" => assert!(entry.usage.contains("[--expected-revision <n>]")),
+        "none" => assert!(!entry.usage.contains("--expected-revision")),
+        policy => panic!("unexpected revision policy {policy}"),
+      }
+    }
     for code in 0..=5 {
       assert!(
         help.contains(&format!("  {code}  ")),
         "missing exit code {code}"
+      );
+    }
+  }
+
+  #[test]
+  fn manifest_entries_appear_once_in_scoped_help_and_harness_commands_never_appear() {
+    let manifest = crate::cli_manifest::command_manifest().unwrap();
+    for entry in manifest
+      .commands
+      .iter()
+      .filter(|entry| entry.execution == "runningApp")
+    {
+      let help = family_help_text(&entry.family);
+      let expected = format!("  {}", entry.usage);
+      assert_eq!(
+        help.lines().filter(|line| *line == expected).count(),
+        1,
+        "wrong help count for {}",
+        entry.id
+      );
+    }
+    let help = help_text();
+    for internal in ["--harness", "plvs-cli analyze", "plvs-cli capture"] {
+      assert!(
+        !help.contains(internal),
+        "advertised internal command: {internal}"
       );
     }
   }

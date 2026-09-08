@@ -536,21 +536,58 @@ fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String>
   Ok(())
 }
 
-fn help_text(topic: HelpTopic) -> &'static str {
+fn root_help_text() -> String {
+  let offline = crate::cli_manifest::command_manifest()
+    .map(|manifest| {
+      manifest
+        .commands
+        .iter()
+        .filter(|entry| entry.execution == "offline")
+        .map(|entry| format!("  {}", entry.usage))
+        .collect::<Vec<_>>()
+        .join("\n")
+    })
+    .unwrap_or_default();
+  let running = crate::cli_manifest::command_families("runningApp")
+    .into_iter()
+    .map(|family| {
+      crate::cli_manifest::command_manifest()
+        .ok()
+        .and_then(|manifest| {
+          manifest
+            .commands
+            .iter()
+            .find(|entry| entry.execution == "runningApp" && entry.family == family)
+        })
+        .filter(|entry| entry.path.len() == 1)
+        .map_or_else(
+          || format!("  plvs-cli {family} ..."),
+          |entry| format!("  {}", entry.usage),
+        )
+    })
+    .collect::<Vec<_>>()
+    .join("\n");
+  format!(
+    "PLVS CLI\n\nDiagnostics:\n{offline}\n\nRunning app:\n{running}\n\nAgent usage:\n  Add --json for stable machine-readable output.\n  Running-app commands require Agent Control to be enabled and never launch PLVS.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
+  )
+}
+
+fn help_text(topic: HelpTopic) -> String {
   match topic {
-    HelpTopic::Root => {
-      "PLVS CLI\n\nDiagnostics:\n  plvs-cli doctor [--json] [--out <file>]\n\nRunning app:\n  plvs-cli capabilities --json\n  plvs-cli inspect --json\n  plvs-cli measurement <describe|inspect|wait> ... --json\n  plvs-cli view <describe|inspect|update|reset> ... --json\n  plvs-cli wait --after-revision <n> [--timeout-ms <n>] --json\n  plvs-cli <module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...\n\nAgent usage:\n  Add --json for stable machine-readable output.\n  Running-app commands require Agent Control to be enabled and never launch PLVS.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
-    }
+    HelpTopic::Root => root_help_text(),
     HelpTopic::Doctor => {
-      "PLVS CLI - doctor\n\nUsage:\n  plvs-cli doctor [--json] [--out <file>]\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error, or output failed\n  3  invalid command input"
+      let usage = crate::cli_manifest::command_by_id("doctor")
+        .map(|entry| entry.usage.as_str())
+        .unwrap_or("plvs-cli doctor [--json] [--out <file>]");
+      format!("PLVS CLI - doctor\n\nUsage:\n  {usage}\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error, or output failed\n  3  invalid command input")
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
-      "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command."
+      "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Capture => {
-      "PLVS internal capture harness - capture\n\nUsage:\n  plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n\nRepository-owned live capture for smoke and soak verification. This is not a public CLI command."
+      "PLVS internal capture harness - capture\n\nUsage:\n  plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n\nRepository-owned live capture for smoke and soak verification. This is not a public CLI command.".to_string()
     }
   }
 }
@@ -936,14 +973,35 @@ mod tests {
   #[test]
   fn root_help_exposes_flat_control_families() {
     let text = help_text(HelpTopic::Root);
-    for command in [
-      "plvs-cli doctor",
-      "plvs-cli capabilities",
-      "plvs-cli inspect",
-      "plvs-cli wait",
-      "workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual",
-    ] {
-      assert!(text.contains(command), "missing public command: {command}");
+    let manifest = crate::cli_manifest::command_manifest().unwrap();
+    for entry in manifest
+      .commands
+      .iter()
+      .filter(|entry| entry.execution == "offline")
+    {
+      assert_eq!(
+        text.matches(&entry.usage).count(),
+        1,
+        "wrong root count for {}",
+        entry.id
+      );
+    }
+    for family in crate::cli_manifest::command_families("runningApp") {
+      let first = manifest
+        .commands
+        .iter()
+        .find(|entry| entry.execution == "runningApp" && entry.family == family)
+        .unwrap();
+      let line = if first.path.len() == 1 {
+        format!("  {}", first.usage)
+      } else {
+        format!("  plvs-cli {family} ...")
+      };
+      assert_eq!(
+        text.lines().filter(|candidate| *candidate == line).count(),
+        1,
+        "wrong root count for {family}"
+      );
     }
     assert!(!text.contains("plvs-cli app"));
     for command in [

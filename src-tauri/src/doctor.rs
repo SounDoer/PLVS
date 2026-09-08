@@ -378,8 +378,8 @@ fn path_to_string(path: PathBuf) -> String {
 }
 
 fn check_capabilities() -> DoctorCheck {
-  let mut commands = vec!["doctor"];
-  commands.extend_from_slice(crate::cli_control::COMMAND_NAMES);
+  let mut commands = crate::cli_manifest::command_families("offline");
+  commands.extend(crate::cli_manifest::command_families("runningApp"));
   info_check(
     "capabilities",
     "CLI capabilities for this build",

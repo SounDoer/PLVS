@@ -235,6 +235,22 @@ pub fn command_by_id(id: &str) -> Option<&'static CommandEntry> {
     .find(|command| command.id == id)
 }
 
+pub fn command_families(execution: &str) -> Vec<&'static str> {
+  let Ok(manifest) = command_manifest() else {
+    return Vec::new();
+  };
+  let mut seen = HashSet::new();
+  manifest
+    .commands
+    .iter()
+    .filter(|command| command.execution == execution)
+    .filter_map(|command| {
+      let family = command.family.as_str();
+      seen.insert(family).then_some(family)
+    })
+    .collect()
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
