@@ -25,6 +25,9 @@ use recording::{
 #[cfg(target_os = "windows")]
 use windows::WindowsPlatform;
 
+#[cfg(target_os = "windows")]
+const RECORDING_PCM_QUEUE_CAPACITY: usize = 256;
+
 #[derive(Default)]
 pub struct ScreenshotCaptureState {
   active: Arc<AtomicBool>,
@@ -274,7 +277,10 @@ pub async fn visual_recording_start(
     let measured_pcm = engine_state.inner().measured_pcm.clone();
     let audio_origin_ns = measured_pcm.timestamp_ns();
     let audio_receiver = if audio_source == RecordingAudioSource::MeasuredSource {
-      match measured_pcm.subscribe(8) {
+      // Windows devices may deliver one-millisecond buffers while the encoder drains on the video
+      // cadence. Keep the queue bounded but large enough for the 100 ms A/V settlement window and
+      // ordinary scheduler jitter, so a healthy source does not manufacture backpressure gaps.
+      match measured_pcm.subscribe(RECORDING_PCM_QUEUE_CAPACITY) {
         Ok(receiver) => Some(receiver),
         Err(reason) => {
           controller.registry().fail(
@@ -446,5 +452,11 @@ mod tests {
       audio_state: recording::RecordingAudioState::Active,
     };
     assert_eq!(output_canvas(&request).unwrap(), (126, 64));
+  }
+
+  #[cfg(target_os = "windows")]
+  #[test]
+  fn recording_pcm_queue_covers_the_audio_settlement_window_at_one_ms_cadence() {
+    assert!(RECORDING_PCM_QUEUE_CAPACITY >= 100);
   }
 }

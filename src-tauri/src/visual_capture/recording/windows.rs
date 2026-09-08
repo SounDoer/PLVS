@@ -906,15 +906,14 @@ mod windows_backend {
     max_frame: u64,
   ) -> Result<(), windows62::core::Error> {
     while let Some(frame) = deferred.take().or_else(|| receiver.try_recv()) {
-      let input_frames = frame.samples.len() / usize::from(frame.channels.max(1));
       let relative_ns = frame
         .timestamp_ns
         .saturating_sub(timeline_origin_ns(timeline));
       let start_frame = relative_ns.saturating_mul(u64::from(OUTPUT_SAMPLE_RATE)) / 1_000_000_000;
-      let estimated_frames = (input_frames as u64)
-        .saturating_mul(u64::from(OUTPUT_SAMPLE_RATE))
-        .div_ceil(u64::from(frame.sample_rate.max(1)));
-      if start_frame.saturating_add(estimated_frames) > max_frame {
+      // A completed PCM buffer may cross the conservative settlement boundary. It is still safe
+      // to encode because that boundary trails video by 100 ms. Deferring the whole buffer and
+      // then filling up to the boundary with silence discards its leading samples every video tick.
+      if audio_frame_starts_at_or_after_boundary(start_frame, max_frame) {
         *deferred = Some(frame);
         break;
       }
@@ -923,6 +922,10 @@ mod windows_backend {
       write_audio_packets(encoder, packets)?;
     }
     Ok(())
+  }
+
+  fn audio_frame_starts_at_or_after_boundary(start_frame: u64, max_frame: u64) -> bool {
+    start_frame >= max_frame
   }
 
   fn timeline_origin_ns(timeline: &AudioTimeline) -> u64 {
@@ -1220,6 +1223,13 @@ mod windows_backend {
           Err("invalidGeometry")
         );
       }
+    }
+
+    #[test]
+    fn settlement_accepts_a_completed_audio_buffer_that_crosses_the_boundary() {
+      assert!(!audio_frame_starts_at_or_after_boundary(1_440, 1_600));
+      assert!(audio_frame_starts_at_or_after_boundary(1_600, 1_600));
+      assert!(audio_frame_starts_at_or_after_boundary(1_920, 1_600));
     }
 
     #[test]

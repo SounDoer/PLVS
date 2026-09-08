@@ -33,6 +33,38 @@ struct MeasuredPcmSubscriber {
   active: AtomicBool,
 }
 
+const MAX_PCM_TIMESTAMP_JITTER_NS: u64 = 50_000_000;
+
+#[derive(Default)]
+struct PcmTimestampClock {
+  next_ns: Option<u64>,
+  sample_rate: u32,
+}
+
+impl PcmTimestampClock {
+  fn place(&mut self, observed_end_ns: u64, frame_count: usize, sample_rate: u32) -> u64 {
+    if sample_rate == 0 {
+      self.next_ns = None;
+      self.sample_rate = 0;
+      return observed_end_ns;
+    }
+    let duration_ns = (frame_count as u64).saturating_mul(1_000_000_000) / u64::from(sample_rate);
+    let observed_start_ns = observed_end_ns.saturating_sub(duration_ns);
+    let timestamp_ns = match self.next_ns {
+      Some(expected_ns)
+        if self.sample_rate == sample_rate
+          && expected_ns.abs_diff(observed_start_ns) <= MAX_PCM_TIMESTAMP_JITTER_NS =>
+      {
+        expected_ns
+      }
+      _ => observed_start_ns,
+    };
+    self.next_ns = Some(timestamp_ns.saturating_add(duration_ns));
+    self.sample_rate = sample_rate;
+    timestamp_ns
+  }
+}
+
 /// Runtime registry for worker-side consumers of the same source PCM that PLVS meters.
 ///
 /// Publishing happens only after the realtime callback has handed its pooled buffer to the normal
@@ -41,6 +73,7 @@ struct MeasuredPcmSubscriber {
 pub struct MeasuredPcmSubscriptions {
   epoch: Instant,
   sequence: AtomicU64,
+  timestamp_clock: Mutex<PcmTimestampClock>,
   subscribers: Mutex<Vec<Weak<MeasuredPcmSubscriber>>>,
 }
 
@@ -49,6 +82,7 @@ impl Default for MeasuredPcmSubscriptions {
     Self {
       epoch: Instant::now(),
       sequence: AtomicU64::new(0),
+      timestamp_clock: Mutex::new(PcmTimestampClock::default()),
       subscribers: Mutex::new(Vec::new()),
     }
   }
@@ -92,14 +126,16 @@ impl MeasuredPcmSubscriptions {
     channel_layout: ChannelLayoutSetting,
   ) {
     let frame_count = samples.len() / usize::from(channels.max(1));
-    let duration_ns = if sample_rate == 0 {
-      0
-    } else {
-      (frame_count as u64).saturating_mul(1_000_000_000) / u64::from(sample_rate)
-    };
-    // The worker observes a completed device buffer. Backdate to its first sample so the recorder
-    // does not add one callback-buffer of A/V latency.
-    let timestamp_ns = self.timestamp_ns().saturating_sub(duration_ns);
+    // The device callback cadence jitters even when its PCM is continuous. Anchor the first buffer
+    // to the worker's monotonic clock, then advance by sample count until a real gap or sample-rate
+    // transition occurs. Otherwise alternating late/early callbacks become false silence plus
+    // trimmed source PCM in a recording.
+    let observed_end_ns = self.timestamp_ns();
+    let timestamp_ns = self
+      .timestamp_clock
+      .lock()
+      .map(|mut clock| clock.place(observed_end_ns, frame_count, sample_rate))
+      .unwrap_or(observed_end_ns);
     let sequence = self.sequence.fetch_add(1, Ordering::Relaxed);
     let Ok(mut subscribers) = self.subscribers.lock() else {
       return;
@@ -209,7 +245,7 @@ pub trait AudioCapture: Send + Sync {
 
 #[cfg(test)]
 mod measured_pcm_tests {
-  use super::MeasuredPcmSubscriptions;
+  use super::{MeasuredPcmSubscriptions, PcmTimestampClock};
   use crate::engine::ChannelLayoutSetting;
 
   #[test]
@@ -231,6 +267,16 @@ mod measured_pcm_tests {
     let second = receiver.try_recv().expect("recycled frame");
     assert_eq!(second.samples, vec![0.75]);
     assert_eq!(second.sequence, 1);
+  }
+
+  #[test]
+  fn sample_clock_smooths_callback_jitter_but_preserves_real_gaps_and_rate_changes() {
+    let mut clock = PcmTimestampClock::default();
+    assert_eq!(clock.place(1_000_000, 48, 48_000), 0);
+    assert_eq!(clock.place(2_400_000, 48, 48_000), 1_000_000);
+    assert_eq!(clock.place(3_600_000, 48, 48_000), 2_000_000);
+    assert_eq!(clock.place(104_600_000, 48, 48_000), 103_600_000);
+    assert_eq!(clock.place(105_600_000, 44, 44_100), 104_602_268);
   }
 
   #[test]
