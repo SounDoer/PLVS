@@ -16,7 +16,7 @@ function changed(mutator) {
 describe("command manifest", () => {
   it("loads one immutable catalog without React or runtime state", () => {
     expect(commandManifest.manifestVersion).toBe(1);
-    expect(commandEntries).toHaveLength(90);
+    expect(commandEntries).toHaveLength(92);
     expect(runningAppCommandEntries).toHaveLength(89);
     expect(Object.isFrozen(commandManifest)).toBe(true);
     expect(Object.isFrozen(commandEntries[0].wireParams)).toBe(true);
@@ -52,7 +52,14 @@ describe("command manifest", () => {
       json: "optional",
       wireParams: { type: "object", additionalProperties: false },
     });
-    expect(commandEntryById.has("schema.list")).toBe(false);
+    expect(commandEntryById.get("schema.list")).toMatchObject({
+      execution: "offline",
+      operation: "query",
+      json: "required",
+    });
+    expect(commandEntryById.get("schema.get").positionals).toEqual([
+      expect.objectContaining({ name: "command-id", mapsTo: "commandId", required: true }),
+    ]);
     expect(commandEntries.some(({ path }) => path.includes("--harness"))).toBe(false);
   });
 

@@ -251,6 +251,71 @@ pub fn command_families(execution: &str) -> Vec<&'static str> {
     .collect()
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandSummary<'a> {
+  pub id: &'a str,
+  pub family: &'a str,
+  pub path: &'a [String],
+  pub summary: &'a str,
+  pub execution: &'a str,
+  pub operation: &'a str,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub wire_method: Option<&'a str>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub feature_gate: Option<&'a str>,
+}
+
+impl<'a> From<&'a CommandEntry> for CommandSummary<'a> {
+  fn from(entry: &'a CommandEntry) -> Self {
+    Self {
+      id: &entry.id,
+      family: &entry.family,
+      path: &entry.path,
+      summary: &entry.summary,
+      execution: &entry.execution,
+      operation: &entry.operation,
+      wire_method: entry.wire_method.as_deref(),
+      feature_gate: entry.feature_gate.as_deref(),
+    }
+  }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaListResult<'a> {
+  pub manifest_version: u32,
+  pub commands: Vec<CommandSummary<'a>>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaGetResult<'a> {
+  pub manifest_version: u32,
+  pub command: &'a CommandEntry,
+}
+
+pub fn schema_list_result(manifest: &CommandManifest) -> SchemaListResult<'_> {
+  SchemaListResult {
+    manifest_version: manifest.manifest_version,
+    commands: manifest.commands.iter().map(CommandSummary::from).collect(),
+  }
+}
+
+pub fn schema_get_result<'a>(
+  manifest: &'a CommandManifest,
+  id: &str,
+) -> Option<SchemaGetResult<'a>> {
+  manifest
+    .commands
+    .iter()
+    .find(|command| command.id == id)
+    .map(|command| SchemaGetResult {
+      manifest_version: manifest.manifest_version,
+      command,
+    })
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -259,7 +324,7 @@ mod tests {
   fn embedded_manifest_is_valid_and_complete() {
     let manifest = command_manifest().unwrap();
     assert_eq!(manifest.manifest_version, 1);
-    assert_eq!(manifest.commands.len(), 90);
+    assert_eq!(manifest.commands.len(), 92);
     assert_eq!(
       manifest
         .commands
@@ -275,7 +340,7 @@ mod tests {
         .as_deref(),
       Some("visual.recording")
     );
-    assert!(command_by_id("schema.list").is_none());
+    assert_eq!(command_by_id("schema.list").unwrap().execution, "offline");
   }
 
   #[test]

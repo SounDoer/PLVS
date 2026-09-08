@@ -5112,6 +5112,77 @@
         "required": [],
         "properties": {}
       }
+    },
+    {
+      "id": "schema.list",
+      "family": "schema",
+      "path": ["schema", "list"],
+      "usage": "plvs-cli schema list --json",
+      "summary": "List the installed CLI command catalog.",
+      "execution": "offline",
+      "operation": "query",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "schema.get",
+      "family": "schema",
+      "path": ["schema", "get"],
+      "usage": "plvs-cli schema get <command-id> --json",
+      "summary": "Get the installed CLI schema for one command.",
+      "execution": "offline",
+      "operation": "query",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "command-id",
+          "mapsTo": "commandId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["commandId"],
+        "properties": {
+          "commandId": {
+            "type": "string"
+          }
+        }
+      }
     }
   ]
 }

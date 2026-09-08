@@ -4,6 +4,7 @@
 //! linked into the installer only once.
 
 use std::fs;
+use std::io::{self, Write};
 use std::process::ExitCode;
 
 use serde::Serialize;
@@ -35,6 +36,8 @@ enum CliCommand {
     json: bool,
     out: Option<String>,
   },
+  SchemaList,
+  SchemaGet(String),
   #[cfg(any(feature = "capture-harness", test))]
   Analyze {
     path: String,
@@ -55,6 +58,7 @@ enum CliCommand {
 enum HelpTopic {
   Root,
   Doctor,
+  Schema,
   #[cfg(any(feature = "capture-harness", test))]
   Analyze,
   #[cfg(any(feature = "capture-harness", test))]
@@ -67,12 +71,13 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
       Ok(CliCommand::Help(HelpTopic::Root))
     }
     [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
+    [command, rest @ ..] if command == "schema" => parse_schema_args(rest),
     [command, ..] if cli_control::is_command(command) => {
       cli_control::parse_control_args(args).map(CliCommand::Control)
     }
     [command, topic] if command == "help" => parse_help_topic(topic),
     [command, ..] if command == "help" => {
-      Err("Usage: plvs-cli help [doctor|<control-command>]".to_string())
+      Err("Usage: plvs-cli help [doctor|schema|<control-command>]".to_string())
     }
     [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
     [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
@@ -105,6 +110,19 @@ fn parse_doctor_args(args: &[String]) -> Result<CliCommand, String> {
     json: options.has_json,
     out: options.out,
   })
+}
+
+fn parse_schema_args(args: &[String]) -> Result<CliCommand, String> {
+  if args.iter().any(|arg| is_help_flag(arg)) {
+    return Ok(CliCommand::Help(HelpTopic::Schema));
+  }
+  match args {
+    [command, json] if command == "list" && json == "--json" => Ok(CliCommand::SchemaList),
+    [command, id, json] if command == "get" && !id.starts_with("--") && json == "--json" => {
+      Ok(CliCommand::SchemaGet(id.clone()))
+    }
+    _ => Err("Usage: plvs-cli schema <list --json|get <command-id> --json>".to_string()),
+  }
 }
 
 #[cfg(any(feature = "capture-harness", test))]
@@ -322,6 +340,7 @@ fn parse_finite_number(value: &str, flag: &str) -> Result<f64, String> {
 fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
   match topic {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
+    "schema" => Ok(CliCommand::Help(HelpTopic::Schema)),
     topic if cli_control::is_command(topic) => Ok(CliCommand::Control(ControlCommand::FamilyHelp(
       topic.to_string(),
     ))),
@@ -460,6 +479,38 @@ fn serialize_doctor_json(report: &DoctorReport) -> Result<String, serde_json::Er
   })
 }
 
+fn serialize_schema_list() -> Result<String, String> {
+  let manifest = crate::cli_manifest::command_manifest().map_err(str::to_string)?;
+  serde_json::to_string(&SuccessEnvelope {
+    schema_version: CLI_SCHEMA_VERSION,
+    ok: true,
+    result: crate::cli_manifest::schema_list_result(manifest),
+  })
+  .map_err(|error| format!("Failed to serialize command schema list: {error}"))
+}
+
+fn serialize_schema_get(id: &str) -> Result<Option<String>, String> {
+  let manifest = crate::cli_manifest::command_manifest().map_err(str::to_string)?;
+  crate::cli_manifest::schema_get_result(manifest, id)
+    .map(|result| {
+      serde_json::to_string(&SuccessEnvelope {
+        schema_version: CLI_SCHEMA_VERSION,
+        ok: true,
+        result,
+      })
+      .map_err(|error| format!("Failed to serialize command schema {id}: {error}"))
+    })
+    .transpose()
+}
+
+fn write_json_line(writer: &mut impl Write, json: &str) -> Result<(), String> {
+  writeln!(writer, "{json}").map_err(|error| format!("Failed to write schema output: {error}"))
+}
+
+fn emit_schema_json(json: &str) -> Result<(), String> {
+  write_json_line(&mut io::stdout().lock(), json)
+}
+
 fn doctor_exit_code(status: DoctorStatus) -> u8 {
   match status {
     DoctorStatus::Error => 1,
@@ -581,6 +632,20 @@ fn help_text(topic: HelpTopic) -> String {
         .unwrap_or("plvs-cli doctor [--json] [--out <file>]");
       format!("PLVS CLI - doctor\n\nUsage:\n  {usage}\n\nRuns installed-runtime health checks without launching the desktop UI.\nThe default output is human-readable. Add --json for the stable machine-readable report.\nWith --out, the same output is also written to a file.\n\nExit codes:\n  0  report status is ok or warning\n  1  report status is error, or output failed\n  3  invalid command input")
     }
+    HelpTopic::Schema => {
+      let usage = crate::cli_manifest::command_manifest()
+        .map(|manifest| {
+          manifest
+            .commands
+            .iter()
+            .filter(|entry| entry.family == "schema")
+            .map(|entry| format!("  {}", entry.usage))
+            .collect::<Vec<_>>()
+            .join("\n")
+        })
+        .unwrap_or_default();
+      format!("PLVS CLI - schema\n\nUsage:\n{usage}\n\nReads the installed CLI command catalog without contacting PLVS.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input")
+    }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
       "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
@@ -654,6 +719,25 @@ fn execute(command: CliCommand) -> ExitCode {
       ExitCode::SUCCESS
     }
     CliCommand::Control(command) => cli_control::run(command),
+    CliCommand::SchemaList => {
+      match serialize_schema_list().and_then(|json| emit_schema_json(&json)) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => emit_cli_failure("internalError", &error, true, 1),
+      }
+    }
+    CliCommand::SchemaGet(id) => match serialize_schema_get(&id) {
+      Ok(Some(json)) => match emit_schema_json(&json) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => emit_cli_failure("internalError", &error, true, 1),
+      },
+      Ok(None) => emit_cli_failure(
+        "invalidArguments",
+        &format!("Unknown command schema ID: {id}."),
+        true,
+        3,
+      ),
+      Err(error) => emit_cli_failure("internalError", &error, true, 1),
+    },
     CliCommand::Doctor { json, out } => {
       let report = run_doctor();
       if json {
@@ -777,6 +861,18 @@ fn execute(command: CliCommand) -> ExitCode {
 mod tests {
   use super::*;
 
+  struct BrokenWriter;
+
+  impl Write for BrokenWriter {
+    fn write(&mut self, _buffer: &[u8]) -> io::Result<usize> {
+      Err(io::Error::new(io::ErrorKind::BrokenPipe, "closed"))
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+      Ok(())
+    }
+  }
+
   fn args(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| value.to_string()).collect()
   }
@@ -811,6 +907,102 @@ mod tests {
         out: None,
       })
     );
+  }
+
+  #[test]
+  fn parses_only_the_public_schema_forms_and_scoped_help() {
+    assert_eq!(
+      parse_args(&args(&["schema", "list", "--json"])),
+      Ok(CliCommand::SchemaList)
+    );
+    assert_eq!(
+      parse_args(&args(&[
+        "schema",
+        "get",
+        "visual.recording.start",
+        "--json"
+      ])),
+      Ok(CliCommand::SchemaGet("visual.recording.start".to_string()))
+    );
+    for invocation in [
+      vec!["schema", "list"],
+      vec!["schema", "list", "--out", "schema.json", "--json"],
+      vec!["schema", "get", "--json"],
+      vec!["schema", "get", "app.inspect", "--dry-run", "--json"],
+      vec![
+        "schema",
+        "get",
+        "app.inspect",
+        "--expected-revision",
+        "0",
+        "--json",
+      ],
+    ] {
+      assert!(
+        parse_args(&args(&invocation)).is_err(),
+        "accepted {invocation:?}"
+      );
+    }
+    assert_eq!(
+      parse_args(&args(&["schema", "--help"])),
+      Ok(CliCommand::Help(HelpTopic::Schema))
+    );
+    assert_eq!(
+      parse_args(&args(&["help", "schema"])),
+      Ok(CliCommand::Help(HelpTopic::Schema))
+    );
+    let help = help_text(HelpTopic::Schema);
+    assert!(help.contains("plvs-cli schema list --json"));
+    assert!(help.contains("plvs-cli schema get <command-id> --json"));
+  }
+
+  #[test]
+  fn schema_list_is_compact_ordered_and_omits_inapplicable_fields() {
+    let encoded = serialize_schema_list().unwrap();
+    let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(json["schemaVersion"], 1);
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["result"]["manifestVersion"], 1);
+    let commands = json["result"]["commands"].as_array().unwrap();
+    assert_eq!(commands.len(), 92);
+    assert_eq!(commands[0]["id"], "app.capabilities");
+    let doctor = commands
+      .iter()
+      .find(|entry| entry["id"] == "doctor")
+      .unwrap();
+    assert!(doctor.get("wireMethod").is_none());
+    assert!(doctor.get("featureGate").is_none());
+    assert!(doctor.get("usage").is_none());
+  }
+
+  #[test]
+  fn schema_get_returns_the_full_public_projection_and_unknown_ids_are_local() {
+    let encoded = serialize_schema_get("visual.recording.start")
+      .unwrap()
+      .unwrap();
+    let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(json["result"]["manifestVersion"], 1);
+    assert_eq!(json["result"]["command"]["id"], "visual.recording.start");
+    assert_eq!(json["result"]["command"]["wireParams"]["type"], "object");
+    assert!(json["result"]["command"]["options"].is_array());
+    assert!(serialize_schema_get("missing.command").unwrap().is_none());
+    let (error, exit_code) = serialize_cli_failure(
+      "invalidArguments",
+      "Unknown command schema ID: missing.command.",
+      3,
+    );
+    assert_eq!(exit_code, 3);
+    assert_eq!(
+      serde_json::from_str::<serde_json::Value>(&error).unwrap()["error"]["code"],
+      "invalidArguments"
+    );
+  }
+
+  #[test]
+  fn broken_schema_output_is_a_local_system_failure() {
+    assert!(write_json_line(&mut BrokenWriter, "{}")
+      .unwrap_err()
+      .contains("closed"));
   }
 
   #[test]
