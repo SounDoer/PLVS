@@ -1,6 +1,6 @@
 # Agent Control Command Manifest and Schema Export — Implementation Plan
 
-> Proposed implementation plan. Implement only after the paired design is approved.
+> Approved implementation plan.
 
 **Goal:** Consolidate the public CLI catalog into one cross-language manifest, expose offline
 `schema list/get`, generate help and command-reference facts from the manifest, and close drift

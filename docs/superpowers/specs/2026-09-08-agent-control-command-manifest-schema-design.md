@@ -1,7 +1,7 @@
 # Agent Control Command Manifest and Schema Export — Design
 
 **Date:** 2026-09-08
-**Status:** Proposed design contract
+**Status:** Approved
 
 ## Summary
 
