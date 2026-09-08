@@ -457,6 +457,23 @@ mod tests {
   #[cfg(target_os = "windows")]
   #[test]
   fn recording_pcm_queue_covers_the_audio_settlement_window_at_one_ms_cadence() {
-    assert!(RECORDING_PCM_QUEUE_CAPACITY >= 100);
+    let hub = crate::audio::MeasuredPcmSubscriptions::default();
+    let receiver = hub.subscribe(RECORDING_PCM_QUEUE_CAPACITY).unwrap();
+    for _ in 0..100 {
+      hub.publish(
+        &[0.0, 0.0],
+        48_000,
+        2,
+        crate::engine::ChannelLayoutSetting::Stereo,
+      );
+    }
+    let mut received = 0;
+    while let Some(frame) = receiver.try_recv() {
+      assert_eq!(frame.dropped_before, 0);
+      received += 1;
+      receiver.recycle(frame);
+    }
+    assert_eq!(received, 100);
+    assert_eq!(receiver.dropped_chunks(), 0);
   }
 }
