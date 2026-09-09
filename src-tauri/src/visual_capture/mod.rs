@@ -1,4 +1,6 @@
 pub mod artifacts;
+#[cfg(target_os = "macos")]
+pub mod macos;
 pub mod platform;
 pub mod recording;
 #[cfg(target_os = "windows")]
@@ -6,7 +8,6 @@ pub mod windows;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-#[cfg(target_os = "windows")]
 use std::time::SystemTime;
 
 use serde::Serialize;
@@ -15,7 +16,9 @@ use tauri::Manager;
 use tauri::{AppHandle, State};
 
 use artifacts::{ArtifactKind, ArtifactMetadata, ArtifactStore};
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+use macos::MacOsPlatform;
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 use platform::UnsupportedPlatform;
 use platform::{CaptureError, PlatformCapabilities, ScreenshotRequest, VisualCapturePlatform};
 use recording::state::{RecordingAudioSource, RecordingSnapshot, StopReason};
@@ -88,7 +91,11 @@ fn platform_capabilities() -> PlatformCapabilities {
   {
     WindowsPlatform.capabilities()
   }
-  #[cfg(not(target_os = "windows"))]
+  #[cfg(target_os = "macos")]
+  {
+    MacOsPlatform.capabilities()
+  }
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
   {
     UnsupportedPlatform.capabilities()
   }
@@ -129,47 +136,25 @@ pub async fn visual_capture_screenshot(
   })?;
 
   #[cfg(target_os = "windows")]
-  {
-    if let Err(error) = WindowsPlatform
-      .capture_preview(&app, &request.window_label, pending.path())
-      .await
-    {
-      log::warn!("visual screenshot failed: {error}");
-      return Err(error.into());
-    }
-    let (width, height) = {
-      let path = pending.path().to_owned();
-      let viewport = request.viewport;
-      let rect = request.rect;
-      let result = tauri::async_runtime::spawn_blocking(move || {
-        windows::crop_preview_png(&path, viewport, rect)
-      })
-      .await
-      .map_err(|_| NativeCaptureError::new("captureFailed", "The PNG crop worker failed."))?;
-      if let Err(error) = &result {
-        log::warn!("visual screenshot crop failed: {error}");
-      }
-      result?
-    };
-
-    store
-      .publish(pending, width, height, SystemTime::now())
-      .await
-      .map_err(|_| NativeCaptureError::artifact("The screenshot artifact could not be published."))
-  }
-  #[cfg(not(target_os = "windows"))]
-  {
-    match UnsupportedPlatform
-      .capture_preview(&app, &request.window_label, pending.path())
-      .await
-    {
-      Ok(()) => Err(NativeCaptureError::new(
-        "captureFailed",
-        "The unsupported capture backend returned unexpectedly.",
-      )),
-      Err(error) => Err(error.into()),
-    }
-  }
+  let captured = WindowsPlatform
+    .capture_screenshot(&app, &request, pending.path())
+    .await;
+  #[cfg(target_os = "macos")]
+  let captured = MacOsPlatform
+    .capture_screenshot(&app, &request, pending.path())
+    .await;
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  let captured = UnsupportedPlatform
+    .capture_screenshot(&app, &request, pending.path())
+    .await;
+  let captured = captured.map_err(|error| {
+    log::warn!("visual screenshot failed: {error}");
+    NativeCaptureError::from(error)
+  })?;
+  store
+    .publish(pending, captured.width, captured.height, SystemTime::now())
+    .await
+    .map_err(|_| NativeCaptureError::artifact("The screenshot artifact could not be published."))
 }
 
 fn output_canvas(request: &RecordingStartRequest) -> Result<(u32, u32), NativeCaptureError> {
@@ -432,7 +417,7 @@ mod tests {
     assert_eq!(capabilities.platform, std::env::consts::OS);
     assert_eq!(
       capabilities.screenshot.available,
-      cfg!(target_os = "windows")
+      cfg!(any(target_os = "windows", target_os = "macos"))
     );
     assert_eq!(
       capabilities.recording.available,

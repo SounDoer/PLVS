@@ -12,8 +12,9 @@ use windows::Win32::System::Com::{STGC_DEFAULT, STGM_CREATE, STGM_READWRITE};
 use windows::Win32::UI::Shell::SHCreateStreamOnFileEx;
 
 use super::platform::{
-  calculate_pixel_crop, CaptureError, CaptureFuture, CssRect, CssViewport, PlatformCapabilities,
-  RecordingCapabilities, ScreenshotCapabilities, VisualCapturePlatform,
+  calculate_pixel_crop, CaptureError, CaptureFuture, CapturedImage, CssRect, CssViewport,
+  PlatformCapabilities, RecordingCapabilities, ScreenshotCapabilities, ScreenshotRequest,
+  VisualCapturePlatform,
 };
 
 pub struct WindowsPlatform;
@@ -35,13 +36,23 @@ impl VisualCapturePlatform for WindowsPlatform {
     }
   }
 
-  fn capture_preview<'a>(
+  fn capture_screenshot<'a>(
     &'a self,
     app: &'a AppHandle,
-    window_label: &'a str,
+    request: &'a ScreenshotRequest,
     output_path: &'a Path,
   ) -> CaptureFuture<'a> {
-    Box::pin(capture_webview_preview(app, window_label, output_path))
+    Box::pin(async move {
+      capture_webview_preview(app, &request.window_label, output_path).await?;
+      let path = output_path.to_owned();
+      let viewport = request.viewport;
+      let rect = request.rect;
+      let (width, height) =
+        tauri::async_runtime::spawn_blocking(move || crop_preview_png(&path, viewport, rect))
+          .await
+          .map_err(|_| CaptureError::failed("The PNG crop worker failed."))??;
+      Ok(CapturedImage { width, height })
+    })
   }
 }
 

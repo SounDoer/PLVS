@@ -1,9 +1,10 @@
 # Visual Capture
 
 Visual Capture lets an agent save the pixels currently rendered by a running PLVS window. It is
-available on Windows only. Screenshots are PNG files; recordings are H.264 MP4 files with either no
-audio or the same Live source PCM that PLVS measures. It does not capture File-analysis audio,
-microphones, arbitrary system audio, other windows, or raw canvas/DOM data.
+available for screenshots on Windows and macOS; recording is currently Windows-only. Screenshots
+are PNG files; recordings are H.264 MP4 files with either no audio or the same Live source PCM that
+PLVS measures. It does not capture File-analysis audio, microphones, arbitrary system audio, other
+windows, or raw canvas/DOM data.
 
 ## Commands
 
@@ -33,6 +34,10 @@ hints, overlays, and the recording indicator remain visible when they intersect 
 is no clean-UI mode. Target bounds settle across the font and paint barrier before capture, and
 screenshot metadata reports the actual output width and height after device/WebView scaling.
 
+On macOS, screenshots use WebKit's app-owned snapshot path. They do not request Screen Recording
+permission and do not include the native title bar, window shadow, desktop, or pixels from another
+application behind transparent PLVS content.
+
 Screenshots and recordings do not increment the global revision. Optional `--expected-revision`
 is checked after render settlement and before native capture allocation, so a conflict creates no
 artifact. Screenshot results include the captured revision and coherent measurement generation
@@ -53,7 +58,8 @@ artifact intact, but media bytes never appear in JSON.
 
 ## Recording workflow
 
-Only one recording may be active. `start` returns promptly with a process-local recording ID;
+Recording is currently available on Windows only. Only one recording may be active. `start`
+returns promptly with a process-local recording ID;
 `inspect` returns its latest state; `wait` long-polls for a terminal state; and `stop` requests
 bounded drain and finalization. States are `starting`, `recording`, `stopping`, `completed`, and
 `failed`. Stop is idempotent for a known ID. A wait timeout is a successful observation with

@@ -34,7 +34,7 @@ npm run desktop:control -- inspect --json
 npm run desktop:control -- workspace apply layout.json --json
 ```
 
-`desktop:control` 会安静地增量构建独立 CLI package，并固定使用同一个 `dev-identity`，再将参数直接转发给扁平的 `plvs-cli` 命令；开发版 GUI 必须已经运行。它不依赖 Settings 中的 Agent Control / PATH，也不会发现或修改本机安装的正式版。公开的 release CLI 使用同一套扁平命令，但通过正式版 identity 与已安装应用通信。Windows 使用当前用户 named pipe，macOS 使用私有 Unix socket；Visual Capture 仍只在 Windows 可用。
+`desktop:control` 会安静地增量构建独立 CLI package，并固定使用同一个 `dev-identity`，再将参数直接转发给扁平的 `plvs-cli` 命令；开发版 GUI 必须已经运行。它不依赖 Settings 中的 Agent Control / PATH，也不会发现或修改本机安装的正式版。公开的 release CLI 使用同一套扁平命令，但通过正式版 identity 与已安装应用通信。Windows 使用当前用户 named pipe，macOS 使用私有 Unix socket；Visual Capture 截图支持两个平台，录制暂时只支持 Windows。
 
 NSIS 相关的脚本（`desktop:dev-nsis`、`desktop:release-nsis`）**不带**这个 overlay：注册表登记键 `HKCU\Software\SounDoer\PLVS` 是写死的，且 `scripts/generate-agent-discovery.mjs` 只读基础 `tauri.conf.json`，给它们套上 overlay 只会写出自相矛盾的登记。
 

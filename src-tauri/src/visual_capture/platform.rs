@@ -62,6 +62,12 @@ pub struct PixelCrop {
   pub height: u32,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CapturedImage {
+  pub width: u32,
+  pub height: u32,
+}
+
 #[derive(Debug)]
 pub struct CaptureError {
   pub reason: &'static str,
@@ -99,15 +105,16 @@ impl std::fmt::Display for CaptureError {
 
 impl std::error::Error for CaptureError {}
 
-pub type CaptureFuture<'a> = Pin<Box<dyn Future<Output = Result<(), CaptureError>> + Send + 'a>>;
+pub type CaptureFuture<'a> =
+  Pin<Box<dyn Future<Output = Result<CapturedImage, CaptureError>> + Send + 'a>>;
 
 pub trait VisualCapturePlatform: Send + Sync {
   fn capabilities(&self) -> PlatformCapabilities;
 
-  fn capture_preview<'a>(
+  fn capture_screenshot<'a>(
     &'a self,
     app: &'a AppHandle,
-    window_label: &'a str,
+    request: &'a ScreenshotRequest,
     output_path: &'a Path,
   ) -> CaptureFuture<'a>;
 }
@@ -131,10 +138,10 @@ impl VisualCapturePlatform for UnsupportedPlatform {
     }
   }
 
-  fn capture_preview<'a>(
+  fn capture_screenshot<'a>(
     &'a self,
     _app: &'a AppHandle,
-    _window_label: &'a str,
+    _request: &'a ScreenshotRequest,
     _output_path: &'a Path,
   ) -> CaptureFuture<'a> {
     Box::pin(async {

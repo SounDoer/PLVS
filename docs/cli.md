@@ -157,7 +157,8 @@ It covers Always on Top (`pinned`), Focus View, panel opacity, and macOS Glass. 
 [View Control](agent-control/view.md) for strict patch validation, platform availability, Dock
 suspension, and native rollback behavior.
 
-Visual Capture saves the actual rendered pixels of the running Windows app:
+Visual Capture saves the actual rendered pixels of the running app. Screenshots are available on
+Windows and macOS; recording is currently Windows-only:
 
 ```powershell
 plvs-cli visual describe --json

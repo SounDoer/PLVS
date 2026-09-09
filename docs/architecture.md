@@ -59,6 +59,11 @@ ACL 的 named pipe、在 macOS 通过私有 Unix socket 找到同一 identity �
 再把请求定向发送给 main WebView。Workspace 的校验、revision、一次性替换与持久化完成
 条件仍由 React 前端拥有；broker 不复制业务状态，也不向 accessory WebView 广播请求。
 
+Visual Capture 沿用同一语义边界：React 决定捕获目标、等待稳定绘制并提供 CSS 几何；Rust
+负责私有 artifact、并发与生命周期。Windows 截图走 WebView2，macOS 截图走 WKWebView
+snapshot；两者都只捕获 PLVS WebView 内容。Windows 录制另走 Windows Graphics Capture 与
+Media Foundation，macOS 录制尚未实现。
+
 ---
 
 ## 3. 目录结构
