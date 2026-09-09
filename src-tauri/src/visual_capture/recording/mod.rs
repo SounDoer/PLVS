@@ -1,16 +1,16 @@
 pub mod audio;
+pub mod session;
 pub mod state;
 pub mod windows;
 
-#[cfg(target_os = "windows")]
 use std::collections::HashMap;
-#[cfg(target_os = "windows")]
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::Deserialize;
 
 use super::platform::{CssRect, CssViewport};
 use audio::SilenceReason;
+use session::RecordingSessionControl;
 use state::{
   RecordingAudioSource, RecordingCursorMode, RecordingRegistry, RecordingSnapshot, StopReason,
   DEFAULT_FPS, DEFAULT_MAX_DURATION_SECONDS,
@@ -106,8 +106,7 @@ fn default_max_duration() -> u32 {
 #[derive(Default)]
 pub struct RecordingController {
   registry: RecordingRegistry,
-  #[cfg(target_os = "windows")]
-  sessions: Mutex<HashMap<String, windows::RecordingSession>>,
+  sessions: Mutex<HashMap<String, Arc<dyn RecordingSessionControl>>>,
 }
 
 impl RecordingController {
@@ -122,7 +121,6 @@ impl RecordingController {
 
   pub fn request_stop(&self, recording_id: &str, reason: StopReason) -> Option<RecordingSnapshot> {
     let snapshot = self.registry.request_stop(recording_id, reason)?;
-    #[cfg(target_os = "windows")]
     if let Ok(sessions) = self.sessions.lock() {
       if let Some(session) = sessions.get(recording_id) {
         session.request_stop(reason);
@@ -132,101 +130,77 @@ impl RecordingController {
   }
 
   pub fn update_geometry(&self, request: RecordingGeometryRequest) -> Result<(), &'static str> {
-    #[cfg(target_os = "windows")]
-    {
-      let sessions = self.sessions.lock().map_err(|_| "stateUnavailable")?;
-      let session = sessions
-        .get(&request.recording_id)
-        .ok_or("recordingNotFound")?;
-      session.update_geometry(windows::RecordingGeometry {
-        rect: request.rect,
-        viewport: request.viewport,
-      })?;
-      self.registry.record_event(
-        &request.recording_id,
-        "resize",
-        "Semantic capture geometry updated.",
-      );
-      Ok(())
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-      let _ = request;
-      Err("visualUnavailable")
-    }
+    let sessions = self.sessions.lock().map_err(|_| "stateUnavailable")?;
+    let session = sessions
+      .get(&request.recording_id)
+      .ok_or("recordingNotFound")?;
+    session.update_geometry(request.rect, request.viewport)?;
+    self.registry.record_event(
+      &request.recording_id,
+      "resize",
+      "Semantic capture geometry updated.",
+    );
+    Ok(())
   }
 
   pub fn update_audio_state(
     &self,
     request: RecordingAudioStateRequest,
   ) -> Result<(), &'static str> {
-    #[cfg(target_os = "windows")]
-    {
-      let sessions = self.sessions.lock().map_err(|_| "stateUnavailable")?;
-      let session = sessions
-        .get(&request.recording_id)
-        .ok_or("recordingNotFound")?;
-      session.update_audio_silence_reason(request.state.silence_reason())?;
-      self.registry.record_event(
-        &request.recording_id,
-        "audioState",
-        format!("Measured-source state changed to {:?}.", request.state),
-      );
-      Ok(())
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-      let _ = request;
-      Err("visualUnavailable")
-    }
+    let sessions = self.sessions.lock().map_err(|_| "stateUnavailable")?;
+    let session = sessions
+      .get(&request.recording_id)
+      .ok_or("recordingNotFound")?;
+    session.update_audio_silence_reason(request.state.silence_reason())?;
+    self.registry.record_event(
+      &request.recording_id,
+      "audioState",
+      format!("Measured-source state changed to {:?}.", request.state),
+    );
+    Ok(())
   }
 
-  #[cfg(target_os = "windows")]
-  pub fn insert_session(&self, session: windows::RecordingSession) -> Result<(), &'static str> {
+  pub fn insert_session<S>(&self, session: S) -> Result<(), &'static str>
+  where
+    S: RecordingSessionControl + 'static,
+  {
     self
       .sessions
       .lock()
       .map_err(|_| "stateUnavailable")?
-      .insert(session.recording_id().to_owned(), session);
+      .insert(session.recording_id().to_owned(), Arc::new(session));
     Ok(())
   }
 
   fn reap_finished(&self) {
-    #[cfg(target_os = "windows")]
     if let Ok(mut sessions) = self.sessions.lock() {
       sessions.retain(|_, session| !session.is_finished());
     }
   }
 
   pub fn shutdown_and_wait(&self, timeout: std::time::Duration) {
-    #[cfg(target_os = "windows")]
-    {
-      let sessions = self
-        .sessions
-        .lock()
-        .map(|sessions| sessions.values().cloned().collect::<Vec<_>>())
-        .unwrap_or_default();
-      for session in &sessions {
-        self
-          .registry
-          .request_stop(session.recording_id(), StopReason::Shutdown);
-        session.request_stop(StopReason::Shutdown);
-      }
-      let deadline = std::time::Instant::now() + timeout;
-      while sessions.iter().any(|session| !session.is_finished())
-        && std::time::Instant::now() < deadline
-      {
-        std::thread::sleep(std::time::Duration::from_millis(20));
-      }
+    let sessions = self
+      .sessions
+      .lock()
+      .map(|sessions| sessions.values().cloned().collect::<Vec<_>>())
+      .unwrap_or_default();
+    for session in &sessions {
+      self
+        .registry
+        .request_stop(session.recording_id(), StopReason::Shutdown);
+      session.request_stop(StopReason::Shutdown);
     }
-    #[cfg(not(target_os = "windows"))]
-    let _ = timeout;
+    let deadline = std::time::Instant::now() + timeout;
+    while sessions.iter().any(|session| !session.is_finished())
+      && std::time::Instant::now() < deadline
+    {
+      std::thread::sleep(std::time::Duration::from_millis(20));
+    }
   }
 }
 
 impl Drop for RecordingController {
   fn drop(&mut self) {
-    #[cfg(target_os = "windows")]
     if let Ok(sessions) = self.sessions.get_mut() {
       for session in sessions.values() {
         session.request_stop(StopReason::Shutdown);
@@ -237,7 +211,42 @@ impl Drop for RecordingController {
 
 #[cfg(test)]
 mod tests {
+  use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
   use super::*;
+
+  struct FakeSession {
+    id: String,
+    stopped: Arc<AtomicBool>,
+    finished: Arc<AtomicBool>,
+    geometry_updates: Arc<AtomicUsize>,
+    audio_updates: Arc<AtomicUsize>,
+  }
+
+  impl RecordingSessionControl for FakeSession {
+    fn recording_id(&self) -> &str {
+      &self.id
+    }
+
+    fn request_stop(&self, _reason: StopReason) {
+      self.stopped.store(true, Ordering::Release);
+      self.finished.store(true, Ordering::Release);
+    }
+
+    fn update_geometry(&self, _rect: CssRect, _viewport: CssViewport) -> Result<(), &'static str> {
+      self.geometry_updates.fetch_add(1, Ordering::Relaxed);
+      Ok(())
+    }
+
+    fn update_audio_silence_reason(&self, _reason: SilenceReason) -> Result<(), &'static str> {
+      self.audio_updates.fetch_add(1, Ordering::Relaxed);
+      Ok(())
+    }
+
+    fn is_finished(&self) -> bool {
+      self.finished.load(Ordering::Acquire)
+    }
+  }
 
   #[test]
   fn request_defaults_to_measured_source_in_live_mode() {
@@ -284,5 +293,65 @@ mod tests {
     }))
     .unwrap();
     assert_eq!(request.cursor, RecordingCursorMode::Visible);
+  }
+
+  #[test]
+  fn controller_routes_platform_neutral_session_operations() {
+    let controller = RecordingController::default();
+    let created = controller
+      .registry()
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
+      .unwrap();
+    let stopped = Arc::new(AtomicBool::new(false));
+    let finished = Arc::new(AtomicBool::new(false));
+    let geometry_updates = Arc::new(AtomicUsize::new(0));
+    let audio_updates = Arc::new(AtomicUsize::new(0));
+    controller
+      .insert_session(FakeSession {
+        id: created.recording_id.clone(),
+        stopped: Arc::clone(&stopped),
+        finished: Arc::clone(&finished),
+        geometry_updates: Arc::clone(&geometry_updates),
+        audio_updates: Arc::clone(&audio_updates),
+      })
+      .unwrap();
+
+    controller
+      .update_geometry(RecordingGeometryRequest {
+        recording_id: created.recording_id.clone(),
+        rect: CssRect {
+          x: 0.0,
+          y: 0.0,
+          width: 320.0,
+          height: 240.0,
+        },
+        viewport: CssViewport {
+          width: 640.0,
+          height: 480.0,
+        },
+      })
+      .unwrap();
+    controller
+      .update_audio_state(RecordingAudioStateRequest {
+        recording_id: created.recording_id.clone(),
+        state: RecordingAudioState::LiveStopped,
+      })
+      .unwrap();
+    assert!(controller
+      .request_stop(&created.recording_id, StopReason::Explicit)
+      .is_some());
+
+    assert_eq!(geometry_updates.load(Ordering::Relaxed), 1);
+    assert_eq!(audio_updates.load(Ordering::Relaxed), 1);
+    assert!(stopped.load(Ordering::Acquire));
+    assert!(finished.load(Ordering::Acquire));
+    controller.shutdown_and_wait(std::time::Duration::from_millis(1));
   }
 }

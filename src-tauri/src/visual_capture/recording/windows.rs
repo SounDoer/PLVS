@@ -605,6 +605,28 @@ mod windows_backend {
     }
   }
 
+  impl super::super::session::RecordingSessionControl for RecordingSession {
+    fn recording_id(&self) -> &str {
+      RecordingSession::recording_id(self)
+    }
+
+    fn request_stop(&self, reason: StopReason) {
+      RecordingSession::request_stop(self, reason);
+    }
+
+    fn update_geometry(&self, rect: CssRect, viewport: CssViewport) -> Result<(), &'static str> {
+      RecordingSession::update_geometry(self, RecordingGeometry { rect, viewport })
+    }
+
+    fn update_audio_silence_reason(&self, reason: SilenceReason) -> Result<(), &'static str> {
+      RecordingSession::update_audio_silence_reason(self, reason)
+    }
+
+    fn is_finished(&self) -> bool {
+      RecordingSession::is_finished(self)
+    }
+  }
+
   struct ProductionSettings {
     recording_id: String,
     output_width: u32,
