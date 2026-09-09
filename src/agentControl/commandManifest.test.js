@@ -16,8 +16,8 @@ function changed(mutator) {
 describe("command manifest", () => {
   it("loads one immutable catalog without React or runtime state", () => {
     expect(commandManifest.manifestVersion).toBe(1);
-    expect(commandEntries).toHaveLength(92);
-    expect(runningAppCommandEntries).toHaveLength(89);
+    expect(commandEntries).toHaveLength(94);
+    expect(runningAppCommandEntries).toHaveLength(90);
     expect(Object.isFrozen(commandManifest)).toBe(true);
     expect(Object.isFrozen(commandEntries[0].wireParams)).toBe(true);
   });
@@ -39,9 +39,16 @@ describe("command manifest", () => {
       dryRun: false,
     });
     expect(commandEntryById.get("measurement.wait")).toMatchObject({ operation: "wait" });
+    expect(commandEntryById.get("measurement.waitUntil")).toMatchObject({
+      path: ["measurement", "wait-until"],
+      operation: "wait",
+    });
     expect(commandEntryById.get("preset.import").positionals[0].value.schemaRef).toBe(
       "preset.pack"
     );
+    for (const id of ["preset.list", "preset.describe", "preset.export"]) {
+      expect(commandEntryById.get(id)).toMatchObject({ operation: "query" });
+    }
     expect(commandEntryById.get("preset.export")).toMatchObject({ outputFile: "optional" });
     expect(commandEntryById.get("visual.screenshot")).toMatchObject({
       featureGate: "visual.screenshot",
@@ -51,6 +58,10 @@ describe("command manifest", () => {
       execution: "offline",
       json: "optional",
       wireParams: { type: "object", additionalProperties: false },
+    });
+    expect(commandEntryById.get("completion")).toMatchObject({
+      execution: "offline",
+      json: "none",
     });
     expect(commandEntryById.get("schema.list")).toMatchObject({
       execution: "offline",

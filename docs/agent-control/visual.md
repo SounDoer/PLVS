@@ -130,6 +130,21 @@ retention, then removed; cleanup also evicts the oldest completed files until st
 4 GiB. Active recording temporary files are not evicted. Copying with `--out` does not extend
 retention.
 
+## Desktop smoke
+
+With the development GUI already running and Agent Control enabled, run:
+
+```text
+npm run smoke:agent-control
+```
+
+The smoke performs no settings or scene mutations. It verifies `capabilities` and `inspect`, takes a
+real main-window PNG, records three silent seconds to MP4, and independently checks both files'
+length and SHA-256 against the returned artifact metadata. Results are retained under
+`artifacts/agent-control-smoke/` by default; use `-- --out-dir <directory>` to choose another
+location. Run it on both Windows and macOS before treating native transport or Visual Capture work
+as accepted.
+
 Stable Visual Capture errors are:
 
 - `visualUnavailable`, `targetUnavailable`, `panelNotFound`, and `panelNotVisible` for capability

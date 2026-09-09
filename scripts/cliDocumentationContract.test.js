@@ -122,9 +122,8 @@ describe("current CLI documentation", () => {
     expect(settings).toContain("`appearance` is an unknown control");
     expect(generatedSettings).not.toContain("appearance");
     expect(roadmap).toContain("### Stage 3: Theme editing — complete");
-    expect(roadmap).toContain(
-      "The next implementation stage is the **command manifest and offline schema foundation**"
-    );
+    expect(roadmap).toContain("generated shell completions");
+    expect(roadmap).toContain("cross-platform desktop smoke automation are complete");
   });
 
   it("publishes the complete Device Control contract and safety flags", () => {
@@ -157,9 +156,8 @@ describe("current CLI documentation", () => {
     expect(transport).toContain("device-enumeration");
     expect(roadmap).toContain("### Stage 4: Device Control — complete");
     expect(roadmap).not.toContain("plvs-cli device describe");
-    expect(roadmap).toContain(
-      "The next implementation stage is the **command manifest and offline schema foundation**"
-    );
+    expect(roadmap).toContain("generated shell completions");
+    expect(roadmap).toContain("cross-platform desktop smoke automation are complete");
   });
 
   it("publishes the complete Visual Capture contract and bounded media rules", () => {

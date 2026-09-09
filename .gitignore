@@ -26,6 +26,7 @@ node_modules/
 # Build output
 dist/
 coverage/
+artifacts/
 
 # Capture soak output
 soak-*.jsonl

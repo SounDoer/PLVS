@@ -1,5 +1,6 @@
 import { VISUAL_RECORDING_TARGET_KINDS, normalizeVisualTarget } from "./visualControl.js";
 import { commandEntriesForFamily } from "./commandManifest.js";
+import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
 const TRANSPORT_ACTIONS = new Set([
@@ -877,6 +878,33 @@ export function normalizeAgentControlRequest(input) {
             : {}),
           timeoutMs,
         },
+      },
+    };
+  }
+
+  if (input.method === "measurement.waitUntil") {
+    const field = unknownField(input.params, new Set(["predicate", "timeoutMs"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const normalizedPredicate = normalizeMeasurementPredicate(input.params.predicate);
+    if (!normalizedPredicate.ok) {
+      return invalidParams(normalizedPredicate.path, normalizedPredicate.message);
+    }
+    const timeoutMs = input.params.timeoutMs ?? 30000;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300000) {
+      return invalidParams(
+        "$.params.timeoutMs",
+        "timeoutMs must be an integer from 100 to 300000."
+      );
+    }
+    if ((normalizedPredicate.predicate.holdMs ?? 0) > timeoutMs) {
+      return invalidParams("$.params.predicate.holdMs", "holdMs must not exceed timeoutMs.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { predicate: normalizedPredicate.predicate, timeoutMs },
       },
     };
   }

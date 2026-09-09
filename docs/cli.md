@@ -86,6 +86,7 @@ Run `doctor --json` first to verify the installed runtime and bundled sidecars.
 plvs-cli doctor [--json] [--out <file>]
 plvs-cli schema list --json
 plvs-cli schema get <command-id> --json
+plvs-cli completion <powershell|bash|zsh>
 plvs-cli <command> [options]
 plvs-cli --help
 plvs-cli --version
@@ -101,6 +102,27 @@ paths, options, policies, and top-level wire parameters. The current families ar
 - `theme` and `loudness-profile`;
 - `config`;
 - `transport`, `device`, and `dock`.
+
+## Shell Completion
+
+`completion` works offline and prints a script generated from the same checked command manifest as
+the parser and command catalog. PLVS does not modify shell profiles. Load the output from your own
+profile, for example:
+
+```powershell
+plvs-cli completion powershell | Out-String | Invoke-Expression
+```
+
+```bash
+source <(plvs-cli completion bash)
+```
+
+```zsh
+source <(plvs-cli completion zsh)
+```
+
+Completion is intentionally static: it covers command paths, options, and declared enum values,
+but does not contact the running app to suggest live IDs.
 
 ### Offline command schema
 
@@ -137,12 +159,14 @@ Measurement Control reads the latest unscrumbed LIVE semantic sample:
 plvs-cli measurement describe --json
 plvs-cli measurement inspect --json
 plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json
+plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json
 ```
 
 These commands never start capture or optional analysis and do not expose File results, history,
 or raw visual data. See [Measurement Control](agent-control/measurements.md) for freshness, null
 reasons, profile evaluation, and revision behavior, and
-[Measurement Wait](agent-control/measurement-wait.md) for wait identity and timeout semantics.
+[Measurement Wait](agent-control/measurement-wait.md) for identity waits, bounded predicates, hold
+durations, and timeout semantics.
 
 View Control reads and changes the persistent working-view scene:
 
@@ -234,9 +258,11 @@ Detailed payloads and behavior are documented in [Agent Control](agent-control/R
 
 ## JSON Contract
 
-`doctor` defaults to concise human-readable output. Every running-app query, mutation, and action
-requires `--json`; help does not. In JSON mode, stdout contains exactly one UTF-8 JSON document
-followed by a newline, with no banners, progress text, or ANSI escapes.
+`doctor` defaults to concise human-readable output. Running-app mutations, actions, waits, and
+queries that write files require `--json`; help does not. Other running-app queries accept either
+`--json` or explicit `--format text`. Text mode uses grouped fields and tables for flat collections,
+with no ANSI color. In JSON mode, stdout contains exactly one UTF-8 JSON document followed by a
+newline, with no banners, progress text, or ANSI escapes.
 
 Every successful JSON response has:
 

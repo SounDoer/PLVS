@@ -47,6 +47,7 @@
     "check": "npm run version:check && npm run format:check && npm run lint && npm test && npm run build && npm run rust:check",
     "release:preflight": "node scripts/run-release-gate.mjs",
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
+    "smoke:agent-control": "node scripts/smoke-agent-control.mjs",
     "smoke:capture": "node scripts/smoke-capture.mjs",
     "soak:capture": "node scripts/soak-capture.mjs",
     "verify:ui-backpressure": "node scripts/verify-ui-frame-backpressure.mjs",

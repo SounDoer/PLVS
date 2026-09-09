@@ -11,6 +11,7 @@ measurements.
 
 ```powershell
 npm run desktop:control -- measurement wait --after-generation 3 --after-sequence 127 --timeout-ms 30000 --json
+npm run desktop:control -- measurement wait-until predicate.json --timeout-ms 30000 --json
 ```
 
 `--after-generation <n>` is required. `--after-sequence <n>` is optional and is omitted when the
@@ -105,13 +106,15 @@ and client disconnection remain availability or cancellation errors rather than 
 
 ## Concurrency and cleanup
 
-Measurement Wait and Revision Wait share one limit of four active long-poll requests. This keeps
+Measurement Wait, predicate waits, and Revision Wait share one limit of four active long-poll
+requests. This keeps
 long waits from consuming every broker pending slot and leaving no capacity for inspection or
 mutation. A request beyond the shared limit fails immediately with `waitLimitReached`.
 
 Long waits bypass the serialized mutation queue. Completion, timeout, client cancellation,
 frontend unmount, and application shutdown remove the waiter and its timer immediately. Every
-transport layer must derive its deadline from either `app.wait` or `measurement.wait`; the
+transport layer must derive its deadline from `app.wait`, `measurement.wait`, or
+`measurement.waitUntil`; the
 frontend timeout plus the existing broker/client grace periods remains authoritative.
 
 ## Revision behavior
@@ -120,9 +123,44 @@ Published measurement samples and completed Measurement Wait queries do not incr
 revision and do not wake `app.wait`. The nested measurement snapshot reports the current revision
 only as contemporaneous control-state context.
 
-## Deliberate first scope
+## Predicate waits
 
-The first implementation waits only for a different measurement identity. It does not accept
-metric paths, comparison operators, threshold expressions, stability durations, FILE sessions, or
-raw/history data. An agent that needs a readiness or threshold condition performs a bounded loop:
-wait for one sample, evaluate the returned snapshot, and use its identity as the next baseline.
+`measurement wait-until` reads one strict predicate object from a file or stdin. It evaluates only
+fresh LIVE semantic snapshots and returns the complete satisfying snapshot. It does not poll across
+the native transport, increment revision, start capture, or add analysis demand.
+
+Signal present uses the same -90 dBFS signal floor as PLVS correlation readiness:
+
+```json
+{ "kind": "signalPresent" }
+```
+
+Metric availability waits for a named public scalar to become non-null:
+
+```json
+{ "kind": "metricAvailable", "metric": "loudness.integratedLufs" }
+```
+
+A numeric threshold supports `above`, `atOrAbove`, `below`, and `atOrBelow`. `holdMs` defaults to
+zero, is bounded from 0 through 300000, and cannot exceed the command timeout:
+
+```json
+{
+  "kind": "metricThreshold",
+  "metric": "levels.truePeak.maxDbtp",
+  "operator": "below",
+  "value": -1,
+  "holdMs": 1000
+}
+```
+
+A hold must remain continuously true. A contrary published sample resets it, and the final timer
+check rebuilds the snapshot so a sample that became stale cannot satisfy the condition. A match
+returns `outcome: "condition"`, the normalized predicate, `matchedImmediately`, and `measurement`.
+Timeout uses the existing public `timeout` error and exit code 5, with the predicate and latest LIVE
+identity in error details.
+
+Supported availability paths are the named scalar fields under `levels.truePeak`, `loudness`,
+`stereo`, and `dialogue` published by `measurement inspect`. Thresholds exclude the boolean
+`dialogue.activeNow`. Channel wildcards, arbitrary field paths, expressions, compound Boolean
+logic, FILE sessions, and raw/history data are deliberately not accepted.

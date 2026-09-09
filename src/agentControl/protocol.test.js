@@ -590,6 +590,64 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("normalizes bounded measurement predicates and their hold duration", () => {
+    expect(
+      normalizeAgentControlRequest(
+        request("measurement.waitUntil", {
+          predicate: {
+            kind: "metricThreshold",
+            metric: "loudness.integratedLufs",
+            operator: "atOrAbove",
+            value: -24,
+            holdMs: 500,
+          },
+          timeoutMs: 1000,
+        })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "measurement.waitUntil",
+        params: {
+          predicate: {
+            kind: "metricThreshold",
+            metric: "loudness.integratedLufs",
+            operator: "atOrAbove",
+            value: -24,
+            holdMs: 500,
+          },
+          timeoutMs: 1000,
+        },
+      },
+    });
+    for (const [params, path] of [
+      [{ predicate: { kind: "expression", value: "true" } }, "$.params.predicate.kind"],
+      [
+        { predicate: { kind: "metricAvailable", metric: "internal.secret" } },
+        "$.params.predicate.metric",
+      ],
+      [
+        {
+          predicate: {
+            kind: "metricThreshold",
+            metric: "loudness.integratedLufs",
+            operator: "above",
+            value: -24,
+            holdMs: 1001,
+          },
+          timeoutMs: 1000,
+        },
+        "$.params.predicate.holdMs",
+      ],
+    ]) {
+      expect(normalizeAgentControlRequest(request("measurement.waitUntil", params))).toMatchObject({
+        ok: false,
+        error: { path },
+      });
+    }
+  });
+
   it.each([
     ["transport.source.live", { expectedRevision: 1, allowStopFileAnalysis: true, dryRun: true }],
     ["transport.source.file", { expectedRevision: 1, dryRun: true }],

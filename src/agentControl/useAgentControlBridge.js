@@ -41,6 +41,7 @@ import {
 } from "./moduleControl.js";
 import { buildPublicPresetSnapshot } from "./presetSnapshot.js";
 import { buildMeasurementDescription, buildMeasurementInspection } from "./measurementControl.js";
+import { measurementPredicateMatches } from "./measurementPredicates.js";
 import { buildVisualDescription } from "./visualControl.js";
 import {
   buildPublicView,
@@ -1290,6 +1291,130 @@ export function useAgentControlBridge({
               outcome: "sample",
               matchedImmediately: result.matchedImmediately,
               measurement: buildMeasurementOrFail(result.live),
+            },
+          };
+        }
+        if (request.method === "measurement.waitUntil") {
+          const currentMeasurement = latestMeasurementContextRef.current;
+          const predicate = request.params.predicate;
+          const holdMs = predicate.holdMs ?? 0;
+          const initialLive = currentMeasurement.getLiveMeasurement?.() ?? {
+            generation: 0,
+            record: null,
+          };
+          const initialMeasurement = buildMeasurementOrFail(initialLive);
+          if (holdMs === 0 && measurementPredicateMatches(initialMeasurement, predicate)) {
+            return {
+              requestId,
+              result: {
+                outcome: "condition",
+                matchedImmediately: true,
+                predicate,
+                measurement: initialMeasurement,
+              },
+            };
+          }
+          if (waitersRef.current.size >= 4) {
+            throw semanticFailure(
+              "waitLimitReached",
+              "$",
+              "Too many long waits are active.",
+              -32070
+            );
+          }
+          const result = await new Promise((resolve, reject) => {
+            const waiter = {
+              kind: "measurementPredicate",
+              timer: null,
+              holdTimer: null,
+              unsubscribe: () => {},
+              resolve,
+              reject,
+            };
+            const clearHold = () => {
+              clearTimeout(waiter.holdTimer);
+              waiter.holdTimer = null;
+            };
+            const finish = (value) => {
+              clearTimeout(waiter.timer);
+              clearHold();
+              waiter.unsubscribe();
+              waitersRef.current.delete(requestId);
+              resolve(value);
+            };
+            const fail = (error) => {
+              clearTimeout(waiter.timer);
+              clearHold();
+              waiter.unsubscribe();
+              waitersRef.current.delete(requestId);
+              reject(error);
+            };
+            const observe = (live) => {
+              try {
+                const measurement = buildMeasurementOrFail(live);
+                if (!measurementPredicateMatches(measurement, predicate)) {
+                  clearHold();
+                  return;
+                }
+                if (holdMs === 0) {
+                  finish({ measurement, matchedImmediately: false });
+                  return;
+                }
+                if (waiter.holdTimer !== null) return;
+                waiter.holdTimer = setTimeout(() => {
+                  try {
+                    const latest = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+                      generation: 0,
+                      record: null,
+                    };
+                    const finalMeasurement = buildMeasurementOrFail(latest);
+                    if (measurementPredicateMatches(finalMeasurement, predicate)) {
+                      finish({ measurement: finalMeasurement, matchedImmediately: false });
+                    } else {
+                      clearHold();
+                    }
+                  } catch (error) {
+                    fail(error);
+                  }
+                }, holdMs);
+              } catch (error) {
+                fail(error);
+              }
+            };
+            waiter.timer = setTimeout(() => {
+              const live = latestMeasurementContextRef.current.getLiveMeasurement?.() ?? {
+                generation: 0,
+                record: null,
+              };
+              finish({ timeout: true, live });
+            }, request.params.timeoutMs);
+            waitersRef.current.set(requestId, waiter);
+            waiter.unsubscribe =
+              currentMeasurement.subscribeLiveMeasurement?.(observe) ?? (() => {});
+            observe(currentMeasurement.getLiveMeasurement?.() ?? { generation: 0, record: null });
+          });
+          if (result === WAIT_CANCELLED) return null;
+          if (result.timeout) {
+            throw semanticFailure(
+              "timeout",
+              "$.params.timeoutMs",
+              "The LIVE measurement condition was not satisfied before the timeout.",
+              -32071,
+              {
+                predicate,
+                currentGeneration: result.live.generation,
+                currentSequence: result.live.record?.sequence ?? null,
+                liveState: latestMeasurementContextRef.current.liveState,
+              }
+            );
+          }
+          return {
+            requestId,
+            result: {
+              outcome: "condition",
+              matchedImmediately: result.matchedImmediately,
+              predicate,
+              measurement: result.measurement,
             },
           };
         }
@@ -3607,6 +3732,7 @@ export function useAgentControlBridge({
           const waiter = waiters.get(request.requestId);
           if (waiter) {
             clearTimeout(waiter.timer);
+            clearTimeout(waiter.holdTimer);
             waiter.unsubscribe?.();
             waiters.delete(request.requestId);
             waiter.resolve(WAIT_CANCELLED);
@@ -3625,6 +3751,7 @@ export function useAgentControlBridge({
         if (
           request?.method === "app.wait" ||
           request?.method === "measurement.wait" ||
+          request?.method === "measurement.waitUntil" ||
           request?.method === "measurement.describe" ||
           request?.method === "measurement.inspect" ||
           request?.method?.startsWith("visual.")
@@ -3688,6 +3815,7 @@ export function useAgentControlBridge({
       dockSettlement?.reject(new Error("Agent-control bridge unmounted."));
       for (const waiter of waiters.values()) {
         clearTimeout(waiter.timer);
+        clearTimeout(waiter.holdTimer);
         waiter.unsubscribe?.();
         waiter.reject(new Error("Agent-control bridge unmounted."));
       }

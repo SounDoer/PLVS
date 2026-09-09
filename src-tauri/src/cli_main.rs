@@ -3,6 +3,7 @@
 //! (see `bin/plvs-cli.rs`) so the engine (ONNX runtime, VAD models, DSP) is
 //! linked into the installer only once.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
@@ -38,6 +39,7 @@ enum CliCommand {
   },
   SchemaList,
   SchemaGet(String),
+  Completion(String),
   #[cfg(any(feature = "capture-harness", test))]
   Analyze {
     path: String,
@@ -59,6 +61,7 @@ enum HelpTopic {
   Root,
   Doctor,
   Schema,
+  Completion,
   #[cfg(any(feature = "capture-harness", test))]
   Analyze,
   #[cfg(any(feature = "capture-harness", test))]
@@ -72,12 +75,23 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     }
     [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
     [command, rest @ ..] if command == "schema" => parse_schema_args(rest),
+    [command, flag] if command == "completion" && is_help_flag(flag) => {
+      Ok(CliCommand::Help(HelpTopic::Completion))
+    }
+    [command, shell]
+      if command == "completion" && matches!(shell.as_str(), "powershell" | "bash" | "zsh") =>
+    {
+      Ok(CliCommand::Completion(shell.clone()))
+    }
+    [command, ..] if command == "completion" => {
+      Err("Usage: plvs-cli completion <powershell|bash|zsh>".to_string())
+    }
     [command, ..] if cli_control::is_command(command) => {
       cli_control::parse_control_args(args).map(CliCommand::Control)
     }
     [command, topic] if command == "help" => parse_help_topic(topic),
     [command, ..] if command == "help" => {
-      Err("Usage: plvs-cli help [doctor|schema|<control-command>]".to_string())
+      Err("Usage: plvs-cli help [doctor|schema|completion|<control-command>]".to_string())
     }
     [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
     [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
@@ -341,6 +355,7 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
   match topic {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
     "schema" => Ok(CliCommand::Help(HelpTopic::Schema)),
+    "completion" => Ok(CliCommand::Help(HelpTopic::Completion)),
     topic if cli_control::is_command(topic) => Ok(CliCommand::Control(ControlCommand::FamilyHelp(
       topic.to_string(),
     ))),
@@ -511,6 +526,89 @@ fn emit_schema_json(json: &str) -> Result<(), String> {
   write_json_line(&mut io::stdout().lock(), json)
 }
 
+fn completion_contexts() -> Result<BTreeMap<String, BTreeSet<String>>, String> {
+  let manifest = crate::cli_manifest::command_manifest().map_err(str::to_string)?;
+  let mut contexts = BTreeMap::<String, BTreeSet<String>>::new();
+  for command in &manifest.commands {
+    for index in 0..command.path.len() {
+      contexts
+        .entry(command.path[..index].join(" "))
+        .or_default()
+        .insert(command.path[index].clone());
+    }
+    let path = command.path.join(" ");
+    if let Some(position) = command.positionals.first() {
+      if let Some(values) = &position.value.enum_values {
+        for value in values.iter().filter_map(serde_json::Value::as_str) {
+          contexts
+            .entry(path.clone())
+            .or_default()
+            .insert(value.to_string());
+        }
+      }
+    }
+    for option in &command.options {
+      contexts
+        .entry(path.clone())
+        .or_default()
+        .insert(option.name.clone());
+      if let Some(values) = &option.value.enum_values {
+        let option_context = contexts
+          .entry(format!("{path} {}", option.name))
+          .or_default();
+        for value in values.iter().filter_map(serde_json::Value::as_str) {
+          option_context.insert(value.to_string());
+        }
+      }
+    }
+  }
+  Ok(contexts)
+}
+
+fn render_completion(shell: &str) -> Result<String, String> {
+  let contexts = completion_contexts()?;
+  let cases = contexts
+    .iter()
+    .map(|(context, candidates)| {
+      let candidates = candidates.iter().cloned().collect::<Vec<_>>().join(" ");
+      (context, candidates)
+    })
+    .collect::<Vec<_>>();
+  match shell {
+    "bash" => {
+      let arms = cases
+        .iter()
+        .map(|(context, candidates)| format!("    \"{context}\") candidates=\"{candidates}\" ;;"))
+        .collect::<Vec<_>>()
+        .join("\n");
+      Ok(format!(
+        "_plvs_cli() {{\n  local context candidates\n  context=\"${{COMP_WORDS[*]:1:$((COMP_CWORD-1))}}\"\n  while true; do\n    candidates=\"\"\n    case \"$context\" in\n{arms}\n      *) candidates=\"\" ;;\n    esac\n    [[ -n \"$candidates\" || -z \"$context\" ]] && break\n    [[ \"$context\" == *\" \"* ]] && context=\"${{context% *}}\" || context=\"\"\n  done\n  COMPREPLY=( $(compgen -W \"$candidates\" -- \"${{COMP_WORDS[COMP_CWORD]}}\") )\n}}\ncomplete -F _plvs_cli plvs-cli\n"
+      ))
+    }
+    "zsh" => {
+      let arms = cases
+        .iter()
+        .map(|(context, candidates)| format!("    \"{context}\") candidates=({candidates}) ;;"))
+        .collect::<Vec<_>>()
+        .join("\n");
+      Ok(format!(
+        "#compdef plvs-cli\n_plvs_cli() {{\n  local context\n  local -a candidates\n  context=\"${{(j: :)words[2,$((CURRENT-1))]}}\"\n  while true; do\n    candidates=()\n    case \"$context\" in\n{arms}\n      *) candidates=() ;;\n    esac\n    if (( ${{#candidates}} > 0 )) || [[ -z \"$context\" ]]; then break; fi\n    [[ \"$context\" == *\" \"* ]] && context=\"${{context% *}}\" || context=\"\"\n  done\n  _describe 'PLVS command' candidates\n}}\ncompdef _plvs_cli plvs-cli\n"
+      ))
+    }
+    "powershell" => {
+      let arms = cases
+        .iter()
+        .map(|(context, candidates)| format!("    '{context}' {{ $candidates = '{candidates}' }}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+      Ok(format!(
+        "Register-ArgumentCompleter -Native -CommandName plvs-cli -ScriptBlock {{\n  param($wordToComplete, $commandAst, $cursorPosition)\n  $elements = @($commandAst.CommandElements | ForEach-Object {{ $_.Extent.Text }})\n  $tokens = @($elements | Select-Object -Skip 1)\n  if ($wordToComplete -and $tokens.Count -gt 0) {{ $tokens = @($tokens | Select-Object -SkipLast 1) }}\n  $context = $tokens -join ' '\n  do {{\n    $candidates = ''\n    switch ($context) {{\n{arms}\n    }}\n    if ($candidates -or -not $context) {{ break }}\n    $separator = $context.LastIndexOf(' ')\n    $context = if ($separator -lt 0) {{ '' }} else {{ $context.Substring(0, $separator) }}\n  }} while ($true)\n  $candidates -split ' ' | Where-Object {{ $_ -like \"$wordToComplete*\" }} | ForEach-Object {{\n    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)\n  }}\n}}\n"
+      ))
+    }
+    _ => Err(format!("Unsupported completion shell: {shell}")),
+  }
+}
+
 fn doctor_exit_code(status: DoctorStatus) -> u8 {
   match status {
     DoctorStatus::Error => 1,
@@ -619,7 +717,7 @@ fn root_help_text() -> String {
     .collect::<Vec<_>>()
     .join("\n");
   format!(
-    "PLVS CLI\n\nDiagnostics:\n{offline}\n\nRunning app:\n{running}\n\nAgent usage:\n  Add --json for stable machine-readable output.\n  Running-app commands require Agent Control to be enabled and never launch PLVS.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
+    "PLVS CLI\n\nDiagnostics and setup:\n{offline}\n\nRunning app:\n{running}\n\nAgent usage:\n  Use --json for stable machine-readable output. Read-only running-app commands also accept --format text.\n  Running-app commands require Agent Control to be enabled and never launch PLVS.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
   )
 }
 
@@ -645,6 +743,9 @@ fn help_text(topic: HelpTopic) -> String {
         })
         .unwrap_or_default();
       format!("PLVS CLI - schema\n\nUsage:\n{usage}\n\nReads the installed CLI command catalog without contacting PLVS.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input")
+    }
+    HelpTopic::Completion => {
+      "PLVS CLI - completion\n\nUsage:\n  plvs-cli completion <powershell|bash|zsh>\n\nPrints a shell completion script generated from the installed command catalog.\nLoad the output from your shell profile or write it to the shell's completion directory.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input".to_string()
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
@@ -737,6 +838,13 @@ fn execute(command: CliCommand) -> ExitCode {
         3,
       ),
       Err(error) => emit_cli_failure("internalError", &error, true, 1),
+    },
+    CliCommand::Completion(shell) => match render_completion(&shell) {
+      Ok(script) => {
+        print!("{script}");
+        ExitCode::SUCCESS
+      }
+      Err(error) => emit_cli_failure("internalError", &error, false, 1),
     },
     CliCommand::Doctor { json, out } => {
       let report = run_doctor();
@@ -957,6 +1065,55 @@ mod tests {
   }
 
   #[test]
+  fn parses_completion_commands_and_scoped_help() {
+    for shell in ["powershell", "bash", "zsh"] {
+      assert_eq!(
+        parse_args(&args(&["completion", shell])),
+        Ok(CliCommand::Completion(shell.to_string()))
+      );
+    }
+    for invocation in [
+      vec!["completion"],
+      vec!["completion", "fish"],
+      vec!["completion", "bash", "--json"],
+    ] {
+      assert!(parse_args(&args(&invocation)).is_err());
+    }
+    assert_eq!(
+      parse_args(&args(&["completion", "--help"])),
+      Ok(CliCommand::Help(HelpTopic::Completion))
+    );
+    assert_eq!(
+      parse_args(&args(&["help", "completion"])),
+      Ok(CliCommand::Help(HelpTopic::Completion))
+    );
+    assert!(help_text(HelpTopic::Completion).contains("completion <powershell|bash|zsh>"));
+  }
+
+  #[test]
+  fn completions_are_generated_from_manifest_paths_options_and_enums() {
+    for shell in ["powershell", "bash", "zsh"] {
+      let script = render_completion(shell).unwrap();
+      assert!(
+        script.contains("measurement wait"),
+        "missing path in {shell}"
+      );
+      assert!(
+        script.contains("--after-generation"),
+        "missing option in {shell}"
+      );
+      assert!(
+        script.contains("--format"),
+        "missing text format in {shell}"
+      );
+      for value in ["powershell", "bash", "zsh"] {
+        assert!(script.contains(value), "missing enum {value} in {shell}");
+      }
+    }
+    assert!(render_completion("fish").is_err());
+  }
+
+  #[test]
   fn schema_list_is_compact_ordered_and_omits_inapplicable_fields() {
     let encoded = serialize_schema_list().unwrap();
     let json: serde_json::Value = serde_json::from_str(&encoded).unwrap();
@@ -964,7 +1121,7 @@ mod tests {
     assert_eq!(json["ok"], true);
     assert_eq!(json["result"]["manifestVersion"], 1);
     let commands = json["result"]["commands"].as_array().unwrap();
-    assert_eq!(commands.len(), 92);
+    assert_eq!(commands.len(), 94);
     assert_eq!(commands[0]["id"], "app.capabilities");
     let doctor = commands
       .iter()

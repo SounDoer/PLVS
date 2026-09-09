@@ -30,6 +30,7 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | `npm run check` | The merge gate: version + format + lint + test + build + Rust fmt/clippy/test. |
 | `npm test` | Vitest, single run. |
 | `npm run smoke:capture` | Real capture smoke test. Needs VB-Cable + VLC on the machine. |
+| `npm run smoke:agent-control` | Real Agent Control screenshot/recording smoke. Needs the development GUI running. |
 | `npm run soak:capture` | Long-running capture soak, 4 hours by default. |
 
 ## Agent Control

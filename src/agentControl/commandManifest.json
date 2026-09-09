@@ -5,12 +5,12 @@
       "id": "app.capabilities",
       "family": "capabilities",
       "path": ["capabilities"],
-      "usage": "plvs-cli capabilities --json",
+      "usage": "plvs-cli capabilities <--json|--format text>",
       "summary": "Report the running app compatibility and capability surface.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "app.capabilities",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -18,9 +18,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -35,12 +43,12 @@
       "id": "app.inspect",
       "family": "inspect",
       "path": ["inspect"],
-      "usage": "plvs-cli inspect --json",
+      "usage": "plvs-cli inspect <--json|--format text>",
       "summary": "Inspect the running application's public mutable state.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "app.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -48,9 +56,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -65,12 +81,12 @@
       "id": "measurement.describe",
       "family": "measurement",
       "path": ["measurement", "describe"],
-      "usage": "plvs-cli measurement describe --json",
+      "usage": "plvs-cli measurement describe <--json|--format text>",
       "summary": "Describe the measurement read contract.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "measurement.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -78,9 +94,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -95,12 +119,12 @@
       "id": "measurement.inspect",
       "family": "measurement",
       "path": ["measurement", "inspect"],
-      "usage": "plvs-cli measurement inspect --json",
+      "usage": "plvs-cli measurement inspect <--json|--format text>",
       "summary": "Inspect the latest measurement state.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "measurement.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -108,9 +132,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -196,15 +228,119 @@
       }
     },
     {
+      "id": "measurement.waitUntil",
+      "family": "measurement",
+      "path": ["measurement", "wait-until"],
+      "usage": "plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json",
+      "summary": "Wait until a bounded LIVE measurement predicate is satisfied.",
+      "execution": "runningApp",
+      "operation": "wait",
+      "wireMethod": "measurement.waitUntil",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file|-",
+          "mapsTo": "predicate",
+          "required": true,
+          "value": {
+            "schemaRef": "measurement.predicate"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--timeout-ms",
+          "required": false,
+          "value": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
+          },
+          "mapsTo": "timeoutMs"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["predicate"],
+        "properties": {
+          "predicate": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["signalPresent", "metricAvailable", "metricThreshold"]
+              },
+              "metric": {
+                "type": "string",
+                "enum": [
+                  "levels.truePeak.leftDbtp",
+                  "levels.truePeak.rightDbtp",
+                  "levels.truePeak.maxDbtp",
+                  "loudness.momentaryLufs",
+                  "loudness.shortTermLufs",
+                  "loudness.integratedLufs",
+                  "loudness.momentaryMaxLufs",
+                  "loudness.shortTermMaxLufs",
+                  "loudness.rangeLu",
+                  "loudness.psrDb",
+                  "loudness.plrDb",
+                  "stereo.correlation",
+                  "stereo.sideToMidDb",
+                  "dialogue.activeNow",
+                  "dialogue.coveragePercent",
+                  "dialogue.integratedLufs",
+                  "dialogue.rangeLu",
+                  "dialogue.offsetLu"
+                ]
+              },
+              "operator": {
+                "type": "string",
+                "enum": ["above", "atOrAbove", "below", "atOrBelow"]
+              },
+              "value": {
+                "type": "number"
+              },
+              "holdMs": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 300000,
+                "default": 0
+              }
+            }
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 300000,
+            "default": 30000
+          }
+        }
+      }
+    },
+    {
       "id": "view.describe",
       "family": "view",
       "path": ["view", "describe"],
-      "usage": "plvs-cli view describe --json",
+      "usage": "plvs-cli view describe <--json|--format text>",
       "summary": "Describe public view controls.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "view.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -212,9 +348,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -229,12 +373,12 @@
       "id": "view.inspect",
       "family": "view",
       "path": ["view", "inspect"],
-      "usage": "plvs-cli view inspect --json",
+      "usage": "plvs-cli view inspect <--json|--format text>",
       "summary": "Inspect public view state.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "view.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -242,9 +386,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -380,12 +532,12 @@
       "id": "module.list",
       "family": "module",
       "path": ["module", "list"],
-      "usage": "plvs-cli module list --json",
+      "usage": "plvs-cli module list <--json|--format text>",
       "summary": "List available panel modules.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "module.list",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -393,9 +545,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -410,12 +570,12 @@
       "id": "module.describe",
       "family": "module",
       "path": ["module", "describe"],
-      "usage": "plvs-cli module describe <module-id> --json",
+      "usage": "plvs-cli module describe <module-id> <--json|--format text>",
       "summary": "Describe an available panel module.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "module.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -432,9 +592,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -520,12 +688,12 @@
       "id": "axis.describe",
       "family": "axis",
       "path": ["axis", "describe"],
-      "usage": "plvs-cli axis describe --json",
+      "usage": "plvs-cli axis describe <--json|--format text>",
       "summary": "Describe public axis controls.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "axis.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -533,9 +701,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -550,12 +726,12 @@
       "id": "axis.inspect",
       "family": "axis",
       "path": ["axis", "inspect"],
-      "usage": "plvs-cli axis inspect --json",
+      "usage": "plvs-cli axis inspect <--json|--format text>",
       "summary": "Inspect public axis state.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "axis.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -563,9 +739,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -890,12 +1074,12 @@
       "id": "panel.describe",
       "family": "panel",
       "path": ["panel", "describe"],
-      "usage": "plvs-cli panel describe <panel-id> --json",
+      "usage": "plvs-cli panel describe <panel-id> <--json|--format text>",
       "summary": "Describe one live panel.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "panel.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -912,9 +1096,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -1077,12 +1269,12 @@
       "id": "preset.list",
       "family": "preset",
       "path": ["preset", "list"],
-      "usage": "plvs-cli preset list --json",
+      "usage": "plvs-cli preset list <--json|--format text>",
       "summary": "List presets.",
       "execution": "runningApp",
-      "operation": "mutation",
+      "operation": "query",
       "wireMethod": "preset.list",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -1090,9 +1282,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -1107,12 +1307,12 @@
       "id": "preset.describe",
       "family": "preset",
       "path": ["preset", "describe"],
-      "usage": "plvs-cli preset describe <preset-id> --json",
+      "usage": "plvs-cli preset describe <preset-id> <--json|--format text>",
       "summary": "Describe a preset.",
       "execution": "runningApp",
-      "operation": "mutation",
+      "operation": "query",
       "wireMethod": "preset.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -1129,9 +1329,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -1564,7 +1772,7 @@
       "usage": "plvs-cli preset export <--all|--ids <id,...>> --json [--out <file>]",
       "summary": "Export presets as a library pack.",
       "execution": "runningApp",
-      "operation": "mutation",
+      "operation": "query",
       "wireMethod": "preset.export",
       "json": "required",
       "expectedRevision": "none",
@@ -1690,12 +1898,12 @@
       "id": "theme.list",
       "family": "theme",
       "path": ["theme", "list"],
-      "usage": "plvs-cli theme list --json",
+      "usage": "plvs-cli theme list <--json|--format text>",
       "summary": "List themes.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "theme.list",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -1703,9 +1911,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -1720,12 +1936,12 @@
       "id": "theme.inspect",
       "family": "theme",
       "path": ["theme", "inspect"],
-      "usage": "plvs-cli theme inspect --json",
+      "usage": "plvs-cli theme inspect <--json|--format text>",
       "summary": "Inspect the active theme state.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "theme.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -1733,9 +1949,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -1750,12 +1974,12 @@
       "id": "theme.describe",
       "family": "theme",
       "path": ["theme", "describe"],
-      "usage": "plvs-cli theme describe <theme-id> --json",
+      "usage": "plvs-cli theme describe <theme-id> <--json|--format text>",
       "summary": "Describe a theme.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "theme.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -1772,9 +1996,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -2477,12 +2709,12 @@
       "id": "loudnessProfile.list",
       "family": "loudness-profile",
       "path": ["loudness-profile", "list"],
-      "usage": "plvs-cli loudness-profile list --json",
+      "usage": "plvs-cli loudness-profile list <--json|--format text>",
       "summary": "List loudness profiles.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "loudnessProfile.list",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -2490,9 +2722,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -2507,12 +2747,12 @@
       "id": "loudnessProfile.describe",
       "family": "loudness-profile",
       "path": ["loudness-profile", "describe"],
-      "usage": "plvs-cli loudness-profile describe <profile-id> --json",
+      "usage": "plvs-cli loudness-profile describe <profile-id> <--json|--format text>",
       "summary": "Describe a loudness profile.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "loudnessProfile.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -2529,9 +2769,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -3207,12 +3455,12 @@
       "id": "settings.describe",
       "family": "settings",
       "path": ["settings", "describe"],
-      "usage": "plvs-cli settings describe --json",
+      "usage": "plvs-cli settings describe <--json|--format text>",
       "summary": "Describe public settings.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "settings.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -3220,9 +3468,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -3237,12 +3493,12 @@
       "id": "settings.inspect",
       "family": "settings",
       "path": ["settings", "inspect"],
-      "usage": "plvs-cli settings inspect --json",
+      "usage": "plvs-cli settings inspect <--json|--format text>",
       "summary": "Inspect public settings.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "settings.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -3250,9 +3506,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -3345,12 +3609,12 @@
       "id": "device.list",
       "family": "device",
       "path": ["device", "list"],
-      "usage": "plvs-cli device list --json",
+      "usage": "plvs-cli device list <--json|--format text>",
       "summary": "List audio capture devices.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "device.list",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -3358,9 +3622,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -3375,12 +3647,12 @@
       "id": "device.inspect",
       "family": "device",
       "path": ["device", "inspect"],
-      "usage": "plvs-cli device inspect --json",
+      "usage": "plvs-cli device inspect <--json|--format text>",
       "summary": "Inspect audio device selection.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "device.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -3388,9 +3660,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -3556,12 +3836,12 @@
       "id": "transport.inspect",
       "family": "transport",
       "path": ["transport", "inspect"],
-      "usage": "plvs-cli transport inspect --json",
+      "usage": "plvs-cli transport inspect <--json|--format text>",
       "summary": "Inspect transport state.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "transport.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -3569,9 +3849,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -4229,12 +4517,12 @@
       "id": "dock.describe",
       "family": "dock",
       "path": ["dock", "describe"],
-      "usage": "plvs-cli dock describe --json",
+      "usage": "plvs-cli dock describe <--json|--format text>",
       "summary": "Describe Dock controls.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "dock.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -4242,9 +4530,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -4259,12 +4555,12 @@
       "id": "dock.inspect",
       "family": "dock",
       "path": ["dock", "inspect"],
-      "usage": "plvs-cli dock inspect --json",
+      "usage": "plvs-cli dock inspect <--json|--format text>",
       "summary": "Inspect Dock state.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "dock.inspect",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -4272,9 +4568,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -4513,12 +4817,12 @@
       "id": "dock.panel.describe",
       "family": "dock",
       "path": ["dock", "panel", "describe"],
-      "usage": "plvs-cli dock panel describe <panel-id> --json",
+      "usage": "plvs-cli dock panel describe <panel-id> <--json|--format text>",
       "summary": "Describe a Dock panel.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "dock.panel.describe",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -4535,9 +4839,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -4700,13 +5012,13 @@
       "id": "visual.describe",
       "family": "visual",
       "path": ["visual", "describe"],
-      "usage": "plvs-cli visual describe --json",
+      "usage": "plvs-cli visual describe <--json|--format text>",
       "summary": "Describe Visual Capture availability.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "visual.describe",
       "featureGate": "visual",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -4714,9 +5026,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -4918,13 +5238,13 @@
       "id": "visual.recording.inspect",
       "family": "visual",
       "path": ["visual", "recording", "inspect"],
-      "usage": "plvs-cli visual recording inspect <recording-id> --json",
+      "usage": "plvs-cli visual recording inspect <recording-id> <--json|--format text>",
       "summary": "Inspect a Visual recording.",
       "execution": "runningApp",
       "operation": "query",
       "wireMethod": "visual.recording.inspect",
       "featureGate": "visual.recording",
-      "json": "required",
+      "json": "optional",
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "none",
@@ -4941,9 +5261,17 @@
       "options": [
         {
           "name": "--json",
-          "required": true,
+          "required": false,
           "value": {
             "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
           }
         }
       ],
@@ -5182,6 +5510,36 @@
             "type": "string"
           }
         }
+      }
+    },
+    {
+      "id": "completion",
+      "family": "completion",
+      "path": ["completion"],
+      "usage": "plvs-cli completion <powershell|bash|zsh>",
+      "summary": "Generate a shell completion script from the installed command catalog.",
+      "execution": "offline",
+      "operation": "query",
+      "json": "none",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "shell",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["powershell", "bash", "zsh"]
+          }
+        }
+      ],
+      "options": [],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
       }
     }
   ]

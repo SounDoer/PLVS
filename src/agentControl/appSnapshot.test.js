@@ -38,6 +38,7 @@ describe("agent-control app snapshots", () => {
         "measurement.describe",
         "measurement.inspect",
         "measurement.wait",
+        "measurement.waitUntil",
         "view.describe",
         "view.inspect",
         "view.update",

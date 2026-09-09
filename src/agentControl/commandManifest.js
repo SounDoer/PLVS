@@ -37,7 +37,7 @@ const SCHEMA_FIELDS = new Set([
 ]);
 const EXECUTIONS = new Set(["offline", "runningApp"]);
 const OPERATIONS = new Set(["query", "mutation", "action", "wait"]);
-const JSON_POLICIES = new Set(["optional", "required"]);
+const JSON_POLICIES = new Set(["none", "optional", "required"]);
 const REVISION_POLICIES = new Set(["none", "optional", "required"]);
 const OUTPUT_POLICIES = new Set(["none", "optional", "required"]);
 const SCHEMA_TYPES = new Set(["boolean", "integer", "number", "string", "array", "object"]);

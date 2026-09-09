@@ -12,6 +12,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
 | `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
+| `measurement.waitUntil` | `measurement wait-until` | runningApp / wait | none | no | none |
 | `view.describe` | `view describe` | runningApp / query | none | no | none |
 | `view.inspect` | `view inspect` | runningApp / query | none | no | none |
 | `view.update` | `view update` | runningApp / mutation | required | yes | none |
@@ -28,15 +29,15 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `panel.describe` | `panel describe` | runningApp / query | none | no | none |
 | `panel.update` | `panel update` | runningApp / mutation | required | yes | none |
 | `panel.reset` | `panel reset` | runningApp / mutation | required | yes | none |
-| `preset.list` | `preset list` | runningApp / mutation | none | no | none |
-| `preset.describe` | `preset describe` | runningApp / mutation | none | no | none |
+| `preset.list` | `preset list` | runningApp / query | none | no | none |
+| `preset.describe` | `preset describe` | runningApp / query | none | no | none |
 | `preset.rename` | `preset rename` | runningApp / mutation | required | yes | none |
 | `preset.delete` | `preset delete` | runningApp / mutation | required | yes | none |
 | `preset.reorder` | `preset reorder` | runningApp / mutation | required | yes | none |
 | `preset.save` | `preset save` | runningApp / mutation | required | yes | none |
 | `preset.update` | `preset update` | runningApp / mutation | required | yes | none |
 | `preset.apply` | `preset apply` | runningApp / mutation | required | yes | none |
-| `preset.export` | `preset export` | runningApp / mutation | none | no | optional |
+| `preset.export` | `preset export` | runningApp / query | none | no | optional |
 | `preset.import` | `preset import` | runningApp / mutation | required | yes | none |
 | `theme.list` | `theme list` | runningApp / query | none | no | none |
 | `theme.inspect` | `theme inspect` | runningApp / query | none | no | none |
@@ -99,6 +100,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `doctor` | `doctor` | offline / query | none | no | optional |
 | `schema.list` | `schema list` | offline / query | none | no | none |
 | `schema.get` | `schema get` | offline / query | none | no | none |
+| `completion` | `completion` | offline / query | none | no | none |
 
 ## `app.capabilities`
 
@@ -106,11 +108,11 @@ Report the running app compatibility and capability surface.
 
 - CLI path: `capabilities`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `app.capabilities`
 
 ```text
-plvs-cli capabilities --json
+plvs-cli capabilities <--json|--format text>
 ```
 
 ### Positionals
@@ -121,7 +123,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `app.inspect`
 
@@ -129,11 +132,11 @@ Inspect the running application's public mutable state.
 
 - CLI path: `inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `app.inspect`
 
 ```text
-plvs-cli inspect --json
+plvs-cli inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -144,7 +147,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `measurement.describe`
 
@@ -152,11 +156,11 @@ Describe the measurement read contract.
 
 - CLI path: `measurement describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `measurement.describe`
 
 ```text
-plvs-cli measurement describe --json
+plvs-cli measurement describe <--json|--format text>
 ```
 
 ### Positionals
@@ -167,7 +171,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `measurement.inspect`
 
@@ -175,11 +180,11 @@ Inspect the latest measurement state.
 
 - CLI path: `measurement inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `measurement.inspect`
 
 ```text
-plvs-cli measurement inspect --json
+plvs-cli measurement inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -190,7 +195,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `measurement.wait`
 
@@ -218,17 +224,44 @@ None.
 | `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
 | `--json` | local only | yes | boolean |
 
+## `measurement.waitUntil`
+
+Wait until a bounded LIVE measurement predicate is satisfied.
+
+- CLI path: `measurement wait-until`
+- Execution: `runningApp`; operation: `wait`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `measurement.waitUntil`
+- Schema references: `measurement.predicate`
+
+```text
+plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `file\|-` | `predicate` | yes | ref measurement.predicate |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--timeout-ms` | `timeoutMs` | no | integer; 100 to 300000; default 30000 |
+| `--json` | local only | yes | boolean |
+
 ## `view.describe`
 
 Describe public view controls.
 
 - CLI path: `view describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `view.describe`
 
 ```text
-plvs-cli view describe --json
+plvs-cli view describe <--json|--format text>
 ```
 
 ### Positionals
@@ -239,7 +272,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `view.inspect`
 
@@ -247,11 +281,11 @@ Inspect public view state.
 
 - CLI path: `view inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `view.inspect`
 
 ```text
-plvs-cli view inspect --json
+plvs-cli view inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -262,7 +296,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `view.update`
 
@@ -324,11 +359,11 @@ List available panel modules.
 
 - CLI path: `module list`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `module.list`
 
 ```text
-plvs-cli module list --json
+plvs-cli module list <--json|--format text>
 ```
 
 ### Positionals
@@ -339,7 +374,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `module.describe`
 
@@ -347,11 +383,11 @@ Describe an available panel module.
 
 - CLI path: `module describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `module.describe`
 
 ```text
-plvs-cli module describe <module-id> --json
+plvs-cli module describe <module-id> <--json|--format text>
 ```
 
 ### Positionals
@@ -364,7 +400,8 @@ plvs-cli module describe <module-id> --json
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `workspace.applyLayout`
 
@@ -400,11 +437,11 @@ Describe public axis controls.
 
 - CLI path: `axis describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `axis.describe`
 
 ```text
-plvs-cli axis describe --json
+plvs-cli axis describe <--json|--format text>
 ```
 
 ### Positionals
@@ -415,7 +452,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `axis.inspect`
 
@@ -423,11 +461,11 @@ Inspect public axis state.
 
 - CLI path: `axis inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `axis.inspect`
 
 ```text
-plvs-cli axis inspect --json
+plvs-cli axis inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -438,7 +476,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `axis.shared.update`
 
@@ -562,11 +601,11 @@ Describe one live panel.
 
 - CLI path: `panel describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `panel.describe`
 
 ```text
-plvs-cli panel describe <panel-id> --json
+plvs-cli panel describe <panel-id> <--json|--format text>
 ```
 
 ### Positionals
@@ -579,7 +618,8 @@ plvs-cli panel describe <panel-id> --json
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `panel.update`
 
@@ -643,12 +683,12 @@ plvs-cli panel reset <panel-id> --json --expected-revision <n> [--dry-run]
 List presets.
 
 - CLI path: `preset list`
-- Execution: `runningApp`; operation: `mutation`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Execution: `runningApp`; operation: `query`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `preset.list`
 
 ```text
-plvs-cli preset list --json
+plvs-cli preset list <--json|--format text>
 ```
 
 ### Positionals
@@ -659,19 +699,20 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `preset.describe`
 
 Describe a preset.
 
 - CLI path: `preset describe`
-- Execution: `runningApp`; operation: `mutation`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Execution: `runningApp`; operation: `query`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `preset.describe`
 
 ```text
-plvs-cli preset describe <preset-id> --json
+plvs-cli preset describe <preset-id> <--json|--format text>
 ```
 
 ### Positionals
@@ -684,7 +725,8 @@ plvs-cli preset describe <preset-id> --json
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `preset.rename`
 
@@ -860,7 +902,7 @@ plvs-cli preset apply <preset-id> --json --expected-revision <n> [--dry-run]
 Export presets as a library pack.
 
 - CLI path: `preset export`
-- Execution: `runningApp`; operation: `mutation`
+- Execution: `runningApp`; operation: `query`
 - JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `optional`
 - Wire method: `preset.export`
 
@@ -915,11 +957,11 @@ List themes.
 
 - CLI path: `theme list`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `theme.list`
 
 ```text
-plvs-cli theme list --json
+plvs-cli theme list <--json|--format text>
 ```
 
 ### Positionals
@@ -930,7 +972,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `theme.inspect`
 
@@ -938,11 +981,11 @@ Inspect the active theme state.
 
 - CLI path: `theme inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `theme.inspect`
 
 ```text
-plvs-cli theme inspect --json
+plvs-cli theme inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -953,7 +996,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `theme.describe`
 
@@ -961,11 +1005,11 @@ Describe a theme.
 
 - CLI path: `theme describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `theme.describe`
 
 ```text
-plvs-cli theme describe <theme-id> --json
+plvs-cli theme describe <theme-id> <--json|--format text>
 ```
 
 ### Positionals
@@ -978,7 +1022,8 @@ plvs-cli theme describe <theme-id> --json
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `theme.select`
 
@@ -1265,11 +1310,11 @@ List loudness profiles.
 
 - CLI path: `loudness-profile list`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `loudnessProfile.list`
 
 ```text
-plvs-cli loudness-profile list --json
+plvs-cli loudness-profile list <--json|--format text>
 ```
 
 ### Positionals
@@ -1280,7 +1325,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `loudnessProfile.describe`
 
@@ -1288,11 +1334,11 @@ Describe a loudness profile.
 
 - CLI path: `loudness-profile describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `loudnessProfile.describe`
 
 ```text
-plvs-cli loudness-profile describe <profile-id> --json
+plvs-cli loudness-profile describe <profile-id> <--json|--format text>
 ```
 
 ### Positionals
@@ -1305,7 +1351,8 @@ plvs-cli loudness-profile describe <profile-id> --json
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `loudnessProfile.select`
 
@@ -1589,11 +1636,11 @@ Describe public settings.
 
 - CLI path: `settings describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `settings.describe`
 
 ```text
-plvs-cli settings describe --json
+plvs-cli settings describe <--json|--format text>
 ```
 
 ### Positionals
@@ -1604,7 +1651,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `settings.inspect`
 
@@ -1612,11 +1660,11 @@ Inspect public settings.
 
 - CLI path: `settings inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `settings.inspect`
 
 ```text
-plvs-cli settings inspect --json
+plvs-cli settings inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -1627,7 +1675,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `settings.update`
 
@@ -1664,11 +1713,11 @@ List audio capture devices.
 
 - CLI path: `device list`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `device.list`
 
 ```text
-plvs-cli device list --json
+plvs-cli device list <--json|--format text>
 ```
 
 ### Positionals
@@ -1679,7 +1728,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `device.inspect`
 
@@ -1687,11 +1737,11 @@ Inspect audio device selection.
 
 - CLI path: `device inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `device.inspect`
 
 ```text
-plvs-cli device inspect --json
+plvs-cli device inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -1702,7 +1752,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `device.select`
 
@@ -1765,11 +1816,11 @@ Inspect transport state.
 
 - CLI path: `transport inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `transport.inspect`
 
 ```text
-plvs-cli transport inspect --json
+plvs-cli transport inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -1780,7 +1831,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `transport.source.live`
 
@@ -2083,11 +2135,11 @@ Describe Dock controls.
 
 - CLI path: `dock describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `dock.describe`
 
 ```text
-plvs-cli dock describe --json
+plvs-cli dock describe <--json|--format text>
 ```
 
 ### Positionals
@@ -2098,7 +2150,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `dock.inspect`
 
@@ -2106,11 +2159,11 @@ Inspect Dock state.
 
 - CLI path: `dock inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `dock.inspect`
 
 ```text
-plvs-cli dock inspect --json
+plvs-cli dock inspect <--json|--format text>
 ```
 
 ### Positionals
@@ -2121,7 +2174,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `dock.enter`
 
@@ -2213,11 +2267,11 @@ Describe a Dock panel.
 
 - CLI path: `dock panel describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `dock.panel.describe`
 
 ```text
-plvs-cli dock panel describe <panel-id> --json
+plvs-cli dock panel describe <panel-id> <--json|--format text>
 ```
 
 ### Positionals
@@ -2230,7 +2284,8 @@ plvs-cli dock panel describe <panel-id> --json
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `dock.panel.update`
 
@@ -2295,12 +2350,12 @@ Describe Visual Capture availability.
 
 - CLI path: `visual describe`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `visual.describe`
 - Feature gate: `visual`
 
 ```text
-plvs-cli visual describe --json
+plvs-cli visual describe <--json|--format text>
 ```
 
 ### Positionals
@@ -2311,7 +2366,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `visual.screenshot`
 
@@ -2379,12 +2435,12 @@ Inspect a Visual recording.
 
 - CLI path: `visual recording inspect`
 - Execution: `runningApp`; operation: `query`
-- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
 - Wire method: `visual.recording.inspect`
 - Feature gate: `visual.recording`
 
 ```text
-plvs-cli visual recording inspect <recording-id> --json
+plvs-cli visual recording inspect <recording-id> <--json|--format text>
 ```
 
 ### Positionals
@@ -2397,7 +2453,8 @@ plvs-cli visual recording inspect <recording-id> --json
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--json` | local only | yes | boolean |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `visual.recording.wait`
 
@@ -2522,3 +2579,25 @@ plvs-cli schema get <command-id> --json
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
 | `--json` | local only | yes | boolean |
+
+## `completion`
+
+Generate a shell completion script from the installed command catalog.
+
+- CLI path: `completion`
+- Execution: `offline`; operation: `query`
+- JSON: `none`; expected revision: `none`; dry-run: `false`; output file: `none`
+
+```text
+plvs-cli completion <powershell|bash|zsh>
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `shell` | local only | yes | string; one of "powershell", "bash", "zsh" |
+
+### Options
+
+None.

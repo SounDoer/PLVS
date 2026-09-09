@@ -144,7 +144,7 @@ pub fn validate_manifest(manifest: &CommandManifest) -> Result<(), String> {
     if !["query", "mutation", "action", "wait"].contains(&entry.operation.as_str()) {
       return Err(format!("{path}.operation is unknown"));
     }
-    if !["optional", "required"].contains(&entry.json.as_str()) {
+    if !["none", "optional", "required"].contains(&entry.json.as_str()) {
       return Err(format!("{path}.json is unknown"));
     }
     if !["none", "optional", "required"].contains(&entry.expected_revision.as_str()) {
@@ -324,14 +324,14 @@ mod tests {
   fn embedded_manifest_is_valid_and_complete() {
     let manifest = command_manifest().unwrap();
     assert_eq!(manifest.manifest_version, 1);
-    assert_eq!(manifest.commands.len(), 92);
+    assert_eq!(manifest.commands.len(), 94);
     assert_eq!(
       manifest
         .commands
         .iter()
         .filter(|command| command.execution == "runningApp")
         .count(),
-      89
+      90
     );
     assert_eq!(
       command_by_id("visual.recording.start")

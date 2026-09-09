@@ -17,6 +17,7 @@ function sampleForProperty(entry, name, schema) {
     path: "C:\\audio\\mix.wav",
     presetId: "preset-1",
     presetIds: ["preset-1"],
+    predicate: { kind: "signalPresent" },
     profileId: entry.id === "loudnessProfile.select" ? "off" : "profile-1",
     profileIds: [],
     range: { minHz: 200, maxHz: 5000 },
@@ -43,5 +44,6 @@ export function canonicalManifestParams(entry) {
     params[name] = sampleForProperty(entry, name, entry.wireParams.properties[name]);
   }
   if (entry.dryRun) params.dryRun = true;
+  if (entry.id === "measurement.waitUntil") params.timeoutMs = 100;
   return params;
 }

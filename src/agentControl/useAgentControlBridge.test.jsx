@@ -1916,6 +1916,84 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("waits for bounded measurement predicates and resets a broken hold", async () => {
+    const record = (sequence, integrated) => ({
+      generation: 5,
+      sequence,
+      elapsedMs: sequence * 10,
+      receivedAtMs: Date.now(),
+      loudnessLayout: "stereo",
+      loudnessLayoutKnown: true,
+      dialogueActive: false,
+      audio: { peakDb: [-12, -13], rmsDb: [-24, -25], integrated },
+    });
+    let live = { generation: 5, record: record(1, -20) };
+    const listeners = new Set();
+    mount({
+      measurementContext: {
+        getLiveMeasurement: () => live,
+        subscribeLiveMeasurement: (listener) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+        liveState: "running",
+      },
+    });
+    await waitUntilReady();
+
+    const immediate = await send(
+      request(
+        "measurement.waitUntil",
+        {
+          predicate: { kind: "metricAvailable", metric: "loudness.integratedLufs" },
+          timeoutMs: 500,
+        },
+        "predicate-immediate"
+      )
+    );
+    expect(immediate.result).toMatchObject({
+      outcome: "condition",
+      matchedImmediately: true,
+      measurement: { sample: { sequence: 1 } },
+    });
+
+    const held = request(
+      "measurement.waitUntil",
+      {
+        predicate: {
+          kind: "metricThreshold",
+          metric: "loudness.integratedLufs",
+          operator: "atOrAbove",
+          value: -24,
+          holdMs: 80,
+        },
+        timeoutMs: 500,
+      },
+      "predicate-held"
+    );
+    act(() => adapter.handler(held));
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    live = { generation: 5, record: record(2, -30) };
+    act(() => {
+      for (const listener of listeners) listener(live);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 90));
+    expect(adapter.responses.some(({ requestId }) => requestId === held.id)).toBe(false);
+
+    live = { generation: 5, record: record(3, -20) };
+    act(() => {
+      for (const listener of listeners) listener(live);
+    });
+    await waitFor(() =>
+      expect(adapter.responses.some(({ requestId }) => requestId === held.id)).toBe(true)
+    );
+    expect(adapter.responses.find(({ requestId }) => requestId === held.id).result).toMatchObject({
+      outcome: "condition",
+      matchedImmediately: false,
+      measurement: { sample: { sequence: 3 } },
+    });
+  });
+
   it("describes, inspects, dry-runs, and commits the focused View resource", async () => {
     const flush = vi.fn(async () => {});
     mount({ flush, presets: { activeId: "preset-1", dirty: false } });

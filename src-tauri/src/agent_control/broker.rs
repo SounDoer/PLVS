@@ -16,6 +16,7 @@ pub const DEFAULT_RESPONSE_TIMEOUT: Duration = Duration::from_secs(10);
 /// Long-poll methods whose frontend budget is set by the caller, not by the default above.
 const APP_WAIT_METHOD: &str = "app.wait";
 const MEASUREMENT_WAIT_METHOD: &str = "measurement.wait";
+const MEASUREMENT_WAIT_UNTIL_METHOD: &str = "measurement.waitUntil";
 const VISUAL_RECORDING_WAIT_METHOD: &str = "visual.recording.wait";
 const VISUAL_RECORDING_STOP_METHOD: &str = "visual.recording.stop";
 const VISUAL_RECORDING_STOP_TIMEOUT: Duration = Duration::from_secs(10);
@@ -49,7 +50,10 @@ fn wait_budget(request: &JsonRpcRequest) -> Option<Duration> {
   }
   if !matches!(
     request.method.as_str(),
-    APP_WAIT_METHOD | MEASUREMENT_WAIT_METHOD | VISUAL_RECORDING_WAIT_METHOD
+    APP_WAIT_METHOD
+      | MEASUREMENT_WAIT_METHOD
+      | MEASUREMENT_WAIT_UNTIL_METHOD
+      | VISUAL_RECORDING_WAIT_METHOD
   ) {
     return None;
   }
@@ -793,6 +797,14 @@ mod tests {
         json!({ "timeoutMs": 30_000 })
       )),
       Duration::from_millis(30_000)
+    );
+    assert_eq!(
+      frontend_budget(&wait_request(
+        "predicate",
+        MEASUREMENT_WAIT_UNTIL_METHOD,
+        json!({ "timeoutMs": 12_345 })
+      )),
+      Duration::from_millis(12_345)
     );
     // Never trusted: the broker picks its deadline before the frontend can reject the value.
     assert_eq!(

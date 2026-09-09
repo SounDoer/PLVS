@@ -43,13 +43,15 @@ The running-app surface now covers:
 - whole-setup Configuration Transfer.
 
 The post-v0.15.0 work added Library Transfer end to end, including strict request validation,
-revision tracking for Theme and Loudness Profile libraries, large named-pipe frame delivery,
-durable settlement, recoverable `--out` failure behavior, and public documentation.
+revision tracking for Theme and Loudness Profile libraries, large native-transport frame delivery,
+durable settlement, recoverable `--out` failure behavior, and public documentation. The installed
+CLI also exposes its checked command catalog and input schemas offline through `schema list/get`.
 
 Important constraints of the current baseline:
 
 - Agent Control transport and Visual Capture are implemented on Windows and macOS.
-- Running-app commands are machine-first and require `--json`.
+- Running-app commands remain machine-first. Read-only commands without file output also accept
+  explicit `--format text`; mutations, actions, waits, and file-producing queries require `--json`.
 - CLI `inspect` (wire method `app.inspect`) intentionally contains semantic state, not measurement
   frames or history.
 - configuration reset, FILE measurement queries, raw history, and visual buffers are intentionally
@@ -262,26 +264,25 @@ and JSON-RPC semantics behind the same platform-independent capability names and
 macOS Visual Capture provides permission-free WKWebView screenshots plus permission-gated,
 app-window-only H.264/AAC recording under the approved macOS Visual Capture spec and plan.
 
-#### Optional human-readable output
+#### Optional human-readable output — complete
 
-Keep `--json` exactly stable and continue requiring it for automation. Add an explicit human mode
-for read-oriented commands instead of changing the current default contract, for example:
+`--json` remains exactly stable and required for automation. Read-oriented commands without file
+output now accept an explicit human mode, for example:
 
 ```text
 plvs-cli inspect --format text
-plvs-cli device list --format table
+plvs-cli device list --format text
 plvs-cli measurement inspect --format text
 ```
 
-Mutation commands should remain JSON-first until their preview, warnings, and partial-failure
-semantics can be rendered without hiding information. Color must be disabled when output is not a
-TTY and by `NO_COLOR`.
+Flat collections render as tables and nested results as grouped fields. Mutation, action, and wait
+commands remain JSON-only. Text output deliberately has no ANSI color.
 
-#### Shell completions and documentation examples
+#### Shell completions and documentation examples — complete
 
-Generate PowerShell, zsh, and bash completions from the real parser or a checked command manifest.
-Do not maintain another handwritten command tree. Add copyable workflows, not merely one example
-per leaf command.
+PowerShell, zsh, and bash completions are generated offline from the checked command manifest, so
+there is no second handwritten command tree. They cover static paths, options, and enum values;
+live runtime IDs remain outside v1 completion.
 
 ### Other workflows that already exist in the GUI
 
@@ -336,18 +337,17 @@ and would break the existing optimistic-concurrency and revision-wait model.
 
 File measurements remain a separate later slice; V1 deliberately has no `--source` option.
 
-#### Runtime wait predicates — deferred
+#### Runtime wait predicates — complete
 
-After the snapshot contract is stable:
+Implemented shape:
 
 ```text
-plvs-cli measurement wait <predicate-file|-> --timeout-ms <n> --json
+plvs-cli measurement wait-until <predicate-file|-> --timeout-ms <n> --json
 ```
 
-Initial predicates should be a small allowlist, such as transport lifecycle, fresh-signal presence,
-peak above/below a threshold, integrated loudness availability, and analysis completion. Avoid a
-general expression language. Return the final coherent measurement snapshot that satisfied the
-predicate.
+The strict allowlist covers fresh-signal presence, named metric availability, and named numeric
+thresholds with an optional continuous hold. It has no general expression language and returns the
+final coherent measurement snapshot that satisfied the predicate.
 
 This is a separate family from `wait`: revision wait observes low-frequency controllable
 state; measurement wait observes runtime data. Conflating them would either busy-wake agents or
@@ -362,23 +362,23 @@ sample interval, metric list, maximum rows, and streaming/file semantics.
 
 ### Developer and power-user leverage
 
-#### Machine-readable schema export
+#### Machine-readable schema export — complete
 
-Proposed design and implementation plan:
+Approved design and completed implementation plan:
 
 - [`../superpowers/specs/2026-09-08-agent-control-command-manifest-schema-design.md`](../superpowers/specs/2026-09-08-agent-control-command-manifest-schema-design.md)
 - [`../superpowers/plans/2026-09-08-agent-control-command-manifest-schema-implementation.md`](../superpowers/plans/2026-09-08-agent-control-command-manifest-schema-implementation.md)
 
-Proposed shape:
+Implemented shape:
 
 ```text
 plvs-cli schema list --json
 plvs-cli schema get <command-or-resource> --json
 ```
 
-This should be generated from the schema builders and command manifest, not a raw dump of Rust or
-React types. It enables validation, typed client generation, better completions, and a future MCP
-adapter without making `capabilities` enormous.
+The output is generated from the checked command manifest and schema builders rather than raw Rust
+or React types. It enables validation, typed client generation, better completions, and a future
+MCP adapter without making `capabilities` enormous.
 
 #### Declarative batch/transaction
 
@@ -455,15 +455,16 @@ The following remain internal even if they are convenient during implementation:
 
 The smallest useful sequence is:
 
-1. **Command manifest and offline schema foundation:** consolidate catalog facts, generate help and
-   command reference, and expose `schema list/get` before adding more command families.
-2. **Cross-platform and human-use foundation:** macOS transport, explicit text rendering for
-   queries, and generated completions.
-3. **File report export** as the next already-visible GUI workflow after the foundations.
-4. **Batch execution** only after at least two external consumers need it and atomicity can be
+1. **Human-use foundation:** explicit text rendering for queries and generated shell completions
+   (complete).
+2. **Cross-platform desktop acceptance:** repeatable Windows/macOS transport and Visual Capture
+   smoke workflow (complete; each platform still runs it on its own machine).
+3. **File report export** as the next already-visible GUI workflow.
+4. **Runtime wait predicates** with a small bounded predicate vocabulary (complete).
+5. **Batch execution** only after at least two external consumers need it and atomicity can be
    defined honestly.
-5. Re-evaluate public headless analysis, support bundles, MCP, and window control from
-   actual usage rather than surface-completeness pressure.
+6. Re-evaluate public headless analysis, support bundles, MCP, and window control from actual usage
+   rather than surface-completeness pressure.
 
 Configuration Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement
 inspect/wait, and Visual Capture are complete on both transports.
@@ -489,8 +490,8 @@ Every approved command family should include:
 
 ## Immediate design recommendation
 
-The next implementation stage is the **command manifest and offline schema foundation**. It closes
-the catalog drift risk before more command families are added and provides the checked input for
-future help, completion, SDK, and MCP work. Configuration Transfer, Loudness Profile Control, Theme
-Control, Device Control, Measurement inspect/wait, and Visual Capture screenshots are complete.
-File-analysis report export remains the next user-workflow command-family candidate.
+The command manifest, offline schema foundation, generated shell completions, and explicit text
+rendering for read-oriented commands and cross-platform desktop smoke automation are complete while
+`--json` remains stable. File Analysis report export remains.
+Configuration Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement
+inspect/wait, and Visual Capture are complete on both supported transports.

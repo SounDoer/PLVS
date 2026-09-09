@@ -1,6 +1,7 @@
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, Read};
 use std::path::Path;
@@ -25,6 +26,7 @@ pub fn is_command(command: &str) -> bool {
 pub enum ControlCommand {
   Help,
   FamilyHelp(String),
+  Text(Box<ControlCommand>),
   Capabilities,
   Inspect,
   MeasurementRead {
@@ -33,6 +35,10 @@ pub enum ControlCommand {
   MeasurementWait {
     after_generation: u64,
     after_sequence: Option<u64>,
+    timeout_ms: u64,
+  },
+  MeasurementWaitUntil {
+    input: String,
     timeout_ms: u64,
   },
   ViewRead {
@@ -249,6 +255,9 @@ pub enum ControlCommand {
 }
 
 pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| argument == "--format") {
+    return parse_text_control_args(args);
+  }
   match args {
     [flag] if is_help(flag) => return Ok(ControlCommand::Help),
     [command, rest @ ..]
@@ -288,6 +297,34 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [] => {}
   }
   Err("Usage: plvs-cli <capabilities|inspect|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+}
+
+fn parse_text_control_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|argument| argument == "--json") {
+    return Err("Use either --json or --format text, not both.".to_string());
+  }
+  let positions = args
+    .iter()
+    .enumerate()
+    .filter_map(|(index, argument)| (argument == "--format").then_some(index))
+    .collect::<Vec<_>>();
+  if positions.len() != 1 {
+    return Err("The --format option may be specified only once.".to_string());
+  }
+  let index = positions[0];
+  if args.get(index + 1).map(String::as_str) != Some("text") {
+    return Err("The --format value must be text.".to_string());
+  }
+  let mut json_args = args.to_vec();
+  json_args.splice(index..=index + 1, ["--json".to_string()]);
+  let command = parse_control_args(&json_args)?;
+  let command_id = command_name(&command);
+  let entry = crate::cli_manifest::command_by_id(&command_id)
+    .ok_or_else(|| format!("The {command_id} command has no manifest entry."))?;
+  if entry.operation != "query" || entry.output_file != "none" {
+    return Err("--format text is available only for read-oriented commands.".to_string());
+  }
+  Ok(ControlCommand::Text(Box::new(command)))
 }
 
 fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -588,10 +625,55 @@ fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
     }
   }
   let [action, rest @ ..] = args else {
-    return Err("Usage: plvs-cli measurement <describe|inspect|wait> ... --json".to_string());
+    return Err(
+      "Usage: plvs-cli measurement <describe|inspect|wait|wait-until> ... --json".to_string(),
+    );
   };
+  if action == "wait-until" {
+    let [input, options @ ..] = rest else {
+      return Err(
+        "Usage: plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json".to_string(),
+      );
+    };
+    if input.starts_with("--") {
+      return Err("The measurement wait-until command requires a predicate file or -.".to_string());
+    }
+    let mut timeout_ms = 30_000;
+    let mut json = false;
+    let mut index = 0;
+    while index < options.len() {
+      match options[index].as_str() {
+        "--json" => {
+          json = true;
+          index += 1;
+        }
+        "--timeout-ms" => {
+          let raw = options
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --timeout-ms.".to_string())?;
+          timeout_ms = raw
+            .parse::<u64>()
+            .map_err(|_| "The --timeout-ms value must be an integer.".to_string())?;
+          index += 2;
+        }
+        value => return Err(format!("Unknown measurement wait-until option: {value}")),
+      }
+    }
+    if !json {
+      return Err("The measurement wait-until command requires --json.".to_string());
+    }
+    if !(100..=300_000).contains(&timeout_ms) {
+      return Err("The --timeout-ms value must be from 100 to 300000.".to_string());
+    }
+    return Ok(ControlCommand::MeasurementWaitUntil {
+      input: input.clone(),
+      timeout_ms,
+    });
+  }
   if action != "wait" {
-    return Err("Usage: plvs-cli measurement <describe|inspect|wait> ... --json".to_string());
+    return Err(
+      "Usage: plvs-cli measurement <describe|inspect|wait|wait-until> ... --json".to_string(),
+    );
   }
   let mut after_generation = None;
   let mut after_sequence = None;
@@ -2145,7 +2227,7 @@ pub fn family_help_text(command: &str) -> String {
 
   debug_assert!(!usage.is_empty(), "missing help lines for {command}");
   format!(
-    "PLVS CLI - {command}\n\nUsage:\n{usage}\n\nAdd --json for stable machine-readable output. Use - to read one JSON document from stdin.\nRunning-app commands require Agent Control to be enabled and never launch PLVS.\nUse plvs-cli --help to list every command family."
+    "PLVS CLI - {command}\n\nUsage:\n{usage}\n\nUse --json for stable machine-readable output. Read-only commands without file output also accept --format text. Use - to read one JSON document from stdin.\nRunning-app commands require Agent Control to be enabled and never launch PLVS.\nUse plvs-cli --help to list every command family."
   )
 }
 
@@ -2352,6 +2434,7 @@ struct ControlReport {
 
 fn command_name(command: &ControlCommand) -> String {
   match command {
+    ControlCommand::Text(command) => command_name(command),
     ControlCommand::Help | ControlCommand::FamilyHelp(_) => {
       unreachable!("help does not have a wire method")
     }
@@ -2359,6 +2442,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::Inspect => "app.inspect".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
+    ControlCommand::MeasurementWaitUntil { .. } => "measurement.waitUntil".to_string(),
     ControlCommand::ViewRead { method } | ControlCommand::ViewMutation { method, .. } => {
       method.clone()
     }
@@ -2433,6 +2517,9 @@ fn request_for_command<R: Read>(
   command: &ControlCommand,
   stdin: &mut R,
 ) -> Result<JsonRpcRequest, ControlFailure> {
+  if let ControlCommand::Text(command) = command {
+    return request_for_command(command, stdin);
+  }
   let method = command_name(command);
   let params = match command {
     ControlCommand::Capabilities
@@ -2850,6 +2937,11 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
+    ControlCommand::MeasurementWaitUntil { input, timeout_ms } => {
+      let predicate = read_json_document(input, stdin, "measurement predicate")
+        .map_err(ControlFailure::invalid_arguments)?;
+      serde_json::json!({ "predicate": predicate, "timeoutMs": timeout_ms })
+    }
     ControlCommand::ViewMutation {
       input,
       expected_revision,
@@ -2975,7 +3067,7 @@ fn request_for_command<R: Read>(
       *expected_revision,
       *dry_run,
     ),
-    ControlCommand::Help | ControlCommand::FamilyHelp(_) => {
+    ControlCommand::Help | ControlCommand::FamilyHelp(_) | ControlCommand::Text(_) => {
       unreachable!("help does not create a request")
     }
   };
@@ -3299,9 +3391,21 @@ pub fn run(command: ControlCommand) -> ExitCode {
     }
     _ => {}
   }
+  let (command, text_output) = match command {
+    ControlCommand::Text(command) => (*command, true),
+    command => (command, false),
+  };
   let (mut report, exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
   let exit_code = finish_export(&command, &mut report, exit_code);
   let exit_code = finish_visual_output(&command, &mut report, exit_code);
+  if text_output {
+    if let Some(result) = report.result.as_ref() {
+      println!("{}", render_control_text(result));
+    } else if let Some(error) = report.error.as_ref() {
+      eprintln!("{}: {}", error.code, error.message);
+    }
+    return ExitCode::from(exit_code);
+  }
   match serde_json::to_string(&report) {
     Ok(json) => println!("{json}"),
     Err(error) => {
@@ -3310,6 +3414,137 @@ pub fn run(command: ControlCommand) -> ExitCode {
     }
   }
   ExitCode::from(exit_code)
+}
+
+fn render_control_text(value: &Value) -> String {
+  fn label(key: &str) -> String {
+    let mut output = String::new();
+    for (index, character) in key.chars().enumerate() {
+      if index > 0 && character.is_ascii_uppercase() {
+        output.push(' ');
+      }
+      if index == 0 {
+        output.extend(character.to_uppercase());
+      } else {
+        output.push(character);
+      }
+    }
+    output
+  }
+
+  fn scalar(value: &Value) -> String {
+    match value {
+      Value::Null => "—".to_string(),
+      Value::Bool(value) => if *value { "Yes" } else { "No" }.to_string(),
+      Value::String(value) => value.clone(),
+      Value::Number(value) => value.to_string(),
+      _ => unreachable!("containers are rendered recursively"),
+    }
+  }
+
+  fn render_table(items: &[Value], indent: usize, output: &mut Vec<String>) -> bool {
+    let Some(rows) = items
+      .iter()
+      .map(Value::as_object)
+      .collect::<Option<Vec<_>>>()
+    else {
+      return false;
+    };
+    let columns = rows
+      .iter()
+      .flat_map(|row| row.keys())
+      .cloned()
+      .collect::<BTreeSet<_>>()
+      .into_iter()
+      .collect::<Vec<_>>();
+    if columns.is_empty()
+      || rows
+        .iter()
+        .flat_map(|row| row.values())
+        .any(|value| matches!(value, Value::Object(_) | Value::Array(_)))
+    {
+      return false;
+    }
+    let headers = columns.iter().map(|key| label(key)).collect::<Vec<_>>();
+    let cells = rows
+      .iter()
+      .map(|row| {
+        columns
+          .iter()
+          .map(|key| scalar(row.get(key).unwrap_or(&Value::Null)))
+          .collect::<Vec<_>>()
+      })
+      .collect::<Vec<_>>();
+    let widths = (0..columns.len())
+      .map(|index| {
+        cells
+          .iter()
+          .map(|row| row[index].chars().count())
+          .chain(std::iter::once(headers[index].chars().count()))
+          .max()
+          .unwrap_or(0)
+      })
+      .collect::<Vec<_>>();
+    let format_row = |values: &[String]| {
+      values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| format!("{value:<width$}", width = widths[index]))
+        .collect::<Vec<_>>()
+        .join("  ")
+    };
+    let padding = " ".repeat(indent);
+    output.push(format!("{padding}{}", format_row(&headers)));
+    output.push(format!(
+      "{padding}{}",
+      widths
+        .iter()
+        .map(|width| "-".repeat(*width))
+        .collect::<Vec<_>>()
+        .join("  ")
+    ));
+    for row in cells {
+      output.push(format!("{padding}{}", format_row(&row)));
+    }
+    true
+  }
+
+  fn render(value: &Value, indent: usize, output: &mut Vec<String>) {
+    let padding = " ".repeat(indent);
+    match value {
+      Value::Object(fields) => {
+        for (key, value) in fields {
+          match value {
+            Value::Object(_) | Value::Array(_) => {
+              output.push(format!("{padding}{}:", label(key)));
+              render(value, indent + 2, output);
+            }
+            _ => output.push(format!("{padding}{}: {}", label(key), scalar(value))),
+          }
+        }
+      }
+      Value::Array(items) if items.is_empty() => output.push(format!("{padding}(none)")),
+      Value::Array(items) => {
+        if render_table(items, indent, output) {
+          return;
+        }
+        for item in items {
+          match item {
+            Value::Object(_) | Value::Array(_) => {
+              output.push(format!("{padding}-"));
+              render(item, indent + 2, output);
+            }
+            _ => output.push(format!("{padding}- {}", scalar(item))),
+          }
+        }
+      }
+      _ => output.push(format!("{padding}{}", scalar(value))),
+    }
+  }
+
+  let mut lines = Vec::new();
+  render(value, 0, &mut lines);
+  lines.join("\n")
 }
 
 #[cfg(test)]
@@ -3351,7 +3586,12 @@ mod tests {
     }
     let mut argv = Vec::new();
     let mut skipping_optional = false;
+    let mut skipping_text_alternative = false;
     for raw in entry.usage.split_whitespace().skip(1) {
+      if skipping_text_alternative {
+        skipping_text_alternative = false;
+        continue;
+      }
       if skipping_optional {
         if raw.ends_with(']') {
           skipping_optional = false;
@@ -3362,6 +3602,11 @@ mod tests {
         if !raw.ends_with(']') {
           skipping_optional = true;
         }
+        continue;
+      }
+      if raw == "<--json|--format" {
+        argv.push("--json".to_string());
+        skipping_text_alternative = true;
         continue;
       }
       argv.push(if raw == "<path>" {
@@ -3397,6 +3642,39 @@ mod tests {
       Ok(ControlCommand::Inspect)
     );
     assert!(parse_control_args(&args(&["inspect"])).is_err());
+  }
+
+  #[test]
+  fn read_commands_accept_explicit_text_output_without_weakening_mutations() {
+    assert_eq!(
+      parse_control_args(&args(&["device", "list", "--format", "text"])),
+      Ok(ControlCommand::Text(Box::new(ControlCommand::DeviceRead {
+        method: "device.list".to_string(),
+      })))
+    );
+    for invalid in [
+      args(&["device", "list", "--format", "yaml"]),
+      args(&["device", "list", "--json", "--format", "text"]),
+      args(&["transport", "live", "start", "--format", "text"]),
+    ] {
+      assert!(parse_control_args(&invalid).is_err());
+    }
+  }
+
+  #[test]
+  fn text_output_formats_nested_semantic_results_without_json_syntax() {
+    let text = render_control_text(&serde_json::json!({
+      "revision": 4,
+      "captureRunning": true,
+      "metrics": { "integratedLufs": null },
+      "devices": [{ "id": "default", "name": "Automatic" }]
+    }));
+    assert!(text.contains("Revision: 4"));
+    assert!(text.contains("Capture Running: Yes"));
+    assert!(text.contains("Integrated Lufs: —"));
+    assert!(text.contains("Id       Name"));
+    assert!(text.contains("default  Automatic"));
+    assert!(!text.contains('{'));
   }
 
   #[test]
@@ -3436,9 +3714,10 @@ mod tests {
   #[test]
   fn measurement_help_and_requests_use_the_public_wire_methods() {
     let help = family_help_text("measurement");
-    assert!(help.contains("plvs-cli measurement describe --json"));
-    assert!(help.contains("plvs-cli measurement inspect --json"));
+    assert!(help.contains("plvs-cli measurement describe <--json|--format text>"));
+    assert!(help.contains("plvs-cli measurement inspect <--json|--format text>"));
     assert!(help.contains("plvs-cli measurement wait --after-generation <n>"));
+    assert!(help.contains("plvs-cli measurement wait-until <file|->"));
 
     for (action, method) in [
       ("describe", "measurement.describe"),
@@ -3472,12 +3751,30 @@ mod tests {
         "timeoutMs": 5000
       })
     );
+
+    let wait_until = parse_control_args(&args(&[
+      "measurement",
+      "wait-until",
+      "-",
+      "--timeout-ms",
+      "9000",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(
+      &wait_until,
+      &mut Cursor::new(br#"{"kind":"metricAvailable","metric":"loudness.integratedLufs"}"#),
+    )
+    .unwrap();
+    assert_eq!(request.method, "measurement.waitUntil");
+    assert_eq!(request.params["timeoutMs"], 9000);
+    assert_eq!(request.params["predicate"]["kind"], "metricAvailable");
   }
 
   #[test]
   fn parses_view_queries_mutations_and_scoped_help() {
     let help = family_help_text("view");
-    assert!(help.contains("plvs-cli view describe --json"));
+    assert!(help.contains("plvs-cli view describe <--json|--format text>"));
     assert!(help.contains("plvs-cli view update <file|-> --expected-revision <n>"));
 
     for (action, method) in [("describe", "view.describe"), ("inspect", "view.inspect")] {
@@ -3601,8 +3898,8 @@ mod tests {
     );
 
     let help = family_help_text("module");
-    assert!(help.contains("plvs-cli module list --json"));
-    assert!(help.contains("plvs-cli module describe <module-id> --json"));
+    assert!(help.contains("plvs-cli module list <--json|--format text>"));
+    assert!(help.contains("plvs-cli module describe <module-id> <--json|--format text>"));
 
     for invalid in [
       args(&["module", "list"]),
@@ -4395,8 +4692,8 @@ mod tests {
   #[test]
   fn device_help_is_scoped_and_lists_both_concurrency_guards() {
     let help = family_help_text("device");
-    assert!(help.contains("plvs-cli device list --json"));
-    assert!(help.contains("plvs-cli device inspect --json"));
+    assert!(help.contains("plvs-cli device list <--json|--format text>"));
+    assert!(help.contains("plvs-cli device inspect <--json|--format text>"));
     assert!(help.contains("--expected-revision <n> --expected-generation <n>"));
     assert!(help.contains("--allow-measurement-restart"));
     assert!(!help.contains("plvs-cli transport"));
@@ -5174,7 +5471,7 @@ mod tests {
 
   #[test]
   fn parses_theme_control_commands_and_help() {
-    assert!(help_text().contains("plvs-cli theme inspect --json"));
+    assert!(help_text().contains("plvs-cli theme inspect <--json|--format text>"));
     assert!(family_help_text("theme")
       .contains("theme duplicate <theme-id> <name> --expected-revision <n> --json [--dry-run]"));
 
@@ -5363,7 +5660,8 @@ mod tests {
 
   #[test]
   fn parses_loudness_profile_control_commands_and_help() {
-    assert!(help_text().contains("plvs-cli loudness-profile describe <profile-id> --json"));
+    assert!(help_text()
+      .contains("plvs-cli loudness-profile describe <profile-id> <--json|--format text>"));
     assert!(family_help_text("loudness-profile")
       .contains("loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]"));
 
@@ -5937,7 +6235,7 @@ mod tests {
   #[test]
   fn visual_parser_enforces_panel_output_json_and_closed_options() {
     let help = family_help_text("visual");
-    assert!(help.contains("plvs-cli visual describe --json"));
+    assert!(help.contains("plvs-cli visual describe <--json|--format text>"));
     assert!(help.contains("plvs-cli visual screenshot --target"));
     assert!(help_text().contains("dock-header|dock-editor"));
 
