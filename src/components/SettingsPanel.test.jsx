@@ -179,6 +179,42 @@ describe("SettingsPanel", () => {
     );
   });
 
+  it("shows the copyable prompt starter only while Agent Control is enabled", () => {
+    const { rerender } = render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        agentControlStatus={{
+          supported: true,
+          enabled: false,
+          cliInstalled: true,
+          message: "Agent Control is ready.",
+        }}
+      />
+    );
+
+    expect(screen.queryByText("Prompt Starter")).toBeNull();
+
+    rerender(
+      <SettingsPanel
+        {...BASE_PROPS}
+        agentControlStatus={{
+          supported: true,
+          enabled: true,
+          cliInstalled: true,
+          message: "Agent Control is ready.",
+        }}
+      />
+    );
+
+    expect(screen.getByText("Prompt Starter")).toBeTruthy();
+    expect(
+      screen.getByRole("textbox", { name: "copy agent control prompt starter text" }).textContent
+    ).toBe(
+      "Use PLVS’s built-in Agent Control CLI (`plvs-cli`). First inspect the available capabilities and current app state, then help me..."
+    );
+    expect(screen.getByRole("button", { name: "copy agent control prompt starter" })).toBeTruthy();
+  });
+
   it("confirms in a modal before resetting, and says what will be lost", () => {
     const onResetConfiguration = vi.fn();
     render(<SettingsPanel {...BASE_PROPS} onResetConfiguration={onResetConfiguration} />);

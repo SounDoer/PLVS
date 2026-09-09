@@ -21,6 +21,7 @@ import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
+import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
 import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
   DEFAULT_DIALOGUE_VAD_ENGINE,
@@ -28,6 +29,8 @@ import {
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
+const AGENT_CONTROL_PROMPT_STARTER =
+  "Use PLVS’s built-in Agent Control CLI (`plvs-cli`). First inspect the available capabilities and current app state, then help me...";
 
 const SHEET_CLASS =
   "settings-sheet gap-0 overflow-hidden border-border bg-card/95 p-0 backdrop-blur-[24px]";
@@ -688,6 +691,15 @@ export function SettingsPanel({
                           onCheckedChange={(next) => onSetAgentControlEnabled(next)}
                         />
                       </SettingsRow>
+                      {agentControlEnabled ? (
+                        <div className="flex flex-col gap-1.5 px-1.5">
+                          <span className={ROW_LABEL_CLASS}>Prompt Starter</span>
+                          <CopyableTextBlock
+                            value={AGENT_CONTROL_PROMPT_STARTER}
+                            ariaLabel="copy agent control prompt starter"
+                          />
+                        </div>
+                      ) : null}
                     </SettingsSection>
                   </>
                 ) : null}
