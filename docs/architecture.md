@@ -53,8 +53,9 @@
 4. **渲染**：React 订阅数据更新面板。
 5. **控制**：前端按钮（START/STOP/设备切换）→ `invoke` 调 Rust command。
 
-开发版 Windows 还提供一条低频语义控制链路：`plvs-cli` 的 Agent Control 命令通过当前用户 ACL 的 named
-pipe 找到同一 `dev-identity` 的运行实例，Rust broker 只负责认证、限流、超时和请求关联，
+桌面版还提供一条低频语义控制链路：`plvs-cli` 的 Agent Control 命令在 Windows 通过当前用户
+ACL 的 named pipe、在 macOS 通过私有 Unix socket 找到同一 identity 的运行实例。Rust broker
+只负责认证、限流、超时和请求关联，
 再把请求定向发送给 main WebView。Workspace 的校验、revision、一次性替换与持久化完成
 条件仍由 React 前端拥有；broker 不复制业务状态，也不向 accessory WebView 广播请求。
 

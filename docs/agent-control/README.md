@@ -63,6 +63,10 @@ release builds and on in development builds. Every mutation is delivered to the 
 React application and uses the same state, native integrations, safety guards, and persistence
 paths as the GUI.
 
+Windows carries requests over a current-user named pipe. macOS carries the same authenticated,
+bounded protocol over a private Unix-domain socket. The public CLI contract is transport-neutral;
+callers use runtime capabilities to discover native features such as Windows-only Visual Capture.
+
 ## Implementation status
 
 The foundation, command manifest and offline schema export, Module Control, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,

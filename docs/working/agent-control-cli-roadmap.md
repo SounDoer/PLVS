@@ -48,7 +48,7 @@ durable settlement, recoverable `--out` failure behavior, and public documentati
 
 Important constraints of the current baseline:
 
-- Agent Control is public only on Windows; macOS transport is not implemented.
+- Agent Control transport is implemented on Windows and macOS; Visual Capture remains Windows-only.
 - Running-app commands are machine-first and require `--json`.
 - CLI `inspect` (wire method `app.inspect`) intentionally contains semantic state, not measurement
   frames or history.
@@ -254,14 +254,12 @@ source while File remains silent. The complete public contract is
 
 This is foundation work rather than command breadth, but it has the highest product leverage.
 
-#### macOS local transport
+#### macOS local transport — complete
 
-Implement the Unix-domain-socket transport already anticipated by the protocol design, preserving
-the same descriptor, authentication, framing, timeout, and JSON-RPC semantics. Capability names and
-CLI envelopes must remain platform-independent.
+The Unix-domain-socket transport preserves descriptor, authentication, framing, timeout, delivery,
+and JSON-RPC semantics behind the same platform-independent capability names and CLI envelopes.
 
-Why first: every later public command otherwise becomes a Windows-only feature despite PLVS's equal
-Windows/macOS product intent.
+Visual Capture remains a separate macOS native project rather than part of transport parity.
 
 #### Optional human-readable output
 

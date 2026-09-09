@@ -89,7 +89,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .manage(AppState::default())
     .manage(agent_control::broker::AgentControlState::default())
-    .manage(agent_control::windows_pipe::PipeServerState::default())
+    .manage(agent_control::transport::ServerState::default())
     .manage(visual_capture::ScreenshotCaptureState::default())
     .manage(visual_capture::recording::RecordingController::default())
     .manage(dock::DockedFlag(std::sync::Arc::new(
@@ -179,8 +179,8 @@ pub fn run() {
       let agent_control = serde_json::json!({
         // `available` is platform support alone. Whether the endpoint is actually open is
         // `enabled`, which the user owns from Settings.
-        "available": cfg!(target_os = "windows"),
-        "enabled": cfg!(target_os = "windows") && agent_control_enabled,
+        "available": cfg!(any(target_os = "windows", target_os = "macos")),
+        "enabled": cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled,
         "appName": if cfg!(feature = "dev-identity") { "PLVS Dev" } else { "PLVS" },
         "appVersion": env!("CARGO_PKG_VERSION"),
         "identifier": env!("PLVS_APP_ID"),
@@ -292,9 +292,8 @@ pub fn run() {
       }
       let _ = window.show();
 
-      #[cfg(target_os = "windows")]
-      if agent_control_enabled {
-        if let Err(error) = agent_control::windows_pipe::start(app.handle()) {
+      if cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled {
+        if let Err(error) = agent_control::transport::start(app.handle()) {
           log::warn!("agent control unavailable; PLVS will continue normally: {error}");
         }
       }
@@ -307,7 +306,7 @@ pub fn run() {
               .state::<visual_capture::recording::RecordingController>()
               .shutdown_and_wait(Duration::from_secs(2));
             handle
-              .state::<agent_control::windows_pipe::PipeServerState>()
+              .state::<agent_control::transport::ServerState>()
               .stop();
           }
         });

@@ -35,7 +35,7 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 ## Agent Control
 
 Agent Control is the supported way for agents and automation to inspect or change the state visible
-in a running PLVS window. It is currently Windows-only.
+in a running PLVS window. Windows uses a current-user named pipe; macOS uses a private Unix socket.
 
 - Start the development GUI with `npm run desktop`, then use a second terminal for commands such as
   `npm run desktop:control -- inspect --json`. The wrapper builds `plvs-cli` with `dev-identity` and

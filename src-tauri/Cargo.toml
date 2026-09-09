@@ -76,6 +76,7 @@ subtle = "2.6.1"
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.
 [target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
 window-vibrancy = "0.6"
 
 [target.'cfg(target_os = "windows")'.dependencies]

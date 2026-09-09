@@ -1,5 +1,7 @@
 use serde::Serialize;
-#[cfg(windows)]
+#[cfg(target_os = "macos")]
+use std::ffi::OsStr;
+#[cfg(any(windows, target_os = "macos"))]
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize)]
@@ -63,7 +65,57 @@ fn platform_set_enabled(enabled: bool) -> Result<CliPathStatus, String> {
   platform_status()
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+fn platform_status() -> Result<CliPathStatus, String> {
+  let install_dir = current_install_dir()?;
+  Ok(macos_status_for_install_dir(
+    &install_dir,
+    std::env::var_os("PATH").as_deref(),
+  ))
+}
+
+#[cfg(target_os = "macos")]
+fn macos_status_for_install_dir(install_dir: &Path, path: Option<&OsStr>) -> CliPathStatus {
+  use std::os::unix::fs::PermissionsExt;
+
+  let cli_path = install_dir.join("plvs-cli");
+  let installed = cli_path
+    .metadata()
+    .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+    .unwrap_or(false);
+  let on_path = path
+    .map(|path| std::env::split_paths(path).any(|entry| same_path(&entry, install_dir)))
+    .unwrap_or(false);
+  CliPathStatus {
+    supported: true,
+    install_dir: Some(install_dir.display().to_string()),
+    cli_path: Some(cli_path.display().to_string()),
+    installed,
+    on_path,
+    message: if !installed {
+      "plvs-cli was not found in this application bundle.".into()
+    } else if on_path {
+      "Available from the current process PATH.".into()
+    } else {
+      "Use the bundled plvs-cli by its full application path.".into()
+    },
+  }
+}
+
+#[cfg(target_os = "macos")]
+fn platform_set_enabled(_enabled: bool) -> Result<CliPathStatus, String> {
+  platform_status()
+}
+
+#[cfg(target_os = "macos")]
+fn same_path(candidate: &Path, expected: &Path) -> bool {
+  match (candidate.canonicalize(), expected.canonicalize()) {
+    (Ok(candidate), Ok(expected)) => candidate == expected,
+    _ => candidate == expected,
+  }
+}
+
+#[cfg(all(not(windows), not(target_os = "macos")))]
 fn platform_status() -> Result<CliPathStatus, String> {
   Ok(CliPathStatus {
     supported: false,
@@ -75,12 +127,12 @@ fn platform_status() -> Result<CliPathStatus, String> {
   })
 }
 
-#[cfg(not(windows))]
+#[cfg(all(not(windows), not(target_os = "macos")))]
 fn platform_set_enabled(_enabled: bool) -> Result<CliPathStatus, String> {
   platform_status()
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 fn current_install_dir() -> Result<PathBuf, String> {
   std::env::current_exe()
     .map_err(|e| format!("read current executable path: {e}"))?
@@ -188,5 +240,45 @@ mod tests {
       r"C:\Windows;C:\Users\me\AppData\Local\PLVS Tools",
       &dir
     ));
+  }
+}
+
+#[cfg(test)]
+#[cfg(target_os = "macos")]
+mod macos_tests {
+  use super::*;
+  use std::fs;
+  use std::os::unix::fs::PermissionsExt;
+
+  #[test]
+  fn reports_the_adjacent_unix_cli_without_mutating_path() {
+    let status = platform_status().unwrap();
+    assert!(status.supported);
+    assert!(status.cli_path.as_deref().unwrap().ends_with("/plvs-cli"));
+
+    let refreshed = platform_set_enabled(true).unwrap();
+    assert_eq!(refreshed.cli_path, status.cli_path);
+    assert_eq!(refreshed.on_path, status.on_path);
+  }
+
+  #[test]
+  fn requires_an_executable_cli_and_observes_paths_with_spaces() {
+    let directory = std::env::temp_dir().join(format!("plvs cli path test {}", std::process::id()));
+    fs::create_dir_all(&directory).unwrap();
+    let cli_path = directory.join("plvs-cli");
+    fs::write(&cli_path, b"test").unwrap();
+    fs::set_permissions(&cli_path, fs::Permissions::from_mode(0o600)).unwrap();
+
+    let missing_execute = macos_status_for_install_dir(&directory, None);
+    assert!(!missing_execute.installed);
+    assert!(!missing_execute.on_path);
+
+    fs::set_permissions(&cli_path, fs::Permissions::from_mode(0o700)).unwrap();
+    let path = std::env::join_paths([PathBuf::from("/usr/bin"), directory.clone()]).unwrap();
+    let installed = macos_status_for_install_dir(&directory, Some(&path));
+    assert!(installed.installed);
+    assert!(installed.on_path);
+
+    fs::remove_dir_all(directory).unwrap();
   }
 }

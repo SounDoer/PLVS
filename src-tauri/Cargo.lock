@@ -3519,6 +3519,7 @@ dependencies = [
  "firered-vad",
  "getrandom 0.4.3",
  "image",
+ "libc",
  "log",
  "realfft",
  "rubato 5.0.0",

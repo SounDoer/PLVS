@@ -2221,7 +2221,6 @@ impl ControlClient for LocalControlClient {
   }
 }
 
-#[cfg(target_os = "windows")]
 fn call_descriptor(
   descriptor: &AgentControlDescriptor,
   request: &JsonRpcRequest,
@@ -2230,21 +2229,16 @@ fn call_descriptor(
   // and the app's own answer is never replaced by a client-side timeout.
   let timeout = crate::agent_control::broker::frontend_budget(request)
     + crate::agent_control::broker::CLIENT_GRACE;
-  let response = crate::agent_control::windows_pipe::call_with_timeout(
-    &descriptor.endpoint,
-    &descriptor.token,
-    request,
-    timeout,
-  )
-  .map_err(|error| {
+  let response = crate::agent_control::transport::call_with_timeout(descriptor, request, timeout)
+    .map_err(|error| {
     let (reason, message) = match error.reason {
-      crate::agent_control::windows_pipe::PipeErrorReason::Unauthorized => {
+      crate::agent_control::transport::TransportErrorReason::Unauthorized => {
         ("authenticationFailed", error.to_string())
       }
-      crate::agent_control::windows_pipe::PipeErrorReason::ConnectionFailed => {
+      crate::agent_control::transport::TransportErrorReason::ConnectionFailed => {
         ("appNotRunning", "PLVS is not running.".to_string())
       }
-      crate::agent_control::windows_pipe::PipeErrorReason::IoTimeout => {
+      crate::agent_control::transport::TransportErrorReason::IoTimeout => {
         ("timeout", error.to_string())
       }
       _ => ("transportFailed", error.to_string()),
@@ -2255,18 +2249,6 @@ fn call_descriptor(
     app: descriptor.app.clone(),
     response,
   })
-}
-
-#[cfg(not(target_os = "windows"))]
-fn call_descriptor(
-  descriptor: &AgentControlDescriptor,
-  _request: &JsonRpcRequest,
-) -> Result<AppCall, ControlFailure> {
-  Err(ControlFailure::transport(
-    "transportUnavailable",
-    "Live app control is currently available only on Windows.",
-    Some(descriptor.app.clone()),
-  ))
 }
 
 #[derive(Debug, Clone, Serialize)]

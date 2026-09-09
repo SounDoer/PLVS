@@ -22,7 +22,7 @@ PLVS (reads as _"plus"_) is a **read-only desktop companion** built for **sound 
 
 It can also work offline in **file mode**: drop in a local audio file and scrub through its full metering history across every meter.
 
-Installed builds also include **`plvs-cli`** for runtime diagnosis and control of an already-running PLVS app. Use `doctor` to verify the installation, then inspect or change the same state visible in the app through Windows Agent Control. See [CLI](docs/cli.md) for the full reference.
+Installed builds also include **`plvs-cli`** for runtime diagnosis and control of an already-running PLVS app. Use `doctor` to verify the installation, then inspect or change the same state visible in the app through local Agent Control on Windows or macOS. See [CLI](docs/cli.md) for the full reference.
 
 It combines eight metering panels in a single desktop app:
 
@@ -119,6 +119,10 @@ Windows builds include `plvs-cli.exe` beside the application. Enabling Agent Con
 adds that directory to the current user's `PATH`; otherwise invoke it by full path. From a Portable
 folder, use `.\plvs-cli.exe`.
 
+macOS builds include `plvs-cli` at `/Applications/PLVS.app/Contents/MacOS/plvs-cli` (or the same
+path below `~/Applications`). PLVS does not edit shell startup files on macOS; use the full path or
+create your own optional symlink.
+
 ```powershell
 plvs-cli --help
 plvs-cli doctor --json --out doctor.json
@@ -127,7 +131,7 @@ plvs-cli inspect --json
 plvs-cli workspace apply layout.json --json --expected-revision 44
 ```
 
-`doctor` works while PLVS is closed. Every other current command requires PLVS to be running with Agent Control enabled in Settings; Agent Control is currently available only on Windows. It controls or inspects the same state visible in PLVS and does not provide a headless replacement for the desktop app.
+`doctor` works while PLVS is closed. Every other current command requires PLVS to be running with Agent Control enabled in Settings. Agent Control is available on Windows and macOS; individual native features such as Visual Capture may still be platform-specific. It controls or inspects the same state visible in PLVS and does not provide a headless replacement for the desktop app.
 
 Run `capabilities` to discover the supported methods, then `inspect` to read the current state and global revision. Every mutation requires that revision through `--expected-revision`; on a conflict, inspect again and reconcile instead of retrying blindly. See [docs/cli.md](docs/cli.md) for the JSON contract, complete Agent Control surface, and exit codes.
 
