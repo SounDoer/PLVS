@@ -9,7 +9,7 @@ use tauri_plugin_store::StoreExt;
 /// what keeps it out.
 pub const ENABLED_KEY: &str = "agentControlEnabled";
 
-const WINDOWS_ONLY_MESSAGE: &str = "Agent Control is currently available on Windows only.";
+const UNSUPPORTED_MESSAGE: &str = "Agent Control is unavailable on this platform.";
 
 /// The help tip describes the control, not the current state: the switch already shows whether it
 /// is on, and a tip that rewrites itself under the cursor reads as a status line instead of an
@@ -44,7 +44,7 @@ pub fn read_enabled_from_disk() -> bool {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentControlStatus {
-  /// The platform has a control endpoint at all. Windows only for now.
+  /// The platform has a control endpoint at all.
   pub supported: bool,
   pub enabled: bool,
   pub cli_installed: bool,
@@ -54,9 +54,9 @@ pub struct AgentControlStatus {
 
 fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentControlStatus {
   let message = if !supported {
-    WINDOWS_ONLY_MESSAGE
+    UNSUPPORTED_MESSAGE
   } else if !cli_installed {
-    "plvs-cli.exe was not found in this installation."
+    "plvs-cli was not found in this installation."
   } else {
     AGENT_CONTROL_MESSAGE
   };
@@ -91,7 +91,7 @@ pub(crate) fn read_enabled(app: &AppHandle) -> bool {
 
 fn current_status(app: &AppHandle) -> Result<AgentControlStatus, String> {
   let path_status = crate::cli_path::cli_path_status()?;
-  let supported = cfg!(target_os = "windows") && path_status.supported;
+  let supported = cfg!(any(target_os = "windows", target_os = "macos")) && path_status.supported;
   let mut status = compose_status(supported, path_status.installed, read_enabled(app));
   status.on_path = path_status.on_path;
   Ok(status)
@@ -112,10 +112,9 @@ pub fn set_agent_control_enabled(
     return Ok(before);
   }
 
-  // The flag is written the moment the endpoint matches it. PATH is a convenience that may lag
-  // behind a failed registry write; the next successful toggle reconciles it. Persisting last
-  // would let a failed PATH write leave a revoked permission recorded as granted, and a later
-  // launch would reopen the endpoint the user just closed.
+  // The flag is written only after the endpoint matches it. Windows PATH setup is a convenience
+  // that may lag behind a failed registry write; macOS only refreshes installation status here.
+  // Persisting last prevents a later launch from reopening an endpoint the user just closed.
   if enabled {
     let _ = crate::cli_path::set_cli_path_enabled(true)?;
     start_endpoint(&app)?;
@@ -129,25 +128,19 @@ pub fn set_agent_control_enabled(
   current_status(&app)
 }
 
-#[cfg(target_os = "windows")]
 fn start_endpoint(app: &AppHandle) -> Result<(), String> {
   if app
-    .state::<crate::agent_control::windows_pipe::PipeServerState>()
+    .state::<crate::agent_control::transport::ServerState>()
     .is_running()
   {
     return Ok(());
   }
-  crate::agent_control::windows_pipe::start(app)
-}
-
-#[cfg(not(target_os = "windows"))]
-fn start_endpoint(_app: &AppHandle) -> Result<(), String> {
-  Err(WINDOWS_ONLY_MESSAGE.to_string())
+  crate::agent_control::transport::start(app)
 }
 
 fn stop_endpoint(app: &AppHandle) {
   app
-    .state::<crate::agent_control::windows_pipe::PipeServerState>()
+    .state::<crate::agent_control::transport::ServerState>()
     .stop();
 }
 
@@ -188,13 +181,13 @@ mod tests {
   }
 
   #[test]
-  fn unsupported_platforms_report_a_windows_only_message() {
+  fn unsupported_platforms_report_a_platform_message() {
     let status = compose_status(false, false, false);
     assert!(!status.supported);
     assert!(!status.enabled);
     assert_eq!(
       status.message,
-      "Agent Control is currently available on Windows only."
+      "Agent Control is unavailable on this platform."
     );
   }
 
@@ -205,7 +198,7 @@ mod tests {
     assert!(!status.cli_installed);
     assert_eq!(
       status.message,
-      "plvs-cli.exe was not found in this installation."
+      "plvs-cli was not found in this installation."
     );
   }
 

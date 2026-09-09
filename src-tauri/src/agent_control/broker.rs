@@ -411,9 +411,7 @@ impl PendingRequest {
       .map(|submission| submission.response)
   }
 
-  // Delivery acknowledgement belongs to the Windows pipe transport. Keep it in test builds so
-  // the broker contract remains covered on every platform without exposing dead production code.
-  #[cfg(any(target_os = "windows", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", test))]
   pub(crate) fn wait_with_delivery_until<F>(
     &mut self,
     client_disconnected: F,
@@ -452,7 +450,7 @@ impl PendingRequest {
           self.completed = true;
           return Ok(PendingResponse {
             response: JsonRpcResponse::success(self.request_id.clone(), result),
-            #[cfg(any(target_os = "windows", test))]
+            #[cfg(any(target_os = "windows", target_os = "macos", test))]
             delivery: _delivery,
           });
         }
@@ -463,7 +461,7 @@ impl PendingRequest {
           self.completed = true;
           return Ok(PendingResponse {
             response: JsonRpcResponse::error(self.request_id.clone(), error),
-            #[cfg(any(target_os = "windows", test))]
+            #[cfg(any(target_os = "windows", target_os = "macos", test))]
             delivery: _delivery,
           });
         }
@@ -508,12 +506,17 @@ impl PendingRequest {
 
 pub(crate) struct PendingResponse {
   pub response: JsonRpcResponse,
-  #[cfg(any(target_os = "windows", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", test))]
   delivery: Option<DeliverySender>,
 }
 
 impl PendingResponse {
-  #[cfg(any(target_os = "windows", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos", test))]
+  pub fn requires_delivery_confirmation(&self) -> bool {
+    self.delivery.is_some()
+  }
+
+  #[cfg(any(target_os = "windows", target_os = "macos", test))]
   pub fn confirm_delivery(self, result: Result<(), BrokerError>) {
     if let Some(sender) = self.delivery {
       let _ = sender.send(result);

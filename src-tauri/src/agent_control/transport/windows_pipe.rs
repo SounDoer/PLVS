@@ -35,15 +35,15 @@ use windows_sys::Win32::System::Threading::{
   GetCurrentProcess, GetCurrentProcessId, OpenProcessToken,
 };
 
-use super::broker::{
+use crate::agent_control::broker::{
   AgentControlState, Broker, BrokerError, BrokerErrorReason, TauriFrontendEmitter,
   DEFAULT_MAX_PENDING_REQUESTS, DEFAULT_RESPONSE_TIMEOUT,
 };
-use super::discovery::{
+use crate::agent_control::discovery::{
   descriptor_path, endpoint_name, generate_launch_token, parse_descriptor,
   write_descriptor_atomic_at, AgentControlDescriptor, DescriptorApp, DiscoveryError, LaunchToken,
 };
-use super::protocol::{
+use crate::agent_control::protocol::{
   encode_response, parse_request, JsonRpcError, JsonRpcRequest, JsonRpcResponse, ProtocolError,
   MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES,
 };
@@ -831,8 +831,8 @@ pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
     .format(&time::format_description::well_known::Rfc3339)
     .map_err(|error| format!("unable to format agent-control start time: {error}"))?;
   let descriptor = AgentControlDescriptor {
-    schema_version: super::discovery::DESCRIPTOR_SCHEMA_VERSION,
-    protocol_version: super::protocol::PROTOCOL_VERSION,
+    schema_version: crate::agent_control::discovery::DESCRIPTOR_SCHEMA_VERSION,
+    protocol_version: crate::agent_control::protocol::PROTOCOL_VERSION,
     app: DescriptorApp {
       name: if cfg!(feature = "dev-identity") {
         "PLVS Dev"

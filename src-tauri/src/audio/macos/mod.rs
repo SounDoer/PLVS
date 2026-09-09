@@ -276,6 +276,7 @@ impl AudioCaptureSession for MacosTapCaptureSession {
 }
 
 impl MacosTapCaptureSession {
+  #[allow(clippy::too_many_arguments)]
   fn start(
     device_id: &str,
     frame_subscribers: FrameSubscribers,
@@ -328,6 +329,7 @@ fn is_macos_loopback_selection(device_id: &str) -> bool {
     || device_id::parse_legacy_output_index(device_id).is_some()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start_session(
   device_id: &str,
   frame_subscribers: FrameSubscribers,

@@ -169,7 +169,7 @@ describe("SettingsPanel", () => {
           enabled: false,
           cliInstalled: false,
           onPath: false,
-          message: "Agent Control is currently available on Windows only.",
+          message: "Agent Control is unavailable on this platform.",
         }}
       />
     );

@@ -15,8 +15,9 @@ plvs-cli device ...
 
 `doctor` and `schema list/get` work when PLVS is closed or Agent Control is disabled. Every
 running-app command controls or inspects the same state visible in an already-running PLVS window.
-Those commands require Agent Control to be enabled in Settings and are currently available only on
-Windows. The CLI never starts PLVS implicitly or edits its store behind the running app.
+Those commands require Agent Control to be enabled in Settings and are available on Windows and
+macOS. Individual native capabilities may still be platform-specific. The CLI never starts PLVS
+implicitly or edits its store behind the running app.
 
 ## Install Location
 
@@ -42,6 +43,9 @@ plvs-cli --help
 ```
 
 Portable builds may require the executable's full path.
+
+PLVS does not edit shell startup files or install symlinks on macOS. Full-path invocation always
+works; adding the bundled CLI to `PATH` is an optional user-owned setup step.
 
 ## Agent Discovery
 

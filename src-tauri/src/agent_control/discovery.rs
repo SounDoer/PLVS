@@ -23,8 +23,8 @@ impl LaunchToken {
     Ok(Self(value))
   }
 
-  // Only the Windows pipe server reads the raw token; elsewhere it is test-only.
-  #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+  // Native transports read the raw token; unsupported platforms use it only in tests.
+  #[cfg_attr(not(any(target_os = "windows", target_os = "macos")), allow(dead_code))]
   pub(crate) fn expose(&self) -> &str {
     &self.0
   }
@@ -119,6 +119,32 @@ pub fn endpoint_name(app_identifier: &str) -> String {
   format!("plvs-control-{app_identifier}")
 }
 
+#[cfg(any(target_os = "macos", test))]
+pub fn macos_socket_file_name(app_identifier: &str) -> String {
+  use sha2::{Digest, Sha256};
+
+  let digest = Sha256::digest(app_identifier.as_bytes());
+  let short = digest[..8]
+    .iter()
+    .map(|byte| format!("{byte:02x}"))
+    .collect::<String>();
+  format!("plvs-control-{short}.sock")
+}
+
+fn endpoint_matches_identity(endpoint: &str, expected_identifier: &str) -> bool {
+  #[cfg(target_os = "macos")]
+  {
+    let path = Path::new(endpoint);
+    path.is_absolute()
+      && path.file_name().and_then(|name| name.to_str())
+        == Some(macos_socket_file_name(expected_identifier).as_str())
+  }
+  #[cfg(not(target_os = "macos"))]
+  {
+    endpoint == endpoint_name(expected_identifier)
+  }
+}
+
 #[cfg(target_os = "windows")]
 pub fn is_process_alive(pid: u32) -> bool {
   use windows_sys::Win32::Foundation::{CloseHandle, ERROR_INVALID_PARAMETER, STILL_ACTIVE};
@@ -138,7 +164,25 @@ pub fn is_process_alive(pid: u32) -> bool {
   queried == 0 || exit_code == STILL_ACTIVE as u32
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+pub fn is_process_alive(pid: u32) -> bool {
+  let result = unsafe { libc::kill(pid as libc::pid_t, 0) };
+  macos_process_probe_is_alive(result, std::io::Error::last_os_error().raw_os_error())
+}
+
+#[cfg(target_os = "macos")]
+fn macos_process_probe_is_alive(result: libc::c_int, errno: Option<i32>) -> bool {
+  if result == 0 {
+    return true;
+  }
+  match errno {
+    Some(libc::ESRCH) => false,
+    Some(libc::EPERM) => true,
+    _ => true,
+  }
+}
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
 pub fn is_process_alive(_pid: u32) -> bool {
   true
 }
@@ -190,7 +234,7 @@ pub fn parse_descriptor(
     && !descriptor.app.name.is_empty()
     && !descriptor.app.version.is_empty()
     && descriptor.pid > 0
-    && descriptor.endpoint == endpoint_name(expected_identifier)
+    && endpoint_matches_identity(&descriptor.endpoint, expected_identifier)
     && !descriptor.started_at.is_empty();
   if !valid {
     return Err(DiscoveryError::new(
@@ -223,6 +267,16 @@ pub fn write_descriptor_atomic_at(
       format!("Unable to create the descriptor directory: {error}"),
     )
   })?;
+  #[cfg(target_os = "macos")]
+  {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(parent, fs::Permissions::from_mode(0o700)).map_err(|error| {
+      DiscoveryError::new(
+        DiscoveryErrorKind::Io,
+        format!("Unable to secure the descriptor directory: {error}"),
+      )
+    })?;
+  }
   let bytes = serde_json::to_vec_pretty(descriptor).map_err(|error| {
     DiscoveryError::new(
       DiscoveryErrorKind::Malformed,
@@ -246,7 +300,18 @@ pub fn write_descriptor_atomic_at(
       DiscoveryErrorKind::Io,
       format!("Unable to atomically replace the descriptor: {error}"),
     )
-  })
+  })?;
+  #[cfg(target_os = "macos")]
+  {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600)).map_err(|error| {
+      DiscoveryError::new(
+        DiscoveryErrorKind::Io,
+        format!("Unable to secure the descriptor: {error}"),
+      )
+    })?;
+  }
+  Ok(())
 }
 
 pub fn read_descriptor_at<F>(
@@ -294,6 +359,14 @@ mod tests {
   }
 
   fn descriptor(token: LaunchToken) -> AgentControlDescriptor {
+    #[cfg(target_os = "macos")]
+    let endpoint = std::env::temp_dir()
+      .join(macos_socket_file_name("com.soundoer.plvs.dev"))
+      .display()
+      .to_string();
+    #[cfg(not(target_os = "macos"))]
+    let endpoint = endpoint_name("com.soundoer.plvs.dev");
+
     AgentControlDescriptor {
       schema_version: DESCRIPTOR_SCHEMA_VERSION,
       protocol_version: PROTOCOL_VERSION,
@@ -303,7 +376,7 @@ mod tests {
         identifier: "com.soundoer.plvs.dev".to_string(),
       },
       pid: 42,
-      endpoint: endpoint_name("com.soundoer.plvs.dev"),
+      endpoint,
       token,
       started_at: "2026-09-02T08:00:00Z".to_string(),
     }
@@ -329,6 +402,16 @@ mod tests {
     );
   }
 
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn macos_process_liveness_classifies_probe_results_conservatively() {
+    assert!(is_process_alive(std::process::id()));
+    assert!(macos_process_probe_is_alive(0, None));
+    assert!(macos_process_probe_is_alive(-1, Some(libc::EPERM)));
+    assert!(!macos_process_probe_is_alive(-1, Some(libc::ESRCH)));
+    assert!(macos_process_probe_is_alive(-1, Some(libc::EINVAL)));
+  }
+
   #[test]
   fn descriptor_round_trip_validates_schema_identity_and_token() {
     let descriptor = descriptor(generate_launch_token().unwrap());
@@ -340,6 +423,36 @@ mod tests {
       parse_descriptor(&bytes, "com.soundoer.plvs")
         .unwrap_err()
         .kind,
+      DiscoveryErrorKind::Malformed
+    );
+  }
+
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn macos_descriptor_rejects_relative_and_wrong_identity_socket_paths() {
+    let mut candidate = descriptor(generate_launch_token().unwrap());
+    candidate.endpoint = endpoint_name("com.soundoer.plvs.dev");
+    assert_eq!(
+      parse_descriptor(
+        &serde_json::to_vec(&candidate).unwrap(),
+        "com.soundoer.plvs.dev"
+      )
+      .unwrap_err()
+      .kind,
+      DiscoveryErrorKind::Malformed
+    );
+
+    candidate.endpoint = std::env::temp_dir()
+      .join(macos_socket_file_name("com.soundoer.plvs"))
+      .display()
+      .to_string();
+    assert_eq!(
+      parse_descriptor(
+        &serde_json::to_vec(&candidate).unwrap(),
+        "com.soundoer.plvs.dev"
+      )
+      .unwrap_err()
+      .kind,
       DiscoveryErrorKind::Malformed
     );
   }
@@ -394,6 +507,26 @@ mod tests {
       second
     );
     assert_eq!(fs::read_dir(&dir).unwrap().count(), 1);
+    fs::remove_dir_all(dir).unwrap();
+  }
+
+  #[cfg(target_os = "macos")]
+  #[test]
+  fn descriptor_and_directory_are_private_to_the_current_user() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = temp_dir("permissions");
+    let path = descriptor_path_in(&dir);
+    write_descriptor_atomic_at(&path, &descriptor(generate_launch_token().unwrap())).unwrap();
+
+    assert_eq!(
+      fs::metadata(&dir).unwrap().permissions().mode() & 0o777,
+      0o700
+    );
+    assert_eq!(
+      fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+      0o600
+    );
     fs::remove_dir_all(dir).unwrap();
   }
 
