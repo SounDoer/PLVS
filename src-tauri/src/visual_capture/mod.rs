@@ -27,7 +27,7 @@ use recording::{
 #[cfg(target_os = "windows")]
 use windows::WindowsPlatform;
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 const RECORDING_PCM_QUEUE_CAPACITY: usize = 256;
 
 #[derive(Default)]
@@ -211,12 +211,6 @@ pub async fn visual_recording_start(
   }
   #[cfg(target_os = "macos")]
   {
-    if audio_source != RecordingAudioSource::None {
-      return Err(NativeCaptureError::recording(
-        "audioUnavailable",
-        "macOS recording currently supports silent video only; pass --audio none.",
-      ));
-    }
     macos::request_recording_permission().map_err(NativeCaptureError::from)?;
   }
   let (width, height) = output_canvas(&request)?;
@@ -366,6 +360,25 @@ pub async fn visual_recording_start(
     let session_recording_id = recording_id.clone();
     let store = artifact_store.inner().clone();
     let registry = controller.registry().clone();
+    let measured_pcm = _engine_state.inner().measured_pcm.clone();
+    let audio_origin_ns = measured_pcm.timestamp_ns();
+    let audio_receiver = if audio_source == RecordingAudioSource::MeasuredSource {
+      match measured_pcm.subscribe(RECORDING_PCM_QUEUE_CAPACITY) {
+        Ok(receiver) => Some(receiver),
+        Err(reason) => {
+          controller.registry().fail(
+            &created.recording_id,
+            "Measured-source audio could not be attached.",
+          );
+          return Err(NativeCaptureError::recording(
+            reason,
+            "Measured-source audio could not be attached.",
+          ));
+        }
+      }
+    } else {
+      None
+    };
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     window
       .with_webview(move |platform_webview| {
@@ -379,6 +392,10 @@ pub async fn visual_recording_start(
           request.rect,
           request.viewport,
           request.cursor,
+          audio_source,
+          audio_origin_ns,
+          audio_receiver,
+          request.audio_state.silence_reason(),
           pending,
           store,
           registry,

@@ -197,7 +197,8 @@ describe("current CLI documentation", () => {
     expect(visual).toContain("30 minutes");
     expect(visual).toContain("24-hour");
     expect(visual).toContain("4 GiB");
-    expect(visual).toContain("current macOS slice is video-only");
+    expect(visual).toContain("Both platforms support either no audio");
+    expect(visual).toContain("does not enable ScreenCaptureKit system-audio capture");
     expect(visual).toContain("Screen & System Audio Recording");
     expect(visual).toContain("File decoder PCM is never recorded");
     expect(commands).toContain("## `visual.recording.start`");

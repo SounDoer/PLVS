@@ -1,4 +1,5 @@
 #import <AppKit/AppKit.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import <AVFoundation/AVFoundation.h>
 #import <CoreImage/CoreImage.h>
 #import <CoreGraphics/CGWindow.h>
@@ -38,6 +39,7 @@ enum {
   PLVS_VISUAL_RECORDING_SIZE_LIMIT = 4,
   PLVS_VISUAL_RECORDING_COMPLETED = 5,
   PLVS_VISUAL_RECORDING_FAILED = 6,
+  PLVS_VISUAL_RECORDING_TIMELINE = 7,
 };
 
 @interface PLVSMacRecordingSession : NSObject <SCStreamOutput, SCStreamDelegate>
@@ -54,10 +56,12 @@ enum {
                    viewportWidth:(double)viewportWidth
                   viewportHeight:(double)viewportHeight
                       showCursor:(BOOL)showCursor
+                         hasAudio:(BOOL)hasAudio
                          context:(void *)context
                         callback:(PLVSVisualRecordingCallback)callback;
 - (void)start;
 - (void)requestStop;
+- (int32_t)appendAudioData:(NSData *)data startFrame:(uint64_t)startFrame;
 - (void)updateX:(double)x
                y:(double)y
        rectWidth:(double)rectWidth
@@ -74,12 +78,15 @@ enum {
 @property(nonatomic) uint32_t fps;
 @property(nonatomic) uint32_t maxDuration;
 @property(nonatomic) BOOL showCursor;
+@property(nonatomic) BOOL hasAudio;
 @property(nonatomic) CGRect normalizedTarget;
 @property(nonatomic) CGRect windowFrame;
 @property(nonatomic) dispatch_queue_t queue;
 @property(nonatomic) SCStream *stream;
 @property(nonatomic) AVAssetWriter *writer;
 @property(nonatomic) AVAssetWriterInput *videoInput;
+@property(nonatomic) AVAssetWriterInput *audioInput;
+@property(nonatomic) CMAudioFormatDescriptionRef audioFormat;
 @property(nonatomic) AVAssetWriterInputPixelBufferAdaptor *adaptor;
 @property(nonatomic) CIContext *ciContext;
 @property(nonatomic) CMTime firstTime;
@@ -87,11 +94,16 @@ enum {
 @property(nonatomic) BOOL streamStarted;
 @property(nonatomic) BOOL stopping;
 @property(nonatomic) BOOL terminal;
+@property(nonatomic) BOOL limitSignaled;
 @property(nonatomic) void *callbackContext;
 @property(nonatomic) PLVSVisualRecordingCallback callback;
 @end
 
 @implementation PLVSMacRecordingSession
+
+- (void)dealloc {
+  if (_audioFormat) CFRelease(_audioFormat);
+}
 
 - (instancetype)initWithWebView:(WKWebView *)webview
                             path:(NSString *)path
@@ -106,6 +118,7 @@ enum {
                    viewportWidth:(double)viewportWidth
                   viewportHeight:(double)viewportHeight
                       showCursor:(BOOL)showCursor
+                         hasAudio:(BOOL)hasAudio
                          context:(void *)context
                         callback:(PLVSVisualRecordingCallback)callback {
   self = [super init];
@@ -117,6 +130,7 @@ enum {
     _fps = fps;
     _maxDuration = maxDuration;
     _showCursor = showCursor;
+    _hasAudio = hasAudio;
     _callbackContext = context;
     _callback = callback;
     _firstTime = kCMTimeInvalid;
@@ -257,6 +271,37 @@ enum {
                                         sourcePixelBufferAttributes:attributes];
         if (![self.writer canAddInput:self.videoInput]) { [self fail:@"The MP4 writer rejected the H.264 input."]; return; }
         [self.writer addInput:self.videoInput];
+        if (self.hasAudio) {
+          NSDictionary *audioSettings = @{
+            AVFormatIDKey : @(kAudioFormatMPEG4AAC),
+            AVSampleRateKey : @48000,
+            AVNumberOfChannelsKey : @2,
+            AVEncoderBitRateKey : @192000,
+          };
+          self.audioInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeAudio
+                                                                outputSettings:audioSettings];
+          self.audioInput.expectsMediaDataInRealTime = YES;
+          if (![self.writer canAddInput:self.audioInput]) {
+            [self fail:@"The MP4 writer rejected the AAC input."];
+            return;
+          }
+          [self.writer addInput:self.audioInput];
+          AudioStreamBasicDescription pcm = {0};
+          pcm.mSampleRate = 48000;
+          pcm.mFormatID = kAudioFormatLinearPCM;
+          pcm.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked;
+          pcm.mBytesPerPacket = 4;
+          pcm.mFramesPerPacket = 1;
+          pcm.mBytesPerFrame = 4;
+          pcm.mChannelsPerFrame = 2;
+          pcm.mBitsPerChannel = 16;
+          OSStatus formatStatus = CMAudioFormatDescriptionCreate(
+              kCFAllocatorDefault, &pcm, 0, NULL, 0, NULL, NULL, &_audioFormat);
+          if (formatStatus != noErr || !self.audioFormat) {
+            [self fail:@"The PCM audio format could not be created."];
+            return;
+          }
+        }
 
         SCContentFilter *filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:source];
         SCStreamConfiguration *configuration = [[SCStreamConfiguration alloc] init];
@@ -310,8 +355,11 @@ enum {
   if (!CMTIME_IS_VALID(_firstTime)) _firstTime = sourceTime;
   CMTime relative = CMTimeSubtract(sourceTime, _firstTime);
   if (CMTimeGetSeconds(relative) >= _maxDuration) {
-    [self emit:PLVS_VISUAL_RECORDING_DURATION_LIMIT value:0 message:@""];
-    [self requestStop];
+    if (!_limitSignaled) {
+      _limitSignaled = YES;
+      [self emit:PLVS_VISUAL_RECORDING_DURATION_LIMIT value:0 message:@""];
+      if (!_hasAudio) [self requestStop];
+    }
     return;
   }
   if (!_writerStarted) {
@@ -355,11 +403,57 @@ enum {
   CVPixelBufferRelease(destination);
   if (!appended) { [self fail:_writer.error.localizedDescription ?: @"The H.264 encoder rejected a frame."]; return; }
   NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:_path error:nil];
+  CMTime videoEnd = CMTimeAdd(relative, CMTimeMake(1, self.fps));
+  CMTime audioClock = CMTimeConvertScale(videoEnd, 48000, kCMTimeRoundingMethod_RoundTowardZero);
+  [self emit:PLVS_VISUAL_RECORDING_TIMELINE value:(uint64_t)MAX(0, audioClock.value) message:@""];
   [self emit:PLVS_VISUAL_RECORDING_FRAME value:attributes.fileSize message:@""];
   if (attributes.fileSize >= UINT64_C(2) * 1024 * 1024 * 1024) {
-    [self emit:PLVS_VISUAL_RECORDING_SIZE_LIMIT value:0 message:@""];
-    [self requestStop];
+    if (!_limitSignaled) {
+      _limitSignaled = YES;
+      [self emit:PLVS_VISUAL_RECORDING_SIZE_LIMIT value:0 message:@""];
+      if (!_hasAudio) [self requestStop];
+    }
   }
+}
+
+- (int32_t)appendAudioData:(NSData *)data startFrame:(uint64_t)startFrame {
+  if (!_hasAudio || !_writerStarted || _stopping || _terminal || !_audioFormat) return 1;
+  if (!_audioInput.readyForMoreMediaData) return 1;
+  size_t sampleCount = data.length / 4;
+  if (sampleCount == 0) return 0;
+  CMBlockBufferRef block = NULL;
+  OSStatus blockStatus = CMBlockBufferCreateWithMemoryBlock(
+      kCFAllocatorDefault, NULL, data.length, kCFAllocatorDefault, NULL, 0, data.length, 0, &block);
+  if (blockStatus != kCMBlockBufferNoErr || !block) {
+    [self fail:@"The PCM audio buffer could not be allocated."];
+    return 2;
+  }
+  blockStatus = CMBlockBufferReplaceDataBytes(data.bytes, block, 0, data.length);
+  if (blockStatus != kCMBlockBufferNoErr) {
+    CFRelease(block);
+    [self fail:@"The PCM audio buffer could not be copied."];
+    return 2;
+  }
+  CMSampleTimingInfo timing = {
+    .duration = CMTimeMake(1, 48000),
+    .presentationTimeStamp = CMTimeMake((int64_t)MIN(startFrame, INT64_MAX), 48000),
+    .decodeTimeStamp = kCMTimeInvalid,
+  };
+  CMSampleBufferRef sample = NULL;
+  OSStatus sampleStatus = CMSampleBufferCreateReady(
+      kCFAllocatorDefault, block, _audioFormat, sampleCount, 1, &timing, 0, NULL, &sample);
+  CFRelease(block);
+  if (sampleStatus != noErr || !sample) {
+    [self fail:@"The PCM audio sample could not be created."];
+    return 2;
+  }
+  BOOL appended = [_audioInput appendSampleBuffer:sample];
+  CFRelease(sample);
+  if (!appended) {
+    [self fail:_writer.error.localizedDescription ?: @"The AAC encoder rejected an audio packet."];
+    return 2;
+  }
+  return 0;
 }
 
 - (void)requestStop {
@@ -375,6 +469,7 @@ enum {
     dispatch_async(self.queue, ^{
       if (error) { [self fail:error.localizedDescription]; return; }
       [self.videoInput markAsFinished];
+      [self.audioInput markAsFinished];
       if (!self.writerStarted) {
         if (![self.writer startWriting]) { [self fail:self.writer.error.localizedDescription]; return; }
         [self.writer startSessionAtSourceTime:kCMTimeZero];
@@ -405,7 +500,7 @@ void *plvs_macos_recording_start(void *raw_webview, const uint8_t *path_bytes, s
                                  uint32_t width, uint32_t height, uint32_t fps,
                                  uint32_t max_duration, double x, double y, double rect_width,
                                  double rect_height, double viewport_width, double viewport_height,
-                                 bool show_cursor, void *context,
+                                 bool show_cursor, bool has_audio, void *context,
                                  PLVSVisualRecordingCallback callback) {
   if (!raw_webview || !path_bytes || path_length == 0 || !callback) return NULL;
   NSString *path = [[NSString alloc] initWithBytes:path_bytes length:path_length
@@ -415,13 +510,23 @@ void *plvs_macos_recording_start(void *raw_webview, const uint8_t *path_bytes, s
       initWithWebView:(__bridge WKWebView *)raw_webview path:path width:width height:height fps:fps
       maxDuration:max_duration x:x y:y rectWidth:rect_width rectHeight:rect_height
       viewportWidth:viewport_width viewportHeight:viewport_height showCursor:show_cursor
-      context:context callback:callback];
+      hasAudio:has_audio context:context callback:callback];
   [session start];
   return (__bridge_retained void *)session;
 }
 
 void plvs_macos_recording_stop(void *raw_session) {
   if (raw_session) [(__bridge PLVSMacRecordingSession *)raw_session requestStop];
+}
+
+int32_t plvs_macos_recording_append_audio(void *raw_session, const int16_t *samples,
+                                          size_t sample_count, uint64_t start_frame) {
+  if (!raw_session || (!samples && sample_count > 0)) return 2;
+  NSData *data = [NSData dataWithBytes:samples length:sample_count * sizeof(int16_t)];
+  __block int32_t status = 2;
+  PLVSMacRecordingSession *session = (__bridge PLVSMacRecordingSession *)raw_session;
+  dispatch_sync(session.queue, ^{ status = [session appendAudioData:data startFrame:start_frame]; });
+  return status;
 }
 
 void plvs_macos_recording_update_geometry(void *raw_session, double x, double y,

@@ -61,8 +61,9 @@ ACL 的 named pipe、在 macOS 通过私有 Unix socket 找到同一 identity �
 
 Visual Capture 沿用同一语义边界：React 决定捕获目标、等待稳定绘制并提供 CSS 几何；Rust
 负责私有 artifact、并发与生命周期。Windows 截图走 WebView2，macOS 截图走 WKWebView
-snapshot；两者都只捕获 PLVS WebView 内容。Windows 录制另走 Windows Graphics Capture 与
-Media Foundation，macOS 录制尚未实现。
+snapshot；两者都只捕获 PLVS WebView 内容。Windows 录制走 Windows Graphics Capture 与
+Media Foundation，macOS 录制走 ScreenCaptureKit 与 AVAssetWriter。两端都复用 Rust 的
+measured-source PCM 时间轴，并分别编码 H.264/AAC MP4。
 
 ---
 

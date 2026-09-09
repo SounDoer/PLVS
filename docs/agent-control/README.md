@@ -66,7 +66,7 @@ paths as the GUI.
 Windows carries requests over a current-user named pipe. macOS carries the same authenticated,
 bounded protocol over a private Unix-domain socket. The public CLI contract is transport-neutral;
 callers use runtime capabilities to discover native features such as cross-platform screenshots and
-currently Windows-only recording.
+recording.
 
 ## Implementation status
 
@@ -471,7 +471,7 @@ Control settings.
 ## Follow-on module specifications
 
 - [`modules.md`](modules.md) — implemented Module discovery contract
-- [`visual.md`](visual.md) — implemented Windows/macOS screenshot and Windows recording contract
+- [`visual.md`](visual.md) — implemented Windows/macOS screenshot and recording contract
 - [Visual Capture design](../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md) —
   approved `visual` family design record
 - [`presets.md`](presets.md) — approved Preset Control contract

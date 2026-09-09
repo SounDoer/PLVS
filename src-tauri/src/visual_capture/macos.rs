@@ -70,7 +70,7 @@ impl VisualCapturePlatform for MacOsPlatform {
         available: true,
         permission: recording_permission(),
         targets: vec!["main", "workspace"],
-        audio_sources: vec!["none"],
+        audio_sources: vec!["none", "measuredSource"],
         cursor_modes: vec!["none", "visible"],
       },
     }
@@ -175,12 +175,15 @@ mod tests {
   use super::*;
 
   #[test]
-  fn macos_capabilities_expose_silent_window_recording() {
+  fn macos_capabilities_expose_measured_source_window_recording() {
     let capabilities = MacOsPlatform.capabilities();
     assert!(capabilities.screenshot.available);
     assert_eq!(capabilities.screenshot.targets.len(), 5);
     assert!(capabilities.recording.available);
-    assert_eq!(capabilities.recording.audio_sources, vec!["none"]);
+    assert_eq!(
+      capabilities.recording.audio_sources,
+      vec!["none", "measuredSource"]
+    );
   }
 
   #[test]
@@ -219,7 +222,7 @@ mod tests {
   }
 
   #[test]
-  fn native_recording_stays_window_scoped_and_silent() {
+  fn native_recording_stays_window_scoped_and_avoids_system_audio() {
     let source = include_str!(concat!(
       env!("CARGO_MANIFEST_DIR"),
       "/native/macos/visual_capture_bridge.m"
@@ -228,6 +231,8 @@ mod tests {
     assert!(source.contains("candidate.owningApplication.processID =="));
     assert!(source.contains("initWithDesktopIndependentWindow:source"));
     assert!(source.contains("configuration.capturesAudio = NO"));
+    assert!(source.contains("kAudioFormatMPEG4AAC"));
+    assert!(source.contains("dataWithBytes:samples"));
     assert!(!source.contains("configuration.sourceRect"));
   }
 }

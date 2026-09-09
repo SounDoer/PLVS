@@ -1,6 +1,6 @@
 use std::ffi::{c_char, c_void, CStr};
 use std::os::unix::ffi::OsStrExt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
@@ -8,9 +8,10 @@ use std::time::{Duration, SystemTime};
 use crate::visual_capture::artifacts::{ArtifactStore, PendingArtifact};
 use crate::visual_capture::platform::{CssRect, CssViewport};
 
-use super::audio::SilenceReason;
+use super::audio::{AudioPacket, AudioTimeline, SilenceReason, OUTPUT_SAMPLE_RATE};
 use super::session::RecordingSessionControl;
-use super::state::{RecordingCursorMode, RecordingRegistry, StopReason};
+use super::state::{RecordingAudioSource, RecordingCursorMode, RecordingRegistry, StopReason};
+use crate::audio::MeasuredPcmReceiver;
 
 const START_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -21,6 +22,7 @@ const EVENT_DURATION_LIMIT: i32 = 3;
 const EVENT_SIZE_LIMIT: i32 = 4;
 const EVENT_COMPLETED: i32 = 5;
 const EVENT_FAILED: i32 = 6;
+const EVENT_TIMELINE: i32 = 7;
 
 unsafe extern "C" {
   fn plvs_macos_recording_start(
@@ -38,10 +40,17 @@ unsafe extern "C" {
     viewport_width: f64,
     viewport_height: f64,
     show_cursor: bool,
+    has_audio: bool,
     context: *mut c_void,
     callback: unsafe extern "C" fn(*mut c_void, i32, u64, *const c_char),
   ) -> *mut c_void;
   fn plvs_macos_recording_stop(session: *mut c_void);
+  fn plvs_macos_recording_append_audio(
+    session: *mut c_void,
+    samples: *const i16,
+    sample_count: usize,
+    start_frame: u64,
+  ) -> i32;
   fn plvs_macos_recording_update_geometry(
     session: *mut c_void,
     x: f64,
@@ -63,19 +72,30 @@ struct RecordingContext {
   pending: Mutex<Option<PendingArtifact>>,
   startup: Mutex<Option<SyncSender<Result<(), String>>>>,
   finished: AtomicBool,
+  stop_requested: AtomicBool,
+  native_stop_sent: AtomicBool,
+  captured_frames: AtomicU64,
+  audio_target_frames: AtomicU64,
   native_context_released: AtomicBool,
+}
+
+struct NativeSession(usize);
+
+unsafe impl Send for NativeSession {}
+unsafe impl Sync for NativeSession {}
+
+impl Drop for NativeSession {
+  fn drop(&mut self) {
+    unsafe { plvs_macos_recording_release(self.0 as *mut c_void) };
+  }
 }
 
 pub struct MacRecordingSession {
   recording_id: String,
-  native: usize,
+  native: Arc<NativeSession>,
   context: Arc<RecordingContext>,
-}
-
-impl Drop for MacRecordingSession {
-  fn drop(&mut self) {
-    unsafe { plvs_macos_recording_release(self.native as *mut c_void) };
-  }
+  audio_silence_reason: Arc<Mutex<SilenceReason>>,
+  has_audio: bool,
 }
 
 impl RecordingSessionControl for MacRecordingSession {
@@ -84,7 +104,10 @@ impl RecordingSessionControl for MacRecordingSession {
   }
 
   fn request_stop(&self, _reason: StopReason) {
-    unsafe { plvs_macos_recording_stop(self.native as *mut c_void) };
+    self.context.stop_requested.store(true, Ordering::Release);
+    if !self.has_audio {
+      request_native_stop(&self.native, &self.context);
+    }
   }
 
   fn update_geometry(&self, rect: CssRect, viewport: CssViewport) -> Result<(), &'static str> {
@@ -107,7 +130,7 @@ impl RecordingSessionControl for MacRecordingSession {
     }
     unsafe {
       plvs_macos_recording_update_geometry(
-        self.native as *mut c_void,
+        self.native.0 as *mut c_void,
         rect.x,
         rect.y,
         rect.width,
@@ -119,7 +142,11 @@ impl RecordingSessionControl for MacRecordingSession {
     Ok(())
   }
 
-  fn update_audio_silence_reason(&self, _reason: SilenceReason) -> Result<(), &'static str> {
+  fn update_audio_silence_reason(&self, reason: SilenceReason) -> Result<(), &'static str> {
+    *self
+      .audio_silence_reason
+      .lock()
+      .map_err(|_| "stateUnavailable")? = reason;
     Ok(())
   }
 
@@ -151,19 +178,25 @@ unsafe extern "C" fn recording_event(
       context.registry.mark_recording(&context.recording_id);
       send_startup(&context, Ok(()));
     }
-    EVENT_FRAME => context.registry.add_frame(&context.recording_id, value, 0),
+    EVENT_FRAME => {
+      context.captured_frames.fetch_add(1, Ordering::Release);
+      context.registry.add_frame(&context.recording_id, value, 0);
+    }
     EVENT_DROPPED => context
       .registry
       .add_dropped_frames(&context.recording_id, value.max(1)),
+    EVENT_TIMELINE => context.audio_target_frames.store(value, Ordering::Release),
     EVENT_DURATION_LIMIT => {
       context
         .registry
         .request_stop(&context.recording_id, StopReason::DurationLimit);
+      context.stop_requested.store(true, Ordering::Release);
     }
     EVENT_SIZE_LIMIT => {
       context
         .registry
         .request_stop(&context.recording_id, StopReason::SizeLimit);
+      context.stop_requested.store(true, Ordering::Release);
     }
     EVENT_COMPLETED => finish_recording(&context),
     EVENT_FAILED => {
@@ -223,6 +256,100 @@ fn finish_recording(context: &RecordingContext) {
   context.finished.store(true, Ordering::Release);
 }
 
+fn request_native_stop(native: &NativeSession, context: &RecordingContext) {
+  if context
+    .native_stop_sent
+    .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+    .is_ok()
+  {
+    unsafe { plvs_macos_recording_stop(native.0 as *mut c_void) };
+  }
+}
+
+fn append_audio_packets(
+  native: &NativeSession,
+  timeline: &mut AudioTimeline,
+  packets: Vec<AudioPacket>,
+) -> bool {
+  for packet in packets {
+    let status = unsafe {
+      plvs_macos_recording_append_audio(
+        native.0 as *mut c_void,
+        packet.samples.as_ptr(),
+        packet.samples.len(),
+        packet.start_frame,
+      )
+    };
+    match status {
+      0 => {}
+      1 => timeline.record_output_drop(packet.start_frame, packet.frame_count()),
+      _ => return false,
+    }
+  }
+  true
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_audio_worker(
+  native: Arc<NativeSession>,
+  context: Arc<RecordingContext>,
+  audio_origin_ns: u64,
+  receiver: MeasuredPcmReceiver,
+  audio_silence_reason: Arc<Mutex<SilenceReason>>,
+) {
+  let mut timeline = AudioTimeline::new(audio_origin_ns);
+  let mut deferred = None;
+  while !context.finished.load(Ordering::Acquire) {
+    let captured_frames = context.captured_frames.load(Ordering::Acquire);
+    let video_audio_frames = context.audio_target_frames.load(Ordering::Acquire);
+    let stopping = context.stop_requested.load(Ordering::Acquire);
+    if captured_frames > 0 {
+      let boundary = if stopping {
+        video_audio_frames
+      } else {
+        video_audio_frames.saturating_sub(4_800)
+      };
+      let reason = audio_silence_reason
+        .lock()
+        .map(|reason| *reason)
+        .unwrap_or(SilenceReason::LiveRestart);
+      while let Some(frame) = deferred.take().or_else(|| receiver.try_recv()) {
+        let start_frame = frame
+          .timestamp_ns
+          .saturating_sub(timeline.origin_ns())
+          .saturating_mul(u64::from(OUTPUT_SAMPLE_RATE))
+          / 1_000_000_000;
+        if start_frame >= boundary {
+          deferred = Some(frame);
+          break;
+        }
+        let packets = timeline.ingest(&frame, reason);
+        receiver.recycle(frame);
+        if !append_audio_packets(&native, &mut timeline, packets) {
+          return;
+        }
+      }
+      let packets = timeline.insert_silence_to(boundary, reason);
+      if !append_audio_packets(&native, &mut timeline, packets) {
+        return;
+      }
+      context.registry.update_audio(
+        &context.recording_id,
+        timeline.silent_duration_ms(),
+        timeline.interruptions().to_vec(),
+      );
+    }
+    if stopping {
+      if let Some(frame) = deferred.take() {
+        receiver.recycle(frame);
+      }
+      request_native_stop(&native, &context);
+      return;
+    }
+    std::thread::sleep(Duration::from_millis(5));
+  }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn begin_recording(
   webview: usize,
@@ -234,6 +361,10 @@ pub fn begin_recording(
   rect: CssRect,
   viewport: CssViewport,
   cursor: RecordingCursorMode,
+  audio_source: RecordingAudioSource,
+  audio_origin_ns: u64,
+  audio_receiver: Option<MeasuredPcmReceiver>,
+  initial_audio_silence_reason: SilenceReason,
   pending: PendingArtifact,
   store: ArtifactStore,
   registry: RecordingRegistry,
@@ -249,6 +380,10 @@ pub fn begin_recording(
     pending: Mutex::new(Some(pending)),
     startup: Mutex::new(Some(startup_sender)),
     finished: AtomicBool::new(false),
+    stop_requested: AtomicBool::new(false),
+    native_stop_sent: AtomicBool::new(false),
+    captured_frames: AtomicU64::new(0),
+    audio_target_frames: AtomicU64::new(0),
     native_context_released: AtomicBool::new(false),
   });
   let callback_context = Arc::into_raw(Arc::clone(&context));
@@ -268,6 +403,7 @@ pub fn begin_recording(
       viewport.width,
       viewport.height,
       cursor == RecordingCursorMode::Visible,
+      audio_source == RecordingAudioSource::MeasuredSource,
       callback_context.cast_mut().cast::<c_void>(),
       recording_event,
     )
@@ -276,10 +412,28 @@ pub fn begin_recording(
     drop(unsafe { Arc::from_raw(callback_context) });
     return Err("The native macOS recording session could not be created.".to_owned());
   }
+  let native = Arc::new(NativeSession(native as usize));
+  let audio_silence_reason = Arc::new(Mutex::new(initial_audio_silence_reason));
+  if let Some(audio_receiver) = audio_receiver {
+    let worker_native = Arc::clone(&native);
+    let worker_context = Arc::clone(&context);
+    let worker_silence_reason = Arc::clone(&audio_silence_reason);
+    std::thread::spawn(move || {
+      run_audio_worker(
+        worker_native,
+        worker_context,
+        audio_origin_ns,
+        audio_receiver,
+        worker_silence_reason,
+      )
+    });
+  }
   let session = MacRecordingSession {
     recording_id,
-    native: native as usize,
+    native,
     context,
+    audio_silence_reason,
+    has_audio: audio_source == RecordingAudioSource::MeasuredSource,
   };
   Ok((session, startup_receiver))
 }

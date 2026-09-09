@@ -35,7 +35,7 @@ The running-app surface now covers:
 - source lifecycle: live and file Transport Control;
 - audio-source inventory, inspection, and exact/Automatic Device Control;
 - bounded LIVE Measurement inspection and sample-identity waiting;
-- persistent View Control, cross-platform screenshots, and Windows visual recording;
+- persistent View Control and cross-platform screenshots and visual recording;
 - portable libraries: Preset, Theme, and Loudness Profile list/export/import;
 - Loudness Profile inspection, authoring, selection, deletion, and ordering;
 - Appearance inspection/selection and Theme inspection, authoring, duplication, deletion, and
@@ -48,8 +48,7 @@ durable settlement, recoverable `--out` failure behavior, and public documentati
 
 Important constraints of the current baseline:
 
-- Agent Control transport and Visual Capture screenshots are implemented on Windows and macOS;
-  visual recording remains Windows-only.
+- Agent Control transport and Visual Capture are implemented on Windows and macOS.
 - Running-app commands are machine-first and require `--json`.
 - CLI `inspect` (wire method `app.inspect`) intentionally contains semantic state, not measurement
   frames or history.
@@ -243,8 +242,8 @@ Approved design and completed implementation plan:
 - [`../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md`](../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md)
 - [`../superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md`](../superpowers/plans/2026-09-07-agent-control-visual-capture-implementation.md)
 
-The implemented `visual` family provides `describe` and screenshots on Windows and macOS plus
-Windows-only asynchronous recording `start`, `inspect`, `wait`, and `stop`. It captures closed
+The implemented `visual` family provides `describe`, screenshots, and asynchronous recording
+`start`, `inspect`, `wait`, and `stop` on Windows and macOS. It captures closed
 semantic targets, stages media outside JSON, supports explicit silent recording, and defaults Live
 recording to the measured source while File remains silent. The complete public contract is
 [`agent-control/visual.md`](agent-control/visual.md).
@@ -260,8 +259,8 @@ This is foundation work rather than command breadth, but it has the highest prod
 The Unix-domain-socket transport preserves descriptor, authentication, framing, timeout, delivery,
 and JSON-RPC semantics behind the same platform-independent capability names and CLI envelopes.
 
-The first macOS Visual Capture slice now provides permission-free WKWebView screenshots. Native
-recording remains a separate follow-on under the approved macOS Visual Capture spec and plan.
+macOS Visual Capture provides permission-free WKWebView screenshots plus permission-gated,
+app-window-only H.264/AAC recording under the approved macOS Visual Capture spec and plan.
 
 #### Optional human-readable output
 
@@ -467,8 +466,7 @@ The smallest useful sequence is:
    actual usage rather than surface-completeness pressure.
 
 Configuration Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement
-inspect/wait, and Visual Capture screenshots are complete on both transports. Track macOS recording
-parity before claiming that the complete Visual Capture family is cross-platform.
+inspect/wait, and Visual Capture are complete on both transports.
 
 ## Definition of done for every new family
 
@@ -495,5 +493,4 @@ The next implementation stage is the **command manifest and offline schema found
 the catalog drift risk before more command families are added and provides the checked input for
 future help, completion, SDK, and MCP work. Configuration Transfer, Loudness Profile Control, Theme
 Control, Device Control, Measurement inspect/wait, and Visual Capture screenshots are complete.
-macOS visual recording remains the next product-portability slice, and File-analysis report export
-remains the next user-workflow command-family candidate.
+File-analysis report export remains the next user-workflow command-family candidate.

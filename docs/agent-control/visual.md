@@ -2,9 +2,9 @@
 
 Visual Capture lets an agent save the pixels currently rendered by a running PLVS window. It is
 available for screenshots and recordings on Windows and macOS. Screenshots are PNG files;
-recordings are H.264 MP4 files. Windows supports either no audio or the same Live source PCM that
-PLVS measures; the current macOS slice is video-only. It does not capture File-analysis audio,
-microphones, arbitrary system audio, other windows, or raw canvas/DOM data.
+recordings are H.264 MP4 files. Both platforms support either no audio or the same Live source PCM
+that PLVS measures. It does not independently capture File-analysis audio, microphones, arbitrary
+system audio, other windows, or raw canvas/DOM data.
 
 ## Commands
 
@@ -118,9 +118,9 @@ is the master clock. Output is AAC-LC stereo at 48 kHz and 192 kbit/s; mono is d
 supported multichannel layouts are downmixed. Inspection reports aggregate silent duration and a
 bounded interruption history.
 
-macOS currently advertises only `none`, so an omitted audio option falls back to silent video. You
-may still pass `--audio none` explicitly; `measured-source` remains unavailable until the audio
-slice is enabled.
+On macOS, measured PCM crosses a bounded Rust-to-native queue and is encoded by AVAssetWriter; it
+does not enable ScreenCaptureKit system-audio capture. The public source meaning and interruption
+metadata are therefore the same as on Windows.
 
 ## Artifacts and errors
 

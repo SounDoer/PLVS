@@ -131,6 +131,14 @@ impl AudioTimeline {
     self.origin_ns
   }
 
+  pub fn record_output_drop(&mut self, start_frame: u64, frames: u64) {
+    if frames == 0 {
+      return;
+    }
+    self.record_interruption(start_frame, frames, SilenceReason::AudioBackpressure);
+    self.silent_frames = self.silent_frames.saturating_add(frames);
+  }
+
   fn resample_and_downmix(&mut self, frame: &PcmFrame) -> Vec<i16> {
     let channels = usize::from(frame.channels.max(1));
     let input_frames = frame.samples.len() / channels;
@@ -379,5 +387,20 @@ mod tests {
       SilenceReason::LiveStopped,
     );
     assert_eq!(timeline.interruptions().last().unwrap().duration_ms, 3);
+  }
+
+  #[test]
+  fn native_output_backpressure_is_accounted_as_silence() {
+    let mut timeline = AudioTimeline::new(0);
+    timeline.record_output_drop(480, 480);
+    assert_eq!(timeline.silent_duration_ms(), 10);
+    assert_eq!(
+      timeline.interruptions(),
+      &[AudioInterruption {
+        reason: SilenceReason::AudioBackpressure,
+        started_ms: 10,
+        duration_ms: 10,
+      }]
+    );
   }
 }
