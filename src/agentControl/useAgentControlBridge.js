@@ -1017,8 +1017,12 @@ export function useAgentControlBridge({
           ) {
             throw visualSemanticFailure({ reason: "visualUnavailable" });
           }
+          const preferredAudio = runtime.sourceMode === "file" ? "none" : "measuredSource";
           const audio =
-            request.params.audio ?? (runtime.sourceMode === "file" ? "none" : "measuredSource");
+            request.params.audio ??
+            ((runtime.availableAudioSources ?? []).includes(preferredAudio)
+              ? preferredAudio
+              : "none");
           if (!(runtime.availableAudioSources ?? []).includes(audio)) {
             throw visualSemanticFailure({ reason: "audioUnavailable" });
           }

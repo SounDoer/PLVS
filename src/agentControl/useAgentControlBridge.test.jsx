@@ -1047,6 +1047,37 @@ describe("useAgentControlBridge", () => {
       expect(visual.startRecording).not.toHaveBeenCalled();
     });
 
+    it("falls back to silent Live recording when the platform has no measured audio", async () => {
+      const visual = visualControl({
+        platformCapabilities: {
+          platform: "macos",
+          screenshot: { available: true, targets: ["main"] },
+          recording: {
+            available: true,
+            targets: ["main"],
+            audioSources: ["none"],
+            cursorModes: ["none", "visible"],
+          },
+        },
+        getRuntime: () => ({
+          windowForm: "normal",
+          sourceMode: "live",
+          availableScreenshotTargets: ["main"],
+          availableAudioSources: ["none"],
+        }),
+      });
+      mount({ agentVisual: visual });
+      await waitUntilReady();
+
+      const response = await send(
+        request("visual.recording.start", { target: { kind: "main" } }, "mac-silent-default")
+      );
+      expect(response.result.recording.audio).toEqual({ source: "none" });
+      expect(visual.startRecording).toHaveBeenCalledWith(
+        expect.objectContaining({ audio: "none", sourceMode: "live" })
+      );
+    });
+
     it("keeps recording wait outside the mutation queue and returns terminal correlation metadata", async () => {
       const recordingId = `rec-${"b".repeat(32)}`;
       const inspected = createDeferred();

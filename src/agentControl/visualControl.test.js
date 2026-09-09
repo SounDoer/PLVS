@@ -154,4 +154,27 @@ describe("visual control contract", () => {
       runtime: { availableScreenshotTargets: [], availableAudioSources: [] },
     });
   });
+
+  it("falls back to silent recording when measured source is unavailable", () => {
+    const description = buildVisualDescription({
+      revision: 0,
+      platform: {
+        platform: "macos",
+        screenshot: { available: true, targets: ["main"] },
+        recording: {
+          available: true,
+          permission: "granted",
+          targets: ["main"],
+          audioSources: ["none"],
+          cursorModes: ["none", "visible"],
+        },
+      },
+      runtime: {
+        sourceMode: "live",
+        availableScreenshotTargets: ["main"],
+        availableAudioSources: ["none"],
+      },
+    });
+    expect(description.recording.defaultAudioSource).toBe("none");
+  });
 });

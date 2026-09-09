@@ -100,6 +100,10 @@ export function buildVisualDescription({ revision, platform, runtime }) {
     ? retainKnown(platform.recording.cursorModes, VISUAL_CURSOR_MODES)
     : [];
   const sourceMode = runtime?.sourceMode === "file" ? "file" : "live";
+  const preferredAudioSource = sourceMode === "live" ? "measuredSource" : "none";
+  const defaultAudioSource = audioSources.includes(preferredAudioSource)
+    ? preferredAudioSource
+    : (audioSources[0] ?? "none");
   const permission = VISUAL_RECORDING_PERMISSIONS.includes(platform?.recording?.permission)
     ? platform.recording.permission
     : "unsupported";
@@ -120,7 +124,7 @@ export function buildVisualDescription({ revision, platform, runtime }) {
       container: RECORDING_CONTAINER,
       videoCodec: RECORDING_VIDEO_CODEC,
       audioSources,
-      defaultAudioSource: sourceMode === "live" ? "measuredSource" : "none",
+      defaultAudioSource,
       cursorModes,
       defaultCursorMode: "none",
       defaultFps: 30,

@@ -204,14 +204,19 @@ describe("visual paint settlement", () => {
     vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
     expect(ResizeObserverStub).not.toHaveBeenCalled();
+    const onGeometry = vi.fn();
     const unsubscribe = subscribeVisualSurfaceResize({
       target: { kind: "workspace" },
       workspace: {},
-      onGeometry: vi.fn(),
+      onGeometry,
     });
     expect(ResizeObserverStub).toHaveBeenCalledTimes(1);
     expect(observe).toHaveBeenCalledWith(surface);
+    window.dispatchEvent(new Event("resize"));
+    expect(onGeometry).toHaveBeenCalledTimes(1);
     unsubscribe();
     expect(disconnect).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new Event("resize"));
+    expect(onGeometry).toHaveBeenCalledTimes(1);
   });
 });

@@ -17,6 +17,9 @@ type SnapshotResult = Result<CapturedImage, CaptureError>;
 type SnapshotSender = mpsc::SyncSender<SnapshotResult>;
 
 unsafe extern "C" {
+  fn plvs_macos_screen_capture_preflight() -> bool;
+  fn plvs_macos_screen_capture_request() -> bool;
+
   fn plvs_macos_capture_webview_png(
     webview: *mut c_void,
     x: f64,
@@ -30,6 +33,29 @@ unsafe extern "C" {
   );
 }
 
+pub fn recording_permission() -> RecordingPermission {
+  classify_recording_permission(unsafe { plvs_macos_screen_capture_preflight() })
+}
+
+fn classify_recording_permission(granted: bool) -> RecordingPermission {
+  if granted {
+    RecordingPermission::Granted
+  } else {
+    RecordingPermission::Required
+  }
+}
+
+pub fn request_recording_permission() -> Result<(), CaptureError> {
+  if unsafe { plvs_macos_screen_capture_request() } {
+    Ok(())
+  } else {
+    Err(CaptureError {
+      reason: "screenCapturePermissionRequired",
+      message: "Allow PLVS in System Settings > Privacy & Security > Screen & System Audio Recording, then restart PLVS.".to_owned(),
+    })
+  }
+}
+
 pub struct MacOsPlatform;
 
 impl VisualCapturePlatform for MacOsPlatform {
@@ -41,11 +67,11 @@ impl VisualCapturePlatform for MacOsPlatform {
         targets: vec!["main", "workspace", "panel", "dockHeader", "dockEditor"],
       },
       recording: RecordingCapabilities {
-        available: false,
-        permission: RecordingPermission::Unsupported,
-        targets: Vec::new(),
-        audio_sources: Vec::new(),
-        cursor_modes: Vec::new(),
+        available: true,
+        permission: recording_permission(),
+        targets: vec!["main", "workspace"],
+        audio_sources: vec!["none"],
+        cursor_modes: vec!["none", "visible"],
       },
     }
   }
@@ -149,11 +175,12 @@ mod tests {
   use super::*;
 
   #[test]
-  fn macos_capabilities_enable_only_the_completed_screenshot_slice() {
+  fn macos_capabilities_expose_silent_window_recording() {
     let capabilities = MacOsPlatform.capabilities();
     assert!(capabilities.screenshot.available);
     assert_eq!(capabilities.screenshot.targets.len(), 5);
-    assert!(!capabilities.recording.available);
+    assert!(capabilities.recording.available);
+    assert_eq!(capabilities.recording.audio_sources, vec!["none"]);
   }
 
   #[test]
@@ -177,5 +204,30 @@ mod tests {
       snapshot_result(0, 0, 0, String::new()).unwrap_err().reason,
       "captureFailed"
     );
+  }
+
+  #[test]
+  fn recording_permission_classification_never_prompts() {
+    assert_eq!(
+      classify_recording_permission(true),
+      RecordingPermission::Granted
+    );
+    assert_eq!(
+      classify_recording_permission(false),
+      RecordingPermission::Required
+    );
+  }
+
+  #[test]
+  fn native_recording_stays_window_scoped_and_silent() {
+    let source = include_str!(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/native/macos/visual_capture_bridge.m"
+    ));
+    assert!(source.contains("candidate.windowID == windowID"));
+    assert!(source.contains("candidate.owningApplication.processID =="));
+    assert!(source.contains("initWithDesktopIndependentWindow:source"));
+    assert!(source.contains("configuration.capturesAudio = NO"));
+    assert!(!source.contains("configuration.sourceRect"));
   }
 }

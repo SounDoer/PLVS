@@ -11,9 +11,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use serde::Serialize;
-#[cfg(target_os = "windows")]
-use tauri::Manager;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use artifacts::{ArtifactKind, ArtifactMetadata, ArtifactStore};
 #[cfg(target_os = "macos")]
@@ -211,6 +209,16 @@ pub async fn visual_recording_start(
       "Measured-source audio is unavailable while File is selected.",
     ));
   }
+  #[cfg(target_os = "macos")]
+  {
+    if audio_source != RecordingAudioSource::None {
+      return Err(NativeCaptureError::recording(
+        "audioUnavailable",
+        "macOS recording currently supports silent video only; pass --audio none.",
+      ));
+    }
+    macos::request_recording_permission().map_err(NativeCaptureError::from)?;
+  }
   let (width, height) = output_canvas(&request)?;
   let created = controller
     .registry()
@@ -342,7 +350,97 @@ pub async fn visual_recording_start(
     }
     Ok(controller.inspect(&created.recording_id).unwrap_or(created))
   }
-  #[cfg(not(target_os = "windows"))]
+  #[cfg(target_os = "macos")]
+  {
+    let Some(window) = app.get_webview_window("main") else {
+      controller.registry().fail(
+        &created.recording_id,
+        "The PLVS main window does not exist.",
+      );
+      return Err(NativeCaptureError::recording(
+        "targetUnavailable",
+        "The PLVS main window does not exist.",
+      ));
+    };
+    let recording_id = created.recording_id.clone();
+    let session_recording_id = recording_id.clone();
+    let store = artifact_store.inner().clone();
+    let registry = controller.registry().clone();
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+    window
+      .with_webview(move |platform_webview| {
+        let result = recording::macos::begin_recording(
+          platform_webview.inner() as usize,
+          session_recording_id,
+          width,
+          height,
+          request.fps,
+          request.max_duration_seconds,
+          request.rect,
+          request.viewport,
+          request.cursor,
+          pending,
+          store,
+          registry,
+        );
+        let _ = sender.send(result);
+      })
+      .map_err(|_| {
+        controller
+          .registry()
+          .fail(&recording_id, "The recording task could not be scheduled.");
+        NativeCaptureError::recording(
+          "recordingFailed",
+          "The recording task could not be scheduled.",
+        )
+      })?;
+    let (session, startup_receiver) = receiver
+      .recv()
+      .map_err(|_| {
+        controller.registry().fail(
+          &recording_id,
+          "The native recording session was not returned.",
+        );
+        NativeCaptureError::recording(
+          "recordingFailed",
+          "The native recording session was not returned.",
+        )
+      })?
+      .map_err(|message| {
+        controller.registry().fail(&recording_id, message.clone());
+        NativeCaptureError::recording("recordingFailed", message)
+      })?;
+    let startup = tauri::async_runtime::spawn_blocking(move || {
+      recording::macos::wait_until_started(&session, startup_receiver).map(|()| session)
+    })
+    .await;
+    let session = match startup {
+      Ok(Ok(session)) => session,
+      Ok(Err(message)) => {
+        controller.registry().fail(&recording_id, message.clone());
+        return Err(NativeCaptureError::recording("recordingFailed", message));
+      }
+      Err(error) => {
+        controller.registry().fail(&recording_id, error.to_string());
+        return Err(NativeCaptureError::recording(
+          "recordingFailed",
+          "The recording startup worker failed.",
+        ));
+      }
+    };
+    if let Err(reason) = controller.insert_session(session) {
+      controller.registry().fail(
+        &recording_id,
+        "The recording session could not be retained.",
+      );
+      return Err(NativeCaptureError::recording(
+        reason,
+        "The recording session could not be retained.",
+      ));
+    }
+    Ok(controller.inspect(&recording_id).unwrap_or(created))
+  }
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
   {
     let _ = (app, pending);
     controller
@@ -421,11 +519,11 @@ mod tests {
     );
     assert_eq!(
       capabilities.recording.available,
-      cfg!(target_os = "windows")
+      cfg!(any(target_os = "windows", target_os = "macos"))
     );
     assert_eq!(
       capabilities.recording.cursor_modes,
-      if cfg!(target_os = "windows") {
+      if cfg!(any(target_os = "windows", target_os = "macos")) {
         vec!["none", "visible"]
       } else {
         Vec::new()

@@ -1,10 +1,10 @@
 # Visual Capture
 
 Visual Capture lets an agent save the pixels currently rendered by a running PLVS window. It is
-available for screenshots on Windows and macOS; recording is currently Windows-only. Screenshots
-are PNG files; recordings are H.264 MP4 files with either no audio or the same Live source PCM that
-PLVS measures. It does not capture File-analysis audio, microphones, arbitrary system audio, other
-windows, or raw canvas/DOM data.
+available for screenshots and recordings on Windows and macOS. Screenshots are PNG files;
+recordings are H.264 MP4 files. Windows supports either no audio or the same Live source PCM that
+PLVS measures; the current macOS slice is video-only. It does not capture File-analysis audio,
+microphones, arbitrary system audio, other windows, or raw canvas/DOM data.
 
 ## Commands
 
@@ -60,7 +60,7 @@ artifact intact, but media bytes never appear in JSON.
 
 ## Recording workflow
 
-Recording is currently available on Windows only. Only one recording may be active. `start`
+Only one recording may be active. `start`
 returns promptly with a process-local recording ID;
 `inspect` returns its latest state; `wait` long-polls for a terminal state; and `stop` requests
 bounded drain and finalization. States are `starting`, `recording`, `stopping`, `completed`, and
@@ -99,6 +99,12 @@ The system pointer is excluded by default. `--cursor visible` includes it while 
 captured PLVS window. This option does not alter PLVS-rendered cursors, hover state, or overlays;
 those are ordinary application pixels and are always preserved.
 
+On macOS, `visual describe` checks Screen Recording access without prompting. The first explicit
+recording start requests access when needed. If macOS does not grant it immediately, the command
+returns `screenCapturePermissionRequired`; allow PLVS under System Settings > Privacy & Security >
+Screen & System Audio Recording, restart PLVS, and start again. The stream remains restricted to
+the current PLVS window and ScreenCaptureKit audio capture stays disabled.
+
 ## Audio
 
 `none` creates a video-only MP4 and is always available. When `--audio` is omitted, Live defaults
@@ -111,6 +117,10 @@ gaps, and bounded audio backpressure insert timeline-correct silence while video
 is the master clock. Output is AAC-LC stereo at 48 kHz and 192 kbit/s; mono is duplicated and
 supported multichannel layouts are downmixed. Inspection reports aggregate silent duration and a
 bounded interruption history.
+
+macOS currently advertises only `none`, so an omitted audio option falls back to silent video. You
+may still pass `--audio none` explicitly; `measured-source` remains unavailable until the audio
+slice is enabled.
 
 ## Artifacts and errors
 

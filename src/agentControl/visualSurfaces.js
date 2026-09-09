@@ -265,7 +265,7 @@ export function subscribeVisualSurfaceResize({
     windowLabel,
   });
   if (!initial.ok) return () => {};
-  const observer = new ResizeObserver(() => {
+  const publishGeometry = () => {
     const next = resolveVisualSurface({
       target,
       workspace,
@@ -274,7 +274,15 @@ export function subscribeVisualSurfaceResize({
       windowLabel,
     });
     if (next.ok) onGeometry(next.surface);
-  });
+  };
+  const observer = new ResizeObserver(publishGeometry);
   observer.observe(initial.surface.element);
-  return () => observer.disconnect();
+  // A WebView using macOS full-size content can change its viewport while the observed semantic
+  // element briefly retains the same rounded box. The window event keeps native crop geometry in
+  // sync across that transition; duplicate updates are harmless and remain bounded.
+  windowObject.addEventListener("resize", publishGeometry);
+  return () => {
+    observer.disconnect();
+    windowObject.removeEventListener("resize", publishGeometry);
+  };
 }
