@@ -24,9 +24,18 @@ pub struct ScreenshotCapabilities {
 #[serde(rename_all = "camelCase")]
 pub struct RecordingCapabilities {
   pub available: bool,
+  pub permission: RecordingPermission,
   pub targets: Vec<&'static str>,
   pub audio_sources: Vec<&'static str>,
   pub cursor_modes: Vec<&'static str>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RecordingPermission {
+  Granted,
+  Required,
+  Unsupported,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
@@ -131,6 +140,7 @@ impl VisualCapturePlatform for UnsupportedPlatform {
       },
       recording: RecordingCapabilities {
         available: false,
+        permission: RecordingPermission::Unsupported,
         targets: Vec::new(),
         audio_sources: Vec::new(),
         cursor_modes: Vec::new(),

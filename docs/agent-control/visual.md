@@ -19,7 +19,9 @@ plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 
 `visual describe` is the discovery query. It reports platform support, current runtime
 availability, formats, codecs, audio sources, cursor modes, frame rates, duration and size limits,
-and the current global revision. It creates no capture session or artifact.
+recording permission, and the current global revision. `recording.permission` is `granted`,
+`required`, or `unsupported`; discovery never requests permission. It creates no capture session or
+artifact.
 
 ## Targets and pixels
 
@@ -122,6 +124,7 @@ Stable Visual Capture errors are:
 
 - `visualUnavailable`, `targetUnavailable`, `panelNotFound`, and `panelNotVisible` for capability
   or semantic-target failures;
+- `screenCapturePermissionRequired` when a supported macOS recorder needs Screen Recording access;
 - `revisionConflict` and `renderNotSettled` for correlation or paint-settlement failures;
 - `captureBusy` and `captureFailed` for screenshot/recording resource and native capture failures;
 - `recordingNotFound`, `recordingFailed`, and `audioUnavailable` for lifecycle or audio failures;

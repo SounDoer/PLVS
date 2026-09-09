@@ -8,7 +8,7 @@ use tauri::{AppHandle, Manager};
 
 use super::platform::{
   CaptureError, CaptureFuture, CapturedImage, PlatformCapabilities, RecordingCapabilities,
-  ScreenshotCapabilities, ScreenshotRequest, VisualCapturePlatform,
+  RecordingPermission, ScreenshotCapabilities, ScreenshotRequest, VisualCapturePlatform,
 };
 
 const SNAPSHOT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -42,6 +42,7 @@ impl VisualCapturePlatform for MacOsPlatform {
       },
       recording: RecordingCapabilities {
         available: false,
+        permission: RecordingPermission::Unsupported,
         targets: Vec::new(),
         audio_sources: Vec::new(),
         cursor_modes: Vec::new(),

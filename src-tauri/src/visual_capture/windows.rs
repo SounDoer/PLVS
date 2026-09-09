@@ -13,8 +13,8 @@ use windows::Win32::UI::Shell::SHCreateStreamOnFileEx;
 
 use super::platform::{
   calculate_pixel_crop, CaptureError, CaptureFuture, CapturedImage, CssRect, CssViewport,
-  PlatformCapabilities, RecordingCapabilities, ScreenshotCapabilities, ScreenshotRequest,
-  VisualCapturePlatform,
+  PlatformCapabilities, RecordingCapabilities, RecordingPermission, ScreenshotCapabilities,
+  ScreenshotRequest, VisualCapturePlatform,
 };
 
 pub struct WindowsPlatform;
@@ -29,6 +29,7 @@ impl VisualCapturePlatform for WindowsPlatform {
       },
       recording: RecordingCapabilities {
         available: true,
+        permission: RecordingPermission::Granted,
         targets: vec!["main", "workspace"],
         audio_sources: vec!["none", "measuredSource"],
         cursor_modes: vec!["none", "visible"],

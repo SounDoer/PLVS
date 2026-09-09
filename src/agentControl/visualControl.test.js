@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   VISUAL_AUDIO_SOURCES,
   VISUAL_RECORDING_METHODS,
+  VISUAL_RECORDING_PERMISSIONS,
   VISUAL_RECORDING_STATES,
   VISUAL_RECORDING_TARGET_KINDS,
   VISUAL_SCREENSHOT_METHODS,
@@ -21,6 +22,7 @@ describe("visual control contract", () => {
     ]);
     expect(VISUAL_RECORDING_TARGET_KINDS).toEqual(["main", "workspace"]);
     expect(VISUAL_AUDIO_SOURCES).toEqual(["none", "measuredSource"]);
+    expect(VISUAL_RECORDING_PERMISSIONS).toEqual(["granted", "required", "unsupported"]);
     expect(VISUAL_RECORDING_STATES).toEqual([
       "starting",
       "recording",
@@ -32,6 +34,7 @@ describe("visual control contract", () => {
       VISUAL_SCREENSHOT_TARGET_KINDS,
       VISUAL_RECORDING_TARGET_KINDS,
       VISUAL_AUDIO_SOURCES,
+      VISUAL_RECORDING_PERMISSIONS,
       VISUAL_RECORDING_STATES,
     ]) {
       expect(Object.isFrozen(vocabulary)).toBe(true);
@@ -81,6 +84,7 @@ describe("visual control contract", () => {
         },
         recording: {
           available: true,
+          permission: "granted",
           targets: ["workspace", "main", "panel"],
           audioSources: ["measuredSource", "none", "microphone"],
           cursorModes: ["visible", "none", "system"],
@@ -105,6 +109,7 @@ describe("visual control contract", () => {
       },
       recording: {
         available: true,
+        permission: "granted",
         targets: ["main", "workspace"],
         container: "mp4",
         videoCodec: "h264",
@@ -140,6 +145,7 @@ describe("visual control contract", () => {
       screenshot: { available: false, targets: [] },
       recording: {
         available: false,
+        permission: "unsupported",
         targets: [],
         audioSources: [],
         cursorModes: [],

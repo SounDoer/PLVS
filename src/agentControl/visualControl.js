@@ -10,6 +10,7 @@ export const VISUAL_SCREENSHOT_TARGET_KINDS = VISUAL_TARGET_KINDS;
 export const VISUAL_RECORDING_TARGET_KINDS = Object.freeze(["main", "workspace"]);
 export const VISUAL_AUDIO_SOURCES = Object.freeze(["none", "measuredSource"]);
 export const VISUAL_CURSOR_MODES = Object.freeze(["none", "visible"]);
+export const VISUAL_RECORDING_PERMISSIONS = Object.freeze(["granted", "required", "unsupported"]);
 export const VISUAL_RECORDING_STATES = Object.freeze([
   "starting",
   "recording",
@@ -99,6 +100,9 @@ export function buildVisualDescription({ revision, platform, runtime }) {
     ? retainKnown(platform.recording.cursorModes, VISUAL_CURSOR_MODES)
     : [];
   const sourceMode = runtime?.sourceMode === "file" ? "file" : "live";
+  const permission = VISUAL_RECORDING_PERMISSIONS.includes(platform?.recording?.permission)
+    ? platform.recording.permission
+    : "unsupported";
 
   return {
     revision,
@@ -111,6 +115,7 @@ export function buildVisualDescription({ revision, platform, runtime }) {
     },
     recording: {
       available: recordingAvailable,
+      permission,
       targets: recordingTargets,
       container: RECORDING_CONTAINER,
       videoCodec: RECORDING_VIDEO_CODEC,

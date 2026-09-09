@@ -99,6 +99,7 @@ function semanticFailure(reason, path, message, code, details) {
 
 const VISUAL_ERROR_REASONS = new Set([
   "visualUnavailable",
+  "screenCapturePermissionRequired",
   "targetUnavailable",
   "panelNotFound",
   "panelNotVisible",
@@ -118,6 +119,7 @@ function visualSemanticFailure(error) {
   const reason = VISUAL_ERROR_REASONS.has(error?.reason) ? error.reason : "captureFailed";
   const messages = {
     visualUnavailable: "Visual capture is unavailable on this platform.",
+    screenCapturePermissionRequired: "Screen Recording permission is required.",
     targetUnavailable: "The requested visual target is unavailable.",
     panelNotFound: "The requested Panel does not exist.",
     panelNotVisible: "The requested Panel is not currently rendered.",
