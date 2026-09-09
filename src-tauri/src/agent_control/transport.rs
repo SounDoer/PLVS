@@ -5,7 +5,12 @@ use std::io;
 use std::time::Duration;
 
 use super::discovery::AgentControlDescriptor;
-use super::protocol::{JsonRpcError, JsonRpcRequest};
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+use super::protocol::JsonRpcError;
+use super::protocol::JsonRpcRequest;
+
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub(crate) const MAX_CLIENT_WORKERS: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,6 +42,7 @@ impl TransportError {
     }
   }
 
+  #[cfg(any(target_os = "windows", target_os = "macos"))]
   pub(crate) fn rpc_error(&self) -> JsonRpcError {
     let code = match self.reason {
       TransportErrorReason::Unauthorized => -32020,
@@ -112,7 +118,7 @@ pub fn start(_app: &tauri::AppHandle) -> Result<(), String> {
   Err("Agent Control is unavailable on this platform.".to_string())
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 pub fn call_with_timeout(
   descriptor: &AgentControlDescriptor,
   request: &JsonRpcRequest,
@@ -124,35 +130,6 @@ pub fn call_with_timeout(
     request,
     response_timeout,
   )
-}
-
-#[cfg(target_os = "windows")]
-pub fn call_with_timeout(
-  descriptor: &AgentControlDescriptor,
-  request: &JsonRpcRequest,
-  response_timeout: Duration,
-) -> Result<Value, TransportError> {
-  platform::call_with_timeout(
-    &descriptor.endpoint,
-    &descriptor.token,
-    request,
-    response_timeout,
-  )
-  .map_err(|error| {
-    let reason = match error.reason {
-      platform::PipeErrorReason::EmptyFrame => TransportErrorReason::EmptyFrame,
-      platform::PipeErrorReason::FrameTooLarge => TransportErrorReason::FrameTooLarge,
-      platform::PipeErrorReason::TruncatedFrame => TransportErrorReason::TruncatedFrame,
-      platform::PipeErrorReason::TrailingPayload => TransportErrorReason::TrailingPayload,
-      platform::PipeErrorReason::IoTimeout => TransportErrorReason::IoTimeout,
-      platform::PipeErrorReason::InvalidUtf8 => TransportErrorReason::InvalidUtf8,
-      platform::PipeErrorReason::InvalidEnvelope => TransportErrorReason::InvalidEnvelope,
-      platform::PipeErrorReason::Unauthorized => TransportErrorReason::Unauthorized,
-      platform::PipeErrorReason::ConnectionFailed => TransportErrorReason::ConnectionFailed,
-      platform::PipeErrorReason::Io => TransportErrorReason::Io,
-    };
-    TransportError::new(reason, error.message)
-  })
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]

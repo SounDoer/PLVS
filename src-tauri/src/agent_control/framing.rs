@@ -10,12 +10,13 @@ use super::protocol::{parse_request, JsonRpcRequest, ProtocolError, MAX_REQUEST_
 use super::transport::{TransportError, TransportErrorReason};
 
 const FRAME_PREFIX_BYTES: usize = 4;
+// Windows `PIPE_NOWAIT` writes must fit in the free pipe buffer. Keeping shared writes below half
+// the platform's 64 KiB pipe buffer also gives the Unix-socket transport bounded write slices.
 const WRITE_CHUNK_BYTES: usize = 32 * 1024;
 const AUTH_ENVELOPE_OVERHEAD: usize = 1024;
 pub(crate) const MAX_WIRE_REQUEST_BYTES: usize = MAX_REQUEST_BYTES + AUTH_ENVELOPE_OVERHEAD;
 pub(crate) const IO_TIMEOUT: Duration = Duration::from_secs(2);
 pub(crate) const RETRY_DELAY: Duration = Duration::from_millis(2);
-pub(crate) const MAX_CLIENT_WORKERS: usize = 8;
 
 fn read_exact_until<R: Read>(
   reader: &mut R,
@@ -218,21 +219,64 @@ fn protocol_error(error: ProtocolError) -> TransportError {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use std::io::Cursor;
+  use crate::agent_control::discovery::generate_launch_token;
+  use std::io::{self, Cursor};
+
+  struct FragmentedReader {
+    inner: Cursor<Vec<u8>>,
+    chunk: usize,
+  }
+
+  impl Read for FragmentedReader {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+      let limit = buffer.len().min(self.chunk);
+      self.inner.read(&mut buffer[..limit])
+    }
+  }
+
+  #[derive(Default)]
+  struct FragmentedWriter {
+    bytes: Vec<u8>,
+    chunk: usize,
+  }
+
+  impl Write for FragmentedWriter {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+      let count = buffer.len().min(self.chunk);
+      self.bytes.extend_from_slice(&buffer[..count]);
+      Ok(count)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+      Ok(())
+    }
+  }
+
+  fn framed(payload: &[u8]) -> Vec<u8> {
+    let mut bytes = (payload.len() as u32).to_le_bytes().to_vec();
+    bytes.extend_from_slice(payload);
+    bytes
+  }
 
   #[test]
   fn fragmented_frames_round_trip() {
     let payload = vec![42_u8; 96 * 1024];
-    let mut encoded = Vec::new();
-    write_frame(&mut encoded, &payload, payload.len()).unwrap();
-    assert_eq!(
-      read_frame(&mut Cursor::new(encoded), payload.len()).unwrap(),
-      payload
-    );
+    let mut writer = FragmentedWriter {
+      bytes: Vec::new(),
+      chunk: 3,
+    };
+    write_frame(&mut writer, &payload, payload.len()).unwrap();
+    assert_eq!(writer.bytes, framed(&payload));
+
+    let mut reader = FragmentedReader {
+      inner: Cursor::new(writer.bytes),
+      chunk: 2,
+    };
+    assert_eq!(read_frame(&mut reader, payload.len()).unwrap(), payload);
   }
 
   #[test]
-  fn rejects_empty_oversized_and_truncated_frames() {
+  fn rejects_empty_oversized_truncated_and_trailing_frames() {
     assert_eq!(
       write_frame(&mut Vec::new(), &[], 10).unwrap_err().reason,
       TransportErrorReason::EmptyFrame
@@ -246,6 +290,53 @@ mod tests {
         .unwrap_err()
         .reason,
       TransportErrorReason::TruncatedFrame
+    );
+    let mut trailing = framed(b"ok");
+    trailing.push(b'x');
+    assert_eq!(
+      read_frame(&mut Cursor::new(trailing), 10)
+        .unwrap_err()
+        .reason,
+      TransportErrorReason::TrailingPayload
+    );
+  }
+
+  #[test]
+  fn authentication_precedes_json_rpc_validation() {
+    let token = generate_launch_token().unwrap();
+    let wrong = generate_launch_token().unwrap();
+    let unauthorized = serde_json::to_vec(&serde_json::json!({
+      "token": wrong.expose(),
+      "request": { "not": "json-rpc" }
+    }))
+    .unwrap();
+    assert_eq!(
+      decode_authenticated_request(&unauthorized, &token)
+        .unwrap_err()
+        .reason,
+      TransportErrorReason::Unauthorized
+    );
+    assert_eq!(
+      decode_authenticated_request(&[0xff, 0xfe], &token)
+        .unwrap_err()
+        .reason,
+      TransportErrorReason::InvalidUtf8
+    );
+  }
+
+  #[test]
+  fn authenticated_envelope_round_trips() {
+    let token = generate_launch_token().unwrap();
+    let request = JsonRpcRequest {
+      id: "req-1".to_string(),
+      method: "app.inspect".to_string(),
+      params: serde_json::json!({}),
+    };
+    let bytes = encode_authenticated_request(&token, &request).unwrap();
+    assert!(bytes.len() <= MAX_WIRE_REQUEST_BYTES);
+    assert_eq!(
+      decode_authenticated_request(&bytes, &token).unwrap(),
+      request
     );
   }
 }

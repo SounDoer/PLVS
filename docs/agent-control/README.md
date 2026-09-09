@@ -64,9 +64,10 @@ React application and uses the same state, native integrations, safety guards, a
 paths as the GUI.
 
 Windows carries requests over a current-user named pipe. macOS carries the same authenticated,
-bounded protocol over a private Unix-domain socket. The public CLI contract is transport-neutral;
-callers use runtime capabilities to discover native features such as cross-platform screenshots and
-recording.
+bounded protocol over a private Unix-domain socket. Both native transports use the shared framing
+and authentication implementation; only endpoint creation, peer validation, and delivery
+acknowledgement remain platform-specific. The public CLI contract is transport-neutral; callers use
+runtime capabilities to discover native features such as cross-platform screenshots and recording.
 
 ## Implementation status
 

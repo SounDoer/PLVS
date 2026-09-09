@@ -108,3 +108,29 @@ jobs:
       - name: Test
         working-directory: src-tauri
         run: cargo test --workspace
+
+  rust-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      # The macOS config declares the ffmpeg/ffprobe externalBin, so the crate will not compile
+      # without the architecture-matched sidecars present. Node is preinstalled on GitHub runners.
+      - name: Fetch ffmpeg sidecar binaries
+        run: node scripts/fetch-ffmpeg-sidecar.mjs
+
+      - name: Format (rustfmt)
+        working-directory: src-tauri
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        working-directory: src-tauri
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        working-directory: src-tauri
+        run: cargo test --workspace

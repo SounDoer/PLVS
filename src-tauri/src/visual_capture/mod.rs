@@ -11,7 +11,9 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State};
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+use tauri::Manager;
+use tauri::{AppHandle, State};
 
 use artifacts::{ArtifactKind, ArtifactMetadata, ArtifactStore};
 #[cfg(target_os = "macos")]

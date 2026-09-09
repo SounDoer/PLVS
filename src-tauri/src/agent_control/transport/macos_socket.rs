@@ -12,7 +12,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use tauri::Manager;
 
-use super::{TransportError, TransportErrorReason};
+use super::{TransportError, TransportErrorReason, MAX_CLIENT_WORKERS};
 use crate::agent_control::broker::{
   AgentControlState, Broker, BrokerError, BrokerErrorReason, TauriFrontendEmitter,
   DEFAULT_MAX_PENDING_REQUESTS, DEFAULT_RESPONSE_TIMEOUT,
@@ -23,7 +23,7 @@ use crate::agent_control::discovery::{
 };
 use crate::agent_control::framing::{
   decode_authenticated_request, encode_authenticated_request, read_frame, read_frame_with_timeout,
-  write_frame, MAX_CLIENT_WORKERS, MAX_WIRE_REQUEST_BYTES,
+  write_frame, MAX_WIRE_REQUEST_BYTES,
 };
 use crate::agent_control::protocol::{
   encode_response, JsonRpcError, JsonRpcRequest, JsonRpcResponse, MAX_RESPONSE_BYTES,

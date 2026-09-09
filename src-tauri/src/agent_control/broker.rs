@@ -511,7 +511,7 @@ pub(crate) struct PendingResponse {
 }
 
 impl PendingResponse {
-  #[cfg(any(target_os = "windows", target_os = "macos", test))]
+  #[cfg(any(target_os = "windows", target_os = "macos"))]
   pub fn requires_delivery_confirmation(&self) -> bool {
     self.delivery.is_some()
   }

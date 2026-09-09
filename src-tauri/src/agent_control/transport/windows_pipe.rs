@@ -1,7 +1,5 @@
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::ffi::c_void;
-use std::fmt;
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::ptr::{null, null_mut};
@@ -9,7 +7,6 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
-use subtle::ConstantTimeEq;
 use tauri::Manager;
 use windows_sys::core::PWSTR;
 use windows_sys::Win32::Foundation::{
@@ -43,270 +40,16 @@ use crate::agent_control::discovery::{
   descriptor_path, endpoint_name, generate_launch_token, parse_descriptor,
   write_descriptor_atomic_at, AgentControlDescriptor, DescriptorApp, DiscoveryError, LaunchToken,
 };
-use crate::agent_control::protocol::{
-  encode_response, parse_request, JsonRpcError, JsonRpcRequest, JsonRpcResponse, ProtocolError,
-  MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES,
+use crate::agent_control::framing::{
+  decode_authenticated_request, encode_authenticated_request, read_frame, read_frame_with_timeout,
+  write_frame, IO_TIMEOUT, MAX_WIRE_REQUEST_BYTES,
 };
+use crate::agent_control::protocol::{
+  encode_response, JsonRpcError, JsonRpcRequest, JsonRpcResponse, MAX_RESPONSE_BYTES,
+};
+use crate::agent_control::transport::{TransportError, TransportErrorReason, MAX_CLIENT_WORKERS};
 
-const FRAME_PREFIX_BYTES: usize = 4;
-const AUTH_ENVELOPE_OVERHEAD: usize = 1024;
-const MAX_WIRE_REQUEST_BYTES: usize = MAX_REQUEST_BYTES + AUTH_ENVELOPE_OVERHEAD;
-const IO_TIMEOUT: Duration = Duration::from_secs(2);
-const RETRY_DELAY: Duration = Duration::from_millis(2);
-const MAX_CLIENT_WORKERS: usize = 8;
 const PIPE_BUFFER_BYTES: u32 = 64 * 1024;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum PipeErrorReason {
-  EmptyFrame,
-  FrameTooLarge,
-  TruncatedFrame,
-  TrailingPayload,
-  IoTimeout,
-  InvalidUtf8,
-  InvalidEnvelope,
-  Unauthorized,
-  ConnectionFailed,
-  Io,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct PipeError {
-  pub reason: PipeErrorReason,
-  pub message: String,
-}
-
-impl PipeError {
-  fn new(reason: PipeErrorReason, message: impl Into<String>) -> Self {
-    Self {
-      reason,
-      message: message.into(),
-    }
-  }
-
-  fn rpc_error(&self) -> JsonRpcError {
-    let code = match self.reason {
-      PipeErrorReason::Unauthorized => -32020,
-      PipeErrorReason::FrameTooLarge => -32021,
-      PipeErrorReason::IoTimeout => -32022,
-      PipeErrorReason::ConnectionFailed => -32023,
-      _ => -32600,
-    };
-    JsonRpcError {
-      code,
-      message: self.message.clone(),
-      data: serde_json::json!({ "reason": self.reason, "layer": "transport" }),
-    }
-  }
-}
-
-impl fmt::Display for PipeError {
-  fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-    formatter.write_str(&self.message)
-  }
-}
-
-impl std::error::Error for PipeError {}
-
-impl From<io::Error> for PipeError {
-  fn from(error: io::Error) -> Self {
-    Self::new(
-      PipeErrorReason::Io,
-      format!("Named-pipe I/O failed: {error}"),
-    )
-  }
-}
-
-fn read_exact_until<R: Read>(
-  reader: &mut R,
-  buffer: &mut [u8],
-  deadline: Instant,
-) -> Result<(), PipeError> {
-  let mut offset = 0;
-  while offset < buffer.len() {
-    match reader.read(&mut buffer[offset..]) {
-      Ok(0) => {
-        return Err(PipeError::new(
-          PipeErrorReason::TruncatedFrame,
-          "The named-pipe frame ended before its declared length.",
-        ))
-      }
-      Ok(count) => offset += count,
-      Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
-        if Instant::now() >= deadline {
-          return Err(PipeError::new(
-            PipeErrorReason::IoTimeout,
-            "The named-pipe frame did not arrive before the timeout.",
-          ));
-        }
-        thread::sleep(RETRY_DELAY);
-      }
-      Err(error) => return Err(error.into()),
-    }
-  }
-  Ok(())
-}
-
-/// A `PIPE_NOWAIT` write is all-or-nothing: `WriteFile` never writes part of the request, it
-/// succeeds with zero bytes written when the slice does not fit in the free buffer space. So a
-/// payload larger than the buffer must be sliced by the caller — retrying it whole would return
-/// zero forever — and the cap stays below `PIPE_BUFFER_BYTES` so a slice can fit without the peer
-/// having drained the buffer completely.
-const WRITE_CHUNK_BYTES: usize = PIPE_BUFFER_BYTES as usize / 2;
-
-/// The counterpart of `read_exact_until`, and needed for the same reason: on a non-blocking handle
-/// a frame larger than the kernel buffer cannot leave in one call. Zero bytes written and
-/// `WouldBlock` both mean "the peer has not drained yet", so the loop waits and resumes at
-/// `offset`. `write_all` reports both as failures, which is why it cannot be used here.
-fn write_all_until<W: Write>(
-  writer: &mut W,
-  payload: &[u8],
-  deadline: Instant,
-) -> Result<(), PipeError> {
-  let mut offset = 0;
-  while offset < payload.len() {
-    let end = payload.len().min(offset + WRITE_CHUNK_BYTES);
-    let stalled = match writer.write(&payload[offset..end]) {
-      Ok(0) => true,
-      Ok(count) => {
-        offset += count;
-        false
-      }
-      Err(error) if error.kind() == io::ErrorKind::WouldBlock => true,
-      Err(error) => return Err(error.into()),
-    };
-    if stalled {
-      if Instant::now() >= deadline {
-        return Err(PipeError::new(
-          PipeErrorReason::IoTimeout,
-          "The named-pipe frame was not accepted before the timeout.",
-        ));
-      }
-      thread::sleep(RETRY_DELAY);
-    }
-  }
-  Ok(())
-}
-
-fn read_frame<R: Read>(reader: &mut R, max_bytes: usize) -> Result<Vec<u8>, PipeError> {
-  read_frame_with_timeout(reader, max_bytes, IO_TIMEOUT)
-}
-
-fn read_frame_with_timeout<R: Read>(
-  reader: &mut R,
-  max_bytes: usize,
-  timeout: Duration,
-) -> Result<Vec<u8>, PipeError> {
-  let deadline = Instant::now() + timeout;
-  let mut prefix = [0_u8; FRAME_PREFIX_BYTES];
-  read_exact_until(reader, &mut prefix, deadline)?;
-  let length = u32::from_le_bytes(prefix) as usize;
-  if length == 0 {
-    return Err(PipeError::new(
-      PipeErrorReason::EmptyFrame,
-      "Named-pipe frames cannot be empty.",
-    ));
-  }
-  if length > max_bytes {
-    return Err(PipeError::new(
-      PipeErrorReason::FrameTooLarge,
-      format!("Named-pipe frame exceeds the {max_bytes}-byte limit."),
-    ));
-  }
-
-  let mut payload = vec![0_u8; length];
-  read_exact_until(reader, &mut payload, deadline)?;
-  let mut trailing = [0_u8; 1];
-  match reader.read(&mut trailing) {
-    Ok(0) => {}
-    Ok(_) => {
-      return Err(PipeError::new(
-        PipeErrorReason::TrailingPayload,
-        "Named-pipe connection contains data after its single frame.",
-      ))
-    }
-    Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
-    Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => {}
-    Err(error) => return Err(error.into()),
-  }
-  Ok(payload)
-}
-
-fn write_frame<W: Write>(
-  writer: &mut W,
-  payload: &[u8],
-  max_bytes: usize,
-) -> Result<(), PipeError> {
-  if payload.is_empty() {
-    return Err(PipeError::new(
-      PipeErrorReason::EmptyFrame,
-      "Named-pipe frames cannot be empty.",
-    ));
-  }
-  if payload.len() > max_bytes || payload.len() > u32::MAX as usize {
-    return Err(PipeError::new(
-      PipeErrorReason::FrameTooLarge,
-      format!("Named-pipe frame exceeds the {max_bytes}-byte limit."),
-    ));
-  }
-  let deadline = Instant::now() + IO_TIMEOUT;
-  write_all_until(writer, &(payload.len() as u32).to_le_bytes(), deadline)?;
-  write_all_until(writer, payload, deadline)?;
-  writer.flush()?;
-  Ok(())
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct AuthenticatedEnvelope {
-  token: String,
-  request: Value,
-}
-
-#[derive(Serialize)]
-struct OutgoingEnvelope<'a> {
-  token: &'a str,
-  request: &'a JsonRpcRequest,
-}
-
-fn decode_authenticated_request(
-  bytes: &[u8],
-  expected_token: &LaunchToken,
-) -> Result<JsonRpcRequest, PipeError> {
-  if std::str::from_utf8(bytes).is_err() {
-    return Err(PipeError::new(
-      PipeErrorReason::InvalidUtf8,
-      "The named-pipe payload is not valid UTF-8.",
-    ));
-  }
-  let envelope: AuthenticatedEnvelope = serde_json::from_slice(bytes).map_err(|_| {
-    PipeError::new(
-      PipeErrorReason::InvalidEnvelope,
-      "The named-pipe authentication envelope is malformed.",
-    )
-  })?;
-  let expected = expected_token.expose().as_bytes();
-  let provided = envelope.token.as_bytes();
-  if provided.len() != expected.len() || !bool::from(provided.ct_eq(expected)) {
-    return Err(PipeError::new(
-      PipeErrorReason::Unauthorized,
-      "The named-pipe authentication token is invalid.",
-    ));
-  }
-
-  let request_bytes = serde_json::to_vec(&envelope.request).map_err(|_| {
-    PipeError::new(
-      PipeErrorReason::InvalidEnvelope,
-      "The JSON-RPC request could not be encoded.",
-    )
-  })?;
-  parse_request(&request_bytes).map_err(protocol_pipe_error)
-}
-
-fn protocol_pipe_error(error: ProtocolError) -> PipeError {
-  PipeError::new(PipeErrorReason::InvalidEnvelope, error.message)
-}
 
 fn wide(value: &str) -> Vec<u16> {
   value.encode_utf16().chain(std::iter::once(0)).collect()
@@ -573,7 +316,9 @@ fn handle_client(mut pipe: NamedPipe, token: LaunchToken, broker: Broker) {
     Err(error) => unattributed_error_response(error.rpc_error()),
   };
 
-  let await_delivery = pending_delivery.is_some();
+  let await_delivery = pending_delivery
+    .as_ref()
+    .is_some_and(|delivery| delivery.requires_delivery_confirmation());
   let delivered = encode_response(&response)
     .map_err(|error| error.to_string())
     .and_then(|encoded| {
@@ -741,30 +486,21 @@ pub fn call_with_timeout(
   token: &LaunchToken,
   request: &JsonRpcRequest,
   response_timeout: Duration,
-) -> Result<Value, PipeError> {
+) -> Result<Value, TransportError> {
   let handle = connect_client(endpoint, IO_TIMEOUT).map_err(|error| {
-    PipeError::new(
-      PipeErrorReason::ConnectionFailed,
+    TransportError::new(
+      TransportErrorReason::ConnectionFailed,
       format!("Unable to connect to the PLVS agent-control endpoint: {error}"),
     )
   })?;
   let mut pipe = NamedPipe { handle };
   pipe.set_nonblocking()?;
-  let payload = serde_json::to_vec(&OutgoingEnvelope {
-    token: token.expose(),
-    request,
-  })
-  .map_err(|_| {
-    PipeError::new(
-      PipeErrorReason::InvalidEnvelope,
-      "Unable to encode the authenticated request envelope.",
-    )
-  })?;
+  let payload = encode_authenticated_request(token, request)?;
   write_frame(&mut pipe, &payload, MAX_WIRE_REQUEST_BYTES)?;
   let response = read_frame_with_timeout(&mut pipe, MAX_RESPONSE_BYTES, response_timeout)?;
   serde_json::from_slice(&response).map_err(|_| {
-    PipeError::new(
-      PipeErrorReason::InvalidEnvelope,
+    TransportError::new(
+      TransportErrorReason::InvalidEnvelope,
       "PLVS returned a malformed JSON-RPC response.",
     )
   })
@@ -860,149 +596,6 @@ pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
 mod tests {
   use super::*;
   use crate::agent_control::broker::{FrontendEmitter, FrontendOutcome};
-  use std::io::Cursor;
-
-  struct FragmentedReader {
-    inner: Cursor<Vec<u8>>,
-    chunk: usize,
-  }
-
-  impl Read for FragmentedReader {
-    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-      let limit = buffer.len().min(self.chunk);
-      self.inner.read(&mut buffer[..limit])
-    }
-  }
-
-  #[derive(Default)]
-  struct FragmentedWriter {
-    bytes: Vec<u8>,
-    chunk: usize,
-  }
-
-  impl Write for FragmentedWriter {
-    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-      let count = buffer.len().min(self.chunk);
-      self.bytes.extend_from_slice(&buffer[..count]);
-      Ok(count)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-      Ok(())
-    }
-  }
-
-  fn framed(payload: &[u8]) -> Vec<u8> {
-    let mut bytes = (payload.len() as u32).to_le_bytes().to_vec();
-    bytes.extend_from_slice(payload);
-    bytes
-  }
-
-  #[test]
-  fn framing_handles_fragmented_reads_and_writes() {
-    let payload = br#"{"jsonrpc":"2.0"}"#;
-    let mut reader = FragmentedReader {
-      inner: Cursor::new(framed(payload)),
-      chunk: 2,
-    };
-    assert_eq!(read_frame(&mut reader, 1024).unwrap(), payload);
-
-    let mut writer = FragmentedWriter {
-      bytes: Vec::new(),
-      chunk: 3,
-    };
-    write_frame(&mut writer, payload, 1024).unwrap();
-    assert_eq!(writer.bytes, framed(payload));
-  }
-
-  #[test]
-  fn framing_rejects_zero_oversized_truncated_and_trailing_payloads() {
-    assert_eq!(
-      read_frame(&mut Cursor::new(0_u32.to_le_bytes()), 16)
-        .unwrap_err()
-        .reason,
-      PipeErrorReason::EmptyFrame
-    );
-    assert_eq!(
-      read_frame(&mut Cursor::new(17_u32.to_le_bytes()), 16)
-        .unwrap_err()
-        .reason,
-      PipeErrorReason::FrameTooLarge
-    );
-    assert_eq!(
-      read_frame(&mut Cursor::new(framed(b"short")), 4)
-        .unwrap_err()
-        .reason,
-      PipeErrorReason::FrameTooLarge
-    );
-    let mut truncated = 5_u32.to_le_bytes().to_vec();
-    truncated.extend_from_slice(b"no");
-    assert_eq!(
-      read_frame(&mut Cursor::new(truncated), 16)
-        .unwrap_err()
-        .reason,
-      PipeErrorReason::TruncatedFrame
-    );
-    let mut trailing = framed(b"ok");
-    trailing.push(b'x');
-    assert_eq!(
-      read_frame(&mut Cursor::new(trailing), 16)
-        .unwrap_err()
-        .reason,
-      PipeErrorReason::TrailingPayload
-    );
-  }
-
-  #[test]
-  fn authentication_precedes_json_rpc_dispatch_and_rejects_invalid_utf8() {
-    let token = generate_launch_token().unwrap();
-    let wrong = generate_launch_token().unwrap();
-    let unauthorized = serde_json::to_vec(&serde_json::json!({
-      "token": wrong.expose(),
-      "request": { "not": "json-rpc" }
-    }))
-    .unwrap();
-    assert_eq!(
-      decode_authenticated_request(&unauthorized, &token)
-        .unwrap_err()
-        .reason,
-      PipeErrorReason::Unauthorized
-    );
-    assert_eq!(
-      decode_authenticated_request(&[0xff, 0xfe], &token)
-        .unwrap_err()
-        .reason,
-      PipeErrorReason::InvalidUtf8
-    );
-  }
-
-  #[test]
-  fn authentic_envelope_round_trips_a_request_and_response_limits_are_enforced() {
-    let token = generate_launch_token().unwrap();
-    let request = JsonRpcRequest {
-      id: "req-1".to_string(),
-      method: "app.inspect".to_string(),
-      params: serde_json::json!({}),
-    };
-    let bytes = serde_json::to_vec(&OutgoingEnvelope {
-      token: token.expose(),
-      request: &request,
-    })
-    .unwrap();
-    assert_eq!(
-      decode_authenticated_request(&bytes, &token).unwrap(),
-      request
-    );
-
-    let mut sink = FragmentedWriter {
-      bytes: Vec::new(),
-      chunk: 8,
-    };
-    assert_eq!(
-      write_frame(&mut sink, &[0; 17], 16).unwrap_err().reason,
-      PipeErrorReason::FrameTooLarge
-    );
-  }
 
   #[test]
   fn current_user_acl_can_be_constructed_for_the_pipe() {
@@ -1055,11 +648,7 @@ mod tests {
       method: "app.inspect".to_string(),
       params: serde_json::json!({}),
     };
-    let payload = serde_json::to_vec(&OutgoingEnvelope {
-      token: token.expose(),
-      request: &request,
-    })
-    .unwrap();
+    let payload = encode_authenticated_request(&token, &request).unwrap();
 
     write_frame(&mut client, &payload, MAX_WIRE_REQUEST_BYTES).unwrap();
     let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
@@ -1094,11 +683,7 @@ mod tests {
       method: "app.inspect".to_string(),
       params: serde_json::json!({}),
     };
-    let payload = serde_json::to_vec(&OutgoingEnvelope {
-      token: token.expose(),
-      request: &request,
-    })
-    .unwrap();
+    let payload = encode_authenticated_request(&token, &request).unwrap();
 
     write_frame(&mut client, &payload, MAX_WIRE_REQUEST_BYTES).unwrap();
     let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
@@ -1213,11 +798,7 @@ mod tests {
       method: "app.inspect".to_string(),
       params: serde_json::json!({ "payload": request_payload }),
     };
-    let envelope = serde_json::to_vec(&OutgoingEnvelope {
-      token: token.expose(),
-      request: &request,
-    })
-    .unwrap();
+    let envelope = encode_authenticated_request(&token, &request).unwrap();
 
     write_frame(&mut client, &envelope, MAX_WIRE_REQUEST_BYTES).unwrap();
     let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
@@ -1251,11 +832,7 @@ mod tests {
       method: "config.import".to_string(),
       params: serde_json::json!({}),
     };
-    let envelope = serde_json::to_vec(&OutgoingEnvelope {
-      token: token.expose(),
-      request: &request,
-    })
-    .unwrap();
+    let envelope = encode_authenticated_request(&token, &request).unwrap();
 
     write_frame(&mut client, &envelope, MAX_WIRE_REQUEST_BYTES).unwrap();
     let response = read_frame(&mut client, MAX_RESPONSE_BYTES).unwrap();
@@ -1320,7 +897,7 @@ mod tests {
       write_frame(&mut client, &oversized, MAX_WIRE_REQUEST_BYTES)
         .unwrap_err()
         .reason,
-      PipeErrorReason::FrameTooLarge
+      TransportErrorReason::FrameTooLarge
     );
     // The retry loop must not turn the limit into a wait for the deadline.
     assert!(started.elapsed() < IO_TIMEOUT);
