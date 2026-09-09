@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.3] - 2026-09-09
+
+### Added
+
+- Agent Control support on macOS through a private local socket transport.
+- Agent Control Visual Capture on macOS, including screenshots and H.264 recordings with optional
+  measured-source audio.
+- CLI condition waits and completed workflow support.
+- A copyable Agent Control prompt starter in Settings.
+- Visual capabilities now describe macOS recording-permission requirements.
+
+### Changed
+
+- Generalized visual recording sessions across supported platforms.
+
+### Fixed
+
+- Native Agent Control transports now share consistent message framing.
+
 ## [0.15.2] - 2026-09-08
 
 ### Added
