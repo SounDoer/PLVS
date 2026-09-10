@@ -18,6 +18,7 @@ import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
+import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
 import { commandEntriesForFamily, runningAppCommandEntries } from "./commandManifest.js";
 import { canonicalManifestParams } from "./commandManifestTestFixtures.js";
 
@@ -5267,4 +5268,118 @@ describe("useAgentControlBridge", () => {
       });
     });
   });
+});
+
+describe("File analysis report", () => {
+  const completeSession = {
+    id: "file-analysis-1757548800000-k3j9x2",
+    path: "C:\\audio\\mix.wav",
+    fileName: "mix.wav",
+    state: "complete",
+    progress: 1,
+    probe: {
+      path: "C:\\audio\\mix.wav",
+      fileName: "mix.wav",
+      container: "wav",
+      durationMs: 12000,
+      selectedTrack: {
+        index: 0,
+        codec: "pcm_s16le",
+        sampleRateHz: 48000,
+        channels: 2,
+        language: null,
+      },
+    },
+    summary: {
+      durationMs: 12000,
+      sampleRateHz: 48000,
+      channels: 2,
+      integratedLufs: -23.1,
+      lra: 4.2,
+      mMaxLufs: -18,
+      stMaxLufs: -20.5,
+      truePeakMaxDbtp: -1.2,
+      samplePeakMaxLDb: -1.5,
+      samplePeakMaxRDb: -1.75,
+      dialogueIntegrated: null,
+      dialogueLra: 0,
+    },
+    createdAt: 1757548790000,
+    analyzedAt: 1757548800000,
+    decodedFrames: 576000,
+    historyTruncated: false,
+    historyCoveredMs: null,
+    analysisSettings: { dialogue: { enabled: false } },
+    error: null,
+  };
+  const reportTransport = (sessions) => ({
+    ...transport,
+    source: "file",
+    files: { activeId: sessions[0]?.id ?? null, analyzingId: null, sessions },
+  });
+
+  it("returns the GUI export document for a completed session without changing state", async () => {
+    const snapshot = reportTransport([completeSession]);
+    mount({ agentTransport: snapshot });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.file.report", { sessionId: completeSession.id }, "file-report")
+    );
+
+    expect(response.result).toEqual({
+      revision: 0,
+      sessionId: completeSession.id,
+      report: buildFileAnalysisReport(
+        { ...completeSession, metadata: completeSession.probe },
+        { appVersion: runtime.appVersion, exportedAt: response.result.report.exportedAt }
+      ),
+    });
+    expect(response.result.report).toMatchObject({
+      schemaVersion: 1,
+      reportType: "fileAnalysis",
+      app: { version: runtime.appVersion },
+      source: { fileName: "mix.wav", container: "wav" },
+      summary: { integratedLufs: -23.1, samplePeakMaxDb: -1.5 },
+    });
+    const after = await send(request("transport.inspect", {}, "file-report-after"));
+    expect(after.result).toEqual({ revision: 0, ...snapshot });
+  });
+
+  it("reports an unknown session as fileSessionNotFound", async () => {
+    mount({ agentTransport: reportTransport([completeSession]) });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.file.report", { sessionId: "missing" }, "file-report-missing")
+    );
+
+    expect(response.error).toMatchObject({
+      code: -32080,
+      data: { reason: "fileSessionNotFound", details: { sessionId: "missing" } },
+    });
+  });
+
+  it.each(["probing", "analyzing", "stopped", "error"])(
+    "refuses a %s session with fileAnalysisNotComplete",
+    async (state) => {
+      const session = { ...completeSession, state };
+      mount({ agentTransport: reportTransport([session]) });
+      await waitUntilReady();
+
+      const response = await send(
+        request("transport.file.report", { sessionId: session.id }, `file-report-${state}`)
+      );
+
+      expect(response.error).toMatchObject({
+        code: -32085,
+        data: {
+          reason: "fileAnalysisNotComplete",
+          details: { sessionId: session.id, state },
+        },
+      });
+      const after = await send(request("transport.inspect", {}, `file-report-${state}-after`));
+      expect(after.result.revision).toBe(0);
+    }
+  );
 });

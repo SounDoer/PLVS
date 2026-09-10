@@ -8,6 +8,7 @@ import {
 import { flushPersistence, settingsStore } from "../persistence/index.js";
 import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
 import { normalizeImportedProfile, ProfileValidationError } from "../persistence/profileShape.js";
+import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
@@ -1791,6 +1792,41 @@ export function useAgentControlBridge({
           return {
             requestId,
             result: { revision: controlRevisionRef.current, ...transport },
+          };
+        }
+        if (request.method === "transport.file.report") {
+          const session = transport.files.sessions.find(
+            ({ id }) => id === request.params.sessionId
+          );
+          if (!session) {
+            throw semanticFailure(
+              "fileSessionNotFound",
+              "$.params.sessionId",
+              "The FILE session was not found.",
+              -32080,
+              { sessionId: request.params.sessionId }
+            );
+          }
+          if (session.state !== "complete") {
+            throw semanticFailure(
+              "fileAnalysisNotComplete",
+              "$.params.sessionId",
+              "Only a completed FILE analysis can be reported.",
+              -32085,
+              { sessionId: session.id, state: session.state }
+            );
+          }
+          return {
+            requestId,
+            result: {
+              revision: controlRevisionRef.current,
+              sessionId: session.id,
+              // The public snapshot names the probe `probe`; the GUI builder reads `metadata`.
+              report: buildFileAnalysisReport(
+                { ...session, metadata: session.probe },
+                { appVersion: String(runtime.appVersion) }
+              ),
+            },
           };
         }
         if (request.method === "dock.describe" || request.method === "dock.inspect") {
