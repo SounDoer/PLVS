@@ -103,7 +103,7 @@ The current working priority is deliberately narrower than the candidate backlog
 2. add Loudness Profile inspection and editing commands (done);
 3. add Appearance and Theme inspection and editing commands (done);
 4. add bounded Device Control with independent hotplug concurrency (done).
-5. add Windows Visual Capture for screenshots and bounded MP4 recording (done).
+5. add Visual Capture for screenshots and bounded MP4 recording (done on Windows and macOS).
 
 Preset editing is not part of this new work: Preset Control already supports describe, save,
 update, apply, rename, delete, and reorder. Its transfer commands are also complete.
@@ -430,8 +430,6 @@ remain fully local. This is useful but exceeds the PRD's current minimum diagnos
 
 - **Window commands:** show/hide, focus, bounds, Always On Top, and Focus View are useful for kiosk
   launchers, but are intrusive OS actions and partially overlap Presets/Dock.
-- **Screenshot/export image:** useful for support and reports, but platform reliability, window
-  visibility, DPI, sensitive content, and completion-after-paint need a dedicated contract.
 - **Update install/restart:** high-impact network and lifecycle actions should not be added merely
   because the GUI has buttons.
 - **MCP host:** `plvs-cli mcp` can reuse the command schemas after the measurement and editing

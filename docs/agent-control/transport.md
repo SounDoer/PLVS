@@ -1,6 +1,6 @@
 # Transport Control
 
-Status: Approved design contract
+Status: Implemented
 
 Transport Control operates the running application's LIVE capture and FILE analysis sessions. FILE
 is an analysis-result source, not media playback, and history scrubbing is view navigation rather

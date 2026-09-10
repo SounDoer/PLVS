@@ -1,6 +1,6 @@
 # Axis Control
 
-Status: Approved design contract
+Status: Implemented
 
 Axis Control changes the linked frequency and time viewports used by Workspace charts. It is
 separate from Panel Control because one linked-axis edit may intentionally move several panels at

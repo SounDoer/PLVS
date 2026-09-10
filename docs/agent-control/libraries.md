@@ -1,6 +1,6 @@
 # Library Transfer
 
-Status: Approved design contract
+Status: Implemented
 
 Library Transfer shares the three libraries a PLVS installation accumulates — Presets, Themes, and
 Loudness Profiles — as pack files, using the same pack format, merge rules, and persistence paths as

@@ -3,8 +3,8 @@
 Date: 2026-09-07
 
 Status: Living design record; Module, Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
-Transport, Device, Dock, Measurement Control, Measurement Wait, View Control, and Visual Capture
-decisions are approved unless explicitly marked otherwise
+Transport, Device, Dock, Measurement Control, Measurement Wait, View Control, Visual Capture, Library
+Transfer, and Configuration Transfer are implemented unless explicitly marked otherwise
 
 This directory records the implemented Agent Control contract and explicitly marked approved-next
 contracts. It complements the
@@ -475,15 +475,15 @@ Control settings.
 - [`visual.md`](visual.md) — implemented Windows/macOS screenshot and recording contract
 - [Visual Capture design](../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md) —
   approved `visual` family design record
-- [`presets.md`](presets.md) — approved Preset Control contract
-- [`axes.md`](axes.md) — approved Axis Control contract
-- [`settings.md`](settings.md) — approved Settings Control contract
-- [`wait.md`](wait.md) — approved Revision Wait contract
+- [`presets.md`](presets.md) — implemented Preset Control contract
+- [`axes.md`](axes.md) — implemented Axis Control contract
+- [`settings.md`](settings.md) — implemented Settings Control contract
+- [`wait.md`](wait.md) — implemented Revision Wait contract
 - [`measurement-wait.md`](measurement-wait.md) — implemented Measurement Wait contract
 - [`view.md`](view.md) — implemented View Control contract
-- [`transport.md`](transport.md) — approved Transport Control contract
-- [`dock.md`](dock.md) — approved Dock Control contract
-- [`libraries.md`](libraries.md) — approved Library Transfer contract
+- [`transport.md`](transport.md) — implemented Transport Control contract
+- [`dock.md`](dock.md) — implemented Dock Control contract
+- [`libraries.md`](libraries.md) — implemented Library Transfer contract
 - [`config.md`](config.md) — implemented Everything configuration transfer contract
 
 ## Resolved cross-module ownership

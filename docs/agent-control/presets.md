@@ -1,6 +1,6 @@
 # Preset Control
 
-Status: Approved design contract
+Status: Implemented
 
 Preset Control exposes the existing GUI Preset operations through the development Agent Control
 protocol.

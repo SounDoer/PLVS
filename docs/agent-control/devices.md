@@ -1,6 +1,6 @@
 # Device Control
 
-Status: Approved design contract
+Status: Implemented
 
 Device Control operates the same requested capture-device selection as the header and tray in the
 running PLVS app. It lists the current cached inventory, inspects the requested and effective
