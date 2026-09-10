@@ -21,9 +21,10 @@ npm run desktop:control -- transport file stop <session-id> --expected-revision 
 npm run desktop:control -- transport file select <session-id> --expected-revision 12 --json
 npm run desktop:control -- transport file remove <session-id> --expected-revision 12 --json
 npm run desktop:control -- transport file clear --expected-revision 12 --json
+npm run desktop:control -- transport file report <session-id> --json --out mix-report.json
 ```
 
-All Transport commands except `inspect` require `--expected-revision`. `source live`, `source file`,
+All Transport commands except `inspect` and `file report` require `--expected-revision`. `source live`, `source file`,
 `live clear`, `file select`, `file remove`, and `file clear` are state mutations and support
 `--dry-run`. `live start`, `live stop`, `file analyze`, `file reanalyze`, and `file stop` are
 actions and reject `--dry-run`.
@@ -107,6 +108,23 @@ extra confirmation.
 Already completed FILE results do not retroactively change with Settings or Panel analysis-request
 changes. Commands that alter relevant configuration report `fileReanalysisRequired`; only an
 explicit reanalyze starts new work.
+
+## FILE reports
+
+`transport file report <session-id> --json [--out <file>]` returns the same versioned `fileAnalysis`
+report that the GUI's Export button saves, built by the same frontend builder. It is a read: it never
+selects the session, changes the source, starts or stops analysis, or increments revision, and it
+works in either source mode while the session is retained.
+
+Only `complete` sessions are reported. An unknown ID fails with `fileSessionNotFound`; a `probing`,
+`analyzing`, `stopped`, or `error` session fails with `fileAnalysisNotComplete`, whose details carry
+the session ID and public state. A stopped session's partial summary does not describe the whole
+file, and the report schema has no field that marks a partial report.
+
+The success result is `{ revision, sessionId, report }`. `--out` moves the report into a file and
+replaces `result.report` with `result.out`, exactly as library and configuration export do; see
+[Output Files](../cli.md#output-files). `fileAnalysis` schema version 1 is the only public
+file-analysis report format; the internal capture harness output is not a public contract.
 
 ## Revision and waiting
 

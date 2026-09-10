@@ -288,7 +288,7 @@ live runtime IDs remain outside v1 completion.
 
 These commands have strong user value and mostly reuse stable product objects.
 
-#### 1. File-analysis report export
+#### 1. File-analysis report export — complete
 
 Proposed shape:
 
@@ -307,8 +307,9 @@ Why it is a good first slice:
 - it exposes a bounded result rather than raw history;
 - it requires no new measurement algorithm.
 
-Open design question: whether report generation is a query or a file-writing action. The app-side
-report is read-only, while the CLI-side `--out` write can still fail after a successful response.
+Resolved as a running-app query with optional `--out`, matching library and configuration export.
+See
+[`../superpowers/specs/2026-09-11-agent-control-file-report-design.md`](../superpowers/specs/2026-09-11-agent-control-file-report-design.md).
 
 ### Bounded Measurement API — V1 complete
 
@@ -457,7 +458,7 @@ The smallest useful sequence is:
    (complete).
 2. **Cross-platform desktop acceptance:** repeatable Windows/macOS transport and Visual Capture
    smoke workflow (complete; each platform still runs it on its own machine).
-3. **File report export** as the next already-visible GUI workflow.
+3. **File report export** as the next already-visible GUI workflow (complete).
 4. **Runtime wait predicates** with a small bounded predicate vocabulary (complete).
 5. **Batch execution** only after at least two external consumers need it and atomicity can be
    defined honestly.
@@ -490,6 +491,6 @@ Every approved command family should include:
 
 The command manifest, offline schema foundation, generated shell completions, and explicit text
 rendering for read-oriented commands and cross-platform desktop smoke automation are complete while
-`--json` remains stable. File Analysis report export remains.
+`--json` remains stable. File Analysis report export is complete.
 Configuration Transfer, Loudness Profile Control, Theme Control, Device Control, Measurement
 inspect/wait, and Visual Capture are complete on both supported transports.

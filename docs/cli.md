@@ -421,15 +421,16 @@ stderr and exits `2`.
 ## Output Files
 
 One flag, two semantics. `doctor --out <file>` **tees**: stdout remains intact and the file receives
-the exact same bytes. `<library> export --out <file>` and `config export --out <file>` **move**: the
-file receives the pretty-printed exported document, and `result.pack` or `result.configuration` is
-replaced by `result.out` in the envelope, so stdout does not carry a duplicate. The document and
+the exact same bytes. `<library> export --out <file>`, `config export --out <file>`, and
+`transport file report <session-id> --out <file>` **move**: the file receives the pretty-printed
+exported document, and `result.pack`, `result.configuration`, or `result.report` is replaced by
+`result.out` in the envelope, so stdout does not carry a duplicate. The document and
 `out` fields never appear together. No other command accepts `--out`; capture its clean JSON stdout
 programmatically.
 
 If an exported document cannot be written, the CLI prints one line on stderr and exits `1` while
-stdout still carries the full `ok: true` envelope, including `result.pack` or
-`result.configuration` — the swap happens only after the bytes are on disk, so the export is
+stdout still carries the full `ok: true` envelope, including `result.pack`,
+`result.configuration`, or `result.report` — the swap happens only after the bytes are on disk, so the export is
 recoverable from stdout without re-running the command. This is the second of the two documented
 `ok: true` responses with a nonzero exit code; the other is an unhealthy doctor report.
 
@@ -440,6 +441,7 @@ transcodes native output to UTF-16LE:
 plvs-cli doctor --json --out doctor.json
 plvs-cli theme export --all --json --out themes.plvstheme
 plvs-cli config export --json --out plvs-configuration.plvsconfig
+plvs-cli transport file report <session-id> --json --out mix-report.json
 cmd /d /s /c "plvs-cli inspect --json > inspect.json"
 ```
 

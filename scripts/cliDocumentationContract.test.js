@@ -207,4 +207,20 @@ describe("current CLI documentation", () => {
     expect(implementationPlan).toContain("Implementation status (2026-09-08)");
     expect(implementationPlan).toContain("Delivered across Phases A-D");
   });
+
+  it("publishes the File analysis report command", () => {
+    const cli = read("docs", "cli.md");
+    const transport = read("docs", "agent-control", "transport.md");
+    const commands = read("docs", "agent-control", "generated", "commands.md");
+    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
+
+    expect(transport).toContain("transport file report <session-id> --json");
+    expect(transport).toContain("fileAnalysisNotComplete");
+    // Prose reflows with prettier, so match the phrase across line breaks.
+    expect(transport.replace(/\s+/g, " ")).toContain("only public file-analysis report format");
+    expect(cli).toContain("transport file report");
+    expect(cli).toContain("`result.report`");
+    expect(commands).toContain("## `transport.file.report`");
+    expect(roadmap).toContain("#### 1. File-analysis report export — complete");
+  });
 });
