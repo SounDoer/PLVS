@@ -193,6 +193,10 @@ pub enum ControlCommand {
     dry_run: bool,
   },
   TransportInspect,
+  TransportReport {
+    session_id: String,
+    out: Option<String>,
+  },
   TransportMutation {
     method: String,
     target_key: Option<String>,
@@ -1150,6 +1154,11 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
       Err("Usage: plvs-cli transport inspect --json".to_string())
     };
   }
+  if args.first().map(String::as_str) == Some("file")
+    && args.get(1).map(String::as_str) == Some("report")
+  {
+    return parse_transport_report_args(&args[2..]);
+  }
 
   let (method, target_key, target, consumed) = match args {
     [scope, value, ..] if scope == "source" && matches!(value.as_str(), "live" | "file") => (
@@ -1182,7 +1191,7 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     _ => {
       return Err(
-        "Usage: plvs-cli transport <inspect|source live|source file|live start|live stop|live clear|file analyze|file reanalyze|file stop|file select|file remove|file clear> ... --json"
+        "Usage: plvs-cli transport <inspect|source live|source file|live start|live stop|live clear|file analyze|file reanalyze|file stop|file select|file remove|file clear|file report> ... --json"
           .to_string(),
       )
     }
@@ -1252,6 +1261,47 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     allow_stop_file_analysis,
     dry_run,
   })
+}
+
+fn parse_transport_report_args(args: &[String]) -> Result<ControlCommand, String> {
+  let session_id = match args.first() {
+    Some(value) if !value.starts_with("--") && !value.trim().is_empty() => value.clone(),
+    _ => {
+      return Err(
+        "Usage: plvs-cli transport file report <session-id> --json [--out <file>]".to_string(),
+      )
+    }
+  };
+  let mut json = false;
+  let mut out = None;
+  let mut index = 1;
+  while index < args.len() {
+    match args[index].as_str() {
+      "--json" => {
+        json = true;
+        index += 1;
+      }
+      "--out" => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --out.".to_string())?;
+        if value.starts_with("--") || value.is_empty() {
+          return Err("Missing value for --out.".to_string());
+        }
+        out = Some(value.clone());
+        index += 2;
+      }
+      value => {
+        return Err(format!(
+          "Unexpected transport file report argument: {value}"
+        ))
+      }
+    }
+  }
+  if !json {
+    return Err("The transport file report command requires --json.".to_string());
+  }
+  Ok(ControlCommand::TransportReport { session_id, out })
 }
 
 fn is_transport_action(method: &str) -> bool {
@@ -2406,6 +2456,7 @@ impl ControlFailure {
         | "dockActive"
         | "fileModeActive"
         | "fileAnalysisNotActive"
+        | "fileAnalysisNotComplete"
         | "confirmationRequired"
         | "channelConfigurationChanged"
         | "deviceInventoryChanged"
@@ -2481,6 +2532,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::DeviceRead { method } => method.clone(),
     ControlCommand::DeviceSelect { .. } => "device.select".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
+    ControlCommand::TransportReport { .. } => "transport.file.report".to_string(),
     ControlCommand::TransportMutation { method, .. } => method.clone(),
     ControlCommand::DockRead { method } | ControlCommand::DockCommand { method, .. } => {
       method.clone()
@@ -2537,6 +2589,9 @@ fn request_for_command<R: Read>(
     | ControlCommand::DeviceRead { .. }
     | ControlCommand::TransportInspect
     | ControlCommand::VisualDescribe => serde_json::json!({}),
+    ControlCommand::TransportReport { session_id, .. } => {
+      serde_json::json!({ "sessionId": session_id })
+    }
     ControlCommand::ModuleDescribe { module_id } => {
       serde_json::json!({ "moduleId": module_id })
     }
@@ -3250,6 +3305,9 @@ fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code
       out: Some(path), ..
     } => (path, "pack", "pack"),
     ControlCommand::ConfigExport { out: Some(path) } => (path, "configuration", "configuration"),
+    ControlCommand::TransportReport {
+      out: Some(path), ..
+    } => (path, "report", "report"),
     _ => return exit_code,
   };
   match write_export_file(report, path, field, subject) {
@@ -5095,6 +5153,7 @@ mod tests {
       ("dockActive", None, 4),
       ("fileModeActive", None, 4),
       ("fileAnalysisNotActive", None, 4),
+      ("fileAnalysisNotComplete", None, 4),
       ("confirmationRequired", None, 4),
       ("channelConfigurationChanged", None, 4),
       ("deviceInventoryChanged", None, 4),
@@ -6099,6 +6158,122 @@ mod tests {
     assert!(result.get("configuration").is_none());
     assert_eq!(result["revision"], 4);
     fs::remove_file(path).unwrap();
+  }
+
+  #[test]
+  fn parses_transport_file_report_as_a_query_with_optional_out() {
+    assert_eq!(
+      parse_control_args(&args(&["transport", "file", "report", "file-1", "--json"])),
+      Ok(ControlCommand::TransportReport {
+        session_id: "file-1".to_string(),
+        out: None,
+      })
+    );
+    assert_eq!(
+      parse_control_args(&args(&[
+        "transport",
+        "file",
+        "report",
+        "file-1",
+        "--json",
+        "--out",
+        "mix-report.json"
+      ])),
+      Ok(ControlCommand::TransportReport {
+        session_id: "file-1".to_string(),
+        out: Some("mix-report.json".to_string()),
+      })
+    );
+    let request = request_for_command(
+      &ControlCommand::TransportReport {
+        session_id: "file-1".to_string(),
+        out: Some("mix-report.json".to_string()),
+      },
+      &mut Cursor::new([]),
+    )
+    .unwrap();
+    assert_eq!(request.method, "transport.file.report");
+    assert_eq!(request.params, serde_json::json!({ "sessionId": "file-1" }));
+
+    for invalid in [
+      args(&["transport", "file", "report", "--json"]),
+      args(&["transport", "file", "report", "file-1"]),
+      args(&[
+        "transport",
+        "file",
+        "report",
+        "file-1",
+        "--json",
+        "--expected-revision",
+        "3",
+      ]),
+      args(&[
+        "transport",
+        "file",
+        "report",
+        "file-1",
+        "--json",
+        "--dry-run",
+      ]),
+      args(&["transport", "file", "report", "file-1", "--json", "--out"]),
+      args(&["transport", "file", "report", "file-1", "extra", "--json"]),
+    ] {
+      assert!(parse_control_args(&invalid).is_err(), "parsed {invalid:?}");
+    }
+  }
+
+  #[test]
+  fn writing_a_file_report_replaces_it_with_the_path_it_was_written_to() {
+    let report_result = || {
+      serde_json::json!({
+        "revision": 4,
+        "sessionId": "file-1",
+        "report": { "schemaVersion": 1, "reportType": "fileAnalysis" }
+      })
+    };
+    let command = |out: String| ControlCommand::TransportReport {
+      session_id: "file-1".to_string(),
+      out: Some(out),
+    };
+
+    let path = std::env::temp_dir().join(format!("plvs-file-report-{}.json", std::process::id()));
+    let mut written = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(report_result()),
+      error: None,
+    };
+    assert_eq!(
+      finish_export(
+        &command(path.to_string_lossy().into_owned()),
+        &mut written,
+        0
+      ),
+      0
+    );
+    let file: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(file["reportType"], "fileAnalysis");
+    let result = written.result.unwrap();
+    assert_eq!(result["out"], path.to_string_lossy().as_ref());
+    assert!(result.get("report").is_none());
+    assert_eq!(result["sessionId"], "file-1");
+    fs::remove_file(path).unwrap();
+
+    // A write failure exits 1 and leaves the report recoverable from stdout.
+    let mut failed = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(report_result()),
+      error: None,
+    };
+    assert_eq!(
+      finish_export(&command(unwritable_path()), &mut failed, 0),
+      1
+    );
+    assert_eq!(
+      failed.result.unwrap()["report"]["reportType"],
+      "fileAnalysis"
+    );
   }
 
   fn pack_report() -> ControlReport {
