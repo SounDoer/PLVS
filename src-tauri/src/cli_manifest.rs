@@ -324,14 +324,14 @@ mod tests {
   fn embedded_manifest_is_valid_and_complete() {
     let manifest = command_manifest().unwrap();
     assert_eq!(manifest.manifest_version, 1);
-    assert_eq!(manifest.commands.len(), 94);
+    assert_eq!(manifest.commands.len(), 95);
     assert_eq!(
       manifest
         .commands
         .iter()
         .filter(|command| command.execution == "runningApp")
         .count(),
-      90
+      91
     );
     assert_eq!(
       command_by_id("visual.recording.start")

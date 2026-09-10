@@ -6223,6 +6223,23 @@ mod tests {
   }
 
   #[test]
+  fn transport_file_report_rejects_text_output_because_it_can_write_a_file() {
+    let error = parse_control_args(&args(&[
+      "transport",
+      "file",
+      "report",
+      "file-1",
+      "--format",
+      "text",
+    ]))
+    .unwrap_err();
+    assert_eq!(
+      error,
+      "--format text is available only for read-oriented commands."
+    );
+  }
+
+  #[test]
   fn writing_a_file_report_replaces_it_with_the_path_it_was_written_to() {
     let report_result = || {
       serde_json::json!({

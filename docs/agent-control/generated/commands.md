@@ -83,6 +83,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `transport.file.select` | `transport file select` | runningApp / mutation | required | yes | none |
 | `transport.file.remove` | `transport file remove` | runningApp / mutation | required | yes | none |
 | `transport.file.clear` | `transport file clear` | runningApp / mutation | required | yes | none |
+| `transport.file.report` | `transport file report` | runningApp / query | none | no | optional |
 | `dock.describe` | `dock describe` | runningApp / query | none | no | none |
 | `dock.inspect` | `dock inspect` | runningApp / query | none | no | none |
 | `dock.enter` | `dock enter` | runningApp / mutation | required | yes | none |
@@ -2128,6 +2129,32 @@ None.
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+
+## `transport.file.report`
+
+Export a completed file analysis report.
+
+- CLI path: `transport file report`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `optional`
+- Wire method: `transport.file.report`
+
+```text
+plvs-cli transport file report <session-id> --json [--out <file>]
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `session-id` | `sessionId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--out` | local only | no | string |
 
 ## `dock.describe`
 

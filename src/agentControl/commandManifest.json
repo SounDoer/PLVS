@@ -4514,6 +4514,56 @@
       }
     },
     {
+      "id": "transport.file.report",
+      "family": "transport",
+      "path": ["transport", "file", "report"],
+      "usage": "plvs-cli transport file report <session-id> --json [--out <file>]",
+      "summary": "Export a completed file analysis report.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "transport.file.report",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "optional",
+      "positionals": [
+        {
+          "name": "session-id",
+          "mapsTo": "sessionId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--out",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId"],
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
       "id": "dock.describe",
       "family": "dock",
       "path": ["dock", "describe"],
