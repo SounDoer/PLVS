@@ -909,6 +909,22 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "transport.file.report") {
+    const field = unknownField(input.params, new Set(["sessionId"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params.sessionId !== "string" || input.params.sessionId.trim() === "") {
+      return invalidParams("$.params.sessionId", "sessionId must be a non-empty string.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { sessionId: input.params.sessionId },
+      },
+    };
+  }
+
   const transportCommands = new Set([
     "transport.source.live",
     "transport.source.file",

@@ -1166,4 +1166,31 @@ describe("normalizeAgentControlRequest", () => {
       });
     });
   });
+
+  it("normalizes transport.file.report to its session id", () => {
+    expect(
+      normalizeAgentControlRequest(request("transport.file.report", { sessionId: "file-1" }))
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "transport.file.report",
+        params: { sessionId: "file-1" },
+      },
+    });
+  });
+
+  it.each([
+    [{}, "$.params.sessionId"],
+    [{ sessionId: "" }, "$.params.sessionId"],
+    [{ sessionId: "  " }, "$.params.sessionId"],
+    [{ sessionId: 7 }, "$.params.sessionId"],
+    [{ sessionId: "file-1", expectedRevision: 0 }, "$.params.expectedRevision"],
+    [{ sessionId: "file-1", dryRun: true }, "$.params.dryRun"],
+  ])("rejects transport.file.report params %j", (params, path) => {
+    expect(normalizeAgentControlRequest(request("transport.file.report", params))).toMatchObject({
+      ok: false,
+      error: { reason: "invalidParams", path, code: -32602 },
+    });
+  });
 });
