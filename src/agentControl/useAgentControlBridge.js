@@ -8,6 +8,7 @@ import {
 import { flushPersistence, settingsStore } from "../persistence/index.js";
 import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
 import { normalizeImportedProfile, ProfileValidationError } from "../persistence/profileShape.js";
+import { describeActiveLoudnessProfile } from "../lib/activeLoudnessProfile.js";
 import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
@@ -856,21 +857,11 @@ export function useAgentControlBridge({
         };
       const record = live.record ?? null;
       const labels = currentMeasurement.getChannelLabels?.(record) ?? [];
-      const selection = parseSelection(currentProfile.active);
-      const preview = currentProfile.profile?.draft != null;
-      const profileDocument = currentProfile.profile?.document ?? null;
-      const profile = profileDocument
-        ? {
-            mode: preview ? "preview" : "saved",
-            id: preview
-              ? (currentProfile.profile.draft.editingId ?? null)
-              : selection.kind === "profile"
-                ? selection.id
-                : null,
-            name: profileDocument.name ?? null,
-            document: profileDocument,
-          }
-        : null;
+      const profile = describeActiveLoudnessProfile({
+        active: currentProfile.active,
+        document: currentProfile.profile?.document,
+        draft: currentProfile.profile?.draft,
+      });
       return buildMeasurementInspection({
         revision: controlRevisionRef.current,
         observedAtMs: Date.now(),
