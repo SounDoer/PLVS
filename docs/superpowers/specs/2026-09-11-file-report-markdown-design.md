@@ -99,48 +99,53 @@ and labels are Title Case, like the rest of the PLVS UI.
 # PLVS Loudness Report
 
 **mix_final.wav**
+
 Exported 2026-09-11 14:32 (UTC+08:00) · PLVS 0.42.0
 
 ## File
 
-- Path: D:\Projects\mix_final.wav
+- Path: `D:\Projects\mix_final.wav`
 - Container: WAV
-- Duration: 3:12.4
-- Track: #0 · pcm_s24le · 48 kHz · 2 ch
+- Duration: 00:03:12
+- Track: Audio track 0 - English - PCM s16le - 48 kHz - Stereo
 
 ## Loudness
 
-- Integrated: −16.1 LUFS
+- Integrated: -16.1 LUFS
 - Loudness Range: 4.2 LU
-- Momentary Max: −9.8 LUFS
-- Short-term Max: −12.3 LUFS
-- True Peak Max: −1.2 dBTP
-- Sample Peak Max: −1.4 dBFS (L −1.4 · R −1.6)
+- Momentary Max: -9.8 LUFS
+- Short-term Max: -12.3 LUFS
+- True Peak Max: -1.2 dBTP
+- Sample Peak Max: -1.4 dBFS (L -1.4 · R -1.6)
 
 ## Dialogue
 
 - Engine: firered
-- Dialogue Integrated: −24.0 LUFS
+- Dialogue Integrated: -24.0 LUFS
 - Dialogue Range: 3.1 LU
 
 ## Loudness Profile: Mine
 
-| Metric     | Rule                            | Measured   | Result        |
-| ---------- | ------------------------------- | ---------- | ------------- |
-| Integrated | fail if > −22.5 or < −23.5 LUFS | −16.1 LUFS | Fail          |
-| True Peak  | fail if > −1.0 dBTP             | −1.2 dBTP  | OK            |
-| PSR        | warn if < 8.0 dB                | —          | Not evaluated |
+| Metric              | Rule                            | Measured   | Result        |
+| ------------------- | ------------------------------- | ---------- | ------------- |
+| Integrated          | fail if > -22.5 or < -23.5 LUFS | -16.1 LUFS | Fail          |
+| True Peak Max       | fail if > -1.0 dBTP             | -1.2 dBTP  | OK            |
+| Short-term Dynamics | warn if < 8.0 dB                | —          | Not evaluated |
 ```
 
 - Metric labels come from `STATS_META`; values and thresholds use `statDecimals`, so a threshold is
   never shown finer than the reading it is judged against.
+- File details reuse the summary bar's formatters (`formatContainer`, `formatTrackLabel`,
+  `formatClock`), and numbers use the ASCII hyphen-minus the app renders.
 - Several rules on one metric merge into one row. Same severity joins with `or`
-  (`fail if > −22.5 or < −23.5 LUFS`); different severities join with `;`
-  (`warn if > −22.0; fail if > −21.0 LUFS`).
+  (`fail if > -22.5 or < -23.5 LUFS`); different severities join with `;`
+  (`warn if > -22.0; fail if > -21.0 LUFS`).
+- Table columns are padded to equal width so the raw text lines up.
 - **Dialogue** appears only when dialogue analysis was enabled.
 - **Loudness Profile** is omitted when the profile is off. In preview mode, the line
   `Unsaved draft — rules may change before they are saved.` follows the heading.
-- Missing values render as `—`. The file path is included.
+- Missing values render as `—`. The file path is included, as inline code so Windows backslashes
+  and underscores are not read as Markdown.
 - `history` is not rendered: it describes in-app scrub retention, which means nothing to a reader.
 - `exportedAt` renders in the exporting machine's local time with its UTC offset.
 - The default file name is `<stem>-plvs-report.md`, matching the JSON's `<stem>-plvs-report.json`.
@@ -177,7 +182,7 @@ plvs-cli transport file report <session-id> --json [--report-format json|markdow
 - `markdown`: `result.markdown` is the Markdown string, produced in the bridge by the same renderer
   the GUI uses; `result.report` is absent.
 - `--out` moves whichever document field is present into the file. `write_export_file` writes a
-  string document verbatim, ensuring a trailing newline, and serializes anything else as pretty
+  string document verbatim (the renderer ends it with a newline) and serializes anything else as pretty
   JSON as today. The swap still happens only after the bytes are on disk.
 
 ## Compatibility
