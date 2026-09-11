@@ -1,5 +1,21 @@
+import { isRuleEmpty } from "./loudnessProfileCatalog.js";
+import { loudnessProfileEvaluate } from "./loudnessProfileEvaluate.js";
+
 const REPORT_SCHEMA_VERSION = 1;
 const REPORT_TYPE = "fileAnalysis";
+
+/// The Loudness Profile metrics a whole-file report can judge, keyed to the `summary` field that
+/// holds each. A rule on any other metric describes a moment or a derived reading, which a
+/// completed file does not have, so it is reported `notEvaluated`.
+export const REPORT_PROFILE_METRIC_FIELDS = Object.freeze({
+  integrated: "integratedLufs",
+  lra: "lra",
+  momentaryMax: "mMaxLufs",
+  shortTermMax: "stMaxLufs",
+  truePeak: "truePeakMaxDbtp",
+  dialogueIntegrated: "dialogueIntegratedLufs",
+  dialogueRange: "dialogueLra",
+});
 
 function finiteOrNull(value) {
   return Number.isFinite(value) ? value : null;
@@ -30,9 +46,39 @@ function safeFileStem(fileName) {
     .slice(0, 120);
 }
 
-export function defaultFileAnalysisReportName(fileSession) {
+export function defaultFileAnalysisReportName(fileSession, extension = "json") {
   const stem = safeFileStem(fileSession?.fileName || fileSession?.path || "plvs-report");
-  return `${stem || "plvs-report"}-plvs-report.json`;
+  return `${stem || "plvs-report"}-plvs-report.${extension}`;
+}
+
+/// `profile` is `describeActiveLoudnessProfile`'s result, or null when no profile is in force.
+function buildLoudnessProfileBlock(profile, summary) {
+  if (!profile?.document) {
+    return { mode: "off", id: null, name: null, rules: [], byMetric: {} };
+  }
+  const rules = (profile.document.rules ?? [])
+    .filter((rule) => !isRuleEmpty(rule))
+    .map(({ metricId, op, value, severity }) => ({ metricId, op, value, severity }));
+  const values = {};
+  for (const [metricId, field] of Object.entries(REPORT_PROFILE_METRIC_FIELDS)) {
+    if (Number.isFinite(summary[field])) values[metricId] = summary[field];
+  }
+  const statuses = loudnessProfileEvaluate(
+    { rules },
+    { values, integratedReady: Number.isFinite(values.integrated) }
+  );
+  const byMetric = {};
+  for (const [metricId, status] of Object.entries(statuses)) {
+    // `pending` means "no reading yet"; a completed analysis will never produce one.
+    byMetric[metricId] = status === "pending" ? "notEvaluated" : status;
+  }
+  return {
+    mode: profile.mode === "preview" ? "preview" : "saved",
+    id: profile.id ?? null,
+    name: profile.name ?? null,
+    rules,
+    byMetric,
+  };
 }
 
 export function buildFileAnalysisReport(fileSession, options = {}) {
@@ -49,6 +95,21 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     Number.isFinite(summary.samplePeakMaxLDb) ? summary.samplePeakMaxLDb : -Infinity,
     Number.isFinite(summary.samplePeakMaxRDb) ? summary.samplePeakMaxRDb : -Infinity
   );
+  const reportSummary = {
+    durationMs: optionalNumber(summary.durationMs),
+    sampleRateHz: optionalNumber(summary.sampleRateHz),
+    channelCount: optionalNumber(summary.channelCount ?? summary.channels),
+    integratedLufs: finiteOrNull(summary.integratedLufs),
+    lra: finiteOrNull(summary.lra),
+    mMaxLufs: finiteOrNull(summary.mMaxLufs),
+    stMaxLufs: finiteOrNull(summary.stMaxLufs),
+    truePeakMaxDbtp: finiteOrNull(summary.truePeakMaxDbtp),
+    samplePeakMaxLDb: finiteOrNull(summary.samplePeakMaxLDb),
+    samplePeakMaxRDb: finiteOrNull(summary.samplePeakMaxRDb),
+    samplePeakMaxDb: finiteOrNull(samplePeakMaxDb),
+    dialogueIntegratedLufs: dialogueEnabled ? finiteOrNull(summary.dialogueIntegrated) : null,
+    dialogueLra: dialogueEnabled ? finiteOrNull(summary.dialogueLra) : null,
+  };
 
   return {
     schemaVersion: REPORT_SCHEMA_VERSION,
@@ -81,26 +142,13 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
         engine: dialogueEnabled ? stringOrNull(dialogue.engine) : null,
       },
     },
-    summary: {
-      durationMs: optionalNumber(summary.durationMs),
-      sampleRateHz: optionalNumber(summary.sampleRateHz),
-      channelCount: optionalNumber(summary.channelCount ?? summary.channels),
-      integratedLufs: finiteOrNull(summary.integratedLufs),
-      lra: finiteOrNull(summary.lra),
-      mMaxLufs: finiteOrNull(summary.mMaxLufs),
-      stMaxLufs: finiteOrNull(summary.stMaxLufs),
-      truePeakMaxDbtp: finiteOrNull(summary.truePeakMaxDbtp),
-      samplePeakMaxLDb: finiteOrNull(summary.samplePeakMaxLDb),
-      samplePeakMaxRDb: finiteOrNull(summary.samplePeakMaxRDb),
-      samplePeakMaxDb: finiteOrNull(samplePeakMaxDb),
-      dialogueIntegratedLufs: dialogueEnabled ? finiteOrNull(summary.dialogueIntegrated) : null,
-      dialogueLra: dialogueEnabled ? finiteOrNull(summary.dialogueLra) : null,
-    },
+    summary: reportSummary,
     history: {
       retained: true,
       truncated: fileSession.historyTruncated === true,
       coveredMs: optionalNumber(fileSession.historyCoveredMs),
     },
+    loudnessProfile: buildLoudnessProfileBlock(options.loudnessProfile, reportSummary),
   };
 }
 

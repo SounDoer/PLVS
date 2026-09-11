@@ -43,6 +43,24 @@ const COMPLETE_SESSION = {
   },
 };
 
+const BROADCAST = {
+  mode: "saved",
+  id: "p1",
+  name: "Broadcast",
+  document: {
+    id: "p1",
+    name: "Broadcast",
+    referenceLufs: -23,
+    rules: [
+      { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+      { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+      { metricId: "truePeak", op: ">", value: -2, severity: "fail" },
+      { metricId: "psr", op: "<", value: 8, severity: "warn" },
+      { metricId: "lra", op: ">", value: undefined, severity: "fail" },
+    ],
+  },
+};
+
 describe("fileAnalysisReport", () => {
   it("builds a stable JSON report from a completed file session", () => {
     const report = buildFileAnalysisReport(COMPLETE_SESSION, {
@@ -129,6 +147,83 @@ describe("fileAnalysisReport", () => {
   it("builds a safe default report filename", () => {
     expect(defaultFileAnalysisReportName({ fileName: "final:mix?.wav" })).toBe(
       "final-mix--plvs-report.json"
+    );
+  });
+
+  it("records an off profile when none is in force", () => {
+    const report = buildFileAnalysisReport(COMPLETE_SESSION, {
+      exportedAt: "2026-07-06T12:30:00.000Z",
+    });
+
+    expect(report.loudnessProfile).toEqual({
+      mode: "off",
+      id: null,
+      name: null,
+      rules: [],
+      byMetric: {},
+    });
+  });
+
+  it("judges whole-file readings against the profile and records its filled rules", () => {
+    const report = buildFileAnalysisReport(COMPLETE_SESSION, {
+      exportedAt: "2026-07-06T12:30:00.000Z",
+      loudnessProfile: BROADCAST,
+    });
+
+    expect(report.loudnessProfile).toEqual({
+      mode: "saved",
+      id: "p1",
+      name: "Broadcast",
+      rules: [
+        { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+        { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+        { metricId: "truePeak", op: ">", value: -2, severity: "fail" },
+        { metricId: "psr", op: "<", value: 8, severity: "warn" },
+      ],
+      byMetric: { integrated: "ok", truePeak: "fail", psr: "notEvaluated" },
+    });
+  });
+
+  it("keeps preview mode for an open editor's draft", () => {
+    const report = buildFileAnalysisReport(COMPLETE_SESSION, {
+      exportedAt: "2026-07-06T12:30:00.000Z",
+      loudnessProfile: { ...BROADCAST, mode: "preview" },
+    });
+
+    expect(report.loudnessProfile.mode).toBe("preview");
+  });
+
+  it("does not evaluate a judged metric the file has no value for", () => {
+    const report = buildFileAnalysisReport(
+      {
+        ...COMPLETE_SESSION,
+        summary: { ...COMPLETE_SESSION.summary, mMaxLufs: -Infinity },
+        analysisSettings: { dialogue: { enabled: false } },
+      },
+      {
+        exportedAt: "2026-07-06T12:30:00.000Z",
+        loudnessProfile: {
+          ...BROADCAST,
+          document: {
+            ...BROADCAST.document,
+            rules: [
+              { metricId: "momentaryMax", op: ">", value: -10, severity: "fail" },
+              { metricId: "dialogueIntegrated", op: ">", value: -20, severity: "fail" },
+            ],
+          },
+        },
+      }
+    );
+
+    expect(report.loudnessProfile.byMetric).toEqual({
+      momentaryMax: "notEvaluated",
+      dialogueIntegrated: "notEvaluated",
+    });
+  });
+
+  it("names a Markdown report with its own extension", () => {
+    expect(defaultFileAnalysisReportName({ fileName: "final_mix.wav" }, "md")).toBe(
+      "final_mix-plvs-report.md"
     );
   });
 });
