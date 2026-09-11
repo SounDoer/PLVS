@@ -138,43 +138,23 @@ fn qc_check_status_label(status: CliQualityControlCheckStatus) -> &'static str {
 }
 
 fn normalize_report_items(value: &Value) -> Result<Vec<ReportItem>, String> {
-  if value.get("command").and_then(Value::as_str) == Some("analyze-batch") {
-    let results = value
-      .get("results")
-      .and_then(Value::as_array)
-      .ok_or_else(|| "Analyze-batch JSON is missing results.".to_string())?;
-    return results
-      .iter()
-      .map(|result| {
-        let fallback_path = result.get("path").and_then(Value::as_str);
-        let report = result
-          .get("report")
-          .ok_or_else(|| "Analyze-batch result is missing report.".to_string())?;
-        item_from_analyze_report(report, fallback_path)
-      })
-      .collect();
-  }
-
   if value.get("command").and_then(Value::as_str) == Some("analyze") {
-    return Ok(vec![item_from_analyze_report(value, None)?]);
+    return Ok(vec![item_from_analyze_report(value)?]);
   }
 
   if value.get("command").and_then(Value::as_str) == Some("capture") {
     return Ok(vec![item_from_capture_report(value)?]);
   }
 
-  Err("Unsupported report input. Expected analyze, analyze-batch, or capture JSON.".to_string())
+  Err("Unsupported report input. Expected analyze or capture JSON.".to_string())
 }
 
-fn item_from_analyze_report(
-  value: &Value,
-  fallback_path: Option<&str>,
-) -> Result<ReportItem, String> {
+fn item_from_analyze_report(value: &Value) -> Result<ReportItem, String> {
   let status = value
     .get("status")
     .and_then(Value::as_str)
     .ok_or_else(|| "Analyze JSON is missing status.".to_string())?;
-  let file = display_file_name(value, fallback_path);
+  let file = display_file_name(value);
 
   if status == "error" {
     return Ok(ReportItem {
@@ -270,7 +250,7 @@ fn item_from_capture_report(value: &Value) -> Result<ReportItem, String> {
   })
 }
 
-fn display_file_name(value: &Value, fallback_path: Option<&str>) -> String {
+fn display_file_name(value: &Value) -> String {
   let source = value.get("source");
   source
     .and_then(|source| source.get("fileName"))
@@ -280,7 +260,6 @@ fn display_file_name(value: &Value, fallback_path: Option<&str>) -> String {
         .and_then(|source| source.get("path"))
         .and_then(Value::as_str)
     })
-    .or(fallback_path)
     .map(file_name_from_path)
     .filter(|name| !name.is_empty())
     .unwrap_or_else(|| "Unknown file".to_string())
@@ -411,32 +390,6 @@ mod tests {
     assert!(markdown.contains("# PLVS Analysis Report"));
     assert!(markdown
       .contains("| mix.wav | 3:12.4 | -16.1 | 4.2 | -1.1 dBTP | -1.4 dBFS | 48 kHz | 2 | ok |"));
-  }
-
-  #[test]
-  fn renders_batch_errors() {
-    let input = r#"{
-      "schemaVersion": 1,
-      "command": "analyze-batch",
-      "status": "warning",
-      "results": [
-        {
-          "path": "a.wav",
-          "status": "error",
-          "report": {
-            "schemaVersion": 1,
-            "command": "analyze",
-            "status": "error",
-            "source": { "path": "a.wav" },
-            "error": { "message": "ffmpeg failed" }
-          }
-        }
-      ]
-    }"#;
-
-    let markdown = render_markdown_report(input).expect("report");
-
-    assert!(markdown.contains("| a.wav | - | - | - | - | - | - | - | error: ffmpeg failed |"));
   }
 
   #[test]

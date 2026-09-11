@@ -3,7 +3,6 @@ pub mod agent_control;
 mod appbar;
 mod audio;
 pub mod cli_analyze;
-pub mod cli_analyze_batch;
 pub mod cli_capture;
 pub mod cli_contract;
 pub mod cli_control;
