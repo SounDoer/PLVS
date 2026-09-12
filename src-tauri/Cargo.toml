@@ -83,7 +83,7 @@ window-vibrancy = "0.6"
 image = { version = "0.25", default-features = false, features = ["png"] }
 webview2-com = "0.38.2"
 windows-capture = "2.0.1"
-windows = { version = "0.61.3", features = [
+windows = { version = "0.62.2", features = [
   "Win32_System_Com",
   "Win32_UI_Shell",
 ] }

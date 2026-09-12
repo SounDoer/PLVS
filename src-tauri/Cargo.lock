@@ -3543,7 +3543,6 @@ dependencies = [
  "voice_activity_detector",
  "webview2-com",
  "window-vibrancy",
- "windows 0.61.3",
  "windows 0.62.2",
  "windows-capture",
  "windows-sys 0.61.2",
