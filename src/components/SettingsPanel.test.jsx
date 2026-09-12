@@ -179,6 +179,64 @@ describe("SettingsPanel", () => {
     );
   });
 
+  it("says the endpoint is not listening while the switch is on", () => {
+    const { rerender } = render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        agentControlStatus={{
+          supported: true,
+          enabled: true,
+          listening: false,
+          startError: "unable to bind plvs-agent-control-dev: Access is denied.",
+          cliInstalled: true,
+          message: "Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
+        }}
+      />
+    );
+
+    // The switch keeps showing the granted permission; the line below it carries the failure.
+    expect(screen.getByRole("switch", { name: "Agent Control" }).getAttribute("aria-checked")).toBe(
+      "true"
+    );
+    expect(
+      screen.getByText(
+        "Enabled, but not listening: unable to bind plvs-agent-control-dev: Access is denied."
+      )
+    ).toBeTruthy();
+
+    rerender(
+      <SettingsPanel
+        {...BASE_PROPS}
+        agentControlStatus={{
+          supported: true,
+          enabled: true,
+          listening: false,
+          startError: null,
+          cliInstalled: true,
+          message: "Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
+        }}
+      />
+    );
+
+    expect(screen.getByText("Enabled, but not listening.")).toBeTruthy();
+
+    rerender(
+      <SettingsPanel
+        {...BASE_PROPS}
+        agentControlStatus={{
+          supported: true,
+          enabled: true,
+          listening: true,
+          startError: null,
+          cliInstalled: true,
+          message: "Lets AI agents and scripts on this machine control PLVS through plvs-cli.",
+        }}
+      />
+    );
+
+    expect(screen.queryByText(/not listening/)).toBeNull();
+  });
+
   it("shows the copyable prompt starter only while Agent Control is enabled", () => {
     const { rerender } = render(
       <SettingsPanel
@@ -200,6 +258,7 @@ describe("SettingsPanel", () => {
         agentControlStatus={{
           supported: true,
           enabled: true,
+          listening: true,
           cliInstalled: true,
           message: "Agent Control is ready.",
         }}

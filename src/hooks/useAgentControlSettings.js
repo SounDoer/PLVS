@@ -7,6 +7,8 @@ import { isTauri } from "../ipc/env.js";
 const UNAVAILABLE = Object.freeze({
   supported: false,
   enabled: false,
+  listening: false,
+  startError: null,
   cliInstalled: false,
   onPath: false,
   message: "Agent Control is unavailable.",
@@ -57,6 +59,8 @@ export function useAgentControlSettings({ settingsOpen }) {
           ...(agentControlStatus ?? {}),
           supported: agentControlStatus?.supported ?? true,
           enabled: agentControlStatus?.enabled ?? false,
+          listening: agentControlStatus?.listening ?? false,
+          startError: agentControlStatus?.startError ?? null,
           cliInstalled: agentControlStatus?.cliInstalled ?? false,
           onPath: agentControlStatus?.onPath ?? false,
           message: "Agent Control could not be changed.",

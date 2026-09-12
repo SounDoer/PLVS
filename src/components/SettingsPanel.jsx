@@ -235,6 +235,10 @@ export function SettingsPanel({
   const agentControlEnabled = !!agentControlStatus?.enabled;
   const agentControlDisabled = agentControlBusy || !agentControlSupported || !agentControlInstalled;
   const agentControlMessage = agentControlStatus?.message ?? "Checking Agent Control...";
+  // The switch shows the permission the user granted; the endpoint can fail to open after it.
+  // Without this line the two disagree in silence.
+  const agentControlSilent = agentControlEnabled && !agentControlStatus?.listening;
+  const agentControlStartError = agentControlStatus?.startError ?? "";
   const selectedDialogueVadEngine =
     DIALOGUE_VAD_ENGINE_OPTIONS.find((option) => option.id === dialogueVadEngine) ??
     DIALOGUE_VAD_ENGINE_OPTIONS[0];
@@ -691,6 +695,13 @@ export function SettingsPanel({
                           onCheckedChange={(next) => onSetAgentControlEnabled(next)}
                         />
                       </SettingsRow>
+                      {agentControlSilent ? (
+                        <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+                          {agentControlStartError
+                            ? `Enabled, but not listening: ${agentControlStartError}`
+                            : "Enabled, but not listening."}
+                        </div>
+                      ) : null}
                       {agentControlEnabled ? (
                         <div className="flex flex-col gap-1.5 px-1.5">
                           <span className={ROW_LABEL_CLASS}>Prompt Starter</span>

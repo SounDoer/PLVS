@@ -251,6 +251,29 @@ pub fn parse_descriptor(
   Ok(descriptor)
 }
 
+/// Drop a descriptor that names this app but a process that is gone. A descriptor is removed by
+/// the process that wrote it; when that process dies without stopping, the file survives and
+/// points `plvs-cli` at a dead pid. A live pid keeps its file: it may belong to another instance.
+pub fn remove_stale_descriptor_at(path: &Path, expected_identifier: &str) -> bool {
+  remove_stale_descriptor_with(path, expected_identifier, is_process_alive)
+}
+
+fn remove_stale_descriptor_with<F>(path: &Path, expected_identifier: &str, is_alive: F) -> bool
+where
+  F: FnOnce(u32) -> bool,
+{
+  let Ok(bytes) = fs::read(path) else {
+    return false;
+  };
+  let Ok(descriptor) = parse_descriptor(&bytes, expected_identifier) else {
+    return false;
+  };
+  if is_alive(descriptor.pid) {
+    return false;
+  }
+  fs::remove_file(path).is_ok()
+}
+
 pub fn write_descriptor_atomic_at(
   path: &Path,
   descriptor: &AgentControlDescriptor,
@@ -489,6 +512,59 @@ mod tests {
         .kind,
       DiscoveryErrorKind::Malformed
     );
+  }
+
+  #[test]
+  fn a_stale_descriptor_is_removed_and_a_live_one_is_kept() {
+    let dir = temp_dir("stale");
+    let path = descriptor_path_in(&dir);
+    write_descriptor_atomic_at(&path, &descriptor(generate_launch_token().unwrap())).unwrap();
+
+    assert!(!remove_stale_descriptor_with(
+      &path,
+      "com.soundoer.plvs.dev",
+      |_| true
+    ));
+    assert!(path.exists());
+
+    assert!(remove_stale_descriptor_with(
+      &path,
+      "com.soundoer.plvs.dev",
+      |_| false
+    ));
+    assert!(!path.exists());
+
+    fs::remove_dir_all(dir).unwrap();
+  }
+
+  #[test]
+  fn a_descriptor_belonging_to_another_identity_is_never_removed() {
+    let dir = temp_dir("foreign");
+    let path = descriptor_path_in(&dir);
+    write_descriptor_atomic_at(&path, &descriptor(generate_launch_token().unwrap())).unwrap();
+
+    assert!(!remove_stale_descriptor_with(
+      &path,
+      "com.soundoer.plvs",
+      |_| false
+    ));
+    assert!(path.exists());
+
+    fs::remove_dir_all(dir).unwrap();
+  }
+
+  #[test]
+  fn a_missing_descriptor_is_not_a_removal() {
+    let dir = temp_dir("absent");
+    let path = descriptor_path_in(&dir);
+
+    assert!(!remove_stale_descriptor_with(
+      &path,
+      "com.soundoer.plvs.dev",
+      |_| false
+    ));
+
+    fs::remove_dir_all(dir).unwrap();
   }
 
   #[test]

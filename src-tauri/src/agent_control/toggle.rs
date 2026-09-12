@@ -1,5 +1,6 @@
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreExt;
 
@@ -47,12 +48,43 @@ pub struct AgentControlStatus {
   /// The platform has a control endpoint at all.
   pub supported: bool,
   pub enabled: bool,
+  /// The endpoint is open right now. `enabled` is the permission the user granted; a start can
+  /// fail after it, and then the two disagree.
+  pub listening: bool,
+  /// Why the last start failed, when one did. `None` once an endpoint is up.
+  pub start_error: Option<String>,
   pub cli_installed: bool,
   pub on_path: bool,
   pub message: String,
 }
 
-fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentControlStatus {
+/// The last endpoint start failure. A launch-time failure is otherwise only a log line, which
+/// leaves Settings showing a switch that is on and an endpoint nobody is listening on.
+#[derive(Default)]
+pub struct StartFailure(Mutex<Option<String>>);
+
+impl StartFailure {
+  fn set(&self, error: Option<String>) {
+    *self.0.lock().expect("agent-control start failure poisoned") = error;
+  }
+
+  fn get(&self) -> Option<String> {
+    self
+      .0
+      .lock()
+      .expect("agent-control start failure poisoned")
+      .clone()
+  }
+}
+
+fn compose_status(
+  supported: bool,
+  cli_installed: bool,
+  enabled: bool,
+  listening: bool,
+  start_error: Option<String>,
+) -> AgentControlStatus {
+  let listening = supported && cli_installed && listening;
   let message = if !supported {
     UNSUPPORTED_MESSAGE
   } else if !cli_installed {
@@ -63,6 +95,8 @@ fn compose_status(supported: bool, cli_installed: bool, enabled: bool) -> AgentC
   AgentControlStatus {
     supported,
     enabled: supported && cli_installed && enabled,
+    listening,
+    start_error: if listening { None } else { start_error },
     cli_installed,
     on_path: false,
     message: message.to_string(),
@@ -92,7 +126,16 @@ pub(crate) fn read_enabled(app: &AppHandle) -> bool {
 fn current_status(app: &AppHandle) -> Result<AgentControlStatus, String> {
   let path_status = crate::cli_path::cli_path_status()?;
   let supported = cfg!(any(target_os = "windows", target_os = "macos")) && path_status.supported;
-  let mut status = compose_status(supported, path_status.installed, read_enabled(app));
+  let listening = app
+    .state::<crate::agent_control::transport::ServerState>()
+    .is_running();
+  let mut status = compose_status(
+    supported,
+    path_status.installed,
+    read_enabled(app),
+    listening,
+    app.state::<StartFailure>().get(),
+  );
   status.on_path = path_status.on_path;
   Ok(status)
 }
@@ -128,14 +171,34 @@ pub fn set_agent_control_enabled(
   current_status(&app)
 }
 
+/// Start at launch, where the window is already up and a failure must not abort the app.
+pub fn start_at_launch(app: &AppHandle) {
+  if let Err(error) = start_endpoint(app) {
+    log::warn!("agent control unavailable; PLVS will continue normally: {error}");
+  }
+}
+
 fn start_endpoint(app: &AppHandle) -> Result<(), String> {
   if app
     .state::<crate::agent_control::transport::ServerState>()
     .is_running()
   {
+    app.state::<StartFailure>().set(None);
     return Ok(());
   }
-  crate::agent_control::transport::start(app)
+  let result = crate::agent_control::transport::start(app);
+  match &result {
+    Ok(()) => app.state::<StartFailure>().set(None),
+    Err(error) => {
+      app.state::<StartFailure>().set(Some(error.clone()));
+      // A failed start wrote no descriptor, so anything on disk is from an earlier run. Left
+      // there, it sends plvs-cli at a dead pid instead of telling it nothing is listening.
+      if let Ok(path) = crate::agent_control::discovery::descriptor_path() {
+        crate::agent_control::discovery::remove_stale_descriptor_at(&path, env!("PLVS_APP_ID"));
+      }
+    }
+  }
+  result
 }
 
 fn stop_endpoint(app: &AppHandle) {
@@ -148,6 +211,12 @@ fn stop_endpoint(app: &AppHandle) {
 mod tests {
   use super::*;
   use serde_json::{json, Map};
+
+  /// The listening endpoint is the ordinary case; the tests that care about a silent one call
+  /// `compose_status` directly.
+  fn status(supported: bool, cli_installed: bool, enabled: bool) -> AgentControlStatus {
+    compose_status(supported, cli_installed, enabled, enabled, None)
+  }
 
   #[test]
   fn reads_the_persisted_flag_when_present() {
@@ -182,7 +251,7 @@ mod tests {
 
   #[test]
   fn unsupported_platforms_report_a_platform_message() {
-    let status = compose_status(false, false, false);
+    let status = status(false, false, false);
     assert!(!status.supported);
     assert!(!status.enabled);
     assert_eq!(
@@ -193,7 +262,7 @@ mod tests {
 
   #[test]
   fn a_missing_cli_is_reported_before_anything_else() {
-    let status = compose_status(true, false, false);
+    let status = status(true, false, false);
     assert!(status.supported);
     assert!(!status.cli_installed);
     assert_eq!(
@@ -204,10 +273,10 @@ mod tests {
 
   #[test]
   fn the_message_describes_the_control_and_does_not_track_the_switch() {
-    let off = compose_status(true, true, false);
+    let off = status(true, true, false);
     assert!(!off.enabled);
 
-    let on = compose_status(true, true, true);
+    let on = status(true, true, true);
     assert!(on.enabled);
 
     assert_eq!(
@@ -218,9 +287,48 @@ mod tests {
   }
 
   #[test]
+  fn an_enabled_switch_reports_whether_the_endpoint_is_actually_listening() {
+    let up = compose_status(true, true, true, true, None);
+    assert!(up.enabled);
+    assert!(up.listening);
+    assert_eq!(up.start_error, None);
+
+    let silent = compose_status(true, true, true, false, None);
+    assert!(silent.enabled);
+    assert!(!silent.listening);
+  }
+
+  #[test]
+  fn a_failed_start_is_carried_next_to_the_switch_the_user_left_on() {
+    let failed = compose_status(true, true, true, false, Some("unable to bind".to_string()));
+    assert!(failed.enabled);
+    assert!(!failed.listening);
+    assert_eq!(failed.start_error.as_deref(), Some("unable to bind"));
+
+    // The tip still describes the control. The panel builds the failure line from the fields.
+    assert_eq!(
+      failed.message,
+      "Lets AI agents and scripts on this machine control PLVS through plvs-cli."
+    );
+  }
+
+  #[test]
+  fn a_running_endpoint_clears_an_earlier_failure() {
+    let recovered = compose_status(true, true, true, true, Some("unable to bind".to_string()));
+    assert!(recovered.listening);
+    assert_eq!(recovered.start_error, None);
+  }
+
+  #[test]
+  fn a_platform_that_cannot_listen_never_reports_a_listening_endpoint() {
+    assert!(!compose_status(false, true, true, true, None).listening);
+    assert!(!compose_status(true, false, true, true, None).listening);
+  }
+
+  #[test]
   fn a_stored_yes_does_not_survive_a_platform_that_cannot_honour_it() {
-    assert!(!compose_status(false, true, true).enabled);
-    assert!(!compose_status(true, false, true).enabled);
-    assert!(compose_status(true, true, true).enabled);
+    assert!(!status(false, true, true).enabled);
+    assert!(!status(true, false, true).enabled);
+    assert!(status(true, true, true).enabled);
   }
 }

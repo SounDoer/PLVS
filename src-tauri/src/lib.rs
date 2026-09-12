@@ -89,6 +89,7 @@ pub fn run() {
     .manage(AppState::default())
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::transport::ServerState::default())
+    .manage(agent_control::toggle::StartFailure::default())
     .manage(visual_capture::ScreenshotCaptureState::default())
     .manage(visual_capture::recording::RecordingController::default())
     .manage(dock::DockedFlag(std::sync::Arc::new(
@@ -292,9 +293,7 @@ pub fn run() {
       let _ = window.show();
 
       if cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled {
-        if let Err(error) = agent_control::transport::start(app.handle()) {
-          log::warn!("agent control unavailable; PLVS will continue normally: {error}");
-        }
+        agent_control::toggle::start_at_launch(app.handle());
       }
 
       {
