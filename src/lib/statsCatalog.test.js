@@ -5,6 +5,7 @@ import {
   STATS_OPTIONS,
   dialogueOffsetText,
   buildStatsMetrics,
+  buildStatsValues,
   roundToStatPrecision,
 } from "./statsCatalog.js";
 
@@ -127,5 +128,23 @@ describe("statsCatalog", () => {
     const metrics = buildStatsMetrics({ peakDb: [-Infinity, -120], correlation: 0 });
     const correlation = metrics.find((m) => m.id === "correlation");
     expect(correlation.value).toBe("-");
+  });
+
+  it("treats the dialogue range as unmeasured when no dialogue was detected", () => {
+    const audio = { dialogueIntegrated: -Infinity, dialogueLra: 0, integrated: -20 };
+
+    expect(buildStatsValues(audio).dialogueRange).toBe(-Infinity);
+    expect(buildStatsMetrics(audio).find((metric) => metric.id === "dialogueRange").value).toBe(
+      "-"
+    );
+  });
+
+  it("keeps a dialogue range of zero once dialogue was measured", () => {
+    const audio = { dialogueIntegrated: -24, dialogueLra: 0, integrated: -20 };
+
+    expect(buildStatsValues(audio).dialogueRange).toBe(0);
+    expect(buildStatsMetrics(audio).find((metric) => metric.id === "dialogueRange").value).toBe(
+      "0.0"
+    );
   });
 });

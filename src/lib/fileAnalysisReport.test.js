@@ -226,4 +226,29 @@ describe("fileAnalysisReport", () => {
       "final_mix-plvs-report.md"
     );
   });
+
+  it("reports no dialogue range when dialogue analysis found no speech", () => {
+    const report = buildFileAnalysisReport(
+      {
+        ...COMPLETE_SESSION,
+        summary: { ...COMPLETE_SESSION.summary, dialogueIntegrated: -Infinity, dialogueLra: 0 },
+      },
+      { exportedAt: "2026-07-06T12:30:00.000Z" }
+    );
+
+    expect(report.summary.dialogueIntegratedLufs).toBeNull();
+    expect(report.summary.dialogueLra).toBeNull();
+  });
+
+  it("keeps a measured dialogue range of zero", () => {
+    const report = buildFileAnalysisReport(
+      {
+        ...COMPLETE_SESSION,
+        summary: { ...COMPLETE_SESSION.summary, dialogueIntegrated: -24, dialogueLra: 0 },
+      },
+      { exportedAt: "2026-07-06T12:30:00.000Z" }
+    );
+
+    expect(report.summary.dialogueLra).toBe(0);
+  });
 });

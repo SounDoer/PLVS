@@ -188,6 +188,12 @@ export function buildStatsValues(displayAudio) {
     Number.isFinite(displayAudio.dialogueIntegrated) && Number.isFinite(displayAudio.integrated)
       ? displayAudio.dialogueIntegrated - displayAudio.integrated
       : -Infinity;
+  // The engine reports an unmeasured dialogue range as 0.0, which is also a real reading for
+  // dialogue held at one level. Integrated is the field that can say "nothing was measured", so it
+  // decides here too, exactly as the offset above already does.
+  const dialogueRange = Number.isFinite(displayAudio.dialogueIntegrated)
+    ? displayAudio.dialogueLra
+    : -Infinity;
 
   return {
     momentary: displayAudio.momentary,
@@ -200,7 +206,7 @@ export function buildStatsValues(displayAudio) {
     plr,
     dialogueCoverage: displayAudio.dialoguePercent,
     dialogueIntegrated: displayAudio.dialogueIntegrated,
-    dialogueRange: displayAudio.dialogueLra,
+    dialogueRange,
     dialogueOffset,
     truePeak: displayAudio.tpMax,
     correlation: displayAudio.correlation,

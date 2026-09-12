@@ -87,6 +87,10 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
   const selectedTrack = metadata.selectedTrack ?? {};
   const dialogue = fileSession.analysisSettings?.dialogue ?? {};
   const dialogueEnabled = dialogue.enabled === true;
+  // A dialogue range of 0.0 means either "no speech was found" or "the speech sat at one level".
+  // Integrated is the reading that goes non-finite when nothing was measured, so it gates both --
+  // the rule `measurementControl` already applies to the LIVE readings.
+  const dialogueMeasured = dialogueEnabled && Number.isFinite(summary.dialogueIntegrated);
   const samplePeakMaxDb = Math.max(
     Number.isFinite(summary.samplePeakMaxLDb) ? summary.samplePeakMaxLDb : -Infinity,
     Number.isFinite(summary.samplePeakMaxRDb) ? summary.samplePeakMaxRDb : -Infinity
@@ -103,8 +107,8 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     samplePeakMaxLDb: finiteOrNull(summary.samplePeakMaxLDb),
     samplePeakMaxRDb: finiteOrNull(summary.samplePeakMaxRDb),
     samplePeakMaxDb: finiteOrNull(samplePeakMaxDb),
-    dialogueIntegratedLufs: dialogueEnabled ? finiteOrNull(summary.dialogueIntegrated) : null,
-    dialogueLra: dialogueEnabled ? finiteOrNull(summary.dialogueLra) : null,
+    dialogueIntegratedLufs: dialogueMeasured ? finiteOrNull(summary.dialogueIntegrated) : null,
+    dialogueLra: dialogueMeasured ? finiteOrNull(summary.dialogueLra) : null,
   };
 
   return {
