@@ -1297,6 +1297,9 @@ fn parse_transport_report_args(args: &[String]) -> Result<ControlCommand, String
         let value = args
           .get(index + 1)
           .ok_or_else(|| "Missing value for --report-format.".to_string())?;
+        if value.starts_with("--") || value.is_empty() {
+          return Err("Missing value for --report-format.".to_string());
+        }
         if !matches!(value.as_str(), "json" | "markdown") {
           return Err("The --report-format value must be json or markdown.".to_string());
         }
@@ -3293,6 +3296,7 @@ fn write_export_file(
   path: &str,
   field: &str,
   subject: &str,
+  raw: bool,
 ) -> Result<(), String> {
   let Some(result) = report.result.as_mut().and_then(Value::as_object_mut) else {
     return Ok(());
@@ -3300,15 +3304,18 @@ fn write_export_file(
   let Some(document) = result.get(field) else {
     return Ok(());
   };
-  let contents = match document {
-    // A rendered document (the Markdown report) is already text; the renderer ends it with a
-    // newline, so it is written as-is rather than as a JSON string.
-    Value::String(text) => text.clone(),
-    document => format!(
+  let contents = if raw {
+    // The Markdown report is already rendered text, and the renderer ends it with a newline.
+    document
+      .as_str()
+      .ok_or_else(|| format!("Expected the {subject} to be a string."))?
+      .to_string()
+  } else {
+    format!(
       "{}\n",
       serde_json::to_string_pretty(document)
         .map_err(|error| format!("Unable to serialize {subject}: {error}"))?
-    ),
+    )
   };
   // The swap happens only once the bytes are on disk. Taking the document out first loses the
   // export entirely on a write failure: no file, and an exit-1 envelope with no recoverable copy.
@@ -3321,32 +3328,34 @@ fn write_export_file(
 
 #[cfg(test)]
 fn write_pack_file(report: &mut ControlReport, path: &str) -> Result<(), String> {
-  write_export_file(report, path, "pack", "pack")
+  write_export_file(report, path, "pack", "pack", false)
 }
 
 /// The `--out` half of an export, kept out of `run` so it can be tested without a live app.
 fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code: u8) -> u8 {
-  let (path, field, subject) = match command {
+  let (path, field, subject, raw) = match command {
     ControlCommand::LibraryExport {
       out: Some(path), ..
-    } => (path, "pack", "pack"),
-    ControlCommand::ConfigExport { out: Some(path) } => (path, "configuration", "configuration"),
+    } => (path, "pack", "pack", false),
+    ControlCommand::ConfigExport { out: Some(path) } => {
+      (path, "configuration", "configuration", false)
+    }
     ControlCommand::TransportReport {
       out: Some(path),
       report_format,
       ..
-    } => (
-      path,
-      if report_format.as_deref() == Some("markdown") {
-        "markdown"
-      } else {
-        "report"
-      },
-      "report",
-    ),
+    } => {
+      let markdown = report_format.as_deref() == Some("markdown");
+      (
+        path,
+        if markdown { "markdown" } else { "report" },
+        "report",
+        markdown,
+      )
+    }
     _ => return exit_code,
   };
-  match write_export_file(report, path, field, subject) {
+  match write_export_file(report, path, field, subject, raw) {
     Ok(()) => exit_code,
     Err(failure) => {
       eprintln!("{failure}");
@@ -6382,6 +6391,16 @@ mod tests {
         "--json",
         "--report-format",
         "pdf",
+      ]),
+      args(&[
+        "transport",
+        "file",
+        "report",
+        "file-1",
+        "--json",
+        "--report-format",
+        "--out",
+        "x.md",
       ]),
     ] {
       assert!(parse_control_args(&invalid).is_err(), "parsed {invalid:?}");
