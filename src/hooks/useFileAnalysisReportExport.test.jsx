@@ -70,6 +70,28 @@ describe("useFileAnalysisReportExport", () => {
     expect(mocks.saveFileAnalysisReportFile).not.toHaveBeenCalled();
   });
 
+  it("asks the user to choose a completed analysis before copying", async () => {
+    const writeText = vi.fn(async () => {});
+    installClipboard(writeText);
+    const raiseNotice = vi.fn();
+    const { result } = renderHook(() =>
+      useFileAnalysisReportExport({
+        fileSession: { state: "empty" },
+        appVersion: "0.7.3",
+        raiseNotice,
+      })
+    );
+
+    let copied;
+    await act(async () => {
+      copied = await result.current.copyFileAnalysisReportMarkdown();
+    });
+
+    expect(copied).toBe(false);
+    expect(raiseNotice).toHaveBeenCalledWith("guard", "Choose a completed file analysis to copy");
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
   it("writes a desktop report for completed file analysis", async () => {
     const raiseNotice = vi.fn();
     mocks.saveFileAnalysisReportFile.mockResolvedValue("C:\\report.json");

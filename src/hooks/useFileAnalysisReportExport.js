@@ -43,8 +43,8 @@ export function useFileAnalysisReportExport({
         return;
       }
 
-      const { extension, mediaType, render } = REPORT_FORMATS[format];
       try {
+        const { extension, mediaType, render } = REPORT_FORMATS[format];
         const contents = render(buildReport());
         const defaultName = defaultFileAnalysisReportName(fileSession, extension);
 
@@ -70,6 +70,10 @@ export function useFileAnalysisReportExport({
 
   /// Resolves true once the Markdown is on the clipboard, so the caller can confirm it.
   const copyFileAnalysisReportMarkdown = useCallback(async () => {
+    if (fileSession.state !== "complete") {
+      raiseNotice("guard", "Choose a completed file analysis to copy");
+      return false;
+    }
     try {
       await navigator.clipboard.writeText(renderFileAnalysisReportMarkdown(buildReport()));
       return true;
@@ -77,7 +81,7 @@ export function useFileAnalysisReportExport({
       raiseNotice("error", "Copy failed");
       return false;
     }
-  }, [buildReport, raiseNotice]);
+  }, [buildReport, fileSession, raiseNotice]);
 
   return {
     exportFileAnalysisReport,
