@@ -111,10 +111,12 @@ function dockPanelIdentity(panelId) {
  *   channelCount?: number,
  *   additionalPanelInstances?: AdditionalAnalysisPanelInstance[],
  * }} [options]
- * `channelCount` is the runtime's effective channel count. Stereo Map requests are omitted unless
- * it is an integer and both selected channels are available. Additional instances are the future
- * Dock merge seam; their local panel ids are automatically namespaced and follow input order after
- * Workspace panel order.
+ * `channelCount` is the runtime's effective channel count. Stereo Map requests are omitted only when
+ * it is a known positive integer that leaves a selected channel out of range; an absent or
+ * unusable value means the runtime has not reported a frame shape yet and the request still goes
+ * out, because the file analysis worker snapshots this list once at start and a suppressed request
+ * would cost the whole run. Additional instances are the future Dock merge seam; their local panel
+ * ids are automatically namespaced and follow input order after Workspace panel order.
  */
 export function deriveAnalysisRequests(
   state,
@@ -129,12 +131,15 @@ export function deriveAnalysisRequests(
 
   const addStereoMapRequest = (panelId, controls) => {
     const measurement = stereoMapMeasurementControlsFromControls(controls);
-    const pairAvailable =
-      Number.isInteger(channelCount) &&
-      channelCount >= 2 &&
-      measurement.pair.x < channelCount &&
-      measurement.pair.y < channelCount;
-    if (!pairAvailable) return;
+    // Only a channel count we actually know can rule the pair out. An unusable one means "not
+    // reported yet" -- see the parameter docs above for why that must not suppress the request.
+    const channelCountKnown = Number.isInteger(channelCount) && channelCount > 0;
+    const pairUnavailable =
+      channelCountKnown &&
+      (channelCount < 2 ||
+        measurement.pair.x >= channelCount ||
+        measurement.pair.y >= channelCount);
+    if (pairUnavailable) return;
     const key = stereoMapRequestKeyFromControls(controls);
     pushRequest(stereoMapByKey, key, panelId, {
       // The Rust request type names the pair { first, second }; the stored control is { x, y }.

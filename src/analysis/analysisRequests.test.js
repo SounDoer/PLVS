@@ -296,17 +296,29 @@ describe("analysisRequests", () => {
     ).toEqual([]);
   });
 
+  // A channel count that is not a usable integer means "not known yet", not "not enough channels":
+  // it is 0 on a fresh launch and again after every switch to file mode, because it is derived from
+  // the shape of the live meter frame. Dropping the request there costs a whole file analysis --
+  // the file worker snapshots the request list once at start and never re-reads it, so the run
+  // produces no Stereo Map at all. Request it and let the engine bind the pair against the real
+  // channel count it decodes.
   it.each([undefined, 0, Number.NaN, 2.5])(
-    "does not request Stereo Map for invalid effective channel count %s",
+    "still requests Stereo Map when the effective channel count is unknown (%s)",
     (channelCount) => {
       const workspaceState = state({
         panelsById: { map: { id: "map", moduleId: "stereo-map" } },
         panelControlsById: { map: stereoMapControls(0, 1) },
       });
 
-      expect(deriveAnalysisRequests(workspaceState, { channelCount }).stereoMapRequests).toEqual(
-        []
-      );
+      expect(deriveAnalysisRequests(workspaceState, { channelCount }).stereoMapRequests).toEqual([
+        {
+          key: "stereoMap:pair:0:1:sp25:sm12",
+          panelIds: ["map"],
+          pair: { first: 0, second: 1 },
+          speedPercent: 25,
+          octaveSmoothing: "1/12",
+        },
+      ]);
     }
   );
 
