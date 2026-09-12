@@ -221,6 +221,10 @@ describe("current CLI documentation", () => {
     expect(cli).toContain("transport file report");
     expect(cli).toContain("`result.report`");
     expect(commands).toContain("## `transport.file.report`");
+    expect(transport).toContain("--report-format markdown");
+    expect(transport).toContain("notEvaluated");
+    expect(cli).toContain("`result.markdown`");
+    expect(commands).toContain("--report-format");
     expect(roadmap).toContain("#### 1. File-analysis report export — complete");
   });
 });

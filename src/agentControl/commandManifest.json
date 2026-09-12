@@ -4517,7 +4517,7 @@
       "id": "transport.file.report",
       "family": "transport",
       "path": ["transport", "file", "report"],
-      "usage": "plvs-cli transport file report <session-id> --json [--out <file>]",
+      "usage": "plvs-cli transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]",
       "summary": "Export a completed file analysis report.",
       "execution": "runningApp",
       "operation": "query",
@@ -4545,6 +4545,15 @@
           }
         },
         {
+          "name": "--report-format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["json", "markdown"]
+          },
+          "mapsTo": "reportFormat"
+        },
+        {
           "name": "--out",
           "required": false,
           "value": {
@@ -4559,6 +4568,10 @@
         "properties": {
           "sessionId": {
             "type": "string"
+          },
+          "reportFormat": {
+            "type": "string",
+            "enum": ["json", "markdown"]
           }
         }
       }

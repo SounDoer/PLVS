@@ -2140,7 +2140,7 @@ Export a completed file analysis report.
 - Wire method: `transport.file.report`
 
 ```text
-plvs-cli transport file report <session-id> --json [--out <file>]
+plvs-cli transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]
 ```
 
 ### Positionals
@@ -2154,6 +2154,7 @@ plvs-cli transport file report <session-id> --json [--out <file>]
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
 | `--json` | local only | yes | boolean |
+| `--report-format` | `reportFormat` | no | string; one of "json", "markdown" |
 | `--out` | local only | no | string |
 
 ## `dock.describe`

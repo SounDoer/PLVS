@@ -425,7 +425,9 @@ the exact same bytes. `<library> export --out <file>`, `config export --out <fil
 `transport file report <session-id> --out <file>` **move**: the file receives the pretty-printed
 exported document, and `result.pack`, `result.configuration`, or `result.report` is replaced by
 `result.out` in the envelope, so stdout does not carry a duplicate. The document and
-`out` fields never appear together. No other command accepts `--out`; capture its clean JSON stdout
+`out` fields never appear together. With `--report-format markdown`, `transport file report`
+moves `result.markdown` instead, and the file receives the Markdown text verbatim rather than
+pretty-printed JSON. No other command accepts `--out`; capture its clean JSON stdout
 programmatically.
 
 If an exported document cannot be written, the CLI prints one line on stderr and exits `1` while
@@ -442,6 +444,7 @@ plvs-cli doctor --json --out doctor.json
 plvs-cli theme export --all --json --out themes.plvstheme
 plvs-cli config export --json --out plvs-configuration.plvsconfig
 plvs-cli transport file report <session-id> --json --out mix-report.json
+plvs-cli transport file report <session-id> --json --report-format markdown --out mix-report.md
 cmd /d /s /c "plvs-cli inspect --json > inspect.json"
 ```
 

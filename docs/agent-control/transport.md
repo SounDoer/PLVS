@@ -22,6 +22,7 @@ npm run desktop:control -- transport file select <session-id> --expected-revisio
 npm run desktop:control -- transport file remove <session-id> --expected-revision 12 --json
 npm run desktop:control -- transport file clear --expected-revision 12 --json
 npm run desktop:control -- transport file report <session-id> --json --out mix-report.json
+npm run desktop:control -- transport file report <session-id> --json --report-format markdown --out mix-report.md
 ```
 
 All Transport commands except `inspect` and `file report` require `--expected-revision`. `source live`, `source file`,
@@ -111,7 +112,7 @@ explicit reanalyze starts new work.
 
 ## FILE reports
 
-`transport file report <session-id> --json [--out <file>]` returns the same versioned `fileAnalysis`
+`transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]` returns the same versioned `fileAnalysis`
 report that the GUI's Export button saves, built by the same frontend builder. It is a read: it never
 selects the session, changes the source, starts or stops analysis, or increments revision, and it
 works in either source mode while the session is retained.
@@ -125,6 +126,17 @@ The success result is `{ revision, sessionId, report }`. `--out` moves the repor
 replaces `result.report` with `result.out`, exactly as library and configuration export do; see
 [Output Files](../cli.md#output-files). `fileAnalysis` schema version 1 is the only public
 file-analysis report format; the internal capture harness output is not a public contract.
+
+`--report-format markdown` returns `{ revision, sessionId, markdown }` instead: the same report
+rendered by the function behind the GUI's Export Markdown and Copy as Markdown, so all three are
+identical. `--out` then writes that text verbatim. `json`, the default, is unchanged.
+
+The report's `loudnessProfile` block records the Loudness Profile in force at export: `mode` is
+`off`, `saved`, or `preview` (an open editor's draft), `rules` holds its filled rules, and
+`byMetric` gives each judged metric `ok`, `warn`, `fail`, or `notEvaluated`. Only whole-file
+readings are judged; a rule on a momentary or derived metric, or on a reading the file does not
+have, is `notEvaluated`. Adding optional fields such as this block does not change
+`schemaVersion`; consumers ignore fields they do not know.
 
 ## Revision and waiting
 

@@ -2,7 +2,10 @@
 
 Date: 2026-09-11
 
-Status: Approved design
+Status: Approved design; extended by
+[File Analysis Report: Markdown and Loudness Profile Verdicts](2026-09-11-file-report-markdown-design.md),
+which adds the `loudnessProfile` block and `--report-format`. Where the two disagree, that design
+wins.
 
 ## Purpose
 
