@@ -1180,6 +1180,21 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("keeps an explicit transport.file.report format", () => {
+    expect(
+      normalizeAgentControlRequest(
+        request("transport.file.report", { sessionId: "file-1", reportFormat: "markdown" })
+      )
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "transport.file.report",
+        params: { sessionId: "file-1", reportFormat: "markdown" },
+      },
+    });
+  });
+
   it.each([
     [{}, "$.params.sessionId"],
     [{ sessionId: "" }, "$.params.sessionId"],
@@ -1187,6 +1202,8 @@ describe("normalizeAgentControlRequest", () => {
     [{ sessionId: 7 }, "$.params.sessionId"],
     [{ sessionId: "file-1", expectedRevision: 0 }, "$.params.expectedRevision"],
     [{ sessionId: "file-1", dryRun: true }, "$.params.dryRun"],
+    [{ sessionId: "file-1", reportFormat: "pdf" }, "$.params.reportFormat"],
+    [{ sessionId: "file-1", reportFormat: 1 }, "$.params.reportFormat"],
   ])("rejects transport.file.report params %j", (params, path) => {
     expect(normalizeAgentControlRequest(request("transport.file.report", params))).toMatchObject({
       ok: false,

@@ -910,17 +910,24 @@ export function normalizeAgentControlRequest(input) {
   }
 
   if (input.method === "transport.file.report") {
-    const field = unknownField(input.params, new Set(["sessionId"]));
+    const field = unknownField(input.params, new Set(["sessionId", "reportFormat"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     if (typeof input.params.sessionId !== "string" || input.params.sessionId.trim() === "") {
       return invalidParams("$.params.sessionId", "sessionId must be a non-empty string.");
+    }
+    const { reportFormat } = input.params;
+    if (reportFormat !== undefined && reportFormat !== "json" && reportFormat !== "markdown") {
+      return invalidParams("$.params.reportFormat", 'reportFormat must be "json" or "markdown".');
     }
     return {
       ok: true,
       request: {
         id: input.id,
         method: input.method,
-        params: { sessionId: input.params.sessionId },
+        params: {
+          sessionId: input.params.sessionId,
+          ...(reportFormat === undefined ? {} : { reportFormat }),
+        },
       },
     };
   }
