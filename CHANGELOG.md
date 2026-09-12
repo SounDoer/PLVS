@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.4] - 2026-09-12
+
+### Added
+
+- File analysis reports render as Markdown, with an Export menu for saving them or copying them to
+  the clipboard.
+- File analysis reports record Loudness Profile verdicts.
+- Agent Control can request the transport file report and choose its format, including Markdown
+  with profile verdicts.
+- `plvs-cli` gained `--report-format` for the transport file report.
+
+### Changed
+
+- Active Loudness Profile resolution is shared by the paths that need it.
+- Removed the unreachable CLI analyze-batch and Markdown report renderer modules.
+
+### Fixed
+
+- Stereo Map no longer stays empty for a whole file analysis started before the runtime has
+  reported a channel count — the first analysis after launch, or after switching to file mode.
+- An unmeasured dialogue range is no longer reported as 0.0.
+- Agent Control reports an enabled setting whose endpoint is not listening.
+- CLI raw export writes are explicit, and `--report-format` rejects unknown values.
+- The file report guards unknown formats and copying without a completed analysis.
+
 ## [0.15.3] - 2026-09-09
 
 ### Added
