@@ -132,3 +132,291 @@ fn format_number(value: Option<f64>, precision: usize, suffix: &str) -> String {
     _ => "-".to_string(),
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::cli_analyze::{CliAnalyzeSuccessReport, CliAnalyzeSummary, CliAnalyzeTrack};
+  use crate::doctor::{DoctorAppInfo, DoctorCheck, DoctorPaths, DoctorPlatformInfo, DoctorSummary};
+  use serde_json::json;
+
+  fn doctor_check(id: &str, status: DoctorStatus, title: &str) -> DoctorCheck {
+    DoctorCheck {
+      id: id.to_string(),
+      status,
+      severity: status,
+      title: title.to_string(),
+      details: json!({}),
+    }
+  }
+
+  fn sample_doctor_report() -> DoctorReport {
+    DoctorReport {
+      status: DoctorStatus::Warning,
+      summary: DoctorSummary {
+        ok: 1,
+        warning: 1,
+        error: 2,
+        skipped: 3,
+      },
+      app: DoctorAppInfo {
+        name: "PLVS".to_string(),
+        version: "1.2.3".to_string(),
+        executable_path: None,
+      },
+      platform: DoctorPlatformInfo {
+        os: "windows".to_string(),
+        arch: "x86_64".to_string(),
+      },
+      paths: DoctorPaths {
+        config_dir: None,
+        data_dir: None,
+      },
+      checks: vec![
+        doctor_check(
+          "app-info",
+          DoctorStatus::Ok,
+          "Application information was collected",
+        ),
+        doctor_check(
+          "device-enumeration",
+          DoctorStatus::Warning,
+          "No audio devices were enumerated",
+        ),
+      ],
+    }
+  }
+
+  #[test]
+  fn doctor_text_header_carries_version_status_platform_and_counts() {
+    let output = render_doctor_text(&sample_doctor_report());
+
+    assert!(output.contains("PLVS 1.2.3 doctor: warning"));
+    assert!(output.contains("Platform: windows x86_64"));
+    assert!(output.contains("Checks: 1 ok, 1 warning, 2 error, 3 skipped"));
+  }
+
+  #[test]
+  fn doctor_text_lists_each_check_with_its_status_label() {
+    let output = render_doctor_text(&sample_doctor_report());
+
+    assert!(output.contains("- [ok] Application information was collected"));
+    assert!(output.contains("- [warning] No audio devices were enumerated"));
+  }
+
+  #[test]
+  fn doctor_status_labels_cover_all_variants() {
+    assert_eq!(doctor_status_label(DoctorStatus::Ok), "ok");
+    assert_eq!(doctor_status_label(DoctorStatus::Warning), "warning");
+    assert_eq!(doctor_status_label(DoctorStatus::Error), "error");
+    assert_eq!(doctor_status_label(DoctorStatus::Skipped), "skipped");
+  }
+
+  fn sample_track() -> CliAnalyzeTrack {
+    CliAnalyzeTrack {
+      index: 0,
+      codec: "pcm_s16le".to_string(),
+      sample_rate_hz: Some(48_000),
+      channels: Some(2),
+      language: None,
+    }
+  }
+
+  fn sample_summary() -> CliAnalyzeSummary {
+    CliAnalyzeSummary {
+      duration_ms: Some(1000),
+      sample_rate_hz: 48_000,
+      channel_count: 2,
+      integrated_lufs: Some(-16.0),
+      lra: Some(3.0),
+      m_max_lufs: Some(-15.0),
+      st_max_lufs: Some(-14.0),
+      true_peak_max_dbtp: Some(-1.5),
+      sample_peak_max_l_db: Some(-3.0),
+      sample_peak_max_r_db: Some(-4.0),
+      sample_peak_max_db: Some(-3.0),
+      dialogue_integrated_lufs: None,
+      dialogue_lra: None,
+      dialogue_offset_from_reference_lu: None,
+    }
+  }
+
+  fn sample_success_report() -> CliAnalyzeSuccessReport {
+    CliAnalyzeSuccessReport {
+      schema_version: 1,
+      command: "analyze".to_string(),
+      status: crate::cli_analyze::CliAnalyzeStatus::Ok,
+      app: crate::cli_analyze::CliAnalyzeApp {
+        name: "PLVS".to_string(),
+        version: "1.2.3".to_string(),
+      },
+      source: crate::cli_analyze::CliAnalyzeSource {
+        path: "mix.wav".to_string(),
+        file_name: "mix.wav".to_string(),
+        container: Some("wav".to_string()),
+        duration_ms: Some(1000),
+        selected_track: sample_track(),
+      },
+      analysis: crate::cli_analyze::CliAnalyzeMetadata {
+        decoded_frames: 48_000,
+        dialogue: crate::cli_analyze::CliAnalyzeDialogue {
+          enabled: false,
+          engine: None,
+        },
+        reference_lufs: None,
+      },
+      summary: sample_summary(),
+      quality_control: crate::cli_analyze::CliAnalyzeQualityControl {
+        status: CliQualityControlStatus::NotEvaluated,
+        integrated_lufs: None,
+        true_peak_max_dbtp: None,
+      },
+    }
+  }
+
+  #[test]
+  fn analyze_text_error_report_renders_path_and_message() {
+    let report = CliAnalyzeReport::Error(Box::new(crate::cli_analyze::CliAnalyzeErrorReport {
+      schema_version: 1,
+      command: "analyze".to_string(),
+      status: crate::cli_analyze::CliAnalyzeStatus::Error,
+      app: crate::cli_analyze::CliAnalyzeApp {
+        name: "PLVS".to_string(),
+        version: "1.2.3".to_string(),
+      },
+      source: crate::cli_analyze::CliAnalyzeErrorSource {
+        path: "missing.wav".to_string(),
+      },
+      error: crate::cli_analyze::CliAnalyzeError {
+        message: "no such file".to_string(),
+      },
+    }));
+
+    let output = render_analyze_text(&report);
+
+    assert!(output.contains("File: missing.wav"));
+    assert!(output.contains("no such file"));
+  }
+
+  #[test]
+  fn analyze_text_success_renders_file_track_and_measurements() {
+    let report = CliAnalyzeReport::Success(Box::new(sample_success_report()));
+
+    let output = render_analyze_text(&report);
+
+    assert!(output.contains("File: mix.wav"));
+    assert!(output.contains("Track: 0 (pcm_s16le, 48000 Hz, 2 ch)"));
+    assert!(output.contains("Integrated: -16.0 LUFS"));
+    assert!(output.contains("LRA: 3.0 LU"));
+    assert!(output.contains("True peak max: -1.5 dBTP"));
+    assert!(output.contains("Sample peak max: -3.0 dBFS"));
+  }
+
+  #[test]
+  fn analyze_text_success_renders_dash_for_missing_or_non_finite_values() {
+    let mut success = sample_success_report();
+    success.summary.integrated_lufs = None;
+    success.source.selected_track.sample_rate_hz = None;
+
+    let report = CliAnalyzeReport::Success(Box::new(success));
+    let output = render_analyze_text(&report);
+
+    assert!(output.contains("Integrated: -\n"));
+    assert!(output.contains("Track: 0 (pcm_s16le, - Hz, 2 ch)"));
+  }
+
+  #[test]
+  fn analyze_text_omits_dialogue_lines_when_disabled() {
+    let report = CliAnalyzeReport::Success(Box::new(sample_success_report()));
+    let output = render_analyze_text(&report);
+
+    assert!(!output.contains("Dialogue"));
+  }
+
+  #[test]
+  fn analyze_text_shows_dialogue_lines_but_not_reference_when_absent() {
+    let mut success = sample_success_report();
+    success.analysis.dialogue.enabled = true;
+    success.analysis.dialogue.engine = Some("silero".to_string());
+    success.summary.dialogue_integrated_lufs = Some(-20.5);
+    success.summary.dialogue_lra = Some(2.3);
+
+    let report = CliAnalyzeReport::Success(Box::new(success));
+    let output = render_analyze_text(&report);
+
+    assert!(output.contains("Dialogue (silero) integrated: -20.5 LUFS"));
+    assert!(output.contains("Dialogue LRA: 2.3 LU"));
+    assert!(!output.contains("Dialogue vs reference"));
+  }
+
+  #[test]
+  fn analyze_text_shows_reference_line_when_reference_lufs_present() {
+    let mut success = sample_success_report();
+    success.analysis.dialogue.enabled = true;
+    success.analysis.dialogue.engine = Some("ten".to_string());
+    success.analysis.reference_lufs = Some(-23.0);
+    success.summary.dialogue_integrated_lufs = Some(-20.5);
+    success.summary.dialogue_lra = Some(2.25);
+    success.summary.dialogue_offset_from_reference_lu = Some(2.5);
+
+    let report = CliAnalyzeReport::Success(Box::new(success));
+    let output = render_analyze_text(&report);
+
+    assert!(output.contains("Dialogue vs reference (-23.0 LUFS): 2.5 LU"));
+  }
+
+  #[test]
+  fn analyze_text_omits_qc_section_when_not_evaluated() {
+    let report = CliAnalyzeReport::Success(Box::new(sample_success_report()));
+    let output = render_analyze_text(&report);
+
+    assert!(!output.contains("QC:"));
+  }
+
+  #[test]
+  fn analyze_text_qc_section_reports_pass_and_fail_checks() {
+    let mut success = sample_success_report();
+    success.quality_control = crate::cli_analyze::CliAnalyzeQualityControl {
+      status: CliQualityControlStatus::Fail,
+      integrated_lufs: Some(crate::cli_analyze::CliQualityControlCheck {
+        status: CliQualityControlCheckStatus::Pass,
+        measured: Some(-16.0),
+        target: -16.5,
+        tolerance: Some(1.0),
+      }),
+      true_peak_max_dbtp: Some(crate::cli_analyze::CliQualityControlCheck {
+        status: CliQualityControlCheckStatus::Fail,
+        measured: Some(-0.5),
+        target: -1.0,
+        tolerance: None,
+      }),
+    };
+
+    let report = CliAnalyzeReport::Success(Box::new(success));
+    let output = render_analyze_text(&report);
+
+    assert!(output.contains("QC: fail"));
+    assert!(output.contains("- Integrated: pass (target -16.5 ± 1.0 LU, measured -16.0 LUFS)"));
+    assert!(output.contains("- True peak max: fail (ceiling -1.0 dBTP, measured -0.5 dBTP)"));
+  }
+
+  #[test]
+  fn analyze_text_qc_check_reports_unavailable_when_measurement_missing() {
+    let mut success = sample_success_report();
+    success.quality_control = crate::cli_analyze::CliAnalyzeQualityControl {
+      status: CliQualityControlStatus::Fail,
+      integrated_lufs: Some(crate::cli_analyze::CliQualityControlCheck {
+        status: CliQualityControlCheckStatus::Unavailable,
+        measured: None,
+        target: -16.5,
+        tolerance: Some(1.0),
+      }),
+      true_peak_max_dbtp: None,
+    };
+
+    let report = CliAnalyzeReport::Success(Box::new(success));
+    let output = render_analyze_text(&report);
+
+    assert!(output.contains("- Integrated: unavailable (target -16.5 ± 1.0 LU, measured -)"));
+  }
+}
