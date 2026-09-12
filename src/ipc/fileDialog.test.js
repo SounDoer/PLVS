@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { open } from "@tauri-apps/plugin-dialog";
-import { MEDIA_EXTENSIONS, pickMediaFile } from "./fileDialog.js";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { MEDIA_EXTENSIONS, pickMediaFile, saveFileAnalysisReportFile } from "./fileDialog.js";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn(),
@@ -34,5 +34,25 @@ describe("pickMediaFile", () => {
 
     open.mockResolvedValue(null);
     await expect(pickMediaFile()).resolves.toBeNull();
+  });
+});
+
+describe("saveFileAnalysisReportFile", () => {
+  it("filters the save dialog by report format", async () => {
+    save.mockResolvedValue("C:\\report.md");
+
+    await expect(saveFileAnalysisReportFile("mix-plvs-report.md", "markdown")).resolves.toBe(
+      "C:\\report.md"
+    );
+    expect(save).toHaveBeenLastCalledWith({
+      defaultPath: "mix-plvs-report.md",
+      filters: [{ name: "PLVS Report (Markdown)", extensions: ["md"] }],
+    });
+
+    await saveFileAnalysisReportFile("mix-plvs-report.json");
+    expect(save).toHaveBeenLastCalledWith({
+      defaultPath: "mix-plvs-report.json",
+      filters: [{ name: "PLVS Report", extensions: ["json"] }],
+    });
   });
 });

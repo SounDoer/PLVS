@@ -21,7 +21,10 @@ export const MEDIA_EXTENSIONS = [
   "wmv",
 ];
 const PROFILE_EXTENSIONS = ["plvsconfig"];
-const REPORT_EXTENSIONS = ["json"];
+const REPORT_FILTERS = {
+  json: { name: "PLVS Report", extensions: ["json"] },
+  markdown: { name: "PLVS Report (Markdown)", extensions: ["md"] },
+};
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
 export async function pickMediaFile() {
@@ -53,10 +56,13 @@ export async function saveConfigurationProfileFile(defaultPath = "plvs-configura
 }
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
-export async function saveFileAnalysisReportFile(defaultPath = "plvs-report.json") {
+export async function saveFileAnalysisReportFile(
+  defaultPath = "plvs-report.json",
+  format = "json"
+) {
   const selected = await save({
     defaultPath,
-    filters: [{ name: "PLVS Report", extensions: REPORT_EXTENSIONS }],
+    filters: [REPORT_FILTERS[format]],
   });
   return typeof selected === "string" ? selected : null;
 }

@@ -86,7 +86,10 @@ describe("useFileAnalysisReportExport", () => {
       await result.current.exportFileAnalysisReport();
     });
 
-    expect(mocks.saveFileAnalysisReportFile).toHaveBeenCalledWith("final_mix-plvs-report.json");
+    expect(mocks.saveFileAnalysisReportFile).toHaveBeenCalledWith(
+      "final_mix-plvs-report.json",
+      "json"
+    );
     expect(mocks.writeTextFile).toHaveBeenCalledWith(
       "C:\\report.json",
       expect.stringContaining('"reportType": "fileAnalysis"')
@@ -111,5 +114,126 @@ describe("useFileAnalysisReportExport", () => {
     });
 
     expect(raiseNotice).toHaveBeenCalledWith("error", "Report export failed");
+  });
+
+  function installClipboard(writeText) {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+  }
+
+  it("writes a Markdown report with the Markdown filter and name", async () => {
+    mocks.saveFileAnalysisReportFile.mockResolvedValue("C:\\report.md");
+    mocks.writeTextFile.mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useFileAnalysisReportExport({
+        fileSession: COMPLETE_SESSION,
+        appVersion: "0.7.3",
+        raiseNotice: vi.fn(),
+      })
+    );
+
+    await act(async () => {
+      await result.current.exportFileAnalysisReport("markdown");
+    });
+
+    expect(mocks.saveFileAnalysisReportFile).toHaveBeenCalledWith(
+      "final_mix-plvs-report.md",
+      "markdown"
+    );
+    expect(mocks.writeTextFile).toHaveBeenCalledWith(
+      "C:\\report.md",
+      expect.stringMatching(/^# PLVS Loudness Report\n/)
+    );
+  });
+
+  it("writes nothing when the save dialog is cancelled", async () => {
+    mocks.saveFileAnalysisReportFile.mockResolvedValue(null);
+    const { result } = renderHook(() =>
+      useFileAnalysisReportExport({
+        fileSession: COMPLETE_SESSION,
+        appVersion: "0.7.3",
+        raiseNotice: vi.fn(),
+      })
+    );
+
+    await act(async () => {
+      await result.current.exportFileAnalysisReport("markdown");
+    });
+
+    expect(mocks.writeTextFile).not.toHaveBeenCalled();
+  });
+
+  it("records the Loudness Profile in force", async () => {
+    mocks.saveFileAnalysisReportFile.mockResolvedValue("C:\\report.json");
+    mocks.writeTextFile.mockResolvedValue(undefined);
+    const document = {
+      id: "p1",
+      name: "Broadcast",
+      rules: [{ metricId: "integrated", op: ">", value: -22.5, severity: "fail" }],
+    };
+    const { result } = renderHook(() =>
+      useFileAnalysisReportExport({
+        fileSession: COMPLETE_SESSION,
+        appVersion: "0.7.3",
+        raiseNotice: vi.fn(),
+        loudnessProfile: { active: "profile:p1", document, draft: null },
+      })
+    );
+
+    await act(async () => {
+      await result.current.exportFileAnalysisReport("json");
+    });
+
+    const written = JSON.parse(mocks.writeTextFile.mock.calls[0][1]);
+    expect(written.loudnessProfile).toMatchObject({
+      mode: "saved",
+      id: "p1",
+      name: "Broadcast",
+      byMetric: { integrated: "ok" },
+    });
+  });
+
+  it("copies the Markdown report and reports success", async () => {
+    const writeText = vi.fn(async () => {});
+    installClipboard(writeText);
+    const raiseNotice = vi.fn();
+    const { result } = renderHook(() =>
+      useFileAnalysisReportExport({
+        fileSession: COMPLETE_SESSION,
+        appVersion: "0.7.3",
+        raiseNotice,
+      })
+    );
+
+    let copied;
+    await act(async () => {
+      copied = await result.current.copyFileAnalysisReportMarkdown();
+    });
+
+    expect(copied).toBe(true);
+    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^# PLVS Loudness Report\n/));
+    expect(raiseNotice).not.toHaveBeenCalled();
+  });
+
+  it("raises a notice when the copy fails", async () => {
+    installClipboard(vi.fn(async () => Promise.reject(new Error("denied"))));
+    const raiseNotice = vi.fn();
+    const { result } = renderHook(() =>
+      useFileAnalysisReportExport({
+        fileSession: COMPLETE_SESSION,
+        appVersion: "0.7.3",
+        raiseNotice,
+      })
+    );
+
+    let copied;
+    await act(async () => {
+      copied = await result.current.copyFileAnalysisReportMarkdown();
+    });
+
+    expect(copied).toBe(false);
+    expect(raiseNotice).toHaveBeenCalledWith("error", "Copy failed");
   });
 });
