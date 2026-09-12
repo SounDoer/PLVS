@@ -1773,10 +1773,11 @@ function AppContent() {
     setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
   };
 
-  const { exportFileAnalysisReport } = useFileAnalysisReportExport({
+  const { exportFileAnalysisReport, copyFileAnalysisReportMarkdown } = useFileAnalysisReportExport({
     fileSession,
     appVersion: APP_VERSION,
     raiseNotice,
+    loudnessProfile,
   });
   const {
     clearAll,
@@ -2237,6 +2238,7 @@ function AppContent() {
     onClearAllFiles,
     onStopFile,
     onExportReport: exportFileAnalysisReport,
+    onCopyReport: copyFileAnalysisReportMarkdown,
   };
   const footer = {
     deviceLabel: footerDeviceLabel,

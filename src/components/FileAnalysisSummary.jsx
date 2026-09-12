@@ -1,4 +1,6 @@
-import { Download } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, Download } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 import { formatMetric, formatSessionMetadataLine } from "@/lib/fileAnalysisDisplay";
@@ -18,6 +20,7 @@ export function FileAnalysisSummary({
   onClearAllFiles,
   onStopFile,
   onExportReport,
+  onCopyReport,
 }) {
   const historyMenu = (
     <FileAnalysisHistoryMenu
@@ -61,14 +64,7 @@ export function FileAnalysisSummary({
         </dl>
       ) : null}
       {isComplete ? (
-        <button
-          type="button"
-          onClick={() => onExportReport?.()}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)]"
-        >
-          <Download className="size-[1.15em]" aria-hidden="true" />
-          <span>Export</span>
-        </button>
+        <ExportReportMenu onExportReport={onExportReport} onCopyReport={onCopyReport} />
       ) : null}
       {isComplete && fileSession?.historyTruncated ? (
         <p className="min-w-0 text-[length:var(--ui-fs-control)] text-[color:var(--ui-signal-warn)]">
@@ -77,6 +73,73 @@ export function FileAnalysisSummary({
         </p>
       ) : null}
     </section>
+  );
+}
+
+const COPIED_FEEDBACK_MS = 1500;
+
+function ExportReportMenu({ onExportReport, onCopyReport }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const resetTimerRef = useRef(null);
+
+  useEffect(
+    () => () => {
+      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+    },
+    []
+  );
+
+  const choose = (action) => {
+    setOpen(false);
+    action();
+  };
+
+  // The menu closes on the click, so the confirmation lands on the trigger, for as long as
+  // `CopyableTextBlock` shows its own. A failure is reported by the hook's notice instead.
+  const copy = async () => {
+    if (!(await onCopyReport?.())) return;
+    setCopied(true);
+    if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = window.setTimeout(() => {
+      setCopied(false);
+      resetTimerRef.current = null;
+    }, COPIED_FEEDBACK_MS);
+  };
+
+  const Icon = copied ? Check : Download;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)]"
+        >
+          <Icon className="size-[1.15em]" aria-hidden="true" />
+          <span>{copied ? "Copied" : "Export"}</span>
+          <ChevronDown className="size-[1em] text-muted-foreground" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={6} className="w-48 p-1">
+        <MenuItem onClick={() => choose(() => onExportReport?.("markdown"))}>
+          Export Markdown…
+        </MenuItem>
+        <MenuItem onClick={() => choose(() => onExportReport?.("json"))}>Export JSON…</MenuItem>
+        <MenuItem onClick={() => choose(copy)}>Copy as Markdown</MenuItem>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function MenuItem({ onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-control)] text-foreground transition-colors hover:bg-muted/50"
+    >
+      {children}
+    </button>
   );
 }
 

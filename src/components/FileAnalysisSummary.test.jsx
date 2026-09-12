@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -87,7 +87,46 @@ describe("FileAnalysisSummary", () => {
     ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
-    expect(onExportReport).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Export Markdown…" }));
+    expect(onExportReport).toHaveBeenCalledWith("markdown");
+  });
+
+  it("exports JSON and copies Markdown from the export menu", async () => {
+    const onExportReport = vi.fn();
+    const onCopyReport = vi.fn(async () => true);
+    render(
+      <FileAnalysisSummary
+        fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
+        onExportReport={onExportReport}
+        onCopyReport={onCopyReport}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export JSON…" }));
+    expect(onExportReport).toHaveBeenCalledWith("json");
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy as Markdown" }));
+    expect(onCopyReport).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("button", { name: "Copied" })).toBeTruthy();
+  });
+
+  it("keeps the Export label when the copy fails", async () => {
+    const onCopyReport = vi.fn(async () => false);
+    render(
+      <FileAnalysisSummary
+        fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
+        onCopyReport={onCopyReport}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy as Markdown" }));
+
+    await waitFor(() => expect(onCopyReport).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Copied" })).toBeNull();
   });
 
   it("renders an error session through the normal non-complete summary shell", () => {
