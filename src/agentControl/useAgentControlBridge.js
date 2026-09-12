@@ -10,6 +10,7 @@ import { exportProfile, importProfile, reloadAfterProfileChange } from "../persi
 import { normalizeImportedProfile, ProfileValidationError } from "../persistence/profileShape.js";
 import { describeActiveLoudnessProfile } from "../lib/activeLoudnessProfile.js";
 import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
+import { renderFileAnalysisReportMarkdown } from "../lib/fileAnalysisReportMarkdown.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { presetWorkspaceView } from "../lib/presetWorkspaceView.js";
@@ -1807,16 +1808,27 @@ export function useAgentControlBridge({
               { sessionId: session.id, state: session.state }
             );
           }
+          const currentProfile = latestMeasurementProfileRef.current;
+          // The public snapshot names the probe `probe`; the GUI builder reads `metadata`.
+          const report = buildFileAnalysisReport(
+            { ...session, metadata: session.probe },
+            {
+              appVersion: String(runtime.appVersion),
+              loudnessProfile: describeActiveLoudnessProfile({
+                active: currentProfile.active,
+                document: currentProfile.profile?.document,
+                draft: currentProfile.profile?.draft,
+              }),
+            }
+          );
           return {
             requestId,
             result: {
               revision: controlRevisionRef.current,
               sessionId: session.id,
-              // The public snapshot names the probe `probe`; the GUI builder reads `metadata`.
-              report: buildFileAnalysisReport(
-                { ...session, metadata: session.probe },
-                { appVersion: String(runtime.appVersion) }
-              ),
+              ...(request.params.reportFormat === "markdown"
+                ? { markdown: renderFileAnalysisReportMarkdown(report) }
+                : { report }),
             },
           };
         }

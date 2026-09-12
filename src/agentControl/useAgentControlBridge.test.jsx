@@ -5318,6 +5318,75 @@ describe("File analysis report", () => {
     files: { activeId: sessions[0]?.id ?? null, analyzingId: null, sessions },
   });
 
+  const broadcast = {
+    id: "p1",
+    name: "Broadcast",
+    referenceLufs: -23,
+    rules: [
+      { metricId: "integrated", op: ">", value: -22.5, severity: "fail" },
+      { metricId: "integrated", op: "<", value: -23.5, severity: "fail" },
+    ],
+  };
+  const profileContext = (draft = null) => ({
+    active: "profile:p1",
+    document: broadcast,
+    draft,
+    profiles: [broadcast],
+  });
+
+  it("records the Loudness Profile in force when the report is made", async () => {
+    mount({
+      agentTransport: reportTransport([completeSession]),
+      loudnessProfile: profileContext(),
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.file.report", { sessionId: completeSession.id }, "file-report-profile")
+    );
+
+    expect(response.result.report.loudnessProfile).toEqual({
+      mode: "saved",
+      id: "p1",
+      name: "Broadcast",
+      rules: broadcast.rules,
+      byMetric: { integrated: "ok" },
+    });
+  });
+
+  it("judges an open editor's draft as preview", async () => {
+    mount({
+      agentTransport: reportTransport([completeSession]),
+      loudnessProfile: profileContext({ editingId: "p1", document: broadcast, dirty: true }),
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("transport.file.report", { sessionId: completeSession.id }, "file-report-preview")
+    );
+
+    expect(response.result.report.loudnessProfile).toMatchObject({ mode: "preview", id: "p1" });
+  });
+
+  it("returns the report as Markdown on request", async () => {
+    mount({ agentTransport: reportTransport([completeSession]) });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "transport.file.report",
+        { sessionId: completeSession.id, reportFormat: "markdown" },
+        "file-report-markdown"
+      )
+    );
+
+    expect(response.result.sessionId).toBe(completeSession.id);
+    expect(response.result.report).toBeUndefined();
+    expect(response.result.markdown.startsWith("# PLVS Loudness Report\n")).toBe(true);
+    expect(response.result.markdown).toContain("\n**mix.wav**\n");
+    expect(response.result.markdown).toContain("\n- Integrated: -23.1 LUFS\n");
+  });
+
   it("returns the GUI export document for a completed session without changing state", async () => {
     const snapshot = reportTransport([completeSession]);
     mount({ agentTransport: snapshot });
