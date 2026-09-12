@@ -110,7 +110,7 @@ existing flow. Until then, ignore this section.
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  Step 8: Automated Release (GitHub Actions)                     │
-│  - Build Windows NSIS + portable exe                            │
+│  - Build Windows NSIS + portable ZIP                            │
 │  - Build macOS DMG                                              │
 │  - Create GitHub Release with CHANGELOG notes                   │
 └─────────────────────────────────────────────────────────────────┘
@@ -609,7 +609,7 @@ cannot cover:
 
 | Platform | Runner | Artifacts |
 |----------|--------|-----------|
-| Windows | `windows-latest` | NSIS installer, portable exe |
+| Windows | `windows-latest` | NSIS installer, portable ZIP |
 | macOS | `macos-latest` | DMG, `.app.tar.gz` updater payload |
 
 ### Release Creation
@@ -632,10 +632,14 @@ cannot cover:
 | Platform | Artifact Name |
 |----------|---------------|
 | Windows NSIS | `PLVS_X.Y.Z_x64-setup.exe` |
-| Windows Portable | `PLVS-vX.Y.Z-x64-portable.exe` |
+| Windows Portable | `PLVS-vX.Y.Z-x64-portable.zip` |
 | macOS DMG | `PLVS-vX.Y.Z-aarch64.dmg` |
 | macOS updater payload | `PLVS.app.tar.gz` |
 | Updater manifest | `latest.json` |
+
+The portable entry is a ZIP staged by `release.yml`, not a bare exe: it holds
+`plvs.exe`, `plvs-cli.exe`, `ffmpeg.exe` and `ffprobe.exe`, which is why the
+release notes tell users to keep the extracted files together.
 
 **Check that the last two are present.** They are what the in-app updater reads;
 if `publish-updater-manifest` fails, the installers still ship and the Release
