@@ -1180,20 +1180,23 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
-  it("keeps an explicit transport.file.report format", () => {
-    expect(
-      normalizeAgentControlRequest(
-        request("transport.file.report", { sessionId: "file-1", reportFormat: "markdown" })
-      )
-    ).toEqual({
-      ok: true,
-      request: {
-        id: "req-1",
-        method: "transport.file.report",
-        params: { sessionId: "file-1", reportFormat: "markdown" },
-      },
-    });
-  });
+  it.each(["json", "markdown"])(
+    "keeps an explicit %s transport.file.report format",
+    (reportFormat) => {
+      expect(
+        normalizeAgentControlRequest(
+          request("transport.file.report", { sessionId: "file-1", reportFormat })
+        )
+      ).toEqual({
+        ok: true,
+        request: {
+          id: "req-1",
+          method: "transport.file.report",
+          params: { sessionId: "file-1", reportFormat },
+        },
+      });
+    }
+  );
 
   it.each([
     [{}, "$.params.sessionId"],

@@ -915,9 +915,11 @@ export function normalizeAgentControlRequest(input) {
     if (typeof input.params.sessionId !== "string" || input.params.sessionId.trim() === "") {
       return invalidParams("$.params.sessionId", "sessionId must be a non-empty string.");
     }
-    const { reportFormat } = input.params;
-    if (reportFormat !== undefined && reportFormat !== "json" && reportFormat !== "markdown") {
-      return invalidParams("$.params.reportFormat", 'reportFormat must be "json" or "markdown".');
+    if (
+      input.params.reportFormat !== undefined &&
+      !["json", "markdown"].includes(input.params.reportFormat)
+    ) {
+      return invalidParams("$.params.reportFormat", "reportFormat must be json or markdown.");
     }
     return {
       ok: true,
@@ -926,7 +928,9 @@ export function normalizeAgentControlRequest(input) {
         method: input.method,
         params: {
           sessionId: input.params.sessionId,
-          ...(reportFormat === undefined ? {} : { reportFormat }),
+          ...(input.params.reportFormat !== undefined
+            ? { reportFormat: input.params.reportFormat }
+            : {}),
         },
       },
     };
