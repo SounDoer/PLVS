@@ -432,7 +432,7 @@ programmatically.
 
 If an exported document cannot be written, the CLI prints one line on stderr and exits `1` while
 stdout still carries the full `ok: true` envelope, including `result.pack`,
-`result.configuration`, or `result.report` — the swap happens only after the bytes are on disk, so the export is
+`result.configuration`, `result.report`, or `result.markdown` — the swap happens only after the bytes are on disk, so the export is
 recoverable from stdout without re-running the command. This is the second of the two documented
 `ok: true` responses with a nonzero exit code; the other is an unhealthy doctor report.
 
