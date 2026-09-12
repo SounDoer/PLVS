@@ -21,10 +21,6 @@ function finiteOrNull(value) {
   return Number.isFinite(value) ? value : null;
 }
 
-function optionalNumber(value) {
-  return Number.isFinite(value) ? value : null;
-}
-
 function stringOrNull(value) {
   return typeof value === "string" && value.trim() ? value : null;
 }
@@ -96,9 +92,9 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     Number.isFinite(summary.samplePeakMaxRDb) ? summary.samplePeakMaxRDb : -Infinity
   );
   const reportSummary = {
-    durationMs: optionalNumber(summary.durationMs),
-    sampleRateHz: optionalNumber(summary.sampleRateHz),
-    channelCount: optionalNumber(summary.channelCount ?? summary.channels),
+    durationMs: finiteOrNull(summary.durationMs),
+    sampleRateHz: finiteOrNull(summary.sampleRateHz),
+    channelCount: finiteOrNull(summary.channelCount ?? summary.channels),
     integratedLufs: finiteOrNull(summary.integratedLufs),
     lra: finiteOrNull(summary.lra),
     mMaxLufs: finiteOrNull(summary.mMaxLufs),
@@ -123,12 +119,12 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
       path: stringOrNull(fileSession.path ?? metadata.path),
       fileName: stringOrNull(fileSession.fileName ?? metadata.fileName),
       container: stringOrNull(metadata.container),
-      durationMs: optionalNumber(metadata.durationMs ?? summary.durationMs),
+      durationMs: finiteOrNull(metadata.durationMs ?? summary.durationMs),
       selectedTrack: {
         index: Number.isInteger(selectedTrack.index) ? selectedTrack.index : null,
         codec: stringOrNull(selectedTrack.codec),
-        sampleRateHz: optionalNumber(selectedTrack.sampleRateHz),
-        channels: optionalNumber(selectedTrack.channels),
+        sampleRateHz: finiteOrNull(selectedTrack.sampleRateHz),
+        channels: finiteOrNull(selectedTrack.channels),
         language: stringOrNull(selectedTrack.language),
       },
     },
@@ -136,7 +132,7 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
       analyzedAt: fileSession.analyzedAt
         ? new Date(fileSession.analyzedAt).toISOString()
         : (options.analyzedAt ?? null),
-      decodedFrames: optionalNumber(fileSession.decodedFrames),
+      decodedFrames: finiteOrNull(fileSession.decodedFrames),
       dialogue: {
         enabled: dialogueEnabled,
         engine: dialogueEnabled ? stringOrNull(dialogue.engine) : null,
@@ -146,7 +142,7 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     history: {
       retained: true,
       truncated: fileSession.historyTruncated === true,
-      coveredMs: optionalNumber(fileSession.historyCoveredMs),
+      coveredMs: finiteOrNull(fileSession.historyCoveredMs),
     },
     loudnessProfile: buildLoudnessProfileBlock(options.loudnessProfile, reportSummary),
   };
