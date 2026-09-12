@@ -196,6 +196,7 @@ pub enum ControlCommand {
   TransportReport {
     session_id: String,
     out: Option<String>,
+    report_format: Option<String>,
   },
   TransportMutation {
     method: String,
@@ -1268,12 +1269,13 @@ fn parse_transport_report_args(args: &[String]) -> Result<ControlCommand, String
     Some(value) if !value.starts_with("--") && !value.trim().is_empty() => value.clone(),
     _ => {
       return Err(
-        "Usage: plvs-cli transport file report <session-id> --json [--out <file>]".to_string(),
+        "Usage: plvs-cli transport file report <session-id> --json [--report-format <json|markdown>] [--out <file>]".to_string(),
       )
     }
   };
   let mut json = false;
   let mut out = None;
+  let mut report_format = None;
   let mut index = 1;
   while index < args.len() {
     match args[index].as_str() {
@@ -1291,6 +1293,16 @@ fn parse_transport_report_args(args: &[String]) -> Result<ControlCommand, String
         out = Some(value.clone());
         index += 2;
       }
+      "--report-format" => {
+        let value = args
+          .get(index + 1)
+          .ok_or_else(|| "Missing value for --report-format.".to_string())?;
+        if !matches!(value.as_str(), "json" | "markdown") {
+          return Err("The --report-format value must be json or markdown.".to_string());
+        }
+        report_format = Some(value.clone());
+        index += 2;
+      }
       value => {
         return Err(format!(
           "Unexpected transport file report argument: {value}"
@@ -1301,7 +1313,11 @@ fn parse_transport_report_args(args: &[String]) -> Result<ControlCommand, String
   if !json {
     return Err("The transport file report command requires --json.".to_string());
   }
-  Ok(ControlCommand::TransportReport { session_id, out })
+  Ok(ControlCommand::TransportReport {
+    session_id,
+    out,
+    report_format,
+  })
 }
 
 fn is_transport_action(method: &str) -> bool {
@@ -2589,9 +2605,14 @@ fn request_for_command<R: Read>(
     | ControlCommand::DeviceRead { .. }
     | ControlCommand::TransportInspect
     | ControlCommand::VisualDescribe => serde_json::json!({}),
-    ControlCommand::TransportReport { session_id, .. } => {
-      serde_json::json!({ "sessionId": session_id })
-    }
+    ControlCommand::TransportReport {
+      session_id,
+      report_format,
+      ..
+    } => match report_format {
+      Some(format) => serde_json::json!({ "sessionId": session_id, "reportFormat": format }),
+      None => serde_json::json!({ "sessionId": session_id }),
+    },
     ControlCommand::ModuleDescribe { module_id } => {
       serde_json::json!({ "moduleId": module_id })
     }
@@ -3279,11 +3300,16 @@ fn write_export_file(
   let Some(document) = result.get(field) else {
     return Ok(());
   };
-  let contents = format!(
-    "{}\n",
-    serde_json::to_string_pretty(document)
-      .map_err(|error| format!("Unable to serialize {subject}: {error}"))?
-  );
+  let contents = match document {
+    // A rendered document (the Markdown report) is already text; the renderer ends it with a
+    // newline, so it is written as-is rather than as a JSON string.
+    Value::String(text) => text.clone(),
+    document => format!(
+      "{}\n",
+      serde_json::to_string_pretty(document)
+        .map_err(|error| format!("Unable to serialize {subject}: {error}"))?
+    ),
+  };
   // The swap happens only once the bytes are on disk. Taking the document out first loses the
   // export entirely on a write failure: no file, and an exit-1 envelope with no recoverable copy.
   fs::write(Path::new(path), contents)
@@ -3306,8 +3332,18 @@ fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code
     } => (path, "pack", "pack"),
     ControlCommand::ConfigExport { out: Some(path) } => (path, "configuration", "configuration"),
     ControlCommand::TransportReport {
-      out: Some(path), ..
-    } => (path, "report", "report"),
+      out: Some(path),
+      report_format,
+      ..
+    } => (
+      path,
+      if report_format.as_deref() == Some("markdown") {
+        "markdown"
+      } else {
+        "report"
+      },
+      "report",
+    ),
     _ => return exit_code,
   };
   match write_export_file(report, path, field, subject) {
@@ -6167,6 +6203,7 @@ mod tests {
       Ok(ControlCommand::TransportReport {
         session_id: "file-1".to_string(),
         out: None,
+        report_format: None,
       })
     );
     assert_eq!(
@@ -6182,12 +6219,14 @@ mod tests {
       Ok(ControlCommand::TransportReport {
         session_id: "file-1".to_string(),
         out: Some("mix-report.json".to_string()),
+        report_format: None,
       })
     );
     let request = request_for_command(
       &ControlCommand::TransportReport {
         session_id: "file-1".to_string(),
         out: Some("mix-report.json".to_string()),
+        report_format: None,
       },
       &mut Cursor::new([]),
     )
@@ -6251,6 +6290,7 @@ mod tests {
     let command = |out: String| ControlCommand::TransportReport {
       session_id: "file-1".to_string(),
       out: Some(out),
+      report_format: None,
     };
 
     let path = std::env::temp_dir().join(format!("plvs-file-report-{}.json", std::process::id()));
@@ -6290,6 +6330,117 @@ mod tests {
     assert_eq!(
       failed.result.unwrap()["report"]["reportType"],
       "fileAnalysis"
+    );
+  }
+
+  #[test]
+  fn parses_transport_file_report_format() {
+    assert_eq!(
+      parse_control_args(&args(&[
+        "transport",
+        "file",
+        "report",
+        "file-1",
+        "--json",
+        "--report-format",
+        "markdown"
+      ])),
+      Ok(ControlCommand::TransportReport {
+        session_id: "file-1".to_string(),
+        out: None,
+        report_format: Some("markdown".to_string()),
+      })
+    );
+    let request = request_for_command(
+      &ControlCommand::TransportReport {
+        session_id: "file-1".to_string(),
+        out: None,
+        report_format: Some("markdown".to_string()),
+      },
+      &mut Cursor::new([]),
+    )
+    .unwrap();
+    assert_eq!(
+      request.params,
+      serde_json::json!({ "sessionId": "file-1", "reportFormat": "markdown" })
+    );
+
+    for invalid in [
+      args(&[
+        "transport",
+        "file",
+        "report",
+        "file-1",
+        "--json",
+        "--report-format",
+      ]),
+      args(&[
+        "transport",
+        "file",
+        "report",
+        "file-1",
+        "--json",
+        "--report-format",
+        "pdf",
+      ]),
+    ] {
+      assert!(parse_control_args(&invalid).is_err(), "parsed {invalid:?}");
+    }
+  }
+
+  #[test]
+  fn writing_a_markdown_file_report_writes_the_text_verbatim() {
+    let markdown_result = || {
+      serde_json::json!({
+        "revision": 4,
+        "sessionId": "file-1",
+        "markdown": "# PLVS Loudness Report\n"
+      })
+    };
+    let command = |out: String| ControlCommand::TransportReport {
+      session_id: "file-1".to_string(),
+      out: Some(out),
+      report_format: Some("markdown".to_string()),
+    };
+
+    let path = std::env::temp_dir().join(format!("plvs-file-report-{}.md", std::process::id()));
+    let mut written = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(markdown_result()),
+      error: None,
+    };
+    assert_eq!(
+      finish_export(
+        &command(path.to_string_lossy().into_owned()),
+        &mut written,
+        0
+      ),
+      0
+    );
+    assert_eq!(
+      fs::read_to_string(&path).unwrap(),
+      "# PLVS Loudness Report\n"
+    );
+    let result = written.result.unwrap();
+    assert_eq!(result["out"], path.to_string_lossy().as_ref());
+    assert!(result.get("markdown").is_none());
+    fs::remove_file(path).unwrap();
+
+    // A write failure exits 1 and leaves the Markdown recoverable from stdout.
+    let mut failed = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(markdown_result()),
+      error: None,
+    };
+    assert_eq!(
+      finish_export(&command(unwritable_path()), &mut failed, 0),
+      1
+    );
+    assert_eq!(
+      failed.result.unwrap()["markdown"],
+      "# PLVS Loudness Report\n"
     );
   }
 
