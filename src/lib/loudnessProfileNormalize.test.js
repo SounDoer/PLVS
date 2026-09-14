@@ -114,6 +114,12 @@ describe("normalizeLoudnessProfiles", () => {
     });
   });
 
+  it("keeps a stored Off selection alongside a non-empty library", () => {
+    const result = normalizeLoudnessProfiles({ active: "off", profiles: [rawDoc([])] });
+    expect(result.active).toBe("off");
+    expect(result.profiles.map((p) => p.id)).toEqual(["u1"]);
+  });
+
   it("normalizes profiles and drops invalid entries and duplicate ids in order", () => {
     const result = normalizeLoudnessProfiles({
       profiles: [rawDoc([]), null, rawDoc([]), { id: "u2", name: "", rules: [] }],

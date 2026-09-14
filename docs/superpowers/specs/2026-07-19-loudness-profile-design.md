@@ -96,7 +96,9 @@ Exactly one of:
 | `builtin:<id>` | Read-only built-in rules. |
 | `user:<id>` | Saved user profile; editable in the popover. |
 
-Default on first launch / empty state: **`off`**.
+Default on first launch / empty state: a cold or missing library now seeds the starter profile and
+selects it (see `docs/superpowers/specs/2026-09-14-first-run-defaults-design.md` §Loudness Profile
+(decided)); a stored selection, including Off, is kept.
 
 ### Rule document (logical shape)
 
@@ -375,7 +377,9 @@ loudnessProfiles: {
 ```
 
 - Do **not** require migrating old `referenceLufs` / per-panel
-  `loudnessReferenceLufs` into meaningful history; cold default is Off.
+  `loudnessReferenceLufs` into meaningful history; a cold or missing library now seeds the starter
+  profile and selects it (see `docs/superpowers/specs/2026-09-14-first-run-defaults-design.md`
+  §Loudness Profile (decided)); a stored selection, including Off, is kept.
 
 #### Per-panel `loudnessReferenceLufs`: delete it
 

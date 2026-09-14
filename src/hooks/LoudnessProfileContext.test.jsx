@@ -38,6 +38,16 @@ describe("cold initialization", () => {
     );
   });
 
+  it("keeps a stored Off selection alongside a non-empty library", async () => {
+    seed([profile("kept", "Kept", -18)]);
+    const hook = renderHook(() => useLoudnessProfile(), { wrapper });
+
+    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    await waitFor(() =>
+      expect(settingsStore.read().loudnessProfiles.active).toBe(LOUDNESS_PROFILE_OFF)
+    );
+  });
+
   it("preserves an explicitly empty library without seeding it", () => {
     seed([]);
     const first = renderHook(() => useLoudnessProfile(), { wrapper });
