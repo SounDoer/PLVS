@@ -99,7 +99,11 @@ Vectorscope, Spectrogram, Stereo Map, theme and view settings stay at today's de
 
 **Scope (decided):** these controls apply only to the panels of the first-run layout (per-panel
 entries in the default `panelControlsById`). `DEFAULT_PANEL_CONTROLS` row defaults do not change, so
-a panel the user adds later keeps today's conservative defaults.
+a panel the user adds later keeps today's conservative defaults. **Resetting a single panel's
+settings returns it to those row defaults, not to the first-run values (decided)**; Reset Layout
+restores the whole first-run layout, tuned controls included. The Dock follows the same rule. A
+consequence, not a bug: on a fresh install Level Meter, Stats, Spectrum and Waveform already read as
+"not at defaults", so their panel Reset is enabled and their changed rows show reset markers.
 
 ### Loudness Profile (decided)
 
@@ -109,7 +113,9 @@ A fresh profile's library is already seeded with one starter profile (`createSta
 the initial active selection changes; the starter document itself keeps its rules. This makes the
 Loudness `reference` layer draw, and typical music reads red against −23 on purpose: PLVS presents
 itself as a delivery-loudness check. Existing users whose stored `loudnessProfiles` is valid are
-unaffected, including those who chose Off.
+unaffected, including those who chose Off. A missing or malformed key counts as first run: an upgrade
+straight from a build before v0.11.0 (when the key first shipped), a Configuration Profile exported
+before v0.11.0, or corrupt storage also lands on the selected starter.
 
 ### Analysis cost (decided)
 
