@@ -1,7 +1,7 @@
 # First-Run Defaults: Window, Workspace Layout, Dock
 
-Status: Design decided (2026-09-14) — window size and fit, workspace layout, Dock defaults. Not
-implemented yet.
+Status: Implemented (2026-09-15) per `docs/superpowers/plans/2026-09-14-first-run-defaults.md` and
+verified on a fresh profile; see Verification at the end.
 
 ## Scope
 
@@ -171,6 +171,11 @@ A Dock panel the user adds later keeps today's default controls and width. The u
 Dock in the running dev-identity release build; the result was read back with `dock inspect --json`
 and the rounded widths were applied and confirmed on screen (2026-09-14, Dock revision 4).
 
+**Upgrades (decided, accepted):** the first-run strip is chosen whenever the stored Dock state is
+absent. An existing user who never changed the Dock layout has nothing stored, so after upgrading
+they get the new strip, and if they also never entered Dock, the new top / 56 px form. Users with a
+stored Dock state keep it unchanged.
+
 ### Form (decided)
 
 **Top** edge, **56 px** (compact height mode), reserve space **on**. The monitor is not part of the
@@ -209,6 +214,10 @@ absolutely positioned and take no width):
   minimums, Stats ≈ 260, the last four ≈ 183 each and still equal.
 - **Wider than 2050 px:** only the four flexible panels grow, equally, so they stay equal.
 - **Narrower than 1404 px:** the rightmost panels are clipped; there is no scrolling.
+- **Narrow strips (decided): kept as is.** No width-dependent module choice or Stats metric trimming
+  on first entry. Observed on a 1470 px strip (2940×1846 @200%): panels render at roughly
+  90 / 140 / 152 / 228 / 158 / 158 / 180 / 180 / 180, and Stats shows three columns, about nine of
+  fifteen metrics. Covered by the separate Dock Stats layout issue below.
 
 Reset behaviour for widths: Reset Layout restores these pinned widths. Double-clicking a resize handle
 between two panels clears both widths, so that pair returns to responsive sizing rather than to its
@@ -281,3 +290,20 @@ the differences from today's defaults; this is the complete set the first-run la
 
 Axes: the time axis (Loudness, Spectrogram, Waveform) is linked at a 60 s window, offset 0; the
 frequency axis (Spectrum, Spectrogram, Stereo Map) is linked at 20…20000 Hz.
+
+## Verification (2026-09-15)
+
+Dev-identity release build, empty profile, driven through Agent Control (`inspect`, `dock enter`,
+`dock inspect`, `visual screenshot`), after `npm run check` passed.
+
+- **Normal window:** tree, the tuned panel controls, the active starter Loudness Profile and "no
+  active Preset" all match. The primary monitor was 2940×1846 @200% with a 2940×1750 work area, so
+  1280×800 did not fit the 90% budget: the content rendered at 2406×1504 physical (≈1203×752
+  logical), exactly the proportional-shrink result, centered with gaps of 254 / 254 / 87 / 88 px.
+  The stored settings had no `dock` or `dockState` key.
+- **Dock:** top edge, 56 px, reserve space on, the nine panels in order with stored widths
+  90 / 150 / 210 / 370 / 190 / 260×4, and the tuned Loudness, Stats, Spectrum and Waveform controls
+  all match. On that 1470 px strip the panels shrink as described under Narrow strips.
+
+Not covered here, still to test by hand: Windows 125% placement, Dock exit across mixed-DPI
+monitors, macOS first launch / restart drift / Dock exit, and double-click Dock height reset to 56.
