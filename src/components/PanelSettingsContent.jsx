@@ -146,9 +146,22 @@ export function SettingsSlider({
   onCommit,
   commitOnRelease = false,
 }) {
-  const [tooltipOpen, setTooltipOpen] = useState(false);
   const [draftValue, setDraftValue] = useState(value);
   const displayValue = formatValue(draftValue);
+  // Portaled like every other tip: a bubble positioned inside the row pokes above it and is clipped
+  // by the scrolling settings body whenever the slider is the first row.
+  const {
+    anchorRef: tooltipAnchorRef,
+    showTip: showTooltip,
+    hideTip: hideTooltip,
+    tipNode: tooltipNode,
+  } = useHoverTip({
+    tip: displayValue,
+    side: "top",
+    align: "end",
+    tipClassName:
+      "rounded-md border-border px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)] tabular-nums text-popover-foreground shadow-sm",
+  });
   const draftPercent = rangePercent(draftValue, min, max);
 
   useEffect(() => {
@@ -189,8 +202,9 @@ export function SettingsSlider({
     : null;
 
   return (
-    <div className="relative flex min-w-0 items-center justify-end">
+    <div className="flex min-w-0 items-center justify-end">
       <input
+        ref={tooltipAnchorRef}
         aria-label={ariaLabel}
         aria-valuetext={displayValue}
         type="range"
@@ -198,23 +212,16 @@ export function SettingsSlider({
         max={max}
         step={step}
         value={draftValue}
-        onMouseEnter={() => setTooltipOpen(true)}
-        onMouseLeave={() => setTooltipOpen(false)}
-        onFocus={() => setTooltipOpen(true)}
-        onBlur={() => setTooltipOpen(false)}
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+        onFocus={showTooltip}
+        onBlur={hideTooltip}
         onChange={(event) => handleChange(event.target.value)}
         {...releaseHandlers}
         className="plvs-range w-16 opacity-75 transition-opacity hover:opacity-100 focus-visible:opacity-100"
         style={{ "--range-pct": `${draftPercent}%` }}
       />
-      {tooltipOpen ? (
-        <span
-          role="tooltip"
-          className="pointer-events-none absolute bottom-full right-0 mb-1 whitespace-nowrap rounded-md border border-border bg-popover px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)] tabular-nums text-popover-foreground shadow-sm"
-        >
-          {displayValue}
-        </span>
-      ) : null}
+      {tooltipNode}
     </div>
   );
 }

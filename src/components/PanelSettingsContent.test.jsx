@@ -1642,6 +1642,29 @@ describe("PanelSettingsContent", () => {
     expect(tip.className).toContain("fixed");
   });
 
+  it("portals the slider value tooltip out of the scrolling settings body", () => {
+    // Tilt is the first row of the Spectrogram settings. A value bubble positioned inside the row
+    // pokes above it and is clipped by the scroll body -- in the Dock editor, down to its last 2 px.
+    const view = render(
+      <PanelSettingsContent
+        activeTab="spectrogram"
+        channelCount={2}
+        spectrumOptions={[{ key: "p-0-1", label: "L/R", sel: { type: "pair", x: 0, y: 1 } }]}
+        spectrumValueKey="p-0-1"
+        spectrumMaxMode="off"
+        onSpectrumMaxModeChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+
+    fireEvent.mouseEnter(screen.getByLabelText("spectrogram tilt"));
+    const tip = screen.getByRole("tooltip");
+    expect(tip.textContent).toBe("3.00 dB/oct");
+    expect(view.container.contains(tip)).toBe(false);
+    expect(tip.className).toContain("fixed");
+  });
+
   it("gives the tilt row the same tooltip on both the spectrum and spectrogram tabs", () => {
     const tiltTooltip = (activeTab) => {
       const view = render(
