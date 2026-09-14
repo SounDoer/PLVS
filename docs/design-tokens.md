@@ -397,7 +397,7 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 ## Dock Tokens
 
 Dock is a separate high-density instrument surface with a supported height of `56–160px` and a
-default height of `72px`. It shares the global font families, semantic colors, and instrument
+default height of `56px` (the compact density tier). It shares the global font families, semantic colors, and instrument
 colors, but it does not reuse normal-panel typography or spacing dimensions. Normal panels have
 minimum heights measured in `rem`; applying those dimensions to Dock would either overflow or
 waste its limited data area.

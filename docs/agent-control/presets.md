@@ -235,8 +235,10 @@ Preset Apply distinguishes a resource that has a safe fallback from a current-mo
 - A deleted Loudness Profile resolves to Off and produces `loudnessProfileUnavailable`.
 - A missing saved Dock monitor falls back to the current monitor and then the primary monitor, and
   produces `dockMonitorUnavailable`. It fails only when no monitor is available.
-- Off-screen saved window bounds are adjusted into the visible display area and produce
-  `windowBoundsAdjusted`.
+- Off-screen or unusable saved window bounds are adjusted against the primary monitor and produce
+  `windowBoundsAdjusted`: bounds too small or with bogus coordinates are replaced with a capped
+  size centered on the monitor, while bounds that are merely mostly off-screen keep their saved
+  size and are re-centered on the monitor instead.
 - A platform without Dock support drops the saved Dock state, applies the rest of the Preset, and
   produces `dockUnsupported`.
 - FILE mode is different: both direct Dock entry and a Preset that requires Dock are refused. Preset
