@@ -210,6 +210,10 @@ absolutely positioned and take no width):
 - **Wider than 2050 px:** only the four flexible panels grow, equally, so they stay equal.
 - **Narrower than 1404 px:** the rightmost panels are clipped; there is no scrolling.
 
+Reset behaviour for widths: Reset Layout restores these pinned widths. Double-clicking a resize handle
+between two panels clears both widths, so that pair returns to responsive sizing rather than to its
+first-run widths; this is the existing pair-reset behaviour and is kept.
+
 ### Panel settings (decided)
 
 Full Dock controls, public Agent Control names. Bold marks a difference from today's Dock defaults.
