@@ -210,6 +210,39 @@ describe("useDockLayout", () => {
     });
   });
 
+  it("setPanels with no stored layout (legacy modules-only preset after preflight) keeps module defaults", () => {
+    // A legacy preset that stored only dock.modules builds a dock object with neither panelsById
+    // nor a modules array by the time preflightApplySnapshot hands it to setPanels — it must not
+    // read as first run.
+    const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.setPanels({ enabled: true }));
+    expect(result.current.panelSizesById).toEqual({});
+    expect(result.current.controlsByPanelId).toMatchObject({
+      loudness: { showReadouts: true },
+      spectrum: { spectrumMaxMode: "off" },
+    });
+  });
+
+  it("setModules keeps panelSizesById empty", () => {
+    const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.setModules(["spectrum", "level"]));
+    expect(result.current.panelSizesById).toEqual({});
+  });
+
+  it("addPanel on the first-run strip gives the new panel module defaults, not the first-run tuning", () => {
+    const { result } = renderHook(() => useDockLayout());
+    act(() => result.current.addPanel("spectrum"));
+    expect(result.current.controlsByPanelId.spectrum.spectrumMaxMode).toBe("decay");
+    expect(result.current.controlsByPanelId["spectrum-2"].spectrumMaxMode).toBe("off");
+
+    act(() => result.current.addPanel("stereo-map"));
+    const newStereoMapPanelId = result.current.panelOrder.find(
+      (id) => result.current.panelsById[id]?.moduleId === "stereo-map" && id !== "stereoMap"
+    );
+    expect(newStereoMapPanelId).toBeTruthy();
+    expect(newStereoMapPanelId).not.toBe("stereoMap");
+  });
+
   it("resets the preferred widths for one adjacent pair", () => {
     workspaceStore.patch({
       dock: {

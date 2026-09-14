@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
 import {
   addDockPanel,
+  DEFAULT_DOCK_PANEL_SIZES,
   dockModuleIdForPanelModuleId,
   normalizeDockLayout,
   removeDockPanel,
@@ -18,19 +19,38 @@ import {
   normalizeDockControlsByPanelId,
   updateDockPanelControls,
 } from "./dockModuleControls.js";
-import { resetDockPanelPair, resizeDockPanelPair } from "./dockPanelSizing.js";
+import {
+  normalizeDockPanelSizes,
+  resetDockPanelPair,
+  resizeDockPanelPair,
+} from "./dockPanelSizing.js";
+
+/// The first-run strip: tuned modules, widths and controls. Only a store with no Dock yet and
+/// Reset Layout use it — every other path (a stored layout, or a modules-only legacy/preset
+/// object with no panelsById) keeps responsive sizing and the module defaults.
+function firstRunDockState() {
+  const base = normalizeDockLayout(undefined);
+  const layout = {
+    ...base,
+    panelSizesById: normalizeDockPanelSizes(base.panelsById, DEFAULT_DOCK_PANEL_SIZES),
+  };
+  return {
+    layout,
+    controlsByPanelId: normalizeDockControlsByPanelId(
+      layout.panelsById,
+      undefined,
+      firstRunDockControlsByModuleId()
+    ),
+  };
+}
 
 function readDockState() {
   const raw = workspaceStore.read().dock;
+  if (!raw) return firstRunDockState();
   const layout = normalizeDockLayout(raw);
   return {
     layout,
-    // Nothing stored yet is the first run: the first-run panels take the tuned controls.
-    controlsByPanelId: normalizeDockControlsByPanelId(
-      layout.panelsById,
-      raw?.controlsByPanelId,
-      raw ? undefined : firstRunDockControlsByModuleId()
-    ),
+    controlsByPanelId: normalizeDockControlsByPanelId(layout.panelsById, raw.controlsByPanelId),
   };
 }
 
@@ -143,16 +163,7 @@ export function useDockLayout() {
     [write]
   );
   const resetLayout = useCallback(() => {
-    // Back to the first-run strip: tuned modules, widths and controls.
-    const layout = normalizeDockLayout(undefined);
-    write({
-      layout,
-      controlsByPanelId: normalizeDockControlsByPanelId(
-        layout.panelsById,
-        undefined,
-        firstRunDockControlsByModuleId()
-      ),
-    });
+    write(firstRunDockState());
   }, [write]);
   const setPanelControls = useCallback(
     (panelId, controls) => {

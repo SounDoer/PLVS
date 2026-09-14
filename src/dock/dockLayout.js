@@ -159,8 +159,7 @@ export function normalizeDockLayout(raw) {
     });
   }
   const list = raw && typeof raw === "object" ? raw.modules : undefined;
-  const firstRun = !Array.isArray(list);
-  const source = firstRun ? DEFAULT_DOCK_MODULES : list;
+  const source = Array.isArray(list) ? list : DEFAULT_DOCK_MODULES;
   const panelsById = {};
   const panelOrder = [];
   for (const id of source) {
@@ -170,12 +169,7 @@ export function normalizeDockLayout(raw) {
     panelsById[panel.id] = panel;
     panelOrder.push(panel.id);
   }
-  return withLegacyModules({
-    panelsById,
-    panelOrder,
-    // Only the first-run layout pins widths; an explicit module list keeps responsive sizing.
-    panelSizesById: firstRun ? normalizeDockPanelSizes(panelsById, DEFAULT_DOCK_PANEL_SIZES) : {},
-  });
+  return withLegacyModules({ panelsById, panelOrder, panelSizesById: {} });
 }
 
 export function toggleDockModule(layout, id) {

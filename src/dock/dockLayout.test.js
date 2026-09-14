@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DOCK_MODULES,
+  DEFAULT_DOCK_PANEL_SIZES,
   DOCK_MODULE_IDS,
   normalizeDockLayout,
   setDockPanelOrder,
@@ -24,8 +25,15 @@ describe("normalizeDockLayout", () => {
     expect(normalizeDockLayout({ modules: [] }).modules).toEqual([]);
   });
 
-  it("pins the tuned first-run widths only when no module list is stored", () => {
-    expect(normalizeDockLayout(undefined).panelSizesById).toEqual({
+  it("leaves panelSizesById empty for both the module-list branch's inputs", () => {
+    expect(normalizeDockLayout(undefined).panelSizesById).toEqual({});
+    expect(normalizeDockLayout({ modules: ["spectrum", "level"] }).panelSizesById).toEqual({});
+  });
+});
+
+describe("DEFAULT_DOCK_PANEL_SIZES", () => {
+  it("pins the nine tuned first-run widths", () => {
+    expect(DEFAULT_DOCK_PANEL_SIZES).toEqual({
       transport: 90,
       level: 150,
       loudness: 210,
@@ -36,7 +44,6 @@ describe("normalizeDockLayout", () => {
       spectrum: 260,
       stereoMap: 260,
     });
-    expect(normalizeDockLayout({ modules: ["spectrum", "level"] }).panelSizesById).toEqual({});
   });
 });
 
