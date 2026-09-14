@@ -262,6 +262,19 @@ describe("panel instances", () => {
     expect(findLeafWithTab(next.tree, "levelMeter-2")).not.toBeNull();
   });
 
+  it("gives a duplicate levelMeter instance plain defaults, unlike the first-run panel", () => {
+    const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
+      type: "ADD_PANEL",
+      payload: { moduleId: "levelMeter" },
+    });
+
+    expect(next.panelControlsById["levelMeter-2"]).toEqual(
+      normalizePanelControls(DEFAULT_PANEL_CONTROLS)
+    );
+    expect(next.panelControlsById["levelMeter-2"].levelMeterTpMaxMarker).toBe(false);
+    expect(next.panelControlsById.levelMeter.levelMeterTpMaxMarker).toBe(true);
+  });
+
   it("adds a panel as the root when the workspace is empty", () => {
     const s = { ...DEFAULT_WORKSPACE_STATE, tree: null, panelsById: {}, panelOrder: [] };
     const next = workspaceReducer(s, { type: "ADD_PANEL", payload: { moduleId: "spectrum" } });

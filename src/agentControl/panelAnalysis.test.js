@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
+import { createDefaultPanelControls } from "../workspace/panelControlInstances.js";
 import { readPublicPanelAnalysis } from "./panelAnalysis.js";
 
 describe("readPublicPanelAnalysis", () => {
@@ -31,11 +32,6 @@ describe("readPublicPanelAnalysis", () => {
   it("reports when a Stereo Map request is waiting for its selected pair", () => {
     const workspace = {
       ...DEFAULT_WORKSPACE_STATE,
-      panelsById: {
-        ...DEFAULT_WORKSPACE_STATE.panelsById,
-        "stereo-map": { id: "stereo-map", moduleId: "stereo-map" },
-      },
-      panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
       panelControlsById: {
         ...DEFAULT_WORKSPACE_STATE.panelControlsById,
         "stereo-map": {
@@ -67,6 +63,42 @@ describe("readPublicPanelAnalysis", () => {
       })
     ).toEqual({
       spectralWaveform: { requestedByPanel: true, runtime: "active" },
+    });
+  });
+
+  it("reports Dialogue Detection as active but not requested when the Stats panel has plain defaults", () => {
+    const workspace = {
+      ...DEFAULT_WORKSPACE_STATE,
+      panelControlsById: {
+        ...DEFAULT_WORKSPACE_STATE.panelControlsById,
+        stats: createDefaultPanelControls(),
+      },
+    };
+
+    expect(
+      readPublicPanelAnalysis(workspace, "stats", {
+        dialogueDetectionActive: true,
+      })
+    ).toEqual({
+      dialogueDetection: { requestedByPanel: false, runtime: "active" },
+    });
+  });
+
+  it("reports the spectral runtime as active but not requested when the Waveform panel has plain defaults", () => {
+    const workspace = {
+      ...DEFAULT_WORKSPACE_STATE,
+      panelControlsById: {
+        ...DEFAULT_WORKSPACE_STATE.panelControlsById,
+        waveform: createDefaultPanelControls(),
+      },
+    };
+
+    expect(
+      readPublicPanelAnalysis(workspace, "waveform", {
+        spectralWaveformActive: true,
+      })
+    ).toEqual({
+      spectralWaveform: { requestedByPanel: false, runtime: "active" },
     });
   });
 });
