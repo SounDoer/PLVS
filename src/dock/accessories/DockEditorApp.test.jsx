@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { settingsStore } from "../../persistence/index.js";
 import { DockEditorApp, measureDockEditorContent } from "./DockEditorApp.jsx";
 
 const { action, client } = vi.hoisted(() => ({
@@ -218,6 +219,22 @@ describe("DockEditorApp window behavior", () => {
     render(<DockEditorApp />);
 
     expect(screen.getByText("Loudness Range")).toBeTruthy();
+  });
+
+  it("leaves Loudness Profile seeding to the main window on a cold store", async () => {
+    settingsStore.reset();
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "module:loudness",
+      panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
+      panelOrder: ["loudness"],
+      controlsByPanelId: { loudness: { loudnessHistoryVisibleLayerIds: ["short"] } },
+    };
+
+    render(<DockEditorApp />);
+    await act(async () => {});
+
+    expect(settingsStore.read().loudnessProfiles).toBeUndefined();
   });
 
   it("switches Loudness Profiles through the main window without library management", () => {

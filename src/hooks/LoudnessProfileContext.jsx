@@ -58,7 +58,11 @@ function readPresets() {
   };
 }
 
-export function LoudnessProfileProvider({ children }) {
+/// `seedColdStart={false}` is for accessory webviews. Each has its own settings cache and no
+/// cross-window change events, so a missing library there would seed a second starter with a
+/// different UUID and overwrite the main window's. The main window owns that write; an accessory
+/// renders the normalized starter in memory only.
+export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   const [state, setState] = useState(readState);
   const initialStateRef = useRef(state);
   const stateRef = useRef(state);
@@ -74,12 +78,12 @@ export function LoudnessProfileProvider({ children }) {
     if (!raw || typeof raw !== "object" || !Array.isArray(raw.profiles)) {
       stateRef.current = initialStateRef.current;
       setState(initialStateRef.current);
-      writeState(initialStateRef.current);
+      if (seedColdStart) writeState(initialStateRef.current);
     } else {
       syncState();
     }
     return unsubscribe;
-  }, []);
+  }, [seedColdStart]);
 
   /// Layout presets snapshot which profile is active and nothing else, so only a change of
   /// selection diverges from the preset -- editing a profile's rules does not.

@@ -191,7 +191,8 @@ export function DockEditorApp() {
         // useLoudnessProfile(), which throws outside a provider. This accessory boots its own React
         // root (see main.jsx), so it never inherits App's provider and needs its own instance --
         // backed by the same persisted settingsStore, so it stays in sync with the main window.
-        <LoudnessProfileProvider>
+        // It never seeds a cold library: that write belongs to the main window.
+        <LoudnessProfileProvider seedColdStart={false}>
           <DockModuleSettings
             moduleId={panel.moduleId}
             title={resolvePanelDisplayName(

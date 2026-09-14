@@ -38,6 +38,20 @@ describe("cold initialization", () => {
     );
   });
 
+  it("does not write a cold starter when seeding is left to another surface", async () => {
+    const settingsPatch = vi.spyOn(settingsStore, "patch");
+    const hook = renderHook(() => useLoudnessProfile(), {
+      wrapper: ({ children }) => (
+        <LoudnessProfileProvider seedColdStart={false}>{children}</LoudnessProfileProvider>
+      ),
+    });
+    await act(async () => {});
+
+    expect(hook.result.current.profiles).toHaveLength(1);
+    expect(settingsPatch).not.toHaveBeenCalled();
+    expect(settingsStore.read().loudnessProfiles).toBeUndefined();
+  });
+
   it("keeps a stored Off selection alongside a non-empty library", async () => {
     seed([profile("kept", "Kept", -18)]);
     const hook = renderHook(() => useLoudnessProfile(), { wrapper });
