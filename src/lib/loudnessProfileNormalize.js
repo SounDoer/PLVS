@@ -2,7 +2,9 @@
 ///
 /// Everything here guards data that has been on disk across releases, so every field degrades to
 /// a default rather than throwing: a corrupt profile must cost the user that profile, not the
-/// ability to start the app. Cold default is Off (see the design doc, §Active selection).
+/// ability to start the app. A cold (missing or malformed) library is seeded with the starter
+/// profile and selects it; a stored selection, including Off, is kept (see the design doc, §Loudness
+/// Profile).
 
 import {
   LOUDNESS_PROFILE_OFF,
