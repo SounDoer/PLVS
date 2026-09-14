@@ -164,8 +164,12 @@ pub fn clamp_to_visible(
   }
 }
 
-/// Placement inputs for a default-sized window on the primary monitor (the first monitor when none
-/// is reported as primary), including this window's current chrome.
+/// Placement inputs for a default-sized window on the primary monitor (the first monitor's full
+/// rect when no primary is reported), including this window's current chrome.
+///
+/// The chrome is measured on whichever monitor the window currently sits on, which can have a
+/// different DPI than the primary monitor during Dock exit or `apply_window_bounds`; the error is
+/// a few physical pixels of centering/budget precision, not a correctness issue.
 pub fn primary_fit_target<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   monitors: &[MonitorRect],
@@ -177,13 +181,7 @@ pub fn primary_fit_target<R: tauri::Runtime>(
     ),
     _ => (0, 0),
   };
-  let primary = window.primary_monitor().ok().flatten().or_else(|| {
-    window
-      .available_monitors()
-      .ok()
-      .and_then(|all| all.into_iter().next())
-  });
-  match primary {
+  match window.primary_monitor().ok().flatten() {
     Some(monitor) => {
       let work_area = monitor.work_area();
       FitTarget {
@@ -266,12 +264,15 @@ pub fn apply_window_bounds<R: tauri::Runtime>(
       .map_err(|e| format!("window unmaximize: {e}"))?;
   }
 
-  window
-    .set_size(tauri::PhysicalSize::new(clamped.width, clamped.height))
-    .map_err(|e| format!("window size: {e}"))?;
+  // Move before resize: a move across monitors with different DPI triggers a DPI-change
+  // rescale of whatever size is set at that point, so setting size first would get rescaled
+  // by the DPI ratio after the move. Position first lets that rescale act on the old size.
   window
     .set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y))
     .map_err(|e| format!("window position: {e}"))?;
+  window
+    .set_size(tauri::PhysicalSize::new(clamped.width, clamped.height))
+    .map_err(|e| format!("window size: {e}"))?;
 
   if bounds.is_maximized {
     window
@@ -529,6 +530,81 @@ mod tests {
     };
     let b = default_window_bounds(t);
     assert_eq!((b.width, b.height), (1280, 800));
+  }
+
+  #[test]
+  fn default_window_falls_back_to_the_minimum_size_on_a_zero_size_work_area() {
+    let t = FitTarget {
+      work_area: MonitorRect {
+        x: 100,
+        y: 50,
+        width: 0,
+        height: 0,
+      },
+      scale: 1.0,
+      frame_width: 0,
+      frame_height: 0,
+    };
+    assert_eq!(
+      default_window_bounds(t),
+      WindowBounds {
+        x: 100,
+        y: 50,
+        width: 320,
+        height: 240,
+        is_maximized: false,
+      }
+    );
+  }
+
+  #[test]
+  fn default_window_falls_back_to_the_minimum_size_when_chrome_exceeds_the_budget() {
+    let t = FitTarget {
+      work_area: MonitorRect {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+      },
+      scale: 1.0,
+      frame_width: 2000,
+      frame_height: 1200,
+    };
+    assert_eq!(
+      default_window_bounds(t),
+      WindowBounds {
+        x: 0,
+        y: 0,
+        width: 320,
+        height: 240,
+        is_maximized: false,
+      }
+    );
+  }
+
+  #[test]
+  fn default_window_falls_back_to_the_minimum_size_on_a_work_area_smaller_than_the_minimum() {
+    let t = FitTarget {
+      work_area: MonitorRect {
+        x: 10,
+        y: 20,
+        width: 300,
+        height: 200,
+      },
+      scale: 1.0,
+      frame_width: 0,
+      frame_height: 0,
+    };
+    assert_eq!(
+      default_window_bounds(t),
+      WindowBounds {
+        x: 10,
+        y: 20,
+        width: 320,
+        height: 240,
+        is_maximized: false,
+      }
+    );
   }
 
   #[test]

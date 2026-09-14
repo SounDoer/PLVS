@@ -494,10 +494,13 @@ pub fn exit_dock<R: tauri::Runtime>(
     })
     .collect();
   let fit = primary_fit_target(&window, &monitors);
+  // Move before resize: moving across monitors with different DPI triggers a DPI-change rescale
+  // of whatever size is set at that point, so position first lets that rescale act on the old
+  // size, then set_size applies the intended physical size.
   if let Some(b) = saved {
     let clamped = clamp_to_visible(b, &monitors, fit);
-    let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
     let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
+    let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
     if b.is_maximized {
       let _ = window.maximize();
     }
@@ -505,8 +508,8 @@ pub fn exit_dock<R: tauri::Runtime>(
     // No saved normal bounds (e.g. first run docked): don't leave the window strip-sized; place the
     // default window by the first-run rule.
     let fallback = default_window_bounds(fit);
-    let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
     let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
+    let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
   }
   let prev = read_dock_state(app);
   write_dock_state(
