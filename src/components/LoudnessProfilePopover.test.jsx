@@ -71,6 +71,22 @@ describe("LoudnessProfilePopoverContent listing", () => {
     expect(screen.queryByLabelText(/Duplicate/)).toBeNull();
   });
 
+  it("offers only switching and reordering when library management is off", () => {
+    // Dock uses this: Add and Edit open the blocking editor, which only the normal window renders.
+    const profile = makeController();
+    render(<LoudnessProfilePopoverContent profile={profile} manageable={false} />);
+
+    expect(screen.getByRole("button", { name: "Use no Loudness Profile" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: `Use ${STARTER.name}` })).toBeTruthy();
+    expect(screen.getByRole("button", { name: `Reorder ${STARTER.name}` })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add Loudness Profile" })).toBeNull();
+    expect(screen.queryByRole("button", { name: `Edit ${STARTER.name} rules` })).toBeNull();
+    expect(screen.queryByRole("button", { name: `Delete ${STARTER.name}` })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: `Use ${SAVED.name}` }));
+    expect(profile.select).toHaveBeenCalledWith(profileSelectionId(SAVED.id));
+  });
+
   it("optionally hides the title", () => {
     renderPopover({ showTitle: false });
     expect(screen.queryByText("Loudness Profile")).toBeNull();

@@ -23,6 +23,7 @@ import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
+import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
 import {
   SCENE_OPERATIONS,
@@ -1900,10 +1901,13 @@ function AppContent() {
       // "active" once applied and untouched since, matching the Loudness/Views semantic rather
       // than the editor's own open/closed pressed state below.
       activeCleanPreset: presets.activeId != null && !presets.dirty,
+      // Same highlight as the normal-mode toolbar's Loudness Profile entry.
+      loudnessProfileActive: loudnessProfile.active !== LOUDNESS_PROFILE_OFF,
     }),
     [
       dockAccessoryVisibility.editorView,
       dockEdge,
+      loudnessProfile.active,
       notice,
       presets.activeId,
       presets.dirty,
@@ -1930,6 +1934,12 @@ function AppContent() {
         dirty: presets.dirty,
         blocked: presets.blocked,
       },
+      // Names only: Dock lists and switches profiles, the rules stay with the main window.
+      loudnessProfile: {
+        active: loudnessProfile.active,
+        profiles: loudnessProfile.profiles.map(({ id, name }) => ({ id, name })),
+        draftBlocksLibraryActions: loudnessProfile.draftBlocksLibraryActions,
+      },
     }),
     [
       dockAccessoryVisibility.editorView,
@@ -1938,6 +1948,9 @@ function AppContent() {
       dockLayout.panels,
       dockLayout.panelsById,
       channelCount,
+      loudnessProfile.active,
+      loudnessProfile.draftBlocksLibraryActions,
+      loudnessProfile.profiles,
       presets.activeId,
       presets.blocked,
       presets.dirty,
@@ -2008,7 +2021,13 @@ function AppContent() {
           .update(payload.presetId)
           .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
       } else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
-      else if (type === "delete-preset") presets.remove(payload.presetId);
+      // Dock's Loudness Profile list is a separate webview with its own settings cache, so it never
+      // writes the store itself: the choice lands here, in the provider that owns the state.
+      else if (type === "select-loudness-profile") {
+        if (typeof payload.selection === "string") loudnessProfile.select(payload.selection);
+      } else if (type === "reorder-loudness-profiles") {
+        if (Array.isArray(payload.profileIds)) loudnessProfile.reorderProfiles(payload.profileIds);
+      } else if (type === "delete-preset") presets.remove(payload.presetId);
       else if (type === "reorder-preset") presets.reorder(payload.presetIds);
     },
     [
@@ -2017,6 +2036,7 @@ function AppContent() {
       dockAccessoryVisibility,
       dockLayout,
       exitDockRestoringAttributes,
+      loudnessProfile,
       onDockChange,
       onSourceTransportAction,
       presets,

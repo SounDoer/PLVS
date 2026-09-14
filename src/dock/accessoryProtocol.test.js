@@ -50,6 +50,20 @@ describe("Dock accessory protocol", () => {
         payload: { presetIds: ["b", "a"] },
       })
     ).toMatchObject({ type: "reorder-preset", payload: { presetIds: ["b", "a"] } });
+    expect(
+      normalizeAccessoryAction({
+        surface: "dock-editor",
+        type: "select-loudness-profile",
+        payload: { selection: "profile:a" },
+      })
+    ).toMatchObject({ type: "select-loudness-profile", payload: { selection: "profile:a" } });
+    expect(
+      normalizeAccessoryAction({
+        surface: "dock-editor",
+        type: "reorder-loudness-profiles",
+        payload: { profileIds: ["b", "a"] },
+      })
+    ).toMatchObject({ type: "reorder-loudness-profiles", payload: { profileIds: ["b", "a"] } });
     expect(normalizeAccessoryAction({ surface: "dock-header", type: "unknown" })).toBeNull();
     expect(normalizeAccessoryPointer({ surface: "dock-editor", inside: true })).toEqual({
       surface: "dock-editor",

@@ -32,6 +32,8 @@ const ACTION_TYPES = new Set([
   "rename-preset",
   "delete-preset",
   "reorder-preset",
+  "select-loudness-profile",
+  "reorder-loudness-profiles",
 ]);
 
 export function isDockAccessorySurface(value) {

@@ -220,6 +220,33 @@ describe("DockEditorApp window behavior", () => {
     expect(screen.getByText("Loudness Range")).toBeTruthy();
   });
 
+  it("switches Loudness Profiles through the main window without library management", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "loudness-profile",
+      loudnessProfile: {
+        active: "off",
+        profiles: [
+          { id: "a", name: "Broadcast" },
+          { id: "b", name: "Streaming" },
+        ],
+        draftBlocksLibraryActions: false,
+      },
+    };
+
+    render(<DockEditorApp />);
+
+    expect(screen.getByText("Loudness Profile")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add Loudness Profile" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit Broadcast rules" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Use Streaming" }));
+    expect(action).toHaveBeenCalledWith("select-loudness-profile", { selection: "profile:b" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Use no Loudness Profile" }));
+    expect(action).toHaveBeenCalledWith("select-loudness-profile", { selection: "off" });
+  });
+
   it("forwards module row hover to the main dock window", () => {
     client.payload = {
       ...PRESETS_PAYLOAD,

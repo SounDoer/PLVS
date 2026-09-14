@@ -591,6 +591,39 @@ describe("App smoke", () => {
     );
   });
 
+  it("selects and reorders Loudness Profiles from the Dock editor through the main window", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    const second = { ...TEST_PROFILE, id: "second-profile", name: "Second profile" };
+    settingsStore.patch({
+      loudnessProfiles: { active: "off", profiles: [TEST_PROFILE, second] },
+    });
+    render(<App />);
+    await waitFor(() => expect(tauriEventHandlers.has("dock-accessory://action")).toBe(true));
+    const dispatch = (type, payload, revision) =>
+      tauriEventHandlers.get("dock-accessory://action")({
+        payload: { surface: "dock-editor", type, revision, payload },
+      });
+
+    await act(async () => {
+      dispatch("select-loudness-profile", { selection: "profile:test-profile" }, 1);
+    });
+    await waitFor(() =>
+      expect(settingsStore.read().loudnessProfiles.active).toBe("profile:test-profile")
+    );
+
+    await act(async () => {
+      dispatch("reorder-loudness-profiles", { profileIds: ["second-profile", "test-profile"] }, 2);
+    });
+    await waitFor(() =>
+      expect(settingsStore.read().loudnessProfiles.profiles.map((profile) => profile.id)).toEqual([
+        "second-profile",
+        "test-profile",
+      ])
+    );
+    expect(settingsStore.read().loudnessProfiles.active).toBe("profile:test-profile");
+  });
+
   it("restores a normal preset's bounds and window attributes in one Dock exit", async () => {
     isTauri.mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {

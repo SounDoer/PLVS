@@ -26,6 +26,7 @@ describe("DockHeader", () => {
     expect(names).toEqual([
       null,
       "Clear",
+      "Loudness Profile",
       "Edit modules",
       "Stop reserving screen space",
       "Dock to top",
@@ -117,6 +118,27 @@ describe("DockHeader", () => {
     expect(
       screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
     ).toBe(false);
+  });
+
+  it("opens the Loudness Profile editor and highlights it while a profile is active", () => {
+    const onAction = vi.fn();
+    const { rerender } = render(
+      <DockHeader state={{ ...STATE, loudnessProfileActive: false }} onAction={onAction} />
+    );
+    const button = screen.getByRole("button", { name: "Loudness Profile" });
+    expect(button.classList.contains("text-foreground")).toBe(false);
+
+    vi.spyOn(button, "getBoundingClientRect").mockReturnValue({ left: 100, width: 20 });
+    fireEvent.click(button);
+    expect(onAction).toHaveBeenCalledWith("open-editor", {
+      view: "loudness-profile",
+      anchorX: 110,
+    });
+
+    rerender(<DockHeader state={{ ...STATE, loudnessProfileActive: true }} onAction={onAction} />);
+    expect(
+      screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
+    ).toBe(true);
   });
 
   it("emits a reserve toggle instead of a stale target value", () => {

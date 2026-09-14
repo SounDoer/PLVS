@@ -2,6 +2,7 @@ import {
   ArrowDownToLine,
   ArrowUpToLine,
   Bookmark,
+  Gauge,
   LayoutGrid,
   PanelTop,
   PictureInPicture2,
@@ -62,6 +63,18 @@ export function DockHeader({ state, onAction, onPointer }) {
           {...toolTipProps}
           disabled={state.clearDisabled}
           onClick={() => onAction("clear")}
+        />
+        <IconButton
+          icon={<Gauge className="size-3.5" />}
+          tip="Loudness Profile"
+          {...toolTipProps}
+          aria-pressed={state.editorView === "loudness-profile"}
+          className={cn(
+            state.editorView === "loudness-profile"
+              ? "bg-accent text-accent-foreground"
+              : state.loudnessProfileActive && "text-foreground"
+          )}
+          onClick={(event) => toggleEditor("loudness-profile", event)}
         />
         <IconButton
           icon={<LayoutGrid className="size-3.5" />}

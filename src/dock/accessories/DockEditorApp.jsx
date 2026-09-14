@@ -8,6 +8,8 @@ import { useAccessoryClient } from "./useAccessoryClient.js";
 import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
 import { DockModuleSettings } from "../editors/DockModuleSettings.jsx";
 import { DockPresetsRow } from "../editors/DockPresetsRow.jsx";
+import { DockLoudnessProfileRow } from "../editors/DockLoudnessProfileRow.jsx";
+import { LOUDNESS_PROFILE_OFF } from "../../lib/loudnessProfileCatalog.js";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
 import { panelModuleIdForDockModuleId } from "../dockLayout.js";
 import { useSuppressNativeContextMenu } from "../../hooks/useSuppressNativeContextMenu.js";
@@ -130,6 +132,15 @@ export function DockEditorApp() {
     remove: (presetId) => action("delete-preset", { presetId }),
     reorder: (presetIds) => action("reorder-preset", { presetIds }),
   };
+  const loudnessProfileController = {
+    active: payload.loudnessProfile?.active ?? LOUDNESS_PROFILE_OFF,
+    document: null,
+    profiles: payload.loudnessProfile?.profiles ?? [],
+    draftBlocksLibraryActions: payload.loudnessProfile?.draftBlocksLibraryActions === true,
+    select: (selection) => action("select-loudness-profile", { selection }),
+    selectOff: () => action("select-loudness-profile", { selection: LOUDNESS_PROFILE_OFF }),
+    reorderProfiles: (profileIds) => action("reorder-loudness-profiles", { profileIds }),
+  };
   const panelId = payload.view?.startsWith("module:") ? payload.view.slice(7) : null;
   const panel = panelId
     ? (payload.panelsById?.[panelId] ?? {
@@ -149,10 +160,12 @@ export function DockEditorApp() {
         "inline-block max-h-screen overflow-hidden",
         POPOVER_SURFACE_CLASS,
         payload.view?.startsWith("module:") && cn("p-1", PANEL_SETTINGS_SURFACE_CLASS),
-        // Presets and Modules share the normal-mode toolbar popover's adaptive range (grow to fit,
-        // capped at 18rem) so the dock menus match the header ones -- and so a long name can no
-        // longer grow the uncapped `w-max` panel without bound.
-        payload.view === "presets" || payload.view === "modules"
+        // Presets, Loudness Profile and Modules share the normal-mode toolbar popover's adaptive
+        // range (grow to fit, capped at 18rem) so the dock menus match the header ones -- and so a
+        // long name can no longer grow the uncapped `w-max` panel without bound.
+        payload.view === "presets" ||
+          payload.view === "loudness-profile" ||
+          payload.view === "modules"
           ? "w-max min-w-40 max-w-[18rem]"
           : "w-max min-w-48 max-w-[400px]"
       )}
@@ -171,6 +184,8 @@ export function DockEditorApp() {
         />
       ) : payload.view === "presets" ? (
         <DockPresetsRow presets={presetController} />
+      ) : payload.view === "loudness-profile" ? (
+        <DockLoudnessProfileRow profile={loudnessProfileController} />
       ) : panel ? (
         // LoudnessSettingsRows (inside DockModuleSettings for the loudness module) calls
         // useLoudnessProfile(), which throws outside a provider. This accessory boots its own React

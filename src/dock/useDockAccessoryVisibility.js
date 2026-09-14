@@ -9,6 +9,7 @@ const CURSOR_RECONCILE_MS = 33;
 
 function initialEditorSize(view) {
   if (view === "presets") return { width: 240, height: 560 };
+  if (view === "loudness-profile") return { width: 240, height: 320 };
   if (view === "modules") return { width: 320, height: 480 };
   return { width: 400, height: 480 };
 }

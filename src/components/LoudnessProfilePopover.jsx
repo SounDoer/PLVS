@@ -45,8 +45,16 @@ function ActiveDot({ active }) {
  * `profile` is the useLoudnessProfile() controller. `stats` is optional and carries the union of
  * ids currently visible across Stats panels plus a way to add to them; without it the missing
  * affordance simply does not appear, which is the correct behaviour when no Stats panel exists.
+ *
+ * `manageable` false leaves only switching and reordering. Dock uses it: Add and Edit open the
+ * blocking editor, which only the normal window renders, and Delete is library management too.
  */
-export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle = true }) {
+export function LoudnessProfilePopoverContent({
+  profile,
+  stats = null,
+  showTitle = true,
+  manageable = true,
+}) {
   const { active, document, profiles, draftBlocksLibraryActions, reorderProfiles } = profile;
 
   // The editor panel is non-modal, so this list stays reachable while a draft is open. Everything
@@ -120,51 +128,57 @@ export function LoudnessProfilePopoverContent({ profile, stats = null, showTitle
                 <ActiveDot active={active === selection} />
                 <TruncatingLabel text={entry.name} className="min-w-0 flex-1" />
               </button>
-              <button
-                type="button"
-                // "Edit" and "Rename" sit next to each other and read as synonyms in sequence; the
-                // title that tells them apart is not reliably announced.
-                aria-label={`Edit ${entry.name} rules`}
-                title="Edit rules"
-                onClick={() => profile.beginEdit(entry.id)}
-                disabled={blocked}
-                className={cn(ICON_BUTTON_CLASS, blockedClass)}
-              >
-                <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
-              <InlineConfirm
-                onConfirm={() => profile.removeProfile(entry.id)}
-                confirmLabel={`Confirm delete ${entry.name}`}
-                cancelLabel={`Cancel delete ${entry.name}`}
-                className="mr-1.5"
-                trigger={(arm) => (
+              {manageable ? (
+                <>
                   <button
                     type="button"
-                    aria-label={`Delete ${entry.name}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      arm();
-                    }}
+                    // "Edit" and "Rename" sit next to each other and read as synonyms in sequence;
+                    // the title that tells them apart is not reliably announced.
+                    aria-label={`Edit ${entry.name} rules`}
+                    title="Edit rules"
+                    onClick={() => profile.beginEdit(entry.id)}
                     disabled={blocked}
-                    className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
+                    className={cn(ICON_BUTTON_CLASS, blockedClass)}
                   >
-                    <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
+                    <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
                   </button>
-                )}
-              />
+                  <InlineConfirm
+                    onConfirm={() => profile.removeProfile(entry.id)}
+                    confirmLabel={`Confirm delete ${entry.name}`}
+                    cancelLabel={`Cancel delete ${entry.name}`}
+                    className="mr-1.5"
+                    trigger={(arm) => (
+                      <button
+                        type="button"
+                        aria-label={`Delete ${entry.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          arm();
+                        }}
+                        disabled={blocked}
+                        className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
+                      >
+                        <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
+                      </button>
+                    )}
+                  />
+                </>
+              ) : null}
             </div>
           );
         })}
       </div>
 
-      <div className="px-1.5 py-1">
-        <AddButton
-          label="Add Profile"
-          aria-label="Add Loudness Profile"
-          onClick={profile.beginCreate}
-          disabled={blocked}
-        />
-      </div>
+      {manageable ? (
+        <div className="px-1.5 py-1">
+          <AddButton
+            label="Add Profile"
+            aria-label="Add Loudness Profile"
+            onClick={profile.beginCreate}
+            disabled={blocked}
+          />
+        </div>
+      ) : null}
 
       {blocked ? (
         <p className="px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
