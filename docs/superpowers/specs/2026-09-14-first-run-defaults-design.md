@@ -192,8 +192,11 @@ to 2300 and were silently shrunk by flex, so storing them would not match what w
 | 6 | `waveform` | Waveform | 260 | 160 / 960 | flexible |
 | 7 | `spectrogram` | Spectrogram | 260 | 180 / 960 | flexible |
 | 8 | `spectrum` | Spectrum | 260 | 180 / 960 | flexible |
-| 9 | `stereo-map` | Stereo Map | 260 | 180 / 960 | flexible |
+| 9 | `stereoMap` | Stereo Map | 260 | 180 / 960 | flexible |
 | | | | **2050** | mins sum to 1404 | |
+
+First-run panel ids come from the legacy Dock module ids (`level`, `correlation`, `stereoMap`); the
+tuned strip's `stereo-map` id was only the id the Add Module flow generated.
 
 Against today's first-run Dock: Stereo Map is added, Waveform moves ahead of Spectrogram and
 Spectrum, and every width is pinned instead of left to responsive sizing.

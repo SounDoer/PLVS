@@ -23,6 +23,21 @@ describe("normalizeDockLayout", () => {
   it("keeps an intentionally empty list empty", () => {
     expect(normalizeDockLayout({ modules: [] }).modules).toEqual([]);
   });
+
+  it("pins the tuned first-run widths only when no module list is stored", () => {
+    expect(normalizeDockLayout(undefined).panelSizesById).toEqual({
+      transport: 90,
+      level: 150,
+      loudness: 210,
+      stats: 370,
+      correlation: 190,
+      waveform: 260,
+      spectrogram: 260,
+      spectrum: 260,
+      stereoMap: 260,
+    });
+    expect(normalizeDockLayout({ modules: ["spectrum", "level"] }).panelSizesById).toEqual({});
+  });
 });
 
 describe("toggleDockModule", () => {
@@ -85,16 +100,17 @@ describe("dock module catalog v1.5/v2", () => {
     ]);
   });
 
-  it("enables all panels in the first-run product order", () => {
+  it("enables the tuned first-run panels in order", () => {
     expect(DEFAULT_DOCK_MODULES).toEqual([
       "transport",
       "level",
       "loudness",
       "stats",
       "correlation",
-      "spectrum",
-      "spectrogram",
       "waveform",
+      "spectrogram",
+      "spectrum",
+      "stereoMap",
     ]);
   });
 });

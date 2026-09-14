@@ -2,7 +2,32 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { presetsStore, workspaceStore } from "../persistence/index.js";
+import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { useDockLayout } from "./useDockLayout.js";
+
+const FIRST_RUN_MODULES = [
+  "transport",
+  "level",
+  "loudness",
+  "stats",
+  "correlation",
+  "waveform",
+  "spectrogram",
+  "spectrum",
+  "stereoMap",
+];
+
+const FIRST_RUN_SIZES = {
+  transport: 90,
+  level: 150,
+  loudness: 210,
+  stats: 370,
+  correlation: 190,
+  waveform: 260,
+  spectrogram: 260,
+  spectrum: 260,
+  stereoMap: 260,
+};
 
 describe("useDockLayout", () => {
   beforeEach(() => {
@@ -10,91 +35,51 @@ describe("useDockLayout", () => {
     presetsStore.reset();
   });
 
-  it("starts from defaults and persists toggles to workspaceStore", () => {
+  it("starts from the tuned first-run strip and persists toggles to workspaceStore", () => {
     const { result } = renderHook(() => useDockLayout());
-    expect(result.current.modules).toEqual([
-      "transport",
-      "level",
-      "loudness",
-      "stats",
-      "correlation",
-      "spectrum",
-      "spectrogram",
-      "waveform",
-    ]);
-    expect(Object.keys(result.current.controlsByPanelId)).toEqual([
-      "level",
-      "loudness",
-      "stats",
-      "correlation",
-      "spectrum",
-      "spectrogram",
-      "waveform",
-    ]);
+    expect(result.current.modules).toEqual(FIRST_RUN_MODULES);
+    expect(result.current.panelSizesById).toEqual(FIRST_RUN_SIZES);
+    expect(Object.keys(result.current.controlsByPanelId)).toEqual(FIRST_RUN_MODULES.slice(1));
     expect(result.current.controlsByPanelId).toMatchObject({
       level: { levelMeterMode: "peak", readout: "live", showLabels: true },
       loudness: {
-        showReadouts: true,
+        showReadouts: false,
         loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
         loudnessYMinDb: -64,
         loudnessYMaxDb: 0,
       },
-      stats: {
-        statsVisibleIds: [
-          "momentary",
-          "shortTerm",
-          "integrated",
-          "momentaryMax",
-          "shortTermMax",
-          "lra",
-          "psr",
-          "plr",
-        ],
-      },
+      stats: { statsVisibleIds: STATS_CANONICAL_ORDER },
       correlation: { vectorscopePair: { x: 0, y: 1 } },
-      spectrum: {
-        spectrumChannel: { type: "pair", x: 0, y: 1 },
-        spectrumView: "combined",
-        spectrumSpeedPercent: 25,
-        spectrumOctaveSmoothing: "off",
-        spectrumTiltDbPerOctave: 3,
-        spectrumMaxMode: "off",
-        spectrumXMinFreq: 20,
-        spectrumXMaxFreq: 20000,
-        spectrumYMinDb: -96,
-        spectrumYMaxDb: -12,
+      waveform: {
+        waveformFrequencyColor: true,
+        waveformLowMidSplitHz: 200,
+        waveformMidHighSplitHz: 2000,
+        waveformCentroid: false,
       },
       spectrogram: {
         spectrumChannel: { type: "pair", x: 0, y: 1 },
         spectrogramYMinFreq: 20,
         spectrogramYMaxFreq: 20000,
       },
-      waveform: {
-        waveformFrequencyColor: false,
-        waveformLowMidSplitHz: 200,
-        waveformMidHighSplitHz: 2000,
-        waveformCentroid: false,
+      spectrum: {
+        spectrumChannel: { type: "pair", x: 0, y: 1 },
+        spectrumView: "combined",
+        spectrumSpeedPercent: 25,
+        spectrumOctaveSmoothing: "off",
+        spectrumTiltDbPerOctave: 3,
+        spectrumMaxMode: "decay",
+        spectrumXMinFreq: 20,
+        spectrumXMaxFreq: 20000,
+        spectrumYMinDb: -96,
+        spectrumYMaxDb: -12,
       },
+      stereoMap: { stereoMapMode: "position", stereoMapPair: { x: 0, y: 1 } },
     });
     act(() => result.current.toggle("spectrum"));
-    expect(result.current.modules).toEqual([
-      "transport",
-      "level",
-      "loudness",
-      "stats",
-      "correlation",
-      "spectrogram",
-      "waveform",
-    ]);
-    expect(workspaceStore.read().dock.panelOrder).toEqual([
-      "transport",
-      "level",
-      "loudness",
-      "stats",
-      "correlation",
-      "spectrogram",
-      "waveform",
-    ]);
+    const withoutSpectrum = FIRST_RUN_MODULES.filter((id) => id !== "spectrum");
+    expect(result.current.modules).toEqual(withoutSpectrum);
+    expect(workspaceStore.read().dock.panelOrder).toEqual(withoutSpectrum);
+    expect(workspaceStore.read().dock.controlsByPanelId.loudness.showReadouts).toBe(false);
     expect(workspaceStore.read().dock.modules).toBeUndefined();
   });
 
@@ -126,21 +111,15 @@ describe("useDockLayout", () => {
 
     act(() => result.current.resetLayout());
 
-    expect(result.current.modules).toEqual([
-      "transport",
-      "level",
-      "loudness",
-      "stats",
-      "correlation",
-      "spectrum",
-      "spectrogram",
-      "waveform",
-    ]);
-    expect(result.current.controlsByModuleId.loudness.loudnessHistoryVisibleLayerIds).toEqual([
-      "momentary",
-      "shortTerm",
-      "ref",
-    ]);
+    expect(result.current.modules).toEqual(FIRST_RUN_MODULES);
+    expect(result.current.panelSizesById).toEqual(FIRST_RUN_SIZES);
+    expect(result.current.controlsByModuleId.loudness).toMatchObject({
+      showReadouts: false,
+      loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+    });
+    expect(workspaceStore.read().dock.controlsByPanelId.stats.statsVisibleIds).toEqual(
+      STATS_CANONICAL_ORDER
+    );
   });
 
   it("marks the active preset dirty when the layout changes", () => {

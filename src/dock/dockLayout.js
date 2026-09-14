@@ -26,17 +26,32 @@ export const DOCK_MODULE_IDS = [
   "transport",
 ];
 
-/** Complete first-run Dock layout, ordered from transport/readouts to history views. */
+/** Complete first-run Dock layout, as tuned (see the first-run defaults design doc). */
 export const DEFAULT_DOCK_MODULES = [
   "transport",
   "level",
   "loudness",
   "stats",
   "correlation",
-  "spectrum",
-  "spectrogram",
   "waveform",
+  "spectrogram",
+  "spectrum",
+  "stereoMap",
 ];
+
+/// First-run preferred widths (CSS px) by first-run panel id: what the tuned strip showed on a
+/// 2048 px wide display, rounded to tens with the four history views equal.
+export const DEFAULT_DOCK_PANEL_SIZES = Object.freeze({
+  transport: 90,
+  level: 150,
+  loudness: 210,
+  stats: 370,
+  correlation: 190,
+  waveform: 260,
+  spectrogram: 260,
+  spectrum: 260,
+  stereoMap: 260,
+});
 
 export const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
   levelMeter: "level",
@@ -144,7 +159,8 @@ export function normalizeDockLayout(raw) {
     });
   }
   const list = raw && typeof raw === "object" ? raw.modules : undefined;
-  const source = Array.isArray(list) ? list : DEFAULT_DOCK_MODULES;
+  const firstRun = !Array.isArray(list);
+  const source = firstRun ? DEFAULT_DOCK_MODULES : list;
   const panelsById = {};
   const panelOrder = [];
   for (const id of source) {
@@ -154,7 +170,12 @@ export function normalizeDockLayout(raw) {
     panelsById[panel.id] = panel;
     panelOrder.push(panel.id);
   }
-  return withLegacyModules({ panelsById, panelOrder, panelSizesById: {} });
+  return withLegacyModules({
+    panelsById,
+    panelOrder,
+    // Only the first-run layout pins widths; an explicit module list keeps responsive sizing.
+    panelSizesById: firstRun ? normalizeDockPanelSizes(panelsById, DEFAULT_DOCK_PANEL_SIZES) : {},
+  });
 }
 
 export function toggleDockModule(layout, id) {

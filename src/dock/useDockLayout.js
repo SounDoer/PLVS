@@ -13,6 +13,7 @@ import {
 import {
   controlsByModuleIdFromPanels,
   dockControlModuleIdForPanel,
+  firstRunDockControlsByModuleId,
   normalizeDockControlsByModuleId,
   normalizeDockControlsByPanelId,
   updateDockPanelControls,
@@ -24,7 +25,12 @@ function readDockState() {
   const layout = normalizeDockLayout(raw);
   return {
     layout,
-    controlsByPanelId: normalizeDockControlsByPanelId(layout.panelsById, raw?.controlsByPanelId),
+    // Nothing stored yet is the first run: the first-run panels take the tuned controls.
+    controlsByPanelId: normalizeDockControlsByPanelId(
+      layout.panelsById,
+      raw?.controlsByPanelId,
+      raw ? undefined : firstRunDockControlsByModuleId()
+    ),
   };
 }
 
@@ -137,8 +143,17 @@ export function useDockLayout() {
     [write]
   );
   const resetLayout = useCallback(() => {
-    setPanels({});
-  }, [setPanels]);
+    // Back to the first-run strip: tuned modules, widths and controls.
+    const layout = normalizeDockLayout(undefined);
+    write({
+      layout,
+      controlsByPanelId: normalizeDockControlsByPanelId(
+        layout.panelsById,
+        undefined,
+        firstRunDockControlsByModuleId()
+      ),
+    });
+  }, [write]);
   const setPanelControls = useCallback(
     (panelId, controls) => {
       const current = readDockState();

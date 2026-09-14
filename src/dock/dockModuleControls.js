@@ -3,6 +3,7 @@ import {
   normalizePanelControlValue,
   normalizePanelControls,
 } from "../lib/panelControls.js";
+import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
 /// The Dock's own readout selector: three states where the Workspace panel has two independent
 /// toggles, because the strip has room for one control, not two. No Workspace equivalent, so no
@@ -245,6 +246,26 @@ export function normalizeDockControlsByModuleId(raw) {
       moduleId,
       normalizeDockModuleControls(moduleId, source[moduleId]),
     ])
+  );
+}
+
+/// Controls the first-run Dock panels carry on top of the Dock defaults, by Dock control module id.
+/// Only the first-run strip and Reset Layout use them; a panel added later starts from the defaults.
+const FIRST_RUN_DOCK_CONTROLS = Object.freeze({
+  loudness: { showReadouts: false },
+  stats: { statsVisibleIds: [...STATS_CANONICAL_ORDER] },
+  spectrum: { spectrumMaxMode: "decay" },
+  waveform: { waveformFrequencyColor: true },
+});
+
+export function firstRunDockControlsByModuleId() {
+  return normalizeDockControlsByModuleId(
+    Object.fromEntries(
+      Object.entries(FIRST_RUN_DOCK_CONTROLS).map(([moduleId, overrides]) => [
+        moduleId,
+        { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId], ...overrides },
+      ])
+    )
   );
 }
 

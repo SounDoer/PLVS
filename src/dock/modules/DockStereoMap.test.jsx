@@ -139,11 +139,11 @@ function renderWith({
 }
 
 describe("dock module registration", () => {
-  it("appears after Waveform in the Dock module catalog and is disabled by default", () => {
+  it("appears after Waveform in the Dock module catalog and ends the first-run strip", () => {
     expect(DOCK_PANEL_MODULE_IDS.indexOf("stereo-map")).toBe(
       DOCK_PANEL_MODULE_IDS.indexOf("waveform") + 1
     );
-    expect(DEFAULT_DOCK_MODULES).not.toContain("stereoMap");
+    expect(DEFAULT_DOCK_MODULES.at(-1)).toBe("stereoMap");
   });
 
   it("uses the Spectrum-like flexible size policy", () => {
