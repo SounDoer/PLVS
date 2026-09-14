@@ -3569,8 +3569,8 @@ describe("useAgentControlBridge", () => {
       revision: 0,
       dryRun: true,
       changed: true,
-      state: { workspace: { layout: { type: "panel", panelId: "stereo-map" } } },
-      createdPanels: { map: "stereo-map" },
+      state: { workspace: { layout: { type: "panel", panelId: "stereo-map-2" } } },
+      createdPanels: { map: "stereo-map-2" },
     });
     expect(response.result).not.toHaveProperty("persisted");
     expect(view.store.state).toBe(initialState);
@@ -3798,9 +3798,9 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
     const initialState = view.store.state;
 
-    const noOp = await send(request("panel.reset", { panelId: "spectrum" }, "reset-no-op"));
+    const noOp = await send(request("panel.reset", { panelId: "vectorscope" }, "reset-no-op"));
     const dryRun = await send(
-      request("panel.reset", { panelId: "levelMeter", dryRun: true }, "reset-dry")
+      request("panel.reset", { panelId: "spectrogram", dryRun: true }, "reset-dry")
     );
 
     expect(noOp.result).toMatchObject({ revision: 0, changed: false, dryRun: false });

@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { DEFAULT_PANELS_BY_ID, DEFAULT_WORKSPACE_STATE, ALL_MODULE_IDS } from "./constants.js";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { MODULE_CATALOG } from "./moduleCatalog.js";
+import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
+import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 
 describe("workspace module ids", () => {
   it("covers all default modules", () => {
@@ -74,10 +76,77 @@ describe("stereo map registration", () => {
     expect(MODULE_REGISTRY["stereo-map"].title).toBe("Stereo Map");
   });
 
-  it("does not join the default module set or the default workspace", () => {
+  it("joins the default workspace but not the default module set", () => {
     expect(ALL_MODULE_IDS).not.toContain("stereo-map");
     expect(ALL_MODULE_IDS).toHaveLength(7);
-    expect(DEFAULT_PANELS_BY_ID).not.toHaveProperty("stereo-map");
-    expect(DEFAULT_WORKSPACE_STATE.panelOrder).not.toContain("stereo-map");
+    expect(DEFAULT_PANELS_BY_ID["stereo-map"]).toEqual({
+      id: "stereo-map",
+      moduleId: "stereo-map",
+    });
+    expect(DEFAULT_WORKSPACE_STATE.panelOrder).toEqual([...ALL_MODULE_IDS, "stereo-map"]);
+  });
+});
+
+describe("first-run workspace", () => {
+  it("uses the layout tuned at 1280x800", () => {
+    const leaf = (id) => ({ type: "leaf", tabs: [id], activeTab: id });
+    expect(DEFAULT_WORKSPACE_STATE.tree).toEqual({
+      type: "split",
+      direction: "h",
+      sizes: [0.132, null, 0.18],
+      children: [
+        leaf("levelMeter"),
+        {
+          type: "split",
+          direction: "v",
+          sizes: [null, null, null, null],
+          children: [
+            {
+              type: "split",
+              direction: "h",
+              sizes: [null, null],
+              children: [leaf("loudness"), leaf("waveform")],
+            },
+            leaf("spectrogram"),
+            leaf("spectrum"),
+            leaf("stereo-map"),
+          ],
+        },
+        {
+          type: "split",
+          direction: "v",
+          sizes: [0.623, null],
+          children: [leaf("stats"), leaf("vectorscope")],
+        },
+      ],
+    });
+  });
+
+  it("gives only the first-run panels the tuned controls", () => {
+    const controls = DEFAULT_WORKSPACE_STATE.panelControlsById;
+    expect(controls.levelMeter.levelMeterTpMaxMarker).toBe(true);
+    expect(controls.loudness.loudnessHistoryVisibleLayerIds).toEqual([
+      "momentary",
+      "shortTerm",
+      "ref",
+    ]);
+    expect(controls.stats.statsVisibleIds).toEqual(STATS_CANONICAL_ORDER);
+    expect(controls.spectrum).toMatchObject({ spectrumView: "lr", spectrumMaxMode: "decay" });
+    expect(controls.waveform).toMatchObject({
+      waveformFrequencyColor: true,
+      waveformCentroid: true,
+    });
+    const untouched = normalizePanelControls(DEFAULT_PANEL_CONTROLS);
+    expect(controls.vectorscope).toEqual(untouched);
+    expect(controls.spectrogram).toEqual(untouched);
+    expect(controls["stereo-map"]).toEqual(untouched);
+    // A panel added later starts from these, not from the first-run values.
+    expect(DEFAULT_PANEL_CONTROLS).toMatchObject({
+      levelMeterTpMaxMarker: false,
+      spectrumView: "combined",
+      spectrumMaxMode: "off",
+      waveformFrequencyColor: false,
+      waveformCentroid: false,
+    });
   });
 });

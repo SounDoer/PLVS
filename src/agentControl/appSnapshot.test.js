@@ -190,7 +190,7 @@ describe("agent-control app snapshots", () => {
         mode: "peak",
         playbackMax: false,
         floatingValue: false,
-        tpMaxMarker: false,
+        tpMaxMarker: true,
         levelRangeDbfs: { min: -60, max: 3 },
         loudnessRangeLufs: { min: -64, max: 0 },
       },

@@ -35,7 +35,7 @@ describe("readPublicPanelAnalysis", () => {
         ...DEFAULT_WORKSPACE_STATE.panelsById,
         "stereo-map": { id: "stereo-map", moduleId: "stereo-map" },
       },
-      panelOrder: [...DEFAULT_WORKSPACE_STATE.panelOrder, "stereo-map"],
+      panelOrder: DEFAULT_WORKSPACE_STATE.panelOrder,
       panelControlsById: {
         ...DEFAULT_WORKSPACE_STATE.panelControlsById,
         "stereo-map": {
@@ -56,7 +56,7 @@ describe("readPublicPanelAnalysis", () => {
         dialogueDetectionActive: true,
       })
     ).toEqual({
-      dialogueDetection: { requestedByPanel: false, runtime: "active" },
+      dialogueDetection: { requestedByPanel: true, runtime: "active" },
     });
   });
 
@@ -66,7 +66,7 @@ describe("readPublicPanelAnalysis", () => {
         spectralWaveformActive: true,
       })
     ).toEqual({
-      spectralWaveform: { requestedByPanel: false, runtime: "active" },
+      spectralWaveform: { requestedByPanel: true, runtime: "active" },
     });
   });
 });

@@ -457,11 +457,19 @@ describe("SET_FULLSCREEN", () => {
 // ---------------------------------------------------------------------------
 
 describe("ADD_PANEL_AT", () => {
-  // "stereo-map" (unlike levelMeter/loudness/spectrum/waveform/...) isn't part of
-  // DEFAULT_WORKSPACE_STATE's default panel set, so createPanel won't need to dedupe its id.
+  // "stereo-map" is part of DEFAULT_WORKSPACE_STATE's default panel set now, so these tests strip
+  // it from the base state's panelsById/panelOrder to keep exercising a fresh add without
+  // createPanel's id-dedupe kicking in.
+  function stateWithoutStereoMap(tree, extra = {}) {
+    const panelsById = { ...DEFAULT_WORKSPACE_STATE.panelsById };
+    delete panelsById["stereo-map"];
+    const panelOrder = DEFAULT_WORKSPACE_STATE.panelOrder.filter((id) => id !== "stereo-map");
+    return { ...DEFAULT_WORKSPACE_STATE, panelsById, panelOrder, tree, ...extra };
+  }
+
   it("creates the panel and inserts it as a new tab in the target leaf", () => {
     const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
-    const s = state(root);
+    const s = stateWithoutStereoMap(root);
     const next = workspaceReducer(s, {
       type: "ADD_PANEL_AT",
       payload: { moduleId: "stereo-map", drop: { targetPath: [0], zone: "tabs", tabIndex: 1 } },
@@ -476,7 +484,7 @@ describe("ADD_PANEL_AT", () => {
 
   it("splits the target leaf evenly, unlike root-level ADD_PANEL's smaller default slice", () => {
     const root = leaf(["levelMeter"]);
-    const s = state(root);
+    const s = stateWithoutStereoMap(root);
     const next = workspaceReducer(s, {
       type: "ADD_PANEL_AT",
       payload: { moduleId: "stereo-map", drop: { targetPath: [], zone: "right" } },
@@ -491,7 +499,7 @@ describe("ADD_PANEL_AT", () => {
 
   it("places the new panel above a nested target leaf without disturbing its siblings", () => {
     const root = split("h", [leaf(["levelMeter"]), leaf(["loudness"])]);
-    const s = state(root);
+    const s = stateWithoutStereoMap(root);
     const next = workspaceReducer(s, {
       type: "ADD_PANEL_AT",
       payload: { moduleId: "stereo-map", drop: { targetPath: [1], zone: "above" } },
@@ -831,8 +839,10 @@ describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
       payload: { id: "levelMeter" },
     });
 
+    // RESET_PANEL_CONTROLS_FOR_PANEL resets to the row defaults (DEFAULT_PANEL_CONTROLS), not the
+    // first-run tuned values levelMeter starts with in DEFAULT_WORKSPACE_STATE.
     expect(next.panelControlsById.levelMeter).toEqual(
-      DEFAULT_WORKSPACE_STATE.panelControlsById.levelMeter
+      normalizePanelControls(DEFAULT_PANEL_CONTROLS)
     );
     expect(next.panelControlsById.loudness.loudnessReferenceLufs).toBe(-14);
   });

@@ -132,7 +132,9 @@ describe("ModulesPopoverContent", () => {
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
     expect(screen.getByLabelText("Delete Level Meter")).toBeTruthy();
-    expect(screen.getByLabelText("Delete Stereo Map")).toBeTruthy();
+    // Stereo Map is already in the first-run workspace, so adding another gives the second
+    // unnamed instance its disambiguating "2" suffix.
+    expect(screen.getByLabelText("Delete Stereo Map 2")).toBeTruthy();
   });
 
   it("starts a create-drag from a module row's grip icon without triggering Add", () => {

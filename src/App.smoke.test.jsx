@@ -793,7 +793,8 @@ describe("App smoke", () => {
     // Add Module stays on its picker view after a selection, so a second add can follow without
     // reopening it; go Back to confirm the new instance landed as a distinct, removable panel row
     // — proof the Add Module action created an independent panel instance rather than reusing one.
+    // Stereo Map is already in the first-run workspace, so this second instance gets the "2" suffix.
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByLabelText("Delete Stereo Map")).toBeTruthy();
+    expect(await screen.findByLabelText("Delete Stereo Map 2")).toBeTruthy();
   });
 });

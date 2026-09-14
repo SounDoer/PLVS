@@ -2081,17 +2081,11 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     const latestState = onState.mock.calls.at(-1)?.[0];
+    // The first-run Stats panel starts with every canonical metric visible; unchecking Momentary
+    // leaves the rest.
     expect(latestState.panelControlsById.stats).toEqual({
       ...DEFAULT_PANEL_CONTROLS,
-      statsVisibleIds: [
-        "shortTerm",
-        "integrated",
-        "momentaryMax",
-        "shortTermMax",
-        "lra",
-        "psr",
-        "plr",
-      ],
+      statsVisibleIds: STATS_CANONICAL_ORDER.filter((id) => id !== "momentary"),
     });
   });
 
@@ -2504,6 +2498,19 @@ describe("PanelSettingsContent", () => {
   });
 
   it("shows Level Meter axis gestures in chart help, without a Markers section by default", () => {
+    // The first-run workspace turns TP Max Marker on by default (see DEFAULT_PANEL_CONTROLS_BY_ID
+    // in workspace/constants.js), so this test -- which checks the row default, off -- has to seed
+    // the workspace state directly rather than rely on WorkspaceProvider's own default panel.
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        tree: { type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" },
+        panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+        panelOrder: ["levelMeter"],
+        panelControlsById: { levelMeter: DEFAULT_PANEL_CONTROLS },
+      })
+    );
+
     render(
       <WorkspaceProvider>
         <DragProvider onDrop={vi.fn()}>
