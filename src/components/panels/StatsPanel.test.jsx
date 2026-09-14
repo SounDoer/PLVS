@@ -237,6 +237,7 @@ describe("StatsPanel profile status colours", () => {
   };
 
   it("colours nothing while the profile is Off", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     renderWithProfile({ displayAudio: inRange, visibleIds: ["integrated"] });
 
     const value = valueClassFor("Integrated");

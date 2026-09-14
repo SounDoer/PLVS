@@ -10,6 +10,7 @@ import {
   isKnownMetricId,
   isUsableThreshold,
   parseSelection,
+  profileSelectionId,
 } from "./loudnessProfileCatalog.js";
 
 const VALID_OPS = new Set([">", "<"]);
@@ -70,7 +71,10 @@ function normalizeActive(raw, profiles) {
 
 export function normalizeLoudnessProfiles(raw, { makeId } = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.profiles)) {
-    return { active: LOUDNESS_PROFILE_OFF, profiles: [createStarterProfile(makeId)] };
+    // First run (or unreadable storage): seed the starter profile and select it, so a new user
+    // starts on a delivery-loudness check. A stored library, even an empty one, is left alone.
+    const starter = createStarterProfile(makeId);
+    return { active: profileSelectionId(starter.id), profiles: [starter] };
   }
 
   const seenIds = new Set();

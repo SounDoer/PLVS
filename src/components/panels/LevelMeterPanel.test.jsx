@@ -129,6 +129,7 @@ describe("LevelMeterPanel", () => {
   });
 
   it("renders Momentary LUFS in Level Meter mode", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
     });
@@ -209,6 +210,7 @@ describe("LevelMeterPanel", () => {
   it("leaves the TP Max marker neutral when no profile sets a limit", () => {
     // Off means nothing to judge against, so the marker reads like the M/ST markers on this
     // same meter rather than announcing a breach that no rule defines.
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     const { container } = renderPanel({
       panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
     });

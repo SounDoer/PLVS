@@ -1176,6 +1176,7 @@ describe("PanelSettingsContent", () => {
   });
 
   it("renders Loudness layers as an inline labeled detail and toggles layer ids", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     const onPanelControlsChange = vi.fn();
     render(
       <PanelSettingsContent
@@ -1189,7 +1190,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Layers")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Configure layers" })).toBeNull();
     const editButton = screen.getByRole("button", { name: "Edit layers" });
-    // Off by default, so `ref` is not offered and must not be counted.
+    // Off, so `ref` is not offered and must not be counted.
     expect(editButton.textContent).toContain("2 visible");
     fireEvent.click(editButton);
     const momentaryRow = screen.getByRole("checkbox", { name: "Momentary" });
@@ -1212,6 +1213,7 @@ describe("PanelSettingsContent", () => {
   it("counts only the layers it actually offers", () => {
     // Off filters `ref` out of the list; a summary that still counts it says "3 visible" over a
     // list of two, and the user has no way to find the third.
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     render(
       <PanelSettingsContent
         activeTab="loudness"

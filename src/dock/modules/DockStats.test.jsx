@@ -309,6 +309,7 @@ describe("Dock Stats and the main window under one provider", () => {
   });
 
   it("leaves the metric neutral in both surfaces while the profile is Off", () => {
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [TEST_PROFILE] } });
     const { container } = renderBothSurfaces({ tpMax: 0 });
 
     const classes = truePeakValueClasses(container);

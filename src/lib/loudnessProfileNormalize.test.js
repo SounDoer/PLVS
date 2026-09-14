@@ -82,9 +82,9 @@ describe("normalizeRuleDocument", () => {
 });
 
 describe("normalizeLoudnessProfiles", () => {
-  it("cold-seeds malformed storage with exactly one injectable starter profile", () => {
+  it("cold-seeds malformed storage with the starter profile selected", () => {
     const expected = {
-      active: "off",
+      active: profileSelectionId("starter-id"),
       profiles: [
         {
           id: "starter-id",

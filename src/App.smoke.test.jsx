@@ -348,8 +348,9 @@ describe("App smoke", () => {
     expect(footer().getByText("Device")).toBeTruthy();
     expect(footer().getByText("Not connected")).toBeTruthy();
     expect(footer().getByText("Preset")).toBeTruthy();
-    // Off by default, so there is no profile to name and the whole item is absent.
-    expect(footer().queryByText("Loudness")).toBeNull();
+    // The starter profile is active on first run, so the footer names it.
+    expect(footer().getByText("Loudness")).toBeTruthy();
+    expect(footer().getByText("I −23 ±0.5 · TP ≤ −1")).toBeTruthy();
   });
 
   it("uses a custom light theme's color scheme for native window surfaces", async () => {

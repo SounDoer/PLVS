@@ -28,10 +28,13 @@ describe("cold initialization", () => {
     const hook = renderHook(() => useLoudnessProfile(), { wrapper });
     const starterId = hook.result.current.profiles[0].id;
 
-    expect(hook.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
-    expect(hook.result.current.document).toBe(null);
+    expect(hook.result.current.active).toBe(profileSelectionId(starterId));
+    expect(hook.result.current.document).toEqual(hook.result.current.profiles[0]);
     await waitFor(() =>
-      expect(settingsStore.read().loudnessProfiles?.profiles[0].id).toBe(starterId)
+      expect(settingsStore.read().loudnessProfiles).toMatchObject({
+        active: profileSelectionId(starterId),
+        profiles: [{ id: starterId }],
+      })
     );
   });
 
@@ -77,11 +80,12 @@ describe("cold initialization", () => {
         { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
       ],
     };
-    expect(second.result.current.active).toBe(LOUDNESS_PROFILE_OFF);
+    const starterSelection = profileSelectionId(second.result.current.profiles[0].id);
+    expect(second.result.current.active).toBe(starterSelection);
     expect(second.result.current.profiles).toHaveLength(1);
     expect(second.result.current.profiles[0]).toMatchObject(expectedStarter);
     expect(settingsStore.read().loudnessProfiles).toMatchObject({
-      active: LOUDNESS_PROFILE_OFF,
+      active: starterSelection,
       profiles: [expectedStarter],
     });
   });
