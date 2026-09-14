@@ -6,7 +6,8 @@ use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 
 use crate::window_state::{
-  centered_on_monitor, clamp_to_visible, save_window_bounds, MonitorRect, WindowBounds,
+  clamp_to_visible, default_window_bounds, primary_fit_target, save_window_bounds, MonitorRect,
+  WindowBounds,
 };
 
 /// Logical (DPI-independent) strip height. Single source of truth: the
@@ -492,26 +493,18 @@ pub fn exit_dock<R: tauri::Runtime>(
       height: m.size().height,
     })
     .collect();
+  let fit = primary_fit_target(&window, &monitors);
   if let Some(b) = saved {
-    let clamped = clamp_to_visible(b, &monitors);
+    let clamped = clamp_to_visible(b, &monitors, fit);
     let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
     let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
     if b.is_maximized {
       let _ = window.maximize();
     }
-  } else if let Some(m) = monitors.first() {
-    // No saved normal bounds (e.g. first run docked): don't leave the window
-    // strip-sized — fall back to a default-sized window centered on a monitor.
-    let fallback = centered_on_monitor(
-      WindowBounds {
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-        is_maximized: false,
-      },
-      *m,
-    );
+  } else if !monitors.is_empty() {
+    // No saved normal bounds (e.g. first run docked): don't leave the window strip-sized; place the
+    // default window by the first-run rule.
+    let fallback = default_window_bounds(fit);
     let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
     let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
   }

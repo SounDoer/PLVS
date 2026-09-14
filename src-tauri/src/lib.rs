@@ -41,8 +41,9 @@ pub use audio::{
 };
 
 use crate::window_state::{
-  clamp_to_visible, clean_active_preset_window_bounds, startup_window_is_frameless, MonitorRect,
-  WindowBounds,
+  clamp_to_visible, clean_active_preset_window_bounds, default_window_bounds, primary_fit_target,
+  startup_window_is_frameless, MonitorRect, WindowBounds, DEFAULT_WINDOW_LOGICAL_HEIGHT,
+  DEFAULT_WINDOW_LOGICAL_WIDTH,
 };
 use state::AppState;
 
@@ -229,7 +230,7 @@ pub fn run() {
       let builder = builder.transparent(true);
 
       let window = builder
-        .inner_size(1280.0, 960.0)
+        .inner_size(DEFAULT_WINDOW_LOGICAL_WIDTH, DEFAULT_WINDOW_LOGICAL_HEIGHT)
         .initialization_script(&init_script)
         .build()
         .map_err(|e| format!("window build: {e}"))?;
@@ -270,24 +271,31 @@ pub fn run() {
         .0
         .load(std::sync::atomic::Ordering::Relaxed);
       if restore_normal {
+        let monitors: Vec<MonitorRect> = window
+          .available_monitors()
+          .unwrap_or_default()
+          .iter()
+          .map(|m| MonitorRect {
+            x: m.position().x,
+            y: m.position().y,
+            width: m.size().width,
+            height: m.size().height,
+          })
+          .collect();
+        let fit = primary_fit_target(&window, &monitors);
         if let Some(b) = saved_bounds {
-          let monitors: Vec<MonitorRect> = window
-            .available_monitors()
-            .unwrap_or_default()
-            .iter()
-            .map(|m| MonitorRect {
-              x: m.position().x,
-              y: m.position().y,
-              width: m.size().width,
-              height: m.size().height,
-            })
-            .collect();
-          let clamped = clamp_to_visible(b, &monitors);
+          let clamped = clamp_to_visible(b, &monitors, fit);
           let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
           let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
           if b.is_maximized {
             let _ = window.maximize();
           }
+        } else if !monitors.is_empty() {
+          // First launch: nothing saved, so apply the first-run rule instead of leaving placement to
+          // the OS, which cascades from the top-left on Windows.
+          let placed = default_window_bounds(fit);
+          let _ = window.set_size(tauri::PhysicalSize::new(placed.width, placed.height));
+          let _ = window.set_position(tauri::PhysicalPosition::new(placed.x, placed.y));
         }
       }
       let _ = window.show();
