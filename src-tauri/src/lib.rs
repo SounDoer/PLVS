@@ -283,11 +283,12 @@ pub fn run() {
           })
           .collect();
         let fit = primary_fit_target(&window, &monitors);
-        // Move before resize: moving across monitors with different DPI triggers a DPI-change
-        // rescale of whatever size is set at that point, so position first lets that rescale act
-        // on the old size, then set_size applies the intended physical size.
+        // Size, position, size: on Windows a move onto a monitor with another DPI rescales the
+        // size set before it; on macOS a content-size change keeps the bottom-left corner, so the
+        // size must already be final when the top-left is placed.
         if let Some(b) = saved_bounds {
           let clamped = clamp_to_visible(b, &monitors, fit);
+          let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
           let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
           let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
           if b.is_maximized {
@@ -297,6 +298,7 @@ pub fn run() {
           // First launch: nothing saved, so apply the first-run rule instead of leaving placement to
           // the OS, which cascades from the top-left on Windows.
           let placed = default_window_bounds(fit);
+          let _ = window.set_size(tauri::PhysicalSize::new(placed.width, placed.height));
           let _ = window.set_position(tauri::PhysicalPosition::new(placed.x, placed.y));
           let _ = window.set_size(tauri::PhysicalSize::new(placed.width, placed.height));
         }

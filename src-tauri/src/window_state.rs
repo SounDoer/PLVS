@@ -169,7 +169,9 @@ pub fn clamp_to_visible(
 ///
 /// The chrome is measured on whichever monitor the window currently sits on, which can have a
 /// different DPI than the primary monitor during Dock exit or `apply_window_bounds`; the error is
-/// a few physical pixels of centering/budget precision, not a correctness issue.
+/// a few physical pixels of centering/budget precision, not a correctness issue. On macOS,
+/// decoration changes may apply asynchronously, so chrome read right after `set_decorations`
+/// (Dock exit) can likewise be stale by the same small margin.
 pub fn primary_fit_target<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   monitors: &[MonitorRect],
@@ -264,9 +266,12 @@ pub fn apply_window_bounds<R: tauri::Runtime>(
       .map_err(|e| format!("window unmaximize: {e}"))?;
   }
 
-  // Move before resize: a move across monitors with different DPI triggers a DPI-change
-  // rescale of whatever size is set at that point, so setting size first would get rescaled
-  // by the DPI ratio after the move. Position first lets that rescale act on the old size.
+  // Size, position, size: on Windows a move onto a monitor with another DPI rescales the size set
+  // before it; on macOS a content-size change keeps the bottom-left corner, so the size must
+  // already be final when the top-left is placed.
+  window
+    .set_size(tauri::PhysicalSize::new(clamped.width, clamped.height))
+    .map_err(|e| format!("window size: {e}"))?;
   window
     .set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y))
     .map_err(|e| format!("window position: {e}"))?;
