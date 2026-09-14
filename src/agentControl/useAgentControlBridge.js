@@ -847,6 +847,9 @@ export function useAgentControlBridge({
   }, [bumpWorkspaceRevision, dock]);
 
   useEffect(() => {
+    // Dock panels share the Workspace panel mapping, which offers and keeps the Loudness reference
+    // layer only when this is set; the bare Dock context never carried it.
+    const dockRequestContext = { ...dockContext, hasLoudnessReference };
     const ownedVisualCaptures = visualCapturesRef.current;
     const buildCurrentMeasurement = (liveOverride) => {
       const currentMeasurement = latestMeasurementContextRef.current;
@@ -1480,7 +1483,7 @@ export function useAgentControlBridge({
               settings,
               transport,
               device: device ? deviceInspection(device) : null,
-              dock: buildDockSnapshot(dock, dockContext),
+              dock: buildDockSnapshot(dock, dockRequestContext),
               view: buildPublicView(latestViewRef.current.view),
               hasLoudnessReference,
               analysisContext,
@@ -1833,20 +1836,24 @@ export function useAgentControlBridge({
           };
         }
         if (request.method === "dock.describe" || request.method === "dock.inspect") {
-          const snapshot = buildDockSnapshot(dock, dockContext);
+          const snapshot = buildDockSnapshot(dock, dockRequestContext);
           return {
             requestId,
             result: {
               revision: controlRevisionRef.current,
               preset: panelResultPreset(presets, []),
               ...(request.method === "dock.describe"
-                ? buildDockDescription(dock, dockContext)
+                ? buildDockDescription(dock, dockRequestContext)
                 : snapshot),
             },
           };
         }
         if (request.method === "dock.panel.describe") {
-          const description = buildDockPanelDescription(dock, request.params.panelId, dockContext);
+          const description = buildDockPanelDescription(
+            dock,
+            request.params.panelId,
+            dockRequestContext
+          );
           if (description.issue) {
             const unavailable = description.issue.code === "controlsUnavailable";
             throw semanticFailure(
@@ -1875,19 +1882,24 @@ export function useAgentControlBridge({
           let planned;
           let createdPanels = {};
           if (request.method === "dock.enter" || request.method === "dock.exit") {
-            planned = planDockFormMutation(dock, request.method, request.params, dockContext);
+            planned = planDockFormMutation(
+              dock,
+              request.method,
+              request.params,
+              dockRequestContext
+            );
           } else if (request.method === "dock.layout.apply") {
-            planned = compileDockLayout(dock, request.params.layout, dockContext);
+            planned = compileDockLayout(dock, request.params.layout, dockRequestContext);
             createdPanels = planned.createdPanels;
           } else if (request.method === "dock.panel.update") {
             planned = planDockPanelPatch(
               dock,
               request.params.panelId,
               request.params.patch,
-              dockContext
+              dockRequestContext
             );
           } else {
-            planned = planDockPanelReset(dock, request.params.panelId, dockContext);
+            planned = planDockPanelReset(dock, request.params.panelId, dockRequestContext);
           }
           if (planned.issues.length) {
             const missing = planned.issues.some(({ code }) => code === "dockPanelNotFound");
@@ -1927,7 +1939,7 @@ export function useAgentControlBridge({
             warnings: planned.warnings,
             createdPanels,
             state: {
-              dock: buildDockSnapshot(planned.dock, dockContext),
+              dock: buildDockSnapshot(planned.dock, dockRequestContext),
               preset: panelResultPreset(presets, planned.changed),
             },
           };
@@ -1975,11 +1987,11 @@ export function useAgentControlBridge({
                 partial,
                 changed: planned.changed,
                 revision: controlRevisionRef.current,
-                dock: buildDockSnapshot(observableDock, dockContext),
+                dock: buildDockSnapshot(observableDock, dockRequestContext),
               }
             );
           }
-          result.state.dock = buildDockSnapshot(latestDockRef.current, dockContext);
+          result.state.dock = buildDockSnapshot(latestDockRef.current, dockRequestContext);
           result.state.preset = panelResultPreset(presets, planned.changed);
           try {
             await flush();

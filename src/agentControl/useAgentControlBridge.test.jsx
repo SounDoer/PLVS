@@ -2193,6 +2193,49 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("reads, describes and preserves the Dock Loudness reference layer under a reference", async () => {
+    // The Dock handlers used to pass the bare Dock context, which never carried the active
+    // profile's reference, so `ref` was dropped from every read and could not be written.
+    mount({
+      hasLoudnessReference: true,
+      agentDock: {
+        ...dock,
+        panelsById: { loudness: { id: "loudness", moduleId: "loudness" } },
+        panelOrder: ["loudness"],
+        controlsByPanelId: {
+          loudness: {
+            loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+            loudnessYMinDb: -64,
+            loudnessYMaxDb: 0,
+            showReadouts: false,
+          },
+        },
+      },
+    });
+    await waitUntilReady();
+
+    const inspected = await send(request("dock.inspect", {}, "dock-reference-inspect"));
+    expect(inspected.result.panels[0].controls.layers).toEqual([
+      "momentary",
+      "shortTerm",
+      "reference",
+    ]);
+
+    const described = await send(
+      request("dock.panel.describe", { panelId: "loudness" }, "dock-reference-describe")
+    );
+    expect(described.result.schema.layers.options).toContain("reference");
+
+    const applied = await send(
+      request(
+        "dock.layout.apply",
+        { layout: { panels: [{ panelId: "loudness", controls: {} }] }, dryRun: true },
+        "dock-reference-layout"
+      )
+    );
+    expect(applied.result.state.dock.panels[0].controls.layers).toContain("reference");
+  });
+
   it("preserves the monitorNotFound reason from Dock validation", async () => {
     mount({
       agentDockContext: {
