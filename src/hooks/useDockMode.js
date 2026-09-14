@@ -18,7 +18,9 @@ function supportsDockReserveSpace() {
 }
 
 function normalizeDockState(raw) {
-  const edge = raw?.edge === "top" ? "top" : "bottom";
+  // No stored form (first run): the tuned first-run Dock sits on the top edge. Rust always writes an
+  // edge, so this only decides the no-record case.
+  const edge = raw?.edge === "bottom" ? "bottom" : "top";
   const monitor = typeof raw?.monitor === "string" ? raw.monitor : null;
   return {
     enabled: supportsDockMode() && raw?.enabled === true,

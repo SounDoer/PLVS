@@ -13,7 +13,7 @@ use crate::window_state::{
 /// Logical (DPI-independent) strip height. Single source of truth: the
 /// frontend strip simply fills the viewport, so no JS copy of this number.
 pub const DOCK_MIN_LOGICAL_HEIGHT: u32 = 56;
-pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 72;
+pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = 56;
 pub const DOCK_MAX_LOGICAL_HEIGHT: u32 = 160;
 pub const DOCK_HEADER_LOGICAL_HEIGHT: f64 = 44.0;
 pub const DOCK_EDITOR_MIN_LOGICAL_WIDTH: f64 = 176.0;
@@ -773,9 +773,14 @@ mod tests {
     assert_eq!(v["edge"], "bottom");
     assert_eq!(v["monitor"], "\\\\.\\DISPLAY1");
     assert_eq!(v["reserveSpace"], true);
-    assert_eq!(v["height"], 72);
+    assert_eq!(v["height"], 56);
     let back: DockStateRecord = serde_json::from_value(v).unwrap();
     assert_eq!(back, s);
+  }
+
+  #[test]
+  fn first_run_dock_height_is_the_compact_minimum() {
+    assert_eq!(DOCK_DEFAULT_LOGICAL_HEIGHT, DOCK_MIN_LOGICAL_HEIGHT);
   }
 
   #[test]

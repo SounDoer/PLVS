@@ -13,6 +13,11 @@ describe("dock sizing", () => {
     expect(clampDockHeight(999)).toBe(160);
   });
 
+  it("falls back to the compact first-run height", () => {
+    expect(clampDockHeight(undefined)).toBe(56);
+    expect(clampDockHeight("tall")).toBe(56);
+  });
+
   it("grows toward the inside edge for top and bottom docks", () => {
     expect(
       dockHeightFromPointer({ edge: "bottom", startHeight: 72, startY: 100, currentY: 80 })

@@ -135,7 +135,7 @@ describe("DockStrip", () => {
     fireEvent.doubleClick(handle);
     expect(onHeightChange).toHaveBeenNthCalledWith(1, 76, { persist: true });
     expect(onHeightChange).toHaveBeenNthCalledWith(2, 56, { persist: true });
-    expect(onHeightChange).toHaveBeenNthCalledWith(3, 72, { persist: true });
+    expect(onHeightChange).toHaveBeenNthCalledWith(3, 56, { persist: true });
   });
 
   it("disables height resizing while an accessory editor is open", () => {

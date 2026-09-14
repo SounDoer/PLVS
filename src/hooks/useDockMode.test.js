@@ -156,7 +156,8 @@ describe("useDockMode", () => {
   it("starts disabled without injected state", () => {
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEnabled).toBe(false);
-    expect(result.current.dockEdge).toBe("bottom");
+    expect(result.current.dockEdge).toBe("top");
+    expect(result.current.dockHeight).toBe(56);
     expect(result.current.reserveSpace).toBe(true);
   });
 

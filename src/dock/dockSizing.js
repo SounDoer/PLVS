@@ -1,5 +1,7 @@
 export const DOCK_MIN_HEIGHT = 56;
-export const DOCK_DEFAULT_HEIGHT = 72;
+/// First-run Dock height: the compact mode the Dock was tuned at. Matches Rust's
+/// DOCK_DEFAULT_LOGICAL_HEIGHT, which first entry uses because the GUI passes no height.
+export const DOCK_DEFAULT_HEIGHT = 56;
 export const DOCK_MAX_HEIGHT = 160;
 export const DOCK_COMPACT_MAX_HEIGHT = 63;
 export const DOCK_EXPANDED_MIN_HEIGHT = 120;
