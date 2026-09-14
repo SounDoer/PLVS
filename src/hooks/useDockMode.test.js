@@ -161,6 +161,15 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(true);
   });
 
+  it("keeps a stored bottom edge and height instead of the first-run defaults", () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: false, edge: "bottom", reserveSpace: true, height: 72 },
+    };
+    const { result } = renderHook(() => useDockMode());
+    expect(result.current.dockEdge).toBe("bottom");
+    expect(result.current.dockHeight).toBe(72);
+  });
+
   it("starts docked from injected boot state", () => {
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", monitor: "\\\\.\\DISPLAY2" },

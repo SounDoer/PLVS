@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
+  DOCK_DEFAULT_HEIGHT,
   clampDockHeight,
   dockHeightFromPointer,
   dockHeightKeyboardDelta,
@@ -16,6 +20,16 @@ describe("dock sizing", () => {
   it("falls back to the compact first-run height", () => {
     expect(clampDockHeight(undefined)).toBe(56);
     expect(clampDockHeight("tall")).toBe(56);
+  });
+
+  it("matches Rust's default Dock height", () => {
+    const dockRs = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "..", "..", "src-tauri", "src", "dock.rs"),
+      "utf8"
+    );
+    const match = dockRs.match(/pub const DOCK_DEFAULT_LOGICAL_HEIGHT: u32 = (\d+);/);
+    expect(match).not.toBeNull();
+    expect(Number(match[1])).toBe(DOCK_DEFAULT_HEIGHT);
   });
 
   it("grows toward the inside edge for top and bottom docks", () => {
