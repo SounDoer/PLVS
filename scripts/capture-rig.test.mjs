@@ -151,6 +151,21 @@ describe("capture harness invocation", () => {
       /--features capture-harness/,
     );
   });
+
+  it("builds into its own profile so it never replaces target/release/plvs.exe", () => {
+    // target/release/plvs.exe is the dev-identity GUI from `desktop:build`. A harness build
+    // without dev-identity landing there silently turns it into a production-profile GUI.
+    expect(captureRig.BUILD_HARNESS).toContain("--profile harness");
+    expect(captureRig.BUILD_HARNESS).not.toContain("--release");
+    expect(captureRig.harnessPath("root")).toBe(
+      join("root", "src-tauri", "target", "harness", "plvs.exe"),
+    );
+  });
+
+  it("declares the harness profile in the workspace root manifest", () => {
+    const manifest = readFileSync(new URL("../src-tauri/Cargo.toml", import.meta.url), "utf8");
+    expect(manifest).toMatch(/^\[profile\.harness\]\r?\ninherits = "release"$/m);
+  });
 });
 
 describe("soak capture completion", () => {
@@ -229,7 +244,7 @@ describe("staleHarnessSources", () => {
     // against itself.
     const root = await fixture({
       "src-tauri/src/lib.rs": BUILT_AT - 60_000,
-      "src-tauri/target/release/plvs-cli.exe": BUILT_AT + 60_000,
+      "src-tauri/target/harness/plvs.exe": BUILT_AT + 60_000,
     });
     try {
       expect(staleHarnessSources(BUILT_AT, root)).toEqual([]);

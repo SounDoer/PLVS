@@ -127,8 +127,8 @@ rules below are the working set; the incident history and rationale live there.
   `webviewScale`; persisted geometry remains physical pixels; apply chrome before geometry.
 - **Capture rig:** verify the `device-enumeration` check from `plvs-cli doctor --json`. In detached
   RDP, expose remote machine audio, start the player after detaching, and reject runs whose loudness
-  remains `null`. Build the current feature-gated `capture-harness` Release binary when smoke or
-  soak reports exit 2.
+  remains `null`. Build the current feature-gated `capture-harness` binary (`--profile harness`,
+  `target/harness/`) when smoke or soak reports exit 2.
 - **Scene editors:** blocking is based on an editor being open, not dirty. Guard scene operations in
   the business function before mutation; never discard a draft to make an operation proceed.
 - **Analysis history:** changing a request key creates a history slab. Key-changing sliders commit

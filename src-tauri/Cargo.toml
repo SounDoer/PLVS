@@ -116,6 +116,11 @@ codegen-units = 1
 strip = true
 panic = "abort"
 
+# Capture smoke/soak harness (`--features capture-harness`). A separate profile gives it
+# target/harness/, so it never replaces the dev-identity GUI in target/release/.
+[profile.harness]
+inherits = "release"
+
 [dev-dependencies]
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 

@@ -85,15 +85,21 @@ are recorded in `docs/working/perf/protocol.md` §10.3.
 
 ### Smoke and soak require the current capture harness
 
-Both commands use the feature-gated `src-tauri/target/release/plvs.exe`. A normal check builds the
-debug profile, and a production release build can replace that path with a binary lacking
-`capture-harness`. The rig therefore verifies the feature and compares binary mtimes with Rust source
-and Cargo manifests. Exit 2 means the rig is unusable, not that capture failed.
+Both commands use the feature-gated `src-tauri/target/harness/plvs.exe`, built with the dedicated
+`harness` Cargo profile (inherits `release`). A normal check builds the debug profile, so nothing
+rebuilds the harness on the way to a run. The rig therefore verifies the feature and compares binary
+mtimes with Rust source and Cargo manifests. Exit 2 means the rig is unusable, not that capture
+failed.
+
+The harness used to build into `src-tauri/target/release/plvs.exe` without `dev-identity`. During the
+v0.15.4 preflight it silently replaced the dev-identity GUI from `npm run desktop:build`; launching that
+file opened the production profile alongside the installed PLVS, with no single-instance guard. Do not
+move the harness back into the `release` profile.
 
 When instructed, rebuild explicitly and rerun:
 
 ```sh
-cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs --features capture-harness
+cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness
 ```
 
 This guard was added after the v0.14.5 preflight and soak both used a binary older than the final DSP

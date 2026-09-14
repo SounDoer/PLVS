@@ -169,8 +169,14 @@ export function locateVlc() {
   return vlc;
 }
 
-const BUILD_HARNESS =
-  "cargo build --manifest-path src-tauri/Cargo.toml --release --bin plvs --features capture-harness";
+/** The harness has its own Cargo profile so it never overwrites target/release/plvs.exe,
+ *  which `desktop:build` leaves as the dev-identity GUI. */
+export const BUILD_HARNESS =
+  "cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness";
+
+export function harnessPath(root = ROOT) {
+  return join(root, "src-tauri", "target", "harness", "plvs.exe");
+}
 
 /** What a harness rebuild consumes. `target/` is deliberately absent: it holds the
  *  binary being compared, not an input to it. */
@@ -205,7 +211,7 @@ export function verifyHarnessBuild(harness, run = runCli) {
   if (probe.status === 0) return;
   const detail = probe.stderr.trim();
   throw new RigError(
-    `The Release binary was not built with the capture harness.` +
+    `The harness binary was not built with the capture harness feature.` +
       `${detail ? `\nReported: ${detail}` : ""}\nRebuild first:\n  ${BUILD_HARNESS}`,
   );
 }
@@ -223,7 +229,7 @@ export function assertSoakCaptureCompleted(status, finalReport) {
 }
 
 export function locateHarness() {
-  const harness = join(ROOT, "src-tauri", "target", "release", "plvs.exe");
+  const harness = harnessPath();
   if (!existsSync(harness)) {
     throw new RigError(`Capture harness not built. Run:\n  ${BUILD_HARNESS}`);
   }
