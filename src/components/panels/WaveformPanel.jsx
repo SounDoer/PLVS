@@ -670,6 +670,9 @@ function WaveformLane({
   useEffect(
     () => () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      // StrictMode remounts on the same refs. A cancelled id left here makes `scheduleDraw` treat
+      // a frame as pending forever, and the lane never paints again.
+      rafRef.current = 0;
     },
     []
   );

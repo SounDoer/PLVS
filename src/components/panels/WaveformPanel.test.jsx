@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import {
@@ -445,6 +446,43 @@ describe("WaveformPanel", () => {
     );
 
     expect(sliceSpectralWaveformMetricsMock).not.toHaveBeenCalled();
+  });
+
+  it("still draws after StrictMode tears the lane effects down and mounts them again", () => {
+    // Queue frames instead of running them inline: the defect is a cancelled frame whose id stays
+    // in the lane's ref, so the remounted effect's draw request is swallowed by the pending guard.
+    const frames = new Map();
+    let nextFrameId = 1;
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((cb) => {
+        frames.set(nextFrameId, cb);
+        return nextFrameId++;
+      })
+    );
+    vi.stubGlobal(
+      "cancelAnimationFrame",
+      vi.fn((id) => frames.delete(id))
+    );
+    const context = {
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
+
+    render(<StrictMode>{waveformPanelTree({ channelCount: 2 })}</StrictMode>);
+    for (const [id, cb] of [...frames]) {
+      frames.delete(id);
+      cb();
+    }
+
+    // One clear per lane: every lane painted its first frame.
+    expect(context.clearRect).toHaveBeenCalledTimes(2);
   });
 
   it("does not slice waveform history while the panel instance is hidden", () => {
