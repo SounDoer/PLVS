@@ -53,6 +53,9 @@ export function useDockHistoryViewport({ maxWindowSec }) {
     () => () => {
       if (hudTimerRef.current != null) window.clearTimeout(hudTimerRef.current);
       if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+      // Refs survive a StrictMode or Fast Refresh remount. A cancelled id left here makes `onWheel`
+      // treat a frame as pending forever, and Dock wheel zoom stops working.
+      wheelRafRef.current = 0;
     },
     []
   );

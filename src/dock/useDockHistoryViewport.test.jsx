@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { Activity } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -39,6 +40,40 @@ describe("useDockHistoryViewport", () => {
 
     expect(result.current.dockHistoryWindowSec).toBe(51);
     expect(result.current.dockHistoryHud).toEqual({ panelId: "waveform-1", windowSec: 51 });
+  });
+
+  it("keeps zooming after its effects are torn down with a wheel frame pending", () => {
+    // Cancel for real, so the frame queued before the teardown can never run and reset the ref.
+    const frames = new Map();
+    let nextFrameId = 1;
+    window.requestAnimationFrame.mockImplementation((callback) => {
+      frames.set(nextFrameId, callback);
+      return nextFrameId++;
+    });
+    window.cancelAnimationFrame.mockImplementation((id) => frames.delete(id));
+    // Hidden Activity runs effect cleanups but keeps refs, as StrictMode and Fast Refresh do.
+    let mode = "visible";
+    const wrapper = ({ children }) => <Activity mode={mode}>{children}</Activity>;
+    const { result, rerender } = renderHook(() => useDockHistoryViewport({ maxWindowSec: 3600 }), {
+      wrapper,
+    });
+
+    act(() => result.current.onDockHistoryWheel("waveform-1", -1));
+    mode = "hidden";
+    rerender();
+    mode = "visible";
+    rerender();
+    act(() => result.current.onDockHistoryWheel("waveform-1", -1));
+    act(() => {
+      for (const [id, callback] of [...frames]) {
+        frames.delete(id);
+        callback();
+      }
+    });
+
+    // The wheel before the teardown still carries its factor, so the exact width is not the point:
+    // the window must have moved off the 60 s default at all.
+    expect(result.current.dockHistoryWindowSec).toBeLessThan(60);
   });
 
   it("resets on a same-panel right-button double press and clamps when retention shrinks", () => {
