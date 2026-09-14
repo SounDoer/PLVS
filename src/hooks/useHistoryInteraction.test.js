@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { Activity, createElement } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useHistoryInteraction } from "./useHistoryInteraction";
@@ -104,6 +105,61 @@ describe("useHistoryInteraction", () => {
       vi.advanceTimersByTime(180);
     });
     expect(result.current.isTimeAxisActive).toBe(false);
+  });
+
+  it("keeps zooming after its effects are torn down with a wheel frame pending", () => {
+    // Cancel for real, so the frame queued before the teardown can never run and reset the ref.
+    const frames = new Map();
+    let nextFrameId = 1;
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((cb) => {
+        frames.set(nextFrameId, cb);
+        return nextFrameId++;
+      })
+    );
+    vi.stubGlobal(
+      "cancelAnimationFrame",
+      vi.fn((id) => frames.delete(id))
+    );
+    const flushFrames = () => {
+      for (const [id, cb] of [...frames]) {
+        frames.delete(id);
+        cb();
+      }
+    };
+    const setHistoryWindowSec = vi.fn();
+    const props = {
+      enabled: true,
+      sampleSec: 0.1,
+      minWindowSec: 5,
+      maxWindowSec: 7200,
+      defaultWindowSec: 60,
+      totalSamples: 72000,
+      visibleSamples: 1000,
+      maxOffsetSamples: 71000,
+      effectiveOffsetSamples: 0,
+      effectiveOffsetSec: 0,
+      setSelectedOffset: vi.fn(),
+      setHistoryOffsetSec: vi.fn(),
+      setHistoryWindowSec,
+      setHistoryHudUntilTs: vi.fn(),
+      setHistoryHudHold: vi.fn(),
+    };
+    // Hidden Activity runs effect cleanups but keeps refs, as StrictMode and Fast Refresh do.
+    let mode = "visible";
+    const wrapper = ({ children }) => createElement(Activity, { mode }, children);
+    const { result, rerender } = renderHook(() => useHistoryInteraction(props), { wrapper });
+
+    act(() => result.current.onHistoryWheel(makeWheelEvent(-1)));
+    mode = "hidden";
+    rerender();
+    mode = "visible";
+    rerender();
+    act(() => result.current.onHistoryWheel(makeWheelEvent(-1)));
+    act(() => flushFrames());
+
+    expect(setHistoryWindowSec).toHaveBeenCalledTimes(1);
   });
 
   it("coalesces wheel zoom bursts into one viewport update per animation frame", () => {

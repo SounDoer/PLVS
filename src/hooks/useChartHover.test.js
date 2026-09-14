@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import { Activity, createElement } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useChartHover } from "./useChartHover.js";
@@ -125,6 +126,45 @@ describe("useChartHover", () => {
 
     expect(computeFn).not.toHaveBeenCalled();
     expect(result.current.hover).toBeNull();
+  });
+
+  it("keeps updating hover after its effects are torn down with a frame pending", () => {
+    // Cancel for real, so the frame queued before the teardown can never run and reset the ref.
+    const frames = new Map();
+    let nextFrameId = 1;
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((cb) => {
+        frames.set(nextFrameId, cb);
+        return nextFrameId++;
+      })
+    );
+    vi.stubGlobal(
+      "cancelAnimationFrame",
+      vi.fn((id) => frames.delete(id))
+    );
+    const flushFrames = () => {
+      for (const [id, cb] of [...frames]) {
+        frames.delete(id);
+        cb();
+      }
+    };
+    // Hidden Activity runs effect cleanups but keeps refs, as StrictMode and Fast Refresh do.
+    let mode = "visible";
+    const wrapper = ({ children }) => createElement(Activity, { mode }, children);
+    const { result, rerender } = renderHook(() => useChartHover((x, y) => ({ x, y })), {
+      wrapper,
+    });
+
+    act(() => result.current.onMove(60, 70, rect));
+    mode = "hidden";
+    rerender();
+    mode = "visible";
+    rerender();
+    act(() => result.current.onMove(60, 70, rect));
+    act(() => flushFrames());
+
+    expect(result.current.hover).toEqual({ x: 0.5, y: 0.25 });
   });
 
   it("does not refresh while the refresh key is null", () => {

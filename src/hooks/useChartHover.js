@@ -13,6 +13,9 @@ export function useChartHover(computeFn, refreshKey) {
   useEffect(
     () => () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      // Refs survive a StrictMode or Fast Refresh remount. A cancelled id left here makes `onMove`
+      // treat a frame as pending forever, and hover stops updating.
+      rafRef.current = 0;
     },
     []
   );

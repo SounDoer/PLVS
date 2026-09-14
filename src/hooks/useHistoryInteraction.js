@@ -46,6 +46,9 @@ export function useHistoryInteraction({
     () => () => {
       if (activeTimerRef.current != null) window.clearTimeout(activeTimerRef.current);
       if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+      // Refs survive a StrictMode or Fast Refresh remount. A cancelled id left here makes
+      // `onHistoryWheel` treat a frame as pending forever, and wheel zoom stops working.
+      wheelRafRef.current = 0;
     },
     []
   );
