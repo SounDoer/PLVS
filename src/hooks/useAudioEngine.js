@@ -58,7 +58,6 @@ export function useAudioEngine({
   measurementOwner = null,
 }) {
   const { running, lifecycle, halt, markStarted, markStopped, markStopFailed } = transport;
-  const rafRef = useRef(0);
   const stopInFlightRef = useRef(Promise.resolve());
   const stoppedAudioRef = useRef(null);
   const {
@@ -119,7 +118,6 @@ export function useAudioEngine({
           audioRef.current.ctx?.close();
         } catch (_) {}
       }
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       void stopResult
         .then(() => {
           audioRef.current = null;
@@ -229,8 +227,6 @@ export function useAudioEngine({
     init();
     return () => {
       mounted = false;
-      const rafId = rafRef.current;
-      if (rafId) cancelAnimationFrame(rafId);
       const currentAudio = audioRef.current;
       if (currentAudio?.mode === "tauri" && stoppedAudioRef.current !== currentAudio) {
         stoppedAudioRef.current = currentAudio;
