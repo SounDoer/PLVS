@@ -26,8 +26,10 @@ pub struct LoudnessMeter {
   tp_t: usize,
   tp_p: usize,
   tp_ph: Vec<Vec<f64>>,
-  tp_h: [Vec<f64>; 2],
-  tp_wp: [usize; 2],
+  /// Oversampling history per channel. Grows on the first block with more channels; never
+  /// resized per sample.
+  tp_h: Vec<Vec<f64>>,
+  tp_wp: Vec<usize>,
   pending_block: Option<LoudnessBlock>,
   /// Speech detector for dialogue gating; lazily built on first gated push (`None` until then,
   /// or if model init fails).
@@ -45,7 +47,7 @@ impl LoudnessMeter {
     let bsz = (sr * 0.1).round() as usize;
     let rn = 60;
     let (tp_t, tp_p, tp_ph) = init_true_peak_filters();
-    let tp_h = [vec![0.0_f64; tp_t], vec![0.0_f64; tp_t]];
+    let tp_h = vec![vec![0.0_f64; tp_t]; 2];
     Self {
       sample_rate: sr,
       kf: KWeightStereo::new(sr),
@@ -65,7 +67,7 @@ impl LoudnessMeter {
       tp_p,
       tp_ph,
       tp_h,
-      tp_wp: [0, 0],
+      tp_wp: vec![0; 2],
       pending_block: None,
       speech: None,
       speech_kind: VadEngineKind::default(),
@@ -112,6 +114,13 @@ impl LoudnessMeter {
       }
     }
     mx
+  }
+
+  fn ensure_true_peak_channels(&mut self, channels: usize) {
+    if self.tp_h.len() < channels {
+      self.tp_h.resize(channels, vec![0.0_f64; self.tp_t]);
+      self.tp_wp.resize(channels, 0);
+    }
   }
 
   fn integrated(&self) -> f64 {
@@ -251,6 +260,7 @@ impl LoudnessMeter {
         .map(|_| KWeightMono::new(self.sample_rate))
         .collect();
     }
+    self.ensure_true_peak_channels(ch);
     let mut out = None;
     let frames = interleaved.len() / ch;
     for i in 0..frames {
@@ -267,26 +277,15 @@ impl LoudnessMeter {
       self.ba[0] += sum_ms;
       self.ba[1] += 0.0;
 
-      // Keep true-peak semantics consistent with the existing UI: report L/R from channels 1/2.
-      let xl = interleaved[base] as f64;
-      let xr = if ch > 1 {
-        interleaved[base + 1] as f64
-      } else {
-        xl
-      };
-      let tp0 = self.tp_sample(xl, 0);
-      let tp1 = self.tp_sample(xr, 1);
-      if tp0 > self.tp_block {
-        self.tp_block = tp0;
-      }
-      if tp1 > self.tp_block {
-        self.tp_block = tp1;
-      }
-      if tp0 > self.tp_block_ch[0] {
-        self.tp_block_ch[0] = tp0;
-      }
-      if tp1 > self.tp_block_ch[1] {
-        self.tp_block_ch[1] = tp1;
+      // True Peak Max covers every channel; the L/R readouts stay Ch1/Ch2.
+      for ci in 0..ch {
+        let tp = self.tp_sample(interleaved[base + ci] as f64, ci);
+        if tp > self.tp_block {
+          self.tp_block = tp;
+        }
+        if ci < 2 && tp > self.tp_block_ch[ci] {
+          self.tp_block_ch[ci] = tp;
+        }
       }
       self.bn += 1;
       if self.bn >= self.bsz {
@@ -653,6 +652,69 @@ mod tests {
     assert!(
       (right_db - -6.02).abs() < 0.25,
       "a half-amplitude right channel should read about -6 dBTP, got {right_db}"
+    );
+  }
+
+  /// BS.1770 True Peak is the maximum over every channel. An inter-sample peak on channel 8 alone
+  /// must reach the overall reading while the Ch1/Ch2 readouts stay silent.
+  #[test]
+  fn true_peak_covers_every_channel_while_left_right_stay_ch1_ch2() {
+    let sr = 48_000.0_f64;
+    let channels = 8_usize;
+    let mut meter = LoudnessMeter::new(sr);
+    let mut overall = f64::NEG_INFINITY;
+    let mut left = f64::NEG_INFINITY;
+    let mut right = f64::NEG_INFINITY;
+    let mut buf = Vec::with_capacity(4_800 * channels);
+    for n in 0..(sr as usize) {
+      let x = (std::f64::consts::PI * n as f64 / 2.0 + std::f64::consts::FRAC_PI_4).sin();
+      for ch in 0..channels {
+        buf.push(if ch == 7 { x as f32 } else { 0.0 });
+      }
+      if buf.len() >= 4_800 * channels {
+        if let Some(block) =
+          meter.push_interleaved_multichannel(&buf, channels as u16, ChannelLayoutSetting::Auto)
+        {
+          overall = overall.max(block.true_peak);
+          left = left.max(block.true_peak_l);
+          right = right.max(block.true_peak_r);
+        }
+        buf.clear();
+      }
+    }
+    assert!(
+      overall.abs() < 0.25,
+      "channel 8 peak should reach 0 dBTP, got {overall}"
+    );
+    assert!(!left.is_finite(), "Ch1 is silent, got {left}");
+    assert!(!right.is_finite(), "Ch2 is silent, got {right}");
+  }
+
+  /// Unrecognized layouts measure Ch1/Ch2 loudness, but True Peak still covers every channel.
+  #[test]
+  fn true_peak_covers_every_channel_of_an_unknown_layout() {
+    let sr = 48_000.0_f64;
+    let channels = 10_usize;
+    let mut meter = LoudnessMeter::new(sr);
+    let mut overall = f64::NEG_INFINITY;
+    let mut buf = Vec::with_capacity(4_800 * channels);
+    for n in 0..(sr as usize) {
+      let x = (std::f64::consts::PI * n as f64 / 2.0 + std::f64::consts::FRAC_PI_4).sin();
+      for ch in 0..channels {
+        buf.push(if ch == 9 { x as f32 } else { 0.0 });
+      }
+      if buf.len() >= 4_800 * channels {
+        if let Some(block) =
+          meter.push_interleaved_multichannel(&buf, channels as u16, ChannelLayoutSetting::Auto)
+        {
+          overall = overall.max(block.true_peak);
+        }
+        buf.clear();
+      }
+    }
+    assert!(
+      overall.abs() < 0.25,
+      "channel 10 peak should reach 0 dBTP, got {overall}"
     );
   }
 
