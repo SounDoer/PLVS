@@ -106,17 +106,33 @@ export function createPluginStoreBackend() {
     }
   }
 
+  // Dock accessory webviews have no store permission (src-tauri/capabilities), so a write there
+  // would update this webview's cache only and fail silently at flush -- it looks saved until the
+  // next launch. Accessories forward actions to the main window instead; development makes a
+  // regression loud rather than silent.
+  function assertWritableSurface(key) {
+    const surface =
+      typeof document !== "undefined" ? document.documentElement.dataset.surface : null;
+    if (import.meta.env.DEV && surface) {
+      throw new Error(
+        `[PLVS] "${key}" written from the ${surface} webview, which cannot persist; forward an action to the main window instead.`
+      );
+    }
+  }
+
   const backend = {
     get(key) {
       const v = cache.get(key);
       return v && typeof v === "object" && !Array.isArray(v) ? v : null;
     },
     set(key, value) {
+      assertWritableSurface(key);
       cache.set(key, value);
       dirty.set(key, "set");
       scheduleBatch();
     },
     remove(key) {
+      assertWritableSurface(key);
       cache.delete(key);
       dirty.set(key, "delete");
       scheduleBatch();

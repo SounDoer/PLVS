@@ -33,7 +33,32 @@ describe("pluginStoreBackend", () => {
   });
   afterEach(() => {
     delete window.__PLVS_INITIAL_STATE__;
+    delete document.documentElement.dataset.surface;
     vi.clearAllMocks();
+  });
+
+  // Dock accessory webviews have no store permission (src-tauri/capabilities), so a write there
+  // lands in that webview's cache only and its flush fails silently. Development makes it loud.
+  it("refuses writes from a Dock accessory surface in development", async () => {
+    document.documentElement.dataset.surface = "dock-editor";
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+
+    expect(() => backend.set("plvs:settings", { referenceLufs: -8 })).toThrow(/dock-editor/);
+    expect(() => backend.remove("plvs:presets")).toThrow(/dock-editor/);
+    expect(backend.get("plvs:settings")).toEqual({ referenceLufs: -20 });
+    expect(backend.get("plvs:presets")).toEqual({ list: [], activeId: null });
+    await backend.flush();
+    expect(saved).toEqual([]);
+  });
+
+  it("keeps writes from the main surface", async () => {
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+
+    backend.set("plvs:settings", { referenceLufs: -8 });
+    await backend.flush();
+    expect(saved).toContainEqual(["plvs:settings", { referenceLufs: -8 }]);
   });
 
   it("get reads synchronously from the injected initial state", async () => {
