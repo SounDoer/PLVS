@@ -45,7 +45,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 
 - **No routing required** — monitors any audio playing on your machine. Windows uses WASAPI loopback; macOS uses the native audio tap.
 - **File analysis mode** — drop in a local audio file to meter it offline: probe metadata, decode through a bundled FFmpeg sidecar (wide format support), and scrub through the full session history across every meter.
-- **Multichannel** — auto-detects mono, stereo, 5.1, and 7.1 with proper per-channel metering and BS.1770 weighting.
+- **Multichannel** — auto-detects mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 with proper per-channel metering and BS.1770 weighting.
 - **Detailed spectrum analysis** — multi-resolution FFT analyzer with M/S and L/R overlays, peak-hold, log-frequency grid, and musical note names on hover.
 - **Interactive charts** — zoom, pan, and scrub every chart with adaptive tick labels and a live hover probe.
 - **Session history & snapshots** — scroll back through the loudness timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
