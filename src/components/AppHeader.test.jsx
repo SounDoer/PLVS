@@ -107,8 +107,10 @@ describe("AppHeader", () => {
     });
 
     const notice = screen.getByText("Error: Audio unavailable");
-    expect(notice.title).toBe("audio_start: device unavailable");
     expect(notice.className).toContain("ui-signal-bad");
+    expect(notice.title).toBe("");
+    fireEvent.mouseEnter(notice);
+    expect(screen.getByRole("tooltip").textContent).toBe("audio_start: device unavailable");
   });
 
   it("renders a guard transport notice", () => {

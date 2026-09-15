@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useMeterDisplay, INITIAL_METER_AUDIO, CLEARED_METER_AUDIO } from "./useMeterDisplay.js";
 
@@ -27,6 +27,25 @@ describe("useMeterDisplay", () => {
 
     act(() => result.current.clearNotice());
     expect(result.current.notice).toBeNull();
+  });
+
+  it("dismisses informational notices on their own but keeps errors", () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useMeterDisplay());
+
+      act(() => result.current.raiseNotice("info", "Output changed — measurement restarted"));
+      act(() => vi.advanceTimersByTime(4999));
+      expect(result.current.notice?.kind).toBe("info");
+      act(() => vi.advanceTimersByTime(1));
+      expect(result.current.notice).toBeNull();
+
+      act(() => result.current.raiseNotice("error", "Audio unavailable"));
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(result.current.notice?.kind).toBe("error");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps technical notice details separate from user-facing text", () => {

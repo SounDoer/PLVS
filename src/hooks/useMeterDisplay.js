@@ -135,7 +135,9 @@ export function useMeterDisplay() {
       text,
       ...(typeof details === "string" && details ? { details } : null),
     });
-    if (kind === "guard") {
+    // Refusals and informational notices describe a moment rather than a state to act on, so they
+    // clear themselves; errors stay until the next action.
+    if (kind === "guard" || kind === "info") {
       guardTimerRef.current = setTimeout(() => {
         guardTimerRef.current = null;
         setNotice(null);

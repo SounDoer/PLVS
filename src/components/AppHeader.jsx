@@ -9,6 +9,7 @@ import {
   Trash2,
   Volume2,
 } from "lucide-react";
+import { HoverTip } from "./HoverTip.jsx";
 import { IconButton } from "./IconButton.jsx";
 import { SourceTransportCluster } from "./SourceTransportCluster.jsx";
 import { PresetsPopoverContent } from "./PresetsPopover.jsx";
@@ -130,15 +131,23 @@ export function AppHeader({
         onPrimaryAction={onSourceTransportAction}
       />
       {notice ? (
-        <div
-          title={notice.details ?? notice.text}
-          className={cn(
-            "min-w-0 max-w-[min(30rem,34vw)] truncate text-[length:var(--ui-fs-status)] font-medium",
-            notice.kind === "error" ? "text-[color:var(--ui-signal-bad)]" : "text-muted-foreground"
-          )}
+        <HoverTip
+          tip={notice.details ?? notice.text}
+          align="start"
+          className="min-w-0 max-w-[min(30rem,34vw)]"
+          tipClassName="whitespace-normal max-w-[min(28rem,90vw)]"
         >
-          {notice.text}
-        </div>
+          <div
+            className={cn(
+              "truncate text-[length:var(--ui-fs-status)] font-medium",
+              notice.kind === "error"
+                ? "text-[color:var(--ui-signal-bad)]"
+                : "text-muted-foreground"
+            )}
+          >
+            {notice.text}
+          </div>
+        </HoverTip>
       ) : null}
       <div className="flex-1" />
       <div className={SHELL_HEADER_ACTIONS}>

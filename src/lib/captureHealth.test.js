@@ -5,12 +5,13 @@ const runningAutomatic = { captureDeviceId: "default", sourceMode: "live", runni
 
 describe("automaticOutputChangeNotice", () => {
   it("announces the restart when a running Automatic capture follows a new default output", () => {
-    const text = automaticOutputChangeNotice({
+    const notice = automaticOutputChangeNotice({
       ...runningAutomatic,
       previousLabel: "Speakers (Apogee Symphony Desktop)",
       nextLabel: "CABLE Input (VB-Audio Virtual Cable)",
     });
-    expect(text).toMatch(/^Output changed to .*CABLE.* — measurement restarted$/);
+    expect(notice.text).toBe("Output changed — measurement restarted");
+    expect(notice.details).toMatch(/^Now measuring .*CABLE.*VB-Audio Virtual Cable/);
   });
 
   it("stays quiet when nothing a running Automatic capture depends on changed", () => {

@@ -1670,14 +1670,14 @@ function AppContent() {
   useEffect(() => {
     const previousLabel = previousDefaultOutputLabelRef.current;
     previousDefaultOutputLabelRef.current = defaultOutputLabel;
-    const text = automaticOutputChangeNotice({
+    const notice = automaticOutputChangeNotice({
       previousLabel,
       nextLabel: defaultOutputLabel,
       captureDeviceId,
       sourceMode,
       running,
     });
-    if (text) raiseNotice("info", text);
+    if (notice) raiseNotice("info", notice.text, notice.details);
     // Only a change of the resolved default output announces itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultOutputLabel]);

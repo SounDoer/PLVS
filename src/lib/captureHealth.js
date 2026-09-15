@@ -5,10 +5,11 @@
 import { formatAudioDeviceLabel } from "./audioDeviceLabels.js";
 
 /**
- * Notice text when a running Automatic Live capture moved to a new default output, otherwise null.
+ * Notice when a running Automatic Live capture moved to a new default output, otherwise null. The
+ * text stays short enough for the header; the device name, which can be long, goes to details.
  *
  * @param {{ previousLabel: string, nextLabel: string, captureDeviceId: string, sourceMode: string, running: boolean }} input
- * @returns {string | null}
+ * @returns {{ text: string, details: string } | null}
  */
 export function automaticOutputChangeNotice({
   previousLabel,
@@ -23,7 +24,7 @@ export function automaticOutputChangeNotice({
   // endpoint name alone is often just "Speakers".
   const { primary, secondary } = formatAudioDeviceLabel(nextLabel);
   const name = secondary ? `${primary} (${secondary})` : primary;
-  return `Output changed to ${name} — measurement restarted`;
+  return { text: "Output changed — measurement restarted", details: `Now measuring ${name}` };
 }
 
 /**
