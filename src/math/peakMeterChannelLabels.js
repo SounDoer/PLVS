@@ -2,6 +2,8 @@
  * Peak meter column titles by interleaved channel index, in WAVE / ffmpeg channel order:
  * 5.1 is FL FR FC LFE SL SR → L R C LFE Ls Rs; 7.1 is FL FR FC LFE BL BR SL SR →
  * L R C LFE Lb Rb Ls Rs. Must match `src-tauri/src/dsp/channel_weights.rs`.
+ * Labels name the loudness weighting role, not the WAVE speaker bit: `Ls/Rs` is the +1.5 dB
+ * surround pair even where a 5.1 device mask calls it BL/BR.
  *
  * Add new entries to {@link PEAK_METER_CHANNEL_FORMATS} and {@link ORDERED_FORMAT_IDS}, or pass
  * `ctx.formatId` when the backend can identify a layout explicitly.

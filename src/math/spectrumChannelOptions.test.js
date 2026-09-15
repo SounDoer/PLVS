@@ -4,6 +4,7 @@ import {
   clampSpectrumChannelToAvailable,
   defaultSpectrumChannel,
 } from "./spectrumChannelOptions.js";
+import { getPeakMeterChannelLabels } from "./peakMeterChannelLabels.js";
 
 describe("buildSpectrumChannelOptions", () => {
   it("stereo (2ch): returns only L+R", () => {
@@ -25,11 +26,12 @@ describe("buildSpectrumChannelOptions", () => {
     expect(opts[3].sel).toEqual({ type: "single", ch: 3 });
   });
 
-  it("7.1 (8ch): returns L+R, Ls+Rs, Lb+Rb, C, LFE", () => {
-    const labels = ["L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb"];
+  it("7.1 (8ch): returns L+R, Lb+Rb, Ls+Rs, C, LFE", () => {
+    const labels = getPeakMeterChannelLabels(8);
     const opts = buildSpectrumChannelOptions(8, labels);
     expect(opts.map((o) => o.key)).toEqual(["p-0-1", "p-4-5", "p-6-7", "s-2", "s-3"]);
-    expect(opts[2].label).toBe("Lb+Rb");
+    expect(opts[1].label).toBe("Lb+Rb");
+    expect(opts[2].label).toBe("Ls+Rs");
   });
 
   it("unknown multichannel (4ch, generic labels): pairs (0,1) and (2,3), no singles", () => {
