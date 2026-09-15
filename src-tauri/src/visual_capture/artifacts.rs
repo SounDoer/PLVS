@@ -56,6 +56,7 @@ pub struct ArtifactMetadata {
 pub struct ArtifactStore {
   root: PathBuf,
   protected: Arc<Mutex<HashSet<PathBuf>>>,
+  warned: Arc<Mutex<HashSet<PathBuf>>>,
 }
 
 pub struct PendingArtifact {
@@ -102,6 +103,7 @@ impl ArtifactStore {
     let store = Self {
       root: fs::canonicalize(requested_root)?,
       protected: Arc::new(Mutex::new(HashSet::new())),
+      warned: Arc::new(Mutex::new(HashSet::new())),
     };
     store.cleanup_orphan_temporaries()?;
     store.cleanup(SystemTime::now())?;
@@ -235,11 +237,18 @@ impl ArtifactStore {
         .and_then(|name| name.to_str())
         .is_some_and(|name| name.starts_with(".art-") && name.ends_with(".tmp"))
       {
-        match self.remove_contained_file(&path) {
-          Ok(()) => {}
+        let contained = match self.contained_existing_path(&path) {
+          Ok(contained) => contained,
+          Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
           Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
-            log::warn!("skipping orphan artifact entry {}: {error}", path.display());
+            self.warn_rejected(&path, &error);
+            continue;
           }
+          Err(error) => return Err(error),
+        };
+        match fs::remove_file(contained) {
+          Ok(()) => {}
+          Err(error) if error.kind() == io::ErrorKind::NotFound => {}
           Err(error) => return Err(error),
         }
       }
@@ -265,7 +274,7 @@ impl ArtifactStore {
       let contained = match self.contained_existing_path(&path) {
         Ok(contained) => contained,
         Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
-          log::warn!("skipping artifact entry {}: {error}", path.display());
+          self.warn_rejected(&path, &error);
           continue;
         }
         Err(error) => return Err(error),
@@ -314,6 +323,23 @@ impl ArtifactStore {
       Ok(()) => Ok(()),
       Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
       Err(error) => Err(error),
+    }
+  }
+
+  /// Cleanup runs after every capture, so a permanently rejected entry is reported once per
+  /// path. A poisoned lock skips the deduplication and warns rather than failing cleanup.
+  fn should_warn(&self, path: &Path) -> bool {
+    match self.warned.lock() {
+      Ok(mut warned) => warned.insert(path.to_path_buf()),
+      Err(_) => true,
+    }
+  }
+
+  fn warn_rejected(&self, path: &Path, error: &io::Error) {
+    if self.should_warn(path) {
+      log::warn!("skipping artifact entry {}: {error}", path.display());
+    } else {
+      log::debug!("skipping artifact entry {}: {error}", path.display());
     }
   }
 }
@@ -612,6 +638,21 @@ mod tests {
       .cleanup(SystemTime::now() + RETENTION + Duration::from_secs(1))
       .unwrap();
     assert!(outside.exists(), "cleanup must not delete through a link");
+  }
+
+  #[test]
+  fn a_rejected_entry_is_warned_about_only_once() {
+    let parent = TestDirectory::new();
+    let store = ArtifactStore::initialize(&parent.0).unwrap();
+    let first = store.root.join("art-first.png");
+    let second = store.root.join("art-second.png");
+    assert!(store.should_warn(&first));
+    assert!(!store.should_warn(&first));
+    assert!(store.should_warn(&second));
+    assert!(
+      !store.clone().should_warn(&second),
+      "clones share the warned set"
+    );
   }
 
   #[test]
