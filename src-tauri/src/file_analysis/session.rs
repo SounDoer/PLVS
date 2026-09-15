@@ -1250,6 +1250,7 @@ mod tests {
       let gui = run_session_path(&pcm, sr, channels, FFMPEG_READ_SAMPLES);
       for (name, a, b) in [
         ("integrated_lufs", cli.integrated_lufs, gui.integrated_lufs),
+        ("lra", cli.lra, gui.lra),
         ("m_max_lufs", cli.m_max_lufs, gui.m_max_lufs),
         ("st_max_lufs", cli.st_max_lufs, gui.st_max_lufs),
         (
@@ -1257,9 +1258,19 @@ mod tests {
           cli.true_peak_max_dbtp,
           gui.true_peak_max_dbtp,
         ),
+        (
+          "sample_peak_max_l_db",
+          cli.sample_peak_max_l_db,
+          gui.sample_peak_max_l_db,
+        ),
+        (
+          "sample_peak_max_r_db",
+          cli.sample_peak_max_r_db,
+          gui.sample_peak_max_r_db,
+        ),
       ] {
         assert!(
-          (a - b).abs() < 1e-9,
+          a == b || (a - b).abs() < 1e-9,
           "{channels} ch {name}: cli {a} vs gui {b}"
         );
       }
