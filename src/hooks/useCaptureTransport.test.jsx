@@ -31,15 +31,14 @@ describe("useCaptureTransport lifecycle", () => {
     expect(result.current.resolvedDeviceId).toBe("device-1");
   });
 
-  it("settles stop after native shutdown and exposes start failures", async () => {
+  it("settles stop after native shutdown", async () => {
     const { result } = setup();
     let starting;
     act(() => {
       starting = result.current.startLiveForControl();
-      result.current.markStartFailed(new Error("device busy"));
+      result.current.markStarted();
     });
-    await expect(starting).rejects.toThrow("device busy");
-    expect(result.current.lifecycle).toBe("error");
+    await starting;
 
     let stopping;
     act(() => {
@@ -49,6 +48,28 @@ describe("useCaptureTransport lifecycle", () => {
     act(() => result.current.markStopped());
     await stopping;
     expect(result.current.lifecycle).toBe("stopped");
+  });
+
+  it("settles stop after a capture failure without an engine acknowledgement", async () => {
+    // A failure has already halted capture: `running` is false, so the audio engine has nothing to
+    // shut down and never calls `markStopped`. Waiting for it left the stop pending forever, and
+    // Agent Control's serialized queue -- every later command -- hung behind it.
+    const { result } = setup();
+    let starting;
+    act(() => {
+      starting = result.current.startLiveForControl();
+      result.current.markStartFailed(new Error("device busy"));
+    });
+    await expect(starting).rejects.toThrow("device busy");
+    expect(result.current.lifecycle).toBe("error");
+
+    let settled = false;
+    await act(async () => {
+      void result.current.stopLiveForControl().then(() => (settled = true));
+    });
+    expect(settled).toBe(true);
+    expect(result.current.lifecycle).toBe("stopped");
+    expect(result.current.running).toBe(false);
   });
 
   it("keeps dropped-audio evidence until a new session starts or Live is cleared", () => {

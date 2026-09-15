@@ -62,6 +62,14 @@ export function useCaptureTransport({ display, getLiveIntake }) {
       return Promise.reject(transitionError(deviceTransitionRef.current ?? lifecycleRef.current));
     }
     display.clearNotice();
+    if (lifecycleRef.current === "error") {
+      // The failure already halted capture and `running` is false, so the engine has nothing to
+      // shut down and will never acknowledge a stop. Waiting for one hangs forever.
+      display.setSelectedOffset(-1);
+      display.clock.stopTimer();
+      markStopped();
+      return Promise.resolve();
+    }
     publishLifecycle("stopping");
     setRunning(false);
     display.setSelectedOffset(-1);
