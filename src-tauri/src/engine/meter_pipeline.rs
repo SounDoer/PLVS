@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
+use crate::dsp::channel_weights::standard_layout_name;
 use crate::dsp::loudness::LoudnessBlock;
 use crate::dsp::peak::{
   sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
@@ -45,28 +46,14 @@ fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> 
   let ch = channels.max(1);
   match channel_layout {
     ChannelLayoutSetting::Stereo => ("stereo".to_string(), true),
-    ChannelLayoutSetting::Surround51 => {
-      if ch >= 6 {
-        ("5.1".to_string(), true)
-      } else {
-        ("stereo".to_string(), false)
-      }
+    ChannelLayoutSetting::Surround51 if ch == 6 => ("5.1".to_string(), true),
+    ChannelLayoutSetting::Surround71 if ch == 8 => ("7.1".to_string(), true),
+    ChannelLayoutSetting::Surround51 | ChannelLayoutSetting::Surround71 => {
+      ("stereo".to_string(), false)
     }
-    ChannelLayoutSetting::Surround71 => {
-      if ch >= 8 {
-        ("7.1".to_string(), true)
-      } else {
-        ("stereo".to_string(), false)
-      }
-    }
-    ChannelLayoutSetting::Auto => match ch {
-      1 => ("mono".to_string(), true),
-      2 => ("stereo".to_string(), true),
-      5 => ("5.0".to_string(), true),
-      6 => ("5.1".to_string(), true),
-      7 => ("7.0".to_string(), true),
-      8 => ("7.1".to_string(), true),
-      _ => ("unknown".to_string(), false),
+    ChannelLayoutSetting::Auto => match standard_layout_name(ch) {
+      Some(name) => (name.to_string(), true),
+      None => ("unknown".to_string(), false),
     },
   }
 }
@@ -4009,17 +3996,44 @@ mod tests {
   }
 
   #[test]
-  fn auto_layout_meta_3ch_is_unknown() {
+  fn manual_71_on_6ch_falls_back() {
     assert_eq!(
-      loudness_layout_meta(3, ChannelLayoutSetting::Auto),
-      ("unknown".to_string(), false)
+      loudness_layout_meta(6, ChannelLayoutSetting::Surround71),
+      ("stereo".to_string(), false)
     );
   }
 
   #[test]
-  fn manual_71_on_6ch_falls_back() {
+  fn loudness_layout_meta_names_lcr_and_quad() {
     assert_eq!(
-      loudness_layout_meta(6, ChannelLayoutSetting::Surround71),
+      loudness_layout_meta(3, ChannelLayoutSetting::Auto),
+      ("lcr".to_string(), true)
+    );
+    assert_eq!(
+      loudness_layout_meta(4, ChannelLayoutSetting::Auto),
+      ("quad".to_string(), true)
+    );
+  }
+
+  #[test]
+  fn loudness_layout_meta_reports_unknown_above_eight_channels() {
+    for channels in [9_u16, 10, 12, 16] {
+      assert_eq!(
+        loudness_layout_meta(channels, ChannelLayoutSetting::Auto),
+        ("unknown".to_string(), false),
+        "{channels} channels"
+      );
+    }
+  }
+
+  #[test]
+  fn manual_surround_presets_need_their_exact_channel_count() {
+    assert_eq!(
+      loudness_layout_meta(8, ChannelLayoutSetting::Surround51),
+      ("stereo".to_string(), false)
+    );
+    assert_eq!(
+      loudness_layout_meta(10, ChannelLayoutSetting::Surround71),
       ("stereo".to_string(), false)
     );
   }

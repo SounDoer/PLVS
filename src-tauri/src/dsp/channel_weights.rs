@@ -11,8 +11,6 @@
 use super::gating::SURROUND_LOUDNESS_WEIGHT as S;
 
 /// Layout name reported for a channel count, or `None` when the count has no standard layout.
-// Consumed by the loudness meters in the next commits.
-#[allow(dead_code)]
 pub(crate) fn standard_layout_name(channels: u16) -> Option<&'static str> {
   match channels {
     1 => Some("mono"),
