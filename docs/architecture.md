@@ -177,12 +177,13 @@ PLVS/
 
 ### DSP 层（`src-tauri/src/dsp/`）
 
-| 模块             | 计算                                                                                                  |
-| ---------------- | ----------------------------------------------------------------------------------------------------- |
-| `peak.rs`        | 采样峰值 + True Peak（4× 过采样）                                                                     |
-| `loudness.rs`    | K-weighting → gate → M / S / I / LRA（ITU-R BS.1770 / EBU R128）                                      |
-| `spectrum.rs`    | rFFT + Hann 窗，hop=N/4，4 帧非相干平均；带内能量按 Hz 连续边界与 bin 分数重叠积分（非整数 bin 截断） |
-| `vectorscope.rs` | L/R → XY + 相关系数                                                                                   |
+| 模块                 | 计算                                                                                                  |
+| -------------------- | ----------------------------------------------------------------------------------------------------- |
+| `peak.rs`            | 采样峰值 + True Peak（4× 过采样）                                                                     |
+| `loudness.rs`        | K-weighting → gate → M / S / I / LRA（ITU-R BS.1770 / EBU R128）；True Peak Max 覆盖全部声道          |
+| `channel_weights.rs` | 按声道数识别标准布局（mono…7.1，WAVE / ffmpeg 顺序）与 BS.1770-5 声道权重；实时与 CLI 摘要共用        |
+| `spectrum.rs`        | rFFT + Hann 窗，hop=N/4，4 帧非相干平均；带内能量按 Hz 连续边界与 bin 分数重叠积分（非整数 bin 截断） |
+| `vectorscope.rs`     | L/R → XY + 相关系数                                                                                   |
 
 ### 编排层（`src-tauri/src/engine/meter_pipeline.rs`）
 

@@ -61,9 +61,10 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **用户规则**：用户可在 **同一套测量结果**上定义 **参考线/区间/规则**，用于自己的监测与判断；产品不承诺持续扩充按平台命名的预设集合。
 - **频谱**：采用 **FFT 型 RTA 的常见工程实践**（带内能量按 **Hz 连续边界** 与各 FFT bin 的**分数重叠**聚合，而非整档扣整数 bin；**STFT** 固定 **hop=N/4**、**4 帧**带内线性功率非相干平均后再转 dB）；纵轴为 **dBFS 域**带内谱功率（与 Peak 的采样峰值 dBFS **同参考域、不同定义**）；**不声称** IEC 61260 滤波器组计量路径；与响度 **不可横向等同**。第一版对外承诺 **Spectrum 为固定口径的参考视图（B）**，实现口径见 **`docs/architecture.md`** 的 DSP 层说明。  
 - **多声道**  
-  - **Loudness**：标准布局走 **正统多声道积分（L1）**；当前范围覆盖 **Stereo + 5.1 + 7.1（A）**。  
-  - **布局策略**：**Z + Y** —— 能可靠识别标准布局则走 L1；识别失败则 **降级**并 **明确提示**；退化下 **Ch1/Ch2** 等策略必须可读、不可装成「环绕正统读数」。  
-  - **布局交互**：默认自动识别 mono / stereo / 5.1 / 7.1；设置中提供手动 **Stereo / 5.1 / 7.1** 预设。  
+  - **Loudness**：标准布局走 **正统多声道积分（L1）**，权重依据 **ITU-R BS.1770-5 Annex 3 Table 5**（侧环绕 ±90°/±110° 为 +1.5 dB，后环绕 ±135° 与其余位置为 0 dB，LFE 不计入）；当前范围覆盖 **mono / stereo / LCR / quad / 5.0 / 5.1 / 7.0 / 7.1**，声道顺序为 **WAVE / ffmpeg 原生顺序**。  
+  - **True Peak**：**True Peak Max 覆盖全部声道**；True Peak L/R 读数仅表示 Ch1/Ch2。  
+  - **布局策略**：**Z + Y** —— 能可靠识别标准布局则走 L1；识别失败则 **降级为 Ch1/Ch2 立体声响度**，并在 Loudness、Stats、Dock Loudness 与文件摘要中显示 **`Ch 1–2` 标记**；退化读数必须可读、不可装成「环绕正统读数」。  
+  - **布局交互**：默认按声道数自动识别上述布局；设置中提供手动 **Stereo / 5.1 / 7.1** 预设。  
   - **Level Meter**：多通道时 **逐通道呈现**。  
   - **Spectrum（>2ch）**：用户可在面板控制中选择标准声道对或单声道查看。  
   - **Vectorscope**：始终 **一对通道**；默认 **Front L/R**（在映射成立时），可在面板控制中切换声道对。  
@@ -153,7 +154,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **产品形态**：桌面 **Tauri**；前端 **Web 技术 UI**，后端 **Rust** 采集与 DSP；DSP 与指标计算 **不下放到前端**。  
 - **通信**：控制走 **command**；高频帧走 **Channel**；低频走 **Event**；细节以架构文档为准。  
 - **历史 ring**：以 **Rust 侧会话内缓冲**为主叙事（与架构一致）；前端为展示与交互消费端。  
-- **多声道**：自动识别 mono / stereo / 5.1 / 7.1；手动布局预设与 L1 loudness 路径覆盖 Stereo / 5.1 / 7.1。  
+- **多声道**：按声道数自动识别 mono / stereo / LCR / quad / 5.0 / 5.1 / 7.0 / 7.1，权重依据 BS.1770-5；未知布局降级 Ch1/Ch2 并显示标记；True Peak Max 覆盖全部声道。  
 - **频谱固定口径**：先锁定「参考视图」参数集合，再考虑暴露调参（PRD 外未来项）。  
 
 ---
@@ -208,7 +209,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **对白门控响度**：可选；基于按需选择的 on-device VAD 引擎（Silero 默认，可切 FireRedVAD / TEN VAD），输出 Coverage / Range / Offset / Active 指标。  
 - **主题**：自定义主题 + 主题编辑器，派生乐器配色与主题驱动的 spectrogram colormap。  
 - **响度参考档（Loudness Profile，用户故事 14）**：会话级、自定义优先的规则集；首次配置提供一个按实际参数命名且可编辑、可删除的示例，其余由用户自建；驱动 Loudness 参考线、Stats 数值配色与 Level Meter 的 TP Max 标记，并提供带实时预览的规则编辑器。产品不提供或暗示平台、广播或法规认证预设；测量仍为 ITU-R BS.1770 路径。
-- **多声道**：Level Meter 逐通道显示；自动识别 mono / stereo / 5.1 / 7.1；手动 Stereo / 5.1 / 7.1；Loudness 按 Stereo / 5.1 / 7.1 L1 路径计算；Spectrum 与 Vectorscope 支持声道/声道对选择。  
+- **多声道**：Level Meter 逐通道显示；按声道数自动识别 mono / stereo / LCR / quad / 5.0 / 5.1 / 7.0 / 7.1（BS.1770-5 权重，WAVE 顺序）；未知布局降级 Ch1/Ch2 并显示 `Ch 1–2` 标记；True Peak Max 覆盖全部声道；Spectrum 与 Vectorscope 支持声道/声道对选择。    
 - **历史**：Rust 侧 ring / 会话内历史与快照交互（详情见架构文档）。  
 - **CI/分发**：GitHub Actions 构建 **Windows + macOS** 产物；Release 附着策略以工作流与 README 为准。  
 
@@ -222,6 +223,8 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 - **Agent Control Visual Capture 已交付（Windows）**：支持 PLVS 界面截图及可选 Live measured-source 音频的 MP4 录制；它不是通用录音、桌面捕获或 GUI 导出工作流。**CSV/历史数据导出**、面向普通用户的通用导出入口、**自动更新/签名/公证**仍不作为当前 PRD 交付承诺，除非单独开里程碑修订本文。
 - **无障碍增强**：非短期主线（见 5.11）。  
 - **一键诊断导出**：非承诺项（见 5.9）。  
+- **手动布局预设缺口**：第 5 节承诺的手动 **Stereo / 5.1 / 7.1** 预设目前没有 UI 入口（引擎侧枚举仍在）；由多声道子项目 B（沉浸式布局）补齐，同时覆盖 5.1.2 / 5.1.4 / 7.1.2 / 7.1.4 / 9.1.6 与来源声明的声道布局。  
+- **对象 / 场景音频（路线图）**：ADM BWF、Dolby Atmos 对象、Ambisonics 不在当前承诺内。BS.1770-5 Annex 4 要求先渲染到 BS.2051 扬声器布局再测量，因此需要内置渲染器，单独评估。  
 
 ---
 
