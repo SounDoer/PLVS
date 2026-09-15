@@ -28,8 +28,6 @@ pub(crate) fn standard_layout_name(channels: u16) -> Option<&'static str> {
 }
 
 /// Per-channel loudness weights for 3–8 channels. Mono and stereo keep their dedicated paths.
-// Consumed by the loudness meters in the next commits.
-#[allow(dead_code)]
 pub(crate) fn standard_loudness_weights(channels: u16) -> Option<&'static [f64]> {
   match channels {
     // L R C

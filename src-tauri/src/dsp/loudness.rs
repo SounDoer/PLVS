@@ -1,11 +1,9 @@
 //! ITU-R BS.1770 / EBU R128 style loudness (ported from `loudness-meter.js`).
 
+use super::channel_weights::standard_loudness_weights;
 use super::dialogue::DialogueIntegrator;
 use super::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
-use super::gating::{
-  gated_integrated_lufs, gated_lra, lufs_from_mean_squares, IBL_CAP, STH_CAP,
-  SURROUND_LOUDNESS_WEIGHT,
-};
+use super::gating::{gated_integrated_lufs, gated_lra, lufs_from_mean_squares, IBL_CAP, STH_CAP};
 use super::meter::{Meter, PcmContext};
 use super::speech::{downmix_to_mono, SpeechDetector, VadEngineKind};
 use crate::engine::ChannelLayoutSetting;
@@ -373,326 +371,42 @@ impl LoudnessMeter {
     out
   }
 
-  /// BS.1770 stereo path: from **N-channel interleaved** PCM, take the first two samples per frame then `push_interleaved` (v1.0; N>2 see architecture §5).
+  /// Multichannel intake. Counts with a standard layout (`channel_weights`) are summed with
+  /// BS.1770-5 weights; `Surround51` / `Surround71` apply the 5.1 / 7.1 rows only at exactly 6 / 8
+  /// channels. Stereo keeps its dedicated path. Every other count measures the loudness of Ch1/Ch2
+  /// through the weighted path (so True Peak still sees every channel) and is reported as an
+  /// unknown layout by `loudness_layout_meta`.
   pub fn push_interleaved_multichannel(
     &mut self,
     interleaved: &[f32],
     channels: u16,
     channel_layout: ChannelLayoutSetting,
   ) -> Option<LoudnessBlock> {
-    let ch = channels.max(1) as usize;
+    let ch = channels.max(1);
     if ch == 1 {
       return self.push_mono_duplex(interleaved);
     }
-
-    // Auto 5.0: Ch1..Ch5 => FL FR C SL SR. Same order as 5.1 without the LFE slot.
-    if channel_layout == ChannelLayoutSetting::Auto && ch == 5 {
-      return self.push_interleaved_weighted(
-        interleaved,
-        channels,
-        &[
-          1.0,
-          1.0,
-          1.0,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-        ],
-      );
+    if ch == 2 {
+      return self.push_interleaved(interleaved);
     }
 
-    // Auto 7.0: Ch1..Ch7 => FL FR C SL SR BL BR. Same order as 7.1 without the LFE slot.
-    if channel_layout == ChannelLayoutSetting::Auto && ch == 7 {
-      return self.push_interleaved_weighted(
-        interleaved,
-        channels,
-        &[
-          1.0,
-          1.0,
-          1.0,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-        ],
-      );
+    let weights = match channel_layout {
+      ChannelLayoutSetting::Stereo => None,
+      ChannelLayoutSetting::Surround51 if ch == 6 => standard_loudness_weights(6),
+      ChannelLayoutSetting::Surround71 if ch == 8 => standard_loudness_weights(8),
+      ChannelLayoutSetting::Surround51 | ChannelLayoutSetting::Surround71 => None,
+      ChannelLayoutSetting::Auto => standard_loudness_weights(ch),
+    };
+    if let Some(weights) = weights {
+      return self.push_interleaved_weighted(interleaved, ch, weights);
     }
 
-    // Manual 5.1 preset: Ch1..Ch6 => FL FR C LFE SL SR.
-    // Loudness aggregation per BS.1770 sums K-weighted mean-squares across channels; LFE has 0 weight.
-    if channel_layout == ChannelLayoutSetting::Surround51 && ch >= 6 {
-      if self.kf_mc.len() != 6 {
-        self.kf_mc = (0..6).map(|_| KWeightMono::new(self.sample_rate)).collect();
-      }
-      let mut out = None;
-      let frames = interleaved.len() / ch;
-      for i in 0..frames {
-        let base = i * ch;
-        let mut sum_ms = 0.0_f64;
-        for (ci, w) in [
-          1.0_f64,
-          1.0,
-          1.0,
-          0.0,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-        ]
-        .into_iter()
-        .enumerate()
-        {
-          let x = interleaved[base + ci] as f64;
-          let kw = self.kf_mc[ci].tick(x);
-          if w != 0.0 {
-            sum_ms += w * kw * kw;
-          }
-        }
-        self.ba[0] += sum_ms;
-        self.ba[1] += 0.0;
-
-        // Keep true-peak semantics consistent with the existing UI: report L/R from channels 1/2.
-        let xl = interleaved[base] as f64;
-        let xr = interleaved[base + 1] as f64;
-        let tp0 = self.tp_sample(xl, 0);
-        let tp1 = self.tp_sample(xr, 1);
-        if tp0 > self.tp_block {
-          self.tp_block = tp0;
-        }
-        if tp1 > self.tp_block {
-          self.tp_block = tp1;
-        }
-        if tp0 > self.tp_block_ch[0] {
-          self.tp_block_ch[0] = tp0;
-        }
-        if tp1 > self.tp_block_ch[1] {
-          self.tp_block_ch[1] = tp1;
-        }
-
-        self.bn += 1;
-        if self.bn >= self.bsz {
-          let m0 = self.ba[0] / self.bn as f64;
-          let m1 = 0.0_f64;
-          let idx = self.rh * 2;
-          self.ring[idx] = m0;
-          self.ring[idx + 1] = m1;
-          self.rh = (self.rh + 1) % self.rn;
-          self.rc = (self.rc + 1).min(self.rn);
-          self.ibl.push([m0, m1]);
-          if self.ibl.len() > IBL_CAP {
-            self.ibl.remove(0);
-          }
-          let mut a0 = 0.0;
-          let mut a1 = 0.0;
-          let mut an = 0_usize;
-          for b in 0..4.min(self.rc) {
-            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-            a0 += self.ring[idx];
-            a1 += self.ring[idx + 1];
-            an += 1;
-          }
-          let momentary = if an > 0 {
-            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-          } else {
-            f64::NEG_INFINITY
-          };
-          a0 = 0.0;
-          a1 = 0.0;
-          an = 0;
-          for b in 0..30.min(self.rc) {
-            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-            a0 += self.ring[idx];
-            a1 += self.ring[idx + 1];
-            an += 1;
-          }
-          let short_term = if an > 0 {
-            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-          } else {
-            f64::NEG_INFINITY
-          };
-          if short_term.is_finite() {
-            self.sth.push(short_term);
-            if self.sth.len() > STH_CAP {
-              self.sth.remove(0);
-            }
-          }
-          let tp_now = if self.tp_block > 0.0 {
-            20.0 * self.tp_block.log10()
-          } else {
-            f64::NEG_INFINITY
-          };
-          let tp_now_l = if self.tp_block_ch[0] > 0.0 {
-            20.0 * self.tp_block_ch[0].log10()
-          } else {
-            f64::NEG_INFINITY
-          };
-          let tp_now_r = if self.tp_block_ch[1] > 0.0 {
-            20.0 * self.tp_block_ch[1].log10()
-          } else {
-            f64::NEG_INFINITY
-          };
-          out = Some(LoudnessBlock {
-            momentary,
-            short_term,
-            integrated: self.integrated(),
-            lra: self.lra(),
-            true_peak: tp_now,
-            true_peak_l: tp_now_l,
-            true_peak_r: tp_now_r,
-            dialogue_integrated: LoudnessBlock::DIALOGUE_OFF.0,
-            dialogue_lra: LoudnessBlock::DIALOGUE_OFF.1,
-            dialogue_percent: LoudnessBlock::DIALOGUE_OFF.2,
-          });
-          self.ba = [0.0, 0.0];
-          self.bn = 0;
-          self.tp_block = 0.0;
-          self.tp_block_ch = [0.0, 0.0];
-        }
-      }
-      return out;
-    }
-
-    // Manual 7.1 preset: Ch1..Ch8 => FL FR C LFE SL SR BL BR.
-    // LFE (index 3) has 0 weight per BS.1770-4.
-    if channel_layout == ChannelLayoutSetting::Surround71 && ch >= 8 {
-      if self.kf_mc.len() != 8 {
-        self.kf_mc = (0..8).map(|_| KWeightMono::new(self.sample_rate)).collect();
-      }
-      let mut out = None;
-      let frames = interleaved.len() / ch;
-      for i in 0..frames {
-        let base = i * ch;
-        let mut sum_ms = 0.0_f64;
-        for (ci, w) in [
-          1.0_f64,
-          1.0,
-          1.0,
-          0.0,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-          SURROUND_LOUDNESS_WEIGHT,
-        ]
-        .into_iter()
-        .enumerate()
-        {
-          let x = interleaved[base + ci] as f64;
-          let kw = self.kf_mc[ci].tick(x);
-          if w != 0.0 {
-            sum_ms += w * kw * kw;
-          }
-        }
-        self.ba[0] += sum_ms;
-        self.ba[1] += 0.0;
-
-        // Keep true-peak semantics consistent with the existing UI: report L/R from channels 1/2.
-        let xl = interleaved[base] as f64;
-        let xr = interleaved[base + 1] as f64;
-        let tp0 = self.tp_sample(xl, 0);
-        let tp1 = self.tp_sample(xr, 1);
-        if tp0 > self.tp_block {
-          self.tp_block = tp0;
-        }
-        if tp1 > self.tp_block {
-          self.tp_block = tp1;
-        }
-        if tp0 > self.tp_block_ch[0] {
-          self.tp_block_ch[0] = tp0;
-        }
-        if tp1 > self.tp_block_ch[1] {
-          self.tp_block_ch[1] = tp1;
-        }
-
-        self.bn += 1;
-        if self.bn >= self.bsz {
-          let m0 = self.ba[0] / self.bn as f64;
-          let m1 = 0.0_f64;
-          let idx = self.rh * 2;
-          self.ring[idx] = m0;
-          self.ring[idx + 1] = m1;
-          self.rh = (self.rh + 1) % self.rn;
-          self.rc = (self.rc + 1).min(self.rn);
-          self.ibl.push([m0, m1]);
-          if self.ibl.len() > IBL_CAP {
-            self.ibl.remove(0);
-          }
-          let mut a0 = 0.0;
-          let mut a1 = 0.0;
-          let mut an = 0_usize;
-          for b in 0..4.min(self.rc) {
-            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-            a0 += self.ring[idx];
-            a1 += self.ring[idx + 1];
-            an += 1;
-          }
-          let momentary = if an > 0 {
-            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-          } else {
-            f64::NEG_INFINITY
-          };
-          a0 = 0.0;
-          a1 = 0.0;
-          an = 0;
-          for b in 0..30.min(self.rc) {
-            let idx = ((self.rh + self.rn - 1 - b) % self.rn) * 2;
-            a0 += self.ring[idx];
-            a1 += self.ring[idx + 1];
-            an += 1;
-          }
-          let short_term = if an > 0 {
-            lufs_from_mean_squares(a0 / an as f64, a1 / an as f64)
-          } else {
-            f64::NEG_INFINITY
-          };
-          if short_term.is_finite() {
-            self.sth.push(short_term);
-            if self.sth.len() > STH_CAP {
-              self.sth.remove(0);
-            }
-          }
-          let tp_now = if self.tp_block > 0.0 {
-            20.0 * self.tp_block.log10()
-          } else {
-            f64::NEG_INFINITY
-          };
-          let tp_now_l = if self.tp_block_ch[0] > 0.0 {
-            20.0 * self.tp_block_ch[0].log10()
-          } else {
-            f64::NEG_INFINITY
-          };
-          let tp_now_r = if self.tp_block_ch[1] > 0.0 {
-            20.0 * self.tp_block_ch[1].log10()
-          } else {
-            f64::NEG_INFINITY
-          };
-          out = Some(LoudnessBlock {
-            momentary,
-            short_term,
-            integrated: self.integrated(),
-            lra: self.lra(),
-            true_peak: tp_now,
-            true_peak_l: tp_now_l,
-            true_peak_r: tp_now_r,
-            dialogue_integrated: LoudnessBlock::DIALOGUE_OFF.0,
-            dialogue_lra: LoudnessBlock::DIALOGUE_OFF.1,
-            dialogue_percent: LoudnessBlock::DIALOGUE_OFF.2,
-          });
-          self.ba = [0.0, 0.0];
-          self.bn = 0;
-          self.tp_block = 0.0;
-          self.tp_block_ch = [0.0, 0.0];
-        }
-      }
-      return out;
-    }
-
-    let frames = interleaved.len() / ch;
-    if frames == 0 {
-      return None;
-    }
-    let mut tmp = Vec::with_capacity(frames * 2);
-    for f in 0..frames {
-      tmp.push(interleaved[f * ch]);
-      tmp.push(interleaved[f * ch + 1]);
-    }
-    self.push_interleaved(&tmp)
+    // Unrecognized layout: Ch1/Ch2 loudness only. Built per call on the DSP consumer thread, like
+    // the stereo copy this replaces.
+    let mut ch1_ch2 = vec![0.0_f64; ch as usize];
+    ch1_ch2[0] = 1.0;
+    ch1_ch2[1] = 1.0;
+    self.push_interleaved_weighted(interleaved, ch, &ch1_ch2)
   }
 
   /// Mono duplicate to stereo.
@@ -798,6 +512,7 @@ impl LoudnessMeter {
 mod tests {
   use super::*;
   use crate::dsp::channel_sel::SpectrumChannelSel;
+  use crate::dsp::gating::SURROUND_LOUDNESS_WEIGHT;
 
   /// Diagnostic (run with `--ignored --nocapture`): measure integrated/LRA of the bit-perfect
   /// reference PCM in `dialogue-test-audio/*.f32` (48k stereo f32le), bypassing the capture path.
@@ -1164,7 +879,7 @@ mod tests {
   }
 
   #[test]
-  fn auto_70_matches_standard_surround_weights() {
+  fn auto_70_matches_bs1770_5_weights() {
     let sr = 48_000.0;
     let frames = 4_800usize;
     let ch = 7usize;
@@ -1187,28 +902,20 @@ mod tests {
       .push_interleaved_weighted(
         &pcm,
         ch as u16,
-        &[
-          1.0,
-          1.0,
-          1.0,
-          surround_weight,
-          surround_weight,
-          surround_weight,
-          surround_weight,
-        ],
+        &[1.0, 1.0, 1.0, 1.0, 1.0, surround_weight, surround_weight],
       )
       .expect("7.0 standard block");
 
     assert!(
       (auto_block.momentary - standard_block.momentary).abs() < 0.15,
-      "7.0 auto should use standard surround weights: {} vs {}",
+      "7.0 auto should use BS.1770-5 weights: {} vs {}",
       auto_block.momentary,
       standard_block.momentary
     );
   }
 
   #[test]
-  fn hardcoded_71_matches_standard_surround_weights() {
+  fn manual_71_matches_bs1770_5_weights() {
     let sr = 48_000.0;
     let frames = 4_800usize;
     let ch = 8usize;
@@ -1222,11 +929,11 @@ mod tests {
     }
     let surround_weight = 10_f64.powf(1.5 / 10.0);
 
-    let mut hardcoded = LoudnessMeter::new(sr);
+    let mut manual = LoudnessMeter::new(sr);
     let mut standard = LoudnessMeter::new(sr);
-    let hardcoded_block = hardcoded
+    let manual_block = manual
       .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Surround71)
-      .expect("7.1 hardcoded block");
+      .expect("7.1 manual block");
     let standard_block = standard
       .push_interleaved_weighted(
         &pcm,
@@ -1236,8 +943,8 @@ mod tests {
           1.0,
           1.0,
           0.0,
-          surround_weight,
-          surround_weight,
+          1.0,
+          1.0,
           surround_weight,
           surround_weight,
         ],
@@ -1245,9 +952,9 @@ mod tests {
       .expect("7.1 standard block");
 
     assert!(
-      (hardcoded_block.momentary - standard_block.momentary).abs() < 0.15,
-      "7.1 hardcoded should use standard surround weights: {} vs {}",
-      hardcoded_block.momentary,
+      (manual_block.momentary - standard_block.momentary).abs() < 0.15,
+      "7.1 manual should use BS.1770-5 weights: {} vs {}",
+      manual_block.momentary,
       standard_block.momentary
     );
   }
@@ -1345,7 +1052,7 @@ mod tests {
 
   #[test]
   fn surround71_lufs_uses_all_channels_except_lfe() {
-    // 7.1: FL FR C LFE SL SR BL BR. LFE (ch index 3) should have 0 weight.
+    // 7.1 in WAVE order: FL FR C LFE BL BR SL SR. LFE (ch index 3) should have 0 weight.
     let sr = 48000.0_f64;
     let frames = (sr * 0.4) as usize;
     let channels = 8_usize;
@@ -1424,5 +1131,97 @@ mod tests {
       b_st.momentary,
       b_51.momentary
     );
+  }
+
+  /// 400 ms of a 1 kHz sine at `amp` on the listed channel indices only.
+  fn sine_on_channels(channels: usize, active: &[usize], amp: f32) -> Vec<f32> {
+    let sr = 48_000.0_f64;
+    let frames = (sr * 0.4) as usize;
+    let mut pcm = vec![0.0_f32; frames * channels];
+    for i in 0..frames {
+      let s = (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / sr).sin() as f32 * amp;
+      for &ch in active {
+        pcm[i * channels + ch] = s;
+      }
+    }
+    pcm
+  }
+
+  /// BS.1770-5 Table 5: side surrounds (±90°) weigh 1.41, back surrounds (±135°) 1.00. The same
+  /// signal on the back pair must therefore read exactly 1.5 LU below the side pair.
+  #[test]
+  fn auto_71_weights_back_surrounds_below_side_surrounds() {
+    let back = sine_on_channels(8, &[4, 5], 0.1);
+    let side = sine_on_channels(8, &[6, 7], 0.1);
+    let mut back_meter = LoudnessMeter::new(48_000.0);
+    let mut side_meter = LoudnessMeter::new(48_000.0);
+    let back_block = back_meter
+      .push_interleaved_multichannel(&back, 8, ChannelLayoutSetting::Auto)
+      .expect("back block");
+    let side_block = side_meter
+      .push_interleaved_multichannel(&side, 8, ChannelLayoutSetting::Auto)
+      .expect("side block");
+    assert!(
+      (side_block.momentary - back_block.momentary - 1.5).abs() < 0.01,
+      "side {} vs back {}",
+      side_block.momentary,
+      back_block.momentary
+    );
+  }
+
+  #[test]
+  fn auto_lcr_and_quad_use_standard_weights() {
+    for (channels, weights) in [
+      (3_u16, vec![1.0, 1.0, 1.0]),
+      (
+        4_u16,
+        vec![1.0, 1.0, SURROUND_LOUDNESS_WEIGHT, SURROUND_LOUDNESS_WEIGHT],
+      ),
+    ] {
+      let all: Vec<usize> = (0..channels as usize).collect();
+      let pcm = sine_on_channels(channels as usize, &all, 0.1);
+      let mut auto = LoudnessMeter::new(48_000.0);
+      let mut weighted = LoudnessMeter::new(48_000.0);
+      let auto_block = auto
+        .push_interleaved_multichannel(&pcm, channels, ChannelLayoutSetting::Auto)
+        .expect("auto block");
+      let weighted_block = weighted
+        .push_interleaved_weighted(&pcm, channels, &weights)
+        .expect("weighted block");
+      assert_eq!(
+        auto_block.momentary, weighted_block.momentary,
+        "{channels} channels"
+      );
+    }
+  }
+
+  /// Counts without a standard layout measure the loudness of Ch1/Ch2 and ignore every other
+  /// channel, however loud.
+  #[test]
+  fn unknown_layout_measures_only_the_first_two_channels() {
+    let channels = 10_usize;
+    let mut pcm = sine_on_channels(channels, &[0, 1], 0.1);
+    for frame in pcm.chunks_exact_mut(channels) {
+      for sample in &mut frame[2..] {
+        *sample = 0.5;
+      }
+    }
+    let stereo: Vec<f32> = pcm
+      .chunks_exact(channels)
+      .flat_map(|frame| [frame[0], frame[1]])
+      .collect();
+    let mut wide = LoudnessMeter::new(48_000.0);
+    let mut two = LoudnessMeter::new(48_000.0);
+    let wide_block = wide
+      .push_interleaved_multichannel(&pcm, channels as u16, ChannelLayoutSetting::Auto)
+      .expect("10ch block");
+    let two_block = two
+      .push_interleaved_weighted(&stereo, 2, &[1.0, 1.0])
+      .expect("Ch1/Ch2 block");
+    assert_eq!(wide_block.momentary, two_block.momentary);
+    // The same reading as the dedicated stereo path, to well within display precision.
+    let mut stereo_path = LoudnessMeter::new(48_000.0);
+    let stereo_block = stereo_path.push_interleaved(&stereo).expect("stereo block");
+    assert!((wide_block.momentary - stereo_block.momentary).abs() < 1e-9);
   }
 }
