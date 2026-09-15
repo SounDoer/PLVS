@@ -45,6 +45,17 @@ function metricValue(metricId, summary) {
   return withUnit(text, STATS_META[metricId]?.unit ?? "");
 }
 
+function loudnessLayout(summary) {
+  if (summary.loudnessLayoutKnown === false)
+    return "Unknown layout — loudness uses channels 1–2 only";
+  if (summary.loudnessLayoutKnown === true) return stringOrDash(summary.loudnessLayout);
+  return null;
+}
+
+function stringOrDash(value) {
+  return typeof value === "string" && value ? value : MISSING;
+}
+
 function samplePeak(summary) {
   const max = fixed(summary.samplePeakMaxDb);
   if (max == null) return MISSING;
@@ -140,6 +151,8 @@ export function renderFileAnalysisReportMarkdown(report) {
     item(STATS_META.truePeak.label, metricValue("truePeak", summary)),
     item("Sample Peak Max", samplePeak(summary)),
   ];
+  const layout = loudnessLayout(summary);
+  if (layout != null) lines.push(item("Loudness Layout", layout));
   if (dialogue.enabled) {
     lines.push(
       "",

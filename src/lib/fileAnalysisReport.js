@@ -99,6 +99,9 @@ export function buildFileAnalysisReport(fileSession, options = {}) {
     durationMs: finiteOrNull(summary.durationMs),
     sampleRateHz: finiteOrNull(summary.sampleRateHz),
     channelCount: finiteOrNull(summary.channelCount ?? summary.channels),
+    loudnessLayout: stringOrNull(summary.loudnessLayout),
+    loudnessLayoutKnown:
+      typeof summary.loudnessLayoutKnown === "boolean" ? summary.loudnessLayoutKnown : null,
     integratedLufs: finiteOrNull(summary.integratedLufs),
     lra: finiteOrNull(summary.lra),
     mMaxLufs: finiteOrNull(summary.mMaxLufs),

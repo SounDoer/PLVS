@@ -164,6 +164,30 @@ describe("renderFileAnalysisReportMarkdown", () => {
     expect(markdown).not.toContain("## Dialogue");
   });
 
+  it("names an unrecognized loudness layout", () => {
+    const lines = render({
+      ...SESSION,
+      summary: { ...SESSION.summary, loudnessLayout: "unknown", loudnessLayoutKnown: false },
+    }).split("\n");
+
+    expect(lines).toContain("- Loudness Layout: Unknown layout — loudness uses channels 1–2 only");
+  });
+
+  it("names a known loudness layout", () => {
+    const lines = render({
+      ...SESSION,
+      summary: { ...SESSION.summary, loudnessLayout: "7.1", loudnessLayoutKnown: true },
+    }).split("\n");
+
+    expect(lines).toContain("- Loudness Layout: 7.1");
+  });
+
+  it("omits the loudness layout line when absent", () => {
+    const markdown = render();
+
+    expect(markdown).not.toContain("Loudness Layout");
+  });
+
   it("renders missing values as a dash", () => {
     const lines = render({
       ...SESSION,

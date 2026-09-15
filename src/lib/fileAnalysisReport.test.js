@@ -251,4 +251,47 @@ describe("fileAnalysisReport", () => {
 
     expect(report.summary.dialogueLra).toBe(0);
   });
+
+  it("records an unrecognized loudness layout", () => {
+    const report = buildFileAnalysisReport(
+      {
+        ...COMPLETE_SESSION,
+        summary: {
+          ...COMPLETE_SESSION.summary,
+          loudnessLayout: "unknown",
+          loudnessLayoutKnown: false,
+        },
+      },
+      { exportedAt: "2026-07-06T12:30:00.000Z" }
+    );
+
+    expect(report.summary.loudnessLayout).toBe("unknown");
+    expect(report.summary.loudnessLayoutKnown).toBe(false);
+  });
+
+  it("records a known loudness layout", () => {
+    const report = buildFileAnalysisReport(
+      {
+        ...COMPLETE_SESSION,
+        summary: {
+          ...COMPLETE_SESSION.summary,
+          loudnessLayout: "7.1",
+          loudnessLayoutKnown: true,
+        },
+      },
+      { exportedAt: "2026-07-06T12:30:00.000Z" }
+    );
+
+    expect(report.summary.loudnessLayout).toBe("7.1");
+    expect(report.summary.loudnessLayoutKnown).toBe(true);
+  });
+
+  it("reports null loudness layout fields for a legacy summary without them", () => {
+    const report = buildFileAnalysisReport(COMPLETE_SESSION, {
+      exportedAt: "2026-07-06T12:30:00.000Z",
+    });
+
+    expect(report.summary.loudnessLayout).toBeNull();
+    expect(report.summary.loudnessLayoutKnown).toBeNull();
+  });
 });
