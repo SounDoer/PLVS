@@ -227,7 +227,7 @@ describe("LoudnessPanel", () => {
     expect(vectorQuery).toHaveBeenCalledTimes(1200);
   });
 
-  it("marks Ch1/Ch2 loudness when the layout is not recognized", () => {
+  it("marks Ch1/Ch2 loudness inside the chart overlay when the layout is not recognized", () => {
     render(
       <FrameDataProvider value={{ displayAudio: { loudnessLayoutKnown: false } }}>
         <HistoryDataProvider value={baseAudioData}>
@@ -237,6 +237,21 @@ describe("LoudnessPanel", () => {
         </HistoryDataProvider>
       </FrameDataProvider>
     );
-    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
+    const marker = screen.getByTestId("loudness-layout-marker");
+    expect(marker).toBeTruthy();
+    expect(marker.closest('[data-testid="loudness-chart-overlay"]')).toBeTruthy();
+  });
+
+  it("does not mark loudness while the layout is known", () => {
+    render(
+      <FrameDataProvider value={{ displayAudio: { loudnessLayoutKnown: true } }}>
+        <HistoryDataProvider value={baseAudioData}>
+          <PanelInstanceProvider value={{ panelControls: {} }}>
+            <LoudnessPanel />
+          </PanelInstanceProvider>
+        </HistoryDataProvider>
+      </FrameDataProvider>
+    );
+    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
   });
 });

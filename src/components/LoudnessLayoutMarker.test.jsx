@@ -18,4 +18,15 @@ describe("LoudnessLayoutMarker", () => {
     fireEvent.mouseEnter(marker);
     expect(screen.getByText(UNKNOWN_LAYOUT_TIP)).toBeTruthy();
   });
+
+  it("uses Dock caption typography when dense, normal-panel typography otherwise", () => {
+    const { rerender } = render(<LoudnessLayoutMarker known={false} dense />);
+    let marker = screen.getByTestId("loudness-layout-marker");
+    expect(marker.textContent).toBe("Ch 1–2");
+    expect(marker.className).toContain("--ui-dock-fs-caption");
+
+    rerender(<LoudnessLayoutMarker known={false} />);
+    marker = screen.getByTestId("loudness-layout-marker");
+    expect(marker.className).not.toContain("--ui-dock-fs-caption");
+  });
 });

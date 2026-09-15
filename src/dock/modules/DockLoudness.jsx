@@ -213,6 +213,7 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
         <DockHistoryWindowHud controls={controls} />
         <LoudnessLayoutMarker
           known={displayAudio?.loudnessLayoutKnown}
+          dense
           className="absolute left-0 top-0"
         />
       </div>

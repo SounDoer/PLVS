@@ -1,5 +1,6 @@
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 import { W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { loudnessTraceGradientStops } from "@/lib/loudnessTraceColor.js";
 import { RuleGradient } from "./LoudnessRuleGradient.jsx";
@@ -60,6 +61,7 @@ export function LoudnessHistoryChart({
   shortTermRules,
   onHistoryHoverMove,
   onHistoryHoverLeave,
+  loudnessLayoutKnown,
 }) {
   const visibleLayerIds = Array.isArray(loudnessHistoryVisibleLayerIds)
     ? loudnessHistoryVisibleLayerIds
@@ -318,7 +320,10 @@ export function LoudnessHistoryChart({
         </svg>
 
         {/* Overlays: hover crosshair and inspect HUD */}
-        <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
+        <div
+          data-testid="loudness-chart-overlay"
+          className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10"
+        >
           <TimelineLatestEdgeHint active={showLatestEdgeHint} />
           <TimelineSelectionEdgeHint direction={selectionEdge} />
           {!hasSelectedLayer ? (
@@ -366,6 +371,10 @@ export function LoudnessHistoryChart({
               </div>
             </div>
           ) : null}
+          <LoudnessLayoutMarker
+            known={loudnessLayoutKnown}
+            className="pointer-events-auto absolute right-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] z-30"
+          />
         </div>
       </div>
 

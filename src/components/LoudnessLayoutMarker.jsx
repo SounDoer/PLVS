@@ -3,11 +3,16 @@ import { cn } from "@/lib/utils";
 
 export const UNKNOWN_LAYOUT_TIP = "Layout not recognized. Loudness uses channels 1–2 only.";
 
+const WARN_CHIP_BG = "bg-[color:color-mix(in_srgb,var(--ui-signal-warn)_8%,transparent)]";
+const WARN_CHIP_BORDER =
+  "border border-[color:color-mix(in_srgb,var(--ui-signal-warn)_30%,transparent)]";
+
 /**
  * Shown wherever loudness is read out while the engine measured Ch1/Ch2 of an unrecognized
  * channel layout. `known` is `loudnessLayoutKnown`; only an explicit `false` shows the marker.
+ * `dense` swaps to Dock caption typography for Dock surfaces.
  */
-export function LoudnessLayoutMarker({ known, className }) {
+export function LoudnessLayoutMarker({ known, dense = false, className }) {
   if (known !== false) return null;
   return (
     <HoverTip
@@ -17,8 +22,16 @@ export function LoudnessLayoutMarker({ known, className }) {
     >
       <span
         data-testid="loudness-layout-marker"
-        aria-label="loudness uses channels 1 and 2 only"
-        className="rounded-xs border border-[color:var(--ui-signal-warn)] px-1 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)] leading-none text-[color:var(--ui-signal-warn)]"
+        role="img"
+        aria-label="layout not recognized, loudness uses channels 1 and 2 only"
+        className={cn(
+          "rounded-xs leading-none text-[color:var(--ui-signal-warn)]",
+          WARN_CHIP_BG,
+          WARN_CHIP_BORDER,
+          dense
+            ? "px-0.5 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium"
+            : "px-1 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)]"
+        )}
       >
         Ch 1–2
       </span>

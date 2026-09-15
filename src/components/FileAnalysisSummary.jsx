@@ -58,12 +58,17 @@ export function FileAnalysisSummary({
         </p>
       </div>
       {isComplete ? (
-        <dl className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 text-[length:var(--ui-fs-control)]">
-          <MetricPair label="Integrated" value={formatMetric(summary.integratedLufs, "LUFS")} />
-          <MetricPair label="LRA" value={formatMetric(summary.lra, "LU")} />
-          <MetricPair label="True Peak Max" value={formatMetric(summary.truePeakMaxDbtp, "dBTP")} />
+        <>
+          <dl className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 text-[length:var(--ui-fs-control)]">
+            <MetricPair label="Integrated" value={formatMetric(summary.integratedLufs, "LUFS")} />
+            <MetricPair label="LRA" value={formatMetric(summary.lra, "LU")} />
+            <MetricPair
+              label="True Peak Max"
+              value={formatMetric(summary.truePeakMaxDbtp, "dBTP")}
+            />
+          </dl>
           <LoudnessLayoutMarker known={summary.loudnessLayoutKnown} className="self-center" />
-        </dl>
+        </>
       ) : null}
       {isComplete ? (
         <ExportReportMenu onExportReport={onExportReport} onCopyReport={onCopyReport} />
