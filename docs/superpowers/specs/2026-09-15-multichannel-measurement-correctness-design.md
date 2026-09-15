@@ -38,6 +38,12 @@ Immersive layouts, role vocabulary changes beyond weights, manual layout preset 
 WAVEFORMATEXTENSIBLE masks / CoreAudio layout tags / ffprobe `channel_layout`, per-channel True Peak
 arrays, object and scene-based audio. All belong to B or C.
 
+Also B: the `visual` recording stereo downmix
+(`src-tauri/src/visual_capture/recording/audio.rs`) handles only 6 and 8 channels and silently
+takes Ch1/Ch2 for every other count. Its 7.1 matrix sums slots 5+7 left and 6+8 right, so the A
+channel-order decision does not change its output. Agent Control layout read/write, per-channel
+True Peak and layout-aware pair suggestions are also B.
+
 ## Decision 1: one weight table, WAVE / ffmpeg channel order
 
 A single function in `src-tauri/src/dsp/` returns the loudness weights for a channel count, or
@@ -92,8 +98,8 @@ override keeps measuring exactly what its roles say. Users who saved the old def
 - **File and CLI summaries:** `SummaryMetrics`, `FileAnalysisSummaryMetrics`, `CliAnalyzeSummary`
   and the CLI capture run gain `loudnessLayout` and `loudnessLayoutKnown` (additive fields). The
   GUI file summary shows the same `Ch 1–2` marker when unknown.
-- Agent Control already exposes `loudnessLayout` / `loudnessLayoutKnown`; `measurements.md` gains
-  one sentence defining `unknown` as Ch1/Ch2 stereo loudness.
+- Agent Control already exposes `loudnessLayout` / `loudnessLayoutKnown` in `measurement` results;
+  see Decision 4 for the documented semantics.
 
 Rejected: summing every channel at 1.00 for unknown counts. Channel 4 is not necessarily LFE, and a
 surround-looking number on an unrecognized layout is exactly what the PRD forbids.
@@ -106,12 +112,37 @@ surround-looking number on an unrecognized layout is exactly what the PRD forbid
 - `truePeakMaxDbtp` (live frame, file summary, CLI analyze, CLI capture) is the maximum across all
   channels. The Level Meter TP Max marker, Stats, Loudness Profile evaluation and the file summary
   already read this value.
-- `truePeakL` / `truePeakR` keep their Ch1 / Ch2 meaning, so Agent Control
-  `levels.truePeak.leftDbtp` / `rightDbtp` are unchanged.
+- `truePeakL` / `truePeakR` keep their Ch1 / Ch2 meaning; see Decision 4 for the Agent Control
+  consequences.
 - Cost: 3 interpolated phases × 32 taps per sample per channel (≈37 M multiply-adds per second at
   8 ch / 48 kHz), on the DSP consumer thread, not the audio callback.
 
-## Decision 4: documentation
+## Decision 4: Agent Control contract
+
+The Agent Control schema, field names, capability declaration and generated reference do not
+change. Values do change for inputs with more than two channels; stereo and mono are unchanged.
+
+| Field | Change |
+| --- | --- |
+| `levels.truePeak.maxDbtp` | Maximum over all channels instead of Ch1/Ch2 |
+| `loudness.psrDb`, `loudness.plrDb` | Follow `maxDbtp` (both derive from `tpMax` in `statsCatalog.js`) |
+| `loudness.*` for 7.0 / 7.1 | Lower readings from the weight fix |
+| `profile` verdicts | May change because they evaluate the same values |
+| `loudnessLayout` | Gains `lcr` and `quad` for 3 / 4 channels, previously `unknown` |
+| `levels.truePeak.leftDbtp` / `rightDbtp` | Unchanged: still Ch1 / Ch2 only |
+
+`docs/agent-control/measurements.md` gains:
+
+- `maxDbtp` is the maximum True Peak across every channel.
+- `leftDbtp` / `rightDbtp` are Ch1 / Ch2 only, whatever the channel count.
+- The full `loudnessLayout` value set: `mono`, `stereo`, `lcr`, `quad`, `5.0`, `5.1`, `7.0`, `7.1`,
+  `custom` (user channel-label override) and `unknown`. `unknown` means loudness is Ch1/Ch2 stereo
+  loudness and `loudnessLayoutKnown` is false. Clients must not treat the set as closed; B adds
+  values.
+
+Release notes mention the `maxDbtp` / PSR / PLR and 7.x value changes for automation users.
+
+## Decision 5: documentation
 
 - `docs/prd.md` multichannel section: weights cite BS.1770-5 Table 5; known layouts list mono,
   stereo, LCR, quad, 5.0, 5.1, 7.0, 7.1; True Peak is all channels; unknown layouts degrade to
