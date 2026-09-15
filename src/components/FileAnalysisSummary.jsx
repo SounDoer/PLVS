@@ -6,6 +6,7 @@ import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 import { formatMetric, formatSessionMetadataLine } from "@/lib/fileAnalysisDisplay";
 import { SHELL_SURFACE_BASE, SHELL_SURFACE_SOFT_SHADOW } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
+import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 
 // Metrics come from the authoritative completion summary payload (fileSession.summary), not the
 // last displayed UI frame, so throttled/batched frames cannot skew the delivery numbers.
@@ -61,6 +62,7 @@ export function FileAnalysisSummary({
           <MetricPair label="Integrated" value={formatMetric(summary.integratedLufs, "LUFS")} />
           <MetricPair label="LRA" value={formatMetric(summary.lra, "LU")} />
           <MetricPair label="True Peak Max" value={formatMetric(summary.truePeakMaxDbtp, "dBTP")} />
+          <LoudnessLayoutMarker known={summary.loudnessLayoutKnown} className="self-center" />
         </dl>
       ) : null}
       {isComplete ? (

@@ -1,4 +1,9 @@
-import { useHistoryData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
+import {
+  useFrameData,
+  useHistoryData,
+  usePanelInstanceData,
+} from "../../workspace/AudioDataContext.jsx";
+import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { PANEL_MIN_HISTORY } from "@/lib/shellLayout";
@@ -45,6 +50,7 @@ export function LoudnessPanel() {
     shortTermRules,
   } = useHistoryData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
+  const { displayAudio } = useFrameData() ?? {};
 
   const normalizedPanelControls = useMemo(
     () => normalizePanelControls(panelControls),
@@ -223,6 +229,10 @@ export function LoudnessPanel() {
           onHistoryHoverLeave={onHistoryHoverLeave}
         />
       </div>
+      <LoudnessLayoutMarker
+        known={displayAudio?.loudnessLayoutKnown}
+        className="absolute left-[var(--ui-panel-pad-x)] top-[var(--ui-panel-pad-y)] z-10"
+      />
     </div>
   );
 }

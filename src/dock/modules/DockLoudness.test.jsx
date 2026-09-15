@@ -248,4 +248,14 @@ describe("DockLoudness", () => {
     expect(screen.getAllByText("-")).toHaveLength(3);
     expect(screen.getByTestId("dock-loudness-momentary").getAttribute("d")).toContain("60");
   });
+
+  it("marks Ch1/Ch2 loudness when the layout is not recognized", () => {
+    renderWith({ displayAudio: { integrated: -20, loudnessLayoutKnown: false } });
+    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
+  });
+
+  it("does not mark loudness while the layout is known", () => {
+    renderWith({ displayAudio: { integrated: -20, loudnessLayoutKnown: true } });
+    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
+  });
 });

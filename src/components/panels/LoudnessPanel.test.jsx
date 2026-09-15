@@ -2,7 +2,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { HistoryDataProvider, PanelInstanceProvider } from "../../workspace/AudioDataContext.jsx";
+import {
+  FrameDataProvider,
+  HistoryDataProvider,
+  PanelInstanceProvider,
+} from "../../workspace/AudioDataContext.jsx";
 import { LoudnessPanel } from "./LoudnessPanel.jsx";
 import { LoudnessHistoryIndex } from "../../math/loudnessHistoryIndex.js";
 
@@ -221,5 +225,18 @@ describe("LoudnessPanel", () => {
     loudnessDisplayIndex.append(nextRow);
     view.rerender(tree());
     expect(vectorQuery).toHaveBeenCalledTimes(1200);
+  });
+
+  it("marks Ch1/Ch2 loudness when the layout is not recognized", () => {
+    render(
+      <FrameDataProvider value={{ displayAudio: { loudnessLayoutKnown: false } }}>
+        <HistoryDataProvider value={baseAudioData}>
+          <PanelInstanceProvider value={{ panelControls: {} }}>
+            <LoudnessPanel />
+          </PanelInstanceProvider>
+        </HistoryDataProvider>
+      </FrameDataProvider>
+    );
+    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
   });
 });

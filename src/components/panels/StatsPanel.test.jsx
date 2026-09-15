@@ -224,6 +224,44 @@ describe("StatsPanel", () => {
       .map((el) => el.textContent);
     expect(labels).toEqual(["Short-term Dynamics", "Integrated", "Momentary"]);
   });
+
+  it("marks Ch1/Ch2 loudness only when a loudness stat is visible", () => {
+    renderStatsPanel({
+      shared: { statsMetrics, dialogueActiveNow: false },
+      panelControls: { statsVisibleIds: ["integrated"] },
+      displayAudio: { integrated: -20, loudnessLayoutKnown: false },
+    });
+    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
+  });
+
+  it("does not mark stats while the layout is known", () => {
+    renderStatsPanel({
+      shared: { statsMetrics, dialogueActiveNow: false },
+      panelControls: { statsVisibleIds: ["integrated"] },
+      displayAudio: { integrated: -20, loudnessLayoutKnown: true },
+    });
+    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
+  });
+
+  it("does not mark stats when only non-loudness stats are visible", () => {
+    const metricsWithCorrelation = [
+      ...statsMetrics,
+      {
+        id: "correlation",
+        label: "Correlation",
+        shortLabel: "Corr",
+        value: "0.50",
+        unit: "",
+        hint: "Correlation",
+      },
+    ];
+    renderStatsPanel({
+      shared: { statsMetrics: metricsWithCorrelation, dialogueActiveNow: false },
+      panelControls: { statsVisibleIds: ["correlation"] },
+      displayAudio: { correlation: 0.5, loudnessLayoutKnown: false },
+    });
+    expect(screen.queryByTestId("loudness-layout-marker")).toBeNull();
+  });
 });
 
 describe("StatsPanel profile status colours", () => {

@@ -6,6 +6,7 @@ import {
   usePanelInstanceData,
 } from "../../workspace/AudioDataContext.jsx";
 import { HoverTip } from "@/components/HoverTip";
+import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 import { watchedMetricIds } from "../../lib/loudnessProfileCatalog.js";
@@ -19,6 +20,21 @@ const METRIC_ROW_LAYOUT =
   "flex min-h-[var(--ui-metric-row-min-h)] items-center gap-[var(--ui-metric-row-gap)] px-[var(--ui-metric-row-pad-x)]";
 
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
+
+/** Stats whose value depends on how channels are summed into loudness. */
+const LAYOUT_DEPENDENT_STAT_IDS = new Set([
+  "momentary",
+  "shortTerm",
+  "integrated",
+  "momentaryMax",
+  "shortTermMax",
+  "lra",
+  "psr",
+  "plr",
+  "dialogueIntegrated",
+  "dialogueRange",
+  "dialogueOffset",
+]);
 
 function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, watched }) {
   const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.stats.metrics;
@@ -81,6 +97,9 @@ export function StatsPanel() {
     ? statsOrder.map((id) => metricById.get(id)).filter(Boolean)
     : allMetrics;
   const visibleMetrics = orderedMetrics.filter((metric) => visibleIds.includes(metric.id));
+  const showsLayoutDependentStat = visibleMetrics.some((metric) =>
+    LAYOUT_DEPENDENT_STAT_IDS.has(metric.id)
+  );
 
   const values = displayAudio ? buildStatsValues(displayAudio) : {};
   const statuses = loudnessProfileEvaluate(loudnessProfileDocument, {
@@ -92,6 +111,12 @@ export function StatsPanel() {
   return (
     <div className="@container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden py-[var(--ui-panel-pad-y)] pl-[var(--ui-panel-pad-x)] pr-[var(--ui-panel-pad-x)]">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0">
+        {showsLayoutDependentStat ? (
+          <LoudnessLayoutMarker
+            known={displayAudio?.loudnessLayoutKnown}
+            className="self-end px-[var(--ui-metric-row-pad-x)] pb-[var(--ui-metric-list-gap)]"
+          />
+        ) : null}
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--ui-metric-list-gap)] overflow-y-auto">
           {visibleMetrics.length > 0 ? (
             visibleMetrics.map((metric) => (

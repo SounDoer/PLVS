@@ -8,6 +8,7 @@ import { fmtMetric } from "../../math/formatMath.js";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { DockHistoryWindowHud, dockHistoryInteractionProps } from "./DockHistoryInteraction.jsx";
 import { DockExpandedMetric } from "./DockExpandedMetric.jsx";
+import { LoudnessLayoutMarker } from "../../components/LoudnessLayoutMarker.jsx";
 
 const READOUTS = [
   { key: "momentary", short: "M", label: "Momentary" },
@@ -210,6 +211,10 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
           ) : null}
         </svg>
         <DockHistoryWindowHud controls={controls} />
+        <LoudnessLayoutMarker
+          known={displayAudio?.loudnessLayoutKnown}
+          className="absolute left-0 top-0"
+        />
       </div>
       {controls?.showReadouts !== false ? (
         expanded ? (

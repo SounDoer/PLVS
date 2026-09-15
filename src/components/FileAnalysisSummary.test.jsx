@@ -229,4 +229,28 @@ describe("FileAnalysisSummary", () => {
 
     expect(screen.queryByText(/Scrub history is limited/)).toBeNull();
   });
+
+  it("marks a completed summary measured on an unrecognized layout", () => {
+    render(
+      <FileAnalysisSummary
+        {...menuProps}
+        fileSession={{
+          state: "complete",
+          fileName: "stems.wav",
+          metadata: {
+            container: "wav",
+            selectedTrack: { index: 0, codec: "pcm", sampleRateHz: 48000, channels: 12 },
+          },
+          summary: {
+            integratedLufs: -20,
+            lra: 3,
+            truePeakMaxDbtp: -1,
+            loudnessLayout: "unknown",
+            loudnessLayoutKnown: false,
+          },
+        }}
+      />
+    );
+    expect(screen.getByTestId("loudness-layout-marker")).toBeTruthy();
+  });
 });
