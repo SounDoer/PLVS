@@ -4,6 +4,9 @@
 //! layout order, so WASAPI capture and file decode agree. Weights follow BS.1770-5 Annex 3
 //! Table 5: 1.41 for the surround pair between 60° and 120° azimuth (`Ls/Rs`), 1.00 for front,
 //! back (±135°, `Lb/Rb`) and every other position, 0 for LFE.
+//!
+//! Labels name the weighting role, not the WAVE speaker bit: `Ls/Rs` is the 1.41 surround pair
+//! (≈110° in 5.x, ±90° side in 7.x) even where the device mask calls it BACK_LEFT/BACK_RIGHT.
 
 use super::gating::SURROUND_LOUDNESS_WEIGHT as S;
 
@@ -95,7 +98,7 @@ mod tests {
   }
 
   #[test]
-  fn names_match_the_frontend_resolver() {
+  fn layout_names_by_channel_count() {
     let names: Vec<_> = (1..=8_u16)
       .map(|ch| standard_layout_name(ch).unwrap())
       .collect();
