@@ -64,7 +64,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
   - **Loudness**：标准布局走 **正统多声道积分（L1）**，权重依据 **ITU-R BS.1770-5 Annex 3 Table 5**（侧环绕 ±90°/±110° 为 +1.5 dB，后环绕 ±135° 与其余位置为 0 dB，LFE 不计入）；当前范围覆盖 **mono / stereo / LCR / quad / 5.0 / 5.1 / 7.0 / 7.1**，声道顺序为 **WAVE / ffmpeg 原生顺序**。  
   - **True Peak**：**True Peak Max 覆盖全部声道**；True Peak L/R 读数仅表示 Ch1/Ch2。  
   - **布局策略**：**Z + Y** —— 能可靠识别标准布局则走 L1；识别失败则 **降级为 Ch1/Ch2 立体声响度**，并在 Loudness、Stats、Dock Loudness 与文件摘要中显示 **`Ch 1–2` 标记**；退化读数必须可读、不可装成「环绕正统读数」。  
-  - **布局交互**：默认按声道数自动识别上述布局；设置中提供手动 **Stereo / 5.1 / 7.1** 预设。  
+  - **布局交互**：默认按声道数自动识别上述布局；设置中提供手动 **Stereo / 5.1 / 7.1** 预设（当前尚无 UI 入口，见 A.3）。  
   - **Level Meter**：多通道时 **逐通道呈现**。  
   - **Spectrum（>2ch）**：用户可在面板控制中选择标准声道对或单声道查看。  
   - **Vectorscope**：始终 **一对通道**；默认 **Front L/R**（在映射成立时），可在面板控制中切换声道对。  
