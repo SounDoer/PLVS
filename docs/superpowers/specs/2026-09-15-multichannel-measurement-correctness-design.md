@@ -1,6 +1,7 @@
 # Multichannel Measurement Correctness
 
-Status: Approved design, not yet implemented.
+Status: Implemented (2026-09-15) per
+`docs/superpowers/plans/2026-09-15-multichannel-measurement-correctness.md`; see Verification at the end.
 
 ## Context
 
@@ -181,3 +182,27 @@ Capture layer: this changes `src-tauri/src/dsp`, which CI does not exercise with
   a manual macOS check; reading the layout tag is B.
 - **Windows 8-channel "7.1 wide"** (`FLC/FRC`) is indistinguishable from 7.1 surround through cpal.
   A treats all 8-channel input as 7.1 surround; source-declared layouts are B.
+
+## Verification
+
+Recorded 2026-09-15 on `feat/multichannel` rebased onto main `8bd4ba69`.
+
+- `npm run check`: exit 0 (357 Vitest files / 4249 tests; 640 Rust library tests; fmt, clippy,
+  lint, build).
+- `npm run smoke:capture` with a freshly built capture harness, before and after the rebase: live
+  capture agrees with the file path on the stereo VB-Cable rig (Integrated −22.0306 file /
+  −22.0339 live LUFS; sample peaks identical), so the stereo baseline did not move.
+- Development app, File mode, synthetic 12-channel WAV: the summary reports
+  `loudnessLayout: "unknown"`, `loudnessLayoutKnown: false`, 12 channels; Agent Control screenshots
+  show the `Ch 1–2` marker in the Loudness chart (top-right), the Stats panel and the file summary.
+  With the loudness trace near the top of the chart the marker covers a short stretch of it; accepted.
+
+Not verified:
+
+- Dock Loudness marker with a live input of 9+ channels. The only such input on the test machine was
+  held by another application, so capture never started. Check manually.
+- macOS 7.x channel order (Risk 1) and 8-channel "7.1 wide" sources (Risk 2).
+
+Found along the way and handled outside this spec: Agent Control artifact storage failed under Windows
+app-package filesystem redirection (fixed on main in `b80fd389`, `8bd4ba69`); a frontend hang after a
+failed live capture followed by entering and leaving Dock was filed as a separate task.
