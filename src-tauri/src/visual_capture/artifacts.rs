@@ -235,7 +235,13 @@ impl ArtifactStore {
         .and_then(|name| name.to_str())
         .is_some_and(|name| name.starts_with(".art-") && name.ends_with(".tmp"))
       {
-        self.remove_contained_file(&path)?;
+        match self.remove_contained_file(&path) {
+          Ok(()) => {}
+          Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+            log::warn!("skipping orphan artifact entry {}: {error}", path.display());
+          }
+          Err(error) => return Err(error),
+        }
       }
     }
     Ok(())
@@ -256,8 +262,16 @@ impl ArtifactStore {
         Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
         Err(error) => return Err(error),
       };
+      let contained = match self.contained_existing_path(&path) {
+        Ok(contained) => contained,
+        Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+          log::warn!("skipping artifact entry {}: {error}", path.display());
+          continue;
+        }
+        Err(error) => return Err(error),
+      };
       entries.push(CleanupEntry {
-        path: self.contained_existing_path(&path)?,
+        path: contained,
         modified: metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH),
         bytes: metadata.len(),
         protected: protected.contains(&path),
@@ -266,16 +280,28 @@ impl ArtifactStore {
     Ok(entries)
   }
 
+  /// `path` must name an entry directly inside the store root, and that entry must not be a
+  /// link. The entry itself is deliberately not canonicalized: under Windows app-package
+  /// filesystem redirection (for example when PLVS is launched from a packaged host), a plain
+  /// file created in the root canonicalizes to the package's redirected location, which is not
+  /// an escape. Links are still refused, so a link planted in the root cannot point cleanup at
+  /// an outside file.
   fn contained_existing_path(&self, path: &Path) -> io::Result<PathBuf> {
     let normalized = normalize_absolute(path)?;
-    let canonical = fs::canonicalize(&normalized)?;
-    if canonical == self.root || !canonical.starts_with(&self.root) {
+    if normalized.parent() != Some(self.root.as_path()) {
       return Err(io::Error::new(
         io::ErrorKind::PermissionDenied,
         "artifact path escapes the staging root",
       ));
     }
-    Ok(canonical)
+    let metadata = fs::symlink_metadata(&normalized)?;
+    if is_link(&metadata) {
+      return Err(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "artifact path is a link",
+      ));
+    }
+    Ok(normalized)
   }
 
   fn remove_contained_file(&self, path: &Path) -> io::Result<()> {
@@ -359,6 +385,21 @@ fn format_time(value: SystemTime) -> io::Result<String> {
   OffsetDateTime::from(value)
     .format(&Rfc3339)
     .map_err(io::Error::other)
+}
+
+fn is_link(metadata: &fs::Metadata) -> bool {
+  if metadata.file_type().is_symlink() {
+    return true;
+  }
+  #[cfg(windows)]
+  {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+    if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+      return true;
+    }
+  }
+  false
 }
 
 fn normalize_absolute(path: &Path) -> io::Result<PathBuf> {
@@ -539,5 +580,56 @@ mod tests {
     assert!(entries[0].protected);
     drop(guard);
     assert!(store.protected.lock().unwrap().is_empty());
+  }
+
+  /// A link planted in the root must never be followed by cleanup, and it must not stop the
+  /// store from starting either.
+  #[test]
+  fn startup_skips_a_link_entry_without_following_it() {
+    let parent = TestDirectory::new();
+    let root = parent.0.join(ARTIFACT_DIRECTORY);
+    fs::create_dir_all(&root).unwrap();
+    let outside = parent.0.join("outside.png");
+    fs::write(&outside, b"outside").unwrap();
+    let link = root.join("art-link.png");
+    #[cfg(windows)]
+    let created = std::os::windows::fs::symlink_file(&outside, &link);
+    #[cfg(unix)]
+    let created = std::os::unix::fs::symlink(&outside, &link);
+    if created.is_err() {
+      // Creating symlinks needs Developer Mode or elevation on Windows; nothing to verify here.
+      return;
+    }
+    let store = ArtifactStore::initialize(&parent.0).expect("a link entry must not abort startup");
+    assert_eq!(
+      store
+        .contained_existing_path(&store.root.join("art-link.png"))
+        .unwrap_err()
+        .kind(),
+      io::ErrorKind::PermissionDenied
+    );
+    store
+      .cleanup(SystemTime::now() + RETENTION + Duration::from_secs(1))
+      .unwrap();
+    assert!(outside.exists(), "cleanup must not delete through a link");
+  }
+
+  #[test]
+  fn contained_paths_are_the_root_entries_themselves() {
+    let parent = TestDirectory::new();
+    let store = ArtifactStore::initialize(&parent.0).unwrap();
+    let file = store.root.join("art-plain.png");
+    fs::write(&file, b"plain").unwrap();
+    assert_eq!(store.contained_existing_path(&file).unwrap(), file);
+    let nested_dir = store.root.join("nested");
+    fs::create_dir(&nested_dir).unwrap();
+    let nested = nested_dir.join("art-nested.png");
+    fs::write(&nested, b"nested").unwrap();
+    assert_eq!(
+      store.contained_existing_path(&nested).unwrap_err().kind(),
+      io::ErrorKind::PermissionDenied
+    );
+    let dotted = store.root.join("nested").join("..").join("art-plain.png");
+    assert_eq!(store.contained_existing_path(&dotted).unwrap(), file);
   }
 }
