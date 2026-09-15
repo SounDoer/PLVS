@@ -51,6 +51,26 @@ describe("useCaptureTransport lifecycle", () => {
     expect(result.current.lifecycle).toBe("stopped");
   });
 
+  it("keeps dropped-audio evidence until a new session starts or Live is cleared", () => {
+    const { result } = setup();
+    act(() => result.current.recordAudioDrop(0));
+    expect(result.current.audioDrop).toBe(null);
+
+    act(() => result.current.recordAudioDrop(3));
+    act(() => result.current.recordAudioDrop(2));
+    expect(result.current.audioDrop).toEqual({ chunks: 5, since: expect.any(Number) });
+
+    act(() => result.current.markStopped());
+    expect(result.current.audioDrop?.chunks).toBe(5);
+
+    act(() => result.current.markStarted());
+    expect(result.current.audioDrop).toBe(null);
+
+    act(() => result.current.recordAudioDrop(1));
+    act(() => result.current.clearAudioDrop());
+    expect(result.current.audioDrop).toBe(null);
+  });
+
   it("exposes device restart settlement and blocks overlapping Transport actions", async () => {
     const { result } = setup();
     let starting;

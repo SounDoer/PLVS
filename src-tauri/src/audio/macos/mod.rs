@@ -5,7 +5,7 @@ mod pcm_shim;
 
 use std::collections::HashSet;
 use std::ffi::{c_char, c_int, c_void, CString};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -13,9 +13,10 @@ use tauri::AppHandle;
 
 use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
 use super::cpal_backend::{
-  append_input_devices, collect_outputs, device_id_key, device_list_label, pick_output_by_index,
-  pooled_pcm_buffer_capacity, resolve_default_output, run_meter_pipeline_bridge_thread,
-  CpalBackend, PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
+  append_input_devices, collect_outputs, device_id_key, device_list_label, emit_capture_failure,
+  pick_output_by_index, pooled_pcm_buffer_capacity, resolve_default_output,
+  run_meter_pipeline_bridge_thread, wait_for_stop_or_stall, CpalBackend, PcmBufferPool,
+  PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
 use super::device::DeviceInfo;
 use super::device_id;
@@ -205,9 +206,9 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
     );
   });
 
-  let ctx = Box::new(PcmBridgeCtx {
-    forwarder: PcmCallbackForwarder::new(delivery.producer(), pcm_pool, dropped_chunks),
-  });
+  let forwarder = PcmCallbackForwarder::new(delivery.producer(), pcm_pool, dropped_chunks);
+  let activity = forwarder.activity();
+  let ctx = Box::new(PcmBridgeCtx { forwarder });
   let ctx_ptr = Box::into_raw(ctx);
   let uid_c = CString::new(uid).map_err(|_| "device UID contains NUL".to_string())?;
   let mut err = vec![0u8; 512];
@@ -235,7 +236,8 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
     return Err(msg);
   }
 
-  let _ = stop_rx.recv();
+  // The tap reports no stream errors; a stall is the only sign that it stopped delivering.
+  let outcome = wait_for_stop_or_stall(&stop_rx, Some(&activity), &AtomicU8::new(0));
 
   let mut userdata_out: *mut c_void = std::ptr::null_mut();
   unsafe {
@@ -246,7 +248,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   }
   delivery.stop_producer();
   let _ = bridge.join();
-  Ok(())
+  outcome
 }
 
 pub(crate) struct MacosTapCaptureSession {
@@ -294,10 +296,11 @@ impl MacosTapCaptureSession {
     let reset_tp_max_worker = reset_tp_max.clone();
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
+    let failure_app = app.clone();
     let join = std::thread::Builder::new()
       .name("capture".into())
       .spawn(move || {
-        run_macos_tap_worker(MacosTapWorkerArgs {
+        let result = run_macos_tap_worker(MacosTapWorkerArgs {
           device_id,
           frame_subscribers,
           app,
@@ -310,7 +313,11 @@ impl MacosTapCaptureSession {
           dialogue_vad_engine,
           measured_pcm,
           dropped_chunks,
-        })
+        });
+        if let Err(error) = &result {
+          emit_capture_failure(&failure_app, error);
+        }
+        result
       })
       .map_err(|e| e.to_string())?;
     Ok(MacosTapCaptureSession {

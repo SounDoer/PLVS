@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import { TriangleAlert } from "lucide-react";
+import { describeAudioDrop } from "../lib/captureHealth.js";
 import { MeterRuntimeEngines } from "../runtime/MeterRuntimeEngines.jsx";
 import { AppHeader } from "./AppHeader.jsx";
 import { FileAnalysisSummary } from "./FileAnalysisSummary.jsx";
@@ -115,6 +117,17 @@ export function AppShell({
                   >
                     <span className={FOOTER_LABEL}>Device</span>
                     <span className={FOOTER_VALUE}>{footer.deviceLabel}</span>
+                    {/* Beside Device because it is the capture's health, and it does not shrink:
+                      the device name truncates first so the warning stays readable. */}
+                    {footer.audioDrop ? (
+                      <span
+                        title={describeAudioDrop(footer.audioDrop)}
+                        className="inline-flex shrink-0 items-center gap-1 text-[color:var(--ui-signal-warn)]"
+                      >
+                        <TriangleAlert className="size-[1em]" aria-hidden="true" />
+                        Audio Dropped
+                      </span>
+                    ) : null}
                     {/* Which regime you are monitoring under is the fact worth a permanent slot;
                       the reference value is already drawn on the chart as the line it describes.
                       Labelled Loudness, not Profile: that word belongs to Configuration Profile,

@@ -90,6 +90,7 @@ import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
 import { setWindowDecorations, useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
 import { setGlassEffect, useGlassEffect } from "./hooks/useGlassEffect.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
+import { automaticOutputChangeNotice } from "./lib/captureHealth.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
@@ -1663,6 +1664,23 @@ function AppContent() {
     () => (deviceName ? formatAudioDeviceLabel(deviceName) : null),
     [deviceName]
   );
+  // The restart itself is driven by `captureFormatSignature`; this only tells the user why their
+  // measurement just started over.
+  const previousDefaultOutputLabelRef = useRef(defaultOutputLabel);
+  useEffect(() => {
+    const previousLabel = previousDefaultOutputLabelRef.current;
+    previousDefaultOutputLabelRef.current = defaultOutputLabel;
+    const text = automaticOutputChangeNotice({
+      previousLabel,
+      nextLabel: defaultOutputLabel,
+      captureDeviceId,
+      sourceMode,
+      running,
+    });
+    if (text) raiseNotice("info", text);
+    // Only a change of the resolved default output announces itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultOutputLabel]);
   const footerDeviceLabel = deviceDisplay
     ? deviceDisplay.secondary || deviceDisplay.primary
     : "Not connected";
@@ -2262,6 +2280,7 @@ function AppContent() {
   };
   const footer = {
     deviceLabel: footerDeviceLabel,
+    audioDrop: sourceMode === "live" ? meterRuntime.liveAudioDrop : null,
     // The draft outranks the selection, so a profile being edited names the footer too. An
     // unnamed new profile reads Untitled, matching normalizeRuleDocument's fallback.
     loudnessProfileName: loudnessProfile.document

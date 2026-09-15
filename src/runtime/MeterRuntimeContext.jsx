@@ -88,6 +88,7 @@ export function MeterRuntimeProvider({ children }) {
     }
     liveIntakeRef.current.reset();
     liveMeasurementOwnerRef.current.clear();
+    transport.clearAudioDrop();
     if (sourceMode === "live") {
       display.clearAudio();
       display.setSelectedOffset(-1);
@@ -268,6 +269,7 @@ export function MeterRuntimeProvider({ children }) {
       liveResolvedDeviceId: transport.resolvedDeviceId,
       liveStartedAt: transport.startedAt,
       liveLastError: transport.lastError,
+      liveAudioDrop: transport.audioDrop,
       getLiveMeasurement: liveMeasurementOwnerRef.current.read,
       subscribeLiveMeasurement: liveMeasurementOwnerRef.current.subscribe,
       fileSessions,
@@ -285,6 +287,7 @@ export function MeterRuntimeProvider({ children }) {
       transport.resolvedDeviceId,
       transport.startedAt,
       transport.lastError,
+      transport.audioDrop,
       fileSessions,
       activeFileSession,
       analyzingFileSession,

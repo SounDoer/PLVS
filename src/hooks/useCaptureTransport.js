@@ -17,6 +17,9 @@ export function useCaptureTransport({ display, getLiveIntake }) {
   const [startedAt, setStartedAt] = useState(null);
   const [lastError, setLastError] = useState(null);
   const [deviceTransition, setDeviceTransition] = useState(null);
+  // Audio dropped before analysis in the current Live session. It taints the session's accumulated
+  // readings, so it stays until a new session starts or Live is cleared, and survives STOP.
+  const [audioDrop, setAudioDrop] = useState(null);
   const lifecycleRef = useRef("stopped");
   const deviceTransitionRef = useRef(null);
   const pendingStartRef = useRef(null);
@@ -79,10 +82,20 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     });
   };
 
+  const recordAudioDrop = (chunks) => {
+    if (!(chunks > 0)) return;
+    setAudioDrop((current) =>
+      current ? { ...current, chunks: current.chunks + chunks } : { chunks, since: Date.now() }
+    );
+  };
+
+  const clearAudioDrop = () => setAudioDrop(null);
+
   const markStarted = ({ resolvedDeviceId: nextDeviceId = null } = {}) => {
     setResolvedDeviceId(nextDeviceId);
     setStartedAt(Date.now());
     setLastError(null);
+    setAudioDrop(null);
     publishLifecycle("running");
     deviceTransitionRef.current = null;
     setDeviceTransition(null);
@@ -168,6 +181,9 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     resolvedDeviceId,
     startedAt,
     lastError,
+    audioDrop,
+    recordAudioDrop,
+    clearAudioDrop,
     halt,
     startLive,
     stopLive,

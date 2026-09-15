@@ -69,7 +69,9 @@ stopped it clears retained LIVE data. Its explicit destructive verb needs no add
 Rust clear failures must propagate rather than being swallowed.
 
 GUI and Agent Control must use one asynchronous transport controller so a successful start means the
-engine is actually running and an error leaves an inspectable lifecycle state.
+engine is actually running and an error leaves an inspectable lifecycle state. A running capture that
+fails later (no callbacks for 5 s, or a worker that exits on its own) also moves LIVE to `error` with
+its reason as the last error.
 
 ## FILE lifecycle
 

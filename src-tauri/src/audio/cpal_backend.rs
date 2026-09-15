@@ -4,9 +4,11 @@
 use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
 use crossbeam_queue::ArrayQueue;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, AtomicUsize, Ordering};
+use std::sync::mpsc::RecvTimeoutError;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
 use super::device::DeviceInfo;
@@ -17,7 +19,7 @@ use super::device_enum::{build_device_list, resolve_device};
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::ChannelLayoutSetting;
 use crate::engine::MeterPipeline;
-use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload};
+use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload, EngineStateChanged};
 use tauri::{AppHandle, Emitter, Manager};
 
 pub(crate) const PCM_QUEUE_CAP: usize = 64;
@@ -31,6 +33,202 @@ const PCM_WORKER_IDLE_POLL: std::time::Duration = std::time::Duration::from_mill
 /// while capture keeps producing ~60 Hz, frames queue in the host process unboundedly until OOM.
 /// Capping in-flight frames bounds that backlog to ~2 s (~1 MB) and resumes once the UI catches up.
 pub(crate) const MAX_FRAMES_INFLIGHT: u64 = 120;
+
+/// A running capture that delivers no callbacks for this long has failed. WASAPI loopback (kept
+/// alive by the silence stream), cpal inputs and the macOS tap all call back continuously, even in
+/// silence. Longer than the 2 s device watch, so an Automatic default-output change restarts
+/// capture before this fires.
+pub(crate) const CAPTURE_STALL_TIMEOUT: Duration = Duration::from_secs(5);
+const CAPTURE_WATCH_POLL: Duration = Duration::from_millis(250);
+
+/// Last fatal stream error the backend reported, recorded lock-free from the error callback so the
+/// stall report can name a cause.
+const STREAM_ERROR_NONE: u8 = 0;
+const STREAM_ERROR_DEVICE_UNAVAILABLE: u8 = 1;
+const STREAM_ERROR_INVALIDATED: u8 = 2;
+
+fn stream_error_code(kind: cpal::ErrorKind) -> u8 {
+  match kind {
+    cpal::ErrorKind::DeviceNotAvailable | cpal::ErrorKind::DeviceChanged => {
+      STREAM_ERROR_DEVICE_UNAVAILABLE
+    }
+    cpal::ErrorKind::StreamInvalidated => STREAM_ERROR_INVALIDATED,
+    _ => STREAM_ERROR_NONE,
+  }
+}
+
+fn record_stream_error(flag: Arc<AtomicU8>) -> impl FnMut(cpal::Error) + Send + 'static {
+  move |error| {
+    let code = stream_error_code(error.kind());
+    if code != STREAM_ERROR_NONE {
+      flag.store(code, Ordering::Relaxed);
+    }
+    log::error!("cpal stream error: {error}");
+  }
+}
+
+pub(crate) fn capture_stall_message(stream_error: u8) -> String {
+  let cause = match stream_error {
+    STREAM_ERROR_DEVICE_UNAVAILABLE => " The audio device is no longer available.",
+    STREAM_ERROR_INVALIDATED => " The system invalidated the audio stream.",
+    _ => "",
+  };
+  format!(
+    "Capture stopped: no audio received for {} s.{cause}",
+    CAPTURE_STALL_TIMEOUT.as_secs()
+  )
+}
+
+/// Tracks whether a callback activity counter is still advancing.
+pub(crate) struct StallWatch {
+  timeout: Duration,
+  last_activity: u64,
+  last_progress: Instant,
+}
+
+impl StallWatch {
+  pub(crate) fn new(timeout: Duration, activity: u64, now: Instant) -> Self {
+    Self {
+      timeout,
+      last_activity: activity,
+      last_progress: now,
+    }
+  }
+
+  /// True once `activity` has not changed for the whole timeout.
+  pub(crate) fn observe(&mut self, activity: u64, now: Instant) -> bool {
+    if activity != self.last_activity {
+      self.last_activity = activity;
+      self.last_progress = now;
+      return false;
+    }
+    now.saturating_duration_since(self.last_progress) >= self.timeout
+  }
+}
+
+/// Blocks until `stop_rx` fires or its sender is dropped (`Ok`), or, when `activity` is watched,
+/// until capture stops calling back (`Err` with a user-facing reason).
+pub(crate) fn wait_for_stop_or_stall(
+  stop_rx: &std::sync::mpsc::Receiver<()>,
+  activity: Option<&AtomicU64>,
+  stream_error: &AtomicU8,
+) -> Result<(), String> {
+  let Some(activity) = activity else {
+    let _ = stop_rx.recv();
+    return Ok(());
+  };
+  let mut watch = StallWatch::new(
+    CAPTURE_STALL_TIMEOUT,
+    activity.load(Ordering::Relaxed),
+    Instant::now(),
+  );
+  loop {
+    match stop_rx.recv_timeout(CAPTURE_WATCH_POLL) {
+      Err(RecvTimeoutError::Timeout) => {
+        if watch.observe(activity.load(Ordering::Relaxed), Instant::now()) {
+          return Err(capture_stall_message(stream_error.load(Ordering::Relaxed)));
+        }
+      }
+      Ok(()) | Err(RecvTimeoutError::Disconnected) => return Ok(()),
+    }
+  }
+}
+
+/// Reports a capture thread that ended on its own (startup failure or stall). Without it the UI
+/// keeps showing LIVE over a frozen, silent meter.
+pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str) {
+  log::error!("capture failed: {error}");
+  let _ = app.emit(
+    "engine-state-changed",
+    EngineStateChanged {
+      state: "error".into(),
+      error: Some(error.to_string()),
+    },
+  );
+}
+
+#[cfg(test)]
+mod capture_watch_tests {
+  use super::{
+    capture_stall_message, stream_error_code, wait_for_stop_or_stall, StallWatch,
+    STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE,
+  };
+  use std::sync::atomic::{AtomicU64, AtomicU8};
+  use std::time::{Duration, Instant};
+
+  const TIMEOUT: Duration = Duration::from_secs(5);
+
+  #[test]
+  fn advancing_activity_never_stalls() {
+    let start = Instant::now();
+    let mut watch = StallWatch::new(TIMEOUT, 0, start);
+    for tick in 1..=60 {
+      assert!(!watch.observe(tick, start + Duration::from_secs(tick)));
+    }
+  }
+
+  #[test]
+  fn frozen_activity_stalls_only_once_the_timeout_elapses() {
+    let start = Instant::now();
+    let mut watch = StallWatch::new(TIMEOUT, 7, start);
+    assert!(!watch.observe(7, start + Duration::from_millis(4_999)));
+    assert!(watch.observe(7, start + TIMEOUT));
+  }
+
+  #[test]
+  fn progress_restarts_the_timeout() {
+    let start = Instant::now();
+    let mut watch = StallWatch::new(TIMEOUT, 0, start);
+    assert!(!watch.observe(0, start + Duration::from_secs(4)));
+    assert!(!watch.observe(1, start + Duration::from_millis(4_500)));
+    assert!(!watch.observe(1, start + Duration::from_secs(9)));
+    assert!(watch.observe(1, start + Duration::from_millis(9_500)));
+  }
+
+  #[test]
+  fn a_requested_stop_is_not_a_failure() {
+    let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    stop_tx.send(()).unwrap();
+    let activity = AtomicU64::new(0);
+    assert_eq!(
+      wait_for_stop_or_stall(&stop_rx, Some(&activity), &AtomicU8::new(0)),
+      Ok(())
+    );
+  }
+
+  #[test]
+  fn a_dropped_session_is_not_a_failure() {
+    let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    drop(stop_tx);
+    let activity = AtomicU64::new(0);
+    assert_eq!(
+      wait_for_stop_or_stall(&stop_rx, Some(&activity), &AtomicU8::new(0)),
+      Ok(())
+    );
+  }
+
+  #[test]
+  fn backend_errors_name_the_stall_cause() {
+    assert_eq!(
+      stream_error_code(cpal::ErrorKind::DeviceNotAvailable),
+      STREAM_ERROR_DEVICE_UNAVAILABLE
+    );
+    assert_eq!(
+      stream_error_code(cpal::ErrorKind::StreamInvalidated),
+      STREAM_ERROR_INVALIDATED
+    );
+    assert_eq!(
+      stream_error_code(cpal::ErrorKind::DeviceBusy),
+      STREAM_ERROR_NONE
+    );
+    assert_eq!(
+      capture_stall_message(STREAM_ERROR_NONE),
+      "Capture stopped: no audio received for 5 s."
+    );
+    assert!(capture_stall_message(STREAM_ERROR_DEVICE_UNAVAILABLE)
+      .ends_with("The audio device is no longer available."));
+  }
+}
 
 /// True when `sent_seq - acked_seq` has reached `max_inflight`, i.e. the next frame must be
 /// dropped rather than sent. `saturating_sub` guards a stale-high ack after an engine restart.
@@ -129,11 +327,12 @@ impl CaptureSession {
     let reset_tp_max_worker = reset_tp_max.clone();
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
+    let failure_app = app.clone();
 
     let join = std::thread::Builder::new()
       .name("capture".into())
       .spawn(move || {
-        run_capture_worker(RunCaptureArgs {
+        let result = run_capture_worker(RunCaptureArgs {
           device_id: device_id.to_string(),
           device,
           supported,
@@ -150,7 +349,11 @@ impl CaptureSession {
           dialogue_vad_engine,
           measured_pcm,
           dropped_chunks,
-        })
+        });
+        if let Err(error) = &result {
+          emit_capture_failure(&failure_app, error);
+        }
+        result
       })
       .map_err(|e| e.to_string())?;
 
@@ -384,6 +587,9 @@ pub(crate) struct PcmCallbackForwarder {
   producer: PcmDeliveryProducer,
   pool: PcmBufferPool,
   dropped: Arc<AtomicU64>,
+  /// Counts every callback, delivered or dropped: the stall watch only asks whether the backend is
+  /// still calling back.
+  activity: Arc<AtomicU64>,
 }
 
 impl PcmCallbackForwarder {
@@ -396,7 +602,12 @@ impl PcmCallbackForwarder {
       producer,
       pool,
       dropped,
+      activity: Arc::new(AtomicU64::new(0)),
     }
+  }
+
+  pub(crate) fn activity(&self) -> Arc<AtomicU64> {
+    self.activity.clone()
   }
 
   pub(crate) fn forward_f32(&self, data: &[f32]) -> bool {
@@ -424,6 +635,7 @@ impl PcmCallbackForwarder {
   }
 
   fn forward(&self, buffer: Option<Vec<f32>>) -> bool {
+    self.activity.fetch_add(1, Ordering::Relaxed);
     buffer.is_some_and(|buffer| {
       enqueue_pcm_buffer_or_count_drop(&self.producer, &self.pool, buffer, &self.dropped)
     })
@@ -672,55 +884,42 @@ where
   let consumer_delivery = delivery.clone();
   let consumer_state = delivery.clone();
 
+  let forwarder =
+    PcmCallbackForwarder::new(delivery.producer(), pcm_pool.clone(), dropped_for_callbacks);
+  let activity = forwarder.activity();
+  let stream_error = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
+  let on_error = record_stream_error(stream_error.clone());
   let stream = match supported.sample_format() {
-    SampleFormat::F32 => {
-      let forwarder = PcmCallbackForwarder::new(
-        delivery.producer(),
-        pcm_pool.clone(),
-        dropped_for_callbacks.clone(),
-      );
-      device
-        .build_input_stream(
-          stream_config,
-          move |data: &[f32], _: &cpal::InputCallbackInfo| {
-            forwarder.forward_f32(data);
-          },
-          |e| log::error!("cpal stream error: {e}"),
-          None,
-        )
-        .map_err(|e| e.to_string())?
-    }
-    SampleFormat::I16 => {
-      let forwarder = PcmCallbackForwarder::new(
-        delivery.producer(),
-        pcm_pool.clone(),
-        dropped_for_callbacks.clone(),
-      );
-      device
-        .build_input_stream(
-          stream_config,
-          move |data: &[i16], _: &cpal::InputCallbackInfo| {
-            forwarder.forward_i16(data);
-          },
-          |e| log::error!("cpal stream error: {e}"),
-          None,
-        )
-        .map_err(|e| e.to_string())?
-    }
-    SampleFormat::U16 => {
-      let forwarder =
-        PcmCallbackForwarder::new(delivery.producer(), pcm_pool.clone(), dropped_for_callbacks);
-      device
-        .build_input_stream(
-          stream_config,
-          move |data: &[u16], _: &cpal::InputCallbackInfo| {
-            forwarder.forward_u16(data);
-          },
-          |e| log::error!("cpal stream error: {e}"),
-          None,
-        )
-        .map_err(|e| e.to_string())?
-    }
+    SampleFormat::F32 => device
+      .build_input_stream(
+        stream_config,
+        move |data: &[f32], _: &cpal::InputCallbackInfo| {
+          forwarder.forward_f32(data);
+        },
+        on_error,
+        None,
+      )
+      .map_err(|e| e.to_string())?,
+    SampleFormat::I16 => device
+      .build_input_stream(
+        stream_config,
+        move |data: &[i16], _: &cpal::InputCallbackInfo| {
+          forwarder.forward_i16(data);
+        },
+        on_error,
+        None,
+      )
+      .map_err(|e| e.to_string())?,
+    SampleFormat::U16 => device
+      .build_input_stream(
+        stream_config,
+        move |data: &[u16], _: &cpal::InputCallbackInfo| {
+          forwarder.forward_u16(data);
+        },
+        on_error,
+        None,
+      )
+      .map_err(|e| e.to_string())?,
     f => {
       return Err(format!("Unsupported sample format: {f:?}"));
     }
@@ -737,11 +936,21 @@ where
     let _ = consumer_thread.join();
     return Err(error.to_string());
   }
-  let _ = stop_rx.recv();
+  // Loopback without the silence stream legitimately stops calling back while nothing plays, so
+  // only then is a quiet stream not evidence of failure.
+  #[cfg(target_os = "windows")]
+  let watch_stalls = !(is_loopback_capture(&device_id) && _silence_stream.is_none());
+  #[cfg(not(target_os = "windows"))]
+  let watch_stalls = true;
+  let outcome = wait_for_stop_or_stall(
+    &stop_rx,
+    watch_stalls.then_some(activity.as_ref()),
+    &stream_error,
+  );
   drop(stream);
   delivery.stop_producer();
   let _ = consumer_thread.join();
-  Ok(())
+  outcome
 }
 
 fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {

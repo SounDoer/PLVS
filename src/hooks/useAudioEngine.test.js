@@ -8,6 +8,19 @@ vi.mock("../ipc/env.js", () => ({
   isTauri: () => true,
 }));
 
+const engineEvents = vi.hoisted(() => ({ state: null, backpressure: null }));
+
+vi.mock("../ipc/events.js", () => ({
+  onEngineStateChanged: vi.fn(async (handler) => {
+    engineEvents.state = handler;
+    return () => {};
+  }),
+  onEngineBackpressure: vi.fn(async (handler) => {
+    engineEvents.backpressure = handler;
+    return () => {};
+  }),
+}));
+
 vi.mock("../ipc/commands.js", () => ({
   listAudioDevices: vi.fn(),
   previewAudioDevice: vi.fn(),
@@ -32,7 +45,9 @@ function useHarness({
   raiseNotice,
   setShowClock,
   resetTimer,
+  stopTimer,
   halt,
+  recordAudioDrop,
   histMaxSamples = 10,
   visualMaxSamples = 10,
   selectedOffset = -1,
@@ -58,7 +73,7 @@ function useHarness({
     setSelectedOffset,
     raiseNotice,
     setShowClock,
-    clock: { resetTimer },
+    clock: { resetTimer, stopTimer },
   };
 
   useAudioEngine({
@@ -69,7 +84,7 @@ function useHarness({
     loudnessWeightsRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
-    transport: { running: true, halt },
+    transport: { running: true, halt, recordAudioDrop },
     display,
     ...props,
   });
@@ -189,6 +204,50 @@ describe("useAudioEngine", () => {
     await waitFor(() =>
       expect(props.raiseNotice).toHaveBeenCalledWith("error", "Error: Audio unavailable")
     );
+  });
+
+  it("halts LIVE with the engine's reason when capture fails after starting", async () => {
+    const props = {
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      stopTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    renderHook((p) => useHarness(p), { initialProps: props });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(1));
+
+    act(() => engineEvents.state({ state: "running" }));
+    act(() => engineEvents.state({ state: "stopped" }));
+    expect(props.halt).not.toHaveBeenCalled();
+
+    const reason = "Capture stopped: no audio received for 5 s.";
+    act(() => engineEvents.state({ state: "error", error: reason }));
+    expect(props.halt).toHaveBeenCalledWith(expect.objectContaining({ message: reason }));
+    expect(props.stopTimer).toHaveBeenCalled();
+    expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
+    expect(props.raiseNotice).toHaveBeenCalledWith("error", `Error: ${reason}`);
+  });
+
+  it("records audio the engine dropped before analysis", async () => {
+    const props = {
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      recordAudioDrop: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    renderHook((p) => useHarness(p), { initialProps: props });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(1));
+
+    act(() => engineEvents.backpressure({ droppedChunks: 35 }));
+    expect(props.recordAudioDrop).toHaveBeenCalledWith(35);
   });
 
   it("commits a LIVE measurement session only after native start succeeds", async () => {

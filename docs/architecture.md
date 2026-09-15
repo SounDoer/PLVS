@@ -173,6 +173,7 @@ PLVS/
 
 - **Windows**：`cpal_backend.rs` 通过 `cpal` 打开 WASAPI Loopback——无需虚拟声卡，直接读系统输出 PCM。物理输入也走 cpal。
 - **macOS**：系统音频走 `macos/`（Core Audio process tap，需 macOS 14.2+）；物理输入走 cpal。平台分发由 `platform_backend.rs` 处理。
+- **采集健康**：运行中的采集超过 `CAPTURE_STALL_TIMEOUT`（5 s）没有回调即判定失败，`engine-state-changed` 发 `error`，前端停在 `error` 并显示原因；无 silence stream 的 Windows loopback 不参与判定（静音时本就不回调）。设备监视线程每 2 s 同时观察设备列表与当前默认输出，Automatic 下默认输出变化会重启采集。分析前丢弃的音频经 `engine-backpressure` 在 footer 显示 Audio Dropped，直到 Clear 或新会话。
 
 ### DSP 层（`src-tauri/src/dsp/`）
 

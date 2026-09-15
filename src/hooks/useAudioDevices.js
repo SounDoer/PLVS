@@ -280,8 +280,10 @@ export function useAudioDevices({
     setCaptureDeviceIdAndPersist: selectCaptureDevice,
     previewSelection,
     refreshInventory,
+    // The label belongs in the signature: switching the system default between two outputs with
+    // the same format must still restart Automatic capture onto the new device.
     defaultOutputFormatSig: snapshot.automatic.resolved
-      ? `${snapshot.automatic.resolved.channelCount}:${snapshot.automatic.resolved.sampleRateHz}`
+      ? `${snapshot.automatic.resolved.label}|${snapshot.automatic.resolved.channelCount}:${snapshot.automatic.resolved.sampleRateHz}`
       : "",
     defaultOutputLabel: snapshot.automatic.resolved?.label ?? "",
   };

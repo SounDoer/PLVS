@@ -24,6 +24,17 @@ export async function onEngineStateChanged(handler) {
 }
 
 /**
+ * Audio dropped before analysis during Live capture (low frequency, only when drops occurred).
+ * @param {(payload: { droppedChunks: number }) => void} handler
+ * @returns {Promise<() => void>}
+ */
+export async function onEngineBackpressure(handler) {
+  return listen("engine-backpressure", (e) => {
+    handler(e.payload);
+  });
+}
+
+/**
  * @param {(sampleRateHz: number) => void} handler
  * @returns {Promise<() => void>}
  */

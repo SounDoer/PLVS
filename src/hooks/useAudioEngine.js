@@ -10,6 +10,7 @@ import {
   ackFrames,
 } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { onEngineBackpressure, onEngineStateChanged } from "../ipc/events.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 import { resolveDevice } from "../lib/audioEngineCommands.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE } from "../settings/defaults.js";
@@ -57,7 +58,8 @@ export function useAudioEngine({
   defaultSampleRateRef: externalDefaultSampleRateRef,
   measurementOwner = null,
 }) {
-  const { running, lifecycle, halt, markStarted, markStopped, markStopFailed } = transport;
+  const { running, lifecycle, halt, markStarted, markStopped, markStopFailed, recordAudioDrop } =
+    transport;
   const stopInFlightRef = useRef(Promise.resolve());
   const stoppedAudioRef = useRef(null);
   const {
@@ -68,7 +70,7 @@ export function useAudioEngine({
     setSelectedOffset,
     raiseNotice,
     setShowClock,
-    clock: { resetTimer },
+    clock: { resetTimer, stopTimer },
   } = display;
   const internalDefaultSampleRateRef = useRef(48000);
   const defaultSampleRateRef = externalDefaultSampleRateRef ?? internalDefaultSampleRateRef;
@@ -192,6 +194,25 @@ export function useAudioEngine({
             );
           } catch (_) {}
 
+          const releaseListeners = () => {
+            for (const u of unsubs.splice(0)) u();
+          };
+          // Subscribed before start: a capture can fail right after `audio_start` returns, or
+          // later (stall, device loss). Without this the UI keeps showing LIVE over a frozen meter.
+          unsubs.push(
+            await onEngineStateChanged((payload) => {
+              if (!mounted || payload?.state !== "error") return;
+              const message = payload.error || "Audio capture stopped";
+              halt(new Error(message));
+              stopTimer?.();
+              setSelectedOffset(-1);
+              raiseNotice("error", `Error: ${message}`);
+            }),
+            await onEngineBackpressure((payload) => {
+              if (mounted) recordAudioDrop?.(payload?.droppedChunks);
+            })
+          );
+
           measurementOwner?.beginSession();
           try {
             await startAudioCapture({
@@ -199,10 +220,12 @@ export function useAudioEngine({
               onFrame: applyFrame,
             });
           } catch (error) {
+            releaseListeners();
             measurementOwner?.abortSession();
             throw error;
           }
           if (!mounted) {
+            releaseListeners();
             measurementOwner?.abortSession();
             return;
           }

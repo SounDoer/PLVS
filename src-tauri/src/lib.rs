@@ -382,14 +382,21 @@ pub fn run() {
       std::thread::Builder::new()
         .name("device-watch".into())
         .spawn(move || {
-          let mut prev: Option<Vec<crate::audio::DeviceInfo>> = None;
+          let mut prev: Option<(Vec<crate::audio::DeviceInfo>, Option<String>)> = None;
           loop {
             std::thread::sleep(Duration::from_secs(2));
             if let Ok(list) =
               crate::audio::AudioCapture::list_devices(&crate::audio::AppAudioBackend)
             {
-              if prev.as_ref() != Some(&list) {
-                prev = Some(list.clone());
+              // Switching the system default output leaves the list untouched but moves
+              // Automatic capture to another device, so the observation includes the default.
+              let default_output = crate::audio::cpal_backend::preview_device("default")
+                .ok()
+                .map(|(label, ..)| label);
+              let observed = (list, default_output);
+              if prev.as_ref() != Some(&observed) {
+                let list = observed.0.clone();
+                prev = Some(observed);
                 let _ = handle.emit("device-list-changed", list);
               }
             }

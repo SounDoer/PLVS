@@ -179,6 +179,23 @@ describe("useAudioDevices", () => {
     expect(result.current.audioDevices.map(({ label }) => label)).toEqual(["Renamed Speakers"]);
   });
 
+  it("changes the Automatic signature when the default output moves to a same-format device", async () => {
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.defaultOutputLabel).toBe("Speakers"));
+    const before = result.current.defaultOutputFormatSig;
+
+    mocks.previewAudioDevice.mockResolvedValue({
+      label: "Headphones",
+      sampleRateHz: 48_000,
+      channels: 2,
+    });
+    await act(async () => mocks.deviceListHandler([device(LB, "Speakers", true)]));
+
+    await waitFor(() => expect(result.current.defaultOutputLabel).toBe("Headphones"));
+    expect(result.current.defaultOutputFormatSig).not.toBe(before);
+    expect(result.current.captureDeviceId).toBe("default");
+  });
+
   it("drops a stale Automatic preview instead of overwriting a newer inventory", async () => {
     const firstPreview = deferred();
     const secondPreview = deferred();
