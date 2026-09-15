@@ -264,6 +264,18 @@ describe("buildTauriFrameApply", () => {
     expect(audioState.vectorscopeResultsByKey).toBe(vectorscopeResultsByKey);
   });
 
+  it("carries whether the loudness layout is known, defaulting to known", () => {
+    const { reduceMeterAudioFrame } = tauriFrameApply;
+    expect(reduceMeterAudioFrame({}, { loudnessLayoutKnown: false }).loudnessLayoutKnown).toBe(
+      false
+    );
+    expect(reduceMeterAudioFrame({}, { loudnessLayoutKnown: true }).loudnessLayoutKnown).toBe(true);
+    expect(reduceMeterAudioFrame({ loudnessLayoutKnown: false }, {}).loudnessLayoutKnown).toBe(
+      false
+    );
+    expect(reduceMeterAudioFrame({}, {}).loudnessLayoutKnown).toBe(true);
+  });
+
   it("carries the band grid forward across frames that omit it", () => {
     let audioState = { spectrumResultsByKey: {}, vectorscopeResultsByKey: {} };
     const latestAudioRef = { current: audioState };

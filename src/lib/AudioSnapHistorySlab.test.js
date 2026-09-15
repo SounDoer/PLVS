@@ -168,6 +168,17 @@ describe("AudioSnapHistorySlab", () => {
     expect(Array.isArray(row.rmsDb)).toBe(true);
   });
 
+  it("keeps whether the loudness layout was known", () => {
+    const slab = new AudioSnapHistorySlab(8);
+    slab.push(snap({ loudnessLayoutKnown: false }), 100);
+    slab.push(snap({ loudnessLayoutKnown: true }), 200);
+    slab.push(snap(), 300);
+    expect(slab.at(0).loudnessLayoutKnown).toBe(false);
+    expect(slab.at(1).loudnessLayoutKnown).toBe(true);
+    expect(slab.at(2).loudnessLayoutKnown).toBe(true);
+    expect(slab.freeze().at(0).loudnessLayoutKnown).toBe(false);
+  });
+
   it("keeps multichannel peakDb/rmsDb as plain Arrays after freeze, on the snapshot/scrub path", () => {
     const slab = new AudioSnapHistorySlab(8);
     const channels = [-6, -7, -8, -9, -10, -11];

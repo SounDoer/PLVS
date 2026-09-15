@@ -109,6 +109,7 @@ function buildAudioSnap(row) {
     dialogueLra: Number.isFinite(row.dialogueLra) ? row.dialogueLra : 0,
     dialoguePercent: Number.isFinite(row.dialoguePercent) ? row.dialoguePercent : null,
     dialogueActiveNow: !!row.dialogueActiveNow,
+    loudnessLayoutKnown: row.loudnessLayoutKnown !== false,
     truePeakL: Number.isFinite(row.truePeakL) ? row.truePeakL : -Infinity,
     truePeakR: Number.isFinite(row.truePeakR) ? row.truePeakR : -Infinity,
     tpMax: Number.isFinite(row.truePeakMaxDbtp) ? row.truePeakMaxDbtp : -Infinity,

@@ -53,6 +53,8 @@
  * @property {Record<string, SpectrumFrameResult>} spectrumResultsByKey
  * @property {Record<string, VectorscopeFrameResult>} vectorscopeResultsByKey
  * @property {Record<string, StereoMapFrameResult>} stereoMapResultsByKey
+ * @property {string} loudnessLayout
+ * @property {boolean} loudnessLayoutKnown
  * @property {number} timestampMs
  * @property {MeterHistoryEntry|null|undefined} loudnessHistTick
  * @property {VisualHistEntry|null|undefined} visualHistTick

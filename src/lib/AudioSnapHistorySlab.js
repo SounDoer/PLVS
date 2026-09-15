@@ -36,6 +36,7 @@ function createChunk(sequenceStart) {
   // Absent reads back as null rather than 0, so it needs a NaN-carrying column of its own.
   chunk.dialoguePercent = new Float32Array(VISUAL_HISTORY_CHUNK_ROWS);
   chunk.dialogueActiveNow = new Uint8Array(VISUAL_HISTORY_CHUNK_ROWS);
+  chunk.loudnessLayoutKnown = new Uint8Array(VISUAL_HISTORY_CHUNK_ROWS);
   for (const field of CHANNEL_FIELDS) {
     // Both are dB: silence arrives as -Infinity and must read back as -Infinity, not 0 dBFS.
     chunk[field] = new RaggedFloatColumn(VISUAL_HISTORY_CHUNK_ROWS, 2, -Infinity);
@@ -51,6 +52,7 @@ function cloneChunk(chunk) {
     timestamps: chunk.timestamps.slice(0, chunk.rowCount),
     dialoguePercent: chunk.dialoguePercent.slice(0, chunk.rowCount),
     dialogueActiveNow: chunk.dialogueActiveNow.slice(0, chunk.rowCount),
+    loudnessLayoutKnown: chunk.loudnessLayoutKnown.slice(0, chunk.rowCount),
   };
   for (const field of SCALAR_FIELDS) copy[field] = chunk[field].slice(0, chunk.rowCount);
   for (const field of CHANNEL_FIELDS) copy[field] = chunk[field].clone();
@@ -61,7 +63,8 @@ function payloadBytes(chunk) {
   let bytes =
     chunk.timestamps.byteLength +
     chunk.dialoguePercent.byteLength +
-    chunk.dialogueActiveNow.byteLength;
+    chunk.dialogueActiveNow.byteLength +
+    chunk.loudnessLayoutKnown.byteLength;
   for (const field of SCALAR_FIELDS) bytes += chunk[field].byteLength;
   for (const field of CHANNEL_FIELDS) bytes += chunk[field].byteLength;
   return bytes;
@@ -75,6 +78,7 @@ function rowFrom(chunk, row) {
   const percent = chunk.dialoguePercent[row];
   result.dialoguePercent = Number.isNaN(percent) ? null : percent;
   result.dialogueActiveNow = chunk.dialogueActiveNow[row] === 1;
+  result.loudnessLayoutKnown = chunk.loudnessLayoutKnown[row] === 1;
   // Materialise as a plain Array, not the Float32Array subarray RaggedFloatColumn.at() returns:
   // buildAudioSnap's peakDb/rmsDb are plain Arrays, and several downstream readers (App.jsx,
   // peakChannelMath.js, VectorscopePanel.jsx, statsCatalog.js) gate on Array.isArray. This
@@ -106,6 +110,7 @@ export class AudioSnapHistorySlab extends ChunkedHistorySlab {
         ? snap.dialoguePercent
         : Number.NaN;
       chunk.dialogueActiveNow[row] = snap?.dialogueActiveNow ? 1 : 0;
+      chunk.loudnessLayoutKnown[row] = snap?.loudnessLayoutKnown === false ? 0 : 1;
       for (const field of CHANNEL_FIELDS) chunk[field].append(snap?.[field]);
     });
   }

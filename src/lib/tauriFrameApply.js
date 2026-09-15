@@ -57,6 +57,10 @@ export function reduceMeterAudioFrame(previous, frame) {
     dialogueLra: Number.isFinite(frame.dialogueLra) ? frame.dialogueLra : 0,
     dialoguePercent: Number.isFinite(frame.dialoguePercent) ? frame.dialoguePercent : null,
     dialogueActiveNow: !!frame.dialogueActiveNow,
+    loudnessLayoutKnown:
+      typeof frame.loudnessLayoutKnown === "boolean"
+        ? frame.loudnessLayoutKnown
+        : (previous.loudnessLayoutKnown ?? true),
   };
 }
 
