@@ -36,6 +36,8 @@ pub struct CaptureRun {
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
+  pub loudness_layout: &'static str,
+  pub loudness_layout_known: bool,
   pub dropped_chunks: u64,
 }
 
@@ -142,6 +144,8 @@ pub fn capture_device_to_summary(
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+    loudness_layout: metrics.loudness_layout,
+    loudness_layout_known: metrics.loudness_layout_known,
     dropped_chunks: dropped_for_report.load(Ordering::Relaxed),
   })
 }

@@ -161,6 +161,8 @@ pub struct MeterPipeline {
   last_visual_emit: Instant,
   last_dialogue_gating: bool,
   last_dialogue_vad_engine: VadEngineKind,
+  /// Layout reported with the most recent PCM push, for whole-file summaries.
+  last_loudness_layout: (String, bool),
   /// Present only for pipelines created for offline file analysis.
   file_timeline: Option<PipelineFileTimeline>,
   #[cfg(test)]
@@ -185,6 +187,8 @@ pub struct PipelineSummary {
   pub sample_peak_max_r_db: f64,
   pub dialogue_integrated: f64,
   pub dialogue_lra: f64,
+  pub loudness_layout: String,
+  pub loudness_layout_known: bool,
 }
 
 impl MeterPipeline {
@@ -216,6 +220,7 @@ impl MeterPipeline {
       last_visual_emit: instant_ago(Duration::from_millis(200)),
       last_dialogue_gating: false,
       last_dialogue_vad_engine: VadEngineKind::default(),
+      last_loudness_layout: loudness_layout_meta(channels, ChannelLayoutSetting::Auto),
       file_timeline: None,
       #[cfg(test)]
       shared_spectral_last_dsp_time_sec: HashMap::new(),
@@ -312,6 +317,8 @@ impl MeterPipeline {
       sample_peak_max_r_db: self.sample_peak_max_r,
       dialogue_integrated,
       dialogue_lra,
+      loudness_layout: self.last_loudness_layout.0.clone(),
+      loudness_layout_known: self.last_loudness_layout.1,
     }
   }
 
@@ -708,6 +715,11 @@ impl MeterPipeline {
     } else {
       loudness_layout_meta(ch, effective_layout)
     };
+    if self.last_loudness_layout.0 != loudness_layout
+      || self.last_loudness_layout.1 != loudness_layout_known
+    {
+      self.last_loudness_layout = (loudness_layout.clone(), loudness_layout_known);
+    }
 
     // --- PCM intake: uniform push through Meter trait ---
     let ctx = PcmContext {
@@ -4465,5 +4477,38 @@ mod tests {
       .stereo_map_by_key["clearable"];
     assert!(!visual.pl.is_empty());
     assert_eq!(visual.pl.len(), visual.pr.len());
+  }
+
+  #[test]
+  fn summary_metrics_report_the_frame_layout() {
+    for (channels, expected) in [(8_u16, ("7.1", true)), (10, ("unknown", false))] {
+      let mut pipeline = MeterPipeline::new(48_000, channels);
+      let pcm = vec![0.1_f32; 4_800 * channels as usize];
+      let frame =
+        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false)
+          .expect("100ms chunk should emit a frame");
+      assert_eq!(
+        (frame.loudness_layout.as_str(), frame.loudness_layout_known),
+        expected
+      );
+      let summary = pipeline.summary_metrics();
+      assert_eq!(
+        (
+          summary.loudness_layout.as_str(),
+          summary.loudness_layout_known
+        ),
+        expected
+      );
+    }
+  }
+
+  /// A manual Stereo choice asks for Ch1/Ch2, so wider input is still a known layout and must not
+  /// trigger the unrecognized-layout marker.
+  #[test]
+  fn loudness_layout_meta_keeps_manual_stereo_known_on_wider_input() {
+    assert_eq!(
+      loudness_layout_meta(6, ChannelLayoutSetting::Stereo),
+      ("stereo".to_string(), true)
+    );
   }
 }

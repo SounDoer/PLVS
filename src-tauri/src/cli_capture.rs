@@ -83,6 +83,8 @@ pub struct CliCaptureSummary {
   pub sample_peak_max_l_db: Option<f64>,
   pub sample_peak_max_r_db: Option<f64>,
   pub sample_peak_max_db: Option<f64>,
+  pub loudness_layout: String,
+  pub loudness_layout_known: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -155,6 +157,8 @@ pub fn success_report(run: CaptureRun) -> CliCaptureReport {
         sample_peak_max_l_db,
         sample_peak_max_r_db,
         sample_peak_max_db: max_optional(sample_peak_max_l_db, sample_peak_max_r_db),
+        loudness_layout: run.loudness_layout.to_string(),
+        loudness_layout_known: run.loudness_layout_known,
       }
     },
     health: CliCaptureHealth {
@@ -224,6 +228,8 @@ mod tests {
       true_peak_max_dbtp: -0.8,
       sample_peak_max_l_db: -20.01,
       sample_peak_max_r_db: -26.03,
+      loudness_layout: "stereo",
+      loudness_layout_known: true,
       dropped_chunks: 0,
     }
   }
@@ -244,6 +250,8 @@ mod tests {
     assert_eq!(json["summary"]["stMaxLufs"], -19.2);
     assert_eq!(json["summary"]["truePeakMaxDbtp"], -0.8);
     assert_eq!(json["summary"]["samplePeakMaxDb"], -20.01);
+    assert_eq!(json["summary"]["loudnessLayout"], "stereo");
+    assert_eq!(json["summary"]["loudnessLayoutKnown"], true);
     assert_eq!(json["health"]["droppedChunks"], 0);
   }
 

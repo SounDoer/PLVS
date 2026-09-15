@@ -189,6 +189,8 @@ pub fn analyze_file_track_to_summary(
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+    loudness_layout: metrics.loudness_layout.to_string(),
+    loudness_layout_known: metrics.loudness_layout_known,
     dialogue_integrated: f64::NEG_INFINITY,
     dialogue_lra: 0.0,
   };

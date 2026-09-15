@@ -227,6 +227,8 @@ mod tests {
       duration_ms: Some(1000),
       sample_rate_hz: 48_000,
       channel_count: 2,
+      loudness_layout: "stereo".to_string(),
+      loudness_layout_known: true,
       integrated_lufs: Some(-16.0),
       lra: Some(3.0),
       m_max_lufs: Some(-15.0),

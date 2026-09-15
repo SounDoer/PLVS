@@ -140,6 +140,8 @@ pub struct CliAnalyzeSummary {
   pub duration_ms: Option<u64>,
   pub sample_rate_hz: u32,
   pub channel_count: u16,
+  pub loudness_layout: String,
+  pub loudness_layout_known: bool,
   pub integrated_lufs: Option<f64>,
   pub lra: Option<f64>,
   pub m_max_lufs: Option<f64>,
@@ -306,6 +308,8 @@ fn summary_from_metrics(
     duration_ms: summary.duration_ms,
     sample_rate_hz: summary.sample_rate_hz,
     channel_count: summary.channels,
+    loudness_layout: summary.loudness_layout.clone(),
+    loudness_layout_known: summary.loudness_layout_known,
     integrated_lufs: finite_or_none(summary.integrated_lufs),
     lra: finite_or_none(summary.lra),
     m_max_lufs: finite_or_none(summary.m_max_lufs),
@@ -417,6 +421,8 @@ mod tests {
       true_peak_max_dbtp: f64::NEG_INFINITY,
       sample_peak_max_l_db: left,
       sample_peak_max_r_db: right,
+      loudness_layout: "stereo".to_string(),
+      loudness_layout_known: true,
       dialogue_integrated: f64::NEG_INFINITY,
       dialogue_lra: 0.0,
     }
@@ -432,6 +438,16 @@ mod tests {
     assert_eq!(summary.sample_peak_max_db, Some(-3.0));
     assert_eq!(summary.dialogue_integrated_lufs, None);
     assert_eq!(summary.dialogue_lra, None);
+  }
+
+  #[test]
+  fn summary_reports_the_loudness_layout() {
+    let mut metrics = summary_with_peaks(-1.0, -2.0);
+    metrics.loudness_layout = "unknown".to_string();
+    metrics.loudness_layout_known = false;
+    let json = serde_json::to_value(summary_from_metrics(metrics, false)).unwrap();
+    assert_eq!(json["loudnessLayout"], "unknown");
+    assert_eq!(json["loudnessLayoutKnown"], false);
   }
 
   #[test]

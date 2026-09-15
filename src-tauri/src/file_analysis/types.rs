@@ -53,6 +53,10 @@ pub struct FileAnalysisSummaryMetrics {
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
+  /// Loudness layout the summary was measured with (`stereo`, `7.1`, `custom`, `unknown`, ...).
+  pub loudness_layout: String,
+  /// False when loudness is Ch1/Ch2 stereo loudness of an unrecognized layout.
+  pub loudness_layout_known: bool,
   /// Dialogue-gated integrated loudness; `NEG_INFINITY` when gating was off.
   pub dialogue_integrated: f64,
   /// Dialogue-gated loudness range; `0.0` when gating was off or insufficient speech.

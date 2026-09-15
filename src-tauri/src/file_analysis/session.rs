@@ -426,6 +426,8 @@ fn analyze_file_core(
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+    loudness_layout: metrics.loudness_layout,
+    loudness_layout_known: metrics.loudness_layout_known,
     dialogue_integrated: metrics.dialogue_integrated,
     dialogue_lra: metrics.dialogue_lra,
   };
@@ -1087,6 +1089,8 @@ mod tests {
       true_peak_max_dbtp: metrics.true_peak_max_dbtp,
       sample_peak_max_l_db: metrics.sample_peak_max_l_db,
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+      loudness_layout: metrics.loudness_layout.to_string(),
+      loudness_layout_known: metrics.loudness_layout_known,
       dialogue_integrated: f64::NEG_INFINITY,
       dialogue_lra: 0.0,
     }
@@ -1128,6 +1132,8 @@ mod tests {
       true_peak_max_dbtp: metrics.true_peak_max_dbtp,
       sample_peak_max_l_db: metrics.sample_peak_max_l_db,
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+      loudness_layout: metrics.loudness_layout,
+      loudness_layout_known: metrics.loudness_layout_known,
       dialogue_integrated: metrics.dialogue_integrated,
       dialogue_lra: metrics.dialogue_lra,
     }
@@ -1225,6 +1231,44 @@ mod tests {
       "fixture must exercise a non-trivial LRA, got {}",
       cli.lra
     );
+  }
+
+  /// The weight table and True Peak are shared by name, not by code path: `SummaryMeter` and
+  /// `LoudnessMeter` each implement the sum. Pin them together for every standard multichannel
+  /// count and for an unknown one.
+  #[test]
+  fn summary_and_session_paths_agree_for_multichannel_layouts() {
+    const FFMPEG_READ_SAMPLES: usize = (64 * 1024) / 4;
+    let sr = 48_000_u32;
+    let stereo = stepped_sine_stereo_f32(sr, 12);
+    for channels in [3_u16, 4, 5, 6, 7, 8, 10] {
+      let pcm: Vec<f32> = stereo
+        .chunks(2)
+        .flat_map(|frame| (0..channels).map(move |ci| frame[0] / (ci as f32 + 1.0)))
+        .collect();
+      let cli = run_summary_path(&pcm, sr, channels, FFMPEG_READ_SAMPLES);
+      let gui = run_session_path(&pcm, sr, channels, FFMPEG_READ_SAMPLES);
+      for (name, a, b) in [
+        ("integrated_lufs", cli.integrated_lufs, gui.integrated_lufs),
+        ("m_max_lufs", cli.m_max_lufs, gui.m_max_lufs),
+        ("st_max_lufs", cli.st_max_lufs, gui.st_max_lufs),
+        (
+          "true_peak_max_dbtp",
+          cli.true_peak_max_dbtp,
+          gui.true_peak_max_dbtp,
+        ),
+      ] {
+        assert!(
+          (a - b).abs() < 1e-9,
+          "{channels} ch {name}: cli {a} vs gui {b}"
+        );
+      }
+      assert_eq!(cli.loudness_layout, gui.loudness_layout, "{channels} ch");
+      assert_eq!(
+        cli.loudness_layout_known, gui.loudness_layout_known,
+        "{channels} ch"
+      );
+    }
   }
 
   #[test]

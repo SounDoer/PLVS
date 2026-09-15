@@ -1,7 +1,7 @@
+use crate::dsp::channel_weights::{standard_layout_name, standard_loudness_weights};
 use crate::dsp::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use crate::dsp::gating::{
   gated_integrated_lufs, gated_lra, lufs_from_mean_squares, IBL_CAP, STH_CAP,
-  SURROUND_LOUDNESS_WEIGHT,
 };
 
 fn db_from_linear(value: f64) -> f64 {
@@ -21,6 +21,9 @@ pub struct SummaryMetrics {
   pub true_peak_max_dbtp: f64,
   pub sample_peak_max_l_db: f64,
   pub sample_peak_max_r_db: f64,
+  /// `standard_layout_name` for the channel count, or `"unknown"` (Ch1/Ch2 stereo loudness).
+  pub loudness_layout: &'static str,
+  pub loudness_layout_known: bool,
 }
 
 pub struct SummaryMeter {
@@ -44,8 +47,11 @@ pub struct SummaryMeter {
   tp_t: usize,
   tp_p: usize,
   tp_ph: Vec<Vec<f64>>,
-  tp_h: [Vec<f64>; 2],
-  tp_wp: [usize; 2],
+  tp_h: Vec<Vec<f64>>,
+  tp_wp: Vec<usize>,
+  /// BS.1770-5 weights for a standard layout; Ch1/Ch2 only for an unrecognized count above two;
+  /// `None` for mono and stereo, which keep their dedicated paths.
+  loudness_weights: Option<Vec<f64>>,
 }
 
 impl SummaryMeter {
@@ -73,19 +79,30 @@ impl SummaryMeter {
       tp_t,
       tp_p,
       tp_ph,
-      tp_h: [vec![0.0_f64; tp_t], vec![0.0_f64; tp_t]],
-      tp_wp: [0, 0],
+      tp_h: vec![vec![0.0_f64; tp_t]; channels.max(1) as usize],
+      tp_wp: vec![0; channels.max(1) as usize],
+      loudness_weights: match standard_loudness_weights(channels.max(1)) {
+        Some(weights) => Some(weights.to_vec()),
+        None if channels > 2 => {
+          let mut ch1_ch2 = vec![0.0; channels as usize];
+          ch1_ch2[0] = 1.0;
+          ch1_ch2[1] = 1.0;
+          Some(ch1_ch2)
+        }
+        None => None,
+      },
     }
   }
 
   pub fn push_interleaved(&mut self, interleaved: &[f32]) {
     let channels = self.channels.max(1) as usize;
     let frames = interleaved.len() / channels;
-    let weights = self.auto_weights(channels);
-    self.ensure_multichannel_filters(weights.map_or(0, |weights| weights.len()));
+    // Taken out and put back so the loop can borrow the filters mutably.
+    let weights = self.loudness_weights.take();
+    self.ensure_multichannel_filters(weights.as_ref().map_or(0, |weights| weights.len()));
     for frame in 0..frames {
       let base = frame * channels;
-      let (sum_ms, left, right) = if let Some(weights) = weights {
+      let sum_ms = if let Some(weights) = weights.as_deref() {
         let mut sum_ms = 0.0_f64;
         for (index, weight) in weights.iter().copied().enumerate() {
           if weight == 0.0 {
@@ -95,31 +112,26 @@ impl SummaryMeter {
           let weighted = self.kf_mc[index].tick(sample);
           sum_ms += weight * weighted * weighted;
         }
-        let left = interleaved[base] as f64;
-        let right = if channels > 1 {
-          interleaved[base + 1] as f64
-        } else {
-          left
-        };
-        (sum_ms, left, right)
+        sum_ms
       } else if channels == 1 {
         let sample = interleaved[base] as f64;
         let (kw_l, kw_r) = self.kf.tick_lr(sample, sample);
-        (kw_l * kw_l + kw_r * kw_r, sample, sample)
+        kw_l * kw_l + kw_r * kw_r
       } else {
         let left = interleaved[base] as f64;
         let right = interleaved[base + 1] as f64;
         let (kw_l, kw_r) = self.kf.tick_lr(left, right);
-        (kw_l * kw_l + kw_r * kw_r, left, right)
+        kw_l * kw_l + kw_r * kw_r
       };
 
       self.block_sum[0] += sum_ms;
-      self.update_peaks(left, right);
+      self.update_peaks(&interleaved[base..base + channels]);
       self.block_frames += 1;
       if self.block_frames >= self.block_size {
         self.close_block();
       }
     }
+    self.loudness_weights = weights;
   }
 
   pub fn finish(&self) -> SummaryMetrics {
@@ -131,46 +143,8 @@ impl SummaryMeter {
       true_peak_max_dbtp: db_from_linear(self.true_peak_max),
       sample_peak_max_l_db: db_from_linear(self.sample_peak_max_l),
       sample_peak_max_r_db: db_from_linear(self.sample_peak_max_r),
-    }
-  }
-
-  fn auto_weights(&self, channels: usize) -> Option<&'static [f64]> {
-    match channels {
-      5 => Some(&[
-        1.0,
-        1.0,
-        1.0,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-      ]),
-      6 => Some(&[
-        1.0,
-        1.0,
-        1.0,
-        0.0,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-      ]),
-      7 => Some(&[
-        1.0,
-        1.0,
-        1.0,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-      ]),
-      8 => Some(&[
-        1.0,
-        1.0,
-        1.0,
-        0.0,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-        SURROUND_LOUDNESS_WEIGHT,
-      ]),
-      _ => None,
+      loudness_layout: standard_layout_name(self.channels.max(1)).unwrap_or("unknown"),
+      loudness_layout_known: standard_layout_name(self.channels.max(1)).is_some(),
     }
   }
 
@@ -182,12 +156,20 @@ impl SummaryMeter {
     }
   }
 
-  fn update_peaks(&mut self, left: f64, right: f64) {
+  /// Sample peaks stay Ch1/Ch2; True Peak Max covers every channel.
+  fn update_peaks(&mut self, frame: &[f32]) {
+    let left = frame[0] as f64;
+    let right = if frame.len() > 1 {
+      frame[1] as f64
+    } else {
+      left
+    };
     self.sample_peak_max_l = self.sample_peak_max_l.max(left.abs());
     self.sample_peak_max_r = self.sample_peak_max_r.max(right.abs());
-    let tp_l = self.tp_sample(left, 0);
-    let tp_r = self.tp_sample(right, 1);
-    self.true_peak_max = self.true_peak_max.max(tp_l).max(tp_r);
+    for (channel, sample) in frame.iter().enumerate() {
+      let tp = self.tp_sample(*sample as f64, channel);
+      self.true_peak_max = self.true_peak_max.max(tp);
+    }
   }
 
   fn tp_sample(&mut self, sample: f64, channel: usize) -> f64 {
@@ -261,5 +243,71 @@ impl SummaryMeter {
     } else {
       lufs_from_mean_squares(sum[0] / count as f64, sum[1] / count as f64)
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn run(channels: u16, pcm: &[f32]) -> SummaryMetrics {
+    let mut meter = SummaryMeter::new(48_000, channels);
+    meter.push_interleaved(pcm);
+    meter.finish()
+  }
+
+  #[test]
+  fn true_peak_max_covers_every_channel() {
+    let channels = 8_usize;
+    let mut pcm = Vec::with_capacity(48_000 * channels);
+    for n in 0..48_000 {
+      let x = (std::f64::consts::PI * n as f64 / 2.0 + std::f64::consts::FRAC_PI_4).sin();
+      for ch in 0..channels {
+        pcm.push(if ch == 7 { x as f32 } else { 0.0 });
+      }
+    }
+    let metrics = run(channels as u16, &pcm);
+    assert!(
+      metrics.true_peak_max_dbtp.abs() < 0.25,
+      "channel 8 peak should reach 0 dBTP, got {}",
+      metrics.true_peak_max_dbtp
+    );
+    assert!(!metrics.sample_peak_max_l_db.is_finite());
+  }
+
+  #[test]
+  fn layout_is_reported_from_channel_count() {
+    let eight = run(8, &vec![0.0; 4_800 * 8]);
+    assert_eq!(
+      (eight.loudness_layout, eight.loudness_layout_known),
+      ("7.1", true)
+    );
+    let ten = run(10, &vec![0.0; 4_800 * 10]);
+    assert_eq!(
+      (ten.loudness_layout, ten.loudness_layout_known),
+      ("unknown", false)
+    );
+  }
+
+  #[test]
+  fn back_surrounds_weigh_one_point_five_lu_below_side_surrounds() {
+    let tone = |active: [usize; 2]| -> Vec<f32> {
+      let mut pcm = vec![0.0_f32; 48_000 * 4 * 8];
+      for n in 0..48_000 * 4 {
+        let s = (2.0 * std::f64::consts::PI * 1000.0 * n as f64 / 48_000.0).sin() as f32 * 0.1;
+        for ch in active {
+          pcm[n * 8 + ch] = s;
+        }
+      }
+      pcm
+    };
+    let back = run(8, &tone([4, 5]));
+    let side = run(8, &tone([6, 7]));
+    assert!(
+      (side.integrated_lufs - back.integrated_lufs - 1.5).abs() < 0.01,
+      "side {} vs back {}",
+      side.integrated_lufs,
+      back.integrated_lufs
+    );
   }
 }
