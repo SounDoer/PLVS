@@ -99,13 +99,14 @@ impl LoudnessMeter {
     let t = self.tp_t;
     let wp = self.tp_wp[ch];
     self.tp_h[ch][wp] = x;
-    self.tp_wp[ch] = (wp + 1) % t;
+    self.tp_wp[ch] = if wp + 1 == t { 0 } else { wp + 1 };
     let mut mx = x.abs();
     for p in 1..self.tp_p {
       let ph = &self.tp_ph[p];
       let mut y = 0.0;
       for (tt, coeff) in ph.iter().enumerate().take(t) {
-        let idx = (wp + t - tt) % t;
+        // A branch, not `%`: the runtime-divisor modulo dominated this loop at 8–16 channels.
+        let idx = if tt <= wp { wp - tt } else { wp + t - tt };
         y += coeff * self.tp_h[ch][idx];
       }
       let ay = y.abs();

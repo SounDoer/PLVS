@@ -193,12 +193,21 @@ impl SummaryMeter {
   fn tp_sample(&mut self, sample: f64, channel: usize) -> f64 {
     let write_pos = self.tp_wp[channel];
     self.tp_h[channel][write_pos] = sample;
-    self.tp_wp[channel] = (write_pos + 1) % self.tp_t;
+    self.tp_wp[channel] = if write_pos + 1 == self.tp_t {
+      0
+    } else {
+      write_pos + 1
+    };
     let mut max = sample.abs();
     for phase in 1..self.tp_p {
       let mut y = 0.0;
       for (tap, coeff) in self.tp_ph[phase].iter().enumerate().take(self.tp_t) {
-        let index = (write_pos + self.tp_t - tap) % self.tp_t;
+        // A branch, not `%`: the runtime-divisor modulo dominated this loop at 8–16 channels.
+        let index = if tap <= write_pos {
+          write_pos - tap
+        } else {
+          write_pos + self.tp_t - tap
+        };
         y += coeff * self.tp_h[channel][index];
       }
       max = max.max(y.abs());
