@@ -354,7 +354,9 @@ message. The initial stable error and issue codes are:
   `outOfRange`, and `controlUnavailable`;
 - `commandFailed` for an unexpected commit failure;
 - `persistenceFailed` when UI state committed but durable saving failed;
-- `commitNotObserved` when the state was written but the UI was not observed to render it in time.
+- `commitNotObserved` when the state was written but the UI was not observed to render it in time;
+- `requestNotSettled` when a queued command did not finish within the frontend's backstop, which
+  stays below the broker timeout. The command may still complete later, so inspect before retrying.
 
 A persistence failure must state the partial outcome explicitly:
 

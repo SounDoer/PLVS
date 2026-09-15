@@ -357,6 +357,14 @@ function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {
 /// the caller gets this specific failure instead of a transport timeout.
 const SETTLEMENT_TIMEOUT_MS = 5000;
 
+/// Bounds a whole queued command, execution included.
+///
+/// Settlement is bounded above, but the business function a mutation awaits before it is not, and a
+/// promise there that never settles blocks the serialized queue just the same. Kept below the
+/// broker's `DEFAULT_RESPONSE_TIMEOUT` (10 s) so the caller gets this stated failure rather than a
+/// transport timeout. The abandoned command may still finish later, and the failure says so.
+const QUEUED_REQUEST_TIMEOUT_MS = 8000;
+
 /// Bounds a settlement wait.
 ///
 /// Without this a predicate that can never match hangs the request forever - and because commands
@@ -3776,6 +3784,35 @@ export function useAgentControlBridge({
     let unlisten = null;
     let ready = false;
 
+    const processWithBackstop = (request) => {
+      let timer;
+      const backstop = new Promise((resolve) => {
+        timer = setTimeout(() => {
+          // The abandoned command has not reached its own cleanup, so its revision batch would stay
+          // installed and swallow every later revision bump. Its cleanup checks identity, so a late
+          // finish cannot clear a batch that belongs to a later command.
+          const batch = revisionBatchRef.current;
+          revisionBatchRef.current = null;
+          if (batch?.wakePending) publishWaitWake();
+          resolve({
+            requestId: typeof request?.id === "string" ? request.id : "",
+            error: agentControlRpcError(
+              semanticFailure(
+                "requestNotSettled",
+                "$",
+                `${request?.method} did not finish within ${QUEUED_REQUEST_TIMEOUT_MS} ms. It may still complete; inspect before retrying.`,
+                -32032,
+                { method: request?.method, timeoutMs: QUEUED_REQUEST_TIMEOUT_MS }
+              )
+            ),
+          });
+        }, QUEUED_REQUEST_TIMEOUT_MS);
+      });
+      return Promise.race([processRef.current(request), backstop]).finally(() =>
+        clearTimeout(timer)
+      );
+    };
+
     const install = async () => {
       const stop = await listenForAgentControlRequests((request) => {
         if (request?.type === "cancel" && typeof request.requestId === "string") {
@@ -3810,7 +3847,7 @@ export function useAgentControlBridge({
           void respond(processRef.current(request));
           return;
         }
-        queueRef.current = queueRef.current.then(() => processRef.current(request));
+        queueRef.current = queueRef.current.then(() => processWithBackstop(request));
         void respond(queueRef.current);
       });
       if (cancelled) {
@@ -3886,5 +3923,5 @@ export function useAgentControlBridge({
       unlisten = null;
       if (ready) void announceAgentControlFrontendNotReady();
     };
-  }, [enabled]);
+  }, [enabled, publishWaitWake]);
 }

@@ -3104,6 +3104,53 @@ describe("useAgentControlBridge", () => {
     }
   });
 
+  it("fails one command instead of the channel when execution never settles", async () => {
+    // Settlement is bounded, but the business function a mutation awaits before it was not. A LIVE
+    // stop from the error state returned a promise that never settled, and every later command hung
+    // behind it in the serialized queue until the app restarted.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const inspectRevision = async (id) => {
+      act(() => adapter.handler(request("app.inspect", {}, id)));
+      await vi.waitFor(() =>
+        expect(adapter.responses.some(({ requestId }) => requestId === id)).toBe(true)
+      );
+      const response = adapter.responses.find(({ requestId }) => requestId === id);
+      expect(response.error).toBeUndefined();
+      return response.result.revision;
+    };
+    try {
+      const hung = createDeferred();
+      const view = mount({ executeAgentDock: vi.fn(() => hung.promise) });
+      await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
+
+      act(() => adapter.handler(request("dock.enter", { edge: "top" }, "dock-hung")));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9000);
+      });
+
+      const response = adapter.responses.find(({ requestId }) => requestId === "dock-hung");
+      expect(response?.error).toMatchObject({
+        code: -32032,
+        data: { reason: "requestNotSettled", details: { method: "dock.enter" } },
+      });
+
+      // The queue moved on, and the abandoned request's revision batch no longer swallows the
+      // revision bumps of changes made outside Agent Control.
+      const initial = await inspectRevision("after-hung");
+      act(() => view.store.setTree({ type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" }));
+      const first = await inspectRevision("after-first-change");
+      act(() => view.store.setTree({ type: "leaf", tabs: ["waveform"], activeTab: "waveform" }));
+      const second = await inspectRevision("after-second-change");
+      expect(first).toBeGreaterThan(initial);
+      expect(second).toBeGreaterThan(first);
+
+      // Let the abandoned command reach its settlement wait, so unmounting rejects a handled promise.
+      await act(async () => hung.resolve());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("applies a Preset whose stored controls no longer match the migrated Workspace", async () => {
     // A Preset saved before a control existed stores a different `panelControlsById` than the one
     // applying it produces, because applying migrates. Waiting for the live Workspace to equal the
