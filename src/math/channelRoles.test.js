@@ -49,25 +49,25 @@ describe("roleTokensToLoudnessWeights", () => {
     expect(roleTokensToLoudnessWeights(["L", "LFE", "R"])).toEqual([1, 0, 1]);
   });
 
-  it("maps surround and back roles to the BS.1770 +1.5 dB energy multiplier", () => {
+  it("weights side surrounds +1.5 dB and back or centre surrounds at unity (BS.1770-5)", () => {
     const surroundWeight = 10 ** (1.5 / 10);
     expect(roleTokensToLoudnessWeights(["Ls", "Rs", "Lb", "Rb", "Cs"])).toEqual([
       surroundWeight,
       surroundWeight,
-      surroundWeight,
-      surroundWeight,
-      surroundWeight,
+      1,
+      1,
+      1,
     ]);
   });
 
-  it("maps the default 7.0 role order to front + surround/back weights", () => {
+  it("weights a 7.0 layout in WAVE order", () => {
     const surroundWeight = 10 ** (1.5 / 10);
-    expect(roleTokensToLoudnessWeights(["L", "R", "C", "Ls", "Rs", "Lb", "Rb"])).toEqual([
+    expect(roleTokensToLoudnessWeights(["L", "R", "C", "Lb", "Rb", "Ls", "Rs"])).toEqual([
       1,
       1,
       1,
-      surroundWeight,
-      surroundWeight,
+      1,
+      1,
       surroundWeight,
       surroundWeight,
     ]);

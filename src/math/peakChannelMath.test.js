@@ -13,7 +13,7 @@ describe("getPeakChannels", () => {
 
   it("uses peakDb with 7.0 layout labels for seven channels", () => {
     const ch = getPeakChannels({ peakDb: [-1, -2, -3, -4, -5, -6, -7] }, {});
-    expect(ch.map((c) => c.label)).toEqual(["L", "R", "C", "Ls", "Rs", "Lb", "Rb"]);
+    expect(ch.map((c) => c.label)).toEqual(["L", "R", "C", "Lb", "Rb", "Ls", "Rs"]);
   });
 
   it("falls back to L/R when peakDb missing", () => {

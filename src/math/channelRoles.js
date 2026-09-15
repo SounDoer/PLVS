@@ -1,6 +1,6 @@
 /**
  * Fixed per-channel role vocabulary and pure helpers for the user channel-label override.
- * Phase 1 is labels only; the Atmos height roles carry no loudness meaning yet (Phase 2).
+ * Roles drive both labels and BS.1770-5 loudness weights (Annex 3 Table 5).
  */
 
 /** @typedef {{ id: string, label: string }} ChannelRole */
@@ -59,9 +59,9 @@ const LOUDNESS_WEIGHT_BY_ROLE_ID = new Map([
   ["LFE", 0],
   ["Ls", SURROUND_LOUDNESS_WEIGHT],
   ["Rs", SURROUND_LOUDNESS_WEIGHT],
-  ["Lb", SURROUND_LOUDNESS_WEIGHT],
-  ["Rb", SURROUND_LOUDNESS_WEIGHT],
-  ["Cs", SURROUND_LOUDNESS_WEIGHT],
+  ["Lb", 1],
+  ["Rb", 1],
+  ["Cs", 1],
   ["Ltf", 1],
   ["Rtf", 1],
   ["Ltr", 1],

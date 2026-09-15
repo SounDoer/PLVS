@@ -15,11 +15,11 @@ describe("getPeakMeterChannelLabels", () => {
   });
 
   it("maps 7.1 eight-channel strip", () => {
-    expect(getPeakMeterChannelLabels(8)).toEqual(["L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb"]);
+    expect(getPeakMeterChannelLabels(8)).toEqual(["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]);
   });
 
   it("maps 7.0 seven-channel strip", () => {
-    expect(getPeakMeterChannelLabels(7)).toEqual(["L", "R", "C", "Ls", "Rs", "Lb", "Rb"]);
+    expect(getPeakMeterChannelLabels(7)).toEqual(["L", "R", "C", "Lb", "Rb", "Ls", "Rs"]);
   });
 
   it("honours formatId when channel count matches that format", () => {
@@ -82,10 +82,10 @@ describe("getPeakMeterChannelLabels", () => {
       "R",
       "C",
       "LFE",
-      "Ls",
-      "Rs",
       "Lb",
       "Rb",
+      "Ls",
+      "Rs",
     ]);
     expect(getPeakMeterChannelLabels(6, { resolvedLayout: "5.1" })).toEqual([
       "L",
@@ -110,10 +110,10 @@ describe("getPeakMeterChannelLabels", () => {
       "L",
       "R",
       "C",
-      "Ls",
-      "Rs",
       "Lb",
       "Rb",
+      "Ls",
+      "Rs",
     ]);
   });
 });

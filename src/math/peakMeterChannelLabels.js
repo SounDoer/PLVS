@@ -1,6 +1,7 @@
 /**
- * Peak meter column titles by interleaved channel index. Default 6ch order matches the native
- * 5.1 / BS.1770 path: FL, FR, FC, LFE, SL, SR → L, R, C, LFE, Ls, Rs.
+ * Peak meter column titles by interleaved channel index, in WAVE / ffmpeg channel order:
+ * 5.1 is FL FR FC LFE SL SR → L R C LFE Ls Rs; 7.1 is FL FR FC LFE BL BR SL SR →
+ * L R C LFE Lb Rb Ls Rs. Must match `src-tauri/src/dsp/channel_weights.rs`.
  *
  * Add new entries to {@link PEAK_METER_CHANNEL_FORMATS} and {@link ORDERED_FORMAT_IDS}, or pass
  * `ctx.formatId` when the backend can identify a layout explicitly.
@@ -39,12 +40,12 @@ export const PEAK_METER_CHANNEL_FORMATS = Object.freeze({
   surround70: {
     id: "surround70",
     channels: 7,
-    labels: ["L", "R", "C", "Ls", "Rs", "Lb", "Rb"],
+    labels: ["L", "R", "C", "Lb", "Rb", "Ls", "Rs"],
   },
   surround71: {
     id: "surround71",
     channels: 8,
-    labels: ["L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb"],
+    labels: ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"],
   },
 });
 
