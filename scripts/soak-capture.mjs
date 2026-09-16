@@ -7,11 +7,11 @@
  *
  * Exit codes match the smoke check: 0 clean, 1 drift detected, 2 rig unusable.
  */
-import { createWriteStream } from "node:fs";
+import { createWriteStream, mkdirSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   CAPTURE_DEVICE,
@@ -49,7 +49,9 @@ function arg(name, fallback) {
 const seconds = arg("seconds", 14400);
 const every = arg("every", 10);
 const wav = join(tmpdir(), `plvs-soak-signal-${process.pid}.wav`);
-const outPath = join(process.cwd(), `soak-${Date.now()}.jsonl`);
+// Runs are kept as the drift baseline for later ones, so they land beside the other rig output
+// rather than in the repository root.
+const outPath = join(process.cwd(), "artifacts", "soak", `soak-${Date.now()}.jsonl`);
 let player = null;
 
 function rssMb(pid) {
@@ -99,6 +101,7 @@ try {
     { stdio: ["ignore", "pipe", "pipe"] },
   );
 
+  mkdirSync(dirname(outPath), { recursive: true });
   const out = createWriteStream(outPath);
   const samples = [];
   const rss = [];

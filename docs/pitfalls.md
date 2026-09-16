@@ -104,6 +104,19 @@ cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --
 This guard was added after the v0.14.5 preflight and soak both used a binary older than the final DSP
 change; the trailing `app.version` was the only visible clue.
 
+### Soak runs are the drift baseline
+
+`soak:capture` and `soak:desktop` write to `artifacts/soak/`, which is gitignored and therefore local
+to one machine.
+
+A `soak:capture` run that reached its full duration ends with a summary line carrying the app
+version. Keep those: the drift of the next run is judged against them. Delete interrupted runs —
+drift is `max - min` of integrated loudness, which is still converging early on, so a short run reads
+high and is not comparable with a four-hour one.
+
+`soak:desktop` records UI frame drops and audio chunk drops, not loudness drift, and its verdict is
+self-contained, so its files play no baseline role and can be deleted once read.
+
 ## Scene operations and draft editors
 
 Preset apply, save, and update plus dock entry are scene operations. They must call

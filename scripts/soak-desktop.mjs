@@ -1,6 +1,6 @@
-import { createWriteStream } from "node:fs";
+import { createWriteStream, mkdirSync } from "node:fs";
 import { once } from "node:events";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -20,6 +20,7 @@ import {
 
 export async function runDesktopSoak(options, log = console.log) {
   const rig = await launchDesktopPerfRig(options);
+  mkdirSync(dirname(options.out), { recursive: true });
   const output = createWriteStream(options.out, { encoding: "utf8" });
   const samples = [];
   try {
@@ -78,7 +79,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const options = parseRigArgs(process.argv.slice(2), {
     seconds: 1_800,
     every: 10,
-    out: join(process.cwd(), `desktop-soak-${scenario}-${Date.now()}.jsonl`),
+    out: join(process.cwd(), "artifacts", "soak", `desktop-soak-${scenario}-${Date.now()}.jsonl`),
   });
   if (options.help) {
     console.log(

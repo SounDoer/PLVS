@@ -111,7 +111,7 @@ Tests sit next to the source file they cover, named `*.test.js` / `*.test.jsx` (
 stop the release. It has no bypass flag, deliberately: a gate you can wave through is not a gate.
 Fixing it means fixing the harness build or the rig — VB-Cable + VLC on the machine.
 
-After capture-layer work, remind the user to run `npm run soak:capture` (4 hours by default). It is the only thing that surfaces leaks and metric drift, it does not gate releases, and it will therefore never run unless someone asks for it. Its drift threshold has not yet been calibrated against a real baseline run, so treat a red soak as a lead, not a verdict.
+After capture-layer work, remind the user to run `npm run soak:capture` (4 hours by default). It is the only thing that surfaces leaks and metric drift, it does not gate releases, and it will therefore never run unless someone asks for it. Complete runs are kept in `artifacts/soak/` as the baseline: read a new run's drift against the spread of those runs, recomputed from the files, not only against the script's 0.01 dB limit — a value well under the limit but far outside the usual spread still deserves a look. Treat a red soak as a lead, not a verdict.
 
 ## Git workflow
 
