@@ -13,6 +13,7 @@ mod cli_path;
 pub mod cli_probe;
 pub mod cli_profile;
 pub mod cli_report;
+mod crash_report;
 mod dock;
 mod dock_accessories;
 pub mod doctor;
