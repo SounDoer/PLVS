@@ -176,6 +176,41 @@ describe("useAudioDevices", () => {
     expect(mocks.migrateCaptureDeviceId).not.toHaveBeenCalled();
   });
 
+  it("refreshes the current PID behind a stable application identity", async () => {
+    mocks.listCaptureApplications.mockResolvedValue([
+      { id: APP, label: "VLC", processId: 4321, windowTitle: "first.wav - VLC" },
+    ]);
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.captureApplications[0]?.processId).toBe(4321));
+
+    mocks.listCaptureApplications.mockResolvedValue([
+      { id: APP, label: "VLC", processId: 9876, windowTitle: "second.wav - VLC" },
+    ]);
+    await act(async () => result.current.refreshCaptureApplications());
+
+    expect(result.current.captureApplications).toEqual([
+      { id: APP, label: "VLC", processId: 9876, windowTitle: "second.wav - VLC" },
+    ]);
+    expect(result.current.captureDeviceId).toBe("default");
+  });
+
+  it("polls application inventory while a stable application identity is selected", async () => {
+    const setIntervalSpy = vi.spyOn(window, "setInterval");
+    const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+    mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue(APP);
+    mocks.loadCaptureDeviceId.mockResolvedValue(APP);
+
+    const { result, unmount } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.captureDeviceId).toBe(APP));
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 2_000);
+
+    const intervalId = setIntervalSpy.mock.results.at(-1).value;
+    unmount();
+    expect(clearIntervalSpy).toHaveBeenCalledWith(intervalId);
+    setIntervalSpy.mockRestore();
+    clearIntervalSpy.mockRestore();
+  });
+
   it("leaves the current Live session untouched when preflight fails", async () => {
     const beginDeviceRestartForControl = vi.fn();
     const { result } = renderHook(() =>

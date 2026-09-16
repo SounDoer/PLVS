@@ -17,6 +17,19 @@ import {
 import { onDeviceListChanged } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
 
+const APPLICATION_REFRESH_INTERVAL_MS = 2_000;
+
+function normalizeCaptureApplications(applications) {
+  return (Array.isArray(applications) ? applications : []).filter(
+    (application) =>
+      typeof application?.id === "string" &&
+      /^app-[0-9a-f]{32}$/.test(application.id) &&
+      typeof application?.label === "string" &&
+      Number.isInteger(application?.processId) &&
+      application.processId > 0
+  );
+}
+
 function emptyInventory() {
   return {
     generation: 0,
@@ -44,6 +57,7 @@ export function useAudioDevices({
   const [snapshot, setSnapshot] = useState(emptyInventory);
   const snapshotRef = useRef(snapshot);
   const refreshSequenceRef = useRef(0);
+  const applicationRefreshSequenceRef = useRef(0);
   const migrationSequenceRef = useRef(0);
   const selectionSequenceRef = useRef(0);
   const mountedRef = useRef(true);
@@ -191,14 +205,7 @@ export function useAudioDevices({
       const advanced = advanceDeviceGeneration(snapshotRef.current, normalized);
       const next = {
         ...advanced,
-        captureApplications: (Array.isArray(captureApplications) ? captureApplications : []).filter(
-          (application) =>
-            typeof application?.id === "string" &&
-            /^app-[0-9a-f]{32}$/.test(application.id) &&
-            typeof application?.label === "string" &&
-            Number.isInteger(application?.processId) &&
-            application.processId > 0
-        ),
+        captureApplications: normalizeCaptureApplications(captureApplications),
         requestedId: snapshotRef.current.requestedId,
         migrationState: snapshotRef.current.migrationState,
         inventoryReady: true,
@@ -208,6 +215,23 @@ export function useAudioDevices({
     },
     [publish]
   );
+
+  const refreshCaptureApplications = useCallback(async () => {
+    if (!isTauri()) return snapshotRef.current.captureApplications;
+    const sequence = ++applicationRefreshSequenceRef.current;
+    let applications;
+    try {
+      applications = await listCaptureApplications();
+    } catch (_) {
+      return snapshotRef.current.captureApplications;
+    }
+    if (!mountedRef.current || sequence !== applicationRefreshSequenceRef.current) {
+      return snapshotRef.current.captureApplications;
+    }
+    const normalized = normalizeCaptureApplications(applications);
+    updateSnapshot((current) => ({ ...current, captureApplications: normalized }));
+    return normalized;
+  }, [updateSnapshot]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -225,6 +249,7 @@ export function useAudioDevices({
       disposed = true;
       mountedRef.current = false;
       refreshSequenceRef.current += 1;
+      applicationRefreshSequenceRef.current += 1;
       migrationSequenceRef.current += 1;
       unlisten();
     };
@@ -243,6 +268,15 @@ export function useAudioDevices({
       cancelled = true;
     };
   }, [updateSnapshot]);
+
+  useEffect(() => {
+    if (!isTauri() || !/^app-[0-9a-f]{32}$/.test(snapshot.requestedId)) return;
+    const interval = window.setInterval(
+      () => void refreshCaptureApplications(),
+      APPLICATION_REFRESH_INTERVAL_MS
+    );
+    return () => window.clearInterval(interval);
+  }, [refreshCaptureApplications, snapshot.requestedId]);
 
   useEffect(() => {
     if (!isTauri() || !snapshot.inventoryReady || snapshot.requestedId === "default") return;
@@ -325,6 +359,7 @@ export function useAudioDevices({
     setCaptureDeviceIdAndPersist: selectCaptureDevice,
     previewSelection,
     refreshInventory,
+    refreshCaptureApplications,
     // The label belongs in the signature: switching the system default between two outputs with
     // the same format must still restart Automatic capture onto the new device.
     defaultOutputFormatSig: snapshot.automatic.resolved

@@ -1653,14 +1653,15 @@ function AppContent() {
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
     if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
-      return defaultOutputFormatSig || "2:48000";
+      const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
+      return `${defaultOutputFormatSig || "2:48000"}|pid:${application?.processId ?? "missing"}`;
     }
     if (captureDeviceId === "default") {
       return defaultOutputFormatSig || "";
     }
     const d = audioDevices.find((x) => x.id === captureDeviceId);
     return d ? `${d.channels}:${d.defaultSampleRate}` : "";
-  }, [captureDeviceId, audioDevices, defaultOutputFormatSig]);
+  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputFormatSig]);
 
   const deviceName = useMemo(() => {
     if (!isTauri()) return null;
