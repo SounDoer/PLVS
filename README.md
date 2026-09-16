@@ -44,6 +44,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 ## Features
 
 - **No routing required** — monitors any audio playing on your machine. Windows uses WASAPI loopback; macOS uses the native audio tap.
+- **Resilient Windows capture** — when Windows invalidates an active endpoint during an audio configuration change such as toggling Spatial Sound, PLVS rebuilds the stream and starts a fresh measurement automatically.
 - **Per-application capture** _(Windows)_ — pick a single running application from the same source dropdown and meter only its output, instead of everything the system is playing.
 - **File analysis mode** — drop in a local audio file to meter it offline: probe metadata, decode through a bundled FFmpeg sidecar (wide format support), and scrub through the full session history across every meter.
 - **Multichannel** — auto-detects mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 with proper per-channel metering and BS.1770 weighting; immersive layouts up to 9.1.6 can be selected by hand in Settings.

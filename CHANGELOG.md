@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows Live capture now rebuilds an invalidated WASAPI stream and clears the interrupted
+  measurement automatically when endpoint reconfiguration, including a Spatial Sound change,
+  invalidates the active device.
+
 ## [0.15.4] - 2026-09-12
 
 ### Added

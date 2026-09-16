@@ -109,6 +109,7 @@ pub fn capture_device_to_summary_with_layout(
     channels,
     stop_rx,
     dropped_chunks,
+    stream_error: None,
   };
 
   let capture_thread = std::thread::spawn(move || run_capture_stream(stream_args, consumer));

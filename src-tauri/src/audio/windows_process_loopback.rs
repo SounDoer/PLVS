@@ -429,7 +429,7 @@ pub fn start_process_session(
       delivery.stop_producer();
       let _ = bridge.join();
       if let Err(error) = &result {
-        emit_capture_failure(&failure_app, error);
+        emit_capture_failure(&failure_app, error, None);
       }
       result
     })

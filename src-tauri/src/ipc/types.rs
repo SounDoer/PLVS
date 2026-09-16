@@ -97,6 +97,8 @@ pub struct EngineStateChanged {
   pub state: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub error: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub reason: Option<String>,
 }
 
 /// Backpressure / drop signal for user-visible meter health (low-frequency).

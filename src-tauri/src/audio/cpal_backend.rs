@@ -48,34 +48,37 @@ const STREAM_ERROR_INVALIDATED: u8 = 2;
 
 fn stream_error_code(kind: cpal::ErrorKind) -> u8 {
   match kind {
-    cpal::ErrorKind::DeviceNotAvailable | cpal::ErrorKind::DeviceChanged => {
-      STREAM_ERROR_DEVICE_UNAVAILABLE
-    }
+    cpal::ErrorKind::DeviceNotAvailable => STREAM_ERROR_DEVICE_UNAVAILABLE,
     cpal::ErrorKind::StreamInvalidated => STREAM_ERROR_INVALIDATED,
     _ => STREAM_ERROR_NONE,
   }
 }
 
+fn store_stream_error(flag: &AtomicU8, error: &cpal::Error) {
+  let code = stream_error_code(error.kind());
+  if code != STREAM_ERROR_NONE {
+    flag.store(code, Ordering::Relaxed);
+  }
+}
+
 fn record_stream_error(flag: Arc<AtomicU8>) -> impl FnMut(cpal::Error) + Send + 'static {
   move |error| {
-    let code = stream_error_code(error.kind());
-    if code != STREAM_ERROR_NONE {
-      flag.store(code, Ordering::Relaxed);
-    }
+    store_stream_error(&flag, &error);
     log::error!("cpal stream error: {error}");
   }
 }
 
 pub(crate) fn capture_stall_message(stream_error: u8) -> String {
-  let cause = match stream_error {
-    STREAM_ERROR_DEVICE_UNAVAILABLE => " The audio device is no longer available.",
-    STREAM_ERROR_INVALIDATED => " The system invalidated the audio stream.",
-    _ => "",
-  };
-  format!(
-    "Capture stopped: no audio received for {} s.{cause}",
-    CAPTURE_STALL_TIMEOUT.as_secs()
-  )
+  match stream_error {
+    STREAM_ERROR_DEVICE_UNAVAILABLE => {
+      "Capture stopped: the audio device is no longer available.".into()
+    }
+    STREAM_ERROR_INVALIDATED => "Capture stopped: the system invalidated the audio stream.".into(),
+    _ => format!(
+      "Capture stopped: no audio received for {} s.",
+      CAPTURE_STALL_TIMEOUT.as_secs()
+    ),
+  }
 }
 
 /// Tracks whether a callback activity counter is still advancing.
@@ -105,27 +108,31 @@ impl StallWatch {
   }
 }
 
-/// Blocks until `stop_rx` fires or its sender is dropped (`Ok`), or, when `activity` is watched,
-/// until capture stops calling back (`Err` with a user-facing reason).
+/// Blocks until `stop_rx` fires or its sender is dropped (`Ok`), a fatal backend error arrives, or,
+/// when `activity` is watched, capture stops calling back (`Err` with a user-facing reason).
 pub(crate) fn wait_for_stop_or_stall(
   stop_rx: &std::sync::mpsc::Receiver<()>,
   activity: Option<&AtomicU64>,
   stream_error: &AtomicU8,
 ) -> Result<(), String> {
-  let Some(activity) = activity else {
-    let _ = stop_rx.recv();
-    return Ok(());
-  };
-  let mut watch = StallWatch::new(
-    CAPTURE_STALL_TIMEOUT,
-    activity.load(Ordering::Relaxed),
-    Instant::now(),
-  );
+  let mut watch = activity.map(|activity| {
+    StallWatch::new(
+      CAPTURE_STALL_TIMEOUT,
+      activity.load(Ordering::Relaxed),
+      Instant::now(),
+    )
+  });
   loop {
     match stop_rx.recv_timeout(CAPTURE_WATCH_POLL) {
       Err(RecvTimeoutError::Timeout) => {
-        if watch.observe(activity.load(Ordering::Relaxed), Instant::now()) {
-          return Err(capture_stall_message(stream_error.load(Ordering::Relaxed)));
+        let error_code = stream_error.load(Ordering::Relaxed);
+        if error_code != STREAM_ERROR_NONE {
+          return Err(capture_stall_message(error_code));
+        }
+        if let (Some(activity), Some(watch)) = (activity, watch.as_mut()) {
+          if watch.observe(activity.load(Ordering::Relaxed), Instant::now()) {
+            return Err(capture_stall_message(STREAM_ERROR_NONE));
+          }
         }
       }
       Ok(()) | Err(RecvTimeoutError::Disconnected) => return Ok(()),
@@ -135,13 +142,14 @@ pub(crate) fn wait_for_stop_or_stall(
 
 /// Reports a capture thread that ended on its own (startup failure or stall). Without it the UI
 /// keeps showing LIVE over a frozen, silent meter.
-pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str) {
+pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<&str>) {
   log::error!("capture failed: {error}");
   let _ = app.emit(
     "engine-state-changed",
     EngineStateChanged {
       state: "error".into(),
       error: Some(error.to_string()),
+      reason: reason.map(str::to_string),
     },
   );
 }
@@ -221,11 +229,27 @@ mod capture_watch_tests {
       STREAM_ERROR_NONE
     );
     assert_eq!(
+      stream_error_code(cpal::ErrorKind::DeviceChanged),
+      STREAM_ERROR_NONE
+    );
+    assert_eq!(
       capture_stall_message(STREAM_ERROR_NONE),
       "Capture stopped: no audio received for 5 s."
     );
-    assert!(capture_stall_message(STREAM_ERROR_DEVICE_UNAVAILABLE)
-      .ends_with("The audio device is no longer available."));
+    assert_eq!(
+      capture_stall_message(STREAM_ERROR_DEVICE_UNAVAILABLE),
+      "Capture stopped: the audio device is no longer available."
+    );
+  }
+
+  #[test]
+  fn fatal_stream_error_stops_even_when_callback_stalls_are_not_watched() {
+    let (_stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    let error = AtomicU8::new(STREAM_ERROR_INVALIDATED);
+    assert_eq!(
+      wait_for_stop_or_stall(&stop_rx, None, &error),
+      Err("Capture stopped: the system invalidated the audio stream.".into())
+    );
   }
 }
 
@@ -324,6 +348,8 @@ impl CaptureSession {
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
     let failure_app = app.clone();
+    let stream_error = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
+    let worker_stream_error = stream_error.clone();
 
     let join = std::thread::Builder::new()
       .name("capture".into())
@@ -344,9 +370,15 @@ impl CaptureSession {
           dialogue_vad_engine,
           measured_pcm,
           dropped_chunks,
+          stream_error: worker_stream_error,
         });
         if let Err(error) = &result {
-          emit_capture_failure(&failure_app, error);
+          let error_code = stream_error.load(Ordering::Relaxed);
+          emit_capture_failure(
+            &failure_app,
+            error,
+            (error_code != STREAM_ERROR_NONE).then_some("deviceInvalidated"),
+          );
         }
         result
       })
@@ -377,6 +409,7 @@ struct RunCaptureArgs {
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
   dropped_chunks: Arc<AtomicU64>,
+  stream_error: Arc<AtomicU8>,
 }
 
 #[derive(Clone)]
@@ -792,7 +825,11 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
 /// On Windows, WASAPI loopback stops sending callbacks when there's no audio playing.
 /// Playing silence keeps the audio engine active so callbacks continue.
 #[cfg(target_os = "windows")]
-fn create_silence_stream(device: &cpal::Device, config: &StreamConfig) -> Option<cpal::Stream> {
+fn create_silence_stream(
+  device: &cpal::Device,
+  config: &StreamConfig,
+  stream_error: Arc<AtomicU8>,
+) -> Option<cpal::Stream> {
   let stream = device
     .build_output_stream(
       *config,
@@ -802,7 +839,10 @@ fn create_silence_stream(device: &cpal::Device, config: &StreamConfig) -> Option
           *sample = 0.0;
         }
       },
-      |e| log::error!("silence stream error: {e}"),
+      move |error| {
+        store_stream_error(&stream_error, &error);
+        log::error!("silence stream error: {error}");
+      },
       None,
     )
     .ok()?;
@@ -825,6 +865,7 @@ pub(crate) struct CaptureStreamArgs {
   pub(crate) channels: u16,
   pub(crate) stop_rx: std::sync::mpsc::Receiver<()>,
   pub(crate) dropped_chunks: Arc<AtomicU64>,
+  pub(crate) stream_error: Option<Arc<AtomicU8>>,
 }
 
 /// Device-facing half of live capture, free of Tauri. Opens the stream, feeds
@@ -843,6 +884,7 @@ where
     channels,
     stop_rx,
     dropped_chunks,
+    stream_error,
   } = args;
   let dropped_for_callbacks = dropped_chunks;
   let stream_config = StreamConfig {
@@ -851,13 +893,15 @@ where
     buffer_size: cpal::BufferSize::Default,
   };
 
+  let stream_error = stream_error.unwrap_or_else(|| Arc::new(AtomicU8::new(STREAM_ERROR_NONE)));
+
   // On Windows, create a silence output stream for loopback devices to keep
   // the audio engine active when no other audio is playing.
   #[cfg(target_os = "windows")]
   let device_id = _device_id;
   #[cfg(target_os = "windows")]
   let _silence_stream = if is_loopback_capture(&device_id) {
-    create_silence_stream(&device, &stream_config)
+    create_silence_stream(&device, &stream_config, stream_error.clone())
   } else {
     None
   };
@@ -875,7 +919,6 @@ where
   let forwarder =
     PcmCallbackForwarder::new(delivery.producer(), pcm_pool.clone(), dropped_for_callbacks);
   let activity = forwarder.activity();
-  let stream_error = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
   let on_error = record_stream_error(stream_error.clone());
   let stream = match supported.sample_format() {
     SampleFormat::F32 => device
@@ -958,6 +1001,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     dialogue_vad_engine,
     measured_pcm,
     dropped_chunks,
+    stream_error,
   } = args;
   let bridge_dropped = dropped_chunks.clone();
 
@@ -970,6 +1014,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       channels,
       stop_rx,
       dropped_chunks,
+      stream_error: Some(stream_error),
     },
     move |audio_rx, pool, sample_rate, channels| {
       run_meter_pipeline_bridge_thread(

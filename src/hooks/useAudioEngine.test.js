@@ -139,7 +139,7 @@ describe("useAudioEngine", () => {
   it("clears local meter state when capture format changes during a running session", async () => {
     const props = {
       captureFormatSignature: "2:48000",
-      intake: { reset: vi.fn() },
+      intake: { reset: vi.fn(), pushFrame: vi.fn() },
       setAudio: vi.fn(),
       raiseNotice: vi.fn(),
       halt: vi.fn(),
@@ -253,6 +253,83 @@ describe("useAudioEngine", () => {
     expect(props.stopTimer).toHaveBeenCalled();
     expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
     expect(props.raiseNotice).toHaveBeenCalledWith("error", `Error: ${reason}`);
+  });
+
+  it("rebuilds an invalidated device stream once and clears the Live measurement", async () => {
+    const props = {
+      intake: { reset: vi.fn(), pushFrame: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      stopTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    const { result } = renderHook((p) => useHarness(p), { initialProps: props });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    result.current.frameRef.current = 41;
+    vi.clearAllMocks();
+
+    act(() =>
+      engineEvents.state({
+        state: "error",
+        error: "Capture stopped: the audio device is no longer available.",
+        reason: "deviceInvalidated",
+      })
+    );
+
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    expect(stopAudioCapture).toHaveBeenCalledOnce();
+    expect(props.halt).not.toHaveBeenCalled();
+    expect(props.intake.reset).toHaveBeenCalledOnce();
+    expect(result.current.frameRef.current).toBe(0);
+    expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });
+
+    const recoveredFrame = startAudioCapture.mock.calls[0][0].onFrame;
+    act(() => recoveredFrame({ seq: 0, peakDb: [-12], rmsDb: [-24] }));
+    expect(props.raiseNotice).toHaveBeenCalledWith(
+      "info",
+      "Audio configuration changed — measurement restarted"
+    );
+  });
+
+  it("does not loop when the replacement stream invalidates before delivering a frame", async () => {
+    const props = {
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      stopTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    renderHook((p) => useHarness(p), { initialProps: props });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    vi.clearAllMocks();
+
+    act(() =>
+      engineEvents.state({
+        state: "error",
+        error: "first invalidation",
+        reason: "deviceInvalidated",
+      })
+    );
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+
+    act(() =>
+      engineEvents.state({
+        state: "error",
+        error: "replacement invalidated",
+        reason: "deviceInvalidated",
+      })
+    );
+    expect(props.halt).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "replacement invalidated" })
+    );
+    expect(startAudioCapture).toHaveBeenCalledOnce();
+    expect(props.raiseNotice).toHaveBeenCalledWith("error", "Error: replacement invalidated");
   });
 
   it("records audio the engine dropped before analysis", async () => {

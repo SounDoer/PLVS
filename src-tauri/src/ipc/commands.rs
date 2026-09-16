@@ -271,6 +271,7 @@ pub fn audio_start(
     EngineStateChanged {
       state: "running".into(),
       error: None,
+      reason: None,
     },
   );
   Ok(())
@@ -549,6 +550,7 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
     EngineStateChanged {
       state: "stopped".into(),
       error: None,
+      reason: None,
     },
   );
   Ok(())

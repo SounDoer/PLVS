@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   listAudioDevices,
   previewAudioDevice,
@@ -42,6 +42,8 @@ const CLEARED_AUDIO_STATE = {
   dialogueActiveNow: false,
 };
 
+const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
+
 export function useAudioEngine({
   captureDeviceId = "default",
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
@@ -76,11 +78,25 @@ export function useAudioEngine({
   const defaultSampleRateRef = externalDefaultSampleRateRef ?? internalDefaultSampleRateRef;
   const histMaxSamplesRef = useRef(histMaxSamples);
   const visualMaxSamplesRef = useRef(visualMaxSamples);
+  const [recoveryRevision, setRecoveryRevision] = useState(0);
+  const recoveryAvailableRef = useRef(true);
+  const recoveryPendingRef = useRef(false);
+  const recoveryRearmAtRef = useRef(0);
 
   useEffect(() => {
     histMaxSamplesRef.current = histMaxSamples;
     visualMaxSamplesRef.current = visualMaxSamples;
   }, [histMaxSamples, visualMaxSamples]);
+
+  // A normal transport/device/configuration transition starts a new recovery budget. An automatic
+  // recovery changes only `recoveryRevision`, so an immediately-invalid replacement stream cannot
+  // loop forever. The budget is armed again only after that replacement has delivered healthy
+  // frames for a short stability window.
+  useEffect(() => {
+    recoveryAvailableRef.current = true;
+    recoveryPendingRef.current = false;
+    recoveryRearmAtRef.current = 0;
+  }, [running, captureDeviceId, captureFormatSignature, histMaxSamples, visualMaxSamples]);
 
   const clearLocalMeterStateForRestart = () => {
     intake.reset();
@@ -186,6 +202,18 @@ export function useAudioEngine({
           });
           const applyFrame = (f) => {
             if (!mounted) return;
+            if (recoveryPendingRef.current) {
+              recoveryPendingRef.current = false;
+              recoveryRearmAtRef.current = Date.now() + CAPTURE_RECOVERY_STABILITY_MS;
+              raiseNotice("info", "Audio configuration changed — measurement restarted");
+            } else if (
+              !recoveryAvailableRef.current &&
+              recoveryRearmAtRef.current > 0 &&
+              Date.now() >= recoveryRearmAtRef.current
+            ) {
+              recoveryAvailableRef.current = true;
+              recoveryRearmAtRef.current = 0;
+            }
             baseApply(f);
           };
 
@@ -212,6 +240,13 @@ export function useAudioEngine({
             await onEngineStateChanged((payload) => {
               if (!mounted || payload?.state !== "error") return;
               const message = payload.error || "Audio capture stopped";
+              if (payload.reason === "deviceInvalidated" && recoveryAvailableRef.current) {
+                recoveryAvailableRef.current = false;
+                recoveryPendingRef.current = true;
+                recoveryRearmAtRef.current = 0;
+                setRecoveryRevision((revision) => revision + 1);
+                return;
+              }
               halt(new Error(message));
               stopTimer?.();
               setSelectedOffset(-1);
@@ -279,6 +314,13 @@ export function useAudioEngine({
         } catch (_) {}
       }
     };
-  }, [running, captureDeviceId, captureFormatSignature, histMaxSamples, visualMaxSamples]);
+  }, [
+    running,
+    captureDeviceId,
+    captureFormatSignature,
+    histMaxSamples,
+    visualMaxSamples,
+    recoveryRevision,
+  ]);
   /* eslint-enable react-hooks/exhaustive-deps, react-hooks/immutability */
 }
