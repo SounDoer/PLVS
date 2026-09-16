@@ -66,9 +66,12 @@ A's rule that degradation must be visible.
 
 ## Decision 2: one shared layout table
 
-A single JSON file, `src/math/channelLayouts.json`, holds both tables. The frontend imports it; Rust
+A single JSON file, `shared/channel-layouts.json`, holds both tables. The frontend imports it; Rust
 embeds it with `include_str!` and parses it once, the way `src-tauri/src/cli_manifest.rs` already
-embeds `src/agentControl/commandManifest.json`. Loudness weights appear nowhere else.
+embeds `src/agentControl/commandManifest.json`. `shared/` is the repository's existing home for
+cross-language sources — `shared/analysis-request-key-fixtures.json` and
+`shared/cli-v1-envelope-fixtures.json` are read by Vitest and by cargo tests alike, so changing one
+side without the other fails a test. Loudness weights appear nowhere else.
 
 **Roles.** The existing vocabulary (`generic`, `M`, `L`, `R`, `C`, `LFE`, `Ls`, `Rs`, `Lb`, `Rb`,
 `Cs`, `Ltf`, `Rtf`, `Ltr`, `Rtr`) gains `Lw`, `Rw`, `Ltm`, `Rtm`. Weights follow BS.1770-5 Table 4:
