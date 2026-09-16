@@ -16,7 +16,7 @@ alone makes them wrong, so they are updated in the same commit as the change.
 | -------------------------------------------------- | ------------------------------------------------------------------ |
 | [architecture.md](architecture.md)                 | Tech stack, directory map, audio pipeline, IPC, theme system       |
 | [design-tokens.md](design-tokens.md)               | CSS variable system, semantic tokens, theme structure, text casing |
-| [engineering-pitfalls.md](engineering-pitfalls.md) | Counter-intuitive behaviour and the incident context behind rules  |
+| [pitfalls.md](pitfalls.md)                         | Counter-intuitive behaviour and the incident context behind rules  |
 | [cli.md](cli.md)                                   | `plvs-cli` command reference                                       |
 | [agent-control/](agent-control/)                   | Agent Control contract; `generated/` is produced by tooling        |
 | [ffmpeg-sidecar-build.md](ffmpeg-sidecar-build.md) | How the bundled FFmpeg sidecar is built and fetched                |

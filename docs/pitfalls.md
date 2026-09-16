@@ -1,4 +1,4 @@
-# PLVS — Engineering Pitfalls
+# PLVS — Pitfalls
 
 This is the long-form companion to [`AGENTS.md`](../AGENTS.md). It records counter-intuitive
 behaviour, incident context, and the reason behind rules that should stay brief in the agent
@@ -124,9 +124,9 @@ Spectrum slab is about 1.38 GB and a Stereo Map slab about 4.37 GB, so rapid key
 Controls that remain part of a request key, currently Spectrum Speed and Stereo Map Speed, commit on
 pointer release. Spectrum Tilt was removed from the key and no longer needs that workaround.
 
-Retained keys come from `deriveRetainedAnalysisKeys`, not the Rust request list. The request list is
-capped, reordered by dock state, and conditional on the live frame shape; using it for retention
-would erase history during device blips or dock changes. Apply the retained set to every intake that
+Retained keys come from `deriveRetainedAnalysisKeys`, not the Rust request list. The request list
+depends on dock state and on the live frame shape, so using it for retention would erase history
+during device blips or dock changes. Apply the retained set to every intake that
 ingests frames (`ingestingIntakes`), not merely the displayed `intakeRef`.
 
 ### Exact history fixtures must respect Float32

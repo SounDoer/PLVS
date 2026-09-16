@@ -6,7 +6,7 @@ This file records only what an agent cannot infer from the code. Details live in
 | Topic                                        | Where                          |
 | -------------------------------------------- | ------------------------------ |
 | Architecture, audio pipeline, IPC, theming   | `docs/architecture.md`         |
-| Engineering traps and incident context       | `docs/engineering-pitfalls.md` |
+| Engineering traps and incident context       | `docs/pitfalls.md`             |
 | Agent Control CLI commands and JSON contract | `docs/cli.md`                  |
 | Agent Control implementation contract        | `docs/agent-control/README.md` |
 | Product scope and boundaries                 | `docs/prd.md`                  |
@@ -19,7 +19,7 @@ When the docs and the code disagree, **the code on `main` wins**.
 
 Add a pitfall here only when code cannot reveal it, automation cannot reliably prevent it, and the
 failure cost is high. Keep the entry to an actionable summary and put investigation history in
-`docs/engineering-pitfalls.md`.
+`docs/pitfalls.md`.
 
 ## Commands
 
@@ -148,7 +148,7 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 
 ## Known pitfalls
 
-Read the relevant section of `docs/engineering-pitfalls.md` before touching these areas. The short
+Read the relevant section of `docs/pitfalls.md` before touching these areas. The short
 rules below are the working set; the incident history and rationale live there.
 
 - **Tests and tooling:** Vitest also guards Tauri and installer files. React or persistence tests
