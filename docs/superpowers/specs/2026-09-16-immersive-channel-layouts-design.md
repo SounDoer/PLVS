@@ -203,9 +203,23 @@ Manual:
 
 ## Risks
 
-- **9.1.6 channel order.** ffmpeg puts `Ltm/Rtm` last; Dolby's ordering interleaves them. Material
-  authored to Dolby's order will be mislabelled until the user edits the roles by hand. Accepted:
-  A's decision is that WAVE / ffmpeg order is the project's order.
+- **SMPTE bed order shifts the +1.5 dB pair, and does so invisibly.** Dolby's bed order for 5.1
+  through 7.1.2 is `L R C LFE Ls Rs Lrs Rrs Ltm Rtm` — side surrounds at slots 5–6, rear surrounds
+  at 7–8. WAVE / ffmpeg order is the opposite: `BL BR` at 5–6, `SL SR` at 7–8. Sides weigh 1.41,
+  rears 1.00, so material authored in bed order and measured as WAVE order puts the +1.5 dB on the
+  wrong pair whenever those pairs differ. 9.1.6 diverges further: ffmpeg is
+  `… Lb Rb Lw Rw Ls Rs …`, Dolby is `… Ls Rs Lrs Rrs Lw Rw …`.
+
+  WAVE / ffmpeg order is kept anyway, and no SMPTE-order presets are added. It is the order the
+  pipeline actually delivers — WASAPI hands over the device mask's bit order, ffmpeg decode its
+  native order — it is A's decision for 7.1 already, and it is the only vocabulary a source
+  declaration can use in B2: the Windows channel mask has 18 bits and none for wide or top-side, so
+  9.1.6 cannot be expressed as a mask at all. Two presets per layout would put two near-identical
+  entries in the picker, where choosing wrong fails just as silently.
+
+  The escape hatch is the per-channel role editor: select the layout, then swap the two surround
+  pairs. The mismatch is at least visible in the Peak meter headers, which will not match the DAW's
+  track names.
 - **The bundled ffmpeg 7.1 has no 9.1.6 layout** (it stops at 9.1.4). This does not affect B1, which
   never asks ffmpeg for a layout name, but B2a must handle it.
 - **The IPC signature change touches the capture path.** The role list reaches the engine through
