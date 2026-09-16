@@ -8,45 +8,34 @@
 //! Labels name the weighting role, not the WAVE speaker bit: `Ls/Rs` is the 1.41 surround pair
 //! (≈110° in 5.x, ±90° side in 7.x) even where the device mask calls it BACK_LEFT/BACK_RIGHT.
 
-use super::gating::SURROUND_LOUDNESS_WEIGHT as S;
+use super::channel_layouts::{layouts_for_channel_count, static_weights_for_layout};
 
-/// Layout name reported for a channel count, or `None` when the count has no standard layout.
+/// Layout name for a channel count, or `None` when the count has no single standard layout.
+/// 8 channels is 7.1 or 5.1.2; the count alone never decides, so auto detection keeps the first
+/// table entry (7.1), which is the pre-B1 behaviour. Counts above 8 are `None` — see this
+/// function's callers for the `Ch 1–2` degradation that follows.
 pub(crate) fn standard_layout_name(channels: u16) -> Option<&'static str> {
   match channels {
-    1 => Some("mono"),
-    2 => Some("stereo"),
-    3 => Some("lcr"),
-    4 => Some("quad"),
-    5 => Some("5.0"),
-    6 => Some("5.1"),
-    7 => Some("7.0"),
-    8 => Some("7.1"),
+    1..=8 => layouts_for_channel_count(channels as usize)
+      .first()
+      .map(|l| l.id.as_str()),
     _ => None,
   }
 }
 
 /// Per-channel loudness weights for 3–8 channels. Mono and stereo keep their dedicated paths.
+/// The returned slice is cached, so this is allocation-free for per-chunk callers.
 pub(crate) fn standard_loudness_weights(channels: u16) -> Option<&'static [f64]> {
-  match channels {
-    // L R C
-    3 => Some(&[1.0, 1.0, 1.0]),
-    // L R Ls Rs
-    4 => Some(&[1.0, 1.0, S, S]),
-    // L R C Ls Rs
-    5 => Some(&[1.0, 1.0, 1.0, S, S]),
-    // L R C LFE Ls Rs
-    6 => Some(&[1.0, 1.0, 1.0, 0.0, S, S]),
-    // L R C Lb Rb Ls Rs
-    7 => Some(&[1.0, 1.0, 1.0, 1.0, 1.0, S, S]),
-    // L R C LFE Lb Rb Ls Rs
-    8 => Some(&[1.0, 1.0, 1.0, 0.0, 1.0, 1.0, S, S]),
-    _ => None,
+  if !(3..=8).contains(&channels) {
+    return None;
   }
+  static_weights_for_layout(standard_layout_name(channels)?)
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::dsp::gating::SURROUND_LOUDNESS_WEIGHT as S;
 
   #[test]
   fn weights_follow_bs1770_5_table_5() {
@@ -107,5 +96,23 @@ mod tests {
   #[test]
   fn surround_weight_is_plus_one_and_a_half_db() {
     assert!((10.0 * S.log10() - 1.5).abs() < 1e-12);
+  }
+
+  #[test]
+  fn standard_rows_come_from_the_shared_table() {
+    for channels in 1..=8_u16 {
+      let name = standard_layout_name(channels).expect("name for 1..=8");
+      let roles = crate::dsp::channel_layouts::roles_for_layout(name).expect("layout in table");
+      assert_eq!(roles.len(), channels as usize, "{channels} channels");
+      if channels >= 3 {
+        let expected = crate::dsp::channel_layouts::weights_for_roles(roles).expect("weights");
+        assert_eq!(standard_loudness_weights(channels), Some(&expected[..]));
+        // The row is cached, so repeated calls hand out the same slice rather than a new one.
+        assert!(std::ptr::eq(
+          standard_loudness_weights(channels).unwrap(),
+          standard_loudness_weights(channels).unwrap()
+        ));
+      }
+    }
   }
 }

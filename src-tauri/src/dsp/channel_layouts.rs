@@ -3,13 +3,15 @@
 //! The frontend reads the same file through `src/math/channelLayoutTable.js`, so a weight or a
 //! layout order exists exactly once in the repository.
 //!
-//! Only tests exercise this module for now; a later task points `channel_weights.rs` and the
-//! frontend at it, so allow dead code until that call site lands.
-#![allow(dead_code, unused_imports)]
+//! `channel_weights.rs` reads the standard rows from here; the frontend reads the JSON directly.
+//! `layout_id_for_roles` has no caller yet — it is consumed by the manual layout picker (Task 5).
 
 use serde::Deserialize;
 use std::sync::OnceLock;
 
+// Re-exported for this module's own tests, which assert weights against the BS.1770-5 reference
+// value; production code reads weights from the table instead.
+#[allow(unused_imports)]
 pub(crate) use super::gating::SURROUND_LOUDNESS_WEIGHT;
 
 pub const CHANNEL_LAYOUTS_JSON: &str = include_str!("../../../shared/channel-layouts.json");
@@ -17,7 +19,8 @@ pub const CHANNEL_LAYOUTS_JSON: &str = include_str!("../../../shared/channel-lay
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct RoleEntry {
   pub id: String,
-  // Consumed once the manual layout picker UI (later task) renders role labels.
+  // Consumed once the manual layout picker UI (Task 5) renders role labels.
+  #[allow(dead_code)]
   pub label: String,
   pub weight: f64,
 }
@@ -25,7 +28,8 @@ pub(crate) struct RoleEntry {
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct LayoutEntry {
   pub id: String,
-  // Consumed once the manual layout picker UI (later task) renders layout names.
+  // Consumed once the manual layout picker UI (Task 5) renders layout names.
+  #[allow(dead_code)]
   pub name: String,
   pub roles: Vec<String>,
 }
@@ -57,6 +61,9 @@ pub(crate) fn role_weight(role: &str) -> Option<f64> {
 }
 
 /// Ordered roles of a layout id.
+// Exercised by this module's tests and by `channel_weights.rs`'s cross-check test; no production
+// call site yet.
+#[allow(dead_code)]
 pub(crate) fn roles_for_layout(layout_id: &str) -> Option<&'static [String]> {
   layouts()
     .iter()
@@ -65,6 +72,8 @@ pub(crate) fn roles_for_layout(layout_id: &str) -> Option<&'static [String]> {
 }
 
 /// The layout whose roles equal `roles`, in order.
+// Consumed once the manual layout picker UI (Task 5) maps a chosen role list back to an id.
+#[allow(dead_code)]
 pub(crate) fn layout_id_for_roles(roles: &[String]) -> Option<&'static str> {
   layouts()
     .iter()
@@ -83,6 +92,22 @@ pub(crate) fn layouts_for_channel_count(channels: usize) -> Vec<&'static LayoutE
 /// Weights for a role list; `None` if any role is unknown.
 pub(crate) fn weights_for_roles(roles: &[String]) -> Option<Vec<f64>> {
   roles.iter().map(|r| role_weight(r)).collect()
+}
+
+/// Weights for a layout id, computed once and kept for the process lifetime so hot callers can
+/// hold a `'static` slice instead of allocating a row per audio chunk.
+pub(crate) fn static_weights_for_layout(layout_id: &str) -> Option<&'static [f64]> {
+  static ROWS: OnceLock<Vec<(String, Vec<f64>)>> = OnceLock::new();
+  let rows = ROWS.get_or_init(|| {
+    layouts()
+      .iter()
+      .filter_map(|l| weights_for_roles(&l.roles).map(|w| (l.id.clone(), w)))
+      .collect()
+  });
+  rows
+    .iter()
+    .find(|(id, _)| id == layout_id)
+    .map(|(_, weights)| weights.as_slice())
 }
 
 #[cfg(test)]
