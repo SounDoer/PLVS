@@ -3,8 +3,6 @@ import { openExternalUrl } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
-import { useCrashReporting } from "../hooks/useCrashReporting.js";
-import { useCrashReportSetting } from "../hooks/useCrashReportSetting.js";
 import { getAdapter } from "../transfer/libraryAdapters.js";
 import { usePackTransfer } from "../transfer/usePackTransfer.js";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
@@ -21,6 +19,8 @@ export function AppSettingsOverlays({
   updateControls,
   appVersion,
   loudnessProfile,
+  crashReportSetting,
+  crashReporting,
   onAgentControlEnabledChange = () => {},
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -30,8 +30,6 @@ export function AppSettingsOverlays({
   // component owns; nothing outside it needs to know where they sit.
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
   const [pickType, setPickType] = useState(null);
-  const crashReportSetting = useCrashReportSetting();
-  const crashReporting = useCrashReporting({ promptEnabled: crashReportSetting.enabled });
   const {
     configurationBusy,
     configurationStatus,

@@ -34,6 +34,8 @@ import {
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useDockMode } from "./hooks/useDockMode.js";
+import { useCrashReporting } from "./hooks/useCrashReporting.js";
+import { useCrashReportSetting } from "./hooks/useCrashReportSetting.js";
 import { useDockLayout } from "./dock/useDockLayout.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
@@ -272,6 +274,11 @@ function AppContent() {
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
   const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
   const settings = useSettings({ onClearRef });
+  // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
+  // those overlays with the strip at boot; keeping discovery here lets App restore the main window
+  // before presenting the report instead of silently waiting for the user to exit Dock manually.
+  const crashReportSetting = useCrashReportSetting();
+  const crashReporting = useCrashReporting({ promptEnabled: crashReportSetting.enabled });
   const {
     setSettingsOpen,
     resolvedThemeId,
@@ -637,6 +644,11 @@ function AppContent() {
       raiseNotice,
     ]
   );
+
+  useEffect(() => {
+    if (!docked || !crashReporting.pendingReport) return;
+    void exitDockRestoringAttributes();
+  }, [crashReporting.pendingReport, docked, exitDockRestoringAttributes]);
 
   // A refused scene operation is not a failure to report as one -- the guard did its job. Say
   // what the user has to do instead, and keep the technical detail for everything else.
@@ -2351,6 +2363,8 @@ function AppContent() {
     >
       <AppSettingsOverlays
         settings={settings}
+        crashReportSetting={crashReportSetting}
+        crashReporting={crashReporting}
         loudnessProfile={loudnessProfile}
         channelSettings={{
           channelCount,

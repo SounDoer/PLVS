@@ -39,6 +39,8 @@ function Harness() {
         channelSettings={channelSettings}
         updateControls={updateControls}
         appVersion="0.0.0"
+        crashReportSetting={{ enabled: true, busy: false, error: "", setEnabled: vi.fn() }}
+        crashReporting={{ pendingReport: null, dismissPending: vi.fn() }}
       />
     </>
   );

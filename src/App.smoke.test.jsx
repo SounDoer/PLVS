@@ -17,6 +17,7 @@ import {
   getDockState,
   listAudioDevices,
   previewAudioDevice,
+  readPendingCrashReport,
   setDockAccessories,
   setDockReserveSpace,
   setDockSuspended,
@@ -87,6 +88,7 @@ vi.mock("./ipc/commands.js", () => ({
   agentControlFrontendNotReadyCommand: vi.fn().mockResolvedValue(undefined),
   agentControlRespondCommand: vi.fn().mockResolvedValue(undefined),
   readPendingCrashReport: vi.fn().mockResolvedValue(null),
+  discardCrashReport: vi.fn().mockResolvedValue(true),
   logFrontendError: vi.fn().mockResolvedValue(undefined),
   setCrashPromptEnabled: vi.fn().mockResolvedValue(undefined),
   readFeedbackDiagnostics: vi.fn().mockResolvedValue({
@@ -188,6 +190,7 @@ beforeEach(() => {
   isTauri.mockReturnValue(false);
   listAudioDevices.mockResolvedValue([]);
   previewAudioDevice.mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" });
+  readPendingCrashReport.mockReset().mockResolvedValue(null);
   emitTo.mockClear();
   enterDock.mockClear().mockResolvedValue(undefined);
   exitDock.mockClear().mockResolvedValue(undefined);
@@ -513,6 +516,28 @@ describe("App smoke", () => {
     // (Views control) is not mounted.
     expect(await screen.findByTestId("dock-strip")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Views" })).toBeNull();
+  });
+
+  it("restores the normal window to ask about a saved crash report after a docked boot", async () => {
+    isTauri.mockReturnValue(true);
+    settingsStore.patch({ askToSendCrashReports: true });
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    readPendingCrashReport.mockResolvedValue({
+      schemaVersion: 1,
+      id: "20260916T120000Z-01234567",
+      createdAt: "2026-09-16T12:00:00Z",
+      sessionId: "session-a",
+      kind: "rust_panic",
+      app: { version: "0.15.4", os: "windows", arch: "x86_64" },
+      error: { message: "Synthetic docked-boot panic" },
+      logs: [],
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(exitDock).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole("heading", { name: "PLVS Quit Unexpectedly" })).toBeTruthy();
+    expect(screen.queryByTestId("dock-strip")).toBeNull();
   });
 
   it("keeps macOS in normal mode and ignores Dock while applying the rest of a preset", async () => {

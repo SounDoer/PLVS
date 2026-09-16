@@ -193,6 +193,8 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
       channelSettings={channelSettings}
       updateControls={updateControls}
       appVersion="0.0.0"
+      crashReportSetting={{ enabled: true, busy: false, error: "", setEnabled: vi.fn() }}
+      crashReporting={{ pendingReport: null, dismissPending: vi.fn() }}
       {...overlayOverrides}
     />
   );
@@ -439,6 +441,8 @@ describe("Loudness Profile editor wiring", () => {
             }}
             appVersion="0.0.0"
             loudnessProfile={hook.result.current}
+            crashReportSetting={{ enabled: true, busy: false, error: "", setEnabled: vi.fn() }}
+            crashReporting={{ pendingReport: null, dismissPending: vi.fn() }}
           />
         </>
       );
