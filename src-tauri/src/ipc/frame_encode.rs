@@ -1,4 +1,4 @@
-//! Turns an [`AudioFramePayload`] into one binary message (`docs/working/perf/protocol.md` §7 step 3).
+//! Turns an [`AudioFramePayload`] into one binary message (`docs/history/notes/perf/protocol.md` §7 step 3).
 //!
 //! Spectrum's and Stereo Map's band rows leave the JSON side here. Everything else -- the scalars,
 //! Vectorscope, the band grid -- still serializes exactly as before, because the envelope carries

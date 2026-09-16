@@ -153,7 +153,7 @@ describe("resolveSpectrogramSampleMs", () => {
 
   it("infers the coarser file-mode ~100ms cadence instead of the live constant", () => {
     // File-mode visual history batches at the main-history 100ms grid (see
-    // docs/superpowers/specs/2026-06-29-sample-clocked-history-cadence-design.md), not the live
+    // docs/history/specs/2026-06-29-sample-clocked-history-cadence-design.md), not the live
     // 40ms visual rate. A caller stuck on the 40ms constant would treat every consecutive frame as
     // a gap here, painting a blank stripe after each 40ms-wide column.
     const f = frames(1000, 1400, 100);

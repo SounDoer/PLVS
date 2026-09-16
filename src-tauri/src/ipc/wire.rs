@@ -1,4 +1,4 @@
-//! Encoder for the binary frame envelope (`docs/working/perf/protocol.md` §3).
+//! Encoder for the binary frame envelope (`docs/history/notes/perf/protocol.md` §3).
 //!
 //! One channel message carries the whole frame:
 //!

@@ -7,11 +7,8 @@ Transport, Device, Dock, Measurement Control, Measurement Wait, View Control, Vi
 Transfer, and Configuration Transfer are implemented unless explicitly marked otherwise
 
 This directory records the implemented Agent Control contract and explicitly marked approved-next
-contracts. It complements the
-first-slice design in
-[`../superpowers/specs/2026-09-02-agent-control-design.md`](../superpowers/specs/2026-09-02-agent-control-design.md).
-That document explains the transport and initial Workspace implementation; this directory is the
-source of truth for the complete public control surface.
+contracts. It is the source of truth for the complete public control surface, including the
+transport.
 
 ## Current implementation
 
@@ -475,8 +472,6 @@ Control settings.
 
 - [`modules.md`](modules.md) — implemented Module discovery contract
 - [`visual.md`](visual.md) — implemented Windows/macOS screenshot and recording contract
-- [Visual Capture design](../superpowers/specs/2026-09-07-agent-control-visual-capture-design.md) —
-  approved `visual` family design record
 - [`presets.md`](presets.md) — implemented Preset Control contract
 - [`axes.md`](axes.md) — implemented Axis Control contract
 - [`settings.md`](settings.md) — implemented Settings Control contract

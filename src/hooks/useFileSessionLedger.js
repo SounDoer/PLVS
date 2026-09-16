@@ -18,7 +18,7 @@ import {
  * them. Cross-domain orchestration (notice lifecycle, engine stop, scrub-offset
  * resets, source switching) stays with the caller and composes these verbs —
  * same seam style as useCaptureTransport. See
- * docs/superpowers/specs/2026-07-08-c2-app-state-ownership-design.md.
+ * docs/history/specs/2026-07-08-c2-app-state-ownership-design.md.
  */
 export function useFileSessionLedger() {
   const [fileHistory, setFileHistory] = useState(() => createInitialFileHistory());

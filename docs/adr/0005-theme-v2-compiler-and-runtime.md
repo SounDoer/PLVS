@@ -30,8 +30,8 @@ adequate authoring model:
   layer.
 
 The approved product model is defined in
-`docs/superpowers/specs/2026-08-19-theme-v2-design.md`. The supporting source audit is
-`docs/working/design/theme-v2-color-inventory.md`.
+`docs/history/specs/2026-08-19-theme-v2-design.md`. The supporting source audit is
+`docs/history/notes/theme-v2-color-inventory.md`.
 
 This ADR changes the color-theme pipeline only. Layout, typography, geometry, panel opacity, Glass
 strength, measurement thresholds, and frequency split settings remain outside themes.

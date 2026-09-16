@@ -63,7 +63,7 @@ pub struct AnalysisRequests {
 /// Per-band dB for one request key. The DSP computes these in `f64`, but they are narrowed here:
 /// the frontend's only destination for them is an Int16 centi-dB slab, and `f32` sits three orders
 /// of magnitude below that step (`spectrum_db_narrowing_stays_far_below_display_precision`). The
-/// narrowing halves what the wire carries, which is the point -- see `docs/working/perf/protocol.md`.
+/// narrowing halves what the wire carries, which is the point -- see `docs/history/notes/perf/protocol.md`.
 pub struct SpectrumFrameResult {
   pub smooth_db: Vec<f32>,
   pub peak_db: Vec<f32>,

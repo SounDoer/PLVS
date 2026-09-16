@@ -65,7 +65,7 @@ const GRADIENT_STOPS = 16;
  * two triangles per segment, plus joins and antialiased edges. Lines submits ~100 ridges of ~230
  * points, so crossing the boundary means building well over a million triangles a second.
  *
- * Measured in a real window at 1383x640 (`docs/working/perf/spectrogram.md` §1): the mesh costs
+ * Measured in a real window at 1383x640 (`docs/history/notes/perf/spectrogram.md` §1): the mesh costs
  * 16.9% of the GPU's 3d engine and 288 ms/s of GPU-process CPU at the themed width, and 3.8% and
  * 14 ms/s at one device pixel. It is a cliff, not a ramp -- 1.05 costs the same as 3.0 -- so there
  * is nothing to gain by inching above it, and the whole saving is lost by exceeding it at all.

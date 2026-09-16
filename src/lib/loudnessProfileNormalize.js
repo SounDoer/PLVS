@@ -4,8 +4,8 @@
 /// a default rather than throwing: a corrupt profile must cost the user that profile, not the
 /// ability to start the app. A cold (missing or malformed) library is seeded with the starter
 /// profile and selects it; a stored selection, including Off, is kept. See the selection model in
-/// docs/superpowers/specs/2026-07-19-loudness-profile-design.md §Active selection, and the
-/// first-run default in docs/superpowers/specs/2026-09-14-first-run-defaults-design.md §Loudness
+/// docs/history/specs/2026-07-19-loudness-profile-design.md §Active selection, and the
+/// first-run default in docs/history/specs/2026-09-14-first-run-defaults-design.md §Loudness
 /// Profile (decided).
 
 import {

@@ -11,7 +11,7 @@ import { FrameIntake } from "../lib/FrameIntake.js";
  * only while the analyzing session is also the displayed one
  * (fileDisplayActiveRef) — switching to another file freezes that session's
  * panels instead of letting the in-progress analysis hijack the meters.
- * See docs/superpowers/specs/2026-07-08-c2-app-state-ownership-design.md.
+ * See docs/history/specs/2026-07-08-c2-app-state-ownership-design.md.
  */
 /* eslint-disable react-hooks/refs -- Render-phase ref mirroring is this hook's whole job:
    intakeRef / fileDisplayActiveRef must reflect the CURRENT render's routing decision

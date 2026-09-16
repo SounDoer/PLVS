@@ -7,7 +7,7 @@
  * before anything is rasterised: the geometry is tessellated and painted later, in the GPU process,
  * on nobody's stopwatch. A panel can therefore look cheap in every existing instrument and still
  * cost more than the one it is being compared against (Spectrogram 3D Lines vs Surface, which is
- * what this script was built for -- see `docs/working/perf/spectrogram.md`).
+ * what this script was built for -- see `docs/history/notes/perf/spectrogram.md`).
  *
  * Windows exposes per-process GPU time as the `GPU Engine` counter set, which is the same source
  * Task Manager's GPU column reads. No debugging port and no code change is needed; the app just has

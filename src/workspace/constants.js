@@ -23,7 +23,7 @@ const DEFAULT_MODULE_IDS = [...ALL_MODULE_IDS, "stereo-map"];
 
 // ---------------------------------------------------------------------------
 // Default tree, hand-tuned at 1280x800 logical
-// (docs/superpowers/specs/2026-09-14-first-run-defaults-design.md):
+// (docs/history/specs/2026-09-14-first-run-defaults-design.md):
 //   H[ leaf(levelMeter)
 //    | V[ H[ leaf(loudness) | leaf(waveform) ] | leaf(spectrogram) | leaf(spectrum) | leaf(stereo-map) ]
 //    | V[ leaf(stats) | leaf(vectorscope) ] ]

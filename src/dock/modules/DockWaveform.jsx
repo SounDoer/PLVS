@@ -99,7 +99,7 @@ export function paintDockWaveformCanvas(
     neutral: parseCssRgb(themeColors.frequencyNeutral),
   };
   // One colour per pixel column per lane, so the split-derived anchors are resolved once per draw
-  // and the result is written into a single reused array. See `docs/working/perf/waveform.md` §2.1.
+  // and the result is written into a single reused array. See `docs/history/notes/perf/waveform.md` §2.1.
   const frequencyScale = waveformFrequencyScale({ lowMidSplitHz, midHighSplitHz }, spectralPalette);
   const bucketColor = [0, 0, 0];
   const centroidColor = themeColors.centroid;

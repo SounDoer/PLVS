@@ -80,8 +80,7 @@ with `plvs-cli doctor --json` and inspect `device-enumeration`.
 
 A player started before the RDP session detaches can remain alive while it stops feeding VB-Cable.
 Start the player after detaching. A healthy device, active process, and zero dropped chunks are not
-enough: reject runs where `integratedLufs` remains `null`. Measurements and the operating protocol
-are recorded in `docs/working/perf/protocol.md` §10.3.
+enough: reject runs where `integratedLufs` remains `null`.
 
 ### Smoke and soak require the current capture harness
 

@@ -5,7 +5,7 @@ import { useSessionTimer } from "./useSessionTimer.js";
  * Owner of the shared metering display layer: the meter frame snapshot, history
  * scrub offset, transport notice, session clock, and frame counter. Both engines
  * (live capture, file analysis) write into this layer; panels read it. See
- * docs/superpowers/specs/2026-07-08-c2-app-state-ownership-design.md.
+ * docs/history/specs/2026-07-08-c2-app-state-ownership-design.md.
  *
  * All setters/refs returned here are identity-stable; the wrapper object is not.
  * Engine effects must keep reading fields inside the effect body and must not

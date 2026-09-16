@@ -2810,7 +2810,7 @@ mod tests {
     (result, visual)
   }
 
-  /// P-7 in `docs/working/perf/protocol.md`: the payload narrows the DSP's `f64` dB to `f32`, which
+  /// P-7 in `docs/history/notes/perf/protocol.md`: the payload narrows the DSP's `f64` dB to `f32`, which
   /// halves what the wire carries. This is the pairing that says the narrowing is invisible.
   ///
   /// The frontend's only destination for these values is an Int16 centi-dB slab, so 0.01 dB is the

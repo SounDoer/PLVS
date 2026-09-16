@@ -41,4 +41,4 @@ A copy of the Apache-2.0 license text is available at <https://www.apache.org/li
 PLVS's remaining Rust and JavaScript dependencies are distributed under permissive licenses
 (predominantly MIT and Apache-2.0, with some BSD/ISC). A full snapshot of the dependency licensing,
 including how it was audited and why no copyleft obligations beyond FFmpeg apply, is in
-`docs/licenses-audit.md`.
+`docs/history/notes/licenses-audit.md`.
