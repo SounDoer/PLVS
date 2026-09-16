@@ -144,6 +144,27 @@ describe("app runtime derivations", () => {
     ).toEqual([1, 0, 10 ** (1.5 / 10)]);
   });
 
+  it("does not name an 8-channel auto-detected device yet", () => {
+    // Pending Task 7: formatId is not wired here yet, so 8-channel auto-detection falls back to
+    // generic labels. When Task 7 lands, this expectation flips to the named 7.1 labels.
+    const runtime = deriveChannelLabelRuntime({
+      channelCount: 8,
+      layoutResolution: { resolved: "7.1" },
+      channelLabelOverrides: {},
+    });
+
+    expect(runtime.channelAutoLabels).toEqual([
+      "Ch 1",
+      "Ch 2",
+      "Ch 3",
+      "Ch 4",
+      "Ch 5",
+      "Ch 6",
+      "Ch 7",
+      "Ch 8",
+    ]);
+  });
+
   it("falls back to stereo labels before a real channel count is known", () => {
     const runtime = deriveChannelLabelRuntime({
       channelCount: 0,

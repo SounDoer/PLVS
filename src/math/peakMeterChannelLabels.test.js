@@ -86,6 +86,8 @@ describe("getPeakMeterChannelLabels", () => {
   });
 
   it("shows ITU labels when resolvedLayout is a known format", () => {
+    // 8 channels also needs formatId: resolvedLayout alone only ever gates the "unknown" case,
+    // and 8ch by count alone is now ambiguous between 7.1 and 5.1.2.
     expect(getPeakMeterChannelLabels(8, { formatId: "7.1", resolvedLayout: "7.1" })).toEqual([
       "L",
       "R",
@@ -144,6 +146,7 @@ describe("getPeakMeterChannelLabels", () => {
   });
 
   it("does not name channels for a count with no single standard layout", () => {
+    // 10 channels is ambiguous between 5.1.4 and 7.1.2, so neither is named by count alone.
     expect(getPeakMeterChannelLabels(10)).toEqual(
       Array.from({ length: 10 }, (_, i) => `Ch ${i + 1}`)
     );
