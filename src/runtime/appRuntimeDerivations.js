@@ -54,7 +54,9 @@ export function deriveChannelLabelRuntime({ channelCount, channelLabelOverrides 
   return {
     channelLabelOverride,
     channelRoles: channelLabelOverride,
-    selectedLayoutId: channelLabelOverride ? layoutIdForRoles(channelLabelOverride) : null,
+    selectedLayoutId: channelLabelOverride
+      ? (layoutIdForRoles(channelLabelOverride) ?? "custom")
+      : autoLayoutId,
     overrideLabels,
     channelAutoLabels,
     channelLabelTokens: channelLabelOverride ?? seedTokensFromLabels(channelAutoLabels),

@@ -137,9 +137,30 @@ describe("app runtime derivations", () => {
     });
 
     expect(runtime.channelAutoLabels).toEqual(["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]);
+    expect(runtime.selectedLayoutId).toBe("7.1");
   });
 
-  it("reports no layout and no roles when nothing is overridden", () => {
+  it("shows Stereo for a new 2-channel device without creating an override", () => {
+    const runtime = deriveChannelLabelRuntime({
+      channelCount: 2,
+      channelLabelOverrides: {},
+    });
+
+    expect(runtime.channelRoles).toBeNull();
+    expect(runtime.channelLabelTokens).toEqual(["L", "R"]);
+    expect(runtime.selectedLayoutId).toBe("stereo");
+  });
+
+  it("reports Custom only for an explicit role list that matches no layout", () => {
+    const runtime = deriveChannelLabelRuntime({
+      channelCount: 2,
+      channelLabelOverrides: { 2: ["L", "M"] },
+    });
+
+    expect(runtime.selectedLayoutId).toBe("custom");
+  });
+
+  it("reports an unknown layout and no roles when auto detection cannot identify the format", () => {
     const runtime = deriveChannelLabelRuntime({
       channelCount: 12,
       channelLabelOverrides: {},

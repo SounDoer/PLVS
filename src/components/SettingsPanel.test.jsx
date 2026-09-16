@@ -791,11 +791,24 @@ describe("SettingsPanel — Channel labels", () => {
         {...BASE_PROPS}
         channelCount={12}
         channelLabelTokens={[...roles.slice(0, 4), "Ls", "Rs", "Lb", "Rb", ...roles.slice(8)]}
-        selectedLayoutId={null}
+        selectedLayoutId="custom"
         setChannelLayout={setChannelLayout}
       />
     );
     expect(screen.getByLabelText("channel layout").textContent).toContain("Custom");
+  });
+
+  it("shows Unknown rather than Custom when automatic detection cannot identify the layout", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        channelCount={12}
+        channelLabelTokens={Array.from({ length: 12 }, () => "generic")}
+        selectedLayoutId={null}
+      />
+    );
+
+    expect(screen.getByLabelText("channel layout").textContent).toContain("Unknown");
   });
 
   it("shows the idle hint when no input is connected", () => {
