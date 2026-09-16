@@ -1,47 +1,64 @@
 # PLVS — Documentation
 
-This directory contains all development documentation for PLVS.
-Standard reference docs live directly in `docs/`. Working and process docs live in `docs/working/`.
+Documents here are grouped by **shelf life**, not by subject. Each group carries a different
+maintenance obligation, and knowing which group a file belongs to is how you know whether to trust
+it and whether you owe it an update.
 
-## Standard docs
+Source of truth for any technical claim is the code on `main`. When a document contradicts the code,
+the code wins — fix the document.
 
-| File                                               | Purpose                                                                                   | Read when                                                                |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [prd.md](prd.md)                                   | Product intent: what PLVS is, target users, features, non-goals                           | Understanding product scope and decisions                                |
-| [architecture.md](architecture.md)                 | Technical map: tech stack, directory structure, audio pipeline, IPC, theme system         | Writing code, navigating the codebase                                    |
-| [engineering-pitfalls.md](engineering-pitfalls.md) | Counter-intuitive behaviour, incident context, and rationale behind agent rules           | Working in a high-risk area listed in `AGENTS.md`                         |
-| [cli.md](cli.md)                                   | Installed `plvs-cli` command reference for agents, support, and automation                | Running PLVS diagnostics or file analysis without opening the desktop UI |
-| [agent-control/README.md](agent-control/README.md) | Living design record for developer-only live application control                          | Extending or reviewing the agent-control protocol                        |
-| [design-tokens.md](design-tokens.md)               | UI token system: CSS variables, semantic tokens, theme structure, text casing conventions | Working on visual appearance, theming, or label text casing              |
-| [loudness-references.md](loudness-references.md)   | Loudness reference profile data for UI overlays                                           | Adding or editing loudness reference targets                             |
+## 1. Current state — must be updated with the code
 
-## Decision records
+These describe how PLVS works right now. Changing the behaviour they describe and leaving them
+alone makes them wrong, so they are updated in the same commit as the change.
 
-| File                                                                                   | Decision                                                                           |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [adr/0001-ui-layout-vs-shadcn-theme.md](adr/0001-ui-layout-vs-shadcn-theme.md)         | `--ui-*` layout tokens vs shadcn/Tailwind surface tokens — boundary definition     |
-| [adr/0002-theme-id-and-appearance.md](adr/0002-theme-id-and-appearance.md)             | `themeId`, `appearance`, `data-theme`, first-paint placeholder, chart token naming |
-| [adr/0003-device-identity-layering.md](adr/0003-device-identity-layering.md)           | Keep device DTO / pure id algebra / cpal enumeration split — do not merge          |
-| [adr/0004-keep-three-vad-engines.md](adr/0004-keep-three-vad-engines.md)               | Keep the three shipped VAD engines as distinct user-selectable implementations     |
-| [adr/0005-theme-v2-compiler-and-runtime.md](adr/0005-theme-v2-compiler-and-runtime.md) | Theme V2 authoring, Role Registry, compiler, resolved runtime, and V1 migration    |
+| File                                               | Covers                                                             |
+| -------------------------------------------------- | ------------------------------------------------------------------ |
+| [architecture.md](architecture.md)                 | Tech stack, directory map, audio pipeline, IPC, theme system       |
+| [design-tokens.md](design-tokens.md)               | CSS variable system, semantic tokens, theme structure, text casing |
+| [engineering-pitfalls.md](engineering-pitfalls.md) | Counter-intuitive behaviour and the incident context behind rules  |
+| [cli.md](cli.md)                                   | `plvs-cli` command reference                                       |
+| [agent-control/](agent-control/)                   | Agent Control contract; `generated/` is produced by tooling        |
+| [ffmpeg-sidecar-build.md](ffmpeg-sidecar-build.md) | How the bundled FFmpeg sidecar is built and fetched                |
 
-ADRs are historical records — do not edit them. Add a new ADR to record a new decision.
+Keep this group small. Every file added here is one more thing that can go stale.
 
-## Working docs (`docs/working/`)
+## 2. Product boundaries
 
-Process documents generated during development. Not maintained as living references.
+| File             | Covers                                                      |
+| ---------------- | ----------------------------------------------------------- |
+| [prd.md](prd.md) | What PLVS is for, what it deliberately does not do, and why |
 
-| Path                         | Contents                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------- |
-| `working/design/`            | Design handoff specs for implemented features (workspace layout, header/footer) |
-| `working/superpowers/specs/` | Design specs produced during brainstorming sessions                             |
-| `working/superpowers/plans/` | Implementation plans (including this one)                                       |
+The PRD states intent and limits. It does not inventory current capabilities — counts, feature
+lists and "we currently don't have X" belong in `README.md` and `CHANGELOG.md`, which are updated
+every release.
 
-## For AI agents
+## 3. Decisions — [adr/](adr/)
 
-Start here, then read `architecture.md` for the codebase map. Key facts:
+A decision that still constrains the code, recorded once. ADRs are never edited; a decision that
+changes gets a new ADR that supersedes the old one.
 
-- Source of truth for any technical claim is the code, not this documentation
-- If a doc contradicts the code, the code wins — update the doc
-- All test files are colocated with source files in `src/` (pattern: `*.test.js` / `*.test.jsx`)
-- Run `npm test` to verify frontend; `npm run check` for full stack
+Write an ADR when someone could reasonably look at the code and ask "why not just do the obvious
+simpler thing?" — layered device identity (0003) and three parallel VAD engines (0004) look
+redundant until you know why they are not. Routine choices do not need one.
+
+## 4. History — [history/](history/)
+
+Specs, plans, performance investigations, spikes and mockups. Frozen the moment they are written,
+never updated, never cited as current behaviour. See [history/README.md](history/README.md).
+
+New specs go to `history/specs/YYYY-MM-DD-<topic>-design.md` and new plans to
+`history/plans/YYYY-MM-DD-<feature>.md`; see the Documentation section in `AGENTS.md`.
+
+## Where the other documents live
+
+`README.md`, `CHANGELOG.md` and the site under `landing/docs/` are written for people who do not
+know the project. They carry the highest cost when wrong and are reconciled against the changelog at
+release time. `CONTRIBUTING.md` covers local development and CI. `AGENTS.md` carries the rules for
+agents, including where to write new documents.
+
+## Guards
+
+Some claims are checked by tests rather than by review — the panel table in `README.md` must match
+`src/workspace/moduleCatalog.js`, living documents must not link into `history/`, and the CLI
+surface is asserted against `docs/cli.md`. They run as part of `npm run check`.
