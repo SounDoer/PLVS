@@ -13,7 +13,7 @@ const current = {
   interfaceSize: "default",
   historyRetentionSec: 3600,
   dialogueVadEngine: "firered",
-  channelLabels: { channelCount: 2, mode: "auto", roles: ["L", "R"] },
+  channelLabels: { channelCount: 2, mode: "auto", layout: "stereo", roles: ["L", "R"] },
 };
 
 const context = {
@@ -47,7 +47,12 @@ describe("Settings Control", () => {
       interfaceSize: "large",
       historyRetentionSec: 7200,
       dialogueVadEngine: "silero",
-      channelLabels: { channelCount: 2, mode: "custom", roles: ["L", "R"] },
+      channelLabels: {
+        channelCount: 2,
+        mode: "custom",
+        layout: "stereo",
+        roles: ["L", "R"],
+      },
     });
   });
 
@@ -73,6 +78,65 @@ describe("Settings Control", () => {
       options: [1800, 3600, 7200, 14400],
       unit: "s",
     });
+  });
+
+  it("reads the derived layout and writes roles from a layout", () => {
+    const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"];
+    const settings = buildPublicSettings(current, {
+      channelCount: 12,
+      channelLabelMode: "custom",
+      channelLabelRoles: roles,
+    });
+    expect(settings.channelLabels.layout).toBe("7.1.4");
+
+    const tenChannelSettings = buildPublicSettings(current, {
+      channelCount: 10,
+      channelLabelMode: "custom",
+      channelLabelRoles: ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf"],
+    });
+    const applied = planSettingsUpdate(
+      tenChannelSettings,
+      { channelLabels: { channelCount: 10, mode: "custom", layout: "5.1.4" } },
+      { ...context, channelAutoRoles: tenChannelSettings.channelLabels.roles }
+    );
+    expect(applied.issues).toEqual([]);
+    expect(applied.settings.channelLabels.roles).toEqual([
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Ls",
+      "Rs",
+      "Ltf",
+      "Rtf",
+      "Ltr",
+      "Rtr",
+    ]);
+  });
+
+  it("refuses a patch that sets both layout and roles", () => {
+    const applied = planSettingsUpdate(
+      current,
+      {
+        channelLabels: {
+          channelCount: 2,
+          mode: "custom",
+          layout: "stereo",
+          roles: ["L", "R"],
+        },
+      },
+      context
+    );
+    expect(applied.issues.map((item) => item.path)).toContain("$.channelLabels.layout");
+  });
+
+  it("refuses a layout whose channel count does not match", () => {
+    const applied = planSettingsUpdate(
+      { ...current, channelLabels: { ...current.channelLabels, channelCount: 12 } },
+      { channelLabels: { channelCount: 12, mode: "custom", layout: "5.1" } },
+      context
+    );
+    expect(applied.issues.map((item) => item.code)).toContain("invalidOption");
   });
 
   it("separates configured settings from runtime and availability", () => {
@@ -219,6 +283,7 @@ describe("Settings Control", () => {
     expect(auto.settings.channelLabels).toEqual({
       channelCount: 2,
       mode: "auto",
+      layout: "stereo",
       roles: ["L", "R"],
     });
     expect(auto.warnings).toContainEqual({ code: "fileReanalysisRequired" });

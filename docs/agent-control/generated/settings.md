@@ -19,4 +19,5 @@ here.
 | `channelLabels` | object | - | - | - | - |
 | `channelLabels.channelCount` | integer | - | - | - | - |
 | `channelLabels.mode` | enum | - | - | "auto", "custom" | - |
+| `channelLabels.layout` | enum | - | - | "stereo", "custom" | - |
 | `channelLabels.roles` | array | - | - | each of "generic", "M", "L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb", "Cs", "Lw", "Rw", "Ltf", "Rtf", "Ltm", "Rtm", "Ltr", "Rtr" | - |

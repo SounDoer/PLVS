@@ -1364,7 +1364,7 @@ function AppContent() {
           );
         }
         if (changed.includes("settings.channelLabels")) {
-          const nextRoles = next.channelLabels.roles;
+          const nextRoles = next.channelLabels.roles ?? null;
           if (JSON.stringify(nextRoles) !== JSON.stringify(channelRoles)) {
             await setChannelRolesForControl(nextRoles);
             compensation.push(() => setChannelRolesForControl(channelRoles));

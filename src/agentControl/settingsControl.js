@@ -4,6 +4,11 @@ import { DEFAULT_CLEAR_SHORTCUT } from "../lib/clearShortcutPrefs.js";
 import { DIALOGUE_VAD_ENGINE_OPTIONS } from "../lib/dialogueVadEngines.js";
 import { CHANNEL_ROLE_VOCABULARY, roleTokensToLoudnessWeights } from "../math/channelRoles.js";
 import {
+  layoutIdForRoles,
+  layoutsForChannelCount,
+  rolesForLayout,
+} from "../math/channelLayoutTable.js";
+import {
   CLOSE_ACTION_OPTIONS,
   DEFAULT_CLOSE_ACTION,
   DEFAULT_DIALOGUE_VAD_ENGINE,
@@ -56,6 +61,7 @@ export function buildPublicSettings(settings, context) {
     channelLabels: {
       channelCount: context.channelCount,
       mode: context.channelLabelMode,
+      layout: layoutIdForRoles(context.channelLabelRoles) ?? "custom",
       roles: [...context.channelLabelRoles],
     },
   };
@@ -112,6 +118,14 @@ export function buildSettingsSchema(settings, context) {
       properties: {
         channelCount: { type: "integer", current: settings.channelLabels.channelCount },
         mode: { type: "enum", current: settings.channelLabels.mode, options: ["auto", "custom"] },
+        layout: {
+          type: "enum",
+          current: settings.channelLabels.layout,
+          options: [
+            ...layoutsForChannelCount(context.channelCount).map((layout) => layout.id),
+            "custom",
+          ],
+        },
         roles: {
           type: "array",
           current: settings.channelLabels.roles,
@@ -232,7 +246,7 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     if (!isObject(value)) {
       issues.push(issue("invalidType", "$.channelLabels", "channelLabels must be an object."));
     } else {
-      const allowed = new Set(["channelCount", "mode", "roles"]);
+      const allowed = new Set(["channelCount", "mode", "layout", "roles"]);
       for (const key of Object.keys(value)) {
         if (!allowed.has(key)) {
           issues.push(
@@ -245,16 +259,39 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
           issue("invalidChannelCount", "$.channelLabels.channelCount", "channelCount is invalid.")
         );
       }
+      if ("layout" in value && "roles" in value) {
+        issues.push(
+          issue("invalidOption", "$.channelLabels.layout", "layout and roles cannot both be set.")
+        );
+      }
+      const layoutRoles = "layout" in value ? rolesForLayout(value.layout) : null;
       if (!new Set(["auto", "custom"]).has(value.mode)) {
         issues.push(
           issue("invalidOption", "$.channelLabels.mode", "channelLabels.mode is invalid.")
         );
-      } else if (value.mode === "auto" && "roles" in value) {
+      } else if (value.mode === "auto" && ("roles" in value || "layout" in value)) {
         issues.push(
-          issue("rolesNotAllowed", "$.channelLabels.roles", "Automatic labels must omit roles.")
+          issue(
+            "rolesNotAllowed",
+            "layout" in value ? "$.channelLabels.layout" : "$.channelLabels.roles",
+            "Automatic labels must omit roles."
+          )
         );
       } else if (
         value.mode === "custom" &&
+        "layout" in value &&
+        layoutRoles.length !== value.channelCount
+      ) {
+        issues.push(
+          issue(
+            "invalidOption",
+            "$.channelLabels.layout",
+            "The layout channel count does not match channelLabels.channelCount."
+          )
+        );
+      } else if (
+        value.mode === "custom" &&
+        !("layout" in value) &&
         (!Array.isArray(value.roles) || value.roles.length !== value.channelCount)
       ) {
         issues.push(
@@ -264,7 +301,11 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
             "Custom labels require one role per channel."
           )
         );
-      } else if (value.mode === "custom" && !value.roles.every((role) => CHANNEL_ROLES.has(role))) {
+      } else if (
+        value.mode === "custom" &&
+        "roles" in value &&
+        !value.roles.every((role) => CHANNEL_ROLES.has(role))
+      ) {
         issues.push(
           issue("invalidChannelRole", "$.channelLabels.roles", "A channel role is not supported.")
         );
@@ -272,9 +313,13 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       nextChannelLabels = {
         channelCount: value.channelCount,
         mode: value.mode,
+        layout:
+          value.mode === "custom"
+            ? (layoutIdForRoles(layoutRoles ?? value.roles) ?? "custom")
+            : (layoutIdForRoles(context.channelAutoRoles) ?? "custom"),
         roles:
           value.mode === "custom"
-            ? value.roles
+            ? (layoutRoles ?? value.roles)
             : Array.isArray(context.channelAutoRoles) &&
                 context.channelAutoRoles.length === value.channelCount
               ? context.channelAutoRoles
