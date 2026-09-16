@@ -2,7 +2,7 @@
 fn main() -> Result<(), String> {
   use std::time::Duration;
 
-  use app_lib::capture_process_to_summary;
+  use app_lib::capture_process_to_summary_with_format;
   use serde_json::json;
 
   let mut args = std::env::args().skip(1);
@@ -11,15 +11,45 @@ fn main() -> Result<(), String> {
     .ok_or_else(|| "usage: process_loopback_probe <pid> [seconds]".to_string())?
     .parse::<u32>()
     .map_err(|_| "pid must be a positive integer".to_string())?;
+  let rest: Vec<String> = args.collect();
   let mut json_output = false;
   let mut seconds_arg = None;
-  for arg in args {
-    if arg == "--json" {
-      json_output = true;
-    } else if seconds_arg.is_none() {
-      seconds_arg = Some(arg);
-    } else {
-      return Err("usage: process_loopback_probe <pid> [seconds] [--json]".to_string());
+  let mut channels = 2u16;
+  let mut sample_rate = 48_000u32;
+  let mut index = 0;
+  while index < rest.len() {
+    match rest[index].as_str() {
+      "--json" => {
+        json_output = true;
+        index += 1;
+      }
+      "--channels" => {
+        let value = rest.get(index + 1).ok_or_else(|| {
+          "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--json]".to_string()
+        })?;
+        channels = value
+          .parse::<u16>()
+          .map_err(|_| "channels must be 1, 2, 6, or 8".to_string())?;
+        index += 2;
+      }
+      "--sample-rate" => {
+        let value = rest.get(index + 1).ok_or_else(|| {
+          "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--json]".to_string()
+        })?;
+        sample_rate = value
+          .parse::<u32>()
+          .map_err(|_| "sample rate must be an integer in Hz".to_string())?;
+        index += 2;
+      }
+      value if seconds_arg.is_none() => {
+        seconds_arg = Some(value.to_string());
+        index += 1;
+      }
+      _ => {
+        return Err(
+          "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--json]".to_string(),
+        );
+      }
     }
   }
   let seconds = seconds_arg
@@ -27,7 +57,12 @@ fn main() -> Result<(), String> {
     .parse::<u64>()
     .map_err(|_| "seconds must be a positive integer".to_string())?;
 
-  let result = capture_process_to_summary(process_id, Duration::from_secs(seconds))?;
+  let result = capture_process_to_summary_with_format(
+    process_id,
+    Duration::from_secs(seconds),
+    sample_rate,
+    channels,
+  )?;
   if json_output {
     println!(
       "{}",
@@ -37,6 +72,7 @@ fn main() -> Result<(), String> {
         "channelCount": result.channel_count,
         "capturedFrames": result.captured_frames,
         "silentFrames": result.silent_frames,
+        "channelPeakDbfs": result.channel_peak_dbfs,
         "integratedLufs": result.metrics.integrated_lufs,
         "truePeakMaxDbtp": result.metrics.true_peak_max_dbtp,
         "samplePeakMaxLDb": result.metrics.sample_peak_max_l_db,
@@ -52,6 +88,7 @@ fn main() -> Result<(), String> {
   );
   println!("captured frames  : {}", result.captured_frames);
   println!("silent frames    : {}", result.silent_frames);
+  println!("channel peaks    : {:?} dBFS", result.channel_peak_dbfs);
   println!("integrated LUFS  : {:.3}", result.metrics.integrated_lufs);
   println!(
     "true peak dBTP   : {:.3}",

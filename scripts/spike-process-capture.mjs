@@ -46,10 +46,20 @@ function buildProbe() {
   }
 }
 
-function runProbe(processId) {
-  const result = spawnSync(PROBE_PATH, [String(processId), String(CAPTURE_SECONDS), "--json"], {
-    encoding: "utf8",
-  });
+function runProbe(processId, { seconds = CAPTURE_SECONDS, sampleRate = 48000, channels = 2 } = {}) {
+  const result = spawnSync(
+    PROBE_PATH,
+    [
+      String(processId),
+      String(seconds),
+      "--sample-rate",
+      String(sampleRate),
+      "--channels",
+      String(channels),
+      "--json",
+    ],
+    { encoding: "utf8" }
+  );
   if (result.status !== 0) {
     throw new RigError(
       `Process-loopback probe failed for PID ${processId}:\n${result.stderr?.trim()}`
@@ -60,6 +70,58 @@ function runProbe(processId) {
     return JSON.parse(line);
   } catch {
     throw new RigError(`Process-loopback probe returned invalid JSON: ${line}`);
+  }
+}
+
+async function probeFormatMatrix(endpoint, wav) {
+  let target = null;
+  try {
+    target = startPlayer(endpoint, wav);
+    await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+    assertPlayerAlive("Format-matrix target", target);
+
+    const rateReports = new Map();
+    for (const sampleRate of [44100, 48000, 96000]) {
+      const report = runProbe(target.pid, { seconds: 2, sampleRate });
+      rateReports.set(sampleRate, report);
+      console.log(
+        `rate ${String(sampleRate).padStart(5)} Hz       integrated ${report.integratedLufs.toFixed(3)} LUFS  true peak ${report.truePeakMaxDbtp.toFixed(3)} dBTP`
+      );
+    }
+
+    const reference = rateReports.get(48000);
+    for (const [sampleRate, report] of rateReports) {
+      if (
+        report.sampleRateHz !== sampleRate ||
+        report.capturedFrames === 0 ||
+        report.silentFrames !== 0
+      ) {
+        throw new Error(`invalid ${sampleRate} Hz process-loopback report`);
+      }
+      for (const field of METRICS) {
+        if (Math.abs(report[field] - reference[field]) > MAX_METRIC_DELTA_DB) {
+          throw new Error(`${sampleRate} Hz ${field} drifted by more than 0.1 dB`);
+        }
+      }
+    }
+
+    for (const channels of [6, 8]) {
+      const report = runProbe(target.pid, { seconds: 2, channels });
+      const activePeaks = report.channelPeakDbfs.slice(0, 2);
+      const inactivePeaks = report.channelPeakDbfs.slice(2);
+      console.log(`${channels} channel request    peaks ${JSON.stringify(report.channelPeakDbfs)}`);
+      if (
+        report.channelCount !== channels ||
+        activePeaks.some((peak) => !Number.isFinite(peak)) ||
+        inactivePeaks.some((peak) => peak !== null) ||
+        report.capturedFrames === 0 ||
+        report.silentFrames !== 0
+      ) {
+        throw new Error(`invalid ${channels}-channel process-loopback report`);
+      }
+    }
+  } finally {
+    stopPlayer(target);
   }
 }
 
@@ -122,6 +184,9 @@ try {
     process.exitCode = 1;
   } else {
     console.log("\nOK unrelated-process audio was excluded from every checked meter reading.");
+    console.log("\nExplicit format matrix:");
+    await probeFormatMatrix(endpoint, wav);
+    console.log("\nOK Windows returned every requested sample rate and channel count.");
   }
 } catch (error) {
   if (error instanceof RigError) {

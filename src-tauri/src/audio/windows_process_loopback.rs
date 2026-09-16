@@ -19,7 +19,7 @@ use windows62::Win32::Media::Audio::{
   AUDIOCLIENT_ACTIVATION_PARAMS, AUDIOCLIENT_ACTIVATION_PARAMS_0,
   AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK, AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS,
   PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE, VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
-  WAVEFORMATEX,
+  WAVEFORMATEX, WAVEFORMATEXTENSIBLE, WAVEFORMATEXTENSIBLE_0,
 };
 use windows62::Win32::System::Com::StructuredStorage::{
   PROPVARIANT, PROPVARIANT_0, PROPVARIANT_0_0, PROPVARIANT_0_0_0,
@@ -30,10 +30,13 @@ use windows62::Win32::System::Variant::VT_BLOB;
 
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
 
-const SAMPLE_RATE: u32 = 48_000;
-const CHANNELS: u16 = 2;
+const DEFAULT_SAMPLE_RATE: u32 = 48_000;
+const DEFAULT_CHANNELS: u16 = 2;
 const BITS_PER_SAMPLE: u16 = 32;
 const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
+const WAVE_FORMAT_EXTENSIBLE: u16 = 0xfffe;
+const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT: windows62::core::GUID =
+  windows62::core::GUID::from_u128(0x00000003_0000_0010_8000_00aa00389b71);
 const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Result of one process-loopback probe run.
@@ -44,6 +47,7 @@ pub struct ProcessLoopbackProbeResult {
   pub channel_count: u16,
   pub captured_frames: u64,
   pub silent_frames: u64,
+  pub channel_peak_dbfs: Vec<f64>,
   pub metrics: SummaryMetrics,
 }
 
@@ -171,16 +175,70 @@ fn activate_process_audio_client(process_id: u32) -> Result<IAudioClient, String
     .map_err(|error| format!("activated interface is not IAudioClient: {error}"))
 }
 
-fn capture_format() -> WAVEFORMATEX {
-  let block_align = CHANNELS * (BITS_PER_SAMPLE / 8);
-  WAVEFORMATEX {
-    wFormatTag: WAVE_FORMAT_IEEE_FLOAT,
-    nChannels: CHANNELS,
-    nSamplesPerSec: SAMPLE_RATE,
-    nAvgBytesPerSec: SAMPLE_RATE * u32::from(block_align),
+enum CaptureFormat {
+  Basic(WAVEFORMATEX),
+  Extensible(WAVEFORMATEXTENSIBLE),
+}
+
+impl CaptureFormat {
+  fn as_ptr(&self) -> *const WAVEFORMATEX {
+    match self {
+      Self::Basic(format) => format,
+      Self::Extensible(format) => std::ptr::addr_of!(format.Format),
+    }
+  }
+}
+
+fn channel_mask(channels: u16) -> Option<u32> {
+  match channels {
+    // Windows speaker masks: mono FC; stereo FL/FR; 5.1 side; 7.1 surround.
+    1 => Some(0x0004),
+    2 => Some(0x0003),
+    6 => Some(0x060f),
+    8 => Some(0x063f),
+    _ => None,
+  }
+}
+
+fn capture_format(sample_rate: u32, channels: u16) -> Result<CaptureFormat, String> {
+  if !(8_000..=384_000).contains(&sample_rate) {
+    return Err(format!("unsupported probe sample rate: {sample_rate}"));
+  }
+  let mask = channel_mask(channels)
+    .ok_or_else(|| format!("unsupported probe channel count: {channels} (use 1, 2, 6, or 8)"))?;
+  let block_align = channels * (BITS_PER_SAMPLE / 8);
+  let base = WAVEFORMATEX {
+    wFormatTag: if channels <= 2 {
+      WAVE_FORMAT_IEEE_FLOAT
+    } else {
+      WAVE_FORMAT_EXTENSIBLE
+    },
+    nChannels: channels,
+    nSamplesPerSec: sample_rate,
+    nAvgBytesPerSec: sample_rate * u32::from(block_align),
     nBlockAlign: block_align,
     wBitsPerSample: BITS_PER_SAMPLE,
-    cbSize: 0,
+    cbSize: if channels <= 2 { 0 } else { 22 },
+  };
+  if channels <= 2 {
+    Ok(CaptureFormat::Basic(base))
+  } else {
+    Ok(CaptureFormat::Extensible(WAVEFORMATEXTENSIBLE {
+      Format: base,
+      Samples: WAVEFORMATEXTENSIBLE_0 {
+        wValidBitsPerSample: BITS_PER_SAMPLE,
+      },
+      dwChannelMask: mask,
+      SubFormat: KSDATAFORMAT_SUBTYPE_IEEE_FLOAT,
+    }))
+  }
+}
+
+fn db_from_linear(value: f64) -> f64 {
+  if value > 0.0 {
+    20.0 * value.log10()
+  } else {
+    f64::NEG_INFINITY
   }
 }
 
@@ -192,6 +250,30 @@ pub fn capture_process_to_summary(
   process_id: u32,
   duration: Duration,
 ) -> Result<ProcessLoopbackProbeResult, String> {
+  capture_process_to_summary_with_format(
+    process_id,
+    duration,
+    DEFAULT_SAMPLE_RATE,
+    DEFAULT_CHANNELS,
+  )
+}
+
+/// Variant of [`capture_process_to_summary`] used to probe explicit Windows channel layouts.
+pub fn capture_process_to_summary_with_channels(
+  process_id: u32,
+  duration: Duration,
+  channels: u16,
+) -> Result<ProcessLoopbackProbeResult, String> {
+  capture_process_to_summary_with_format(process_id, duration, DEFAULT_SAMPLE_RATE, channels)
+}
+
+/// Fully explicit process-loopback format probe.
+pub fn capture_process_to_summary_with_format(
+  process_id: u32,
+  duration: Duration,
+  sample_rate: u32,
+  channels: u16,
+) -> Result<ProcessLoopbackProbeResult, String> {
   if process_id == 0 {
     return Err("process id must be non-zero".to_string());
   }
@@ -201,7 +283,7 @@ pub fn capture_process_to_summary(
 
   let _com = ComApartment::initialize()?;
   let audio_client = activate_process_audio_client(process_id)?;
-  let format = capture_format();
+  let format = capture_format(sample_rate, channels)?;
   unsafe {
     audio_client.Initialize(
       AUDCLNT_SHAREMODE_SHARED,
@@ -211,7 +293,7 @@ pub fn capture_process_to_summary(
         | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
       200_000,
       0,
-      &format,
+      format.as_ptr(),
       None,
     )
   }
@@ -223,8 +305,9 @@ pub fn capture_process_to_summary(
   let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService() }
     .map_err(|error| format!("IAudioClient::GetService failed: {error}"))?;
 
-  let mut meter = SummaryMeter::new(SAMPLE_RATE, CHANNELS);
+  let mut meter = SummaryMeter::new(sample_rate, channels);
   let mut silent_samples = Vec::new();
+  let mut channel_peaks = vec![0.0f64; usize::from(channels)];
   let mut captured_frames = 0u64;
   let mut silent_frames = 0u64;
   let deadline = Instant::now() + duration;
@@ -256,13 +339,18 @@ pub fn capture_process_to_summary(
         unsafe { capture_client.GetBuffer(&mut data, &mut frames, &mut flags, None, None) }
           .map_err(|error| format!("GetBuffer failed: {error}"))?;
 
-        let sample_count = frames as usize * CHANNELS as usize;
+        let sample_count = frames as usize * channels as usize;
         if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
           silent_samples.resize(sample_count, 0.0);
           meter.push_interleaved(&silent_samples);
           silent_frames += u64::from(frames);
         } else {
           let samples = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), sample_count) };
+          for frame in samples.chunks_exact(usize::from(channels)) {
+            for (peak, sample) in channel_peaks.iter_mut().zip(frame) {
+              *peak = peak.max(f64::from(sample.abs()));
+            }
+          }
           meter.push_interleaved(samples);
         }
         captured_frames += u64::from(frames);
@@ -280,17 +368,18 @@ pub fn capture_process_to_summary(
 
   Ok(ProcessLoopbackProbeResult {
     process_id,
-    sample_rate_hz: SAMPLE_RATE,
-    channel_count: CHANNELS,
+    sample_rate_hz: sample_rate,
+    channel_count: channels,
     captured_frames,
     silent_frames,
+    channel_peak_dbfs: channel_peaks.into_iter().map(db_from_linear).collect(),
     metrics: meter.finish(),
   })
 }
 
 #[cfg(test)]
 mod tests {
-  use super::{capture_format, ActivationPayload};
+  use super::{capture_format, ActivationPayload, CaptureFormat};
   use windows62::Win32::Media::Audio::{
     AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK, PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
   };
@@ -321,7 +410,9 @@ mod tests {
 
   #[test]
   fn probe_requests_float32_stereo_at_48khz() {
-    let format = capture_format();
+    let CaptureFormat::Basic(format) = capture_format(48_000, 2).expect("stereo format") else {
+      panic!("stereo should use WAVEFORMATEX")
+    };
     let channels = format.nChannels;
     let sample_rate = format.nSamplesPerSec;
     let bits_per_sample = format.wBitsPerSample;
@@ -330,5 +421,31 @@ mod tests {
     assert_eq!(sample_rate, 48_000);
     assert_eq!(bits_per_sample, 32);
     assert_eq!(block_align, 8);
+  }
+
+  #[test]
+  fn multichannel_probe_uses_wave_format_extensible_with_speaker_mask() {
+    let CaptureFormat::Extensible(format) = capture_format(48_000, 6).expect("5.1 format") else {
+      panic!("5.1 should use WAVEFORMATEXTENSIBLE")
+    };
+    let channels = format.Format.nChannels;
+    let tag = format.Format.wFormatTag;
+    let extension_size = format.Format.cbSize;
+    let channel_mask = format.dwChannelMask;
+    assert_eq!(channels, 6);
+    assert_eq!(tag, 0xfffe);
+    assert_eq!(extension_size, 22);
+    assert_eq!(channel_mask, 0x060f);
+  }
+
+  #[test]
+  fn probe_format_carries_the_requested_sample_rate() {
+    let CaptureFormat::Basic(format) = capture_format(96_000, 2).expect("96 kHz format") else {
+      panic!("stereo should use WAVEFORMATEX")
+    };
+    let sample_rate = format.nSamplesPerSec;
+    let bytes_per_second = format.nAvgBytesPerSec;
+    assert_eq!(sample_rate, 96_000);
+    assert_eq!(bytes_per_second, 96_000 * 8);
   }
 }

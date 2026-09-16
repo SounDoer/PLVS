@@ -49,14 +49,21 @@ Both VLC processes remained alive throughout the interference run. The unchanged
 that the process-loopback stream excluded the unrelated renderer on this machine. The requested
 format also preserved the stereo source within the existing smoke tolerances.
 
-This does not prove native multichannel capture: the probe currently requests stereo and relies on
-the Windows audio engine for conversion. It also cannot capture ASIO or WASAPI exclusive-mode
-rendering because those paths bypass the shared audio engine.
+The same probe accepted 44.1, 48, and 96 kHz Float32 stereo requests. Relative to 48 kHz, the
+largest Integrated or Peak difference after Windows conversion was below 0.04 dB. The API also
+accepted standard 5.1-side (6ch) and 7.1-surround (8ch) `WAVEFORMATEXTENSIBLE` requests and returned
+the requested frame widths. With the stereo VLC fixture, channels 1/2 carried the source and every
+additional channel was silent.
+
+This confirms explicit multichannel transport but does not prove a real 5.1/7.1 renderer's channel
+mapping. Process loopback has no useful native mix format here: PLVS must choose an explicit format
+and the Windows audio engine converts into it. The path also cannot capture ASIO or WASAPI
+exclusive-mode rendering because those paths bypass the shared audio engine.
 
 ## Remaining spike work
 
-1. Add a Windows multichannel fixture and test which explicit layouts the virtual process-loopback
-   device accepts without folding channels.
+1. Add a real Windows multichannel renderer/device fixture and verify 5.1/7.1 channel mapping rather
+   than only the accepted transport width.
 2. Compare the existing system-loopback smoke and process probe against the same file-analysis
    ground truth in one report. The two-player process-isolation check is now automated.
 3. On macOS, pass resolved Core Audio process object IDs to `CATapDescription`'s inclusive process
