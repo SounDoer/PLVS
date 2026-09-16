@@ -9,15 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- macOS can select a running Core Audio application as the Live source and meter only that
-  application's output, including grouped helper processes and automatic rebinding when its
-  process set changes.
+- Live capture can isolate one running application on Windows and macOS. Application identities
+  survive process restarts; macOS also groups related helper processes and follows changes to the
+  application's process set.
+- Channel Layout settings now cover standard layouts from mono through 9.1.6, with automatic
+  recognition for mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1. Agent Control, the CLI, and
+  exported file reports carry the selected layout and channel roles.
+- PLVS can save native panics and fatal React render failures locally, then ask before sending the
+  next saved crash report. Feedback diagnostics are also attached only when explicitly selected.
+- New installations open in a fitted 1280x800 window with a hand-tuned workspace, a selected
+  starter Loudness Profile, and a 56 px top-edge Dock layout.
+- The Dock header can switch the active Loudness Profile without leaving Dock mode.
+
+### Changed
+
+- The device picker groups Outputs, Inputs, and Applications into independently collapsible,
+  counted sections and scrolls when the source list is long.
+- Live capture surfaces stalled streams, dropped audio, and default-output changes with shorter
+  notices; routine information notices dismiss automatically.
 
 ### Fixed
 
 - Windows Live capture now rebuilds an invalidated WASAPI stream and clears the interrupted
   measurement automatically when endpoint reconfiguration, including a Spatial Sound change,
   invalidates the active device.
+- Application capture follows the active output format and reconnects when the selected application
+  restarts.
+- Multichannel loudness now uses the BS.1770-5 weights for 7.x back-surround channels, True Peak
+  Max measures every channel, and unknown layouts are identified consistently instead of being
+  mistaken for a standard bed.
+- Auto-hide controls remain available while a header popover is open.
+- Restored windows retain their intended top edge on macOS and across display-scale changes.
+- Stopping Live mode from an error state settles immediately, and Agent Control bounds queued
+  commands so a hung request cannot block the channel indefinitely.
 
 ## [0.15.4] - 2026-09-12
 

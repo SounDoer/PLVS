@@ -60,7 +60,9 @@ describe("docs page content", () => {
   });
 
   test("does not claim unimplemented audio data export", () => {
-    expect(html).toContain("isn't implemented yet");
+    expect(html).toContain("CSV or session-data export is not implemented yet");
+    expect(html).toContain("Agent Control can save a");
+    expect(html).toContain("screenshot or a bounded H.264 recording");
   });
 
   test("documents only the v1 public CLI surface", () => {
@@ -93,6 +95,7 @@ describe("docs page content", () => {
     expect(cliSection).not.toContain("<h3>File analysis</h3>");
     expect(cliSection).not.toContain("<h3>Reports</h3>");
     expect(cliSection).toContain("plvs-cli doctor --json --out &lt;file&gt;");
+    expect(cliSection).toContain("/Applications/PLVS.app/Contents/MacOS/plvs-cli");
     expect(cliSection?.match(/--out/g)).toHaveLength(1);
   });
 });

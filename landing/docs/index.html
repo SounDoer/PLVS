@@ -350,6 +350,22 @@
               macOS it goes through cpal.
             </p>
           </div>
+          <div class="docs-item">
+            <h3>Application</h3>
+            <p>
+              Meter one running audio application instead of the complete system mix. Windows
+              needs build 20348 or later; ASIO and WASAPI exclusive-mode applications bypass this
+              capture path. On macOS 14.2 or later, the list shows applications currently connected
+              to Core Audio and capture follows the current default output device.
+            </p>
+          </div>
+          <div class="docs-item">
+            <h3>Long source lists</h3>
+            <p>
+              Outputs, Inputs, and Applications are grouped into collapsible sections with source
+              counts. The picker scrolls when the available sources do not fit on screen.
+            </p>
+          </div>
         </section>
         <section class="docs-section" id="panels">
           <h2>Panels</h2>
@@ -434,11 +450,18 @@
           </p>
           <div class="docs-item">
             <h3>Automatic layout detection</h3>
-            <p>Mono, stereo, 5.1, and 7.1 are recognized automatically from the input.</p>
+            <p>
+              Mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 are recognized automatically from the
+              input.
+            </p>
           </div>
           <div class="docs-item">
-            <h3>Manual presets</h3>
-            <p>If detection doesn't match your setup, force Stereo, 5.1, or 7.1 from Settings.</p>
+            <h3>Manual layouts</h3>
+            <p>
+              If detection does not match your setup, choose the channel layout in Settings.
+              Standard layouts through 9.1.6 are available, and PLVS prompts for a layout when it
+              cannot identify one automatically.
+            </p>
           </div>
           <div class="docs-item">
             <h3>Per-panel behavior</h3>
@@ -509,8 +532,8 @@
         <section class="docs-section" id="cli">
           <h2>CLI</h2>
           <p>
-            Installed Windows builds include <code>plvs-cli</code> for runtime diagnosis and
-            control of an already-running PLVS app. App control requires Agent Control to be
+            Installed Windows and macOS builds include <code>plvs-cli</code> for runtime diagnosis
+            and control of an already-running PLVS app. App control requires Agent Control to be
             enabled in Settings and is not a headless replacement for the desktop app.
           </p>
           <div class="docs-item">
@@ -521,7 +544,8 @@
               <code>plvs-cli doctor --json --out &lt;file&gt;</code> to write the same diagnostic
               output to a file. Enabling Agent Control in Settings adds <code>plvs-cli.exe</code>
               to the current user's PATH. Otherwise use its full path; from the Portable folder,
-              run <code>.\plvs-cli.exe</code> and keep it beside <code>plvs.exe</code>.
+              run <code>.\plvs-cli.exe</code> and keep it beside <code>plvs.exe</code>. On macOS,
+              run <code>/Applications/PLVS.app/Contents/MacOS/plvs-cli</code> directly.
             </p>
           </div>
           <div class="docs-item">
@@ -530,7 +554,7 @@
               Start PLVS, enable Agent Control in Settings, then discover the available surface
               with <code>plvs-cli capabilities --json</code>. Read the app's visible state with
               <code>plvs-cli inspect --json</code>. Agent Control is currently available only on
-              Windows.
+              Windows and macOS.
             </p>
           </div>
           <div class="docs-item">
@@ -592,8 +616,9 @@
             <details>
               <summary>Can I export the metered data, like CSV or screenshots?</summary>
               <p>
-                Not yet. Configuration (settings and layout) can be exported and imported, but
-                exporting measurement data itself isn't implemented yet.
+                CSV or session-data export is not implemented yet. Agent Control can save a
+                screenshot or a bounded H.264 recording of the rendered app, and configuration
+                (settings and layout) can be exported and imported separately.
               </p>
             </details>
             <details>
@@ -616,7 +641,8 @@
               <summary>Does PLVS send my audio anywhere?</summary>
               <p>
                 No. All audio and metering data stays on your device, and there's no default
-                telemetry.
+                telemetry. Feedback diagnostics and locally saved crash reports are sent only after
+                you explicitly choose to send them, and audio samples are never attached.
               </p>
             </details>
           </div>
