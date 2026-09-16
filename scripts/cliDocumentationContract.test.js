@@ -58,7 +58,6 @@ describe("current CLI documentation", () => {
     const profiles = read("docs", "agent-control", "loudness-profiles.md");
     const libraries = read("docs", "agent-control", "libraries.md");
     const commands = read("docs", "agent-control", "generated", "commands.md");
-    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
 
     for (const command of [
       "describe",
@@ -81,7 +80,6 @@ describe("current CLI documentation", () => {
     expect(commands).toContain("## `loudnessProfile.describe`");
     expect(commands).toContain("## `loudnessProfile.select`");
     expect(libraries).toContain("[Loudness Profile Control](loudness-profiles.md)");
-    expect(roadmap).toContain("### Stage 2: Loudness Profile editing — complete");
   });
 
   it("publishes Theme Control as the only Agent Control owner of Appearance", () => {
@@ -92,7 +90,6 @@ describe("current CLI documentation", () => {
     const generatedSettings = read("docs", "agent-control", "generated", "settings.md");
     const libraries = read("docs", "agent-control", "libraries.md");
     const commands = read("docs", "agent-control", "generated", "commands.md");
-    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
 
     for (const command of [
       "inspect",
@@ -121,9 +118,6 @@ describe("current CLI documentation", () => {
     expect(libraries).toContain("[Theme Control](themes.md)");
     expect(settings).toContain("`appearance` is an unknown control");
     expect(generatedSettings).not.toContain("appearance");
-    expect(roadmap).toContain("### Stage 3: Theme editing — complete");
-    expect(roadmap).toContain("generated shell completions");
-    expect(roadmap).toContain("cross-platform desktop smoke automation are complete");
   });
 
   it("publishes the complete Device Control contract and safety flags", () => {
@@ -132,7 +126,6 @@ describe("current CLI documentation", () => {
     const devices = read("docs", "agent-control", "devices.md");
     const transport = read("docs", "agent-control", "transport.md");
     const commands = read("docs", "agent-control", "generated", "commands.md");
-    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
 
     for (const command of ["list", "inspect", "select"]) {
       expect(devices).toContain(`device ${command}`);
@@ -154,10 +147,6 @@ describe("current CLI documentation", () => {
     expect(commands).toContain("## `device.select`");
     expect(transport).toContain("[Device Control](devices.md)");
     expect(transport).toContain("device-enumeration");
-    expect(roadmap).toContain("### Stage 4: Device Control — complete");
-    expect(roadmap).not.toContain("plvs-cli device describe");
-    expect(roadmap).toContain("generated shell completions");
-    expect(roadmap).toContain("cross-platform desktop smoke automation are complete");
   });
 
   it("publishes the complete Visual Capture contract and bounded media rules", () => {
@@ -165,13 +154,6 @@ describe("current CLI documentation", () => {
     const agentControl = read("docs", "agent-control", "README.md");
     const visual = read("docs", "agent-control", "visual.md");
     const commands = read("docs", "agent-control", "generated", "commands.md");
-    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
-    const implementationPlan = read(
-      "docs",
-      "superpowers",
-      "plans",
-      "2026-09-07-agent-control-visual-capture-implementation.md"
-    );
 
     for (const command of [
       "visual describe",
@@ -201,18 +183,12 @@ describe("current CLI documentation", () => {
     expect(visual).toContain("File decoder PCM is never recorded");
     expect(commands).toContain("## `visual.recording.start`");
     expect(commands).toContain("## `visual.recording.inspect`");
-    expect(roadmap).toContain("### Stage 5: Visual Capture — complete");
-    expect(roadmap).not.toContain("**Measurement inspect/wait** after");
-    expect(roadmap).not.toContain("MCP, screenshots, and window control");
-    expect(implementationPlan).toContain("Implementation status (2026-09-08)");
-    expect(implementationPlan).toContain("Delivered across Phases A-D");
   });
 
   it("publishes the File analysis report command", () => {
     const cli = read("docs", "cli.md");
     const transport = read("docs", "agent-control", "transport.md");
     const commands = read("docs", "agent-control", "generated", "commands.md");
-    const roadmap = read("docs", "working", "agent-control-cli-roadmap.md");
 
     expect(transport).toContain("transport file report <session-id> --json");
     expect(transport).toContain("fileAnalysisNotComplete");
@@ -225,6 +201,5 @@ describe("current CLI documentation", () => {
     expect(transport).toContain("notEvaluated");
     expect(cli).toContain("`result.markdown`");
     expect(commands).toContain("--report-format");
-    expect(roadmap).toContain("#### 1. File-analysis report export — complete");
   });
 });

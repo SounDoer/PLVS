@@ -83,6 +83,15 @@ existing flow. Until then, ignore this section.
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
+│  Step 4b: Reconcile the public documents                        │
+│  - Read this release's CHANGELOG entry, then check README.md    │
+│    and landing/docs/index.html against it                       │
+│  - Every user-visible change must be described there, and no    │
+│    claim may contradict what now ships                          │
+│  - A changed promise or non-goal also updates docs/prd.md       │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
 │  Step 5: Commit Changes                                         │
 │  - git add -A                                                   │
 │  - git commit -m "chore(release): bump version to X.Y.Z"        │
