@@ -86,6 +86,16 @@ describe("useRuntimeBackendSync", () => {
     expect(result.current.dialogueVadEngineRef.current).toBe("webrtc");
   });
 
+  it("syncs channel roles while Live is stopped so File analysis can snapshot them", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    const channelRoles = ["L", "R", "C", "LFE", "Lb", "Rb"];
+
+    renderSync({ channelRoles, running: false });
+    await flushPromises();
+
+    expect(mocks.setChannelRoles).toHaveBeenCalledWith(channelRoles);
+  });
+
   it("deduplicates analysis request syncs until a send fails", async () => {
     mocks.isTauri.mockReturnValue(true);
     const analysisRequests = { spectrum: [{ key: "s1" }], vectorscope: [] };

@@ -10,7 +10,6 @@ import { isTauri } from "../ipc/env.js";
 export function useRuntimeBackendSync({
   analysisRequests,
   channelRoles,
-  running,
   dialogueGating,
   dialogueVadEngine,
 }) {
@@ -21,9 +20,11 @@ export function useRuntimeBackendSync({
 
   useEffect(() => {
     channelRolesRef.current = channelRoles;
-    if (!isTauri() || !running) return;
+    if (!isTauri()) return;
+    // File analysis snapshots the native selection when its worker starts, so roles must stay
+    // synchronized even while Live capture is stopped.
     void setChannelRoles(channelRoles).catch(() => {});
-  }, [channelRoles, running]);
+  }, [channelRoles]);
 
   useEffect(() => {
     dialogueGatingRef.current = dialogueGating;
@@ -54,13 +55,10 @@ export function useRuntimeBackendSync({
     });
   }, [analysisRequests]);
 
-  const setChannelRolesForControl = useCallback(
-    async (nextRoles) => {
-      if (isTauri() && running) await setChannelRoles(nextRoles);
-      channelRolesRef.current = nextRoles;
-    },
-    [running]
-  );
+  const setChannelRolesForControl = useCallback(async (nextRoles) => {
+    if (isTauri()) await setChannelRoles(nextRoles);
+    channelRolesRef.current = nextRoles;
+  }, []);
 
   const setDialogueVadEngineForControl = useCallback(async (nextEngine) => {
     if (isTauri()) await setDialogueVadEngine(nextEngine);
