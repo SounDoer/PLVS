@@ -63,4 +63,21 @@ describe("documentation structure", () => {
 
     expect(citations).toEqual([]);
   });
+
+  it("leaves Agent Control command syntax to the generated catalog", () => {
+    // A fence made only of command lines restates generated/commands.md and drifts from it.
+    // Fences that show a workflow (piping, JSON results) carry more than syntax and stay.
+    const pages = collectMarkdown("docs/agent-control", ["docs/agent-control/generated"]);
+    const syntaxOnly = pages.filter((path) =>
+      [...read(path).matchAll(/```[a-z]*\n([\s\S]*?)```/g)].some(([, body]) => {
+        const lines = body.split("\n").filter((line) => line.trim());
+        return (
+          lines.length > 0 &&
+          lines.every((line) => /^(plvs-cli|npm run desktop:control)\b/.test(line.trim()))
+        );
+      })
+    );
+
+    expect(syntaxOnly).toEqual([]);
+  });
 });

@@ -60,5 +60,5 @@ agents, including where to write new documents.
 ## Guards
 
 Some claims are checked by tests rather than by review — the panel table in `README.md` must match
-`src/workspace/moduleCatalog.js`, living documents must not link into `history/`, and the CLI
-surface is asserted against `docs/cli.md`. They run as part of `npm run check`.
+`src/workspace/moduleCatalog.js`, living documents must not link into `history/`, Agent Control pages must leave command syntax to
+`agent-control/generated/`, and the CLI surface is asserted against `docs/cli.md`. They run as part of `npm run check`.
