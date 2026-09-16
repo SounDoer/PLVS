@@ -7,15 +7,17 @@
 const FEEDBACK_URL = "https://list.plvs.soundoer.com/feedback";
 
 /**
- * @param {{ content: string, email?: string }} input
+ * @param {{ content: string, email?: string, diagnostics?: object }} input
  * @returns {Promise<boolean>}
  */
-export async function submitFeedback({ content, email }) {
+export async function submitFeedback({ content, email, diagnostics }) {
   try {
+    const payload = { content, email };
+    if (diagnostics !== undefined) payload.diagnostics = diagnostics;
     const res = await fetch(FEEDBACK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, email }),
+      body: JSON.stringify(payload),
     });
     return res.ok;
   } catch {

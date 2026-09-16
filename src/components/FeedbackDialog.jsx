@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { clampPanelPos } from "../lib/dragClamp.js";
 import { submitFeedback } from "../lib/feedback.js";
+import { readFeedbackDiagnostics } from "../ipc/commands.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_POS = { x: 120, y: 120 };
@@ -14,7 +15,10 @@ export function FeedbackDialog({ onClose }) {
   const [content, setContent] = useState("");
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
-  const [status, setStatus] = useState(/** @type {"idle"|"sending"|"sent"|"error"} */ ("idle"));
+  const [attachDiagnostics, setAttachDiagnostics] = useState(false);
+  const [status, setStatus] = useState(
+    /** @type {"idle"|"preparing"|"sending"|"sent"|"error"|"diagnostics-error"} */ ("idle")
+  );
   const [pos, setPos] = useState(INITIAL_POS);
 
   const ref = useRef(null);
@@ -46,14 +50,26 @@ export function FeedbackDialog({ onClose }) {
   }
 
   const emailInvalid = emailTouched && email.trim() !== "" && !EMAIL_RE.test(email);
-  const canSubmit = content.trim().length > 0 && !emailInvalid && status !== "sending";
+  const busy = status === "preparing" || status === "sending";
+  const canSubmit = content.trim().length > 0 && !emailInvalid && !busy;
 
   async function handleSubmit() {
+    let diagnostics;
+    if (attachDiagnostics) {
+      setStatus("preparing");
+      try {
+        diagnostics = await readFeedbackDiagnostics();
+      } catch {
+        setStatus("diagnostics-error");
+        return;
+      }
+    }
     setStatus("sending");
     const trimmedEmail = email.trim();
     const ok = await submitFeedback({
       content: content.trim(),
       email: trimmedEmail || undefined,
+      ...(attachDiagnostics ? { diagnostics } : {}),
     });
     if (ok) {
       setStatus("sent");
@@ -98,6 +114,23 @@ export function FeedbackDialog({ onClose }) {
           placeholder="you@example.com (optional)"
           className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
         />
+        <label className="flex items-start gap-2 text-[length:var(--ui-fs-display)]">
+          <input
+            type="checkbox"
+            aria-label="attach diagnostics"
+            checked={attachDiagnostics}
+            onChange={(event) => setAttachDiagnostics(event.target.checked)}
+            disabled={busy}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="font-medium">Attach Diagnostics</span>
+            <span className="mt-0.5 block text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              Includes the PLVS version, system details, and the last 200 log lines. Audio is never
+              attached.
+            </span>
+          </span>
+        </label>
         {emailInvalid ? (
           <span className="text-[length:var(--ui-fs-axis)] text-destructive">
             Enter a valid email or leave it blank.
@@ -106,6 +139,11 @@ export function FeedbackDialog({ onClose }) {
         {status === "error" ? (
           <span className="text-[length:var(--ui-fs-axis)] text-destructive">
             Failed to send, please try again.
+          </span>
+        ) : null}
+        {status === "diagnostics-error" ? (
+          <span className="text-[length:var(--ui-fs-axis)] text-destructive">
+            Could not prepare diagnostics. Nothing was sent.
           </span>
         ) : null}
         {status === "sent" ? (
@@ -120,7 +158,7 @@ export function FeedbackDialog({ onClose }) {
           Cancel
         </Button>
         <Button onClick={handleSubmit} disabled={!canSubmit}>
-          {status === "sending" ? "Sending..." : "Send"}
+          {status === "preparing" ? "Preparing..." : status === "sending" ? "Sending..." : "Send"}
         </Button>
       </div>
     </div>

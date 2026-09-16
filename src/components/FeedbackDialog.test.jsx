@@ -3,9 +3,12 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
 
+const { readFeedbackDiagnostics } = vi.hoisted(() => ({ readFeedbackDiagnostics: vi.fn() }));
+
 vi.mock("@/lib/feedback.js", () => ({
   submitFeedback: vi.fn(),
 }));
+vi.mock("../ipc/commands.js", () => ({ readFeedbackDiagnostics }));
 
 import { submitFeedback } from "@/lib/feedback.js";
 
@@ -16,6 +19,8 @@ afterEach(() => {
 describe("FeedbackDialog", () => {
   it("disables submit until content is entered", () => {
     render(<FeedbackDialog onClose={vi.fn()} />);
+    expect(screen.getByLabelText("attach diagnostics").checked).toBe(false);
+    expect(screen.getByText(/version, system details, and the last 200 log lines/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send" }).disabled).toBe(true);
     fireEvent.input(screen.getByLabelText("Feedback content"), {
       target: { value: "Great app!" },
@@ -56,11 +61,70 @@ describe("FeedbackDialog", () => {
         email: "a@example.com",
       })
     );
+    expect(readFeedbackDiagnostics).not.toHaveBeenCalled();
     expect(await screen.findByText("Thanks! Feedback sent.")).toBeTruthy();
 
     vi.advanceTimersByTime(2000);
     expect(onClose).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
+  });
+
+  it("reads and attaches diagnostics only after the user opts in", async () => {
+    const diagnostics = {
+      schemaVersion: 1,
+      app: { version: "0.15.4", os: "windows", arch: "x86_64" },
+      logs: ["last line"],
+    };
+    let resolveDiagnostics;
+    readFeedbackDiagnostics.mockReturnValue(
+      new Promise((resolve) => {
+        resolveDiagnostics = resolve;
+      })
+    );
+    submitFeedback.mockResolvedValue(false);
+    render(<FeedbackDialog onClose={vi.fn()} />);
+    fireEvent.input(screen.getByLabelText("Feedback content"), {
+      target: { value: "Great app!" },
+    });
+    fireEvent.click(screen.getByLabelText("attach diagnostics"));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(screen.getByRole("button", { name: "Preparing..." }).disabled).toBe(true);
+    resolveDiagnostics(diagnostics);
+    await waitFor(() =>
+      expect(submitFeedback).toHaveBeenCalledWith({
+        content: "Great app!",
+        email: undefined,
+        diagnostics,
+      })
+    );
+  });
+
+  it("does not send a falsely checked request when diagnostics fail and allows retry", async () => {
+    readFeedbackDiagnostics
+      .mockRejectedValueOnce(new Error("diagnostics unavailable"))
+      .mockResolvedValueOnce({
+        schemaVersion: 1,
+        app: { version: "0.15.4", os: "windows", arch: "x86_64" },
+        logs: [],
+      });
+    submitFeedback.mockResolvedValue(false);
+    render(<FeedbackDialog onClose={vi.fn()} />);
+    fireEvent.input(screen.getByLabelText("Feedback content"), {
+      target: { value: "Great app!" },
+    });
+    fireEvent.click(screen.getByLabelText("attach diagnostics"));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(
+      await screen.findByText("Could not prepare diagnostics. Nothing was sent.")
+    ).toBeTruthy();
+    expect(submitFeedback).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("attach diagnostics").checked).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(readFeedbackDiagnostics).toHaveBeenCalledTimes(2));
+    expect(submitFeedback).toHaveBeenCalledTimes(1);
   });
 
   it("shows a failure message and preserves input when the request fails", async () => {

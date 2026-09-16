@@ -54,7 +54,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 - **Flexible layout & theming** — drag dividers, resize panels, open multiple instances of the same meter, and switch between presets from the toolbar. Includes a theme editor and several built-in themes, plus transparent-window and per-panel opacity controls.
 - **Views & dock mode** — pare the window down for monitoring: **Compact Panels**, **Hide Chrome**, **Auto-hide Controls**, and a **Dock** mode that parks a slim, always-on-top strip against the top or bottom edge of the screen.
 - **System integration** — system tray, always-on-top window pinning, open-at-login, and customizable global keyboard shortcuts.
-- **Privacy-first** — audio stays on device. No telemetry, no accounts, no network calls except update checks.
+- **Privacy-first** — audio stays on device, there is no default telemetry, and update checks are automatic. Feedback diagnostics and saved crash reports are sent only after you explicitly choose to send them; audio samples are never attached.
 
 ## Limitations
 

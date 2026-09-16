@@ -19,6 +19,23 @@ describe("submitFeedback", () => {
     });
   });
 
+  it("includes diagnostics only when the caller supplies them", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+    const diagnostics = {
+      schemaVersion: 1,
+      app: { version: "0.15.4", os: "windows", arch: "x86_64" },
+      logs: ["last line"],
+    };
+
+    await submitFeedback({ content: "hello", diagnostics });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      content: "hello",
+      diagnostics,
+    });
+  });
+
   it("resolves false on a non-ok response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
     await expect(submitFeedback({ content: "hello" })).resolves.toBe(false);
