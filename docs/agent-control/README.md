@@ -1,14 +1,8 @@
-# Agent Control Design
+# Agent Control
 
-Date: 2026-09-07
-
-Status: Living design record; Module, Panel, Axis, Preset, Theme, Loudness Profile, Settings, Wait,
-Transport, Device, Dock, Measurement Control, Measurement Wait, View Control, Visual Capture, Library
-Transfer, and Configuration Transfer are implemented unless explicitly marked otherwise
-
-This directory records the implemented Agent Control contract and explicitly marked approved-next
-contracts. It is the source of truth for the complete public control surface, including the
-transport.
+This directory is the source of truth for the complete public Agent Control surface, including the
+transport. It describes what the current build exposes: every family documented here is implemented,
+and a family that is not implemented does not belong on these pages.
 
 ## Current implementation
 

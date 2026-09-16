@@ -1,7 +1,5 @@
 # Revision Wait
 
-Status: Implemented
-
 Revision Wait lets an agent sleep until the public state revision changes instead of repeatedly
 polling inspection endpoints. The first version waits only for revision changes; arbitrary field
 expressions and high-frequency runtime events are deferred.

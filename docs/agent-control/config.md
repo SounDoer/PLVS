@@ -1,7 +1,5 @@
 # Configuration Transfer
 
-Status: Implemented
-
 Configuration Transfer exposes the Settings **Everything** export as a running-app command. The
 portable resource is the same versioned `.plvsconfig` document produced by the GUI.
 

@@ -1,7 +1,5 @@
 # Theme Control
 
-Status: Implemented public contract
-
 Theme Control is the only Agent Control owner of Appearance and Theme authoring. It covers System
 mode, fixed selection, built-in and custom Theme discovery, and custom Theme lifecycle operations.
 Pack sharing remains the separate [Library Transfer](libraries.md) contract.

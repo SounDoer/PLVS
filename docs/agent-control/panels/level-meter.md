@@ -1,7 +1,5 @@
 # Level Meter Panel Control
 
-Status: Implemented.
-
 ## Public controls
 
 Fields, types, units, defaults and bounds are generated from the schema:

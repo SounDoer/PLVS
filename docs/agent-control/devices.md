@@ -1,7 +1,5 @@
 # Device Control
 
-Status: Implemented
-
 Device Control operates the same requested capture-device selection as the header and tray in the
 running PLVS app. It lists the current cached inventory, inspects the requested and effective
 selection, and selects one exact device or the Automatic policy. It never starts PLVS, bypasses the

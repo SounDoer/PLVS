@@ -1,7 +1,5 @@
 # Loudness Profile Control
 
-Status: Implemented public contract
-
 Loudness Profile Control owns full-document inspection, authoring, selection, deletion, and
 ordering. Pack sharing remains the separate [Library Transfer](libraries.md) contract.
 

@@ -1,7 +1,5 @@
 # Measurement Wait
 
-Status: Implemented
-
 Measurement Wait lets an agent wait for the next coherent LIVE semantic measurement without
 polling `measurement inspect`. It extends [Measurement Control](measurements.md); it is separate
 from [Revision Wait](wait.md), which observes committed control-state revisions rather than audio

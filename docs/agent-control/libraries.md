@@ -1,7 +1,5 @@
 # Library Transfer
 
-Status: Implemented
-
 Library Transfer shares the three libraries a PLVS installation accumulates — Presets, Themes, and
 Loudness Profiles — as pack files, using the same pack format, merge rules, and persistence paths as
 the GUI's per-library Export and Import rows. It owns sharing only. Creating, editing, renaming, and

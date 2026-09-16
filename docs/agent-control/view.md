@@ -1,7 +1,5 @@
 # View Control
 
-Status: Implemented
-
 View Control exposes the persistent working-view state shown in the GUI's Views popover. These
 values are part of the scene captured by Presets, but they are not ordinary global Settings and
 currently have no focused Agent Control surface.

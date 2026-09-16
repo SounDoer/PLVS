@@ -1,7 +1,5 @@
 # Dock Control
 
-Status: Implemented
-
 Dock Control owns the running application's Dock window form, ordered Dock panel layout, panel
 sizes, and the public controls rendered in the strip. It does not own the LIVE/FILE source or
 capture lifecycle; those remain Transport Control responsibilities.

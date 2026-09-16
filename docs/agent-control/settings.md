@@ -1,7 +1,5 @@
 # Settings Control
 
-Status: Implemented
-
 Settings Control exposes persistent application preferences from the existing GUI Settings surface.
 It does not treat every value stored in the settings persistence domain as a public setting.
 
