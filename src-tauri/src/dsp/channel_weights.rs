@@ -8,17 +8,18 @@
 //! Labels name the weighting role, not the WAVE speaker bit: `Ls/Rs` is the 1.41 surround pair
 //! (≈110° in 5.x, ±90° side in 7.x) even where the device mask calls it BACK_LEFT/BACK_RIGHT.
 
-use super::channel_layouts::{layouts_for_channel_count, static_weights_for_layout};
+use super::channel_layouts::{first_layout_for_channel_count, static_weights_for_layout};
 
 /// Layout name for a channel count, or `None` when the count has no single standard layout.
 /// 8 channels is 7.1 or 5.1.2; the count alone never decides, so auto detection keeps the first
 /// table entry (7.1), which is the pre-B1 behaviour. Counts above 8 are `None` — see this
 /// function's callers for the `Ch 1–2` degradation that follows.
+///
+/// Called on every audio chunk in Auto mode (via `standard_loudness_weights`), so this and
+/// `first_layout_for_channel_count` must stay allocation-free.
 pub(crate) fn standard_layout_name(channels: u16) -> Option<&'static str> {
   match channels {
-    1..=8 => layouts_for_channel_count(channels as usize)
-      .first()
-      .map(|l| l.id.as_str()),
+    1..=8 => first_layout_for_channel_count(channels as usize).map(|l| l.id.as_str()),
     _ => None,
   }
 }
