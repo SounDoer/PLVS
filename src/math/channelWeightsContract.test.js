@@ -4,19 +4,27 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getPeakMeterChannelLabels } from "./peakMeterChannelLabels.js";
 import { roleTokensToLoudnessWeights, seedTokensFromLabels } from "./channelRoles.js";
+import { rolesForLayout, standardLayoutIdForCount, weightsForRoles } from "./channelLayoutTable.js";
 
-// Keeps the frontend's default channel labels and role loudness weights in step with the
-// engine's per-channel weight table, so the two sides cannot silently drift apart.
+// Both engine and frontend now read shared/channel-layouts.json rather than carrying their own
+// hand-written weight tables, so the drift this contract used to catch (two literal tables
+// disagreeing) is structurally impossible. What remains to guard:
+// 1. `channel_weights.rs` must not grow a new literal weight-row match arm alongside the shared
+//    table — that would silently reintroduce the drift risk.
+// 2. The frontend's own per-channel-count label/weight derivation (`getPeakMeterChannelLabels` +
+//    `channelRoles.js`, the path the manual role picker and peak meter use) must not drift from
+//    reading `shared/channel-layouts.json` directly (`channelLayoutTable.js`'s `rolesForLayout` /
+//    `weightsForRoles`) — i.e. the JS twin of Rust's `standard_layout_name` stays in step with the
+//    table it is meant to summarize.
 const SOURCE_ROOT = dirname(fileURLToPath(import.meta.url));
 const RUST_SOURCE = readFileSync(
   join(SOURCE_ROOT, "..", "..", "src-tauri", "src", "dsp", "channel_weights.rs"),
   "utf8"
 );
 
-const SURROUND_LOUDNESS_WEIGHT = 10 ** (1.5 / 10);
-
 /// The body of Rust's `standard_loudness_weights`, and nothing else: the file also carries a
-/// `#[cfg(test)]` module that re-asserts the same rows in its own syntax.
+/// `#[cfg(test)]` module that asserts its own literal rows in its own syntax, which this contract
+/// does not police.
 function weightsFunctionBody() {
   const start = RUST_SOURCE.indexOf("fn standard_loudness_weights");
   expect(start, "channel_weights.rs declares standard_loudness_weights").toBeGreaterThan(-1);
@@ -25,46 +33,26 @@ function weightsFunctionBody() {
   return RUST_SOURCE.slice(start, end);
 }
 
-/// Parses `N => Some(&[ ... ])` match arms into `{ [channelCount]: number[] }`. Rustfmt may spread
-/// a row over several lines, so this tolerates whitespace/newlines inside the bracket and ignores
-/// `//` comment lines rather than assuming one arm per line.
-function parseWeightRows(body) {
-  const withoutComments = body
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("//"))
-    .join("\n");
-
-  const rows = {};
-  const rowPattern = /(\d+)\s*=>\s*Some\(&\[([^\]]*)\]\)/g;
-  for (const [, channels, tokenList] of withoutComments.matchAll(rowPattern)) {
-    const weights = tokenList
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0)
-      .map((t) => (t === "S" ? SURROUND_LOUDNESS_WEIGHT : Number(t)));
-    rows[Number(channels)] = weights;
-  }
-  return rows;
-}
-
 describe("channel weights contract", () => {
-  const rows = parseWeightRows(weightsFunctionBody());
-
-  it("has a row for every channel count from 3 to 8, and no others", () => {
-    expect(
-      Object.keys(rows)
-        .map(Number)
-        .sort((a, b) => a - b)
-    ).toEqual([3, 4, 5, 6, 7, 8]);
+  it("standard_loudness_weights carries no literal weight-row match arm", () => {
+    expect(weightsFunctionBody()).not.toMatch(/Some\(&\[/);
   });
 
-  for (let n = 3; n <= 8; n++) {
-    it(`matches the engine's ${n}-channel weight row`, () => {
-      // 8 channels is ambiguous between 7.1 and 5.1.2 in the shared table; this contract is
-      // specifically about the engine's canonical 7.1 row, so name it explicitly.
-      const labels = getPeakMeterChannelLabels(n, n === 8 ? { formatId: "7.1" } : undefined);
+  for (let n = 1; n <= 8; n++) {
+    it(`matches the shared table's ${n}-channel layout`, () => {
+      const layoutId = standardLayoutIdForCount(n);
+      expect(layoutId, `standard layout id for ${n} channels`).not.toBeNull();
+
+      const roles = rolesForLayout(layoutId);
+      const expectedWeights = weightsForRoles(roles);
+
+      // formatId pins the layout explicitly: 8 channels is otherwise ambiguous between 7.1 and
+      // 5.1.2, and this contract is specifically about the auto-detected standard layout.
+      const labels = getPeakMeterChannelLabels(n, { formatId: layoutId });
       const weights = roleTokensToLoudnessWeights(seedTokensFromLabels(labels));
-      expect(weights).toEqual(rows[n]);
+
+      expect(labels).toEqual(roles);
+      expect(weights).toEqual(expectedWeights);
     });
   }
 });

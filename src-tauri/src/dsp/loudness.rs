@@ -511,8 +511,8 @@ impl LoudnessMeter {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::dsp::channel_layouts::role_weight;
   use crate::dsp::channel_sel::SpectrumChannelSel;
-  use crate::dsp::gating::SURROUND_LOUDNESS_WEIGHT;
 
   /// Diagnostic (run with `--ignored --nocapture`): measure integrated/LRA of the bit-perfect
   /// reference PCM in `dialogue-test-audio/*.f32` (48k stereo f32le), bypassing the capture path.
@@ -1234,12 +1234,10 @@ mod tests {
 
   #[test]
   fn auto_lcr_and_quad_use_standard_weights() {
+    let surround_weight = role_weight("Ls").expect("Ls role");
     for (channels, weights) in [
       (3_u16, vec![1.0, 1.0, 1.0]),
-      (
-        4_u16,
-        vec![1.0, 1.0, SURROUND_LOUDNESS_WEIGHT, SURROUND_LOUDNESS_WEIGHT],
-      ),
+      (4_u16, vec![1.0, 1.0, surround_weight, surround_weight]),
     ] {
       let all: Vec<usize> = (0..channels as usize).collect();
       let pcm = sine_on_channels(channels as usize, &all, 0.1);

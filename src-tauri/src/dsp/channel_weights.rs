@@ -35,28 +35,29 @@ pub(crate) fn standard_loudness_weights(channels: u16) -> Option<&'static [f64]>
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::dsp::gating::SURROUND_LOUDNESS_WEIGHT as S;
+  use crate::dsp::channel_layouts::role_weight;
 
   #[test]
   fn weights_follow_bs1770_5_table_5() {
+    let s = role_weight("Ls").expect("Ls role");
     assert_eq!(standard_loudness_weights(3), Some(&[1.0, 1.0, 1.0][..]));
-    assert_eq!(standard_loudness_weights(4), Some(&[1.0, 1.0, S, S][..]));
+    assert_eq!(standard_loudness_weights(4), Some(&[1.0, 1.0, s, s][..]));
     assert_eq!(
       standard_loudness_weights(5),
-      Some(&[1.0, 1.0, 1.0, S, S][..])
+      Some(&[1.0, 1.0, 1.0, s, s][..])
     );
     assert_eq!(
       standard_loudness_weights(6),
-      Some(&[1.0, 1.0, 1.0, 0.0, S, S][..])
+      Some(&[1.0, 1.0, 1.0, 0.0, s, s][..])
     );
     // Back surrounds sit at ±135°, outside the 60°–120° band, so BS.1770-5 gives them 1.00.
     assert_eq!(
       standard_loudness_weights(7),
-      Some(&[1.0, 1.0, 1.0, 1.0, 1.0, S, S][..])
+      Some(&[1.0, 1.0, 1.0, 1.0, 1.0, s, s][..])
     );
     assert_eq!(
       standard_loudness_weights(8),
-      Some(&[1.0, 1.0, 1.0, 0.0, 1.0, 1.0, S, S][..])
+      Some(&[1.0, 1.0, 1.0, 0.0, 1.0, 1.0, s, s][..])
     );
   }
 
@@ -95,7 +96,8 @@ mod tests {
 
   #[test]
   fn surround_weight_is_plus_one_and_a_half_db() {
-    assert!((10.0 * S.log10() - 1.5).abs() < 1e-12);
+    let s = role_weight("Ls").expect("Ls role");
+    assert!((10.0 * s.log10() - 1.5).abs() < 1e-12);
   }
 
   #[test]

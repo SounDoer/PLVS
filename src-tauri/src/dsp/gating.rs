@@ -4,11 +4,6 @@
 
 pub(crate) const IBL_CAP: usize = 36_000;
 pub(crate) const STH_CAP: usize = 36_000;
-// Production code now reads this weight from `shared/channel-layouts.json` (via
-// `dsp::channel_layouts`), so this constant survives only as the BS.1770-5 reference value
-// asserted against by tests in `loudness.rs`, `channel_layouts.rs` and `channel_weights.rs`.
-#[allow(dead_code)]
-pub(crate) const SURROUND_LOUDNESS_WEIGHT: f64 = 1.412_537_544_622_754_4;
 
 pub(crate) fn lufs_from_mean_squares(m0: f64, m1: f64) -> f64 {
   let s = m0 + m1;

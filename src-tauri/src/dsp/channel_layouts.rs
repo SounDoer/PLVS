@@ -9,11 +9,6 @@
 use serde::Deserialize;
 use std::sync::OnceLock;
 
-// Re-exported for this module's own tests, which assert weights against the BS.1770-5 reference
-// value; production code reads weights from the table instead.
-#[allow(unused_imports)]
-pub(crate) use super::gating::SURROUND_LOUDNESS_WEIGHT;
-
 pub const CHANNEL_LAYOUTS_JSON: &str = include_str!("../../../shared/channel-layouts.json");
 
 #[derive(Debug, Clone, Deserialize)]
@@ -116,12 +111,13 @@ mod tests {
 
   #[test]
   fn every_layout_role_exists_and_weights_follow_bs1770_5() {
+    let surround_weight = role_weight("Ls").expect("Ls role");
     for layout in layouts() {
       for role in &layout.roles {
         let weight = role_weight(role).unwrap_or_else(|| panic!("unknown role {role}"));
         let expected = match role.as_str() {
           "LFE" => 0.0,
-          "Ls" | "Rs" | "Lw" | "Rw" => SURROUND_LOUDNESS_WEIGHT,
+          "Ls" | "Rs" | "Lw" | "Rw" => surround_weight,
           _ => 1.0,
         };
         assert_eq!(weight, expected, "{} role {role}", layout.id);
@@ -157,10 +153,11 @@ mod tests {
 
   #[test]
   fn nine_one_six_puts_the_surround_weight_only_on_sides_and_wides() {
+    let surround_weight = role_weight("Ls").expect("Ls role");
     let roles = roles_for_layout("9.1.6").expect("9.1.6");
     let weighted: Vec<&str> = roles
       .iter()
-      .filter(|r| role_weight(r) == Some(SURROUND_LOUDNESS_WEIGHT))
+      .filter(|r| role_weight(r) == Some(surround_weight))
       .map(|r| r.as_str())
       .collect();
     assert_eq!(weighted, vec!["Lw", "Rw", "Ls", "Rs"]);
