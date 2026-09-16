@@ -52,7 +52,7 @@ import {
 } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { roleTokensToLabels, seedTokensFromLabels } from "./math/channelRoles.js";
-import { standardLayoutIdForCount } from "./math/channelLayoutTable.js";
+import { rolesForLayout, standardLayoutIdForCount } from "./math/channelLayoutTable.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -1597,6 +1597,16 @@ function AppContent() {
     [channelCount, channelAutoLabels, setChannelLabelOverrides]
   );
 
+  const setChannelLayout = useCallback(
+    (layoutId) => {
+      if (layoutId === "custom") return;
+      const roles = rolesForLayout(layoutId);
+      if (roles.length !== channelCount) return;
+      setChannelLabelOverrides((prev) => ({ ...prev, [channelCount]: roles }));
+    },
+    [channelCount, setChannelLabelOverrides]
+  );
+
   const resetChannelLabels = useCallback(() => {
     setChannelLabelOverrides((prev) => {
       if (!(channelCount in prev)) return prev;
@@ -2335,6 +2345,8 @@ function AppContent() {
           channelCount,
           channelLabelTokens,
           channelLabelHasOverride: !!channelLabelOverride,
+          selectedLayoutId: channelLabelRuntime.selectedLayoutId,
+          setChannelLayout,
           setChannelLabelToken,
           resetChannelLabels,
         }}

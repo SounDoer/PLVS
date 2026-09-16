@@ -19,6 +19,7 @@ import { KEYBOARD_SHORTCUTS } from "@/data/keyboardShortcuts.js";
 import { formatAcceleratorForDisplay } from "@/lib/accelerator.js";
 import { DEFAULT_CLEAR_SHORTCUT } from "@/lib/clearShortcutPrefs.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
+import { layoutsForChannelCount } from "@/math/channelLayoutTable.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
 import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
@@ -189,6 +190,8 @@ export function SettingsPanel({
   channelCount = 0,
   channelLabelTokens = [],
   channelLabelHasOverride = false,
+  selectedLayoutId = null,
+  setChannelLayout = () => {},
   setChannelLabelToken = () => {},
   resetChannelLabels = () => {},
   customThemeOptions = [],
@@ -549,6 +552,27 @@ export function SettingsPanel({
                   </SettingsRow>
                   {channelCount > 0 ? (
                     <div className="flex flex-col gap-0.5">
+                      <SettingsRow labelNode={<span className={ROW_LABEL_CLASS}>Layout</span>}>
+                        <Select
+                          value={selectedLayoutId ?? "custom"}
+                          onValueChange={setChannelLayout}
+                        >
+                          <SelectTrigger
+                            className={SELECT_TRIGGER_CLASS}
+                            aria-label="channel layout"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                            {layoutsForChannelCount(channelCount).map((layout) => (
+                              <SelectItem key={layout.id} value={layout.id}>
+                                {layout.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="custom">Custom</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </SettingsRow>
                       {channelLabelTokens.map((token, i) => (
                         <SettingsRow
                           key={i}

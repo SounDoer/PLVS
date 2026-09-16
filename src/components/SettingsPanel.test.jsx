@@ -32,6 +32,8 @@ const BASE_PROPS = {
   channelCount: 0,
   channelLabelTokens: [],
   channelLabelHasOverride: false,
+  selectedLayoutId: null,
+  setChannelLayout: vi.fn(),
   setChannelLabelToken: vi.fn(),
   resetChannelLabels: vi.fn(),
 };
@@ -762,6 +764,40 @@ describe("SettingsPanel", () => {
 });
 
 describe("SettingsPanel — Channel labels", () => {
+  it("offers only matching layouts and reports Custom for edited roles", () => {
+    const setChannelLayout = vi.fn();
+    const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"];
+    const { rerender } = render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        channelCount={12}
+        channelLabelTokens={roles}
+        selectedLayoutId="7.1.4"
+        setChannelLayout={setChannelLayout}
+      />
+    );
+
+    const layoutSelect = screen.getByLabelText("channel layout");
+    expect(layoutSelect.textContent).toContain("7.1.4");
+    fireEvent.click(layoutSelect);
+    expect(screen.getByRole("option", { name: "7.1.4" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Custom" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "5.1.4" })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "Custom" }));
+    expect(setChannelLayout).toHaveBeenCalledWith("custom");
+
+    rerender(
+      <SettingsPanel
+        {...BASE_PROPS}
+        channelCount={12}
+        channelLabelTokens={[...roles.slice(0, 4), "Ls", "Rs", "Lb", "Rb", ...roles.slice(8)]}
+        selectedLayoutId={null}
+        setChannelLayout={setChannelLayout}
+      />
+    );
+    expect(screen.getByLabelText("channel layout").textContent).toContain("Custom");
+  });
+
   it("shows the idle hint when no input is connected", () => {
     render(<SettingsPanel {...BASE_PROPS} channelCount={0} />);
     expect(screen.getByText("Connect an input to label its channels.")).toBeTruthy();

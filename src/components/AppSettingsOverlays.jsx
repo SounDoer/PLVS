@@ -71,6 +71,8 @@ export function AppSettingsOverlays({
         channelCount={channelSettings.channelCount}
         channelLabelTokens={channelSettings.channelLabelTokens}
         channelLabelHasOverride={channelSettings.channelLabelHasOverride}
+        selectedLayoutId={channelSettings.selectedLayoutId}
+        setChannelLayout={channelSettings.setChannelLayout}
         setChannelLabelToken={channelSettings.setChannelLabelToken}
         resetChannelLabels={channelSettings.resetChannelLabels}
         appVersion={appVersion}
