@@ -1,5 +1,6 @@
 //! DSP: PCM → meters (Peak, LUFS, FFT, correlation).
 
+pub(crate) mod channel_layouts;
 pub mod channel_sel;
 pub(crate) mod channel_weights;
 pub mod dialogue;

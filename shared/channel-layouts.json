@@ -1,0 +1,59 @@
+{
+  "_comment": "Single source of truth for channel roles and standard channel layouts. Consumed by the frontend (src/math/channelLayoutTable.js) and by Rust (src-tauri/src/dsp/channel_layouts.rs). Weights are ITU-R BS.1770-5 Annex 3 Table 4: 1.41 (+1.5 dB) for |elevation| < 30 with 60 <= |azimuth| <= 120, 1.00 elsewhere, 0 for LFE. Layout role order is the native WAVE (KSAUDIO_SPEAKER_*) / ffmpeg order.",
+  "version": 1,
+  "roles": [
+    { "id": "generic", "label": "—", "weight": 1.0 },
+    { "id": "M", "label": "M", "weight": 1.0 },
+    { "id": "L", "label": "L", "weight": 1.0 },
+    { "id": "R", "label": "R", "weight": 1.0 },
+    { "id": "C", "label": "C", "weight": 1.0 },
+    { "id": "LFE", "label": "LFE", "weight": 0.0 },
+    { "id": "Ls", "label": "Ls", "weight": 1.4125375446227544 },
+    { "id": "Rs", "label": "Rs", "weight": 1.4125375446227544 },
+    { "id": "Lb", "label": "Lb", "weight": 1.0 },
+    { "id": "Rb", "label": "Rb", "weight": 1.0 },
+    { "id": "Cs", "label": "Cs", "weight": 1.0 },
+    { "id": "Lw", "label": "Lw", "weight": 1.4125375446227544 },
+    { "id": "Rw", "label": "Rw", "weight": 1.4125375446227544 },
+    { "id": "Ltf", "label": "Ltf", "weight": 1.0 },
+    { "id": "Rtf", "label": "Rtf", "weight": 1.0 },
+    { "id": "Ltm", "label": "Ltm", "weight": 1.0 },
+    { "id": "Rtm", "label": "Rtm", "weight": 1.0 },
+    { "id": "Ltr", "label": "Ltr", "weight": 1.0 },
+    { "id": "Rtr", "label": "Rtr", "weight": 1.0 }
+  ],
+  "layouts": [
+    { "id": "mono", "name": "Mono", "roles": ["M"] },
+    { "id": "stereo", "name": "Stereo", "roles": ["L", "R"] },
+    { "id": "lcr", "name": "LCR", "roles": ["L", "R", "C"] },
+    { "id": "quad", "name": "Quad", "roles": ["L", "R", "Ls", "Rs"] },
+    { "id": "5.0", "name": "5.0", "roles": ["L", "R", "C", "Ls", "Rs"] },
+    { "id": "5.1", "name": "5.1", "roles": ["L", "R", "C", "LFE", "Ls", "Rs"] },
+    { "id": "7.0", "name": "7.0", "roles": ["L", "R", "C", "Lb", "Rb", "Ls", "Rs"] },
+    { "id": "7.1", "name": "7.1", "roles": ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"] },
+    { "id": "5.1.2", "name": "5.1.2", "roles": ["L", "R", "C", "LFE", "Ls", "Rs", "Ltf", "Rtf"] },
+    {
+      "id": "5.1.4",
+      "name": "5.1.4",
+      "roles": ["L", "R", "C", "LFE", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"]
+    },
+    {
+      "id": "7.1.2",
+      "name": "7.1.2",
+      "roles": ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf"]
+    },
+    {
+      "id": "7.1.4",
+      "name": "7.1.4",
+      "roles": ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"]
+    },
+    {
+      "id": "9.1.6",
+      "name": "9.1.6",
+      "roles": [
+        "L", "R", "C", "LFE", "Lb", "Rb", "Lw", "Rw", "Ls", "Rs",
+        "Ltf", "Rtf", "Ltr", "Rtr", "Ltm", "Rtm"
+      ]
+    }
+  ]
+}
