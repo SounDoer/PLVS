@@ -70,13 +70,12 @@ first Vectorscope request already active in the engine; Measurement Control neve
 `levels.truePeak.maxDbtp` is the maximum True Peak across every channel. `leftDbtp` and `rightDbtp`
 report Ch1 and Ch2 only, whatever the channel count.
 
-`loudnessLayout` is one of `mono`, `stereo`, `lcr`, `quad`, `5.0`, `5.1`, `7.0`, `7.1`, `custom`
-(a user channel-label override) or `unknown`. Standard layouts use WAVE / ffmpeg channel order and
-ITU-R BS.1770-5 weights. When `loudnessLayoutKnown` is false, loudness is the stereo loudness of
-Ch1/Ch2: that is `unknown` for an unrecognized channel count, and `stereo` for a manual 5.1 or 7.1
-preset applied to a channel count other than 6 or 8. Check `loudnessLayoutKnown`, not the layout
-name, to detect degraded loudness. Treat the value set as open: later releases add immersive
-layouts.
+`loudnessLayout` is one of `mono`, `stereo`, `lcr`, `quad`, `5.0`, `5.1`, `7.0`, `7.1`, `5.1.2`,
+`5.1.4`, `7.1.2`, `7.1.4`, `9.1.6`, `custom`, or `unknown`. `custom` means the active role list
+matches no named layout. Standard layouts use WAVE / ffmpeg channel order and ITU-R BS.1770-5
+weights. When `loudnessLayoutKnown` is false, loudness is the stereo loudness of Ch1/Ch2. Check
+`loudnessLayoutKnown`, not the layout name, to detect degraded loudness, and treat the value set as
+open for future layouts.
 
 For a received frame whose channel peaks are all at or below the signal floor, unavailable level
 and loudness metrics use `belowSignalFloor`; `notReady` is reserved for audible warm-up or an

@@ -181,13 +181,16 @@ PLVS/
 | -------------------- | ----------------------------------------------------------------------------------------------------- |
 | `peak.rs`            | 采样峰值 + True Peak（4× 过采样）                                                                     |
 | `loudness.rs`        | K-weighting → gate → M / S / I / LRA（ITU-R BS.1770 / EBU R128）；True Peak Max 覆盖全部声道          |
-| `channel_weights.rs` | 按声道数识别标准布局（mono…7.1，WAVE / ffmpeg 顺序）与 BS.1770-5 声道权重；实时与 CLI 摘要共用        |
+| `channel_layouts.rs` | 嵌入 `shared/channel-layouts.json`，提供布局顺序、角色与 BS.1770-5 权重；实时、File 与 CLI 共用       |
+| `channel_weights.rs` | 最多 8 声道的按数量自动识别热路径；未知布局退化为 Ch1/Ch2，且不在音频回调中分配                    |
 | `spectrum.rs`        | rFFT + Hann 窗，hop=N/4，4 帧非相干平均；带内能量按 Hz 连续边界与 bin 分数重叠积分（非整数 bin 截断） |
 | `vectorscope.rs`     | L/R → XY + 相关系数                                                                                   |
 
 ### 编排层（`src-tauri/src/engine/meter_pipeline.rs`）
 
 PCM 帧 → 并行 DSP → 打包 `MeteringFrame` → Channel（~60Hz）推前端；慢速响度 / 状态 → Event（~2Hz）广播。
+
+`shared/channel-layouts.json` 是前后端唯一的布局表：Rust 在编译时嵌入，前端直接 import；两端由契约测试约束。前端通过 IPC 发送角色列表，Rust 在命令到达时一次性派生权重与报告用布局名，音频热路径不查表、不分配。标准顺序采用 WAVE / ffmpeg；若来源实际使用 SMPTE bed 顺序，用户通过逐声道角色编辑器校正，而不是选择另一套重复预设。
 
 #### History cadence（节奏分层）
 
@@ -216,7 +219,7 @@ PCM 帧 → 并行 DSP → 打包 `MeteringFrame` → Channel（~60Hz）推前�
 | **Event**            | Rust → Frontend | ~2Hz     | 慢速响度（I/LRA）、设备状态、健康状态                    |
 | **invoke (command)** | Frontend → Rust | 用户触发 | START/STOP、设备切换、设置写入                           |
 
-Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `src/ipc/commands.js`。
+Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `src/ipc/commands.js`。布局选择通过 `set_channel_roles` 传角色列表，不传前端计算的权重；Rust 据此派生测量权重与 `loudnessLayout`。
 
 ---
 
