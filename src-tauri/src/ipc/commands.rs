@@ -225,7 +225,7 @@ pub fn audio_start(
     // their speaker masks are verified on a real endpoint.
     normalize_process_capture_format(sample_rate, channels)
   });
-  let session = if let Some(application_id) = application_id.as_deref() {
+  let session = if application_id.is_some() {
     #[cfg(target_os = "windows")]
     {
       let process_id =
@@ -246,6 +246,9 @@ pub fn audio_start(
     }
     #[cfg(target_os = "macos")]
     {
+      let application_id = application_id
+        .as_deref()
+        .expect("application id checked above");
       crate::audio::macos::start_application_session(
         application_id,
         &device_id,
