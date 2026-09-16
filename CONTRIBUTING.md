@@ -35,6 +35,8 @@ npm run desktop:control -- workspace apply layout.json --json
 npm run smoke:agent-control
 ```
 
+只构建 CLI package、不启动 GUI 时用 `npm run cli:build`。
+
 `desktop:control` 会安静地增量构建独立 CLI package，并固定使用同一个 `dev-identity`，再将参数直接转发给扁平的 `plvs-cli` 命令；开发版 GUI 必须已经运行。它不依赖 Settings 中的 Agent Control / PATH，也不会发现或修改本机安装的正式版。公开的 release CLI 使用同一套扁平命令，但通过正式版 identity 与已安装应用通信。Windows 使用当前用户 named pipe，macOS 使用私有 Unix socket；Visual Capture 截图和录制支持两个平台。`smoke:agent-control` 假定开发版 GUI 已经运行，验证 capabilities、inspect、截图和 3 秒静音录制，并把文件及校验报告写入 `artifacts/agent-control-smoke/`。
 
 NSIS 相关的脚本（`desktop:dev-nsis`、`desktop:release-nsis`）**不带**这个 overlay：注册表登记键 `HKCU\Software\SounDoer\PLVS` 是写死的，且 `scripts/generate-agent-discovery.mjs` 只读基础 `tauri.conf.json`，给它们套上 overlay 只会写出自相矛盾的登记。
@@ -52,6 +54,12 @@ npm run desktop:release-nsis
 `scripts/build-plvs-cli.mjs` 是 CLI debug/release、development/release identity 与 Tauri staging
 的唯一构建入口；Tauri 输入文件带 target triple，安装后和 Portable 中的公开名称不带。
 
+macOS 发布构建（DMG）：
+
+```bash
+npm run desktop:release-dmg
+```
+
 Rust（在 `src-tauri` 目录下）：
 
 ```bash
@@ -61,10 +69,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
 
+在根目录可以用 `npm run rust:check` 一次跑完这三项（`npm run check` 已包含）。
+
 根目录一键检查 **前端 + 版本号 + Rust 格式/静态检查/测试**：
 
 ```bash
 npm run check
+```
+
+`check` 之外的实机验证，按需手动运行：
+
+```bash
+npm run smoke:file-analysis   # File 模式分析冒烟测试
+npm run smoke:capture         # 真实采集冒烟测试，需要本机装有 VB-Cable 和 VLC
+npm run soak:capture          # 采集长跑，默认 4 小时；唯一能发现泄漏和指标漂移的检查
 ```
 
 ## 版本号

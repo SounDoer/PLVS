@@ -150,21 +150,13 @@ npm install
 npm run desktop        # start dev build with hot reload
 ```
 
-### Common commands
+Before sending a change, run the full gate:
 
 ```bash
-npm test               # unit tests (Vitest)
-npm run lint           # ESLint
-npm run build          # build frontend to dist/
-npm run desktop:build  # local Tauri release build, without updater artifacts
-npm run desktop:release-nsis  # Windows NSIS installer
-npm run desktop:release-dmg   # macOS DMG
-npm run check          # full pre-merge gate (version + format + lint + test + build + Rust)
-npm run rust:check     # Rust only: fmt + clippy + test (already part of check)
-npm run cli:build      # build only the thin plvs-cli workspace package
-npm run smoke:file-analysis   # file-mode analysis smoke test
-npm run soak:capture          # 4h capture soak; the only check that surfaces leaks and metric drift
+npm run check          # version + format + lint + test + build + Rust
 ```
+
+Build, release, and verification commands are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Tech Stack
 
