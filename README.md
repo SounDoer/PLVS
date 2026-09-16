@@ -45,7 +45,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 
 - **No routing required** — monitors any audio playing on your machine. Windows uses WASAPI loopback; macOS uses the native audio tap.
 - **Resilient Windows capture** — when Windows invalidates an active endpoint during an audio configuration change such as toggling Spatial Sound, PLVS rebuilds the stream and starts a fresh measurement automatically.
-- **Per-application capture** _(Windows)_ — pick a single running application from the same source dropdown and meter only its output, instead of everything the system is playing.
+- **Per-application capture** — on Windows or macOS, pick a single running audio application from the same source dropdown and meter only its output, instead of everything the system is playing.
 - **File analysis mode** — drop in a local audio file to meter it offline: probe metadata, decode through a bundled FFmpeg sidecar (wide format support), and scrub through the full session history across every meter.
 - **Multichannel** — auto-detects mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 with proper per-channel metering and BS.1770 weighting; immersive layouts up to 9.1.6 can be selected by hand in Settings.
 - **Detailed spectrum analysis** — multi-resolution FFT analyzer with M/S and L/R overlays, peak-hold, log-frequency grid, and musical note names on hover.
@@ -61,7 +61,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 ## Limitations
 
 - **ASIO is not supported on Windows.** ASIO drivers bypass the Windows audio mixer entirely, so WASAPI loopback capture cannot intercept the signal. If you are using a DAW (e.g. REAPER, Ableton Live), set the DAW's audio system to **WASAPI** to allow PLVS to capture its output. For setups that require ASIO, routing through a virtual audio cable (e.g. VB-Cable) to a WASAPI-visible device is a workable alternative.
-- **Per-application capture is Windows-only and needs Windows build 20348 or newer.** It goes through the same system mixer as loopback, so an application using ASIO or WASAPI exclusive mode cannot be captured this way either. macOS has no per-application filtering yet; its tap captures the full system output.
+- **Per-application capture follows the selected system output path.** Windows needs build 20348 or newer, and applications using ASIO or WASAPI exclusive mode bypass its process-loopback path. On macOS 14.2+, the source list contains applications currently connected to Core Audio; capture follows the current default output device.
 - **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses an on-device open-source VAD engine (Silero VAD by default) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
 
 ---

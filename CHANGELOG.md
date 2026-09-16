@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- macOS can select a running Core Audio application as the Live source and meter only that
+  application's output, including grouped helper processes and automatic rebinding when its
+  process set changes.
+
 ### Fixed
 
 - Windows Live capture now rebuilds an invalidated WASAPI stream and clears the interrupted

@@ -89,7 +89,14 @@ pub fn list_capture_applications(
   crate::audio::windows_capture_apps::list_capture_applications()
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub fn list_capture_applications(
+) -> Result<Vec<crate::audio::macos_capture_apps::CaptureApplication>, String> {
+  crate::audio::macos_capture_apps::list_capture_applications()
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 #[tauri::command]
 pub fn list_capture_applications() -> Result<Vec<serde_json::Value>, String> {
   Ok(Vec::new())
@@ -193,18 +200,21 @@ pub fn audio_start(
   if process_id.is_some() && application_id.is_some() {
     return Err("audio_start accepts either processId or applicationId, not both".to_string());
   }
+  #[cfg(not(target_os = "windows"))]
+  if process_id.is_some() {
+    return Err("direct per-process capture is not available on this platform".to_string());
+  }
   #[cfg(target_os = "windows")]
   let resolved_application_process = application_id
     .as_deref()
     .map(crate::audio::windows_capture_apps::resolve_capture_application)
     .transpose()?
     .map(|application| application.process_id);
-  #[cfg(not(target_os = "windows"))]
-  let resolved_application_process = if application_id.is_some() {
+  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  if application_id.is_some() {
     return Err("per-process capture is not available on this platform".to_string());
-  } else {
-    None
-  };
+  }
+  #[cfg(target_os = "windows")]
   let process_id = process_id.or(resolved_application_process);
   #[cfg(target_os = "windows")]
   let process_format = process_id.map(|_| {
@@ -215,8 +225,46 @@ pub fn audio_start(
     // their speaker masks are verified on a real endpoint.
     normalize_process_capture_format(sample_rate, channels)
   });
-  let session = match process_id {
-    Some(process_id) => {
+  let session = if let Some(application_id) = application_id.as_deref() {
+    #[cfg(target_os = "windows")]
+    {
+      let process_id =
+        process_id.ok_or_else(|| "capture application process was not resolved".to_string())?;
+      let (sample_rate, channels) =
+        process_format.ok_or_else(|| "process capture format was not resolved".to_string())?;
+      crate::audio::windows_process_loopback::start_process_session(
+        process_id,
+        sample_rate,
+        channels,
+        pool,
+        app.clone(),
+        channel_selection,
+        dialogue_gating,
+        dialogue_vad_engine,
+        state.inner().measured_pcm.clone(),
+      )?
+    }
+    #[cfg(target_os = "macos")]
+    {
+      crate::audio::macos::start_application_session(
+        application_id,
+        &device_id,
+        pool,
+        app.clone(),
+        channel_selection,
+        dialogue_gating,
+        dialogue_vad_engine,
+        state.inner().measured_pcm.clone(),
+      )?
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+      let _ = application_id;
+      return Err("per-process capture is not available on this platform".to_string());
+    }
+  } else {
+    #[cfg(target_os = "windows")]
+    if let Some(process_id) = process_id {
       #[cfg(target_os = "windows")]
       {
         let (sample_rate, channels) =
@@ -233,13 +281,20 @@ pub fn audio_start(
           state.inner().measured_pcm.clone(),
         )?
       }
-      #[cfg(not(target_os = "windows"))]
-      {
-        let _ = process_id;
-        return Err("per-process capture is not available on this platform".to_string());
-      }
+    } else {
+      AudioCapture::start_session(
+        &AppAudioBackend,
+        &device_id,
+        pool,
+        app.clone(),
+        channel_selection,
+        dialogue_gating,
+        dialogue_vad_engine,
+        state.inner().measured_pcm.clone(),
+      )?
     }
-    None => AudioCapture::start_session(
+    #[cfg(not(target_os = "windows"))]
+    AudioCapture::start_session(
       &AppAudioBackend,
       &device_id,
       pool,
@@ -248,7 +303,7 @@ pub fn audio_start(
       dialogue_gating,
       dialogue_vad_engine,
       state.inner().measured_pcm.clone(),
-    )?,
+    )?
   };
   {
     let mut source = state
@@ -258,12 +313,16 @@ pub fn audio_start(
       .map_err(|_| "state lock poisoned".to_string())?;
     *source = EngineSource::Live(session);
   }
+  #[cfg(target_os = "windows")]
   if process_id.is_some() {
-    #[cfg(target_os = "windows")]
     if let Some((sample_rate, _)) = process_format {
       let _ = app.emit("sample-rate-changed", sample_rate);
     }
   } else if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
+    let _ = app.emit("sample-rate-changed", sr);
+  }
+  #[cfg(not(target_os = "windows"))]
+  if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
     let _ = app.emit("sample-rate-changed", sr);
   }
   let _ = app.emit(

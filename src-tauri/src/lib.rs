@@ -36,6 +36,8 @@ use std::time::Duration;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 
+#[cfg(target_os = "macos")]
+pub use audio::macos_capture_apps::{list_capture_applications, CaptureApplication};
 #[cfg(target_os = "windows")]
 pub use audio::windows_capture_apps::{list_capture_applications, CaptureApplication};
 #[cfg(target_os = "windows")]

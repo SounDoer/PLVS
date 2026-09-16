@@ -4,6 +4,7 @@
 // Requires Xcode / macOS SDK with Core Audio tap APIs (CATapDescription, AudioHardwareCreateProcessTap).
 
 #import <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <CoreAudio/CoreAudio.h>
 #import <CoreAudio/AudioHardware.h>
@@ -14,6 +15,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 
 #import <stdint.h>
+#import <libproc.h>
 #import <stdio.h>
 #import <stdlib.h>
 #import <string.h>
@@ -21,6 +23,143 @@
 // Implemented in Rust (src/audio/macos/pcm_shim.rs).
 extern void pcm_bridge(void *userdata, const float *samples, uint32_t frame_count,
                                   uint32_t channels);
+
+typedef void (*PLVSAudioProcessCallback)(void *context, uint32_t audio_object_id,
+                                         int32_t process_id, const char *identity_utf8,
+                                         const char *label_utf8, const char *detail_utf8);
+
+#pragma mark - Audio process inventory
+
+static BOOL get_process_pid(AudioObjectID processID, pid_t *outPID) {
+  AudioObjectPropertyAddress addr = {
+      .mSelector = kAudioProcessPropertyPID,
+      .mScope = kAudioObjectPropertyScopeGlobal,
+      .mElement = kAudioObjectPropertyElementMain,
+  };
+  UInt32 size = sizeof(pid_t);
+  return AudioObjectGetPropertyData(processID, &addr, 0, NULL, &size, outPID) == noErr;
+}
+
+static CFStringRef copy_process_bundle_id(AudioObjectID processID) {
+  AudioObjectPropertyAddress addr = {
+      .mSelector = kAudioProcessPropertyBundleID,
+      .mScope = kAudioObjectPropertyScopeGlobal,
+      .mElement = kAudioObjectPropertyElementMain,
+  };
+  CFStringRef bundleID = NULL;
+  UInt32 size = sizeof(bundleID);
+  if (AudioObjectGetPropertyData(processID, &addr, 0, NULL, &size, &bundleID) != noErr) {
+    return NULL;
+  }
+  return bundleID;
+}
+
+// Helpers embedded inside Chrome/Electron-style bundles should appear as the host application,
+// not as a row per renderer. Choose the outermost .app component when one exists.
+static NSURL *outermost_application_url(NSURL *executableURL) {
+  NSURL *cursor = executableURL.URLByDeletingLastPathComponent;
+  NSURL *outermost = nil;
+  while (cursor && cursor.path.length > 1) {
+    if ([cursor.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame) {
+      outermost = cursor;
+    }
+    NSURL *parent = cursor.URLByDeletingLastPathComponent;
+    if (!parent || [parent.path isEqualToString:cursor.path]) break;
+    cursor = parent;
+  }
+  return outermost;
+}
+
+static NSURL *executable_url_for_pid(pid_t pid, NSRunningApplication *running) {
+  if (running.executableURL) return running.executableURL;
+  char path[PROC_PIDPATHINFO_MAXSIZE] = {0};
+  int length = proc_pidpath(pid, path, sizeof(path));
+  if (length <= 0) return nil;
+  return [NSURL fileURLWithPath:@(path)];
+}
+
+int macos_list_capture_processes(void *context, PLVSAudioProcessCallback callback,
+                                 char *err_out, size_t err_cap) {
+  if (!callback) {
+    if (err_out && err_cap > 0) snprintf(err_out, err_cap, "missing process callback");
+    return -1;
+  }
+  @autoreleasepool {
+    AudioObjectPropertyAddress listAddr = {
+        .mSelector = kAudioHardwarePropertyProcessObjectList,
+        .mScope = kAudioObjectPropertyScopeGlobal,
+        .mElement = kAudioObjectPropertyElementMain,
+    };
+    UInt32 size = 0;
+    OSStatus status = AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &listAddr, 0,
+                                                     NULL, &size);
+    if (status != noErr) {
+      if (err_out && err_cap > 0) {
+        snprintf(err_out, err_cap, "reading Core Audio process list size failed: %d", (int)status);
+      }
+      return -1;
+    }
+    NSMutableData *storage = [NSMutableData dataWithLength:size];
+    status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &listAddr, 0, NULL, &size,
+                                        storage.mutableBytes);
+    if (status != noErr) {
+      if (err_out && err_cap > 0) {
+        snprintf(err_out, err_cap, "reading Core Audio process list failed: %d", (int)status);
+      }
+      return -1;
+    }
+
+    AudioObjectID *processes = storage.mutableBytes;
+    NSUInteger count = size / sizeof(AudioObjectID);
+    pid_t ownPID = NSProcessInfo.processInfo.processIdentifier;
+    for (NSUInteger i = 0; i < count; i++) {
+      AudioObjectID processObjectID = processes[i];
+      pid_t pid = 0;
+      if (!get_process_pid(processObjectID, &pid) || pid <= 0 || pid == ownPID) {
+        continue;
+      }
+
+      NSRunningApplication *running =
+          [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
+      NSURL *executableURL = executable_url_for_pid(pid, running);
+      NSURL *applicationURL = outermost_application_url(executableURL);
+      NSBundle *applicationBundle = applicationURL ? [NSBundle bundleWithURL:applicationURL] : nil;
+      CFStringRef processBundleIDRef = copy_process_bundle_id(processObjectID);
+      NSString *processBundleID = CFBridgingRelease(processBundleIDRef);
+      NSString *applicationBundleID = applicationBundle.bundleIdentifier;
+      BOOL userApplication = running.activationPolicy == NSApplicationActivationPolicyRegular;
+      if (applicationBundleID.length > 0) {
+        for (NSRunningApplication *candidate in
+             [NSRunningApplication runningApplicationsWithBundleIdentifier:applicationBundleID]) {
+          if (candidate.activationPolicy == NSApplicationActivationPolicyRegular) {
+            userApplication = YES;
+            break;
+          }
+        }
+      }
+      if (!applicationURL || !userApplication ||
+          [applicationBundleID isEqualToString:NSBundle.mainBundle.bundleIdentifier]) {
+        continue;
+      }
+      NSString *identity = applicationBundleID ?: processBundleID;
+      if (identity.length == 0) identity = applicationURL.path ?: executableURL.path;
+      if (identity.length == 0) continue;
+
+      NSString *label = [applicationBundle objectForInfoDictionaryKey:@"CFBundleDisplayName"];
+      if (label.length == 0) label = [applicationBundle objectForInfoDictionaryKey:@"CFBundleName"];
+      if (label.length == 0) label = running.localizedName;
+      if (label.length == 0) label = executableURL.lastPathComponent.stringByDeletingPathExtension;
+      if (label.length == 0) label = identity;
+      // Window titles require accessibility or screen-capture privileges. Keep the shared field
+      // empty instead of exposing an implementation-facing bundle identifier in the picker.
+      NSString *detail = @"";
+
+      callback(context, processObjectID, (int32_t)pid, identity.UTF8String ?: "",
+               label.UTF8String ?: "Application", detail.UTF8String ?: "");
+    }
+  }
+  return 0;
+}
 
 #pragma mark - UID lookup
 
@@ -243,8 +382,9 @@ static OSStatus tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *inNow,
   return noErr;
 }
 
-void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, void *pcm_userdata,
-                                  char *err_out, size_t err_cap) {
+void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index,
+                       const uint32_t *process_object_ids, size_t process_object_count,
+                       void *pcm_userdata, char *err_out, size_t err_cap) {
   if (!device_uid_utf8 || !pcm_userdata) {
     if (err_out && err_cap > 0) {
       snprintf(err_out, err_cap, "missing device uid or pcm context");
@@ -261,11 +401,21 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index, void 
       return NULL;
     }
 
-    NSArray *exclude = @[];
-    CATapDescription *tapDesc = [[CATapDescription alloc]
-        initExcludingProcesses:exclude
-                 andDeviceUID:uid
-                   withStream:(NSInteger)stream_index];
+    CATapDescription *tapDesc = nil;
+    if (process_object_count > 0) {
+      NSMutableArray<NSNumber *> *processes =
+          [NSMutableArray arrayWithCapacity:process_object_count];
+      for (size_t i = 0; i < process_object_count; i++) {
+        [processes addObject:@(process_object_ids[i])];
+      }
+      tapDesc = [[CATapDescription alloc] initWithProcesses:processes
+                                              andDeviceUID:uid
+                                                withStream:(NSInteger)stream_index];
+    } else {
+      tapDesc = [[CATapDescription alloc] initExcludingProcesses:@[]
+                                                    andDeviceUID:uid
+                                                      withStream:(NSInteger)stream_index];
+    }
     if (!tapDesc) {
       if (err_out && err_cap > 0) {
         snprintf(err_out, err_cap, "CATapDescription init failed");

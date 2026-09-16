@@ -120,8 +120,8 @@ measured-source PCM 时间轴，并分别编码 H.264/AAC MP4。
 ### 采集层（`src-tauri/src/audio/`）
 
 - **Windows**：`cpal_backend.rs` 通过 `cpal` 打开 WASAPI Loopback——无需虚拟声卡，直接读系统输出 PCM；物理输入也走 cpal。Applications 源走 `windows_process_loopback.rs` 的 `ActivateAudioInterfaceAsync`，以可执行文件路径派生的稳定应用 ID 在每次启动时重新解析当前 PID；由于该接口不提供 mix format，PLVS 以当前默认输出的采样率和已验证声道布局（mono / stereo / 5.1 / 7.1，其他布局安全回退 stereo）显式请求 float32，再进入同一 meter pipeline。该路径要求 Windows build 20348+，且无法捕获绕开系统混音器的 ASIO 或 WASAPI exclusive 输出。
-- **macOS**：系统音频走 `macos/`（Core Audio process tap，需 macOS 14.2+）；物理输入走 cpal。当前 tap 仍配置为全局系统输出，按应用选择尚未启用，也没有经过 macOS 实机验证。平台分发由 `platform_backend.rs` 处理。
-- **采集健康**：运行中的采集超过 `CAPTURE_STALL_TIMEOUT`（5 s）没有回调即判定失败，`engine-state-changed` 发 `error`，前端停在 `error` 并显示原因；无 silence stream 的 Windows loopback 不参与纯回调停滞判定（静音时本就不回调），但仍立即响应 backend 的 fatal stream error。Windows 的 `DeviceNotAvailable` / `StreamInvalidated` 作为结构化 `deviceInvalidated` 原因上报；前端释放旧 stream、重新解析当前设备、清空中断的 Live measurement 并自动重建一次，replacement 连续产出两秒后才重新允许下一次恢复，避免失败循环。设备监视线程每 2 s 同时观察设备列表与当前默认输出，Automatic 下默认输出变化会重启采集；选择 Windows Application 时另以 2 s cadence 刷新稳定应用 ID 对应的当前 PID，PID 变化会通过同一安全重启路径重绑，目标消失则终止假 LIVE 状态并显示错误。分析前丢弃的音频经 `engine-backpressure` 在 footer 显示 Audio Dropped，直到 Clear 或新会话。
+- **macOS**：系统音频走 `macos/`（Core Audio process tap，需 macOS 14.2+）；物理输入走 cpal。全局系统输出使用排除空进程列表的 device-specific tap；Applications 源从 Core Audio process objects 中保留仍在运行的普通 GUI 宿主，以宿主 bundle 派生稳定应用 ID，将同一宿主下的 helper 进程合并后用 `CATapDescription initWithProcesses` 捕获。暂停不移除来源，因为此时 HAL 可以临时清空输出设备列表且 process tap 可以合法地停止回调；应用 tap 当前跟随默认输出设备，并保留该设备原始声道布局。平台分发由 `platform_backend.rs` 处理。
+- **采集健康**：运行中的采集超过 `CAPTURE_STALL_TIMEOUT`（5 s）没有回调即判定失败，`engine-state-changed` 发 `error`，前端停在 `error` 并显示原因；无 silence stream 的 Windows loopback 不参与纯回调停滞判定（静音时本就不回调），但仍立即响应 backend 的 fatal stream error。Windows 的 `DeviceNotAvailable` / `StreamInvalidated` 作为结构化 `deviceInvalidated` 原因上报；前端释放旧 stream、重新解析当前设备、清空中断的 Live measurement 并自动重建一次，replacement 连续产出两秒后才重新允许下一次恢复，避免失败循环。设备监视线程每 2 s 同时观察设备列表与当前默认输出，Automatic 下默认输出变化会重启采集；选择 Application 时另以 2 s cadence 刷新稳定应用 ID 对应的当前 PID / Core Audio process object 集合，集合变化会通过同一安全重启路径重绑，目标消失则终止假 LIVE 状态并显示错误。分析前丢弃的音频经 `engine-backpressure` 在 footer 显示 Audio Dropped，直到 Clear 或新会话。
 
 ### DSP 层（`src-tauri/src/dsp/`）
 
@@ -250,6 +250,6 @@ Dock 刻意没有的：
 | 平台    | 系统音频路径                                      | 最低版本                                                   |
 | ------- | ------------------------------------------------- | ---------------------------------------------------------- |
 | Windows | WASAPI Loopback（cpal）；Application Process Loopback | Windows 10+；按应用采集要求 build 20348+（实际主要为 Windows 11） |
-| macOS   | Core Audio process tap（当前为全局 tap）          | macOS 14.2+（tap 能力要求）                                |
+| macOS   | Core Audio process tap（全局或按应用 process objects） | macOS 14.2+（tap 能力要求）                                |
 
 macOS 低于 14.2 或无 tap 能力时的回退行为以代码实现为准。免签名安装摩擦（Gatekeeper / SmartScreen）的用户说明见 `README.md`。

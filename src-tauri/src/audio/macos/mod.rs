@@ -36,6 +36,8 @@ unsafe extern "C" {
   fn macos_tap_create(
     device_uid_utf8: *const c_char,
     stream_index: isize,
+    process_object_ids: *const u32,
+    process_object_count: usize,
     pcm_userdata: *mut c_void,
     err_out: *mut c_char,
     err_cap: usize,
@@ -146,6 +148,7 @@ fn resolve_tap_uid_channels_rate(device_id: &str) -> Result<(String, u32, u16), 
 
 struct MacosTapWorkerArgs {
   device_id: String,
+  process_object_ids: Vec<u32>,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
   stop_rx: std::sync::mpsc::Receiver<()>,
@@ -161,6 +164,7 @@ struct MacosTapWorkerArgs {
 fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   let MacosTapWorkerArgs {
     device_id,
+    process_object_ids,
     frame_subscribers,
     app,
     stop_rx,
@@ -209,9 +213,16 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   let uid_c = CString::new(uid).map_err(|_| "device UID contains NUL".to_string())?;
   let mut err = vec![0u8; 512];
   let tap = unsafe {
+    let process_object_ids_ptr = if process_object_ids.is_empty() {
+      std::ptr::null()
+    } else {
+      process_object_ids.as_ptr()
+    };
     macos_tap_create(
       uid_c.as_ptr(),
       0isize,
+      process_object_ids_ptr,
+      process_object_ids.len(),
       ctx_ptr.cast(),
       err.as_mut_ptr().cast(),
       err.len(),
@@ -232,8 +243,11 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
     return Err(msg);
   }
 
-  // The tap reports no stream errors; a stall is the only sign that it stopped delivering.
-  let outcome = wait_for_stop_or_stall(&stop_rx, Some(&activity), &AtomicU8::new(0));
+  // A process-specific tap may legitimately stop invoking the IOProc while its target is paused,
+  // just like Windows process loopback without a silence stream. Keep stall detection for the
+  // global tap, whose aggregate callback is expected to remain active.
+  let stall_activity = process_object_ids.is_empty().then_some(activity.as_ref());
+  let outcome = wait_for_stop_or_stall(&stop_rx, stall_activity, &AtomicU8::new(0));
 
   let mut userdata_out: *mut c_void = std::ptr::null_mut();
   unsafe {
@@ -277,6 +291,7 @@ impl MacosTapCaptureSession {
   #[allow(clippy::too_many_arguments)]
   fn start(
     device_id: &str,
+    process_object_ids: Vec<u32>,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
     channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
@@ -297,6 +312,7 @@ impl MacosTapCaptureSession {
       .spawn(move || {
         let result = run_macos_tap_worker(MacosTapWorkerArgs {
           device_id,
+          process_object_ids,
           frame_subscribers,
           app,
           stop_rx,
@@ -309,7 +325,7 @@ impl MacosTapCaptureSession {
           dropped_chunks,
         });
         if let Err(error) = &result {
-          emit_capture_failure(&failure_app, error);
+          emit_capture_failure(&failure_app, error, None);
         }
         result
       })
@@ -343,6 +359,7 @@ pub fn start_session(
   if is_macos_loopback_selection(device_id) {
     Ok(Box::new(MacosTapCaptureSession::start(
       device_id,
+      Vec::new(),
       frame_subscribers,
       app,
       channel_selection,
@@ -361,4 +378,31 @@ pub fn start_session(
       measured_pcm,
     )
   }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn start_application_session(
+  application_id: &str,
+  device_id: &str,
+  frame_subscribers: FrameSubscribers,
+  app: AppHandle,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+  dialogue_gating: Arc<std::sync::Mutex<bool>>,
+  dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+  measured_pcm: Arc<MeasuredPcmSubscriptions>,
+) -> Result<Box<dyn AudioCaptureSession>, String> {
+  let resolved = super::macos_capture_apps::resolve_capture_application(application_id)?;
+  if resolved.audio_process_object_ids.is_empty() {
+    return Err("capture application has no current Core Audio process objects".into());
+  }
+  Ok(Box::new(MacosTapCaptureSession::start(
+    device_id,
+    resolved.audio_process_object_ids,
+    frame_subscribers,
+    app,
+    channel_selection,
+    dialogue_gating,
+    dialogue_vad_engine,
+    measured_pcm,
+  )?))
 }

@@ -20,14 +20,25 @@ import { isTauri } from "../ipc/env.js";
 const APPLICATION_REFRESH_INTERVAL_MS = 2_000;
 
 function normalizeCaptureApplications(applications) {
-  return (Array.isArray(applications) ? applications : []).filter(
-    (application) =>
-      typeof application?.id === "string" &&
-      /^app-[0-9a-f]{32}$/.test(application.id) &&
-      typeof application?.label === "string" &&
-      Number.isInteger(application?.processId) &&
-      application.processId > 0
-  );
+  return (Array.isArray(applications) ? applications : []).flatMap((application) => {
+    if (
+      typeof application?.id !== "string" ||
+      !/^app-[0-9a-f]{32}$/.test(application.id) ||
+      typeof application?.label !== "string" ||
+      !Number.isInteger(application?.processId) ||
+      application.processId <= 0
+    ) {
+      return [];
+    }
+    const processIds = Array.isArray(application.processIds)
+      ? [...new Set(application.processIds.filter((pid) => Number.isInteger(pid) && pid > 0))].sort(
+          (a, b) => a - b
+        )
+      : [application.processId];
+    return [
+      { ...application, processIds: processIds.length ? processIds : [application.processId] },
+    ];
+  });
 }
 
 function emptyInventory() {

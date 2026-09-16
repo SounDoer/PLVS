@@ -8,6 +8,8 @@ pub mod device_enum;
 pub mod device_id;
 #[cfg(target_os = "macos")]
 pub mod macos;
+#[cfg(target_os = "macos")]
+pub mod macos_capture_apps;
 mod platform_backend;
 #[cfg(target_os = "windows")]
 pub mod windows_capture_apps;

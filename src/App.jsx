@@ -1666,7 +1666,10 @@ function AppContent() {
     if (!isTauri()) return "";
     if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
       const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
-      return `${defaultOutputFormatSig || "2:48000"}|pid:${application?.processId ?? "missing"}`;
+      const processSignature = application?.processIds?.length
+        ? application.processIds.join(",")
+        : (application?.processId ?? "missing");
+      return `${defaultOutputFormatSig || "2:48000"}|pid:${processSignature}`;
     }
     if (captureDeviceId === "default") {
       return defaultOutputFormatSig || "";

@@ -189,9 +189,31 @@ describe("useAudioDevices", () => {
     await act(async () => result.current.refreshCaptureApplications());
 
     expect(result.current.captureApplications).toEqual([
-      { id: APP, label: "VLC", processId: 9876, windowTitle: "second.wav - VLC" },
+      {
+        id: APP,
+        label: "VLC",
+        processId: 9876,
+        processIds: [9876],
+        windowTitle: "second.wav - VLC",
+      },
     ]);
     expect(result.current.captureDeviceId).toBe("default");
+  });
+
+  it("normalizes the complete process set used to rebind multi-process applications", async () => {
+    mocks.listCaptureApplications.mockResolvedValue([
+      {
+        id: APP,
+        label: "Browser",
+        processId: 4321,
+        processIds: [9000, 4321, 9000, -1],
+        windowTitle: "com.example.browser",
+      },
+    ]);
+    const { result } = renderHook(() => useAudioDevices());
+
+    await waitFor(() => expect(result.current.captureApplications).toHaveLength(1));
+    expect(result.current.captureApplications[0].processIds).toEqual([4321, 9000]);
   });
 
   it("polls application inventory while a stable application identity is selected", async () => {
