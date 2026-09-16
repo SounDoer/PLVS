@@ -18,6 +18,7 @@ import { DockEditorApp } from "./dock/accessories/DockEditorApp.jsx";
 import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
 import { DOCK_ACCESSORY_SURFACES } from "./dock/accessoryProtocol.js";
 import { migrateDialogueVadEngine } from "./persistence/migrateDialogueVadEngine.js";
+import { AppCrashBoundary } from "./components/AppCrashBoundary.jsx";
 
 const surface = applyDocumentSurface(window.location.search);
 
@@ -37,11 +38,15 @@ applyLayoutToDocument(
 );
 applyThemeToDocument(resolvedThemeId, customThemes);
 
-const RootComponent =
-  surface === "dock-header" ? DockHeaderApp : surface === "dock-editor" ? DockEditorApp : App;
+const root =
+  surface === "dock-header" ? (
+    <DockHeaderApp />
+  ) : surface === "dock-editor" ? (
+    <DockEditorApp />
+  ) : (
+    <AppCrashBoundary>
+      <App />
+    </AppCrashBoundary>
+  );
 
-createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <RootComponent />
-  </React.StrictMode>
-);
+createRoot(document.getElementById("root")).render(<React.StrictMode>{root}</React.StrictMode>);
