@@ -372,6 +372,8 @@ impl AudioCaptureSession for ProcessLoopbackSession {
 #[allow(clippy::too_many_arguments)]
 pub fn start_process_session(
   process_id: u32,
+  sample_rate: u32,
+  channels: u16,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
   channel_selection: Arc<std::sync::Mutex<Option<ChannelSelection>>>,
@@ -382,6 +384,7 @@ pub fn start_process_session(
   if process_id == 0 {
     return Err("process id must be non-zero".to_string());
   }
+  capture_format(sample_rate, channels)?;
   let (stop_tx, stop_rx) = mpsc::channel();
   let clear_peak_history = Arc::new(AtomicBool::new(false));
   let reset_tp_max = Arc::new(AtomicBool::new(false));
@@ -395,7 +398,7 @@ pub fn start_process_session(
       let dropped_chunks = Arc::new(AtomicU64::new(0));
       let pool = PcmBufferPool::new(
         PCM_QUEUE_CAP + 1,
-        pooled_pcm_buffer_capacity(DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS),
+        pooled_pcm_buffer_capacity(sample_rate, channels),
       );
       let bridge_pool = pool.clone();
       let cleanup_pool = pool.clone();
@@ -406,8 +409,8 @@ pub fn start_process_session(
       let bridge = std::thread::spawn(move || {
         run_meter_pipeline_bridge_thread(
           bridge_delivery,
-          DEFAULT_SAMPLE_RATE,
-          DEFAULT_CHANNELS,
+          sample_rate,
+          channels,
           frame_subscribers,
           app,
           clear_for_bridge,
@@ -422,13 +425,7 @@ pub fn start_process_session(
         cleanup_delivery.consumer_finished(&cleanup_pool);
       });
       let forwarder = PcmCallbackForwarder::new(delivery.producer(), pool, dropped_chunks);
-      let result = run_process_stream(
-        process_id,
-        DEFAULT_SAMPLE_RATE,
-        DEFAULT_CHANNELS,
-        stop_rx,
-        forwarder,
-      );
+      let result = run_process_stream(process_id, sample_rate, channels, stop_rx, forwarder);
       delivery.stop_producer();
       let _ = bridge.join();
       if let Err(error) = &result {

@@ -104,7 +104,12 @@ export function useAudioDevices({
         (candidate) => candidate.id === deviceId
       );
       if (!application) throw new Error("Capture application is not currently running.");
-      return { label: application.label, sampleRateHz: 48_000, channels: 2 };
+      const outputFormat = snapshotRef.current.automatic.resolved;
+      return {
+        label: application.label,
+        sampleRateHz: outputFormat?.sampleRateHz ?? 48_000,
+        channels: [1, 2, 6, 8].includes(outputFormat?.channelCount) ? outputFormat.channelCount : 2,
+      };
     }
     return previewAudioDevice(deviceId);
   }, []);

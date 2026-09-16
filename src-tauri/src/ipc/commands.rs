@@ -70,6 +70,16 @@ pub fn migrate_capture_device_id(device_id: String) -> Result<Option<String>, St
   Ok(None)
 }
 
+#[cfg(target_os = "windows")]
+fn normalize_process_capture_format(sample_rate: u32, channels: u16) -> (u32, u16) {
+  let channels = if matches!(channels, 1 | 2 | 6 | 8) {
+    channels
+  } else {
+    2
+  };
+  (sample_rate, channels)
+}
+
 #[tauri::command]
 pub fn audio_start(
   app: AppHandle,
@@ -137,12 +147,25 @@ pub fn audio_start(
     None
   };
   let process_id = process_id.or(resolved_application_process);
+  #[cfg(target_os = "windows")]
+  let process_format = process_id.map(|_| {
+    let (sample_rate, channels) =
+      cpal_backend::device_default_format(&device_id).unwrap_or((48_000, 2));
+    // The explicit WAVEFORMATEXTENSIBLE masks validated by the process-loopback probe currently
+    // cover mono, stereo, 5.1, and 7.1. Preserve a safe stereo fallback for uncommon layouts until
+    // their speaker masks are verified on a real endpoint.
+    normalize_process_capture_format(sample_rate, channels)
+  });
   let session = match process_id {
     Some(process_id) => {
       #[cfg(target_os = "windows")]
       {
+        let (sample_rate, channels) =
+          process_format.ok_or_else(|| "process capture format was not resolved".to_string())?;
         crate::audio::windows_process_loopback::start_process_session(
           process_id,
+          sample_rate,
+          channels,
           pool,
           app.clone(),
           channel_selection,
@@ -177,7 +200,10 @@ pub fn audio_start(
     *source = EngineSource::Live(session);
   }
   if process_id.is_some() {
-    let _ = app.emit("sample-rate-changed", 48_000u32);
+    #[cfg(target_os = "windows")]
+    if let Some((sample_rate, _)) = process_format {
+      let _ = app.emit("sample-rate-changed", sample_rate);
+    }
   } else if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
     let _ = app.emit("sample-rate-changed", sr);
   }
@@ -598,6 +624,23 @@ mod tests {
     AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, StereoMapAnalysisPair,
     StereoMapAnalysisRequest, VectorscopeAnalysisRequest,
   };
+
+  #[cfg(target_os = "windows")]
+  #[test]
+  fn process_capture_format_preserves_verified_layouts_and_falls_back_to_stereo() {
+    for channels in [1, 2, 6, 8] {
+      assert_eq!(
+        super::normalize_process_capture_format(96_000, channels),
+        (96_000, channels)
+      );
+    }
+    for channels in [3, 4, 5, 7, 16] {
+      assert_eq!(
+        super::normalize_process_capture_format(44_100, channels),
+        (44_100, 2)
+      );
+    }
+  }
 
   #[test]
   fn channel_selection_derives_weights_and_a_layout_name() {

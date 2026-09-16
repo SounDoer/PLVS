@@ -133,7 +133,7 @@ describe("useAudioEngine", () => {
         expect.objectContaining({ deviceId: "default", applicationId })
       )
     );
-    expect(previewAudioDevice).not.toHaveBeenCalled();
+    expect(previewAudioDevice).toHaveBeenCalledWith("default");
   });
 
   it("clears local meter state when capture format changes during a running session", async () => {

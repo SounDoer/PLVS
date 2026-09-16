@@ -171,7 +171,7 @@ PLVS/
 
 ### 采集层（`src-tauri/src/audio/`）
 
-- **Windows**：`cpal_backend.rs` 通过 `cpal` 打开 WASAPI Loopback——无需虚拟声卡，直接读系统输出 PCM；物理输入也走 cpal。Applications 源走 `windows_process_loopback.rs` 的 `ActivateAudioInterfaceAsync`，以可执行文件路径派生的稳定应用 ID 在每次启动时重新解析当前 PID，并请求 48 kHz stereo float32 后进入同一 meter pipeline。该路径要求 Windows build 20348+，且无法捕获绕开系统混音器的 ASIO 或 WASAPI exclusive 输出。
+- **Windows**：`cpal_backend.rs` 通过 `cpal` 打开 WASAPI Loopback——无需虚拟声卡，直接读系统输出 PCM；物理输入也走 cpal。Applications 源走 `windows_process_loopback.rs` 的 `ActivateAudioInterfaceAsync`，以可执行文件路径派生的稳定应用 ID 在每次启动时重新解析当前 PID；由于该接口不提供 mix format，PLVS 以当前默认输出的采样率和已验证声道布局（mono / stereo / 5.1 / 7.1，其他布局安全回退 stereo）显式请求 float32，再进入同一 meter pipeline。该路径要求 Windows build 20348+，且无法捕获绕开系统混音器的 ASIO 或 WASAPI exclusive 输出。
 - **macOS**：系统音频走 `macos/`（Core Audio process tap，需 macOS 14.2+）；物理输入走 cpal。当前 tap 仍配置为全局系统输出，按应用选择尚未启用，也没有经过 macOS 实机验证。平台分发由 `platform_backend.rs` 处理。
 - **采集健康**：运行中的采集超过 `CAPTURE_STALL_TIMEOUT`（5 s）没有回调即判定失败，`engine-state-changed` 发 `error`，前端停在 `error` 并显示原因；无 silence stream 的 Windows loopback 不参与判定（静音时本就不回调）。设备监视线程每 2 s 同时观察设备列表与当前默认输出，Automatic 下默认输出变化会重启采集。分析前丢弃的音频经 `engine-backpressure` 在 footer 显示 Audio Dropped，直到 Clear 或新会话。
 

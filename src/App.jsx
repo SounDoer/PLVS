@@ -1652,7 +1652,9 @@ function AppContent() {
 
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
-    if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) return "2:48000";
+    if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
+      return defaultOutputFormatSig || "2:48000";
+    }
     if (captureDeviceId === "default") {
       return defaultOutputFormatSig || "";
     }

@@ -140,6 +140,11 @@ describe("useAudioDevices", () => {
   });
 
   it("selects a running application by stable identity without device preview", async () => {
+    mocks.previewAudioDevice.mockResolvedValue({
+      label: "Surround Output",
+      sampleRateHz: 96_000,
+      channels: 6,
+    });
     mocks.listCaptureApplications.mockResolvedValue([
       { id: APP, label: "VLC", processId: 4321, windowTitle: "reference.wav - VLC" },
     ]);
@@ -152,6 +157,11 @@ describe("useAudioDevices", () => {
     expect(result.current.safeAudioDeviceId).toBe(APP);
     expect(mocks.saveCaptureDeviceId).toHaveBeenCalledWith(APP);
     expect(mocks.previewAudioDevice).not.toHaveBeenCalledWith(APP);
+    await expect(result.current.previewSelection(APP)).resolves.toEqual({
+      label: "VLC",
+      sampleRateHz: 96_000,
+      channels: 6,
+    });
   });
 
   it("preserves a saved application identity while the application is not running", async () => {

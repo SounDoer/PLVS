@@ -152,7 +152,9 @@ export function useAudioEngine({
 
           let engineDeviceId;
           if (applicationId) {
-            defaultSampleRateRef.current = 48_000;
+            const preview = await previewAudioDevice("default");
+            if (!mounted) return;
+            defaultSampleRateRef.current = preview.sampleRateHz || 48_000;
             engineDeviceId = "default";
           } else if (isAutomatic) {
             const preview = await previewAudioDevice("default");
