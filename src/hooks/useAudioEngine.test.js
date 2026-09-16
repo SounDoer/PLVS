@@ -113,6 +113,29 @@ describe("useAudioEngine", () => {
     stopAudioCapture.mockResolvedValue(undefined);
   });
 
+  it("starts process loopback for a stable application selection", async () => {
+    const applicationId = "app-00112233445566778899aabbccddeeff";
+    renderHook(() =>
+      useHarness({
+        captureDeviceId: applicationId,
+        intake: { reset: vi.fn() },
+        setAudio: vi.fn(),
+        raiseNotice: vi.fn(),
+        halt: vi.fn(),
+        setSelectedOffset: vi.fn(),
+        resetTimer: vi.fn(),
+        setShowClock: vi.fn(),
+      })
+    );
+
+    await waitFor(() =>
+      expect(startAudioCapture).toHaveBeenCalledWith(
+        expect.objectContaining({ deviceId: "default", applicationId })
+      )
+    );
+    expect(previewAudioDevice).not.toHaveBeenCalled();
+  });
+
   it("clears local meter state when capture format changes during a running session", async () => {
     const props = {
       captureFormatSignature: "2:48000",

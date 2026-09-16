@@ -11,6 +11,7 @@ import {
 
 const STABLE_LOOPBACK_ID = "lb-0123456789abcdef0123456789abcdef";
 const STABLE_CAPTURE_ID = "cap-fedcba9876543210fedcba9876543210";
+const STABLE_APPLICATION_ID = "app-00112233445566778899aabbccddeeff";
 
 describe("capturePrefs localStorage keys", () => {
   beforeEach(() => localStorage.clear());
@@ -19,7 +20,7 @@ describe("capturePrefs localStorage keys", () => {
     expect(LEGACY_CAPTURE_DEVICE_LS_KEY).toBe("plvs.captureDeviceId");
   });
 
-  it.each([STABLE_LOOPBACK_ID, STABLE_CAPTURE_ID])(
+  it.each([STABLE_LOOPBACK_ID, STABLE_CAPTURE_ID, STABLE_APPLICATION_ID])(
     "round-trips current stable device ID %s",
     async (id) => {
       await saveCaptureDeviceId(id);
@@ -34,7 +35,7 @@ describe("capturePrefs localStorage keys", () => {
   });
 
   it("normalizes labels, malformed hashes, and indexes outside the legacy grammar", async () => {
-    for (const id of ["Microphone", "lb-short", "cap-Z123", "out:-1"]) {
+    for (const id of ["Microphone", "lb-short", "cap-Z123", "app-short", "out:-1"]) {
       await saveCaptureDeviceId(id);
       expect(await loadCaptureDeviceId()).toBe("default");
     }

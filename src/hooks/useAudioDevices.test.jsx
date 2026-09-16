@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   listAudioDevices: vi.fn(),
+  listCaptureApplications: vi.fn(),
   migrateCaptureDeviceId: vi.fn(),
   previewAudioDevice: vi.fn(),
   loadCaptureDeviceId: vi.fn(),
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../ipc/commands.js", () => ({
   listAudioDevices: mocks.listAudioDevices,
+  listCaptureApplications: mocks.listCaptureApplications,
   migrateCaptureDeviceId: mocks.migrateCaptureDeviceId,
   previewAudioDevice: mocks.previewAudioDevice,
 }));
@@ -33,6 +35,7 @@ import { useAudioDevices } from "./useAudioDevices.js";
 
 const LB = "lb-0123456789abcdef0123456789abcdef";
 const CAP = "cap-fedcba9876543210fedcba9876543210";
+const APP = "app-00112233445566778899aabbccddeeff";
 
 function device(id, label, output = false) {
   return {
@@ -61,6 +64,7 @@ beforeEach(() => {
   mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue("default");
   mocks.loadCaptureDeviceId.mockResolvedValue("default");
   mocks.listAudioDevices.mockResolvedValue([device(LB, "Speakers", true), device(CAP, "Mic")]);
+  mocks.listCaptureApplications.mockResolvedValue([]);
   mocks.previewAudioDevice.mockResolvedValue({
     label: "Speakers",
     sampleRateHz: 48_000,
@@ -133,6 +137,33 @@ describe("useAudioDevices", () => {
     await act(async () => restart.resolve());
     await selection;
     expect(settled).toBe(true);
+  });
+
+  it("selects a running application by stable identity without device preview", async () => {
+    mocks.listCaptureApplications.mockResolvedValue([
+      { id: APP, label: "VLC", processId: 4321, windowTitle: "reference.wav - VLC" },
+    ]);
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.captureApplications).toHaveLength(1));
+
+    await act(async () => result.current.selectCaptureDevice(APP));
+
+    expect(result.current.captureDeviceId).toBe(APP);
+    expect(result.current.safeAudioDeviceId).toBe(APP);
+    expect(mocks.saveCaptureDeviceId).toHaveBeenCalledWith(APP);
+    expect(mocks.previewAudioDevice).not.toHaveBeenCalledWith(APP);
+  });
+
+  it("preserves a saved application identity while the application is not running", async () => {
+    mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue(APP);
+    mocks.loadCaptureDeviceId.mockResolvedValue(APP);
+    const { result } = renderHook(() => useAudioDevices());
+
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+    await waitFor(() => expect(result.current.captureDeviceId).toBe(APP));
+
+    expect(result.current.safeAudioDeviceId).toBe("default");
+    expect(mocks.migrateCaptureDeviceId).not.toHaveBeenCalled();
   });
 
   it("leaves the current Live session untouched when preflight fails", async () => {

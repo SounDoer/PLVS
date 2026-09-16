@@ -22,6 +22,10 @@ export async function listAudioDevices() {
   return invoke("list_audio_devices");
 }
 
+export async function listCaptureApplications() {
+  return invoke("list_capture_applications");
+}
+
 /** @param {string} deviceId Pass `"default"` for the OS default playback device (WASAPI loopback). */
 export async function previewAudioDevice(deviceId) {
   return invoke("preview_audio_device", { deviceId });
@@ -32,14 +36,19 @@ export function migrateCaptureDeviceId(deviceId) {
   return invoke("migrate_capture_device_id", { deviceId });
 }
 
-/** @param {{ deviceId: string; processId?: number | null; onFrame: (payload: object) => void }} opts */
-export async function startAudioCapture({ deviceId, processId = null, onFrame }) {
+/** @param {{ deviceId: string; processId?: number | null; applicationId?: string | null; onFrame: (payload: object) => void }} opts */
+export async function startAudioCapture({
+  deviceId,
+  processId = null,
+  applicationId = null,
+  onFrame,
+}) {
   const onAudio = new Channel();
   onAudio.onmessage = (msg) => {
     const frame = frameFromChannelMessage(msg);
     if (frame) onFrame(frame);
   };
-  await invoke("audio_start", { deviceId, processId, onFrame: onAudio });
+  await invoke("audio_start", { deviceId, processId, applicationId, onFrame: onAudio });
   return onAudio;
 }
 

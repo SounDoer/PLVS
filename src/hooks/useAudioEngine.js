@@ -139,15 +139,22 @@ export function useAudioEngine({
         await stopResult;
         if (!mounted) return;
         if (isTauri()) {
+          const applicationId = /^app-[0-9a-f]{32}$/.test(captureDeviceId) ? captureDeviceId : null;
           const devices = await listAudioDevices();
           if (!mounted) return;
-          if (!devices?.length) {
+          if (!applicationId && !devices?.length) {
             throw new Error("No input devices reported by the native engine");
           }
-          const { device: resolvedDevice, isAutomatic } = resolveDevice(devices, captureDeviceId);
+          const resolved = applicationId
+            ? { device: { id: applicationId, defaultSampleRate: 48_000 }, isAutomatic: false }
+            : resolveDevice(devices, captureDeviceId);
+          const { device: resolvedDevice, isAutomatic } = resolved;
 
           let engineDeviceId;
-          if (isAutomatic) {
+          if (applicationId) {
+            defaultSampleRateRef.current = 48_000;
+            engineDeviceId = "default";
+          } else if (isAutomatic) {
             const preview = await previewAudioDevice("default");
             if (!mounted) return;
             defaultSampleRateRef.current = preview.sampleRateHz || 48000;
@@ -217,6 +224,7 @@ export function useAudioEngine({
           try {
             await startAudioCapture({
               deviceId: engineDeviceId,
+              ...(applicationId ? { applicationId } : {}),
               onFrame: applyFrame,
             });
           } catch (error) {

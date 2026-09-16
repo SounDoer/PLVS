@@ -36,6 +36,8 @@ use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 
 #[cfg(target_os = "windows")]
+pub use audio::windows_capture_apps::{list_capture_applications, CaptureApplication};
+#[cfg(target_os = "windows")]
 pub use audio::windows_process_loopback::{
   capture_process_to_summary, capture_process_to_summary_with_channels,
   capture_process_to_summary_with_format, ProcessLoopbackProbeResult,
@@ -106,6 +108,7 @@ pub fn run() {
     )))
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
+      ipc::commands::list_capture_applications,
       ipc::commands::preview_audio_device,
       ipc::commands::migrate_capture_device_id,
       ipc::commands::audio_start,

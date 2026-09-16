@@ -517,11 +517,13 @@ function AppContent() {
   const {
     snapshot: audioDeviceSnapshot,
     audioDevices,
+    captureApplications,
     captureDeviceId,
     safeAudioDeviceId,
     selectCaptureDevice,
     commitCaptureDevice,
     previewSelection,
+    refreshInventory,
     defaultOutputFormatSig,
     defaultOutputLabel,
   } = useAudioDevices({
@@ -1650,6 +1652,7 @@ function AppContent() {
 
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
+    if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) return "2:48000";
     if (captureDeviceId === "default") {
       return defaultOutputFormatSig || "";
     }
@@ -1662,8 +1665,10 @@ function AppContent() {
     if (captureDeviceId === "default") {
       return defaultOutputLabel || audioDevices.find((d) => d.isSystemOutputMonitor)?.label || null;
     }
+    const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
+    if (application) return application.label;
     return audioDevices.find((d) => d.id === captureDeviceId)?.label ?? null;
-  }, [captureDeviceId, audioDevices, defaultOutputLabel]);
+  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel]);
   const deviceDisplay = useMemo(
     () => (deviceName ? formatAudioDeviceLabel(deviceName) : null),
     [deviceName]
@@ -2246,6 +2251,8 @@ function AppContent() {
     audioDevices,
     audioOutputs,
     audioInputs,
+    captureApplications,
+    onRefreshSources: refreshInventory,
     safeAudioDeviceId,
     setCaptureDeviceId: onSelectCaptureDevice,
     holdFocusControls,

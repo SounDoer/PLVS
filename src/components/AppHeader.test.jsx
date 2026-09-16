@@ -138,6 +138,30 @@ describe("AppHeader", () => {
     expect(screen.getByText("Realtek USB Audio")).toBeTruthy();
   });
 
+  it("lists running applications and refreshes sources when the picker opens", () => {
+    const onRefreshSources = vi.fn();
+    const setCaptureDeviceId = vi.fn();
+    renderHeader({
+      captureApplications: [
+        {
+          id: "app-00112233445566778899aabbccddeeff",
+          label: "VLC",
+          processId: 4321,
+          windowTitle: "reference.wav - VLC",
+        },
+      ],
+      onRefreshSources,
+      setCaptureDeviceId,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+    expect(onRefreshSources).toHaveBeenCalledOnce();
+    expect(screen.getByText("Applications")).toBeTruthy();
+    expect(screen.getByText("reference.wav - VLC")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "VLC application audio" }));
+    expect(setCaptureDeviceId).toHaveBeenCalledWith("app-00112233445566778899aabbccddeeff");
+  });
+
   it("seats Loudness Profile between Devices and Modules", () => {
     const { container } = renderHeader();
     const buttons = within(container.querySelector("header"))

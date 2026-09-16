@@ -87,6 +87,8 @@ export function AppHeader({
   audioDevices,
   audioOutputs,
   audioInputs,
+  captureApplications = [],
+  onRefreshSources,
   safeAudioDeviceId,
   setCaptureDeviceId,
   holdFocusControls,
@@ -170,7 +172,8 @@ export function AppHeader({
             <Popover
               open={devicesOpen}
               onOpenChange={(open) => {
-                if (open && !audioDevices.length) return;
+                if (open && !audioDevices.length && !captureApplications.length) return;
+                if (open) void onRefreshSources?.();
                 setDevicesOpen(open);
                 if (autoHideControls) holdFocusControls(open);
               }}
@@ -182,7 +185,7 @@ export function AppHeader({
                       <Volume2 className="size-[length:var(--ui-icon-shell-action)] shrink-0" />
                     }
                     tip="Devices"
-                    disabled={!audioDevices.length}
+                    disabled={!audioDevices.length && !captureApplications.length}
                     className={TOOLBAR_TRIGGER_OPEN_CLASS}
                   />
                 </span>
@@ -223,6 +226,23 @@ export function AppHeader({
                         device={device}
                         selected={safeAudioDeviceId === device.id}
                         onSelect={() => handleDeviceSelect(device.id)}
+                      />
+                    ))}
+                  </>
+                ) : null}
+                {captureApplications.length ? (
+                  <>
+                    <p className="px-2 pt-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground/70">
+                      Applications
+                    </p>
+                    {captureApplications.map((application) => (
+                      <DeviceRow
+                        key={application.id}
+                        ariaLabel={`${application.label} application audio`}
+                        primary={application.label}
+                        secondary={application.windowTitle}
+                        selected={safeAudioDeviceId === application.id}
+                        onSelect={() => handleDeviceSelect(application.id)}
                       />
                     ))}
                   </>

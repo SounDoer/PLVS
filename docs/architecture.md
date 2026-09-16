@@ -171,8 +171,8 @@ PLVS/
 
 ### 采集层（`src-tauri/src/audio/`）
 
-- **Windows**：`cpal_backend.rs` 通过 `cpal` 打开 WASAPI Loopback——无需虚拟声卡，直接读系统输出 PCM。物理输入也走 cpal。
-- **macOS**：系统音频走 `macos/`（Core Audio process tap，需 macOS 14.2+）；物理输入走 cpal。平台分发由 `platform_backend.rs` 处理。
+- **Windows**：`cpal_backend.rs` 通过 `cpal` 打开 WASAPI Loopback——无需虚拟声卡，直接读系统输出 PCM；物理输入也走 cpal。Applications 源走 `windows_process_loopback.rs` 的 `ActivateAudioInterfaceAsync`，以可执行文件路径派生的稳定应用 ID 在每次启动时重新解析当前 PID，并请求 48 kHz stereo float32 后进入同一 meter pipeline。该路径要求 Windows build 20348+，且无法捕获绕开系统混音器的 ASIO 或 WASAPI exclusive 输出。
+- **macOS**：系统音频走 `macos/`（Core Audio process tap，需 macOS 14.2+）；物理输入走 cpal。当前 tap 仍配置为全局系统输出，按应用选择尚未启用，也没有经过 macOS 实机验证。平台分发由 `platform_backend.rs` 处理。
 - **采集健康**：运行中的采集超过 `CAPTURE_STALL_TIMEOUT`（5 s）没有回调即判定失败，`engine-state-changed` 发 `error`，前端停在 `error` 并显示原因；无 silence stream 的 Windows loopback 不参与判定（静音时本就不回调）。设备监视线程每 2 s 同时观察设备列表与当前默认输出，Automatic 下默认输出变化会重启采集。分析前丢弃的音频经 `engine-backpressure` 在 footer 显示 Audio Dropped，直到 Clear 或新会话。
 
 ### DSP 层（`src-tauri/src/dsp/`）
@@ -299,9 +299,9 @@ Dock 刻意没有的：
 
 ## 8. 平台说明
 
-| 平台    | 系统音频路径            | 最低版本                         |
-| ------- | ----------------------- | -------------------------------- |
-| Windows | WASAPI Loopback（cpal） | Windows 10+（WebView2 required） |
-| macOS   | Core Audio process tap  | macOS 14.2+（tap 能力要求）      |
+| 平台    | 系统音频路径                                      | 最低版本                                                   |
+| ------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| Windows | WASAPI Loopback（cpal）；Application Process Loopback | Windows 10+；按应用采集要求 build 20348+（实际主要为 Windows 11） |
+| macOS   | Core Audio process tap（当前为全局 tap）          | macOS 14.2+（tap 能力要求）                                |
 
 macOS 低于 14.2 或无 tap 能力时的回退行为以代码实现为准。免签名安装摩擦（Gatekeeper / SmartScreen）的用户说明见 `README.md`。

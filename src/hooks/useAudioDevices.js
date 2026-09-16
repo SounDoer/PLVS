@@ -3,7 +3,12 @@ import {
   advanceDeviceGeneration,
   normalizeDeviceInventory,
 } from "../agentControl/deviceControl.js";
-import { listAudioDevices, migrateCaptureDeviceId, previewAudioDevice } from "../ipc/commands.js";
+import {
+  listAudioDevices,
+  listCaptureApplications,
+  migrateCaptureDeviceId,
+  previewAudioDevice,
+} from "../ipc/commands.js";
 import {
   loadCaptureDeviceId,
   readCaptureDeviceIdFromLocalStorage,
@@ -19,6 +24,7 @@ function emptyInventory() {
     automatic: { id: "default", label: "Automatic", available: false, resolved: null },
     devices: [],
     allDevices: [],
+    captureApplications: [],
     truncated: false,
     signature: "",
     requestedId: readCaptureDeviceIdFromLocalStorage(),
@@ -92,7 +98,16 @@ export function useAudioDevices({
     [publish, updateSnapshot]
   );
 
-  const previewSelection = useCallback(async (deviceId) => previewAudioDevice(deviceId), []);
+  const previewSelection = useCallback(async (deviceId) => {
+    if (/^app-[0-9a-f]{32}$/.test(deviceId)) {
+      const application = snapshotRef.current.captureApplications.find(
+        (candidate) => candidate.id === deviceId
+      );
+      if (!application) throw new Error("Capture application is not currently running.");
+      return { label: application.label, sampleRateHz: 48_000, channels: 2 };
+    }
+    return previewAudioDevice(deviceId);
+  }, []);
 
   const selectCaptureDevice = useCallback(
     async (nextId, options = {}) => {
@@ -146,10 +161,15 @@ export function useAudioDevices({
       if (!isTauri()) return snapshotRef.current;
       const sequence = ++refreshSequenceRef.current;
       let devices;
+      let captureApplications;
       try {
-        devices = providedDevices === undefined ? await listAudioDevices() : providedDevices;
+        [devices, captureApplications] = await Promise.all([
+          providedDevices === undefined ? listAudioDevices() : providedDevices,
+          listCaptureApplications().catch(() => []),
+        ]);
       } catch (_) {
         devices = [];
+        captureApplications = [];
       }
       let automaticPreview = null;
       try {
@@ -166,6 +186,14 @@ export function useAudioDevices({
       const advanced = advanceDeviceGeneration(snapshotRef.current, normalized);
       const next = {
         ...advanced,
+        captureApplications: (Array.isArray(captureApplications) ? captureApplications : []).filter(
+          (application) =>
+            typeof application?.id === "string" &&
+            /^app-[0-9a-f]{32}$/.test(application.id) &&
+            typeof application?.label === "string" &&
+            Number.isInteger(application?.processId) &&
+            application.processId > 0
+        ),
         requestedId: snapshotRef.current.requestedId,
         migrationState: snapshotRef.current.migrationState,
         inventoryReady: true,
@@ -213,7 +241,14 @@ export function useAudioDevices({
 
   useEffect(() => {
     if (!isTauri() || !snapshot.inventoryReady || snapshot.requestedId === "default") return;
-    if (snapshot.allDevices.some((device) => device.id === snapshot.requestedId)) return;
+    // Application IDs are stable identities rather than device endpoints. Preserve an application
+    // selection while it is not running so the same selection can rebind to its next PID.
+    if (/^app-[0-9a-f]{32}$/.test(snapshot.requestedId)) return;
+    if (
+      snapshot.allDevices.some((device) => device.id === snapshot.requestedId) ||
+      snapshot.captureApplications.some((application) => application.id === snapshot.requestedId)
+    )
+      return;
     if (snapshot.migrationState?.state === "migrating") return;
     if (
       snapshot.migrationState?.state === "failed" &&
@@ -253,9 +288,13 @@ export function useAudioDevices({
   }, [selectCaptureDevice, snapshot, updateSnapshot]);
 
   const safeAudioDeviceId = useMemo(() => {
-    const allowed = new Set(["default", ...snapshot.allDevices.map((device) => device.id)]);
+    const allowed = new Set([
+      "default",
+      ...snapshot.allDevices.map((device) => device.id),
+      ...snapshot.captureApplications.map((application) => application.id),
+    ]);
     return allowed.has(snapshot.requestedId) ? snapshot.requestedId : "default";
-  }, [snapshot.allDevices, snapshot.requestedId]);
+  }, [snapshot.allDevices, snapshot.captureApplications, snapshot.requestedId]);
 
   const audioDevices = useMemo(
     () =>
@@ -273,6 +312,7 @@ export function useAudioDevices({
   return {
     snapshot,
     audioDevices,
+    captureApplications: snapshot.captureApplications,
     captureDeviceId: snapshot.requestedId,
     safeAudioDeviceId,
     selectCaptureDevice,

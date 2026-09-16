@@ -2,15 +2,32 @@
 fn main() -> Result<(), String> {
   use std::time::Duration;
 
-  use app_lib::capture_process_to_summary_with_format;
+  use app_lib::{capture_process_to_summary_with_format, list_capture_applications};
   use serde_json::json;
 
   let mut args = std::env::args().skip(1);
-  let process_id = args
+  let first_arg = args
     .next()
-    .ok_or_else(|| "usage: process_loopback_probe <pid> [seconds]".to_string())?
-    .parse::<u32>()
-    .map_err(|_| "pid must be a positive integer".to_string())?;
+    .ok_or_else(|| "usage: process_loopback_probe <pid> [seconds]".to_string())?;
+  if first_arg == "--list-applications" {
+    println!(
+      "{}",
+      serde_json::to_string_pretty(&list_capture_applications()?)
+        .map_err(|error| error.to_string())?
+    );
+    return Ok(());
+  }
+  let process_id = if first_arg.starts_with("app-") {
+    list_capture_applications()?
+      .into_iter()
+      .find(|application| application.id == first_arg)
+      .map(|application| application.process_id)
+      .ok_or_else(|| "capture application is not currently running".to_string())?
+  } else {
+    first_arg
+      .parse::<u32>()
+      .map_err(|_| "pid must be a positive integer or stable application id".to_string())?
+  };
   let rest: Vec<String> = args.collect();
   let mut json_output = false;
   let mut seconds_arg = None;

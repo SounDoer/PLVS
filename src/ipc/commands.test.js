@@ -17,6 +17,7 @@ import {
   cursorOverDockSurfaces,
   getUiFrameDiagnostics,
   getVisualCaptureCapabilities,
+  listCaptureApplications,
   probeFileAnalysis,
   getDockState,
   setDialogueGating,
@@ -40,6 +41,11 @@ beforeEach(() => {
 });
 
 describe("audio engine command seam", () => {
+  it("lists capture applications through the native boundary", async () => {
+    await listCaptureApplications();
+    expect(invoke).toHaveBeenCalledWith("list_capture_applications");
+  });
+
   it("passes an optional process target through the IPC boundary", async () => {
     const onFrame = vi.fn();
     const channel = await startAudioCapture({ deviceId: "default", processId: 4242, onFrame });
@@ -47,6 +53,7 @@ describe("audio engine command seam", () => {
     expect(invoke).toHaveBeenCalledWith("audio_start", {
       deviceId: "default",
       processId: 4242,
+      applicationId: null,
       onFrame: channel,
     });
   });

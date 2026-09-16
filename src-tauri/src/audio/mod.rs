@@ -10,6 +10,8 @@ pub mod device_id;
 pub mod macos;
 mod platform_backend;
 #[cfg(target_os = "windows")]
+pub mod windows_capture_apps;
+#[cfg(target_os = "windows")]
 pub mod windows_process_loopback;
 
 pub use capture::{

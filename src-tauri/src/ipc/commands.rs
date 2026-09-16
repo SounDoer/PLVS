@@ -23,6 +23,19 @@ pub fn list_audio_devices() -> Result<Vec<DeviceInfo>, String> {
   AudioCapture::list_devices(&AppAudioBackend)
 }
 
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub fn list_capture_applications(
+) -> Result<Vec<crate::audio::windows_capture_apps::CaptureApplication>, String> {
+  crate::audio::windows_capture_apps::list_capture_applications()
+}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+pub fn list_capture_applications() -> Result<Vec<serde_json::Value>, String> {
+  Ok(Vec::new())
+}
+
 #[tauri::command]
 pub fn preview_audio_device(device_id: String) -> Result<AudioDevicePreview, String> {
   let (label, _id_key, sample_rate_hz, channels) = cpal_backend::preview_device(&device_id)?;
@@ -62,6 +75,7 @@ pub fn audio_start(
   app: AppHandle,
   device_id: String,
   process_id: Option<u32>,
+  application_id: Option<String>,
   on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -107,6 +121,22 @@ pub fn audio_start(
   let channel_selection = state.inner().channel_selection.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let dialogue_vad_engine = state.inner().dialogue_vad_engine.clone();
+  if process_id.is_some() && application_id.is_some() {
+    return Err("audio_start accepts either processId or applicationId, not both".to_string());
+  }
+  #[cfg(target_os = "windows")]
+  let resolved_application_process = application_id
+    .as_deref()
+    .map(crate::audio::windows_capture_apps::resolve_capture_application)
+    .transpose()?
+    .map(|application| application.process_id);
+  #[cfg(not(target_os = "windows"))]
+  let resolved_application_process = if application_id.is_some() {
+    return Err("per-process capture is not available on this platform".to_string());
+  } else {
+    None
+  };
+  let process_id = process_id.or(resolved_application_process);
   let session = match process_id {
     Some(process_id) => {
       #[cfg(target_os = "windows")]

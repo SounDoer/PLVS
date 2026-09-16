@@ -203,7 +203,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 ### A.1 已实现（摘要，非穷尽）
 
 - **桌面壳**：Tauri；Windows **WebView2**；macOS **系统 WebView**。  
-- **采集**：Windows **WASAPI Loopback + 物理输入**；macOS **系统音频（较新版本上的 tap 路径）**，物理输入 **cpal**；设备列表与默认源语义以架构文档为准。  
+- **采集**：Windows **WASAPI Loopback + 物理输入**，并可从统一来源选择器按稳定应用身份采集当前进程树；macOS **系统音频（较新版本上的全局 tap 路径）**，物理输入 **cpal**；设备列表与默认源语义以架构文档为准。
 - **表头（7）**：Level Meter（峰值/响度可切换）、Loudness、Stats、Spectrum、Spectrogram、Vectorscope、Waveform；Rust 侧 DSP 与推送指标为主叙事。  
 - **File 模式**：本地音频文件离线分析——ffprobe 元数据、FFmpeg sidecar 解码、media-time 历史、scrub、会话内历史（read-only）。  
 - **对白门控响度**：可选；基于按需选择的 on-device VAD 引擎（Silero 默认，可切 FireRedVAD / TEN VAD），输出 Coverage / Range / Offset / Active 指标。  
@@ -216,6 +216,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 ### A.2 平台条件与差异（摘要）
 
 - **macOS 系统音频捕获** 依赖 **较新版本 OS 的原生 tap 能力**；更低版本/无 tap 的实际能力与提示由实现与 README 描述。  
+- **按应用采集当前仅在 Windows build 20348+ 启用**；ASIO 与 WASAPI exclusive 不经过系统混音器，不能由此路径捕获。macOS 的按进程筛选仍待实机完成电平一致性、多输出对衰减与 helper 进程绑定验证，不能作为已交付能力宣传。
 - **免签名/无公证** 导致首次运行摩擦：以用户文档说明为主。  
 
 ### A.3 缺口与路线图（与第 5 节对齐）
