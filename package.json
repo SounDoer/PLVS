@@ -49,6 +49,7 @@
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
     "smoke:agent-control": "node scripts/smoke-agent-control.mjs",
     "smoke:capture": "node scripts/smoke-capture.mjs",
+    "spike:capture:process": "node scripts/spike-process-capture.mjs",
     "soak:capture": "node scripts/soak-capture.mjs",
     "verify:ui-backpressure": "node scripts/verify-ui-frame-backpressure.mjs",
     "soak:desktop": "node scripts/soak-desktop.mjs",
