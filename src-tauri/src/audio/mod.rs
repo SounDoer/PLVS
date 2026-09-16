@@ -9,6 +9,8 @@ pub mod device_id;
 #[cfg(target_os = "macos")]
 pub mod macos;
 mod platform_backend;
+#[cfg(target_os = "windows")]
+pub mod windows_process_loopback;
 
 pub use capture::{
   AudioCapture, AudioCaptureSession, MeasuredPcmReceiver, MeasuredPcmSubscriptions, PcmFrame,

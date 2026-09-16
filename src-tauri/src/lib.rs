@@ -35,6 +35,8 @@ use std::time::Duration;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_store::StoreExt;
 
+#[cfg(target_os = "windows")]
+pub use audio::windows_process_loopback::{capture_process_to_summary, ProcessLoopbackProbeResult};
 pub use audio::{
   AppAudioBackend, AudioCapture, AudioCaptureSession, DeviceInfo, MeasuredPcmReceiver,
   MeasuredPcmSubscriptions, PcmFrame,
