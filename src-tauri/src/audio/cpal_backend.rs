@@ -454,7 +454,7 @@ impl PcmDeliveryQueue {
     }
   }
 
-  fn consumer_finished(&self, pool: &PcmBufferPool) {
+  pub(crate) fn consumer_finished(&self, pool: &PcmBufferPool) {
     self.consumer_stopped.store(true, Ordering::Release);
     while self.active_pushes.load(Ordering::Acquire) != 0 {
       std::thread::yield_now();

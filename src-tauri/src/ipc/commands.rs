@@ -61,6 +61,7 @@ pub fn migrate_capture_device_id(device_id: String) -> Result<Option<String>, St
 pub fn audio_start(
   app: AppHandle,
   device_id: String,
+  process_id: Option<u32>,
   on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -106,16 +107,37 @@ pub fn audio_start(
   let channel_selection = state.inner().channel_selection.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let dialogue_vad_engine = state.inner().dialogue_vad_engine.clone();
-  let session = AudioCapture::start_session(
-    &AppAudioBackend,
-    &device_id,
-    pool,
-    app.clone(),
-    channel_selection,
-    dialogue_gating,
-    dialogue_vad_engine,
-    state.inner().measured_pcm.clone(),
-  )?;
+  let session = match process_id {
+    Some(process_id) => {
+      #[cfg(target_os = "windows")]
+      {
+        crate::audio::windows_process_loopback::start_process_session(
+          process_id,
+          pool,
+          app.clone(),
+          channel_selection,
+          dialogue_gating,
+          dialogue_vad_engine,
+          state.inner().measured_pcm.clone(),
+        )?
+      }
+      #[cfg(not(target_os = "windows"))]
+      {
+        let _ = process_id;
+        return Err("per-process capture is not available on this platform".to_string());
+      }
+    }
+    None => AudioCapture::start_session(
+      &AppAudioBackend,
+      &device_id,
+      pool,
+      app.clone(),
+      channel_selection,
+      dialogue_gating,
+      dialogue_vad_engine,
+      state.inner().measured_pcm.clone(),
+    )?,
+  };
   {
     let mut source = state
       .inner()
@@ -124,7 +146,9 @@ pub fn audio_start(
       .map_err(|_| "state lock poisoned".to_string())?;
     *source = EngineSource::Live(session);
   }
-  if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
+  if process_id.is_some() {
+    let _ = app.emit("sample-rate-changed", 48_000u32);
+  } else if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
     let _ = app.emit("sample-rate-changed", sr);
   }
   let _ = app.emit(

@@ -25,6 +25,7 @@ import {
   setDockHeight,
   setDockSuspended,
   setChannelRoles,
+  startAudioCapture,
   startVisualRecording,
   inspectVisualRecording,
   updateVisualRecordingGeometry,
@@ -39,6 +40,17 @@ beforeEach(() => {
 });
 
 describe("audio engine command seam", () => {
+  it("passes an optional process target through the IPC boundary", async () => {
+    const onFrame = vi.fn();
+    const channel = await startAudioCapture({ deviceId: "default", processId: 4242, onFrame });
+
+    expect(invoke).toHaveBeenCalledWith("audio_start", {
+      deviceId: "default",
+      processId: 4242,
+      onFrame: channel,
+    });
+  });
+
   it("reads UI frame diagnostics without changing runtime state", async () => {
     await getUiFrameDiagnostics();
     expect(invoke).toHaveBeenCalledWith("get_ui_frame_diagnostics");

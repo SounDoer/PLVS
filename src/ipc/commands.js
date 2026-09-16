@@ -32,14 +32,14 @@ export function migrateCaptureDeviceId(deviceId) {
   return invoke("migrate_capture_device_id", { deviceId });
 }
 
-/** @param {{ deviceId: string; onFrame: (payload: object) => void }} opts */
-export async function startAudioCapture({ deviceId, onFrame }) {
+/** @param {{ deviceId: string; processId?: number | null; onFrame: (payload: object) => void }} opts */
+export async function startAudioCapture({ deviceId, processId = null, onFrame }) {
   const onAudio = new Channel();
   onAudio.onmessage = (msg) => {
     const frame = frameFromChannelMessage(msg);
     if (frame) onFrame(frame);
   };
-  await invoke("audio_start", { deviceId, onFrame: onAudio });
+  await invoke("audio_start", { deviceId, processId, onFrame: onAudio });
   return onAudio;
 }
 

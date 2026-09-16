@@ -5,9 +5,11 @@
 //! persisted public contract.
 
 use std::mem::{size_of, ManuallyDrop};
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
+use tauri::AppHandle;
 use windows62::core::{implement, IUnknown, Interface, Ref};
 use windows62::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows62::Win32::Media::Audio::{
@@ -28,7 +30,15 @@ use windows62::Win32::System::Com::{CoInitializeEx, CoUninitialize, BLOB, COINIT
 use windows62::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
 use windows62::Win32::System::Variant::VT_BLOB;
 
+use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions};
+use super::cpal_backend::{
+  emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
+  PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
+};
+use crate::dsp::speech::VadEngineKind;
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
+use crate::ipc::commands::ChannelSelection;
+use crate::ipc::types::FrameSubscribers;
 
 const DEFAULT_SAMPLE_RATE: u32 = 48_000;
 const DEFAULT_CHANNELS: u16 = 2;
@@ -240,6 +250,200 @@ fn db_from_linear(value: f64) -> f64 {
   } else {
     f64::NEG_INFINITY
   }
+}
+
+fn drain_process_packets(
+  capture_client: &IAudioCaptureClient,
+  channels: u16,
+  forwarder: &PcmCallbackForwarder,
+  silent_samples: &mut Vec<f32>,
+) -> Result<(), String> {
+  loop {
+    let packet_frames = unsafe { capture_client.GetNextPacketSize() }
+      .map_err(|error| format!("GetNextPacketSize failed: {error}"))?;
+    if packet_frames == 0 {
+      return Ok(());
+    }
+
+    let mut data = std::ptr::null_mut();
+    let mut frames = 0u32;
+    let mut flags = 0u32;
+    unsafe { capture_client.GetBuffer(&mut data, &mut frames, &mut flags, None, None) }
+      .map_err(|error| format!("GetBuffer failed: {error}"))?;
+
+    let sample_count = frames as usize * channels as usize;
+    if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
+      silent_samples.resize(sample_count, 0.0);
+      forwarder.forward_f32(silent_samples);
+    } else {
+      let samples = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), sample_count) };
+      forwarder.forward_f32(samples);
+    }
+    unsafe { capture_client.ReleaseBuffer(frames) }
+      .map_err(|error| format!("ReleaseBuffer failed: {error}"))?;
+  }
+}
+
+fn run_process_stream(
+  process_id: u32,
+  sample_rate: u32,
+  channels: u16,
+  stop_rx: mpsc::Receiver<()>,
+  forwarder: PcmCallbackForwarder,
+) -> Result<(), String> {
+  let _com = ComApartment::initialize()?;
+  let audio_client = activate_process_audio_client(process_id)?;
+  let format = capture_format(sample_rate, channels)?;
+  unsafe {
+    audio_client.Initialize(
+      AUDCLNT_SHAREMODE_SHARED,
+      AUDCLNT_STREAMFLAGS_LOOPBACK
+        | AUDCLNT_STREAMFLAGS_EVENTCALLBACK
+        | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
+        | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+      200_000,
+      0,
+      format.as_ptr(),
+      None,
+    )
+  }
+  .map_err(|error| format!("IAudioClient::Initialize failed: {error}"))?;
+
+  let event = EventHandle::create()?;
+  unsafe { audio_client.SetEventHandle(event.0) }
+    .map_err(|error| format!("IAudioClient::SetEventHandle failed: {error}"))?;
+  let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService() }
+    .map_err(|error| format!("IAudioClient::GetService failed: {error}"))?;
+  unsafe { audio_client.Start() }
+    .map_err(|error| format!("IAudioClient::Start failed: {error}"))?;
+
+  let mut silent_samples = Vec::new();
+  let capture_result = loop {
+    match stop_rx.try_recv() {
+      Ok(()) | Err(mpsc::TryRecvError::Disconnected) => break Ok(()),
+      Err(mpsc::TryRecvError::Empty) => {}
+    }
+    let wait = unsafe { WaitForSingleObject(event.0, 100) };
+    if wait == WAIT_TIMEOUT {
+      continue;
+    }
+    if wait != WAIT_OBJECT_0 {
+      break Err(format!("WaitForSingleObject failed with status {}", wait.0));
+    }
+    if let Err(error) =
+      drain_process_packets(&capture_client, channels, &forwarder, &mut silent_samples)
+    {
+      break Err(error);
+    }
+  };
+  let stop_result =
+    unsafe { audio_client.Stop() }.map_err(|error| format!("IAudioClient::Stop failed: {error}"));
+  capture_result?;
+  stop_result
+}
+
+/// A production-shaped process-loopback session feeding the same meter bridge as device capture.
+pub struct ProcessLoopbackSession {
+  stop_tx: mpsc::Sender<()>,
+  join: Option<std::thread::JoinHandle<Result<(), String>>>,
+  clear_peak_history: Arc<AtomicBool>,
+  reset_tp_max: Arc<AtomicBool>,
+}
+
+impl Drop for ProcessLoopbackSession {
+  fn drop(&mut self) {
+    let _ = self.stop_tx.send(());
+    if let Some(join) = self.join.take() {
+      let _ = join.join();
+    }
+  }
+}
+
+impl AudioCaptureSession for ProcessLoopbackSession {
+  fn request_clear_peak_history(&self) {
+    self.clear_peak_history.store(true, Ordering::Release);
+  }
+
+  fn request_reset_true_peak_max(&self) {
+    self.reset_tp_max.store(true, Ordering::Release);
+  }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn start_process_session(
+  process_id: u32,
+  frame_subscribers: FrameSubscribers,
+  app: AppHandle,
+  channel_selection: Arc<std::sync::Mutex<Option<ChannelSelection>>>,
+  dialogue_gating: Arc<std::sync::Mutex<bool>>,
+  dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+  measured_pcm: Arc<MeasuredPcmSubscriptions>,
+) -> Result<Box<dyn AudioCaptureSession>, String> {
+  if process_id == 0 {
+    return Err("process id must be non-zero".to_string());
+  }
+  let (stop_tx, stop_rx) = mpsc::channel();
+  let clear_peak_history = Arc::new(AtomicBool::new(false));
+  let reset_tp_max = Arc::new(AtomicBool::new(false));
+  let clear_for_bridge = clear_peak_history.clone();
+  let reset_for_bridge = reset_tp_max.clone();
+  let failure_app = app.clone();
+
+  let join = std::thread::Builder::new()
+    .name("process-capture".into())
+    .spawn(move || {
+      let dropped_chunks = Arc::new(AtomicU64::new(0));
+      let pool = PcmBufferPool::new(
+        PCM_QUEUE_CAP + 1,
+        pooled_pcm_buffer_capacity(DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS),
+      );
+      let bridge_pool = pool.clone();
+      let cleanup_pool = pool.clone();
+      let delivery = PcmDeliveryQueue::new(PCM_QUEUE_CAP);
+      let bridge_delivery = delivery.clone();
+      let cleanup_delivery = delivery.clone();
+      let bridge_dropped = dropped_chunks.clone();
+      let bridge = std::thread::spawn(move || {
+        run_meter_pipeline_bridge_thread(
+          bridge_delivery,
+          DEFAULT_SAMPLE_RATE,
+          DEFAULT_CHANNELS,
+          frame_subscribers,
+          app,
+          clear_for_bridge,
+          reset_for_bridge,
+          channel_selection,
+          dialogue_gating,
+          dialogue_vad_engine,
+          measured_pcm,
+          bridge_dropped,
+          bridge_pool,
+        );
+        cleanup_delivery.consumer_finished(&cleanup_pool);
+      });
+      let forwarder = PcmCallbackForwarder::new(delivery.producer(), pool, dropped_chunks);
+      let result = run_process_stream(
+        process_id,
+        DEFAULT_SAMPLE_RATE,
+        DEFAULT_CHANNELS,
+        stop_rx,
+        forwarder,
+      );
+      delivery.stop_producer();
+      let _ = bridge.join();
+      if let Err(error) = &result {
+        emit_capture_failure(&failure_app, error);
+      }
+      result
+    })
+    .map_err(|error| error.to_string())?;
+
+  Ok(Box::new(ProcessLoopbackSession {
+    stop_tx,
+    join: Some(join),
+    clear_peak_history,
+    reset_tp_max,
+  }))
 }
 
 /// Capture the target process tree for `duration` and run it through PLVS's summary meter.
