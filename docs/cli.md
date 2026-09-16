@@ -335,10 +335,15 @@ Every running-app query returns one global `revision`:
 ```
 
 The revision advances when observable Workspace, Preset, Settings, View, requested Device selection,
-Transport, or Dock control state changes. It is an in-process concurrency token and resets when
-PLVS restarts. Device inventory generations, meter frames, and other continuously changing
-measurements do not advance it. Queries never accept
-`--expected-revision`.
+Transport, or Dock control state changes. It is optimistic concurrency protection for one running
+PLVS process, not a durable document version: it resets when PLVS restarts, so inspect again after
+connecting to a new process. Device inventory generations, meter frames, and other continuously
+changing measurements do not advance it. Queries never accept `--expected-revision`.
+
+User and agent mutations follow the same rule. One atomic operation advances the revision once,
+however many fields it changes, and changes that settle together as one observable operation
+produce one increment. Dry runs, no-ops, validation failures, revision conflicts, live
+measurements, capture state, and transient UI state never advance it.
 
 ### State mutations
 
@@ -359,12 +364,53 @@ result includes:
 }
 ```
 
-`changed` is a boolean. A no-op returns `changed: false` without advancing revision. A dry-run
-performs validation and returns the predicted final `state`, but performs no native call,
-persistence, or revision increment.
+A successful non-dry-run mutation has already been validated, revision-checked, committed to the
+running application, and flushed to persistence when the command returns. There is therefore no
+`persisted` field: success implies durable persistence, and a persistence failure fails the
+command.
+
+- `changed` is a boolean. A no-op returns `changed: false` and the unchanged `state`, and does not
+  advance the revision, write persistence, or mark the active Preset dirty.
+- `warnings` describe valid but noteworthy results and never represent failure. A family page
+  documents the warnings it can produce.
+- `state` is the complete resulting public state of the target, in the same shape its `inspect` or
+  `describe` reports.
+
+A dry run performs the same validation, revision check, final-state calculation, warning analysis,
+and diff as a real mutation, and returns the same result shape. It does not change application
+state, advance the revision, mark a Preset dirty, persist anything, make a native call, or create
+an analysis request or history slab. `revision` remains the current real revision, while `changed`
+and `state` describe what a real execution would produce.
 
 The CLI never retries a `revisionConflict`. Inspect again, reconcile the user's intervening change,
 and issue a new explicit mutation.
+
+### Failures
+
+Validation is atomic: if any submitted field is invalid, nothing is committed. Where a family
+validates a document or patch, the response lists every independently discoverable problem at once
+under `error.details.issues`, so a caller can correct them together. Each issue has a stable machine
+`code`, a `path` into the caller's submitted JSON, and a human-readable `message`.
+
+Error codes shared by every mutating family:
+
+- `revisionConflict` — `details` carries `expectedRevision` and `currentRevision`.
+- `persistenceFailed` — the state was committed in the running app but durable saving failed.
+  `details.stateCommitted` is `true` and `details.revision` is the committed revision, which is not
+  rolled back.
+- `commitNotObserved` — the state was written but the app was not observed to render it in time.
+  `stateCommitted: true` describes memory only; `details.persisted` separately reports whether the
+  change also reached disk, and when it did not, the message names the persistence error.
+- `requestNotSettled` — a queued command did not finish within the app's backstop, which stays below
+  the broker timeout. It may still complete later, so inspect before retrying.
+- `commandFailed` — an unexpected commit failure.
+
+After a revision conflict or any failure that reports `stateCommitted`, inspect current state rather
+than retry blindly.
+
+Success `result.changed` and failure `error.details.changed` deliberately have different types. The
+former is always a boolean; the latter, present only when a failure must identify a partial outcome,
+is an array of public path strings.
 
 ### Actions
 

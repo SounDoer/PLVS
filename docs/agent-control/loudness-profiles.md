@@ -5,15 +5,7 @@ ordering. Pack sharing remains the separate [Library Transfer](libraries.md) con
 
 ## Commands
 
-```powershell
-plvs-cli loudness-profile describe <id> --json
-plvs-cli loudness-profile select <id|off> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile create <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile update <id> <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile rename <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
-plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 The corresponding wire methods are `loudnessProfile.describe`, `loudnessProfile.select`,
 `loudnessProfile.create`, `loudnessProfile.update`, `loudnessProfile.rename`,

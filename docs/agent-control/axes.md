@@ -7,17 +7,7 @@ panel controls.
 
 ## Commands
 
-```powershell
-npm run desktop:control -- axis describe --json
-npm run desktop:control -- axis inspect --json
-npm run desktop:control -- axis shared update frequency <file|-> --expected-revision 12 --json
-npm run desktop:control -- axis shared update time <file|-> --expected-revision 12 --json
-npm run desktop:control -- axis shared reset frequency --expected-revision 12 --json
-npm run desktop:control -- axis shared reset time --expected-revision 12 --json
-npm run desktop:control -- axis panel update <panel-id> frequency <file|-> --expected-revision 12 --json
-npm run desktop:control -- axis panel update <panel-id> time <file|-> --expected-revision 12 --json
-npm run desktop:control -- axis panel reset <panel-id> <frequency|time> --expected-revision 12 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 Every mutation supports `--dry-run` and requires `--expected-revision`. There is no generic screen
 coordinate, wheel, drag, or zoom command; Agent Control expresses the final semantic viewport.

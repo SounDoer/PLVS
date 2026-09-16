@@ -1,74 +1,41 @@
 # Agent Control
 
-This directory is the source of truth for the complete public Agent Control surface, including the
-transport. It describes what the current build exposes: every family documented here is implemented,
-and a family that is not implemented does not belong on these pages.
+This directory is the source of truth for what each Agent Control command family does, and for how
+to extend the surface without letting it drift from the app. Every family documented here is
+implemented; a family that is not implemented does not belong on these pages.
 
-## Current implementation
+Three places divide the work, and nothing is said in two of them:
 
-The development-identity build exposes all approved Agent Control families. The generated
-[command catalog](generated/commands.md) is the complete source-derived reference for command IDs,
-CLI paths, policies, arguments, and top-level wire parameters; the handwritten pages in this
-directory own workflows, safety behavior, and dynamic semantics.
+- [`../cli.md`](../cli.md) owns the public contract every family shares: the JSON envelope, global
+  revision, dry run, the success result, shared error codes, exit codes, and the development
+  wrapper.
+- [`generated/`](generated/commands.md) is the reference for command IDs, CLI paths, arguments,
+  fields, types, defaults and bounds. It is rendered from the schema builders and never edited by
+  hand.
+- The pages below carry what neither can state: each family's semantics, atomicity, warnings,
+  availability rules, and concurrency.
 
-The installed CLI also exposes offline discovery:
+## Families
 
-```powershell
-npm run desktop:control -- schema list --json
-npm run desktop:control -- schema get visual.recording.start --json
-```
-
-`schema` describes the installed CLI without contacting PLVS. `app.capabilities` describes the
-methods and features accepted by the running app, while family `describe` methods report current
-dynamic resources, choices, and limits. Version skew is valid: `cliVersion` identifies the CLI and
-`appVersion` identifies the running app; callers must use capabilities rather than assuming they
-match.
-
-The repository entrypoint quietly builds the independent `src-tauri/plvs-cli` workspace package,
-selects the development identity, and forwards the flat CLI command:
-
-```powershell
-npm run desktop:control -- capabilities --json
-npm run desktop:control -- inspect --json
-npm run desktop:control -- wait --after-revision 0 --timeout-ms 30000 --json
-npm run desktop:control -- measurement inspect --json
-npm run desktop:control -- measurement wait --after-generation 0 --timeout-ms 30000 --json
-npm run desktop:control -- view inspect --json
-npm run desktop:control -- module describe spectrum --json
-npm run desktop:control -- workspace apply layout.json --expected-revision 0 --json
-npm run desktop:control -- panel describe spectrum --json
-npm run desktop:control -- settings inspect --json
-npm run desktop:control -- transport inspect --json
-npm run desktop:control -- device list --json
-npm run desktop:control -- dock inspect --json
-npm run desktop:control -- visual describe --json
-npm run desktop:control -- visual screenshot --target workspace --out workspace.png --json
-```
-
-Every example here writes its report to stdout, where npm also prints its script banner, so add
-`--silent` (or call `node scripts/run-desktop-control.mjs` directly) whenever the JSON is
-redirected or piped rather than read by a person.
-
-These commands require Agent Control to be enabled in PLVS Settings, which is off by default in
-release builds and on in development builds. Every mutation is delivered to the already-running
-React application and uses the same state, native integrations, safety guards, and persistence
-paths as the GUI.
-
-Windows carries requests over a current-user named pipe. macOS carries the same authenticated,
-bounded protocol over a private Unix-domain socket. Both native transports use the shared framing
-and authentication implementation; only endpoint creation, peer validation, and delivery
-acknowledgement remain platform-specific. The public CLI contract is transport-neutral; callers use
-runtime capabilities to discover native features such as cross-platform screenshots and recording.
-
-## Implementation status
-
-The foundation, command manifest and offline schema export, Module Control, Panel Control, Axis Control, Presets, Theme Control, Loudness Profile Control,
-Settings, Revision Wait, Transport, Device Control, Dock Control, Measurement Control, Measurement
-Wait, View Control, Visual Capture, Library Transfer, and Configuration Transfer are implemented. See
-[`measurements.md`](measurements.md),
-[`devices.md`](devices.md), [`themes.md`](themes.md), [`visual.md`](visual.md), and
-[`loudness-profiles.md`](loudness-profiles.md) for their complete contracts. MCP integration remains
-a deferred product decision.
+| Family                         | Page                                           |
+| ------------------------------ | ---------------------------------------------- |
+| Module discovery               | [`modules.md`](modules.md)                     |
+| Panel Control                  | [`panels.md`](panels.md)                       |
+| Axis Control                   | [`axes.md`](axes.md)                           |
+| Presets                        | [`presets.md`](presets.md)                     |
+| Theme Control                  | [`themes.md`](themes.md)                       |
+| Loudness Profile Control       | [`loudness-profiles.md`](loudness-profiles.md) |
+| Settings Control               | [`settings.md`](settings.md)                   |
+| View Control                   | [`view.md`](view.md)                           |
+| Dock Control                   | [`dock.md`](dock.md)                           |
+| Device Control                 | [`devices.md`](devices.md)                     |
+| Transport Control              | [`transport.md`](transport.md)                 |
+| Measurement Control            | [`measurements.md`](measurements.md)           |
+| Measurement Wait               | [`measurement-wait.md`](measurement-wait.md)   |
+| Revision Wait                  | [`wait.md`](wait.md)                           |
+| Visual Capture                 | [`visual.md`](visual.md)                       |
+| Library Transfer               | [`libraries.md`](libraries.md)                 |
+| Configuration Transfer         | [`config.md`](config.md)                       |
 
 ## Keeping this contract in step with the app
 
@@ -106,43 +73,21 @@ Deciding that a control stays out of Agent Control is a normal outcome; record i
 `INTERNAL_ONLY_CONTROLS` in the coverage test, with the reason. What the guards forbid is leaving
 the question unanswered.
 
-## Method responsibilities
+## Application-wide methods
 
 ### `app.capabilities`
 
-This is the handshake and compatibility surface, with a deliberate distinction between the
-frontend wire payload and the public CLI result. The frontend JSON-RPC method returns the current
-`revision`, `appVersion`, `protocolVersion`, `features`, `runtime`, `methods`, and
-`modules`. It does not contain `cliVersion`; Rust adapts that payload for
-`plvs-cli capabilities --json` and independently injects the installed CLI version.
-
-The stable public result contains `revision`, `appVersion`, `cliVersion`, `protocolVersion`,
-`methods`, and `features`:
-
-```json
-{
-  "schemaVersion": 1,
-  "ok": true,
-  "result": {
-    "revision": 13,
-    "appVersion": "0.14.6",
-    "cliVersion": "0.14.6",
-    "protocolVersion": 1,
-    "methods": [],
-    "features": {}
-  }
-}
-```
-
-`runtime` and `modules` may remain as compatible extra fields, but public CLI consumers discover
-supported wire methods and features from `methods` and `features`. `appVersion` and
-`cliVersion` are independent build identities and must not be assumed equal. Capabilities does not
-report live panel instances or mutable state beyond the current revision.
+The frontend JSON-RPC method and the public CLI result deliberately differ. The frontend returns
+`revision`, `appVersion`, `protocolVersion`, `features`, `runtime`, `methods`, and `modules`, but no
+`cliVersion`; Rust adapts that payload for `plvs-cli capabilities --json` and injects the installed
+CLI version itself. `runtime` and `modules` may remain as compatible extra fields, but consumers
+discover wire methods and features only from `methods` and `features`. Capabilities reports no live
+panel instances and no mutable state beyond the current revision.
 
 ### `app.inspect`
 
-This is a snapshot of the running application's mutable state. As command families are added, it
-reports the Workspace, panel instances, each panel's complete public controls, compact Preset,
+This is a snapshot of the running application's mutable state. It reports the Workspace, panel
+instances, each panel's complete public controls, compact Preset,
 Settings, and View state, Dock state, Transport state, Device selection state, and the current top-level
 `revision`. It reports values, not control schemas.
 
@@ -150,236 +95,22 @@ The snapshot also includes compact Appearance and Loudness Profile selection sta
 `appearance { mode, selectedThemeId, resolvedThemeId }` and `loudnessProfile { activeId }`. Theme
 documents and Loudness Profile rules remain in their dedicated command families.
 
-Panels are an array in `panelOrder`; each entry contains `id`, `moduleId`, `title`, complete public
-`controls`, effective read-only `axes`, and module-specific `analysis`. The same panel shape is used
-by successful Panel Control responses. The top-level `runtime` summarizes channel topology and
-shared analysis such as Dialogue Detection and Spectral Waveform.
+Panels use the shape described in [`panels.md`](panels.md). The top-level `runtime` summarizes
+channel topology and shared analysis such as Dialogue Detection and Spectral Waveform.
 
 Inspection deliberately omits measurement frames and history, canvas data, hover/fullscreen/sheet
-state, raw internal controls, React-only values, and field schemas. Preset state remains the compact
-`activeId`/`dirty` relationship; the implemented Preset commands provide library listing,
-description, save, update, apply, rename, delete, and reorder operations.
+state, raw internal controls, React-only values, and field schemas. Preset state is only the compact
+`activeId`/`dirty` relationship; the library itself belongs to [`presets.md`](presets.md).
 
-### `panel.describe`
+## Transport
 
-This describes one live panel. It returns that panel's complete public controls and its dynamic
-schema, including constraints that depend on the current channel topology or Loudness Profile state.
-Schema fields carry machine-readable constraints plus public `title`, `description`, and `unit`
-metadata where applicable. They do not expose UI implementation details such as widget type, CSS
-ordering, ARIA labels, React callbacks, or commit-on-release behavior.
+Windows carries requests over a current-user named pipe. macOS carries the same authenticated,
+bounded protocol over a private Unix-domain socket. Both native transports use the shared framing
+and authentication implementation; only endpoint creation, peer validation, and delivery
+acknowledgement remain platform-specific. The public CLI contract is transport-neutral; callers use
+runtime capabilities to discover native features such as cross-platform screenshots and recording.
 
-The schema is a deliberately small PLVS format inspired by JSON Schema, not a claim of full JSON
-Schema compatibility. It describes:
-
-- scalar and object types, defaults, numeric bounds, enum choices, titles, descriptions, and units;
-- dynamic choices derived from current Loudness Profile and channel-topology state;
-- current `effective` state and a stable `inactiveReason` for stored-but-dormant controls;
-- `patchMode: "replace"` for atomic objects and arrays, or `patchMode: "merge"` for nested partial
-  patches such as Spectrogram `threeD` and Stats `metrics`;
-- relational constraints such as ordered ranges, minimum spans, or a required included value.
-
-Dynamic choices list only currently valid values. For example, Loudness omits `reference` when the
-Loudness Profile supplies no reference. Channel schemas include the currently valid object-valued
-choices and report `channelTopology.status` as `assumed` or `detected`.
-
-## Panel Control commands
-
-```powershell
-npm run desktop:control -- panel describe <panel-id> --json
-npm run desktop:control -- panel update <panel-id> <file|-> --expected-revision 12 --json
-npm run desktop:control -- panel reset <panel-id> --expected-revision 12 --json
-```
-
-`panel.update` and `panel.reset` require `--expected-revision` and support `--dry-run`:
-
-```text
---dry-run
---expected-revision <n>
-```
-
-The input file for `panel.update` is a direct public-control patch, without an extra `controls`
-wrapper. Internally the RPC params wrap it with the target `panelId` and command options.
-
-## Mutation contract
-
-### Public controls
-
-The API exposes a small module-specific control object, not the application's internal flat
-`panelControlsById` record. Unknown fields, invalid types, invalid enum values, and out-of-range
-values are errors. Agent mutations must not silently clamp, repair, or fall back.
-
-Nested logical values such as ranges are atomic unless a panel document explicitly says a nested
-partial patch is supported. The entire patch is validated before one state commit.
-
-### Successful update
-
-A normal successful update means all of the following have completed before the command returns:
-
-1. Validation and revision checking.
-2. React/Workspace state commit.
-3. Workspace persistence flush.
-
-Persistence failure therefore fails the command. There is no `persisted` boolean in successful
-responses.
-
-An effective controls change increments the global revision and marks the active Preset dirty.
-A no-op leaves the revision and Preset dirty state unchanged.
-
-Inside the public CLI success envelope, `panel.update` and `panel.reset` use this `result` object:
-
-```json
-{
-  "dryRun": false,
-  "revision": 13,
-  "changed": true,
-  "warnings": [],
-  "state": {
-    "panel": {
-      "id": "waveform-1",
-      "moduleId": "waveform",
-      "controls": {},
-      "axes": {},
-      "analysis": {}
-    },
-    "preset": {
-      "activeId": "preset-1",
-      "dirty": true
-    }
-  }
-}
-```
-
-- `state.panel` is the complete resulting public panel state, in the same shape used by
-  `app.inspect`.
-  Unlike `panel.describe`, it does not include the schema.
-- `changed` is a boolean: `true` means at least one public value changed.
-- `warnings` describes valid but noteworthy results; it does not represent failure.
-- `state.preset` describes the resulting active-Preset relationship. `activeId` may be null.
-- There is no `persisted` field. Successful non-dry-run completion implies durable persistence.
-
-A no-op is successful, returns `changed: false` and the complete unchanged panel, does not
-increment revision, does not write persistence, does not dirty the Preset, and does not rebuild an
-analysis request.
-
-### Revision
-
-Revision is optimistic concurrency protection for one running PLVS process, not a durable document
-version. It resets when the application restarts, so callers inspect again after connecting to a new
-process.
-
-Every public query and successful mutation reports one top-level revision. As a minimal fragment,
-the public CLI envelope's `result` contains:
-
-```json
-{
-  "revision": 13
-}
-```
-
-Workspace layout, panels, public panel controls, panel axis state, pin/title state, and a Preset
-application that changes the Workspace increment the revision. Preset collection, Settings, Dock,
-and Transport lifecycle changes use the same counter. Equivalent user and agent mutations follow
-the same rule. One atomic operation increments once regardless of the number of changed fields.
-
-Dry runs, no-ops, validation failures, revision conflicts, live measurements, capture state, and
-transient UI state do not increment it. Changes that settle together as one observable operation
-produce one revision increment.
-
-If persistence fails after UI commit, the committed revision remains current and is returned with
-`stateCommitted: true`; it is not rolled back merely to make the counter look unchanged.
-
-### Dry run
-
-A dry run performs the same validation, revision check, final-state calculation, warning analysis,
-and diff calculation as a real update, but it does not:
-
-- mutate React or Workspace state;
-- increment the revision;
-- mark the active Preset dirty;
-- persist anything;
-- create an analysis request or history slab.
-
-Dry run uses the same result shape. `revision` remains the current real revision, while `changed`
-and `state` describe the result that a real execution would produce. No separate `wouldChange` or
-projected-revision vocabulary is used; `dryRun: true` establishes the preview semantics.
-
-### Reset
-
-`panel.reset` exposes the same product behavior as the Reset button in the panel settings header. It
-resets the panel's public controls and its axis-link flags/default dormant local ranges. It does not
-change shared Workspace axis values, remove the panel, change the active Loudness Profile, or clear
-measured history and maxima.
-
-### Failure contract
-
-Validation is atomic: if any submitted field is invalid, none of the patch is committed. Validation
-returns every independently discoverable input issue in one response so a caller can correct them
-together:
-
-```json
-{
-  "schemaVersion": 1,
-  "ok": false,
-  "error": {
-    "code": "invalidControls",
-    "message": "The panel controls are invalid.",
-    "details": {
-      "issues": [
-        {
-          "code": "outOfRange",
-          "path": "$.speedPercent",
-          "message": "speedPercent must be between 0 and 100."
-        }
-      ]
-    }
-  }
-}
-```
-
-Each issue has a stable machine code, a path into the caller's submitted JSON, and a human-readable
-message. The initial stable error and issue codes are:
-
-- `panelNotFound` for an unknown target panel;
-- `revisionConflict`, with both `expectedRevision` and `currentRevision` in details;
-- `invalidControls`, containing `issues` such as `unknownControl`, `invalidType`, `invalidEnum`,
-  `outOfRange`, and `controlUnavailable`;
-- `commandFailed` for an unexpected commit failure;
-- `persistenceFailed` when UI state committed but durable saving failed;
-- `commitNotObserved` when the state was written but the UI was not observed to render it in time;
-- `requestNotSettled` when a queued command did not finish within the frontend's backstop, which
-  stays below the broker timeout. The command may still complete later, so inspect before retrying.
-
-A persistence failure must state the partial outcome explicitly:
-
-```json
-{
-  "schemaVersion": 1,
-  "ok": false,
-  "error": {
-    "code": "persistenceFailed",
-    "message": "Panel controls committed but persistence failed.",
-    "details": {
-      "stateCommitted": true,
-      "revision": 13
-    }
-  }
-}
-```
-
-`commitNotObserved` reports a write that happened while the settlement wait timed out, so its
-`stateCommitted: true` describes memory only. Durability is a separate claim: `details.persisted`
-is `true` when the change was written to disk anyway, and `false` when that write also failed, in
-which case the message names the persistence error.
-
-After a revision conflict or persistence failure, the caller should inspect current state rather
-than retry blindly.
-
-Successful mutation `changed` and failure detail `changed` deliberately have different types.
-`result.changed` is always a boolean. When an execution or persistence error must identify a
-partial outcome, `error.details.changed` is an array of public path strings. The success envelope
-and error envelope make the two unambiguous.
-
-### Internal failures below the application
+## Failures below the application
 
 A request can also fail before it reaches the application at all: Agent Control is disabled
 (`agentControlDisabled`), the on-disk descriptor exists but could not be read (`discoveryFailed`),
@@ -394,102 +125,3 @@ The public CLI maps that internal distinction to its documented exit class and a
 common `{ schemaVersion, ok: false, error: { code, message, details? } }` envelope. A long wait
 refused by the shared concurrency limit is instead an application error with public code
 `waitLimitReached`.
-
-### Conditional controls and warnings
-
-A stored control may be temporarily hidden or ineffective because of another control. Updating it
-is valid and allows an agent to preconfigure a later mode. If a field touched by the patch is still
-ineffective in the patch's final state, the result includes a `currentlyInactive` warning.
-
-Warnings are calculated from the final state and only for fields touched by that patch. For example,
-changing `frequencyBandsHz` while Waveform Frequency Color remains off warns; changing the bands in
-the same patch that enables Frequency Color does not.
-
-This differs from a dynamically unavailable option. Loudness `reference` is not a valid option when
-the active Loudness Profile does not provide a reference, so submitting it fails with
-`controlUnavailable` instead of succeeding with a warning.
-
-### Axes
-
-Panel descriptions and inspection return effective axis information:
-
-```json
-{
-  "linked": true,
-  "source": "workspace",
-  "writable": false
-}
-```
-
-The source is `workspace` or `panel`. Axis mutation is deliberately kept out of the public control
-patch and belongs to the separate Axis Control contract.
-
-### Analysis status and request deduplication
-
-Where applicable, panel results describe analysis as `active`, `waitingForChannels`, or
-`notRequested`/`inactive`.
-
-Analysis request families have no artificial count cap. Identical request keys are deduplicated and
-shared; every distinct valid request is sent to the backend. Spectrum and Spectrogram share the
-Spectrum-like request family, while Vectorscope and Stereo Map use their own families. Dock requests
-are deduplicated with matching Workspace requests or appended as distinct requests; they never evict
-a Workspace request. Consequently Panel Control has no `overCap`, request-slot priority, or
-allocation-change warning.
-
-A dry run calculates the expected request and status without creating it or allocating history.
-
-Stats reports Dialogue Detection with two read-only values: whether that individual panel requests
-it and whether the shared global runtime is active. This keeps the per-panel cause separate from the
-application-wide effect.
-
-Waveform uses the same two-value pattern for shared Spectral Waveform analysis: a panel reports
-`requestedByPanel` separately from global `runtime`, while the application runtime also provides a
-single global summary.
-
-Transient chart actions such as clearing Max Hold, TP Max, or all measurements are not Panel
-Control settings.
-
-## Panel specifications
-
-| Module      | Detailed contract                                |
-| ----------- | ------------------------------------------------ |
-| Level Meter | [`panels/level-meter.md`](panels/level-meter.md) |
-| Loudness    | [`panels/loudness.md`](panels/loudness.md)       |
-| Stats       | [`panels/stats.md`](panels/stats.md)             |
-| Vectorscope | [`panels/vectorscope.md`](panels/vectorscope.md) |
-| Spectrum    | [`panels/spectrum.md`](panels/spectrum.md)       |
-| Spectrogram | [`panels/spectrogram.md`](panels/spectrogram.md) |
-| Waveform    | [`panels/waveform.md`](panels/waveform.md)       |
-| Stereo Map  | [`panels/stereo-map.md`](panels/stereo-map.md)   |
-
-## Follow-on module specifications
-
-- [`modules.md`](modules.md) — implemented Module discovery contract
-- [`visual.md`](visual.md) — implemented Windows/macOS screenshot and recording contract
-- [`presets.md`](presets.md) — implemented Preset Control contract
-- [`axes.md`](axes.md) — implemented Axis Control contract
-- [`settings.md`](settings.md) — implemented Settings Control contract
-- [`wait.md`](wait.md) — implemented Revision Wait contract
-- [`measurement-wait.md`](measurement-wait.md) — implemented Measurement Wait contract
-- [`view.md`](view.md) — implemented View Control contract
-- [`transport.md`](transport.md) — implemented Transport Control contract
-- [`dock.md`](dock.md) — implemented Dock Control contract
-- [`libraries.md`](libraries.md) — implemented Library Transfer contract
-- [`config.md`](config.md) — implemented Everything configuration transfer contract
-
-## Resolved cross-module ownership
-
-- Dialogue Detection engine selection is a global system setting, not a Stats panel control. The
-  Settings contract owns `dialogueVadEngine`; Panel Control does not expose it.
-- Agent Control sends live mutations through the running React application; Rust does not edit
-  persisted Workspace or Preset records behind the frontend's state.
-- Loudness Profile and Theme editors register with the shared blocking-editor guard. Preset
-  save/apply/update and Dock entry are refused while either editor is open; no Agent Control flag may
-  discard a draft.
-- FILE mode refuses direct Dock entry and any Preset Apply that requires Dock before mutation, using
-  the shared `fileModeActive` scene-operation contract. Lack of platform Dock support instead
-  degrades by applying the non-Dock portion.
-
-## Deferred decisions
-
-- MCP integration remains a future product decision.

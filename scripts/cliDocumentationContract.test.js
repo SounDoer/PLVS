@@ -38,7 +38,7 @@ describe("current CLI documentation", () => {
     expect(cli).toContain("plvs-cli schema get <command-id> --json");
     expect(cli).toContain("agent-control/generated/commands.md");
     expect(readme).toContain("plvs-cli workspace apply");
-    expect(agentControl).toContain("`methods`, and `features`");
+    expect(agentControl).toContain("`methods` and `features`");
     expect(agentControl).toContain("generated/commands.md");
     expect(agentControl).toContain("`cliVersion`");
   });
@@ -68,7 +68,7 @@ describe("current CLI documentation", () => {
       "delete",
       "reorder",
     ]) {
-      expect(profiles).toContain(`loudness-profile ${command}`);
+      expect(commands).toContain(`loudness-profile ${command}`);
     }
     expect(profiles).toContain('"referenceLufs"');
     expect(profiles).toContain('"metricId"');
@@ -103,7 +103,7 @@ describe("current CLI documentation", () => {
       "delete",
       "reorder",
     ]) {
-      expect(themes).toContain(`theme ${command}`);
+      expect(commands).toContain(`theme ${command}`);
     }
     expect(themes).toContain('"version": 2');
     expect(themes).toContain('"colorScheme"');
@@ -164,12 +164,12 @@ describe("current CLI documentation", () => {
       "visual recording stop",
     ]) {
       expect(cli).toContain(command);
-      expect(visual).toContain(command);
+      expect(commands).toContain(command);
     }
     expect(visual).toContain("actual rendered pixels");
     expect(visual).toContain("--expected-revision");
-    expect(visual).toContain("--audio <none|measured-source>");
-    expect(visual).toContain("--cursor <none|visible>");
+    expect(commands).toContain("--audio <none|measured-source>");
+    expect(commands).toContain("--cursor <none|visible>");
     expect(visual).toContain("system pointer is excluded by default");
     expect(visual).toContain("Live defaults");
     expect(visual).toContain("File defaults");

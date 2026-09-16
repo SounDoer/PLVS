@@ -122,6 +122,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 8. **面向普通用户的通用数据导出**（CSV / 历史导出入口）。Agent Control 的截图与录制服务于自动化，不是通用导出、通用录音或桌面捕获工作流。
 9. **对象 / 场景音频**（ADM BWF、Dolby Atmos 对象、Ambisonics）。BS.1770-5 Annex 4 要求先渲染到 BS.2051 扬声器布局再测量，需要内置渲染器，单独评估。
 10. **一键诊断包导出**（见 5.9）与 **无障碍专项**（见 5.11）：均非短期主线。
+11. **MCP 集成**：Agent Control 以 `plvs-cli` 为唯一的自动化入口，是否另提供 MCP server 留待单独的产品决定。
 
 **Legacy 浏览器版**：**不再维护功能**；**可能下线仓库分支/托管**；详见第 9 节。
 

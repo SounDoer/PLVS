@@ -5,11 +5,7 @@ It does not treat every value stored in the settings persistence domain as a pub
 
 ## Commands
 
-```powershell
-npm run desktop:control -- settings describe --json
-npm run desktop:control -- settings inspect --json
-npm run desktop:control -- settings update <file|-> --expected-revision 12 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 - `describe` reports the public schema, defaults, options, current effective values, and dynamic
   availability.

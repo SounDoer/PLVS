@@ -8,14 +8,7 @@ system audio, other windows, or raw canvas/DOM data.
 
 ## Commands
 
-```powershell
-plvs-cli visual describe --json
-plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <id>] [--expected-revision <n>] --out <file.png> --json
-plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
-plvs-cli visual recording inspect <recording-id> --json
-plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json
-plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 `visual describe` is the discovery query. It reports platform support, current runtime
 availability, formats, codecs, audio sources, cursor modes, frame rates, duration and size limits,

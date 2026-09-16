@@ -6,17 +6,7 @@ capture lifecycle; those remain Transport Control responsibilities.
 
 ## Commands
 
-```powershell
-npm run desktop:control -- dock describe --json
-npm run desktop:control -- dock inspect --json
-npm run desktop:control -- dock enter --expected-revision 12 --json
-npm run desktop:control -- dock enter --edge top --monitor <monitor-id> --height 72 --expected-revision 12 --json
-npm run desktop:control -- dock exit --expected-revision 12 --json
-npm run desktop:control -- dock layout apply <file|-> --expected-revision 12 --json
-npm run desktop:control -- dock panel describe <panel-id> --json
-npm run desktop:control -- dock panel update <panel-id> <file|-> --expected-revision 12 --json
-npm run desktop:control -- dock panel reset <panel-id> --expected-revision 12 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 Every mutation supports `--dry-run` and requires `--expected-revision`. Dock entry also accepts
 `--reserve-space true|false`. Agent Control uses the normal Workspace and Dock persistence paths; it

@@ -5,16 +5,7 @@ protocol.
 
 ## Commands
 
-```powershell
-npm run desktop:control -- preset list --json
-npm run desktop:control -- preset describe <preset-id> --json
-npm run desktop:control -- preset save <name> --expected-revision 12 --json
-npm run desktop:control -- preset apply <preset-id> --expected-revision 12 --json
-npm run desktop:control -- preset update <preset-id> --expected-revision 12 --json
-npm run desktop:control -- preset rename <preset-id> <name> --expected-revision 12 --json
-npm run desktop:control -- preset delete <preset-id> --expected-revision 12 --json
-npm run desktop:control -- preset reorder <file|-> --expected-revision 12 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 - `list` returns ordered `{ id, name }` summaries plus `activeId` and `dirty`.
 - `describe` returns one Preset's public saved snapshot.

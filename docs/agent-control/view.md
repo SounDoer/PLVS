@@ -6,12 +6,7 @@ currently have no focused Agent Control surface.
 
 ## Commands
 
-```powershell
-npm run desktop:control -- view describe --json
-npm run desktop:control -- view inspect --json
-npm run desktop:control -- view update <file|-> --expected-revision 12 --json
-npm run desktop:control -- view reset --expected-revision 12 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 `describe` returns schema, current values, platform availability, and runtime application state.
 `inspect` returns the focused current snapshot without field schema. `update` applies an atomic

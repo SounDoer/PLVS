@@ -7,10 +7,7 @@ Control configure them.
 
 ## Commands
 
-```powershell
-plvs-cli module list --json
-plvs-cli module describe <module-id> --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 The wire methods are `module.list` and `module.describe`. Neither command accepts
 `--expected-revision` or `--dry-run`, changes state, writes persistence, or marks a Preset dirty.

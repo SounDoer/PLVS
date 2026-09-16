@@ -5,10 +5,7 @@ portable resource is the same versioned `.plvsconfig` document produced by the G
 
 ## Export
 
-```powershell
-npm run desktop:control -- config export --json
-npm run desktop:control -- config export --json --out plvs-configuration.plvsconfig
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 Export is a query. It accepts neither `--expected-revision` nor `--dry-run`, does not mutate state,
 and does not advance the global revision. Before building the document, PLVS flushes pending domain

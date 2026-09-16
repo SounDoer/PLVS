@@ -9,17 +9,7 @@ authoring are defined by [Theme Control](themes.md).
 
 ## Commands
 
-```powershell
-npm run desktop:control -- preset export --all --json
-npm run desktop:control -- preset export --ids preset-1,preset-2 --json
-npm run desktop:control -- preset import <file|-> --expected-revision 12 --json
-npm run desktop:control -- theme list --json
-npm run desktop:control -- theme export --all --json --out themes.plvstheme
-npm run desktop:control -- theme import <file|-> --expected-revision 12 --json
-npm run desktop:control -- loudness-profile list --json
-npm run desktop:control -- loudness-profile export --all --json
-npm run desktop:control -- loudness-profile import <file|-> --expected-revision 12 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 - `list` returns compact discovery summaries. The richer `theme list` belongs to Theme Control and
   includes built-ins plus Appearance; transfer export remains custom-only.

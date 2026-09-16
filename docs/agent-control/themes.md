@@ -6,19 +6,7 @@ Pack sharing remains the separate [Library Transfer](libraries.md) contract.
 
 ## Commands
 
-```powershell
-plvs-cli theme list --json
-plvs-cli theme inspect --json
-plvs-cli theme describe <id> --json
-plvs-cli theme select <id> --expected-revision <n> --json [--dry-run]
-plvs-cli theme follow-system --expected-revision <n> --json [--dry-run]
-plvs-cli theme create <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli theme update <id> <file|-> --expected-revision <n> --json [--dry-run]
-plvs-cli theme rename <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli theme duplicate <id> <name> --expected-revision <n> --json [--dry-run]
-plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
-plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 The wire methods are `theme.list`, `theme.inspect`, `theme.describe`, `theme.select`,
 `theme.followSystem`, `theme.create`, `theme.update`, `theme.rename`, `theme.duplicate`,

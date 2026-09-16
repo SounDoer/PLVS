@@ -6,22 +6,7 @@ than transport playback.
 
 ## Commands
 
-```powershell
-npm run desktop:control -- transport inspect --json
-npm run desktop:control -- transport source live --expected-revision 12 --json
-npm run desktop:control -- transport source file --expected-revision 12 --json
-npm run desktop:control -- transport live start --expected-revision 12 --json
-npm run desktop:control -- transport live stop --expected-revision 12 --json
-npm run desktop:control -- transport live clear --expected-revision 12 --json
-npm run desktop:control -- transport file analyze <path> --expected-revision 12 --json
-npm run desktop:control -- transport file reanalyze <session-id> --expected-revision 12 --json
-npm run desktop:control -- transport file stop <session-id> --expected-revision 12 --json
-npm run desktop:control -- transport file select <session-id> --expected-revision 12 --json
-npm run desktop:control -- transport file remove <session-id> --expected-revision 12 --json
-npm run desktop:control -- transport file clear --expected-revision 12 --json
-npm run desktop:control -- transport file report <session-id> --json --out mix-report.json
-npm run desktop:control -- transport file report <session-id> --json --report-format markdown --out mix-report.md
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 All Transport commands except `inspect` and `file report` require `--expected-revision`. `source live`, `source file`,
 `live clear`, `file select`, `file remove`, and `file clear` are state mutations and support

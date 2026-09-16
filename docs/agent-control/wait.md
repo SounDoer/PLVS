@@ -1,43 +1,24 @@
 # Revision Wait
 
-Revision Wait lets an agent sleep until the public state revision changes instead of repeatedly
-polling inspection endpoints. The first version waits only for revision changes; arbitrary field
-expressions and high-frequency runtime events are deferred.
+Revision Wait (`app.wait`) lets an agent sleep until the global revision changes instead of
+polling inspection. Flags, the result shape, and the timeout exit code are part of the common
+contract in [`../cli.md`](../cli.md#waiting-for-change); command syntax is in
+[`generated/commands.md`](generated/commands.md). It waits only for revision changes — it takes no
+field expressions. [Measurement Wait](measurement-wait.md) waits for a LIVE measurement sample
+instead, without changing what the revision means.
 
-This document covers `app.wait`. The [Measurement Wait](measurement-wait.md) companion command
-waits for a different LIVE semantic sample without changing the meaning of the global revision.
+## What wakes it
 
-## Command
+An already-stale baseline returns immediately with `matchedImmediately: true`.
 
-```powershell
-npm run desktop:control -- wait --after-revision 13 --timeout-ms 30000 --json
-```
+Transport lifecycle, Settings, Preset, Dock, Workspace, panel, and committed axis viewport changes
+wake it, because they advance the global revision. Audio frames, measurement values, VAD activity,
+transport progress, the moving LIVE edge, and intermediate pointer previews do not.
 
-`--after-revision <n>` is required. `--timeout-ms <n>` is optional, defaults to 30000, and must be
-an integer from 100 through 300000. No other baseline flags or arbitrary state expressions are
-accepted. Comparison and listener registration must be race-free.
-
-A changed result reports whether the baseline was already stale and the current global revision:
-
-```json
-{
-  "outcome": "changed",
-  "matchedImmediately": false,
-  "revision": 14
-}
-```
-
-An already-stale baseline returns immediately with `matchedImmediately: true`. A timeout is an
-error with exit code 5, not a successful unchanged result. Its `error.details` contains
-`afterRevision` and `currentRevision`.
-
-`wait` is read-only and has no dry-run or `--expected-revision`. Its baseline is not an
-optimistic-concurrency guard. Runtime changes such as audio frames, measurement values, VAD
-activity, transport progress, and the moving LIVE edge do not wake this first version. Transport
-lifecycle, Settings, Preset, Dock, Workspace, panel, and committed axis viewport changes do wake it
-through the same global revision; intermediate pointer previews do not. App shutdown or loss of
-the frontend is an availability/transport error, not a timeout. Revision is process-local; after
-relaunch the caller must rediscover and inspect the new application session.
+A timeout's `error.details` carries `afterRevision` and `currentRevision`. The baseline is not an
+optimistic-concurrency guard. App shutdown or loss of the frontend is an availability error, not a
+timeout; because the revision is process-local, a caller must rediscover and inspect a relaunched
+app.
 
 ## Concurrency and cleanup
 

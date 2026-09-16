@@ -7,10 +7,7 @@ measurements.
 
 ## Command
 
-```powershell
-npm run desktop:control -- measurement wait --after-generation 3 --after-sequence 127 --timeout-ms 30000 --json
-npm run desktop:control -- measurement wait-until predicate.json --timeout-ms 30000 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 `--after-generation <n>` is required. `--after-sequence <n>` is optional and is omitted when the
 baseline `measurement inspect` returned `sample.sequence: null`. `--timeout-ms <n>` is optional,

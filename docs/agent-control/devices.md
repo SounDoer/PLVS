@@ -7,11 +7,7 @@ React owner, or exposes native backend handles.
 
 ## Commands
 
-```powershell
-npm run desktop:control -- device list --json
-npm run desktop:control -- device inspect --json
-npm run desktop:control -- device select <device-id|default> --expected-revision 12 --expected-generation 3 --json
-```
+Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).
 
 There is no `device describe` command. `device list` is the dynamic selection schema and returns
 the exact IDs accepted by `device select`. The singular `device` family is live-app control; it is
@@ -121,13 +117,7 @@ requires `--allow-measurement-restart`; without it, the command fails with
 the same way as the GUI device picker. Device Control does not start or stop a File analysis and
 does not change the selected LIVE/FILE source.
 
-Use a dry run to validate the current target and preview the restart:
-
-```powershell
-npm run desktop:control -- device select <device-id> --expected-revision 12 --expected-generation 3 --dry-run --json
-```
-
-Dry-run returns `changed`, `effects`, `warnings`, `confirmationsRequired`, the plan, and predicted
+Use a dry run to validate the current target and preview the restart. Dry-run returns `changed`, `effects`, `warnings`, `confirmationsRequired`, the plan, and predicted
 selection/Live state. It performs no restart, persistence, or revision increment. Availability is
 still only an observation; the command rechecks generation, presence, preview, global revision,
 and runtime availability immediately before a real commit.

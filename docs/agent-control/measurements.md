@@ -1,12 +1,8 @@
 # Measurement Control
 
 Measurement Control exposes one bounded, coherent snapshot of the latest LIVE measurement from the
-already-running app:
-
-```powershell
-npm run desktop:control -- measurement describe --json
-npm run desktop:control -- measurement inspect --json
-```
+already-running app, through `measurement describe` and `measurement inspect`. Command syntax and
+arguments are in [`generated/commands.md`](generated/commands.md).
 
 Both commands are read-only queries. They accept no source, revision, dry-run, input, output, or
 confirmation option. Inspect never starts LIVE, clears a measurement, opens a panel, or activates
