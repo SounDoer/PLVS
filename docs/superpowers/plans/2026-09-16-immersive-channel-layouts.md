@@ -626,6 +626,11 @@ fn standard_rows_come_from_the_shared_table() {
     if channels >= 3 {
       let expected = crate::dsp::channel_layouts::weights_for_roles(roles).expect("weights");
       assert_eq!(standard_loudness_weights(channels), Some(&expected[..]));
+      // The row is cached, so repeated calls hand out the same slice rather than a new one.
+      assert!(std::ptr::eq(
+        standard_loudness_weights(channels).unwrap(),
+        standard_loudness_weights(channels).unwrap()
+      ));
     }
   }
 }
@@ -640,36 +645,66 @@ Expected: FAIL — `standard_loudness_weights` returns a `&'static [f64]` built 
 
 Replace the bodies in `src-tauri/src/dsp/channel_weights.rs`, keeping both function names and their meaning ("no standard layout" is `None`):
 
+**`standard_loudness_weights` must keep returning `&'static [f64]`.** `LoudnessMeter::push_interleaved_multichannel` (`src-tauri/src/dsp/loudness.rs:395`) calls it on every PCM chunk, from the capture bridge worker. Returning a `Vec` there would allocate at chunk rate on the DSP hot path. The weight rows are therefore derived from the table once and cached for the process lifetime, so the signature and every call site stay exactly as they are.
+
+Add the cache to `src-tauri/src/dsp/channel_layouts.rs`:
+
 ```rust
-use super::channel_layouts::{layouts_for_channel_count, weights_for_roles};
+/// Weights for a layout id, computed once and kept for the process lifetime so hot callers can
+/// hold a `'static` slice instead of allocating a row per audio chunk.
+pub(crate) fn static_weights_for_layout(layout_id: &str) -> Option<&'static [f64]> {
+  static ROWS: OnceLock<Vec<(String, Vec<f64>)>> = OnceLock::new();
+  let rows = ROWS.get_or_init(|| {
+    layouts()
+      .iter()
+      .filter_map(|l| weights_for_roles(&l.roles).map(|w| (l.id.clone(), w)))
+      .collect()
+  });
+  rows
+    .iter()
+    .find(|(id, _)| id == layout_id)
+    .map(|(_, weights)| weights.as_slice())
+}
+```
+
+Then in `src-tauri/src/dsp/channel_weights.rs`:
+
+```rust
+use super::channel_layouts::{layouts_for_channel_count, static_weights_for_layout};
 
 /// Layout name for a channel count, or `None` when the count has no single standard layout.
-/// 8 channels is 7.1 or 5.1.2; the count alone never decides, so counts with more than one
-/// layout and counts above 8 are `None` — see `standard_layout_name`'s callers for the
-/// `Ch 1–2` degradation that follows.
+/// 8 channels is 7.1 or 5.1.2; the count alone never decides, so auto detection keeps the first
+/// table entry (7.1), which is the pre-B1 behaviour. Counts above 8 are `None` — see this
+/// function's callers for the `Ch 1–2` degradation that follows.
 pub(crate) fn standard_layout_name(channels: u16) -> Option<&'static str> {
   match channels {
-    1..=8 => {
-      let matches = layouts_for_channel_count(channels as usize);
-      // 8 channels matches 7.1 and 5.1.2; auto detection keeps 7.1, as before B1.
-      matches.first().map(|l| l.id.as_str())
-    }
+    1..=8 => layouts_for_channel_count(channels as usize)
+      .first()
+      .map(|l| l.id.as_str()),
     _ => None,
   }
 }
 
 /// Per-channel loudness weights for 3–8 channels. Mono and stereo keep their dedicated paths.
-pub(crate) fn standard_loudness_weights(channels: u16) -> Option<Vec<f64>> {
+/// The returned slice is cached, so this is allocation-free for per-chunk callers.
+pub(crate) fn standard_loudness_weights(channels: u16) -> Option<&'static [f64]> {
   if !(3..=8).contains(&channels) {
     return None;
   }
-  let name = standard_layout_name(channels)?;
-  let roles = super::channel_layouts::roles_for_layout(name)?;
-  weights_for_roles(roles)
+  static_weights_for_layout(standard_layout_name(channels)?)
 }
 ```
 
-Change the test written in Step 1 to compare `Some(expected)` rather than `Some(&expected[..])`, and update the existing tests in this file from `Some(&[...][..])` to `Some(vec![...])`. Update the two call sites (`src-tauri/src/dsp/loudness.rs` and `src-tauri/src/dsp/meter.rs`) for the `Vec<f64>` return — they pass the slice on, so `.as_deref()` or `as_slice()` at the call site is enough.
+The signature is unchanged, so `src-tauri/src/dsp/loudness.rs` and `src-tauri/src/dsp/summary_meter.rs` need no edits. Existing tests keep their `Some(&[...][..])` shape and their numeric values.
+
+**Rewrite the cross-side guard.** `src/math/channelWeightsContract.test.js` scrapes `channel_weights.rs` for `N => Some(&[…])` match arms and compares them with the frontend's weights. Those arms are exactly what this task deletes, so the test goes red. Do not delete the test: the drift it guarded is now structurally impossible, but two new invariants deserve the same protection. Rewrite it to assert:
+
+1. `channel_weights.rs` carries no literal weight rows any more — a hand-written table must not creep back in beside the shared one.
+2. For every channel count 1–8, the frontend's labels and weights for `standardLayoutIdForCount(n)` equal that layout's roles and `weightsForRoles` output from `shared/channel-layouts.json`. This is the guard that the JS twin of Rust's `standard_layout_name` has not drifted from the table.
+
+Keep the file's existing comment style and its name; update the leading comment to say what it now guards.
+
+**Also:** removing the hardcoded arms leaves `SURROUND_LOUDNESS_WEIGHT` in `src-tauri/src/dsp/gating.rs` with no production caller, which trips `clippy -D warnings`. Prefer deleting the constant and sourcing the value from the table (`role_weight("Ls")`) in the tests that still reference it, so the +1.5 dB value lives in one place. If that turns out to touch more than the handful of test sites, keep the constant with a narrow `#[allow(dead_code)]` and a comment, and report which you chose.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
