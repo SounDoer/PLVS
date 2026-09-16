@@ -1,8 +1,5 @@
-import {
-  roleTokensToLabels,
-  roleTokensToLoudnessWeights,
-  seedTokensFromLabels,
-} from "../math/channelRoles.js";
+import { roleTokensToLabels, seedTokensFromLabels } from "../math/channelRoles.js";
+import { layoutIdForRoles, standardLayoutIdForCount } from "../math/channelLayoutTable.js";
 import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
 import { getPanelControls } from "../workspace/panelControlInstances.js";
 
@@ -41,33 +38,29 @@ export function deriveBackendAnalysisRequests(requests) {
   };
 }
 
-export function deriveChannelLabelRuntime({
-  channelCount,
-  layoutResolution,
-  channelLabelOverrides,
-}) {
+export function deriveChannelLabelRuntime({ channelCount, channelLabelOverrides }) {
   const channelLabelOverride =
     channelCount > 0 ? (channelLabelOverrides[channelCount] ?? null) : null;
   const overrideLabels = channelLabelOverride ? roleTokensToLabels(channelLabelOverride) : null;
+  const autoLayoutId = channelCount > 0 ? standardLayoutIdForCount(channelCount) : null;
   const channelAutoLabels =
     channelCount > 0
       ? getPeakMeterChannelLabels(channelCount, {
-          channelLayout: "auto",
-          resolvedLayout: layoutResolution.resolved,
+          formatId: autoLayoutId ?? undefined,
+          resolvedLayout: autoLayoutId ? undefined : "unknown",
         })
       : [];
 
   return {
     channelLabelOverride,
+    channelRoles: channelLabelOverride,
+    selectedLayoutId: channelLabelOverride ? layoutIdForRoles(channelLabelOverride) : null,
     overrideLabels,
-    loudnessWeights: channelLabelOverride
-      ? roleTokensToLoudnessWeights(channelLabelOverride)
-      : null,
     channelAutoLabels,
     channelLabelTokens: channelLabelOverride ?? seedTokensFromLabels(channelAutoLabels),
     peakLabelContext: {
-      channelLayout: "auto",
-      resolvedLayout: channelCount === 0 ? "stereo" : layoutResolution.resolved,
+      formatId: autoLayoutId ?? undefined,
+      resolvedLayout: autoLayoutId ? undefined : "unknown",
       overrideLabels,
     },
   };

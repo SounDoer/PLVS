@@ -41,7 +41,6 @@ import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
 import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
-import { resolveChannelLayout } from "./math/channelLayoutResolver.js";
 import {
   buildVectorscopePairOptions,
   clampVectorscopePairToAvailable,
@@ -53,6 +52,7 @@ import {
 } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { roleTokensToLabels, seedTokensFromLabels } from "./math/channelRoles.js";
+import { standardLayoutIdForCount } from "./math/channelLayoutTable.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -1105,16 +1105,12 @@ function AppContent() {
       historyPerformanceRequestKeysRef.current
     );
   }, [analysisRequests]);
-  const layoutResolution = useMemo(
-    () => resolveChannelLayout("auto", { channelCount }),
-    [channelCount]
-  );
   const channelLabelRuntime = useMemo(
-    () => deriveChannelLabelRuntime({ channelCount, layoutResolution, channelLabelOverrides }),
-    [channelCount, channelLabelOverrides, layoutResolution]
+    () => deriveChannelLabelRuntime({ channelCount, channelLabelOverrides }),
+    [channelCount, channelLabelOverrides]
   );
   const { channelLabelOverride } = channelLabelRuntime;
-  const channelRoles = channelLabelOverride;
+  const { channelRoles } = channelLabelRuntime;
   const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
   const dialogueVadEngine = settings.dialogueVadEngine;
   const {
@@ -1218,9 +1214,10 @@ function AppContent() {
       const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
       if (count <= 0) return [];
       const override = channelLabelOverrides[count];
+      const autoLayoutId = standardLayoutIdForCount(count);
       return getPeakMeterChannelLabels(count, {
-        channelLayout: "auto",
-        resolvedLayout: record?.loudnessLayout ?? "unknown",
+        formatId: autoLayoutId ?? undefined,
+        resolvedLayout: autoLayoutId ? undefined : "unknown",
         overrideLabels: override ? roleTokensToLabels(override) : null,
       });
     },

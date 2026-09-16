@@ -118,67 +118,36 @@ describe("app runtime derivations", () => {
     expect(JSON.stringify(changed.stereoMap)).toBe(JSON.stringify(baseline.stereoMap));
   });
 
-  it("derives live label context and editable role tokens from per-count overrides", () => {
+  it("exposes the selected layout id and the roles to send", () => {
+    const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"];
     const runtime = deriveChannelLabelRuntime({
-      channelCount: 6,
-      layoutResolution: { resolved: "5.1" },
-      channelLabelOverrides: { 6: ["L", "R", "C", "LFE", "Ls", "Rs"] },
+      channelCount: 12,
+      channelLabelOverrides: { 12: roles },
     });
 
-    expect(runtime.overrideLabels).toEqual(["L", "R", "C", "LFE", "Ls", "Rs"]);
-    expect(runtime.peakLabelContext).toEqual({
-      channelLayout: "auto",
-      resolvedLayout: "5.1",
-      overrideLabels: ["L", "R", "C", "LFE", "Ls", "Rs"],
-    });
-    expect(runtime.channelLabelTokens).toEqual(["L", "R", "C", "LFE", "Ls", "Rs"]);
+    expect(runtime.channelRoles).toEqual(roles);
+    expect(runtime.selectedLayoutId).toBe("7.1.4");
+    expect(runtime.overrideLabels).toEqual(roles);
   });
 
-  it("derives loudness weights from the same per-count role override", () => {
-    expect(
-      deriveChannelLabelRuntime({
-        channelCount: 3,
-        layoutResolution: { resolved: "3.0" },
-        channelLabelOverrides: { 3: ["L", "LFE", "Rs"] },
-      }).loudnessWeights
-    ).toEqual([1, 0, 10 ** (1.5 / 10)]);
-  });
-
-  it("does not name an 8-channel auto-detected device yet", () => {
-    // Pending Task 7: formatId is not wired here yet, so 8-channel auto-detection falls back to
-    // generic labels. When Task 7 lands, this expectation flips to the named 7.1 labels.
+  it("names an 8-channel auto-detected device as 7.1", () => {
     const runtime = deriveChannelLabelRuntime({
       channelCount: 8,
-      layoutResolution: { resolved: "7.1" },
       channelLabelOverrides: {},
     });
 
-    expect(runtime.channelAutoLabels).toEqual([
-      "Ch 1",
-      "Ch 2",
-      "Ch 3",
-      "Ch 4",
-      "Ch 5",
-      "Ch 6",
-      "Ch 7",
-      "Ch 8",
-    ]);
+    expect(runtime.channelAutoLabels).toEqual(["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]);
   });
 
-  it("falls back to stereo labels before a real channel count is known", () => {
+  it("reports no layout and no roles when nothing is overridden", () => {
     const runtime = deriveChannelLabelRuntime({
-      channelCount: 0,
-      layoutResolution: { resolved: "unknown" },
+      channelCount: 12,
       channelLabelOverrides: {},
     });
 
-    expect(runtime.peakLabelContext).toEqual({
-      channelLayout: "auto",
-      resolvedLayout: "stereo",
-      overrideLabels: null,
-    });
-    expect(runtime.channelLabelTokens).toEqual([]);
-    expect(runtime.loudnessWeights).toBeNull();
+    expect(runtime.channelRoles).toBeNull();
+    expect(runtime.selectedLayoutId).toBeNull();
+    expect(runtime.channelLabelTokens).toEqual(Array.from({ length: 12 }, () => "generic"));
   });
 
   it("derives dialogue gating from visible stats controls", () => {
