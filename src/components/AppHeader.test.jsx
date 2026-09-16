@@ -133,6 +133,7 @@ describe("AppHeader", () => {
     expect(screen.queryByText("Audio Device")).toBeNull();
     expect(screen.getByRole("button", { name: "Automatic (default system output)" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Speakers (Realtek USB Audio)" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Input/ }));
     expect(screen.getByRole("button", { name: "Microphone (USB Interface)" })).toBeTruthy();
     expect(screen.getByText("Speakers")).toBeTruthy();
     expect(screen.getByText("Realtek USB Audio")).toBeTruthy();
@@ -156,10 +157,79 @@ describe("AppHeader", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Devices" }));
     expect(onRefreshSources).toHaveBeenCalledOnce();
-    expect(screen.getByText("Applications")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Applications/ }));
     expect(screen.getByText("reference.wav - VLC")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "VLC application audio" }));
     expect(setCaptureDeviceId).toHaveBeenCalledWith("app-00112233445566778899aabbccddeeff");
+  });
+
+  it("expands device groups independently and keeps Output open by default", () => {
+    renderHeader({
+      captureApplications: [
+        {
+          id: "app-00112233445566778899aabbccddeeff",
+          label: "VLC",
+          windowTitle: "reference.wav - VLC",
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+
+    const output = screen.getByRole("button", { name: /^Output/ });
+    const input = screen.getByRole("button", { name: /^Input/ });
+    const applications = screen.getByRole("button", { name: /^Applications/ });
+    expect(output.getAttribute("aria-expanded")).toBe("true");
+    expect(input.getAttribute("aria-expanded")).toBe("false");
+    expect(applications.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(input);
+    expect(input.getAttribute("aria-expanded")).toBe("true");
+    expect(output.getAttribute("aria-expanded")).toBe("true");
+
+    fireEvent.click(output);
+    expect(output.getAttribute("aria-expanded")).toBe("false");
+    expect(input.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("opens and summarizes the group containing the selected application", () => {
+    const applicationId = "app-00112233445566778899aabbccddeeff";
+    renderHeader({
+      safeAudioDeviceId: applicationId,
+      captureApplications: [
+        {
+          id: applicationId,
+          label: "VLC",
+          windowTitle: "reference.wav - VLC",
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+
+    expect(
+      screen.getByRole("button", { name: /^Applications/ }).getAttribute("aria-expanded")
+    ).toBe("true");
+    expect(screen.getByText("VLC Selected")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "VLC application audio" })).toBeTruthy();
+  });
+
+  it("keeps the Devices heading and Automatic row outside one bounded scroll area", () => {
+    renderHeader();
+    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+
+    const content = document.querySelector('[data-slot="popover-content"]');
+    const scrollArea = content.querySelector("[data-device-scroll]");
+    expect(content.className).toContain("max-h-[var(--radix-popover-content-available-height)]");
+    expect(content.className).toContain("overflow-hidden");
+    expect(content.className).toContain("w-[min(21rem,92vw)]");
+    expect(scrollArea.className).toContain("overflow-y-auto");
+    expect(scrollArea.className).toContain("overscroll-contain");
+    expect(scrollArea.className).toContain("[scrollbar-gutter:stable]");
+    expect(scrollArea.contains(screen.getByText("Devices"))).toBe(false);
+    expect(
+      scrollArea.contains(screen.getByRole("button", { name: "Automatic (default system output)" }))
+    ).toBe(false);
   });
 
   it("seats Loudness Profile between Devices and Modules", () => {
@@ -209,7 +279,7 @@ describe("AppHeader", () => {
     expect(screen.getByText("No presets yet. Save the current view to start.")).toBeTruthy();
   });
 
-  it("gives every toolbar popover the shared adaptive width range", () => {
+  it("gives non-device toolbar popovers the shared adaptive width range", () => {
     const loudnessProfile = {
       active: "off",
       document: null,
@@ -219,7 +289,7 @@ describe("AppHeader", () => {
       beginCreate: vi.fn(),
     };
 
-    for (const name of ["Devices", "Loudness Profile", "Modules", "Views", "Presets"]) {
+    for (const name of ["Loudness Profile", "Modules", "Views", "Presets"]) {
       renderHeader({ loudnessProfile });
       fireEvent.click(screen.getByRole("button", { name }));
 
