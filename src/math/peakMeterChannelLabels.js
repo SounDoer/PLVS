@@ -5,9 +5,11 @@
  * Labels name the loudness weighting role, not the WAVE speaker bit: `Ls/Rs` is the +1.5 dB
  * surround pair even where a 5.1 device mask calls it BL/BR.
  *
- * Add new entries to {@link PEAK_METER_CHANNEL_FORMATS} and {@link ORDERED_FORMAT_IDS}, or pass
+ * Formats come from the shared channel layout table, keyed by layout id (`5.1`, `7.1.4`, …). Pass
  * `ctx.formatId` when the backend can identify a layout explicitly.
  */
+
+import { CHANNEL_LAYOUTS, layoutsForChannelCount } from "./channelLayoutTable.js";
 
 /** @typedef {"auto" | "stereo" | "5.1"} ChannelLayoutSetting */
 /** @typedef {"unknown" | "stereo" | "5.1"} ResolvedChannelLayout */
@@ -28,53 +30,23 @@
  */
 
 /** @type {Record<string, PeakMeterChannelFormatDef>} */
-export const PEAK_METER_CHANNEL_FORMATS = Object.freeze({
-  mono: { id: "mono", channels: 1, labels: ["M"] },
-  stereo: { id: "stereo", channels: 2, labels: ["L", "R"] },
-  lcr: { id: "lcr", channels: 3, labels: ["L", "R", "C"] },
-  quad: { id: "quad", channels: 4, labels: ["L", "R", "Ls", "Rs"] },
-  surround50: { id: "surround50", channels: 5, labels: ["L", "R", "C", "Ls", "Rs"] },
-  surround51: {
-    id: "surround51",
-    channels: 6,
-    labels: ["L", "R", "C", "LFE", "Ls", "Rs"],
-  },
-  surround70: {
-    id: "surround70",
-    channels: 7,
-    labels: ["L", "R", "C", "Lb", "Rb", "Ls", "Rs"],
-  },
-  surround71: {
-    id: "surround71",
-    channels: 8,
-    labels: ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"],
-  },
-});
-
-const ORDERED_FORMAT_IDS = [
-  "mono",
-  "stereo",
-  "lcr",
-  "quad",
-  "surround50",
-  "surround51",
-  "surround70",
-  "surround71",
-];
+export const PEAK_METER_CHANNEL_FORMATS = Object.freeze(
+  Object.fromEntries(
+    CHANNEL_LAYOUTS.map((layout) => [
+      layout.id,
+      { id: layout.id, channels: layout.roles.length, labels: [...layout.roles] },
+    ])
+  )
+);
 
 /**
  * @param {number} channelCount
- * @returns {string[] | null} Null if no registered format matches the count exactly.
+ * @returns {string[] | null} Null unless exactly one layout has this channel count: 8 channels is
+ * 7.1 or 5.1.2 and must not be named by count alone.
  */
 function labelsForExactChannelCount(channelCount) {
-  const n = Math.max(0, Math.floor(channelCount));
-  for (const fid of ORDERED_FORMAT_IDS) {
-    const def = PEAK_METER_CHANNEL_FORMATS[fid];
-    if (def && def.channels === n) {
-      return [...def.labels];
-    }
-  }
-  return null;
+  const matches = layoutsForChannelCount(Math.max(0, Math.floor(channelCount)));
+  return matches.length === 1 ? [...matches[0].roles] : null;
 }
 
 /**

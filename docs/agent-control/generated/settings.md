@@ -19,4 +19,4 @@ here.
 | `channelLabels` | object | - | - | - | - |
 | `channelLabels.channelCount` | integer | - | - | - | - |
 | `channelLabels.mode` | enum | - | - | "auto", "custom" | - |
-| `channelLabels.roles` | array | - | - | each of "generic", "M", "L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb", "Cs", "Ltf", "Rtf", "Ltr", "Rtr" | - |
+| `channelLabels.roles` | array | - | - | each of "generic", "M", "L", "R", "C", "LFE", "Ls", "Rs", "Lb", "Rb", "Cs", "Lw", "Rw", "Ltf", "Rtf", "Ltm", "Rtm", "Ltr", "Rtr" | - |

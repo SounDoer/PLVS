@@ -76,6 +76,16 @@ describe("roleTokensToLoudnessWeights", () => {
   it("maps unknown defensive tokens to unity", () => {
     expect(roleTokensToLoudnessWeights(["zzz"])).toEqual([1]);
   });
+
+  it("carries the immersive roles with their BS.1770-5 weights", () => {
+    expect(roleTokensToLoudnessWeights(["Lw", "Rw", "Ltm", "Rtm"])).toEqual([
+      10 ** (1.5 / 10),
+      10 ** (1.5 / 10),
+      1,
+      1,
+    ]);
+    expect(roleTokensToLabels(["Lw", "Ltm"])).toEqual(["Lw", "Ltm"]);
+  });
 });
 
 describe("seedTokensFromLabels", () => {

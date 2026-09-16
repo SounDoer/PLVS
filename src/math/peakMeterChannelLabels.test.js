@@ -15,7 +15,16 @@ describe("getPeakMeterChannelLabels", () => {
   });
 
   it("maps 7.1 eight-channel strip", () => {
-    expect(getPeakMeterChannelLabels(8)).toEqual(["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]);
+    expect(getPeakMeterChannelLabels(8, { formatId: "7.1" })).toEqual([
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lb",
+      "Rb",
+      "Ls",
+      "Rs",
+    ]);
   });
 
   it("maps 7.0 seven-channel strip", () => {
@@ -23,15 +32,15 @@ describe("getPeakMeterChannelLabels", () => {
   });
 
   it("honours formatId when channel count matches that format", () => {
-    expect(getPeakMeterChannelLabels(6, { formatId: "surround51" })).toEqual(
-      PEAK_METER_CHANNEL_FORMATS.surround51.labels
+    expect(getPeakMeterChannelLabels(6, { formatId: "5.1" })).toEqual(
+      PEAK_METER_CHANNEL_FORMATS["5.1"].labels
     );
     expect(getPeakMeterChannelLabels(2, { formatId: "stereo" })).toEqual(["L", "R"]);
   });
 
   it("ignores formatId when channel count mismatches", () => {
     expect(getPeakMeterChannelLabels(6, { formatId: "stereo" })).toEqual(
-      PEAK_METER_CHANNEL_FORMATS.surround51.labels
+      PEAK_METER_CHANNEL_FORMATS["5.1"].labels
     );
   });
 
@@ -77,7 +86,7 @@ describe("getPeakMeterChannelLabels", () => {
   });
 
   it("shows ITU labels when resolvedLayout is a known format", () => {
-    expect(getPeakMeterChannelLabels(8, { resolvedLayout: "7.1" })).toEqual([
+    expect(getPeakMeterChannelLabels(8, { formatId: "7.1", resolvedLayout: "7.1" })).toEqual([
       "L",
       "R",
       "C",
@@ -115,5 +124,28 @@ describe("getPeakMeterChannelLabels", () => {
       "Ls",
       "Rs",
     ]);
+  });
+
+  it("labels a 12-channel 7.1.4 layout from the shared table", () => {
+    expect(getPeakMeterChannelLabels(12, { formatId: "7.1.4" })).toEqual([
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lb",
+      "Rb",
+      "Ls",
+      "Rs",
+      "Ltf",
+      "Rtf",
+      "Ltr",
+      "Rtr",
+    ]);
+  });
+
+  it("does not name channels for a count with no single standard layout", () => {
+    expect(getPeakMeterChannelLabels(10)).toEqual(
+      Array.from({ length: 10 }, (_, i) => `Ch ${i + 1}`)
+    );
   });
 });

@@ -27,7 +27,7 @@ describe("buildSpectrumChannelOptions", () => {
   });
 
   it("7.1 (8ch): returns L+R, Lb+Rb, Ls+Rs, C, LFE", () => {
-    const labels = getPeakMeterChannelLabels(8);
+    const labels = getPeakMeterChannelLabels(8, { formatId: "7.1" });
     const opts = buildSpectrumChannelOptions(8, labels);
     expect(opts.map((o) => o.key)).toEqual(["p-0-1", "p-4-5", "p-6-7", "s-2", "s-3"]);
     expect(opts[1].label).toBe("Lb+Rb");

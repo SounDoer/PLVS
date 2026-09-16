@@ -60,7 +60,9 @@ describe("channel weights contract", () => {
 
   for (let n = 3; n <= 8; n++) {
     it(`matches the engine's ${n}-channel weight row`, () => {
-      const labels = getPeakMeterChannelLabels(n);
+      // 8 channels is ambiguous between 7.1 and 5.1.2 in the shared table; this contract is
+      // specifically about the engine's canonical 7.1 row, so name it explicitly.
+      const labels = getPeakMeterChannelLabels(n, n === 8 ? { formatId: "7.1" } : undefined);
       const weights = roleTokensToLoudnessWeights(seedTokensFromLabels(labels));
       expect(weights).toEqual(rows[n]);
     });
