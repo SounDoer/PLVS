@@ -1,23 +1,32 @@
 /** @vitest-environment jsdom */
 
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { logFrontendError } = vi.hoisted(() => ({ logFrontendError: vi.fn() }));
+const { logFrontendError, readPendingCrashReport } = vi.hoisted(() => ({
+  logFrontendError: vi.fn(),
+  readPendingCrashReport: vi.fn(),
+}));
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
-vi.mock("../ipc/commands.js", () => ({ logFrontendError }));
+vi.mock("../ipc/commands.js", () => ({ logFrontendError, readPendingCrashReport }));
 
 import { useCrashReporting } from "./useCrashReporting.js";
 
-function Harness() {
-  useCrashReporting();
-  return null;
+function Harness({ promptEnabled = true }) {
+  const { pendingReport, dismissPending } = useCrashReporting({ promptEnabled });
+  return pendingReport ? (
+    <button type="button" onClick={dismissPending}>
+      {pendingReport.id}
+    </button>
+  ) : null;
 }
 
 beforeEach(() => {
   logFrontendError.mockReset();
   logFrontendError.mockResolvedValue(undefined);
+  readPendingCrashReport.mockReset();
+  readPendingCrashReport.mockResolvedValue(null);
 });
 
 describe("useCrashReporting ordinary error logging", () => {
@@ -60,5 +69,20 @@ describe("useCrashReporting ordinary error logging", () => {
       window.dispatchEvent(new ErrorEvent("error", { message: "ordinary failure" }))
     ).not.toThrow();
     await waitFor(() => expect(logFrontendError).toHaveBeenCalledTimes(1));
+  });
+
+  it("loads at most the newest pending report when asking is enabled", async () => {
+    readPendingCrashReport.mockResolvedValueOnce({ id: "report-1" });
+    render(<Harness />);
+
+    const pending = await screen.findByRole("button", { name: "report-1" });
+    expect(readPendingCrashReport).toHaveBeenCalledTimes(1);
+    fireEvent.click(pending);
+    expect(screen.queryByRole("button", { name: "report-1" })).toBeNull();
+  });
+
+  it("does not load a pending prompt when asking is disabled", () => {
+    render(<Harness promptEnabled={false} />);
+    expect(readPendingCrashReport).not.toHaveBeenCalled();
   });
 });

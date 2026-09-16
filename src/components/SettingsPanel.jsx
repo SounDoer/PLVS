@@ -213,6 +213,10 @@ export function SettingsPanel({
   agentControlStatus = undefined,
   agentControlBusy = false,
   onSetAgentControlEnabled = () => {},
+  askToSendCrashReports = true,
+  crashReportSettingBusy = false,
+  crashReportSettingError = "",
+  onAskToSendCrashReports = () => {},
   onOpenFeedback = () => {},
 }) {
   const reduceMotion = useReducedMotion();
@@ -330,6 +334,28 @@ export function SettingsPanel({
                       </SelectContent>
                     </Select>
                   </SettingsRow>
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="Ask To Send Crash Reports"
+                        tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
+                      />
+                    }
+                  >
+                    <SettingsSwitch
+                      aria-label="ask to send crash reports"
+                      checked={askToSendCrashReports}
+                      disabled={crashReportSettingBusy}
+                      onCheckedChange={(next) => {
+                        void Promise.resolve(onAskToSendCrashReports(next)).catch(() => {});
+                      }}
+                    />
+                  </SettingsRow>
+                  {crashReportSettingError ? (
+                    <span className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+                      Could not update crash-report settings.
+                    </span>
+                  ) : null}
                 </SettingsSection>
 
                 <SettingsDivider />

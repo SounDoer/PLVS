@@ -44,6 +44,22 @@ function hexToRgb(hex) {
 }
 
 describe("SettingsPanel", () => {
+  it("shows the opt-in crash-report prompt setting", () => {
+    const onAskToSendCrashReports = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        askToSendCrashReports={true}
+        onAskToSendCrashReports={onAskToSendCrashReports}
+      />
+    );
+
+    const toggle = screen.getByLabelText("ask to send crash reports");
+    expect(toggle.getAttribute("data-state")).toBe("checked");
+    fireEvent.click(toggle);
+    expect(onAskToSendCrashReports).toHaveBeenCalledWith(false);
+  });
+
   it("renders core controls when open in system mode", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="system" />);
     expect(screen.getByLabelText("Appearance")).toBeTruthy();

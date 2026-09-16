@@ -34,7 +34,11 @@ import { settingsStore } from "../persistence/index.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import { profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 import { useDockMode } from "./useDockMode.js";
-import { BlockingEditorsProvider, useBlockingEditors } from "./BlockingEditorsContext.jsx";
+import {
+  BlockingEditorsProvider,
+  useBlockingEditor,
+  useBlockingEditors,
+} from "./BlockingEditorsContext.jsx";
 
 const TEST_PROFILE = {
   id: "test-profile",
@@ -411,6 +415,33 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
     expect(thrown?.code).toBe("editorActive");
     expect(mocks.enterDock).not.toHaveBeenCalled();
     expect(result.current.profile.draft).not.toBe(null);
+  });
+
+  it("refuses entry while the crash-report consent draft is open", () => {
+    const { result } = renderHook(
+      () => {
+        useBlockingEditor("crash-report", true);
+        const { assertSceneOperationAllowed } = useBlockingEditors();
+        return useDockMode({ assertSceneOperationAllowed });
+      },
+      {
+        wrapper: ({ children }) => createElement(BlockingEditorsProvider, null, children),
+      }
+    );
+
+    let thrown = null;
+    act(() => {
+      try {
+        result.current.enterDockMode("bottom");
+      } catch (error) {
+        thrown = error;
+      }
+    });
+
+    expect(thrown?.editors).toEqual(["crash-report"]);
+    expect(mocks.enterDock).not.toHaveBeenCalled();
+    expect(result.current.dockEnabled).toBe(false);
+    expect(mocks.patchPresets).not.toHaveBeenCalled();
   });
 
   it("enters once the draft is cancelled", async () => {

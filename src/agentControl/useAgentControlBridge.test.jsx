@@ -2991,7 +2991,7 @@ describe("useAgentControlBridge", () => {
     mount({
       flush,
       assertPresetOperationAllowed: (operation) => {
-        throw new SceneOperationBlockedError(operation, ["theme"]);
+        throw new SceneOperationBlockedError(operation, ["crash-report"]);
       },
       presets: { list: [], activeId: null, dirty: false },
     });
@@ -3003,7 +3003,7 @@ describe("useAgentControlBridge", () => {
       code: -32040,
       data: {
         reason: "editorActive",
-        details: { operation: "preset.save", editors: ["theme"] },
+        details: { operation: "preset.save", editors: ["crash-report"] },
       },
     });
     expect(flush).not.toHaveBeenCalled();

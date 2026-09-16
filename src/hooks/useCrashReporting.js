@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { logFrontendError } from "../ipc/commands.js";
+import { useCallback, useEffect, useState } from "react";
+import { logFrontendError, readPendingCrashReport } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 
 function describeReason(reason) {
@@ -27,7 +27,26 @@ function forwardOrdinaryError(kind, reason) {
   });
 }
 
-export function useCrashReporting() {
+export function useCrashReporting({ promptEnabled = true } = {}) {
+  const [pendingReport, setPendingReport] = useState(null);
+
+  useEffect(() => {
+    if (!promptEnabled || !isTauri()) {
+      return undefined;
+    }
+    let cancelled = false;
+    Promise.resolve(readPendingCrashReport())
+      .then((report) => {
+        if (!cancelled) setPendingReport(report ?? null);
+      })
+      .catch((error) => {
+        console.error("Unable to read saved crash report", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [promptEnabled]);
+
   useEffect(() => {
     const onError = (event) => {
       forwardOrdinaryError("window.error", event.error ?? event.message);
@@ -42,4 +61,7 @@ export function useCrashReporting() {
       window.removeEventListener("unhandledrejection", onUnhandledRejection);
     };
   }, []);
+
+  const dismissPending = useCallback(() => setPendingReport(null), []);
+  return { pendingReport: promptEnabled ? pendingReport : null, dismissPending };
 }

@@ -89,7 +89,6 @@ import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport
 import { automaticOutputChangeNotice } from "./lib/captureHealth.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
-import { useCrashReporting } from "./hooks/useCrashReporting.js";
 import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
 import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
@@ -185,7 +184,6 @@ function errorDetails(prefix, error) {
 }
 
 export default function App() {
-  useCrashReporting();
   return (
     <WorkspaceProvider>
       <MeterRuntimeProvider>

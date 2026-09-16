@@ -3,9 +3,12 @@ import { openExternalUrl } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
+import { useCrashReporting } from "../hooks/useCrashReporting.js";
+import { useCrashReportSetting } from "../hooks/useCrashReportSetting.js";
 import { getAdapter } from "../transfer/libraryAdapters.js";
 import { usePackTransfer } from "../transfer/usePackTransfer.js";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
+import { CrashReportDialog } from "./CrashReportDialog.jsx";
 import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { SettingsPanel } from "./SettingsPanel.jsx";
@@ -27,6 +30,8 @@ export function AppSettingsOverlays({
   // component owns; nothing outside it needs to know where they sit.
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
   const [pickType, setPickType] = useState(null);
+  const crashReportSetting = useCrashReportSetting();
+  const crashReporting = useCrashReporting({ promptEnabled: crashReportSetting.enabled });
   const {
     configurationBusy,
     configurationStatus,
@@ -121,6 +126,10 @@ export function AppSettingsOverlays({
           const status = await setAgentControlEnabled(next);
           onAgentControlEnabledChange(status?.enabled === true);
         }}
+        askToSendCrashReports={crashReportSetting.enabled}
+        crashReportSettingBusy={crashReportSetting.busy}
+        crashReportSettingError={crashReportSetting.error}
+        onAskToSendCrashReports={crashReportSetting.setEnabled}
         onOpenFeedback={() => {
           settings.setSettingsOpen(false);
           setFeedbackOpen(true);
@@ -139,6 +148,14 @@ export function AppSettingsOverlays({
       />
 
       {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
+
+      {crashReporting.pendingReport ? (
+        <CrashReportDialog
+          report={crashReporting.pendingReport}
+          onClose={crashReporting.dismissPending}
+          onDisableAsking={() => crashReportSetting.setEnabled(false)}
+        />
+      ) : null}
 
       {pickType ? (
         <ItemPickerDialog

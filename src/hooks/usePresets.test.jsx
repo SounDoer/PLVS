@@ -1046,7 +1046,7 @@ describe("usePresets under an active blocking editor", () => {
       () => {
         const [open, setOpen] = useState(false);
         setEditorOpen = setOpen;
-        useBlockingEditor("loudnessProfile", open);
+        useBlockingEditor("crash-report", open);
         const { activeBlockingEditors, assertSceneOperationAllowed } = useBlockingEditors();
         return {
           workspace: useWorkspaceStore(),
@@ -1094,7 +1094,7 @@ describe("usePresets under an active blocking editor", () => {
 
     expect(thrown?.code).toBe("editorActive");
     expect(thrown?.operation).toBe("preset.apply");
-    expect(thrown?.editors).toEqual(["loudnessProfile"]);
+    expect(thrown?.editors).toEqual(["crash-report"]);
     expect(view.result.current.workspace.state.tree).toEqual(leaf(["loudness"]));
     expect(view.spies.applyDockPreset).not.toHaveBeenCalled();
     expect(view.spies.setFocusView).not.toHaveBeenCalled();
