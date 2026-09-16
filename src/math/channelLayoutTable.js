@@ -8,6 +8,18 @@
 
 import table from "../../shared/channel-layouts.json";
 
+// Deep-freeze so every accessor has the same contract: nothing handed out, whether a direct
+// export or a derived array like `layoutsForChannelCount`'s filter result, can mutate the
+// module-level singleton. The table is tiny (19 roles, 13 layouts), so freezing it eagerly costs
+// nothing measurable.
+for (const layout of table.layouts) {
+  Object.freeze(layout.roles);
+  Object.freeze(layout);
+}
+for (const role of table.roles) {
+  Object.freeze(role);
+}
+
 /** @type {readonly ChannelRoleEntry[]} */
 export const CHANNEL_ROLES = Object.freeze(table.roles);
 

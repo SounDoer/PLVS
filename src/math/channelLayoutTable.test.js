@@ -65,6 +65,16 @@ describe("channelLayoutTable", () => {
     }
   });
 
+  it("freezes layout data so a caller cannot corrupt the shared singleton", () => {
+    const [layout] = layoutsForChannelCount(8);
+    expect(() => layout.roles.push("x")).toThrow();
+    expect(() => {
+      layout.roles[0] = "x";
+    }).toThrow();
+    // A later call must be unaffected by the (failed) mutation attempt above.
+    expect(layoutsForChannelCount(8).map((l) => l.id)).toEqual(["7.1", "5.1.2"]);
+  });
+
   it("auto-detects by count only up to 8 channels", () => {
     expect(standardLayoutIdForCount(6)).toBe("5.1");
     expect(standardLayoutIdForCount(8)).toBe("7.1");
