@@ -228,3 +228,31 @@ Manual:
 - **The IPC signature change touches the capture path.** The role list reaches the engine through
   the same plumbing as the weight array, so a mistake there shows up only under real capture, which
   CI does not run. The smoke run before merge is the guard.
+
+## Verification
+
+Recorded 2026-09-16 on `feat/multichannel-layout-model`.
+
+- `npm run check`: exit 0 (358 Vitest files / 4256 tests; 641 passed Rust library tests with one
+  ignored; version check, Prettier, ESLint, production build, Rust fmt and clippy all pass).
+- `npm run smoke:capture`, after rebuilding the current feature-gated harness: exit 0 on the stereo
+  VB-Cable rig, 48 kHz / 2 ch / 0 dropped chunks. Integrated was −22.0306 LUFS for the file path and
+  −22.0348 LUFS live; both sample-peak channels were identical between paths.
+- Development app plus Agent Control, File mode, synthetic 12-channel / 48 kHz WAV: before a manual
+  layout, the completed summary reported `loudnessLayout: "unknown"`,
+  `loudnessLayoutKnown: false`, Integrated −34.6623 LUFS. Applying
+  `settings.channelLabels.layout: "7.1.4"` and reanalyzing reported `7.1.4`, known true, Integrated
+  −26.9445 LUFS. Editing one role made Settings inspection report `layout: "custom"`.
+- The manual run exposed and fixed a stopped-Live synchronization gap: role changes previously did
+  not reach the native state before File reanalysis. A focused regression test now proves roles are
+  synchronized while Live is stopped.
+- The internal harness `analyze` command reported `7.1.4` for the 12-channel fixture with
+  `--layout 7.1.4` (exit 0). `--layout 5.1` returned exit 1 and named the 6-versus-12 channel-count
+  mismatch.
+
+Not verified:
+
+- Direct screenshots of the Layout select, footer prompt and `Ch 1–2` marker. The Windows UI
+  automation surface did not expose the running PLVS Dev window; their rendering and click behavior
+  remain covered by Vitest, while Agent Control verified the underlying states and mutations.
+- A live input above 8 channels; the available capture rig is stereo.
