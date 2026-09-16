@@ -495,6 +495,11 @@ cmd /d /s /c "node scripts/run-desktop-control.mjs inspect --json > inspect.json
 The repository's release smoke and soak checks use a feature-gated internal capture harness. That
 harness is not installed, advertised, or part of the public CLI.
 
+Both internal `analyze` and `capture` accept `--layout <id>` to interpret the source with an
+explicit channel layout instead of detecting it by channel count. Supported ids are `mono`,
+`stereo`, `lcr`, `quad`, `5.0`, `5.1`, `7.0`, `7.1`, `5.1.2`, `5.1.4`, `7.1.2`, `7.1.4`, and
+`9.1.6`. A channel-count mismatch is an error, never a fallback.
+
 For installed Windows validation:
 
 ```powershell

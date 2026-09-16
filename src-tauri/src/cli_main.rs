@@ -52,6 +52,7 @@ enum CliCommand {
     device: Option<String>,
     seconds: u64,
     every: Option<u64>,
+    layout: Option<String>,
     out: Option<String>,
   },
 }
@@ -171,7 +172,7 @@ fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
   }
   let options = options.finish()?;
   let path = path.ok_or_else(|| {
-    "Usage: plvs --harness analyze <path> [--json] [--track <index>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [QC options] [--out <file>]"
+    "Usage: plvs --harness analyze <path> [--json] [--track <index>] [--layout <id>] [--dialogue] [--vad <engine>] [--reference-lufs <n>] [QC options] [--out <file>]"
       .to_string()
   })?;
   Ok(CliCommand::Analyze {
@@ -183,9 +184,10 @@ fn parse_analyze_args(args: &[String]) -> Result<CliCommand, String> {
 }
 
 #[cfg(any(feature = "capture-harness", test))]
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 struct ParsedAnalyzeOptions {
   track_index: Option<u32>,
+  layout: Option<String>,
   target_lufs: Option<f64>,
   lufs_tolerance: Option<f64>,
   max_true_peak_dbtp: Option<f64>,
@@ -205,6 +207,7 @@ impl ParsedAnalyzeOptions {
     }
     Ok(CliAnalyzeOptions {
       track_index: self.track_index,
+      layout: self.layout,
       quality_control: CliQualityControlOptions {
         target_lufs: self.target_lufs,
         lufs_tolerance: self.lufs_tolerance,
@@ -235,6 +238,15 @@ fn parse_analyze_option_flag(
           .parse::<u32>()
           .map_err(|_| "The --track value must be a non-negative integer".to_string())?,
       );
+      *index += 2;
+      Ok(true)
+    }
+    "--layout" => {
+      let value = take_value(args, *index, "--layout")?;
+      if crate::dsp::channel_layouts::roles_for_layout(&value).is_none() {
+        return Err(format!("Unknown channel layout: {value}"));
+      }
+      options.layout = Some(value);
       *index += 2;
       Ok(true)
     }
@@ -365,7 +377,7 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
 
 #[cfg(any(feature = "capture-harness", test))]
 const CAPTURE_USAGE: &str =
-  "Usage: plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]";
+  "Usage: plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] [--layout <id>] --json [--out <file>]";
 
 #[cfg(any(feature = "capture-harness", test))]
 fn parse_capture_args(args: &[String]) -> Result<CliCommand, String> {
@@ -376,6 +388,7 @@ fn parse_capture_args(args: &[String]) -> Result<CliCommand, String> {
   let mut device = None;
   let mut seconds = None;
   let mut every = None;
+  let mut layout = None;
   let mut out = None;
   let mut has_json = false;
   let mut index = 0;
@@ -404,6 +417,14 @@ fn parse_capture_args(args: &[String]) -> Result<CliCommand, String> {
         )?);
         index += 2;
       }
+      "--layout" => {
+        let value = take_value(args, index, "--layout")?;
+        if crate::dsp::channel_layouts::roles_for_layout(&value).is_none() {
+          return Err(format!("Unknown channel layout: {value}"));
+        }
+        layout = Some(value);
+        index += 2;
+      }
       "--out" => {
         out = Some(take_value(args, index, "--out")?);
         index += 2;
@@ -427,6 +448,7 @@ fn parse_capture_args(args: &[String]) -> Result<CliCommand, String> {
     device,
     seconds,
     every,
+    layout,
     out,
   })
 }
@@ -749,11 +771,11 @@ fn help_text(topic: HelpTopic) -> String {
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
-      "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
+      "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--layout <id>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
     }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Capture => {
-      "PLVS internal capture harness - capture\n\nUsage:\n  plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] --json [--out <file>]\n\nRepository-owned live capture for smoke and soak verification. This is not a public CLI command.".to_string()
+      "PLVS internal capture harness - capture\n\nUsage:\n  plvs --harness capture [--device <substring|stable-id>] --seconds <n> [--every <n>] [--layout <id>] --json [--out <file>]\n\nRepository-owned live capture for smoke and soak verification. This is not a public CLI command.".to_string()
     }
   }
 }
@@ -914,6 +936,7 @@ fn execute(command: CliCommand) -> ExitCode {
       device,
       seconds,
       every,
+      layout,
       out,
     } => {
       // With --every, stdout is a JSONL stream and --out must capture all of it,
@@ -926,7 +949,13 @@ fn execute(command: CliCommand) -> ExitCode {
           lines.push(line);
         }
       };
-      let report = match run_capture(device.as_deref(), seconds, every, on_sample) {
+      let report = match run_capture(
+        device.as_deref(),
+        seconds,
+        every,
+        layout.as_deref(),
+        on_sample,
+      ) {
         Ok(report) => report,
         Err(err) => {
           eprintln!("{err}");
@@ -1197,6 +1226,37 @@ mod tests {
     for command in ["doctor", "app", "probe", "devices", "profile", "report"] {
       assert!(parse_harness_args(&args(&[command])).is_err());
     }
+  }
+
+  #[test]
+  fn analyze_accepts_a_layout_id_and_rejects_an_unknown_one() {
+    let parsed = parse_analyze_args(&args(&["mix.wav", "--json", "--layout", "7.1.4"]));
+    match parsed {
+      Ok(CliCommand::Analyze { options, .. }) => {
+        assert_eq!(options.layout.as_deref(), Some("7.1.4"));
+      }
+      other => panic!("unexpected parse: {other:?}"),
+    }
+
+    let bad = parse_analyze_args(&args(&["mix.wav", "--json", "--layout", "9.9.9"]));
+    assert!(bad.is_err(), "unknown layout must not parse");
+  }
+
+  #[test]
+  fn capture_accepts_a_layout_id() {
+    assert!(matches!(
+      parse_capture_args(&args(&[
+        "--seconds",
+        "10",
+        "--json",
+        "--layout",
+        "7.1.4"
+      ])),
+      Ok(CliCommand::CaptureJson {
+        layout: Some(layout),
+        ..
+      }) if layout == "7.1.4"
+    ));
   }
 
   fn doctor_report(status: DoctorStatus) -> crate::doctor::DoctorReport {

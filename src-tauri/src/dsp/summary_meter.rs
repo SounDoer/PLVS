@@ -1,3 +1,4 @@
+use crate::dsp::channel_layouts::{layout_id_for_roles, roles_for_layout, weights_for_roles};
 use crate::dsp::channel_weights::{standard_layout_name, standard_loudness_weights};
 use crate::dsp::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use crate::dsp::gating::{
@@ -52,12 +53,54 @@ pub struct SummaryMeter {
   /// BS.1770-5 weights for a standard layout; Ch1/Ch2 only for an unrecognized count above two;
   /// `None` for mono and stereo, which keep their dedicated paths.
   loudness_weights: Option<Vec<f64>>,
+  loudness_layout: &'static str,
+  loudness_layout_known: bool,
 }
 
 impl SummaryMeter {
   pub fn new(sample_rate: u32, channels: u16) -> Self {
+    Self::build(sample_rate, channels, None)
+  }
+
+  pub fn new_with_layout(sample_rate: u32, channels: u16, layout_id: &str) -> Result<Self, String> {
+    let roles =
+      roles_for_layout(layout_id).ok_or_else(|| format!("unknown layout: {layout_id}"))?;
+    if roles.len() != channels as usize {
+      return Err(format!(
+        "layout {layout_id} has {} channels, the source has {channels}",
+        roles.len()
+      ));
+    }
+    let weights =
+      weights_for_roles(roles).ok_or_else(|| format!("layout {layout_id} has an unknown role"))?;
+    let layout = layout_id_for_roles(roles).unwrap_or("custom");
+    Ok(Self::build(sample_rate, channels, Some((weights, layout))))
+  }
+
+  fn build(sample_rate: u32, channels: u16, selection: Option<(Vec<f64>, &'static str)>) -> Self {
     let sample_rate = sample_rate as f64;
     let (tp_t, tp_p, tp_ph) = init_true_peak_filters();
+    let standard_layout = standard_layout_name(channels.max(1));
+    let (loudness_weights, loudness_layout, loudness_layout_known) = match selection {
+      Some((weights, layout)) => (Some(weights), layout, true),
+      None => {
+        let weights = match standard_loudness_weights(channels.max(1)) {
+          Some(weights) => Some(weights.to_vec()),
+          None if channels > 2 => {
+            let mut ch1_ch2 = vec![0.0; channels as usize];
+            ch1_ch2[0] = 1.0;
+            ch1_ch2[1] = 1.0;
+            Some(ch1_ch2)
+          }
+          None => None,
+        };
+        (
+          weights,
+          standard_layout.unwrap_or("unknown"),
+          standard_layout.is_some(),
+        )
+      }
+    };
     Self {
       sample_rate,
       channels,
@@ -81,16 +124,9 @@ impl SummaryMeter {
       tp_ph,
       tp_h: vec![vec![0.0_f64; tp_t]; channels.max(1) as usize],
       tp_wp: vec![0; channels.max(1) as usize],
-      loudness_weights: match standard_loudness_weights(channels.max(1)) {
-        Some(weights) => Some(weights.to_vec()),
-        None if channels > 2 => {
-          let mut ch1_ch2 = vec![0.0; channels as usize];
-          ch1_ch2[0] = 1.0;
-          ch1_ch2[1] = 1.0;
-          Some(ch1_ch2)
-        }
-        None => None,
-      },
+      loudness_weights,
+      loudness_layout,
+      loudness_layout_known,
     }
   }
 
@@ -143,8 +179,8 @@ impl SummaryMeter {
       true_peak_max_dbtp: db_from_linear(self.true_peak_max),
       sample_peak_max_l_db: db_from_linear(self.sample_peak_max_l),
       sample_peak_max_r_db: db_from_linear(self.sample_peak_max_r),
-      loudness_layout: standard_layout_name(self.channels.max(1)).unwrap_or("unknown"),
-      loudness_layout_known: standard_layout_name(self.channels.max(1)).is_some(),
+      loudness_layout: self.loudness_layout,
+      loudness_layout_known: self.loudness_layout_known,
     }
   }
 

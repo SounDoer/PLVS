@@ -82,13 +82,10 @@ impl SummaryPcmChunker {
   }
 }
 
-pub fn analyze_file_to_summary(path: &str) -> Result<FileAnalysisSummaryRun, String> {
-  analyze_file_track_to_summary(path, None)
-}
-
-pub fn analyze_file_track_to_summary(
+pub fn analyze_file_track_to_summary_with_layout(
   path: &str,
   track_index: Option<u32>,
+  layout_id: Option<&str>,
 ) -> Result<FileAnalysisSummaryRun, String> {
   let media_probe = probe_media_file(Path::new(path))?;
   let selected_track = match track_index {
@@ -142,7 +139,10 @@ pub fn analyze_file_track_to_summary(
     let _ = stderr.read_to_end(&mut sink);
   });
 
-  let mut meter = SummaryMeter::new(sample_rate, channels);
+  let mut meter = match layout_id {
+    Some(layout_id) => SummaryMeter::new_with_layout(sample_rate, channels, layout_id)?,
+    None => SummaryMeter::new(sample_rate, channels),
+  };
   let mut pcm_chunker = SummaryPcmChunker::new(sample_rate, channels);
   let mut carry: Vec<u8> = Vec::new();
   let mut pcm: Vec<f32> = Vec::new();

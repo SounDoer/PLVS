@@ -249,10 +249,11 @@ fn send_frame(
 
 /// Headless file analysis with dialogue gating (CLI / automation). Uses the same
 /// `MeterPipeline` path as the desktop file session, without Tauri.
-pub fn analyze_file_track_with_dialogue(
+pub fn analyze_file_track_with_dialogue_and_layout(
   path: &str,
   track_index: Option<u32>,
   vad_engine: VadEngineKind,
+  layout_id: Option<&str>,
 ) -> Result<FileAnalysisSummaryRun, String> {
   let media_probe = probe_media_file(Path::new(path))?;
   let selected_track = match track_index {
@@ -275,9 +276,30 @@ pub fn analyze_file_track_with_dialogue(
     duration_ms: media_probe.duration_ms,
     selected_track,
   };
+  let channel_selection = match layout_id {
+    Some(layout_id) => {
+      let roles = crate::dsp::channel_layouts::roles_for_layout(layout_id)
+        .ok_or_else(|| format!("unknown layout: {layout_id}"))?;
+      let channels = probe
+        .selected_track
+        .channels
+        .ok_or_else(|| "Selected audio track has no channel count".to_string())?;
+      if roles.len() != channels as usize {
+        return Err(format!(
+          "layout {layout_id} has {} channels, the source has {channels}",
+          roles.len()
+        ));
+      }
+      Some(
+        ChannelSelection::from_roles(roles.to_vec())
+          .ok_or_else(|| format!("layout {layout_id} has an unknown role"))?,
+      )
+    }
+    None => None,
+  };
   let config = WorkerConfig {
     requests: AnalysisRequests::default(),
-    channel_selection: None,
+    channel_selection,
     dialogue_gating: true,
     dialogue_vad_engine: vad_engine,
   };
@@ -474,7 +496,7 @@ fn run_file_worker(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::file_analysis::summary::analyze_file_to_summary;
+  use crate::file_analysis::summary::analyze_file_track_to_summary_with_layout;
   use std::f64::consts::PI;
   use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -1334,7 +1356,8 @@ mod tests {
     let frames = sr as usize; // one second
     let fixture = TempWav::new("summary", sr, 2, &sine_stereo(sr, frames, 0.5, 1_000.0));
 
-    let result = analyze_file_to_summary(&fixture.path_str()).expect("analysis should succeed");
+    let result = analyze_file_track_to_summary_with_layout(&fixture.path_str(), None, None)
+      .expect("analysis should succeed");
 
     assert_eq!(
       result.probe.file_name,

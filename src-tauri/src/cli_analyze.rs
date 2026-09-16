@@ -1,9 +1,9 @@
 use serde::Serialize;
 
 use crate::dsp::speech::VadEngineKind;
-use crate::file_analysis::session::analyze_file_track_with_dialogue;
+use crate::file_analysis::session::analyze_file_track_with_dialogue_and_layout;
 use crate::file_analysis::summary::{
-  analyze_file_to_summary, analyze_file_track_to_summary, FileAnalysisSummaryRun,
+  analyze_file_track_to_summary_with_layout, FileAnalysisSummaryRun,
 };
 use crate::file_analysis::types::{
   FileAnalysisProbeResult, FileAnalysisSummaryMetrics, FileAudioTrackMetadata,
@@ -40,9 +40,10 @@ impl CliAnalyzeReport {
   }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CliAnalyzeOptions {
   pub track_index: Option<u32>,
+  pub layout: Option<String>,
   pub quality_control: CliQualityControlOptions,
   pub dialogue: CliDialogueOptions,
 }
@@ -202,16 +203,33 @@ pub fn run_analyze(path: &str) -> CliAnalyzeReport {
 pub fn run_analyze_with_options(path: &str, options: CliAnalyzeOptions) -> CliAnalyzeReport {
   let result = if options.dialogue.enabled {
     let vad = options.dialogue.vad.unwrap_or_default();
-    analyze_file_track_with_dialogue(path, options.track_index, vad)
-  } else if options.track_index.is_none() {
-    analyze_file_to_summary(path)
+    analyze_file_track_with_dialogue_and_layout(
+      path,
+      options.track_index,
+      vad,
+      options.layout.as_deref(),
+    )
   } else {
-    analyze_file_track_to_summary(path, options.track_index)
+    analyze_file_track_to_summary_with_layout(path, options.track_index, options.layout.as_deref())
   };
   match result {
     Ok(result) => CliAnalyzeReport::Success(Box::new(success_report(result, options))),
     Err(message) => CliAnalyzeReport::Error(Box::new(error_report(path, message))),
   }
+}
+
+/// Weights for an explicit `--layout`, or an error naming the mismatch.
+pub fn layout_weights_for(layout_id: &str, channels: usize) -> Result<Vec<f64>, String> {
+  let roles = crate::dsp::channel_layouts::roles_for_layout(layout_id)
+    .ok_or_else(|| format!("unknown layout: {layout_id}"))?;
+  if roles.len() != channels {
+    return Err(format!(
+      "layout {layout_id} has {} channels, the source has {channels}",
+      roles.len()
+    ));
+  }
+  crate::dsp::channel_layouts::weights_for_roles(roles)
+    .ok_or_else(|| format!("layout {layout_id} has an unknown role"))
 }
 
 fn success_report(
@@ -408,6 +426,14 @@ fn evaluate_quality_control(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn a_layout_whose_channel_count_does_not_match_is_an_error() {
+    let err = layout_weights_for("5.1", 12).expect_err("channel count mismatch");
+    assert!(err.contains("5.1"), "message names the layout: {err}");
+    let weights = layout_weights_for("7.1.4", 12).expect("matching layout");
+    assert_eq!(weights.len(), 12);
+  }
 
   fn summary_with_peaks(left: f64, right: f64) -> FileAnalysisSummaryMetrics {
     FileAnalysisSummaryMetrics {

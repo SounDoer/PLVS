@@ -1,6 +1,8 @@
 use serde::Serialize;
 
-use crate::audio::capture_summary::{capture_device_to_summary, CaptureRun, CaptureSample};
+use crate::audio::capture_summary::{
+  capture_device_to_summary_with_layout, CaptureRun, CaptureSample,
+};
 use crate::audio::device_enum::resolve_device_selector;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -196,6 +198,7 @@ pub fn run_capture(
   device_substring: Option<&str>,
   seconds: u64,
   every: Option<u64>,
+  layout_id: Option<&str>,
   on_sample: impl FnMut(CaptureSample),
 ) -> Result<CliCaptureReport, String> {
   let device_id = match device_substring {
@@ -203,7 +206,7 @@ pub fn run_capture(
     None => "default".to_string(),
   };
 
-  match capture_device_to_summary(&device_id, seconds, every, on_sample) {
+  match capture_device_to_summary_with_layout(&device_id, seconds, every, layout_id, on_sample) {
     Ok(run) => Ok(success_report(run)),
     Err(message) => Ok(error_report(&device_id, message)),
   }

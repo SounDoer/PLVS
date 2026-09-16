@@ -43,10 +43,11 @@ pub struct CaptureRun {
 
 /// Capture `device_id` for `seconds`, invoking `on_sample` every `every` seconds
 /// when set. Blocks for the full duration.
-pub fn capture_device_to_summary(
+pub fn capture_device_to_summary_with_layout(
   device_id: &str,
   seconds: u64,
   every: Option<u64>,
+  layout_id: Option<&str>,
   mut on_sample: impl FnMut(CaptureSample),
 ) -> Result<CaptureRun, String> {
   // One resolution only: taking the label from this device avoids a second
@@ -55,6 +56,10 @@ pub fn capture_device_to_summary(
   let device_label = device_list_label(&device)?;
   let sample_rate = supported.sample_rate();
   let channels = supported.channels();
+  let meter = match layout_id {
+    Some(layout_id) => SummaryMeter::new_with_layout(sample_rate, channels, layout_id)?,
+    None => SummaryMeter::new(sample_rate, channels),
+  };
   // A zero interval would pin every reading at t=0 and emit one per chunk.
   let every = every.filter(|interval| *interval > 0);
 
@@ -66,8 +71,8 @@ pub fn capture_device_to_summary(
 
   let consumer_dropped = dropped_chunks.clone();
   let consumer =
-    move |delivery: PcmDeliveryQueue, pool: PcmBufferPool, sample_rate: u32, channels: u16| {
-      let mut meter = SummaryMeter::new(sample_rate, channels);
+    move |delivery: PcmDeliveryQueue, pool: PcmBufferPool, _sample_rate: u32, _channels: u16| {
+      let mut meter = meter;
       let mut next_sample_at = every;
       let started = std::time::Instant::now();
 
