@@ -1,11 +1,11 @@
 // src/persistence/index.js
 /**
- * The single persistence "manager" entry point: two stable, versionless domains
- * over one backend, plus manager-level export/reset.
+ * The single persistence "manager" entry point: the settings, workspace, presets and
+ * themes domains over one backend, plus manager-level flush, export and reset.
  *
- * Backend is localStorage today (dev + production). Plan 3 swaps in a
- * plugin-store backend for production behind this same seam — consumers and the
- * domain stores do not change.
+ * The desktop app uses the plugin-store backend (plvs-settings.json); a browser build
+ * falls back to localStorage. Consumers and the domain stores see the same seam either
+ * way. Each domain resolves its version lazily and may migrate on read.
  */
 import { createLocalStorageBackend } from "./localStorageBackend.js";
 import { createPluginStoreBackend } from "./pluginStoreBackend.js";
