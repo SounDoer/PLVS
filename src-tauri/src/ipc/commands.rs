@@ -9,6 +9,10 @@ use crate::audio::capture::AudioCapture;
 use crate::audio::cpal_backend;
 use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
+use crate::crash_report::{
+  normalize_frontend_crash, normalize_frontend_log, CrashKind, CrashReport, CrashReporterState,
+  FeedbackDiagnostics, FrontendCrashInput,
+};
 use crate::dsp::speech::VadEngineKind;
 use crate::ipc::types::{
   AnalysisRequests, AudioDevicePreview, EngineStateChanged, FileAnalysisProbeResult,
@@ -17,6 +21,61 @@ use crate::ipc::types::{
 use crate::state::{AppState, EngineSource};
 
 const MAX_ANALYSIS_CHANNEL_INDEX: u16 = 63;
+
+#[tauri::command]
+pub fn record_frontend_crash(
+  input: FrontendCrashInput,
+  reporter: State<'_, Arc<CrashReporterState>>,
+) -> Result<(), String> {
+  let error = normalize_frontend_crash(input)?;
+  let report = reporter
+    .new_report(CrashKind::FrontendRender, error)
+    .map_err(|error| format!("Unable to create crash report: {error}"))?;
+  reporter
+    .save_report(&report)
+    .map(|_| ())
+    .map_err(|error| format!("Unable to save crash report: {error}"))
+}
+
+#[tauri::command]
+pub fn log_frontend_error(message: String) -> Result<(), String> {
+  let message = normalize_frontend_log(message)?;
+  log::error!(target: "frontend", "{message}");
+  Ok(())
+}
+
+#[tauri::command]
+pub fn read_pending_crash_report(
+  reporter: State<'_, Arc<CrashReporterState>>,
+) -> Result<Option<CrashReport>, String> {
+  reporter
+    .newest_pending()
+    .map_err(|error| format!("Unable to read crash report: {error}"))
+}
+
+#[tauri::command]
+pub fn discard_crash_report(
+  id: String,
+  reporter: State<'_, Arc<CrashReporterState>>,
+) -> Result<bool, String> {
+  reporter
+    .discard(&id)
+    .map_err(|error| format!("Unable to discard crash report: {error}"))
+}
+
+#[tauri::command]
+pub fn set_crash_prompt_enabled(enabled: bool, reporter: State<'_, Arc<CrashReporterState>>) {
+  reporter.set_prompt_enabled(enabled);
+}
+
+#[tauri::command]
+pub fn read_feedback_diagnostics(
+  reporter: State<'_, Arc<CrashReporterState>>,
+) -> Result<FeedbackDiagnostics, String> {
+  reporter
+    .feedback_diagnostics(200)
+    .map_err(|error| format!("Unable to read diagnostics: {error}"))
+}
 
 #[tauri::command]
 pub fn list_audio_devices() -> Result<Vec<DeviceInfo>, String> {

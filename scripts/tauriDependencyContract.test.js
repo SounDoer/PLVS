@@ -12,6 +12,7 @@ const desktopControl = readFileSync(
   join(process.cwd(), "scripts", "run-desktop-control.mjs"),
   "utf8"
 );
+const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
 
 describe("Tauri dependency contracts", () => {
   it("keeps the direct window-vibrancy dependency aligned with Tauri", () => {
@@ -30,5 +31,16 @@ describe("Tauri dependency contracts", () => {
     expect(cliCargoToml).not.toMatch(/^\[dependencies\]$/m);
     expect(cliCargoToml).not.toMatch(/app_lib|tauri|cpal|voice_activity_detector/);
     expect(desktopControl).toContain('buildPlvsCli({ identity: "development" })');
+  });
+
+  it("keeps manual crash injection out of every shipping desktop command", () => {
+    expect(cargoToml).toMatch(/^crash-test\s*=\s*\[\]$/m);
+    const shippingCommands = Object.entries(packageJson.scripts)
+      .filter(([name]) => name.startsWith("desktop:") || name === "desktop")
+      .map(([, command]) => command);
+    expect(shippingCommands.length).toBeGreaterThan(0);
+    for (const command of shippingCommands) {
+      expect(command).not.toContain("crash-test");
+    }
   });
 });

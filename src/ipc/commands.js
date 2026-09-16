@@ -277,3 +277,27 @@ export async function startFileAnalysis({ path, probe, onFrame }) {
 export function stopFileAnalysis() {
   return invoke("file_analysis_stop");
 }
+
+export function recordFrontendCrash(input) {
+  return invoke("record_frontend_crash", { input });
+}
+
+export function logFrontendError(message) {
+  return invoke("log_frontend_error", { message });
+}
+
+export function readPendingCrashReport() {
+  return invoke("read_pending_crash_report");
+}
+
+export function discardCrashReport(id) {
+  return invoke("discard_crash_report", { id });
+}
+
+export function setCrashPromptEnabled(enabled) {
+  return invoke("set_crash_prompt_enabled", { enabled });
+}
+
+export function readFeedbackDiagnostics() {
+  return invoke("read_feedback_diagnostics");
+}

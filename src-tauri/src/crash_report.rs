@@ -6,11 +6,17 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
 pub const CRASH_REPORT_SCHEMA_VERSION: u32 = 1;
 const SESSION_START_PREFIX: &str = "PLVS_SESSION_START ";
+const MAX_FRONTEND_ERROR_NAME_BYTES: usize = 256;
+const MAX_FRONTEND_ERROR_MESSAGE_BYTES: usize = 16 * 1024;
+const MAX_FRONTEND_STACK_BYTES: usize = 128 * 1024;
+const MAX_COMPONENT_STACK_BYTES: usize = 64 * 1024;
+const MAX_FRONTEND_LOG_BYTES: usize = 64 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +64,90 @@ pub struct CrashLocation {
   pub file: String,
   pub line: u32,
   pub column: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrontendCrashInput {
+  pub name: Option<String>,
+  pub message: String,
+  pub stack: Option<String>,
+  pub component_stack: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackDiagnostics {
+  pub schema_version: u32,
+  pub app: CrashApp,
+  pub logs: Vec<String>,
+}
+
+pub fn prompt_enabled_from_settings(settings: &Value) -> bool {
+  settings
+    .get("askToSendCrashReports")
+    .and_then(Value::as_bool)
+    .unwrap_or(true)
+}
+
+pub fn normalize_frontend_crash(input: FrontendCrashInput) -> Result<CrashError, String> {
+  validate_optional_text(
+    "error name",
+    input.name.as_deref(),
+    MAX_FRONTEND_ERROR_NAME_BYTES,
+  )?;
+  validate_text(
+    "error message",
+    &input.message,
+    MAX_FRONTEND_ERROR_MESSAGE_BYTES,
+  )?;
+  validate_optional_text(
+    "error stack",
+    input.stack.as_deref(),
+    MAX_FRONTEND_STACK_BYTES,
+  )?;
+  validate_optional_text(
+    "component stack",
+    input.component_stack.as_deref(),
+    MAX_COMPONENT_STACK_BYTES,
+  )?;
+  Ok(CrashError {
+    name: input.name.filter(|value| !value.trim().is_empty()),
+    message: if input.message.trim().is_empty() {
+      "Unknown frontend render error".into()
+    } else {
+      input.message
+    },
+    location: None,
+    stack: input.stack.filter(|value| !value.trim().is_empty()),
+    component_stack: input
+      .component_stack
+      .filter(|value| !value.trim().is_empty()),
+  })
+}
+
+pub fn normalize_frontend_log(message: String) -> Result<String, String> {
+  validate_text("frontend log message", &message, MAX_FRONTEND_LOG_BYTES)?;
+  Ok(if message.trim().is_empty() {
+    "Unknown frontend error".into()
+  } else {
+    message
+  })
+}
+
+fn validate_text(label: &str, value: &str, max_bytes: usize) -> Result<(), String> {
+  if value.len() > max_bytes {
+    return Err(format!("{label} exceeds {max_bytes} bytes"));
+  }
+  Ok(())
+}
+
+fn validate_optional_text(
+  label: &str,
+  value: Option<&str>,
+  max_bytes: usize,
+) -> Result<(), String> {
+  value.map_or(Ok(()), |value| validate_text(label, value, max_bytes))
 }
 
 #[derive(Debug)]
@@ -142,6 +232,64 @@ impl CrashReporterState {
       .store
       .enrich_pending(&self.log_dir, &self.log_file_name, line_limit)
   }
+
+  pub fn feedback_diagnostics(&self, line_limit: usize) -> io::Result<FeedbackDiagnostics> {
+    let logs = extract_session_log_tail(
+      &self.log_dir,
+      &self.log_file_name,
+      &self.session_id,
+      line_limit,
+    )?
+    .into_iter()
+    .map(|line| redact_home_paths(&line, &self.store.home, self.store.case_insensitive_home))
+    .collect();
+    Ok(FeedbackDiagnostics {
+      schema_version: CRASH_REPORT_SCHEMA_VERSION,
+      app: self.app.clone(),
+      logs,
+    })
+  }
+}
+
+pub fn install_panic_hook(reporter: Arc<CrashReporterState>) {
+  #[cfg(debug_assertions)]
+  let previous = std::panic::take_hook();
+  #[cfg(not(debug_assertions))]
+  let _ = std::panic::take_hook();
+  std::panic::set_hook(Box::new(move |info| {
+    if reporter.try_begin_panic() {
+      // A panic can originate on the audio callback thread. Allocation and filesystem I/O are
+      // acceptable here because panic=abort makes this path terminal; the callback will never
+      // return to normal realtime processing.
+      let message = if let Some(message) = info.payload().downcast_ref::<&str>() {
+        (*message).to_owned()
+      } else if let Some(message) = info.payload().downcast_ref::<String>() {
+        message.clone()
+      } else {
+        "Non-string panic payload".into()
+      };
+      let location = info.location().map(|location| CrashLocation {
+        file: location.file().to_owned(),
+        line: location.line(),
+        column: location.column(),
+      });
+      let error = CrashError {
+        name: Some("Rust panic".into()),
+        message,
+        location,
+        stack: Some(std::backtrace::Backtrace::force_capture().to_string()),
+        component_stack: None,
+      };
+      if let Ok(report) = reporter.new_report(CrashKind::RustPanic, error) {
+        let _ = reporter.save_report(&report);
+      }
+    }
+
+    // Development keeps Rust's normal console panic output. Release avoids calling another hook
+    // after the artifact is complete, minimizing duplicate output and re-entrancy risk.
+    #[cfg(debug_assertions)]
+    previous(info);
+  }));
 }
 
 #[derive(Debug, Clone)]
@@ -797,5 +945,39 @@ mod tests {
     assert!(!reporter.prompt_enabled());
     assert!(reporter.try_begin_panic());
     assert!(!reporter.try_begin_panic());
+  }
+
+  #[test]
+  fn prompt_setting_defaults_on_and_accepts_an_explicit_false() {
+    assert!(prompt_enabled_from_settings(&serde_json::json!({})));
+    assert!(prompt_enabled_from_settings(&serde_json::json!({
+      "askToSendCrashReports": "not-a-boolean"
+    })));
+    assert!(!prompt_enabled_from_settings(&serde_json::json!({
+      "askToSendCrashReports": false
+    })));
+  }
+
+  #[test]
+  fn normalizes_frontend_crash_input_and_rejects_oversized_fields() {
+    let normalized = normalize_frontend_crash(FrontendCrashInput {
+      name: Some("  ".into()),
+      message: "".into(),
+      stack: Some("stack".into()),
+      component_stack: None,
+    })
+    .unwrap();
+    assert_eq!(normalized.name, None);
+    assert_eq!(normalized.message, "Unknown frontend render error");
+    assert_eq!(normalized.stack.as_deref(), Some("stack"));
+
+    let error = normalize_frontend_crash(FrontendCrashInput {
+      name: None,
+      message: "x".repeat(MAX_FRONTEND_ERROR_MESSAGE_BYTES + 1),
+      stack: None,
+      component_stack: None,
+    })
+    .unwrap_err();
+    assert!(error.contains("error message"));
   }
 }

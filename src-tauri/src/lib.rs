@@ -95,6 +95,13 @@ pub fn run() {
     .plugin(tauri_plugin_store::Builder::default().build())
     .plugin(tauri_plugin_global_shortcut::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
+    .plugin(
+      tauri_plugin_log::Builder::default()
+        .level(log::LevelFilter::Info)
+        .max_file_size(2_000_000)
+        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(3))
+        .build(),
+    )
     .manage(AppState::default())
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::transport::ServerState::default())
@@ -157,15 +164,14 @@ pub fn run() {
       visual_capture::visual_recording_update_audio_state,
       visual_capture::visual_recording_update_geometry,
       visual_capture::visual_recording_stop,
+      ipc::commands::record_frontend_crash,
+      ipc::commands::log_frontend_error,
+      ipc::commands::read_pending_crash_report,
+      ipc::commands::discard_crash_report,
+      ipc::commands::set_crash_prompt_enabled,
+      ipc::commands::read_feedback_diagnostics,
     ])
     .setup(|app| {
-      #[cfg(debug_assertions)]
-      app.handle().plugin(
-        tauri_plugin_log::Builder::default()
-          .level(log::LevelFilter::Info)
-          .build(),
-      )?;
-
       let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(
         &app
           .path()
@@ -185,6 +191,52 @@ pub fn run() {
       let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
       let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
       let themes = store.get("plvs:themes").unwrap_or(serde_json::json!({}));
+      let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|error| format!("app log directory: {error}"))?;
+      let home = app
+        .path()
+        .home_dir()
+        .map_err(|error| format!("home directory for crash-report redaction: {error}"))?
+        .to_string_lossy()
+        .into_owned();
+      let reporter = std::sync::Arc::new(crash_report::CrashReporterState::new(
+        log_dir,
+        app.package_info().name.clone(),
+        home,
+        crash_report::prompt_enabled_from_settings(&settings),
+        crash_report::CrashApp {
+          version: env!("CARGO_PKG_VERSION").into(),
+          os: std::env::consts::OS.into(),
+          arch: std::env::consts::ARCH.into(),
+        },
+      )?);
+      if let Err(error) = reporter.enrich_pending(200) {
+        log::warn!("Unable to enrich saved crash reports: {error}");
+      }
+      log::info!(
+        "{}",
+        crash_report::session_start_marker(reporter.session_id())
+      );
+      crash_report::install_panic_hook(reporter.clone());
+      app.manage(reporter);
+
+      #[cfg(feature = "crash-test")]
+      match std::env::var("PLVS_TEST_PANIC").as_deref() {
+        Ok("main") => panic!("PLVS crash-test panic on main thread"),
+        Ok("thread") => {
+          let _ = std::thread::Builder::new()
+            .name("crash-test".into())
+            .spawn(|| panic!("PLVS crash-test panic on worker thread"))
+            .and_then(|thread| {
+              thread
+                .join()
+                .map_err(|_| std::io::Error::other("crash-test thread panicked"))
+            });
+        }
+        _ => {}
+      }
       let agent_control_enabled = agent_control::toggle::read_enabled(app.handle());
       let agent_control = serde_json::json!({
         // `available` is platform support alone. Whether the endpoint is actually open is

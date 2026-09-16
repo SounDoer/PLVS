@@ -37,6 +37,8 @@ path = "src/main.rs"
 dev-identity = []
 # Repository-owned real capture verification. Production bundles never enable this.
 capture-harness = []
+# Manual release-profile crash verification only. Shipping commands must never enable this.
+crash-test = []
 
 [build-dependencies]
 cc = "1.2.61"

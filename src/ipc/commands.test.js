@@ -34,10 +34,47 @@ import {
   stopVisualRecording,
   startFileAnalysis,
   stopFileAnalysis,
+  recordFrontendCrash,
+  logFrontendError,
+  readPendingCrashReport,
+  discardCrashReport,
+  setCrashPromptEnabled,
+  readFeedbackDiagnostics,
 } from "./commands.js";
 
 beforeEach(() => {
   invoke.mockReset();
+});
+
+describe("crash-report command seam", () => {
+  it("maps report lifecycle calls to the exact native payloads", async () => {
+    const input = {
+      name: "TypeError",
+      message: "render failed",
+      stack: "stack",
+      componentStack: "component stack",
+    };
+
+    await recordFrontendCrash(input);
+    await logFrontendError("ordinary error");
+    await readPendingCrashReport();
+    await discardCrashReport("20260916T120000Z-01234567");
+    await setCrashPromptEnabled(false);
+    await readFeedbackDiagnostics();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "record_frontend_crash", { input });
+    expect(invoke).toHaveBeenNthCalledWith(2, "log_frontend_error", {
+      message: "ordinary error",
+    });
+    expect(invoke).toHaveBeenNthCalledWith(3, "read_pending_crash_report");
+    expect(invoke).toHaveBeenNthCalledWith(4, "discard_crash_report", {
+      id: "20260916T120000Z-01234567",
+    });
+    expect(invoke).toHaveBeenNthCalledWith(5, "set_crash_prompt_enabled", {
+      enabled: false,
+    });
+    expect(invoke).toHaveBeenNthCalledWith(6, "read_feedback_diagnostics");
+  });
 });
 
 describe("audio engine command seam", () => {
