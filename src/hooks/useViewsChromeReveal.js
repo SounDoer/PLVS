@@ -7,7 +7,11 @@ const DOUBLE_PRESS_MAX_DISTANCE_PX = 8;
 
 export function useViewsChromeReveal({ autoHideControls, frameless }) {
   const [controlsVisible, setControlsVisible] = useState(false);
-  const controlsHeldRef = useRef(false);
+  // Two independent reasons to keep the controls up. They must not share one flag: portaled
+  // popover content is a React child of the header, so a click inside a popover bubbles its
+  // pointerup to the header's drag-release handler, which used to drop the popover's hold too.
+  const popoverHeldRef = useRef(false);
+  const dragHeldRef = useRef(false);
   const hideTimerRef = useRef(0);
   const dragTimerRef = useRef(0);
   const lastDragPressRef = useRef(null);
@@ -18,7 +22,7 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
   }, []);
 
   const hideControlsLater = useCallback(() => {
-    if (controlsHeldRef.current) return;
+    if (popoverHeldRef.current || dragHeldRef.current) return;
     window.clearTimeout(hideTimerRef.current);
     hideTimerRef.current = window.setTimeout(() => {
       setControlsVisible(false);
@@ -26,7 +30,7 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
   }, []);
 
   const hideControlsNow = useCallback(() => {
-    if (controlsHeldRef.current) return;
+    if (popoverHeldRef.current || dragHeldRef.current) return;
     window.clearTimeout(hideTimerRef.current);
     setControlsVisible(false);
   }, []);
@@ -43,7 +47,7 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
   }, [controlsVisible, hideControlsNow, showControls]);
 
   const holdControls = useCallback((open) => {
-    controlsHeldRef.current = open;
+    popoverHeldRef.current = open;
     if (open) {
       window.clearTimeout(hideTimerRef.current);
       setControlsVisible(true);
@@ -51,7 +55,7 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
   }, []);
 
   const releaseControlsHold = useCallback(() => {
-    controlsHeldRef.current = false;
+    dragHeldRef.current = false;
   }, []);
 
   const handleWindowDrag = useCallback(
@@ -91,7 +95,9 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
           if (typeof win.toggleMaximize === "function") await win.toggleMaximize();
           return;
         }
-        holdControls(true);
+        dragHeldRef.current = true;
+        window.clearTimeout(hideTimerRef.current);
+        setControlsVisible(true);
         const signal = dragListeners.signal;
         window.addEventListener("pointerup", releaseAfterDrag, {
           once: true,
@@ -111,13 +117,14 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
         releaseAfterDrag();
       }
     },
-    [frameless, holdControls, releaseControlsHold]
+    [frameless, releaseControlsHold]
   );
 
   useEffect(() => {
     if (autoHideControls) return undefined;
     window.clearTimeout(hideTimerRef.current);
-    controlsHeldRef.current = false;
+    popoverHeldRef.current = false;
+    dragHeldRef.current = false;
     const resetTimer = window.setTimeout(() => {
       setControlsVisible(false);
     }, 0);

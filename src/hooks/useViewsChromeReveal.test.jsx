@@ -76,6 +76,34 @@ describe("useViewsChromeReveal", () => {
     expect(result.current.controlsVisible).toBe(false);
   });
 
+  it("keeps controls held for an open popover when a pointerup inside it releases the drag hold", () => {
+    // Portaled popover content is still a React child of the header, so its pointerup bubbles
+    // to the header's drag-release handler. That must not drop the popover's hold.
+    const { result } = renderHook(() =>
+      useViewsChromeReveal({ autoHideControls: true, frameless: true })
+    );
+
+    act(() => {
+      result.current.holdControls(true);
+      result.current.releaseControlsHold();
+    });
+    act(() => {
+      result.current.hideControlsNow();
+      result.current.hideControlsLater();
+      vi.advanceTimersByTime(900);
+    });
+
+    expect(result.current.controlsVisible).toBe(true);
+
+    act(() => {
+      result.current.holdControls(false);
+      result.current.hideControlsLater();
+      vi.advanceTimersByTime(900);
+    });
+
+    expect(result.current.controlsVisible).toBe(false);
+  });
+
   it("starts dragging a frameless window on the first primary pointer press", async () => {
     mocks.isTauri.mockReturnValue(true);
     const { result } = renderHook(() =>
