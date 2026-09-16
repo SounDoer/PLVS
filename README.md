@@ -44,12 +44,13 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 ## Features
 
 - **No routing required** — monitors any audio playing on your machine. Windows uses WASAPI loopback; macOS uses the native audio tap.
+- **Per-application capture** _(Windows)_ — pick a single running application from the same source dropdown and meter only its output, instead of everything the system is playing.
 - **File analysis mode** — drop in a local audio file to meter it offline: probe metadata, decode through a bundled FFmpeg sidecar (wide format support), and scrub through the full session history across every meter.
-- **Multichannel** — auto-detects mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 with proper per-channel metering and BS.1770 weighting.
+- **Multichannel** — auto-detects mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 with proper per-channel metering and BS.1770 weighting; immersive layouts up to 9.1.6 can be selected by hand in Settings.
 - **Detailed spectrum analysis** — multi-resolution FFT analyzer with M/S and L/R overlays, peak-hold, log-frequency grid, and musical note names on hover.
 - **Interactive charts** — zoom, pan, and scrub every chart with adaptive tick labels and a live hover probe.
 - **Session history & snapshots** — scroll back through the loudness timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
-- **Configurable loudness reference** — set a target LUFS value overlaid on the loudness chart.
+- **Loudness profiles** — build your own rule sets (targets, ranges, tolerances) and have them drive the loudness reference lines, the colouring of the Stats readouts, and the True Peak Max marker on the Level Meter. Parameters are yours to name and edit; PLVS ships no platform or broadcast certification presets.
 - **Dialogue-gated loudness** _(optional)_ — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by a selectable on-device voice-activity-detection engine (see [Acknowledgements](#acknowledgements)); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
 - **Flexible layout & theming** — drag dividers, resize panels, open multiple instances of the same meter, and switch between presets from the toolbar. Includes a theme editor and several built-in themes, plus transparent-window and per-panel opacity controls.
 - **Views & dock mode** — pare the window down for monitoring: **Compact Panels**, **Hide Chrome**, **Auto-hide Controls**, and a **Dock** mode that parks a slim, always-on-top strip against the top or bottom edge of the screen.
@@ -59,6 +60,7 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 ## Limitations
 
 - **ASIO is not supported on Windows.** ASIO drivers bypass the Windows audio mixer entirely, so WASAPI loopback capture cannot intercept the signal. If you are using a DAW (e.g. REAPER, Ableton Live), set the DAW's audio system to **WASAPI** to allow PLVS to capture its output. For setups that require ASIO, routing through a virtual audio cable (e.g. VB-Cable) to a WASAPI-visible device is a workable alternative.
+- **Per-application capture is Windows-only and needs Windows build 20348 or newer.** It goes through the same system mixer as loopback, so an application using ASIO or WASAPI exclusive mode cannot be captured this way either. macOS has no per-application filtering yet; its tap captures the full system output.
 - **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses an on-device open-source VAD engine (Silero VAD by default) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
 
 ---
@@ -68,11 +70,11 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 > [!TIP]
 > Visit [**GitHub Releases**](https://github.com/SounDoer/PLVS/releases) for the latest version.
 
-| Platform                  | Package                  | Notes                                         |
-| ------------------------- | ------------------------ | --------------------------------------------- |
-| **Windows 10/11 (x64)**   | `PLVS_x64-setup.exe`     | NSIS installer                                |
-| **Windows 10/11 (x64)**   | `PLVS_x64-portable.zip`  | Portable — extract, no install required       |
-| **macOS (Apple Silicon)** | `PLVS_aarch64.dmg`       | Requires macOS 14.2+ for system audio capture |
+| Platform                  | Package                 | Notes                                         |
+| ------------------------- | ----------------------- | --------------------------------------------- |
+| **Windows 10/11 (x64)**   | `PLVS_x64-setup.exe`    | NSIS installer                                |
+| **Windows 10/11 (x64)**   | `PLVS_x64-portable.zip` | Portable — extract, no install required       |
+| **macOS (Apple Silicon)** | `PLVS_aarch64.dmg`      | Requires macOS 14.2+ for system audio capture |
 
 ### Installation notes
 
@@ -181,12 +183,12 @@ npm run soak:capture          # 4h capture soak; the only check that surfaces le
 
 ## Documentation
 
-- [**Product Requirements (PRD)**](docs/prd.md) — what PLVS is, who it's for, product boundaries.
-- [**Architecture**](docs/architecture.md) — tech stack, directory map, audio pipeline, IPC, theme system.
+- [**User Docs**](https://plvs.soundoer.com/docs/) — how to use PLVS, written for people using the app.
 - [**CLI**](docs/cli.md) — installed command-line companion for agents, support, and automation.
-- [**Design Tokens**](docs/design-tokens.md) — CSS variable system and theme structure.
-- [**Loudness References**](docs/loudness-references.md) — platform delivery targets for loudness overlays.
-- [**ADR**](docs/adr/) — architecture decision records.
+
+Development documentation — architecture, product boundaries, design tokens, decision records and
+the frozen history of specs and plans — lives under [`docs/`](docs/README.md) and is written for
+maintainers and agents working in this repository, largely in Chinese.
 
 ---
 
