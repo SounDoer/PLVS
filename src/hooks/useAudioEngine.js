@@ -4,7 +4,7 @@ import {
   previewAudioDevice,
   startAudioCapture,
   stopAudioCapture,
-  setLoudnessWeights,
+  setChannelRoles,
   setDialogueGating,
   setDialogueVadEngine,
   ackFrames,
@@ -50,7 +50,7 @@ export function useAudioEngine({
   visualMaxSamples,
   audioRef,
   intake,
-  loudnessWeightsRef,
+  channelRolesRef,
   dialogueGatingRef,
   dialogueVadEngineRef,
   transport,
@@ -181,7 +181,7 @@ export function useAudioEngine({
           };
 
           try {
-            await setLoudnessWeights(loudnessWeightsRef?.current ?? null);
+            await setChannelRoles(channelRolesRef?.current ?? null);
           } catch (_) {}
 
           try {

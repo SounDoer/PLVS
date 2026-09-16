@@ -761,7 +761,6 @@ mod tests {
   #[test]
   fn push_pcm_ms_populates_secondary() {
     use crate::dsp::meter::{Meter, PcmContext};
-    use crate::engine::ChannelLayoutSetting;
     let sr = 48000.0;
     let mut m = SpectrumMeter::new(sr);
     let frames = 16384 * 6;
@@ -775,7 +774,6 @@ mod tests {
         interleaved: &pcm,
         channels: 2,
         now_sec: 1.0,
-        channel_layout: ChannelLayoutSetting::Auto,
         loudness_weights: None,
         vectorscope_pair: (0, 1),
         spectrum_channel: SpectrumChannelSel::Pair(0, 1),

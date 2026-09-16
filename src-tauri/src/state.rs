@@ -85,8 +85,8 @@ pub struct AppState {
   pub ui_frame_diagnostics: Arc<UiFrameDiagnosticsCounters>,
   /// Active per-instance analysis requests requested by the workspace UI.
   pub analysis_requests: Arc<Mutex<AnalysisRequests>>,
-  /// Dynamic loudness energy weights from user channel-role overrides.
-  pub loudness_weights: Arc<Mutex<Option<Vec<f64>>>>,
+  /// The user's channel-role selection, with its weights and layout id derived when it arrives.
+  pub channel_selection: Arc<Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
   /// Dialogue gating enabled flag. Updated by UI.
   pub dialogue_gating_enabled: Arc<Mutex<bool>>,
   /// VAD engine used by dialogue-gated stats.
@@ -104,7 +104,7 @@ impl Default for AppState {
       frame_ack_seq: Arc::new(AtomicU64::new(0)),
       ui_frame_diagnostics: Arc::new(UiFrameDiagnosticsCounters::default()),
       analysis_requests: Arc::new(Mutex::new(AnalysisRequests::default())),
-      loudness_weights: Arc::new(Mutex::new(None)),
+      channel_selection: Arc::new(Mutex::new(None)),
       dialogue_gating_enabled: Arc::new(Mutex::new(false)),
       dialogue_vad_engine: Arc::new(Mutex::new(VadEngineKind::default())),
       measured_pcm: Arc::new(MeasuredPcmSubscriptions::default()),

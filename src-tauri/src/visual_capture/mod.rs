@@ -581,12 +581,7 @@ mod tests {
     let hub = crate::audio::MeasuredPcmSubscriptions::default();
     let receiver = hub.subscribe(RECORDING_PCM_QUEUE_CAPACITY).unwrap();
     for _ in 0..100 {
-      hub.publish(
-        &[0.0, 0.0],
-        48_000,
-        2,
-        crate::engine::ChannelLayoutSetting::Stereo,
-      );
+      hub.publish(&[0.0, 0.0], 48_000, 2);
     }
     let mut received = 0;
     while let Some(frame) = receiver.try_recv() {

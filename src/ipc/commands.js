@@ -235,9 +235,9 @@ export function setAnalysisRequests(requests) {
   return invoke("set_analysis_requests", { requests });
 }
 
-/** @param {number[] | null} weights */
-export function setLoudnessWeights(weights) {
-  return invoke("set_loudness_weights", { weights });
+/** @param {string[] | null} roles */
+export function setChannelRoles(roles) {
+  return invoke("set_channel_roles", { roles });
 }
 
 export function setDialogueGating(enabled) {

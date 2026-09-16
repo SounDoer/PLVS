@@ -2,7 +2,6 @@
 
 use crate::dsp::channel_sel::{SpectrumChannelSel, SpectrumView};
 use crate::dsp::speech::VadEngineKind;
-use crate::engine::ChannelLayoutSetting;
 
 /// Context passed to every meter's [`Meter::push_pcm`] call.
 pub struct PcmContext<'a> {
@@ -10,7 +9,6 @@ pub struct PcmContext<'a> {
   pub channels: u16,
   #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
   pub now_sec: f64,
-  pub channel_layout: ChannelLayoutSetting,
   pub loudness_weights: Option<Vec<f64>>,
   pub vectorscope_pair: (u16, u16),
   #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.

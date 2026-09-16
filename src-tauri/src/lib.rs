@@ -105,7 +105,7 @@ pub fn run() {
       ipc::commands::migrate_capture_device_id,
       ipc::commands::audio_start,
       ipc::commands::set_analysis_requests,
-      ipc::commands::set_loudness_weights,
+      ipc::commands::set_channel_roles,
       ipc::commands::set_dialogue_gating,
       ipc::commands::set_dialogue_vad_engine,
       ipc::commands::ack_frames,

@@ -6,7 +6,6 @@ use super::filters::{init_true_peak_filters, KWeightMono, KWeightStereo};
 use super::gating::{gated_integrated_lufs, gated_lra, lufs_from_mean_squares, IBL_CAP, STH_CAP};
 use super::meter::{Meter, PcmContext};
 use super::speech::{downmix_to_mono, SpeechDetector, VadEngineKind};
-use crate::engine::ChannelLayoutSetting;
 
 pub struct LoudnessMeter {
   sample_rate: f64,
@@ -247,7 +246,7 @@ impl LoudnessMeter {
   ) -> Option<LoudnessBlock> {
     let ch = channels.max(1) as usize;
     if weights.len() != ch {
-      return self.push_interleaved_multichannel(interleaved, channels, ChannelLayoutSetting::Auto);
+      return self.push_interleaved_multichannel(interleaved, channels);
     }
     if ch == 1 {
       let scaled: Vec<f32> = interleaved
@@ -371,16 +370,14 @@ impl LoudnessMeter {
     out
   }
 
-  /// Multichannel intake. Counts with a standard layout (`channel_weights`) are summed with
-  /// BS.1770-5 weights; `Surround51` / `Surround71` apply the 5.1 / 7.1 rows only at exactly 6 / 8
-  /// channels. Stereo keeps its dedicated path. Every other count measures the loudness of Ch1/Ch2
-  /// through the weighted path (so True Peak still sees every channel) and is reported as an
-  /// unknown layout by `loudness_layout_meta`.
+  /// Multichannel intake without a user selection. Counts with a standard layout
+  /// (`channel_weights`) are summed with BS.1770-5 weights; mono and stereo keep their dedicated
+  /// paths. Every other count measures the loudness of Ch1/Ch2 through the weighted path (so True
+  /// Peak still sees every channel) and is reported as an unknown layout by `loudness_layout_meta`.
   pub fn push_interleaved_multichannel(
     &mut self,
     interleaved: &[f32],
     channels: u16,
-    channel_layout: ChannelLayoutSetting,
   ) -> Option<LoudnessBlock> {
     let ch = channels.max(1);
     if ch == 1 {
@@ -390,14 +387,7 @@ impl LoudnessMeter {
       return self.push_interleaved(interleaved);
     }
 
-    let weights = match channel_layout {
-      ChannelLayoutSetting::Stereo => None,
-      ChannelLayoutSetting::Surround51 if ch == 6 => standard_loudness_weights(6),
-      ChannelLayoutSetting::Surround71 if ch == 8 => standard_loudness_weights(8),
-      ChannelLayoutSetting::Surround51 | ChannelLayoutSetting::Surround71 => None,
-      ChannelLayoutSetting::Auto => standard_loudness_weights(ch),
-    };
-    if let Some(weights) = weights {
+    if let Some(weights) = standard_loudness_weights(ch) {
       return self.push_interleaved_weighted(interleaved, ch, weights);
     }
 
@@ -468,12 +458,12 @@ impl Meter for LoudnessMeter {
       } else if ctx.channels == 1 {
         self.push_mono_duplex(ctx.interleaved)
       } else {
-        self.push_interleaved_multichannel(ctx.interleaved, ctx.channels, ctx.channel_layout)
+        self.push_interleaved_multichannel(ctx.interleaved, ctx.channels)
       }
     } else if ctx.channels == 1 {
       self.push_mono_duplex(ctx.interleaved)
     } else {
-      self.push_interleaved_multichannel(ctx.interleaved, ctx.channels, ctx.channel_layout)
+      self.push_interleaved_multichannel(ctx.interleaved, ctx.channels)
     };
     if let Some(mut b) = block {
       // A block just closed: settle its speech verdict and fold it into the dialogue readouts.
@@ -556,7 +546,6 @@ mod tests {
       interleaved,
       channels,
       now_sec: 0.0,
-      channel_layout: ChannelLayoutSetting::Auto,
       loudness_weights: None,
       vectorscope_pair: (0, 1),
       spectrum_channel: SpectrumChannelSel::default(),
@@ -673,9 +662,7 @@ mod tests {
         buf.push(if ch == 7 { x as f32 } else { 0.0 });
       }
       if buf.len() >= 4_800 * channels {
-        if let Some(block) =
-          meter.push_interleaved_multichannel(&buf, channels as u16, ChannelLayoutSetting::Auto)
-        {
+        if let Some(block) = meter.push_interleaved_multichannel(&buf, channels as u16) {
           overall = overall.max(block.true_peak);
           left = left.max(block.true_peak_l);
           right = right.max(block.true_peak_r);
@@ -705,9 +692,7 @@ mod tests {
         buf.push(if ch == 9 { x as f32 } else { 0.0 });
       }
       if buf.len() >= 4_800 * channels {
-        if let Some(block) =
-          meter.push_interleaved_multichannel(&buf, channels as u16, ChannelLayoutSetting::Auto)
-        {
+        if let Some(block) = meter.push_interleaved_multichannel(&buf, channels as u16) {
           overall = overall.max(block.true_peak);
         }
         buf.clear();
@@ -805,13 +790,8 @@ mod tests {
     );
   }
 
-  fn run_once_100ms(
-    m: &mut LoudnessMeter,
-    interleaved: &[f32],
-    channels: u16,
-    layout: ChannelLayoutSetting,
-  ) -> LoudnessBlock {
-    m.push_interleaved_multichannel(interleaved, channels, layout)
+  fn run_once_100ms(m: &mut LoudnessMeter, interleaved: &[f32], channels: u16) -> LoudnessBlock {
+    m.push_interleaved_multichannel(interleaved, channels)
       .expect("expected a 100ms loudness block")
   }
 
@@ -889,7 +869,7 @@ mod tests {
     let mut auto = LoudnessMeter::new(sr);
     let mut standard = LoudnessMeter::new(sr);
     let auto_block = auto
-      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .push_interleaved_multichannel(&pcm, ch as u16)
       .expect("5.0 auto block");
     let standard_block = standard
       .push_interleaved_weighted(
@@ -923,7 +903,7 @@ mod tests {
     let mut hardcoded = LoudnessMeter::new(sr);
     let mut standard = LoudnessMeter::new(sr);
     let hardcoded_block = hardcoded
-      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Surround51)
+      .push_interleaved_multichannel(&pcm, ch as u16)
       .expect("5.1 hardcoded block");
     let standard_block = standard
       .push_interleaved_weighted(
@@ -959,7 +939,7 @@ mod tests {
     let mut auto = LoudnessMeter::new(sr);
     let mut standard = LoudnessMeter::new(sr);
     let auto_block = auto
-      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .push_interleaved_multichannel(&pcm, ch as u16)
       .expect("7.0 auto block");
     let standard_block = standard
       .push_interleaved_weighted(
@@ -995,7 +975,7 @@ mod tests {
     let mut manual = LoudnessMeter::new(sr);
     let mut standard = LoudnessMeter::new(sr);
     let manual_block = manual
-      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Surround71)
+      .push_interleaved_multichannel(&pcm, ch as u16)
       .expect("7.1 manual block");
     let standard_block = standard
       .push_interleaved_weighted(
@@ -1036,7 +1016,7 @@ mod tests {
 
     let mut meter = LoudnessMeter::new(sr);
     let block = meter
-      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .push_interleaved_multichannel(&pcm, ch as u16)
       .expect("5.0 block");
 
     assert!(
@@ -1060,7 +1040,7 @@ mod tests {
 
     let mut meter = LoudnessMeter::new(sr);
     let block = meter
-      .push_interleaved_multichannel(&pcm, ch as u16, ChannelLayoutSetting::Auto)
+      .push_interleaved_multichannel(&pcm, ch as u16)
       .expect("7.0 block");
 
     assert!(
@@ -1103,8 +1083,8 @@ mod tests {
     }
     let mut m0 = LoudnessMeter::new(sr);
     let mut m1 = LoudnessMeter::new(sr);
-    let b0 = run_once_100ms(&mut m0, &pcm0, 6, ChannelLayoutSetting::Surround51);
-    let b1 = run_once_100ms(&mut m1, &pcm1, 6, ChannelLayoutSetting::Surround51);
+    let b0 = run_once_100ms(&mut m0, &pcm0, 6);
+    let b1 = run_once_100ms(&mut m1, &pcm1, 6);
     assert!(
       (b0.momentary - b1.momentary).abs() < 0.15,
       "LFE must not change 5.1 loudness: {} vs {}",
@@ -1129,7 +1109,7 @@ mod tests {
     }
     let mut m71 = LoudnessMeter::new(sr);
     let b71 = m71
-      .push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
+      .push_interleaved_multichannel(&pcm, 8)
       .expect("should produce a block in 0.4s");
     let mut mst = LoudnessMeter::new(sr);
     let stereo_pcm: Vec<f32> = (0..frames)
@@ -1160,7 +1140,7 @@ mod tests {
     }
     let mut m = LoudnessMeter::new(sr);
     let b = m
-      .push_interleaved_multichannel(&pcm, 8, ChannelLayoutSetting::Surround71)
+      .push_interleaved_multichannel(&pcm, 8)
       .expect("should produce a block");
     assert!(
       !b.momentary.is_finite() || b.momentary < -70.0,
@@ -1187,7 +1167,7 @@ mod tests {
     let mut m_st = LoudnessMeter::new(sr);
     let mut m_51 = LoudnessMeter::new(sr);
     let b_st = m_st.push_interleaved(&pcm2).expect("stereo block");
-    let b_51 = run_once_100ms(&mut m_51, &pcm51, 6, ChannelLayoutSetting::Surround51);
+    let b_51 = run_once_100ms(&mut m_51, &pcm51, 6);
     assert!(
       (b_st.momentary - b_51.momentary).abs() < 0.15,
       "5.1 should match stereo when only FL/FR carry signal: {} vs {}",
@@ -1219,10 +1199,10 @@ mod tests {
     let mut back_meter = LoudnessMeter::new(48_000.0);
     let mut side_meter = LoudnessMeter::new(48_000.0);
     let back_block = back_meter
-      .push_interleaved_multichannel(&back, 8, ChannelLayoutSetting::Auto)
+      .push_interleaved_multichannel(&back, 8)
       .expect("back block");
     let side_block = side_meter
-      .push_interleaved_multichannel(&side, 8, ChannelLayoutSetting::Auto)
+      .push_interleaved_multichannel(&side, 8)
       .expect("side block");
     assert!(
       (side_block.momentary - back_block.momentary - 1.5).abs() < 0.01,
@@ -1244,7 +1224,7 @@ mod tests {
       let mut auto = LoudnessMeter::new(48_000.0);
       let mut weighted = LoudnessMeter::new(48_000.0);
       let auto_block = auto
-        .push_interleaved_multichannel(&pcm, channels, ChannelLayoutSetting::Auto)
+        .push_interleaved_multichannel(&pcm, channels)
         .expect("auto block");
       let weighted_block = weighted
         .push_interleaved_weighted(&pcm, channels, &weights)
@@ -1274,7 +1254,7 @@ mod tests {
     let mut wide = LoudnessMeter::new(48_000.0);
     let mut two = LoudnessMeter::new(48_000.0);
     let wide_block = wide
-      .push_interleaved_multichannel(&pcm, channels as u16, ChannelLayoutSetting::Auto)
+      .push_interleaved_multichannel(&pcm, channels as u16)
       .expect("10ch block");
     let two_block = two
       .push_interleaved_weighted(&stereo, 2, &[1.0, 1.0])

@@ -720,6 +720,12 @@ git commit -m "refactor(dsp): back the standard weight rows with the shared tabl
 
 ---
 
+## Tasks 5 and 6 land together
+
+They were written as two tasks, but Task 5 alone leaves the workspace uncompilable: the state field
+and the command signature change while fourteen files still pass `ChannelLayoutSetting` and a bare
+weight array. Implement both, then make one commit. The steps below stay in their original order.
+
 ## Task 5: Carry roles over IPC instead of weights
 
 **Files:**

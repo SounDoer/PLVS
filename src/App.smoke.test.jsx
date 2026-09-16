@@ -58,7 +58,7 @@ vi.mock("./ipc/commands.js", () => ({
     .mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" }),
   startAudioCapture: vi.fn().mockResolvedValue(undefined),
   stopAudioCapture: vi.fn().mockResolvedValue(undefined),
-  setLoudnessWeights: vi.fn().mockResolvedValue(undefined),
+  setChannelRoles: vi.fn().mockResolvedValue(undefined),
   setDialogueGating: vi.fn().mockResolvedValue(undefined),
   setDialogueVadEngine: vi.fn().mockResolvedValue(undefined),
   ackFrames: vi.fn().mockResolvedValue(undefined),

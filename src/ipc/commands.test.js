@@ -24,7 +24,7 @@ import {
   setDockAccessories,
   setDockHeight,
   setDockSuspended,
-  setLoudnessWeights,
+  setChannelRoles,
   startVisualRecording,
   inspectVisualRecording,
   updateVisualRecordingGeometry,
@@ -44,18 +44,21 @@ describe("audio engine command seam", () => {
     expect(invoke).toHaveBeenCalledWith("get_ui_frame_diagnostics");
   });
 
-  it("maps dynamic loudness and dialogue settings to native commands", async () => {
-    await setLoudnessWeights([1, 0.5]);
+  it("maps channel roles and dialogue settings to native commands", async () => {
+    await setChannelRoles(["L", "R"]);
     await setDialogueGating(1);
     await setDialogueVadEngine("firered");
 
-    expect(invoke).toHaveBeenNthCalledWith(1, "set_loudness_weights", {
-      weights: [1, 0.5],
+    expect(invoke).toHaveBeenNthCalledWith(1, "set_channel_roles", {
+      roles: ["L", "R"],
     });
     expect(invoke).toHaveBeenNthCalledWith(2, "set_dialogue_gating", { enabled: true });
     expect(invoke).toHaveBeenNthCalledWith(3, "set_dialogue_vad_engine", {
       engine: "firered",
     });
+
+    await setChannelRoles(null);
+    expect(invoke).toHaveBeenNthCalledWith(4, "set_channel_roles", { roles: null });
   });
 
   it("maps file probing and stopping to native commands", async () => {

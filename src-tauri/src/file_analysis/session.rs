@@ -10,7 +10,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use std::os::windows::process::CommandExt;
 
 use crate::dsp::speech::VadEngineKind;
-use crate::engine::{ChannelLayoutSetting, MeterPipeline};
+use crate::engine::MeterPipeline;
 use crate::file_analysis::ffmpeg::decode::{
   build_decode_args, bytes_to_f32_le_into, parse_out_time_us,
 };
@@ -18,6 +18,7 @@ use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::probe::{probe_file, probe_media_file};
 use crate::file_analysis::summary::FileAnalysisSummaryRun;
 use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
+use crate::ipc::commands::ChannelSelection;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, FileAnalysisCompletedPayload, FileAnalysisErrorPayload,
   FileAnalysisProgressPayload, FrameSubscribers,
@@ -29,7 +30,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 /// Config read once at worker start. Mid-analysis chip changes do not retune the current run.
 struct WorkerConfig {
   requests: AnalysisRequests,
-  loudness_weights: Option<Vec<f64>>,
+  channel_selection: Option<ChannelSelection>,
   dialogue_gating: bool,
   dialogue_vad_engine: VadEngineKind,
 }
@@ -38,7 +39,7 @@ struct WorkerConfig {
 fn default_file_worker_config() -> WorkerConfig {
   WorkerConfig {
     requests: AnalysisRequests::default(),
-    loudness_weights: None,
+    channel_selection: None,
     dialogue_gating: false,
     dialogue_vad_engine: VadEngineKind::default(),
   }
@@ -134,9 +135,8 @@ impl FilePcmHistoryChunker {
       ((self.decoded_frames as f64 / self.sample_rate as f64) * 1000.0).round() as u64;
     if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
       chunk,
-      ChannelLayoutSetting::Auto,
       &config.requests,
-      config.loudness_weights.clone(),
+      config.channel_selection.clone(),
       config.dialogue_gating,
       config.dialogue_vad_engine,
       media_time_ms,
@@ -153,9 +153,9 @@ fn snapshot_config(app: &AppHandle) -> WorkerConfig {
     .as_ref()
     .and_then(|s| s.analysis_requests.lock().ok().map(|g| g.clone()))
     .unwrap_or_default();
-  let loudness_weights = state
+  let channel_selection = state
     .as_ref()
-    .and_then(|s| s.loudness_weights.lock().ok().map(|g| g.clone()))
+    .and_then(|s| s.channel_selection.lock().ok().map(|g| g.clone()))
     .unwrap_or(None);
   let dialogue_gating = state
     .as_ref()
@@ -167,7 +167,7 @@ fn snapshot_config(app: &AppHandle) -> WorkerConfig {
     .unwrap_or_default();
   WorkerConfig {
     requests,
-    loudness_weights,
+    channel_selection,
     dialogue_gating,
     dialogue_vad_engine,
   }
@@ -277,7 +277,7 @@ pub fn analyze_file_track_with_dialogue(
   };
   let config = WorkerConfig {
     requests: AnalysisRequests::default(),
-    loudness_weights: None,
+    channel_selection: None,
     dialogue_gating: true,
     dialogue_vad_engine: vad_engine,
   };
@@ -821,7 +821,6 @@ mod tests {
       );
       if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
         pcm,
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -900,7 +899,6 @@ mod tests {
     );
     let _ = pipeline.push_pcm_f32_with_requests_at_media_time(
       &[],
-      ChannelLayoutSetting::Auto,
       &requests,
       None,
       false,

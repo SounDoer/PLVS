@@ -1,7 +1,6 @@
 use serde::Serialize;
 
 use crate::audio::PcmFrame;
-use crate::engine::ChannelLayoutSetting;
 
 pub const OUTPUT_SAMPLE_RATE: u32 = 48_000;
 pub const OUTPUT_CHANNELS: u16 = 2;
@@ -165,14 +164,10 @@ impl AudioTimeline {
       let first = (source_position.floor() as usize).min(input_frames - 1);
       let second = (first + 1).min(input_frames - 1);
       let fraction = source_position - first as f64;
-      let (first_left, first_right) = downmix_frame(
-        &frame.samples[first * channels..(first + 1) * channels],
-        frame.channel_layout,
-      );
-      let (second_left, second_right) = downmix_frame(
-        &frame.samples[second * channels..(second + 1) * channels],
-        frame.channel_layout,
-      );
+      let (first_left, first_right) =
+        downmix_frame(&frame.samples[first * channels..(first + 1) * channels]);
+      let (second_left, second_right) =
+        downmix_frame(&frame.samples[second * channels..(second + 1) * channels]);
       output.push(to_i16(
         first_left + (second_left - first_left) * fraction as f32,
       ));
@@ -211,33 +206,25 @@ fn frames_to_ms(frames: u64) -> u64 {
   frames.saturating_mul(1_000) / u64::from(OUTPUT_SAMPLE_RATE)
 }
 
-fn effective_layout(layout: ChannelLayoutSetting, channels: usize) -> ChannelLayoutSetting {
-  match (layout, channels) {
-    (ChannelLayoutSetting::Auto, 6) => ChannelLayoutSetting::Surround51,
-    (ChannelLayoutSetting::Auto, 8) => ChannelLayoutSetting::Surround71,
-    (other, _) => other,
-  }
-}
-
-fn downmix_frame(samples: &[f32], layout: ChannelLayoutSetting) -> (f32, f32) {
+/// Stereo downmix of one frame, by channel count. 6 and 8 channels keep the 5.1 and 7.1 matrices
+/// they had when the layout was an enum; every other count takes Ch1/Ch2. B3 generalizes this.
+fn downmix_frame(samples: &[f32]) -> (f32, f32) {
   match samples.len() {
     0 => (0.0, 0.0),
     1 => (samples[0], samples[0]),
-    _ => match effective_layout(layout, samples.len()) {
-      ChannelLayoutSetting::Surround51 if samples.len() >= 6 => (
-        samples[0]
-          + samples[2] * std::f32::consts::FRAC_1_SQRT_2
-          + samples[4] * std::f32::consts::FRAC_1_SQRT_2,
-        samples[1]
-          + samples[2] * std::f32::consts::FRAC_1_SQRT_2
-          + samples[5] * std::f32::consts::FRAC_1_SQRT_2,
-      ),
-      ChannelLayoutSetting::Surround71 if samples.len() >= 8 => (
-        samples[0] + samples[2] * std::f32::consts::FRAC_1_SQRT_2 + (samples[4] + samples[6]) * 0.5,
-        samples[1] + samples[2] * std::f32::consts::FRAC_1_SQRT_2 + (samples[5] + samples[7]) * 0.5,
-      ),
-      _ => (samples[0], samples[1]),
-    },
+    6 => (
+      samples[0]
+        + samples[2] * std::f32::consts::FRAC_1_SQRT_2
+        + samples[4] * std::f32::consts::FRAC_1_SQRT_2,
+      samples[1]
+        + samples[2] * std::f32::consts::FRAC_1_SQRT_2
+        + samples[5] * std::f32::consts::FRAC_1_SQRT_2,
+    ),
+    8 => (
+      samples[0] + samples[2] * std::f32::consts::FRAC_1_SQRT_2 + (samples[4] + samples[6]) * 0.5,
+      samples[1] + samples[2] * std::f32::consts::FRAC_1_SQRT_2 + (samples[5] + samples[7]) * 0.5,
+    ),
+    _ => (samples[0], samples[1]),
   }
 }
 
@@ -257,7 +244,6 @@ mod tests {
       timestamp_ns,
       sequence: 0,
       dropped_before: 0,
-      channel_layout: ChannelLayoutSetting::Auto,
     }
   }
 
@@ -280,16 +266,10 @@ mod tests {
 
   #[test]
   fn uses_documented_layout_order_for_multichannel_downmix() {
-    let (left_51, right_51) = downmix_frame(
-      &[0.1, 0.2, 0.3, 0.9, 0.4, 0.5],
-      ChannelLayoutSetting::Surround51,
-    );
+    let (left_51, right_51) = downmix_frame(&[0.1, 0.2, 0.3, 0.9, 0.4, 0.5]);
     assert!(left_51 > 0.59 && left_51 < 0.60);
     assert!(right_51 > 0.76 && right_51 < 0.77);
-    let (left_71, right_71) = downmix_frame(
-      &[0.1, 0.2, 0.3, 0.9, 0.4, 0.5, 0.6, 0.7],
-      ChannelLayoutSetting::Surround71,
-    );
+    let (left_71, right_71) = downmix_frame(&[0.1, 0.2, 0.3, 0.9, 0.4, 0.5, 0.6, 0.7]);
     assert!(left_71 > left_51);
     assert!(right_71 > right_51);
   }

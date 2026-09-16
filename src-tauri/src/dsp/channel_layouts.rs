@@ -4,7 +4,6 @@
 //! layout order exists exactly once in the repository.
 //!
 //! `channel_weights.rs` reads the standard rows from here; the frontend reads the JSON directly.
-//! `layout_id_for_roles` has no caller yet — it is consumed by the manual layout picker (Task 5).
 
 use serde::Deserialize;
 use std::sync::OnceLock;
@@ -66,9 +65,8 @@ pub(crate) fn roles_for_layout(layout_id: &str) -> Option<&'static [String]> {
     .map(|l| l.roles.as_slice())
 }
 
-/// The layout whose roles equal `roles`, in order.
-// Consumed once the manual layout picker UI (Task 5) maps a chosen role list back to an id.
-#[allow(dead_code)]
+/// The layout whose roles equal `roles`, in order. `ChannelSelection::from_roles` uses it to name
+/// the layout a user's role list selects.
 pub(crate) fn layout_id_for_roles(roles: &[String]) -> Option<&'static str> {
   layouts()
     .iter()

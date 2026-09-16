@@ -11,7 +11,6 @@ use tauri::AppHandle;
 
 use super::device::DeviceInfo;
 use crate::dsp::speech::VadEngineKind;
-use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
 /// One PCM buffer from the device; channel count is never hard-coded to stereo.
@@ -23,7 +22,6 @@ pub struct PcmFrame {
   pub timestamp_ns: u64,
   pub sequence: u64,
   pub dropped_before: u64,
-  pub channel_layout: ChannelLayoutSetting,
 }
 
 struct MeasuredPcmSubscriber {
@@ -118,13 +116,7 @@ impl MeasuredPcmSubscriptions {
     Ok(MeasuredPcmReceiver { inner })
   }
 
-  pub(crate) fn publish(
-    &self,
-    samples: &[f32],
-    sample_rate: u32,
-    channels: u16,
-    channel_layout: ChannelLayoutSetting,
-  ) {
+  pub(crate) fn publish(&self, samples: &[f32], sample_rate: u32, channels: u16) {
     let Ok(mut subscribers) = self.subscribers.lock() else {
       return;
     };
@@ -167,7 +159,6 @@ impl MeasuredPcmSubscriptions {
         timestamp_ns,
         sequence,
         dropped_before: subscriber.dropped.swap(0, Ordering::Relaxed),
-        channel_layout,
       };
       if let Err(frame) = subscriber.queue.push(frame) {
         subscriber.dropped.fetch_add(1, Ordering::Relaxed);
@@ -239,8 +230,9 @@ pub trait AudioCapture: Send + Sync {
     device_id: &str,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
-    channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    channel_selection: std::sync::Arc<
+      std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>,
+    >,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: std::sync::Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -250,13 +242,12 @@ pub trait AudioCapture: Send + Sync {
 #[cfg(test)]
 mod measured_pcm_tests {
   use super::{MeasuredPcmSubscriptions, PcmTimestampClock};
-  use crate::engine::ChannelLayoutSetting;
 
   #[test]
   fn subscriber_receives_source_pcm_with_metadata_and_recycles_buffers() {
     let hub = MeasuredPcmSubscriptions::default();
     let receiver = hub.subscribe(2).expect("subscriber");
-    hub.publish(&[0.25, -0.5], 48_000, 2, ChannelLayoutSetting::Stereo);
+    hub.publish(&[0.25, -0.5], 48_000, 2);
 
     let first = receiver.try_recv().expect("frame");
     assert_eq!(first.samples, vec![0.25, -0.5]);
@@ -264,10 +255,9 @@ mod measured_pcm_tests {
     assert_eq!(first.channels, 2);
     assert_eq!(first.sequence, 0);
     assert_eq!(first.dropped_before, 0);
-    assert_eq!(first.channel_layout, ChannelLayoutSetting::Stereo);
     receiver.recycle(first);
 
-    hub.publish(&[0.75], 44_100, 1, ChannelLayoutSetting::Auto);
+    hub.publish(&[0.75], 44_100, 1);
     let second = receiver.try_recv().expect("recycled frame");
     assert_eq!(second.samples, vec![0.75]);
     assert_eq!(second.sequence, 1);
@@ -288,13 +278,13 @@ mod measured_pcm_tests {
     let hub = MeasuredPcmSubscriptions::default();
     let receiver = hub.subscribe(1).expect("subscriber");
     for _ in 0..2 {
-      hub.publish(&[0.0, 0.0], 48_000, 2, ChannelLayoutSetting::Stereo);
+      hub.publish(&[0.0, 0.0], 48_000, 2);
       receiver.recycle(receiver.try_recv().expect("warmup frame"));
     }
 
     let allocations =
       crate::dsp::shared_spectral_engine::allocation_counter::count_current_thread_allocations(
-        || hub.publish(&[0.25, -0.5], 48_000, 2, ChannelLayoutSetting::Stereo),
+        || hub.publish(&[0.25, -0.5], 48_000, 2),
       );
 
     assert_eq!(allocations, 0, "warmed worker publish allocated");
@@ -306,15 +296,15 @@ mod measured_pcm_tests {
     let slow = hub.subscribe(1).expect("slow subscriber");
     let healthy = hub.subscribe(2).expect("healthy subscriber");
 
-    hub.publish(&[1.0], 48_000, 1, ChannelLayoutSetting::Auto);
+    hub.publish(&[1.0], 48_000, 1);
     let healthy_first = healthy.try_recv().expect("healthy first");
     healthy.recycle(healthy_first);
-    hub.publish(&[2.0], 48_000, 1, ChannelLayoutSetting::Auto);
+    hub.publish(&[2.0], 48_000, 1);
 
     let slow_first = slow.try_recv().expect("slow first");
     assert_eq!(slow_first.samples, vec![1.0]);
     slow.recycle(slow_first);
-    hub.publish(&[3.0], 48_000, 1, ChannelLayoutSetting::Auto);
+    hub.publish(&[3.0], 48_000, 1);
     let slow_after_drop = slow.try_recv().expect("slow resumes");
     assert_eq!(slow_after_drop.samples, vec![3.0]);
     assert_eq!(slow_after_drop.dropped_before, 1);
@@ -334,7 +324,7 @@ mod measured_pcm_tests {
     let retained = hub.subscribe(1).expect("retained subscriber");
     drop(detached);
 
-    hub.publish(&[0.5], 48_000, 1, ChannelLayoutSetting::Auto);
+    hub.publish(&[0.5], 48_000, 1);
     assert_eq!(
       retained.try_recv().expect("retained frame").samples,
       vec![0.5]

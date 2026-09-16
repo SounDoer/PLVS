@@ -3,27 +3,27 @@ import {
   setAnalysisRequests,
   setDialogueGating,
   setDialogueVadEngine,
-  setLoudnessWeights,
+  setChannelRoles,
 } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 
 export function useRuntimeBackendSync({
   analysisRequests,
-  loudnessWeights,
+  channelRoles,
   running,
   dialogueGating,
   dialogueVadEngine,
 }) {
   const lastSentAnalysisRequestsKeyRef = useRef("");
-  const loudnessWeightsRef = useRef(loudnessWeights);
+  const channelRolesRef = useRef(channelRoles);
   const dialogueGatingRef = useRef(dialogueGating);
   const dialogueVadEngineRef = useRef(dialogueVadEngine);
 
   useEffect(() => {
-    loudnessWeightsRef.current = loudnessWeights;
+    channelRolesRef.current = channelRoles;
     if (!isTauri() || !running) return;
-    void setLoudnessWeights(loudnessWeights).catch(() => {});
-  }, [loudnessWeights, running]);
+    void setChannelRoles(channelRoles).catch(() => {});
+  }, [channelRoles, running]);
 
   useEffect(() => {
     dialogueGatingRef.current = dialogueGating;
@@ -54,10 +54,10 @@ export function useRuntimeBackendSync({
     });
   }, [analysisRequests]);
 
-  const setLoudnessWeightsForControl = useCallback(
-    async (nextWeights) => {
-      if (isTauri() && running) await setLoudnessWeights(nextWeights);
-      loudnessWeightsRef.current = nextWeights;
+  const setChannelRolesForControl = useCallback(
+    async (nextRoles) => {
+      if (isTauri() && running) await setChannelRoles(nextRoles);
+      channelRolesRef.current = nextRoles;
     },
     [running]
   );
@@ -68,10 +68,10 @@ export function useRuntimeBackendSync({
   }, []);
 
   return {
-    loudnessWeightsRef,
+    channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
-    setLoudnessWeightsForControl,
+    setChannelRolesForControl,
     setDialogueVadEngineForControl,
   };
 }

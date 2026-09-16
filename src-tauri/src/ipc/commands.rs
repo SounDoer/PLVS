@@ -1,7 +1,7 @@
 //! `#[tauri::command]` handlers (Phase 2: capture + DSP → Channel / Events).
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, State};
 
@@ -10,7 +10,6 @@ use crate::audio::cpal_backend;
 use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
 use crate::dsp::speech::VadEngineKind;
-use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::{
   AnalysisRequests, AudioDevicePreview, EngineStateChanged, FileAnalysisProbeResult,
   FrameSubscribers, SpectrumAnalysisChannel, StereoMapAnalysisPair, UiFrameDiagnostics,
@@ -104,9 +103,7 @@ pub fn audio_start(
       .map_err(|_| "frame subscribers lock poisoned".to_string())?;
     *slot = Some(pool.clone());
   }
-  // Channel layout is auto-resolved from channel count on the capture thread; no user override.
-  let layout = Arc::new(Mutex::new(ChannelLayoutSetting::Auto));
-  let loudness_weights = state.inner().loudness_weights.clone();
+  let channel_selection = state.inner().channel_selection.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let dialogue_vad_engine = state.inner().dialogue_vad_engine.clone();
   let session = AudioCapture::start_session(
@@ -114,8 +111,7 @@ pub fn audio_start(
     &device_id,
     pool,
     app.clone(),
-    layout,
-    loudness_weights,
+    channel_selection,
     dialogue_gating,
     dialogue_vad_engine,
     state.inner().measured_pcm.clone(),
@@ -290,17 +286,29 @@ pub fn set_analysis_requests(
   Ok(())
 }
 
-fn validate_loudness_weights(weights: &[f64]) -> Result<(), String> {
-  if weights.is_empty() {
-    return Err("loudness weights cannot be empty".to_string());
+/// A user channel-role selection, with everything the audio path needs derived up front so the
+/// callback never looks anything up.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChannelSelection {
+  pub roles: Vec<String>,
+  pub weights: Vec<f64>,
+  /// The matching layout id, or `"custom"`.
+  pub layout: &'static str,
+}
+
+impl ChannelSelection {
+  pub fn from_roles(roles: Vec<String>) -> Option<Self> {
+    if roles.is_empty() || roles.len() > 64 {
+      return None;
+    }
+    let weights = crate::dsp::channel_layouts::weights_for_roles(&roles)?;
+    let layout = crate::dsp::channel_layouts::layout_id_for_roles(&roles).unwrap_or("custom");
+    Some(Self {
+      roles,
+      weights,
+      layout,
+    })
   }
-  if weights.len() > 64 {
-    return Err("loudness weights cannot exceed 64 channels".to_string());
-  }
-  if weights.iter().any(|w| !w.is_finite() || *w < 0.0) {
-    return Err("loudness weights must be finite non-negative numbers".to_string());
-  }
-  Ok(())
 }
 
 pub(crate) fn apply_dialogue_gating(flag: &std::sync::Arc<std::sync::Mutex<bool>>, enabled: bool) {
@@ -322,19 +330,22 @@ pub(crate) fn apply_dialogue_vad_engine(
 }
 
 #[tauri::command]
-pub fn set_loudness_weights(
-  weights: Option<Vec<f64>>,
+pub fn set_channel_roles(
+  roles: Option<Vec<String>>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  if let Some(ref ws) = weights {
-    validate_loudness_weights(ws)?;
-  }
+  let selection = match roles {
+    Some(roles) => {
+      Some(ChannelSelection::from_roles(roles).ok_or_else(|| "invalid channel roles".to_string())?)
+    }
+    None => None,
+  };
   let mut g = state
     .inner()
-    .loudness_weights
+    .channel_selection
     .lock()
-    .map_err(|_| "loudness weights lock poisoned".to_string())?;
-  *g = weights;
+    .map_err(|_| "channel selection lock poisoned".to_string())?;
+  *g = selection;
   Ok(())
 }
 
@@ -528,36 +539,31 @@ pub fn get_engine_state(state: State<'_, AppState>) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-  use super::validate_loudness_weights;
+  use super::ChannelSelection;
   use crate::ipc::types::{
     AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, StereoMapAnalysisPair,
     StereoMapAnalysisRequest, VectorscopeAnalysisRequest,
   };
 
   #[test]
-  fn loudness_weights_validation_accepts_finite_non_negative_vectors() {
-    assert!(validate_loudness_weights(&[1.0, 0.0, 1.4125375446]).is_ok());
-  }
+  fn channel_selection_derives_weights_and_a_layout_name() {
+    let roles: Vec<String> = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]
+      .iter()
+      .map(|s| s.to_string())
+      .collect();
+    let selection = ChannelSelection::from_roles(roles.clone()).expect("valid roles");
+    assert_eq!(selection.layout, "7.1");
+    assert_eq!(selection.weights.len(), 8);
+    assert_eq!(selection.weights[3], 0.0);
 
-  #[test]
-  fn loudness_weights_validation_rejects_empty_vectors() {
-    assert!(validate_loudness_weights(&[]).is_err());
-  }
+    let mut swapped = roles;
+    swapped.swap(4, 6);
+    let custom = ChannelSelection::from_roles(swapped).expect("valid roles");
+    assert_eq!(custom.layout, "custom");
 
-  #[test]
-  fn loudness_weights_validation_rejects_negative_values() {
-    assert!(validate_loudness_weights(&[1.0, -1.0]).is_err());
-  }
-
-  #[test]
-  fn loudness_weights_validation_rejects_nan_values() {
-    assert!(validate_loudness_weights(&[1.0, f64::NAN]).is_err());
-  }
-
-  #[test]
-  fn loudness_weights_validation_rejects_overlong_vectors() {
-    let weights = vec![1.0; 65];
-    assert!(validate_loudness_weights(&weights).is_err());
+    assert!(ChannelSelection::from_roles(vec!["Nope".to_string()]).is_none());
+    assert!(ChannelSelection::from_roles(Vec::new()).is_none());
+    assert!(ChannelSelection::from_roles(vec!["L".to_string(); 65]).is_none());
   }
 
   #[test]

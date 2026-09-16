@@ -26,7 +26,7 @@ vi.mock("../ipc/commands.js", () => ({
   previewAudioDevice: vi.fn(),
   startAudioCapture: vi.fn(),
   stopAudioCapture: vi.fn(),
-  setLoudnessWeights: vi.fn(),
+  setChannelRoles: vi.fn(),
   setDialogueGating: vi.fn(),
   setDialogueVadEngine: vi.fn(),
   ackFrames: vi.fn(),
@@ -62,7 +62,7 @@ function useHarness({
     samplePeakMaxL: -Infinity,
     samplePeakMaxR: -Infinity,
   });
-  const loudnessWeightsRef = useRef(null);
+  const channelRolesRef = useRef(null);
   const dialogueGatingRef = useRef(false);
   const dialogueVadEngineRef = useRef("silero");
   const display = {
@@ -81,7 +81,7 @@ function useHarness({
     histMaxSamples,
     visualMaxSamples,
     audioRef,
-    loudnessWeightsRef,
+    channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
     transport: { running: true, halt, recordAudioDrop },

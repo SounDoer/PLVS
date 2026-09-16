@@ -52,11 +52,7 @@ import {
   clampSpectrumChannelToAvailable,
 } from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
-import {
-  roleTokensToLabels,
-  roleTokensToLoudnessWeights,
-  seedTokensFromLabels,
-} from "./math/channelRoles.js";
+import { roleTokensToLabels, seedTokensFromLabels } from "./math/channelRoles.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
@@ -1117,18 +1113,19 @@ function AppContent() {
     () => deriveChannelLabelRuntime({ channelCount, layoutResolution, channelLabelOverrides }),
     [channelCount, channelLabelOverrides, layoutResolution]
   );
-  const { channelLabelOverride, loudnessWeights } = channelLabelRuntime;
+  const { channelLabelOverride } = channelLabelRuntime;
+  const channelRoles = channelLabelOverride;
   const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
   const dialogueVadEngine = settings.dialogueVadEngine;
   const {
-    loudnessWeightsRef,
+    channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
-    setLoudnessWeightsForControl,
+    setChannelRolesForControl,
     setDialogueVadEngineForControl,
   } = useRuntimeBackendSync({
     analysisRequests,
-    loudnessWeights,
+    channelRoles,
     running,
     dialogueGating,
     dialogueVadEngine,
@@ -1370,10 +1367,10 @@ function AppContent() {
           );
         }
         if (changed.includes("settings.channelLabels")) {
-          const nextWeights = roleTokensToLoudnessWeights(next.channelLabels.roles);
-          if (JSON.stringify(nextWeights) !== JSON.stringify(loudnessWeights)) {
-            await setLoudnessWeightsForControl(nextWeights);
-            compensation.push(() => setLoudnessWeightsForControl(loudnessWeights));
+          const nextRoles = next.channelLabels.roles;
+          if (JSON.stringify(nextRoles) !== JSON.stringify(channelRoles)) {
+            await setChannelRolesForControl(nextRoles);
+            compensation.push(() => setChannelRolesForControl(channelRoles));
           }
         }
       } catch (error) {
@@ -1425,9 +1422,9 @@ function AppContent() {
     },
     [
       agentControlSettings,
-      loudnessWeights,
+      channelRoles,
       setDialogueVadEngineForControl,
-      setLoudnessWeightsForControl,
+      setChannelRolesForControl,
       settings,
     ]
   );
@@ -2208,7 +2205,7 @@ function AppContent() {
     captureFormatSignature,
     histMaxSamples,
     visualMaxSamples,
-    loudnessWeightsRef,
+    channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
   };

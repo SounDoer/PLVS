@@ -9,7 +9,6 @@ use super::device::DeviceInfo;
 #[cfg(target_os = "macos")]
 use super::macos;
 use crate::dsp::speech::VadEngineKind;
-use crate::engine::ChannelLayoutSetting;
 use crate::ipc::types::FrameSubscribers;
 
 /// Single type used by IPC and the device-watch thread.
@@ -32,8 +31,9 @@ impl AudioCapture for AppAudioBackend {
     device_id: &str,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
-    channel_layout: std::sync::Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    loudness_weights: std::sync::Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    channel_selection: std::sync::Arc<
+      std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>,
+    >,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: std::sync::Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: std::sync::Arc<MeasuredPcmSubscriptions>,
@@ -44,8 +44,7 @@ impl AudioCapture for AppAudioBackend {
         device_id,
         frame_subscribers,
         app,
-        channel_layout,
-        loudness_weights,
+        channel_selection,
         dialogue_gating,
         dialogue_vad_engine,
         measured_pcm,
@@ -57,8 +56,7 @@ impl AudioCapture for AppAudioBackend {
         device_id,
         frame_subscribers,
         app,
-        channel_layout,
-        loudness_weights,
+        channel_selection,
         dialogue_gating,
         dialogue_vad_engine,
         measured_pcm,

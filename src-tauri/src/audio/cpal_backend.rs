@@ -17,7 +17,6 @@ use super::device_enum::is_loopback_capture;
 use super::device_enum::{build_device_list, resolve_device};
 
 use crate::dsp::speech::VadEngineKind;
-use crate::engine::ChannelLayoutSetting;
 use crate::engine::MeterPipeline;
 use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload, EngineStateChanged};
 use tauri::{AppHandle, Emitter, Manager};
@@ -260,8 +259,7 @@ impl AudioCapture for CpalBackend {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -270,8 +268,7 @@ impl AudioCapture for CpalBackend {
       device_id,
       frame_subscribers,
       app,
-      channel_layout,
-      loudness_weights,
+      channel_selection,
       dialogue_gating,
       dialogue_vad_engine,
       measured_pcm,
@@ -311,8 +308,7 @@ impl CaptureSession {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-    loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+    channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -343,8 +339,7 @@ impl CaptureSession {
           stop_rx,
           clear_peak_history: clear_worker,
           reset_tp_max: reset_tp_max_worker,
-          channel_layout,
-          loudness_weights,
+          channel_selection,
           dialogue_gating,
           dialogue_vad_engine,
           measured_pcm,
@@ -377,8 +372,7 @@ struct RunCaptureArgs {
   stop_rx: std::sync::mpsc::Receiver<()>,
   clear_peak_history: Arc<AtomicBool>,
   reset_tp_max: Arc<AtomicBool>,
-  channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-  loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -657,8 +651,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   app: tauri::AppHandle,
   clear_peak_history: Arc<AtomicBool>,
   reset_tp_max: Arc<AtomicBool>,
-  channel_layout: Arc<std::sync::Mutex<ChannelLayoutSetting>>,
-  loudness_weights: Arc<std::sync::Mutex<Option<Vec<f64>>>>,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -713,23 +706,18 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       reset_tp_max.store(false, Ordering::Release);
       pipeline.reset_true_peak_max();
     }
-    let layout = channel_layout
-      .lock()
-      .map(|g| *g)
-      .unwrap_or(ChannelLayoutSetting::Auto);
-    measured_pcm.publish(&floats, sample_rate, channels, layout);
+    measured_pcm.publish(&floats, sample_rate, channels);
     let requests = analysis_requests
       .lock()
       .map(|g| g.clone())
       .unwrap_or_else(|_| AnalysisRequests::default());
-    let loudness_weights = loudness_weights.lock().map(|g| g.clone()).unwrap_or(None);
+    let channel_selection = channel_selection.lock().map(|g| g.clone()).unwrap_or(None);
     let dialogue_gating = dialogue_gating.lock().map(|g| *g).unwrap_or(false);
     let dialogue_vad_engine = dialogue_vad_engine.lock().map(|g| *g).unwrap_or_default();
     let frame = pipeline.push_pcm_f32_with_requests(
       &floats,
-      layout,
       &requests,
-      loudness_weights,
+      channel_selection,
       dialogue_gating,
       dialogue_vad_engine,
     );
@@ -965,8 +953,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     stop_rx,
     clear_peak_history,
     reset_tp_max,
-    channel_layout,
-    loudness_weights,
+    channel_selection,
     dialogue_gating,
     dialogue_vad_engine,
     measured_pcm,
@@ -993,8 +980,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
         app,
         clear_peak_history,
         reset_tp_max,
-        channel_layout,
-        loudness_weights,
+        channel_selection,
         dialogue_gating,
         dialogue_vad_engine,
         measured_pcm,

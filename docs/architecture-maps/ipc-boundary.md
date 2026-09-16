@@ -47,7 +47,7 @@ flowchart LR
 | `clearAudioHistory()` | `clear_audio_history` | Clear native DSP history and peaks |
 | `getEngineState()` | `get_engine_state` | Ask whether capture is running |
 | `setAnalysisRequests(requests)` | `set_analysis_requests` | Tell Rust which per-panel analysis streams are active |
-| `setLoudnessWeights(weights)` | `set_loudness_weights` | Configure loudness channel weights |
+| `setChannelRoles(roles)` | `set_channel_roles` | Send the selected channel roles; Rust derives the weights and the layout name |
 | `setDialogueGating(enabled)` | `set_dialogue_gating` | Toggle dialogue-gated loudness |
 
 ## Event Map

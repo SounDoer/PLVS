@@ -18,7 +18,7 @@ use crate::dsp::{
 };
 use crate::engine::file_timeline::FileTimeline;
 use crate::engine::waveform_accumulator::{HistoryWaveform, VisualWaveform, WaveformAccumulator};
-use crate::engine::ChannelLayoutSetting;
+use crate::ipc::commands::ChannelSelection;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, MeterHistoryEntry, SpectrumFrameResult, SpectrumVisualEntry,
   StereoMapFrameResult, StereoMapVisualEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
@@ -42,16 +42,13 @@ fn instant_ago(duration: Duration) -> Instant {
 }
 const RMS_WINDOW_MS: u32 = 400;
 
-fn loudness_layout_meta(channels: u16, channel_layout: ChannelLayoutSetting) -> (String, bool) {
+/// The layout to report for this push: the user's selection when it covers every channel,
+/// otherwise auto detection by channel count.
+fn loudness_layout_meta(channels: u16, selection: Option<&ChannelSelection>) -> (String, bool) {
   let ch = channels.max(1);
-  match channel_layout {
-    ChannelLayoutSetting::Stereo => ("stereo".to_string(), true),
-    ChannelLayoutSetting::Surround51 if ch == 6 => ("5.1".to_string(), true),
-    ChannelLayoutSetting::Surround71 if ch == 8 => ("7.1".to_string(), true),
-    ChannelLayoutSetting::Surround51 | ChannelLayoutSetting::Surround71 => {
-      ("stereo".to_string(), false)
-    }
-    ChannelLayoutSetting::Auto => match standard_layout_name(ch) {
+  match selection {
+    Some(selection) if selection.roles.len() == ch as usize => (selection.layout.to_string(), true),
+    _ => match standard_layout_name(ch) {
       Some(name) => (name.to_string(), true),
       None => ("unknown".to_string(), false),
     },
@@ -145,7 +142,7 @@ pub struct MeterPipeline {
   loudness: LoudnessMeter,
   shared_spectral_runtime: SharedSpectralRuntime,
   vectorscope_by_key: HashMap<String, VectorscopeMeter>,
-  last_loudness_weights: Option<Vec<f64>>,
+  last_channel_selection: Option<ChannelSelection>,
   last_loudness: Option<LoudnessBlock>,
   m_max: f64,
   st_max: f64,
@@ -204,7 +201,7 @@ impl MeterPipeline {
       loudness: LoudnessMeter::new(sr),
       shared_spectral_runtime: SharedSpectralRuntime::new(sr),
       vectorscope_by_key: HashMap::new(),
-      last_loudness_weights: None,
+      last_channel_selection: None,
       last_loudness: None,
       m_max: f64::NEG_INFINITY,
       st_max: f64::NEG_INFINITY,
@@ -220,7 +217,7 @@ impl MeterPipeline {
       last_visual_emit: instant_ago(Duration::from_millis(200)),
       last_dialogue_gating: false,
       last_dialogue_vad_engine: VadEngineKind::default(),
-      last_loudness_layout: loudness_layout_meta(channels, ChannelLayoutSetting::Auto),
+      last_loudness_layout: loudness_layout_meta(channels, None),
       file_timeline: None,
       #[cfg(test)]
       shared_spectral_last_dsp_time_sec: HashMap::new(),
@@ -325,9 +322,8 @@ impl MeterPipeline {
   pub fn push_pcm_f32_with_requests(
     &mut self,
     interleaved: &[f32],
-    channel_layout: ChannelLayoutSetting,
     analysis_requests: &AnalysisRequests,
-    loudness_weights: Option<Vec<f64>>,
+    channel_selection: Option<ChannelSelection>,
     dialogue_gating: bool,
     dialogue_vad_engine: VadEngineKind,
   ) -> Option<AudioFramePayload> {
@@ -338,14 +334,11 @@ impl MeterPipeline {
       .map(SpectralDspTime::as_seconds)
       .unwrap_or(now_sec);
     let ch = self.channels.max(1);
-    let effective_layout = match channel_layout {
-      ChannelLayoutSetting::Auto => match ch {
-        6 => ChannelLayoutSetting::Surround51,
-        8 => ChannelLayoutSetting::Surround71,
-        _ => channel_layout,
-      },
-      other => other,
-    };
+    // The weights the DSP applies to this push: the selection's, when it covers every channel.
+    let selected_weights = channel_selection
+      .as_ref()
+      .filter(|selection| selection.roles.len() == ch as usize)
+      .map(|selection| selection.weights.clone());
     let spectral_plan =
       crate::engine::spectral_plan::plan_analysis_requests(self.channels, analysis_requests);
     self.shared_spectral_runtime.update_plan(spectral_plan);
@@ -420,8 +413,7 @@ impl MeterPipeline {
         interleaved,
         channels: ch,
         now_sec,
-        channel_layout: effective_layout,
-        loudness_weights: loudness_weights.clone(),
+        loudness_weights: selected_weights.clone(),
         vectorscope_pair: (request.x, request.y),
         spectrum_channel: SpectrumChannelSel::default(),
         spectrum_view: SpectrumView::default(),
@@ -460,11 +452,11 @@ impl MeterPipeline {
     });
     let mut frame = self.push_pcm_f32_optional(
       interleaved,
-      channel_layout,
       analysis_requests,
       primary_vectorscope_summary
         .or_else(|| vectorscope_pair.map(|(x, y)| (x, y, 0.0, f64::NEG_INFINITY))),
-      loudness_weights,
+      channel_selection,
+      selected_weights,
       dialogue_gating,
       dialogue_vad_engine,
     )?;
@@ -601,9 +593,8 @@ impl MeterPipeline {
   pub fn push_pcm_f32_with_requests_at_media_time(
     &mut self,
     interleaved: &[f32],
-    channel_layout: ChannelLayoutSetting,
     analysis_requests: &AnalysisRequests,
-    loudness_weights: Option<Vec<f64>>,
+    channel_selection: Option<ChannelSelection>,
     dialogue_gating: bool,
     dialogue_vad_engine: VadEngineKind,
     media_time_ms: u64,
@@ -615,9 +606,8 @@ impl MeterPipeline {
       .begin_push(media_time_ms);
     let frame = self.push_pcm_f32_with_requests(
       interleaved,
-      channel_layout,
       analysis_requests,
-      loudness_weights,
+      channel_selection,
       dialogue_gating,
       dialogue_vad_engine,
     );
@@ -653,9 +643,8 @@ impl MeterPipeline {
     // last_output is retained, and the frame assembly code drains both batch queues into the payload.
     self.push_pcm_f32_with_requests(
       &[],
-      ChannelLayoutSetting::Auto,
       analysis_requests,
-      self.last_loudness_weights.clone(),
+      self.last_channel_selection.clone(),
       self.last_dialogue_gating,
       self.last_dialogue_vad_engine,
     )
@@ -665,10 +654,10 @@ impl MeterPipeline {
   fn push_pcm_f32_optional(
     &mut self,
     interleaved: &[f32],
-    channel_layout: ChannelLayoutSetting,
     analysis_requests: &AnalysisRequests,
     vectorscope_summary: Option<(u16, u16, f64, f64)>,
-    loudness_weights: Option<Vec<f64>>,
+    channel_selection: Option<ChannelSelection>,
+    selected_weights: Option<Vec<f64>>,
     dialogue_gating: bool,
     dialogue_vad_engine: VadEngineKind,
   ) -> Option<AudioFramePayload> {
@@ -687,34 +676,17 @@ impl MeterPipeline {
       self.last_dialogue_vad_engine = dialogue_vad_engine;
     }
 
-    // Resolve effective layout for auto mode before passing to DSP.
-    let effective_layout = match channel_layout {
-      ChannelLayoutSetting::Auto => match ch {
-        6 => ChannelLayoutSetting::Surround51,
-        8 => ChannelLayoutSetting::Surround71,
-        _ => channel_layout,
-      },
-      other => other,
-    };
-
-    let dynamic_loudness_active = loudness_weights
-      .as_ref()
-      .is_some_and(|weights| weights.len() == ch as usize);
-
-    if loudness_weights != self.last_loudness_weights {
+    if channel_selection != self.last_channel_selection {
       self.loudness.reset();
       self.last_loudness = None;
       self.pending_loudness_hist = None;
       self.m_max = f64::NEG_INFINITY;
       self.st_max = f64::NEG_INFINITY;
-      self.last_loudness_weights = loudness_weights.clone();
+      self.last_channel_selection = channel_selection.clone();
     }
 
-    let (loudness_layout, loudness_layout_known) = if dynamic_loudness_active {
-      ("custom".to_string(), true)
-    } else {
-      loudness_layout_meta(ch, effective_layout)
-    };
+    let (loudness_layout, loudness_layout_known) =
+      loudness_layout_meta(ch, channel_selection.as_ref());
     if self.last_loudness_layout.0 != loudness_layout
       || self.last_loudness_layout.1 != loudness_layout_known
     {
@@ -726,8 +698,7 @@ impl MeterPipeline {
       interleaved,
       channels: ch,
       now_sec,
-      channel_layout: effective_layout,
-      loudness_weights,
+      loudness_weights: selected_weights,
       vectorscope_pair: (pair_x, pair_y),
       spectrum_channel: SpectrumChannelSel::default(),
       spectrum_view: SpectrumView::default(),
@@ -2121,7 +2092,6 @@ mod tests {
     let frame = pipeline
       .push_pcm_f32_with_requests_at_media_time(
         &pcm,
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -2173,7 +2143,6 @@ mod tests {
       let media_time_ms = (i as u64) * 100;
       if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
         &chunk,
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -2219,7 +2188,6 @@ mod tests {
       assert!(pipeline
         .push_pcm_f32_with_requests_at_media_time(
           &pcm,
-          ChannelLayoutSetting::Auto,
           &requests,
           None,
           false,
@@ -2252,15 +2220,13 @@ mod tests {
   fn push_pcm_no_requests(
     pipeline: &mut MeterPipeline,
     interleaved: &[f32],
-    channel_layout: ChannelLayoutSetting,
-    loudness_weights: Option<Vec<f64>>,
+    channel_selection: Option<ChannelSelection>,
     dialogue_gating: bool,
   ) -> Option<AudioFramePayload> {
     pipeline.push_pcm_f32_with_requests(
       interleaved,
-      channel_layout,
       &AnalysisRequests::default(),
-      loudness_weights,
+      channel_selection,
       dialogue_gating,
       VadEngineKind::default(),
     )
@@ -2286,9 +2252,7 @@ mod tests {
     let mut stamped = 0_usize;
     for _ in 0..40 {
       let pcm = tone_on_channel(4096, channels as usize, sr as f64, 1000.0, 0);
-      let Some(frame) =
-        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false)
-      else {
+      let Some(frame) = push_pcm_no_requests(&mut pipeline, &pcm, None, false) else {
         continue;
       };
       if let Some(visual) = frame.visual_hist_tick.as_ref() {
@@ -2364,7 +2328,6 @@ mod tests {
 
     let _ = pipeline.push_pcm_f32_with_requests(
       &pcm_lr,
-      ChannelLayoutSetting::Auto,
       &requests_lr,
       None,
       false,
@@ -2380,7 +2343,6 @@ mod tests {
 
     let _ = pipeline.push_pcm_f32_with_requests(
       &pcm_c_short,
-      ChannelLayoutSetting::Auto,
       &requests_c,
       None,
       false,
@@ -2422,14 +2384,7 @@ mod tests {
       }],
       stereo_map: Vec::new(),
     };
-    let _ = p.push_pcm_f32_with_requests(
-      &pcm,
-      crate::engine::ChannelLayoutSetting::Auto,
-      &requests,
-      None,
-      false,
-      VadEngineKind::default(),
-    );
+    let _ = p.push_pcm_f32_with_requests(&pcm, &requests, None, false, VadEngineKind::default());
     let meter = p.vectorscope_by_key.get(&key).expect("vectorscope meter");
     // Last pushed sample should be from frame1 ch2 (L) and ch0 (R) in the vectorscope ring.
     assert_eq!(meter.vs_l.back().copied().unwrap_or_default(), 1.3);
@@ -2452,7 +2407,6 @@ mod tests {
     let frame = pipeline
       .push_pcm_f32_with_requests(
         &pcm,
-        ChannelLayoutSetting::Auto,
         &AnalysisRequests::default(),
         None,
         false,
@@ -2513,14 +2467,8 @@ mod tests {
       stereo_map: Vec::new(),
     };
 
-    let _ = pipeline.push_pcm_f32_with_requests(
-      &pcm,
-      ChannelLayoutSetting::Auto,
-      &requests_a,
-      None,
-      false,
-      VadEngineKind::default(),
-    );
+    let _ =
+      pipeline.push_pcm_f32_with_requests(&pcm, &requests_a, None, false, VadEngineKind::default());
     assert!(pipeline
       .shared_spectral_runtime
       .consumer_identity_for_test("spectrum:single:0:combined:sp50:smoff")
@@ -2529,14 +2477,8 @@ mod tests {
       .vectorscope_by_key
       .contains_key("vectorscope:pair:0:1"));
 
-    let _ = pipeline.push_pcm_f32_with_requests(
-      &pcm,
-      ChannelLayoutSetting::Auto,
-      &requests_b,
-      None,
-      false,
-      VadEngineKind::default(),
-    );
+    let _ =
+      pipeline.push_pcm_f32_with_requests(&pcm, &requests_b, None, false, VadEngineKind::default());
 
     assert!(pipeline
       .shared_spectral_runtime
@@ -2604,14 +2546,8 @@ mod tests {
     let mut frame = None;
     for _ in 0..4 {
       pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
-      frame = pipeline.push_pcm_f32_with_requests(
-        &pcm,
-        ChannelLayoutSetting::Auto,
-        &requests,
-        None,
-        false,
-        VadEngineKind::default(),
-      );
+      frame =
+        pipeline.push_pcm_f32_with_requests(&pcm, &requests, None, false, VadEngineKind::default());
     }
     let frame = frame.expect("frame");
 
@@ -2679,14 +2615,8 @@ mod tests {
       pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
       // Force a visual tick on each push so the final frame carries a visual hist entry.
       pipeline.last_visual_emit = instant_ago(Duration::from_millis(VISUAL_EMIT_MS as u64 + 1));
-      frame = pipeline.push_pcm_f32_with_requests(
-        &pcm,
-        ChannelLayoutSetting::Auto,
-        &requests,
-        None,
-        false,
-        VadEngineKind::default(),
-      );
+      frame =
+        pipeline.push_pcm_f32_with_requests(&pcm, &requests, None, false, VadEngineKind::default());
     }
     let frame = frame.expect("frame");
     let visual = frame.visual_hist_tick.expect("visual hist tick");
@@ -2772,7 +2702,6 @@ mod tests {
     for i in 1..=6 {
       if let Some(frame) = pipeline.push_pcm_f32_with_requests_at_media_time(
         &pcm,
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -3123,7 +3052,6 @@ mod tests {
         let pending = pipeline
           .push_pcm_f32_with_requests(
             &pcm[..readiness_split],
-            ChannelLayoutSetting::Auto,
             &requests,
             None,
             false,
@@ -3154,7 +3082,6 @@ mod tests {
         let frame = pipeline
           .push_pcm_f32_with_requests(
             &pcm[readiness_split..],
-            ChannelLayoutSetting::Auto,
             &requests,
             None,
             false,
@@ -3260,7 +3187,6 @@ mod tests {
     let pending = pipeline
       .push_pcm_f32_with_requests(
         &pcm[..split],
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -3284,7 +3210,6 @@ mod tests {
     let ready = pipeline
       .push_pcm_f32_with_requests(
         &pcm[split..],
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -3344,7 +3269,6 @@ mod tests {
       let frame = pipeline
         .push_pcm_f32_with_requests_at_media_time(
           &pcm,
-          ChannelLayoutSetting::Auto,
           &requests,
           None,
           false,
@@ -3392,7 +3316,6 @@ mod tests {
       assert!(pipeline
         .push_pcm_f32_with_requests_at_media_time(
           &pcm,
-          ChannelLayoutSetting::Auto,
           &requests,
           None,
           false,
@@ -3437,7 +3360,6 @@ mod tests {
     assert!(pipeline
       .push_pcm_f32_with_requests_at_media_time(
         &deterministic_stereo(chunk_frames, chunk_frames as u64 * 5),
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -3454,7 +3376,6 @@ mod tests {
       assert!(pipeline
         .push_pcm_f32_with_requests_at_media_time(
           &deterministic_stereo(chunk_frames, (checkpoint - 1) * chunk_frames as u64,),
-          ChannelLayoutSetting::Auto,
           &requests,
           None,
           false,
@@ -3486,7 +3407,6 @@ mod tests {
     assert!(pipeline
       .push_pcm_f32_with_requests_at_media_time(
         &deterministic_stereo(chunk_frames, chunk_frames as u64 * 10),
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -3501,7 +3421,6 @@ mod tests {
     assert!(pipeline
       .push_pcm_f32_with_requests_at_media_time(
         &deterministic_stereo(chunk_frames, chunk_frames as u64 * 11),
-        ChannelLayoutSetting::Auto,
         &inactive,
         None,
         false,
@@ -3543,14 +3462,7 @@ mod tests {
       pipeline.set_dsp_time_for_test(SpectralDspTime::from_monotonic_seconds(1.0));
       pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
       let frame = pipeline
-        .push_pcm_f32_with_requests(
-          &pcm,
-          ChannelLayoutSetting::Auto,
-          &requests,
-          None,
-          false,
-          VadEngineKind::default(),
-        )
+        .push_pcm_f32_with_requests(&pcm, &requests, None, false, VadEngineKind::default())
         .expect("low-rate production frame");
       let actual = &frame.spectrum_results_by_key["single"];
 
@@ -3604,7 +3516,6 @@ mod tests {
     let warmed = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG, 0),
-        ChannelLayoutSetting::Auto,
         &old,
         None,
         false,
@@ -3617,7 +3528,6 @@ mod tests {
     let pending = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG - 1, FFT_BIG as u64),
-        ChannelLayoutSetting::Auto,
         &new,
         None,
         false,
@@ -3656,7 +3566,6 @@ mod tests {
       pipeline
         .push_pcm_f32_with_requests(
           &deterministic_stereo(FFT_BIG, offset),
-          ChannelLayoutSetting::Auto,
           &requests,
           None,
           false,
@@ -3751,17 +3660,10 @@ mod tests {
     let mut one_request = MeterPipeline::new(48_000, 2);
     let mut two_requests = MeterPipeline::new(48_000, 2);
 
-    let _ = one_request.push_pcm_f32_with_requests(
-      &pcm,
-      ChannelLayoutSetting::Auto,
-      &single,
-      None,
-      false,
-      VadEngineKind::default(),
-    );
+    let _ =
+      one_request.push_pcm_f32_with_requests(&pcm, &single, None, false, VadEngineKind::default());
     let _ = two_requests.push_pcm_f32_with_requests(
       &pcm,
-      ChannelLayoutSetting::Auto,
       &duplicate,
       None,
       false,
@@ -3796,7 +3698,6 @@ mod tests {
     };
     let _ = pipeline.push_pcm_f32_with_requests(
       &deterministic_stereo(FFT_BIG, 0),
-      ChannelLayoutSetting::Auto,
       &initial,
       None,
       false,
@@ -3816,7 +3717,6 @@ mod tests {
     };
     let _ = pipeline.push_pcm_f32_with_requests(
       &deterministic_stereo(2048, FFT_BIG as u64),
-      ChannelLayoutSetting::Auto,
       &updated,
       None,
       false,
@@ -3836,19 +3736,17 @@ mod tests {
   }
 
   #[test]
-  fn dynamic_loudness_weights_report_custom_layout() {
+  fn a_non_standard_selection_reports_the_custom_layout() {
     let sr = 48_000_u32;
     let channels = 3_u16;
     let mut pipeline = MeterPipeline::new(sr, channels);
     let frames = 4_800usize;
     let pcm = vec![0.1_f32; frames * channels as usize];
-    let frame = push_pcm_no_requests(
-      &mut pipeline,
-      &pcm,
-      ChannelLayoutSetting::Auto,
-      Some(vec![1.0, 1.0, 0.0]),
-      false,
-    );
+    let selection =
+      ChannelSelection::from_roles(["L", "R", "LFE"].iter().map(|s| s.to_string()).collect())
+        .expect("roles");
+    assert_eq!(selection.weights, vec![1.0, 1.0, 0.0]);
+    let frame = push_pcm_no_requests(&mut pipeline, &pcm, Some(selection), false);
     let frame = frame.expect("100ms chunk should emit a frame");
     assert_eq!(frame.loudness_layout, "custom");
     assert!(frame.loudness_layout_known);
@@ -3874,13 +3772,7 @@ mod tests {
     let mut quiet_frame = None;
     for _ in 0..40 {
       pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
-      if let Some(frame) = push_pcm_no_requests(
-        &mut pipeline,
-        &quiet,
-        ChannelLayoutSetting::Auto,
-        None,
-        false,
-      ) {
+      if let Some(frame) = push_pcm_no_requests(&mut pipeline, &quiet, None, false) {
         quiet_frame = Some(frame);
       }
     }
@@ -3891,13 +3783,7 @@ mod tests {
     let mut louder_frame = None;
     for _ in 0..40 {
       pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
-      if let Some(frame) = push_pcm_no_requests(
-        &mut pipeline,
-        &louder,
-        ChannelLayoutSetting::Auto,
-        None,
-        false,
-      ) {
+      if let Some(frame) = push_pcm_no_requests(&mut pipeline, &louder, None, false) {
         louder_frame = Some(frame);
       }
     }
@@ -3918,136 +3804,94 @@ mod tests {
   }
 
   #[test]
-  fn loudness_layout_meta_detects_51_for_auto_multichannel() {
-    let (s, known) = loudness_layout_meta(6, ChannelLayoutSetting::Auto);
-    assert_eq!(s, "5.1");
-    assert!(known);
-  }
-
-  #[test]
-  fn loudness_layout_meta_marks_51_for_manual_51() {
-    let (s, known) = loudness_layout_meta(6, ChannelLayoutSetting::Surround51);
-    assert_eq!(s, "5.1");
-    assert!(known);
-  }
-
-  #[test]
-  fn loudness_layout_meta_downgrades_manual_51_when_channels_too_low() {
-    let (s, known) = loudness_layout_meta(2, ChannelLayoutSetting::Surround51);
-    assert_eq!(s, "stereo");
-    assert!(!known);
-  }
-
-  #[test]
-  fn loudness_layout_meta_marks_71_for_manual_71() {
-    let (s, known) = loudness_layout_meta(8, ChannelLayoutSetting::Surround71);
-    assert_eq!(s, "7.1");
-    assert!(known);
-  }
-
-  #[test]
-  fn loudness_layout_meta_downgrades_manual_71_when_channels_too_low() {
-    let (s, known) = loudness_layout_meta(6, ChannelLayoutSetting::Surround71);
-    assert_eq!(s, "stereo");
-    assert!(!known);
-  }
-
-  #[test]
-  fn loudness_layout_meta_downgrades_manual_71_at_boundary() {
-    let (s, known) = loudness_layout_meta(7, ChannelLayoutSetting::Surround71);
-    assert_eq!(s, "stereo");
-    assert!(!known);
-  }
-
-  #[test]
-  fn auto_layout_meta_1ch_is_mono() {
+  fn a_selected_layout_is_reported_by_name() {
+    let roles: Vec<String> = [
+      "L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
+    let selection = crate::ipc::commands::ChannelSelection::from_roles(roles).expect("roles");
     assert_eq!(
-      loudness_layout_meta(1, ChannelLayoutSetting::Auto),
-      ("mono".to_string(), true)
+      loudness_layout_meta(12, Some(&selection)),
+      ("7.1.4".to_string(), true)
     );
   }
 
   #[test]
-  fn auto_layout_meta_2ch_is_stereo() {
+  fn a_selection_of_the_wrong_length_falls_back_to_auto_detection() {
+    let selection =
+      crate::ipc::commands::ChannelSelection::from_roles(vec!["L".to_string(), "R".to_string()])
+        .expect("roles");
     assert_eq!(
-      loudness_layout_meta(2, ChannelLayoutSetting::Auto),
-      ("stereo".to_string(), true)
+      loudness_layout_meta(12, Some(&selection)),
+      ("unknown".to_string(), false)
     );
-  }
-
-  #[test]
-  fn auto_layout_meta_6ch_is_51() {
     assert_eq!(
-      loudness_layout_meta(6, ChannelLayoutSetting::Auto),
-      ("5.1".to_string(), true)
-    );
-  }
-
-  #[test]
-  fn auto_layout_meta_5ch_is_50() {
-    assert_eq!(
-      loudness_layout_meta(5, ChannelLayoutSetting::Auto),
-      ("5.0".to_string(), true)
-    );
-  }
-
-  #[test]
-  fn auto_layout_meta_7ch_is_70() {
-    assert_eq!(
-      loudness_layout_meta(7, ChannelLayoutSetting::Auto),
-      ("7.0".to_string(), true)
-    );
-  }
-
-  #[test]
-  fn auto_layout_meta_8ch_is_71() {
-    assert_eq!(
-      loudness_layout_meta(8, ChannelLayoutSetting::Auto),
+      loudness_layout_meta(8, Some(&selection)),
       ("7.1".to_string(), true)
     );
   }
 
   #[test]
-  fn manual_71_on_6ch_falls_back() {
+  fn auto_detection_is_unchanged_without_a_selection() {
+    assert_eq!(loudness_layout_meta(8, None), ("7.1".to_string(), true));
+    assert_eq!(loudness_layout_meta(6, None), ("5.1".to_string(), true));
     assert_eq!(
-      loudness_layout_meta(6, ChannelLayoutSetting::Surround71),
-      ("stereo".to_string(), false)
+      loudness_layout_meta(12, None),
+      ("unknown".to_string(), false)
+    );
+    assert_eq!(
+      loudness_layout_meta(16, None),
+      ("unknown".to_string(), false)
     );
   }
 
   #[test]
+  fn auto_layout_meta_1ch_is_mono() {
+    assert_eq!(loudness_layout_meta(1, None), ("mono".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_2ch_is_stereo() {
+    assert_eq!(loudness_layout_meta(2, None), ("stereo".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_6ch_is_51() {
+    assert_eq!(loudness_layout_meta(6, None), ("5.1".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_5ch_is_50() {
+    assert_eq!(loudness_layout_meta(5, None), ("5.0".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_7ch_is_70() {
+    assert_eq!(loudness_layout_meta(7, None), ("7.0".to_string(), true));
+  }
+
+  #[test]
+  fn auto_layout_meta_8ch_is_71() {
+    assert_eq!(loudness_layout_meta(8, None), ("7.1".to_string(), true));
+  }
+
+  #[test]
   fn loudness_layout_meta_names_lcr_and_quad() {
-    assert_eq!(
-      loudness_layout_meta(3, ChannelLayoutSetting::Auto),
-      ("lcr".to_string(), true)
-    );
-    assert_eq!(
-      loudness_layout_meta(4, ChannelLayoutSetting::Auto),
-      ("quad".to_string(), true)
-    );
+    assert_eq!(loudness_layout_meta(3, None), ("lcr".to_string(), true));
+    assert_eq!(loudness_layout_meta(4, None), ("quad".to_string(), true));
   }
 
   #[test]
   fn loudness_layout_meta_reports_unknown_above_eight_channels() {
     for channels in [9_u16, 10, 12, 16] {
       assert_eq!(
-        loudness_layout_meta(channels, ChannelLayoutSetting::Auto),
+        loudness_layout_meta(channels, None),
         ("unknown".to_string(), false),
         "{channels} channels"
       );
     }
-  }
-
-  #[test]
-  fn manual_surround_presets_need_their_exact_channel_count() {
-    assert_eq!(
-      loudness_layout_meta(8, ChannelLayoutSetting::Surround51),
-      ("stereo".to_string(), false)
-    );
-    assert_eq!(
-      loudness_layout_meta(10, ChannelLayoutSetting::Surround71),
-      ("stereo".to_string(), false)
-    );
   }
 
   #[test]
@@ -4068,8 +3912,7 @@ mod tests {
     // Feed 5 脳 200ms = 1s to guarantee history ticks are emitted on the frame stream
     let mut entries = Vec::new();
     for _ in 0..5 {
-      let frame =
-        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false);
+      let frame = push_pcm_no_requests(&mut pipeline, &pcm, None, false);
       if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
         entries.push(tick);
       }
@@ -4118,8 +3961,7 @@ mod tests {
 
     let mut entries = Vec::new();
     for _ in 0..5 {
-      let frame =
-        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false);
+      let frame = push_pcm_no_requests(&mut pipeline, &pcm, None, false);
       if let Some(tick) = frame.and_then(|f| f.loudness_hist_tick) {
         entries.push(tick);
       }
@@ -4163,10 +4005,10 @@ mod tests {
         [s, s]
       })
       .collect();
-    let _ = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, true);
-    let _ = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, false);
+    let _ = push_pcm_no_requests(&mut p, &tone, None, true);
+    let _ = push_pcm_no_requests(&mut p, &tone, None, false);
     p.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
-    let frame = push_pcm_no_requests(&mut p, &tone, ChannelLayoutSetting::Auto, None, true);
+    let frame = push_pcm_no_requests(&mut p, &tone, None, true);
     let block = frame.expect("frame");
     assert_eq!(block.dialogue_percent, 0.0);
     assert!(!block.dialogue_integrated.is_finite());
@@ -4180,9 +4022,7 @@ mod tests {
     let silence = vec![0.0_f32; frames * 2];
     let mut seen = false;
     for _ in 0..3 {
-      if let Some(f) =
-        push_pcm_no_requests(&mut p, &silence, ChannelLayoutSetting::Auto, None, true)
-      {
+      if let Some(f) = push_pcm_no_requests(&mut p, &silence, None, true) {
         assert!(!f.dialogue_active_now, "silence must not be active speech");
         assert_eq!(f.dialogue_lra, 0.0, "no speech yet 鈫?dialogue lra 0.0");
         seen = true;
@@ -4210,9 +4050,7 @@ mod tests {
 
     let mut loudness_layout_seen = None;
     for _ in 0..5 {
-      if let Some(f) =
-        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false)
-      {
+      if let Some(f) = push_pcm_no_requests(&mut pipeline, &pcm, None, false) {
         loudness_layout_seen = Some(f.loudness_layout.clone());
         break;
       }
@@ -4252,7 +4090,6 @@ mod tests {
     let frame = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG, 0),
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -4295,7 +4132,6 @@ mod tests {
     let initial_warmup = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG - 1, 0),
-        ChannelLayoutSetting::Auto,
         &active,
         None,
         false,
@@ -4315,7 +4151,6 @@ mod tests {
     let warmed = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(1, (FFT_BIG - 1) as u64),
-        ChannelLayoutSetting::Auto,
         &active,
         None,
         false,
@@ -4332,7 +4167,6 @@ mod tests {
     let removed = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG, FFT_BIG as u64),
-        ChannelLayoutSetting::Auto,
         &inactive,
         None,
         false,
@@ -4351,7 +4185,6 @@ mod tests {
     let reactivated = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG - 1, (FFT_BIG * 2) as u64),
-        ChannelLayoutSetting::Auto,
         &active,
         None,
         false,
@@ -4384,7 +4217,6 @@ mod tests {
     let first = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG, 0),
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -4397,14 +4229,7 @@ mod tests {
 
     pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
     let before_gate = pipeline
-      .push_pcm_f32_with_requests(
-        &[],
-        ChannelLayoutSetting::Auto,
-        &requests,
-        None,
-        false,
-        VadEngineKind::default(),
-      )
+      .push_pcm_f32_with_requests(&[], &requests, None, false, VadEngineKind::default())
       .expect("forced live frame");
     assert!(
       before_gate.visual_hist_tick.is_none(),
@@ -4427,7 +4252,6 @@ mod tests {
     let warmed = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG, 0),
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -4441,7 +4265,6 @@ mod tests {
     let warming = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(FFT_BIG - 1, FFT_BIG as u64),
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -4460,7 +4283,6 @@ mod tests {
     let rewarmed = pipeline
       .push_pcm_f32_with_requests(
         &deterministic_stereo(1, (FFT_BIG * 2 - 1) as u64),
-        ChannelLayoutSetting::Auto,
         &requests,
         None,
         false,
@@ -4484,9 +4306,8 @@ mod tests {
     for (channels, expected) in [(8_u16, ("7.1", true)), (10, ("unknown", false))] {
       let mut pipeline = MeterPipeline::new(48_000, channels);
       let pcm = vec![0.1_f32; 4_800 * channels as usize];
-      let frame =
-        push_pcm_no_requests(&mut pipeline, &pcm, ChannelLayoutSetting::Auto, None, false)
-          .expect("100ms chunk should emit a frame");
+      let frame = push_pcm_no_requests(&mut pipeline, &pcm, None, false)
+        .expect("100ms chunk should emit a frame");
       assert_eq!(
         (frame.loudness_layout.as_str(), frame.loudness_layout_known),
         expected
@@ -4502,13 +4323,15 @@ mod tests {
     }
   }
 
-  /// A manual Stereo choice asks for Ch1/Ch2, so wider input is still a known layout and must not
-  /// trigger the unrecognized-layout marker.
+  /// A stereo selection on wider input no longer covers every channel, so the reported layout
+  /// falls back to auto detection for that channel count.
   #[test]
-  fn loudness_layout_meta_keeps_manual_stereo_known_on_wider_input() {
+  fn a_stereo_selection_on_wider_input_falls_back_to_auto_detection() {
+    let selection =
+      ChannelSelection::from_roles(vec!["L".to_string(), "R".to_string()]).expect("roles");
     assert_eq!(
-      loudness_layout_meta(6, ChannelLayoutSetting::Stereo),
-      ("stereo".to_string(), true)
+      loudness_layout_meta(6, Some(&selection)),
+      ("5.1".to_string(), true)
     );
   }
 }

@@ -6,7 +6,7 @@ import { useRuntimeBackendSync } from "./useRuntimeBackendSync.js";
 const mocks = vi.hoisted(() => ({
   isTauri: vi.fn(() => false),
   setAnalysisRequests: vi.fn(),
-  setLoudnessWeights: vi.fn(),
+  setChannelRoles: vi.fn(),
   setDialogueGating: vi.fn(),
   setDialogueVadEngine: vi.fn(),
 }));
@@ -17,7 +17,7 @@ vi.mock("../ipc/env.js", () => ({
 
 vi.mock("../ipc/commands.js", () => ({
   setAnalysisRequests: mocks.setAnalysisRequests,
-  setLoudnessWeights: mocks.setLoudnessWeights,
+  setChannelRoles: mocks.setChannelRoles,
   setDialogueGating: mocks.setDialogueGating,
   setDialogueVadEngine: mocks.setDialogueVadEngine,
 }));
@@ -25,7 +25,7 @@ vi.mock("../ipc/commands.js", () => ({
 function renderSync(props = {}) {
   const initialProps = {
     analysisRequests: { spectrum: [], vectorscope: [] },
-    loudnessWeights: null,
+    channelRoles: null,
     running: false,
     dialogueGating: false,
     dialogueVadEngine: "silero",
@@ -42,7 +42,7 @@ describe("useRuntimeBackendSync", () => {
   beforeEach(() => {
     mocks.isTauri.mockReset().mockReturnValue(false);
     mocks.setAnalysisRequests.mockReset().mockResolvedValue(undefined);
-    mocks.setLoudnessWeights.mockReset().mockResolvedValue(undefined);
+    mocks.setChannelRoles.mockReset().mockResolvedValue(undefined);
     mocks.setDialogueGating.mockReset().mockResolvedValue(undefined);
     mocks.setDialogueVadEngine.mockReset().mockResolvedValue(undefined);
   });
@@ -50,7 +50,7 @@ describe("useRuntimeBackendSync", () => {
   it("does not send backend updates outside Tauri", async () => {
     renderSync({
       analysisRequests: { spectrum: [{ key: "s1" }], vectorscope: [] },
-      loudnessWeights: [1, 1],
+      channelRoles: [1, 1],
       running: true,
       dialogueGating: true,
       dialogueVadEngine: "webrtc",
@@ -58,7 +58,7 @@ describe("useRuntimeBackendSync", () => {
     await flushPromises();
 
     expect(mocks.setAnalysisRequests).not.toHaveBeenCalled();
-    expect(mocks.setLoudnessWeights).not.toHaveBeenCalled();
+    expect(mocks.setChannelRoles).not.toHaveBeenCalled();
     expect(mocks.setDialogueGating).not.toHaveBeenCalled();
     expect(mocks.setDialogueVadEngine).not.toHaveBeenCalled();
   });
@@ -66,11 +66,11 @@ describe("useRuntimeBackendSync", () => {
   it("syncs backend values in Tauri and exposes current refs", async () => {
     mocks.isTauri.mockReturnValue(true);
     const analysisRequests = { spectrum: [{ key: "s1" }], vectorscope: [] };
-    const loudnessWeights = [1, 0.5];
+    const channelRoles = [1, 0.5];
 
     const { result } = renderSync({
       analysisRequests,
-      loudnessWeights,
+      channelRoles,
       running: true,
       dialogueGating: true,
       dialogueVadEngine: "webrtc",
@@ -78,10 +78,10 @@ describe("useRuntimeBackendSync", () => {
     await flushPromises();
 
     expect(mocks.setAnalysisRequests).toHaveBeenCalledWith(analysisRequests);
-    expect(mocks.setLoudnessWeights).toHaveBeenCalledWith(loudnessWeights);
+    expect(mocks.setChannelRoles).toHaveBeenCalledWith(channelRoles);
     expect(mocks.setDialogueGating).toHaveBeenCalledWith(true);
     expect(mocks.setDialogueVadEngine).toHaveBeenCalledWith("webrtc");
-    expect(result.current.loudnessWeightsRef.current).toBe(loudnessWeights);
+    expect(result.current.channelRolesRef.current).toBe(channelRoles);
     expect(result.current.dialogueGatingRef.current).toBe(true);
     expect(result.current.dialogueVadEngineRef.current).toBe("webrtc");
   });
@@ -95,7 +95,7 @@ describe("useRuntimeBackendSync", () => {
     await flushPromises();
     rerender({
       analysisRequests: { spectrum: [{ key: "s1" }], vectorscope: [] },
-      loudnessWeights: null,
+      channelRoles: null,
       running: false,
       dialogueGating: false,
       dialogueVadEngine: "silero",
@@ -107,17 +107,17 @@ describe("useRuntimeBackendSync", () => {
 
   it("exposes awaited backend setters for Agent Control", async () => {
     mocks.isTauri.mockReturnValue(true);
-    const { result } = renderSync({ running: true, loudnessWeights: [1, 1] });
+    const { result } = renderSync({ running: true, channelRoles: [1, 1] });
     await flushPromises();
-    mocks.setLoudnessWeights.mockClear();
+    mocks.setChannelRoles.mockClear();
     mocks.setDialogueVadEngine.mockClear();
 
-    await result.current.setLoudnessWeightsForControl([1, 0]);
+    await result.current.setChannelRolesForControl([1, 0]);
     await result.current.setDialogueVadEngineForControl("ten");
 
-    expect(mocks.setLoudnessWeights).toHaveBeenCalledWith([1, 0]);
+    expect(mocks.setChannelRoles).toHaveBeenCalledWith([1, 0]);
     expect(mocks.setDialogueVadEngine).toHaveBeenCalledWith("ten");
-    expect(result.current.loudnessWeightsRef.current).toEqual([1, 0]);
+    expect(result.current.channelRolesRef.current).toEqual([1, 0]);
     expect(result.current.dialogueVadEngineRef.current).toBe("ten");
 
     mocks.setDialogueVadEngine.mockRejectedValueOnce(new Error("ipc failed"));

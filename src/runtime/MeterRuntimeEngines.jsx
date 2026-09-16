@@ -8,7 +8,7 @@ export function MeterRuntimeEngines({
   captureFormatSignature,
   histMaxSamples,
   visualMaxSamples,
-  loudnessWeightsRef,
+  channelRolesRef,
   dialogueGatingRef,
   dialogueVadEngineRef,
 }) {
@@ -62,7 +62,7 @@ export function MeterRuntimeEngines({
     audioRef,
     intake: liveIntakeRef.current,
     defaultSampleRateRef,
-    loudnessWeightsRef,
+    channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
     transport,
