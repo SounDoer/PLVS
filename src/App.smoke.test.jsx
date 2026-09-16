@@ -86,6 +86,14 @@ vi.mock("./ipc/commands.js", () => ({
   agentControlFrontendReadyCommand: vi.fn().mockResolvedValue(undefined),
   agentControlFrontendNotReadyCommand: vi.fn().mockResolvedValue(undefined),
   agentControlRespondCommand: vi.fn().mockResolvedValue(undefined),
+  readPendingCrashReport: vi.fn().mockResolvedValue(null),
+  logFrontendError: vi.fn().mockResolvedValue(undefined),
+  setCrashPromptEnabled: vi.fn().mockResolvedValue(undefined),
+  readFeedbackDiagnostics: vi.fn().mockResolvedValue({
+    schemaVersion: 1,
+    app: { version: "0.0.0", os: "test", arch: "test" },
+    logs: [],
+  }),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({

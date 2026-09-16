@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { cn } from "@/lib/utils";
 import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { discardCrashReport } from "../ipc/commands.js";
 import { buildCrashReportRequest, submitCrashReport } from "../lib/crashReporting.js";
@@ -66,7 +68,7 @@ export function CrashReportDialog({
   const sendError = error && !busy;
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 p-4">
+    <div className={cn(SCRIM_CLASS, "z-[70] grid place-items-center p-4")}>
       <section
         role="dialog"
         aria-modal="true"
@@ -74,8 +76,10 @@ export function CrashReportDialog({
         className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl"
       >
         <header className="border-b border-border px-4 py-3">
-          <h2 className="text-base font-semibold">PLVS Quit Unexpectedly</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="text-[length:var(--ui-fs-panel-title)] font-semibold">
+            PLVS Quit Unexpectedly
+          </h2>
+          <p className="mt-1 text-[length:var(--ui-fs-display)] text-muted-foreground">
             PLVS saved a crash report on this device. Review it before choosing whether to send it.
           </p>
         </header>
@@ -88,7 +92,7 @@ export function CrashReportDialog({
             maxLength={2000}
             rows={3}
             placeholder="What were you doing when PLVS quit? (optional)"
-            className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none"
+            className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
           />
           <input
             aria-label="Your email (optional)"
@@ -97,15 +101,17 @@ export function CrashReportDialog({
             onInput={(event) => setEmail(event.target.value)}
             onBlur={() => setEmailTouched(true)}
             placeholder="you@example.com (optional)"
-            className="rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none"
+            className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
           />
           {emailTouched && emailInvalid ? (
-            <span className="text-xs text-destructive">Enter a valid email or leave it blank.</span>
+            <span className="text-[length:var(--ui-fs-axis)] text-destructive">
+              Enter a valid email or leave it blank.
+            </span>
           ) : null}
 
           <button
             type="button"
-            className="self-start text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            className="self-start text-[length:var(--ui-fs-display)] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             onClick={() => setShowPreview((value) => !value)}
           >
             {showPreview ? "Hide Report" : "View Report"}
@@ -113,13 +119,15 @@ export function CrashReportDialog({
           {showPreview ? (
             <pre
               aria-label="Crash report payload"
-              className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-muted/40 p-3 font-mono text-xs"
+              className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-muted/40 p-3 font-mono text-[length:var(--ui-fs-axis)]"
             >
               {JSON.stringify(request, null, 2)}
             </pre>
           ) : null}
 
-          {sendError ? <span className="text-sm text-destructive">{error}</span> : null}
+          {sendError ? (
+            <span className="text-[length:var(--ui-fs-display)] text-destructive">{error}</span>
+          ) : null}
         </div>
 
         <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
