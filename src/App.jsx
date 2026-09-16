@@ -2292,6 +2292,7 @@ function AppContent() {
       : null,
     activePresetName,
     hasUpdate: updateInfo?.hasUpdate,
+    layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
     onOpenSettings: () => setSettingsOpen(true),
   };
   const dockProps = docked

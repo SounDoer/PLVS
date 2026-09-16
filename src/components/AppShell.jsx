@@ -154,6 +154,18 @@ export function AppShell({
                         </button>
                       </>
                     ) : null}
+                    {footer.layoutUnknown ? (
+                      <>
+                        <div className={FOOTER_DIVIDER} />
+                        <button
+                          type="button"
+                          onClick={footer.onOpenSettings}
+                          className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:underline"
+                        >
+                          Channel layout unknown · Set in Settings
+                        </button>
+                      </>
+                    ) : null}
                   </footer>
                 ) : null}
                 {autoHideControls ? (
