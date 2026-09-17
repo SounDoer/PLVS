@@ -16,7 +16,7 @@
 //! inherent to PSD normalisation, not a tuning error — one per-band offset can align tones or
 //! noise, never both. See `spectrum_bank::CAL_OFFSET_DB`.
 //!
-//! Product wording: **`docs/architecture.md` §6 Spectrum / RTA**.
+//! Product wording: the Spectrum claim in **`docs/prd.md`** (Metering claims) and the DSP layer in **`docs/architecture.md`**.
 
 #[cfg(test)]
 use super::meter::{Meter, PcmContext};

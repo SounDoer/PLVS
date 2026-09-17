@@ -125,6 +125,8 @@ existing flow. Until then, ignore this section.
 │  - Build Windows NSIS + portable ZIP                            │
 │  - Build macOS DMG                                              │
 │  - Create GitHub Release with CHANGELOG notes                   │
+│  - Attach latest.json for the in-app updater                    │
+│  - Dispatch the website deployment (deploy-landing)             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -634,12 +636,19 @@ cannot cover:
 5. `publish-updater-manifest` (tag builds only, `needs: [build-windows, build-macos]`)
    builds `latest.json` from both platforms' signed updater descriptors and attaches
    it to the Release
+6. `deploy-landing` (tag builds only, `needs: [publish-updater-manifest]`) dispatches
+   `deploy-landing.yml`, which renders `docs/user/` into the website and deploys
+   `landing/` from the tag. This is the only automatic path that updates the website.
 
 > The installation section (SmartScreen / Gatekeeper bypass, download
 > filenames) is injected by `changelog-release-body.mjs` so it ships with
 > every release automatically. Edit it there, not in CHANGELOG.md.
 
 ### Artifact Naming
+
+`scripts/release-assets.mjs` is the source for the three package names; the release
+notes use it, and tests hold `release.yml` and the public documents to it. The table
+below is a reading aid.
 
 | Platform | Artifact Name |
 |----------|---------------|
@@ -656,6 +665,14 @@ release notes tell users to keep the extracted files together.
 **Check that the last two are present.** They are what the in-app updater reads;
 if `publish-updater-manifest` fails, the installers still ship and the Release
 looks complete, but every existing install silently stops seeing updates.
+
+**Check that `deploy-landing` succeeded, then that its dispatched "Deploy Landing
+Page" run did.** A failure there also leaves the Release looking complete while the
+website keeps describing the previous version. Redeploy from the tag with:
+
+```bash
+gh workflow run deploy-landing.yml -f ref=vX.Y.Z
+```
 
 ---
 

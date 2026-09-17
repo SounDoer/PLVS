@@ -1,4 +1,4 @@
-//! `AudioCapture` abstraction over platform backends (see `docs/architecture.md` §5).
+//! `AudioCapture` abstraction over platform backends (see Audio pipeline in `docs/architecture.md`).
 //!
 //! Concrete backends: `cpal_backend` (WASAPI loopback + inputs), `platform_backend::AppAudioBackend` (dispatches to Core Audio tap on macOS).
 

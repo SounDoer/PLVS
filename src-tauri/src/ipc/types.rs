@@ -1,4 +1,4 @@
-//! Payload shapes for Channel / Event streams (`docs/architecture.md` §7).
+//! Payload shapes for Channel / Event streams (IPC in `docs/architecture.md`).
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
