@@ -97,7 +97,7 @@ simpler thing?". ADRs are never edited; a changed decision gets a new ADR that s
 
 ## Code style
 
-Comments, commit messages and PRs are in English. String literals that must match localized OS/UI text are the exception.
+Documentation, comments, commit messages and PRs are in English. String literals that must match localized OS/UI text are the exception.
 Line endings are LF (`.editorconfig`, `.gitattributes`). Formatting and lint are enforced by `npm run check` — no need to memorize the rules.
 UI-visible labels across PLVS default to Title Case unless there's a specific reason not to, e.g. `Max Hold`, `Channel Pair`; `aria-label`s stay lowercase — a separate, non-user-facing convention.
 

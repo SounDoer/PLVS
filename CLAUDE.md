@@ -1,5 +1,5 @@
 # CLAUDE.md — PLVS
 
-约定与踩过的坑统一维护在 AGENTS.md，本文件只做引用，别在这里另写一份。
+Conventions and known pitfalls are maintained in AGENTS.md; this file only references it. Do not write a second copy here.
 
 @AGENTS.md

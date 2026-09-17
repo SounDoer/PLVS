@@ -1,191 +1,191 @@
 # PLVS — Product Requirements (PRD)
 
-## Abstract (English)
+## Abstract
 
 PLVS is a **local, read-only real-time audio meter** for **sound designers and mix engineers**: **Peak/level**, **LUFS loudness**, **FFT spectrum (RTA-style)**, **spectrogram**, **vectorscope/correlation**, and **waveform**, delivered as a **Tauri desktop app** for **Windows and macOS** with **equal product intent** (implementation constraints are documented separately). PLVS centers on **live monitoring** but also supports an **offline file-analysis mode** for local audio files (still read-only). The app **does not process**, **route**, or **modify** audio; it **does not** ship as a plug-in, **does not** target Linux, and **does not** pursue storefront distribution in the near term. **Loudness** is based on **ITU-R BS.1770** measurement practice with **EBU R128** production/gating usage; **spectrum** is an **FFT-based RTA aligned with common DAW practice** (per-band power integrates FFT bins using **fractional Hz overlap** between band edges and each bin’s frequency tile; vertical scale is **in-band level in the dBFS domain**—same digital full-scale reference as peak meters but a different detector definition; see `docs/architecture.md`), not IEC 61260 filter-bank metrology. This PRD states **product intent and boundaries only**; the current feature inventory lives in `README.md` and `CHANGELOG.md`. **English is the default UI language**; **i18n** is a future option. **Privacy**: audio stays on device; **no default telemetry**; update checks are automatic; Feedback diagnostics and crash reports are transmitted only after an explicit user action; audio samples are never attached; **no silent failure** for user-visible metering health. **Legacy browser builds** are **not maintained** and **may be removed**. **Distribution** is via **GitHub Releases**; **in-app update checking** is a committed feature, while **code signing and Apple notarization** remain **optional future milestones**.
 
 ---
 
-## 1. 文档结构与读者
+## 1. Structure and readers
 
-本文档只写 **产品意志**：目标用户、承诺、非目标、体验原则，以及每条边界背后的理由。
+This document states **product intent** only: target users, promises, non-goals, experience principles, and the reasoning behind each boundary.
 
-本文 **不清点当前能力**。当前有哪些面板、哪个平台支持什么、这一版交付了什么，属于会随每次发布变化的事实，写在 **`README.md`** 与 **`CHANGELOG.md`**；**技术栈、模块分层、IPC 细节**以 **`architecture.md`** 为准。这样划分是为了让本文可以长期不改，一旦它开始跟踪现状，就一定会过期。
-
----
-
-## 2. 问题陈述（用户视角）
-
-声音设计/混音工作需要 **长时间开着**、 **一眼能读** 的表头：电平是否危险、响度是否在合理区间、立体声是否异常、频谱是否明显失衡。  
-工具必须 **只做监测**、 **不改变声音链路**；应优先支持 **系统正在播放的声音**（Windows/macOS 原生路径），并支持 **物理输入**作为同一类「信号源」选择题。  
-分发上应诚实面对 **免签名安装**、 **Gatekeeper/SmartScreen** 等现实，而不是用「看起来正规」掩盖实际上下文。
+It **does not inventory current capabilities**. Which panels exist, what each platform supports and what a release delivered are facts that change with every release; they live in **`README.md`** and **`CHANGELOG.md`**. **Tech stack, module layering and IPC details** are defined by **`architecture.md`**. The split lets this document stay unchanged for a long time; once it starts tracking the current state, it is guaranteed to go stale.
 
 ---
 
-## 3. 解决方案概述（用户视角）
+## 2. Problem statement (user view)
 
-提供一个 **独立桌面应用**：用户选择 **输入源（含 Automatic）** 后开始监测；在同一界面中同时查看 **多块表头**（当前清单见 `README.md`）。  
-数据 **`默认不上传`**；历史数据以 **会话级**为主；导出（若出现）只服务 **当前会话**，**重开应用不自动恢复**历史监测数据。
-
----
-
-## 4. 目标用户与使用场景
-
-- **主画像**：**声音设计 / 混音师** —— 会话型、长时间常驻。
-- **面板重要度**：各表头对用户 **同等日常重要**；在资源或排期紧张时，**优先打磨 Loudness 与 Spectrum**。
-- **典型场景**：戴耳机/音箱工作，同时播放 DAW/系统音频；需要 **快速确认** 峰值与响度趋势、必要时扫一眼矢量与频谱。
+Sound design and mixing need meters that **stay open for long periods** and **read at a glance**: whether levels are dangerous, whether loudness is in a sensible range, whether the stereo image is abnormal, whether the spectrum is clearly unbalanced.  
+The tool must **only monitor** and **never change the signal chain**. It should first support **what the system is playing** (native Windows/macOS paths), with **physical inputs** offered as the same kind of "signal source" choice.  
+Distribution should be honest about **unsigned installs** and **Gatekeeper/SmartScreen**, rather than hiding the real situation behind something that merely looks official.
 
 ---
 
-## 5. 产品承诺（愿）
+## 3. Solution overview (user view)
 
-### 5.1 能力与边界
-
-- **只做监测**：不加入 EQ/限幅/重路由等 **音频处理**能力。
-- **形态**：**独立应用**；**不做** VST/AU/AAX 等插件形态。
-- **平台**：**Windows 与 macOS 平等叙事**；OS 差异与最低版本如实写在 `README.md`，不在承诺层面抹平。
-- **信号源**：**统一信号源下拉（A）** —— 同一选择器覆盖 **系统输出（loopback / tap）** 与 **物理输入**；包含 **Automatic / 默认输出**语义（用户选的是 **信号**，不是底层 API 名）。
-- **表头**：多块表头 **同屏**（清单见 `README.md`）；默认 **英文 UI**；**主题**默认 **跟随系统**，保留 **Light/Dark**，并支持用户 **自定义主题**。
-- **隐私**：音频与计量数据 **默认不外传**；**默认无遥测**；**更新检查**是唯一的自动对外请求（见 5.3）；反馈诊断与崩溃报告 **仅在用户明确选择发送后**才传出，且 **永不附带音频样本**；未来若增加导出/诊断，同样必须 **明示、可选**。
-- **伦理底线**：**不得静默失败**（见 5.4）；并避免用户误以为已退出却仍在采集（与 5.7 一致）。
-- **过载**：当系统可能 **丢数据/背压**时，必须 **用户可见降级提示**（例如 **状态栏**），不得假装仍然精确。
-- **启动**：**默认不自动 START（A）** —— 需用户明确开始监测；避免后台惊吓与资源占用争议。
-- **许可与归属**：分发与贡献遵循仓库许可证；第三方素材的归属按仓库 **README / NOTICE** 等维护（见第 9 节）。
-
-### 5.2 计量声明（期望管理）
-
-- **响度**：测量内核遵循 **ITU-R BS.1770**；制作实践与门控等遵循 **EBU R128** 体系表述（版本与实现细节见 `architecture.md`）。本产品 **不声称**法定/认证计量或第三方平台「背书」。
-- **用户规则**：用户可在 **同一套测量结果**上定义 **参考线/区间/规则**，用于自己的监测与判断；产品不承诺持续扩充按平台命名的预设集合。
-- **频谱**：采用 **FFT 型 RTA 的常见工程实践**（带内能量按 **Hz 连续边界** 与各 FFT bin 的**分数重叠**聚合，而非整档扣整数 bin；**STFT** 固定 **hop=N/4**、**4 帧**带内线性功率非相干平均后再转 dB）；纵轴为 **dBFS 域**带内谱功率（与 Peak 的采样峰值 dBFS **同参考域、不同定义**）；**不声称** IEC 61260 滤波器组计量路径；与响度 **不可横向等同**。第一版对外承诺 **Spectrum 为固定口径的参考视图（B）**，实现口径见 **`docs/architecture.md`** 的 DSP 层说明。
-- **多声道**
-  - **Loudness**：能可靠识别的标准布局走 **正统多声道积分（L1）**，权重依据 **ITU-R BS.1770**，LFE 不计入；支持的布局清单见 `README.md`，权重与声道顺序见 `architecture.md`。
-  - **True Peak**：**True Peak Max 覆盖全部声道**，不只看前两路。
-  - **布局策略**：**Z + Y** —— 能可靠识别则走 L1；识别失败则 **降级为 Ch1/Ch2 立体声响度**，并在 **每一处显示该读数的地方**明确标记降级；退化读数必须可读、不可装成「环绕正统读数」。
-  - **布局识别**：最多 8 声道时可按声道数自动识别，**更高声道数绝不只凭数量猜测**；用户始终可以手动指定布局。
-  - **Level Meter**：多通道时 **逐通道呈现**。
-  - **Spectrum（>2ch）**：用户可选择标准声道对或单声道查看。
-  - **Vectorscope**：始终 **一对通道**；默认 **Front L/R**（在映射成立时），用户可切换声道对。
-
-### 5.3 分发与更新（诚实叙事 + 路线图）
-
-- **分发**：以 **GitHub Releases** 获取构建物。
-- **应用内更新检查**：**正式承诺** —— 应用检查新版本并提示用户；这是产品默认的唯一自动对外请求，隐私口径见 5.1。
-- **未来可选里程碑**：**代码签名 / Apple 公证** —— **不承诺日期**；在此之前 **SmartScreen / Gatekeeper** 的首次运行摩擦在 README 与 Release 说明中如实交代。
-
-### 5.4 运行时故障语义
-
-- **底线（C）**：**禁止静默失败**；必须让用户知道「现在不可信/已停止/需处理」。
-- **自愈 vs 保守停机**：不在 PRD 强行二选一；由 issue 分场景闭环（与 **过载可见提示（A）**一致）。
-
-### 5.5 会话、历史与导出
-
-- **历史数据默认会话级**：进程重启 **不承诺**恢复历史曲线（**A**）。
-- **导出**：若存在，仅服务 **当前会话**；**关闭重开不恢复**导出上下文。
-
-### 5.6 多实例
-
-- **不专项承诺多实例矩阵（A）**；系统允许多开则不主动禁止，但不对「多进程 × 多设备」做全覆盖保证。
-
-### 5.7 系统托盘与后台采集
-
-- **后台驻留由用户决定**：关闭窗口后是否驻留托盘继续运行、是否开机自启，都必须是 **用户显式选择**，产品不替用户默认驻留或自启。
-- **驻留必须可见**：应用在托盘运行时，用户必须能看出它仍在运行，避免误以为已退出却仍在采集（见 5.1 伦理底线）。
-
-### 5.8 快捷键
-
-- 快捷键默认 **只在应用内生效**；注册为 **全局（系统级）快捷键**必须由用户显式开启，且组合键可由用户自定义。
-
-### 5.9 诊断
-
-- **最小策略（B）**：界面至少提供 **版本/构建信息**便于排障；更重的「一键复制诊断包」暂不作为承诺。
-
-### 5.10 国际化
-
-- **v1 英文界面**；未来 **i18n** 作为可选里程碑（**B**），不承诺时间与覆盖语言。
-
-### 5.11 无障碍
-
-- **近期不作为验收主线**（若后续提升，将单独立项）。
+A **standalone desktop application**: the user chooses an **input source (including Automatic)** and starts monitoring, then sees **several meters** in one interface (current list in `README.md`).  
+Data is **not uploaded by default**; history is **session-scoped**; export (if it appears) serves only the **current session**, and **reopening the app does not restore** earlier monitoring data.
 
 ---
 
-## 6. 明确不做（非目标）
+## 4. Target users and scenarios
 
-以下内容 **除非未来修订 PRD**，否则 **不纳入实施承诺**：
-
-1. **真实音频处理**（EQ/效果链/重路由导致“声音从哪输出”失控）。
-2. **插件形态**（VST/AU/AAX）。
-3. **应用商店上架**（短中期）。
-4. **Linux 桌面端**。
-5. **同一应用内多路同时监测 / A-B 对比**（短中期）。
-6. **通用自定义用户偏好框架**（短中期以 **明确清单式持久化**为主，而非开放插件化偏好系统）。
-7. **面向普通用户的通用数据导出**（CSV / 历史导出入口）。Agent Control 的截图与录制服务于自动化，不是通用导出、通用录音或桌面捕获工作流。
-8. **对象 / 场景音频**（ADM BWF、Dolby Atmos 对象、Ambisonics）。BS.1770-5 Annex 4 要求先渲染到 BS.2051 扬声器布局再测量，需要内置渲染器，单独评估。
-9. **一键诊断包导出**（见 5.9）与 **无障碍专项**（见 5.11）：均非短期主线。
-10. **MCP 集成**：Agent Control 以 `plvs-cli` 为唯一的自动化入口，是否另提供 MCP server 留待单独的产品决定。
-
-**Legacy 浏览器版**：**不再维护功能**；**可能下线仓库分支/托管**；详见第 8 节。
+- **Primary persona**: **sound designers / mix engineers** — session-based, running for long periods.
+- **Panel importance**: every meter matters **equally in daily use**; when resources or schedule are tight, **Loudness and Spectrum are polished first**.
+- **Typical scenario**: working on headphones or speakers while a DAW or the system plays audio; needing to **quickly confirm** peak and loudness trends and glance at the vectorscope and spectrum when necessary.
 
 ---
 
-## 7. 用户故事（编号）
+## 5. Product promises
 
-1. 作为 **混音师**，我希望 **启动应用后选择信号源再开始监测**，以便 **避免意外开始采集**。
-2. 作为 **混音师**，我希望 **在同一下拉中选择麦克风或系统回放**，以便 **不需要理解底层 API**。
-3. 作为 **混音师**，我希望 **使用 Automatic 绑定到默认输出/系统口径的默认源**，以便 **减少首次配置成本**。
-4. 作为 **混音师**，我希望 **同时看到 Level Meter/Loudness/Spectrum/Vectorscope 等表头**，以便 **一眼完成多维判断**。
-5. 作为 **混音师**，我希望 **响度相关读数可信且解释清楚**（含 integrated 不足时的语义），以便 **减少误判**。
-6. 作为 **混音师**，我希望 **频谱是稳定一致的参考视图**，以便 **跨天对比时口径不被 UI 选项搅乱**（首版固定口径）。
-7. 作为 **混音师**，我希望 **在系统过载/丢数据时看到提示**，以便 **不会迷信此刻读数**。
-8. 作为 **混音师**，我希望 **采集失败时看到原因而不是假数据**，以便 **快速回到可信状态**。
-9. 作为 **混音师**，我希望 **关闭应用即停止监测叙事成立**，以便 **不担心后台偷采**。
-10. 作为 **混音师**，我希望 **我的音频默认不被上传**，以便 **安心用于未发布作品**。
-11. 作为 **Windows 用户**，我希望 **无需虚拟声卡即可听系统播放并测量**。
-12. 作为 **macOS 用户**，我希望 **在支持的系统版本上使用原生 tap 路径**，以便 **避免旧网页版那套路由**。
-13. 作为 **下载用户**，我希望 **知道 SmartScreen/Gatekeeper 的处理方式**，以便 **顺利首次运行**。
-14. 作为 **混音师**，我希望 **Loudness Profile 是会话级、自定义优先的规则集**：首次配置提供一个 **按实际参数命名、可编辑、可删除**的示例，其余由用户自建；它驱动 **Loudness 参考线、Stats 数值配色与 Level Meter 的 TP Max 标记**，不提供或暗示 **平台、广播或法规认证预设**，而响度测量仍遵循 **ITU-R BS.1770**。
-15. 作为 **环绕内容用户**，我希望 **在识别布局时看到正统多声道响度**，以便 **不与立体声糊弄语义**。
-16. 作为 **环绕内容用户**，我希望 **在布局未知时被明确提示并降级**，以便 **知道此刻不是“认证环绕读数”**。
-17. 作为 **贡献者**，我希望 **许可证与第三方归属清晰**，以便 **合规分发与再分发**。
-18. 作为 **开发者**，我希望 **PRD 与架构文档分工明确**：产品意图在这里、协议与分层在架构文档。
+### 5.1 Capabilities and boundaries
+
+- **Monitoring only**: no **audio processing** such as EQ, limiting or re-routing.
+- **Form**: a **standalone app**; **no** VST/AU/AAX plug-in form.
+- **Platforms**: **Windows and macOS told as equals**; OS differences and minimum versions are stated honestly in `README.md` rather than smoothed over at the promise level.
+- **Signal source**: **one signal-source dropdown (A)** — the same selector covers **system output (loopback / tap)** and **physical inputs**, including **Automatic / default output** semantics (the user chooses a **signal**, not an underlying API name).
+- **Meters**: multiple meters **on one screen** (list in `README.md`); **English UI** by default; **themes** **follow the system** by default, keep **Light/Dark**, and support **custom themes**.
+- **Privacy**: audio and metering data are **not sent anywhere by default**; **no default telemetry**; the **update check** is the only automatic outbound request (see 5.3); feedback diagnostics and crash reports leave the device **only after the user explicitly chooses to send them**, and **never include audio samples**; any future export or diagnostics must likewise be **explicit and optional**.
+- **Ethical floor**: **no silent failure** (see 5.4), and never let the user believe the app has quit while it is still capturing (consistent with 5.7).
+- **Overload**: when the system may **drop data / hit backpressure**, a **user-visible degraded notice** (for example **in the status bar**) is required; it must not pretend to still be accurate.
+- **Startup**: **no automatic START by default (A)** — monitoring starts only when the user asks, avoiding background surprises and arguments over resource use.
+- **Licence and attribution**: distribution and contributions follow the repository licence; third-party attribution is maintained in the repository **README / NOTICE** (see section 9).
+
+### 5.2 Metering claims (expectation management)
+
+- **Loudness**: the measurement core follows **ITU-R BS.1770**; production practice and gating are described in **EBU R128** terms (version and implementation details in `architecture.md`). The product **does not claim** legal or certified metering, or endorsement by any third-party platform.
+- **User rules**: users can define **reference lines / ranges / rules** on the **same measurement results** for their own monitoring and judgement; the product does not promise an ever-growing set of platform-named presets.
+- **Spectrum**: follows **common FFT RTA engineering practice** (in-band energy aggregated over **continuous Hz edges** with **fractional overlap** of each FFT bin, not integer-bin truncation; **STFT** with fixed **hop=N/4** and **4-frame** incoherent averaging of in-band linear power before converting to dB); the vertical axis is in-band spectral power in the **dBFS domain** (the **same reference, a different definition** from sample-peak dBFS); it **does not claim** an IEC 61260 filter-bank metering path, and it is **not interchangeable** with loudness. The first public promise is **Spectrum as a fixed-definition reference view (B)**; the implementation is described in the DSP layer of **`docs/architecture.md`**.
+- **Multichannel**
+  - **Loudness**: reliably identified standard layouts use **proper multichannel integration (L1)** with weights from **ITU-R BS.1770**, excluding LFE; supported layouts are listed in `README.md`, weights and channel order in `architecture.md`.
+  - **True Peak**: **True Peak Max covers every channel**, not just the first two.
+  - **Layout strategy**: **Z + Y** — use L1 when the layout is reliably identified; otherwise **fall back to Ch1/Ch2 stereo loudness** and mark the fallback clearly **everywhere that reading is shown**. A degraded reading must be readable and must never pose as a proper surround reading.
+  - **Layout identification**: up to 8 channels may be identified automatically by channel count; **higher channel counts are never guessed from the count alone**; the user can always set the layout manually.
+  - **Level Meter**: multichannel signals are shown **per channel**.
+  - **Spectrum (>2ch)**: the user can choose a standard channel pair or a single channel.
+  - **Vectorscope**: always **one channel pair**; **Front L/R** by default (when the mapping holds), and the user can switch pairs.
+
+### 5.3 Distribution and updates (honest story + roadmap)
+
+- **Distribution**: builds are obtained from **GitHub Releases**.
+- **In-app update check**: **a firm promise** — the app checks for new versions and tells the user; this is the only automatic outbound request by default, with privacy terms as in 5.1.
+- **Optional future milestone**: **code signing / Apple notarization** — **no committed date**; until then, the **SmartScreen / Gatekeeper** first-run friction is explained honestly in the README and release notes.
+
+### 5.4 Runtime failure semantics
+
+- **Floor (C)**: **silent failure is forbidden**; the user must be told "this is not trustworthy right now / has stopped / needs attention".
+- **Self-healing vs conservative stop**: the PRD does not force one choice; each scenario is closed out through its own issue (consistent with **visible overload notice (A)**).
+
+### 5.5 Sessions, history and export
+
+- **History is session-scoped by default**: restoring history curves after a process restart is **not promised** (**A**).
+- **Export**: if it exists, it serves only the **current session**; **closing and reopening does not restore** export context.
+
+### 5.6 Multiple instances
+
+- **No dedicated multi-instance promise (A)**; if the system allows several instances they are not actively blocked, but "multiple processes × multiple devices" is not guaranteed.
+
+### 5.7 System tray and background capture
+
+- **Background residence is the user's choice**: whether closing the window keeps the app running in the tray, and whether it opens at login, must both be **explicit user choices**; the product never makes the app resident or auto-start on the user's behalf.
+- **Residence must be visible**: while the app runs in the tray, the user must be able to tell it is still running, so nobody mistakes it for quit while it is still capturing (see the ethical floor in 5.1).
+
+### 5.8 Keyboard shortcuts
+
+- Shortcuts work **inside the app only** by default; registering them as **global (system-level) shortcuts** must be explicitly enabled by the user, and the key combinations are user-customisable.
+
+### 5.9 Diagnostics
+
+- **Minimal strategy (B)**: the interface provides at least **version/build information** for troubleshooting; a heavier "copy diagnostic bundle" action is not a promise for now.
+
+### 5.10 Internationalisation
+
+- **v1 English interface**; **i18n** is an optional future milestone (**B**), with no committed timing or languages.
+
+### 5.11 Accessibility
+
+- **Not a near-term acceptance focus** (if raised later, it becomes its own project).
+
+---
+
+## 6. Explicit non-goals
+
+**Unless this PRD is revised**, the following are **not implementation commitments**:
+
+1. **Real audio processing** (EQ / effect chains / re-routing that takes control of where sound is output).
+2. **Plug-in form** (VST/AU/AAX).
+3. **App store distribution** (short to medium term).
+4. **Linux desktop**.
+5. **Monitoring several sources at once / A-B comparison in one app** (short to medium term).
+6. **A general custom user-preference framework** (short to medium term favours **explicit, enumerated persistence** over an open, pluggable preference system).
+7. **General data export for ordinary users** (CSV / history export entry points). Agent Control screenshots and recordings serve automation; they are not a general export, audio recording or desktop capture workflow.
+8. **Object / scene-based audio** (ADM BWF, Dolby Atmos objects, Ambisonics). BS.1770-5 Annex 4 requires rendering to a BS.2051 loudspeaker layout before measuring, which needs a built-in renderer; to be evaluated separately.
+9. **One-click diagnostic bundle export** (see 5.9) and **dedicated accessibility work** (see 5.11): neither is a near-term focus.
+10. **MCP integration**: Agent Control uses `plvs-cli` as its only automation entry point; whether to also provide an MCP server is left to a separate product decision.
+
+**Legacy browser version**: **no further feature maintenance**; the **repository branch / hosting may be removed**; see section 8.
+
+---
+
+## 7. User stories
+
+1. As a **mix engineer**, I want to **choose a signal source after launching and then start monitoring**, so that **capture never starts by accident**.
+2. As a **mix engineer**, I want to **choose a microphone or system playback in the same dropdown**, so that **I don't need to understand the underlying APIs**.
+3. As a **mix engineer**, I want **Automatic to bind to the default output / system default source**, so that **first-time setup costs less**.
+4. As a **mix engineer**, I want to **see Level Meter / Loudness / Spectrum / Vectorscope and other meters together**, so that **I can judge several dimensions at a glance**.
+5. As a **mix engineer**, I want **loudness readings to be trustworthy and clearly explained** (including what Integrated means when there is not enough data), so that **I misjudge less**.
+6. As a **mix engineer**, I want **the spectrum to be a stable, consistent reference view**, so that **comparisons across days are not muddled by UI options** (fixed definition in the first version).
+7. As a **mix engineer**, I want **a notice when the system overloads or drops data**, so that **I don't trust the current reading blindly**.
+8. As a **mix engineer**, I want **to see the reason when capture fails instead of fake data**, so that **I can get back to a trustworthy state quickly**.
+9. As a **mix engineer**, I want **closing the app to really mean monitoring has stopped**, so that **I don't worry about covert background capture**.
+10. As a **mix engineer**, I want **my audio not to be uploaded by default**, so that **I can safely use it on unreleased work**.
+11. As a **Windows user**, I want **to hear and measure system playback without a virtual sound card**.
+12. As a **macOS user**, I want **to use the native tap path on supported system versions**, so that **I avoid the old web version's routing setup**.
+13. As a **downloading user**, I want **to know how to handle SmartScreen/Gatekeeper**, so that **the first run goes smoothly**.
+14. As a **mix engineer**, I want **Loudness Profiles to be session-level, custom-first rule sets**: first-time setup provides one example **named after its actual parameters, editable and deletable**, and the rest are user-built. They drive **Loudness reference lines, Stats value colouring and the Level Meter TP Max marker**, and they neither provide nor imply **platform, broadcast or regulatory certification presets**, while loudness measurement still follows **ITU-R BS.1770**.
+15. As a **surround content user**, I want **proper multichannel loudness when the layout is identified**, so that **it is not passed off with stereo semantics**.
+16. As a **surround content user**, I want **a clear notice and fallback when the layout is unknown**, so that **I know this is not a "certified surround reading"**.
+17. As a **contributor**, I want **the licence and third-party attribution to be clear**, so that **distribution and redistribution are compliant**.
+18. As a **developer**, I want **a clear split between the PRD and the architecture document**: product intent here, protocols and layering in the architecture document.
 
 ---
 
 ## 8. Legacy Web
 
-- **现状**：历史浏览器版本不再作为主线演进。
-- **政策**：**不维护功能**；托管/分支 **可能删除**（以减少读者误解）。
-- **用户期望管理**：PRD 读者应理解 **活跃产品是桌面仓库 main**。
+- **Status**: the historical browser version is no longer the main line of development.
+- **Policy**: **no feature maintenance**; hosting / branches **may be deleted** (to reduce reader confusion).
+- **Expectation management**: PRD readers should understand that **the active product is the desktop repository's `main`**.
 
 ---
 
-## 9. 许可与归属
+## 9. Licence and attribution
 
-- 项目许可证以仓库根目录 **LICENSE** 为准（当前为 MIT）。
-- 第三方字体/图标等素材：**归属与许可**在 **README / NOTICE（若存在）**维护；PRD 不重复粘贴法律全文以免双处漂移。
-
----
-
-## 10. 测试决策
-
-- **好测试**：验证 **可观察行为** 与 **公共接口**，避免绑定内部实现细节。
-- **优先覆盖**：**纯函数与数学工具**（现有 Vitest 体系）；后续为 **关键会话逻辑**增加竖切测试（例如合并慢响度、布局降级策略等）——以 issue 切片为准。
-- **Rust**：保持 **`cargo test`** 基线；与计量正确性强相关的模块应对齐 **参考向量/容许误差** 的节奏由专项 issue 承担。
+- The project licence is the root **LICENSE** file (currently MIT).
+- Third-party fonts, icons and other assets: **attribution and licences** are maintained in the **README / NOTICE (if present)**; the PRD does not paste legal text, to avoid two copies drifting.
 
 ---
 
-## 11. 不在本文范围
+## 10. Testing decisions
 
-- **具体类名/文件路径/函数签名**（易过期；以仓库为准）。
-- **完整 DSP 推导**（由 **`dsp-notes`（若后续补充）** 与架构文档承载）。
-
----
-
-## 12. 进一步说明
-
-- 与 **`architecture.md` 冲突时**：以 **代码实现** 为准，随后修订文档。
-- **本文修订**：重大产品意志变化应更新本 PRD，并在仓库提交说明中简述原因。
+- **Good tests** verify **observable behaviour** and **public interfaces**, and avoid binding to internal implementation details.
+- **Coverage priorities**: **pure functions and math utilities** (the existing Vitest setup); later, vertical-slice tests for **key session logic** (for example merging slow loudness, layout fallback strategy) — scoped by issue.
+- **Rust**: keep the **`cargo test`** baseline; aligning metering-critical modules with **reference vectors / tolerances** is handled by dedicated issues.
 
 ---
 
-**文档结束。**
+## 11. Out of scope for this document
+
+- **Specific class names / file paths / function signatures** (they go stale; the repository is authoritative).
+- **Full DSP derivations** (carried by **`dsp-notes` (if added later)** and the architecture document).
+
+---
+
+## 12. Further notes
+
+- **When this conflicts with `architecture.md`**: the **code** wins, then the documents are corrected.
+- **Revising this document**: significant changes in product intent update this PRD, with the reason summarised in the commit message.
+
+---
+
+**End of document.**

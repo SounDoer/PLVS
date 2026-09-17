@@ -1,28 +1,28 @@
 # PLVS — Architecture
 
-> **文档用途**：PLVS 技术地图——技术栈选型、目录结构、音频管线、前后端通信、主题系统。  
-> **面向读者**：项目作者 + AI agent。以 **main 分支实现** 为准；文档与代码冲突时以代码为准。  
-> **配套文档**：产品范围见 [`prd.md`](prd.md)；UI token 细节见 [`design-tokens.md`](design-tokens.md)；架构决策见 [`adr/`](adr/)。
+> **Purpose**: the technical map of PLVS — stack, directory layout, audio pipeline, frontend/backend communication, theme system.  
+> **Audience**: the project author and AI agents. The **implementation on `main`** is authoritative; when this document and the code disagree, the code wins.  
+> **Related**: product scope in [`prd.md`](prd.md); UI token details in [`design-tokens.md`](design-tokens.md); architecture decisions in [`adr/`](adr/).
 
 ---
 
-## 1. 技术栈
+## 1. Tech stack
 
-**Tauri 2 + Rust（后端）+ React 19 / Vite（前端）**
+**Tauri 2 + Rust (backend) + React 19 / Vite (frontend)**
 
-| 层       | 技术                              | 职责                                                  |
-| -------- | --------------------------------- | ----------------------------------------------------- |
-| 桌面壳   | Tauri 2                           | 系统 WebView、进程管理、平台 API 桥接                 |
-| 音频引擎 | Rust + cpal / Core Audio          | PCM 采集、DSP 计算（peak / LUFS / FFT / vectorscope） |
-| 前端 UI  | React 19 + Vite + Tailwind CSS v4 | 面板渲染、布局、设置                                  |
-| 组件库   | shadcn/ui (Radix)                 | 壳与设置控件                                          |
-| 测试     | Vitest                            | 前端单元测试（与源文件同目录，`*.test.js/jsx`）       |
+| Layer         | Technology                        | Responsibility                                               |
+| ------------- | --------------------------------- | ------------------------------------------------------------ |
+| Desktop shell | Tauri 2                           | System WebView, process management, platform API bridging    |
+| Audio engine  | Rust + cpal / Core Audio          | PCM capture, DSP (peak / LUFS / FFT / vectorscope)           |
+| Frontend UI   | React 19 + Vite + Tailwind CSS v4 | Panel rendering, layout, settings                            |
+| Components    | shadcn/ui (Radix)                 | Shell and settings controls                                  |
+| Tests         | Vitest                            | Frontend unit tests (next to the source, `*.test.js/jsx`)    |
 
-**为什么是 Rust + Tauri：** Rust 的无 GC 特性保证音频回调线程 realtime-safe；Tauri 用系统 WebView（无需打包 Chromium，安装包 ~10MB）；现有 React 组件完整复用。Electron 与 JUCE 因体积/定位问题被否决（详见原 architecture.md 历史与 ADR）。
+**Why Rust + Tauri:** Rust has no GC, which keeps the audio callback thread realtime-safe; Tauri uses the system WebView (no bundled Chromium, an installer of ~10 MB); the existing React components are reused as they are. Electron and JUCE were rejected over size and positioning (see the history of the original architecture.md and the ADRs).
 
 ---
 
-## 2. 系统架构
+## 2. System architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -45,211 +45,218 @@
     System Audio
 ```
 
-**数据流：**
+**Data flow:**
 
-1. **采集**：Rust 通过 cpal（Windows WASAPI Loopback + 物理输入）或 macOS Core Audio Tap 获取 PCM。
-2. **DSP**：音频线程并行计算 Peak / True Peak / LUFS / FFT spectrum / correlation。
-3. **推送**：高频指标（~60Hz）→ Tauri Channel；低频状态（~2Hz）→ Tauri Event。
-4. **渲染**：React 订阅数据更新面板。
-5. **控制**：前端按钮（START/STOP/设备切换）→ `invoke` 调 Rust command。
+1. **Capture**: Rust obtains PCM through cpal (Windows WASAPI Loopback + physical inputs) or the macOS Core Audio Tap.
+2. **DSP**: the audio thread computes Peak / True Peak / LUFS / FFT spectrum / correlation in parallel.
+3. **Push**: high-rate metrics (~60 Hz) → Tauri Channel; low-rate state (~2 Hz) → Tauri Event.
+4. **Render**: React subscribes to the data and updates the panels.
+5. **Control**: frontend actions (START/STOP/device switch) → `invoke` a Rust command.
 
-桌面版还提供一条低频语义控制链路：`plvs-cli` 的 Agent Control 命令在 Windows 通过当前用户
-ACL 的 named pipe、在 macOS 通过私有 Unix socket 找到同一 identity 的运行实例。Rust broker
-只负责认证、限流、超时和请求关联，
-再把请求定向发送给 main WebView。Workspace 的校验、revision、一次性替换与持久化完成
-条件仍由 React 前端拥有；broker 不复制业务状态，也不向 accessory WebView 广播请求。
+The desktop app also has a low-rate semantic control path: `plvs-cli` Agent Control commands find the
+running instance with the same identity through a named pipe with a current-user ACL on Windows and
+a private Unix socket on macOS. The Rust broker only handles authentication, rate limiting, timeouts
+and request correlation, then routes the request to the main WebView. Workspace validation, revision,
+one-shot replacement and persistence completion remain owned by the React frontend; the broker does
+not duplicate business state and does not broadcast requests to accessory WebViews.
 
-Visual Capture 沿用同一语义边界：React 决定捕获目标、等待稳定绘制并提供 CSS 几何；Rust
-负责私有 artifact、并发与生命周期。Windows 截图走 WebView2，macOS 截图走 WKWebView
-snapshot；两者都只捕获 PLVS WebView 内容。Windows 录制走 Windows Graphics Capture 与
-Media Foundation，macOS 录制走 ScreenCaptureKit 与 AVAssetWriter。两端都复用 Rust 的
-measured-source PCM 时间轴，并分别编码 H.264/AAC MP4。
+Visual Capture keeps the same semantic boundary: React chooses the capture target, waits for a stable
+paint and supplies CSS geometry; Rust owns the private artifacts, concurrency and lifecycle. Windows
+screenshots use WebView2 and macOS screenshots use the WKWebView snapshot; both capture only the PLVS
+WebView content. Windows recording uses Windows Graphics Capture and Media Foundation, macOS
+recording uses ScreenCaptureKit and AVAssetWriter. Both reuse Rust's measured-source PCM timeline and
+encode H.264/AAC MP4.
 
 ---
 
-## 3. 目录结构
+## 3. Directory layout
 
-这里只列 **顶层目录各自负责什么**，不列文件。文件级的内容变化太快，写下来就会过期——需要时直接看目录。新增顶层目录时，在同一个提交里补一行。
+This lists only **what each top-level directory is responsible for**, not files. File-level content
+changes too quickly and goes stale as soon as it is written down — look at the directory when you
+need it. When adding a top-level directory, add a row in the same commit.
 
-**前端 `src/`**
+**Frontend `src/`**
 
-| 目录 | 职责 |
+| Directory | Responsibility |
 | --- | --- |
-| `ipc/` | ★ 前端与 Rust 音频引擎之间的唯一边界：`invoke`、Channel、Event 都从这里走 |
-| `components/` | 界面组件；`panels/` 是各表头面板，`ui/` 是 shadcn/ui 基础组件 |
-| `workspace/` | split-tree 工作区布局、面板注册与数据提供；逻辑代码只引用 `moduleCatalog.js` |
-| `dock/` | Dock 模式：表头条与 accessory WebView（header / editor） |
-| `hooks/` | React hooks 与共享 Context |
-| `runtime/` | 计量运行时的归属与派生状态（live 测量 owner、runtime context） |
-| `analysis/` | 由面板配置推导出的分析请求 |
-| `lib/` | 引擎集成与历史存储（FrameIntake、history slab 等） |
-| `math/` | 纯函数：历史路径、格式化、频谱与声道布局计算 |
-| `theme/` | Theme V2：内置主题、Role Registry、编译器、运行时发布、V1 迁移 |
-| `preferences/` | 非配色的界面调校（布局、字体、圆角、界面尺寸）及其应用到 document |
-| `config/` | 与 Rust DSP 共享的刻度定义等静态配置 |
-| `settings/` | 设置项默认值与选项清单 |
-| `persistence/` | 按域划分的持久化；新数据先在 `index.js` 选域 |
-| `transfer/` | 主题 / 响度档 / 预设库的导入导出（pack） |
-| `agentControl/` | Agent Control 在前端的命令实现、schema 与快照 |
-| `data/` | 静态数据（快捷键定义） |
-| `dev/` | 仅开发期使用的性能与 profiling 工具 |
-| `generated/` | 由 `npm run theme:generate` 生成，不手改 |
+| `ipc/` | ★ The only boundary between the frontend and the Rust audio engine: `invoke`, Channel and Event all go through here |
+| `components/` | UI components; `panels/` holds the meter panels, `ui/` the shadcn/ui primitives |
+| `workspace/` | Split-tree workspace layout, panel registration and data providers; logic-only code imports only `moduleCatalog.js` |
+| `dock/` | Dock mode: the meter strip and accessory WebViews (header / editor) |
+| `hooks/` | React hooks and shared contexts |
+| `runtime/` | Ownership and derived state of the metering runtime (live measurement owner, runtime context) |
+| `analysis/` | Analysis requests derived from panel configuration |
+| `lib/` | Engine integration and history storage (FrameIntake, history slabs, etc.) |
+| `math/` | Pure functions: history paths, formatting, spectrum and channel-layout calculations |
+| `theme/` | Theme V2: built-in themes, Role Registry, compiler, runtime publication, V1 migration |
+| `preferences/` | Non-colour interface tuning (layout, fonts, radii, interface size) and applying it to the document |
+| `config/` | Static configuration shared with the Rust DSP, such as scale definitions |
+| `settings/` | Setting defaults and option lists |
+| `persistence/` | Domain-split persistence; choose the domain in `index.js` before adding data |
+| `transfer/` | Import and export (packs) of themes, loudness profiles and preset libraries |
+| `agentControl/` | Frontend command implementations, schemas and snapshots for Agent Control |
+| `data/` | Static data (shortcut definitions) |
+| `dev/` | Development-only performance and profiling tools |
+| `generated/` | Generated by `npm run theme:generate`; never edited by hand |
 
-**后端 `src-tauri/`**
+**Backend `src-tauri/`**
 
-| 位置 | 职责 |
+| Location | Responsibility |
 | --- | --- |
-| `src/audio/` | 采集层：cpal、平台后端、macOS tap、设备枚举与标识 |
-| `src/dsp/` | 峰值、响度、频谱、矢量示波、VAD、声道布局与权重 |
-| `src/engine/` | 编排：PCM → 计量帧 → Channel / Event 推送 |
-| `src/file_analysis/` | File 模式：ffmpeg 探测与解码、会话历史 |
-| `src/ipc/` | Tauri command、事件与二进制帧编码 |
-| `src/agent_control/` | Agent Control 的 broker、发现、分帧协议与开关 |
-| `src/visual_capture/` | 截图与录制（按平台实现） |
-| `src/cli_*.rs`、`doctor.rs` | `plvs-cli` 各子命令与安装诊断 |
-| `src/dock*.rs`、`appbar.rs` | Dock 窗口，以及 Windows appbar 的屏幕空间预留 |
-| 其余 `src/*.rs` | 应用入口与状态、窗口、sidecar、崩溃报告等单一职责模块 |
-| `plvs-cli/` | 独立的轻量 CLI 转发 package |
-| `native/macos/` | Core Audio process tap 的 Objective-C 桥 |
-| `capabilities/`、`tauri*.conf.json` | Tauri 权限声明与打包配置 |
+| `src/audio/` | Capture layer: cpal, platform backends, macOS tap, device enumeration and identity |
+| `src/dsp/` | Peak, loudness, spectrum, vectorscope, VAD, channel layouts and weights |
+| `src/engine/` | Orchestration: PCM → metering frames → Channel / Event push |
+| `src/file_analysis/` | File mode: ffmpeg probing and decoding, session history |
+| `src/ipc/` | Tauri commands, events and binary frame encoding |
+| `src/agent_control/` | Agent Control broker, discovery, framing protocol and enablement |
+| `src/visual_capture/` | Screenshots and recording (per-platform implementations) |
+| `src/cli_*.rs`, `doctor.rs` | `plvs-cli` subcommands and installation diagnosis |
+| `src/dock*.rs`, `appbar.rs` | Dock windows and the Windows appbar screen-space reservation |
+| Other `src/*.rs` | Single-purpose modules: app entry and state, windows, sidecar, crash reporting, etc. |
+| `plvs-cli/` | Standalone lightweight CLI forwarder package |
+| `native/macos/` | Objective-C bridge for the Core Audio process tap |
+| `capabilities/`, `tauri*.conf.json` | Tauri permission declarations and bundle configuration |
 
 ---
 
-## 4. 音频管线
+## 4. Audio pipeline
 
-### 采集层（`src-tauri/src/audio/`）
+### Capture layer (`src-tauri/src/audio/`)
 
-- **Windows**：`cpal_backend.rs` 通过 `cpal` 打开 WASAPI Loopback——无需虚拟声卡，直接读系统输出 PCM；物理输入也走 cpal。Applications 源走 `windows_process_loopback.rs` 的 `ActivateAudioInterfaceAsync`，以可执行文件路径派生的稳定应用 ID 在每次启动时重新解析当前 PID；由于该接口不提供 mix format，PLVS 以当前默认输出的采样率和已验证声道布局（mono / stereo / 5.1 / 7.1，其他布局安全回退 stereo）显式请求 float32，再进入同一 meter pipeline。该路径要求 Windows build 20348+，且无法捕获绕开系统混音器的 ASIO 或 WASAPI exclusive 输出。
-- **macOS**：系统音频走 `macos/`（Core Audio process tap，需 macOS 14.2+）；物理输入走 cpal。全局系统输出使用排除空进程列表的 device-specific tap；Applications 源从 Core Audio process objects 中保留仍在运行的普通 GUI 宿主，以宿主 bundle 派生稳定应用 ID，将同一宿主下的 helper 进程合并后用 `CATapDescription initWithProcesses` 捕获。暂停不移除来源，因为此时 HAL 可以临时清空输出设备列表且 process tap 可以合法地停止回调；应用 tap 当前跟随默认输出设备，并保留该设备原始声道布局。平台分发由 `platform_backend.rs` 处理。
-- **采集健康**：运行中的采集超过 `CAPTURE_STALL_TIMEOUT`（5 s）没有回调即判定失败，`engine-state-changed` 发 `error`，前端停在 `error` 并显示原因；无 silence stream 的 Windows loopback 不参与纯回调停滞判定（静音时本就不回调），但仍立即响应 backend 的 fatal stream error。Windows 的 `DeviceNotAvailable` / `StreamInvalidated` 作为结构化 `deviceInvalidated` 原因上报；前端释放旧 stream、重新解析当前设备、清空中断的 Live measurement 并自动重建一次，replacement 连续产出两秒后才重新允许下一次恢复，避免失败循环。设备监视线程每 2 s 同时观察设备列表与当前默认输出，Automatic 下默认输出变化会重启采集；选择 Application 时另以 2 s cadence 刷新稳定应用 ID 对应的当前 PID / Core Audio process object 集合，集合变化会通过同一安全重启路径重绑，目标消失则终止假 LIVE 状态并显示错误。分析前丢弃的音频经 `engine-backpressure` 在 footer 显示 Audio Dropped，直到 Clear 或新会话。
+- **Windows**: `cpal_backend.rs` opens WASAPI Loopback through `cpal` — no virtual sound card, it reads the system output PCM directly; physical inputs also go through cpal. Application sources use `ActivateAudioInterfaceAsync` in `windows_process_loopback.rs`; a stable application ID derived from the executable path is resolved to the current PID on every start. Because that interface does not report a mix format, PLVS explicitly requests float32 at the current default output's sample rate and a verified channel layout (mono / stereo / 5.1 / 7.1; other layouts fall back safely to stereo) before entering the same meter pipeline. This path requires Windows build 20348+ and cannot capture ASIO or WASAPI exclusive-mode output that bypasses the system mixer.
+- **macOS**: system audio goes through `macos/` (Core Audio process tap, macOS 14.2+); physical inputs go through cpal. Global system output uses a device-specific tap that excludes an empty process list. Application sources keep the running ordinary GUI hosts among the Core Audio process objects, derive a stable application ID from the host bundle, merge helper processes under the same host and capture them with `CATapDescription initWithProcesses`. Pausing does not remove a source, because the HAL may temporarily empty the output device list and a process tap may legitimately stop calling back. Application taps currently follow the default output device and keep that device's native channel layout. Platform dispatch lives in `platform_backend.rs`.
+- **Capture health**: a running capture with no callback for longer than `CAPTURE_STALL_TIMEOUT` (5 s) is treated as failed; `engine-state-changed` emits `error`, and the frontend stays in `error` and shows the reason. Windows loopback without a silence stream is excluded from the pure callback-stall check (it does not call back during silence), but still reacts immediately to fatal backend stream errors. Windows `DeviceNotAvailable` / `StreamInvalidated` are reported as a structured `deviceInvalidated` reason; the frontend releases the old stream, re-resolves the current device, clears the interrupted Live measurement and rebuilds once automatically. The next recovery is allowed only after the replacement has produced audio for two seconds, which prevents failure loops. The device monitor thread observes both the device list and the current default output every 2 s; under Automatic, a default output change restarts capture. With an Application selected, it also refreshes the current PID / Core Audio process object set for the stable application ID every 2 s; a changed set rebinds through the same safe restart path, and a vanished target ends the false LIVE state and shows an error. Audio dropped before analysis is reported through `engine-backpressure` and shown as Audio Dropped in the footer until Clear or a new session.
 
-### DSP 层（`src-tauri/src/dsp/`）
+### DSP layer (`src-tauri/src/dsp/`)
 
-| 模块                 | 计算                                                                                                  |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
-| `peak.rs`            | 采样峰值 + True Peak（4× 过采样）                                                                     |
-| `loudness.rs`        | K-weighting → gate → M / S / I / LRA（ITU-R BS.1770 / EBU R128）；True Peak Max 覆盖全部声道          |
-| `channel_layouts.rs` | 嵌入 `shared/channel-layouts.json`，提供布局顺序、角色与 BS.1770-5 权重；实时、File 与 CLI 共用       |
-| `channel_weights.rs` | 最多 8 声道的按数量自动识别热路径；未知布局退化为 Ch1/Ch2，且不在音频回调中分配                    |
-| `spectrum.rs`        | rFFT + Hann 窗，hop=N/4，4 帧非相干平均；带内能量按 Hz 连续边界与 bin 分数重叠积分（非整数 bin 截断） |
-| `vectorscope.rs`     | L/R → XY + 相关系数                                                                                   |
+| Module               | Computes                                                                                                                                 |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `peak.rs`            | Sample peak + True Peak (4× oversampling)                                                                                                |
+| `loudness.rs`        | K-weighting → gate → M / S / I / LRA (ITU-R BS.1770 / EBU R128); True Peak Max covers every channel                                      |
+| `channel_layouts.rs` | Embeds `shared/channel-layouts.json` and provides layout order, roles and BS.1770-5 weights; shared by live, File and CLI                |
+| `channel_weights.rs` | Hot-path auto-detection by channel count for up to 8 channels; unknown layouts fall back to Ch1/Ch2 without allocating in the callback   |
+| `spectrum.rs`        | rFFT + Hann window, hop=N/4, 4-frame incoherent averaging; in-band energy integrated over continuous Hz edges and fractional bin overlap (no integer-bin truncation) |
+| `vectorscope.rs`     | L/R → XY + correlation coefficient                                                                                                       |
 
-### 编排层（`src-tauri/src/engine/meter_pipeline.rs`）
+### Orchestration layer (`src-tauri/src/engine/meter_pipeline.rs`)
 
-PCM 帧 → 并行 DSP → 打包 `MeteringFrame` → Channel（~60Hz）推前端；慢速响度 / 状态 → Event（~2Hz）广播。
+PCM frames → parallel DSP → pack `MeteringFrame` → Channel (~60 Hz) to the frontend; slow loudness / state → Event (~2 Hz) broadcast.
 
-`shared/channel-layouts.json` 是前后端唯一的布局表：Rust 在编译时嵌入，前端直接 import；两端由契约测试约束。前端通过 IPC 发送角色列表，Rust 在命令到达时一次性派生权重与报告用布局名，音频热路径不查表、不分配。标准顺序采用 WAVE / ffmpeg；若来源实际使用 SMPTE bed 顺序，用户通过逐声道角色编辑器校正，而不是选择另一套重复预设。
+`shared/channel-layouts.json` is the single layout table for both sides: Rust embeds it at compile time and the frontend imports it directly; contract tests hold the two sides together. The frontend sends a role list over IPC; Rust derives the weights and the report layout name once when the command arrives, so the audio hot path neither looks up the table nor allocates. The standard order is WAVE / ffmpeg; when a source actually uses SMPTE bed order, the user corrects it in the per-channel role editor instead of choosing a duplicate preset.
 
-#### History cadence（节奏分层）
+#### History cadence
 
-**核心契约：源 chunk 大小可以影响 CPU 批处理，但绝不决定 history 时长。** 三种节奏各司其职，别混用：
+**Core contract: source chunk size may affect CPU batching, but never determines history duration.** Three cadences each have their own job; do not mix them:
 
-| 节奏           | 周期            | 来源                                    | 前端契约                                                         |
-| -------------- | --------------- | --------------------------------------- | ---------------------------------------------------------------- |
-| main history   | 100 ms（~10Hz） | `MeterHistoryEntry`，每 100 ms 一行     | `HIST_SAMPLE_SEC = 0.1`（index-grid 定位）                       |
-| visual history | 40 ms（~25Hz）  | `VisualHistEntry` / `VISUAL_EMIT_MS`    | `VISUAL_HIST_SAMPLE_SEC = 0.04`（spectrogram 按 timestamp 定位） |
-| UI frame       | 交付节奏        | `FRAME_EMIT_MS = 16`，仅 UI 投递 + 背压 | 不是分析节奏，不得用来定义 history 行数                          |
+| Cadence        | Period            | Source                                   | Frontend contract                                                      |
+| -------------- | ----------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| main history   | 100 ms (~10 Hz)   | `MeterHistoryEntry`, one row per 100 ms  | `HIST_SAMPLE_SEC = 0.1` (index-grid positioning)                       |
+| visual history | 40 ms (~25 Hz)    | `VisualHistEntry` / `VISUAL_EMIT_MS`     | `VISUAL_HIST_SAMPLE_SEC = 0.04` (spectrogram positions by timestamp)   |
+| UI frame       | Delivery cadence  | `FRAME_EMIT_MS = 16`, UI delivery + backpressure only | Not an analysis cadence; must not define history row counts |
 
-- **`HIST_EMIT_MS = 95`** 是 live 的 wall-clock **容差门**（允许名义 100 ms 块在略低于 100 ms 时也能发），不是语义周期。
-- **File 模式**：`FilePcmHistoryChunker`（`file_analysis/session.rs`）把任意大小的 ffmpeg PCM 整流成每次一个 100 ms 块喂给 pipeline，使 history 行数只由媒体时长决定。
-- **已知限制**：file 模式 visual history 被 100 ms 块卡在 ~10Hz（live 为 ~25Hz）。因 spectrogram 按 timestamp 贴帧，时间轴仍正确，只是分辨率更粗。
-- **Live 不走 chunker**：采集源在 realtime-safe 回调线程，不能做 chunker 的 buffer 分配；live 与 file 共享上述**契约**，但不共享代码路径。
-
----
-
-## 5. 前后端通信（IPC）
-
-前端 IPC 的**唯一入口**是 `src/ipc/`；绝不在组件或 hook 里直接调 `@tauri-apps/api`。
-
-| 通道                 | 方向            | 频率     | 用途                                                     |
-| -------------------- | --------------- | -------- | -------------------------------------------------------- |
-| **Channel**          | Rust → Frontend | ~60Hz    | 高频指标帧（peak、LUFS M/S、spectrum path、vectorscope） |
-| **Event**            | Rust → Frontend | ~2Hz     | 慢速响度（I/LRA）、设备状态、健康状态                    |
-| **invoke (command)** | Frontend → Rust | 用户触发 | START/STOP、设备切换、设置写入                           |
-
-Rust command 定义在 `src-tauri/src/ipc/commands.rs`；前端调用封装在 `src/ipc/commands.js`。布局选择通过 `set_channel_roles` 传角色列表，不传前端计算的权重；Rust 据此派生测量权重与 `loudnessLayout`。
+- **`HIST_EMIT_MS = 95`** is a wall-clock **tolerance gate** for live (it lets a nominal 100 ms block emit when slightly under 100 ms), not a semantic period.
+- **File mode**: `FilePcmHistoryChunker` (`file_analysis/session.rs`) rectifies ffmpeg PCM of any size into one 100 ms block per call to the pipeline, so history row count depends only on media duration.
+- **Known limitation**: file-mode visual history is held at ~10 Hz by the 100 ms blocks (live is ~25 Hz). Because the spectrogram places frames by timestamp, the time axis is still correct, only coarser.
+- **Live does not use the chunker**: the capture source runs on the realtime-safe callback thread, which cannot perform the chunker's buffer allocation; live and file share the **contract** above, not the code path.
 
 ---
 
-## 6. 主题与 Token 系统
+## 5. Frontend/backend communication (IPC)
 
-首屏渲染流程（`src/main.jsx`）：
+The **only entry point** for frontend IPC is `src/ipc/`; never call `@tauri-apps/api` directly from a component or hook.
 
-1. 通过 `settingsStore` 读取 `appearance`（`system`|`fixed`）与 `themeId`（Tauri 下由 Rust 预注入 `window.__PLVS_INITIAL_STATE__`，浏览器开发环境走 `localStorage`）
-2. `resolveThemeId`（结合 `prefers-color-scheme`）→ 当前 `themeId`
-3. `themeRegistry` 获取 builtin 或已迁移的自定义 V2 authoring document
-4. `compileTheme` 将 Core Colors、Palettes 与稀疏 Advanced overrides 编译成完整 Resolved Theme
-5. `themeRuntime` 发布带递增 revision 的同一份结果：CSS 写入 DOM，Canvas 通过 selector 订阅；`applyLayoutToDocument` 只负责布局 / 字号 / 几何 / 非调色变量
+| Path                 | Direction       | Rate           | Purpose                                                          |
+| -------------------- | --------------- | -------------- | ---------------------------------------------------------------- |
+| **Channel**          | Rust → Frontend | ~60 Hz         | High-rate metric frames (peak, LUFS M/S, spectrum path, vectorscope) |
+| **Event**            | Rust → Frontend | ~2 Hz          | Slow loudness (I/LRA), device state, health state                |
+| **invoke (command)** | Frontend → Rust | User-triggered | START/STOP, device switching, settings writes                    |
 
-**Token 分层**（详见 [`design-tokens.md`](design-tokens.md) 与 ADR 0001/0002/0005）：
-
-| 层               | 输出                                                                                                      | 定义 / 发布位置                                                             |
-| ---------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Authoring intent | Core Colors、Status / Intensity / Frequency / Interface Palettes、稀疏 Advanced overrides（内置主题不用） | `builtinThemesV2.js` 或持久化的 V2 document                                 |
-| Resolved roles   | 完整的 interface、instrument、effect 与 native role                                                       | `themeRoleRegistry.js` → `compileTheme.js`                                  |
-| CSS / SVG        | `--background`, `--foreground`, `--primary` 与 `--ui-*` color tokens                                      | Resolved Theme `css` → `themeRuntime.js`                                    |
-| Canvas           | Waveform、Vectorscope、Stereo Map、Spectrogram 等颜色 bundle                                              | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
-| UI 布局          | 字号、间距、半径、线宽等非颜色 `--ui-*`                                                                   | `data.js` → `applyLayoutToDocument`                                         |
-
-首屏占位变量由 `npm run theme:generate` 写入 `src/generated/theme-fallbacks.css`（与默认暗色语义同源）。
-
-旧版 `builtinThemes.js`、`buildThemeTokens.js` 与 `legacy/resolveV1Theme.js` 不属于运行时主题
-管线；它们只为冻结的 V1 迁移、fixture 和回归测试保留。新消费者不得导入这些模块。
+Rust commands are defined in `src-tauri/src/ipc/commands.rs`; frontend wrappers are in `src/ipc/commands.js`. Layout selection sends a role list through `set_channel_roles`, not weights computed by the frontend; Rust derives the measurement weights and `loudnessLayout` from it.
 
 ---
 
-## 7. 关键术语
+## 6. Theme and token system
 
-| 术语                | 定义                                                                                                 |
-| ------------------- | ---------------------------------------------------------------------------------------------------- |
-| **WASAPI Loopback** | Windows 原生 API：把输出设备当输入读，无需虚拟声卡                                                   |
-| **Core Audio Tap**  | macOS 14.2+ 原生系统音频捕获（等效于 Windows WASAPI Loopback）                                       |
-| **realtime-safe**   | 音频回调线程不做内存分配、不加锁、不 syscall                                                         |
-| **Channel**         | Tauri 高频单向推送通道（~60Hz 指标帧）                                                               |
-| **plvs:settings**   | 持久化全局偏好：`appearance`、`themeId`、`referenceLufs`、面板标签覆盖等                             |
-| **plvs:workspace**  | 持久化工作区布局树与每个 panel 的控制状态                                                            |
-| **plvs:presets**    | 持久化用户保存的 workspace presets                                                                   |
-| **plvs:themes**     | 持久化自定义主题                                                                                     |
-| **windowBounds**    | `plvs-settings.json` 顶层键，由 Rust 独立维护窗口几何，避免 JS settings 写回覆盖                     |
-| **dockState**       | `plvs-settings.json` 顶层键（Rust 维护）：dock 模式开关 / 贴边 / 显示器；dock 期间 windowBounds 停写 |
+First-paint flow (`src/main.jsx`):
 
-### Dock 三窗口边界
+1. Read `appearance` (`system`|`fixed`) and `themeId` through `settingsStore` (under Tauri, Rust pre-injects `window.__PLVS_INITIAL_STATE__`; the browser dev environment uses `localStorage`)
+2. `resolveThemeId` (with `prefers-color-scheme`) → current `themeId`
+3. `themeRegistry` returns the built-in or migrated custom V2 authoring document
+4. `compileTheme` compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
+5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles only layout / font size / geometry / non-colour variables
 
-Dock form 由三个 native window 组成：`main` 是 56-160 logical px、默认 56px 的 meter strip，
-`dock-header` 是 44 logical px 的全宽临时工具条，`dock-editor` 是右对齐的单列编辑器。
-Windows 上只有 `main` 注册 AppBar；开启 Reserve screen space 时也只保留 meter strip，
-header/editor 始终覆盖相邻工作区，因此 hover 不会触发 maximized window 重排。
+**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005):
 
-Rust 的 `dock.rs` / `dock_accessories.rs` 拥有物理像素几何和窗口生命周期。主 React root
-拥有 runtime、workspace、preset 和 Dock persistence；两个 accessory root 仅接收可序列化快照，
-并通过 semantic Tauri events 回传 action/pointer，不挂载 audio intake 或持久化 store owner。
-Dock panel display controls 位于 `workspaceStore.dock.controlsByPanelId`，独立于正常 workspace 的
-`panelControlsById`；旧 `controlsByModuleId` 仅作为兼容字段保留。measurement runtime 和 channel label
-semantics 仍共享。
+| Layer            | Output                                                                                                            | Defined / published in                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Authoring intent | Core Colors, Status / Intensity / Frequency / Interface Palettes, sparse Advanced overrides (unused by built-ins) | `builtinThemesV2.js` or a persisted V2 document                             |
+| Resolved roles   | Complete interface, instrument, effect and native roles                                                           | `themeRoleRegistry.js` → `compileTheme.js`                                  |
+| CSS / SVG        | `--background`, `--foreground`, `--primary` and `--ui-*` color tokens                                             | Resolved Theme `css` → `themeRuntime.js`                                    |
+| Canvas           | Colour bundles for Waveform, Vectorscope, Stereo Map, Spectrogram, etc.                                           | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
+| UI layout        | Non-colour `--ui-*`: font size, spacing, radius, line width                                                       | `data.js` → `applyLayoutToDocument`                                         |
 
-### Dock live 交互边界（有意精简）
+First-paint placeholder variables are written by `npm run theme:generate` to `src/generated/theme-fallbacks.css` (from the same source as the default dark semantics).
 
-Dock 只复用普通面板 live 交互的一个子集，其余是**刻意不做**，不是遗漏——要更细的调节或翻历史就进普通模式 / snapshot。别对着代码反复核对，现状如下：
-
-Dock 有的：
-
-- **TP-max reset**（`DockLevel`，点读数复位真峰值最大值）
-- **Vectorscope peak-hold reset**（`DockVectorscope` polarLevel，点图复位峰值保持）
-- **时间窗缩放**（`DockWaveform` / `DockLoudness` / `DockSpectrogram`：滚轮缩放 + 右键双击复位 + 窗口秒数 HUD）。实现是普通 `useHistoryInteraction` 的精简子集，另走 `useDockHistoryViewport`，只有窗宽、无时间偏移、缩放不以光标为锚。
-
-Dock 刻意没有的：
-
-- **数值轴缩放/平移**（普通模式 `useAxisInteraction` 提供 Level/Spectrum/Spectrogram/Loudness 的轴缩放）——dock 条太窄，无可抓的轴。
-- **时间轴平移到历史 / scrub 选择**——dock 是 live-only viewport，翻历史交给 snapshot。
-- **Spectrum 长按稳曲线**、**Vectorscope hold-slow 拖影**——两个「按住」手势；前者可行但收益低，后者一半已由 dock 常驻的 correlation 平滑覆盖、另一半（Lissajous phosphor）成本高回报低，均评估后不做。
+The old `builtinThemes.js`, `buildThemeTokens.js` and `legacy/resolveV1Theme.js` are not part of the
+runtime theme pipeline; they are kept only for the frozen V1 migration, fixtures and regression tests.
+New consumers must not import them.
 
 ---
 
-## 8. 平台说明
+## 7. Key terms
 
-| 平台    | 系统音频路径                                      | 最低版本                                                   |
-| ------- | ------------------------------------------------- | ---------------------------------------------------------- |
-| Windows | WASAPI Loopback（cpal）；Application Process Loopback | Windows 10+；按应用采集要求 build 20348+（实际主要为 Windows 11） |
-| macOS   | Core Audio process tap（全局或按应用 process objects） | macOS 14.2+（tap 能力要求）                                |
+| Term                | Definition                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **WASAPI Loopback** | Native Windows API that reads an output device as an input, with no virtual sound card                             |
+| **Core Audio Tap**  | Native system-audio capture on macOS 14.2+ (the equivalent of WASAPI Loopback)                                     |
+| **realtime-safe**   | The audio callback thread does not allocate, lock or make syscalls                                                 |
+| **Channel**         | Tauri's high-rate one-way push channel (~60 Hz metric frames)                                                      |
+| **plvs:settings**   | Persisted global preferences: `appearance`, `themeId`, `referenceLufs`, panel label overrides, etc.                |
+| **plvs:workspace**  | Persisted workspace layout tree and each panel's control state                                                     |
+| **plvs:presets**    | Persisted user-saved workspace presets                                                                             |
+| **plvs:themes**     | Persisted custom themes                                                                                            |
+| **windowBounds**    | Top-level key in `plvs-settings.json`; Rust maintains window geometry separately so JS settings writes cannot overwrite it |
+| **dockState**       | Top-level key in `plvs-settings.json` (maintained by Rust): dock enabled / edge / display; windowBounds stops being written while docked |
 
-macOS 低于 14.2 或无 tap 能力时的回退行为以代码实现为准。免签名安装摩擦（Gatekeeper / SmartScreen）的用户说明见 `README.md`。
+### Dock three-window boundary
+
+The Dock form consists of three native windows: `main` is the meter strip, 56-160 logical px and 56 px
+by default; `dock-header` is a full-width 44 logical px transient toolbar; `dock-editor` is a
+right-aligned single-column editor. On Windows only `main` registers as an AppBar; with Reserve
+screen space enabled only the meter strip is reserved, and header/editor always overlay the adjacent
+work area, so hovering never reflows maximized windows.
+
+Rust's `dock.rs` / `dock_accessories.rs` own physical-pixel geometry and window lifecycle. The main
+React root owns the runtime, workspace, presets and Dock persistence; the two accessory roots receive
+only serialisable snapshots and send actions/pointer events back through semantic Tauri events,
+without mounting audio intake or a persistence store owner. Dock panel display controls live in
+`workspaceStore.dock.controlsByPanelId`, separate from the normal workspace's `panelControlsById`; the
+old `controlsByModuleId` is kept only as a compatibility field. The measurement runtime and channel
+label semantics are still shared.
+
+### Dock live interaction boundary (deliberately minimal)
+
+Dock reuses only a subset of the normal panels' live interactions; the rest is **deliberately left out**, not missing — for finer adjustment or browsing history, switch to normal mode / snapshot. Do not keep re-checking this against the code; the current state is:
+
+Dock has:
+
+- **TP-max reset** (`DockLevel`: click the readout to reset the true-peak maximum)
+- **Vectorscope peak-hold reset** (`DockVectorscope` polarLevel: click the plot to reset peak hold)
+- **Time-window zoom** (`DockWaveform` / `DockLoudness` / `DockSpectrogram`: wheel zoom + right double-click reset + window-seconds HUD). It is a reduced subset of the normal `useHistoryInteraction`, implemented separately in `useDockHistoryViewport`, with window width only, no time offset, and zoom not anchored at the cursor.
+
+Dock deliberately lacks:
+
+- **Value-axis zoom/pan** (normal mode's `useAxisInteraction` provides axis zoom for Level/Spectrum/Spectrogram/Loudness) — the dock strip is too narrow to have a grabbable axis.
+- **Panning the time axis into history / scrub selection** — the dock is a live-only viewport; history belongs to snapshot.
+- **Spectrum press-and-hold curve freeze** and **Vectorscope hold-slow trails** — both "hold" gestures; the first is feasible but low value, and half of the second is already covered by the dock's always-on correlation smoothing while the other half (Lissajous phosphor) is costly for little return. Both were evaluated and dropped.
+
+---
+
+## 8. Platform notes
+
+| Platform | System audio path                                                  | Minimum version                                                                    |
+| -------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11)   |
+| macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                    |
+
+Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User guidance on unsigned-install friction (Gatekeeper / SmartScreen) is in `README.md`.

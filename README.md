@@ -181,7 +181,7 @@ Build, release, and verification commands are in [CONTRIBUTING.md](CONTRIBUTING.
 
 Development documentation — architecture, product boundaries, design tokens, decision records and
 the frozen history of specs and plans — lives under [`docs/`](docs/README.md) and is written for
-maintainers and agents working in this repository, largely in Chinese.
+maintainers and agents working in this repository.
 
 ---
 
