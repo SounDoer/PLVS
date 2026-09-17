@@ -84,11 +84,14 @@ existing flow. Until then, ignore this section.
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  Step 4b: Reconcile the public documents                        │
-│  - Read this release's CHANGELOG entry, then check README.md    │
-│    and landing/docs/index.html against it                       │
-│  - Every user-visible change must be described there, and no    │
-│    claim may contradict what now ships                          │
+│  Read this release's CHANGELOG entry, then check:               │
+│  - docs/user/: every user-visible change is described in its    │
+│    chapter, and no claim contradicts what now ships             │
+│  - README.md highlights still summarise the product             │
+│  - landing/index.html selling points still hold                 │
+│  - landing/assets screenshots: retake if the UI visibly changed │
 │  - A changed promise or non-goal also updates docs/prd.md       │
+│  The website deploys from the tag after the release publishes.  │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐

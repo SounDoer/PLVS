@@ -2,7 +2,7 @@
 
 ## Abstract
 
-PLVS is a **local, read-only real-time audio meter** for **sound designers and mix engineers**: **Peak/level**, **LUFS loudness**, **FFT spectrum (RTA-style)**, **spectrogram**, **vectorscope/correlation**, and **waveform**, delivered as a **Tauri desktop app** for **Windows and macOS** with **equal product intent** (implementation constraints are documented separately). PLVS centers on **live monitoring** but also supports an **offline file-analysis mode** for local audio files (still read-only). The app **does not process**, **route**, or **modify** audio; it **does not** ship as a plug-in, **does not** target Linux, and **does not** pursue storefront distribution in the near term. **Loudness** is based on **ITU-R BS.1770** measurement practice with **EBU R128** production/gating usage; **spectrum** is an **FFT-based RTA aligned with common DAW practice** (per-band power integrates FFT bins using **fractional Hz overlap** between band edges and each bin’s frequency tile; vertical scale is **in-band level in the dBFS domain**—same digital full-scale reference as peak meters but a different detector definition; see `docs/architecture.md`), not IEC 61260 filter-bank metrology. This PRD states **product intent and boundaries only**; the current feature inventory lives in `README.md` and `CHANGELOG.md`. **English is the default UI language**; **i18n** is a future option. **Privacy**: audio stays on device; **no default telemetry**; update checks are automatic; Feedback diagnostics and crash reports are transmitted only after an explicit user action; audio samples are never attached; **no silent failure** for user-visible metering health. **Legacy browser builds** are **not maintained** and **may be removed**. **Distribution** is via **GitHub Releases**; **in-app update checking** is a committed feature, while **code signing and Apple notarization** remain **optional future milestones**.
+PLVS is a **local, read-only real-time audio meter** for **sound designers and mix engineers**: **Peak/level**, **LUFS loudness**, **FFT spectrum (RTA-style)**, **spectrogram**, **vectorscope/correlation**, and **waveform**, delivered as a **Tauri desktop app** for **Windows and macOS** with **equal product intent** (implementation constraints are documented separately). PLVS centers on **live monitoring** but also supports an **offline file-analysis mode** for local audio files (still read-only). The app **does not process**, **route**, or **modify** audio; it **does not** ship as a plug-in, **does not** target Linux, and **does not** pursue storefront distribution in the near term. **Loudness** is based on **ITU-R BS.1770** measurement practice with **EBU R128** production/gating usage; **spectrum** is an **FFT-based RTA aligned with common DAW practice** (per-band power integrates FFT bins using **fractional Hz overlap** between band edges and each bin’s frequency tile; vertical scale is **in-band level in the dBFS domain**—same digital full-scale reference as peak meters but a different detector definition; see `docs/architecture.md`), not IEC 61260 filter-bank metrology. This PRD states **product intent and boundaries only**; the current feature inventory lives in the user guide (`docs/user/`) and `CHANGELOG.md`. **English is the default UI language**; **i18n** is a future option. **Privacy**: audio stays on device; **no default telemetry**; update checks are automatic; Feedback diagnostics and crash reports are transmitted only after an explicit user action; audio samples are never attached; **no silent failure** for user-visible metering health. **Legacy browser builds** are **not maintained** and **may be removed**. **Distribution** is via **GitHub Releases**; **in-app update checking** is a committed feature, while **code signing and Apple notarization** remain **optional future milestones**.
 
 ---
 
@@ -10,7 +10,7 @@ PLVS is a **local, read-only real-time audio meter** for **sound designers and m
 
 This document states **product intent** only: target users, promises, non-goals, experience principles, and the reasoning behind each boundary.
 
-It **does not inventory current capabilities**. Which panels exist, what each platform supports and what a release delivered are facts that change with every release; they live in **`README.md`** and **`CHANGELOG.md`**. **Tech stack, module layering and IPC details** are defined by **`architecture.md`**. The split lets this document stay unchanged for a long time; once it starts tracking the current state, it is guaranteed to go stale.
+It **does not inventory current capabilities**. Which panels exist, what each platform supports and what a release delivered are facts that change with every release; they live in the user guide **`docs/user/`** and **`CHANGELOG.md`**. **Tech stack, module layering and IPC details** are defined by **`architecture.md`**. The split lets this document stay unchanged for a long time; once it starts tracking the current state, it is guaranteed to go stale.
 
 ---
 
@@ -24,7 +24,7 @@ Distribution should be honest about **unsigned installs** and **Gatekeeper/Smart
 
 ## 3. Solution overview (user view)
 
-A **standalone desktop application**: the user chooses an **input source (including Automatic)** and starts monitoring, then sees **several meters** in one interface (current list in `README.md`).  
+A **standalone desktop application**: the user chooses an **input source (including Automatic)** and starts monitoring, then sees **several meters** in one interface (current list in `docs/user/panels.md`).  
 Data is **not uploaded by default**; history is **session-scoped**; export (if it appears) serves only the **current session**, and **reopening the app does not restore** earlier monitoring data.
 
 ---
@@ -43,9 +43,9 @@ Data is **not uploaded by default**; history is **session-scoped**; export (if i
 
 - **Monitoring only**: no **audio processing** such as EQ, limiting or re-routing.
 - **Form**: a **standalone app**; **no** VST/AU/AAX plug-in form.
-- **Platforms**: **Windows and macOS told as equals**; OS differences and minimum versions are stated honestly in `README.md` rather than smoothed over at the promise level.
+- **Platforms**: **Windows and macOS told as equals**; OS differences and minimum versions are stated honestly in the user guide rather than smoothed over at the promise level.
 - **Signal source**: **one signal-source dropdown (A)** — the same selector covers **system output (loopback / tap)** and **physical inputs**, including **Automatic / default output** semantics (the user chooses a **signal**, not an underlying API name).
-- **Meters**: multiple meters **on one screen** (list in `README.md`); **English UI** by default; **themes** **follow the system** by default, keep **Light/Dark**, and support **custom themes**.
+- **Meters**: multiple meters **on one screen** (list in `docs/user/panels.md`); **English UI** by default; **themes** **follow the system** by default, keep **Light/Dark**, and support **custom themes**.
 - **Privacy**: audio and metering data are **not sent anywhere by default**; **no default telemetry**; the **update check** is the only automatic outbound request (see 5.3); feedback diagnostics and crash reports leave the device **only after the user explicitly chooses to send them**, and **never include audio samples**; any future export or diagnostics must likewise be **explicit and optional**.
 - **Ethical floor**: **no silent failure** (see 5.4), and never let the user believe the app has quit while it is still capturing (consistent with 5.7).
 - **Overload**: when the system may **drop data / hit backpressure**, a **user-visible degraded notice** (for example **in the status bar**) is required; it must not pretend to still be accurate.
@@ -58,7 +58,7 @@ Data is **not uploaded by default**; history is **session-scoped**; export (if i
 - **User rules**: users can define **reference lines / ranges / rules** on the **same measurement results** for their own monitoring and judgement; the product does not promise an ever-growing set of platform-named presets.
 - **Spectrum**: follows **common FFT RTA engineering practice** (in-band energy aggregated over **continuous Hz edges** with **fractional overlap** of each FFT bin, not integer-bin truncation; **STFT** with fixed **hop=N/4** and **4-frame** incoherent averaging of in-band linear power before converting to dB); the vertical axis is in-band spectral power in the **dBFS domain** (the **same reference, a different definition** from sample-peak dBFS); it **does not claim** an IEC 61260 filter-bank metering path, and it is **not interchangeable** with loudness. The first public promise is **Spectrum as a fixed-definition reference view (B)**; the implementation is described in the DSP layer of **`docs/architecture.md`**.
 - **Multichannel**
-  - **Loudness**: reliably identified standard layouts use **proper multichannel integration (L1)** with weights from **ITU-R BS.1770**, excluding LFE; supported layouts are listed in `README.md`, weights and channel order in `architecture.md`.
+  - **Loudness**: reliably identified standard layouts use **proper multichannel integration (L1)** with weights from **ITU-R BS.1770**, excluding LFE; supported layouts are listed in `docs/user/multichannel.md`, weights and channel order in `architecture.md`.
   - **True Peak**: **True Peak Max covers every channel**, not just the first two.
   - **Layout strategy**: **Z + Y** — use L1 when the layout is reliably identified; otherwise **fall back to Ch1/Ch2 stereo loudness** and mark the fallback clearly **everywhere that reading is shown**. A degraded reading must be readable and must never pose as a proper surround reading.
   - **Layout identification**: up to 8 channels may be identified automatically by channel count; **higher channel counts are never guessed from the count alone**; the user can always set the layout manually.
@@ -70,7 +70,7 @@ Data is **not uploaded by default**; history is **session-scoped**; export (if i
 
 - **Distribution**: builds are obtained from **GitHub Releases**.
 - **In-app update check**: **a firm promise** — the app checks for new versions and tells the user; this is the only automatic outbound request by default, with privacy terms as in 5.1.
-- **Optional future milestone**: **code signing / Apple notarization** — **no committed date**; until then, the **SmartScreen / Gatekeeper** first-run friction is explained honestly in the README and release notes.
+- **Optional future milestone**: **code signing / Apple notarization** — **no committed date**; until then, the **SmartScreen / Gatekeeper** first-run friction is explained honestly in the user guide, README and release notes.
 
 ### 5.4 Runtime failure semantics
 

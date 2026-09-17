@@ -7,7 +7,8 @@ This file records only what an agent cannot infer from the code. Details live in
 | -------------------------------------------- | ------------------------------ |
 | Architecture, audio pipeline, IPC, theming   | `docs/architecture.md`         |
 | Engineering traps and incident context       | `docs/pitfalls.md`             |
-| Agent Control CLI commands and JSON contract | `docs/user/cli.md`                  |
+| User guide (source of the website docs page) | `docs/user/`                   |
+| Agent Control CLI commands and JSON contract | `docs/user/cli.md`             |
 | Agent Control implementation contract        | `docs/agent-control/README.md` |
 | Product scope and boundaries                 | `docs/prd.md`                  |
 | Design tokens                                | `docs/design-tokens.md`        |
@@ -33,6 +34,7 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                     |
 | `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the development GUI running. |
 | `npm run soak:capture`                 | Long-running capture soak, 4 hours by default.                                    |
+| `npm run docs:site`                    | Render `docs/user/` into `landing/docs/index.html` to preview the website docs.   |
 
 ## Agent Control
 
@@ -88,9 +90,16 @@ part into `docs/architecture.md` (what it is) or a new ADR (why it has to stay t
 that. Source comments may cite a record as evidence ("measured in …"), because they are versioned
 with the code beside them.
 
-**A change to user-visible scope updates `README.md` in the same commit.** `docs/prd.md` states
-intent and boundaries; it does not track what currently exists, so a new capability belongs in
-`README.md` and `CHANGELOG.md`, and reaches the PRD only when it changes a promise or a non-goal.
+**A change to user-visible behaviour updates the matching `docs/user/` chapter in the same
+commit.** The user guide is the single source for how PLVS behaves; the website renders it and is
+deployed only when a version is released, so writing it early publishes nothing. The `README.md`
+highlights, the landing page and its screenshots are summaries, reconciled at release by
+`skills/plvs-release` Step 4b. `docs/prd.md` states intent and boundaries; a new capability reaches
+it only when it changes a promise or a non-goal.
+
+Facts the code owns — panels, auto-detected layouts, the macOS minimum version, release package
+names, `plvs-cli` commands — are checked against the code by `scripts/documentationStructure.test.js`.
+Extend those checks instead of adding tests that assert sentences.
 
 Write an ADR when someone could look at the code and reasonably ask "why not just do the obvious
 simpler thing?". ADRs are never edited; a changed decision gets a new ADR that supersedes the old.

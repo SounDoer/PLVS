@@ -27,7 +27,7 @@ audio**.
 - **Session history and snapshots**, plus **File Mode** for analysing local audio files
 - **Dock mode**, compact views, and custom themes
 - **`plvs-cli`** for diagnosing the installation and controlling the running app
-- **Private by default**: audio stays on your device, with no telemetry by default
+- **Private**: audio stays on your device, with no telemetry by default
 
 Read the **[User Guide](docs/user/README.md)**, also published at
 [plvs.soundoer.com/docs](https://plvs.soundoer.com/docs/).
