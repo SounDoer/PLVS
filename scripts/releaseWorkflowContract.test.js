@@ -3,10 +3,11 @@ import { join } from "node:path";
 import { cwd } from "node:process";
 import { describe, expect, it } from "vitest";
 
+import { releaseAssetNames } from "./release-assets.mjs";
+
 const releaseWorkflow = readFileSync(join(cwd(), ".github", "workflows", "release.yml"), "utf8");
 const devBuildWorkflow = readFileSync(join(cwd(), ".github", "workflows", "dev-build.yml"), "utf8");
 const devBuildSkill = readFileSync(join(cwd(), "skills", "plvs-dev-build", "SKILL.md"), "utf8");
-const readme = readFileSync(join(cwd(), "README.md"), "utf8");
 const packageJson = JSON.parse(readFileSync(join(cwd(), "package.json"), "utf8"));
 
 describe("CLI packaging", () => {
@@ -42,9 +43,12 @@ describe("Windows Portable Release", () => {
     expect(releaseWorkflow).not.toContain("PLVS-${{ github.ref_name }}-x64-portable.exe");
   });
 
-  it("documents the Portable ZIP and sibling CLI requirement", () => {
-    expect(readme).toContain("PLVS_x64-portable.zip");
-    expect(readme).toContain("keep all extracted files together");
+  it("publishes the portable and macOS packages under the shared release asset names", () => {
+    // release.yml names these from the tag (`v<version>`); the installer name comes from Tauri.
+    const assets = releaseAssetNames("<version>");
+    for (const name of [assets.windowsPortable, assets.macosDmg]) {
+      expect(releaseWorkflow).toContain(name.replace("v<version>", "${{ github.ref_name }}"));
+    }
   });
 });
 

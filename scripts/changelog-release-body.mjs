@@ -13,6 +13,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { releaseAssetNames } from "./release-assets.mjs";
+
 const MAX_CUMULATIVE_SECTIONS = 20;
 
 const tagArg = process.argv[2] ?? "";
@@ -75,7 +77,8 @@ if (idx === -1) {
   body = (nextIdx === -1 ? afterHeader : afterHeader.slice(0, nextIdx)).trim();
 }
 
-// 固定追加的安装说明（中英文），版本号自动填充。每次发布都会出现在 GitHub Release 页面。
+// Installation notes appended to every GitHub Release (Chinese and English), with the version filled in.
+const assets = releaseAssetNames(semver);
 const installSection = [
   "",
   "---",
@@ -83,12 +86,12 @@ const installSection = [
   "## 安装",
   "",
   "### Windows",
-  `- **安装版**：下载 \`PLVS_${semver}_x64-setup.exe\`，双击运行。`,
-  `- **便携版**：下载 \`PLVS-v${semver}-x64-portable.zip\`，解压后运行 \`plvs.exe\`；请将解压出的所有文件保留在同一目录。`,
+  `- **安装版**：下载 \`${assets.windowsInstaller}\`，双击运行。`,
+  `- **便携版**：下载 \`${assets.windowsPortable}\`，解压后运行 \`plvs.exe\`；请将解压出的所有文件保留在同一目录。`,
   "- 首次运行时 SmartScreen 可能拦截（未代码签名），点击「更多信息」→「仍要运行」。",
   "",
   "### macOS (Apple Silicon)",
-  `- 下载 \`PLVS-v${semver}-aarch64.dmg\`，打开后将 PLVS 拖到「应用程序」。`,
+  `- 下载 \`${assets.macosDmg}\`，打开后将 PLVS 拖到「应用程序」。`,
   "- 首次打开若被 Gatekeeper 拦截（未签名），在终端执行：",
   "",
   "```bash",
@@ -100,12 +103,12 @@ const installSection = [
   "## Installation",
   "",
   "### Windows",
-  `- **Installer**: Download \`PLVS_${semver}_x64-setup.exe\` and double-click to run.`,
-  `- **Portable**: Download \`PLVS-v${semver}-x64-portable.zip\`, extract it, then run \`plvs.exe\`; keep all extracted files together.`,
+  `- **Installer**: Download \`${assets.windowsInstaller}\` and double-click to run.`,
+  `- **Portable**: Download \`${assets.windowsPortable}\`, extract it, then run \`plvs.exe\`; keep all extracted files together.`,
   '- SmartScreen may warn on first launch (unsigned build). Click "More info" → "Run anyway".',
   "",
   "### macOS (Apple Silicon)",
-  `- Download \`PLVS-v${semver}-aarch64.dmg\`, open it and drag PLVS to Applications.`,
+  `- Download \`${assets.macosDmg}\`, open it and drag PLVS to Applications.`,
   "- If Gatekeeper blocks the app on first open (unsigned build), run in Terminal:",
   "",
   "```bash",

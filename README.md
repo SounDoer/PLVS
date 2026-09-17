@@ -73,9 +73,9 @@ PLVS **does not process, route, or modify audio**. It's a monitor — it watches
 
 | Platform                  | Package                 | Notes                                         |
 | ------------------------- | ----------------------- | --------------------------------------------- |
-| **Windows 10/11 (x64)**   | `PLVS_x64-setup.exe`    | NSIS installer                                |
-| **Windows 10/11 (x64)**   | `PLVS_x64-portable.zip` | Portable — extract, no install required       |
-| **macOS (Apple Silicon)** | `PLVS_aarch64.dmg`      | Requires macOS 14.2+ for system audio capture |
+| **Windows 10/11 (x64)**   | `PLVS_<version>_x64-setup.exe` | NSIS installer                                |
+| **Windows 10/11 (x64)**   | `PLVS-v<version>-x64-portable.zip` | Portable — extract, no install required       |
+| **macOS (Apple Silicon)** | `PLVS-v<version>-aarch64.dmg` | Requires macOS 14.2+ for system audio capture |
 
 ### Installation notes
 
