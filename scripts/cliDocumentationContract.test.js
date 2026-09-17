@@ -8,11 +8,11 @@ const read = (...parts) => readFileSync(join(cwd(), ...parts), "utf8");
 describe("current CLI documentation", () => {
   it("describes opt-in PATH setup on public surfaces", () => {
     const readme = read("README.md");
-    const landing = read("landing", "docs", "index.html");
+    const landing = read("docs", "user", "command-line.md");
 
     expect(readme).toContain("Enabling Agent Control in Settings");
     expect(landing).not.toContain("Installer builds add");
-    expect(landing).toContain("Enabling Agent Control");
+    expect(landing).toContain("Enabling **Agent Control**");
     expect(landing).toContain("plvs-cli.exe");
   });
 

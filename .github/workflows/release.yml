@@ -1,6 +1,6 @@
-# Windows 安装包（NSIS）+ 便携 ZIP；macOS 安装包（DMG，Apple Silicon）。
-# - 每次手动运行或打 v* 标签时构建；产物上传为 workflow artifact。
-# - 仅在 push 版本标签时附加到 GitHub Release。
+# Windows installer (NSIS) + portable ZIP; macOS installer (DMG, Apple Silicon).
+# - Builds on every manual run or v* tag; outputs are uploaded as workflow artifacts.
+# - Attaches them to the GitHub Release only when a version tag is pushed.
 
 name: Release
 
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 jobs:
-  # 发布门禁：跑与 CI 一致的前端检查，红灯则不构建任何安装包。
+  # Release gate: run the same frontend checks as CI; if they fail, no installer is built.
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -46,7 +46,7 @@ jobs:
       - name: Build frontend (Vite)
         run: npm run build
 
-  # 发布门禁：跑与 CI 一致的 Rust 检查（rustfmt / clippy / cargo test）。
+  # Release gate: run the same Rust checks as CI (rustfmt / clippy / cargo test).
   verify-rust:
     # ubuntu-24.04 (glibc 2.39) provides the __isoc23_* symbols the prebuilt ONNX Runtime (ort)
     # links against; 22.04 (glibc 2.35) fails to link them.
@@ -294,3 +294,17 @@ jobs:
           files: latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The website describes the released app, so it is published only after a release. A release
+  # created with GITHUB_TOKEN does not trigger other workflows, but workflow_dispatch is exempt.
+  deploy-landing:
+    needs: [publish-updater-manifest]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch the website deployment for this tag
+        run: gh workflow run deploy-landing.yml --repo "${{ github.repository }}" --ref main -f ref="${{ github.ref_name }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
