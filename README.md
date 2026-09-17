@@ -11,189 +11,62 @@
   <img src="https://raw.githubusercontent.com/SounDoer/PLVS/main/landing/assets/landing-hero.webp" alt="PLVS workspace with live metering panels" width="100%"/>
 </p>
 
----
-
 ## What is PLVS?
 
-PLVS (reads as _"plus"_) is a **read-only desktop companion** built for **sound designers and mix engineers**. It keeps your audio's level, shape, and movement in view while you work — no DAW routing, no virtual cables, no plugin slots required.
+PLVS (reads as _"plus"_) is a **read-only desktop companion** for **sound designers and mix
+engineers** on Windows and macOS. It keeps your audio's level, shape, and movement in view while you
+work — no DAW routing, no virtual cables, no plugin slots. PLVS **does not process, route, or modify
+audio**.
 
-- [**Website**](https://plvs.soundoer.com)
-- [**User Docs**](https://plvs.soundoer.com/docs/)
+- **Level Meter, Loudness, Stats, Spectrum, Spectrogram, Vectorscope, Stereo Map, and Waveform** in
+  one arrangeable workspace
+- **System output, a single application, or a physical input**, captured natively
+- **Loudness** following ITU-R BS.1770 / EBU R128, with your own **Loudness Profiles** and optional
+  **dialogue-gated** readouts
+- **Multichannel** from mono through 9.1.6
+- **Session history and snapshots**, plus **File Mode** for analysing local audio files
+- **Dock mode**, compact views, and custom themes
+- **`plvs-cli`** for diagnosing the installation and controlling the running app
+- **Private by default**: audio stays on your device, with no telemetry by default
 
-It can also work offline in **file mode**: drop in a local audio file and scrub through its full metering history across every meter.
-
-Installed builds also include **`plvs-cli`** for runtime diagnosis and control of an already-running PLVS app. Use `doctor` to verify the installation, then inspect or change the same state visible in the app through local Agent Control on Windows or macOS. See [CLI](docs/user/cli.md) for the full reference.
-
-It combines eight metering panels in a single desktop app:
-
-| Panel           | What it shows                                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Level Meter** | Per-channel level bars, switchable between sample Peak (dBFS) and Momentary / Short-term loudness (LUFS)                 |
-| **Loudness**    | Momentary & Short-term LUFS history curves (ITU-R BS.1770, EBU R128) with a configurable reference overlay               |
-| **Stats**       | Configurable numeric readouts — Integrated, LRA, max values, dynamics, plus optional dialogue-gated metrics; reorderable |
-| **Spectrum**    | FFT-based real-time analyzer with per-band dBFS                                                                          |
-| **Spectrogram** | Scrolling time-frequency waterfall                                                                                       |
-| **Vectorscope** | Stereo phase / correlation with configurable channel pairs                                                               |
-| **Stereo Map**  | Per-frequency stereo image across the spectrum — Position, Correlation, Mono Loss, or M/S Ratio                          |
-| **Waveform**    | Per-channel DAW-style amplitude envelope over the session history                                                        |
-
-PLVS **does not process, route, or modify audio**. It's a monitor — it watches your signal and gets out of the way.
-
----
-
-## Features
-
-- **No routing required** — monitors any audio playing on your machine. Windows uses WASAPI loopback; macOS uses the native audio tap.
-- **Resilient Windows capture** — when Windows invalidates an active endpoint during an audio configuration change such as toggling Spatial Sound, PLVS rebuilds the stream and starts a fresh measurement automatically.
-- **Per-application capture** — on Windows or macOS, pick a single running audio application from the same source dropdown and meter only its output, instead of everything the system is playing.
-- **File analysis mode** — drop in a local audio file to meter it offline: probe metadata, decode through a bundled FFmpeg sidecar (wide format support), and scrub through the full session history across every meter.
-- **Multichannel** — auto-detects mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 with proper per-channel metering and BS.1770 weighting; immersive layouts up to 9.1.6 can be selected by hand in Settings.
-- **Detailed spectrum analysis** — multi-resolution FFT analyzer with M/S and L/R overlays, peak-hold, log-frequency grid, and musical note names on hover.
-- **Interactive charts** — zoom, pan, and scrub every chart with adaptive tick labels and a live hover probe.
-- **Session history & snapshots** — scroll back through the loudness timeline. Click any moment to freeze all meters at that snapshot, then return to live with one click.
-- **Loudness profiles** — build your own rule sets (targets, ranges, tolerances) and have them drive the loudness reference lines, the colouring of the Stats readouts, and the True Peak Max marker on the Level Meter. Parameters are yours to name and edit; PLVS ships no platform or broadcast certification presets.
-- **Dialogue-gated loudness** _(optional)_ — speech-aware readouts that measure loudness only over detected dialogue: **Coverage** (how much of the program is speech), **Integrated**, **Range (LRA)**, and **Offset** (how far dialogue sits above or below the overall mix), with a live "speaking now" indicator. Powered by a selectable on-device voice-activity-detection engine (see [Acknowledgements](#acknowledgements)); enable it by adding any dialogue readout to the loudness stats. A real-time monitoring estimate, not a certified dialogue measurement.
-- **Flexible layout & theming** — drag dividers, resize panels, open multiple instances of the same meter, and switch between presets from the toolbar. Includes a theme editor and several built-in themes, plus transparent-window and per-panel opacity controls.
-- **Views & dock mode** — pare the window down for monitoring: **Compact Panels**, **Hide Chrome**, **Auto-hide Controls**, and a **Dock** mode that parks a slim, always-on-top strip against the top or bottom edge of the screen.
-- **System integration** — system tray, always-on-top window pinning, open-at-login, and customizable global keyboard shortcuts.
-- **Privacy-first** — audio stays on device, there is no default telemetry, and update checks are automatic. Feedback diagnostics and saved crash reports are sent only after you explicitly choose to send them; audio samples are never attached.
-
-## Limitations
-
-- **ASIO is not supported on Windows.** ASIO drivers bypass the Windows audio mixer entirely, so WASAPI loopback capture cannot intercept the signal. If you are using a DAW (e.g. REAPER, Ableton Live), set the DAW's audio system to **WASAPI** to allow PLVS to capture its output. For setups that require ASIO, routing through a virtual audio cable (e.g. VB-Cable) to a WASAPI-visible device is a workable alternative.
-- **Per-application capture follows the selected system output path.** Windows needs build 20348 or newer, and applications using ASIO or WASAPI exclusive mode bypass its process-loopback path. On macOS 14.2+, the source list contains applications currently connected to Core Audio; capture follows the current default output device.
-- **Dialogue-gated readouts are an estimate, not a certified measurement.** Dialogue detection uses an on-device open-source VAD engine (Silero VAD by default) rather than the proprietary Dolby Dialogue Intelligence used by certified broadcast tools, so the dialogue values can differ from those tools by a small margin. It also detects voice activity in general — singing is counted as speech — so the readings run high on music with prominent vocals. Use it for monitoring, not for compliance sign-off.
-
----
+Read the **[User Guide](docs/user/README.md)**, also published at
+[plvs.soundoer.com/docs](https://plvs.soundoer.com/docs/).
 
 ## Download
 
-> [!TIP]
-> Visit [**GitHub Releases**](https://github.com/SounDoer/PLVS/releases) for the latest version.
+Get the latest version from [**GitHub Releases**](https://github.com/SounDoer/PLVS/releases) or the
+[website](https://plvs.soundoer.com).
 
-| Platform                  | Package                 | Notes                                         |
-| ------------------------- | ----------------------- | --------------------------------------------- |
-| **Windows 10/11 (x64)**   | `PLVS_<version>_x64-setup.exe` | NSIS installer                                |
-| **Windows 10/11 (x64)**   | `PLVS-v<version>-x64-portable.zip` | Portable — extract, no install required       |
-| **macOS (Apple Silicon)** | `PLVS-v<version>-aarch64.dmg` | Requires macOS 14.2+ for system audio capture |
+| Platform                  | Package                            | Notes                                    |
+| ------------------------- | ---------------------------------- | ---------------------------------------- |
+| **Windows 10/11 (x64)**   | `PLVS_<version>_x64-setup.exe`     | Installer                                |
+| **Windows 10/11 (x64)**   | `PLVS-v<version>-x64-portable.zip` | Portable — keep extracted files together |
+| **macOS (Apple Silicon)** | `PLVS-v<version>-aarch64.dmg`      | Requires macOS 14.2 or later             |
 
-### Installation notes
+Builds are not code-signed or notarized yet. On Windows, choose **More info** → **Run anyway** if
+SmartScreen warns. On macOS, run `xattr -cr /Applications/PLVS.app` once if Gatekeeper blocks the
+first launch. See [Getting Started](docs/user/getting-started.md) for details.
 
-For Windows Portable, extract the ZIP, keep all extracted files together, and launch `plvs.exe`.
+## Documentation
 
-<details>
-<summary><b>macOS — first launch warning</b></summary>
-
-PLVS is not notarized by Apple. If macOS blocks the app on first launch, run:
-
-```bash
-xattr -cr /Applications/PLVS.app
-```
-
-Alternatively, move PLVS.app to the Trash and immediately move it back — this also clears the quarantine flag.
-
-</details>
-
-<details>
-<summary><b>Windows — SmartScreen warning</b></summary>
-
-The installer is not code-signed. If SmartScreen blocks it, click **More info** → **Run anyway**.
-
-</details>
-
----
-
-## Quick Start
-
-1. **Download** the installer for your platform from [Releases](https://github.com/SounDoer/PLVS/releases).
-2. **Launch** PLVS and select your audio source from the toolbar dropdown:
-   - _System Output_ (default) — monitors whatever is playing on your machine.
-   - _Input device_ — monitors a physical microphone or line input.
-3. **Press Start** to begin monitoring.
-4. **Arrange panels** by dragging dividers and choosing a layout preset from the toolbar.
-5. **Click any point** on the loudness history chart to freeze a snapshot across all meters.
-6. **Analyze a file** _(optional)_ — open a local audio file from the toolbar to meter it offline and scrub through its history.
-
----
-
-## CLI
-
-Windows builds include `plvs-cli.exe` beside the application. Enabling Agent Control in Settings
-adds that directory to the current user's `PATH`; otherwise invoke it by full path. From a Portable
-folder, use `.\plvs-cli.exe`.
-
-macOS builds include `plvs-cli` at `/Applications/PLVS.app/Contents/MacOS/plvs-cli` (or the same
-path below `~/Applications`). PLVS does not edit shell startup files on macOS; use the full path or
-create your own optional symlink.
-
-```powershell
-plvs-cli --help
-plvs-cli doctor --json --out doctor.json
-plvs-cli capabilities --json
-plvs-cli inspect --json
-plvs-cli workspace apply layout.json --json --expected-revision 44
-```
-
-`doctor` works while PLVS is closed. Every other current command requires PLVS to be running with Agent Control enabled in Settings. Agent Control is available on Windows and macOS; individual native features such as Visual Capture may still be platform-specific. It controls or inspects the same state visible in PLVS and does not provide a headless replacement for the desktop app.
-
-Run `capabilities` to discover the supported methods, then `inspect` to read the current state and global revision. Every mutation requires that revision through `--expected-revision`; on a conflict, inspect again and reconcile instead of retrying blindly. See [docs/user/cli.md](docs/user/cli.md) for the JSON contract, complete Agent Control surface, and exit codes.
-
----
+- [**User Guide**](docs/user/README.md) — how to use PLVS
+- [**CLI Reference**](docs/user/cli.md) — `plvs-cli` commands and JSON contract
+- [**CHANGELOG**](CHANGELOG.md) — what changed in each version
+- [**Developer documentation**](docs/README.md) — architecture, product boundaries, and decision
+  records, for maintainers and agents
 
 ## Development
-
-Requires [Node.js ≥ 24.19.0](https://nodejs.org/) and [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) (Rust, platform build tools).
 
 ```bash
 git clone https://github.com/SounDoer/PLVS.git
 cd PLVS
 npm install
-npm run desktop        # start dev build with hot reload
+npm run desktop        # start the development app
+npm run check          # the full gate before sending a change
 ```
 
-Before sending a change, run the full gate:
-
-```bash
-npm run check          # version + format + lint + test + build + Rust
-```
-
-Build, release, and verification commands are in [CONTRIBUTING.md](CONTRIBUTING.md).
-
-### Tech Stack
-
-| Layer           | Technology                                           |
-| --------------- | ---------------------------------------------------- |
-| Desktop shell   | [Tauri v2](https://v2.tauri.app/) (Rust)             |
-| Frontend        | React 19 + Vite                                      |
-| Styling         | Tailwind CSS v4                                      |
-| UI primitives   | Radix UI + shadcn/ui patterns                        |
-| Charts & canvas | Custom Canvas 2D rendering pipeline                  |
-| Audio capture   | WASAPI loopback (Windows) / native audio tap (macOS) |
-| DSP             | Custom Rust pipeline — FFT, LUFS, peak, correlation  |
-| Testing         | Vitest (frontend), `cargo test` (Rust)               |
-
----
-
-## Documentation
-
-- [**User Docs**](https://plvs.soundoer.com/docs/) — how to use PLVS, written for people using the app.
-- [**CLI**](docs/user/cli.md) — installed command-line companion for agents, support, and automation.
-
-Development documentation — architecture, product boundaries, design tokens, decision records and
-the frozen history of specs and plans — lives under [`docs/`](docs/README.md) and is written for
-maintainers and agents working in this repository.
-
----
-
-## Contributing
-
-Contributions are welcome. Before submitting a PR, please read [CONTRIBUTING.md](CONTRIBUTING.md) for environment setup, code conventions, and CI expectations.
-
-- All code comments and docstrings should be in **English**.
-- The full pre-merge check is `npm run check`.
-- See [`docs/README.md`](docs/README.md) for a documentation map.
-
----
+Setup requirements, build and release commands, and conventions are in
+[CONTRIBUTING.md](CONTRIBUTING.md). Contributions are welcome.
 
 ## Acknowledgements
 
@@ -209,8 +82,6 @@ PLVS stands on the shoulders of excellent open-source work. In particular:
 - [**Tauri**](https://v2.tauri.app/) — the desktop application framework (MIT / Apache-2.0).
 
 Thanks to all the maintainers and contributors of these projects.
-
----
 
 ## License
 
