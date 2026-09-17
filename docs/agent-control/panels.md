@@ -1,7 +1,7 @@
 # Panel Control
 
 Panel Control reads and changes one live panel's public controls. Revision, dry run, the success
-result and shared error codes follow the common contract in [`../cli.md`](../cli.md); this page
+result and shared error codes follow the common contract in [`../user/cli.md`](../user/cli.md); this page
 covers what is specific to panels. Fields, types, units, defaults and bounds for each module are
 generated from the schema in `generated/panel-<module>.md`.
 

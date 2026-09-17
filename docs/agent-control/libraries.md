@@ -98,7 +98,7 @@ the GUI does; the rule lives in `src/transfer/collectPackItems.js` and is shared
 `--out <file>` **moves** the pack out of the envelope: Rust writes the pretty-printed document plus
 a trailing newline to that path, then removes `result.pack` and inserts `result.out`. The two never
 appear together, so a script can tell which it got without inspecting sizes. This is not the tee
-behaviour of `doctor --out`; see [`../cli.md`](../cli.md#output-files).
+behaviour of `doctor --out`; see [`../user/cli.md`](../user/cli.md#output-files).
 
 The frontend performs no file IO for these commands. The path is resolved by the CLI, relative to
 the caller's working directory, not the app's.

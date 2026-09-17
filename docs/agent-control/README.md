@@ -6,7 +6,7 @@ implemented; a family that is not implemented does not belong on these pages.
 
 Three places divide the work, and nothing is said in two of them:
 
-- [`../cli.md`](../cli.md) owns the public contract every family shares: the JSON envelope, global
+- [`../user/cli.md`](../user/cli.md) owns the public contract every family shares: the JSON envelope, global
   revision, dry run, the success result, shared error codes, exit codes, and the development
   wrapper.
 - [`generated/`](generated/commands.md) is the reference for command IDs, CLI paths, arguments,

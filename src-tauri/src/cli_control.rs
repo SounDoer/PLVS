@@ -3360,7 +3360,7 @@ fn finish_export(command: &ControlCommand, report: &mut ControlReport, exit_code
     Err(failure) => {
       eprintln!("{failure}");
       // 1, not 2: the app answered and the pack is in hand, so this is a local write failure, which
-      // `docs/cli.md`'s exit-code table lists under 1. Reporting 2 would tell a script the app is
+      // `docs/user/cli.md`'s exit-code table lists under 1. Reporting 2 would tell a script the app is
       // unreachable and send it into a retry that a full disk cannot satisfy.
       1
     }

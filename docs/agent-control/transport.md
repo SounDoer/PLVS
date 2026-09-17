@@ -109,7 +109,7 @@ file, and the report schema has no field that marks a partial report.
 
 The success result is `{ revision, sessionId, report }`. `--out` moves the report into a file and
 replaces `result.report` with `result.out`, exactly as library and configuration export do; see
-[Output Files](../cli.md#output-files). `fileAnalysis` schema version 1 is the only public
+[Output Files](../user/cli.md#output-files). `fileAnalysis` schema version 1 is the only public
 file-analysis report format; the internal capture harness output is not a public contract.
 
 `--report-format markdown` returns `{ revision, sessionId, markdown }` instead: the same report

@@ -17,7 +17,7 @@ alone makes them wrong, so they are updated in the same commit as the change.
 | [architecture.md](architecture.md)                 | Tech stack, directory map, audio pipeline, IPC, theme system       |
 | [design-tokens.md](design-tokens.md)               | CSS variable system, semantic tokens, theme structure, text casing |
 | [pitfalls.md](pitfalls.md)                         | Counter-intuitive behaviour and the incident context behind rules  |
-| [cli.md](cli.md)                                   | `plvs-cli` command reference                                       |
+| [user/cli.md](user/cli.md)                         | `plvs-cli` command reference                                       |
 | [agent-control/](agent-control/)                   | Agent Control contract; `generated/` is produced by tooling        |
 | [ffmpeg-sidecar-build.md](ffmpeg-sidecar-build.md) | How the bundled FFmpeg sidecar is built and fetched                |
 
@@ -61,4 +61,4 @@ agents, including where to write new documents.
 
 Some claims are checked by tests rather than by review — the panel table in `README.md` must match
 `src/workspace/moduleCatalog.js`, living documents must not link into `history/`, Agent Control pages must leave command syntax to
-`agent-control/generated/`, and the CLI surface is asserted against `docs/cli.md`. They run as part of `npm run check`.
+`agent-control/generated/`, and the CLI surface is asserted against `docs/user/cli.md`. They run as part of `npm run check`.

@@ -2,7 +2,7 @@
 
 Revision Wait (`app.wait`) lets an agent sleep until the global revision changes instead of
 polling inspection. Flags, the result shape, and the timeout exit code are part of the common
-contract in [`../cli.md`](../cli.md#waiting-for-change); command syntax is in
+contract in [`../user/cli.md`](../user/cli.md#waiting-for-change); command syntax is in
 [`generated/commands.md`](generated/commands.md). It waits only for revision changes — it takes no
 field expressions. [Measurement Wait](measurement-wait.md) waits for a LIVE measurement sample
 instead, without changing what the revision means.

@@ -93,7 +93,7 @@ plvs-cli --version
 ```
 
 Use `plvs-cli --help` for the command families. The generated
-[command catalog](agent-control/generated/commands.md) is the complete static reference for CLI
+[command catalog](../agent-control/generated/commands.md) is the complete static reference for CLI
 paths, options, policies, and top-level wire parameters. The current families are:
 
 - `inspect`, `capabilities`, `measurement`, `view`, `visual`, and `wait`;
@@ -163,9 +163,9 @@ plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json
 ```
 
 These commands never start capture or optional analysis and do not expose File results, history,
-or raw visual data. See [Measurement Control](agent-control/measurements.md) for freshness, null
+or raw visual data. See [Measurement Control](../agent-control/measurements.md) for freshness, null
 reasons, profile evaluation, and revision behavior, and
-[Measurement Wait](agent-control/measurement-wait.md) for identity waits, bounded predicates, hold
+[Measurement Wait](../agent-control/measurement-wait.md) for identity waits, bounded predicates, hold
 durations, and timeout semantics.
 
 View Control reads and changes the persistent working-view scene:
@@ -178,7 +178,7 @@ plvs-cli view reset --expected-revision <n> --json [--dry-run]
 ```
 
 It covers Always on Top (`pinned`), Focus View, panel opacity, and macOS Glass. See
-[View Control](agent-control/view.md) for strict patch validation, platform availability, Dock
+[View Control](../agent-control/view.md) for strict patch validation, platform availability, Dock
 suspension, and native rollback behavior.
 
 Visual Capture saves the actual rendered pixels of the running app. Screenshots and recording are
@@ -195,7 +195,7 @@ plvs-cli visual recording stop <recording-id> [--out <file.mp4>] --json
 
 Live recordings default to the measured source; File recordings default to `none`, and an explicit
 File `measured-source` request fails. Recording output is finalized by `wait` or `stop`, not
-`start`. See [Visual Capture](agent-control/visual.md) for target meaning, revision correlation,
+`start`. See [Visual Capture](../agent-control/visual.md) for target meaning, revision correlation,
 audio gaps, lifecycle, limits, retention, output-file behavior, and stable errors.
 
 `preset list` predates them and belongs to Preset Control; `preset export` and `preset import` are
@@ -211,7 +211,7 @@ plvs-cli loudness-profile delete <id> --expected-revision <n> --json [--dry-run]
 plvs-cli loudness-profile reorder <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
-See [Loudness Profile Control](agent-control/loudness-profiles.md) for its document schema, mutation
+See [Loudness Profile Control](../agent-control/loudness-profiles.md) for its document schema, mutation
 semantics, and errors. Theme Control provides Appearance and authoring commands:
 
 ```powershell
@@ -227,7 +227,7 @@ plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
 plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
-See [Theme Control](agent-control/themes.md) for Theme V2 authoring, built-in permissions, selection
+See [Theme Control](../agent-control/themes.md) for Theme V2 authoring, built-in permissions, selection
 and fallback semantics, revision behavior, and editor blocking.
 
 Everything configuration export uses the same `.plvsconfig` document as Settings:
@@ -251,10 +251,10 @@ plvs-cli device select <device-id|default> --expected-revision <n> --expected-ge
 
 Selection accepts only `default` or an exact ID returned by `device list`. Inventory changes use a
 separate generation token and do not advance the global revision. A running Live switch requires
-`--allow-measurement-restart`. See [Device Control](agent-control/devices.md) for inventory fields,
+`--allow-measurement-restart`. See [Device Control](../agent-control/devices.md) for inventory fields,
 Automatic semantics, dry-run, persistence/restart settlement, and copyable workflows.
 
-Detailed payloads and behavior are documented in [Agent Control](agent-control/README.md).
+Detailed payloads and behavior are documented in [Agent Control](../agent-control/README.md).
 
 ## JSON Contract
 
@@ -294,7 +294,7 @@ context. Consumers must ignore unknown fields. A conceptually present but unavai
 and identifiers are opaque strings whose spelling carries no type or chronology.
 
 The canonical v1 examples live in
-[`shared/cli-v1-envelope-fixtures.json`](../shared/cli-v1-envelope-fixtures.json).
+[`shared/cli-v1-envelope-fixtures.json`](../../shared/cli-v1-envelope-fixtures.json).
 
 ### Doctor
 

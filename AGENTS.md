@@ -7,7 +7,7 @@ This file records only what an agent cannot infer from the code. Details live in
 | -------------------------------------------- | ------------------------------ |
 | Architecture, audio pipeline, IPC, theming   | `docs/architecture.md`         |
 | Engineering traps and incident context       | `docs/pitfalls.md`             |
-| Agent Control CLI commands and JSON contract | `docs/cli.md`                  |
+| Agent Control CLI commands and JSON contract | `docs/user/cli.md`                  |
 | Agent Control implementation contract        | `docs/agent-control/README.md` |
 | Product scope and boundaries                 | `docs/prd.md`                  |
 | Design tokens                                | `docs/design-tokens.md`        |

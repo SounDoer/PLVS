@@ -19,7 +19,7 @@ describe("current CLI documentation", () => {
   it("documents current development and release commands", () => {
     const contributing = read("CONTRIBUTING.md");
     const readme = read("README.md");
-    const cli = read("docs", "cli.md");
+    const cli = read("docs", "user", "cli.md");
     const agentControl = read("docs", "agent-control", "README.md");
 
     expect(contributing).not.toContain("release CLI 不显示 `app` 命令");
@@ -53,7 +53,7 @@ describe("current CLI documentation", () => {
   });
 
   it("publishes the complete Loudness Profile Control contract", () => {
-    const cli = read("docs", "cli.md");
+    const cli = read("docs", "user", "cli.md");
     const agentControl = read("docs", "agent-control", "README.md");
     const profiles = read("docs", "agent-control", "loudness-profiles.md");
     const libraries = read("docs", "agent-control", "libraries.md");
@@ -83,7 +83,7 @@ describe("current CLI documentation", () => {
   });
 
   it("publishes Theme Control as the only Agent Control owner of Appearance", () => {
-    const cli = read("docs", "cli.md");
+    const cli = read("docs", "user", "cli.md");
     const agentControl = read("docs", "agent-control", "README.md");
     const themes = read("docs", "agent-control", "themes.md");
     const settings = read("docs", "agent-control", "settings.md");
@@ -121,7 +121,7 @@ describe("current CLI documentation", () => {
   });
 
   it("publishes the complete Device Control contract and safety flags", () => {
-    const cli = read("docs", "cli.md");
+    const cli = read("docs", "user", "cli.md");
     const agentControl = read("docs", "agent-control", "README.md");
     const devices = read("docs", "agent-control", "devices.md");
     const transport = read("docs", "agent-control", "transport.md");
@@ -150,7 +150,7 @@ describe("current CLI documentation", () => {
   });
 
   it("publishes the complete Visual Capture contract and bounded media rules", () => {
-    const cli = read("docs", "cli.md");
+    const cli = read("docs", "user", "cli.md");
     const agentControl = read("docs", "agent-control", "README.md");
     const visual = read("docs", "agent-control", "visual.md");
     const commands = read("docs", "agent-control", "generated", "commands.md");
@@ -186,7 +186,7 @@ describe("current CLI documentation", () => {
   });
 
   it("publishes the File analysis report command", () => {
-    const cli = read("docs", "cli.md");
+    const cli = read("docs", "user", "cli.md");
     const transport = read("docs", "agent-control", "transport.md");
     const commands = read("docs", "agent-control", "generated", "commands.md");
 
