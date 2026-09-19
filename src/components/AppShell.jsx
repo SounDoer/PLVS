@@ -115,10 +115,10 @@ export function AppShell({
                       autoHideControls ? shellHandlers.hideFocusControlsLater : undefined
                     }
                   >
-                    <span className={FOOTER_LABEL}>Device</span>
-                    <span className={FOOTER_VALUE}>{footer.deviceLabel}</span>
-                    {/* Beside Device because it is the capture's health, and it does not shrink:
-                      the device name truncates first so the warning stays readable. */}
+                    <span className={FOOTER_LABEL}>Source</span>
+                    <span className={FOOTER_VALUE}>{footer.sourceLabel}</span>
+                    {/* Beside Source because it is the capture's health, and it does not shrink:
+                      the source name truncates first so the warning stays readable. */}
                     {footer.audioDrop ? (
                       <span
                         title={describeAudioDrop(footer.audioDrop)}

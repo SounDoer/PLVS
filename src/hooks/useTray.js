@@ -22,35 +22,54 @@ function menuDeviceText(label) {
   return secondary ? `${primary} (${secondary})` : primary;
 }
 
-function deviceLabelFor({ safeAudioDeviceId, audioOutputs, audioInputs, defaultOutputLabel }) {
+function sourceLabelFor({
+  safeAudioDeviceId,
+  audioOutputs,
+  audioInputs,
+  captureApplications,
+  defaultOutputLabel,
+}) {
   if (safeAudioDeviceId === "default") {
-    return defaultOutputLabel ? menuDeviceText(defaultOutputLabel) : "Automatic";
+    const label = defaultOutputLabel ? menuDeviceText(defaultOutputLabel) : "Automatic";
+    return `Output · ${label}`;
   }
-  const match = [...audioOutputs, ...audioInputs].find((d) => d.id === safeAudioDeviceId);
-  return match ? menuDeviceText(match.label) : "Automatic";
+  const application = captureApplications.find((candidate) => candidate.id === safeAudioDeviceId);
+  if (application) return `Application · ${application.label}`;
+  const output = audioOutputs.find((device) => device.id === safeAudioDeviceId);
+  if (output) return `Output · ${menuDeviceText(output.label)}`;
+  const input = audioInputs.find((device) => device.id === safeAudioDeviceId);
+  return input ? `Input · ${menuDeviceText(input.label)}` : "Not connected";
 }
 
-async function buildDeviceItems({ audioOutputs, audioInputs, safeAudioDeviceId, onSelectDevice }) {
+async function buildSourceItems({
+  audioOutputs,
+  audioInputs,
+  captureApplications,
+  safeAudioDeviceId,
+  onSelectSource,
+}) {
   const items = [
     await CheckMenuItem.new({
       text: "Automatic (default system output)",
       checked: safeAudioDeviceId === "default",
-      action: () => onSelectDevice("default"),
+      action: () => onSelectSource("default"),
     }),
   ];
-  for (const [header, devices] of [
+  for (const [header, sources] of [
     ["Output", audioOutputs],
     ["Input", audioInputs],
+    ["Applications", captureApplications],
   ]) {
-    if (!devices.length) continue;
+    if (!sources.length) continue;
     items.push(await PredefinedMenuItem.new({ item: "Separator" }));
     items.push(await MenuItem.new({ text: header, enabled: false }));
-    for (const d of devices) {
+    for (const source of sources) {
+      const isApplication = header === "Applications";
       items.push(
         await CheckMenuItem.new({
-          text: menuDeviceText(d.label),
-          checked: safeAudioDeviceId === d.id,
-          action: () => onSelectDevice(d.id),
+          text: isApplication ? source.label : menuDeviceText(source.label),
+          checked: safeAudioDeviceId === source.id,
+          action: () => onSelectSource(source.id),
         })
       );
     }
@@ -101,9 +120,10 @@ async function buildMenu(cfg) {
     onQuit,
     audioOutputs,
     audioInputs,
+    captureApplications,
     safeAudioDeviceId,
     defaultOutputLabel,
-    onSelectDevice,
+    onSelectSource,
     presetList,
     presetActiveId,
     presetDirty,
@@ -132,23 +152,25 @@ async function buildMenu(cfg) {
     }),
     await PredefinedMenuItem.new({ item: "Separator" }),
     await Submenu.new({
-      text: `Device: ${deviceLabelFor({
+      text: `Source: ${sourceLabelFor({
         safeAudioDeviceId,
         audioOutputs,
         audioInputs,
+        captureApplications,
         defaultOutputLabel,
       })}`,
-      items: await buildDeviceItems({
+      items: await buildSourceItems({
         audioOutputs,
         audioInputs,
+        captureApplications,
         safeAudioDeviceId,
-        onSelectDevice,
+        onSelectSource,
       }),
     }),
     await Submenu.new({
       text: presetsBlocked
-        ? "Presets: Editing…"
-        : `Presets: ${presetLabelFor({ presetList, presetActiveId, presetDirty })}`,
+        ? "Preset: Editing…"
+        : `Preset: ${presetLabelFor({ presetList, presetActiveId, presetDirty })}`,
       enabled: !updateBusy,
       items: await buildPresetItems({
         presetList,
@@ -177,9 +199,10 @@ export function useTray({
   updateBusy = false,
   audioOutputs = [],
   audioInputs = [],
+  captureApplications = [],
   safeAudioDeviceId = "default",
   defaultOutputLabel = "",
-  onSelectDevice = () => {},
+  onSelectSource = () => {},
   presets = { list: [], activeId: null, dirty: false, blocked: false, apply: () => {} },
 }) {
   const isMac = isMacOS();
@@ -187,7 +210,7 @@ export function useTray({
 
   const onStartClickRef = useRef(onStartClick);
   const onToggleWindowRef = useRef(onToggleWindow);
-  const onSelectDeviceRef = useRef(onSelectDevice);
+  const onSelectSourceRef = useRef(onSelectSource);
   const onApplyPresetRef = useRef(presets.apply);
   const updateBusyRef = useRef(updateBusy);
   useLayoutEffect(() => {
@@ -200,8 +223,8 @@ export function useTray({
     onToggleWindowRef.current = onToggleWindow;
   }, [onToggleWindow]);
   useEffect(() => {
-    onSelectDeviceRef.current = onSelectDevice;
-  }, [onSelectDevice]);
+    onSelectSourceRef.current = onSelectSource;
+  }, [onSelectSource]);
   useEffect(() => {
     onApplyPresetRef.current = presets.apply;
   }, [presets.apply]);
@@ -214,7 +237,7 @@ export function useTray({
   const stableQuit = useCallback(() => {
     if (!updateBusyRef.current) exit(0);
   }, []);
-  const stableSelectDevice = useCallback((id) => onSelectDeviceRef.current(id), []);
+  const stableSelectSource = useCallback((id) => onSelectSourceRef.current(id), []);
   const stableApplyPreset = useCallback((id) => {
     if (updateBusyRef.current) return;
     // The items are disabled while the guard is up, but the menu is rebuilt asynchronously and a
@@ -232,6 +255,7 @@ export function useTray({
     updateBusy,
     audioOutputs,
     audioInputs,
+    captureApplications,
     safeAudioDeviceId,
     defaultOutputLabel,
     presetList: presets.list,
@@ -250,10 +274,10 @@ export function useTray({
       onToggleCapture: stableToggleCapture,
       onToggleWindow: stableToggleWindow,
       onQuit: stableQuit,
-      onSelectDevice: stableSelectDevice,
+      onSelectSource: stableSelectSource,
       onApplyPreset: stableApplyPreset,
     }),
-    [stableToggleCapture, stableToggleWindow, stableQuit, stableSelectDevice, stableApplyPreset]
+    [stableToggleCapture, stableToggleWindow, stableQuit, stableSelectSource, stableApplyPreset]
   );
 
   // Create tray once on mount.
@@ -324,6 +348,7 @@ export function useTray({
     defaultOutputLabel,
     audioOutputs,
     audioInputs,
+    captureApplications,
     presets.list,
     presets.activeId,
     presets.dirty,
