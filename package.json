@@ -92,7 +92,6 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.25.0",
-    "plvs": "file:../../..",
     "react": "^19.2.7",
     "react-colorful": "^5.8.0",
     "react-dom": "^19.2.7",

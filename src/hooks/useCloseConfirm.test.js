@@ -3,10 +3,11 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useCloseConfirm } from "./useCloseConfirm.js";
 
-const { mockExit, closeRequestedCallback } = vi.hoisted(() => {
+const { mockExit, mockFlushPersistence, closeRequestedCallback } = vi.hoisted(() => {
   const cb = { current: null };
   return {
     mockExit: vi.fn().mockResolvedValue(undefined),
+    mockFlushPersistence: vi.fn().mockResolvedValue(undefined),
     closeRequestedCallback: cb,
   };
 });
@@ -43,7 +44,7 @@ vi.mock("../persistence/index.js", () => {
     },
     subscribe: () => () => {},
   };
-  return { settingsStore };
+  return { settingsStore, flushPersistence: mockFlushPersistence };
 });
 
 describe("useCloseConfirm", () => {
@@ -51,6 +52,7 @@ describe("useCloseConfirm", () => {
     localStorage.clear();
     closeRequestedCallback.current = null;
     mockExit.mockClear();
+    mockFlushPersistence.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(() => vi.clearAllMocks());
@@ -75,7 +77,10 @@ describe("useCloseConfirm", () => {
     await act(async () => {
       await closeRequestedCallback.current({ preventDefault: vi.fn() });
     });
-    expect(onHideWindow).toHaveBeenCalled();
+    expect(mockFlushPersistence).toHaveBeenCalledOnce();
+    expect(mockFlushPersistence.mock.invocationCallOrder[0]).toBeLessThan(
+      onHideWindow.mock.invocationCallOrder[0]
+    );
   });
 
   it("does not open dialog when saved preference is 'tray'", async () => {
@@ -94,6 +99,10 @@ describe("useCloseConfirm", () => {
       await closeRequestedCallback.current({ preventDefault: vi.fn() });
     });
     expect(mockExit).toHaveBeenCalledWith(0);
+    expect(mockFlushPersistence).toHaveBeenCalledOnce();
+    expect(mockFlushPersistence.mock.invocationCallOrder[0]).toBeLessThan(
+      mockExit.mock.invocationCallOrder[0]
+    );
   });
 
   it("blocks close requests during an update even when quit is saved", async () => {
@@ -151,12 +160,65 @@ describe("useCloseConfirm", () => {
     expect(mockExit).toHaveBeenCalledWith(0);
   });
 
-  it("handleConfirm with dontAskAgain=true writes to localStorage", async () => {
+  it("flushes a saved close action before quitting", async () => {
     const { result } = renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
+    await act(async () => {
+      await result.current.handleConfirm("quit", true);
+    });
+    expect(JSON.parse(localStorage.getItem("plvs:settings")).closeAction).toBe("quit");
+    expect(mockFlushPersistence.mock.invocationCallOrder[0]).toBeLessThan(
+      mockExit.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("flushes a saved close action before hiding", async () => {
+    const onHideWindow = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useCloseConfirm({ onHideWindow }));
+
     await act(async () => {
       await result.current.handleConfirm("tray", true);
     });
+
     expect(JSON.parse(localStorage.getItem("plvs:settings")).closeAction).toBe("tray");
+    expect(mockFlushPersistence.mock.invocationCallOrder[0]).toBeLessThan(
+      onHideWindow.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("keeps the window open and shows a recoverable error when flush fails", async () => {
+    mockFlushPersistence.mockRejectedValueOnce(new Error("disk full"));
+    const onHideWindow = vi.fn();
+    const onShowWindow = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useCloseConfirm({ onHideWindow, onShowWindow }));
+
+    await act(async () => {
+      await result.current.requestCloseAction("tray");
+    });
+
+    expect(onHideWindow).not.toHaveBeenCalled();
+    expect(mockExit).not.toHaveBeenCalled();
+    expect(onShowWindow).toHaveBeenCalledOnce();
+    expect(result.current.dialogOpen).toBe(true);
+    expect(result.current.closeError).toContain("window was left open");
+  });
+
+  it("retries the pending action and closes after persistence succeeds", async () => {
+    mockFlushPersistence
+      .mockRejectedValueOnce(new Error("disk full"))
+      .mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
+
+    await act(async () => {
+      await result.current.requestCloseAction("quit");
+    });
+    await act(async () => {
+      await result.current.handleRetry();
+    });
+
+    expect(mockFlushPersistence).toHaveBeenCalledTimes(2);
+    expect(mockExit).toHaveBeenCalledWith(0);
+    expect(result.current.dialogOpen).toBe(false);
+    expect(result.current.closeError).toBeNull();
   });
 
   it("handleConfirm with dontAskAgain=false does not write to localStorage", async () => {

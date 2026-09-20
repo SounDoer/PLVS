@@ -547,11 +547,13 @@ function AppContent() {
     });
   }, [docked, suspendDockMode]);
 
-  const onToggleWindow = useCallback(async () => {
+  const onShowWindow = useCallback(async () => {
     if (!isTauri()) return;
+    const window = getCurrentWindow();
+    if (await window.isVisible()) return;
     await toggleAppWindow({
       docked,
-      window: getCurrentWindow(),
+      window,
       suspendDock: suspendDockMode,
       resumeDock: resumeDockMode,
     });
@@ -563,9 +565,28 @@ function AppContent() {
 
   const {
     dialogOpen: closeDialogOpen,
+    closeError,
+    closing,
     handleConfirm: handleCloseConfirm,
+    handleRetry: handleCloseRetry,
     handleCancel: handleCloseCancel,
-  } = useCloseConfirm({ onHideWindow, closeBlocked: updateBusy });
+    requestCloseAction,
+  } = useCloseConfirm({ onHideWindow, onShowWindow, closeBlocked: updateBusy });
+
+  const onToggleWindow = useCallback(async () => {
+    if (!isTauri()) return;
+    const window = getCurrentWindow();
+    if (await window.isVisible()) {
+      await requestCloseAction("tray");
+      return;
+    }
+    await toggleAppWindow({
+      docked,
+      window,
+      suspendDock: suspendDockMode,
+      resumeDock: resumeDockMode,
+    });
+  }, [docked, requestCloseAction, resumeDockMode, suspendDockMode]);
 
   const audioOutputs = useMemo(
     () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
@@ -2115,6 +2136,7 @@ function AppContent() {
     running,
     onStartClick,
     onToggleWindow,
+    onQuit: () => requestCloseAction("quit"),
     colorScheme: resolvedTheme.colorScheme,
     updateBusy,
     audioOutputs,
@@ -2405,7 +2427,10 @@ function AppContent() {
 
       <CloseConfirmDialog
         open={closeDialogOpen}
+        error={closeError}
+        busy={closing}
         onConfirm={handleCloseConfirm}
+        onRetry={handleCloseRetry}
         onCancel={handleCloseCancel}
       />
     </AppShell>

@@ -1056,6 +1056,25 @@
       const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
       const FALLBACK = "Latest release";
 
+      function releaseAssetNames(version) {
+        return {
+          windowsInstaller: `PLVS_${version}_x64-setup.exe`,
+          windowsPortable: `PLVS-v${version}-x64-portable.zip`,
+          macosDmg: `PLVS-v${version}-aarch64.dmg`,
+        };
+      }
+
+      function releaseUrls(tagName, assets) {
+        const version = tagName.replace(/^v/, "");
+        const names = releaseAssetNames(version);
+        const urlFor = (name) => assets.find((asset) => asset.name === name)?.browser_download_url;
+        return {
+          mac: urlFor(names.macosDmg),
+          winInstall: urlFor(names.windowsInstaller),
+          winPortable: urlFor(names.windowsPortable),
+        };
+      }
+
       async function loadRelease() {
         let version = FALLBACK,
           urls = {};
@@ -1064,16 +1083,7 @@
           if (res.ok) {
             const { tag_name, assets } = await res.json();
             version = tag_name;
-            urls = {
-              mac: assets.find((a) => a.name.endsWith(".dmg") && a.name.includes("aarch64"))
-                ?.browser_download_url,
-              winInstall: assets.find(
-                (a) => a.name.endsWith(".exe") && !a.name.toLowerCase().includes("portable")
-              )?.browser_download_url,
-              winPortable: assets.find(
-                (a) => a.name.endsWith(".exe") && a.name.toLowerCase().includes("portable")
-              )?.browser_download_url,
-            };
+            urls = releaseUrls(tag_name, assets);
           }
         } catch (_) {
           /* use fallback */
@@ -1121,7 +1131,7 @@
         <p class="install-warning">If SmartScreen appears, choose More info, then Run anyway.</p>
         <div class="platform-specs">
           <div class="spec-row"><span class="spec-key">Installer</span><span class="spec-val">NSIS .exe</span></div>
-          <div class="spec-row"><span class="spec-key">Portable</span><span class="spec-val">.exe build</span></div>
+          <div class="spec-row"><span class="spec-key">Portable</span><span class="spec-val">.zip archive</span></div>
           <div class="spec-row"><span class="spec-key">System audio</span><span class="spec-val">WASAPI loopback</span></div>
         </div>
       </div>`;

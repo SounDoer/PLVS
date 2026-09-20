@@ -42,4 +42,25 @@ describe("CloseConfirmDialog", () => {
     fireEvent.click(screen.getByText("Confirm"));
     expect(onConfirm).toHaveBeenCalledWith("quit", true);
   });
+
+  it("shows a persistence error with retry and cancel actions", () => {
+    const onRetry = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <CloseConfirmDialog
+        open={true}
+        error="The window was left open."
+        onConfirm={vi.fn()}
+        onRetry={onRetry}
+        onCancel={onCancel}
+      />
+    );
+
+    expect(screen.getByText("The window was left open.")).toBeTruthy();
+    expect(screen.queryByLabelText("Close behavior")).toBeNull();
+    fireEvent.click(screen.getByText("Retry"));
+    expect(onRetry).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByText("Cancel"));
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
 });

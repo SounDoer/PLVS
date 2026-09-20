@@ -25,7 +25,14 @@ const SWITCH_THUMB_CLASS =
 
 const ROW_LABEL_CLASS = "text-[length:var(--ui-fs-control)] font-medium text-muted-foreground";
 
-export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
+export function CloseConfirmDialog({
+  open,
+  error = null,
+  busy = false,
+  onConfirm,
+  onRetry,
+  onCancel,
+}) {
   const [action, setAction] = useState("quit");
   const [dontAsk, setDontAsk] = useState(false);
 
@@ -54,45 +61,67 @@ export function CloseConfirmDialog({ open, onConfirm, onCancel }) {
         <Dialog.Overlay className={cn(SCRIM_CLASS, "z-50")} />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-card p-3 shadow-xl">
           <Dialog.Title className="sr-only">Close PLVS</Dialog.Title>
-          <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
-            <span className={ROW_LABEL_CLASS}>Close Behavior</span>
-            <Select value={action} onValueChange={setAction}>
-              <SelectTrigger aria-label="Close behavior" className={SELECT_TRIGGER_CLASS}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
-                <SelectItem value="tray">Minimize to Tray</SelectItem>
-                <SelectItem value="quit">Quit</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {error ? (
+            <div className="mb-3 max-w-80 px-1.5 text-[length:var(--ui-fs-control)] text-destructive">
+              {error}
+            </div>
+          ) : null}
+          {!error ? (
+            <>
+              <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
+                <span className={ROW_LABEL_CLASS}>Close Behavior</span>
+                <Select value={action} onValueChange={setAction}>
+                  <SelectTrigger aria-label="Close behavior" className={SELECT_TRIGGER_CLASS}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                    <SelectItem value="tray">Minimize to Tray</SelectItem>
+                    <SelectItem value="quit">Quit</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="mb-3 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
-            <span className={ROW_LABEL_CLASS}>Don&apos;t ask again</span>
-            <Switch
-              aria-label="Don't ask again"
-              checked={dontAsk}
-              onCheckedChange={setDontAsk}
-              className={SWITCH_CLASS}
-              thumbClassName={SWITCH_THUMB_CLASS}
-            />
-          </div>
+              <div className="mb-3 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
+                <span className={ROW_LABEL_CLASS}>Don&apos;t ask again</span>
+                <Switch
+                  aria-label="Don't ask again"
+                  checked={dontAsk}
+                  onCheckedChange={setDontAsk}
+                  className={SWITCH_CLASS}
+                  thumbClassName={SWITCH_THUMB_CLASS}
+                />
+              </div>
+            </>
+          ) : null}
 
           <div className="flex justify-end gap-1.5">
             <button
               type="button"
               onClick={handleCancel}
+              disabled={busy}
               className="rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-muted/50"
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Confirm
-            </button>
+            {error ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                disabled={busy}
+                className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {busy ? "Saving…" : "Retry"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={busy}
+                className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {busy ? "Saving…" : "Confirm"}
+              </button>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

@@ -4,7 +4,6 @@ import { Menu, Submenu, MenuItem, CheckMenuItem, PredefinedMenuItem } from "@tau
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Image } from "@tauri-apps/api/image";
 import { resolveResource } from "@tauri-apps/api/path";
-import { exit } from "@tauri-apps/plugin-process";
 import { isTauri } from "../ipc/env.js";
 import { isMacOS } from "../lib/platform.js";
 import { formatAudioDeviceLabel } from "../lib/audioDeviceLabels.js";
@@ -195,6 +194,7 @@ export function useTray({
   running,
   onStartClick,
   onToggleWindow,
+  onQuit,
   colorScheme,
   updateBusy = false,
   audioOutputs = [],
@@ -210,6 +210,7 @@ export function useTray({
 
   const onStartClickRef = useRef(onStartClick);
   const onToggleWindowRef = useRef(onToggleWindow);
+  const onQuitRef = useRef(onQuit);
   const onSelectSourceRef = useRef(onSelectSource);
   const onApplyPresetRef = useRef(presets.apply);
   const updateBusyRef = useRef(updateBusy);
@@ -223,6 +224,9 @@ export function useTray({
     onToggleWindowRef.current = onToggleWindow;
   }, [onToggleWindow]);
   useEffect(() => {
+    onQuitRef.current = onQuit;
+  }, [onQuit]);
+  useEffect(() => {
     onSelectSourceRef.current = onSelectSource;
   }, [onSelectSource]);
   useEffect(() => {
@@ -235,7 +239,7 @@ export function useTray({
     if (!updateBusyRef.current) onToggleWindowRef.current();
   }, []);
   const stableQuit = useCallback(() => {
-    if (!updateBusyRef.current) exit(0);
+    if (!updateBusyRef.current) onQuitRef.current();
   }, []);
   const stableSelectSource = useCallback((id) => onSelectSourceRef.current(id), []);
   const stableApplyPreset = useCallback((id) => {

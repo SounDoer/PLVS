@@ -5,7 +5,8 @@ Everything for making PLVS fit into how you work day to day.
 ## Startup and closing
 
 **Open at Login** launches PLVS when you sign in. **Close Behavior** chooses whether closing the
-window keeps PLVS running in the system tray or quits it.
+window keeps PLVS running in the system tray or quits it. Before either action, PLVS finishes saving
+pending settings. If saving fails, the window stays open and offers **Retry** or **Cancel**.
 
 ## Global shortcut
 

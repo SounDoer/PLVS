@@ -26,7 +26,6 @@ vi.mock("@tauri-apps/api/image", () => ({
 vi.mock("@tauri-apps/api/path", () => ({
   resolveResource: vi.fn().mockResolvedValue("/fake/tray.png"),
 }));
-vi.mock("@tauri-apps/plugin-process", () => ({ exit: vi.fn() }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../lib/platform.js", () => ({ isMacOS: vi.fn(() => false) }));
 // Intentionally NOT mocked: formatAudioDeviceLabel returns an object
@@ -39,13 +38,13 @@ import { TrayIcon } from "@tauri-apps/api/tray";
 import { Image } from "@tauri-apps/api/image";
 import { MenuItem, CheckMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { resolveResource } from "@tauri-apps/api/path";
-import { exit } from "@tauri-apps/plugin-process";
 import { isMacOS } from "../lib/platform.js";
 
 const defaultProps = {
   running: false,
   onStartClick: vi.fn(),
   onToggleWindow: vi.fn(),
+  onQuit: vi.fn(),
   colorScheme: "dark",
   updateBusy: false,
   audioOutputs: [],
@@ -142,6 +141,16 @@ describe("useTray", () => {
     await act(async () => {});
     // isVisible mock resolves true -> "Hide Window"
     expect(findText(menuItemOptions(), "Hide Window")).toBeTruthy();
+  });
+
+  it("delegates Quit to the app close workflow", async () => {
+    const onQuit = vi.fn();
+    renderHook(() => useTray({ ...defaultProps, onQuit }));
+    await act(async () => {});
+
+    findText(menuItemOptions(), "Quit").action();
+
+    expect(onQuit).toHaveBeenCalledOnce();
   });
 
   it("builds the Source submenu with the current source type labelled and checked", async () => {
@@ -337,9 +346,10 @@ describe("useTray", () => {
     isMacOS.mockReturnValue(true);
     const setMenu = vi.fn();
     const onToggleWindow = vi.fn();
+    const onQuit = vi.fn();
     TrayIcon.new.mockResolvedValue({ setMenu, close: vi.fn() });
     const { rerender } = renderHook(
-      ({ updateBusy }) => useTray({ ...defaultProps, onToggleWindow, updateBusy }),
+      ({ updateBusy }) => useTray({ ...defaultProps, onToggleWindow, onQuit, updateBusy }),
       { initialProps: { updateBusy: false } }
     );
     await act(async () => {});
@@ -366,7 +376,7 @@ describe("useTray", () => {
     trayAction({ type: "Click", button: "Left" });
     expect(onToggleWindow).not.toHaveBeenCalled();
     staleQuit();
-    expect(exit).not.toHaveBeenCalled();
+    expect(onQuit).not.toHaveBeenCalled();
   });
 
   it("closes an orphaned tray if effect is cancelled before TrayIcon.new resolves", async () => {
