@@ -72,14 +72,17 @@ MIT/Apache covers the entire product:
 - **Unicode-3.0** — Unicode/ICU data and support crates including `unicode-ident` and the ICU4X
   crates in the Rust graph.
 - **Zlib** — `foldhash` and components that offer Zlib among their applicable license choices.
+- **CDLA-Permissive-2.0** — the Mozilla root-certificate data distributed by
+  `webpki-root-certs`.
 
 Complete texts are provided in `licenses/license-texts/BSD-3-Clause.txt`, `ISC.txt`, `0BSD.txt`,
-`MPL-2.0.txt`, `Unicode-3.0.txt`, and `Zlib.txt`.
+`MPL-2.0.txt`, `Unicode-3.0.txt`, `Zlib.txt`, and `CDLA-Permissive-2.0.txt`.
 
 `licenses/DEPENDENCY-INVENTORY.txt` records the complete production package snapshot used for this
 review, including component versions, declared licenses, and available upstream author/repository
 metadata.
 
 Dependency metadata can change when either lockfile changes. Maintainers should re-run the
-production license inventory when updating dependencies and update this notice if a new license or
-attribution requirement appears.
+production license inventory with `npm run licenses:generate` when updating dependencies and update
+this notice if a new license or attribution requirement appears. `npm run check` rejects a stale
+inventory.

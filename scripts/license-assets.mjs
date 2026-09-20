@@ -23,8 +23,8 @@ export const LICENSE_ASSETS = [
     destination: "licenses/DEPENDENCY-INVENTORY.txt",
     markers: [
       "PLVS PRODUCTION DEPENDENCY LICENSE INVENTORY",
-      "RUST RUNTIME DEPENDENCIES (605)",
-      "JAVASCRIPT PRODUCTION DEPENDENCIES (202)",
+      "RUST RUNTIME DEPENDENCIES (",
+      "JAVASCRIPT PRODUCTION DEPENDENCIES (",
     ],
   },
   {
@@ -47,6 +47,15 @@ export const LICENSE_ASSETS = [
       "Neither the name of the copyright holder",
     ],
     sha256: "2fcaaa8d3d4c1be9b8f2dcb91e5c1609dc7a624ab9dc7bdb82fcf6402606c1d9",
+  },
+  {
+    source: "licenses/license-texts/CDLA-Permissive-2.0.txt",
+    destination: "licenses/license-texts/CDLA-Permissive-2.0.txt",
+    markers: [
+      "Community Data License Agreement - Permissive - Version 2.0",
+      "Conditions for Sharing Data",
+    ],
+    sha256: "4531a67d443284d93ffed0803df5b10634aff21c3d77e381f2d48af01d875868",
   },
   {
     source: "licenses/license-texts/ISC.txt",

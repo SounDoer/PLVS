@@ -87,6 +87,13 @@ try {
   console.warn("package-lock.json:      skipped (not found or unreadable)");
 }
 
+// The inventory contains the application package version and fingerprints both
+// lockfiles, so a version bump must refresh it before the release gate runs.
+execSync("node scripts/generate-license-inventory.mjs --write", {
+  cwd: root,
+  stdio: "inherit",
+});
+
 // Verify
 try {
   execSync("node scripts/verify-versions.mjs", { cwd: root, stdio: "inherit" });
