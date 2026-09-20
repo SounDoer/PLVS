@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 import * as captureChanges from "./audio-code-changed.mjs";
 
 describe("filterCaptureSmokePaths", () => {
+  it("keeps Preview tags out of the official release baseline", () => {
+    expect(captureChanges.OFFICIAL_RELEASE_TAG_GLOB).toBe("v[0-9]*.[0-9]*.[0-9]*");
+  });
+
   it("selects capture sources and the smoke harness path", () => {
     expect(captureChanges.filterCaptureSmokePaths).toBeTypeOf("function");
     expect(
@@ -16,7 +20,7 @@ describe("filterCaptureSmokePaths", () => {
         "src-tauri/src/cli_report.rs",
         "scripts/capture-rig.mjs",
         "scripts/smoke-capture.mjs",
-      ]),
+      ])
     ).toHaveLength(10);
   });
 
@@ -30,7 +34,7 @@ describe("filterCaptureSmokePaths", () => {
         "README.md",
         "src-tauri/src/lib.rs",
         "scripts/soak-capture.mjs",
-      ]),
+      ])
     ).toEqual([]);
   });
 
@@ -41,7 +45,7 @@ describe("filterCaptureSmokePaths", () => {
         "src-tauri/src/audio/device_enum.rs",
         "scripts/capture-rig.mjs",
         "package.json",
-      ]),
+      ])
     ).toEqual(["src-tauri/src/audio/device_enum.rs", "scripts/capture-rig.mjs"]);
   });
 

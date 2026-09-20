@@ -8,6 +8,9 @@ const tauriConfig = JSON.parse(
 const tauriWindowsConfig = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "tauri.windows.conf.json"), "utf8")
 );
+const tauriPreviewConfig = JSON.parse(
+  readFileSync(join(process.cwd(), "src-tauri", "tauri.preview.conf.json"), "utf8")
+);
 const tauriCliSidecarConfig = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "tauri.cli-sidecar.conf.json"), "utf8")
 );
@@ -17,6 +20,10 @@ const nsisInstallerHooks = readFileSync(
 );
 const nsisAgentDiscovery = readFileSync(
   join(process.cwd(), "src-tauri", "nsis", "agent-discovery.nsh"),
+  "utf8"
+);
+const previewNsisInstallerHooks = readFileSync(
+  join(process.cwd(), "src-tauri", "nsis", "preview-installer-hooks.nsh"),
   "utf8"
 );
 const windowsInstallerVerification = readFileSync(
@@ -29,6 +36,9 @@ const macosInstallerVerification = readFileSync(
 );
 const agentManifest = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "plvs-agent.json"), "utf8")
+);
+const previewAgentManifest = JSON.parse(
+  readFileSync(join(process.cwd(), "src-tauri", "plvs-preview-agent.json"), "utf8")
 );
 const defaultCapability = JSON.parse(
   readFileSync(join(process.cwd(), "src-tauri", "capabilities", "default.json"), "utf8")
@@ -102,6 +112,30 @@ describe("Tauri security configuration", () => {
         doctor: ["doctor", "--json"],
       },
     });
+  });
+
+  it("gives installable Preview packages a separate application and discovery identity", () => {
+    expect(tauriPreviewConfig).toMatchObject({
+      productName: "PLVS Preview",
+      identifier: "com.soundoer.plvs.preview",
+      bundle: {
+        createUpdaterArtifacts: false,
+        resources: { "plvs-preview-agent.json": "plvs-agent.json" },
+        windows: { nsis: { installerHooks: "nsis/preview-installer-hooks.nsh" } },
+      },
+    });
+    expect(previewAgentManifest).toMatchObject({
+      schemaVersion: 2,
+      productName: "PLVS Preview",
+      identifier: "com.soundoer.plvs.preview",
+      version: tauriConfig.version,
+    });
+    expect(previewNsisInstallerHooks).toContain(
+      '!define PLVS_AGENT_REG_KEY "Software\\SounDoer\\PLVS Preview"'
+    );
+    expect(previewNsisInstallerHooks).toContain(
+      '!define PLVS_AGENT_IDENTIFIER "com.soundoer.plvs.preview"'
+    );
   });
 
   it("stages the isolated CLI as a Tauri external binary", () => {

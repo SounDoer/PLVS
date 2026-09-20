@@ -1,8 +1,15 @@
 fn main() {
-  let config = if std::env::var_os("CARGO_FEATURE_DEV_IDENTITY").is_some() {
-    "tauri.dev.conf.json"
-  } else {
-    "tauri.conf.json"
+  let development = std::env::var_os("CARGO_FEATURE_DEV_IDENTITY").is_some();
+  let preview = std::env::var_os("CARGO_FEATURE_PREVIEW_IDENTITY").is_some();
+  assert!(
+    !(development && preview),
+    "CLI identities are mutually exclusive"
+  );
+  let config = match (development, preview) {
+    (true, false) => "tauri.dev.conf.json",
+    (false, true) => "tauri.preview.conf.json",
+    (false, false) => "tauri.conf.json",
+    (true, true) => unreachable!(),
   };
   let config_path = std::path::Path::new("..").join(config);
   println!("cargo:rerun-if-changed={}", config_path.display());
@@ -15,6 +22,11 @@ fn main() {
     .get("identifier")
     .and_then(serde_json::Value::as_str)
     .unwrap_or_else(|| panic!("{} has no string `identifier`", config_path.display()));
+  let product_name = value
+    .get("productName")
+    .and_then(serde_json::Value::as_str)
+    .unwrap_or_else(|| panic!("{} has no string `productName`", config_path.display()));
 
   println!("cargo:rustc-env=PLVS_APP_ID={identifier}");
+  println!("cargo:rustc-env=PLVS_APP_NAME={product_name}");
 }

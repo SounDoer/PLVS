@@ -87,10 +87,13 @@ fn initial_state_script(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
-    .plugin(tauri_plugin_process::init())
-    .plugin(tauri_plugin_updater::Builder::new().build())
+    .plugin(tauri_plugin_process::init());
+  #[cfg(not(feature = "preview-identity"))]
+  let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
+  builder
     .plugin(tauri_plugin_autostart::init(
       tauri_plugin_autostart::MacosLauncher::LaunchAgent,
       None,
@@ -247,7 +250,7 @@ pub fn run() {
         // `enabled`, which the user owns from Settings.
         "available": cfg!(any(target_os = "windows", target_os = "macos")),
         "enabled": cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled,
-        "appName": if cfg!(feature = "dev-identity") { "PLVS Dev" } else { "PLVS" },
+        "appName": env!("PLVS_APP_NAME"),
         "appVersion": env!("CARGO_PKG_VERSION"),
         "identifier": env!("PLVS_APP_ID"),
         "platform": std::env::consts::OS,
@@ -280,11 +283,7 @@ pub fn run() {
       let boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       let initial_decorations = !boot_docked && !startup_window_is_frameless(&settings, &presets);
-      let window_title = if cfg!(feature = "dev-identity") {
-        "PLVS Dev"
-      } else {
-        "PLVS"
-      };
+      let window_title = env!("PLVS_APP_NAME");
 
       let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title(window_title)

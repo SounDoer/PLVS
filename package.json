@@ -60,10 +60,11 @@
     "desktop": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile debug --identity development --stage && tauri dev --config src-tauri/tauri.dev.conf.json --config src-tauri/tauri.cli-sidecar.conf.json --features dev-identity",
     "desktop:control": "node scripts/run-desktop-control.mjs",
     "desktop:build": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity development --stage && tauri build --config src-tauri/tauri.no-updater.conf.json --config src-tauri/tauri.dev.conf.json --config src-tauri/tauri.cli-sidecar.conf.json --features dev-identity",
-    "desktop:dev-nsis": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity release --stage && tauri build --bundles nsis --config src-tauri/tauri.no-updater.conf.json --config src-tauri/tauri.cli-sidecar.conf.json",
+    "desktop:preview-nsis": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity preview --stage && tauri build --bundles nsis --config src-tauri/tauri.preview.conf.json --config src-tauri/tauri.cli-sidecar.conf.json --features preview-identity",
     "desktop:release-nsis": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity release --stage && tauri build --bundles nsis --config src-tauri/tauri.cli-sidecar.conf.json",
     "desktop:release-dmg": "npm run ffmpeg:fetch && node scripts/build-plvs-cli.mjs --profile release --identity release --stage && tauri build --bundles dmg,app --config src-tauri/tauri.cli-sidecar.conf.json",
     "desktop:verify-windows-installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-windows-installer.ps1",
+    "desktop:verify-windows-preview-installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-windows-installer.ps1 -Identity preview",
     "desktop:verify-macos-dmg": "bash scripts/verify-macos-dmg.sh"
   },
   "simple-git-hooks": {

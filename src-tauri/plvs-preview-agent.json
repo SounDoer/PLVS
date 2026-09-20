@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 2,
+  "productName": "PLVS Preview",
+  "identifier": "com.soundoer.plvs.preview",
+  "version": "0.16.0",
+  "cli": {
+    "relativePath": {
+      "windows": "plvs-cli.exe",
+      "macos": "Contents/MacOS/plvs-cli"
+    },
+    "doctor": [
+      "doctor",
+      "--json"
+    ]
+  }
+}

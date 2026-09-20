@@ -25,7 +25,7 @@ Desktop (Tauri):
 npm run desktop
 ```
 
-`npm run desktop` and `npm run desktop:build` both pass `--config src-tauri/tauri.dev.conf.json --features dev-identity`, which changes the app identifier to `com.soundoer.plvs.dev`. The development build therefore has its own `%APPDATA%\com.soundoer.plvs.dev\plvs-settings.json` and its own webview data, and never overwrites the settings, window position or dock state of an installed release. The build script first builds the standalone `src-tauri/plvs-cli` workspace package with the same identity, then stages it as a Tauri external binary; host and CLI must always come as a pair. When switching between development and release identity, Cargo only needs to refresh the packages affected by that feature.
+`npm run desktop` and `npm run desktop:build` both pass `--config src-tauri/tauri.dev.conf.json --features dev-identity`, which changes the app identifier to `com.soundoer.plvs.dev`. The development build therefore has its own `%APPDATA%\com.soundoer.plvs.dev\plvs-settings.json` and its own webview data, and never overwrites the settings, window position or dock state of an installed release. The build script first builds the standalone `src-tauri/plvs-cli` workspace package with the same identity, then stages it as a Tauri external binary; host and CLI must always come as a pair. Cargo refreshes only the packages affected when switching identities.
 
 To let an agent inspect or adjust the Workspace of the running development build, open a second terminal:
 
@@ -39,7 +39,14 @@ Use `npm run cli:build` to build only the CLI package without starting the GUI.
 
 `desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the development GUI must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed release. The public release CLI uses the same flat commands but talks to the installed app through the release identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` assumes the development GUI is running, verifies capabilities, inspect, a screenshot and a 3-second silent recording, and writes the files and a verification report to `artifacts/agent-control-smoke/`.
 
-The NSIS scripts (`desktop:dev-nsis`, `desktop:release-nsis`) do **not** use that overlay: the registry key `HKCU\Software\SounDoer\PLVS` is hard-coded, and `scripts/generate-agent-discovery.mjs` reads only the base `tauri.conf.json`, so applying the overlay would only produce a self-contradictory registration.
+Installable test packages use a third identity rather than either of those two. `npm run desktop:preview-nsis` combines `tauri.preview.conf.json` with `preview-identity`, producing **PLVS Preview** (`com.soundoer.plvs.preview`) with its own settings, installer registration and Agent Control discovery. The Preview feature also compiles out updater registration. `scripts/generate-agent-discovery.mjs` owns both the stable and Preview manifests and NSIS hooks; do not edit those generated files by hand.
+
+Windows Preview build (matching CI `preview-build.yml`):
+
+```bash
+npm run desktop:preview-nsis
+npm run desktop:verify-windows-preview-installer
+```
 
 Windows release build (matching CI `release.yml`: NSIS installer + Portable ZIP):
 
@@ -52,7 +59,7 @@ Raw outputs: the installer under `src-tauri/target/release/bundle/nsis/`, plus
 `src-tauri/target/release/plvs.exe` and `plvs-cli.exe`. The tag release workflow packages the latter
 two under their original names as `PLVS-v<version>-x64-portable.zip`; like the installer, the
 portable build needs WebView2 installed on the machine. `scripts/build-plvs-cli.mjs` is the single
-build entry point for CLI debug/release, development/release identity and Tauri staging; the Tauri
+build entry point for CLI debug/release, development/Preview/release identity and Tauri staging; the Tauri
 input files carry the target triple, while the public names in the installation and Portable do not.
 
 macOS release build (DMG):

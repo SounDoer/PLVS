@@ -570,12 +570,7 @@ pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
     schema_version: crate::agent_control::discovery::DESCRIPTOR_SCHEMA_VERSION,
     protocol_version: crate::agent_control::protocol::PROTOCOL_VERSION,
     app: DescriptorApp {
-      name: if cfg!(feature = "dev-identity") {
-        "PLVS Dev"
-      } else {
-        "PLVS"
-      }
-      .to_string(),
+      name: env!("PLVS_APP_NAME").to_string(),
       version: env!("CARGO_PKG_VERSION").to_string(),
       identifier: identifier.to_string(),
     },

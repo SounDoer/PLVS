@@ -48,13 +48,14 @@ export function buildPlvsCli({
   if (!new Set(["debug", "release"]).has(profile)) {
     throw new Error(`Unsupported CLI profile: ${profile}`);
   }
-  if (!new Set(["release", "development"]).has(identity)) {
+  if (!new Set(["release", "development", "preview"]).has(identity)) {
     throw new Error(`Unsupported CLI identity: ${identity}`);
   }
 
   const buildArgs = ["build", "--quiet", "--manifest-path", manifestPath];
   if (profile === "release") buildArgs.push("--release");
   if (identity === "development") buildArgs.push("--features", "dev-identity");
+  if (identity === "preview") buildArgs.push("--features", "preview-identity");
   if (target) buildArgs.push("--target", target);
   run("cargo", buildArgs);
 

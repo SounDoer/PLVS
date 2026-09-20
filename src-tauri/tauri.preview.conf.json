@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PLVS Preview",
+  "identifier": "com.soundoer.plvs.preview",
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "resources": {
+      "plvs-preview-agent.json": "plvs-agent.json",
+      "icons/tray-dark.png": "icons/tray-dark.png",
+      "icons/tray-light.png": "icons/tray-light.png"
+    },
+    "windows": {
+      "nsis": {
+        "installerHooks": "nsis/preview-installer-hooks.nsh"
+      }
+    }
+  }
+}

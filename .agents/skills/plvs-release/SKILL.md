@@ -1,6 +1,6 @@
 ---
 name: "plvs-release"
-description: "Guides PLVS release process: version bump, CHANGELOG update, preflight checks, and tagging. Invoke when user wants to release a new version or asks about release workflow."
+description: "Guides PLVS official releases: version selection, CHANGELOG and public-doc updates, preflight gates, exact-SHA immutable Draft publication, and recovery. Use when preparing, publishing, or troubleshooting an official PLVS release."
 ---
 
 # PLVS Release Skill
@@ -21,8 +21,9 @@ This skill guides the complete release workflow for PLVS, a Tauri-based desktop 
 ### Current (pre-1.0.0): release directly from `main`
 
 While PLVS is pre-1.0, development and releases both happen on `main`. Bump
-the version, update the CHANGELOG, run preflight, and tag `vX.Y.Z` — all on
-`main`. This is deliberate: before 1.0 there's no shipped version to back-port
+the version, update the CHANGELOG, run preflight, and dispatch the exact commit
+from `main`. The release workflow creates the tag while assembling the Draft.
+This is deliberate: before 1.0 there's no shipped version to back-port
 fixes to, so a dedicated release branch would be ceremony with no payoff.
 **Follow the workflow below as-is, on `main`.**
 
@@ -40,7 +41,7 @@ release/1.0          ●──●──●  ← tag v1.0.0 (and v1.0.1 hotfixes)
 ```
 
 - **`release/<MAJOR.MINOR>` freezes a version for shipping.** Cut from `main`
-  when finalizing; bump / CHANGELOG / preflight / `vX.Y.Z` tag happen on it.
+  when finalizing; bump / CHANGELOG / preflight / exact-SHA dispatch happen on it.
 - **Hotfixes land on the release branch, then cherry-pick back to `main`** so
   the next version doesn't regress.
 
@@ -56,7 +57,7 @@ Until then, ignore this section.
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Step 1: Analyze Commits                                        │
-│  - Get commits since last tag                                   │
+│  - Get commits since the last official vX.Y.Z tag               │
 │  - Recommend version bump type                                  │
 │  - Generate CHANGELOG draft                                     │
 └─────────────────────────────────────────────────────────────────┘
@@ -139,14 +140,14 @@ Until then, ignore this section.
 **Bash (Linux/macOS):**
 
 ```bash
-git log --pretty=format:"%s" $(git describe --tags --abbrev=0)..HEAD
+git log --pretty=format:"%s" $(git describe --tags --match "v[0-9]*.[0-9]*.[0-9]*" --abbrev=0)..HEAD
 ```
 
 **PowerShell (Windows):**
 
 ```powershell
 # Two-step approach (recommended for PowerShell)
-$tag = git describe --tags --abbrev=0
+$tag = git describe --tags --match "v[0-9]*.[0-9]*.[0-9]*" --abbrev=0
 git --no-pager log --pretty=format:"%s" "$tag..HEAD"
 
 # Or use explicit tag name

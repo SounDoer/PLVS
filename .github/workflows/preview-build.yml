@@ -1,0 +1,294 @@
+# Installable Windows Preview builds for testing. Every published build uses a unique immutable
+# tag and an identity isolated from stable PLVS and the local development app.
+
+name: Preview Build
+run-name: Preview ${{ github.ref_name }} @ ${{ inputs.commit_sha }} (${{ inputs.request_id }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full 40-character commit SHA to build
+        required: true
+        type: string
+      request_id:
+        description: Unique caller token used to identify this run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-build
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      short_sha: ${{ steps.metadata.outputs.short_sha }}
+      tag: ${{ steps.metadata.outputs.tag }}
+    steps:
+      - name: Validate dispatch inputs
+        shell: bash
+        run: |
+          if [[ ! "${{ inputs.commit_sha }}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be a full lowercase commit SHA" >&2
+            exit 1
+          fi
+          if [[ ! "${{ inputs.request_id }}" =~ ^[A-Za-z0-9_-]{6,32}$ ]]; then
+            echo "request_id must be 6-32 letters, digits, underscores, or hyphens" >&2
+            exit 1
+          fi
+
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Verify checkout and derive immutable identity
+        id: metadata
+        shell: bash
+        run: |
+          actual_sha=$(git rev-parse HEAD)
+          if [[ "$actual_sha" != "${{ inputs.commit_sha }}" ]]; then
+            echo "Checkout does not match commit_sha" >&2
+            exit 1
+          fi
+          version=$(node -p "require('./package.json').version")
+          short_sha=${actual_sha:0:7}
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "tag=preview-${short_sha}-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the full repository gate
+        run: npm run check
+
+  build-windows-preview:
+    needs: validate
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the exact tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Smoke test file analysis with FFmpeg sidecars
+        run: npm run smoke:file-analysis
+
+      - name: Build isolated Preview installer
+        run: npm run desktop:preview-nsis
+
+      - name: Smoke test the Preview installer
+        run: npm run desktop:verify-windows-preview-installer
+
+      - name: Stage and validate the tested packages
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          SHORT_SHA: ${{ needs.validate.outputs.short_sha }}
+        run: |
+          $label = "$env:VERSION-preview.$env:SHORT_SHA"
+          New-Item -ItemType Directory -Force preview-assets | Out-Null
+
+          $nsis = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $nsis) { throw "Preview NSIS installer not found" }
+          Copy-Item $nsis.FullName "preview-assets/PLVS-Preview_${label}_x64-setup.exe"
+
+          $portableDir = "PLVS-Preview-v${label}-x64-portable"
+          New-Item -ItemType Directory -Force $portableDir | Out-Null
+          foreach ($name in @("plvs.exe", "plvs-cli.exe", "ffmpeg.exe", "ffprobe.exe")) {
+            $source = "src-tauri/target/release/$name"
+            if (-not (Test-Path -LiteralPath $source)) { throw "Missing Portable file: $source" }
+            Copy-Item -LiteralPath $source -Destination "$portableDir/$name"
+          }
+          Compress-Archive -Path "$portableDir\*" -DestinationPath "preview-assets/$portableDir.zip"
+
+          node scripts/validate-preview-bundle.mjs `
+            "$env:VERSION" `
+            "${{ inputs.commit_sha }}" `
+            preview-assets
+
+      - name: Upload the tested Preview candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-candidate-windows
+          path: preview-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+  prepare-draft:
+    needs: [validate, build-windows-preview]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PREVIEW_SHA: ${{ inputs.commit_sha }}
+      SOURCE_REF: ${{ github.ref_name }}
+      TAG: ${{ needs.validate.outputs.tag }}
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Download the tested candidate
+        uses: actions/download-artifact@v8
+        with:
+          name: preview-candidate-windows
+          path: preview-assets
+
+      - name: Validate the complete Preview bundle
+        run: node scripts/validate-preview-bundle.mjs "$VERSION" "$PREVIEW_SHA" preview-assets
+
+      - name: Write Preview notes
+        shell: bash
+        run: |
+          cat > preview-notes.md <<EOF
+          Unofficial **PLVS Preview** build for testing. It installs independently from stable PLVS,
+          keeps separate settings and Agent Control discovery, and has automatic updates disabled.
+
+          - Source ref: \`${SOURCE_REF}\`
+          - Commit: \`${PREVIEW_SHA}\`
+          - Request: \`${{ inputs.request_id }}\`
+
+          Preview builds are temporary. The workflow retains only the ten newest Preview releases.
+          EOF
+
+      - name: Create the complete Draft Pre-release
+        run: |
+          gh release create "$TAG" preview-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --prerelease \
+            --target "$PREVIEW_SHA" \
+            --title "PLVS Preview ${VERSION}-${{ needs.validate.outputs.short_sha }}" \
+            --notes-file preview-notes.md
+
+      - name: Verify the Draft before publication
+        shell: bash
+        run: |
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          if [[ "$draft" != "true" ]]; then
+            echo "${TAG} was not created as a Draft" >&2
+            exit 1
+          fi
+          tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)
+          if [[ "$tag_sha" != "$PREVIEW_SHA" ]]; then
+            echo "Draft tag ${TAG} does not point to the tested commit" >&2
+            exit 1
+          fi
+          find preview-assets -maxdepth 1 -type f -printf '%f\n' | sort > expected-assets.txt
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets | map(.name) | sort | .[]' > uploaded-assets.txt
+          diff --unified expected-assets.txt uploaded-assets.txt
+          empty_assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '[.assets[] | select(.size == 0)] | length')
+          [[ "$empty_assets" == "0" ]]
+
+  publish-preview:
+    needs: [validate, prepare-draft]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PREVIEW_SHA: ${{ inputs.commit_sha }}
+      TAG: ${{ needs.validate.outputs.tag }}
+    steps:
+      - name: Revalidate the Draft
+        shell: bash
+        run: |
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          if [[ "$draft" != "true" ]]; then
+            echo "${TAG} is not an unpublished Draft" >&2
+            exit 1
+          fi
+          tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)
+          if [[ "$tag_sha" != "$PREVIEW_SHA" ]]; then
+            echo "Draft tag ${TAG} moved away from the tested commit" >&2
+            exit 1
+          fi
+          asset_count=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets | length')
+          if [[ "$asset_count" != "2" ]]; then
+            echo "${TAG} does not contain exactly two tested assets" >&2
+            exit 1
+          fi
+
+      - name: Publish the immutable Pre-release
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
+
+      - name: Verify immutability and release attestation
+        shell: bash
+        run: |
+          immutable=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .immutable)
+          if [[ "$immutable" != "true" ]]; then
+            echo "Published Preview is not immutable" >&2
+            exit 1
+          fi
+          for attempt in {1..12}; do
+            if gh release verify "$TAG" --repo "$GITHUB_REPOSITORY"; then
+              exit 0
+            fi
+            if [[ "$attempt" == "12" ]]; then
+              echo "Preview release attestation was not verifiable after one minute" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Retain only the ten newest Preview releases
+        shell: bash
+        run: |
+          mapfile -t stale_tags < <(
+            gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+              --jq 'add | map(select(.prerelease and (.tag_name | startswith("preview-")))) | sort_by(.created_at) | reverse | .[10:][] | .tag_name'
+          )
+          for stale_tag in "${stale_tags[@]}"; do
+            if ! gh release delete "$stale_tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes; then
+              echo "::warning::Could not remove stale Preview ${stale_tag}"
+              echo "Retention cleanup needs attention for ${stale_tag}." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Publish the fixed download link in the run summary
+        run: |
+          echo "Preview: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"

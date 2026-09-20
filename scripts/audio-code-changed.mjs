@@ -20,10 +20,11 @@ export const CAPTURE_SMOKE_PATHS = [
   "scripts/capture-rig.mjs",
   "scripts/smoke-capture.mjs",
 ];
+export const OFFICIAL_RELEASE_TAG_GLOB = "v[0-9]*.[0-9]*.[0-9]*";
 
 export function filterCaptureSmokePaths(paths) {
   return paths.filter((path) =>
-    CAPTURE_SMOKE_PATHS.some((guarded) => path === guarded || path.startsWith(`${guarded}/`)),
+    CAPTURE_SMOKE_PATHS.some((guarded) => path === guarded || path.startsWith(`${guarded}/`))
   );
 }
 
@@ -40,7 +41,9 @@ function git(args) {
  * an unknown comparison base is not evidence that nothing changed.
  */
 export function lastTag() {
-  return git(["describe", "--tags", "--abbrev=0"]);
+  // Preview builds create immutable `preview-*` tags on ordinary development commits. Those tags
+  // are delivery records, not release baselines, and must never shorten the capture comparison.
+  return git(["describe", "--tags", "--match", OFFICIAL_RELEASE_TAG_GLOB, "--abbrev=0"]);
 }
 
 export function captureSmokeChangesSinceLastTag() {
@@ -55,6 +58,9 @@ export function captureSmokeChangesSinceLastTag() {
   if (out === null) {
     return { tag, paths: [] };
   }
-  const paths = out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const paths = out
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   return { tag, paths: filterCaptureSmokePaths(paths) };
 }

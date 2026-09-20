@@ -16,9 +16,10 @@ use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-/// Set by build.rs from the Tauri config that this build actually uses, so a dev build reports
-/// its own directories instead of the installed app's.
+/// Set by build.rs from the Tauri config that this build actually uses, so isolated identities
+/// report their own name and directories instead of stable PLVS's.
 const APP_ID: &str = env!("PLVS_APP_ID");
+const APP_NAME: &str = env!("PLVS_APP_NAME");
 const DOCTOR_WRITE_TEST_FILE: &str = ".plvs-doctor-write-test";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -166,7 +167,7 @@ pub fn aggregate_status(checks: &[DoctorCheck]) -> (DoctorStatus, DoctorSummary)
 
 fn collect_app_info() -> DoctorAppInfo {
   DoctorAppInfo {
-    name: "PLVS".to_string(),
+    name: APP_NAME.to_string(),
     version: env!("CARGO_PKG_VERSION").to_string(),
     executable_path: env::current_exe().ok().map(path_to_string),
   }

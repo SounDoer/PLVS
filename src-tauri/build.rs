@@ -1,16 +1,22 @@
-/// Hand `doctor.rs` the app identifier the app itself will run under.
+/// Hand the runtime the app identity selected by the matching Tauri overlay.
 ///
 /// The identifier lives in the Tauri config, which cargo never reads, and `plvs-cli` is not a
 /// Tauri app — it builds `%APPDATA%/<identifier>` by hand. A dev build overrides the identifier
 /// via `--config src-tauri/tauri.dev.conf.json` so it does not share settings with an installed
-/// PLVS; without this, `plvs-cli doctor` would keep reporting (and write-testing) the installed
-/// app's directories. Both halves are switched by the one `dev-identity` feature, so they cannot
-/// disagree about which config file is in force.
-fn emit_app_id() {
-  let config = if std::env::var_os("CARGO_FEATURE_DEV_IDENTITY").is_some() {
-    "tauri.dev.conf.json"
-  } else {
-    "tauri.conf.json"
+/// PLVS; Preview uses its own overlay for the same reason. The GUI and CLI use matching Cargo
+/// features so they cannot disagree about the identity in force.
+fn emit_app_identity() {
+  let development = std::env::var_os("CARGO_FEATURE_DEV_IDENTITY").is_some();
+  let preview = std::env::var_os("CARGO_FEATURE_PREVIEW_IDENTITY").is_some();
+  assert!(
+    !(development && preview),
+    "app identities are mutually exclusive"
+  );
+  let config = match (development, preview) {
+    (true, false) => "tauri.dev.conf.json",
+    (false, true) => "tauri.preview.conf.json",
+    (false, false) => "tauri.conf.json",
+    (true, true) => unreachable!(),
   };
   println!("cargo:rerun-if-changed={config}");
 
@@ -22,12 +28,17 @@ fn emit_app_id() {
     .get("identifier")
     .and_then(serde_json::Value::as_str)
     .unwrap_or_else(|| panic!("{config} has no string `identifier`"));
+  let product_name = value
+    .get("productName")
+    .and_then(serde_json::Value::as_str)
+    .unwrap_or_else(|| panic!("{config} has no string `productName`"));
 
   println!("cargo:rustc-env=PLVS_APP_ID={identifier}");
+  println!("cargo:rustc-env=PLVS_APP_NAME={product_name}");
 }
 
 fn main() {
-  emit_app_id();
+  emit_app_identity();
 
   const COMMAND_MANIFEST: &str = "../src/agentControl/commandManifest.json";
   println!("cargo:rerun-if-changed={COMMAND_MANIFEST}");

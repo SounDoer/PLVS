@@ -1,3 +1,8 @@
+param(
+  [ValidateSet("release", "preview")]
+  [string]$Identity = "release"
+)
+
 $ErrorActionPreference = "Stop"
 
 function Normalize-PathEntry([string]$PathEntry) {
@@ -94,8 +99,12 @@ function Assert-NoUnexpectedExe([string]$Directory, [string[]]$AllowedNames, [st
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $packageVersion = (Get-Content (Join-Path $repoRoot "package.json") -Raw | ConvertFrom-Json).version
+$isPreview = $Identity -eq "preview"
+$expectedProductName = if ($isPreview) { "PLVS Preview" } else { "PLVS" }
+$expectedIdentifier = if ($isPreview) { "com.soundoer.plvs.preview" } else { "com.soundoer.plvs" }
 $releaseDir = Join-Path $repoRoot "src-tauri\target\release"
-$installer = Get-ChildItem (Join-Path $releaseDir "bundle\nsis") -Filter "*.exe" |
+$installerPattern = if ($isPreview) { "PLVS Preview_*_x64-setup.exe" } else { "PLVS_[0-9]*_x64-setup.exe" }
+$installer = Get-ChildItem (Join-Path $releaseDir "bundle\nsis") -Filter $installerPattern |
   Sort-Object LastWriteTime -Descending |
   Select-Object -First 1
 
@@ -122,13 +131,13 @@ foreach ($sidecar in @("ffmpeg.exe", "ffprobe.exe")) {
 
 Assert-NoUnexpectedExe $releaseDir @("plvs.exe", "plvs-cli.exe", "ffmpeg.exe", "ffprobe.exe") "Release directory"
 
-$installRoot = Join-Path $env:TEMP ("plvs-installer-smoke-" + [guid]::NewGuid().ToString("N"))
+$installRoot = Join-Path $env:TEMP ("plvs-$Identity-installer-smoke-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force $installRoot | Out-Null
 $originalUserPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
-$nsisInstallDirSubKey = "Software\soundoer\PLVS"
+$nsisInstallDirSubKey = "Software\soundoer\$expectedProductName"
 $originalNsisInstallDir = Get-RegistryDefaultValue $nsisInstallDirSubKey
 $originalNsisInstallerLanguage = Get-RegistryNamedValue $nsisInstallDirSubKey "Installer Language"
-$agentDiscoverySubKey = "Software\SounDoer\PLVS"
+$agentDiscoverySubKey = "Software\SounDoer\$expectedProductName"
 $agentDiscoveryValueNames = @("ProductName", "Identifier", "Version", "InstallDir", "CliPath")
 $originalAgentDiscoveryValues = @{}
 foreach ($name in $agentDiscoveryValueNames) {
@@ -162,6 +171,21 @@ try {
     }
   }
 
+  $installedAgentManifest = Join-Path $installRoot "plvs-agent.json"
+  if (-not (Test-Path -LiteralPath $installedAgentManifest)) {
+    throw "Installed Agent manifest missing: $installedAgentManifest"
+  }
+  $agentManifest = Get-Content -LiteralPath $installedAgentManifest -Raw | ConvertFrom-Json
+  if ($agentManifest.productName -ne $expectedProductName) {
+    throw "Unexpected Agent manifest ProductName: $($agentManifest.productName)"
+  }
+  if ($agentManifest.identifier -ne $expectedIdentifier) {
+    throw "Unexpected Agent manifest Identifier: $($agentManifest.identifier)"
+  }
+  if ($agentManifest.version -ne $packageVersion) {
+    throw "Unexpected Agent manifest Version: $($agentManifest.version)"
+  }
+
   Assert-NoUnexpectedExe $installRoot @("plvs.exe", "plvs-cli.exe", "ffmpeg.exe", "ffprobe.exe", "uninstall.exe") "Install directory"
 
   $doctorOutput = & $installedCli doctor --json
@@ -179,6 +203,13 @@ try {
   if ($doctorStatus -notin @("ok", "warning")) {
     throw "Installed CLI doctor returned unexpected report status: $doctorStatus"
   }
+  if ($doctor.result.report.app.name -ne $expectedProductName) {
+    throw "Installed CLI doctor returned unexpected app name: $($doctor.result.report.app.name)"
+  }
+  $doctorConfigDir = $doctor.result.report.paths.configDir
+  if ((-not $doctorConfigDir) -or ($doctorConfigDir -notlike "*$expectedIdentifier*")) {
+    throw "Installed CLI doctor did not use the $expectedIdentifier config directory: $doctorConfigDir"
+  }
 
   $userPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
   if (Test-PathContainsEntry $userPath $installRoot) {
@@ -189,10 +220,10 @@ try {
   if (-not $discovery) {
     throw "Missing PLVS agent discovery registry key: HKCU:\$agentDiscoverySubKey"
   }
-  if ($discovery.ProductName -ne "PLVS") {
+  if ($discovery.ProductName -ne $expectedProductName) {
     throw "Unexpected PLVS discovery ProductName: $($discovery.ProductName)"
   }
-  if ($discovery.Identifier -ne "com.soundoer.plvs") {
+  if ($discovery.Identifier -ne $expectedIdentifier) {
     throw "Unexpected PLVS discovery Identifier: $($discovery.Identifier)"
   }
   if ($discovery.Version -ne $packageVersion) {
@@ -226,8 +257,8 @@ try {
     Start-Process -FilePath $uninstaller -ArgumentList "/S" -Wait -WindowStyle Hidden
   }
   foreach ($registryKey in @(
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\PLVS",
-    "HKCU:\Software\soundoer\PLVS"
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$expectedProductName",
+    "HKCU:\Software\soundoer\$expectedProductName"
   )) {
     if (Test-Path $registryKey) {
       $entry = Get-ItemProperty $registryKey -ErrorAction SilentlyContinue
@@ -235,9 +266,9 @@ try {
       $location = ($entry.InstallLocation -as [string]).Trim('"')
       if (
         $location -eq $installRoot -or
-        $location -like "*plvs-installer-smoke-*" -or
+        $location -like "*plvs-*-installer-smoke-*" -or
         $defaultValue -eq $installRoot -or
-        $defaultValue -like "*plvs-installer-smoke-*"
+        $defaultValue -like "*plvs-*-installer-smoke-*"
       ) {
         Remove-Item -LiteralPath $registryKey -Recurse -Force -ErrorAction SilentlyContinue
       }
@@ -259,4 +290,4 @@ try {
   }
 }
 
-Write-Host "Windows installer smoke check passed: $($installer.FullName)"
+Write-Host "Windows $Identity installer smoke check passed: $($installer.FullName)"
