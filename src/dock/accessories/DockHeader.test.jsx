@@ -169,7 +169,12 @@ describe("DockHeader", () => {
 
     const notice = screen.getByText("Could not reserve screen space. Dock remains an overlay.");
     expect(notice.className).toContain("ui-signal-bad");
-    expect(notice.title).toBe("ABM_NEW rejected the appbar registration");
+    expect(notice.title).toBe("");
+    fireEvent.mouseEnter(notice);
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip.textContent).toBe("ABM_NEW rejected the appbar registration");
+    expect(tooltip.className).toContain("whitespace-nowrap");
+    expect(tooltip.className).toContain("text-ellipsis");
   });
 
   it.each([

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STATS_CANONICAL_ORDER, STATS_META } from "../../lib/statsCatalog.js";
 import {
@@ -95,8 +95,24 @@ describe("DockStats", () => {
     expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe("minmax(0, 72px)");
     expect(stats[0].className).toContain("flex");
     expect(stats[0].style.gap).toBe("2px");
-    expect(screen.getByText("M").closest("[data-testid='dock-stat-label']")?.title).toBe("M");
+    expect(screen.getByText("M").closest("[data-testid='dock-stat-label']")?.title).toBe("");
   });
+
+  it.each(["standard", "expanded"])(
+    "shows the catalog hint in a themed tooltip without changing the %s cell layout",
+    (heightMode) => {
+      renderWith(METRICS, statsControls(["momentary"]), {}, heightMode);
+
+      const stat = screen.getByTestId("dock-stat");
+      expect(stat.title).toBe("");
+      fireEvent.mouseEnter(stat);
+
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.textContent).toBe(STATS_META.momentary.hint);
+      expect(tooltip.className).toContain("bg-popover");
+      expect(tooltip.className).toContain("max-w-[calc(100vw-1rem)]");
+    }
+  );
 
   it("respects independent visibility and ordering controls", () => {
     renderWith(METRICS, statsControls(["psr", "integrated"], ["integrated", "psr"]));

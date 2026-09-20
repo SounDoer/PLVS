@@ -58,7 +58,11 @@ describe("DockLevel", () => {
     expect(
       screen.getAllByTestId("dock-level-bar").every((bar) => bar.className.includes("h-full"))
     ).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Reset true peak maximum" }));
+    const reset = screen.getByRole("button", { name: "Reset true peak maximum" });
+    expect(reset.title).toBe("");
+    fireEvent.mouseEnter(reset);
+    expect(screen.getByRole("tooltip").textContent).toBe("Reset TP Max");
+    fireEvent.click(reset);
     expect(onResetTpMax).toHaveBeenCalledOnce();
   });
 
@@ -116,8 +120,11 @@ describe("DockLevel", () => {
         screen.getAllByTestId("dock-level-channel-readout").map((node) => node.textContent)
       ).toEqual(["-12.0", "-10.0"]);
     });
-    expect(screen.getByTestId("dock-level-readout-source").textContent).toBe("PB Max");
-    expect(screen.getByTitle("Playback Max")).toBeTruthy();
+    const source = screen.getByTestId("dock-level-readout-source");
+    expect(source.textContent).toBe("PB Max");
+    expect(source.title).toBe("");
+    fireEvent.mouseEnter(source);
+    expect(screen.getByRole("tooltip").textContent).toBe("Playback Max");
     expect(
       screen.getAllByTestId("dock-level-channel-readout")[0].parentElement.className
     ).toContain("w-max");

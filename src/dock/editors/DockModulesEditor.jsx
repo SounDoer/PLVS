@@ -29,6 +29,7 @@ import {
 } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
+import { useHoverTip } from "../../components/HoverTip.jsx";
 
 const DOCK_ONLY_PANEL_META = {
   transport: {
@@ -36,6 +37,32 @@ const DOCK_ONLY_PANEL_META = {
     Icon: Timer,
   },
 };
+
+function ResetLayoutButton({ onClick }) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+    tip: "Reset Layout",
+    side: "top",
+    align: "end",
+  });
+  return (
+    <>
+      <button
+        ref={anchorRef}
+        type="button"
+        aria-label="Reset layout"
+        onClick={onClick}
+        onMouseEnter={showTip}
+        onMouseLeave={hideTip}
+        onFocus={showTip}
+        onBlur={hideTip}
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+      >
+        <RotateCcw className="size-3.5" />
+      </button>
+      {tipNode}
+    </>
+  );
+}
 
 export const reorderDockModulesAtPointer = reorderIdsAtPointer;
 
@@ -86,11 +113,13 @@ function DockModuleRow({
         <ManagementIconAction
           icon={<Check className="size-3.5" />}
           label={`Save ${title} name`}
+          tip="Save"
           onClick={commitRename}
         />
         <ManagementIconAction
           icon={<X className="size-3.5" />}
           label={`Cancel ${title} rename`}
+          tip="Cancel"
           onClick={() => setEditing(false)}
         />
       </div>
@@ -124,12 +153,14 @@ function DockModuleRow({
           <ManagementIconAction
             icon={<Settings2 className="size-3.5" />}
             label={`${title} settings`}
+            tip="Settings"
             onClick={() => onOpenSettings(panel.id)}
           />
         ) : null}
         <ManagementIconAction
           icon={<Pencil className="size-3.5" />}
           label={`Rename ${title}`}
+          tip="Rename"
           onClick={startRename}
         />
         <InlineConfirm
@@ -140,6 +171,7 @@ function DockModuleRow({
             <ManagementIconAction
               icon={<Trash2 className="size-3.5" />}
               label={`Delete ${title}`}
+              tip="Delete"
               onClick={arm}
               className="hover:text-destructive"
             />
@@ -281,17 +313,7 @@ export function DockModulesEditor({
             onConfirm={onReset}
             confirmLabel="Confirm reset layout"
             cancelLabel="Cancel reset layout"
-            trigger={(arm) => (
-              <button
-                type="button"
-                aria-label="Reset layout"
-                title="Reset layout"
-                onClick={arm}
-                className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-              >
-                <RotateCcw className="size-3.5" />
-              </button>
-            )}
+            trigger={(arm) => <ResetLayoutButton onClick={arm} />}
           />
         </div>
       </div>

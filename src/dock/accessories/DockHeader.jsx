@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { IconButton } from "../../components/IconButton.jsx";
 import { SourceTransportCluster } from "../../components/SourceTransportCluster.jsx";
+import { HoverTip } from "../../components/HoverTip.jsx";
 import { cn } from "../../lib/utils.js";
 
 export function DockHeader({ state, onAction, onPointer }) {
@@ -45,17 +46,24 @@ export function DockHeader({ state, onAction, onPointer }) {
           onPrimaryAction={(actionKind) => onAction("source-primary", { actionKind })}
         />
         {state.notice ? (
-          <span
-            title={state.notice.details ?? state.notice.text}
-            className={cn(
-              "min-w-0 max-w-[40vw] truncate text-[length:var(--ui-fs-status)] font-medium",
-              state.notice.kind === "error"
-                ? "text-[color:var(--ui-signal-bad)]"
-                : "text-muted-foreground"
-            )}
+          <HoverTip
+            tip={state.notice.details ?? state.notice.text}
+            side="left"
+            align="center"
+            className="min-w-0 max-w-[40vw]"
+            tipClassName="w-max max-w-[calc(100vw-1rem)] overflow-hidden text-ellipsis whitespace-nowrap"
           >
-            {state.notice.text}
-          </span>
+            <span
+              className={cn(
+                "block truncate text-[length:var(--ui-fs-status)] font-medium",
+                state.notice.kind === "error"
+                  ? "text-[color:var(--ui-signal-bad)]"
+                  : "text-muted-foreground"
+              )}
+            >
+              {state.notice.text}
+            </span>
+          </HoverTip>
         ) : null}
         <IconButton
           icon={<Trash2 className="size-3.5" />}

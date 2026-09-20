@@ -8,6 +8,9 @@ import { fmtMetric } from "../../math/formatMath.js";
 import { getPeakChannels } from "../../math/peakChannelMath.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 import { DockExpandedMetric } from "./DockExpandedMetric.jsx";
+import { useHoverTip } from "../../components/HoverTip.jsx";
+
+const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
 const CLIP_DB = -0.1;
 const MODE_META = {
@@ -68,6 +71,11 @@ function ChannelReadout({ value, style }) {
 }
 
 function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+    tip: onReset ? "Reset TP Max" : undefined,
+    side: "top",
+    tipClassName: DOCK_TIP_CLASS,
+  });
   const content = expanded ? (
     <DockExpandedMetric
       label={label}
@@ -83,16 +91,23 @@ function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
   const className =
     "w-full justify-self-end whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] font-semibold tabular-nums";
   return onReset ? (
-    <button
-      type="button"
-      className={`${className} rounded-xs`}
-      style={style}
-      onClick={onReset}
-      aria-label="Reset true peak maximum"
-      title="Reset TP Max"
-    >
-      {content}
-    </button>
+    <>
+      <button
+        ref={anchorRef}
+        type="button"
+        className={`${className} rounded-xs`}
+        style={style}
+        onClick={onReset}
+        onMouseEnter={showTip}
+        onMouseLeave={hideTip}
+        onFocus={showTip}
+        onBlur={hideTip}
+        aria-label="Reset true peak maximum"
+      >
+        {content}
+      </button>
+      {tipNode}
+    </>
   ) : (
     <div className={className} style={style}>
       {content}
@@ -112,6 +127,16 @@ function ReadoutRegion({
   expandedLabel,
   unit,
 }) {
+  const {
+    anchorRef: sourceAnchorRef,
+    showTip: showSourceTip,
+    hideTip: hideSourceTip,
+    tipNode: sourceTipNode,
+  } = useHoverTip({
+    tip: sourceTitle,
+    side: "top",
+    tipClassName: DOCK_TIP_CLASS,
+  });
   const rows = Math.max(1, rowCount);
   const globalReadoutWidth = showGlobal
     ? unit
@@ -144,10 +169,12 @@ function ReadoutRegion({
       >
         {source && !expanded ? (
           <abbr
+            ref={sourceAnchorRef}
             data-testid="dock-level-readout-source"
             className={`${showGlobal ? "" : "self-center"} whitespace-nowrap font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground no-underline`}
             aria-label={sourceTitle}
-            title={sourceTitle}
+            onMouseEnter={showSourceTip}
+            onMouseLeave={hideSourceTip}
           >
             {source}
           </abbr>
@@ -173,6 +200,7 @@ function ReadoutRegion({
             ))}
           </div>
         )}
+        {sourceTipNode}
       </div>
     </div>
   );

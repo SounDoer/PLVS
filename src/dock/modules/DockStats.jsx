@@ -21,6 +21,9 @@ import {
   visibleDockStats,
 } from "../dockStatsLayout.js";
 import { DockExpandedMetric } from "./DockExpandedMetric.jsx";
+import { useHoverTip } from "../../components/HoverTip.jsx";
+
+const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
 function useDockStatsColumnCount(containerRef, enabled, minCellWidth) {
   const [columnCount, setColumnCount] = useState(1);
@@ -44,6 +47,90 @@ function useDockStatsColumnCount(containerRef, enabled, minCellWidth) {
   }, [containerRef, enabled, minCellWidth]);
 
   return columnCount;
+}
+
+function DockStatCell({
+  id,
+  label,
+  accessibleLabel,
+  value,
+  unit,
+  hint,
+  dialogueActive,
+  position,
+  expanded,
+  watched,
+  status,
+}) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
+    tip: hint,
+    side: "top",
+    tipClassName: DOCK_TIP_CLASS,
+  });
+
+  return (
+    <div
+      ref={anchorRef}
+      data-testid="dock-stat"
+      className={expanded ? "min-w-0" : "flex min-w-0 items-baseline"}
+      style={{
+        gridColumn: position.cellColumn,
+        gridRow: position.row,
+        gap: `${DOCK_STATS_INNER_GAP_PX}px`,
+      }}
+      aria-label={`${accessibleLabel} ${value}`}
+      onMouseEnter={hint ? showTip : undefined}
+      onMouseLeave={hint ? hideTip : undefined}
+    >
+      {expanded ? (
+        <DockExpandedMetric
+          label={label}
+          value={value}
+          unit={unit}
+          unitVisibility="tight"
+          statId={id}
+          labelClassName={loudnessLabelClass(watched)}
+          valueClassName={loudnessStatusValueClass(status)}
+          indicator={
+            id === "dialogueCoverage" ? (
+              <span
+                data-testid="dock-dialogue-active-dot"
+                data-active={dialogueActive ? "true" : "false"}
+                className={`size-1.5 shrink-0 rounded-full ${
+                  dialogueActive ? "bg-foreground" : "bg-muted-foreground/30"
+                }`}
+              />
+            ) : null
+          }
+        />
+      ) : (
+        <>
+          <span
+            data-testid="dock-stat-label"
+            className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${loudnessLabelClass(watched)}`}
+          >
+            {id === "dialogueCoverage" ? (
+              <span
+                data-testid="dock-dialogue-active-dot"
+                data-active={dialogueActive ? "true" : "false"}
+                className={`size-1.5 shrink-0 rounded-full ${
+                  dialogueActive ? "bg-foreground" : "bg-muted-foreground/30"
+                }`}
+              />
+            ) : null}
+            <span className="min-w-0 truncate">{label}</span>
+          </span>
+          <span
+            data-stat-value={id}
+            className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(status)}`}
+          >
+            {value}
+          </span>
+        </>
+      )}
+      {tipNode}
+    </div>
+  );
 }
 
 /**
@@ -118,65 +205,20 @@ export function DockStats({ controls, heightMode = "standard" }) {
           const dialogueActive = id === "dialogueCoverage" && dialogueActiveNow;
           const position = dockStatsGridPosition(metricIndex, columnCount);
           return (
-            <div
+            <DockStatCell
               key={id}
-              data-testid="dock-stat"
-              className={expanded ? "min-w-0" : "flex min-w-0 items-baseline"}
-              style={{
-                gridColumn: position.cellColumn,
-                gridRow: position.row,
-                gap: `${DOCK_STATS_INNER_GAP_PX}px`,
-              }}
-              aria-label={`${meta?.label ?? label} ${value}`}
-            >
-              {expanded ? (
-                <DockExpandedMetric
-                  label={label}
-                  value={value}
-                  unit={unit}
-                  unitVisibility="tight"
-                  statId={id}
-                  labelClassName={loudnessLabelClass(watchedIds.has(id))}
-                  valueClassName={loudnessStatusValueClass(statuses[id])}
-                  indicator={
-                    id === "dialogueCoverage" ? (
-                      <span
-                        data-testid="dock-dialogue-active-dot"
-                        data-active={dialogueActive ? "true" : "false"}
-                        className={`size-1.5 shrink-0 rounded-full ${
-                          dialogueActive ? "bg-foreground" : "bg-muted-foreground/30"
-                        }`}
-                      />
-                    ) : null
-                  }
-                />
-              ) : (
-                <>
-                  <span
-                    data-testid="dock-stat-label"
-                    title={label}
-                    className={`flex min-w-0 flex-1 items-center gap-[var(--ui-dock-gap-column)] overflow-hidden font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-label)] font-medium leading-none ${loudnessLabelClass(watchedIds.has(id))}`}
-                  >
-                    {id === "dialogueCoverage" ? (
-                      <span
-                        data-testid="dock-dialogue-active-dot"
-                        data-active={dialogueActive ? "true" : "false"}
-                        className={`size-1.5 shrink-0 rounded-full ${
-                          dialogueActive ? "bg-foreground" : "bg-muted-foreground/30"
-                        }`}
-                      />
-                    ) : null}
-                    <span className="min-w-0 truncate">{label}</span>
-                  </span>
-                  <span
-                    data-stat-value={id}
-                    className={`w-[var(--ui-dock-readout-w)] shrink-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-dock-fs-value)] font-semibold leading-none tabular-nums ${loudnessStatusValueClass(statuses[id])}`}
-                  >
-                    {value}
-                  </span>
-                </>
-              )}
-            </div>
+              id={id}
+              label={label}
+              accessibleLabel={meta?.label ?? label}
+              value={value}
+              unit={unit}
+              hint={meta?.hint}
+              dialogueActive={dialogueActive}
+              position={position}
+              expanded={expanded}
+              watched={watchedIds.has(id)}
+              status={statuses[id]}
+            />
           );
         })}
       </div>

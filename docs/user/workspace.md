@@ -26,7 +26,8 @@ The Views menu pares the window down for monitoring: **Always on Top**, **Compac
 On Windows, Dock parks a slim, always-on-top meter strip against the top or bottom edge of the
 screen, so the meters stay visible while you work in another app. Hovering the strip shows a header
 for switching the Loudness Profile and editing which modules the strip shows. The strip can also
-reserve its screen space so maximised windows do not cover it.
+reserve its screen space so maximised windows do not cover it. Hover a Stats readout or an icon-only
+Dock action for the same themed explanation shown in the normal workspace.
 
 ## Persistence
 

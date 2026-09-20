@@ -102,6 +102,44 @@ describe("DockModulesEditor", () => {
     expect(screen.queryByRole("button", { name: "Timecode settings" })).toBeNull();
   });
 
+  it("shows themed tooltips for the module row icon actions", () => {
+    render(<DockModulesEditor {...BASE_PROPS} />);
+
+    const settings = screen.getByRole("button", { name: "Spectrum settings" });
+    expect(settings.title).toBe("");
+    fireEvent.mouseEnter(settings);
+    expect(screen.getByRole("tooltip").textContent).toBe("Settings");
+    fireEvent.mouseLeave(settings);
+
+    const rename = screen.getByRole("button", { name: "Rename Spectrum" });
+    fireEvent.mouseEnter(rename);
+    expect(screen.getByRole("tooltip").textContent).toBe("Rename");
+    fireEvent.click(rename);
+
+    const save = screen.getByRole("button", { name: "Save Spectrum name" });
+    fireEvent.focus(save);
+    expect(screen.getByRole("tooltip").textContent).toBe("Save");
+    fireEvent.blur(save);
+
+    const cancel = screen.getByRole("button", { name: "Cancel Spectrum rename" });
+    fireEvent.mouseEnter(cancel);
+    expect(screen.getByRole("tooltip").textContent).toBe("Cancel");
+  });
+
+  it("shows themed tooltips for Delete and Reset Layout", () => {
+    render(<DockModulesEditor {...BASE_PROPS} />);
+
+    const remove = screen.getByRole("button", { name: "Delete Spectrum" });
+    fireEvent.mouseEnter(remove);
+    expect(screen.getByRole("tooltip").textContent).toBe("Delete");
+    fireEvent.mouseLeave(remove);
+
+    const reset = screen.getByRole("button", { name: "Reset layout" });
+    expect(reset.title).toBe("");
+    fireEvent.mouseEnter(reset);
+    expect(screen.getByRole("tooltip").textContent).toBe("Reset Layout");
+  });
+
   it("exposes Waveform settings", () => {
     const onOpenSettings = vi.fn();
     render(

@@ -311,7 +311,7 @@ describe("DockModuleSettings", () => {
       controls: { mode: "rms", readout: "live", showLabels: true },
     });
     const reset = screen.getByRole("button", { name: "Reset Level Meter settings" });
-    const slot = reset.closest("span.flex.w-10");
+    const slot = reset.closest(".flex.w-10");
     fireEvent.click(reset);
     expect(slot?.className).toContain("w-10");
     expect(screen.getByRole("button", { name: "Cancel reset Level Meter settings" })).toBeTruthy();
