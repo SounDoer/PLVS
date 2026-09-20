@@ -1,6 +1,8 @@
 # Signal Source
 
-One dropdown covers every kind of input — you pick a signal, not an underlying API.
+Open **Sources** in the toolbar to choose any kind of input — you pick a signal, not an
+underlying API. The footer and system tray show the selected source as
+`Output · name`, `Input · name`, or `Application · name`.
 
 ## Automatic
 
@@ -34,7 +36,8 @@ PLVS recognises the application again when it restarts and reconnects to it.
 ## Long source lists
 
 Outputs, Inputs, and Applications are grouped into collapsible sections with source counts. The
-picker scrolls when the available sources do not fit on screen.
+picker scrolls when the available sources do not fit on screen. The system tray's **Source**
+submenu offers the same source groups, including running applications.
 
 ## When capture is interrupted
 

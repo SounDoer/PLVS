@@ -22,7 +22,7 @@ vi.mock("./RecordingIndicator.jsx", () => ({ RecordingIndicator: () => null }));
 import { AppShell } from "./AppShell.jsx";
 
 const baseFooter = {
-  deviceLabel: "Test Device",
+  sourceLabel: "Output · Test Device",
   audioDrop: null,
   loudnessProfileName: null,
   activePresetName: "Default",

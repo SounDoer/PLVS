@@ -1678,19 +1678,30 @@ function AppContent() {
     return d ? `${d.channels}:${d.defaultSampleRate}` : "";
   }, [captureDeviceId, audioDevices, captureApplications, defaultOutputFormatSig]);
 
-  const deviceName = useMemo(() => {
+  const selectedSource = useMemo(() => {
     if (!isTauri()) return null;
     if (captureDeviceId === "default") {
-      return defaultOutputLabel || audioDevices.find((d) => d.isSystemOutputMonitor)?.label || null;
+      const label =
+        defaultOutputLabel || audioDevices.find((device) => device.isSystemOutputMonitor)?.label;
+      return label ? { type: "Output", label } : null;
     }
     const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
-    if (application) return application.label;
-    return audioDevices.find((d) => d.id === captureDeviceId)?.label ?? null;
+    if (application) {
+      return { type: "Application", label: application.label };
+    }
+    const device = audioDevices.find((candidate) => candidate.id === captureDeviceId);
+    if (!device) return null;
+    return {
+      type: device.isSystemOutputMonitor ? "Output" : "Input",
+      label: device.label,
+    };
   }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel]);
-  const deviceDisplay = useMemo(
-    () => (deviceName ? formatAudioDeviceLabel(deviceName) : null),
-    [deviceName]
-  );
+  const sourceDisplayName = useMemo(() => {
+    if (!selectedSource) return null;
+    if (selectedSource.type === "Application") return selectedSource.label;
+    const display = formatAudioDeviceLabel(selectedSource.label);
+    return display.secondary || display.primary;
+  }, [selectedSource]);
   // The restart itself is driven by `captureFormatSignature`; this only tells the user why their
   // measurement just started over.
   const previousDefaultOutputLabelRef = useRef(defaultOutputLabel);
@@ -1708,9 +1719,10 @@ function AppContent() {
     // Only a change of the resolved default output announces itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultOutputLabel]);
-  const footerDeviceLabel = deviceDisplay
-    ? deviceDisplay.secondary || deviceDisplay.primary
-    : "Not connected";
+  const footerSourceLabel =
+    selectedSource && sourceDisplayName
+      ? `${selectedSource.type} · ${sourceDisplayName}`
+      : "Not connected";
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
   const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : "-";
   const focusViewActive =
@@ -2107,9 +2119,10 @@ function AppContent() {
     updateBusy,
     audioOutputs,
     audioInputs,
+    captureApplications,
     safeAudioDeviceId,
     defaultOutputLabel,
-    onSelectDevice: onSelectCaptureDevice,
+    onSelectSource: onSelectCaptureDevice,
     presets,
   });
 
@@ -2308,7 +2321,7 @@ function AppContent() {
     onCopyReport: copyFileAnalysisReportMarkdown,
   };
   const footer = {
-    deviceLabel: footerDeviceLabel,
+    sourceLabel: footerSourceLabel,
     audioDrop: sourceMode === "live" ? meterRuntime.liveAudioDrop : null,
     // The draft outranks the selection, so a profile being edited names the footer too. An
     // unnamed new profile reads Untitled, matching normalizeRuleDocument's fallback.

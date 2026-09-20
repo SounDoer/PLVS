@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   isDecorated: vi.fn(async () => true),
   setDecorations: vi.fn(async () => {}),
+  invoke: vi.fn(async () => {}),
   setShadow: vi.fn(async () => {}),
   isTauri: vi.fn(() => true),
+  isMacOS: vi.fn(() => false),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -16,7 +18,9 @@ vi.mock("@tauri-apps/api/window", () => ({
     setShadow: mocks.setShadow,
   }),
 }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
+vi.mock("../lib/platform.js", () => ({ isMacOS: mocks.isMacOS }));
 
 import { setWindowDecorations, useFocusViewWindow } from "./useFocusViewWindow.js";
 
@@ -24,8 +28,10 @@ describe("useFocusViewWindow", () => {
   beforeEach(() => {
     mocks.setDecorations.mockClear();
     mocks.isDecorated.mockClear().mockResolvedValue(true);
+    mocks.invoke.mockClear();
     mocks.setShadow.mockClear();
     mocks.isTauri.mockReturnValue(true);
+    mocks.isMacOS.mockReturnValue(false);
   });
 
   it("does not reapply decorations when the window already has the requested chrome", async () => {
@@ -56,6 +62,14 @@ describe("useFocusViewWindow", () => {
     renderHook(() => useFocusViewWindow(true, false));
     await waitFor(() => expect(mocks.setDecorations).toHaveBeenCalledWith(false));
     expect(mocks.setShadow).not.toHaveBeenCalled();
+  });
+
+  it("resynchronizes the macOS webview after changing decorations", async () => {
+    mocks.isMacOS.mockReturnValue(true);
+
+    await expect(setWindowDecorations(false)).resolves.toBe(true);
+
+    expect(mocks.invoke).toHaveBeenCalledWith("sync_main_webview_size");
   });
 
   it("skips all window calls while suspended (docked boot must keep strip chrome)", () => {

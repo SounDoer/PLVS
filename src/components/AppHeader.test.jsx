@@ -89,7 +89,7 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "START" })).toBeTruthy();
 
     expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Devices" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sources" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Modules" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Views" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Presets" })).toBeTruthy();
@@ -119,17 +119,17 @@ describe("AppHeader", () => {
     expect(screen.getByText("File analysis already in progress")).toBeTruthy();
   });
 
-  it("uses the short Devices copy and formatted device rows", () => {
+  it("uses the short Sources copy and formatted device rows", () => {
     renderHeader();
 
-    const devicesButton = screen.getByRole("button", { name: "Devices" });
-    const icon = devicesButton.querySelector("svg");
+    const sourcesButton = screen.getByRole("button", { name: "Sources" });
+    const icon = sourcesButton.querySelector("svg");
     expect(icon?.classList.contains("size-[length:var(--ui-icon-shell-action)]")).toBe(true);
     expect(icon?.classList.contains("shrink-0")).toBe(true);
 
-    fireEvent.click(devicesButton);
+    fireEvent.click(sourcesButton);
 
-    expect(screen.getByText("Devices")).toBeTruthy();
+    expect(screen.getByText("Sources")).toBeTruthy();
     expect(screen.queryByText("Audio Device")).toBeNull();
     expect(screen.getByRole("button", { name: "Automatic (default system output)" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Speakers (Realtek USB Audio)" })).toBeTruthy();
@@ -155,7 +155,7 @@ describe("AppHeader", () => {
       setCaptureDeviceId,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
     expect(onRefreshSources).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: /^Applications/ }));
     expect(screen.getByText("reference.wav - VLC")).toBeTruthy();
@@ -174,7 +174,7 @@ describe("AppHeader", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
 
     const output = screen.getByRole("button", { name: /^Output/ });
     const input = screen.getByRole("button", { name: /^Input/ });
@@ -205,7 +205,7 @@ describe("AppHeader", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
 
     expect(
       screen.getByRole("button", { name: /^Applications/ }).getAttribute("aria-expanded")
@@ -214,31 +214,31 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "VLC application audio" })).toBeTruthy();
   });
 
-  it("keeps the Devices heading and Automatic row outside one bounded scroll area", () => {
+  it("keeps the Sources heading and Automatic row outside one bounded scroll area", () => {
     renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: "Devices" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
 
     const content = document.querySelector('[data-slot="popover-content"]');
-    const scrollArea = content.querySelector("[data-device-scroll]");
+    const scrollArea = content.querySelector("[data-source-scroll]");
     expect(content.className).toContain("max-h-[var(--radix-popover-content-available-height)]");
     expect(content.className).toContain("overflow-hidden");
     expect(content.className).toContain("w-[min(21rem,92vw)]");
     expect(scrollArea.className).toContain("overflow-y-auto");
     expect(scrollArea.className).toContain("overscroll-contain");
     expect(scrollArea.className).toContain("[scrollbar-gutter:stable]");
-    expect(scrollArea.contains(screen.getByText("Devices"))).toBe(false);
+    expect(scrollArea.contains(screen.getByText("Sources"))).toBe(false);
     expect(
       scrollArea.contains(screen.getByRole("button", { name: "Automatic (default system output)" }))
     ).toBe(false);
   });
 
-  it("seats Loudness Profile between Devices and Modules", () => {
+  it("seats Loudness Profile between Sources and Modules", () => {
     const { container } = renderHeader();
     const buttons = within(container.querySelector("header"))
       .getAllByRole("button")
       .map((button) => button.ariaLabel);
 
-    expect(buttons.indexOf("Devices")).toBeLessThan(buttons.indexOf("Loudness Profile"));
+    expect(buttons.indexOf("Sources")).toBeLessThan(buttons.indexOf("Loudness Profile"));
     expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Modules"));
   });
 
@@ -345,7 +345,7 @@ describe("AppHeader", () => {
       },
     });
 
-    for (const name of ["Devices", "Loudness Profile", "Modules", "Views", "Presets"]) {
+    for (const name of ["Sources", "Loudness Profile", "Modules", "Views", "Presets"]) {
       const button = screen.getByRole("button", { name });
       expect(button.className).toContain("group-data-[state=open]:bg-accent");
       expect(button.className).toContain("group-data-[state=open]:text-accent-foreground");
@@ -372,11 +372,11 @@ describe("AppHeader", () => {
     expect(screen.getByRole("switch", { name: "Hide Chrome" })).toBeTruthy();
   });
 
-  it("uses the Devices slot as Open file in File mode", () => {
+  it("uses the Sources slot as Open file in File mode", () => {
     const onOpenFile = vi.fn();
     renderHeader({ sourceMode: "file", onOpenFile });
 
-    expect(screen.queryByRole("button", { name: "Devices" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sources" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open file" }));
 
     expect(onOpenFile).toHaveBeenCalledTimes(1);

@@ -23,7 +23,7 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { cn } from "@/lib/utils";
 
 const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(18rem,92vw)] p-1";
-const DEVICES_POPOVER_CLASS =
+const SOURCES_POPOVER_CLASS =
   "flex max-h-[var(--radix-popover-content-available-height)] w-[min(21rem,92vw)] min-w-40 flex-col overflow-hidden p-1";
 // Matches DockHeader's pressed-while-open treatment for its editor triggers: the trigger's `span`
 // wrapper picks up Radix's `data-state` via `asChild`, so `group` + `group-data-` needs no state of
@@ -31,7 +31,7 @@ const DEVICES_POPOVER_CLASS =
 const TOOLBAR_TRIGGER_OPEN_CLASS =
   "group-data-[state=open]:bg-accent group-data-[state=open]:text-accent-foreground";
 
-function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
+function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
     <button
       type="button"
@@ -59,7 +59,7 @@ function DeviceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
 function AudioDeviceOption({ device, selected, onSelect }) {
   const label = formatAudioDeviceLabel(device.label);
   return (
-    <DeviceRow
+    <SourceRow
       ariaLabel={label.full}
       primary={label.primary}
       secondary={label.secondary}
@@ -80,7 +80,7 @@ function selectedApplicationSummary(applications, selectedId) {
   return selected ? `${selected.label} Selected` : null;
 }
 
-function DeviceSection({ id, label, count, open, onOpenChange, selectedSummary, children }) {
+function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, children }) {
   return (
     <section>
       <button
@@ -121,7 +121,7 @@ function DeviceSection({ id, label, count, open, onOpenChange, selectedSummary, 
   );
 }
 
-function initialDeviceSections(selectedId, audioOutputs, audioInputs, captureApplications) {
+function initialSourceSections(selectedId, audioOutputs, audioInputs, captureApplications) {
   return {
     output: true,
     input:
@@ -178,22 +178,22 @@ export function AppHeader({
   presets,
   setSettingsOpen,
 }) {
-  const [devicesOpen, setDevicesOpen] = useState(false);
-  const [deviceSectionsOpen, setDeviceSectionsOpen] = useState(() =>
-    initialDeviceSections(safeAudioDeviceId, audioOutputs, audioInputs, captureApplications)
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sourceSectionsOpen, setSourceSectionsOpen] = useState(() =>
+    initialSourceSections(safeAudioDeviceId, audioOutputs, audioInputs, captureApplications)
   );
 
-  const setDeviceSectionOpen = (section, open) => {
-    setDeviceSectionsOpen((current) => ({ ...current, [section]: open }));
+  const setSourceSectionOpen = (section, open) => {
+    setSourceSectionsOpen((current) => ({ ...current, [section]: open }));
   };
 
   const selectedOutputSummary = selectedDeviceSummary(audioOutputs, safeAudioDeviceId);
   const selectedInputSummary = selectedDeviceSummary(audioInputs, safeAudioDeviceId);
   const selectedApplication = selectedApplicationSummary(captureApplications, safeAudioDeviceId);
 
-  const handleDeviceSelect = (id) => {
+  const handleSourceSelect = (id) => {
     setCaptureDeviceId(id);
-    setDevicesOpen(false);
+    setSourcesOpen(false);
   };
 
   return (
@@ -240,7 +240,7 @@ export function AppHeader({
         />
         {isTauriApp &&
           (sourceMode === "file" ? (
-            // Reuse the Devices slot (meaningless in File mode) as a re-import affordance,
+            // Reuse the Sources slot (meaningless in File mode) as a re-import affordance,
             // mirroring the ANALYZE picker without adding a new toolbar control.
             <IconButton
               icon={<FolderOpen className="size-[length:var(--ui-icon-shell-action)] shrink-0" />}
@@ -249,11 +249,11 @@ export function AppHeader({
             />
           ) : (
             <Popover
-              open={devicesOpen}
+              open={sourcesOpen}
               onOpenChange={(open) => {
                 if (open && !audioDevices.length && !captureApplications.length) return;
                 if (open) void onRefreshSources?.();
-                setDevicesOpen(open);
+                setSourcesOpen(open);
                 if (autoHideControls) holdFocusControls(open);
               }}
             >
@@ -263,34 +263,34 @@ export function AppHeader({
                     icon={
                       <Volume2 className="size-[length:var(--ui-icon-shell-action)] shrink-0" />
                     }
-                    tip="Devices"
+                    tip="Sources"
                     disabled={!audioDevices.length && !captureApplications.length}
                     className={TOOLBAR_TRIGGER_OPEN_CLASS}
                   />
                 </span>
               </PopoverTrigger>
-              <PopoverContent align="end" sideOffset={6} className={DEVICES_POPOVER_CLASS}>
+              <PopoverContent align="end" sideOffset={6} className={SOURCES_POPOVER_CLASS}>
                 <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
-                  Devices
+                  Sources
                 </p>
-                <DeviceRow
+                <SourceRow
                   ariaLabel="Automatic (default system output)"
                   primary="Automatic (default system output)"
                   selected={safeAudioDeviceId === "default"}
-                  onSelect={() => handleDeviceSelect("default")}
+                  onSelect={() => handleSourceSelect("default")}
                 />
                 <div className="mx-1 border-t border-border/60" />
                 <div
-                  data-device-scroll
+                  data-source-scroll
                   className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
                 >
                   {audioOutputs.length ? (
-                    <DeviceSection
-                      id="device-output-list"
+                    <SourceSection
+                      id="source-output-list"
                       label="Output"
                       count={audioOutputs.length}
-                      open={deviceSectionsOpen.output}
-                      onOpenChange={(open) => setDeviceSectionOpen("output", open)}
+                      open={sourceSectionsOpen.output}
+                      onOpenChange={(open) => setSourceSectionOpen("output", open)}
                       selectedSummary={selectedOutputSummary}
                     >
                       {audioOutputs.map((device) => (
@@ -298,18 +298,18 @@ export function AppHeader({
                           key={device.id}
                           device={device}
                           selected={safeAudioDeviceId === device.id}
-                          onSelect={() => handleDeviceSelect(device.id)}
+                          onSelect={() => handleSourceSelect(device.id)}
                         />
                       ))}
-                    </DeviceSection>
+                    </SourceSection>
                   ) : null}
                   {audioInputs.length ? (
-                    <DeviceSection
-                      id="device-input-list"
+                    <SourceSection
+                      id="source-input-list"
                       label="Input"
                       count={audioInputs.length}
-                      open={deviceSectionsOpen.input}
-                      onOpenChange={(open) => setDeviceSectionOpen("input", open)}
+                      open={sourceSectionsOpen.input}
+                      onOpenChange={(open) => setSourceSectionOpen("input", open)}
                       selectedSummary={selectedInputSummary}
                     >
                       {audioInputs.map((device) => (
@@ -317,31 +317,31 @@ export function AppHeader({
                           key={device.id}
                           device={device}
                           selected={safeAudioDeviceId === device.id}
-                          onSelect={() => handleDeviceSelect(device.id)}
+                          onSelect={() => handleSourceSelect(device.id)}
                         />
                       ))}
-                    </DeviceSection>
+                    </SourceSection>
                   ) : null}
                   {captureApplications.length ? (
-                    <DeviceSection
-                      id="device-application-list"
+                    <SourceSection
+                      id="source-application-list"
                       label="Applications"
                       count={captureApplications.length}
-                      open={deviceSectionsOpen.applications}
-                      onOpenChange={(open) => setDeviceSectionOpen("applications", open)}
+                      open={sourceSectionsOpen.applications}
+                      onOpenChange={(open) => setSourceSectionOpen("applications", open)}
                       selectedSummary={selectedApplication}
                     >
                       {captureApplications.map((application) => (
-                        <DeviceRow
+                        <SourceRow
                           key={application.id}
                           ariaLabel={`${application.label} application audio`}
                           primary={application.label}
                           secondary={application.windowTitle}
                           selected={safeAudioDeviceId === application.id}
-                          onSelect={() => handleDeviceSelect(application.id)}
+                          onSelect={() => handleSourceSelect(application.id)}
                         />
                       ))}
-                    </DeviceSection>
+                    </SourceSection>
                   ) : null}
                 </div>
               </PopoverContent>

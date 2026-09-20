@@ -356,7 +356,7 @@ describe("App smoke", () => {
     render(<App />);
     await screen.findByRole("button", { name: /^start$/i });
 
-    expect(footer().getByText("Device")).toBeTruthy();
+    expect(footer().getByText("Source")).toBeTruthy();
     expect(footer().getByText("Not connected")).toBeTruthy();
     expect(footer().getByText("Preset")).toBeTruthy();
     // The starter profile is active on first run, so the footer names it.
@@ -427,7 +427,7 @@ describe("App smoke", () => {
     expect(footer().queryByText("Test profile")).toBeNull();
   });
 
-  it("uses the formatted default device label in the footer", async () => {
+  it("uses the source type and formatted default output label in the footer", async () => {
     isTauri.mockReturnValue(true);
     previewAudioDevice.mockResolvedValue({
       sampleRateHz: 48000,
@@ -436,7 +436,7 @@ describe("App smoke", () => {
     });
     render(<App />);
 
-    expect(await screen.findByText("Realtek USB Audio")).toBeTruthy();
+    expect(await screen.findByText("Output · Realtek USB Audio")).toBeTruthy();
     expect(screen.queryByText("Speakers (Realtek USB Audio)")).toBeNull();
   });
 

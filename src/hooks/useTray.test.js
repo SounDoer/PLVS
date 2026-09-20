@@ -50,9 +50,10 @@ const defaultProps = {
   updateBusy: false,
   audioOutputs: [],
   audioInputs: [],
+  captureApplications: [],
   safeAudioDeviceId: "default",
   defaultOutputLabel: "",
-  onSelectDevice: vi.fn(),
+  onSelectSource: vi.fn(),
   presets: { list: [], activeId: null, dirty: false, apply: vi.fn() },
 };
 
@@ -143,12 +144,12 @@ describe("useTray", () => {
     expect(findText(menuItemOptions(), "Hide Window")).toBeTruthy();
   });
 
-  it("builds the Device submenu with the current device labelled and checked", async () => {
-    const onSelectDevice = vi.fn();
+  it("builds the Source submenu with the current source type labelled and checked", async () => {
+    const onSelectSource = vi.fn();
     renderHook(() =>
       useTray({
         ...defaultProps,
-        onSelectDevice,
+        onSelectSource,
         safeAudioDeviceId: "mic-1",
         audioOutputs: [{ id: "out-1", label: "Speakers", isSystemOutputMonitor: true }],
         audioInputs: [{ id: "mic-1", label: "USB Mic" }],
@@ -156,8 +157,8 @@ describe("useTray", () => {
     );
     await act(async () => {});
 
-    // Parent label reflects the selected device.
-    expect(findText(submenuOptions(), "Device: USB Mic")).toBeTruthy();
+    // Parent label reflects the selected source and its type.
+    expect(findText(submenuOptions(), "Source: Input · USB Mic")).toBeTruthy();
 
     // Group headers present (disabled MenuItems).
     const headers = menuItemOptions();
@@ -173,7 +174,7 @@ describe("useTray", () => {
 
     // Clicking a device forwards its id.
     findText(checks, "Speakers").action();
-    expect(onSelectDevice).toHaveBeenCalledWith("out-1");
+    expect(onSelectSource).toHaveBeenCalledWith("out-1");
   });
 
   it("renders device labels as strings via the real formatter", async () => {
@@ -188,29 +189,53 @@ describe("useTray", () => {
     );
     await act(async () => {});
     // Compact single-line form: primary + (secondary), dropping the format tail.
-    expect(findText(submenuOptions(), "Device: Speakers (Realtek)")).toBeTruthy();
+    expect(findText(submenuOptions(), "Source: Output · Speakers (Realtek)")).toBeTruthy();
     const speakers = findText(checkItemOptions(), "Speakers (Realtek)");
     expect(speakers).toBeTruthy();
     expect(typeof speakers.text).toBe("string");
   });
 
-  it("labels the Device parent Automatic and checks it when default is selected", async () => {
+  it("labels the Source parent as automatic output and checks it when default is selected", async () => {
     renderHook(() =>
       useTray({ ...defaultProps, safeAudioDeviceId: "default", defaultOutputLabel: "" })
     );
     await act(async () => {});
-    expect(findText(submenuOptions(), "Device: Automatic")).toBeTruthy();
+    expect(findText(submenuOptions(), "Source: Output · Automatic")).toBeTruthy();
     expect(findText(checkItemOptions(), "Automatic (default system output)")).toMatchObject({
       checked: true,
     });
   });
 
-  it("uses the resolved default output label in the Device parent when available", async () => {
+  it("uses the resolved default output label in the Source parent when available", async () => {
     renderHook(() =>
       useTray({ ...defaultProps, safeAudioDeviceId: "default", defaultOutputLabel: "Realtek" })
     );
     await act(async () => {});
-    expect(findText(submenuOptions(), "Device: Realtek")).toBeTruthy();
+    expect(findText(submenuOptions(), "Source: Output · Realtek")).toBeTruthy();
+  });
+
+  it("lists and selects applications as sources", async () => {
+    const onSelectSource = vi.fn();
+    const application = {
+      id: "app-00112233445566778899aabbccddeeff",
+      label: "VLC",
+    };
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        onSelectSource,
+        safeAudioDeviceId: application.id,
+        captureApplications: [application],
+      })
+    );
+    await act(async () => {});
+
+    expect(findText(submenuOptions(), "Source: Application · VLC")).toBeTruthy();
+    expect(findText(menuItemOptions(), "Applications")).toMatchObject({ enabled: false });
+    const appItem = findText(checkItemOptions(), "VLC");
+    expect(appItem).toMatchObject({ checked: true });
+    appItem.action();
+    expect(onSelectSource).toHaveBeenCalledWith(application.id);
   });
 
   it("builds the Presets submenu with the active preset checked and dirty marked", async () => {
@@ -254,7 +279,7 @@ describe("useTray", () => {
     await act(async () => {});
 
     // The tray has nowhere to put a caption, so the parent carries the reason.
-    expect(findText(submenuOptions(), "Presets: Editing…")).toBeTruthy();
+    expect(findText(submenuOptions(), "Preset: Editing…")).toBeTruthy();
     expect(findText(checkItemOptions(), "Mixing")).toMatchObject({ enabled: false });
   });
 
@@ -289,7 +314,7 @@ describe("useTray", () => {
       initialProps: defaultProps,
     });
     await act(async () => {});
-    expect(findText(submenuOptions(), "Presets: None")).toBeTruthy();
+    expect(findText(submenuOptions(), "Preset: None")).toBeTruthy();
 
     // Active + dirty -> "<name> (modified)".
     rerender({
@@ -305,10 +330,10 @@ describe("useTray", () => {
       },
     });
     await act(async () => {});
-    expect(findText(submenuOptions(), "Presets: Mastering (modified)")).toBeTruthy();
+    expect(findText(submenuOptions(), "Preset: Mastering (modified)")).toBeTruthy();
   });
 
-  it("disables Presets and Quit but not Start/Stop or Device while updating (macOS)", async () => {
+  it("disables Presets and Quit but not Start/Stop or Source while updating (macOS)", async () => {
     isMacOS.mockReturnValue(true);
     const setMenu = vi.fn();
     const onToggleWindow = vi.fn();
@@ -330,11 +355,11 @@ describe("useTray", () => {
     const subs = submenuOptions();
     expect(findText(items, "Hide Window")).toMatchObject({ enabled: false });
     expect(findText(items, "Quit")).toMatchObject({ enabled: false });
-    expect(findText(subs, "Presets: None")).toMatchObject({ enabled: false });
+    expect(findText(subs, "Preset: None")).toMatchObject({ enabled: false });
     // Start/Stop is never gated.
     expect(findText(items, "Start")).not.toMatchObject({ enabled: false });
-    // Device submenu is never gated.
-    expect(findText(subs, "Device: Automatic")).not.toMatchObject({ enabled: false });
+    // Source submenu is never gated.
+    expect(findText(subs, "Source: Output · Automatic")).not.toMatchObject({ enabled: false });
     expect(setMenu).toHaveBeenCalled();
 
     // Double-guard: stale gated callbacks are no-ops while busy.
