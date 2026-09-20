@@ -78,6 +78,13 @@ describe("Tauri security configuration", () => {
     );
   });
 
+  it("allows opening only the installed third-party notice from app resources", () => {
+    const opener = defaultCapability.permissions.find(
+      (permission) => permission?.identifier === "opener:allow-open-path"
+    );
+    expect(opener?.allow).toEqual([{ path: "$RESOURCE/licenses/THIRD-PARTY-NOTICES.txt" }]);
+  });
+
   it("scopes default capabilities to known app windows", () => {
     expect(defaultCapability.windows).toContain("main");
     expect(defaultCapability.windows).not.toContain("*");
@@ -98,7 +105,7 @@ describe("Tauri security configuration", () => {
   });
 
   it("ships an agent discovery manifest with per-platform CLI paths", () => {
-    expect(tauriConfig.bundle.resources).toContain("plvs-agent.json");
+    expect(tauriConfig.bundle.resources["plvs-agent.json"]).toBe("plvs-agent.json");
     expect(agentManifest).toMatchObject({
       schemaVersion: 2,
       productName: "PLVS",

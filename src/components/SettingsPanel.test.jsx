@@ -519,6 +519,14 @@ describe("SettingsPanel", () => {
     expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/docs/");
   });
 
+  it("opens the installed license notices from the footer", () => {
+    const onOpenLicenses = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" onOpenLicenses={onOpenLicenses} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Licenses" }));
+    expect(onOpenLicenses).toHaveBeenCalledTimes(1);
+  });
+
   it("calls onCheckForUpdate from the version row", () => {
     const onCheckForUpdate = vi.fn();
     render(

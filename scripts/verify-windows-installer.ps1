@@ -103,7 +103,11 @@ $isPreview = $Identity -eq "preview"
 $expectedProductName = if ($isPreview) { "PLVS Preview" } else { "PLVS" }
 $expectedIdentifier = if ($isPreview) { "com.soundoer.plvs.preview" } else { "com.soundoer.plvs" }
 $releaseDir = Join-Path $repoRoot "src-tauri\target\release"
-$installerPattern = if ($isPreview) { "PLVS Preview_*_x64-setup.exe" } else { "PLVS_[0-9]*_x64-setup.exe" }
+$installerPattern = if ($isPreview) {
+  "PLVS Preview_${packageVersion}_x64-setup.exe"
+} else {
+  "PLVS_${packageVersion}_x64-setup.exe"
+}
 $installer = Get-ChildItem (Join-Path $releaseDir "bundle\nsis") -Filter $installerPattern |
   Sort-Object LastWriteTime -Descending |
   Select-Object -First 1
@@ -169,6 +173,11 @@ try {
       $files = Get-ChildItem $installRoot -File -Recurse | Select-Object -ExpandProperty FullName
       throw "Installed sidecar missing: $installedSidecar`nInstalled files:`n$($files -join "`n")"
     }
+  }
+
+  & node (Join-Path $repoRoot "scripts\verify-license-assets.mjs") $installRoot
+  if ($LASTEXITCODE -ne 0) {
+    throw "Installed license asset verification failed with exit code $LASTEXITCODE"
   }
 
   $installedAgentManifest = Join-Path $installRoot "plvs-agent.json"

@@ -34,6 +34,14 @@
         }
       ]
     },
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "$RESOURCE/licenses/THIRD-PARTY-NOTICES.txt"
+        }
+      ]
+    },
     "store:default",
     "updater:default",
     "core:window:allow-set-always-on-top",

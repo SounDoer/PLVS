@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
 import { describe, expect, it } from "vitest";
+import { TAURI_LICENSE_RESOURCES } from "./license-assets.mjs";
 
 const releaseWorkflow = readFileSync(join(cwd(), ".github", "workflows", "release.yml"), "utf8");
 const previewBuildWorkflow = readFileSync(
@@ -14,6 +15,15 @@ const previewBuildSkill = readFileSync(
 );
 const appSource = readFileSync(join(cwd(), "src-tauri", "src", "lib.rs"), "utf8");
 const packageJson = JSON.parse(readFileSync(join(cwd(), "package.json"), "utf8"));
+const tauriConfig = JSON.parse(readFileSync(join(cwd(), "src-tauri", "tauri.conf.json"), "utf8"));
+const previewTauriConfig = JSON.parse(
+  readFileSync(join(cwd(), "src-tauri", "tauri.preview.conf.json"), "utf8")
+);
+const windowsInstallerSmoke = readFileSync(
+  join(cwd(), "scripts", "verify-windows-installer.ps1"),
+  "utf8"
+);
+const macosDmgSmoke = readFileSync(join(cwd(), "scripts", "verify-macos-dmg.sh"), "utf8");
 
 describe("CLI packaging", () => {
   it("stages the development identity for local desktop commands", () => {
@@ -57,6 +67,31 @@ describe("Windows Portable Release", () => {
   it("publishes the portable and macOS packages under the shared release asset names", () => {
     expect(releaseWorkflow).toContain('"PLVS-$env:TAG-x64-portable"');
     expect(releaseWorkflow).toContain('"$asset_dir/PLVS-${TAG}-aarch64.dmg"');
+  });
+
+  it("stages and verifies license materials inside the final Portable ZIP", () => {
+    expect(releaseWorkflow).toContain("node scripts/stage-license-assets.mjs $portableDir");
+    expect(releaseWorkflow).toContain("node scripts/verify-license-assets.mjs $portableDir");
+    expect(releaseWorkflow).toContain("scripts/verify-windows-portable.ps1");
+    expect(releaseWorkflow.indexOf("scripts/verify-windows-portable.ps1")).toBeGreaterThan(
+      releaseWorkflow.indexOf("Compress-Archive")
+    );
+  });
+});
+
+describe("Bundled license materials", () => {
+  it("uses the shared license destinations in release and Preview Tauri bundles", () => {
+    for (const [source, destination] of Object.entries(TAURI_LICENSE_RESOURCES)) {
+      expect(tauriConfig.bundle.resources[source]).toBe(destination);
+      expect(previewTauriConfig.bundle.resources[source]).toBe(destination);
+    }
+  });
+
+  it("verifies installed Windows and mounted macOS package resources", () => {
+    expect(windowsInstallerSmoke).toContain("scripts\\verify-license-assets.mjs");
+    expect(windowsInstallerSmoke).toContain("$installRoot");
+    expect(macosDmgSmoke).toContain('"$app/Contents/Resources"');
+    expect(macosDmgSmoke).toContain("verify-license-assets.mjs");
   });
 });
 
@@ -108,6 +143,8 @@ describe("Immutable Windows Preview Build", () => {
     expect(previewBuildWorkflow).toContain("Compress-Archive");
     expect(previewBuildWorkflow).toContain('$portableDir = "PLVS-Preview-v${label}-x64-portable"');
     expect(previewBuildWorkflow).toContain('DestinationPath "preview-assets/$portableDir.zip"');
+    expect(previewBuildWorkflow).toContain("node scripts/stage-license-assets.mjs $portableDir");
+    expect(previewBuildWorkflow).toContain("scripts/verify-windows-portable.ps1");
   });
 
   it("locks dispatch, tracking, and publication to an exact commit", () => {

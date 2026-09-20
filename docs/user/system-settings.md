@@ -45,3 +45,10 @@ samples are never attached.
 
 **Agent Control** lets `plvs-cli` inspect and change the running app; see
 [Command Line](command-line.md). It is off until you enable it.
+
+## Licenses
+
+Choose **Licenses** at the bottom of Settings to open the third-party notices installed with PLVS.
+The same `licenses` folder contains the complete PLVS MIT License and the license texts referenced
+by the notices. Portable users can also open that folder directly beside `plvs.exe`; in a macOS app
+bundle it is under `Contents/Resources/licenses`.

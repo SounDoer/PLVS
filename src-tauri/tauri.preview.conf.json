@@ -7,7 +7,12 @@
     "resources": {
       "plvs-preview-agent.json": "plvs-agent.json",
       "icons/tray-dark.png": "icons/tray-dark.png",
-      "icons/tray-light.png": "icons/tray-light.png"
+      "icons/tray-light.png": "icons/tray-light.png",
+      "../LICENSE": "licenses/PLVS-LICENSE.txt",
+      "../THIRD-PARTY-NOTICES.md": "licenses/THIRD-PARTY-NOTICES.txt",
+      "../licenses/README.txt": "licenses/README.txt",
+      "../licenses/DEPENDENCY-INVENTORY.txt": "licenses/DEPENDENCY-INVENTORY.txt",
+      "../licenses/license-texts/": "licenses/license-texts/"
     },
     "windows": {
       "nsis": {

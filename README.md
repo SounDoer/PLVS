@@ -85,4 +85,5 @@ Thanks to all the maintainers and contributors of these projects.
 
 ## License
 
-[MIT](LICENSE)
+PLVS is available under the [MIT License](LICENSE). Release packages also include
+[third-party notices](THIRD-PARTY-NOTICES.md) and the referenced complete license texts.

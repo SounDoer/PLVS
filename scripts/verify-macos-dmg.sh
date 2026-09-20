@@ -64,6 +64,8 @@ for sidecar in ffmpeg ffprobe; do
   fi
 done
 
+node "$repo_root/scripts/verify-license-assets.mjs" "$app/Contents/Resources"
+
 unexpected_binaries="$(find "$app/Contents/MacOS" -maxdepth 1 -type f \
   ! -name plvs \
   ! -name plvs-cli \

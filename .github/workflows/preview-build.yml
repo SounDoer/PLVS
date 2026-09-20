@@ -136,7 +136,11 @@ jobs:
             if (-not (Test-Path -LiteralPath $source)) { throw "Missing Portable file: $source" }
             Copy-Item -LiteralPath $source -Destination "$portableDir/$name"
           }
+          node scripts/stage-license-assets.mjs $portableDir
+          node scripts/verify-license-assets.mjs $portableDir
           Compress-Archive -Path "$portableDir\*" -DestinationPath "preview-assets/$portableDir.zip"
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-windows-portable.ps1 `
+            -ZipPath "preview-assets/$portableDir.zip"
 
           node scripts/validate-preview-bundle.mjs `
             "$env:VERSION" `

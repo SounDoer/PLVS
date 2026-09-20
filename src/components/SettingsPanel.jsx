@@ -217,6 +217,7 @@ export function SettingsPanel({
   crashReportSettingBusy = false,
   crashReportSettingError = "",
   onAskToSendCrashReports = () => {},
+  onOpenLicenses = () => {},
   onOpenFeedback = () => {},
 }) {
   const reduceMotion = useReducedMotion();
@@ -803,6 +804,14 @@ export function SettingsPanel({
                         ) : null}
                       </div>
                       <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          className={FOOTER_LINK_CLASS}
+                          onClick={onOpenLicenses}
+                        >
+                          Licenses
+                        </button>
+                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
                         <button
                           type="button"
                           className={cn(

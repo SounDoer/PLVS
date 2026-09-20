@@ -139,12 +139,14 @@ The macOS (`aarch64-apple-darwin`) binary is built on a CI runner — see
 `-static` link flag, add `-mmacosx-version-min`) and uploads the result to the release. PLVS ships no
 Linux app, so no Linux binary is built.
 
-## Licensing (LGPL)
+## Licensing materials
 
-`--disable-gpl --disable-nonfree` keeps the build under **LGPL v2.1**, so PLVS stays MIT. The DTS
-(`dca`), AC-3/E-AC-3, Opus, and AAC decoders are all within the LGPL set — no GPL flag needed.
+The distributed binaries report an LGPL build because the recipe uses `--disable-gpl
+--disable-nonfree`. The DTS (`dca`), AC-3/E-AC-3, Opus, and AAC decoders used by PLVS are enabled
+without enabling FFmpeg's GPL components.
 
-LGPL redistribution requires attribution and a pointer to the FFmpeg source. PLVS records this in
-`THIRD-PARTY-NOTICES.md` (FFmpeg `n7.1`, LGPLv2.1, source at <https://ffmpeg.org/download.html>).
-Because FFmpeg runs as a separate, user-replaceable executable, the LGPL relinking provision is
-satisfied without further action.
+Every PLVS package carries `licenses/THIRD-PARTY-NOTICES.txt` and the complete LGPL-2.1-only text.
+The notice pins FFmpeg 7.1, points to the corresponding upstream source and these build parameters,
+and explains where the independent `ffmpeg`/`ffprobe` executables can be replaced. Treat those
+materials as the engineering record; questions about legal obligations still require qualified
+review rather than inference from this build document.
