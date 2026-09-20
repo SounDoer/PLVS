@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Complete local pre-tag release gate.
+ * Complete local pre-dispatch release gate.
  *
  * The fast release-state script checks version/changelog/git/tag state. This
  * wrapper then runs the full repository check so the release command has one
@@ -37,7 +37,7 @@ run("Full repository check", npm, ["run", "check"]);
 const { tag, paths } = captureSmokeChangesSinceLastTag();
 if (paths.length === 0) {
   console.log(
-    `\n== Capture smoke ==\nSkipped: no capture-smoke dependency changed since ${tag ?? "the initial commit"}.`,
+    `\n== Capture smoke ==\nSkipped: no capture-smoke dependency changed since ${tag ?? "the initial commit"}.`
   );
 } else {
   console.log(`\n== Capture smoke ==`);

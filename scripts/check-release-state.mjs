@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * Fast release-state checklist: verifies the current version is internally
- * consistent, documented, cleanly committed, and not already tagged.
+ * consistent, documented, cleanly committed, and available for a new Release workflow run.
  *
  * This intentionally does not run the full test suite. Use
- * `npm run release:preflight` for the complete local pre-tag gate.
+ * `npm run release:preflight` for the complete local pre-dispatch gate.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -36,8 +36,7 @@ try {
   pass(`Versions consistent (${pkg.version})`);
 } catch (e) {
   fail(
-    e.stderr?.toString().trim() ||
-      "Version mismatch - run: node scripts/bump-version.mjs <version>",
+    e.stderr?.toString().trim() || "Version mismatch - run: node scripts/bump-version.mjs <version>"
   );
 }
 
@@ -65,7 +64,12 @@ console.log("\nChecking git status...");
 try {
   const status = output("git status --porcelain");
   if (status) {
-    fail(`Uncommitted changes:\n${status.split("\n").map((l) => "      " + l).join("\n")}`);
+    fail(
+      `Uncommitted changes:\n${status
+        .split("\n")
+        .map((l) => "      " + l)
+        .join("\n")}`
+    );
   } else {
     pass("Working tree clean");
   }
@@ -102,6 +106,6 @@ if (ok) {
   console.log(`OK Ready for the full release gate for v${version}:`);
   console.log("   npm run release:preflight");
 } else {
-  console.log("FAIL Fix the issues above before tagging.");
+  console.log("FAIL Fix the issues above before dispatching the Release workflow.");
   process.exit(1);
 }

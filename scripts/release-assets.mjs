@@ -10,5 +10,7 @@ export function releaseAssetNames(version) {
     windowsInstaller: `PLVS_${version}_x64-setup.exe`,
     windowsPortable: `PLVS-v${version}-x64-portable.zip`,
     macosDmg: `PLVS-v${version}-aarch64.dmg`,
+    macosUpdater: "PLVS.app.tar.gz",
+    updaterManifest: "latest.json",
   };
 }

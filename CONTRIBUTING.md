@@ -109,7 +109,12 @@ Use **English only** for commit messages, PR titles/descriptions, and any text t
 ## CI
 
 - **Pull requests / pushes to `main`**: see [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (frontend + Rust on Ubuntu; Rust `fmt` / `clippy` / `test` on Windows).
-- **Release builds**: pushing a `v*` tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml).
+- **Release builds**: after the release commit's `ci.yml` push run succeeds, dispatch
+  [`.github/workflows/release.yml`](.github/workflows/release.yml) with its version and full commit
+  SHA. The workflow builds each platform once, smoke-tests those exact files, assembles a draft
+  release, and publishes it only after the complete asset set is verified. Enable immutable
+  releases in the repository settings and confirm that dispatch input before starting; tag pushes
+  do not start release builds.
 
 ## Dependency updates
 
