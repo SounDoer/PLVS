@@ -854,6 +854,19 @@
         color: var(--muted);
         min-height: 1.2em;
       }
+
+      .subscribe-privacy {
+        margin: 0.55rem 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .subscribe-privacy a {
+        color: var(--ink);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
     </style>
   </head>
   <body>
@@ -994,6 +1007,10 @@
             </div>
             <button type="submit">Subscribe</button>
           </form>
+          <p class="subscribe-privacy">
+            We use your email only for PLVS release news. See the
+            <a href="privacy/">Privacy Policy</a>.
+          </p>
           <p class="subscribe-status" id="subscribe-status" role="status"></p>
         </section>
         <script>
@@ -1050,6 +1067,7 @@
                 rel="noopener"
                 >Licenses</a
               >
+              <a href="privacy/">Privacy</a>
               <span id="footer-version">Latest release</span>
             </div>
           </footer>

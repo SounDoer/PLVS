@@ -61,4 +61,10 @@ describe("landing page subscribe form", () => {
     expect(html).toContain('name="website"');
     expect(html).toContain("subscribe-honeypot");
   });
+
+  test("links to the Privacy Policy beside the form and in the footer", () => {
+    expect(html.match(/href="privacy\/"/g)).toHaveLength(2);
+    expect(html).toMatch(/subscribe-privacy[\s\S]*Privacy Policy/);
+    expect(html).toMatch(/footer-links[\s\S]*href="privacy\/">Privacy/);
+  });
 });

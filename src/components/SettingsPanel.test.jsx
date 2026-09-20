@@ -519,6 +519,13 @@ describe("SettingsPanel", () => {
     expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/docs/");
   });
 
+  it("opens the Privacy Policy from the footer", () => {
+    const openExternalUrl = vi.fn();
+    render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" openExternalUrl={openExternalUrl} />);
+    fireEvent.click(screen.getByRole("button", { name: "Privacy" }));
+    expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/privacy/");
+  });
+
   it("opens the installed license notices from the footer", () => {
     const onOpenLicenses = vi.fn();
     render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" onOpenLicenses={onOpenLicenses} />);

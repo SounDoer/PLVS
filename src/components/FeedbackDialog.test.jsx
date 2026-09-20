@@ -3,12 +3,19 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
 
-const { readFeedbackDiagnostics } = vi.hoisted(() => ({ readFeedbackDiagnostics: vi.fn() }));
+const { openExternalUrl, readFeedbackDiagnostics } = vi.hoisted(() => ({
+  openExternalUrl: vi.fn(),
+  readFeedbackDiagnostics: vi.fn(),
+}));
 
 vi.mock("@/lib/feedback.js", () => ({
   submitFeedback: vi.fn(),
 }));
 vi.mock("../ipc/commands.js", () => ({ readFeedbackDiagnostics }));
+vi.mock("../ipc/openExternal.js", () => ({
+  openExternalUrl,
+  PRIVACY_POLICY_URL: "https://plvs.soundoer.com/privacy/",
+}));
 
 import { submitFeedback } from "@/lib/feedback.js";
 
@@ -17,6 +24,12 @@ afterEach(() => {
 });
 
 describe("FeedbackDialog", () => {
+  it("opens the Privacy Policy from the submission surface", () => {
+    render(<FeedbackDialog onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Privacy Policy" }));
+    expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/privacy/");
+  });
+
   it("disables submit until content is entered", () => {
     render(<FeedbackDialog onClose={vi.fn()} />);
     expect(screen.getByLabelText("attach diagnostics").checked).toBe(false);

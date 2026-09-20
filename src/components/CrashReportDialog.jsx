@@ -4,6 +4,7 @@ import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { discardCrashReport } from "../ipc/commands.js";
+import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { buildCrashReportRequest, submitCrashReport } from "../lib/crashReporting.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -124,6 +125,14 @@ export function CrashReportDialog({
               {JSON.stringify(request, null, 2)}
             </pre>
           ) : null}
+
+          <button
+            type="button"
+            className="self-start text-[length:var(--ui-fs-display)] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
+          >
+            Privacy Policy
+          </button>
 
           {sendError ? (
             <span className="text-[length:var(--ui-fs-display)] text-destructive">{error}</span>

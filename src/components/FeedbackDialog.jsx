@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { clampPanelPos } from "../lib/dragClamp.js";
 import { submitFeedback } from "../lib/feedback.js";
 import { readFeedbackDiagnostics } from "../ipc/commands.js";
+import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_POS = { x: 120, y: 120 };
@@ -131,6 +132,13 @@ export function FeedbackDialog({ onClose }) {
             </span>
           </span>
         </label>
+        <button
+          type="button"
+          className="self-start text-[length:var(--ui-fs-axis)] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
+        >
+          Privacy Policy
+        </button>
         {emailInvalid ? (
           <span className="text-[length:var(--ui-fs-axis)] text-destructive">
             Enter a valid email or leave it blank.

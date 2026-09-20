@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PLVS Privacy Policy</title>
+    <meta
+      name="description"
+      content="How PLVS handles update checks, newsletter subscriptions, feedback, diagnostics, and crash reports."
+    />
+    <style>
+      :root {
+        --page: #070707;
+        --ink: #f2f2f2;
+        --muted: #898989;
+        --line: rgba(242, 242, 242, 0.11);
+        --panel: #151515;
+        --accent: #fb923c;
+        --radius: 14px;
+        --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          linear-gradient(180deg, rgba(251, 146, 60, 0.08), transparent 420px), var(--page);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 76px;
+        width: min(100% - 40px, 1040px);
+        margin: 0 auto;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 15px;
+        font-weight: 650;
+      }
+
+      .brand-mark {
+        width: 29px;
+        height: 29px;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 24px;
+        color: rgba(242, 242, 242, 0.62);
+        font-size: 13px;
+        font-weight: 560;
+      }
+
+      .nav a:hover,
+      .footer a:hover {
+        color: var(--accent);
+      }
+
+      main {
+        width: min(100% - 40px, 760px);
+        margin: 0 auto;
+        padding: 72px 0 88px;
+      }
+
+      .eyebrow {
+        margin: 0 0 18px;
+        color: rgba(251, 146, 60, 0.84);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(38px, 7vw, 62px);
+        line-height: 1.04;
+        letter-spacing: -0.04em;
+      }
+
+      .lede {
+        margin: 24px 0 0;
+        color: rgba(242, 242, 242, 0.68);
+        font-size: 18px;
+        line-height: 1.6;
+      }
+
+      .promise {
+        margin: 32px 0 8px;
+        padding: 22px 24px;
+        border: 1px solid rgba(251, 146, 60, 0.32);
+        border-radius: var(--radius);
+        background: rgba(251, 146, 60, 0.07);
+        font-size: 17px;
+        line-height: 1.6;
+      }
+
+      section {
+        padding: 34px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      section:first-of-type {
+        margin-top: 36px;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+        letter-spacing: -0.02em;
+      }
+
+      h3 {
+        margin: 24px 0 8px;
+        font-size: 16px;
+      }
+
+      p,
+      li {
+        color: rgba(242, 242, 242, 0.68);
+        font-size: 15px;
+        line-height: 1.68;
+      }
+
+      p {
+        margin: 10px 0;
+      }
+
+      ul {
+        margin: 10px 0;
+        padding-left: 22px;
+      }
+
+      li + li {
+        margin-top: 8px;
+      }
+
+      main a {
+        color: var(--ink);
+        text-decoration: underline;
+        text-decoration-color: rgba(251, 146, 60, 0.7);
+        text-underline-offset: 3px;
+      }
+
+      strong {
+        color: var(--ink);
+        font-weight: 650;
+      }
+
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        width: min(100% - 40px, 1040px);
+        margin: 0 auto;
+        padding: 24px 0 36px;
+        border-top: 1px solid var(--line);
+        color: rgba(242, 242, 242, 0.48);
+        font-size: 13px;
+      }
+
+      @media (max-width: 620px) {
+        .nav {
+          min-height: 68px;
+        }
+
+        .nav-links {
+          gap: 16px;
+        }
+
+        main {
+          padding-top: 48px;
+        }
+
+        .footer {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="../index.html">
+        <img class="brand-mark" src="../assets/app-icon.svg" alt="" aria-hidden="true" />
+        PLVS
+      </a>
+      <div class="nav-links">
+        <a href="../docs/">Docs</a>
+        <a href="../index.html#download">Download</a>
+      </div>
+    </nav>
+
+    <main>
+      <p class="eyebrow">Effective September 20, 2026</p>
+      <h1>Privacy Policy</h1>
+      <p class="lede">
+        This policy describes the data handled by the PLVS desktop app, the PLVS website, and the
+        service at <strong>list.plvs.soundoer.com</strong>. PLVS has no advertising, analytics, or
+        default telemetry.
+      </p>
+      <p class="promise">
+        <strong>PLVS never uploads audio samples, audio files, or measurement data.</strong> Live
+        capture and file analysis stay on your device.
+      </p>
+
+      <section>
+        <h2>Automatic Update Checks</h2>
+        <p>
+          A standard PLVS build checks for updates when the app starts and every 12 hours while it
+          remains open. You can also start a check from Settings. The request retrieves the signed
+          <code>latest.json</code> manifest from GitHub Releases. Preview builds compile the updater
+          out.
+        </p>
+        <p>
+          The request does not contain audio, measurements, feedback, or a PLVS user identifier.
+          Like any web request, GitHub receives network information such as your IP address and
+          request headers and handles it under the
+          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+            >GitHub Privacy Statement</a
+          >. PLVS does not keep a separate update-check history.
+        </p>
+      </section>
+
+      <section>
+        <h2>Newsletter Subscriptions</h2>
+        <p>
+          If you subscribe, PLVS collects the email address you enter, a random confirmation and
+          unsubscribe token, your subscription status, and creation, confirmation, and unsubscribe
+          timestamps. This data is used only to confirm the subscription, send PLVS release news,
+          and process unsubscription.
+        </p>
+        <p>
+          Subscriber records are stored in a self-hosted SQLite database. Confirmation messages and
+          newsletters are sent through Amazon Simple Email Service (Amazon SES), currently
+          configured in the <strong>us-east-1</strong> region. An unsubscribe request changes the
+          record to “unsubscribed” so no further newsletter is sent; it does not automatically erase
+          the record. Subscriber records remain until you request deletion.
+        </p>
+      </section>
+
+      <section>
+        <h2>Feedback</h2>
+        <p>
+          Feedback is sent only when you select <strong>Send</strong>. The request contains the text
+          you wrote and, if supplied, your reply email. Diagnostics are off by default. If you select
+          <strong>Attach Diagnostics</strong>, the request also contains the PLVS version, operating
+          system, processor architecture, and the last 200 PLVS log lines. Home-directory paths are
+          redacted before diagnostic logs leave the device. Log lines can still contain device
+          labels, application events, and other paths, so review this choice before sending.
+        </p>
+        <p>
+          The receiving service adds the request origin and user-agent header to the email for
+          troubleshooting. It uses the source IP temporarily to enforce a limit of five requests per
+          minute. Application request logging is disabled, and request bodies are not written to the
+          subscriber database.
+        </p>
+      </section>
+
+      <section>
+        <h2>Crash Reports</h2>
+        <p>
+          PLVS saves crash reports locally whether or not prompting is enabled. A report can contain
+          a report and session identifier, creation time, crash type, PLVS version, operating system,
+          processor architecture, error message, source location, stack or component stack, and the
+          last 200 lines from the crashed session. Home-directory paths are redacted. You can inspect
+          the exact request before sending it and optionally add a note and reply email. Logs and
+          error details can contain device labels, application events, and other paths.
+        </p>
+        <p>
+          Nothing is sent until you select <strong>Send</strong>. After a successful send, or if you
+          select <strong>Don’t Send</strong>, that local pending report is deleted. <strong>Later</strong>
+          keeps it on the device. PLVS keeps at most the newest five local crash reports across the
+          prompted and suppressed queues. Its local application log rotates at 2 MB and keeps up to
+          three log files.
+        </p>
+      </section>
+
+      <section>
+        <h2>How Feedback and Crash Reports Are Handled</h2>
+        <p>
+          The self-hosted service at <strong>list.plvs.soundoer.com</strong> validates Feedback and
+          Crash Report requests and sends them through Amazon SES to the PLVS maintainer’s mailbox.
+          They are used to answer users, diagnose defects, and improve PLVS. They are not added to
+          the newsletter database, used for advertising, or sold.
+        </p>
+        <p>
+          The service does not have an automated retention schedule for those mailbox copies; they
+          remain until the maintainer deletes them or fulfills a deletion request. Amazon may process
+          message data as the email provider. See the
+          <a href="https://aws.amazon.com/privacy/">AWS Privacy Notice</a>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Website</h2>
+        <p>
+          The website is hosted on GitHub Pages. It does not set PLVS analytics or advertising
+          cookies. The download section requests the latest public release metadata from the GitHub
+          API. GitHub may process ordinary server and network data under its own privacy statement.
+        </p>
+      </section>
+
+      <section>
+        <h2>Deletion Requests and Contact</h2>
+        <p>
+          To request access to or deletion of a newsletter record, Feedback message, or Crash Report,
+          email <a href="mailto:xichen@soundoer.com">xichen@soundoer.com</a>. Send the request from
+          the same email address when one was provided. For a submission without an email address,
+          include the approximate submission time and, for a Crash Report, its report identifier;
+          otherwise it may not be possible to identify the message reliably.
+        </p>
+        <p>
+          The unsubscribe link in every newsletter stops future newsletter delivery. Contact the same
+          address for privacy questions or to request full deletion of the retained subscriber record.
+        </p>
+      </section>
+
+      <section>
+        <h2>Changes to This Policy</h2>
+        <p>
+          Material changes will be published at this stable URL with a new effective date. The source
+          for this page is versioned with PLVS so its statements can be checked against the shipped
+          implementation.
+        </p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>PLVS · Free and open-source audio metering</span>
+      <a href="mailto:xichen@soundoer.com">xichen@soundoer.com</a>
+    </footer>
+  </body>
+</html>

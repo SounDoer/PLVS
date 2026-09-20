@@ -39,7 +39,8 @@ installation.
 
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending
 one after a crash. Feedback diagnostics are attached only when you choose to include them. Audio
-samples are never attached.
+samples are never attached. Open [Privacy](https://plvs.soundoer.com/privacy/) at the bottom of
+Settings for the exact contents, retention and deletion-request details.
 
 ## Agent Control
 

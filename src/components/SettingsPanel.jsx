@@ -27,6 +27,7 @@ import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
   DEFAULT_DIALOGUE_VAD_ENGINE,
 } from "@/lib/dialogueVadEngines.js";
+import { PRIVACY_POLICY_URL } from "@/ipc/openExternal.js";
 
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
@@ -830,6 +831,15 @@ export function SettingsPanel({
                           onClick={() => openExternalUrl(DOCS_URL)}
                         >
                           Docs
+                          <ExternalLink className="size-[1em]" />
+                        </button>
+                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <button
+                          type="button"
+                          className={FOOTER_LINK_CLASS}
+                          onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
+                        >
+                          Privacy
                           <ExternalLink className="size-[1em]" />
                         </button>
                         <span className="shrink-0 text-muted-foreground/30">&middot;</span>

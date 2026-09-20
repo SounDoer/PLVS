@@ -47,3 +47,6 @@ them.
 No. All audio and metering data stays on your device, and there's no default telemetry. Update checks
 are automatic. Feedback diagnostics and locally saved crash reports are sent only after you explicitly
 choose to send them, and audio samples are never attached.
+
+The [Privacy Policy](https://plvs.soundoer.com/privacy/) explains the data in each request, where it
+is processed, how long it is kept and how to request deletion.

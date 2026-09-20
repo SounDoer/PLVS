@@ -5,6 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { CrashReportDialog } from "./CrashReportDialog.jsx";
 
+const { openExternalUrl } = vi.hoisted(() => ({ openExternalUrl: vi.fn() }));
+
+vi.mock("../ipc/openExternal.js", () => ({
+  openExternalUrl,
+  PRIVACY_POLICY_URL: "https://plvs.soundoer.com/privacy/",
+}));
+
 const report = {
   schemaVersion: 1,
   id: "20260916T120000Z-01234567",
@@ -42,6 +49,12 @@ function renderDialog(overrides = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe("CrashReportDialog", () => {
+  it("opens the Privacy Policy from the send decision", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Privacy Policy" }));
+    expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/privacy/");
+  });
+
   it("previews the exact request and registers as a blocking editor", () => {
     renderDialog();
     fireEvent.input(screen.getByLabelText("Crash report note (optional)"), {

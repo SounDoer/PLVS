@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A public Privacy Policy now documents update checks, newsletter subscriptions, optional Feedback
+  diagnostics, local-first Crash Reports, service providers, retention, and deletion requests. The
+  website, Settings, Feedback, Crash Report, and user guide surfaces link to it.
+
 ## [0.16.0] - 2026-09-17
 
 ### Added

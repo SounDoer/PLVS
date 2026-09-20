@@ -4,6 +4,7 @@ import { isTauri } from "./env.js";
 
 export const LICENSE_NOTICES_URL =
   "https://github.com/SounDoer/PLVS/blob/main/THIRD-PARTY-NOTICES.md";
+export const PRIVACY_POLICY_URL = "https://plvs.soundoer.com/privacy/";
 
 export async function openExternalUrl(url) {
   if (!url) return;
