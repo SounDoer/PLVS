@@ -1,0 +1,190 @@
+# Production-identity, production-signed packages for private upgrade testing only.
+# No job receives contents:write, and this workflow never creates a tag or GitHub Release.
+name: Upgrade Candidate
+run-name: Private upgrade candidate ${{ inputs.version }} @ ${{ inputs.commit_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Candidate semver without v (for example, 0.16.1)
+        required: true
+        type: string
+      commit_sha:
+        description: Full source commit SHA to test
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upgrade-candidate-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      CANDIDATE_SHA: ${{ inputs.commit_sha }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Validate inputs
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid version" >&2; exit 1; }
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid commit SHA" >&2; exit 1; }
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - name: Verify checkout
+        run: test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+      - name: Gate stamped candidate source
+        run: |
+          npm ci
+          node scripts/bump-version.mjs "$VERSION"
+          npm run check
+
+  build-windows:
+    needs: validate
+    runs-on: windows-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+      - name: Stamp candidate version
+        shell: pwsh
+        run: |
+          npm ci
+          node scripts/bump-version.mjs $env:VERSION
+      - name: Build and verify production package
+        run: |
+          npm run smoke:file-analysis
+          npm run desktop:release-nsis
+          npm run desktop:verify-windows-installer
+      - name: Stage Windows updater candidate
+        shell: pwsh
+        run: |
+          $out = "upgrade-candidate/windows"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          $name = "PLVS_$($env:VERSION)_x64-setup.exe"
+          $installer = Get-Item "src-tauri/target/release/bundle/nsis/$name"
+          Copy-Item $installer.FullName "$out/$name"
+          Copy-Item "$($installer.FullName).sig" "$out/$name.sig"
+          @{
+            platform = "windows-x86_64"
+            asset = $name
+            signature = (Get-Content "$($installer.FullName).sig" -Raw).Trim()
+          } | ConvertTo-Json | Set-Content "$out/updater-windows.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: upgrade-candidate-windows
+          path: upgrade-candidate/windows/
+          if-no-files-found: error
+          retention-days: 7
+
+  build-macos:
+    needs: validate
+    runs-on: macos-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Rust toolchain
+        run: rustup toolchain install --no-self-update
+      - name: Stamp candidate version
+        run: |
+          npm ci
+          node scripts/bump-version.mjs "$VERSION"
+      - name: Build and verify production package
+        run: |
+          npm run smoke:file-analysis
+          npm run desktop:release-dmg
+          npm run desktop:verify-macos-dmg
+      - name: Stage macOS updater candidate
+        run: |
+          out="upgrade-candidate/macos"
+          mkdir -p "$out"
+          dmg=$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)
+          signature_file=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app.tar.gz.sig' -print -quit)
+          test -n "$dmg" && test -n "$signature_file"
+          tarball="${signature_file%.sig}"
+          cp "$dmg" "$out/PLVS-v${VERSION}-aarch64.dmg"
+          cp "$tarball" "$out/PLVS.app.tar.gz"
+          cp "$signature_file" "$out/PLVS.app.tar.gz.sig"
+          node -e "
+            const fs = require('fs');
+            fs.writeFileSync(process.argv[1], JSON.stringify({
+              platform: 'darwin-aarch64', asset: 'PLVS.app.tar.gz',
+              signature: fs.readFileSync(process.argv[2], 'utf8').trim()
+            }, null, 2));
+          " "$out/updater-macos.json" "$signature_file"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: upgrade-candidate-macos
+          path: upgrade-candidate/macos/
+          if-no-files-found: error
+          retention-days: 7
+
+  assemble:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: upgrade-candidate-*
+          path: upgrade-candidate
+          merge-multiple: true
+      - name: Write metadata and template manifest
+        env:
+          CANDIDATE_SHA: ${{ inputs.commit_sha }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          cat > upgrade-candidate/candidate.json <<EOF
+          {"version":"${VERSION}","sourceSha":"${CANDIDATE_SHA}","publicReleaseCreated":false}
+          EOF
+          printf 'Private PLVS %s upgrade candidate. Source commit: %s\n' "$VERSION" "$CANDIDATE_SHA" > upgrade-candidate/updater-notes.md
+          node scripts/build-upgrade-test-manifest.mjs \
+            "$VERSION" "https://upgrade-lab.invalid/" \
+            upgrade-candidate/updater-notes.md upgrade-candidate/latest.template.json \
+            upgrade-candidate/updater-windows.json upgrade-candidate/updater-macos.json
+          (cd upgrade-candidate && sha256sum $(find . -maxdepth 1 -type f -printf '%f\n' | sort) > SHA256SUMS)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: upgrade-candidate-${{ inputs.version }}-${{ inputs.commit_sha }}
+          path: upgrade-candidate/
+          if-no-files-found: error
+          retention-days: 14

@@ -9,6 +9,10 @@ const previewBuildWorkflow = readFileSync(
   join(cwd(), ".github", "workflows", "preview-build.yml"),
   "utf8"
 );
+const upgradeCandidateWorkflow = readFileSync(
+  join(cwd(), ".github", "workflows", "upgrade-candidate.yml"),
+  "utf8"
+);
 const previewBuildSkill = readFileSync(
   join(cwd(), ".agents", "skills", "plvs-preview-build", "SKILL.md"),
   "utf8"
@@ -183,5 +187,28 @@ describe("Immutable Windows Preview Build", () => {
   it("compiles the updater out of Preview packages", () => {
     expect(appSource).toContain('#[cfg(not(feature = "preview-identity"))]');
     expect(appSource).toContain("tauri_plugin_updater::Builder::new().build()");
+  });
+});
+
+describe("private upgrade candidate", () => {
+  it("builds signed production-identity packages for both platforms", () => {
+    expect(upgradeCandidateWorkflow).toContain("npm run desktop:release-nsis");
+    expect(upgradeCandidateWorkflow).toContain("npm run desktop:release-dmg");
+    expect(upgradeCandidateWorkflow).toContain("TAURI_SIGNING_PRIVATE_KEY");
+    expect(upgradeCandidateWorkflow).toContain("updater-windows.json");
+    expect(upgradeCandidateWorkflow).toContain("updater-macos.json");
+  });
+
+  it("cannot create a public tag or Release", () => {
+    expect(upgradeCandidateWorkflow).toMatch(/permissions:\s*\n\s*contents: read/);
+    expect(upgradeCandidateWorkflow).not.toContain("contents: write");
+    expect(upgradeCandidateWorkflow).not.toContain("gh release create");
+    expect(upgradeCandidateWorkflow).not.toContain("git tag");
+  });
+
+  it("stamps and gates the requested candidate version", () => {
+    expect(upgradeCandidateWorkflow).toContain('node scripts/bump-version.mjs "$VERSION"');
+    expect(upgradeCandidateWorkflow).toContain("npm run check");
+    expect(upgradeCandidateWorkflow).toContain("build-upgrade-test-manifest.mjs");
   });
 });
