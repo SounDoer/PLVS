@@ -28,6 +28,7 @@ const windowsInstallerSmoke = readFileSync(
   "utf8"
 );
 const macosDmgSmoke = readFileSync(join(cwd(), "scripts", "verify-macos-dmg.sh"), "utf8");
+const bumpVersionScript = readFileSync(join(cwd(), "scripts", "bump-version.mjs"), "utf8");
 
 describe("CLI packaging", () => {
   it("stages the development identity for local desktop commands", () => {
@@ -100,6 +101,16 @@ describe("Bundled license materials", () => {
 });
 
 describe("Immutable Release promotion", () => {
+  it("keeps version-bump guidance on the exact-SHA workflow", () => {
+    expect(bumpVersionScript).toContain("npm run release:preflight");
+    expect(bumpVersionScript).toContain("Dispatch release.yml");
+    expect(bumpVersionScript).toContain("Do not create or push the release tag manually");
+    expect(bumpVersionScript).not.toContain("git tag v${newVersion}");
+    expect(bumpVersionScript.indexOf("npm run release:preflight")).toBeLessThan(
+      bumpVersionScript.indexOf("git push origin main")
+    );
+  });
+
   it("dispatches an exact version and commit instead of rebuilding from a pushed tag", () => {
     expect(releaseWorkflow).toContain("workflow_dispatch:");
     expect(releaseWorkflow).toContain("version:");

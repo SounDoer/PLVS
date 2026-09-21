@@ -103,8 +103,9 @@ try {
 
 console.log("");
 console.log("Next steps:");
-console.log(`  1. Update CHANGELOG.md — add ## [${newVersion}] section`);
+console.log(`  1. Update CHANGELOG.md and reconcile the public documents`);
 console.log(`  2. git add -A && git commit -m "chore(release): bump version to ${newVersion}"`);
-console.log(`  3. git push`);
-console.log(`  4. npm run release:preflight`);
-console.log(`  5. git tag v${newVersion} && git push origin v${newVersion}`);
+console.log(`  3. npm run release:preflight`);
+console.log(`  4. git push origin main and wait for exact-SHA CI`);
+console.log(`  5. Dispatch release.yml with version ${newVersion} and the full commit SHA`);
+console.log("     Do not create or push the release tag manually; the workflow owns it.");
