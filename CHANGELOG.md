@@ -7,11 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-09-21
+
 ### Added
 
+- A complete user guide is now available from the website, covering setup, signal sources, panels,
+  workspaces, Loudness Profiles, multichannel use, file analysis, settings, and Agent Control.
+- Windows and macOS packages now include third-party notices, a deterministic dependency inventory,
+  and the corresponding license texts. The notices are also available from Settings.
 - A public Privacy Policy now documents update checks, newsletter subscriptions, optional Feedback
   diagnostics, local-first Crash Reports, service providers, retention, and deletion requests. The
   website, Settings, Feedback, Crash Report, and user guide surfaces link to it.
+
+### Changed
+
+- Source labels and Dock hover tips are now consistent across the main window, Dock, and tray.
+
+### Fixed
+
+- Closing or quitting PLVS now waits for pending settings writes and reports a save failure instead
+  of silently losing the most recent changes.
+- Restoring window chrome on macOS now resynchronizes the webview with the native window frame.
+- The website's Portable download button now recognizes the published ZIP package directly.
 
 ## [0.16.0] - 2026-09-17
 
