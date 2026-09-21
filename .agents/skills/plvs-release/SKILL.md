@@ -589,10 +589,11 @@ cannot cover:
 4. The validator requires exactly the five public assets below, verifies that
    none is empty, and checks updater versions, platforms, URLs, and signatures.
 5. `prepare-draft` creates a Draft Release for the exact SHA, uploads the whole
-   set, verifies the Draft tag still points to the requested SHA, and compares
-   the uploaded asset inventory with the local set.
+   set, verifies the Draft's `targetCommitish` is the requested SHA, and compares
+   the uploaded asset inventory with the local set. GitHub does not create the
+   Git tag until the Draft is published.
 6. `publish-release` rechecks that `origin/main` has not moved and that the
-   Release is still a Draft whose tag still points to the tested SHA, then
+   Release is still a Draft targeting the tested SHA, then
    publishes it once. This is the only irreversible step. The repository's
    immutable-release policy locks the tag and assets at this point.
 7. The workflow requires the published Release's API `immutable` field to be

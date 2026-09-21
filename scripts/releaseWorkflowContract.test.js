@@ -134,7 +134,11 @@ describe("Immutable Release promotion", () => {
     expect(releaseWorkflow).toContain("--draft");
     expect(releaseWorkflow).toContain('gh release edit "$TAG"');
     expect(releaseWorkflow).toContain("--draft=false --latest");
-    expect(releaseWorkflow).toContain("Draft tag ${TAG} moved away from the tested commit");
+    expect(releaseWorkflow).toContain("--json targetCommitish");
+    expect(releaseWorkflow).toContain("Draft ${TAG} moved away from the tested commit");
+    expect(releaseWorkflow).not.toContain(
+      'gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}"'
+    );
     expect(releaseWorkflow).toContain("gh release verify");
     expect(releaseWorkflow).toContain(".immutable");
     expect(releaseWorkflow).not.toContain("softprops/action-gh-release");

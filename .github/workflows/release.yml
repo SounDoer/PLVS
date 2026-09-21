@@ -319,9 +319,12 @@ jobs:
             exit 1
           fi
 
-          tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)
-          if [[ "$tag_sha" != "$RELEASE_SHA" ]]; then
-            echo "Draft tag ${TAG} does not point to the requested commit" >&2
+          target_commitish=$(gh release view "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json targetCommitish \
+            --jq .targetCommitish)
+          if [[ "$target_commitish" != "$RELEASE_SHA" ]]; then
+            echo "Draft ${TAG} does not target the requested commit" >&2
             exit 1
           fi
 
@@ -368,9 +371,12 @@ jobs:
             exit 1
           fi
 
-          tag_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq .object.sha)
-          if [[ "$tag_sha" != "$RELEASE_SHA" ]]; then
-            echo "Draft tag ${TAG} moved away from the tested commit" >&2
+          target_commitish=$(gh release view "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json targetCommitish \
+            --jq .targetCommitish)
+          if [[ "$target_commitish" != "$RELEASE_SHA" ]]; then
+            echo "Draft ${TAG} moved away from the tested commit" >&2
             exit 1
           fi
 
