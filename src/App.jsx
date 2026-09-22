@@ -2144,6 +2144,9 @@ function AppContent() {
     captureApplications,
     safeAudioDeviceId,
     defaultOutputLabel,
+    sourceBusy:
+      ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
+      meterRuntime.liveDeviceTransition !== null,
     onSelectSource: onSelectCaptureDevice,
     presets,
   });

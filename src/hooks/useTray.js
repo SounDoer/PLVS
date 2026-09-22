@@ -47,13 +47,14 @@ async function buildSourceItems({
   safeAudioDeviceId,
   onSelectSource,
 }) {
-  const items = [
-    await CheckMenuItem.new({
-      text: "Automatic (default system output)",
-      checked: safeAudioDeviceId === "default",
-      action: () => onSelectSource("default"),
-    }),
-  ];
+  const handles = new Map();
+  const automatic = await CheckMenuItem.new({
+    text: "Automatic (default system output)",
+    checked: safeAudioDeviceId === "default",
+    action: () => onSelectSource("default"),
+  });
+  handles.set("default", automatic);
+  const items = [automatic];
   for (const [header, sources] of [
     ["Output", audioOutputs],
     ["Input", audioInputs],
@@ -64,16 +65,25 @@ async function buildSourceItems({
     items.push(await MenuItem.new({ text: header, enabled: false }));
     for (const source of sources) {
       const isApplication = header === "Applications";
-      items.push(
-        await CheckMenuItem.new({
-          text: isApplication ? source.label : menuDeviceText(source.label),
-          checked: safeAudioDeviceId === source.id,
-          action: () => onSelectSource(source.id),
-        })
-      );
+      const item = await CheckMenuItem.new({
+        text: isApplication ? source.label : menuDeviceText(source.label),
+        checked: safeAudioDeviceId === source.id,
+        action: () => onSelectSource(source.id),
+      });
+      handles.set(source.id, item);
+      items.push(item);
     }
   }
-  return items;
+  return { items, handles };
+}
+
+async function syncSourceMenu(controls, inputs) {
+  if (!controls) return;
+  await Promise.all([
+    controls.submenu.setText(`Source: ${sourceLabelFor(inputs)}`),
+    controls.submenu.setEnabled(!inputs.sourceBusy),
+    ...[...controls.items].map(([id, item]) => item.setChecked(id === inputs.safeAudioDeviceId)),
+  ]);
 }
 
 function presetLabelFor({ presetList, presetActiveId, presetDirty }) {
@@ -122,6 +132,7 @@ async function buildMenu(cfg) {
     captureApplications,
     safeAudioDeviceId,
     defaultOutputLabel,
+    sourceBusy,
     onSelectSource,
     presetList,
     presetActiveId,
@@ -144,28 +155,32 @@ async function buildMenu(cfg) {
     );
   }
 
+  const sourceItems = await buildSourceItems({
+    audioOutputs,
+    audioInputs,
+    captureApplications,
+    safeAudioDeviceId,
+    onSelectSource,
+  });
+  const sourceSubmenu = await Submenu.new({
+    text: `Source: ${sourceLabelFor({
+      safeAudioDeviceId,
+      audioOutputs,
+      audioInputs,
+      captureApplications,
+      defaultOutputLabel,
+    })}`,
+    enabled: !sourceBusy,
+    items: sourceItems.items,
+  });
+
   items.push(
     await MenuItem.new({
       text: running ? "Stop" : "Start",
       action: onToggleCapture,
     }),
     await PredefinedMenuItem.new({ item: "Separator" }),
-    await Submenu.new({
-      text: `Source: ${sourceLabelFor({
-        safeAudioDeviceId,
-        audioOutputs,
-        audioInputs,
-        captureApplications,
-        defaultOutputLabel,
-      })}`,
-      items: await buildSourceItems({
-        audioOutputs,
-        audioInputs,
-        captureApplications,
-        safeAudioDeviceId,
-        onSelectSource,
-      }),
-    }),
+    sourceSubmenu,
     await Submenu.new({
       text: presetsBlocked
         ? "Preset: Editing…"
@@ -187,7 +202,10 @@ async function buildMenu(cfg) {
     })
   );
 
-  return Menu.new({ items });
+  return {
+    menu: await Menu.new({ items }),
+    sourceControls: { submenu: sourceSubmenu, items: sourceItems.handles },
+  };
 }
 
 export function useTray({
@@ -202,11 +220,14 @@ export function useTray({
   captureApplications = [],
   safeAudioDeviceId = "default",
   defaultOutputLabel = "",
+  sourceBusy = false,
   onSelectSource = () => {},
   presets = { list: [], activeId: null, dirty: false, blocked: false, apply: () => {} },
 }) {
   const isMac = isMacOS();
   const trayRef = useRef(null);
+  const sourceControlsRef = useRef(null);
+  const sourceSyncQueueRef = useRef(Promise.resolve());
 
   const onStartClickRef = useRef(onStartClick);
   const onToggleWindowRef = useRef(onToggleWindow);
@@ -250,6 +271,13 @@ export function useTray({
     const result = onApplyPresetRef.current(id);
     if (result && typeof result.catch === "function") result.catch(() => {});
   }, []);
+  const queueSourceSync = useCallback((controls, inputs) => {
+    const sync = sourceSyncQueueRef.current
+      .catch(() => {})
+      .then(() => syncSourceMenu(controls, inputs));
+    sourceSyncQueueRef.current = sync;
+    return sync;
+  }, []);
 
   // Everything buildMenu reads that can change after creation. The ref keeps the
   // creation effect current if state changes while TrayIcon.new is still pending.
@@ -262,6 +290,7 @@ export function useTray({
     captureApplications,
     safeAudioDeviceId,
     defaultOutputLabel,
+    sourceBusy,
     presetList: presets.list,
     presetActiveId: presets.activeId,
     presetDirty: presets.dirty,
@@ -270,6 +299,11 @@ export function useTray({
   const menuInputsRef = useRef(menuInputs);
   useEffect(() => {
     menuInputsRef.current = menuInputs;
+  });
+  const sourceStructureKey = JSON.stringify({
+    outputs: audioOutputs.map(({ id, label }) => [id, label]),
+    inputs: audioInputs.map(({ id, label }) => [id, label]),
+    applications: captureApplications.map(({ id, label }) => [id, label]),
   });
 
   const menuConfig = useCallback(
@@ -291,7 +325,7 @@ export function useTray({
 
     (async () => {
       const snapshot = menuInputsRef.current;
-      const menu = await buildMenu(menuConfig(snapshot));
+      const built = await buildMenu(menuConfig(snapshot));
 
       const iconName = colorScheme === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
       const iconPath = await resolveResource(iconName);
@@ -304,7 +338,7 @@ export function useTray({
         icon,
         iconAsTemplate: true,
         tooltip: "PLVS",
-        menu,
+        menu: built.menu,
         menuOnLeftClick: false,
         action: (e) => {
           if (e.type === "Click" && e.button === "Left") {
@@ -318,11 +352,14 @@ export function useTray({
       } else {
         setCurrentTrayIcon(tray);
         trayRef.current = tray;
+        sourceControlsRef.current = built.sourceControls;
         // State may have changed while the tray was being created; rebuild once
         // with whatever is current so no stale value shows.
         if (menuInputsRef.current !== snapshot) {
-          const updatedMenu = await buildMenu(menuConfig(menuInputsRef.current));
-          await tray.setMenu(updatedMenu);
+          const updated = await buildMenu(menuConfig(menuInputsRef.current));
+          await tray.setMenu(updated.menu);
+          sourceControlsRef.current = updated.sourceControls;
+          await queueSourceSync(updated.sourceControls, menuInputsRef.current);
         }
       }
     })();
@@ -332,32 +369,40 @@ export function useTray({
       trayRef.current?.close();
       clearCurrentTrayIcon(trayRef.current);
       trayRef.current = null;
+      sourceControlsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Rebuild menu when any displayed state changes.
+  // Rebuild only when menu structure or non-source state changes. Replacing a Windows tray menu
+  // from the selection event that belongs to the old menu can leave the replacement visible but
+  // disconnected from its action channels. Source selection is therefore synchronized in place.
   useEffect(() => {
     if (!isTauri() || !trayRef.current) return;
     (async () => {
-      const menu = await buildMenu(menuConfig(menuInputsRef.current));
+      const built = await buildMenu(menuConfig(menuInputsRef.current));
       // trayRef may have been cleared by unmount cleanup during the await above.
-      await trayRef.current?.setMenu(menu);
+      await trayRef.current?.setMenu(built.menu);
+      if (!trayRef.current) return;
+      sourceControlsRef.current = built.sourceControls;
+      await queueSourceSync(built.sourceControls, menuInputsRef.current);
     })();
   }, [
     menuConfig,
     running,
     updateBusy,
-    safeAudioDeviceId,
-    defaultOutputLabel,
-    audioOutputs,
-    audioInputs,
-    captureApplications,
+    sourceStructureKey,
+    queueSourceSync,
     presets.list,
     presets.activeId,
     presets.dirty,
     presets.blocked,
   ]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void queueSourceSync(sourceControlsRef.current, menuInputsRef.current);
+  }, [safeAudioDeviceId, defaultOutputLabel, sourceBusy, queueSourceSync]);
 
   // Update tray icon when color scheme changes.
   useEffect(() => {

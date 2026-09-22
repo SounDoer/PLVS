@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { act } from "react";
+import { act, useState } from "react";
 
 vi.mock("@tauri-apps/api/tray", () => ({
   TrayIcon: {
@@ -12,9 +12,13 @@ vi.mock("@tauri-apps/api/tray", () => ({
 }));
 vi.mock("@tauri-apps/api/menu", () => ({
   Menu: { new: vi.fn().mockResolvedValue({}) },
-  Submenu: { new: vi.fn().mockResolvedValue({}) },
+  Submenu: {
+    new: vi.fn(async () => ({ setText: vi.fn(), setEnabled: vi.fn() })),
+  },
   MenuItem: { new: vi.fn().mockResolvedValue({}) },
-  CheckMenuItem: { new: vi.fn().mockResolvedValue({}) },
+  CheckMenuItem: {
+    new: vi.fn(async () => ({ setChecked: vi.fn(), setText: vi.fn(), setEnabled: vi.fn() })),
+  },
   PredefinedMenuItem: { new: vi.fn().mockResolvedValue({}) },
 }));
 vi.mock("@tauri-apps/api/window", () => ({
@@ -61,6 +65,18 @@ const menuItemOptions = () => MenuItem.new.mock.calls.map(([o]) => o);
 const checkItemOptions = () => CheckMenuItem.new.mock.calls.map(([o]) => o);
 const submenuOptions = () => Submenu.new.mock.calls.map(([o]) => o);
 const findText = (options, text) => options.find((o) => o.text === text);
+const createdHandleForText = (factory, text) => {
+  const index = factory.mock.calls.findIndex(([options]) => options.text === text);
+  return index < 0 ? null : factory.mock.results[index].value;
+};
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
 
 describe("useTray", () => {
   beforeEach(() => {
@@ -184,6 +200,117 @@ describe("useTray", () => {
     // Clicking a device forwards its id.
     findText(checks, "Speakers").action();
     expect(onSelectSource).toHaveBeenCalledWith("out-1");
+  });
+
+  it("updates a tray source selection in place so the next source action stays live", async () => {
+    const tray = { setMenu: vi.fn(), close: vi.fn() };
+    const audioOutputs = [
+      { id: "out-1", label: "Speakers", isSystemOutputMonitor: true },
+      { id: "out-2", label: "Headphones", isSystemOutputMonitor: true },
+    ];
+    TrayIcon.new.mockResolvedValue(tray);
+
+    const { result } = renderHook(() => {
+      const [selectedId, setSelectedId] = useState("default");
+      useTray({
+        ...defaultProps,
+        safeAudioDeviceId: selectedId,
+        audioOutputs,
+        onSelectSource: setSelectedId,
+      });
+      return selectedId;
+    });
+    await act(async () => {});
+
+    const speakers = findText(checkItemOptions(), "Speakers");
+    const headphones = findText(checkItemOptions(), "Headphones");
+    const speakersHandle = await createdHandleForText(CheckMenuItem.new, "Speakers");
+    const headphonesHandle = await createdHandleForText(CheckMenuItem.new, "Headphones");
+    const sourceHandle = await createdHandleForText(Submenu.new, "Source: Output · Automatic");
+    tray.setMenu.mockClear();
+
+    await act(async () => speakers.action());
+    expect(result.current).toBe("out-1");
+    expect(tray.setMenu).not.toHaveBeenCalled();
+    expect(speakersHandle.setChecked).toHaveBeenLastCalledWith(true);
+    expect(headphonesHandle.setChecked).toHaveBeenLastCalledWith(false);
+    expect(sourceHandle.setText).toHaveBeenLastCalledWith("Source: Output · Speakers");
+
+    await act(async () => headphones.action());
+    expect(result.current).toBe("out-2");
+    expect(tray.setMenu).not.toHaveBeenCalled();
+    expect(speakersHandle.setChecked).toHaveBeenLastCalledWith(false);
+    expect(headphonesHandle.setChecked).toHaveBeenLastCalledWith(true);
+    expect(sourceHandle.setText).toHaveBeenLastCalledWith("Source: Output · Headphones");
+  });
+
+  it("keeps the tray menu attached when an equivalent application inventory refreshes", async () => {
+    const tray = { setMenu: vi.fn(), close: vi.fn() };
+    const application = {
+      id: "app-00112233445566778899aabbccddeeff",
+      label: "VLC",
+      processId: 4321,
+      processIds: [4321],
+    };
+    TrayIcon.new.mockResolvedValue(tray);
+
+    const { rerender } = renderHook(
+      ({ captureApplications }) =>
+        useTray({
+          ...defaultProps,
+          safeAudioDeviceId: application.id,
+          captureApplications,
+        }),
+      { initialProps: { captureApplications: [application] } }
+    );
+    await act(async () => {});
+    tray.setMenu.mockClear();
+
+    rerender({
+      captureApplications: [
+        { ...application, processId: 9876, processIds: [9876], windowTitle: "next.wav - VLC" },
+      ],
+    });
+    await act(async () => {});
+
+    expect(tray.setMenu).not.toHaveBeenCalled();
+  });
+
+  it("serializes source availability updates when native menu calls finish out of order", async () => {
+    const tray = { setMenu: vi.fn(), close: vi.fn() };
+    TrayIcon.new.mockResolvedValue(tray);
+    const { rerender } = renderHook(({ sourceBusy }) => useTray({ ...defaultProps, sourceBusy }), {
+      initialProps: { sourceBusy: false },
+    });
+    await act(async () => {});
+
+    const sourceHandle = await createdHandleForText(Submenu.new, "Source: Output · Automatic");
+    const delayedDisable = deferred();
+    let nativeEnabled = true;
+    sourceHandle.setEnabled.mockImplementation((enabled) => {
+      if (!enabled) {
+        return delayedDisable.promise.then(() => {
+          nativeEnabled = false;
+        });
+      }
+      nativeEnabled = true;
+      return Promise.resolve();
+    });
+    tray.setMenu.mockClear();
+
+    rerender({ sourceBusy: true });
+    await act(async () => {});
+    expect(tray.setMenu).not.toHaveBeenCalled();
+    expect(sourceHandle.setEnabled).toHaveBeenLastCalledWith(false);
+
+    rerender({ sourceBusy: false });
+    await act(async () => {});
+    delayedDisable.resolve();
+    await act(async () => {});
+
+    expect(tray.setMenu).not.toHaveBeenCalled();
+    expect(sourceHandle.setEnabled).toHaveBeenLastCalledWith(true);
+    expect(nativeEnabled).toBe(true);
   });
 
   it("renders device labels as strings via the real formatter", async () => {
