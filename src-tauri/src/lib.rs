@@ -25,6 +25,8 @@ mod glass_effect;
 pub mod harness_main;
 mod ipc;
 mod profile;
+pub mod runtime_diagnostics;
+pub mod runtime_identity;
 mod sidecar;
 mod state;
 pub mod vad;
@@ -87,6 +89,8 @@ fn initial_state_script(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  let runtime_identity = runtime_identity::RuntimeIdentity::new_default()
+    .expect("operating system randomness must create a runtime identity");
   let builder = tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_process::init());
@@ -109,6 +113,7 @@ pub fn run() {
         .build(),
     )
     .manage(AppState::default())
+    .manage(runtime_identity)
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::transport::ServerState::default())
     .manage(agent_control::toggle::StartFailure::default())
@@ -179,6 +184,12 @@ pub fn run() {
       ipc::commands::read_feedback_diagnostics,
     ])
     .setup(|app| {
+      let runtime_identity = app.state::<runtime_identity::RuntimeIdentity>();
+      log::info!(
+        "runtime identity instance={} workspace={}",
+        runtime_identity.instance_id(),
+        runtime_identity.workspace_id()
+      );
       let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(
         &app
           .path()

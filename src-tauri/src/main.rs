@@ -30,6 +30,18 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
       }
     }
+    Some("--runtime-diagnostics") => {
+      #[cfg(debug_assertions)]
+      {
+        let rest: Vec<String> = args.collect();
+        return app_lib::runtime_diagnostics::run(&rest);
+      }
+      #[cfg(not(debug_assertions))]
+      {
+        eprintln!("Runtime diagnostics are not available in packaged builds.");
+        return ExitCode::from(2);
+      }
+    }
     _ => {}
   }
 
