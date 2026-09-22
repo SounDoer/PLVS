@@ -76,6 +76,7 @@ ten-vad-rs = "0.1.7"
 crossbeam-queue = "0.3.13"
 atomic-write-file = "0.3.1"
 getrandom = "0.4.3"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
 subtle = "2.6.1"
 
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a

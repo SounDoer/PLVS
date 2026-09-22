@@ -24,6 +24,7 @@ mod glass_effect;
 #[cfg(feature = "capture-harness")]
 pub mod harness_main;
 mod ipc;
+pub mod persistence;
 mod profile;
 pub mod runtime_diagnostics;
 pub mod runtime_identity;
