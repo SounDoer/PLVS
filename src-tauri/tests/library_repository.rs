@@ -101,3 +101,54 @@ fn every_committed_change_advances_the_library_collection_revision() {
 
   let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn library_items_are_listed_in_the_order_the_user_created_them() {
+  let root = temp_root().with_extension("order");
+  let repository = LibraryRepository::open(&root).expect("open repository");
+  repository
+    .create("preset", "dialogue", &json!({ "id": "dialogue" }))
+    .expect("create first preset");
+  repository
+    .create("preset", "music", &json!({ "id": "music" }))
+    .expect("create second preset");
+
+  let ids: Vec<String> = repository
+    .list("preset")
+    .expect("list presets")
+    .into_iter()
+    .map(|item| item.id)
+    .collect();
+  assert_eq!(ids, ["dialogue", "music"]);
+
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn reordering_requires_the_current_collection_revision() {
+  let root = temp_root().with_extension("reorder-conflict");
+  let first = LibraryRepository::open(&root).expect("open first repository");
+  let second = LibraryRepository::open(&root).expect("open second repository");
+  first
+    .create("theme", "dark", &json!({ "id": "dark" }))
+    .expect("create dark theme");
+  first
+    .create("theme", "light", &json!({ "id": "light" }))
+    .expect("create light theme");
+
+  assert_eq!(first.reorder("theme", &["light", "dark"], 2).unwrap(), 3);
+  let conflict = second
+    .reorder("theme", &["dark", "light"], 2)
+    .expect_err("stale order must not overwrite the committed order");
+  assert!(conflict.to_string().contains("revision 3"));
+
+  let ids: Vec<String> = second
+    .list("theme")
+    .unwrap()
+    .into_iter()
+    .map(|item| item.id)
+    .collect();
+  assert_eq!(ids, ["light", "dark"]);
+
+  let _ = std::fs::remove_dir_all(root);
+}

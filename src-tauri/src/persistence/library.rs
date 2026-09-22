@@ -1,4 +1,5 @@
 use std::{
+  collections::HashSet,
   fs,
   path::{Path, PathBuf},
   time::Duration,
@@ -83,6 +84,13 @@ impl LibraryRepository {
         "A {kind} Library item with ID {id} already exists."
       )));
     }
+    transaction.execute(
+      "INSERT INTO library_order (kind, item_id, position)
+       SELECT ?1, ?2, COALESCE(MAX(position) + 1, 0)
+       FROM library_order
+       WHERE kind = ?1",
+      params![kind, id],
+    )?;
     transaction.execute(
       "INSERT INTO library_collections (kind, revision)
        VALUES (?1, 1)
@@ -202,6 +210,119 @@ impl LibraryRepository {
       .map_err(map_sqlite_error)
   }
 
+  pub fn list(&self, kind: &str) -> Result<Vec<LibraryItem>, LibraryError> {
+    validate_key(kind, "Library kind")?;
+    let connection = self.connection()?;
+    let mut statement = connection
+      .prepare(
+        "SELECT items.item_id, items.revision, items.document_json
+         FROM library_order AS ordering
+         JOIN library_items AS items
+           ON items.kind = ordering.kind AND items.item_id = ordering.item_id
+         WHERE ordering.kind = ?1
+         ORDER BY ordering.position ASC, ordering.item_id ASC",
+      )
+      .map_err(map_sqlite_error)?;
+    let rows = statement
+      .query_map([kind], |row| {
+        Ok((
+          row.get::<_, String>(0)?,
+          row.get::<_, i64>(1)?,
+          row.get::<_, String>(2)?,
+        ))
+      })
+      .map_err(map_sqlite_error)?;
+    let mut items = Vec::new();
+    for row in rows {
+      let (id, revision, document_json) = row.map_err(map_sqlite_error)?;
+      let document = serde_json::from_str(&document_json).map_err(|error| {
+        LibraryError::Storage(format!("Unable to parse stored Library item: {error}"))
+      })?;
+      items.push(LibraryItem {
+        kind: kind.to_string(),
+        id,
+        revision,
+        document,
+      });
+    }
+    Ok(items)
+  }
+
+  pub fn reorder(
+    &self,
+    kind: &str,
+    ordered_ids: &[&str],
+    expected_collection_revision: i64,
+  ) -> Result<i64, LibraryError> {
+    validate_key(kind, "Library kind")?;
+    let mut requested = HashSet::new();
+    for id in ordered_ids {
+      validate_key(id, "Library item ID")?;
+      if !requested.insert(*id) {
+        return Err(LibraryError::Conflict(
+          "Library order contains a duplicate item ID.".to_string(),
+        ));
+      }
+    }
+
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    let current_revision = transaction
+      .query_row(
+        "SELECT revision FROM library_collections WHERE kind = ?1",
+        [kind],
+        |row| row.get::<_, i64>(0),
+      )
+      .optional()?
+      .unwrap_or(0);
+    if current_revision != expected_collection_revision {
+      return Err(LibraryError::Conflict(format!(
+        "Library collection changed from expected revision {expected_collection_revision} to revision {current_revision}."
+      )));
+    }
+
+    let current_ids = {
+      let mut statement = transaction
+        .prepare("SELECT item_id FROM library_items WHERE kind = ?1 ORDER BY item_id ASC")?;
+      let ids = statement
+        .query_map([kind], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+      ids
+    };
+    if current_ids.len() != requested.len()
+      || current_ids
+        .iter()
+        .any(|id| !requested.contains(id.as_str()))
+    {
+      return Err(LibraryError::Conflict(
+        "Library order must contain every item exactly once.".to_string(),
+      ));
+    }
+
+    transaction.execute("DELETE FROM library_order WHERE kind = ?1", [kind])?;
+    for (position, id) in ordered_ids.iter().enumerate() {
+      transaction.execute(
+        "INSERT INTO library_order (kind, item_id, position) VALUES (?1, ?2, ?3)",
+        params![kind, id, position as i64],
+      )?;
+    }
+    let advanced = transaction.execute(
+      "UPDATE library_collections
+       SET revision = revision + 1
+       WHERE kind = ?1 AND revision = ?2",
+      params![kind, expected_collection_revision],
+    )?;
+    if advanced != 1 {
+      return Err(LibraryError::Conflict(
+        "Library collection changed while reordering.".to_string(),
+      ));
+    }
+    transaction.commit().map_err(map_sqlite_error)?;
+    Ok(expected_collection_revision + 1)
+  }
+
   fn connection(&self) -> Result<Connection, LibraryError> {
     let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection
@@ -231,6 +352,14 @@ fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
        CREATE TABLE IF NOT EXISTS library_collections (
          kind TEXT PRIMARY KEY,
          revision INTEGER NOT NULL CHECK (revision > 0)
+       );
+       CREATE TABLE IF NOT EXISTS library_order (
+         kind TEXT NOT NULL,
+         item_id TEXT NOT NULL,
+         position INTEGER NOT NULL CHECK (position >= 0),
+         PRIMARY KEY (kind, item_id),
+         UNIQUE (kind, position),
+         FOREIGN KEY (kind, item_id) REFERENCES library_items(kind, item_id) ON DELETE CASCADE
        );",
     )
     .map_err(map_sqlite_error)?;
