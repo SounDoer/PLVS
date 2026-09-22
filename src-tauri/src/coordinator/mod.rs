@@ -11,11 +11,13 @@ use serde::{Deserialize, Serialize};
 use crate::runtime_identity::RuntimeIdentity;
 
 mod registry;
+mod restore_grant;
 
 pub use registry::{
   summarize_instances, CaptureStatus, InstanceDescriptor, InstanceRegistration, InstanceRegistry,
   InstanceRuntimeState, InstanceSummary,
 };
+pub use restore_grant::{RestoreGrant, RestoreGrantAuthority};
 
 const COORDINATOR_SCHEMA_VERSION: u32 = 1;
 const LOCK_FILE_NAME: &str = "coordinator.lock";
