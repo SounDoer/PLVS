@@ -1,7 +1,7 @@
 # Multi-Instance Architecture Audit
 
 Date: 2026-09-22  
-Status: Read-only audit; recommended direction, not an implementation specification
+Status: Audit complete; first-release product direction approved; implementation not started
 
 ## Purpose
 
@@ -352,66 +352,87 @@ An instance using a Theme or Loudness Profile should remain bound to the revisio
 its current work. A Library edit in another process must not silently change an active measurement
 rule set or appearance.
 
-## Product questions requiring decisions
+## Approved first-release product decisions
 
-### Workspace Profile creation
+### Instance creation and naming
 
-Recommended operations:
+Workspace Profile is an internal persistence concept, not a first-release management UI. A single
+instance remains completely transparent to the user. The first release has no user naming, explicit
+profile creation, profile picker or profile-management page.
 
-- New Empty Instance;
-- Open Workspace Profile;
-- Duplicate Current Instance as a new Workspace Profile.
+Launching PLVS again creates another metering window directly. A new secondary instance starts
+Stopped with no selected Source and guides the user to choose one; it must not silently start a
+second Automatic capture. Selecting a Source supplies the instance's display name. Examples are
+`Spotify`, `VLC`, `System Output` and a device name. Simultaneous duplicate labels receive a
+run-local suffix such as `Spotify (2)`.
 
-Opening the same Workspace Profile twice should be refused by default because its source, window and
-Dock state have one durable owner. Advanced read-only or duplicate workflows can be added later.
+The display name appears only where instances need to be distinguished:
 
-### Theme behavior
+- the native window title and operating-system window switcher, as `PLVS — Spotify`;
+- the shared Tray's instance list, as `Spotify`;
+- incoming-file or URL target selection;
+- multi-instance confirmation dialogs;
+- Agent Control instance discovery.
 
-Recommendation:
+It does not require a new instance list in the main Workspace, repeated labels on panels, or a
+Workspace Profile editor. A disconnected Source retains its last useful label and exposes the
+disconnected state separately.
 
-- share the Theme Library;
-- keep the selected Theme and appearance mode per Workspace Profile.
+### Persistence and restoration
 
-This allows one instance to be Light and another Dark while both see newly imported Themes.
+PLVS transparently remembers the instance set on a normal all-app exit and restores each instance's
+Source, Workspace, window and Dock state on the next launch. An update restart restores the same
+set. If the user explicitly quits one instance, that instance is removed from the set to restore.
+An optional “Reopen Windows at Launch” preference may be added later; it is not required for the
+first release.
 
-### Community import behavior
+Several instances may capture the same Source without a warning. This supports different layouts,
+Loudness Profiles and analysis views for one program.
 
-Recommendation:
+### Theme and shared Library behavior
 
-- import into the shared Library;
-- notify all running instances that the Library changed;
-- do not automatically apply the item anywhere;
-- let the user choose an instance later.
+Theme, Preset and Loudness Profile documents are shared Library items. The selected Theme,
+appearance mode, active Preset and active Loudness Profile remain instance state. One instance may
+therefore use Light and another Dark while both see the same custom Theme library.
 
-“Add to Library without applying” should be the safe default for file associations and community
-downloads.
+An import commits to the shared Library and notifies all instances, but does not automatically apply
+the item anywhere. “Add to Library without applying” is the safe default for community downloads
+and file associations. Concurrent edits never silently overwrite one another; the first release may
+resolve a conflict with Reload or Save as Copy and does not need a force-overwrite action.
 
-### Tray and global shortcut targeting
+### Tray, close and update behavior
 
-Recommendation:
+PLVS exposes one shared Tray containing every instance, identified by its Source-derived name and
+running state. Each instance entry can Show, Start or Stop, and Quit that instance. The Tray also
+provides Quit PLVS, which exits all instances. Closing or minimizing a window affects that instance
+only. A hidden instance that is still measuring must remain visibly marked Running in the Tray.
 
-- show one Tray containing all instances, with Workspace and source labels;
-- make Global Clear target the active or explicitly selected instance by default;
-- expose a separate Clear All Instances action if wanted.
+Update installation is coordinated once for the application identity, safely stops every instance,
+and restores the previous instance set after relaunch.
 
-### Exit vocabulary
+### Global Clear shortcut
 
-The product should distinguish:
+The current behavior, in which every process attempts to register the same accelerator and later
+instances report a shortcut conflict, must be removed. The coordinator owns exactly one operating-
+system registration for Global Clear and routes each activation to the most recently focused PLVS
+instance. If no PLVS window is currently focused, it uses the last active instance.
 
-- Close or Minimize Current Instance;
-- Quit Instance;
-- Quit PLVS, meaning all instances;
-- Restart Instance;
-- Restart All After Update.
+The first release does not add a Global Clear All shortcut. An explicit Clear All Instances action
+may be added later, but must not replace the safe single-target default.
+
+### Dock coordination
+
+Several instances may use Dock. Overlay Docks may coexist. For one monitor and one edge, only one
+instance may reserve operating-system work area. A second request for the same reservation is
+refused without changing the first instance; the user can choose another edge, another monitor or
+overlay mode.
 
 ### Incoming file and URL routing
 
-Recommendation:
-
-- no running instances: launch the default Workspace Profile;
-- one instance: offer or use that instance where applying is required;
-- several instances: display a target chooser;
-- Library-only import: allow the coordinator to commit it without choosing a metering instance.
+- with no running instance, start the default instance when an instance is required;
+- with one instance, offer or use it where immediate application is requested;
+- with several instances, display a Source-named target chooser;
+- for Library-only import, let the coordinator commit without choosing a metering instance.
 
 ## Agent Control and CLI direction
 
