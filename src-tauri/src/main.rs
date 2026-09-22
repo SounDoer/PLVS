@@ -66,6 +66,18 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
       }
     }
+    Some("--workspace-lease-test-host") => {
+      #[cfg(debug_assertions)]
+      {
+        let rest: Vec<String> = args.collect();
+        return app_lib::persistence::run_lease_test_host(&rest);
+      }
+      #[cfg(not(debug_assertions))]
+      {
+        eprintln!("Workspace lease test hosting is not available in packaged builds.");
+        return ExitCode::from(2);
+      }
+    }
     _ => {}
   }
 

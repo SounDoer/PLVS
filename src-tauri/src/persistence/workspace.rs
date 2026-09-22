@@ -1,11 +1,12 @@
 use std::{
   fs,
   fs::{File, OpenOptions},
-  io::Write,
+  io::{Seek, Write},
   path::{Path, PathBuf},
 };
 
 use atomic_write_file::AtomicWriteFile;
+use fs4::{FileExt, TryLockError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -27,7 +28,6 @@ pub struct WorkspaceStore {
 #[derive(Debug)]
 pub struct WorkspaceLease {
   file: Option<File>,
-  path: PathBuf,
 }
 
 impl WorkspaceStore {
@@ -49,26 +49,34 @@ impl WorkspaceStore {
       .ok_or_else(|| "Workspace lease path has no parent directory.".to_string())?;
     fs::create_dir_all(parent)
       .map_err(|error| format!("Unable to create workspace directory: {error}"))?;
-    let mut file = match OpenOptions::new()
+    let mut file = OpenOptions::new()
+      .read(true)
       .write(true)
-      .create_new(true)
+      .create(true)
+      .truncate(false)
       .open(&self.lease_path)
-    {
-      Ok(file) => file,
-      Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+      .map_err(|error| format!("Unable to open workspace lease: {error}"))?;
+    match FileExt::try_lock(&file) {
+      Ok(()) => {}
+      Err(TryLockError::WouldBlock) => {
         return Err("This workspace is already open in another PLVS instance.".to_string());
       }
-      Err(error) => return Err(format!("Unable to acquire workspace lease: {error}")),
-    };
+      Err(TryLockError::Error(error)) => {
+        return Err(format!("Unable to acquire workspace lease: {error}"));
+      }
+    }
+    file
+      .set_len(0)
+      .map_err(|error| format!("Unable to reset workspace lease owner: {error}"))?;
+    file
+      .rewind()
+      .map_err(|error| format!("Unable to seek workspace lease: {error}"))?;
     writeln!(file, "{}", std::process::id())
       .map_err(|error| format!("Unable to record workspace lease owner: {error}"))?;
     file
       .sync_all()
       .map_err(|error| format!("Unable to flush workspace lease: {error}"))?;
-    Ok(WorkspaceLease {
-      file: Some(file),
-      path: self.lease_path.clone(),
-    })
+    Ok(WorkspaceLease { file: Some(file) })
   }
 
   pub fn load(&self) -> Result<Option<Value>, String> {
@@ -116,9 +124,8 @@ impl WorkspaceStore {
 
 impl Drop for WorkspaceLease {
   fn drop(&mut self) {
-    drop(self.file.take());
-    if let Err(error) = fs::remove_file(&self.path) {
-      if error.kind() != std::io::ErrorKind::NotFound {
+    if let Some(file) = self.file.take() {
+      if let Err(error) = FileExt::unlock(&file) {
         log::warn!("Unable to release workspace lease: {error}");
       }
     }
@@ -130,4 +137,45 @@ fn valid_workspace_id(workspace_id: &str) -> bool {
     && workspace_id
       .chars()
       .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+}
+
+#[cfg(debug_assertions)]
+pub fn run_lease_test_host(args: &[String]) -> std::process::ExitCode {
+  use std::io::Read;
+
+  let [root_flag, root, workspace_flag, workspace_id] = args else {
+    eprintln!(
+      "workspace lease test host requires --identity-root <path> --workspace-id <workspace>"
+    );
+    return std::process::ExitCode::from(2);
+  };
+  if root_flag != "--identity-root" || workspace_flag != "--workspace-id" {
+    eprintln!(
+      "workspace lease test host requires --identity-root <path> --workspace-id <workspace>"
+    );
+    return std::process::ExitCode::from(2);
+  }
+  let store = match WorkspaceStore::open(Path::new(root), workspace_id) {
+    Ok(store) => store,
+    Err(error) => {
+      eprintln!("{error}");
+      return std::process::ExitCode::from(1);
+    }
+  };
+  let lease = match store.acquire_lease() {
+    Ok(lease) => lease,
+    Err(error) => {
+      eprintln!("{error}");
+      return std::process::ExitCode::from(1);
+    }
+  };
+  println!("ready");
+  if let Err(error) = std::io::stdout().flush() {
+    eprintln!("unable to announce workspace lease test host: {error}");
+    return std::process::ExitCode::from(1);
+  }
+  let mut sink = Vec::new();
+  let _ = std::io::stdin().read_to_end(&mut sink);
+  drop(lease);
+  std::process::ExitCode::SUCCESS
 }

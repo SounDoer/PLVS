@@ -411,7 +411,7 @@ impl LibraryRepository {
     })
   }
 
-  fn connection(&self) -> Result<Connection, LibraryError> {
+  pub(super) fn connection(&self) -> Result<Connection, LibraryError> {
     let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection
       .busy_timeout(BUSY_TIMEOUT)
@@ -453,7 +453,17 @@ fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
          preference_key TEXT PRIMARY KEY,
          revision INTEGER NOT NULL CHECK (revision > 0),
          value_json TEXT NOT NULL
-       );",
+       );
+       CREATE TABLE IF NOT EXISTS workspace_restore_set (
+         workspace_id TEXT PRIMARY KEY,
+         position INTEGER NOT NULL UNIQUE CHECK (position >= 0)
+       );
+       CREATE TABLE IF NOT EXISTS workspace_registry_state (
+         singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+         revision INTEGER NOT NULL CHECK (revision >= 0)
+       );
+       INSERT OR IGNORE INTO workspace_restore_set (workspace_id, position) VALUES ('default', 0);
+       INSERT OR IGNORE INTO workspace_registry_state (singleton, revision) VALUES (1, 0);",
     )
     .map_err(map_sqlite_error)?;
   let current_version: i64 = connection

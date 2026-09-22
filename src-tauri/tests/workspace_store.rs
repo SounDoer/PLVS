@@ -1,5 +1,9 @@
 use app_lib::persistence::WorkspaceStore;
 use serde_json::json;
+use std::{
+  io::BufRead,
+  process::{Command, Stdio},
+};
 
 fn temp_root() -> std::path::PathBuf {
   std::env::temp_dir().join(format!(
@@ -42,6 +46,40 @@ fn a_workspace_refuses_a_second_live_writer() {
   let replacement = second_store
     .acquire_lease()
     .expect("released workspace can be reopened");
+  drop(replacement);
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn a_workspace_can_be_reopened_after_its_writer_process_crashes() {
+  let root = temp_root().with_extension("crash");
+  let store = WorkspaceStore::open(&root, "default").unwrap();
+  let mut child = Command::new(env!("CARGO_BIN_EXE_plvs"))
+    .arg("--workspace-lease-test-host")
+    .arg("--identity-root")
+    .arg(&root)
+    .arg("--workspace-id")
+    .arg("default")
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .expect("start workspace lease holder");
+  let held_stdin = child.stdin.take().unwrap();
+  let mut ready_line = String::new();
+  std::io::BufReader::new(child.stdout.take().unwrap())
+    .read_line(&mut ready_line)
+    .expect("read workspace lease readiness");
+  assert_eq!(ready_line.trim(), "ready");
+  assert!(store.acquire_lease().unwrap_err().contains("already open"));
+
+  child.kill().expect("crash workspace lease holder");
+  child.wait().expect("reap workspace lease holder");
+  drop(held_stdin);
+  let replacement = store
+    .acquire_lease()
+    .expect("operating system releases lease after a crash");
+
   drop(replacement);
   let _ = std::fs::remove_dir_all(root);
 }
