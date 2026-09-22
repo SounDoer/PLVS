@@ -50,8 +50,9 @@ redundant until you know why they are not. Routine choices do not need one.
 
 ## 5. History — [history/](history/)
 
-Specs, plans, performance investigations, spikes and mockups. Frozen the moment they are written,
-never updated, never cited as current behaviour. See [history/README.md](history/README.md).
+Specs, plans, performance investigations, spikes and mockups. They may be refined while the work
+they belong to is active, but they are not maintained to match the current product and are never
+cited as current behaviour. See [history/README.md](history/README.md).
 
 New specs go to `history/specs/YYYY-MM-DD-<topic>-design.md` and new plans to
 `history/plans/YYYY-MM-DD-<feature>.md`; see the Documentation section in `AGENTS.md`.

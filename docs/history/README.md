@@ -1,13 +1,17 @@
 # PLVS — Document history
 
-**Everything below this directory is frozen.** These are point-in-time records: what we decided,
-measured, or planned on the date in the filename. They are not maintained, and they do not describe
-how PLVS behaves today.
+The subdirectories here contain historical working records: what we decided, measured or planned
+for the work named in each file. A record may be refined while that design, review or implementation
+work is active. It is not maintained afterwards to describe how PLVS behaves today.
 
 ## Rules
 
-- **Never edit a file here**, including its `Status:` header. Whether something shipped is answered
-  by git history and `CHANGELOG.md`, not by a status line in a spec.
+- Refine a record when the active work it belongs to reveals an omission, ambiguity or mistake.
+- Do not edit an older record merely to match the current product, mark later implementation status
+  or rewrite a superseded decision. Whether something shipped is answered by git history and
+  `CHANGELOG.md`, not by a status line in a spec.
+- Put a materially changed direction in a new dated record and state which earlier record it extends
+  or supersedes.
 - **Never cite a file here as the source of current behaviour.** If a record is the only place some
   current behaviour is described, that is a bug in the living docs: move the durable part into
   `docs/architecture.md` (what it is) or a new ADR (why it must stay that way), then link that.

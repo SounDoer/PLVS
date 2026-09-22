@@ -10,7 +10,7 @@ import { releaseAssetNames } from "./release-assets.mjs";
 
 /**
  * Guards the documentation layout described in `docs/README.md`: claims that code owns are asserted
- * against the code, and the boundary between living documents and frozen records is enforced here
+ * against the code, and the boundary between living documents and historical records is enforced here
  * rather than by review. Prose is deliberately not asserted; it is reconciled at release.
  */
 
@@ -43,7 +43,7 @@ const sectionBody = (markdown, heading) => {
 };
 
 describe("documentation structure", () => {
-  it("keeps frozen records under docs/history only", () => {
+  it("keeps historical records under docs/history only", () => {
     expect(existsSync(join(cwd(), "docs", "history", "README.md"))).toBe(true);
     // The brainstorming and planning skills default to these paths; AGENTS.md overrides them, and
     // this assertion is what makes the override visible when it is ignored.
@@ -51,8 +51,8 @@ describe("documentation structure", () => {
     expect(existsSync(join(cwd(), "docs", "working"))).toBe(false);
   });
 
-  it("does not cite frozen records from living documents", () => {
-    // docs/README.md and AGENTS.md describe where records go; ADRs are themselves frozen and may
+  it("does not cite historical records from living documents", () => {
+    // docs/README.md and AGENTS.md describe where records go; ADRs are themselves historical and may
     // record the design document a decision came from.
     const skip = ["docs/history", "docs/adr", "docs/README.md"];
     const documents = [...collectMarkdown("docs", skip), "README.md", "CONTRIBUTING.md"];
