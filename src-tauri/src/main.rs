@@ -42,6 +42,30 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
       }
     }
+    Some("--coordinator-test-host") => {
+      #[cfg(debug_assertions)]
+      {
+        let rest: Vec<String> = args.collect();
+        return app_lib::coordinator::run_test_host(&rest);
+      }
+      #[cfg(not(debug_assertions))]
+      {
+        eprintln!("Coordinator test hosting is not available in packaged builds.");
+        return ExitCode::from(2);
+      }
+    }
+    Some("--instance-registry-test-host") => {
+      #[cfg(debug_assertions)]
+      {
+        let rest: Vec<String> = args.collect();
+        return app_lib::coordinator::run_registry_test_host(&rest);
+      }
+      #[cfg(not(debug_assertions))]
+      {
+        eprintln!("Instance registry test hosting is not available in packaged builds.");
+        return ExitCode::from(2);
+      }
+    }
     _ => {}
   }
 

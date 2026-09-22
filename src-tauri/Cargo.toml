@@ -72,6 +72,7 @@ time = { version = "=0.3.55", features = ["formatting"] }
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-updater = "2"
 firered-vad = "0.1.0"
+fs4 = { version = "1.1.0", features = ["sync"] }
 ten-vad-rs = "0.1.7"
 crossbeam-queue = "0.3.13"
 atomic-write-file = "0.3.1"
