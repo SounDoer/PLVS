@@ -152,3 +152,33 @@ fn reordering_requires_the_current_collection_revision() {
 
   let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn global_preferences_use_the_same_compare_and_swap_rule() {
+  let root = temp_root().with_extension("global-preference");
+  let first = LibraryRepository::open(&root).expect("open first repository");
+  let second = LibraryRepository::open(&root).expect("open second repository");
+
+  assert!(first
+    .read_global_preference("clearGlobal")
+    .unwrap()
+    .is_none());
+  let created = first
+    .set_global_preference("clearGlobal", 0, &json!(true))
+    .expect("create global preference");
+  assert_eq!(created.revision, 1);
+  assert_eq!(created.value, true);
+
+  let conflict = second
+    .set_global_preference("clearGlobal", 0, &json!(false))
+    .expect_err("stale preference write must be refused");
+  assert!(conflict.to_string().contains("revision 1"));
+
+  let updated = second
+    .set_global_preference("clearGlobal", 1, &json!(false))
+    .expect("current preference write commits");
+  assert_eq!(updated.revision, 2);
+  assert_eq!(updated.value, false);
+
+  let _ = std::fs::remove_dir_all(root);
+}
