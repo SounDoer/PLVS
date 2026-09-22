@@ -40,6 +40,14 @@ fn two_processes_share_only_the_isolated_identity_root() {
   assert!(
     std::path::Path::new(first["dataDir"].as_str().expect("data directory")).starts_with(&root)
   );
+  assert!(first["configDir"]
+    .as_str()
+    .unwrap()
+    .ends_with(first["appIdentifier"].as_str().unwrap()));
+  assert!(first["dataDir"]
+    .as_str()
+    .unwrap()
+    .ends_with(first["appIdentifier"].as_str().unwrap()));
 
   let _ = std::fs::remove_dir_all(root);
 }

@@ -8,7 +8,6 @@ pub fn run(args: &[String]) -> ExitCode {
     return ExitCode::from(2);
   };
 
-  apply_test_identity_root(root);
   let identity = match crate::runtime_identity::RuntimeIdentity::new_default() {
     Ok(identity) => identity,
     Err(error) => {
@@ -16,14 +15,10 @@ pub fn run(args: &[String]) -> ExitCode {
       return ExitCode::from(1);
     }
   };
-  let Some(config_dir) = crate::doctor::resolve_config_dir() else {
-    eprintln!("unable to resolve isolated config directory");
-    return ExitCode::from(1);
-  };
-  let Some(data_dir) = crate::doctor::resolve_data_dir() else {
-    eprintln!("unable to resolve isolated data directory");
-    return ExitCode::from(1);
-  };
+  // Integration diagnostics receive explicit roots instead of rewriting APPDATA, HOME or XDG
+  // process globals. Packaged builds reject this mode in main.rs.
+  let config_dir = root.join("config").join(env!("PLVS_APP_ID"));
+  let data_dir = root.join("data").join(env!("PLVS_APP_ID"));
 
   println!(
     "{}",
@@ -43,21 +38,4 @@ fn parse_test_identity_root(args: &[String]) -> Option<&Path> {
     return None;
   };
   (flag == "--test-identity-root").then(|| Path::new(path))
-}
-
-fn apply_test_identity_root(root: &Path) {
-  #[cfg(windows)]
-  {
-    std::env::set_var("APPDATA", root.join("config"));
-    std::env::set_var("LOCALAPPDATA", root.join("data"));
-  }
-
-  #[cfg(target_os = "macos")]
-  std::env::set_var("HOME", root);
-
-  #[cfg(all(not(windows), not(target_os = "macos")))]
-  {
-    std::env::set_var("XDG_CONFIG_HOME", root.join("config"));
-    std::env::set_var("XDG_DATA_HOME", root.join("data"));
-  }
 }
