@@ -78,6 +78,18 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
       }
     }
+    Some("--library-test-host") => {
+      #[cfg(debug_assertions)]
+      {
+        let rest: Vec<String> = args.collect();
+        return app_lib::persistence::run_library_test_host(&rest);
+      }
+      #[cfg(not(debug_assertions))]
+      {
+        eprintln!("Library test hosting is not available in packaged builds.");
+        return ExitCode::from(2);
+      }
+    }
     _ => {}
   }
 

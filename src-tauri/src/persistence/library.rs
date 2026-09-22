@@ -2,7 +2,7 @@ use std::{
   collections::HashSet,
   fs,
   path::{Path, PathBuf},
-  time::Duration,
+  time::{Duration, Instant},
 };
 
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
@@ -61,6 +61,7 @@ impl LibraryRepository {
     };
     let connection = repository.connection()?;
     initialize_schema(&connection)?;
+    enable_wal(&connection)?;
     Ok(repository)
   }
 
@@ -419,11 +420,41 @@ impl LibraryRepository {
     connection
       .pragma_update(None, "foreign_keys", "ON")
       .map_err(map_sqlite_error)?;
-    connection
-      .pragma_update(None, "journal_mode", "WAL")
-      .map_err(map_sqlite_error)?;
     Ok(connection)
   }
+}
+
+fn enable_wal(connection: &Connection) -> Result<(), LibraryError> {
+  let deadline = Instant::now() + BUSY_TIMEOUT;
+  loop {
+    let current =
+      connection.pragma_query_value(None, "journal_mode", |row| row.get::<_, String>(0));
+    match current {
+      Ok(mode) if mode.eq_ignore_ascii_case("wal") => return Ok(()),
+      Ok(_) => match connection.pragma_update(None, "journal_mode", "WAL") {
+        Ok(()) => return Ok(()),
+        Err(error) if sqlite_is_busy(&error) && Instant::now() < deadline => {
+          std::thread::sleep(Duration::from_millis(10));
+        }
+        Err(error) => return Err(map_sqlite_error(error)),
+      },
+      Err(error) if sqlite_is_busy(&error) && Instant::now() < deadline => {
+        std::thread::sleep(Duration::from_millis(10));
+      }
+      Err(error) => return Err(map_sqlite_error(error)),
+    }
+  }
+}
+
+fn sqlite_is_busy(error: &rusqlite::Error) -> bool {
+  matches!(
+    error,
+    rusqlite::Error::SqliteFailure(inner, _)
+      if matches!(
+        inner.code,
+        rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked
+      )
+  )
 }
 
 fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
@@ -486,6 +517,50 @@ fn validate_key(value: &str, label: &str) -> Result<(), LibraryError> {
     return Err(LibraryError::Storage(format!("{label} is invalid.")));
   }
   Ok(())
+}
+
+#[cfg(debug_assertions)]
+pub fn run_library_test_host(args: &[String]) -> std::process::ExitCode {
+  use std::io::{BufRead, Write};
+
+  let [root_flag, root, item_flag, item_id] = args else {
+    eprintln!("Library test host requires --identity-root <path> --item-id <id>");
+    return std::process::ExitCode::from(2);
+  };
+  if root_flag != "--identity-root" || item_flag != "--item-id" {
+    eprintln!("Library test host requires --identity-root <path> --item-id <id>");
+    return std::process::ExitCode::from(2);
+  }
+  let mut release = String::new();
+  if let Err(error) = std::io::stdin().lock().read_line(&mut release) {
+    eprintln!("Unable to await Library test release: {error}");
+    return std::process::ExitCode::from(1);
+  }
+  let repository = match LibraryRepository::open(Path::new(root)) {
+    Ok(repository) => repository,
+    Err(error) => {
+      eprintln!("{error}");
+      return std::process::ExitCode::from(1);
+    }
+  };
+  let status = match repository.create(
+    "preset",
+    item_id,
+    &serde_json::json!({ "writerPid": std::process::id() }),
+  ) {
+    Ok(_) => "committed",
+    Err(LibraryError::Conflict(_)) => "conflict",
+    Err(error) => {
+      eprintln!("{error}");
+      return std::process::ExitCode::from(1);
+    }
+  };
+  println!("{}", serde_json::json!({ "status": status }));
+  if let Err(error) = std::io::stdout().flush() {
+    eprintln!("Unable to announce Library test result: {error}");
+    return std::process::ExitCode::from(1);
+  }
+  std::process::ExitCode::SUCCESS
 }
 
 fn content_hash(document_json: &str) -> String {
