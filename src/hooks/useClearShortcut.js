@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../ipc/env.js";
 import {
   loadClearShortcutPrefs,
@@ -7,6 +8,22 @@ import {
   DEFAULT_CLEAR_SHORTCUT,
 } from "../lib/clearShortcutPrefs.js";
 import { ownsCoordinatorResources } from "../lib/runtimeRole.js";
+
+async function routeGlobalClear(onClearRef) {
+  try {
+    const routedToPeer = await invoke("runtime_route_global_clear");
+    if (!routedToPeer) onClearRef?.current?.();
+  } catch (error) {
+    console.warn("Unable to route the global Clear shortcut", error);
+  }
+}
+
+function globalClearHandler(onClearRef) {
+  return (event) => {
+    if (event && event.state && event.state !== "Pressed") return;
+    void routeGlobalClear(onClearRef);
+  };
+}
 
 /**
  * Owns the Clear shortcut: the combo (always used in-app) and whether it is
@@ -63,10 +80,7 @@ export function useClearShortcut(onClearRef) {
       }
       if (registeredRef.current === shortcut) return;
       try {
-        await register(shortcut, (event) => {
-          if (event && event.state && event.state !== "Pressed") return;
-          onClearRef?.current?.();
-        });
+        await register(shortcut, globalClearHandler(onClearRef));
         if (!cancelled) {
           registeredRef.current = shortcut;
           setRegistrationError(null);
@@ -112,10 +126,7 @@ export function useClearShortcut(onClearRef) {
     if (isTauri() && ownsCoordinatorResources()) {
       ({ register, unregister } = await import("@tauri-apps/plugin-global-shortcut"));
       if (next.global && previous.registered !== next.accelerator) {
-        await register(next.accelerator, (event) => {
-          if (event && event.state && event.state !== "Pressed") return;
-          onClearRef?.current?.();
-        });
+        await register(next.accelerator, globalClearHandler(onClearRef));
         registeredNew = true;
       }
       if (previous.registered && (!next.global || previous.registered !== next.accelerator)) {
@@ -131,10 +142,7 @@ export function useClearShortcut(onClearRef) {
       if (isTauri() && ownsCoordinatorResources()) {
         if (registeredNew) await unregister(next.accelerator).catch(() => {});
         if (previous.registered) {
-          await register(previous.registered, (event) => {
-            if (event && event.state && event.state !== "Pressed") return;
-            onClearRef?.current?.();
-          }).catch(() => {});
+          await register(previous.registered, globalClearHandler(onClearRef)).catch(() => {});
         }
       }
       registeredRef.current = previous.registered;

@@ -10,7 +10,9 @@ pending settings. If saving fails, the window stays open and offers **Retry** or
 
 ## Global shortcut
 
-Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused.
+Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused. When several PLVS
+workbenches are open, PLVS registers the shortcut once and sends Clear to the workbench that was
+focused most recently.
 
 ## Appearance
 

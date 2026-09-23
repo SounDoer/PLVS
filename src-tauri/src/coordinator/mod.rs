@@ -128,6 +128,105 @@ pub fn runtime_list_instances(
   Ok(summarize_instances(registry.list()?))
 }
 
+fn global_shortcut_target(
+  instances: &[InstanceSummary],
+  current_instance_id: &str,
+) -> Option<String> {
+  let focused = instances
+    .iter()
+    .filter(|instance| instance.focus_sequence > 0)
+    .max_by(|left, right| {
+      left
+        .focus_sequence
+        .cmp(&right.focus_sequence)
+        .then_with(|| left.instance_id.cmp(&right.instance_id))
+    });
+  focused
+    .or_else(|| {
+      instances
+        .iter()
+        .find(|instance| instance.instance_id == current_instance_id)
+    })
+    .or_else(|| instances.first())
+    .map(|instance| instance.instance_id.clone())
+}
+
+#[tauri::command]
+pub async fn runtime_route_global_clear(
+  identity: State<'_, RuntimeIdentity>,
+  registry: State<'_, InstanceRegistry>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+) -> Result<bool, String> {
+  let _ = registry.remove_stale()?;
+  let instances = summarize_instances(registry.list()?);
+  let current_instance_id = identity.instance_id().to_string();
+  let Some(target_instance_id) = global_shortcut_target(&instances, &current_instance_id) else {
+    return Ok(false);
+  };
+  if target_instance_id == current_instance_id {
+    return Ok(false);
+  }
+  let identity_root = persistence.identity_root()?;
+  tauri::async_runtime::spawn_blocking(move || {
+    route_clear_to_instance(&identity_root, &target_instance_id)
+  })
+  .await
+  .map_err(|error| format!("Global shortcut routing task failed: {error}"))??;
+  Ok(true)
+}
+
+fn route_clear_to_instance(identity_root: &Path, instance_id: &str) -> Result<(), String> {
+  let descriptor_path =
+    crate::agent_control::discovery::instance_descriptor_path(identity_root, instance_id);
+  let descriptor = crate::agent_control::discovery::read_instance_descriptor_at(
+    &descriptor_path,
+    env!("PLVS_APP_ID"),
+    instance_id,
+    crate::agent_control::discovery::is_process_alive,
+  )
+  .map_err(|error| error.to_string())?;
+  let inspect = crate::agent_control::protocol::JsonRpcRequest {
+    id: format!("global-shortcut-inspect-{}", std::process::id()),
+    method: "app.inspect".to_string(),
+    params: serde_json::json!({}),
+  };
+  let inspected = crate::agent_control::transport::call_with_timeout(
+    &descriptor,
+    &inspect,
+    crate::agent_control::broker::frontend_budget(&inspect)
+      + crate::agent_control::broker::CLIENT_GRACE,
+  )
+  .map_err(|error| error.to_string())?;
+  let revision = inspected
+    .pointer("/result/revision")
+    .and_then(serde_json::Value::as_u64)
+    .ok_or_else(|| agent_response_error(&inspected, "inspect"))?;
+  let clear = crate::agent_control::protocol::JsonRpcRequest {
+    id: format!("global-shortcut-clear-{}", std::process::id()),
+    method: "transport.live.clear".to_string(),
+    params: serde_json::json!({ "expectedRevision": revision }),
+  };
+  let cleared = crate::agent_control::transport::call_with_timeout(
+    &descriptor,
+    &clear,
+    crate::agent_control::broker::frontend_budget(&clear)
+      + crate::agent_control::broker::CLIENT_GRACE,
+  )
+  .map_err(|error| error.to_string())?;
+  if cleared.get("result").is_none() {
+    return Err(agent_response_error(&cleared, "clear"));
+  }
+  Ok(())
+}
+
+fn agent_response_error(response: &serde_json::Value, action: &str) -> String {
+  response
+    .pointer("/error/message")
+    .and_then(serde_json::Value::as_str)
+    .map(str::to_string)
+    .unwrap_or_else(|| format!("The target PLVS instance returned an invalid {action} response."))
+}
+
 impl CoordinatorLease {
   pub fn try_acquire(
     identity_root: &Path,
@@ -334,4 +433,38 @@ fn write_json_atomic(path: &Path, value: &impl Serialize) -> Result<(), String> 
   file
     .commit()
     .map_err(|error| format!("Unable to publish coordinator state: {error}"))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn instance(id: &str, focus_sequence: u64) -> InstanceSummary {
+    InstanceSummary {
+      instance_id: id.to_string(),
+      workspace_id: format!("workspace-{id}"),
+      display_name: id.to_string(),
+      capture_status: CaptureStatus::Stopped,
+      visible: true,
+      focus_sequence,
+    }
+  }
+
+  #[test]
+  fn global_shortcut_targets_the_most_recently_focused_instance() {
+    let instances = vec![instance("coordinator", 20), instance("participant", 42)];
+    assert_eq!(
+      global_shortcut_target(&instances, "coordinator").as_deref(),
+      Some("participant")
+    );
+  }
+
+  #[test]
+  fn global_shortcut_falls_back_to_the_coordinator_before_focus_is_published() {
+    let instances = vec![instance("participant", 0), instance("coordinator", 0)];
+    assert_eq!(
+      global_shortcut_target(&instances, "coordinator").as_deref(),
+      Some("coordinator")
+    );
+  }
 }

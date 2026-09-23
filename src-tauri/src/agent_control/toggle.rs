@@ -152,14 +152,15 @@ pub(crate) fn read_enabled(app: &AppHandle) -> bool {
 fn current_status(app: &AppHandle) -> Result<AgentControlStatus, String> {
   let path_status = crate::cli_path::cli_path_status()?;
   let supported = cfg!(any(target_os = "windows", target_os = "macos")) && path_status.supported;
-  let listening = app
+  let endpoint_running = app
     .state::<crate::agent_control::transport::ServerState>()
     .is_running();
+  let enabled = read_enabled(app);
   let mut status = compose_status(
     supported,
     path_status.installed,
-    read_enabled(app),
-    listening,
+    enabled,
+    endpoint_running && enabled,
     app.state::<StartFailure>().get(),
   );
   status.on_path = path_status.on_path;
@@ -189,7 +190,12 @@ pub fn set_agent_control_enabled(
     start_endpoint(&app)?;
     persist_enabled(&app, true)?;
   } else {
-    stop_endpoint(&app);
+    if app
+      .state::<crate::coordinator::CoordinatorRole>()
+      .is_coordinator()
+    {
+      stop_endpoint(&app);
+    }
     persist_enabled(&app, false)?;
     let _ = crate::cli_path::set_cli_path_enabled(false)?;
   }

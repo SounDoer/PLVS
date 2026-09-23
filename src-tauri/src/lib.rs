@@ -172,6 +172,7 @@ pub fn run() {
       persistence::commands::persistence_library_replace,
       coordinator::runtime_publish_instance_state,
       coordinator::runtime_list_instances,
+      coordinator::runtime_route_global_clear,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
@@ -437,7 +438,9 @@ pub fn run() {
       }
       let _ = window.show();
 
-      if cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled {
+      if cfg!(any(target_os = "windows", target_os = "macos"))
+        && (agent_control_enabled || !is_coordinator)
+      {
         agent_control::toggle::start_at_launch(app.handle());
       }
 

@@ -5,6 +5,7 @@ import { useRef } from "react";
 
 const register = vi.fn();
 const unregister = vi.fn();
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../lib/clearShortcutPrefs.js", () => ({
@@ -14,6 +15,7 @@ vi.mock("../lib/clearShortcutPrefs.js", () => ({
   saveClearShortcutPrefsForControl: () => Promise.resolve(),
 }));
 vi.mock("@tauri-apps/plugin-global-shortcut", () => ({ register, unregister }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import { useClearShortcut } from "./useClearShortcut.js";
 
@@ -28,6 +30,8 @@ function Harness({ onClear }) {
 beforeEach(() => {
   register.mockReset();
   unregister.mockReset();
+  invoke.mockReset();
+  invoke.mockResolvedValue(false);
   delete window.__PLVS_INITIAL_STATE__;
 });
 
@@ -39,7 +43,19 @@ describe("useClearShortcut", () => {
     expect(register.mock.calls[0][0]).toBe("CmdOrCtrl+K");
     const handler = register.mock.calls[0][1];
     handler({ state: "Pressed" });
-    expect(onClear).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClear).toHaveBeenCalledTimes(1));
+    expect(invoke).toHaveBeenCalledWith("runtime_route_global_clear");
+  });
+
+  it("does not clear the coordinator when native routing selected a participant", async () => {
+    invoke.mockResolvedValue(true);
+    const onClear = vi.fn();
+    render(<Harness onClear={onClear} />);
+    await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
+
+    register.mock.calls[0][1]({ state: "Pressed" });
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    expect(onClear).not.toHaveBeenCalled();
   });
 
   it("unregisters while capturing and re-registers afterwards", async () => {

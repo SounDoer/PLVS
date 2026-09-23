@@ -2401,12 +2401,16 @@ fn discovery_failure(error: &DiscoveryError, enabled: bool) -> ControlFailure {
 
 impl ControlClient for LocalControlClient {
   fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure> {
-    let descriptor = self.descriptor().map_err(|error| {
-      discovery_failure(
-        &error,
-        crate::agent_control::toggle::read_enabled_from_disk(),
-      )
-    })?;
+    let enabled = crate::agent_control::toggle::read_enabled_from_disk();
+    if !enabled {
+      return Err(discovery_failure(
+        &DiscoveryError::new(DiscoveryErrorKind::Missing, "Agent Control is disabled."),
+        false,
+      ));
+    }
+    let descriptor = self
+      .descriptor()
+      .map_err(|error| discovery_failure(&error, enabled))?;
     call_descriptor(&descriptor, &request)
   }
 }

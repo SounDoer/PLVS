@@ -64,6 +64,7 @@ import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests, deriveRetainedAnalysisKeys } from "./analysis/analysisRequests.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
+import { isParticipantInstance } from "./lib/runtimeRole.js";
 import {
   captureVisualScreenshot,
   getVisualCaptureCapabilities,
@@ -1564,7 +1565,7 @@ function AppContent() {
   useAgentControlBridge({
     enabled:
       agentControlRuntime.available === true &&
-      agentControlEnabled &&
+      (agentControlEnabled || isParticipantInstance()) &&
       visualPlatformCapabilities !== null,
     runtime: agentControlRuntime,
     workspace: workspaceState,
