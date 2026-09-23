@@ -32,7 +32,10 @@ use crate::dsp::speech::VadEngineKind;
 enum CliCommand {
   Help(HelpTopic),
   Version,
-  Control(ControlCommand),
+  Control {
+    command: ControlCommand,
+    instance_id: Option<String>,
+  },
   Doctor {
     json: bool,
     out: Option<String>,
@@ -74,6 +77,9 @@ enum HelpTopic {
 }
 
 fn parse_args(args: &[String]) -> Result<CliCommand, String> {
+  if args.first().is_some_and(|arg| arg == "--instance") {
+    return parse_control_invocation(args);
+  }
   match args {
     [flag] if flag == "--help" || flag == "-h" || flag == "help" => {
       Ok(CliCommand::Help(HelpTopic::Root))
@@ -92,9 +98,7 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, ..] if command == "completion" => {
       Err("Usage: plvs-cli completion <powershell|bash|zsh>".to_string())
     }
-    [command, ..] if cli_control::is_command(command) => {
-      cli_control::parse_control_args(args).map(CliCommand::Control)
-    }
+    [command, ..] if cli_control::is_command(command) => parse_control_invocation(args),
     [command, topic] if command == "help" => parse_help_topic(topic),
     [command, ..] if command == "help" => {
       Err("Usage: plvs-cli help [doctor|schema|completion|<control-command>]".to_string())
@@ -104,6 +108,38 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, ..] => Err(format!("Unknown command: {command}")),
     [] => Err("Missing command. Try: plvs-cli --help".to_string()),
   }
+}
+
+fn parse_control_invocation(args: &[String]) -> Result<CliCommand, String> {
+  let mut cleaned = Vec::with_capacity(args.len());
+  let mut instance_id = None;
+  let mut index = 0;
+  while index < args.len() {
+    if args[index] == "--instance" {
+      if instance_id.is_some() {
+        return Err("--instance may only be specified once.".to_string());
+      }
+      let value = args
+        .get(index + 1)
+        .filter(|value| !value.is_empty() && !value.starts_with('-'))
+        .ok_or_else(|| "--instance requires an instance ID.".to_string())?;
+      instance_id = Some(value.clone());
+      index += 2;
+    } else {
+      cleaned.push(args[index].clone());
+      index += 1;
+    }
+  }
+  let command_name = cleaned
+    .first()
+    .ok_or_else(|| "--instance requires a control command.".to_string())?;
+  if !cli_control::is_command(command_name) {
+    return Err("--instance is only supported by commands that contact PLVS.".to_string());
+  }
+  cli_control::parse_control_args(&cleaned).map(|command| CliCommand::Control {
+    command,
+    instance_id,
+  })
 }
 
 #[cfg(any(feature = "capture-harness", test))]
@@ -387,9 +423,10 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
     "schema" => Ok(CliCommand::Help(HelpTopic::Schema)),
     "completion" => Ok(CliCommand::Help(HelpTopic::Completion)),
     "instances" => Ok(CliCommand::Help(HelpTopic::Instances)),
-    topic if cli_control::is_command(topic) => Ok(CliCommand::Control(ControlCommand::FamilyHelp(
-      topic.to_string(),
-    ))),
+    topic if cli_control::is_command(topic) => Ok(CliCommand::Control {
+      command: ControlCommand::FamilyHelp(topic.to_string()),
+      instance_id: None,
+    }),
     _ => Err(format!("Unknown help topic: {topic}")),
   }
 }
@@ -793,7 +830,7 @@ fn root_help_text() -> String {
     .collect::<Vec<_>>()
     .join("\n");
   format!(
-    "PLVS CLI\n\nDiagnostics and setup:\n{offline}\n\nRunning app:\n{running}\n\nAgent usage:\n  Use --json for stable machine-readable output. Read-only running-app commands also accept --format text.\n  Running-app commands require Agent Control to be enabled and never launch PLVS.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
+    "PLVS CLI\n\nDiagnostics and setup:\n{offline}\n\nRunning app:\n{running}\n\nAgent usage:\n  Use --json for stable machine-readable output. Read-only running-app commands also accept --format text.\n  Use instances to list workbenches, then --instance <instance-id> to select one.\n  Running-app commands require Agent Control to be enabled and never launch PLVS.\n\nHelp:\n  plvs-cli --help\n  plvs-cli help\n  plvs-cli <command> --help\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  2  app unavailable for control\n  3  invalid command input\n  4  current state refuses the operation\n  5  wait did not complete"
   )
 }
 
@@ -898,7 +935,10 @@ fn execute(command: CliCommand) -> ExitCode {
       println!("PLVS {}", env!("CARGO_PKG_VERSION"));
       ExitCode::SUCCESS
     }
-    CliCommand::Control(command) => cli_control::run(command),
+    CliCommand::Control {
+      command,
+      instance_id,
+    } => cli_control::run_for_instance(command, instance_id),
     CliCommand::Instances { json } => match read_live_instances() {
       Ok(instances) if json => {
         match serde_json::to_string(&SuccessEnvelope {
@@ -1253,7 +1293,7 @@ mod tests {
     assert_eq!(json["ok"], true);
     assert_eq!(json["result"]["manifestVersion"], 1);
     let commands = json["result"]["commands"].as_array().unwrap();
-    assert_eq!(commands.len(), 95);
+    assert_eq!(commands.len(), 96);
     assert_eq!(commands[0]["id"], "app.capabilities");
     let doctor = commands
       .iter()
@@ -1442,19 +1482,43 @@ mod tests {
   fn parses_flat_control_commands_and_help_topics() {
     assert_eq!(
       parse_args(&args(&["inspect", "--json"])),
-      Ok(CliCommand::Control(ControlCommand::Inspect))
+      Ok(CliCommand::Control {
+        command: ControlCommand::Inspect,
+        instance_id: None,
+      })
     );
     assert_eq!(
       parse_args(&args(&["panel", "--help"])),
-      Ok(CliCommand::Control(ControlCommand::FamilyHelp(
-        "panel".to_string()
-      )))
+      Ok(CliCommand::Control {
+        command: ControlCommand::FamilyHelp("panel".to_string()),
+        instance_id: None,
+      })
     );
     assert_eq!(
       parse_args(&args(&["help", "panel"])),
-      Ok(CliCommand::Control(ControlCommand::FamilyHelp(
-        "panel".to_string()
-      )))
+      Ok(CliCommand::Control {
+        command: ControlCommand::FamilyHelp("panel".to_string()),
+        instance_id: None,
+      })
+    );
+  }
+
+  #[test]
+  fn parses_instance_selection_before_or_after_the_control_command() {
+    let expected = Ok(CliCommand::Control {
+      command: ControlCommand::Inspect,
+      instance_id: Some("instance-42".to_string()),
+    });
+    assert_eq!(
+      parse_args(&args(&["inspect", "--instance", "instance-42", "--json"])),
+      expected
+    );
+    assert_eq!(
+      parse_args(&args(&["--instance", "instance-42", "inspect", "--json"])),
+      Ok(CliCommand::Control {
+        command: ControlCommand::Inspect,
+        instance_id: Some("instance-42".to_string()),
+      })
     );
   }
 

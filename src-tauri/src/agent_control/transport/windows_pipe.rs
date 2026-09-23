@@ -37,7 +37,7 @@ use crate::agent_control::broker::{
   DEFAULT_MAX_PENDING_REQUESTS, DEFAULT_RESPONSE_TIMEOUT,
 };
 use crate::agent_control::discovery::{
-  descriptor_path, endpoint_name, generate_launch_token, parse_descriptor,
+  descriptor_path, endpoint_name, generate_launch_token, instance_endpoint_identity,
   write_descriptor_atomic_at, AgentControlDescriptor, DescriptorApp, DiscoveryError, LaunchToken,
 };
 use crate::agent_control::framing::{
@@ -438,10 +438,14 @@ impl PipeServer {
     let Ok(bytes) = std::fs::read(&path) else {
       return;
     };
-    let Ok(current) = parse_descriptor(&bytes, &owned.app.identifier) else {
+    let Ok(current) = serde_json::from_slice::<AgentControlDescriptor>(&bytes) else {
       return;
     };
-    if current.pid == owned.pid && current.token == owned.token {
+    if current.pid == owned.pid
+      && current.token == owned.token
+      && current.endpoint == owned.endpoint
+      && current.app.identifier == owned.app.identifier
+    {
       let _ = std::fs::remove_file(path);
     }
   }
@@ -550,9 +554,27 @@ impl Drop for PipeServerState {
 }
 
 pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
+  let path = descriptor_path().map_err(|error| error.to_string())?;
+  start_with_identity(app, env!("PLVS_APP_ID"), &path)
+}
+
+pub fn start_instance(
+  app: &tauri::AppHandle,
+  instance_id: &str,
+  descriptor_path: &std::path::Path,
+) -> Result<(), String> {
+  let endpoint_identity = instance_endpoint_identity(env!("PLVS_APP_ID"), instance_id);
+  start_with_identity(app, &endpoint_identity, descriptor_path)
+}
+
+fn start_with_identity(
+  app: &tauri::AppHandle,
+  endpoint_identity: &str,
+  descriptor_path: &std::path::Path,
+) -> Result<(), String> {
   let token = generate_launch_token().map_err(|error| error.to_string())?;
   let identifier = env!("PLVS_APP_ID");
-  let endpoint = endpoint_name(identifier);
+  let endpoint = endpoint_name(endpoint_identity);
   let emitter = Arc::new(TauriFrontendEmitter::new(app.clone()));
   let broker = Broker::new(
     emitter,
@@ -562,7 +584,6 @@ pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
   let mut server = PipeServer::bind(endpoint.clone(), token.clone(), broker.clone())
     .map_err(|error| format!("unable to bind {endpoint}: {error}"))?;
 
-  let path = descriptor_path().map_err(|error| error.to_string())?;
   let started_at = time::OffsetDateTime::now_utc()
     .format(&time::format_description::well_known::Rfc3339)
     .map_err(|error| format!("unable to format agent-control start time: {error}"))?;
@@ -579,9 +600,9 @@ pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
     token,
     started_at,
   };
-  write_descriptor_atomic_at(&path, &descriptor)
+  write_descriptor_atomic_at(descriptor_path, &descriptor)
     .map_err(|error: DiscoveryError| error.to_string())?;
-  server.own_descriptor(path, descriptor);
+  server.own_descriptor(descriptor_path.to_path_buf(), descriptor);
   app.state::<AgentControlState>().install(broker);
   app.state::<PipeServerState>().install(server);
   Ok(())

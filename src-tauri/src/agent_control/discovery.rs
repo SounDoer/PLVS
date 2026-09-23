@@ -119,6 +119,17 @@ pub fn endpoint_name(app_identifier: &str) -> String {
   format!("plvs-control-{app_identifier}")
 }
 
+pub fn instance_endpoint_identity(app_identifier: &str, instance_id: &str) -> String {
+  format!("{app_identifier}-{instance_id}")
+}
+
+pub fn instance_descriptor_path(identity_root: &Path, instance_id: &str) -> PathBuf {
+  identity_root
+    .join("runtime")
+    .join("agent-control")
+    .join(format!("{instance_id}.json"))
+}
+
 #[cfg(any(target_os = "macos", test))]
 pub fn macos_socket_file_name(app_identifier: &str) -> String {
   use sha2::{Digest, Sha256};
@@ -222,6 +233,14 @@ pub fn parse_descriptor(
   bytes: &[u8],
   expected_identifier: &str,
 ) -> Result<AgentControlDescriptor, DiscoveryError> {
+  parse_descriptor_for_endpoint(bytes, expected_identifier, expected_identifier)
+}
+
+pub fn parse_descriptor_for_endpoint(
+  bytes: &[u8],
+  expected_identifier: &str,
+  expected_endpoint_identity: &str,
+) -> Result<AgentControlDescriptor, DiscoveryError> {
   let descriptor: AgentControlDescriptor = serde_json::from_slice(bytes).map_err(|_| {
     DiscoveryError::new(
       DiscoveryErrorKind::Malformed,
@@ -234,7 +253,7 @@ pub fn parse_descriptor(
     && !descriptor.app.name.is_empty()
     && !descriptor.app.version.is_empty()
     && descriptor.pid > 0
-    && endpoint_matches_identity(&descriptor.endpoint, expected_identifier)
+    && endpoint_matches_identity(&descriptor.endpoint, expected_endpoint_identity)
     && !descriptor.started_at.is_empty();
   if !valid {
     return Err(DiscoveryError::new(
@@ -246,6 +265,39 @@ pub fn parse_descriptor(
     return Err(DiscoveryError::new(
       DiscoveryErrorKind::ProtocolMismatch,
       "The PLVS agent-control protocol version is incompatible.",
+    ));
+  }
+  Ok(descriptor)
+}
+
+pub fn read_instance_descriptor_at<F>(
+  path: &Path,
+  expected_identifier: &str,
+  instance_id: &str,
+  is_process_alive: F,
+) -> Result<AgentControlDescriptor, DiscoveryError>
+where
+  F: FnOnce(u32) -> bool,
+{
+  let bytes = fs::read(path).map_err(|error| {
+    if error.kind() == std::io::ErrorKind::NotFound {
+      DiscoveryError::new(
+        DiscoveryErrorKind::Missing,
+        "The selected PLVS instance is not exposing an agent-control endpoint.",
+      )
+    } else {
+      DiscoveryError::new(
+        DiscoveryErrorKind::Io,
+        format!("Unable to read the instance agent-control descriptor: {error}"),
+      )
+    }
+  })?;
+  let endpoint_identity = instance_endpoint_identity(expected_identifier, instance_id);
+  let descriptor = parse_descriptor_for_endpoint(&bytes, expected_identifier, &endpoint_identity)?;
+  if !is_process_alive(descriptor.pid) {
+    return Err(DiscoveryError::new(
+      DiscoveryErrorKind::Stale,
+      "The selected PLVS instance is no longer running.",
     ));
   }
   Ok(descriptor)
@@ -448,6 +500,39 @@ mod tests {
         .kind,
       DiscoveryErrorKind::Malformed
     );
+  }
+
+  #[test]
+  fn instance_descriptor_uses_a_distinct_endpoint_and_validates_the_selected_instance() {
+    let dir = temp_dir("instance");
+    let instance_id = "1cf34a31-7be5-4ca8-b881-78aa30b09a51";
+    let endpoint_identity = instance_endpoint_identity("com.soundoer.plvs.dev", instance_id);
+    let mut candidate = descriptor(generate_launch_token().unwrap());
+    #[cfg(target_os = "macos")]
+    {
+      candidate.endpoint = std::env::temp_dir()
+        .join(macos_socket_file_name(&endpoint_identity))
+        .display()
+        .to_string();
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+      candidate.endpoint = endpoint_name(&endpoint_identity);
+    }
+    let path = instance_descriptor_path(&dir, instance_id);
+    write_descriptor_atomic_at(&path, &candidate).unwrap();
+
+    assert_eq!(
+      read_instance_descriptor_at(&path, "com.soundoer.plvs.dev", instance_id, |_| true).unwrap(),
+      candidate
+    );
+    assert_eq!(
+      read_instance_descriptor_at(&path, "com.soundoer.plvs.dev", "another-instance", |_| true)
+        .unwrap_err()
+        .kind,
+      DiscoveryErrorKind::Malformed
+    );
+    fs::remove_dir_all(dir).unwrap();
   }
 
   #[cfg(target_os = "macos")]

@@ -75,6 +75,10 @@ impl WorkspacePersistenceSession {
     hydrate_workspace(&self.identity_root, &self.workspace_id)
   }
 
+  pub fn identity_root(&self) -> &Path {
+    &self.identity_root
+  }
+
   pub fn library(&self) -> &LibraryRepository {
     &self.library
   }

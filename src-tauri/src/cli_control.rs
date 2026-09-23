@@ -9,8 +9,9 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::agent_control::discovery::{
-  descriptor_path, is_process_alive, read_descriptor_at, AgentControlDescriptor, DescriptorApp,
-  DiscoveryError, DiscoveryErrorKind,
+  descriptor_path, instance_descriptor_path, is_process_alive, read_descriptor_at,
+  read_instance_descriptor_at, AgentControlDescriptor, DescriptorApp, DiscoveryError,
+  DiscoveryErrorKind,
 };
 use crate::agent_control::protocol::JsonRpcRequest;
 use crate::cli_contract::CLI_SCHEMA_VERSION;
@@ -2328,7 +2329,48 @@ trait ControlClient {
   fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure>;
 }
 
-struct LocalControlClient;
+struct LocalControlClient {
+  instance_id: Option<String>,
+}
+
+impl LocalControlClient {
+  fn new(instance_id: Option<String>) -> Self {
+    Self { instance_id }
+  }
+
+  fn descriptor(&self) -> Result<AgentControlDescriptor, DiscoveryError> {
+    let Some(instance_id) = self.instance_id.as_deref() else {
+      let path = descriptor_path()?;
+      return read_descriptor_at(&path, env!("PLVS_APP_ID"), is_process_alive);
+    };
+    if instance_id.is_empty()
+      || !instance_id
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+    {
+      return Err(DiscoveryError::new(
+        DiscoveryErrorKind::Malformed,
+        "The selected PLVS instance ID is invalid.",
+      ));
+    }
+    let config_dir = crate::doctor::resolve_config_dir().ok_or_else(|| {
+      DiscoveryError::new(
+        DiscoveryErrorKind::Unavailable,
+        "The PLVS configuration directory is unavailable.",
+      )
+    })?;
+    let identity_root = config_dir.join("multi-instance");
+    if crate::coordinator::read_coordinator_descriptor(&identity_root)
+      .is_ok_and(|descriptor| descriptor.instance_id == instance_id)
+    {
+      let path = descriptor_path()?;
+      read_descriptor_at(&path, env!("PLVS_APP_ID"), is_process_alive)
+    } else {
+      let path = instance_descriptor_path(&identity_root, instance_id);
+      read_instance_descriptor_at(&path, env!("PLVS_APP_ID"), instance_id, is_process_alive)
+    }
+  }
+}
 
 /// A discovery failure has several causes and they need different sentences. Only a missing
 /// descriptor is ambiguous: it means either that the user never turned Agent Control on, or that
@@ -2359,15 +2401,12 @@ fn discovery_failure(error: &DiscoveryError, enabled: bool) -> ControlFailure {
 
 impl ControlClient for LocalControlClient {
   fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure> {
-    let path = descriptor_path()
-      .map_err(|error| ControlFailure::transport("appNotRunning", error.to_string(), None))?;
-    let descriptor =
-      read_descriptor_at(&path, env!("PLVS_APP_ID"), is_process_alive).map_err(|error| {
-        discovery_failure(
-          &error,
-          crate::agent_control::toggle::read_enabled_from_disk(),
-        )
-      })?;
+    let descriptor = self.descriptor().map_err(|error| {
+      discovery_failure(
+        &error,
+        crate::agent_control::toggle::read_enabled_from_disk(),
+      )
+    })?;
     call_descriptor(&descriptor, &request)
   }
 }
@@ -3483,6 +3522,10 @@ fn finish_visual_output(command: &ControlCommand, report: &mut ControlReport, ex
 }
 
 pub fn run(command: ControlCommand) -> ExitCode {
+  run_for_instance(command, None)
+}
+
+pub fn run_for_instance(command: ControlCommand, instance_id: Option<String>) -> ExitCode {
   match &command {
     ControlCommand::Help => {
       println!("{}", help_text());
@@ -3498,7 +3541,8 @@ pub fn run(command: ControlCommand) -> ExitCode {
     ControlCommand::Text(command) => (*command, true),
     command => (command, false),
   };
-  let (mut report, exit_code) = execute(&command, &mut io::stdin().lock(), &LocalControlClient);
+  let client = LocalControlClient::new(instance_id);
+  let (mut report, exit_code) = execute(&command, &mut io::stdin().lock(), &client);
   let exit_code = finish_export(&command, &mut report, exit_code);
   let exit_code = finish_visual_output(&command, &mut report, exit_code);
   if text_output {

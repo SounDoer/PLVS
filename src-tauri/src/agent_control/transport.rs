@@ -113,8 +113,26 @@ pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
   platform::start(app)
 }
 
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub fn start_instance(
+  app: &tauri::AppHandle,
+  instance_id: &str,
+  descriptor_path: &std::path::Path,
+) -> Result<(), String> {
+  platform::start_instance(app, instance_id, descriptor_path)
+}
+
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn start(_app: &tauri::AppHandle) -> Result<(), String> {
+  Err("Agent Control is unavailable on this platform.".to_string())
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn start_instance(
+  _app: &tauri::AppHandle,
+  _instance_id: &str,
+  _descriptor_path: &std::path::Path,
+) -> Result<(), String> {
   Err("Agent Control is unavailable on this platform.".to_string())
 }
 

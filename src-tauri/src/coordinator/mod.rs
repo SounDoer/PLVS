@@ -25,6 +25,34 @@ const LOCK_FILE_NAME: &str = "coordinator.lock";
 const GENERATION_FILE_NAME: &str = "coordinator-generation.json";
 const DESCRIPTOR_FILE_NAME: &str = "coordinator.json";
 
+pub fn coordinator_descriptor_path(identity_root: &Path) -> PathBuf {
+  identity_root.join("runtime").join(DESCRIPTOR_FILE_NAME)
+}
+
+pub fn read_coordinator_descriptor(identity_root: &Path) -> Result<CoordinatorDescriptor, String> {
+  let path = coordinator_descriptor_path(identity_root);
+  let bytes = fs::read(&path).map_err(|error| {
+    format!(
+      "Unable to read coordinator descriptor {}: {error}",
+      path.display()
+    )
+  })?;
+  let descriptor: CoordinatorDescriptor = serde_json::from_slice(&bytes).map_err(|error| {
+    format!(
+      "Unable to parse coordinator descriptor {}: {error}",
+      path.display()
+    )
+  })?;
+  if descriptor.schema_version != COORDINATOR_SCHEMA_VERSION
+    || descriptor.pid == 0
+    || descriptor.instance_id.is_empty()
+    || descriptor.workspace_id.is_empty()
+  {
+    return Err("The coordinator descriptor is invalid.".to_string());
+  }
+  Ok(descriptor)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoordinatorDescriptor {
@@ -132,7 +160,7 @@ impl CoordinatorLease {
       &generation_path,
       &serde_json::json!({ "generation": generation }),
     )?;
-    let descriptor_path = runtime_dir.join(DESCRIPTOR_FILE_NAME);
+    let descriptor_path = coordinator_descriptor_path(identity_root);
     let descriptor = CoordinatorDescriptor {
       schema_version: COORDINATOR_SCHEMA_VERSION,
       generation,

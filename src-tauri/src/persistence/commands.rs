@@ -86,6 +86,10 @@ impl PersistenceRuntime {
       .unwrap_or(false)
   }
 
+  pub fn identity_root(&self) -> Result<std::path::PathBuf, String> {
+    self.with_session_raw(|session| Ok(session.identity_root().to_path_buf()))
+  }
+
   pub fn workspace_value(&self, key: WorkspaceValue) -> Result<Option<Value>, String> {
     let current = self
       .session

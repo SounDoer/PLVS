@@ -18,6 +18,16 @@ plvs-cli device ...
 `instances` lists the live workbenches belonging to the same Development, Preview, or Release
 identity, including their Source-derived display names and runtime status. Every
 running-app command controls or inspects the same state visible in an already-running PLVS window.
+Without a selector, it targets the coordinator instance for compatibility with existing scripts.
+To target another workbench, copy its `instanceId` from `instances` and add
+`--instance <instance-id>` before or after the command name:
+
+```powershell
+plvs-cli instances --format text
+plvs-cli inspect --instance <instance-id> --json
+plvs-cli --instance <instance-id> transport stop --json
+```
+
 Those commands require Agent Control to be enabled in Settings and are available on Windows and
 macOS. Individual native capabilities may still be platform-specific. The CLI never starts PLVS
 implicitly or edits its store behind the running app.
@@ -91,7 +101,7 @@ plvs-cli instances <--json|--format text>
 plvs-cli schema list --json
 plvs-cli schema get <command-id> --json
 plvs-cli completion <powershell|bash|zsh>
-plvs-cli <command> [options]
+plvs-cli [--instance <instance-id>] <command> [options]
 plvs-cli --help
 plvs-cli --version
 ```

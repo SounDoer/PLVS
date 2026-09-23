@@ -18,7 +18,7 @@ use crate::agent_control::broker::{
   DEFAULT_MAX_PENDING_REQUESTS, DEFAULT_RESPONSE_TIMEOUT,
 };
 use crate::agent_control::discovery::{
-  descriptor_path, generate_launch_token, macos_socket_file_name, parse_descriptor,
+  descriptor_path, generate_launch_token, instance_endpoint_identity, macos_socket_file_name,
   write_descriptor_atomic_at, AgentControlDescriptor, DescriptorApp, DiscoveryError, LaunchToken,
 };
 use crate::agent_control::framing::{
@@ -383,10 +383,14 @@ impl SocketServer {
     let Ok(bytes) = std::fs::read(&path) else {
       return;
     };
-    let Ok(current) = parse_descriptor(&bytes, &owned.app.identifier) else {
+    let Ok(current) = serde_json::from_slice::<AgentControlDescriptor>(&bytes) else {
       return;
     };
-    if current.pid == owned.pid && current.token == owned.token {
+    if current.pid == owned.pid
+      && current.token == owned.token
+      && current.endpoint == owned.endpoint
+      && current.app.identifier == owned.app.identifier
+    {
       let _ = std::fs::remove_file(path);
     }
   }
@@ -442,17 +446,40 @@ impl Drop for ServerState {
 }
 
 pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
-  let identifier = env!("PLVS_APP_ID");
   let descriptor_path = descriptor_path().map_err(|error| error.to_string())?;
+  let lock_path = descriptor_path
+    .parent()
+    .ok_or_else(|| "The agent-control descriptor has no parent directory.".to_string())?
+    .join(LOCK_FILE_NAME);
+  start_with_identity(app, env!("PLVS_APP_ID"), &descriptor_path, &lock_path)
+}
+
+pub fn start_instance(
+  app: &tauri::AppHandle,
+  instance_id: &str,
+  descriptor_path: &Path,
+) -> Result<(), String> {
+  let endpoint_identity = instance_endpoint_identity(env!("PLVS_APP_ID"), instance_id);
+  let lock_path = descriptor_path.with_extension("lock");
+  start_with_identity(app, &endpoint_identity, descriptor_path, &lock_path)
+}
+
+fn start_with_identity(
+  app: &tauri::AppHandle,
+  endpoint_identity: &str,
+  descriptor_path: &Path,
+  lock_path: &Path,
+) -> Result<(), String> {
+  let identifier = env!("PLVS_APP_ID");
   let config_dir = descriptor_path
     .parent()
     .ok_or_else(|| "The agent-control descriptor has no parent directory.".to_string())?;
   std::fs::create_dir_all(config_dir).map_err(|error| error.to_string())?;
   std::fs::set_permissions(config_dir, std::fs::Permissions::from_mode(0o700))
     .map_err(|error| format!("unable to secure the agent-control directory: {error}"))?;
-  let lock = OwnershipLock::acquire(&config_dir.join(LOCK_FILE_NAME))
+  let lock = OwnershipLock::acquire(lock_path)
     .map_err(|error| format!("unable to claim the agent-control endpoint: {error}"))?;
-  let endpoint = socket_path(identifier).map_err(|error| error.to_string())?;
+  let endpoint = socket_path(endpoint_identity).map_err(|error| error.to_string())?;
   let token = generate_launch_token().map_err(|error| error.to_string())?;
   let emitter = Arc::new(TauriFrontendEmitter::new(app.clone()));
   let broker = Broker::new(
@@ -478,9 +505,9 @@ pub fn start(app: &tauri::AppHandle) -> Result<(), String> {
     token,
     started_at,
   };
-  write_descriptor_atomic_at(&descriptor_path, &descriptor)
+  write_descriptor_atomic_at(descriptor_path, &descriptor)
     .map_err(|error: DiscoveryError| error.to_string())?;
-  server.own_descriptor(descriptor_path, descriptor);
+  server.own_descriptor(descriptor_path.to_path_buf(), descriptor);
   app.state::<AgentControlState>().install(broker);
   app.state::<ServerState>().install(server);
   Ok(())

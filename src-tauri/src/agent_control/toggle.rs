@@ -184,19 +184,12 @@ pub fn set_agent_control_enabled(
   // The flag is written only after the endpoint matches it. Windows PATH setup is a convenience
   // that may lag behind a failed registry write; macOS only refreshes installation status here.
   // Persisting last prevents a later launch from reopening an endpoint the user just closed.
-  let is_coordinator = app
-    .state::<crate::coordinator::CoordinatorRole>()
-    .is_coordinator();
   if enabled {
     let _ = crate::cli_path::set_cli_path_enabled(true)?;
-    if is_coordinator {
-      start_endpoint(&app)?;
-    }
+    start_endpoint(&app)?;
     persist_enabled(&app, true)?;
   } else {
-    if is_coordinator {
-      stop_endpoint(&app);
-    }
+    stop_endpoint(&app);
     persist_enabled(&app, false)?;
     let _ = crate::cli_path::set_cli_path_enabled(false)?;
   }
@@ -219,15 +212,40 @@ fn start_endpoint(app: &AppHandle) -> Result<(), String> {
     app.state::<StartFailure>().set(None);
     return Ok(());
   }
-  let result = crate::agent_control::transport::start(app);
+  let is_coordinator = app
+    .state::<crate::coordinator::CoordinatorRole>()
+    .is_coordinator();
+  let instance_id = app
+    .state::<crate::runtime_identity::RuntimeIdentity>()
+    .instance_id()
+    .to_string();
+  let instance_descriptor = if is_coordinator {
+    None
+  } else {
+    let identity_root = app
+      .state::<crate::persistence::commands::PersistenceRuntime>()
+      .identity_root()?;
+    Some(crate::agent_control::discovery::instance_descriptor_path(
+      &identity_root,
+      &instance_id,
+    ))
+  };
+  let result = match instance_descriptor.as_deref() {
+    Some(path) => crate::agent_control::transport::start_instance(app, &instance_id, path),
+    None => crate::agent_control::transport::start(app),
+  };
   match &result {
     Ok(()) => app.state::<StartFailure>().set(None),
     Err(error) => {
       app.state::<StartFailure>().set(Some(error.clone()));
       // A failed start wrote no descriptor, so anything on disk is from an earlier run. Left
       // there, it sends plvs-cli at a dead pid instead of telling it nothing is listening.
-      if let Ok(path) = crate::agent_control::discovery::descriptor_path() {
-        crate::agent_control::discovery::remove_stale_descriptor_at(&path, env!("PLVS_APP_ID"));
+      if instance_descriptor.is_none() {
+        if let Ok(path) = crate::agent_control::discovery::descriptor_path() {
+          crate::agent_control::discovery::remove_stale_descriptor_at(&path, env!("PLVS_APP_ID"));
+        }
+      } else if let Some(path) = instance_descriptor.as_deref() {
+        let _ = std::fs::remove_file(path);
       }
     }
   }

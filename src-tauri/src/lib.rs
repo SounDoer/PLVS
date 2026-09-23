@@ -437,10 +437,7 @@ pub fn run() {
       }
       let _ = window.show();
 
-      if is_coordinator
-        && cfg!(any(target_os = "windows", target_os = "macos"))
-        && agent_control_enabled
-      {
+      if cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled {
         agent_control::toggle::start_at_launch(app.handle());
       }
 
