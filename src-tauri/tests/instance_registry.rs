@@ -1,5 +1,8 @@
 use app_lib::{
-  coordinator::{summarize_instances, CaptureStatus, InstanceRegistry, InstanceRuntimeState},
+  coordinator::{
+    summarize_instances, CaptureStatus, InstanceRegistry, InstanceRuntimeState,
+    RuntimeCommandMailbox,
+  },
   runtime_identity::RuntimeIdentity,
 };
 use std::{
@@ -213,12 +216,18 @@ fn crashed_process_registration_is_removed_from_the_live_registry() {
   let ready: serde_json::Value = serde_json::from_str(&ready_line).expect("readiness is JSON");
   let instance_id = ready["instanceId"].as_str().unwrap().to_string();
   assert_eq!(registry.list().unwrap().len(), 1);
+  let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+  mailbox.issue(&instance_id, "show-a", "show").unwrap();
 
   child.kill().expect("crash registered process");
   child.wait().expect("reap registered process");
   drop(held_stdin);
   assert_eq!(registry.remove_stale().unwrap(), vec![instance_id]);
   assert!(registry.list().unwrap().is_empty());
+  assert!(mailbox
+    .poll(ready["instanceId"].as_str().unwrap())
+    .unwrap()
+    .is_none());
 
   let _ = std::fs::remove_dir_all(root);
 }

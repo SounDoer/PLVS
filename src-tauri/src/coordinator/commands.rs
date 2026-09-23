@@ -284,6 +284,51 @@ impl RuntimeCommandMailbox {
     }
   }
 
+  pub fn discard_instance(&self, instance_id: &str) -> Result<(), String> {
+    validate_component(instance_id)?;
+    let lock = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .truncate(false)
+      .open(self.command_lock_path())
+      .map_err(|error| format!("Unable to open runtime command lock: {error}"))?;
+    FileExt::lock(&lock)
+      .map_err(|error| format!("Unable to lock the runtime command mailbox: {error}"))?;
+    match fs::remove_file(self.pending_path(instance_id)) {
+      Ok(()) => {}
+      Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+      Err(error) => return Err(format!("Unable to remove stale runtime command: {error}")),
+    }
+    let acknowledgements = self.directory.join("acks");
+    for entry in fs::read_dir(&acknowledgements)
+      .map_err(|error| format!("Unable to read runtime acknowledgements: {error}"))?
+    {
+      let path = entry
+        .map_err(|error| format!("Unable to read runtime acknowledgement entry: {error}"))?
+        .path();
+      if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
+        continue;
+      }
+      let belongs_to_instance = fs::read(&path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<RuntimeCommandAck>(&bytes).ok())
+        .is_some_and(|ack| ack.instance_id == instance_id);
+      if belongs_to_instance {
+        match fs::remove_file(path) {
+          Ok(()) => {}
+          Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+          Err(error) => {
+            return Err(format!(
+              "Unable to remove stale runtime acknowledgement: {error}"
+            ))
+          }
+        }
+      }
+    }
+    Ok(())
+  }
+
   fn pending_path(&self, instance_id: &str) -> PathBuf {
     self
       .directory
@@ -451,6 +496,25 @@ mod tests {
     assert!(operations.require_idle().is_err());
     operations.finish("operation-a").unwrap();
     assert!(operations.require_idle().is_ok());
+    let _ = fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn stale_instance_cleanup_removes_its_pending_commands_and_acknowledgements() {
+    let root = test_root("stale-instance-cleanup");
+    let _ = fs::remove_dir_all(&root);
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    let first = mailbox.issue("instance-a", "show-a", "show").unwrap();
+    mailbox.issue("instance-b", "show-b", "show").unwrap();
+    let command = mailbox.poll("instance-a").unwrap().unwrap();
+    mailbox.acknowledge(&command, "completed", None).unwrap();
+    assert!(mailbox.ack_path(&first.command_id).is_file());
+
+    mailbox.discard_instance("instance-a").unwrap();
+
+    assert!(!mailbox.ack_path(&first.command_id).exists());
+    assert!(mailbox.poll("instance-a").unwrap().is_none());
+    assert!(mailbox.poll("instance-b").unwrap().is_some());
     let _ = fs::remove_dir_all(root);
   }
 }

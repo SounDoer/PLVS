@@ -58,6 +58,7 @@ pub struct InstanceSummary {
 
 #[derive(Debug, Clone)]
 pub struct InstanceRegistry {
+  identity_root: PathBuf,
   directory: PathBuf,
 }
 
@@ -72,7 +73,10 @@ impl InstanceRegistry {
     let directory = identity_root.join("runtime").join("instances");
     fs::create_dir_all(&directory)
       .map_err(|error| format!("Unable to create instance registry directory: {error}"))?;
-    Ok(Self { directory })
+    Ok(Self {
+      identity_root: identity_root.to_path_buf(),
+      directory,
+    })
   }
 
   pub fn register(
@@ -157,7 +161,14 @@ impl InstanceRegistry {
         continue;
       }
       match fs::remove_file(&path) {
-        Ok(()) => removed.push(descriptor.instance_id),
+        Ok(()) => {
+          if let Ok(mailbox) = super::RuntimeCommandMailbox::open(&self.identity_root) {
+            if let Err(error) = mailbox.discard_instance(&descriptor.instance_id) {
+              log::warn!("Unable to clean stale runtime commands: {error}");
+            }
+          }
+          removed.push(descriptor.instance_id)
+        }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(error) => {
           return Err(format!(
