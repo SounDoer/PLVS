@@ -689,6 +689,42 @@ impl LibraryRepository {
     )
   }
 
+  pub fn delete_global_preference(
+    &self,
+    key: &str,
+    expected_revision: i64,
+  ) -> Result<(), LibraryError> {
+    validate_key(key, "Global preference key")?;
+    if expected_revision < 1 {
+      return Err(LibraryError::Conflict(
+        "Expected global preference revision must be positive.".to_string(),
+      ));
+    }
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    let deleted = transaction.execute(
+      "DELETE FROM global_preferences
+       WHERE preference_key = ?1 AND revision = ?2",
+      params![key, expected_revision],
+    )?;
+    if deleted != 1 {
+      let current_revision = transaction
+        .query_row(
+          "SELECT revision FROM global_preferences WHERE preference_key = ?1",
+          [key],
+          |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .unwrap_or(0);
+      return Err(LibraryError::Conflict(format!(
+        "Global preference changed from expected revision {expected_revision} to revision {current_revision}."
+      )));
+    }
+    transaction.commit().map_err(map_sqlite_error)
+  }
+
   pub(super) fn connection(&self) -> Result<Connection, LibraryError> {
     let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection

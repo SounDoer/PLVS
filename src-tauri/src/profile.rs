@@ -1,6 +1,8 @@
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use atomic_write_file::AtomicWriteFile;
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreExt;
@@ -300,9 +302,125 @@ fn replace_profile_collection(
     .map_err(|error| error.to_string())
 }
 
-fn apply_profile_to_session(
+fn profile_import_journal_path(
+  session: &crate::persistence::WorkspacePersistenceSession,
+) -> PathBuf {
+  session.identity_root().join("transactions").join(format!(
+    "configuration-import-{}.json",
+    session.workspace_id()
+  ))
+}
+
+fn write_profile_import_journal(
+  session: &crate::persistence::WorkspacePersistenceSession,
+  previous: &crate::persistence::HydratedWorkspace,
+) -> Result<(), String> {
+  let path = profile_import_journal_path(session);
+  let parent = path
+    .parent()
+    .ok_or_else(|| "Configuration import journal has no parent directory.".to_string())?;
+  fs::create_dir_all(parent)
+    .map_err(|error| format!("Unable to create configuration import journal directory: {error}"))?;
+  let mut bytes = serde_json::to_vec_pretty(&json!({
+    "version": 1,
+    "profile": profile_from_hydrated(previous.clone()),
+    "globalPreferences": previous.global_preferences,
+  }))
+  .map_err(|error| format!("Unable to serialize configuration import journal: {error}"))?;
+  bytes.push(b'\n');
+  let mut file = AtomicWriteFile::open(&path)
+    .map_err(|error| format!("Unable to open configuration import journal: {error}"))?;
+  file
+    .write_all(&bytes)
+    .map_err(|error| format!("Unable to write configuration import journal: {error}"))?;
+  file
+    .commit()
+    .map_err(|error| format!("Unable to commit configuration import journal: {error}"))
+}
+
+fn remove_profile_import_journal(
+  session: &crate::persistence::WorkspacePersistenceSession,
+) -> Result<(), String> {
+  match fs::remove_file(profile_import_journal_path(session)) {
+    Ok(()) => Ok(()),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+    Err(error) => Err(format!(
+      "Unable to remove configuration import journal: {error}"
+    )),
+  }
+}
+
+fn restore_profile_import_snapshot(
+  session: &crate::persistence::WorkspacePersistenceSession,
+  journal: &Value,
+) -> Result<(), String> {
+  let profile = journal
+    .get("profile")
+    .cloned()
+    .ok_or_else(|| "Configuration import journal is missing its profile snapshot.".to_string())?;
+  apply_profile_to_session_unjournaled(session, profile, |_| Ok(()))?;
+
+  let previous_globals = journal
+    .get("globalPreferences")
+    .and_then(Value::as_object)
+    .cloned()
+    .unwrap_or_default();
+  for key in ["clearShortcut", "clearGlobal", "askToSendCrashReports"] {
+    let current = session
+      .library()
+      .read_global_preference(key)
+      .map_err(|error| error.to_string())?;
+    match (current, previous_globals.get(key)) {
+      (Some(current), Some(previous)) if current.value != *previous => {
+        session
+          .library()
+          .set_global_preference(key, current.revision, previous)
+          .map_err(|error| error.to_string())?;
+      }
+      (Some(current), None) => {
+        session
+          .library()
+          .delete_global_preference(key, current.revision)
+          .map_err(|error| error.to_string())?;
+      }
+      (None, Some(previous)) => {
+        session
+          .library()
+          .set_global_preference(key, 0, previous)
+          .map_err(|error| error.to_string())?;
+      }
+      _ => {}
+    }
+  }
+  Ok(())
+}
+
+pub(crate) fn recover_configuration_import(
+  session: &crate::persistence::WorkspacePersistenceSession,
+) -> Result<(), String> {
+  let path = profile_import_journal_path(session);
+  let bytes = match fs::read(&path) {
+    Ok(bytes) => bytes,
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+    Err(error) => {
+      return Err(format!(
+        "Unable to read configuration import journal: {error}"
+      ))
+    }
+  };
+  let journal: Value = serde_json::from_slice(&bytes)
+    .map_err(|error| format!("Unable to parse configuration import journal: {error}"))?;
+  if journal.get("version").and_then(Value::as_i64) != Some(1) {
+    return Err("Unsupported configuration import journal version.".to_string());
+  }
+  restore_profile_import_snapshot(session, &journal)?;
+  remove_profile_import_journal(session)
+}
+
+fn apply_profile_to_session_unjournaled(
   session: &crate::persistence::WorkspacePersistenceSession,
   profile: Value,
+  mut after_step: impl FnMut(&str) -> Result<(), String>,
 ) -> Result<(), String> {
   let values = normalize_profile_for_store(profile);
   let settings = values
@@ -330,8 +448,11 @@ fn apply_profile_to_session(
     .cloned()
     .unwrap_or_default();
   replace_profile_collection(session, "preset", preset_documents)?;
+  after_step("presets")?;
   replace_profile_collection(session, "theme", ordered_theme_documents(&themes))?;
+  after_step("themes")?;
   replace_profile_collection(session, "loudnessProfile", profile_documents)?;
+  after_step("loudnessProfiles")?;
 
   session.save_instance_domain(crate::persistence::WorkspaceDomain::Settings, &settings)?;
   session.save_instance_domain(
@@ -343,6 +464,7 @@ fn apply_profile_to_session(
     crate::persistence::WorkspaceValue::WindowBounds,
     values.get("windowBounds").unwrap_or(&Value::Null),
   )?;
+  after_step("workspace")?;
   session.save_workspace_value(
     crate::persistence::WorkspaceValue::CaptureDeviceId,
     values.get("captureDeviceId").unwrap_or(&json!("default")),
@@ -380,7 +502,55 @@ fn apply_profile_to_session(
     .library()
     .set_global_preferences(&expected, &global_values)
     .map(|_| ())
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+  after_step("globalPreferences")
+}
+
+fn apply_profile_to_session_with_step_hook(
+  session: &crate::persistence::WorkspacePersistenceSession,
+  profile: Value,
+  after_step: impl FnMut(&str) -> Result<(), String>,
+) -> Result<(), String> {
+  recover_configuration_import(session)?;
+  let previous = session.hydrate()?;
+  write_profile_import_journal(session, &previous)?;
+  let result = apply_profile_to_session_unjournaled(session, profile, after_step);
+  match result {
+    Ok(()) => match remove_profile_import_journal(session) {
+      Ok(()) => Ok(()),
+      Err(error) => {
+        let journal = json!({
+          "profile": profile_from_hydrated(previous.clone()),
+          "globalPreferences": previous.global_preferences,
+        });
+        restore_profile_import_snapshot(session, &journal)?;
+        remove_profile_import_journal(session)?;
+        Err(error)
+      }
+    },
+    Err(error) => {
+      let journal = json!({
+        "profile": profile_from_hydrated(previous.clone()),
+        "globalPreferences": previous.global_preferences,
+      });
+      match restore_profile_import_snapshot(session, &journal) {
+        Ok(()) => {
+          remove_profile_import_journal(session)?;
+          Err(error)
+        }
+        Err(rollback_error) => Err(format!(
+          "{error} Automatic rollback also failed: {rollback_error} The import journal was kept for startup recovery."
+        )),
+      }
+    }
+  }
+}
+
+fn apply_profile_to_session(
+  session: &crate::persistence::WorkspacePersistenceSession,
+  profile: Value,
+) -> Result<(), String> {
+  apply_profile_to_session_with_step_hook(session, profile, |_| Ok(()))
 }
 
 fn chrono_like_utc_now() -> String {
@@ -611,6 +781,100 @@ mod tests {
     assert_eq!(exported["clearGlobal"], true);
 
     drop(session);
+    let _ = std::fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn transactional_profile_rolls_back_every_domain_after_a_mid_import_failure() {
+    let root = std::env::temp_dir().join(format!(
+      "plvs-transactional-profile-rollback-{}",
+      std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();
+    apply_profile_to_session(
+      &session,
+      json!({
+        "settings": { "referenceLufs": -23, "askToSendCrashReports": false },
+        "workspace": { "panelOrder": ["level"] },
+        "presets": { "activeId": "old", "list": [{ "id": "old", "name": "Old" }] },
+        "themes": { "themes": {}, "order": [] },
+        "captureDeviceId": "default"
+      }),
+    )
+    .unwrap();
+    let before = session.hydrate().unwrap();
+
+    let error = apply_profile_to_session_with_step_hook(
+      &session,
+      json!({
+        "settings": { "referenceLufs": -18, "askToSendCrashReports": true },
+        "workspace": { "panelOrder": ["loudness"] },
+        "presets": { "activeId": "new", "list": [{ "id": "new", "name": "New" }] },
+        "themes": { "themes": { "new": { "id": "new", "name": "New" } }, "order": ["new"] },
+        "captureDeviceId": "out:2"
+      }),
+      |step| {
+        if step == "themes" {
+          Err("injected import failure".to_string())
+        } else {
+          Ok(())
+        }
+      },
+    )
+    .unwrap_err();
+
+    assert!(error.contains("injected import failure"));
+    assert_eq!(
+      profile_from_hydrated(session.hydrate().unwrap()),
+      profile_from_hydrated(before)
+    );
+    drop(session);
+    let _ = std::fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn opening_a_workspace_recovers_an_interrupted_profile_import() {
+    let root = std::env::temp_dir().join(format!(
+      "plvs-transactional-profile-recovery-{}",
+      std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();
+    apply_profile_to_session(
+      &session,
+      json!({
+        "settings": { "referenceLufs": -23 },
+        "workspace": { "panelOrder": ["level"] },
+        "presets": { "activeId": "old", "list": [{ "id": "old", "name": "Old" }] },
+        "themes": { "themes": {}, "order": [] }
+      }),
+    )
+    .unwrap();
+    let before = session.hydrate().unwrap();
+    write_profile_import_journal(&session, &before).unwrap();
+    apply_profile_to_session_unjournaled(
+      &session,
+      json!({
+        "settings": { "referenceLufs": -18, "askToSendCrashReports": true },
+        "workspace": { "panelOrder": ["loudness"] },
+        "presets": { "activeId": "new", "list": [{ "id": "new", "name": "New" }] },
+        "themes": { "themes": { "new": { "id": "new", "name": "New" } }, "order": ["new"] }
+      }),
+      |_| Ok(()),
+    )
+    .unwrap();
+    assert_ne!(session.hydrate().unwrap(), before);
+    drop(session);
+
+    let recovered =
+      crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();
+    assert_eq!(
+      profile_from_hydrated(recovered.hydrate().unwrap()),
+      profile_from_hydrated(before)
+    );
+    assert!(!profile_import_journal_path(&recovered).exists());
+    drop(recovered);
     let _ = std::fs::remove_dir_all(root);
   }
 

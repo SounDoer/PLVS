@@ -61,14 +61,16 @@ impl WorkspacePersistenceSession {
       .cloned()
       .ok_or_else(|| "Workspace state must be a JSON object.".to_string())?;
     let library = LibraryRepository::open(identity_root).map_err(|error| error.to_string())?;
-    Ok(Self {
+    let session = Self {
       identity_root: identity_root.to_path_buf(),
       workspace_id: workspace_id.to_string(),
       store,
       _lease: lease,
       library,
       state: Mutex::new(state),
-    })
+    };
+    crate::profile::recover_configuration_import(&session)?;
+    Ok(session)
   }
 
   pub fn hydrate(&self) -> Result<HydratedWorkspace, String> {
@@ -77,6 +79,10 @@ impl WorkspacePersistenceSession {
 
   pub fn identity_root(&self) -> &Path {
     &self.identity_root
+  }
+
+  pub fn workspace_id(&self) -> &str {
+    &self.workspace_id
   }
 
   pub fn library(&self) -> &LibraryRepository {

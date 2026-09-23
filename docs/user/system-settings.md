@@ -58,6 +58,10 @@ checks every workbench for an open draft, stops capture and saves before replaci
 workbench where you chose Import receives the instance-owned fields. **Reset PLVS to Default** uses
 the same coordinated restart and restores a fresh installation.
 
+If storage fails or PLVS exits during that replacement, the incomplete import is rolled back. A
+recovery journal completes that rollback automatically the next time the target workbench opens,
+before its saved state is shown.
+
 With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
 Profile, or Preset does not silently replace the snapshot already active in another workbench; that
 workbench keeps measuring with its current snapshot until you explicitly apply a selection.
