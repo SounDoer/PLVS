@@ -106,6 +106,30 @@ describe("useCustomThemeSettings", () => {
     });
   });
 
+  it("keeps a Theme draft and marks it stale after an external Library refresh", () => {
+    const shared = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-shared",
+      name: "Shared",
+    };
+    upsertCustomTheme(shared);
+    const { result } = renderCustomThemeSettings();
+    act(() => result.current.editCustomTheme(shared.id));
+    act(() => result.current.editor.updateCore("workspace", "#222222"));
+    const localDraft = structuredClone(result.current.editor.draft);
+
+    act(() => {
+      themesStore.patch({
+        themes: { [shared.id]: { ...shared, name: "Changed elsewhere" } },
+        order: [shared.id],
+      });
+      themesStore.notifyLocal();
+    });
+
+    expect(result.current.editor.stale).toBe(true);
+    expect(result.current.editor.draft).toEqual(localDraft);
+  });
+
   it("customizes a builtin from its V2 authoring document", () => {
     const { result } = renderCustomThemeSettings();
 

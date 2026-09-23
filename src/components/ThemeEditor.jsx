@@ -64,6 +64,7 @@ const CORE_COLORS = [
  *   onCancel: () => void,
  *   onDelete?: () => void,
  *   dirty?: boolean,
+ *   stale?: boolean,
  *   pos: {x:number,y:number},
  *   onMove: (p: {x:number,y:number}) => void,
  * }} props
@@ -86,6 +87,7 @@ export function ThemeEditor({
   onCancel,
   onDelete,
   dirty,
+  stale = false,
   pos,
   onMove,
 }) {
@@ -270,6 +272,13 @@ export function ThemeEditor({
             </>
           )}
         </div>
+
+        {stale ? (
+          <p className="border-b border-warning/30 bg-warning/10 px-3 py-2 text-[length:var(--ui-fs-control)] text-warning">
+            This Theme changed in another PLVS workbench. Saving will ask whether to reload it or
+            keep this draft as a copy.
+          </p>
+        ) : null}
 
         <div
           role="tablist"

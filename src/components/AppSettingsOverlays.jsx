@@ -211,6 +211,7 @@ export function AppSettingsOverlays({
           onCancel={editor.cancel}
           onDelete={undefined}
           dirty={editor.dirty}
+          stale={editor.stale}
           pos={editorPos}
           onMove={moveEditor}
         />

@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { presetsStore, reportLibraryConflict, settingsStore } from "../persistence/index.js";
 import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
 import { SCENE_OPERATIONS, SceneOperationBlockedError } from "../lib/sceneOperations.js";
 import {
@@ -58,6 +58,13 @@ function readPresets() {
   };
 }
 
+function reconcileLoudnessProfileDraft(draft, profiles) {
+  if (!draft?.editingId) return draft;
+  const latest = profiles.find((profile) => profile.id === draft.editingId) ?? null;
+  const stale = JSON.stringify(latest) !== JSON.stringify(draft.baseDocument);
+  return stale === draft.stale ? draft : { ...draft, stale };
+}
+
 /// `seedColdStart={false}` is for accessory webviews. Each has its own settings cache and no
 /// cross-window change events, so a missing library there would seed a second starter with a
 /// different UUID and overwrite the main window's. The main window owns that write; an accessory
@@ -76,6 +83,12 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       const next = readState();
       stateRef.current = next;
       setState(next);
+      const openDraft = draftRef.current;
+      const reconciledDraft = reconcileLoudnessProfileDraft(openDraft, next.profiles);
+      if (reconciledDraft !== openDraft) {
+        draftRef.current = reconciledDraft;
+        setDraft(reconciledDraft);
+      }
       if (event?.origin !== "remote" || next.active !== previous.active) {
         setActiveDocumentSnapshot(resolveActiveDocument(next));
       }
@@ -182,6 +195,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       putDraft({
         editingId: id,
         resumeSelection: state.active,
+        baseDocument: structuredClone(found),
         document: structuredClone(found),
         dirty: false,
       });
@@ -307,6 +321,11 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   const saveDraft = useCallback(() => {
     const current = draftRef.current;
     if (!current) return;
+    if (current.stale && current.editingId) {
+      reportLibraryConflict("loudnessProfile", current.document);
+      putDraft(null);
+      return;
+    }
     const normalized = normalizeRuleDocument(current.document);
     if (!normalized) return;
     const { id: _id, ...document } = normalized;

@@ -20,6 +20,7 @@ export function useThemeEditor(opts) {
   const notify = onChange ?? noop;
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
   const [dirty, setDirty] = useState(false);
+  const [stale, setStale] = useState(false);
   const draftRef = useRef(/** @type {object|null} */ (null));
   const wasNewRef = useRef(false);
   const restoreThemeRef = useRef(activeTheme);
@@ -83,6 +84,7 @@ export function useThemeEditor(opts) {
       setDraftBoth(d);
       resetHistory(d);
       setDirty(false);
+      setStale(false);
       applyDraft(d);
     },
     [applyDraft, resetHistory, setDraftBoth]
@@ -96,6 +98,7 @@ export function useThemeEditor(opts) {
       setDraftBoth(d);
       resetHistory(d);
       setDirty(false);
+      setStale(false);
       applyDraft(d);
     },
     [activeTheme, applyDraft, makeId, resetHistory, setDraftBoth]
@@ -237,26 +240,34 @@ export function useThemeEditor(opts) {
   const undo = useCallback(() => moveHistory("past", "future"), [moveHistory]);
   const redo = useCallback(() => moveHistory("future", "past"), [moveHistory]);
 
+  const syncSource = useCallback((source) => {
+    if (!draftRef.current || wasNewRef.current) return;
+    setStale(JSON.stringify(source) !== JSON.stringify(baselineRef.current));
+  }, []);
+
   const save = useCallback(() => {
     cancelScheduledPublication();
     const d = draftRef.current;
-    if (d && onSave?.(d, { isNew: wasNewRef.current }) === false) return;
+    if (d && onSave?.(d, { isNew: wasNewRef.current, stale }) === false) return;
     setDraftBoth(null);
     setDirty(false);
+    setStale(false);
     if (d) notify();
-  }, [cancelScheduledPublication, notify, onSave, setDraftBoth]);
+  }, [cancelScheduledPublication, notify, onSave, setDraftBoth, stale]);
 
   const cancel = useCallback(() => {
     cancelScheduledPublication();
     publish(restoreThemeRef.current);
     setDraftBoth(null);
     setDirty(false);
+    setStale(false);
   }, [cancelScheduledPublication, publish, setDraftBoth]);
 
   return {
     isEditing: draft != null,
     draft,
     dirty,
+    stale,
     canSave: normalizeThemeV2(draft) != null,
     canUndo: historyAvailability.undo,
     canRedo: historyAvailability.redo,
@@ -271,6 +282,7 @@ export function useThemeEditor(opts) {
     updateOverride,
     undo,
     redo,
+    syncSource,
     save,
     cancel,
     isEditingNow: () => draftRef.current != null,

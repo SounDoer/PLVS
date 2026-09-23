@@ -47,6 +47,10 @@ export function resolveLibraryConflict(action) {
   return backend.resolveLibraryConflict?.(action) ?? Promise.resolve(null);
 }
 
+export function reportLibraryConflict(kind, document) {
+  backend.reportLibraryConflict?.(kind, document);
+}
+
 /** Force every coalesced domain update into the selected backend, then wait for durable settling. */
 export async function flushPersistence() {
   settingsStore.flush();

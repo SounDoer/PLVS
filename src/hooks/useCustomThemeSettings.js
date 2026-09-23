@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SceneOperationBlockedError } from "../lib/sceneOperations.js";
-import { settingsStore } from "../persistence/index.js";
+import { reportLibraryConflict, settingsStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { isCustomThemeId } from "../theme/customTheme.js";
 import {
@@ -137,7 +137,11 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
   );
 
   const saveEditorTheme = useCallback(
-    (draft, { isNew }) => {
+    (draft, { isNew, stale }) => {
+      if (stale && !isNew) {
+        reportLibraryConflict("theme", draft);
+        return true;
+      }
       const { id, ...document } = draft;
       const planned = isNew ? planCreate(document, { makeId: () => id }) : planUpdate(id, document);
       if (planned.issues.length > 0) return false;
@@ -156,6 +160,20 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     makeId,
   });
   editorRef.current = editor;
+
+  const latestEditedTheme = editor.draft?.id
+    ? (listCustomThemeDocuments()[editor.draft.id] ?? null)
+    : null;
+  const latestEditedThemeSignature = JSON.stringify(latestEditedTheme);
+  const editorIsEditing = editor.isEditing;
+  const syncEditorSource = editor.syncSource;
+  useEffect(() => {
+    if (editorIsEditing) {
+      syncEditorSource(
+        latestEditedThemeSignature === "null" ? null : JSON.parse(latestEditedThemeSignature)
+      );
+    }
+  }, [editorIsEditing, latestEditedThemeSignature, syncEditorSource]);
 
   useBlockingEditor("theme", editor.isEditing);
 

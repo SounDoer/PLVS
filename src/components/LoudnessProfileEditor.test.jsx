@@ -50,6 +50,19 @@ function appliedDocument(props, call = 0) {
 }
 
 describe("LoudnessProfileEditor", () => {
+  it("warns without replacing a stale profile draft", () => {
+    renderEditor({
+      draft: {
+        editingId: "profile-id",
+        document: threeRuleDocument(),
+        dirty: true,
+        stale: true,
+      },
+    });
+
+    expect(screen.getByText(/changed in another PLVS workbench/i)).toBeTruthy();
+  });
+
   it("sizes the operator and severity columns in em so labels survive Interface Size", () => {
     renderEditor();
 

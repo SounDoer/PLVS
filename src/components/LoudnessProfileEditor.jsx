@@ -487,6 +487,13 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
           )}
         </div>
 
+        {draft.stale ? (
+          <p className="border-b border-warning/30 bg-warning/10 px-3 py-2 text-[length:var(--ui-fs-control)] text-warning">
+            This Loudness Profile changed in another PLVS workbench. Saving will ask whether to
+            reload it or keep this draft as a copy.
+          </p>
+        ) : null}
+
         <div className="flex flex-col gap-2 overflow-y-auto px-3 py-1">
           {/* Reference is the profile's anchor, not a rule -- it can never be dragged, so it is its
               own grid instance rather than sharing a container with the reorderable rule list below

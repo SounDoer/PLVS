@@ -33,6 +33,12 @@ const BASE_PROPS = {
 };
 
 describe("ThemeEditor", () => {
+  it("warns without replacing a stale Theme draft", () => {
+    render(<ThemeEditor {...BASE_PROPS} stale />);
+
+    expect(screen.getByText(/changed in another PLVS workbench/i)).toBeTruthy();
+  });
+
   it("does not show the custom theme color scheme in the title bar", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
 

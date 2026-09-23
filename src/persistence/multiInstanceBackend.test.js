@@ -161,6 +161,19 @@ describe("multiInstanceBackend", () => {
     expect(backend.get("plvs:presets")).toEqual(changed);
   });
 
+  it("publishes a known-stale editor draft without first overwriting the remote item", async () => {
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const observed = [];
+    backend.subscribeLibraryConflicts((value) => observed.push(value));
+    const document = { id: "one", name: "Open Draft" };
+
+    backend.reportLibraryConflict("preset", document);
+
+    expect(observed.at(-1)).toEqual({ kind: "preset", id: "one", document });
+    expect(invoke).not.toHaveBeenCalledWith("persistence_library_update", expect.anything());
+  });
+
   it("reloads or saves a conflicting item as a fresh copy without force-overwriting", async () => {
     const conflict = { reason: "conflict", message: "changed by another instance" };
     invoke.mockRejectedValueOnce(conflict);

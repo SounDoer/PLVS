@@ -423,6 +423,9 @@ export function createMultiInstanceBackend() {
       listener(clone(pendingConflict));
       return () => conflictSubscribers.delete(listener);
     },
+    reportLibraryConflict(kind, document) {
+      publishConflict({ kind, id: document?.id ?? null, document: clone(document) });
+    },
     resolveLibraryConflict: resolveConflict,
     refresh,
     async flush() {

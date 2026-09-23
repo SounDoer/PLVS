@@ -296,6 +296,27 @@ describe("preview draft", () => {
 });
 
 describe("draft versus library actions", () => {
+  it("keeps an open draft and marks it stale when the persisted profile changes", () => {
+    const mine = profile("mine", "Mine", -20);
+    seed([mine]);
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    act(() => result.current.beginEdit(mine.id));
+    act(() => result.current.editDraft((document) => ({ ...document, name: "Local draft" })));
+
+    act(() => {
+      settingsStore.patch({
+        loudnessProfiles: {
+          active: LOUDNESS_PROFILE_OFF,
+          profiles: [{ ...mine, name: "Changed elsewhere" }],
+        },
+      });
+      settingsStore.notifyLocal();
+    });
+
+    expect(result.current.draft.stale).toBe(true);
+    expect(result.current.draft.document.name).toBe("Local draft");
+  });
+
   it("blocks deletion and selection under a dirty draft", () => {
     const mine = profile("mine", "Mine");
     seed([mine]);

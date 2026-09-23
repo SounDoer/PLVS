@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { themesStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
 import { listCustomThemeDocuments } from "../theme/customThemesRepo.js";
 import { useThemeEditor } from "./useThemeEditor.js";
 
@@ -96,8 +97,26 @@ describe("useThemeEditor", () => {
         id: "custom-1",
         core: expect.objectContaining({ interfaceAccent: "#22d3ee" }),
       }),
-      { isNew: true }
+      { isNew: true, stale: false }
     );
+  });
+
+  it("keeps an open draft and marks it stale when its Library source changes", () => {
+    const publish = vi.fn();
+    const { result } = setup(publish);
+    const source = makeCustomThemeV2FromBase(
+      BUILTIN_THEMES_V2["plvs-dark"],
+      "Shared",
+      () => "custom-shared"
+    );
+    act(() => result.current.beginEdit(source));
+    act(() => result.current.updateCore("workspace", "#222222"));
+    const localDraft = structuredClone(result.current.draft);
+
+    act(() => result.current.syncSource({ ...source, name: "Changed elsewhere" }));
+
+    expect(result.current.stale).toBe(true);
+    expect(result.current.draft).toEqual(localDraft);
   });
 
   it("keeps the editor open when the controller refuses Save", () => {

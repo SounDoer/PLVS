@@ -59,7 +59,8 @@ Profile, or Preset does not silently replace the snapshot already active in anot
 workbench keeps measuring with its current snapshot until you explicitly apply a selection.
 If two workbenches edit the same Library item, the second save never overwrites the first silently:
 choose **Reload** for the committed version or **Save as Copy** to preserve the local edit under a
-new ID.
+new ID. An open Theme or Loudness Profile editor keeps its local draft and shows a warning as soon
+as PLVS observes that its saved source changed elsewhere.
 
 ## Crash reports and feedback
 
