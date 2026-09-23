@@ -3,14 +3,17 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useCloseConfirm } from "./useCloseConfirm.js";
 
-const { mockExit, mockFlushPersistence, closeRequestedCallback } = vi.hoisted(() => {
+const { mockExit, mockInvoke, mockFlushPersistence, closeRequestedCallback } = vi.hoisted(() => {
   const cb = { current: null };
   return {
     mockExit: vi.fn().mockResolvedValue(undefined),
+    mockInvoke: vi.fn().mockResolvedValue(undefined),
     mockFlushPersistence: vi.fn().mockResolvedValue(undefined),
     closeRequestedCallback: cb,
   };
 });
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mockInvoke }));
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
@@ -52,6 +55,7 @@ describe("useCloseConfirm", () => {
     localStorage.clear();
     closeRequestedCallback.current = null;
     mockExit.mockClear();
+    mockInvoke.mockClear();
     mockFlushPersistence.mockReset().mockResolvedValue(undefined);
   });
 
@@ -158,6 +162,13 @@ describe("useCloseConfirm", () => {
       await result.current.handleConfirm("quit", false);
     });
     expect(mockExit).toHaveBeenCalledWith(0);
+    expect(mockInvoke).toHaveBeenCalledWith("runtime_retire_current_workspace");
+    expect(mockFlushPersistence.mock.invocationCallOrder[0]).toBeLessThan(
+      mockInvoke.mock.invocationCallOrder[0]
+    );
+    expect(mockInvoke.mock.invocationCallOrder[0]).toBeLessThan(
+      mockExit.mock.invocationCallOrder[0]
+    );
   });
 
   it("flushes a saved close action before quitting", async () => {

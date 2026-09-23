@@ -173,6 +173,7 @@ pub fn run() {
       persistence::commands::persistence_library_replace,
       coordinator::runtime_publish_instance_state,
       coordinator::runtime_list_instances,
+      coordinator::runtime_retire_current_workspace,
       coordinator::runtime_route_global_clear,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,

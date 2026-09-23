@@ -174,6 +174,16 @@ pub fn runtime_list_instances(
   Ok(summarize_instances(registry.list()?))
 }
 
+#[tauri::command]
+pub fn runtime_retire_current_workspace(
+  identity: State<'_, RuntimeIdentity>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+) -> Result<(), String> {
+  let identity_root = persistence.identity_root()?;
+  crate::persistence::WorkspaceCatalog::open(&identity_root)?
+    .remove_from_restore_set(identity.workspace_id())
+}
+
 fn global_shortcut_target(
   instances: &[InstanceSummary],
   current_instance_id: &str,

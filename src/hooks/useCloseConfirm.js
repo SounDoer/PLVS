@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import { exit } from "@tauri-apps/plugin-process";
 import { isTauri } from "../ipc/env.js";
 import { flushPersistence, settingsStore } from "../persistence/index.js";
@@ -34,6 +35,9 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
             await settingsStore.persist({ closeAction: action });
           }
           await flushPersistence();
+          if (action === "quit" && isTauri()) {
+            await invoke("runtime_retire_current_workspace");
+          }
         } catch (error) {
           console.error("Failed to flush persistence before closing PLVS", error);
           await onShowWindow().catch((showError) => {

@@ -10,6 +10,9 @@ Behavior** chooses whether closing the window keeps PLVS running in the system t
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
 
+Quitting one additional workbench removes it from the next restore set. If a workbench crashes, its
+saved workspace remains recoverable instead of being treated as an intentional removal.
+
 With several workbenches open, only the current coordinator checks for and installs application
 updates, so one update cannot be started independently in every process.
 
