@@ -376,7 +376,9 @@ export function useTray({
         .then((next) => {
           if (cancelled) return;
           const normalized = Array.isArray(next) ? next : [];
-          setInstances((current) => (sameTrayInstances(current, normalized) ? current : normalized));
+          setInstances((current) =>
+            sameTrayInstances(current, normalized) ? current : normalized
+          );
         })
         .catch(() => {});
     };
