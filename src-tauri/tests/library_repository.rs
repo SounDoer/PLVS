@@ -206,3 +206,49 @@ fn deleting_an_item_requires_its_revision_and_advances_the_collection() {
   assert_eq!(library.list("preset").unwrap()[0].id, "two");
   let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn replacing_a_collection_is_atomic_and_requires_its_base_revision() {
+  let root = temp_root().with_extension("replace-collection");
+  let library = LibraryRepository::open(&root).unwrap();
+  library
+    .create("preset", "one", &json!({ "id": "one", "name": "Old" }))
+    .unwrap();
+  library
+    .create("preset", "two", &json!({ "id": "two", "name": "Two" }))
+    .unwrap();
+  let base = library.collection_revision("preset").unwrap();
+  let expected = std::collections::BTreeMap::from([("one".to_string(), 1), ("two".to_string(), 1)]);
+  let replacement = vec![
+    json!({ "id": "three", "name": "Three" }),
+    json!({ "id": "one", "name": "New" }),
+  ];
+
+  library
+    .create("preset", "peer", &json!({ "id": "peer", "name": "Peer" }))
+    .unwrap();
+  let conflict = library
+    .replace_collection("preset", &replacement, base, &expected)
+    .expect_err("stale whole-collection replacement is refused");
+  assert!(matches!(conflict, LibraryError::Conflict(_)));
+  assert_eq!(library.list("preset").unwrap().len(), 3);
+
+  let current_revision = library.collection_revision("preset").unwrap();
+  let current_expected = std::collections::BTreeMap::from([
+    ("one".to_string(), 1),
+    ("two".to_string(), 1),
+    ("peer".to_string(), 1),
+  ]);
+  let committed = library
+    .replace_collection("preset", &replacement, current_revision, &current_expected)
+    .unwrap();
+
+  assert_eq!(committed.collection_revision, current_revision + 1);
+  assert_eq!(committed.items[0].id, "three");
+  assert_eq!(committed.items[0].revision, 1);
+  assert_eq!(committed.items[1].id, "one");
+  assert_eq!(committed.items[1].revision, 2);
+  assert!(library.read("preset", "two").unwrap().is_none());
+  assert!(library.read("preset", "peer").unwrap().is_none());
+  let _ = std::fs::remove_dir_all(root);
+}

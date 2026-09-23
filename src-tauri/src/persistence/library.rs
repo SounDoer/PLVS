@@ -1,5 +1,5 @@
 use std::{
-  collections::HashSet,
+  collections::{BTreeMap, HashSet},
   fs,
   path::{Path, PathBuf},
   time::{Duration, Instant},
@@ -25,6 +25,12 @@ pub struct GlobalPreference {
   pub key: String,
   pub revision: i64,
   pub value: Value,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LibraryCollection {
+  pub collection_revision: i64,
+  pub items: Vec<LibraryItem>,
 }
 
 #[derive(Debug)]
@@ -381,6 +387,137 @@ impl LibraryRepository {
     }
     transaction.commit().map_err(map_sqlite_error)?;
     Ok(expected_collection_revision + 1)
+  }
+
+  pub fn replace_collection(
+    &self,
+    kind: &str,
+    documents: &[Value],
+    expected_collection_revision: i64,
+    expected_item_revisions: &BTreeMap<String, i64>,
+  ) -> Result<LibraryCollection, LibraryError> {
+    validate_key(kind, "Library kind")?;
+    if expected_collection_revision < 0 {
+      return Err(LibraryError::Conflict(
+        "Expected Library collection revision cannot be negative.".to_string(),
+      ));
+    }
+    let mut desired = Vec::with_capacity(documents.len());
+    let mut desired_ids = HashSet::new();
+    for document in documents {
+      let id = document
+        .get("id")
+        .and_then(Value::as_str)
+        .ok_or_else(|| LibraryError::Storage("Library item has no ID.".to_string()))?;
+      validate_key(id, "Library item ID")?;
+      if !desired_ids.insert(id.to_string()) {
+        return Err(LibraryError::Conflict(
+          "Library replacement contains a duplicate item ID.".to_string(),
+        ));
+      }
+      let document_json = serde_json::to_string(document).map_err(|error| {
+        LibraryError::Storage(format!("Unable to serialize Library item: {error}"))
+      })?;
+      desired.push((
+        id.to_string(),
+        document.clone(),
+        content_hash(&document_json),
+        document_json,
+      ));
+    }
+
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    let current_collection_revision = transaction
+      .query_row(
+        "SELECT revision FROM library_collections WHERE kind = ?1",
+        [kind],
+        |row| row.get::<_, i64>(0),
+      )
+      .optional()?
+      .unwrap_or(0);
+    if current_collection_revision != expected_collection_revision {
+      return Err(LibraryError::Conflict(format!(
+        "Library collection changed from expected revision {expected_collection_revision} to revision {current_collection_revision}."
+      )));
+    }
+    let current: BTreeMap<String, (i64, String)> = {
+      let mut statement = transaction
+        .prepare("SELECT item_id, revision, content_hash FROM library_items WHERE kind = ?1")?;
+      let current = statement
+        .query_map([kind], |row| {
+          Ok((
+            row.get::<_, String>(0)?,
+            (row.get::<_, i64>(1)?, row.get::<_, String>(2)?),
+          ))
+        })?
+        .collect::<Result<_, _>>()?;
+      current
+    };
+    let current_revisions: BTreeMap<String, i64> = current
+      .iter()
+      .map(|(id, (revision, _))| (id.clone(), *revision))
+      .collect();
+    if &current_revisions != expected_item_revisions {
+      return Err(LibraryError::Conflict(
+        "One or more Library items changed after this collection was read.".to_string(),
+      ));
+    }
+
+    transaction.execute("DELETE FROM library_order WHERE kind = ?1", [kind])?;
+    for id in current.keys().filter(|id| !desired_ids.contains(*id)) {
+      transaction.execute(
+        "DELETE FROM library_items WHERE kind = ?1 AND item_id = ?2",
+        params![kind, id],
+      )?;
+    }
+
+    let mut committed_items = Vec::with_capacity(desired.len());
+    for (position, (id, document, hash, document_json)) in desired.into_iter().enumerate() {
+      let revision = match current.get(&id) {
+        Some((revision, current_hash)) if current_hash == &hash => *revision,
+        Some((revision, _)) => {
+          transaction.execute(
+            "UPDATE library_items
+             SET revision = revision + 1, document_json = ?3, content_hash = ?4
+             WHERE kind = ?1 AND item_id = ?2",
+            params![kind, id, document_json, hash],
+          )?;
+          revision + 1
+        }
+        None => {
+          transaction.execute(
+            "INSERT INTO library_items (kind, item_id, revision, document_json, content_hash)
+             VALUES (?1, ?2, 1, ?3, ?4)",
+            params![kind, id, document_json, hash],
+          )?;
+          1
+        }
+      };
+      transaction.execute(
+        "INSERT INTO library_order (kind, item_id, position) VALUES (?1, ?2, ?3)",
+        params![kind, id, position as i64],
+      )?;
+      committed_items.push(LibraryItem {
+        kind: kind.to_string(),
+        id,
+        revision,
+        document,
+      });
+    }
+    let committed_collection_revision = expected_collection_revision + 1;
+    transaction.execute(
+      "INSERT INTO library_collections (kind, revision) VALUES (?1, ?2)
+       ON CONFLICT(kind) DO UPDATE SET revision = excluded.revision",
+      params![kind, committed_collection_revision],
+    )?;
+    transaction.commit().map_err(map_sqlite_error)?;
+    Ok(LibraryCollection {
+      collection_revision: committed_collection_revision,
+      items: committed_items,
+    })
   }
 
   pub fn read_global_preference(

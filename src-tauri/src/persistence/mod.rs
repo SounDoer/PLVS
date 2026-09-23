@@ -8,7 +8,9 @@ mod workspace_catalog;
 pub use hydration::{hydrate_workspace, HydratedWorkspace};
 #[cfg(debug_assertions)]
 pub use library::run_library_test_host;
-pub use library::{GlobalPreference, LibraryError, LibraryItem, LibraryRepository};
+pub use library::{
+  GlobalPreference, LibraryCollection, LibraryError, LibraryItem, LibraryRepository,
+};
 pub use migration::{
   migrate_legacy_store, plan_legacy_store, LegacyLibrarySeed, LegacyMigrationOutcome,
   LegacyMigrationPlan,
