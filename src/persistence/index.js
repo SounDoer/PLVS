@@ -39,6 +39,14 @@ export const presetsStore = createDomainStore({
 });
 export const themesStore = createDomainStore({ name: "plvs:themes", backend });
 
+export function subscribeLibraryConflicts(listener) {
+  return backend.subscribeLibraryConflicts?.(listener) ?? (() => {});
+}
+
+export function resolveLibraryConflict(action) {
+  return backend.resolveLibraryConflict?.(action) ?? Promise.resolve(null);
+}
+
 /** Force every coalesced domain update into the selected backend, then wait for durable settling. */
 export async function flushPersistence() {
   settingsStore.flush();

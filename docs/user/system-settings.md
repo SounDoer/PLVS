@@ -49,6 +49,9 @@ installation.
 With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
 Profile, or Preset does not silently replace the snapshot already active in another workbench; that
 workbench keeps measuring with its current snapshot until you explicitly apply a selection.
+If two workbenches edit the same Library item, the second save never overwrites the first silently:
+choose **Reload** for the committed version or **Save as Copy** to preserve the local edit under a
+new ID.
 
 ## Crash reports and feedback
 

@@ -104,6 +104,13 @@ export function createMultiInstanceBackend() {
   let activeDrain = null;
   let activeRefresh = null;
   let unreportedFailure = null;
+  let pendingConflict = null;
+  const conflictSubscribers = new Set();
+
+  function publishConflict(conflict) {
+    pendingConflict = conflict;
+    for (const listener of conflictSubscribers) listener(clone(conflict));
+  }
 
   async function persistCollection(kind, nextDocuments) {
     const previousDocuments = persistedDocuments.get(kind) || [];
@@ -123,12 +130,20 @@ export function createMultiInstanceBackend() {
 
     if (!added.length && !removed.length && changed.length === 1 && !orderChanged) {
       const id = changed[0];
-      const result = await invoke("persistence_library_update", {
-        kind,
-        id,
-        expectedRevision: revisions.get(id),
-        document: nextById.get(id),
-      });
+      let result;
+      try {
+        result = await invoke("persistence_library_update", {
+          kind,
+          id,
+          expectedRevision: revisions.get(id),
+          document: nextById.get(id),
+        });
+      } catch (error) {
+        if (String(error?.reason || "").toLowerCase() === "conflict") {
+          publishConflict({ kind, id, document: clone(nextById.get(id)) });
+        }
+        throw error;
+      }
       revisions.set(id, result.item.revision);
       collectionRevisions.set(kind, result.collectionRevision);
     } else if (
@@ -311,6 +326,62 @@ export function createMultiInstanceBackend() {
     return refreshing;
   }
 
+  async function resolveConflict(action, { makeId = () => crypto.randomUUID() } = {}) {
+    if (!pendingConflict) return null;
+    const conflict = pendingConflict;
+    const key =
+      conflict.kind === "preset"
+        ? "plvs:presets"
+        : conflict.kind === "theme"
+          ? "plvs:themes"
+          : "plvs:settings";
+    dirty.delete(key);
+    unreportedFailure = null;
+    const hydrated = await invoke("persistence_hydrate");
+    applyRemoteCollection(conflict.kind, hydrated);
+    if (action === "reload") {
+      pendingConflict = null;
+      for (const listener of conflictSubscribers) listener(null);
+      return null;
+    }
+    if (action !== "copy") throw new Error("Unknown Library conflict action.");
+    const id = conflict.kind === "theme" ? `custom-${makeId()}` : makeId();
+    const document = {
+      ...conflict.document,
+      id,
+      ...(typeof conflict.document.name === "string"
+        ? { name: `${conflict.document.name} Copy` }
+        : {}),
+    };
+    const result = await invoke("persistence_library_create", {
+      kind: conflict.kind,
+      id,
+      document,
+    });
+    const documents = [...(persistedDocuments.get(conflict.kind) || []), document];
+    persistedDocuments.set(conflict.kind, clone(documents));
+    itemRevisions.get(conflict.kind)?.set(id, result.item.revision);
+    collectionRevisions.set(conflict.kind, result.collectionRevision);
+    const current = cache.get(key) || {};
+    if (conflict.kind === "preset") {
+      cache.set(key, { ...current, list: documents });
+    } else if (conflict.kind === "theme") {
+      const themes = Object.fromEntries(documents.map((item) => [item.id, item]));
+      cache.set(key, { themes, order: documents.map((item) => item.id) });
+    } else {
+      cache.set(key, {
+        ...current,
+        loudnessProfiles: { ...(current.loudnessProfiles || {}), profiles: documents },
+      });
+    }
+    const domain = domainFor(key);
+    if (domain) await invoke("persistence_save_domain", { domain, value: cache.get(key) });
+    notify(key, { origin: "conflict-resolution" });
+    pendingConflict = null;
+    for (const listener of conflictSubscribers) listener(null);
+    return clone(document);
+  }
+
   function updateRefreshTimer() {
     const hasSubscribers = [...subscribers.values()].some((listeners) => listeners.size);
     if (hasSubscribers && !refreshTimer) {
@@ -347,6 +418,12 @@ export function createMultiInstanceBackend() {
         updateRefreshTimer();
       };
     },
+    subscribeLibraryConflicts(listener) {
+      conflictSubscribers.add(listener);
+      listener(clone(pendingConflict));
+      return () => conflictSubscribers.delete(listener);
+    },
+    resolveLibraryConflict: resolveConflict,
     refresh,
     async flush() {
       if (flushTimer) {

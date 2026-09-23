@@ -161,6 +161,60 @@ describe("multiInstanceBackend", () => {
     expect(backend.get("plvs:presets")).toEqual(changed);
   });
 
+  it("reloads or saves a conflicting item as a fresh copy without force-overwriting", async () => {
+    const conflict = { reason: "conflict", message: "changed by another instance" };
+    invoke.mockRejectedValueOnce(conflict);
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const observed = [];
+    backend.subscribeLibraryConflicts((value) => observed.push(value));
+    backend.set("plvs:presets", {
+      ...backend.get("plvs:presets"),
+      list: [
+        { id: "one", name: "Local Draft" },
+        { id: "two", name: "Two" },
+      ],
+    });
+    await expect(backend.flush()).rejects.toBe(conflict);
+    expect(observed.at(-1)).toMatchObject({ kind: "preset", id: "one" });
+
+    invoke
+      .mockResolvedValueOnce({
+        presets: {
+          list: [
+            { id: "one", name: "Remote" },
+            { id: "two", name: "Two" },
+          ],
+        },
+        themes: { themes: {}, order: [] },
+        settings: { loudnessProfiles: { profiles: [] } },
+        globalPreferences: {},
+        globalPreferenceRevisions: {},
+        libraryItemRevisions: { preset: { one: 4, two: 4 }, theme: {}, loudnessProfile: {} },
+        libraryCollectionRevisions: { preset: 8, theme: 0, loudnessProfile: 0 },
+      })
+      .mockResolvedValueOnce({
+        item: { id: "copy-id", revision: 1, document: { id: "copy-id" } },
+        collectionRevision: 9,
+      })
+      .mockResolvedValueOnce(undefined);
+
+    const copy = await backend.resolveLibraryConflict("copy", { makeId: () => "copy-id" });
+
+    expect(copy).toEqual({ id: "copy-id", name: "Local Draft Copy" });
+    expect(invoke).toHaveBeenCalledWith("persistence_library_create", {
+      kind: "preset",
+      id: "copy-id",
+      document: copy,
+    });
+    expect(backend.get("plvs:presets").list).toEqual([
+      { id: "one", name: "Remote" },
+      { id: "two", name: "Two" },
+      copy,
+    ]);
+    expect(observed.at(-1)).toBeNull();
+  });
+
   it("retries the failed write and any later queued domains after a conflict", async () => {
     const conflict = { reason: "conflict", message: "changed by another instance" };
     invoke

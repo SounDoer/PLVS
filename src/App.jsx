@@ -98,6 +98,7 @@ import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
 import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
 import { useDialogueEngineRestart } from "./hooks/useDialogueEngineRestart.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
+import { LibraryConflictDialog } from "./components/LibraryConflictDialog.jsx";
 import packageInfo from "../package.json";
 import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
@@ -2441,6 +2442,7 @@ function AppContent() {
         onRetry={handleCloseRetry}
         onCancel={handleCloseCancel}
       />
+      <LibraryConflictDialog />
     </AppShell>
   );
 }
