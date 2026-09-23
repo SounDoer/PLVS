@@ -80,6 +80,25 @@ not begin merely because a decision is recorded here.
 - The editor describes the group as safe, warning, and critical states for measurements, limits,
   and system feedback.
 
+### Intensity color scale
+
+- Retain the concise editor label `Intensity` rather than binding the authoring concept to the
+  Spectrogram module name.
+- Intensity is an ordered color scale, not a discrete named-color Palette: stops have positions,
+  order is significant, and colors between stops are interpolated.
+- The current production consumer is Spectrogram. A future view may reuse Intensity only when it
+  represents the same low-to-high measurement-intensity meaning, not merely because it needs a
+  gradient.
+- The editor should explain the current Spectrogram use without making Spectrogram part of the
+  semantic name.
+- Stop positions should be presented to audio users as their mapped dB values. The portable value
+  may remain normalized from 0 to 1 when its semantic-model version defines the stable mapping.
+- Inferno has one canonical stop list. A built-in Theme and a preset must not use the same preset ID
+  for different values; the complete current 11-stop definition is the preferred canonical source.
+- Preset selection is determined by equality with the current Palette value. Editing any stop makes
+  the value Custom. Preset provenance remains optional, advisory metadata.
+- Dark and Light Intensity scales are independently validated and may use different authored values.
+
 ## Open areas
 
-The next area is the Intensity Palette and its use as the Spectrogram's ordered color scale.
+The next area is the Frequency Palette and the semantics of its low, mid, and high anchors.
