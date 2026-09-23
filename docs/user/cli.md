@@ -18,8 +18,10 @@ plvs-cli device ...
 `instances` lists the live workbenches belonging to the same Development, Preview, or Release
 identity, including their Source-derived display names and runtime status. Every
 running-app command controls or inspects the same state visible in an already-running PLVS window.
-Without a selector, it targets the coordinator instance for compatibility with existing scripts.
-To target another workbench, copy its `instanceId` from `instances` and add
+Without a selector, a running-app command keeps the existing behavior when exactly one workbench is
+running. With several workbenches it returns `instanceSelectionRequired` plus the candidates rather
+than guessing; older CLIs can still reach the coordinator compatibility endpoint. To choose a
+workbench, copy its `instanceId` from `instances` and add
 `--instance <instance-id>` before or after the command name:
 
 ```powershell

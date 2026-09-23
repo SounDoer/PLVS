@@ -236,12 +236,19 @@ fn start_endpoint(app: &AppHandle) -> Result<(), String> {
     .state::<crate::runtime_identity::RuntimeIdentity>()
     .instance_id()
     .to_string();
-  let instance_descriptor = if is_coordinator {
+  let identity_root = app
+    .state::<crate::persistence::commands::PersistenceRuntime>()
+    .identity_root()?;
+  let standard_app_data = app
+    .path()
+    .app_data_dir()
+    .map_err(|error| error.to_string())?;
+  let isolated = identity_root.parent() != Some(standard_app_data.as_path());
+  let instance_descriptor = if is_coordinator && !isolated {
     None
+  } else if is_coordinator {
+    Some(crate::agent_control::discovery::isolated_coordinator_descriptor_path(&identity_root))
   } else {
-    let identity_root = app
-      .state::<crate::persistence::commands::PersistenceRuntime>()
-      .identity_root()?;
     Some(crate::agent_control::discovery::instance_descriptor_path(
       &identity_root,
       &instance_id,

@@ -54,6 +54,7 @@
     "core:window:allow-is-visible",
     "core:window:allow-set-skip-taskbar",
     "core:window:allow-set-focus",
+    "core:window:allow-set-title",
     "process:allow-exit",
     "process:allow-restart",
     "autostart:allow-enable",

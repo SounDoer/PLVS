@@ -130,6 +130,13 @@ pub fn instance_descriptor_path(identity_root: &Path, instance_id: &str) -> Path
     .join(format!("{instance_id}.json"))
 }
 
+pub fn isolated_coordinator_descriptor_path(identity_root: &Path) -> PathBuf {
+  identity_root
+    .join("runtime")
+    .join("agent-control")
+    .join("coordinator.json")
+}
+
 #[cfg(any(target_os = "macos", test))]
 pub fn macos_socket_file_name(app_identifier: &str) -> String {
   use sha2::{Digest, Sha256};

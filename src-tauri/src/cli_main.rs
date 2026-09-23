@@ -570,10 +570,16 @@ struct InstancesResult {
 }
 
 fn read_live_instances() -> Result<Vec<crate::coordinator::InstanceSummary>, String> {
-  let Some(config_dir) = crate::doctor::resolve_config_dir() else {
-    return Err("Unable to resolve the PLVS configuration directory.".to_string());
+  #[cfg(debug_assertions)]
+  let test_root = std::env::var_os("PLVS_TEST_IDENTITY_ROOT").map(std::path::PathBuf::from);
+  #[cfg(not(debug_assertions))]
+  let test_root: Option<std::path::PathBuf> = None;
+  let root = match test_root {
+    Some(root) => root,
+    None => crate::doctor::resolve_config_dir()
+      .ok_or_else(|| "Unable to resolve the PLVS configuration directory.".to_string())?
+      .join("multi-instance"),
   };
-  let root = config_dir.join("multi-instance");
   if !root.is_dir() {
     return Ok(Vec::new());
   }

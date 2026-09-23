@@ -2331,15 +2331,50 @@ trait ControlClient {
 
 struct LocalControlClient {
   instance_id: Option<String>,
+  selection_error: Option<ControlFailure>,
+}
+
+fn test_identity_root() -> Option<std::path::PathBuf> {
+  #[cfg(debug_assertions)]
+  {
+    std::env::var_os("PLVS_TEST_IDENTITY_ROOT").map(std::path::PathBuf::from)
+  }
+  #[cfg(not(debug_assertions))]
+  {
+    None
+  }
 }
 
 impl LocalControlClient {
   fn new(instance_id: Option<String>) -> Self {
-    Self { instance_id }
+    let selection_error = if instance_id.is_none() {
+      live_instance_candidates()
+        .ok()
+        .filter(|instances| instances.len() > 1)
+        .map(ControlFailure::instance_selection_required)
+    } else {
+      None
+    };
+    Self {
+      instance_id,
+      selection_error,
+    }
   }
 
   fn descriptor(&self) -> Result<AgentControlDescriptor, DiscoveryError> {
     let Some(instance_id) = self.instance_id.as_deref() else {
+      if let Some(identity_root) = test_identity_root() {
+        let path =
+          crate::agent_control::discovery::isolated_coordinator_descriptor_path(&identity_root);
+        let coordinator = crate::coordinator::read_coordinator_descriptor(&identity_root)
+          .map_err(|message| DiscoveryError::new(DiscoveryErrorKind::Missing, message))?;
+        return read_instance_descriptor_at(
+          &path,
+          env!("PLVS_APP_ID"),
+          &coordinator.instance_id,
+          is_process_alive,
+        );
+      }
       let path = descriptor_path()?;
       return read_descriptor_at(&path, env!("PLVS_APP_ID"), is_process_alive);
     };
@@ -2353,23 +2388,51 @@ impl LocalControlClient {
         "The selected PLVS instance ID is invalid.",
       ));
     }
-    let config_dir = crate::doctor::resolve_config_dir().ok_or_else(|| {
-      DiscoveryError::new(
-        DiscoveryErrorKind::Unavailable,
-        "The PLVS configuration directory is unavailable.",
-      )
-    })?;
-    let identity_root = config_dir.join("multi-instance");
+    let identity_root = match test_identity_root() {
+      Some(root) => root,
+      None => crate::doctor::resolve_config_dir()
+        .ok_or_else(|| {
+          DiscoveryError::new(
+            DiscoveryErrorKind::Unavailable,
+            "The PLVS configuration directory is unavailable.",
+          )
+        })?
+        .join("multi-instance"),
+    };
     if crate::coordinator::read_coordinator_descriptor(&identity_root)
       .is_ok_and(|descriptor| descriptor.instance_id == instance_id)
     {
-      let path = descriptor_path()?;
-      read_descriptor_at(&path, env!("PLVS_APP_ID"), is_process_alive)
+      match test_identity_root() {
+        Some(_) => {
+          let path =
+            crate::agent_control::discovery::isolated_coordinator_descriptor_path(&identity_root);
+          read_instance_descriptor_at(&path, env!("PLVS_APP_ID"), instance_id, is_process_alive)
+        }
+        None => {
+          let path = descriptor_path()?;
+          read_descriptor_at(&path, env!("PLVS_APP_ID"), is_process_alive)
+        }
+      }
     } else {
       let path = instance_descriptor_path(&identity_root, instance_id);
       read_instance_descriptor_at(&path, env!("PLVS_APP_ID"), instance_id, is_process_alive)
     }
   }
+}
+
+fn live_instance_candidates() -> Result<Vec<crate::coordinator::InstanceSummary>, String> {
+  let root = match test_identity_root() {
+    Some(root) => root,
+    None => crate::doctor::resolve_config_dir()
+      .ok_or_else(|| "The PLVS configuration directory is unavailable.".to_string())?
+      .join("multi-instance"),
+  };
+  if !root.is_dir() {
+    return Ok(Vec::new());
+  }
+  let registry = crate::coordinator::InstanceRegistry::open(&root)?;
+  let _ = registry.remove_stale()?;
+  Ok(crate::coordinator::summarize_instances(registry.list()?))
 }
 
 /// A discovery failure has several causes and they need different sentences. Only a missing
@@ -2401,6 +2464,9 @@ fn discovery_failure(error: &DiscoveryError, enabled: bool) -> ControlFailure {
 
 impl ControlClient for LocalControlClient {
   fn call(&self, request: JsonRpcRequest) -> Result<AppCall, ControlFailure> {
+    if let Some(error) = self.selection_error.as_ref() {
+      return Err(error.clone());
+    }
     let enabled = crate::agent_control::toggle::read_enabled_from_disk();
     if !enabled {
       return Err(discovery_failure(
@@ -2480,6 +2546,19 @@ impl ControlFailure {
         details: None,
       }),
       exit_code: 3,
+    }
+  }
+
+  fn instance_selection_required(instances: Vec<crate::coordinator::InstanceSummary>) -> Self {
+    Self {
+      error: Box::new(ControlError {
+        code: "instanceSelectionRequired".to_string(),
+        message:
+          "Several PLVS workbenches are running. Choose one with --instance or PLVS_INSTANCE_ID."
+            .to_string(),
+        details: Some(serde_json::json!({ "instances": instances })),
+      }),
+      exit_code: 2,
     }
   }
 
@@ -3706,6 +3785,24 @@ mod tests {
 
   fn args(values: &[&str]) -> Vec<String> {
     values.iter().map(|value| value.to_string()).collect()
+  }
+
+  #[test]
+  fn multiple_candidates_return_a_structured_instance_selection_error() {
+    let instances = vec![crate::coordinator::InstanceSummary {
+      instance_id: "instance-a".to_string(),
+      workspace_id: "default".to_string(),
+      display_name: "Spotify".to_string(),
+      capture_status: crate::coordinator::CaptureStatus::Stopped,
+      visible: true,
+      focus_sequence: 0,
+    }];
+    let failure = ControlFailure::instance_selection_required(instances);
+    assert_eq!(failure.error.code, "instanceSelectionRequired");
+    assert_eq!(
+      failure.error.details.as_ref().unwrap()["instances"][0]["displayName"],
+      "Spotify"
+    );
   }
 
   fn canonical_argument(token: &str) -> String {
