@@ -99,6 +99,25 @@ not begin merely because a decision is recorded here.
   the value Custom. Preset provenance remains optional, advisory metadata.
 - Dark and Light Intensity scales are independently validated and may use different authored values.
 
+### Frequency color scale
+
+- Retain the concise editor label `Frequency` and the three `Low`, `Mid`, and `High` authoring
+  anchors.
+- Frequency is an ordered color scale whose anchors are interpolated for a measured frequency. Its
+  semantic dimension is low-to-high frequency, distinct from Intensity's weak-to-strong dimension.
+- The current production consumer is Waveform Frequency Color. A future frequency visualization
+  may reuse the scale only when it carries the same low-to-high frequency meaning.
+- Frequency split points remain view or panel settings. A Theme determines the colors of frequency
+  regions, not the Hz boundaries used by an analysis view.
+- Frequency Neutral remains an internal derived role. It does not become a fourth authored anchor
+  because it must intentionally carry no frequency meaning.
+- The interpolation color space is not part of authoring. sRGB and perceptual interpolation must be
+  compared in the visual gallery, including pairwise distinction, color-vision simulations,
+  Dark/Light substrates, and possible confusion with Status colors.
+- Dark and Light PLVS preset values have distinct internal identities even when both are displayed
+  as `PLVS Default`. Preset selection is established by value equality, not by a shared ID.
+
 ## Open areas
 
-The next area is the Frequency Palette and the semantics of its low, mid, and high anchors.
+The next area is the current single-color Interface Palette and whether Critical Action remains an
+independent basic input or becomes a derived public semantic role.
