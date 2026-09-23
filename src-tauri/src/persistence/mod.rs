@@ -1,8 +1,10 @@
+mod hydration;
 mod library;
 mod migration;
 mod workspace;
 mod workspace_catalog;
 
+pub use hydration::{hydrate_workspace, HydratedWorkspace};
 #[cfg(debug_assertions)]
 pub use library::run_library_test_host;
 pub use library::{GlobalPreference, LibraryError, LibraryItem, LibraryRepository};
