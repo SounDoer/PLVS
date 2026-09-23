@@ -1,4 +1,4 @@
-use app_lib::coordinator::RestoreGrantAuthority;
+use app_lib::coordinator::{DiskRestoreGrantAuthority, RestoreGrantAuthority};
 
 #[test]
 fn internal_restore_grants_are_short_lived_workspace_bound_and_single_use() {
@@ -26,4 +26,21 @@ fn internal_restore_grants_are_short_lived_workspace_bound_and_single_use() {
     )
     .is_err());
   assert!(authority.claim("workspace-vlc", "forged", 2_001).is_err());
+}
+
+#[test]
+fn restore_grants_can_be_issued_and_claimed_across_process_boundaries() {
+  let root = std::env::temp_dir().join(format!("plvs-disk-restore-grants-{}", std::process::id()));
+  let issuer = DiskRestoreGrantAuthority::open(&root).unwrap();
+  let claimant = DiskRestoreGrantAuthority::open(&root).unwrap();
+  let grant = issuer.issue("workspace-spotify", 10_000).unwrap();
+
+  claimant
+    .claim("workspace-spotify", grant.nonce(), 10_001)
+    .unwrap();
+  assert!(issuer
+    .claim("workspace-spotify", grant.nonce(), 10_002)
+    .is_err());
+
+  let _ = std::fs::remove_dir_all(root);
 }

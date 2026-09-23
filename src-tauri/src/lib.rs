@@ -225,7 +225,20 @@ pub fn run() {
         .map_err(|error| format!("app data directory: {error}"))?;
       let legacy_store_path = app_data_dir.join("plvs-settings.json");
       let prepared = persistence::prepare_identity_storage(&app_data_dir, &legacy_store_path)?;
-      let (workspace_id, session) = persistence::open_ordinary_launch_workspace(&prepared.root)?;
+      let launch_args: Vec<String> = std::env::args().skip(1).collect();
+      let restore_launch = coordinator::parse_restore_launch(&launch_args)?;
+      let (workspace_id, session) = if let Some(restore) = restore_launch.as_ref() {
+        coordinator::DiskRestoreGrantAuthority::open(&prepared.root)?.claim(
+          &restore.workspace_id,
+          &restore.nonce,
+          coordinator::current_unix_time_ms()?,
+        )?;
+        let session =
+          persistence::WorkspacePersistenceSession::open(&prepared.root, &restore.workspace_id)?;
+        (restore.workspace_id.clone(), session)
+      } else {
+        persistence::open_ordinary_launch_workspace(&prepared.root)?
+      };
       let runtime_identity = runtime_identity::RuntimeIdentity::new_for_workspace(&workspace_id)?;
       log::info!(
         "runtime identity instance={} workspace={}",
@@ -439,6 +452,18 @@ pub fn run() {
         }
       }
       let _ = window.show();
+
+      if is_coordinator && restore_launch.is_none() {
+        if let Err(error) = coordinator::spawn_missing_restored_workspaces(
+          &prepared.root,
+          app
+            .state::<runtime_identity::RuntimeIdentity>()
+            .workspace_id(),
+          &app.state::<coordinator::InstanceRegistry>(),
+        ) {
+          log::warn!("Unable to restore every saved workspace: {error}");
+        }
+      }
 
       if cfg!(any(target_os = "windows", target_os = "macos"))
         && (agent_control_enabled || !is_coordinator)

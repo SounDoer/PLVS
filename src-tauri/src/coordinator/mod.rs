@@ -19,7 +19,7 @@ pub use registry::{
   summarize_instances, CaptureStatus, InstanceDescriptor, InstanceRegistration, InstanceRegistry,
   InstanceRuntimeState, InstanceSummary,
 };
-pub use restore_grant::{RestoreGrant, RestoreGrantAuthority};
+pub use restore_grant::{DiskRestoreGrantAuthority, RestoreGrant, RestoreGrantAuthority};
 
 const COORDINATOR_SCHEMA_VERSION: u32 = 1;
 const LOCK_FILE_NAME: &str = "coordinator.lock";
@@ -123,6 +123,84 @@ pub struct PublishedInstanceState {
   display_name: String,
   is_coordinator: bool,
   coordinator_generation: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RestoreLaunch {
+  pub workspace_id: String,
+  pub nonce: String,
+}
+
+pub fn parse_restore_launch(args: &[String]) -> Result<Option<RestoreLaunch>, String> {
+  let workspace = args
+    .windows(2)
+    .find(|pair| pair[0] == "--plvs-restore-workspace")
+    .map(|pair| pair[1].clone());
+  let nonce = args
+    .windows(2)
+    .find(|pair| pair[0] == "--plvs-restore-nonce")
+    .map(|pair| pair[1].clone());
+  match (workspace, nonce) {
+    (None, None) => Ok(None),
+    (Some(workspace_id), Some(nonce)) => Ok(Some(RestoreLaunch {
+      workspace_id,
+      nonce,
+    })),
+    _ => Err("Internal workspace restore arguments are incomplete.".to_string()),
+  }
+}
+
+pub fn restore_missing_workspaces(
+  restore_set: &[String],
+  live: &[InstanceDescriptor],
+  current_workspace_id: &str,
+) -> Vec<String> {
+  let live: std::collections::HashSet<&str> = live
+    .iter()
+    .map(|instance| instance.workspace_id.as_str())
+    .collect();
+  restore_set
+    .iter()
+    .filter(|workspace_id| {
+      workspace_id.as_str() != current_workspace_id && !live.contains(workspace_id.as_str())
+    })
+    .cloned()
+    .collect()
+}
+
+pub fn spawn_missing_restored_workspaces(
+  identity_root: &Path,
+  current_workspace_id: &str,
+  registry: &InstanceRegistry,
+) -> Result<(), String> {
+  let restore_set = crate::persistence::WorkspaceCatalog::open(identity_root)?.restore_set()?;
+  let live = registry.list()?;
+  let authority = DiskRestoreGrantAuthority::open(identity_root)?;
+  let executable = std::env::current_exe()
+    .map_err(|error| format!("Unable to locate PLVS for workspace restore: {error}"))?;
+  for workspace_id in restore_missing_workspaces(&restore_set, &live, current_workspace_id) {
+    let grant = authority.issue(&workspace_id, current_unix_time_ms()?)?;
+    std::process::Command::new(&executable)
+      .args([
+        "--plvs-restore-workspace",
+        grant.workspace_id(),
+        "--plvs-restore-nonce",
+        grant.nonce(),
+      ])
+      .stdin(std::process::Stdio::null())
+      .stdout(std::process::Stdio::null())
+      .stderr(std::process::Stdio::null())
+      .spawn()
+      .map_err(|error| format!("Unable to restore workspace {workspace_id}: {error}"))?;
+  }
+  Ok(())
+}
+
+pub fn current_unix_time_ms() -> Result<u128, String> {
+  std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .map(|duration| duration.as_millis())
+    .map_err(|error| format!("System clock cannot timestamp runtime coordination: {error}"))
 }
 
 #[tauri::command]
@@ -607,6 +685,60 @@ mod tests {
       visible: true,
       focus_sequence,
     }
+  }
+
+  #[test]
+  fn restore_launch_requires_the_workspace_and_nonce_together() {
+    let args = vec![
+      "--plvs-restore-workspace".to_string(),
+      "workspace-one".to_string(),
+      "--plvs-restore-nonce".to_string(),
+      "secret".to_string(),
+    ];
+    assert_eq!(
+      parse_restore_launch(&args).unwrap(),
+      Some(RestoreLaunch {
+        workspace_id: "workspace-one".to_string(),
+        nonce: "secret".to_string(),
+      })
+    );
+    assert!(parse_restore_launch(&args[..2]).is_err());
+  }
+
+  #[test]
+  fn restoration_preserves_order_and_skips_workspaces_that_are_already_live() {
+    let root = std::env::temp_dir().join(format!(
+      "plvs-restore-plan-{}-{}",
+      std::process::id(),
+      current_unix_time_ms().unwrap()
+    ));
+    let registry = InstanceRegistry::open(&root).unwrap();
+    let live_identity = RuntimeIdentity::new_for_workspace("workspace-one").unwrap();
+    let _live = registry
+      .register(
+        &live_identity,
+        &InstanceRuntimeState {
+          source_label: None,
+          capture_status: CaptureStatus::Stopped,
+          visible: true,
+          focus_sequence: 0,
+        },
+      )
+      .unwrap();
+    let restore_set = vec![
+      "default".to_string(),
+      "workspace-one".to_string(),
+      "workspace-two".to_string(),
+      "workspace-three".to_string(),
+    ];
+
+    assert_eq!(
+      restore_missing_workspaces(&restore_set, &registry.list().unwrap(), "default"),
+      vec!["workspace-two", "workspace-three"]
+    );
+
+    drop(_live);
+    let _ = std::fs::remove_dir_all(root);
   }
 
   #[test]

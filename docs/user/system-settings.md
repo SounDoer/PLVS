@@ -5,7 +5,8 @@ Everything for making PLVS fit into how you work day to day.
 ## Startup and closing
 
 **Open at Login** launches PLVS when you sign in. It is one shared preference when several
-workbenches are open; the current coordinator owns the operating-system registration. **Close
+workbenches are open; the current coordinator owns the operating-system registration and restores
+the saved workbench set. **Close
 Behavior** chooses whether closing the window keeps PLVS running in the system tray or quits it.
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
