@@ -65,7 +65,21 @@ not begin merely because a decision is recorded here.
 - The exact surface-ladder recipe and contrast-content recipes for colored backgrounds remain open
   for the later Interface and recipe review.
 
+### Status Palette
+
+- Retain Status as one three-color authoring Palette.
+- The editor labels are `Safe`, `Warning`, and `Critical`; the former `Good` label is replaced by
+  `Safe` because the current consumers primarily express an acceptable measurement or rule range,
+  not a subjective quality judgment.
+- The future public semantic key is `safe`. Existing internal and persisted `good` keys require an
+  explicit compatibility migration rather than silent reinterpretation.
+- The three authored colors are semantic seeds. Meter regions, foreground text and icons, borders,
+  tinted backgrounds, and Canvas marks are internal roles derived for their substrate and mark
+  type; one authored color is not published unchanged to every kind of surface.
+- Status Critical remains independent from the color for destructive interface actions.
+- The editor describes the group as safe, warning, and critical states for measurements, limits,
+  and system feedback.
+
 ## Open areas
 
-The next area is the Palette authoring model: Status, Intensity, Frequency, and the current
-single-color Interface group.
+The next area is the Intensity Palette and its use as the Spectrogram's ordered color scale.
