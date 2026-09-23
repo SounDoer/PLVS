@@ -182,6 +182,50 @@ pub fn restore_missing_workspaces(
     .collect()
 }
 
+fn restore_spawn_delay_for(platform: &str) -> std::time::Duration {
+  if platform == "windows" {
+    // WebView2 can reject one of several same-profile environments created in the same scheduler
+    // slice with E_INVALIDARG. Ordinary launches are naturally separated by user input; restore
+    // is the only path that can create several PLVS WebViews at once.
+    std::time::Duration::from_millis(1_500)
+  } else {
+    std::time::Duration::ZERO
+  }
+}
+
+pub fn start_restore_reconciliation(
+  identity_root: &Path,
+  current_workspace_id: &str,
+  registry: &InstanceRegistry,
+  isolated_app_data: Option<&Path>,
+) {
+  let identity_root = identity_root.to_path_buf();
+  let current_workspace_id = current_workspace_id.to_string();
+  let registry = registry.clone();
+  let isolated_app_data = isolated_app_data.map(Path::to_path_buf);
+  let _ = std::thread::Builder::new()
+    .name("workspace-restore-reconciliation".to_string())
+    .spawn(move || {
+      for delay in [
+        std::time::Duration::from_secs(8),
+        std::time::Duration::from_secs(12),
+      ] {
+        std::thread::sleep(delay);
+        if let Err(error) = registry.remove_stale() {
+          log::warn!("Unable to clean stale instances during workspace restore: {error}");
+        }
+        if let Err(error) = spawn_missing_restored_workspaces(
+          &identity_root,
+          &current_workspace_id,
+          &registry,
+          isolated_app_data.as_deref(),
+        ) {
+          log::warn!("Unable to reconcile saved workspaces: {error}");
+        }
+      }
+    });
+}
+
 pub fn spawn_missing_restored_workspaces(
   identity_root: &Path,
   current_workspace_id: &str,
@@ -193,7 +237,9 @@ pub fn spawn_missing_restored_workspaces(
   let authority = DiskRestoreGrantAuthority::open(identity_root)?;
   let executable = std::env::current_exe()
     .map_err(|error| format!("Unable to locate PLVS for workspace restore: {error}"))?;
-  for workspace_id in restore_missing_workspaces(&restore_set, &live, current_workspace_id) {
+  let missing = restore_missing_workspaces(&restore_set, &live, current_workspace_id);
+  let delay = restore_spawn_delay_for(std::env::consts::OS);
+  for (index, workspace_id) in missing.iter().enumerate() {
     let grant = authority.issue(&workspace_id, current_unix_time_ms()?)?;
     let mut command = std::process::Command::new(&executable);
     command.args([
@@ -211,6 +257,9 @@ pub fn spawn_missing_restored_workspaces(
       .stderr(std::process::Stdio::null())
       .spawn()
       .map_err(|error| format!("Unable to restore workspace {workspace_id}: {error}"))?;
+    if !delay.is_zero() && index + 1 < missing.len() {
+      std::thread::sleep(delay);
+    }
   }
   Ok(())
 }
@@ -896,6 +945,15 @@ mod tests {
 
     drop(_live);
     let _ = std::fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn windows_restore_launches_are_staggered_to_avoid_webview2_startup_collisions() {
+    assert_eq!(
+      restore_spawn_delay_for("windows"),
+      std::time::Duration::from_millis(1_500)
+    );
+    assert_eq!(restore_spawn_delay_for("macos"), std::time::Duration::ZERO);
   }
 
   #[test]

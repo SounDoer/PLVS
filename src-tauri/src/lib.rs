@@ -537,6 +537,14 @@ pub fn run() {
         ) {
           log::warn!("Unable to restore every saved workspace: {error}");
         }
+        coordinator::start_restore_reconciliation(
+          &prepared.root,
+          app
+            .state::<runtime_identity::RuntimeIdentity>()
+            .workspace_id(),
+          &app.state::<coordinator::InstanceRegistry>(),
+          isolated_app_data.as_deref(),
+        );
       }
 
       if cfg!(any(target_os = "windows", target_os = "macos"))
