@@ -117,7 +117,22 @@ not begin merely because a decision is recorded here.
 - Dark and Light PLVS preset values have distinct internal identities even when both are displayed
   as `PLVS Default`. Preset selection is established by value equality, not by a shared ID.
 
+### Interface semantic namespace
+
+- Retain an extensible `interface` semantic namespace, but do not treat the namespace itself as a
+  Palette value kind. Namespace organization and value type are separate concerns.
+- Replace the current `palettes.interface.critical` authoring concept with `interface.danger` in the
+  future public model.
+- Danger covers interface errors, invalid states, and destructive actions. It remains independent
+  from Status Critical, which describes severe measurement, rule, or operational status.
+- The editor presents `Interface` as the section, `Danger` as the field, and explains its separation
+  from measurement Status Critical.
+- Additional Interface authoring colors are introduced only for demonstrated independent semantics,
+  not to pre-fill a conventional Success / Warning / Info set or reserve speculative slots.
+- Existing persisted documents require an explicit compatibility migration from Interface Critical
+  to Interface Danger; exact visual-preservation behavior remains part of the migration review.
+
 ## Open areas
 
-The next area is the current single-color Interface Palette and whether Critical Action remains an
-independent basic input or becomes a derived public semantic role.
+The next area is an evidence-based inventory of whether any additional independent Interface
+authoring colors are required.
