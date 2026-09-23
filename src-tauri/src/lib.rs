@@ -155,6 +155,7 @@ pub fn run() {
       profile::write_text_file,
       persistence::commands::persistence_hydrate,
       persistence::commands::persistence_save_domain,
+      persistence::commands::persistence_save_workspace_value,
       persistence::commands::persistence_library_create,
       persistence::commands::persistence_library_update,
       persistence::commands::persistence_library_delete,

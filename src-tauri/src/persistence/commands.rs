@@ -6,7 +6,7 @@ use tauri::State;
 
 use super::{
   HydratedWorkspace, LibraryCollection, LibraryError, LibraryItem, WorkspaceDomain,
-  WorkspacePersistenceSession,
+  WorkspacePersistenceSession, WorkspaceValue,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -121,6 +121,30 @@ pub fn persistence_save_domain(
   runtime.with_session(|session| {
     session
       .save_instance_domain(domain, &value)
+      .map_err(PersistenceCommandError::storage)
+  })
+}
+
+#[tauri::command]
+pub fn persistence_save_workspace_value(
+  runtime: State<'_, PersistenceRuntime>,
+  key: String,
+  value: Value,
+) -> Result<(), PersistenceCommandError> {
+  let key = match key.as_str() {
+    "captureDeviceId" => WorkspaceValue::CaptureDeviceId,
+    "windowBounds" => WorkspaceValue::WindowBounds,
+    "dockState" => WorkspaceValue::DockState,
+    _ => {
+      return Err(PersistenceCommandError {
+        reason: PersistenceErrorReason::InvalidDomain,
+        message: format!("Unknown workspace persistence value: {key}"),
+      })
+    }
+  };
+  runtime.with_session(|session| {
+    session
+      .save_workspace_value(key, &value)
       .map_err(PersistenceCommandError::storage)
   })
 }

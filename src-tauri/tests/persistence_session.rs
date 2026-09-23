@@ -1,4 +1,4 @@
-use app_lib::persistence::{WorkspaceDomain, WorkspacePersistenceSession};
+use app_lib::persistence::{WorkspaceDomain, WorkspacePersistenceSession, WorkspaceValue};
 use serde_json::json;
 
 #[test]
@@ -83,5 +83,37 @@ fn one_workspace_still_has_exactly_one_live_persistence_session() {
 
   drop(first);
   WorkspacePersistenceSession::open(&root, "default").expect("workspace reopens after release");
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn workspace_sibling_values_are_saved_without_replacing_domain_state() {
+  let root = std::env::temp_dir().join(format!(
+    "plvs-persistence-session-values-{}",
+    std::process::id()
+  ));
+  let session = WorkspacePersistenceSession::open(&root, "default").unwrap();
+  session
+    .save_instance_domain(
+      WorkspaceDomain::Workspace,
+      &json!({ "panelOrder": ["loudness"] }),
+    )
+    .unwrap();
+  session
+    .save_workspace_value(WorkspaceValue::CaptureDeviceId, &json!("out:2"))
+    .unwrap();
+  session
+    .save_workspace_value(
+      WorkspaceValue::WindowBounds,
+      &json!({ "x": 10, "y": 20, "width": 800, "height": 600 }),
+    )
+    .unwrap();
+
+  let hydrated = session.hydrate().unwrap();
+  assert_eq!(hydrated.workspace["panelOrder"], json!(["loudness"]));
+  assert_eq!(hydrated.capture_device_id, "out:2");
+  assert_eq!(hydrated.window_bounds["x"], 10);
+
+  drop(session);
   let _ = std::fs::remove_dir_all(root);
 }

@@ -21,6 +21,10 @@ function validateId(raw) {
   return "default";
 }
 
+function transactionalBoot() {
+  return typeof window !== "undefined" && window.__PLVS_INITIAL_STATE__?.multiInstancePersistence;
+}
+
 /** Synchronous read from localStorage only (first paint / non-Tauri). */
 export function readCaptureDeviceIdFromLocalStorage() {
   try {
@@ -38,6 +42,9 @@ export function readCaptureDeviceIdFromLocalStorage() {
 export async function loadCaptureDeviceId() {
   if (!isTauri()) {
     return readCaptureDeviceIdFromLocalStorage();
+  }
+  if (transactionalBoot()) {
+    return validateId(window.__PLVS_INITIAL_STATE__?.captureDeviceId);
   }
   const { Store } = await import("@tauri-apps/plugin-store");
   const store = await Store.load(STORE_FILE);
@@ -57,6 +64,12 @@ export async function loadCaptureDeviceId() {
  */
 export async function saveCaptureDeviceId(id) {
   const v = validateId(id);
+  if (isTauri() && transactionalBoot()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("persistence_save_workspace_value", { key: STORE_KEY, value: v });
+    window.__PLVS_INITIAL_STATE__.captureDeviceId = v;
+    return;
+  }
   try {
     localStorage.setItem(LEGACY_CAPTURE_DEVICE_LS_KEY, v);
   } catch (_) {}

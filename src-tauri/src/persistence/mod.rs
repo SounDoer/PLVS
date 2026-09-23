@@ -18,7 +18,7 @@ pub use migration::{
   migrate_legacy_store, plan_legacy_store, LegacyLibrarySeed, LegacyMigrationOutcome,
   LegacyMigrationPlan,
 };
-pub use session::{WorkspaceDomain, WorkspacePersistenceSession};
+pub use session::{WorkspaceDomain, WorkspacePersistenceSession, WorkspaceValue};
 #[cfg(debug_assertions)]
 pub use workspace::run_lease_test_host;
 pub use workspace::WorkspaceStore;

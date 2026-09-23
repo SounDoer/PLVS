@@ -14,6 +14,23 @@ pub enum WorkspaceDomain {
   Presets,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkspaceValue {
+  CaptureDeviceId,
+  WindowBounds,
+  DockState,
+}
+
+impl WorkspaceValue {
+  fn key(self) -> &'static str {
+    match self {
+      Self::CaptureDeviceId => "captureDeviceId",
+      Self::WindowBounds => "windowBounds",
+      Self::DockState => "dockState",
+    }
+  }
+}
+
 impl WorkspaceDomain {
   fn key(self) -> &'static str {
     match self {
@@ -83,12 +100,20 @@ impl WorkspacePersistenceSession {
       WorkspaceDomain::Workspace => {}
     }
 
+    self.save_state_value(domain.key(), Value::Object(domain_value))
+  }
+
+  pub fn save_workspace_value(&self, key: WorkspaceValue, value: &Value) -> Result<(), String> {
+    self.save_state_value(key.key(), value.clone())
+  }
+
+  fn save_state_value(&self, key: &str, value: Value) -> Result<(), String> {
     let mut state = self
       .state
       .lock()
       .map_err(|_| "Workspace persistence session is unavailable.".to_string())?;
     let mut next = state.clone();
-    next.insert(domain.key().to_string(), Value::Object(domain_value));
+    next.insert(key.to_string(), value);
     self.store.save(&Value::Object(next.clone()))?;
     *state = next;
     Ok(())
