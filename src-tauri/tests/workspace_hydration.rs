@@ -13,6 +13,7 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
     serde_json::to_vec_pretty(&json!({
       "plvs:settings": {
         "referenceLufs": -23,
+        "askToSendCrashReports": false,
         "loudnessProfiles": {
           "active": "profile:broadcast",
           "profiles": [{ "id": "broadcast", "name": "Broadcast" }]
@@ -46,6 +47,7 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
 
   let hydrated = hydrate_workspace(&root, "default").expect("hydrate default workspace");
   assert_eq!(hydrated.settings["referenceLufs"], -23);
+  assert_eq!(hydrated.settings["askToSendCrashReports"], false);
   assert_eq!(
     hydrated.settings["loudnessProfiles"]["active"],
     "profile:broadcast"
@@ -64,6 +66,7 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
   assert_eq!(hydrated.window_bounds["width"], 800);
   assert_eq!(hydrated.global_preferences["clearShortcut"], "CmdOrCtrl+L");
   assert_eq!(hydrated.global_preferences["clearGlobal"], true);
+  assert_eq!(hydrated.global_preferences["askToSendCrashReports"], false);
   assert_eq!(hydrated.global_preference_revisions["clearShortcut"], 1);
   assert_eq!(hydrated.library_item_revisions["preset"]["preset-a"], 1);
   assert_eq!(hydrated.library_item_revisions["theme"]["theme-b"], 1);

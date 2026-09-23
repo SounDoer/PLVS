@@ -62,6 +62,9 @@ pub fn hydrate_workspace(
     .map_err(|error| error.to_string())?;
 
   let mut settings = object_at(state, "plvs:settings");
+  if let Some(consent) = global_preferences.get("askToSendCrashReports") {
+    settings.insert("askToSendCrashReports".to_string(), consent.clone());
+  }
   let mut loudness_profiles = settings
     .remove("loudnessProfiles")
     .and_then(|value| value.as_object().cloned())

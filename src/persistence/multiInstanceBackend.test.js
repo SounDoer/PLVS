@@ -30,7 +30,9 @@ function seed() {
         theme: {},
       },
       collectionRevisions: { preset: 7, loudnessProfile: 2, theme: 0 },
+      globalPreferenceRevisions: { askToSendCrashReports: 5 },
     },
+    globalPreferences: { askToSendCrashReports: true },
   };
 }
 
@@ -56,6 +58,26 @@ describe("multiInstanceBackend", () => {
     expect(invoke).toHaveBeenCalledWith("persistence_save_domain", {
       domain: "presets",
       value: expect.objectContaining({ activeId: "two", dirty: true }),
+    });
+  });
+
+  it("persists crash consent as a shared global preference", async () => {
+    invoke.mockResolvedValueOnce({ askToSendCrashReports: 6 }).mockResolvedValue(undefined);
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    backend.set("plvs:settings", {
+      ...backend.get("plvs:settings"),
+      askToSendCrashReports: false,
+    });
+    await backend.flush();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "persistence_save_global_preferences", {
+      values: { askToSendCrashReports: false },
+      expectedRevisions: { askToSendCrashReports: 5 },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(2, "persistence_save_domain", {
+      domain: "settings",
+      value: expect.objectContaining({ askToSendCrashReports: false }),
     });
   });
 

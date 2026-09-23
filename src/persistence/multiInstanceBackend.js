@@ -74,6 +74,20 @@ export function createMultiInstanceBackend() {
   const persistedDocuments = new Map();
   const itemRevisions = new Map();
   const collectionRevisions = new Map();
+  const globalPreferenceRevisions = new Map(
+    Object.entries(metadata.globalPreferenceRevisions || {})
+  );
+  const persistedGlobalPreferences = new Map(Object.entries(seed.globalPreferences || {}));
+  if (
+    !persistedGlobalPreferences.has("askToSendCrashReports") &&
+    cache.get("plvs:settings") &&
+    Object.hasOwn(cache.get("plvs:settings"), "askToSendCrashReports")
+  ) {
+    persistedGlobalPreferences.set(
+      "askToSendCrashReports",
+      cache.get("plvs:settings").askToSendCrashReports
+    );
+  }
   for (const [key, value] of cache) {
     const kind = kindFor(key);
     if (!kind) continue;
@@ -157,8 +171,30 @@ export function createMultiInstanceBackend() {
     persistedDocuments.set(kind, clone(nextDocuments));
   }
 
+  async function persistGlobalPreferences(values) {
+    const changed = Object.fromEntries(
+      Object.entries(values).filter(
+        ([key, value]) => signature(persistedGlobalPreferences.get(key)) !== signature(value)
+      )
+    );
+    if (!Object.keys(changed).length) return;
+    const expectedRevisions = Object.fromEntries(
+      Object.keys(changed).map((key) => [key, globalPreferenceRevisions.get(key) ?? 0])
+    );
+    const revisions = await invoke("persistence_save_global_preferences", {
+      values: changed,
+      expectedRevisions,
+    });
+    for (const [key, value] of Object.entries(changed)) persistedGlobalPreferences.set(key, value);
+    for (const [key, revision] of Object.entries(revisions))
+      globalPreferenceRevisions.set(key, revision);
+  }
+
   async function persistKey(key) {
     const value = cache.get(key) || {};
+    if (key === "plvs:settings" && Object.hasOwn(value, "askToSendCrashReports")) {
+      await persistGlobalPreferences({ askToSendCrashReports: value.askToSendCrashReports });
+    }
     const kind = kindFor(key);
     if (kind) await persistCollection(kind, documentsFor(key, value));
     const domain = domainFor(key);
