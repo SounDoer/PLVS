@@ -95,6 +95,7 @@ import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
+import { useRuntimeCoordination } from "./runtime/coordination.js";
 import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
 import { useDialogueEngineRestart } from "./hooks/useDialogueEngineRestart.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
@@ -1898,6 +1899,21 @@ function AppContent() {
       setVectorscopeResetEpoch((epoch) => epoch + 1);
       setStereoMapResetEpoch((epoch) => epoch + 1);
     },
+  });
+  const stopRuntimeForCoordination = useCallback(async () => {
+    if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+    if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
+  }, [analyzingFileId, meterRuntime.liveLifecycle, stopFileAnalysis, stopLiveForControl]);
+  const startRuntimeAfterCoordination = useCallback(async () => {
+    switchSource("live");
+    await startLiveForControl();
+  }, [startLiveForControl, switchSource]);
+  useRuntimeCoordination({
+    blockingEditors: activeBlockingEditors,
+    running: meterRuntime.liveLifecycle === "running",
+    stop: stopRuntimeForCoordination,
+    start: startRuntimeAfterCoordination,
+    show: onShowWindow,
   });
   onClearRef.current = clearAll;
   useDialogueEngineRestart(dialogueVadEngine, dialogueGating, onClearRef);

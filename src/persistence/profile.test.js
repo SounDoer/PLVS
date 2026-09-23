@@ -33,6 +33,11 @@ async function importProfileModule({ tauri = false, commandMocks = {} } = {}) {
   vi.doMock("@tauri-apps/plugin-process", () => ({
     relaunch: commandMocks.relaunch ?? vi.fn(async () => {}),
   }));
+  vi.doMock("../runtime/coordination.js", () => ({
+    prepareGlobalOperation: vi.fn(async () => ({ id: "profile", issued: [] })),
+    commitGlobalOperation: vi.fn(async () => {}),
+    abortGlobalOperation: vi.fn(async () => {}),
+  }));
   return import("./profile.js");
 }
 
@@ -46,6 +51,11 @@ async function importProfileModuleWithPersistenceMocks({ commandMocks = {}, pers
   }));
   vi.doMock("@tauri-apps/plugin-process", () => ({
     relaunch: commandMocks.relaunch ?? vi.fn(async () => {}),
+  }));
+  vi.doMock("../runtime/coordination.js", () => ({
+    prepareGlobalOperation: vi.fn(async () => ({ id: "profile", issued: [] })),
+    commitGlobalOperation: vi.fn(async () => {}),
+    abortGlobalOperation: vi.fn(async () => {}),
   }));
   vi.doMock("./pluginStoreBackend.js", () => persistenceMocks);
   vi.doMock("./index.js", async (importOriginal) => ({

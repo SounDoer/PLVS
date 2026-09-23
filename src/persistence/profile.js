@@ -19,6 +19,13 @@ import { suspendPluginStorePersistence } from "./pluginStoreBackend.js";
 import { buildProfileSnapshot, normalizeImportedProfile } from "./profileShape.js";
 import { closeTrayIcon } from "../lib/trayIconLifecycle.js";
 import { relaunch } from "@tauri-apps/plugin-process";
+import {
+  abortGlobalOperation,
+  commitGlobalOperation,
+  prepareGlobalOperation,
+} from "../runtime/coordination.js";
+
+let pendingProfileOperation = null;
 
 function browserRawProfile() {
   const domains = exportAll();
@@ -49,9 +56,16 @@ export async function exportProfile() {
 export async function importProfile(raw) {
   const profile = normalizeImportedProfile(raw);
   if (isTauri()) {
-    suspendPluginStorePersistence();
-    await importProfileCommand(profile);
-    return profile;
+    const operation = await prepareGlobalOperation();
+    try {
+      suspendPluginStorePersistence();
+      await importProfileCommand(profile);
+      pendingProfileOperation = operation;
+      return profile;
+    } catch (error) {
+      await abortGlobalOperation(operation);
+      throw error;
+    }
   }
 
   replaceStore(settingsStore, profile.settings);
@@ -66,9 +80,16 @@ export async function importProfile(raw) {
 
 export async function resetProfile() {
   if (isTauri()) {
-    suspendPluginStorePersistence();
-    await resetProfileCommand();
-    return;
+    const operation = await prepareGlobalOperation();
+    try {
+      suspendPluginStorePersistence();
+      await resetProfileCommand();
+      pendingProfileOperation = operation;
+      return;
+    } catch (error) {
+      await abortGlobalOperation(operation);
+      throw error;
+    }
   }
   resetAll();
   try {
@@ -78,6 +99,11 @@ export async function resetProfile() {
 
 export async function reloadAfterProfileChange() {
   if (isTauri()) {
+    if (pendingProfileOperation) {
+      const operation = pendingProfileOperation;
+      pendingProfileOperation = null;
+      await commitGlobalOperation(operation);
+    }
     await closeTrayIcon();
     await relaunch();
     return;

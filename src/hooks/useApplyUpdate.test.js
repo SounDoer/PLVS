@@ -3,8 +3,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 
 const relaunchMock = vi.fn();
+const coordination = vi.hoisted(() => ({
+  prepare: vi.fn(),
+  commit: vi.fn(),
+  abort: vi.fn(),
+}));
 vi.mock("@tauri-apps/plugin-process", () => ({
   relaunch: (...args) => relaunchMock(...args),
+}));
+vi.mock("../runtime/coordination.js", () => ({
+  prepareGlobalOperation: (...args) => coordination.prepare(...args),
+  commitGlobalOperation: (...args) => coordination.commit(...args),
+  abortGlobalOperation: (...args) => coordination.abort(...args),
 }));
 
 import { useApplyUpdate } from "./useApplyUpdate.js";
@@ -13,6 +23,9 @@ import { setCoordinatorRole } from "../lib/runtimeRole.js";
 describe("useApplyUpdate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    coordination.prepare.mockResolvedValue({ id: "operation", issued: [] });
+    coordination.commit.mockResolvedValue();
+    coordination.abort.mockResolvedValue();
     delete window.__PLVS_INITIAL_STATE__;
     setCoordinatorRole(undefined);
   });
@@ -38,6 +51,7 @@ describe("useApplyUpdate", () => {
       void result.current.install(update);
     });
     expect(result.current.installStatus).toBe("installing");
+    await waitFor(() => expect(update.downloadAndInstall).toHaveBeenCalledTimes(1));
 
     relaunchMock.mockResolvedValue();
     await act(async () => {
@@ -55,7 +69,7 @@ describe("useApplyUpdate", () => {
       await result.current.install(update);
     });
 
-    expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(update.downloadAndInstall).toHaveBeenCalledTimes(1));
     expect(relaunchMock).toHaveBeenCalledTimes(1);
     expect(result.current.installStatus).toBe("restarting");
   });
@@ -92,6 +106,7 @@ describe("useApplyUpdate", () => {
       void result.current.install(update);
     });
     expect(result.current.downloadProgress).toBeNull();
+    await waitFor(() => expect(onEvent).toEqual(expect.any(Function)));
 
     act(() => {
       onEvent({ event: "Started", data: { contentLength: 1000 } });
@@ -124,7 +139,7 @@ describe("useApplyUpdate", () => {
     });
   });
 
-  it("keeps download progress unknown when the updater omits a total size", () => {
+  it("keeps download progress unknown when the updater omits a total size", async () => {
     let onEvent;
     const update = {
       downloadAndInstall: vi.fn((callback) => {
@@ -137,6 +152,7 @@ describe("useApplyUpdate", () => {
     act(() => {
       void result.current.install(update);
     });
+    await waitFor(() => expect(onEvent).toEqual(expect.any(Function)));
     act(() => {
       onEvent({ event: "Started", data: {} });
       onEvent({ event: "Progress", data: { chunkLength: 400 } });
@@ -165,6 +181,25 @@ describe("useApplyUpdate", () => {
     expect(result.current.downloadProgress).toBeNull();
   });
 
+  it("downloads before closing peer workbenches and installs only after they close", async () => {
+    const calls = [];
+    coordination.prepare.mockImplementation(async () => {
+      calls.push("prepare");
+      return { id: "operation", issued: [] };
+    });
+    coordination.commit.mockImplementation(async () => calls.push("commit"));
+    const update = {
+      download: vi.fn(async () => calls.push("download")),
+      install: vi.fn(async () => calls.push("install")),
+    };
+    relaunchMock.mockImplementation(async () => calls.push("relaunch"));
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => result.current.install(update));
+
+    expect(calls).toEqual(["prepare", "download", "commit", "install", "relaunch"]);
+  });
+
   it("ignores a concurrent install request before React state updates", async () => {
     let resolveInstall;
     const pendingInstall = new Promise((resolve) => {
@@ -181,7 +216,7 @@ describe("useApplyUpdate", () => {
       secondInstall = result.current.install(update);
     });
 
-    expect(update.downloadAndInstall).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(update.downloadAndInstall).toHaveBeenCalledTimes(1));
 
     await act(async () => {
       resolveInstall();
@@ -201,6 +236,18 @@ describe("useApplyUpdate", () => {
 
     expect(result.current.installStatus).toBe("install-error");
     expect(relaunchMock).not.toHaveBeenCalled();
+    expect(coordination.abort).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not download when another workbench refuses the prepare barrier", async () => {
+    coordination.prepare.mockRejectedValueOnce(new Error("Theme editor is open"));
+    const update = { downloadAndInstall: vi.fn() };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => result.current.install(update));
+
+    expect(update.downloadAndInstall).not.toHaveBeenCalled();
+    expect(result.current.installStatus).toBe("install-error");
   });
 
   it("reports a restart error after installation succeeds", async () => {

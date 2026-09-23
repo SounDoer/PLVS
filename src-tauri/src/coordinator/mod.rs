@@ -12,9 +12,14 @@ use tauri::State;
 
 use crate::runtime_identity::RuntimeIdentity;
 
+mod commands;
 mod registry;
 mod restore_grant;
 
+pub use commands::{
+  IssuedRuntimeCommand, RuntimeCommand, RuntimeCommandAck, RuntimeCommandMailbox,
+  RuntimeOperationCoordinator,
+};
 pub use registry::{
   summarize_instances, CaptureStatus, InstanceDescriptor, InstanceRegistration, InstanceRegistry,
   InstanceRuntimeState, InstanceSummary,
@@ -181,6 +186,7 @@ pub fn spawn_missing_restored_workspaces(
   identity_root: &Path,
   current_workspace_id: &str,
   registry: &InstanceRegistry,
+  isolated_app_data: Option<&Path>,
 ) -> Result<(), String> {
   let restore_set = crate::persistence::WorkspaceCatalog::open(identity_root)?.restore_set()?;
   let live = registry.list()?;
@@ -189,13 +195,17 @@ pub fn spawn_missing_restored_workspaces(
     .map_err(|error| format!("Unable to locate PLVS for workspace restore: {error}"))?;
   for workspace_id in restore_missing_workspaces(&restore_set, &live, current_workspace_id) {
     let grant = authority.issue(&workspace_id, current_unix_time_ms()?)?;
-    std::process::Command::new(&executable)
-      .args([
-        "--plvs-restore-workspace",
-        grant.workspace_id(),
-        "--plvs-restore-nonce",
-        grant.nonce(),
-      ])
+    let mut command = std::process::Command::new(&executable);
+    command.args([
+      "--plvs-restore-workspace",
+      grant.workspace_id(),
+      "--plvs-restore-nonce",
+      grant.nonce(),
+    ]);
+    if let Some(path) = isolated_app_data {
+      command.arg("--plvs-test-app-data-root").arg(path);
+    }
+    command
       .stdin(std::process::Stdio::null())
       .stdout(std::process::Stdio::null())
       .stderr(std::process::Stdio::null())
@@ -256,6 +266,97 @@ pub fn runtime_list_instances(
 ) -> Result<Vec<InstanceSummary>, String> {
   let _ = registry.remove_stale()?;
   Ok(summarize_instances(registry.list()?))
+}
+
+#[tauri::command]
+pub fn runtime_issue_commands(
+  identity: State<'_, RuntimeIdentity>,
+  registry: State<'_, InstanceRegistry>,
+  operations: State<'_, RuntimeOperationCoordinator>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  instance_ids: Option<Vec<String>>,
+  operation_id: String,
+  action: String,
+) -> Result<Vec<IssuedRuntimeCommand>, String> {
+  if action == "prepareGlobal" {
+    operations.begin(&persistence.identity_root()?, &operation_id)?;
+  } else if matches!(action.as_str(), "abortGlobal" | "commitGlobal") {
+    operations.require_owner(&operation_id)?;
+  }
+  let _ = registry.remove_stale()?;
+  let live = registry.list()?;
+  let targets: Vec<String> = match instance_ids {
+    Some(ids) => ids,
+    None => live
+      .iter()
+      .filter(|instance| instance.instance_id != identity.instance_id())
+      .map(|instance| instance.instance_id.clone())
+      .collect(),
+  };
+  if targets.iter().any(|target| {
+    target == identity.instance_id() || !live.iter().any(|instance| &instance.instance_id == target)
+  }) {
+    return Err("A selected PLVS instance is no longer running.".to_string());
+  }
+  let mailbox = RuntimeCommandMailbox::open(&persistence.identity_root()?)?;
+  let issued: Result<Vec<IssuedRuntimeCommand>, String> = targets
+    .iter()
+    .map(|target| mailbox.issue(target, &operation_id, &action))
+    .collect();
+  if issued.is_err() && action == "prepareGlobal" {
+    let _ = operations.finish(&operation_id);
+  }
+  issued
+}
+
+#[tauri::command]
+pub fn runtime_finish_operation(
+  operations: State<'_, RuntimeOperationCoordinator>,
+  operation_id: String,
+) -> Result<(), String> {
+  operations.finish(&operation_id)
+}
+
+#[tauri::command]
+pub fn runtime_poll_command(
+  identity: State<'_, RuntimeIdentity>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+) -> Result<Option<RuntimeCommand>, String> {
+  RuntimeCommandMailbox::open(&persistence.identity_root()?)?.poll(identity.instance_id())
+}
+
+#[tauri::command]
+pub fn runtime_ack_command(
+  identity: State<'_, RuntimeIdentity>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  command_id: String,
+  outcome: String,
+  detail: Option<String>,
+) -> Result<(), String> {
+  let mailbox = RuntimeCommandMailbox::open(&persistence.identity_root()?)?;
+  let command = mailbox
+    .poll(identity.instance_id())?
+    .filter(|command| command.command_id == command_id)
+    .ok_or_else(|| "The runtime command is no longer pending.".to_string())?;
+  mailbox.acknowledge(&command, &outcome, detail)
+}
+
+#[tauri::command]
+pub async fn runtime_wait_commands(
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  issued: Vec<IssuedRuntimeCommand>,
+  timeout_ms: u64,
+) -> Result<Vec<RuntimeCommandAck>, String> {
+  if timeout_ms == 0 || timeout_ms > 30_000 {
+    return Err("Runtime coordination timeout is out of range.".to_string());
+  }
+  let identity_root = persistence.identity_root()?;
+  tauri::async_runtime::spawn_blocking(move || {
+    RuntimeCommandMailbox::open(&identity_root)?
+      .wait_for(&issued, std::time::Duration::from_millis(timeout_ms))
+  })
+  .await
+  .map_err(|error| format!("Runtime coordination wait failed: {error}"))?
 }
 
 #[tauri::command]

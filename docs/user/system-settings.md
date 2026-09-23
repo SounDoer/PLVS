@@ -15,10 +15,13 @@ Quitting one additional workbench removes it from the next restore set. If a wor
 saved workspace remains recoverable instead of being treated as an intentional removal.
 
 With several workbenches open, only the current coordinator checks for and installs application
-updates, so one update cannot be started independently in every process.
+updates. Before installation, every workbench must have no open draft editor, stop capture and
+finish saving. A refusal or timeout cancels the update; a successful update closes the workbench
+set and restores it after relaunch.
 
-PLVS also keeps one system Tray. Its **Workbenches** submenu uses Source-derived names and can start
-or stop a specific running workbench.
+PLVS also keeps one system Tray. Its **Workbenches** submenu uses Source-derived names and can show,
+start, stop or quit a specific running workbench. **Quit PLVS** flushes and closes the complete
+workbench set; quitting one workbench does not close its peers.
 
 ## Global shortcut
 
@@ -46,8 +49,10 @@ Rename channel labels and choose the channel layout; see [Multichannel](multicha
 
 Export and import **Loudness Profiles**, **Presets**, and **Themes** individually, or **Everything**
 in one file. Importing Everything replaces your whole setup and restarts PLVS rather than merging.
-This moves configuration only, never measurement data. **Reset PLVS to Default** restores a fresh
-installation.
+This moves configuration only, never measurement data. With several workbenches open, PLVS first
+checks every workbench for an open draft, stops capture and saves before replacing shared data; the
+workbench where you chose Import receives the instance-owned fields. **Reset PLVS to Default** uses
+the same coordinated restart and restores a fresh installation.
 
 With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
 Profile, or Preset does not silently replace the snapshot already active in another workbench; that

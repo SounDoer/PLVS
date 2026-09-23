@@ -36,6 +36,7 @@ pub mod visual_capture;
 mod window_chrome;
 mod window_state;
 
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -63,6 +64,26 @@ use state::AppState;
 
 fn runtime_log_file_name() -> String {
   format!("{}-{}", env!("PLVS_APP_NAME"), std::process::id())
+}
+
+const TEST_APP_DATA_ROOT_ARG: &str = "--plvs-test-app-data-root";
+
+fn test_app_data_root(args: &[String]) -> Result<Option<PathBuf>, String> {
+  let value = args
+    .windows(2)
+    .find(|pair| pair[0] == TEST_APP_DATA_ROOT_ARG)
+    .map(|pair| Path::new(&pair[1]).to_path_buf());
+  if args.iter().any(|arg| arg == TEST_APP_DATA_ROOT_ARG) && value.is_none() {
+    return Err("The isolated test app-data argument requires an absolute path.".to_string());
+  }
+  let Some(path) = value else { return Ok(None) };
+  if !path.is_absolute() {
+    return Err("The isolated test app-data root must be absolute.".to_string());
+  }
+  #[cfg(not(debug_assertions))]
+  return Err("The isolated test app-data root is unavailable in packaged builds.".to_string());
+  #[cfg(debug_assertions)]
+  Ok(Some(path))
 }
 
 /// The pre-paint snapshot the webview reads synchronously, as an initialization script.
@@ -95,6 +116,10 @@ struct InitialStateValues<'a> {
   multi_instance_persistence: &'a serde_json::Value,
   #[serde(rename = "isCoordinator")]
   is_coordinator: bool,
+  #[serde(rename = "instanceId")]
+  instance_id: &'a str,
+  #[serde(rename = "workspaceId")]
+  workspace_id: &'a str,
 }
 
 fn initial_state_script(initial: InitialStateValues<'_>) -> String {
@@ -106,6 +131,18 @@ fn initial_state_script(initial: InitialStateValues<'_>) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  let startup_args: Vec<String> = std::env::args().skip(1).collect();
+  let startup_test_root =
+    test_app_data_root(&startup_args).unwrap_or_else(|error| panic!("{error}"));
+  let log_target = match startup_test_root.as_ref() {
+    Some(path) => tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+      path: path.join("logs"),
+      file_name: Some(runtime_log_file_name()),
+    }),
+    None => tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+      file_name: Some(runtime_log_file_name()),
+    }),
+  };
   let builder = tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_process::init());
@@ -128,9 +165,7 @@ pub fn run() {
         .clear_targets()
         .targets([
           tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-          tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-            file_name: Some(runtime_log_file_name()),
-          }),
+          log_target,
         ])
         .build(),
     )
@@ -148,6 +183,7 @@ pub fn run() {
       std::sync::atomic::AtomicBool::new(false),
     )))
     .manage(dock::DockReservationLease::default())
+    .manage(coordinator::RuntimeOperationCoordinator::default())
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
       ipc::commands::list_capture_applications,
@@ -187,6 +223,11 @@ pub fn run() {
       coordinator::runtime_retire_current_workspace,
       coordinator::runtime_route_global_clear,
       coordinator::runtime_route_instance_transport,
+      coordinator::runtime_issue_commands,
+      coordinator::runtime_poll_command,
+      coordinator::runtime_ack_command,
+      coordinator::runtime_wait_commands,
+      coordinator::runtime_finish_operation,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
@@ -221,23 +262,24 @@ pub fn run() {
       ipc::commands::read_feedback_diagnostics,
     ])
     .setup(|app| {
-      let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(
-        &app
+      let launch_args: Vec<String> = std::env::args().skip(1).collect();
+      let isolated_app_data = test_app_data_root(&launch_args)?;
+      let app_data_dir = match isolated_app_data.as_ref() {
+        Some(path) => path.clone(),
+        None => app
           .path()
           .app_data_dir()
-          .map_err(|error| error.to_string())?,
-      )
-      .map_err(|error| format!("agent artifact storage: {error}"))?;
+          .map_err(|error| format!("app data directory: {error}"))?,
+      };
+      std::fs::create_dir_all(&app_data_dir)
+        .map_err(|error| format!("create app data directory: {error}"))?;
+      let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(&app_data_dir)
+        .map_err(|error| format!("agent artifact storage: {error}"))?;
       app.manage(artifact_store);
 
       // --- Persistence: migrate once, hydrate the selected Workspace, restore pre-paint state. ---
-      let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| format!("app data directory: {error}"))?;
       let legacy_store_path = app_data_dir.join("plvs-settings.json");
       let prepared = persistence::prepare_identity_storage(&app_data_dir, &legacy_store_path)?;
-      let launch_args: Vec<String> = std::env::args().skip(1).collect();
       let restore_launch = coordinator::parse_restore_launch(&launch_args)?;
       let (workspace_id, session) = if let Some(restore) = restore_launch.as_ref() {
         coordinator::DiskRestoreGrantAuthority::open(&prepared.root)?.claim(
@@ -284,10 +326,13 @@ pub fn run() {
       let workspace = hydrated.workspace;
       let presets = hydrated.presets;
       let themes = hydrated.themes;
-      let log_dir = app
-        .path()
-        .app_log_dir()
-        .map_err(|error| format!("app log directory: {error}"))?;
+      let log_dir = match isolated_app_data.as_ref() {
+        Some(path) => path.join("logs"),
+        None => app
+          .path()
+          .app_log_dir()
+          .map_err(|error| format!("app log directory: {error}"))?,
+      };
       let home = app
         .path()
         .home_dir()
@@ -380,6 +425,12 @@ pub fn run() {
         global_preferences: &global_preferences,
         multi_instance_persistence: &multi_instance_persistence,
         is_coordinator,
+        instance_id: app
+          .state::<runtime_identity::RuntimeIdentity>()
+          .instance_id(),
+        workspace_id: app
+          .state::<runtime_identity::RuntimeIdentity>()
+          .workspace_id(),
       });
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
@@ -482,6 +533,7 @@ pub fn run() {
             .state::<runtime_identity::RuntimeIdentity>()
             .workspace_id(),
           &app.state::<coordinator::InstanceRegistry>(),
+          isolated_app_data.as_deref(),
         ) {
           log::warn!("Unable to restore every saved workspace: {error}");
         }
@@ -631,6 +683,26 @@ mod tests {
   }
 
   #[test]
+  fn isolated_desktop_runs_require_an_explicit_absolute_data_root() {
+    assert_eq!(test_app_data_root(&[]).unwrap(), None);
+    assert!(test_app_data_root(&[TEST_APP_DATA_ROOT_ARG.to_string()]).is_err());
+    assert!(test_app_data_root(&[
+      TEST_APP_DATA_ROOT_ARG.to_string(),
+      "relative-root".to_string(),
+    ])
+    .is_err());
+    let absolute = std::env::temp_dir().join("plvs-isolated-desktop-test");
+    assert_eq!(
+      test_app_data_root(&[
+        TEST_APP_DATA_ROOT_ARG.to_string(),
+        absolute.to_string_lossy().into_owned(),
+      ])
+      .unwrap(),
+      Some(absolute)
+    );
+  }
+
+  #[test]
   fn injects_every_key_the_frontend_reads() {
     let snapshot = parse_snapshot(&initial_state_script(InitialStateValues {
       settings: &json!({}),
@@ -643,6 +715,8 @@ mod tests {
       global_preferences: &json!({}),
       multi_instance_persistence: &json!({}),
       is_coordinator: true,
+      instance_id: "instance-a",
+      workspace_id: "default",
     }));
     let mut keys: Vec<&String> = snapshot
       .as_object()
@@ -658,11 +732,13 @@ mod tests {
         "dockState",
         "globalPreferences",
         "isCoordinator",
+        "instanceId",
         "multiInstancePersistence",
         "plvs:presets",
         "plvs:settings",
         "plvs:themes",
         "plvs:workspace",
+        "workspaceId",
       ]
     );
     // `dockState` is spelled twice in Rust: as the literal above and as `dock::DOCK_STATE_KEY`,
@@ -694,6 +770,8 @@ mod tests {
       global_preferences: &json!({}),
       multi_instance_persistence: &json!({}),
       is_coordinator: true,
+      instance_id: "instance-a",
+      workspace_id: "default",
     }));
     assert_eq!(snapshot["plvs:settings"], settings);
     assert_eq!(snapshot["plvs:workspace"], workspace);
@@ -715,6 +793,8 @@ mod tests {
       global_preferences: &json!({}),
       multi_instance_persistence: &json!({}),
       is_coordinator: true,
+      instance_id: "instance-a",
+      workspace_id: "default",
     }));
     // `normalizeDockState` in hooks/useDockMode.js reads exactly these names, and a mismatch
     // reads as a default rather than an error -- `reserveSpace` even defaults to the opposite.

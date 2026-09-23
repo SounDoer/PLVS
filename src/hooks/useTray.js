@@ -15,6 +15,7 @@ import {
   setCurrentTrayIcon,
 } from "../lib/trayIconLifecycle.js";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
+import { issueInstanceCommand, quitAllInstances } from "../runtime/coordination.js";
 
 // formatAudioDeviceLabel returns { primary, secondary, full }; a menu item's
 // text must be a single string. Reconstruct the picker's compact form.
@@ -157,6 +158,9 @@ async function buildMenu(cfg) {
     onApplyPreset,
     instances,
     onToggleInstance,
+    onShowInstance,
+    onQuitInstance,
+    onQuitAll,
   } = cfg;
 
   const items = [];
@@ -203,10 +207,23 @@ async function buildMenu(cfg) {
           await Submenu.new({
             text: "Workbenches",
             items: await Promise.all(
-              instances.map((instance) =>
-                MenuItem.new({
-                  text: `${instance.displayName} — ${instance.captureStatus === "running" ? "Stop" : "Start"}`,
-                  action: () => onToggleInstance(instance),
+              instances.map(async (instance) =>
+                Submenu.new({
+                  text: instance.displayName,
+                  items: [
+                    await MenuItem.new({
+                      text: "Show",
+                      action: () => onShowInstance(instance),
+                    }),
+                    await MenuItem.new({
+                      text: instance.captureStatus === "running" ? "Stop" : "Start",
+                      action: () => onToggleInstance(instance),
+                    }),
+                    await MenuItem.new({
+                      text: "Quit Workbench",
+                      action: () => onQuitInstance(instance),
+                    }),
+                  ],
                 })
               )
             ),
@@ -230,9 +247,9 @@ async function buildMenu(cfg) {
     }),
     await PredefinedMenuItem.new({ item: "Separator" }),
     await MenuItem.new({
-      text: "Quit",
+      text: instances.length > 1 ? "Quit PLVS" : "Quit",
       enabled: !updateBusy,
-      action: onQuit,
+      action: instances.length > 1 ? onQuitAll : onQuit,
     })
   );
 
@@ -325,6 +342,29 @@ export function useTray({
     },
     [stableToggleCapture]
   );
+  const stableShowInstance = useCallback((instance) => {
+    void issueInstanceCommand(instance.instanceId, "show").catch((error) =>
+      console.warn("Unable to show PLVS workbench from Tray", error)
+    );
+  }, []);
+  const stableQuitInstance = useCallback(
+    (instance) => {
+      if (instance.instanceId === window.__PLVS_INITIAL_STATE__?.instanceId) {
+        stableQuit();
+        return;
+      }
+      void issueInstanceCommand(instance.instanceId, "quitInstance").catch((error) =>
+        console.warn("Unable to quit PLVS workbench from Tray", error)
+      );
+    },
+    [stableQuit]
+  );
+  const stableQuitAll = useCallback(() => {
+    if (updateBusyRef.current) return;
+    void quitAllInstances().catch((error) =>
+      console.warn("Unable to quit every PLVS workbench", error)
+    );
+  }, []);
 
   useEffect(() => {
     if (!isTauri() || !isCoordinator) {
@@ -385,6 +425,9 @@ export function useTray({
       onSelectSource: stableSelectSource,
       onApplyPreset: stableApplyPreset,
       onToggleInstance: stableToggleInstance,
+      onShowInstance: stableShowInstance,
+      onQuitInstance: stableQuitInstance,
+      onQuitAll: stableQuitAll,
     }),
     [
       stableToggleCapture,
@@ -393,6 +436,9 @@ export function useTray({
       stableSelectSource,
       stableApplyPreset,
       stableToggleInstance,
+      stableShowInstance,
+      stableQuitInstance,
+      stableQuitAll,
     ]
   );
 

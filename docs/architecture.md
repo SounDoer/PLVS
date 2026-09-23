@@ -60,6 +60,29 @@ and request correlation, then routes the request to the main WebView. Workspace 
 one-shot replacement and persistence completion remain owned by the React frontend; the broker does
 not duplicate business state and does not broadcast requests to accessory WebViews.
 
+### Multi-workbench runtime
+
+Each metering workbench is one Tauri process with its own Rust audio engine, React runtime, native
+window and single-writer Workspace file. A shared SQLite database in WAL mode owns Library items,
+ordering, revisions, global preferences and the ordered restore set. Item and collection writes use
+expected revisions; Workspace state never shares a writer and measurement history is never
+persisted.
+
+An identity-scoped file lock elects one coordinator generation. The coordinator owns the Tray,
+global shortcut, Open at Login registration and updater. Every process publishes a heartbeat
+descriptor containing its random instance ID, Workspace ID, Source-derived label, capture state,
+visibility and focus sequence. Agent Control uses a unique authenticated pipe/socket for each
+instance; the identity-wide compatibility endpoint follows the coordinator. Development, Preview
+and Release application identifiers therefore produce separate data, lock, registry and endpoint
+namespaces.
+
+Commands that affect the complete process set use disk-backed, instance-targeted mailboxes. Update,
+configuration replacement and full-app quit have a prepare phase in which every process checks its
+blocking editors, stops capture and flushes persistence. Only unanimous acknowledgements allow the
+commit phase to close peers; timeout or refusal aborts. A debug-only absolute app-data override
+allows real multi-process desktop tests to keep persistence, restore metadata, artifacts and logs
+inside a disposable root; packaged builds reject it.
+
 Visual Capture keeps the same semantic boundary: React chooses the capture target, waits for a stable
 paint and supplies CSS geometry; Rust owns the private artifacts, concurrency and lifecycle. Windows
 screenshots use WebView2 and macOS screenshots use the WKWebView snapshot; both capture only the PLVS

@@ -4,7 +4,15 @@ import { renderHook } from "@testing-library/react";
 import { act, useState } from "react";
 
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
+const coordination = vi.hoisted(() => ({
+  issue: vi.fn(),
+  quitAll: vi.fn(),
+}));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
+vi.mock("../runtime/coordination.js", () => ({
+  issueInstanceCommand: (...args) => coordination.issue(...args),
+  quitAllInstances: (...args) => coordination.quitAll(...args),
+}));
 
 vi.mock("@tauri-apps/api/tray", () => ({
   TrayIcon: {
@@ -88,6 +96,8 @@ describe("useTray", () => {
     setCoordinatorRole(undefined);
     vi.clearAllMocks();
     invoke.mockResolvedValue([]);
+    coordination.issue.mockResolvedValue();
+    coordination.quitAll.mockResolvedValue();
     isMacOS.mockReturnValue(false);
     TrayIcon.getById.mockResolvedValue(null);
     TrayIcon.removeById.mockResolvedValue(undefined);
@@ -150,12 +160,42 @@ describe("useTray", () => {
     await act(async () => {});
     await act(async () => {});
 
-    findText(menuItemOptions(), "VLC — Start").action();
+    menuItemOptions()
+      .filter((item) => item.text === "Start")
+      .at(-1)
+      .action();
 
     expect(invoke).toHaveBeenCalledWith("runtime_route_instance_transport", {
       instanceId: "two",
       action: "start",
     });
+  });
+
+  it("shows or quits an explicit Source-named workbench and can quit the whole app", async () => {
+    invoke.mockImplementation((command) => {
+      if (command === "runtime_list_instances") {
+        return Promise.resolve([
+          { instanceId: "one", displayName: "Spotify", captureStatus: "running" },
+          { instanceId: "two", displayName: "VLC", captureStatus: "stopped" },
+        ]);
+      }
+      return Promise.resolve(true);
+    });
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    await act(async () => {});
+
+    menuItemOptions()
+      .find((item) => item.text === "Show")
+      .action();
+    menuItemOptions()
+      .find((item) => item.text === "Quit Workbench")
+      .action();
+    findText(menuItemOptions(), "Quit PLVS").action();
+
+    expect(coordination.issue).toHaveBeenNthCalledWith(1, "one", "show");
+    expect(coordination.issue).toHaveBeenNthCalledWith(2, "one", "quitInstance");
+    expect(coordination.quitAll).toHaveBeenCalledTimes(1);
   });
 
   it("creates TrayIcon with iconAsTemplate true", async () => {

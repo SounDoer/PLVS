@@ -1,6 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
+import {
+  abortGlobalOperation,
+  commitGlobalOperation,
+  prepareGlobalOperation,
+} from "../runtime/coordination.js";
 
 const UPDATE_DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -74,8 +79,17 @@ export function useApplyUpdate() {
   const restartToApply = useCallback(async () => {
     if (!isCoordinator || operationRef.current) return;
     operationRef.current = true;
-    const succeeded = await runRelaunch();
-    if (!succeeded) operationRef.current = false;
+    let operation;
+    try {
+      operation = await prepareGlobalOperation();
+      await commitGlobalOperation(operation);
+      const succeeded = await runRelaunch();
+      if (!succeeded) operationRef.current = false;
+    } catch {
+      if (operation) await abortGlobalOperation(operation);
+      operationRef.current = false;
+      setInstallStatus("restart-error");
+    }
   }, [runRelaunch, isCoordinator]);
 
   const install = useCallback(
@@ -85,17 +99,33 @@ export function useApplyUpdate() {
       operationRef.current = true;
       clearProgress();
       setInstallStatus("installing");
+      let operation;
+      const splitInstall =
+        typeof update.download === "function" && typeof update.install === "function";
       try {
-        await update.downloadAndInstall(onDownloadEvent, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        operation = await prepareGlobalOperation();
+        if (splitInstall) {
+          await update.download(onDownloadEvent, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        } else {
+          await update.downloadAndInstall(onDownloadEvent, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        }
       } catch {
+        if (operation) await abortGlobalOperation(operation);
         operationRef.current = false;
         clearProgress();
         setInstallStatus("install-error");
         return;
       }
 
-      const succeeded = await runRelaunch();
-      if (!succeeded) operationRef.current = false;
+      try {
+        await commitGlobalOperation(operation);
+        if (splitInstall) await update.install({ timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        const succeeded = await runRelaunch();
+        if (!succeeded) operationRef.current = false;
+      } catch {
+        operationRef.current = false;
+        setInstallStatus("restart-error");
+      }
     },
     [clearProgress, onDownloadEvent, runRelaunch, isCoordinator]
   );
