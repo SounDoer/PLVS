@@ -146,6 +146,28 @@ not begin merely because a decision is recorded here.
   old Interface Critical to Interface Danger. Roles whose old appearance came from shared signal
   bindings require explicit compatibility overrides or reviewed visual changes.
 
+### Interface surface roles
+
+- Retain five surface semantics, organized conceptually as structural `Panel` and `Raised` surfaces
+  plus control-state `Control`, `Muted`, and `Selected` surfaces.
+- Rename the current `Interactive Surface` semantic to `Selected Surface`. Its real consumers are
+  selected, open, enabled, or active controls rather than every interactive or hoverable element.
+- Panel defaults directly from the Core Surface authoring seed.
+- Raised is separated from Panel by an intentional combination of surface color, border, and shadow;
+  elevation is not defined as always lighter or always darker.
+- Control communicates neutral affordance. Muted communicates reduced emphasis. They remain
+  distinct roles and must not continue to share an identical default recipe.
+- Selected carries a visible Accent relationship without becoming the solid Accent used for primary
+  actions.
+- Raised, Control, and Muted are not one monotonic lightness ladder because they express different
+  semantic dimensions.
+- Hover remains an internal state derived from the relevant surface role; it does not add a Core
+  Color or public authoring input.
+- Gallery validation checks Workspace/Panel separation, Raised layering, Control affordance, Muted
+  de-emphasis, and Selected recognition independently for Dark and Light Themes before recipe
+  constants are approved.
+
 ## Open areas
 
-The next area is the Interface surface ladder: Panel, Raised, Control, Muted, and Interactive.
+The next area is Interface text and substrate-specific content: Primary, Secondary, Annotation, and
+content on neutral, Accent, Interface, and activity surfaces.
