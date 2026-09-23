@@ -116,6 +116,7 @@ pub fn run() {
     )
     .manage(AppState::default())
     .manage(runtime_identity)
+    .manage(persistence::commands::PersistenceRuntime::default())
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::transport::ServerState::default())
     .manage(agent_control::toggle::StartFailure::default())
@@ -152,6 +153,13 @@ pub fn run() {
       profile::read_profile_file,
       profile::write_profile_file,
       profile::write_text_file,
+      persistence::commands::persistence_hydrate,
+      persistence::commands::persistence_save_domain,
+      persistence::commands::persistence_library_create,
+      persistence::commands::persistence_library_update,
+      persistence::commands::persistence_library_delete,
+      persistence::commands::persistence_library_reorder,
+      persistence::commands::persistence_library_replace,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,

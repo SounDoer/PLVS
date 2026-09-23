@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 
+use serde::Serialize;
 use serde_json::{json, Map, Value};
 
 use super::{LibraryRepository, WorkspaceStore};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HydratedWorkspace {
   pub settings: Value,
   pub workspace: Value,

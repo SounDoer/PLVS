@@ -147,6 +147,42 @@ pub fn migrate_legacy_store(
   result
 }
 
+pub(super) fn initialize_empty_store(new_root: &Path) -> Result<(), String> {
+  if new_root.join(MIGRATION_MARKER).is_file() {
+    return Ok(());
+  }
+  if new_root.exists() {
+    return Err(
+      "Incomplete multi-instance storage already exists and requires recovery.".to_string(),
+    );
+  }
+  let parent = new_root
+    .parent()
+    .ok_or_else(|| "Multi-instance storage path has no parent directory.".to_string())?;
+  fs::create_dir_all(parent)
+    .map_err(|error| format!("Unable to create identity storage directory: {error}"))?;
+  let staging_root = migration_staging_path(parent)?;
+  fs::create_dir(&staging_root)
+    .map_err(|error| format!("Unable to create identity storage staging directory: {error}"))?;
+  let result = (|| {
+    LibraryRepository::open(&staging_root).map_err(|error| error.to_string())?;
+    WorkspaceStore::open(&staging_root, "default")?.save(&serde_json::json!({}))?;
+    write_atomic_json(
+      &staging_root.join(MIGRATION_MARKER),
+      &serde_json::json!({ "schemaVersion": 1, "source": "fresh-install" }),
+    )?;
+    match fs::rename(&staging_root, new_root) {
+      Ok(()) => Ok(()),
+      Err(_) if new_root.join(MIGRATION_MARKER).is_file() => Ok(()),
+      Err(error) => Err(format!("Unable to publish identity storage: {error}")),
+    }
+  })();
+  if staging_root.exists() {
+    let _ = fs::remove_dir_all(&staging_root);
+  }
+  result
+}
+
 fn preserve_legacy_backup(path: &Path, bytes: &[u8]) -> Result<(), String> {
   match OpenOptions::new().write(true).create_new(true).open(path) {
     Ok(mut file) => {

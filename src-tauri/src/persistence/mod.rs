@@ -1,3 +1,5 @@
+mod bootstrap;
+pub mod commands;
 mod hydration;
 mod library;
 mod migration;
@@ -5,6 +7,7 @@ mod session;
 mod workspace;
 mod workspace_catalog;
 
+pub use bootstrap::{prepare_identity_storage, PreparedIdentityStorage};
 pub use hydration::{hydrate_workspace, HydratedWorkspace};
 #[cfg(debug_assertions)]
 pub use library::run_library_test_host;
