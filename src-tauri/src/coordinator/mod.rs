@@ -240,7 +240,7 @@ pub fn spawn_missing_restored_workspaces(
   let missing = restore_missing_workspaces(&restore_set, &live, current_workspace_id);
   let delay = restore_spawn_delay_for(std::env::consts::OS);
   for (index, workspace_id) in missing.iter().enumerate() {
-    let grant = authority.issue(&workspace_id, current_unix_time_ms()?)?;
+    let grant = authority.issue(workspace_id, current_unix_time_ms()?)?;
     let mut command = std::process::Command::new(&executable);
     command.args([
       "--plvs-restore-workspace",
