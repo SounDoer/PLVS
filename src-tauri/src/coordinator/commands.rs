@@ -56,6 +56,19 @@ struct RuntimeOperationLease {
 }
 
 impl RuntimeOperationCoordinator {
+  pub fn require_idle(&self) -> Result<(), String> {
+    if self
+      .lease
+      .lock()
+      .expect("runtime operation lease poisoned")
+      .is_none()
+    {
+      Ok(())
+    } else {
+      Err("Another identity-wide PLVS operation is already running.".to_string())
+    }
+  }
+
   pub fn begin(&self, identity_root: &Path, operation_id: &str) -> Result<(), String> {
     validate_component(operation_id)?;
     let mut lease = self.lease.lock().expect("runtime operation lease poisoned");
@@ -139,6 +152,24 @@ impl RuntimeCommandMailbox {
     ) {
       return Err("Unknown runtime coordination action.".to_string());
     }
+    let lock = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .truncate(false)
+      .open(self.command_lock_path(instance_id))
+      .map_err(|error| format!("Unable to open runtime command lock: {error}"))?;
+    FileExt::lock(&lock)
+      .map_err(|error| format!("Unable to lock the runtime command mailbox: {error}"))?;
+    if let Some(pending) = self.poll(instance_id)? {
+      let replaces_same_operation =
+        pending.operation_id == operation_id && matches!(action, "abortGlobal" | "commitGlobal");
+      if !replaces_same_operation {
+        return Err(format!(
+          "PLVS instance {instance_id} already has a pending command."
+        ));
+      }
+    }
     let command_id = random_id()?;
     let command = RuntimeCommand {
       schema_version: COMMAND_SCHEMA_VERSION,
@@ -152,6 +183,29 @@ impl RuntimeCommandMailbox {
       command_id,
       instance_id: instance_id.to_string(),
     })
+  }
+
+  pub fn issue_many(
+    &self,
+    instance_ids: &[String],
+    operation_id: &str,
+    action: &str,
+  ) -> Result<Vec<IssuedRuntimeCommand>, String> {
+    let mut issued = Vec::with_capacity(instance_ids.len());
+    for instance_id in instance_ids {
+      match self.issue(instance_id, operation_id, action) {
+        Ok(command) => issued.push(command),
+        Err(error) => {
+          if action == "prepareGlobal" {
+            for command in &issued {
+              let _ = self.issue(&command.instance_id, operation_id, "abortGlobal");
+            }
+          }
+          return Err(error);
+        }
+      }
+    }
+    Ok(issued)
   }
 
   pub fn poll(&self, instance_id: &str) -> Result<Option<RuntimeCommand>, String> {
@@ -243,6 +297,10 @@ impl RuntimeCommandMailbox {
       .join("acks")
       .join(format!("{command_id}.json"))
   }
+
+  fn command_lock_path(&self, instance_id: &str) -> PathBuf {
+    self.directory.join(format!("{instance_id}.lock"))
+  }
 }
 
 fn validate_component(value: &str) -> Result<(), String> {
@@ -311,6 +369,66 @@ mod tests {
   }
 
   #[test]
+  fn an_unrelated_command_cannot_overwrite_a_pending_global_operation() {
+    let root = test_root("pending-conflict");
+    let _ = fs::remove_dir_all(&root);
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    mailbox
+      .issue("instance-a", "operation-a", "prepareGlobal")
+      .unwrap();
+
+    assert!(mailbox
+      .issue("instance-a", "show-a", "show")
+      .unwrap_err()
+      .contains("already has a pending command"));
+    assert_eq!(
+      mailbox.poll("instance-a").unwrap().unwrap().action,
+      "prepareGlobal"
+    );
+    let _ = fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn abort_can_replace_the_same_operations_unacknowledged_prepare() {
+    let root = test_root("abort-replaces-prepare");
+    let _ = fs::remove_dir_all(&root);
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    mailbox
+      .issue("instance-a", "operation-a", "prepareGlobal")
+      .unwrap();
+    mailbox
+      .issue("instance-a", "operation-a", "abortGlobal")
+      .unwrap();
+
+    assert_eq!(
+      mailbox.poll("instance-a").unwrap().unwrap().action,
+      "abortGlobal"
+    );
+    let _ = fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn a_partial_prepare_batch_aborts_targets_that_were_already_issued() {
+    let root = test_root("partial-prepare");
+    let _ = fs::remove_dir_all(&root);
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    mailbox.issue("instance-b", "show-b", "show").unwrap();
+
+    assert!(mailbox
+      .issue_many(
+        &["instance-a".to_string(), "instance-b".to_string()],
+        "operation-a",
+        "prepareGlobal"
+      )
+      .is_err());
+    let first = mailbox.poll("instance-a").unwrap().unwrap();
+    assert_eq!(first.operation_id, "operation-a");
+    assert_eq!(first.action, "abortGlobal");
+    assert_eq!(mailbox.poll("instance-b").unwrap().unwrap().action, "show");
+    let _ = fs::remove_dir_all(root);
+  }
+
+  #[test]
   fn one_process_owns_an_identity_wide_operation_until_it_finishes() {
     let root = test_root("operation-lock");
     let _ = fs::remove_dir_all(&root);
@@ -321,6 +439,18 @@ mod tests {
     first.finish("operation-a").unwrap();
     second.begin(&root, "operation-b").unwrap();
     second.finish("operation-b").unwrap();
+    let _ = fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn unrelated_commands_are_refused_while_a_global_operation_is_owned() {
+    let root = test_root("operation-busy");
+    let _ = fs::remove_dir_all(&root);
+    let operations = RuntimeOperationCoordinator::default();
+    operations.begin(&root, "operation-a").unwrap();
+    assert!(operations.require_idle().is_err());
+    operations.finish("operation-a").unwrap();
+    assert!(operations.require_idle().is_ok());
     let _ = fs::remove_dir_all(root);
   }
 }

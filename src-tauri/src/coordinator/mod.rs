@@ -331,6 +331,8 @@ pub fn runtime_issue_commands(
     operations.begin(&persistence.identity_root()?, &operation_id)?;
   } else if matches!(action.as_str(), "abortGlobal" | "commitGlobal") {
     operations.require_owner(&operation_id)?;
+  } else {
+    operations.require_idle()?;
   }
   let _ = registry.remove_stale()?;
   let live = registry.list()?;
@@ -348,10 +350,7 @@ pub fn runtime_issue_commands(
     return Err("A selected PLVS instance is no longer running.".to_string());
   }
   let mailbox = RuntimeCommandMailbox::open(&persistence.identity_root()?)?;
-  let issued: Result<Vec<IssuedRuntimeCommand>, String> = targets
-    .iter()
-    .map(|target| mailbox.issue(target, &operation_id, &action))
-    .collect();
+  let issued = mailbox.issue_many(&targets, &operation_id, &action);
   if issued.is_err() && action == "prepareGlobal" {
     let _ = operations.finish(&operation_id);
   }
