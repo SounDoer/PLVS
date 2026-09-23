@@ -150,6 +150,39 @@ pub fn persistence_save_workspace_value(
 }
 
 #[tauri::command]
+pub fn persistence_save_global_preferences(
+  runtime: State<'_, PersistenceRuntime>,
+  values: BTreeMap<String, Value>,
+  expected_revisions: BTreeMap<String, i64>,
+) -> Result<BTreeMap<String, i64>, PersistenceCommandError> {
+  const ALLOWED: [&str; 5] = [
+    "clearShortcut",
+    "clearGlobal",
+    "agentControlEnabled",
+    "askToSendCrashReports",
+    "openAtLogin",
+  ];
+  if values.keys().any(|key| !ALLOWED.contains(&key.as_str())) {
+    return Err(PersistenceCommandError {
+      reason: PersistenceErrorReason::InvalidDomain,
+      message: "Unknown global preference key.".to_string(),
+    });
+  }
+  runtime.with_session(|session| {
+    session
+      .library()
+      .set_global_preferences(&expected_revisions, &values)
+      .map(|preferences| {
+        preferences
+          .into_iter()
+          .map(|(key, preference)| (key, preference.revision))
+          .collect()
+      })
+      .map_err(Into::into)
+  })
+}
+
+#[tauri::command]
 pub fn persistence_library_create(
   runtime: State<'_, PersistenceRuntime>,
   kind: String,

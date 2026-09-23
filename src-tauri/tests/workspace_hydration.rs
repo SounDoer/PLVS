@@ -34,6 +34,8 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
         },
         "order": ["theme-a", "theme-b"]
       },
+      "clearShortcut": "CmdOrCtrl+L",
+      "clearGlobal": true,
       "captureDeviceId": "out:9",
       "windowBounds": { "x": 1, "y": 2, "width": 800, "height": 600 }
     }))
@@ -60,6 +62,9 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
   assert_eq!(hydrated.themes["themes"]["theme-a"]["name"], "A");
   assert_eq!(hydrated.capture_device_id, json!("out:9"));
   assert_eq!(hydrated.window_bounds["width"], 800);
+  assert_eq!(hydrated.global_preferences["clearShortcut"], "CmdOrCtrl+L");
+  assert_eq!(hydrated.global_preferences["clearGlobal"], true);
+  assert_eq!(hydrated.global_preference_revisions["clearShortcut"], 1);
   assert_eq!(hydrated.library_item_revisions["preset"]["preset-a"], 1);
   assert_eq!(hydrated.library_item_revisions["theme"]["theme-b"], 1);
   assert_eq!(

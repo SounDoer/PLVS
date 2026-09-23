@@ -15,6 +15,8 @@ pub struct HydratedWorkspace {
   pub capture_device_id: Value,
   pub window_bounds: Value,
   pub dock_state: Value,
+  pub global_preferences: BTreeMap<String, Value>,
+  pub global_preference_revisions: BTreeMap<String, i64>,
   pub library_item_revisions: BTreeMap<String, BTreeMap<String, i64>>,
   pub library_collection_revisions: BTreeMap<String, i64>,
 }
@@ -30,6 +32,24 @@ pub fn hydrate_workspace(
     .as_object()
     .ok_or_else(|| "Workspace state must be a JSON object.".to_string())?;
   let repository = LibraryRepository::open(identity_root).map_err(|error| error.to_string())?;
+
+  let mut global_preferences = BTreeMap::new();
+  let mut global_preference_revisions = BTreeMap::new();
+  for key in [
+    "clearShortcut",
+    "clearGlobal",
+    "agentControlEnabled",
+    "askToSendCrashReports",
+    "openAtLogin",
+  ] {
+    if let Some(preference) = repository
+      .read_global_preference(key)
+      .map_err(|error| error.to_string())?
+    {
+      global_preference_revisions.insert(key.to_string(), preference.revision);
+      global_preferences.insert(key.to_string(), preference.value);
+    }
+  }
 
   let preset_items = repository
     .list("preset")
@@ -114,6 +134,8 @@ pub fn hydrate_workspace(
       .unwrap_or_else(|| json!("default")),
     window_bounds: state.get("windowBounds").cloned().unwrap_or(Value::Null),
     dock_state: state.get("dockState").cloned().unwrap_or(Value::Null),
+    global_preferences,
+    global_preference_revisions,
     library_item_revisions,
     library_collection_revisions,
   })

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use app_lib::persistence::{LibraryError, LibraryRepository};
 use serde_json::json;
 
@@ -179,6 +181,59 @@ fn global_preferences_use_the_same_compare_and_swap_rule() {
     .expect("current preference write commits");
   assert_eq!(updated.revision, 2);
   assert_eq!(updated.value, false);
+
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn related_global_preferences_commit_atomically() {
+  let root = temp_root().with_extension("global-preference-batch");
+  let library = LibraryRepository::open(&root).unwrap();
+  let initial = BTreeMap::from([
+    ("clearShortcut".to_string(), json!("CmdOrCtrl+K")),
+    ("clearGlobal".to_string(), json!(false)),
+  ]);
+  let created = library
+    .set_global_preferences(
+      &BTreeMap::from([
+        ("clearShortcut".to_string(), 0),
+        ("clearGlobal".to_string(), 0),
+      ]),
+      &initial,
+    )
+    .unwrap();
+  assert_eq!(created["clearShortcut"].revision, 1);
+  assert_eq!(created["clearGlobal"].revision, 1);
+
+  let conflict = library
+    .set_global_preferences(
+      &BTreeMap::from([
+        ("clearShortcut".to_string(), 1),
+        ("clearGlobal".to_string(), 0),
+      ]),
+      &BTreeMap::from([
+        ("clearShortcut".to_string(), json!("CmdOrCtrl+L")),
+        ("clearGlobal".to_string(), json!(true)),
+      ]),
+    )
+    .expect_err("one stale member rejects the whole preference group");
+  assert!(matches!(conflict, LibraryError::Conflict(_)));
+  assert_eq!(
+    library
+      .read_global_preference("clearShortcut")
+      .unwrap()
+      .unwrap()
+      .value,
+    "CmdOrCtrl+K"
+  );
+  assert_eq!(
+    library
+      .read_global_preference("clearGlobal")
+      .unwrap()
+      .unwrap()
+      .value,
+    false
+  );
 
   let _ = std::fs::remove_dir_all(root);
 }

@@ -604,6 +604,91 @@ impl LibraryRepository {
     })
   }
 
+  pub fn set_global_preferences(
+    &self,
+    expected_revisions: &BTreeMap<String, i64>,
+    values: &BTreeMap<String, Value>,
+  ) -> Result<BTreeMap<String, GlobalPreference>, LibraryError> {
+    if expected_revisions.len() != values.len()
+      || values
+        .keys()
+        .any(|key| !expected_revisions.contains_key(key))
+    {
+      return Err(LibraryError::Conflict(
+        "Global preference values and expected revisions must name the same keys.".to_string(),
+      ));
+    }
+    let mut serialized = BTreeMap::new();
+    for (key, value) in values {
+      validate_key(key, "Global preference key")?;
+      if expected_revisions[key] < 0 {
+        return Err(LibraryError::Conflict(
+          "Expected global preference revision cannot be negative.".to_string(),
+        ));
+      }
+      serialized.insert(
+        key.clone(),
+        serde_json::to_string(value).map_err(|error| {
+          LibraryError::Storage(format!("Unable to serialize global preference: {error}"))
+        })?,
+      );
+    }
+
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    for (key, expected_revision) in expected_revisions {
+      let current_revision = transaction
+        .query_row(
+          "SELECT revision FROM global_preferences WHERE preference_key = ?1",
+          [key],
+          |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .unwrap_or(0);
+      if current_revision != *expected_revision {
+        return Err(LibraryError::Conflict(format!(
+          "Global preference {key} changed from expected revision {expected_revision} to revision {current_revision}."
+        )));
+      }
+    }
+    for (key, value_json) in &serialized {
+      let expected_revision = expected_revisions[key];
+      if expected_revision == 0 {
+        transaction.execute(
+          "INSERT INTO global_preferences (preference_key, revision, value_json)
+           VALUES (?1, 1, ?2)",
+          params![key, value_json],
+        )?;
+      } else {
+        transaction.execute(
+          "UPDATE global_preferences
+           SET revision = revision + 1, value_json = ?3
+           WHERE preference_key = ?1 AND revision = ?2",
+          params![key, expected_revision, value_json],
+        )?;
+      }
+    }
+    transaction.commit().map_err(map_sqlite_error)?;
+
+    Ok(
+      values
+        .iter()
+        .map(|(key, value)| {
+          (
+            key.clone(),
+            GlobalPreference {
+              key: key.clone(),
+              revision: expected_revisions[key] + 1,
+              value: value.clone(),
+            },
+          )
+        })
+        .collect(),
+    )
+  }
+
   pub(super) fn connection(&self) -> Result<Connection, LibraryError> {
     let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection
