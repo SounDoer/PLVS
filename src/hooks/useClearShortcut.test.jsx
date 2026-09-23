@@ -28,6 +28,7 @@ function Harness({ onClear }) {
 beforeEach(() => {
   register.mockReset();
   unregister.mockReset();
+  delete window.__PLVS_INITIAL_STATE__;
 });
 
 describe("useClearShortcut", () => {
@@ -55,5 +56,14 @@ describe("useClearShortcut", () => {
       latest.setClearCapturing(false);
     });
     await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not register an operating-system shortcut in a participant instance", async () => {
+    window.__PLVS_INITIAL_STATE__ = { isCoordinator: false };
+    render(<Harness onClear={vi.fn()} />);
+
+    await waitFor(() => expect(latest.clearReady).toBe(true));
+    expect(register).not.toHaveBeenCalled();
+    expect(latest.registrationError).toBeNull();
   });
 });

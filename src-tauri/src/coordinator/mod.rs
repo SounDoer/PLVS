@@ -41,6 +41,27 @@ pub struct CoordinatorLease {
   descriptor_path: PathBuf,
 }
 
+#[derive(Debug)]
+pub struct CoordinatorRole {
+  lease: Option<CoordinatorLease>,
+}
+
+impl CoordinatorRole {
+  pub fn acquire(identity_root: &Path, identity: &RuntimeIdentity) -> Result<Self, String> {
+    Ok(Self {
+      lease: CoordinatorLease::try_acquire(identity_root, identity)?,
+    })
+  }
+
+  pub fn is_coordinator(&self) -> bool {
+    self.lease.is_some()
+  }
+
+  pub fn generation(&self) -> Option<u64> {
+    self.lease.as_ref().map(CoordinatorLease::generation)
+  }
+}
+
 impl CoordinatorLease {
   pub fn try_acquire(
     identity_root: &Path,

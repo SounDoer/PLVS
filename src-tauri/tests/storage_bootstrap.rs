@@ -1,5 +1,6 @@
 use app_lib::persistence::{
-  prepare_identity_storage, WorkspaceCatalog, WorkspacePersistenceSession,
+  open_ordinary_launch_workspace, prepare_identity_storage, WorkspaceCatalog,
+  WorkspacePersistenceSession,
 };
 
 #[test]
@@ -58,5 +59,31 @@ fn simultaneous_first_launches_converge_on_one_complete_store() {
       .unwrap(),
     vec!["default"]
   );
+  let _ = std::fs::remove_dir_all(app_data);
+}
+
+#[test]
+fn an_additional_ordinary_launch_gets_a_new_internal_workspace() {
+  let app_data = std::env::temp_dir().join(format!(
+    "plvs-storage-bootstrap-ordinary-{}",
+    std::process::id()
+  ));
+  let prepared = prepare_identity_storage(&app_data, &app_data.join("missing.json")).unwrap();
+  let (first_id, first) = open_ordinary_launch_workspace(&prepared.root).unwrap();
+  let (second_id, second) = open_ordinary_launch_workspace(&prepared.root).unwrap();
+
+  assert_eq!(first_id, "default");
+  assert!(second_id.starts_with("workspace-"));
+  assert_ne!(first_id, second_id);
+  assert_eq!(
+    WorkspaceCatalog::open(&prepared.root)
+      .unwrap()
+      .restore_set()
+      .unwrap(),
+    vec![first_id, second_id]
+  );
+
+  drop(first);
+  drop(second);
   let _ = std::fs::remove_dir_all(app_data);
 }

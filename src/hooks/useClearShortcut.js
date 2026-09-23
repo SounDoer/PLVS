@@ -6,6 +6,7 @@ import {
   saveClearShortcutPrefsForControl,
   DEFAULT_CLEAR_SHORTCUT,
 } from "../lib/clearShortcutPrefs.js";
+import { ownsCoordinatorResources } from "../lib/runtimeRole.js";
 
 /**
  * Owns the Clear shortcut: the combo (always used in-app) and whether it is
@@ -35,6 +36,10 @@ export function useClearShortcut(onClearRef) {
 
   useEffect(() => {
     if (!ready || !isTauri()) return;
+    if (!ownsCoordinatorResources()) {
+      setRegistrationError(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
@@ -76,7 +81,7 @@ export function useClearShortcut(onClearRef) {
   useEffect(
     () => () => {
       const current = registeredRef.current;
-      if (current && isTauri()) {
+      if (current && isTauri() && ownsCoordinatorResources()) {
         import("@tauri-apps/plugin-global-shortcut").then(({ unregister }) => {
           const result = unregister(current);
           if (result && typeof result.catch === "function") result.catch(() => {});
@@ -102,7 +107,7 @@ export function useClearShortcut(onClearRef) {
     let register;
     let unregister;
     let registeredNew = false;
-    if (isTauri()) {
+    if (isTauri() && ownsCoordinatorResources()) {
       ({ register, unregister } = await import("@tauri-apps/plugin-global-shortcut"));
       if (next.global && previous.registered !== next.accelerator) {
         await register(next.accelerator, (event) => {
@@ -121,7 +126,7 @@ export function useClearShortcut(onClearRef) {
         global: next.global,
       });
     } catch (error) {
-      if (isTauri()) {
+      if (isTauri() && ownsCoordinatorResources()) {
         if (registeredNew) await unregister(next.accelerator).catch(() => {});
         if (previous.registered) {
           await register(previous.registered, (event) => {

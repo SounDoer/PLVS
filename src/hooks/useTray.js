@@ -13,6 +13,7 @@ import {
   PLVS_TRAY_ID,
   setCurrentTrayIcon,
 } from "../lib/trayIconLifecycle.js";
+import { ownsCoordinatorResources } from "../lib/runtimeRole.js";
 
 // formatAudioDeviceLabel returns { primary, secondary, full }; a menu item's
 // text must be a single string. Reconstruct the picker's compact form.
@@ -320,7 +321,7 @@ export function useTray({
 
   // Create tray once on mount.
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isTauri() || !ownsCoordinatorResources()) return;
     let cancelled = false;
 
     (async () => {

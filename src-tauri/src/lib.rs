@@ -89,6 +89,8 @@ struct InitialStateValues<'a> {
   global_preferences: &'a serde_json::Value,
   #[serde(rename = "multiInstancePersistence")]
   multi_instance_persistence: &'a serde_json::Value,
+  #[serde(rename = "isCoordinator")]
+  is_coordinator: bool,
 }
 
 fn initial_state_script(initial: InitialStateValues<'_>) -> String {
@@ -100,8 +102,6 @@ fn initial_state_script(initial: InitialStateValues<'_>) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  let runtime_identity = runtime_identity::RuntimeIdentity::new_default()
-    .expect("operating system randomness must create a runtime identity");
   let builder = tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_process::init());
@@ -124,7 +124,6 @@ pub fn run() {
         .build(),
     )
     .manage(AppState::default())
-    .manage(runtime_identity)
     .manage(persistence::commands::PersistenceRuntime::default())
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::transport::ServerState::default())
@@ -205,12 +204,6 @@ pub fn run() {
       ipc::commands::read_feedback_diagnostics,
     ])
     .setup(|app| {
-      let runtime_identity = app.state::<runtime_identity::RuntimeIdentity>();
-      log::info!(
-        "runtime identity instance={} workspace={}",
-        runtime_identity.instance_id(),
-        runtime_identity.workspace_id()
-      );
       let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(
         &app
           .path()
@@ -227,10 +220,30 @@ pub fn run() {
         .map_err(|error| format!("app data directory: {error}"))?;
       let legacy_store_path = app_data_dir.join("plvs-settings.json");
       let prepared = persistence::prepare_identity_storage(&app_data_dir, &legacy_store_path)?;
-      let session = persistence::WorkspacePersistenceSession::open(
-        &prepared.root,
-        runtime_identity.workspace_id(),
+      let (workspace_id, session) = persistence::open_ordinary_launch_workspace(&prepared.root)?;
+      let runtime_identity = runtime_identity::RuntimeIdentity::new_for_workspace(&workspace_id)?;
+      log::info!(
+        "runtime identity instance={} workspace={}",
+        runtime_identity.instance_id(),
+        runtime_identity.workspace_id()
+      );
+      let coordinator_role =
+        coordinator::CoordinatorRole::acquire(&prepared.root, &runtime_identity)?;
+      let is_coordinator = coordinator_role.is_coordinator();
+      let registry = coordinator::InstanceRegistry::open(&prepared.root)?;
+      let _ = registry.remove_stale()?;
+      let registration = registry.register(
+        &runtime_identity,
+        &coordinator::InstanceRuntimeState {
+          source_label: None,
+          capture_status: coordinator::CaptureStatus::Stopped,
+          visible: true,
+          focus_sequence: 0,
+        },
       )?;
+      app.manage(runtime_identity);
+      app.manage(coordinator_role);
+      app.manage(registration);
       let hydrated = session.hydrate()?;
       app
         .state::<persistence::commands::PersistenceRuntime>()
@@ -325,6 +338,7 @@ pub fn run() {
         capture_device_id: &hydrated.capture_device_id,
         global_preferences: &global_preferences,
         multi_instance_persistence: &multi_instance_persistence,
+        is_coordinator,
       });
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
@@ -420,7 +434,10 @@ pub fn run() {
       }
       let _ = window.show();
 
-      if cfg!(any(target_os = "windows", target_os = "macos")) && agent_control_enabled {
+      if is_coordinator
+        && cfg!(any(target_os = "windows", target_os = "macos"))
+        && agent_control_enabled
+      {
         agent_control::toggle::start_at_launch(app.handle());
       }
 
@@ -561,6 +578,7 @@ mod tests {
       capture_device_id: &json!("default"),
       global_preferences: &json!({}),
       multi_instance_persistence: &json!({}),
+      is_coordinator: true,
     }));
     let mut keys: Vec<&String> = snapshot
       .as_object()
@@ -575,6 +593,7 @@ mod tests {
         "captureDeviceId",
         "dockState",
         "globalPreferences",
+        "isCoordinator",
         "multiInstancePersistence",
         "plvs:presets",
         "plvs:settings",
@@ -610,6 +629,7 @@ mod tests {
       capture_device_id: &json!("default"),
       global_preferences: &json!({}),
       multi_instance_persistence: &json!({}),
+      is_coordinator: true,
     }));
     assert_eq!(snapshot["plvs:settings"], settings);
     assert_eq!(snapshot["plvs:workspace"], workspace);
@@ -630,6 +650,7 @@ mod tests {
       capture_device_id: &json!("default"),
       global_preferences: &json!({}),
       multi_instance_persistence: &json!({}),
+      is_coordinator: true,
     }));
     // `normalizeDockState` in hooks/useDockMode.js reads exactly these names, and a mismatch
     // reads as a default rather than an error -- `reserveSpace` even defaults to the opposite.

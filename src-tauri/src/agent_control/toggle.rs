@@ -184,12 +184,19 @@ pub fn set_agent_control_enabled(
   // The flag is written only after the endpoint matches it. Windows PATH setup is a convenience
   // that may lag behind a failed registry write; macOS only refreshes installation status here.
   // Persisting last prevents a later launch from reopening an endpoint the user just closed.
+  let is_coordinator = app
+    .state::<crate::coordinator::CoordinatorRole>()
+    .is_coordinator();
   if enabled {
     let _ = crate::cli_path::set_cli_path_enabled(true)?;
-    start_endpoint(&app)?;
+    if is_coordinator {
+      start_endpoint(&app)?;
+    }
     persist_enabled(&app, true)?;
   } else {
-    stop_endpoint(&app);
+    if is_coordinator {
+      stop_endpoint(&app);
+    }
     persist_enabled(&app, false)?;
     let _ = crate::cli_path::set_cli_path_enabled(false)?;
   }

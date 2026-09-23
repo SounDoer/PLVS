@@ -1,5 +1,6 @@
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { isTauri } from "../ipc/env.js";
+import { ownsCoordinatorResources } from "./runtimeRole.js";
 
 export const PLVS_TRAY_ID = "plvs-main-tray";
 
@@ -14,7 +15,7 @@ export function clearCurrentTrayIcon(tray) {
 }
 
 export async function closeTrayIcon() {
-  if (!isTauri()) return;
+  if (!isTauri() || !ownsCoordinatorResources()) return;
   try {
     currentTray?.close();
   } catch (_) {}

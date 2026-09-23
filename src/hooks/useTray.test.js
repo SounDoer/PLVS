@@ -80,6 +80,7 @@ function deferred() {
 
 describe("useTray", () => {
   beforeEach(() => {
+    delete window.__PLVS_INITIAL_STATE__;
     vi.clearAllMocks();
     isMacOS.mockReturnValue(false);
     TrayIcon.getById.mockResolvedValue(null);
@@ -97,6 +98,15 @@ describe("useTray", () => {
     expect(TrayIcon.new).toHaveBeenCalledWith(
       expect.objectContaining({ id: PLVS_TRAY_ID, icon: { __type: "MockImage" } })
     );
+  });
+
+  it("does not create or remove the singleton Tray in a participant instance", async () => {
+    window.__PLVS_INITIAL_STATE__ = { isCoordinator: false };
+    renderHook(() => useTray(defaultProps));
+
+    await act(async () => {});
+    expect(TrayIcon.new).not.toHaveBeenCalled();
+    expect(TrayIcon.removeById).not.toHaveBeenCalled();
   });
 
   it("creates TrayIcon with the light theme icon", async () => {
