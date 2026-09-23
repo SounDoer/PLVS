@@ -800,14 +800,34 @@ fn validate_key(value: &str, label: &str) -> Result<(), LibraryError> {
 pub fn run_library_test_host(args: &[String]) -> std::process::ExitCode {
   use std::io::{BufRead, Write};
 
-  let [root_flag, root, item_flag, item_id] = args else {
-    eprintln!("Library test host requires --identity-root <path> --item-id <id>");
+  if args.len() != 4 && args.len() != 6 {
+    eprintln!(
+      "Library test host requires --identity-root <path> --item-id <id> [--iterations <count>]"
+    );
     return std::process::ExitCode::from(2);
+  }
+  let [root_flag, root, item_flag, item_id] = &args[..4] else {
+    unreachable!();
   };
   if root_flag != "--identity-root" || item_flag != "--item-id" {
     eprintln!("Library test host requires --identity-root <path> --item-id <id>");
     return std::process::ExitCode::from(2);
   }
+  let iterations = if args.len() == 6 {
+    if args[4] != "--iterations" {
+      eprintln!("Library test host expected --iterations <count>");
+      return std::process::ExitCode::from(2);
+    }
+    match args[5].parse::<usize>() {
+      Ok(value) if value > 0 => value,
+      _ => {
+        eprintln!("Library test host iterations must be positive");
+        return std::process::ExitCode::from(2);
+      }
+    }
+  } else {
+    1
+  };
   let mut release = String::new();
   if let Err(error) = std::io::stdin().lock().read_line(&mut release) {
     eprintln!("Unable to await Library test release: {error}");
@@ -820,19 +840,31 @@ pub fn run_library_test_host(args: &[String]) -> std::process::ExitCode {
       return std::process::ExitCode::from(1);
     }
   };
-  let status = match repository.create(
-    "preset",
-    item_id,
-    &serde_json::json!({ "writerPid": std::process::id() }),
-  ) {
-    Ok(_) => "committed",
-    Err(LibraryError::Conflict(_)) => "conflict",
-    Err(error) => {
-      eprintln!("{error}");
-      return std::process::ExitCode::from(1);
+  let mut committed = 0;
+  let mut status = "committed";
+  for index in 0..iterations {
+    let id = if iterations == 1 {
+      item_id.clone()
+    } else {
+      format!("{item_id}-{index}")
+    };
+    match repository.create(
+      "preset",
+      &id,
+      &serde_json::json!({ "writerPid": std::process::id(), "sequence": index }),
+    ) {
+      Ok(_) => committed += 1,
+      Err(LibraryError::Conflict(_)) => status = "conflict",
+      Err(error) => {
+        eprintln!("{error}");
+        return std::process::ExitCode::from(1);
+      }
     }
-  };
-  println!("{}", serde_json::json!({ "status": status }));
+  }
+  println!(
+    "{}",
+    serde_json::json!({ "status": status, "committed": committed })
+  );
   if let Err(error) = std::io::stdout().flush() {
     eprintln!("Unable to announce Library test result: {error}");
     return std::process::ExitCode::from(1);

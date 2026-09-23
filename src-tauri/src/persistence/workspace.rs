@@ -141,13 +141,16 @@ fn valid_workspace_id(workspace_id: &str) -> bool {
 
 #[cfg(debug_assertions)]
 pub fn run_lease_test_host(args: &[String]) -> std::process::ExitCode {
-  use std::io::Read;
+  use std::io::{BufRead, Read};
 
-  let [root_flag, root, workspace_flag, workspace_id] = args else {
+  if args.len() != 4 && args.len() != 6 {
     eprintln!(
-      "workspace lease test host requires --identity-root <path> --workspace-id <workspace>"
+      "workspace lease test host requires --identity-root <path> --workspace-id <workspace> [--iterations <count>]"
     );
     return std::process::ExitCode::from(2);
+  }
+  let [root_flag, root, workspace_flag, workspace_id] = &args[..4] else {
+    unreachable!();
   };
   if root_flag != "--identity-root" || workspace_flag != "--workspace-id" {
     eprintln!(
@@ -155,6 +158,21 @@ pub fn run_lease_test_host(args: &[String]) -> std::process::ExitCode {
     );
     return std::process::ExitCode::from(2);
   }
+  let iterations = if args.len() == 6 {
+    if args[4] != "--iterations" {
+      eprintln!("workspace lease test host expected --iterations <count>");
+      return std::process::ExitCode::from(2);
+    }
+    match args[5].parse::<usize>() {
+      Ok(value) if value > 0 => Some(value),
+      _ => {
+        eprintln!("workspace lease test host iterations must be positive");
+        return std::process::ExitCode::from(2);
+      }
+    }
+  } else {
+    None
+  };
   let store = match WorkspaceStore::open(Path::new(root), workspace_id) {
     Ok(store) => store,
     Err(error) => {
@@ -169,13 +187,31 @@ pub fn run_lease_test_host(args: &[String]) -> std::process::ExitCode {
       return std::process::ExitCode::from(1);
     }
   };
-  println!("ready");
-  if let Err(error) = std::io::stdout().flush() {
-    eprintln!("unable to announce workspace lease test host: {error}");
-    return std::process::ExitCode::from(1);
+  if let Some(iterations) = iterations {
+    let mut release = String::new();
+    if let Err(error) = std::io::stdin().lock().read_line(&mut release) {
+      eprintln!("unable to await workspace stress release: {error}");
+      return std::process::ExitCode::from(1);
+    }
+    for sequence in 0..iterations {
+      if let Err(error) = store.save(&serde_json::json!({
+        "writer": workspace_id,
+        "sequence": sequence,
+      })) {
+        eprintln!("{error}");
+        return std::process::ExitCode::from(1);
+      }
+    }
+    println!("{}", serde_json::json!({ "saved": iterations }));
+  } else {
+    println!("ready");
+    if let Err(error) = std::io::stdout().flush() {
+      eprintln!("unable to announce workspace lease test host: {error}");
+      return std::process::ExitCode::from(1);
+    }
+    let mut sink = Vec::new();
+    let _ = std::io::stdin().read_to_end(&mut sink);
   }
-  let mut sink = Vec::new();
-  let _ = std::io::stdin().read_to_end(&mut sink);
   drop(lease);
   std::process::ExitCode::SUCCESS
 }

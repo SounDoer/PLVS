@@ -1,7 +1,7 @@
 use app_lib::persistence::WorkspaceStore;
 use serde_json::json;
 use std::{
-  io::BufRead,
+  io::{BufRead, Read, Write},
   process::{Command, Stdio},
 };
 
@@ -81,5 +81,62 @@ fn a_workspace_can_be_reopened_after_its_writer_process_crashes() {
     .expect("operating system releases lease after a crash");
 
   drop(replacement);
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn four_processes_atomically_stress_separate_workspace_files() {
+  let root = temp_root().with_extension("stress");
+  let iterations = 200;
+  let mut children: Vec<_> = (0..4)
+    .map(|index| {
+      Command::new(env!("CARGO_BIN_EXE_plvs"))
+        .arg("--workspace-lease-test-host")
+        .arg("--identity-root")
+        .arg(&root)
+        .arg("--workspace-id")
+        .arg(format!("workspace-{index}"))
+        .arg("--iterations")
+        .arg(iterations.to_string())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("start workspace stress writer")
+    })
+    .collect();
+
+  for child in &mut children {
+    child.stdin.take().unwrap().write_all(b"go\n").unwrap();
+  }
+  for (index, mut child) in children.into_iter().enumerate() {
+    let mut output = String::new();
+    child
+      .stdout
+      .take()
+      .unwrap()
+      .read_to_string(&mut output)
+      .unwrap();
+    let mut error = String::new();
+    child
+      .stderr
+      .take()
+      .unwrap()
+      .read_to_string(&mut error)
+      .unwrap();
+    assert!(
+      child.wait().unwrap().success(),
+      "workspace writer failed: {error}"
+    );
+    let report: serde_json::Value = serde_json::from_str(output.trim()).unwrap();
+    assert_eq!(report["saved"], iterations);
+
+    let store = WorkspaceStore::open(&root, &format!("workspace-{index}")).unwrap();
+    assert_eq!(
+      store.load().unwrap(),
+      Some(json!({ "writer": format!("workspace-{index}"), "sequence": iterations - 1 }))
+    );
+  }
+
   let _ = std::fs::remove_dir_all(root);
 }

@@ -3,6 +3,8 @@ use std::{
   process::{Child, Command, Stdio},
 };
 
+use app_lib::persistence::LibraryRepository;
+
 fn spawn_writer(root: &std::path::Path, item_id: &str) -> Child {
   Command::new(env!("CARGO_BIN_EXE_plvs"))
     .arg("--library-test-host")
@@ -15,6 +17,22 @@ fn spawn_writer(root: &std::path::Path, item_id: &str) -> Child {
     .stderr(Stdio::piped())
     .spawn()
     .expect("start Library writer")
+}
+
+fn spawn_stress_writer(root: &std::path::Path, item_prefix: &str, iterations: usize) -> Child {
+  Command::new(env!("CARGO_BIN_EXE_plvs"))
+    .arg("--library-test-host")
+    .arg("--identity-root")
+    .arg(root)
+    .arg("--item-id")
+    .arg(item_prefix)
+    .arg("--iterations")
+    .arg(iterations.to_string())
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .expect("start Library stress writer")
 }
 
 fn release_all(mut children: Vec<Child>) -> Vec<serde_json::Value> {
@@ -69,6 +87,36 @@ fn separate_processes_commit_independent_items_and_conflict_on_one_id() {
       .count(),
     1
   );
+
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn four_processes_preserve_every_committed_revision_during_a_write_stress() {
+  let root = std::env::temp_dir().join(format!(
+    "plvs-library-process-stress-{}",
+    std::process::id()
+  ));
+  let iterations = 100;
+  let writers: Vec<_> = (0..4)
+    .map(|index| spawn_stress_writer(&root, &format!("writer-{index}"), iterations))
+    .collect();
+
+  let results = release_all(writers);
+  assert!(results
+    .iter()
+    .all(|result| { result["status"] == "committed" && result["committed"] == iterations }));
+
+  let repository = LibraryRepository::open(&root).expect("reopen stressed Library");
+  let items = repository.list("preset").expect("list stressed Library");
+  assert_eq!(items.len(), 4 * iterations);
+  assert!(items.iter().all(|item| item.revision == 1));
+
+  let connection = rusqlite::Connection::open(root.join("shared/library.sqlite3")).unwrap();
+  let integrity: String = connection
+    .pragma_query_value(None, "integrity_check", |row| row.get(0))
+    .unwrap();
+  assert_eq!(integrity, "ok");
 
   let _ = std::fs::remove_dir_all(root);
 }
