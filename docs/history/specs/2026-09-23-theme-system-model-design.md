@@ -69,16 +69,18 @@ not begin merely because a decision is recorded here.
 
 - Retain Status as one three-color authoring Palette.
 - The editor labels are `Safe`, `Warning`, and `Critical`; the former `Good` label is replaced by
-  `Safe` because the current consumers primarily express an acceptable measurement or rule range,
-  not a subjective quality judgment.
+  `Safe` because this Palette expresses an acceptable measurement or rule range, not a subjective
+  quality judgment.
 - The future public semantic key is `safe`. Existing internal and persisted `good` keys require an
   explicit compatibility migration rather than silent reinterpretation.
-- The three authored colors are semantic seeds. Meter regions, foreground text and icons, borders,
-  tinted backgrounds, and Canvas marks are internal roles derived for their substrate and mark
-  type; one authored color is not published unchanged to every kind of surface.
-- Status Critical remains independent from the color for destructive interface actions.
-- The editor describes the group as safe, warning, and critical states for measurements, limits,
-  and system feedback.
+- Status is restricted to measurement semantics: meter regions, limits, correlation safety,
+  measurement-rule outcomes, and related Canvas marks. It does not color ordinary application
+  feedback, validation, badges, destructive actions, or activity modes.
+- The three authored colors are semantic seeds. Measurement roles are derived for their substrate
+  and mark type; one authored color is not necessarily published unchanged to every meter or Canvas
+  surface.
+- The editor describes the group as safe, warning, and critical states for meters, limits, and
+  measurement results.
 
 ### Intensity color scale
 
@@ -117,22 +119,33 @@ not begin merely because a decision is recorded here.
 - Dark and Light PLVS preset values have distinct internal identities even when both are displayed
   as `PLVS Default`. Preset selection is established by value equality, not by a shared ID.
 
-### Interface semantic namespace
+### Interface Palette and activity roles
 
-- Retain an extensible `interface` semantic namespace, but do not treat the namespace itself as a
-  Palette value kind. Namespace organization and value type are separate concerns.
-- Replace the current `palettes.interface.critical` authoring concept with `interface.danger` in the
-  future public model.
-- Danger covers interface errors, invalid states, and destructive actions. It remains independent
-  from Status Critical, which describes severe measurement, rule, or operational status.
-- The editor presents `Interface` as the section, `Danger` as the field, and explains its separation
-  from measurement Status Critical.
-- Additional Interface authoring colors are introduced only for demonstrated independent semantics,
-  not to pre-fill a conventional Success / Warning / Info set or reserve speculative slots.
-- Existing persisted documents require an explicit compatibility migration from Interface Critical
-  to Interface Danger; exact visual-preservation behavior remains part of the migration review.
+- Retain Interface as a discrete three-color authoring Palette with `Success`, `Warning`, and
+  `Danger` inputs.
+- Interface colors are independent from Status colors. A meter may need a light, vivid mark while
+  interface text, tinted feedback, or a solid button needs a darker or otherwise different color.
+- Interface Success covers successful application feedback. Interface Warning covers application
+  cautions and recoverable problems. Interface Danger covers errors, invalid states, and
+  destructive actions.
+- Each authored Interface color is a seed for usage-specific foreground, tint surface, solid
+  surface, border or ring, and content-on-color roles. The same value is not published unchanged to
+  every usage.
+- Status remains measurement-only; Badge variants, validation, application messages, and dangerous
+  controls use Interface roles instead of borrowing meter colors.
+- No Interface Info input is added without an independent production meaning. Neutral information
+  continues to use normal Text or Accent-derived roles.
+- `LIVE`, `SNAP`, and recording are activity modes rather than measurement status or feedback
+  severity. They receive dedicated internal roles such as `activity.live`, `activity.snapshot`, and
+  `activity.recording`; those roles may have defaults that reference Interface colors but do not add
+  Core or Palette inputs.
+- The ambiguous `--ui-signal-*` binding family must be split by consumer into measurement,
+  Interface feedback, and activity bindings. Binding names remain internal implementation details.
+- A compatibility migration maps old Status Good to Status Safe, retains old Status Warning and
+  Critical, seeds Interface Success and Warning from the corresponding old Status values, and maps
+  old Interface Critical to Interface Danger. Roles whose old appearance came from shared signal
+  bindings require explicit compatibility overrides or reviewed visual changes.
 
 ## Open areas
 
-The next area is an evidence-based inventory of whether any additional independent Interface
-authoring colors are required.
+The next area is the Interface surface ladder: Panel, Raised, Control, Muted, and Interactive.
