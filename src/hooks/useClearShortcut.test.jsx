@@ -18,6 +18,7 @@ vi.mock("@tauri-apps/plugin-global-shortcut", () => ({ register, unregister }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 import { useClearShortcut } from "./useClearShortcut.js";
+import { setCoordinatorRole } from "../lib/runtimeRole.js";
 
 let latest;
 function Harness({ onClear }) {
@@ -33,6 +34,7 @@ beforeEach(() => {
   invoke.mockReset();
   invoke.mockResolvedValue(false);
   delete window.__PLVS_INITIAL_STATE__;
+  setCoordinatorRole(undefined);
 });
 
 describe("useClearShortcut", () => {
@@ -81,5 +83,16 @@ describe("useClearShortcut", () => {
     await waitFor(() => expect(latest.clearReady).toBe(true));
     expect(register).not.toHaveBeenCalled();
     expect(latest.registrationError).toBeNull();
+  });
+
+  it("registers the operating-system shortcut after coordinator promotion", async () => {
+    window.__PLVS_INITIAL_STATE__ = { isCoordinator: false };
+    render(<Harness onClear={vi.fn()} />);
+    await waitFor(() => expect(latest.clearReady).toBe(true));
+    expect(register).not.toHaveBeenCalled();
+
+    act(() => setCoordinatorRole(true));
+
+    await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
   });
 });

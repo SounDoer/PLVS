@@ -54,6 +54,11 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
       }
     }
+    #[cfg(debug_assertions)]
+    Some("--coordinator-role-test-host") => {
+      let rest: Vec<String> = args.collect();
+      return app_lib::coordinator::run_role_test_host(&rest);
+    }
     Some("--instance-registry-test-host") => {
       #[cfg(debug_assertions)]
       {

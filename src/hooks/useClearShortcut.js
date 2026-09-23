@@ -7,7 +7,7 @@ import {
   saveClearShortcutPrefsForControl,
   DEFAULT_CLEAR_SHORTCUT,
 } from "../lib/clearShortcutPrefs.js";
-import { ownsCoordinatorResources } from "../lib/runtimeRole.js";
+import { ownsCoordinatorResources, useCoordinatorRole } from "../lib/runtimeRole.js";
 
 async function routeGlobalClear(onClearRef) {
   try {
@@ -31,6 +31,7 @@ function globalClearHandler(onClearRef) {
  * @param {{ current: (() => void) | null }} onClearRef - ref whose `.current` is the latest clearAll.
  */
 export function useClearShortcut(onClearRef) {
+  const isCoordinator = useCoordinatorRole();
   const [shortcut, setShortcutState] = useState(DEFAULT_CLEAR_SHORTCUT);
   const [global, setGlobalState] = useState(false);
   const [ready, setReady] = useState(false);
@@ -58,7 +59,7 @@ export function useClearShortcut(onClearRef) {
 
   useEffect(() => {
     if (!ready || !isTauri()) return;
-    if (!ownsCoordinatorResources()) return;
+    if (!isCoordinator) return;
     let cancelled = false;
     (async () => {
       const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
@@ -92,7 +93,7 @@ export function useClearShortcut(onClearRef) {
     return () => {
       cancelled = true;
     };
-  }, [ready, global, capturing, shortcut, onClearRef]);
+  }, [ready, global, capturing, shortcut, onClearRef, isCoordinator]);
 
   useEffect(
     () => () => {

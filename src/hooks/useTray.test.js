@@ -43,6 +43,7 @@ import { Image } from "@tauri-apps/api/image";
 import { MenuItem, CheckMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isMacOS } from "../lib/platform.js";
+import { setCoordinatorRole } from "../lib/runtimeRole.js";
 
 const defaultProps = {
   running: false,
@@ -81,6 +82,7 @@ function deferred() {
 describe("useTray", () => {
   beforeEach(() => {
     delete window.__PLVS_INITIAL_STATE__;
+    setCoordinatorRole(undefined);
     vi.clearAllMocks();
     isMacOS.mockReturnValue(false);
     TrayIcon.getById.mockResolvedValue(null);
@@ -107,6 +109,18 @@ describe("useTray", () => {
     await act(async () => {});
     expect(TrayIcon.new).not.toHaveBeenCalled();
     expect(TrayIcon.removeById).not.toHaveBeenCalled();
+  });
+
+  it("creates the singleton Tray when a running participant becomes coordinator", async () => {
+    window.__PLVS_INITIAL_STATE__ = { isCoordinator: false };
+    const { unmount } = renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    expect(TrayIcon.new).not.toHaveBeenCalled();
+
+    await act(async () => setCoordinatorRole(true));
+
+    expect(TrayIcon.new).toHaveBeenCalledTimes(1);
+    unmount();
   });
 
   it("creates TrayIcon with the light theme icon", async () => {

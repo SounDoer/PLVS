@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
+import { setCoordinatorRole } from "../lib/runtimeRole.js";
 
 const HEARTBEAT_MS = 2000;
 
@@ -23,13 +24,16 @@ export function useInstanceIdentity({ sourceLabel, running }) {
           appWindow.isFocused(),
         ]);
         if (focused) focusSequence = Date.now();
-        const displayName = await invoke("runtime_publish_instance_state", {
+        const published = await invoke("runtime_publish_instance_state", {
           sourceLabel: sourceLabel || null,
           captureStatus: running ? "running" : "stopped",
           visible,
           focusSequence,
         });
-        if (!disposed) await appWindow.setTitle(`${appName} — ${displayName}`);
+        if (!disposed) {
+          setCoordinatorRole(published.isCoordinator);
+          await appWindow.setTitle(`${appName} — ${published.displayName}`);
+        }
       } catch (error) {
         if (!disposed) console.warn("Unable to publish PLVS instance state", error);
       } finally {

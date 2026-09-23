@@ -210,6 +210,17 @@ pub fn start_at_launch(app: &AppHandle) {
   }
 }
 
+/// Move the surviving instance from its private coordination endpoint to the public endpoint.
+/// Promotion is monotonic for a process, so this transition is safe to retry on later heartbeats.
+pub fn handle_coordinator_promotion(app: &AppHandle) {
+  stop_endpoint(app);
+  if read_enabled(app) {
+    if let Err(error) = start_endpoint(app) {
+      log::warn!("agent control coordinator handoff failed; retrying on restart: {error}");
+    }
+  }
+}
+
 fn start_endpoint(app: &AppHandle) -> Result<(), String> {
   if app
     .state::<crate::agent_control::transport::ServerState>()

@@ -13,7 +13,7 @@ import {
   PLVS_TRAY_ID,
   setCurrentTrayIcon,
 } from "../lib/trayIconLifecycle.js";
-import { ownsCoordinatorResources } from "../lib/runtimeRole.js";
+import { useCoordinatorRole } from "../lib/runtimeRole.js";
 
 // formatAudioDeviceLabel returns { primary, secondary, full }; a menu item's
 // text must be a single string. Reconstruct the picker's compact form.
@@ -226,6 +226,7 @@ export function useTray({
   presets = { list: [], activeId: null, dirty: false, blocked: false, apply: () => {} },
 }) {
   const isMac = isMacOS();
+  const isCoordinator = useCoordinatorRole();
   const trayRef = useRef(null);
   const sourceControlsRef = useRef(null);
   const sourceSyncQueueRef = useRef(Promise.resolve());
@@ -321,7 +322,7 @@ export function useTray({
 
   // Create tray once on mount.
   useEffect(() => {
-    if (!isTauri() || !ownsCoordinatorResources()) return;
+    if (!isTauri() || !isCoordinator) return;
     let cancelled = false;
 
     (async () => {
@@ -373,7 +374,7 @@ export function useTray({
       sourceControlsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isCoordinator]);
 
   // Rebuild only when menu structure or non-source state changes. Replacing a Windows tray menu
   // from the selection event that belongs to the old menu can leave the replacement visible but

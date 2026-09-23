@@ -2,6 +2,7 @@ use std::{
   fs::{self, File, OpenOptions},
   io::Write,
   path::{Path, PathBuf},
+  sync::Mutex,
 };
 
 use atomic_write_file::AtomicWriteFile;
@@ -72,35 +73,71 @@ pub struct CoordinatorLease {
 
 #[derive(Debug)]
 pub struct CoordinatorRole {
-  lease: Option<CoordinatorLease>,
+  lease: Mutex<Option<CoordinatorLease>>,
 }
 
 impl CoordinatorRole {
   pub fn acquire(identity_root: &Path, identity: &RuntimeIdentity) -> Result<Self, String> {
     Ok(Self {
-      lease: CoordinatorLease::try_acquire(identity_root, identity)?,
+      lease: Mutex::new(CoordinatorLease::try_acquire(identity_root, identity)?),
     })
   }
 
   pub fn is_coordinator(&self) -> bool {
-    self.lease.is_some()
+    self
+      .lease
+      .lock()
+      .expect("coordinator role poisoned")
+      .is_some()
   }
 
   pub fn generation(&self) -> Option<u64> {
-    self.lease.as_ref().map(CoordinatorLease::generation)
+    self
+      .lease
+      .lock()
+      .expect("coordinator role poisoned")
+      .as_ref()
+      .map(CoordinatorLease::generation)
   }
+
+  pub fn try_promote(
+    &self,
+    identity_root: &Path,
+    identity: &RuntimeIdentity,
+  ) -> Result<bool, String> {
+    let mut lease = self.lease.lock().expect("coordinator role poisoned");
+    if lease.is_some() {
+      return Ok(false);
+    }
+    let Some(acquired) = CoordinatorLease::try_acquire(identity_root, identity)? else {
+      return Ok(false);
+    };
+    *lease = Some(acquired);
+    Ok(true)
+  }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishedInstanceState {
+  display_name: String,
+  is_coordinator: bool,
+  coordinator_generation: Option<u64>,
 }
 
 #[tauri::command]
 pub fn runtime_publish_instance_state(
+  app: tauri::AppHandle,
   identity: State<'_, RuntimeIdentity>,
   registration: State<'_, InstanceRegistration>,
   registry: State<'_, InstanceRegistry>,
+  role: State<'_, CoordinatorRole>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
   source_label: Option<String>,
   capture_status: String,
   visible: bool,
   focus_sequence: u64,
-) -> Result<String, String> {
+) -> Result<PublishedInstanceState, String> {
   let capture_status = match capture_status.as_str() {
     "running" => CaptureStatus::Running,
     "stopped" => CaptureStatus::Stopped,
@@ -112,12 +149,21 @@ pub fn runtime_publish_instance_state(
     visible,
     focus_sequence,
   })?;
+  let identity_root = persistence.identity_root()?;
+  if role.try_promote(&identity_root, &identity)? {
+    crate::agent_control::toggle::handle_coordinator_promotion(&app);
+  }
   let _ = registry.remove_stale()?;
-  summarize_instances(registry.list()?)
+  let display_name = summarize_instances(registry.list()?)
     .into_iter()
     .find(|instance| instance.instance_id == identity.instance_id())
     .map(|instance| instance.display_name)
-    .ok_or_else(|| "Published instance is missing from the live registry.".to_string())
+    .ok_or_else(|| "Published instance is missing from the live registry.".to_string())?;
+  Ok(PublishedInstanceState {
+    display_name,
+    is_coordinator: role.is_coordinator(),
+    coordinator_generation: role.generation(),
+  })
 }
 
 #[tauri::command]
@@ -347,6 +393,80 @@ pub fn run_test_host(args: &[String]) -> std::process::ExitCode {
 }
 
 #[cfg(debug_assertions)]
+pub fn run_role_test_host(args: &[String]) -> std::process::ExitCode {
+  use std::{
+    io::Read,
+    sync::{
+      atomic::{AtomicBool, Ordering},
+      Arc,
+    },
+    time::Duration,
+  };
+
+  let [flag, root] = args else {
+    eprintln!("coordinator role test host requires --identity-root <path>");
+    return std::process::ExitCode::from(2);
+  };
+  if flag != "--identity-root" {
+    eprintln!("coordinator role test host requires --identity-root <path>");
+    return std::process::ExitCode::from(2);
+  }
+  let identity = match RuntimeIdentity::new_default() {
+    Ok(identity) => identity,
+    Err(error) => {
+      eprintln!("{error}");
+      return std::process::ExitCode::from(1);
+    }
+  };
+  let role = match CoordinatorRole::acquire(Path::new(root), &identity) {
+    Ok(role) => role,
+    Err(error) => {
+      eprintln!("{error}");
+      return std::process::ExitCode::from(1);
+    }
+  };
+  println!(
+    "{}",
+    serde_json::json!({
+      "isCoordinator": role.is_coordinator(),
+      "generation": role.generation(),
+    })
+  );
+  if std::io::stdout().flush().is_err() {
+    return std::process::ExitCode::from(1);
+  }
+
+  let finished = Arc::new(AtomicBool::new(false));
+  let reader_finished = finished.clone();
+  std::thread::spawn(move || {
+    let mut sink = Vec::new();
+    let _ = std::io::stdin().read_to_end(&mut sink);
+    reader_finished.store(true, Ordering::Release);
+  });
+  while !finished.load(Ordering::Acquire) {
+    match role.try_promote(Path::new(root), &identity) {
+      Ok(true) => {
+        println!(
+          "{}",
+          serde_json::json!({
+            "isCoordinator": true,
+            "generation": role.generation(),
+          })
+        );
+        let _ = std::io::stdout().flush();
+      }
+      Ok(false) => {}
+      Err(error) => {
+        eprintln!("{error}");
+        return std::process::ExitCode::from(1);
+      }
+    }
+    std::thread::sleep(Duration::from_millis(50));
+  }
+  std::process::ExitCode::SUCCESS
+}
+
+#[cfg(debug_assertions)]
 pub fn run_registry_test_host(args: &[String]) -> std::process::ExitCode {
   use std::io::Read;
 
@@ -438,6 +558,35 @@ fn write_json_atomic(path: &Path, value: &impl Serialize) -> Result<(), String> 
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn a_running_participant_can_promote_after_the_coordinator_releases_its_lease() {
+    let root = std::env::temp_dir().join(format!(
+      "plvs-coordinator-promotion-{}-{}",
+      std::process::id(),
+      std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+    ));
+    let first_identity = RuntimeIdentity::new_for_workspace("workspace-first").unwrap();
+    let second_identity = RuntimeIdentity::new_for_workspace("workspace-second").unwrap();
+    let first = CoordinatorRole::acquire(&root, &first_identity).unwrap();
+    let second = CoordinatorRole::acquire(&root, &second_identity).unwrap();
+
+    assert!(first.is_coordinator());
+    assert!(!second.is_coordinator());
+    assert!(!second.try_promote(&root, &second_identity).unwrap());
+
+    drop(first);
+
+    assert!(second.try_promote(&root, &second_identity).unwrap());
+    assert!(second.is_coordinator());
+    assert_eq!(second.generation(), Some(2));
+    assert!(!second.try_promote(&root, &second_identity).unwrap());
+    drop(second);
+    let _ = std::fs::remove_dir_all(root);
+  }
 
   fn instance(id: &str, focus_sequence: u64) -> InstanceSummary {
     InstanceSummary {
