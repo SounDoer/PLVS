@@ -16,10 +16,12 @@ saved workspace remains recoverable instead of being treated as an intentional r
 
 With several workbenches open, only the current coordinator checks for and installs application
 updates. Before installation, every workbench must have no open draft editor, stop capture and
-finish saving. A refusal or timeout cancels the update; a successful update closes the workbench
-set and restores it after relaunch. If the installer fails after peer workbenches have already
-closed, PLVS relaunches the current version so the saved set is restored instead of leaving those
-workbenches closed.
+finish saving. The update package downloads before that interruption. A refusal or timeout cancels
+the update; a successful update closes the workbench set and restores it after relaunch. If the
+installer fails after peer workbenches have already closed, PLVS relaunches the current version so
+the saved set is restored instead of leaving those workbenches closed. If the coordinator itself
+disappears while workbenches are waiting at the save barrier, they resume any capture that the
+barrier stopped.
 
 PLVS also keeps one system Tray. Its **Workbenches** submenu uses Source-derived names and can show,
 start, stop or quit a specific running workbench. **Quit PLVS** flushes and closes the complete

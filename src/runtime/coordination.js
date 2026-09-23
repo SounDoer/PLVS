@@ -6,6 +6,7 @@ import { isTauri } from "../ipc/env.js";
 
 const COMMAND_POLL_MS = 250;
 const COMMAND_TIMEOUT_MS = 10_000;
+const PREPARED_LEASE_MS = 30_000;
 
 let lifecycle = null;
 
@@ -46,6 +47,15 @@ async function stopAndFlush(current) {
   return wasRunning;
 }
 
+async function recoverExpiredPreparations(current, prepared) {
+  const now = Date.now();
+  for (const [operationId, state] of prepared) {
+    if (state.expiresAt > now) continue;
+    if (state.wasRunning) await current.start();
+    prepared.delete(operationId);
+  }
+}
+
 async function handleRuntimeCommand(command, prepared) {
   const current = lifecycle;
   if (!current) return;
@@ -67,17 +77,33 @@ async function handleRuntimeCommand(command, prepared) {
       return;
     }
     if (command.action === "prepareGlobal") {
+      if (prepared.has(command.operationId)) {
+        prepared.get(command.operationId).expiresAt = Date.now() + PREPARED_LEASE_MS;
+        await acknowledge(command, "ready");
+        return;
+      }
+      if (prepared.size) {
+        await acknowledge(
+          command,
+          "blocked",
+          "Another identity-wide operation is awaiting recovery."
+        );
+        return;
+      }
       if (current.blockingEditors.length) {
         await acknowledge(command, "blocked", current.blockingEditors.join(", "));
         return;
       }
       const wasRunning = await stopAndFlush(current);
-      prepared.set(command.operationId, wasRunning);
+      prepared.set(command.operationId, {
+        wasRunning,
+        expiresAt: Date.now() + PREPARED_LEASE_MS,
+      });
       await acknowledge(command, "ready");
       return;
     }
     if (command.action === "abortGlobal") {
-      if (prepared.get(command.operationId)) await current.start();
+      if (prepared.get(command.operationId)?.wasRunning) await current.start();
       prepared.delete(command.operationId);
       await acknowledge(command, "completed");
       return;
@@ -119,6 +145,7 @@ export function useRuntimeCoordination({ blockingEditors, running, stop, start, 
       try {
         const command = await invoke("runtime_poll_command");
         if (command) await handleRuntimeCommand(command, prepared);
+        await recoverExpiredPreparations(currentRef.current, prepared);
       } catch (_) {
         // A transient read failure is retried; the command remains on disk until acknowledged.
       } finally {

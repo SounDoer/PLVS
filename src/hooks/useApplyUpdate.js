@@ -103,12 +103,10 @@ export function useApplyUpdate() {
       const splitInstall =
         typeof update.download === "function" && typeof update.install === "function";
       try {
-        operation = await prepareGlobalOperation();
         if (splitInstall) {
           await update.download(onDownloadEvent, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
-        } else {
-          await update.downloadAndInstall(onDownloadEvent, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
         }
+        operation = await prepareGlobalOperation();
       } catch {
         if (operation) await abortGlobalOperation(operation);
         operationRef.current = false;
@@ -121,7 +119,11 @@ export function useApplyUpdate() {
       try {
         await commitGlobalOperation(operation);
         peersClosed = true;
-        if (splitInstall) await update.install({ timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        if (splitInstall) {
+          await update.install({ timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        } else {
+          await update.downloadAndInstall(onDownloadEvent, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        }
         const succeeded = await runRelaunch();
         if (!succeeded) operationRef.current = false;
       } catch {

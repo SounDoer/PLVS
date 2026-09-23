@@ -165,11 +165,12 @@ describe("useApplyUpdate", () => {
 
   it("clears download progress when installation fails", async () => {
     const update = {
-      downloadAndInstall: vi.fn(async (onEvent) => {
+      download: vi.fn(async (onEvent) => {
         onEvent({ event: "Started", data: { contentLength: 100 } });
         onEvent({ event: "Progress", data: { chunkLength: 40 } });
         throw new Error("download failed");
       }),
+      install: vi.fn(),
     };
     const { result } = renderHook(() => useApplyUpdate());
 
@@ -197,7 +198,22 @@ describe("useApplyUpdate", () => {
 
     await act(async () => result.current.install(update));
 
-    expect(calls).toEqual(["prepare", "download", "commit", "install", "relaunch"]);
+    expect(calls).toEqual(["download", "prepare", "commit", "install", "relaunch"]);
+  });
+
+  it("does not stop peer workbenches when a split update download fails", async () => {
+    const update = {
+      download: vi.fn().mockRejectedValue(new Error("download failed")),
+      install: vi.fn(),
+    };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => result.current.install(update));
+
+    expect(coordination.prepare).not.toHaveBeenCalled();
+    expect(coordination.abort).not.toHaveBeenCalled();
+    expect(update.install).not.toHaveBeenCalled();
+    expect(result.current.installStatus).toBe("install-error");
   });
 
   it("relaunches to restore peer workbenches when a split install fails after they close", async () => {
@@ -255,19 +271,20 @@ describe("useApplyUpdate", () => {
     });
   });
 
-  it("reports an install error without trying to relaunch", async () => {
+  it("relaunches to restore peers when a combined updater fails after shutdown", async () => {
     const update = {
       downloadAndInstall: vi.fn().mockRejectedValue(new Error("download failed")),
     };
+    relaunchMock.mockResolvedValue();
     const { result } = renderHook(() => useApplyUpdate());
 
     await act(async () => {
       await result.current.install(update);
     });
 
-    expect(result.current.installStatus).toBe("install-error");
-    expect(relaunchMock).not.toHaveBeenCalled();
-    expect(coordination.abort).toHaveBeenCalledTimes(1);
+    expect(result.current.installStatus).toBe("restarting");
+    expect(relaunchMock).toHaveBeenCalledTimes(1);
+    expect(coordination.abort).not.toHaveBeenCalled();
   });
 
   it("does not download when another workbench refuses the prepare barrier", async () => {
@@ -314,7 +331,8 @@ describe("useApplyUpdate", () => {
 
   it("resets a dismissed error before the dialog is reopened", async () => {
     const update = {
-      downloadAndInstall: vi.fn().mockRejectedValue(new Error("download failed")),
+      download: vi.fn().mockRejectedValue(new Error("download failed")),
+      install: vi.fn(),
     };
     const { result } = renderHook(() => useApplyUpdate());
 

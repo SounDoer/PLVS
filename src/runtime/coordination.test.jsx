@@ -62,6 +62,87 @@ describe("runtime coordination", () => {
     unmount();
   });
 
+  it("restores capture when the coordinator disappears after prepare", async () => {
+    const stop = vi.fn().mockResolvedValue();
+    const start = vi.fn().mockResolvedValue();
+    const command = {
+      commandId: "command-a",
+      operationId: "operation-a",
+      instanceId: "instance-a",
+      action: "prepareGlobal",
+    };
+    let delivered = false;
+    mocks.invoke.mockImplementation((name) => {
+      if (name === "runtime_poll_command" && !delivered) {
+        delivered = true;
+        return Promise.resolve(command);
+      }
+      if (name === "runtime_poll_command") return Promise.resolve(null);
+      return Promise.resolve();
+    });
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        stop,
+        start,
+        show: vi.fn(),
+      })
+    );
+    await act(async () => {});
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_250);
+    });
+
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it("refuses a new prepare while recovery from an abandoned operation is pending", async () => {
+    const stop = vi.fn().mockResolvedValue();
+    const commands = [
+      {
+        commandId: "command-a",
+        operationId: "operation-a",
+        instanceId: "instance-a",
+        action: "prepareGlobal",
+      },
+      {
+        commandId: "command-b",
+        operationId: "operation-b",
+        instanceId: "instance-a",
+        action: "prepareGlobal",
+      },
+    ];
+    mocks.invoke.mockImplementation((name) => {
+      if (name === "runtime_poll_command") return Promise.resolve(commands.shift() ?? null);
+      return Promise.resolve();
+    });
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        stop,
+        start: vi.fn(),
+        show: vi.fn(),
+      })
+    );
+    await act(async () => {});
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: "command-b",
+      outcome: "blocked",
+      detail: "Another identity-wide operation is awaiting recovery.",
+    });
+    unmount();
+  });
+
   it("refuses an identity-wide operation before issuing commands when this editor is open", async () => {
     const { unmount } = renderHook(() =>
       useRuntimeCoordination({
