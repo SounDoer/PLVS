@@ -41,8 +41,15 @@ export function AppSettingsOverlays({
   const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
   });
-  const { updateInfo, refreshUpdateCheck, installStatus, install, restartToApply, resetInstall } =
-    updateControls;
+  const {
+    updateInfo,
+    refreshUpdateCheck,
+    installStatus,
+    downloadProgress,
+    install,
+    restartToApply,
+    resetInstall,
+  } = updateControls;
   const { editor, editorPos, moveEditor } = settings;
 
   function openUpdateDialog() {
@@ -140,6 +147,7 @@ export function AppSettingsOverlays({
         currentVersion={appVersion}
         releaseNotes={selectedUpdate?.releaseNotes}
         installStatus={installStatus}
+        downloadProgress={downloadProgress}
         onConfirm={() => install(selectedUpdate?.update)}
         onCancel={closeUpdateDialog}
         onRestart={restartToApply}

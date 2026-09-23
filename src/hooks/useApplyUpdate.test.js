@@ -66,9 +66,100 @@ describe("useApplyUpdate", () => {
       await result.current.install(update);
     });
 
-    expect(update.downloadAndInstall).toHaveBeenCalledWith(undefined, {
+    expect(update.downloadAndInstall).toHaveBeenCalledWith(expect.any(Function), {
       timeout: 10 * 60 * 1000,
     });
+  });
+
+  it("publishes download progress when the integer percent changes", async () => {
+    let onEvent;
+    let resolveInstall;
+    const update = {
+      downloadAndInstall: vi.fn(
+        (callback) =>
+          new Promise((resolve) => {
+            onEvent = callback;
+            resolveInstall = resolve;
+          })
+      ),
+    };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    act(() => {
+      void result.current.install(update);
+    });
+    expect(result.current.downloadProgress).toBeNull();
+
+    act(() => {
+      onEvent({ event: "Started", data: { contentLength: 1000 } });
+    });
+    expect(result.current.downloadProgress).toBe(0);
+
+    act(() => {
+      onEvent({ event: "Progress", data: { chunkLength: 4 } });
+    });
+    expect(result.current.downloadProgress).toBe(0);
+
+    act(() => {
+      onEvent({ event: "Progress", data: { chunkLength: 6 } });
+    });
+    expect(result.current.downloadProgress).toBe(0.01);
+
+    act(() => {
+      onEvent({ event: "Progress", data: { chunkLength: 1 } });
+    });
+    expect(result.current.downloadProgress).toBe(0.01);
+
+    act(() => {
+      onEvent({ event: "Finished" });
+    });
+    expect(result.current.downloadProgress).toBe(1);
+
+    relaunchMock.mockResolvedValue();
+    await act(async () => {
+      resolveInstall();
+    });
+  });
+
+  it("keeps download progress unknown when the updater omits a total size", () => {
+    let onEvent;
+    const update = {
+      downloadAndInstall: vi.fn((callback) => {
+        onEvent = callback;
+        return new Promise(() => {});
+      }),
+    };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    act(() => {
+      void result.current.install(update);
+    });
+    act(() => {
+      onEvent({ event: "Started", data: {} });
+      onEvent({ event: "Progress", data: { chunkLength: 400 } });
+      onEvent({ event: "Finished" });
+    });
+
+    expect(result.current.installStatus).toBe("installing");
+    expect(result.current.downloadProgress).toBeNull();
+  });
+
+  it("clears download progress when installation fails", async () => {
+    const update = {
+      downloadAndInstall: vi.fn(async (onEvent) => {
+        onEvent({ event: "Started", data: { contentLength: 100 } });
+        onEvent({ event: "Progress", data: { chunkLength: 40 } });
+        throw new Error("download failed");
+      }),
+    };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => {
+      await result.current.install(update);
+    });
+
+    expect(result.current.installStatus).toBe("install-error");
+    expect(result.current.downloadProgress).toBeNull();
   });
 
   it("ignores a concurrent install request before React state updates", async () => {

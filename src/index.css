@@ -272,8 +272,22 @@ html[data-surface="dock-editor"] #root {
   animation: status-pulse 1.4s ease-in-out infinite;
 }
 
+@keyframes update-progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.update-progress-indeterminate {
+  animation: update-progress-slide 1.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .status-dot-pulse {
+  .status-dot-pulse,
+  .update-progress-indeterminate {
     animation: none;
   }
 }

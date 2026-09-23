@@ -110,6 +110,39 @@ describe("UpdateDialog", () => {
     expect(onCancel).not.toHaveBeenCalled();
   });
 
+  it("shows a download bar without a percentage while installing", () => {
+    const { rerender } = render(<UpdateDialog {...BASE_PROPS} installStatus="installing" />);
+
+    const indeterminate = screen.getByRole("progressbar", { name: "Update download" });
+    expect(indeterminate.getAttribute("aria-valuenow")).toBeNull();
+    expect(indeterminate.textContent).toBe("");
+    expect(indeterminate.firstElementChild.className).toContain("update-progress-indeterminate");
+    expect(indeterminate.firstElementChild.style.width).toBe("");
+
+    rerender(<UpdateDialog {...BASE_PROPS} installStatus="installing" downloadProgress={0.4} />);
+    const determinate = screen.getByRole("progressbar", { name: "Update download" });
+    expect(determinate.getAttribute("aria-valuenow")).toBe("40");
+    expect(determinate.firstElementChild.style.width).toBe("40%");
+    expect(determinate.textContent).toBe("");
+    expect(screen.queryByText("40%")).toBeNull();
+  });
+
+  it("hides the download bar outside the download step", () => {
+    const { rerender } = render(
+      <UpdateDialog {...BASE_PROPS} installStatus="installing" downloadProgress={0.4} />
+    );
+    expect(screen.getByRole("progressbar")).toBeTruthy();
+
+    rerender(<UpdateDialog {...BASE_PROPS} installStatus="restarting" downloadProgress={1} />);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+
+    rerender(<UpdateDialog {...BASE_PROPS} installStatus="install-error" downloadProgress={0.4} />);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+
+    rerender(<UpdateDialog {...BASE_PROPS} />);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+  });
+
   it("offers full retry after an installation failure", () => {
     const onConfirm = vi.fn();
     render(<UpdateDialog {...BASE_PROPS} installStatus="install-error" onConfirm={onConfirm} />);

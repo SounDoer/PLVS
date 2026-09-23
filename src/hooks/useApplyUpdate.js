@@ -3,13 +3,60 @@ import { relaunch } from "@tauri-apps/plugin-process";
 
 const UPDATE_DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
+function knownTotal(contentLength) {
+  return Number.isFinite(contentLength) && contentLength > 0 ? contentLength : null;
+}
+
 /**
  * Drives the download + install step for an Update handle returned by
  * checkForUpdate(), separate from the periodic check itself.
+ *
+ * `downloadProgress` stays null while the updater has not reported a total
+ * size. A 0..1 fraction is published only when the integer percent changes.
  */
 export function useApplyUpdate() {
   const [installStatus, setInstallStatus] = useState("idle");
+  const [downloadProgress, setDownloadProgress] = useState(null);
   const operationRef = useRef(false);
+  const progressRef = useRef({ received: 0, total: null, publishedPercent: -1 });
+
+  const clearProgress = useCallback(() => {
+    progressRef.current = { received: 0, total: null, publishedPercent: -1 };
+    setDownloadProgress(null);
+  }, []);
+
+  const onDownloadEvent = useCallback((event) => {
+    const state = progressRef.current;
+    if (event?.event === "Started") {
+      state.received = 0;
+      state.total = knownTotal(event.data?.contentLength);
+      state.publishedPercent = -1;
+      if (state.total == null) {
+        setDownloadProgress(null);
+        return;
+      }
+      state.publishedPercent = 0;
+      setDownloadProgress(0);
+      return;
+    }
+
+    if (event?.event === "Progress") {
+      const chunk = event.data?.chunkLength;
+      if (!Number.isFinite(chunk) || chunk <= 0 || state.total == null) return;
+      state.received += chunk;
+      const fraction = Math.min(1, state.received / state.total);
+      const percent = Math.round(fraction * 100);
+      if (percent === state.publishedPercent) return;
+      state.publishedPercent = percent;
+      setDownloadProgress(fraction);
+      return;
+    }
+
+    if (event?.event === "Finished" && state.total != null) {
+      state.publishedPercent = 100;
+      setDownloadProgress(1);
+    }
+  }, []);
 
   const runRelaunch = useCallback(async () => {
     setInstallStatus("restarting");
@@ -34,11 +81,13 @@ export function useApplyUpdate() {
       if (!update || operationRef.current) return;
 
       operationRef.current = true;
+      clearProgress();
       setInstallStatus("installing");
       try {
-        await update.downloadAndInstall(undefined, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
+        await update.downloadAndInstall(onDownloadEvent, { timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
       } catch {
         operationRef.current = false;
+        clearProgress();
         setInstallStatus("install-error");
         return;
       }
@@ -46,13 +95,14 @@ export function useApplyUpdate() {
       const succeeded = await runRelaunch();
       if (!succeeded) operationRef.current = false;
     },
-    [runRelaunch]
+    [clearProgress, onDownloadEvent, runRelaunch]
   );
 
   const resetInstall = useCallback(() => {
     if (operationRef.current) return;
+    clearProgress();
     setInstallStatus("idle");
-  }, []);
+  }, [clearProgress]);
 
-  return { installStatus, install, restartToApply, resetInstall };
+  return { installStatus, downloadProgress, install, restartToApply, resetInstall };
 }

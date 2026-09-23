@@ -560,7 +560,8 @@ function AppContent() {
   }, [docked, resumeDockMode, suspendDockMode]);
 
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
-  const { installStatus, install, restartToApply, resetInstall } = useApplyUpdate();
+  const { installStatus, downloadProgress, install, restartToApply, resetInstall } =
+    useApplyUpdate();
   const updateBusy = installStatus === "installing" || installStatus === "restarting";
 
   const {
@@ -2420,6 +2421,7 @@ function AppContent() {
           updateInfo,
           refreshUpdateCheck,
           installStatus,
+          downloadProgress,
           install,
           restartToApply,
           resetInstall,

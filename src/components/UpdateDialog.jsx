@@ -13,6 +13,7 @@ export function UpdateDialog({
   currentVersion,
   releaseNotes = "",
   installStatus = "idle",
+  downloadProgress = null,
   onConfirm,
   onCancel,
   onRestart,
@@ -92,6 +93,8 @@ export function UpdateDialog({
             </ReactMarkdown>
           </div>
 
+          {installing ? <UpdateDownloadBar progress={downloadProgress} /> : null}
+
           {installFailed ? (
             <p className="mb-2 text-[length:var(--ui-fs-control)] text-destructive">
               Update failed. Please try again.
@@ -124,5 +127,30 @@ export function UpdateDialog({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function UpdateDownloadBar({ progress }) {
+  const determinate = typeof progress === "number" && Number.isFinite(progress);
+  const percent = determinate ? Math.round(Math.min(1, Math.max(0, progress)) * 100) : null;
+
+  return (
+    <div
+      className="mb-3 h-1 overflow-hidden rounded-full bg-muted"
+      role="progressbar"
+      aria-label="Update download"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent ?? undefined}
+    >
+      <div
+        className={
+          determinate
+            ? "h-full rounded-full bg-primary"
+            : "update-progress-indeterminate h-full w-1/3 rounded-full bg-primary motion-reduce:w-full motion-reduce:opacity-60"
+        }
+        style={determinate ? { width: `${percent}%` } : undefined}
+      />
+    </div>
   );
 }

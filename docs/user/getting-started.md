@@ -38,4 +38,5 @@ A new installation opens with a starter workspace and a starter Loudness Profile
 capturing audio on its own: pick a signal source (see [Signal Source](signal-source.md)) and press
 Start when you're ready to monitor.
 
-PLVS checks for updates automatically and asks before installing one.
+PLVS checks for updates automatically and asks before installing one. The confirmation dialog
+shows a progress bar while that download runs.
