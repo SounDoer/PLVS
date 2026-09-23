@@ -37,7 +37,12 @@ async function waitFor(issued) {
 async function stopAndFlush(current) {
   const wasRunning = current.running === true;
   await current.stop();
-  await flushPersistence();
+  try {
+    await flushPersistence();
+  } catch (error) {
+    if (wasRunning) await current.start();
+    throw error;
+  }
   return wasRunning;
 }
 
@@ -137,8 +142,14 @@ export async function prepareGlobalOperation() {
     );
   }
   const id = operationId();
-  const issued = await issue("prepareGlobal", id);
   const localWasRunning = await stopAndFlush(lifecycle);
+  let issued;
+  try {
+    issued = await issue("prepareGlobal", id);
+  } catch (error) {
+    await abortGlobalOperation({ id, issued: [], localWasRunning });
+    throw error;
+  }
   let acknowledgements;
   try {
     acknowledgements = await waitFor(issued);

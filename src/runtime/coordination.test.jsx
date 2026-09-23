@@ -73,4 +73,58 @@ describe("runtime coordination", () => {
     expect(mocks.invoke).not.toHaveBeenCalledWith("runtime_issue_commands", expect.anything());
     unmount();
   });
+
+  it("restores local capture without preparing peers when the local flush fails", async () => {
+    const stop = vi.fn().mockResolvedValue();
+    const start = vi.fn().mockResolvedValue();
+    mocks.flush.mockRejectedValueOnce(new Error("disk full"));
+    mocks.invoke.mockImplementation((name) => {
+      if (name === "runtime_poll_command") return Promise.resolve(null);
+      return Promise.resolve([]);
+    });
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        stop,
+        start,
+        show: vi.fn(),
+      })
+    );
+
+    await expect(prepareGlobalOperation()).rejects.toThrow("disk full");
+
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke).not.toHaveBeenCalledWith("runtime_issue_commands", expect.anything());
+    unmount();
+  });
+
+  it("restores local capture when peer preparation cannot be issued", async () => {
+    const stop = vi.fn().mockResolvedValue();
+    const start = vi.fn().mockResolvedValue();
+    mocks.invoke.mockImplementation((name) => {
+      if (name === "runtime_poll_command") return Promise.resolve(null);
+      if (name === "runtime_issue_commands") return Promise.reject(new Error("coordinator lost"));
+      return Promise.resolve();
+    });
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        stop,
+        start,
+        show: vi.fn(),
+      })
+    );
+
+    await expect(prepareGlobalOperation()).rejects.toThrow("coordinator lost");
+
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_finish_operation", {
+      operationId: expect.any(String),
+    });
+    unmount();
+  });
 });
