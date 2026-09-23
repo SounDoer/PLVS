@@ -17,6 +17,9 @@ saved workspace remains recoverable instead of being treated as an intentional r
 With several workbenches open, only the current coordinator checks for and installs application
 updates, so one update cannot be started independently in every process.
 
+PLVS also keeps one system Tray. Its **Workbenches** submenu uses Source-derived names and can start
+or stop a specific running workbench.
+
 ## Global shortcut
 
 Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused. When several PLVS

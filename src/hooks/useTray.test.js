@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { act, useState } from "react";
 
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
+
 vi.mock("@tauri-apps/api/tray", () => ({
   TrayIcon: {
     getById: vi.fn().mockResolvedValue(null),
@@ -84,6 +87,7 @@ describe("useTray", () => {
     delete window.__PLVS_INITIAL_STATE__;
     setCoordinatorRole(undefined);
     vi.clearAllMocks();
+    invoke.mockResolvedValue([]);
     isMacOS.mockReturnValue(false);
     TrayIcon.getById.mockResolvedValue(null);
     TrayIcon.removeById.mockResolvedValue(undefined);
@@ -130,6 +134,28 @@ describe("useTray", () => {
     expect(TrayIcon.new).toHaveBeenCalledWith(
       expect.objectContaining({ icon: { __type: "MockImage" } })
     );
+  });
+
+  it("lists Source-named workbenches and routes Start or Stop to the selected instance", async () => {
+    invoke.mockImplementation((command) => {
+      if (command === "runtime_list_instances") {
+        return Promise.resolve([
+          { instanceId: "one", displayName: "Spotify", captureStatus: "running" },
+          { instanceId: "two", displayName: "VLC", captureStatus: "stopped" },
+        ]);
+      }
+      return Promise.resolve(true);
+    });
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    await act(async () => {});
+
+    findText(menuItemOptions(), "VLC — Start").action();
+
+    expect(invoke).toHaveBeenCalledWith("runtime_route_instance_transport", {
+      instanceId: "two",
+      action: "start",
+    });
   });
 
   it("creates TrayIcon with iconAsTemplate true", async () => {

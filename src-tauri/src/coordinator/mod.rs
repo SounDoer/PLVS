@@ -309,7 +309,57 @@ pub async fn runtime_route_global_clear(
   Ok(true)
 }
 
+#[tauri::command]
+pub async fn runtime_route_instance_transport(
+  identity: State<'_, RuntimeIdentity>,
+  registry: State<'_, InstanceRegistry>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  instance_id: String,
+  action: String,
+) -> Result<bool, String> {
+  if action != "start" && action != "stop" {
+    return Err("Unknown instance transport action.".to_string());
+  }
+  let _ = registry.remove_stale()?;
+  if !registry
+    .list()?
+    .iter()
+    .any(|instance| instance.instance_id == instance_id)
+  {
+    return Err("The selected PLVS instance is no longer running.".to_string());
+  }
+  if instance_id == identity.instance_id() {
+    return Ok(false);
+  }
+  let identity_root = persistence.identity_root()?;
+  tauri::async_runtime::spawn_blocking(move || {
+    route_revisioned_method_to_instance(
+      &identity_root,
+      &instance_id,
+      &format!("transport.live.{action}"),
+      &format!("tray-{action}"),
+    )
+  })
+  .await
+  .map_err(|error| format!("Tray instance routing task failed: {error}"))??;
+  Ok(true)
+}
+
 fn route_clear_to_instance(identity_root: &Path, instance_id: &str) -> Result<(), String> {
+  route_revisioned_method_to_instance(
+    identity_root,
+    instance_id,
+    "transport.live.clear",
+    "global-shortcut-clear",
+  )
+}
+
+fn route_revisioned_method_to_instance(
+  identity_root: &Path,
+  instance_id: &str,
+  method: &str,
+  request_prefix: &str,
+) -> Result<(), String> {
   let descriptor_path =
     crate::agent_control::discovery::instance_descriptor_path(identity_root, instance_id);
   let descriptor = crate::agent_control::discovery::read_instance_descriptor_at(
@@ -336,19 +386,19 @@ fn route_clear_to_instance(identity_root: &Path, instance_id: &str) -> Result<()
     .and_then(serde_json::Value::as_u64)
     .ok_or_else(|| agent_response_error(&inspected, "inspect"))?;
   let clear = crate::agent_control::protocol::JsonRpcRequest {
-    id: format!("global-shortcut-clear-{}", std::process::id()),
-    method: "transport.live.clear".to_string(),
+    id: format!("{request_prefix}-{}", std::process::id()),
+    method: method.to_string(),
     params: serde_json::json!({ "expectedRevision": revision }),
   };
-  let cleared = crate::agent_control::transport::call_with_timeout(
+  let response = crate::agent_control::transport::call_with_timeout(
     &descriptor,
     &clear,
     crate::agent_control::broker::frontend_budget(&clear)
       + crate::agent_control::broker::CLIENT_GRACE,
   )
   .map_err(|error| error.to_string())?;
-  if cleared.get("result").is_none() {
-    return Err(agent_response_error(&cleared, "clear"));
+  if response.get("result").is_none() {
+    return Err(agent_response_error(&response, method));
   }
   Ok(())
 }

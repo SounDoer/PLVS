@@ -186,6 +186,7 @@ pub fn run() {
       coordinator::runtime_list_instances,
       coordinator::runtime_retire_current_workspace,
       coordinator::runtime_route_global_clear,
+      coordinator::runtime_route_instance_transport,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,

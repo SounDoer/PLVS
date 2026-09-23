@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu, Submenu, MenuItem, CheckMenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -87,6 +88,20 @@ async function syncSourceMenu(controls, inputs) {
   ]);
 }
 
+function sameTrayInstances(current, next) {
+  return (
+    current.length === next.length &&
+    current.every((instance, index) => {
+      const candidate = next[index];
+      return (
+        instance.instanceId === candidate?.instanceId &&
+        instance.displayName === candidate.displayName &&
+        instance.captureStatus === candidate.captureStatus
+      );
+    })
+  );
+}
+
 function presetLabelFor({ presetList, presetActiveId, presetDirty }) {
   const active = presetList.find((p) => p.id === presetActiveId);
   if (!active) return "None";
@@ -140,6 +155,8 @@ async function buildMenu(cfg) {
     presetDirty,
     presetsBlocked,
     onApplyPreset,
+    instances,
+    onToggleInstance,
   } = cfg;
 
   const items = [];
@@ -181,6 +198,22 @@ async function buildMenu(cfg) {
       action: onToggleCapture,
     }),
     await PredefinedMenuItem.new({ item: "Separator" }),
+    ...(instances.length > 1
+      ? [
+          await Submenu.new({
+            text: "Workbenches",
+            items: await Promise.all(
+              instances.map((instance) =>
+                MenuItem.new({
+                  text: `${instance.displayName} — ${instance.captureStatus === "running" ? "Stop" : "Start"}`,
+                  action: () => onToggleInstance(instance),
+                })
+              )
+            ),
+          }),
+          await PredefinedMenuItem.new({ item: "Separator" }),
+        ]
+      : []),
     sourceSubmenu,
     await Submenu.new({
       text: presetsBlocked
@@ -230,6 +263,7 @@ export function useTray({
   const trayRef = useRef(null);
   const sourceControlsRef = useRef(null);
   const sourceSyncQueueRef = useRef(Promise.resolve());
+  const [instances, setInstances] = useState([]);
 
   const onStartClickRef = useRef(onStartClick);
   const onToggleWindowRef = useRef(onToggleWindow);
@@ -280,6 +314,40 @@ export function useTray({
     sourceSyncQueueRef.current = sync;
     return sync;
   }, []);
+  const stableToggleInstance = useCallback(
+    (instance) => {
+      const action = instance.captureStatus === "running" ? "stop" : "start";
+      invoke("runtime_route_instance_transport", { instanceId: instance.instanceId, action })
+        .then((routedToPeer) => {
+          if (!routedToPeer) stableToggleCapture();
+        })
+        .catch((error) => console.warn("Unable to control PLVS workbench from Tray", error));
+    },
+    [stableToggleCapture]
+  );
+
+  useEffect(() => {
+    if (!isTauri() || !isCoordinator) {
+      setInstances([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const refresh = () => {
+      invoke("runtime_list_instances")
+        .then((next) => {
+          if (cancelled) return;
+          const normalized = Array.isArray(next) ? next : [];
+          setInstances((current) => (sameTrayInstances(current, normalized) ? current : normalized));
+        })
+        .catch(() => {});
+    };
+    refresh();
+    const timer = setInterval(refresh, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [isCoordinator]);
 
   // Everything buildMenu reads that can change after creation. The ref keeps the
   // creation effect current if state changes while TrayIcon.new is still pending.
@@ -297,6 +365,7 @@ export function useTray({
     presetActiveId: presets.activeId,
     presetDirty: presets.dirty,
     presetsBlocked: presets.blocked === true,
+    instances,
   };
   const menuInputsRef = useRef(menuInputs);
   useEffect(() => {
@@ -316,8 +385,16 @@ export function useTray({
       onQuit: stableQuit,
       onSelectSource: stableSelectSource,
       onApplyPreset: stableApplyPreset,
+      onToggleInstance: stableToggleInstance,
     }),
-    [stableToggleCapture, stableToggleWindow, stableQuit, stableSelectSource, stableApplyPreset]
+    [
+      stableToggleCapture,
+      stableToggleWindow,
+      stableQuit,
+      stableSelectSource,
+      stableApplyPreset,
+      stableToggleInstance,
+    ]
   );
 
   // Create tray once on mount.
@@ -399,6 +476,7 @@ export function useTray({
     presets.activeId,
     presets.dirty,
     presets.blocked,
+    instances,
   ]);
 
   useEffect(() => {
