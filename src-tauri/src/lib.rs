@@ -61,6 +61,10 @@ use crate::window_state::{
 };
 use state::AppState;
 
+fn runtime_log_file_name() -> String {
+  format!("{}-{}", env!("PLVS_APP_NAME"), std::process::id())
+}
+
 /// The pre-paint snapshot the webview reads synchronously, as an initialization script.
 ///
 /// Three independent readers take one slice each, at different points in the module graph:
@@ -121,6 +125,13 @@ pub fn run() {
         .level(log::LevelFilter::Info)
         .max_file_size(2_000_000)
         .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(3))
+        .clear_targets()
+        .targets([
+          tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+          tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+            file_name: Some(runtime_log_file_name()),
+          }),
+        ])
         .build(),
     )
     .manage(AppState::default())
@@ -282,17 +293,27 @@ pub fn run() {
         .map_err(|error| format!("home directory for crash-report redaction: {error}"))?
         .to_string_lossy()
         .into_owned();
-      let reporter = std::sync::Arc::new(crash_report::CrashReporterState::new(
-        log_dir,
-        app.package_info().name.clone(),
-        home,
-        crash_report::prompt_enabled_from_settings(&settings),
-        crash_report::CrashApp {
-          version: env!("CARGO_PKG_VERSION").into(),
-          os: std::env::consts::OS.into(),
-          arch: std::env::consts::ARCH.into(),
-        },
-      )?);
+      let reporter = std::sync::Arc::new(
+        crash_report::CrashReporterState::new(
+          log_dir,
+          runtime_log_file_name(),
+          home,
+          crash_report::prompt_enabled_from_settings(&settings),
+          crash_report::CrashApp {
+            version: env!("CARGO_PKG_VERSION").into(),
+            os: std::env::consts::OS.into(),
+            arch: std::env::consts::ARCH.into(),
+          },
+        )?
+        .with_runtime_identity(
+          app
+            .state::<runtime_identity::RuntimeIdentity>()
+            .instance_id(),
+          app
+            .state::<runtime_identity::RuntimeIdentity>()
+            .workspace_id(),
+        ),
+      );
       if let Err(error) = reporter.enrich_pending(200) {
         log::warn!("Unable to enrich saved crash reports: {error}");
       }

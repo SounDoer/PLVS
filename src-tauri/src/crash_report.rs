@@ -25,10 +25,20 @@ pub struct CrashReport {
   pub id: String,
   pub created_at: String,
   pub session_id: String,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub runtime: Option<CrashRuntime>,
   pub kind: CrashKind,
   pub app: CrashApp,
   pub error: CrashError,
   pub logs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CrashRuntime {
+  pub instance_id: String,
+  pub workspace_id: String,
+  pub log_file_name: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -159,6 +169,7 @@ pub struct CrashReporterState {
   prompt_enabled: AtomicBool,
   panic_guard: AtomicBool,
   app: CrashApp,
+  runtime: Option<CrashRuntime>,
 }
 
 impl CrashReporterState {
@@ -179,7 +190,17 @@ impl CrashReporterState {
       prompt_enabled: AtomicBool::new(prompt_enabled),
       panic_guard: AtomicBool::new(false),
       app,
+      runtime: None,
     })
+  }
+
+  pub fn with_runtime_identity(mut self, instance_id: &str, workspace_id: &str) -> Self {
+    self.runtime = Some(CrashRuntime {
+      instance_id: instance_id.to_string(),
+      workspace_id: workspace_id.to_string(),
+      log_file_name: self.log_file_name.clone(),
+    });
+    self
   }
 
   pub fn session_id(&self) -> &str {
@@ -208,6 +229,7 @@ impl CrashReporterState {
       id: generate_report_id(now)?,
       created_at: now.format(&Rfc3339).map_err(io::Error::other)?,
       session_id: self.session_id.clone(),
+      runtime: self.runtime.clone(),
       kind,
       app: self.app.clone(),
       error,
@@ -412,17 +434,26 @@ impl CrashStore {
       if !report.logs.is_empty() {
         continue;
       }
-      report.logs =
-        match extract_session_log_tail(log_dir, log_file_name, &report.session_id, line_limit) {
-          Ok(lines) => lines,
-          Err(error) => {
-            log::warn!(
-              "Unable to enrich crash report {} with logs: {error}",
-              report.id
-            );
-            continue;
-          }
-        };
+      let report_log_file_name = report
+        .runtime
+        .as_ref()
+        .map(|runtime| runtime.log_file_name.as_str())
+        .unwrap_or(log_file_name);
+      report.logs = match extract_session_log_tail(
+        log_dir,
+        report_log_file_name,
+        &report.session_id,
+        line_limit,
+      ) {
+        Ok(lines) => lines,
+        Err(error) => {
+          log::warn!(
+            "Unable to enrich crash report {} with logs: {error}",
+            report.id
+          );
+          continue;
+        }
+      };
       self.save(&report, true)?;
     }
     self.prune()
@@ -675,6 +706,7 @@ mod tests {
       id: id.into(),
       created_at: "2026-09-16T12:00:00Z".into(),
       session_id: "session-a".into(),
+      runtime: None,
       kind: CrashKind::RustPanic,
       app: CrashApp {
         version: "0.15.4".into(),
@@ -699,6 +731,7 @@ mod tests {
       id: "20260916T120000Z-a1b2c3d4".into(),
       created_at: "2026-09-16T12:00:00Z".into(),
       session_id: "session-a".into(),
+      runtime: None,
       kind: CrashKind::RustPanic,
       app: CrashApp {
         version: "0.15.4".into(),
@@ -923,7 +956,8 @@ mod tests {
         arch: "x86_64".into(),
       },
     )
-    .unwrap();
+    .unwrap()
+    .with_runtime_identity("instance-one", "workspace-spotify");
 
     let report = reporter
       .new_report(
@@ -942,6 +976,11 @@ mod tests {
     assert_eq!(report.schema_version, CRASH_REPORT_SCHEMA_VERSION);
     assert_eq!(report.session_id, reporter.session_id());
     assert_eq!(report.app.version, "0.15.4");
+    assert_eq!(report.runtime.as_ref().unwrap().instance_id, "instance-one");
+    assert_eq!(
+      report.runtime.as_ref().unwrap().workspace_id,
+      "workspace-spotify"
+    );
     assert!(!reporter.prompt_enabled());
     assert!(reporter.try_begin_panic());
     assert!(!reporter.try_begin_panic());

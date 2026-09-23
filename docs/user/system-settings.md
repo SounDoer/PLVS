@@ -54,7 +54,9 @@ workbench keeps measuring with its current snapshot until you explicitly apply a
 
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending
 one after a crash. Feedback diagnostics are attached only when you choose to include them. Audio
-samples are never attached. Open [Privacy](https://plvs.soundoer.com/privacy/) at the bottom of
+samples are never attached. In a multi-workbench run, local crash records include random instance
+and workspace identifiers so the matching per-process log can be diagnosed. Open
+[Privacy](https://plvs.soundoer.com/privacy/) at the bottom of
 Settings for the exact contents, retention and deletion-request details.
 
 ## Agent Control
