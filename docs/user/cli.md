@@ -5,6 +5,7 @@ organized directly by the product resource or operation they address:
 
 ```text
 plvs-cli doctor
+plvs-cli instances --json
 plvs-cli schema list --json
 plvs-cli schema get app.inspect --json
 plvs-cli inspect
@@ -13,7 +14,9 @@ plvs-cli transport ...
 plvs-cli device ...
 ```
 
-`doctor` and `schema list/get` work when PLVS is closed or Agent Control is disabled. Every
+`doctor`, `instances`, and `schema list/get` work when PLVS is closed or Agent Control is disabled.
+`instances` lists the live workbenches belonging to the same Development, Preview, or Release
+identity, including their Source-derived display names and runtime status. Every
 running-app command controls or inspects the same state visible in an already-running PLVS window.
 Those commands require Agent Control to be enabled in Settings and are available on Windows and
 macOS. Individual native capabilities may still be platform-specific. The CLI never starts PLVS
@@ -84,6 +87,7 @@ Run `doctor --json` first to verify the installed runtime and bundled sidecars.
 
 ```powershell
 plvs-cli doctor [--json] [--out <file>]
+plvs-cli instances <--json|--format text>
 plvs-cli schema list --json
 plvs-cli schema get <command-id> --json
 plvs-cli completion <powershell|bash|zsh>

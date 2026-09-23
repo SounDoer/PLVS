@@ -98,6 +98,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `visual.recording.inspect` | `visual recording inspect` | runningApp / query | none | no | none |
 | `visual.recording.wait` | `visual recording wait` | runningApp / wait | none | no | optional |
 | `visual.recording.stop` | `visual recording stop` | runningApp / action | none | no | optional |
+| `instances.list` | `instances` | offline / query | none | no | none |
 | `doctor` | `doctor` | offline / query | none | no | optional |
 | `schema.list` | `schema list` | offline / query | none | no | none |
 | `schema.get` | `schema get` | offline / query | none | no | none |
@@ -2538,6 +2539,29 @@ plvs-cli visual recording stop <recording-id> [--out <file>] --json
 | --- | --- | --- | --- |
 | `--out` | local only | no | string |
 | `--json` | local only | yes | boolean |
+
+## `instances.list`
+
+List live PLVS workbenches for this application identity.
+
+- CLI path: `instances`
+- Execution: `offline`; operation: `query`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
+
+```text
+plvs-cli instances <--json|--format text>
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
 
 ## `doctor`
 

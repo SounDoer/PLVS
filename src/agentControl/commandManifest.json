@@ -5469,6 +5469,43 @@
       }
     },
     {
+      "id": "instances.list",
+      "family": "instances",
+      "path": ["instances"],
+      "usage": "plvs-cli instances <--json|--format text>",
+      "summary": "List live PLVS workbenches for this application identity.",
+      "execution": "offline",
+      "operation": "query",
+      "json": "optional",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
       "id": "doctor",
       "family": "doctor",
       "path": ["doctor"],

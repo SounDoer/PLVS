@@ -37,6 +37,9 @@ enum CliCommand {
     json: bool,
     out: Option<String>,
   },
+  Instances {
+    json: bool,
+  },
   SchemaList,
   SchemaGet(String),
   Completion(String),
@@ -63,6 +66,7 @@ enum HelpTopic {
   Doctor,
   Schema,
   Completion,
+  Instances,
   #[cfg(any(feature = "capture-harness", test))]
   Analyze,
   #[cfg(any(feature = "capture-harness", test))]
@@ -75,6 +79,7 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
       Ok(CliCommand::Help(HelpTopic::Root))
     }
     [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
+    [command, rest @ ..] if command == "instances" => parse_instances_args(rest),
     [command, rest @ ..] if command == "schema" => parse_schema_args(rest),
     [command, flag] if command == "completion" && is_help_flag(flag) => {
       Ok(CliCommand::Help(HelpTopic::Completion))
@@ -125,6 +130,19 @@ fn parse_doctor_args(args: &[String]) -> Result<CliCommand, String> {
     json: options.has_json,
     out: options.out,
   })
+}
+
+fn parse_instances_args(args: &[String]) -> Result<CliCommand, String> {
+  if args.iter().any(|arg| is_help_flag(arg)) {
+    return Ok(CliCommand::Help(HelpTopic::Instances));
+  }
+  match args {
+    [format] if format == "--json" => Ok(CliCommand::Instances { json: true }),
+    [format, value] if format == "--format" && value == "text" => {
+      Ok(CliCommand::Instances { json: false })
+    }
+    _ => Err("Usage: plvs-cli instances <--json|--format text>".to_string()),
+  }
 }
 
 fn parse_schema_args(args: &[String]) -> Result<CliCommand, String> {
@@ -368,6 +386,7 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
     "doctor" => Ok(CliCommand::Help(HelpTopic::Doctor)),
     "schema" => Ok(CliCommand::Help(HelpTopic::Schema)),
     "completion" => Ok(CliCommand::Help(HelpTopic::Completion)),
+    "instances" => Ok(CliCommand::Help(HelpTopic::Instances)),
     topic if cli_control::is_command(topic) => Ok(CliCommand::Control(ControlCommand::FamilyHelp(
       topic.to_string(),
     ))),
@@ -506,6 +525,41 @@ struct ErrorBody<'a> {
 #[derive(Serialize)]
 struct DoctorResult<'a> {
   report: &'a DoctorReport,
+}
+
+#[derive(Serialize)]
+struct InstancesResult {
+  instances: Vec<crate::coordinator::InstanceSummary>,
+}
+
+fn read_live_instances() -> Result<Vec<crate::coordinator::InstanceSummary>, String> {
+  let Some(config_dir) = crate::doctor::resolve_config_dir() else {
+    return Err("Unable to resolve the PLVS configuration directory.".to_string());
+  };
+  let root = config_dir.join("multi-instance");
+  if !root.is_dir() {
+    return Ok(Vec::new());
+  }
+  let registry = crate::coordinator::InstanceRegistry::open(&root)?;
+  let _ = registry.remove_stale()?;
+  Ok(crate::coordinator::summarize_instances(registry.list()?))
+}
+
+fn render_instances_text(instances: &[crate::coordinator::InstanceSummary]) -> String {
+  if instances.is_empty() {
+    return "No running PLVS instances.\n".to_string();
+  }
+  let mut text = String::from("INSTANCE ID\tSOURCE\tSTATUS\tVISIBLE\n");
+  for instance in instances {
+    use std::fmt::Write as _;
+    writeln!(
+      text,
+      "{}\t{}\t{:?}\t{}",
+      instance.instance_id, instance.display_name, instance.capture_status, instance.visible
+    )
+    .expect("writing to String cannot fail");
+  }
+  text
 }
 
 fn serialize_doctor_json(report: &DoctorReport) -> Result<String, serde_json::Error> {
@@ -769,6 +823,9 @@ fn help_text(topic: HelpTopic) -> String {
     HelpTopic::Completion => {
       "PLVS CLI - completion\n\nUsage:\n  plvs-cli completion <powershell|bash|zsh>\n\nPrints a shell completion script generated from the installed command catalog.\nLoad the output from your shell profile or write it to the shell's completion directory.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input".to_string()
     }
+    HelpTopic::Instances => {
+      "PLVS CLI - instances\n\nUsage:\n  plvs-cli instances <--json|--format text>\n\nLists live PLVS workbenches for this Development, Preview, or Release identity without requiring Agent Control.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input".to_string()
+    }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
       "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--layout <id>] [--dialogue] [--vad silero|firered|ten] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
@@ -842,6 +899,26 @@ fn execute(command: CliCommand) -> ExitCode {
       ExitCode::SUCCESS
     }
     CliCommand::Control(command) => cli_control::run(command),
+    CliCommand::Instances { json } => match read_live_instances() {
+      Ok(instances) if json => {
+        match serde_json::to_string(&SuccessEnvelope {
+          schema_version: CLI_SCHEMA_VERSION,
+          ok: true,
+          result: InstancesResult { instances },
+        }) {
+          Ok(encoded) => match emit_json(&encoded, None, "instances") {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => emit_cli_failure("outputWriteFailed", &error, true, 1),
+          },
+          Err(error) => emit_cli_failure("internalError", &error.to_string(), true, 1),
+        }
+      }
+      Ok(instances) => {
+        print!("{}", render_instances_text(&instances));
+        ExitCode::SUCCESS
+      }
+      Err(error) => emit_cli_failure("instanceDiscoveryFailed", &error, json, 1),
+    },
     CliCommand::SchemaList => {
       match serialize_schema_list().and_then(|json| emit_schema_json(&json)) {
         Ok(()) => ExitCode::SUCCESS,
@@ -1044,6 +1121,32 @@ mod tests {
         out: None,
       })
     );
+  }
+
+  #[test]
+  fn parses_live_instance_listing_without_agent_control() {
+    assert_eq!(
+      parse_args(&args(&["instances", "--json"])),
+      Ok(CliCommand::Instances { json: true })
+    );
+    assert_eq!(
+      parse_args(&args(&["instances", "--format", "text"])),
+      Ok(CliCommand::Instances { json: false })
+    );
+    assert!(parse_args(&args(&["instances"])).is_err());
+  }
+
+  #[test]
+  fn renders_source_named_instances_for_humans() {
+    let text = render_instances_text(&[crate::coordinator::InstanceSummary {
+      instance_id: "instance-one".to_string(),
+      workspace_id: "default".to_string(),
+      display_name: "Spotify".to_string(),
+      capture_status: crate::coordinator::CaptureStatus::Running,
+      visible: true,
+      focus_sequence: 42,
+    }]);
+    assert!(text.contains("instance-one\tSpotify\tRunning\ttrue"));
   }
 
   #[test]
