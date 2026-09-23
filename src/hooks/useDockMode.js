@@ -134,7 +134,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
           (typeof monitorOverride === "string" && current.monitor !== monitorOverride) ||
           (hasReserveOverride && current.reserveSpace !== normalizedReserveOverride) ||
           (hasHeightOverride && current.height !== clampDockHeight(heightOverride));
-        commitDock((latest) => ({
+        const effective = commitDock((latest) => ({
           ...latest,
           enabled: true,
           edge,
@@ -149,6 +149,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
         }));
         setDockSuspendedState(false);
         if (changed) presetsStore.patch({ dirty: true });
+        return effective;
       });
     },
     [assertSceneOperationAllowed, commitDock, enqueueTransition]

@@ -7,6 +7,7 @@ import {
   planDockFormMutation,
   planDockPanelPatch,
   planDockPanelReset,
+  reconcileDockExecution,
 } from "./dockControl.js";
 
 const dock = {
@@ -267,6 +268,29 @@ describe("Dock Control", () => {
         code: "monitorFallback",
         requested: "missing-monitor",
         effective: "monitor-2",
+      },
+    ]);
+  });
+
+  it("reports a reservation conflict as a successful overlay fallback", () => {
+    const planned = planDockFormMutation(
+      { ...dock, enabled: false, reserveSpace: true },
+      "dock.enter",
+      { edge: "top", reserveSpace: true },
+      { platform: "windows" }
+    );
+
+    const resolved = reconcileDockExecution(planned, {
+      ...planned.dock,
+      reserveSpace: false,
+    });
+
+    expect(resolved.dock).toMatchObject({ enabled: true, edge: "top", reserveSpace: false });
+    expect(resolved.warnings).toEqual([
+      {
+        code: "dockReservationConflict",
+        requested: true,
+        effective: false,
       },
     ]);
   });

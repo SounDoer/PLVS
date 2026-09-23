@@ -90,6 +90,7 @@ import {
   planDockFormMutation,
   planDockPanelPatch,
   planDockPanelReset,
+  reconcileDockExecution,
 } from "./dockControl.js";
 import {
   compileWorkspaceLayout,
@@ -1970,7 +1971,17 @@ export function useAgentControlBridge({
             dockSettlementRef.current = { matches, resolve, reject };
           });
           try {
-            await executeDock(request.method, planned.dock);
+            const effectiveDock = await executeDock(request.method, planned.dock);
+            if (request.method === "dock.enter") {
+              planned = reconcileDockExecution(planned, effectiveDock);
+              result.warnings = planned.warnings;
+              result.state.dock = buildDockSnapshot(planned.dock, dockRequestContext);
+              if (matches(latestDockRef.current)) {
+                const settlement = dockSettlementRef.current;
+                dockSettlementRef.current = null;
+                settlement?.resolve(controlRevisionRef.current);
+              }
+            }
             result.revision = await awaitSettlement(
               committed,
               () => {

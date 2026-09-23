@@ -637,6 +637,27 @@ export function planDockFormMutation(dock, method, params = {}, context = {}) {
   };
 }
 
+/**
+ * Reconcile the native Dock form with the requested projection.
+ *
+ * Windows permits only one work-area reservation for a monitor edge. Native Dock entry therefore
+ * resolves a losing contender to an overlay instead of failing the whole transition. Agent Control
+ * must observe that effective state and report the downgrade rather than waiting for the impossible
+ * requested state until `commitNotObserved`.
+ */
+export function reconcileDockExecution(planned, effectiveDock) {
+  if (!effectiveDock || typeof effectiveDock !== "object") return planned;
+  const warnings = [...planned.warnings];
+  if (planned.dock.reserveSpace === true && effectiveDock.reserveSpace === false) {
+    warnings.push({
+      code: "dockReservationConflict",
+      requested: true,
+      effective: false,
+    });
+  }
+  return { ...planned, dock: effectiveDock, warnings };
+}
+
 export function buildDockPanelDescription(dock, panelId, context = {}) {
   const snapshot = buildDockSnapshot(dock, context);
   const panel = snapshot.panels.find(({ id }) => id === panelId);

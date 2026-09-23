@@ -1546,14 +1546,14 @@ function AppContent() {
   const executeAgentControlDock = useCallback(
     async (method, projected) => {
       if (method === "dock.enter") {
-        await enterDockMode(
+        const effective = await enterDockMode(
           projected.edge,
           projected.reserveSpace,
           projected.monitor,
           projected.height
         );
         setSelectedOffset(-1);
-        return;
+        return effective;
       }
       if (method === "dock.exit") {
         const result = await exitDockRestoringAttributes({ reportError: false });

@@ -262,6 +262,7 @@ function Harness({
   agentDock = dock,
   agentDockContext = {},
   executeAgentDock,
+  resolveAgentDock,
   controlledAgentSettings = false,
   executeAgentTransport,
   agentDevice = deviceSnapshot,
@@ -421,7 +422,9 @@ function Harness({
   const executeDock =
     executeAgentDock ??
     (async (_method, projected) => {
-      setDockState(projected);
+      const effective = resolveAgentDock?.(projected) ?? projected;
+      setDockState(effective);
+      return effective;
     });
   useAgentControlBridge({
     enabled,
@@ -2304,6 +2307,25 @@ describe("useAgentControlBridge", () => {
     });
     expect(executeDock).not.toHaveBeenCalled();
     expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("settles Dock entry on the native overlay fallback", async () => {
+    mount({
+      agentDock: { ...dock, enabled: false, reserveSpace: true },
+      resolveAgentDock: (projected) => ({ ...projected, reserveSpace: false }),
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("dock.enter", { edge: "top", reserveSpace: true }, "dock-overlay-fallback")
+    );
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toMatchObject({
+      changed: true,
+      warnings: [{ code: "dockReservationConflict", requested: true, effective: false }],
+      state: { dock: { enabled: true, edge: "top", reserveSpace: false } },
+    });
   });
 
   it("reports the observable Dock state when native execution fails", async () => {

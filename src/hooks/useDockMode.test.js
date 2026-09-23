@@ -110,6 +110,34 @@ describe("useDockMode", () => {
     expect(result.current).toMatchObject({ dockEdge: "top", reserveSpace: true });
   });
 
+  it("returns the native Dock form after a reservation fallback", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      dockState: { enabled: false, edge: "top", reserveSpace: true, height: 56 },
+    };
+    mocks.enterDock.mockResolvedValueOnce({
+      enabled: true,
+      edge: "top",
+      monitor: "monitor-1",
+      reserveSpace: false,
+      height: 56,
+    });
+    const { result } = renderHook(() => useDockMode());
+
+    let effective;
+    await act(async () => {
+      effective = await result.current.enterDockMode("top", true, "monitor-1", 56);
+    });
+
+    expect(effective).toMatchObject({
+      enabled: true,
+      edge: "top",
+      monitor: "monitor-1",
+      reserveSpace: false,
+      height: 56,
+    });
+    expect(result.current.reserveSpace).toBe(false);
+  });
+
   it("marks the active preset dirty after a successful reserve-space change", async () => {
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "top", reserveSpace: false },
