@@ -27,6 +27,7 @@ const READERS = {
   ],
   "hooks/useDockMode.js": ["dockState"],
   "hooks/useInstanceIdentity.js": ["agentControl"],
+  "hooks/useTray.js": ["instanceId"],
   "hooks/useAutostart.js": ["globalPreferences", "multiInstancePersistence"],
   "ipc/capturePrefs.js": ["captureDeviceId", "multiInstancePersistence"],
   "lib/clearShortcutPrefs.js": ["globalPreferences", "multiInstancePersistence"],
