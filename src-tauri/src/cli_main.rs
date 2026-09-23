@@ -938,7 +938,7 @@ fn execute(command: CliCommand) -> ExitCode {
     CliCommand::Control {
       command,
       instance_id,
-    } => cli_control::run_for_instance(command, instance_id),
+    } => cli_control::run_for_instance(command, resolve_instance_selector(instance_id)),
     CliCommand::Instances { json } => match read_live_instances() {
       Ok(instances) if json => {
         match serde_json::to_string(&SuccessEnvelope {
@@ -1109,6 +1109,17 @@ fn execute(command: CliCommand) -> ExitCode {
       }
     }
   }
+}
+
+fn resolve_instance_selector(explicit: Option<String>) -> Option<String> {
+  resolve_instance_selector_from(explicit, std::env::var("PLVS_INSTANCE_ID").ok())
+}
+
+fn resolve_instance_selector_from(
+  explicit: Option<String>,
+  environment: Option<String>,
+) -> Option<String> {
+  explicit.or_else(|| environment.filter(|value| !value.trim().is_empty()))
 }
 
 #[cfg(test)]
@@ -1519,6 +1530,26 @@ mod tests {
         command: ControlCommand::Inspect,
         instance_id: Some("instance-42".to_string()),
       })
+    );
+  }
+
+  #[test]
+  fn explicit_instance_selection_overrides_the_automation_environment() {
+    assert_eq!(
+      resolve_instance_selector_from(
+        Some("explicit".to_string()),
+        Some("environment".to_string())
+      )
+      .as_deref(),
+      Some("explicit")
+    );
+    assert_eq!(
+      resolve_instance_selector_from(None, Some("environment".to_string())).as_deref(),
+      Some("environment")
+    );
+    assert_eq!(
+      resolve_instance_selector_from(None, Some("  ".to_string())),
+      None
     );
   }
 

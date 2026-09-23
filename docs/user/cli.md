@@ -28,6 +28,9 @@ plvs-cli inspect --instance <instance-id> --json
 plvs-cli --instance <instance-id> transport stop --json
 ```
 
+For several commands in one automation process, set `PLVS_INSTANCE_ID` once instead. An explicit
+`--instance` on a command takes precedence over the environment variable.
+
 Those commands require Agent Control to be enabled in Settings and are available on Windows and
 macOS. Individual native capabilities may still be platform-specific. The CLI never starts PLVS
 implicitly or edits its store behind the running app.
