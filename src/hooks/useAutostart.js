@@ -39,15 +39,15 @@ async function applyNativePreference(enabled) {
 export function useAutostart() {
   const isCoordinator = useCoordinatorRole();
   const [autostartEnabled, setAutostartEnabledState] = useState(() => bootPreference() ?? false);
-  const [autostartReady, setAutostartReady] = useState(false);
+  const [autostartReady, setAutostartReady] = useState(
+    () => isTauri() && (bootPreference() !== null || !isCoordinator)
+  );
 
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
     const shared = bootPreference();
     if (shared !== null) {
-      setAutostartEnabledState(shared);
-      setAutostartReady(true);
       if (isCoordinator) {
         applyNativePreference(shared).catch(() => {
           if (!cancelled) setAutostartReady(false);
@@ -58,7 +58,6 @@ export function useAutostart() {
       };
     }
     if (!isCoordinator) {
-      setAutostartReady(true);
       return () => {
         cancelled = true;
       };

@@ -31,7 +31,6 @@ export function useUpdateCheck(intervalMs = UPDATE_CHECK_INTERVAL_MS) {
   useEffect(() => {
     mountedRef.current = true;
     if (!isCoordinator) {
-      setUpdateInfo({ status: "unavailable" });
       return () => {
         mountedRef.current = false;
       };

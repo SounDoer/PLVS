@@ -328,7 +328,6 @@ export function useTray({
 
   useEffect(() => {
     if (!isTauri() || !isCoordinator) {
-      setInstances([]);
       return undefined;
     }
     let cancelled = false;
