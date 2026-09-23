@@ -8,10 +8,13 @@ vi.mock("@tauri-apps/plugin-process", () => ({
 }));
 
 import { useApplyUpdate } from "./useApplyUpdate.js";
+import { setCoordinatorRole } from "../lib/runtimeRole.js";
 
 describe("useApplyUpdate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete window.__PLVS_INITIAL_STATE__;
+    setCoordinatorRole(undefined);
   });
 
   it("starts idle", () => {
@@ -256,5 +259,17 @@ describe("useApplyUpdate", () => {
 
     expect(result.current.installStatus).toBe("idle");
     expect(relaunchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not install or relaunch from a participant instance", async () => {
+    window.__PLVS_INITIAL_STATE__ = { isCoordinator: false };
+    const update = { downloadAndInstall: vi.fn() };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => result.current.install(update));
+
+    expect(update.downloadAndInstall).not.toHaveBeenCalled();
+    expect(relaunchMock).not.toHaveBeenCalled();
+    expect(result.current.installStatus).toBe("idle");
   });
 });

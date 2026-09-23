@@ -8,10 +8,13 @@ vi.mock("../lib/updateCheck.js", () => ({
 
 import { checkForUpdate } from "../lib/updateCheck.js";
 import { UPDATE_CHECK_INTERVAL_MS, useUpdateCheck } from "./useUpdateCheck.js";
+import { setCoordinatorRole } from "../lib/runtimeRole.js";
 
 describe("useUpdateCheck", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete window.__PLVS_INITIAL_STATE__;
+    setCoordinatorRole(undefined);
   });
 
   afterEach(() => {
@@ -90,5 +93,17 @@ describe("useUpdateCheck", () => {
     });
 
     expect(checkForUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not check from a participant and starts checking after promotion", async () => {
+    window.__PLVS_INITIAL_STATE__ = { isCoordinator: false };
+    checkForUpdate.mockResolvedValue(null);
+    const { result } = renderHook(() => useUpdateCheck(0));
+    expect(result.current.updateInfo.status).toBe("unavailable");
+    expect(checkForUpdate).not.toHaveBeenCalled();
+
+    act(() => setCoordinatorRole(true));
+
+    await waitFor(() => expect(checkForUpdate).toHaveBeenCalledTimes(1));
   });
 });

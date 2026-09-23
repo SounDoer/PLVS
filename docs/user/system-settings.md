@@ -10,6 +10,9 @@ Behavior** chooses whether closing the window keeps PLVS running in the system t
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
 
+With several workbenches open, only the current coordinator checks for and installs application
+updates, so one update cannot be started independently in every process.
+
 ## Global shortcut
 
 Record a **Global Shortcut** for Clear, which works even when PLVS isn't focused. When several PLVS

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { useCoordinatorRole } from "../lib/runtimeRole.js";
 
 const UPDATE_DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -15,6 +16,7 @@ function knownTotal(contentLength) {
  * size. A 0..1 fraction is published only when the integer percent changes.
  */
 export function useApplyUpdate() {
+  const isCoordinator = useCoordinatorRole();
   const [installStatus, setInstallStatus] = useState("idle");
   const [downloadProgress, setDownloadProgress] = useState(null);
   const operationRef = useRef(false);
@@ -70,15 +72,15 @@ export function useApplyUpdate() {
   }, []);
 
   const restartToApply = useCallback(async () => {
-    if (operationRef.current) return;
+    if (!isCoordinator || operationRef.current) return;
     operationRef.current = true;
     const succeeded = await runRelaunch();
     if (!succeeded) operationRef.current = false;
-  }, [runRelaunch]);
+  }, [runRelaunch, isCoordinator]);
 
   const install = useCallback(
     async (update) => {
-      if (!update || operationRef.current) return;
+      if (!isCoordinator || !update || operationRef.current) return;
 
       operationRef.current = true;
       clearProgress();
@@ -95,7 +97,7 @@ export function useApplyUpdate() {
       const succeeded = await runRelaunch();
       if (!succeeded) operationRef.current = false;
     },
-    [clearProgress, onDownloadEvent, runRelaunch]
+    [clearProgress, onDownloadEvent, runRelaunch, isCoordinator]
   );
 
   const resetInstall = useCallback(() => {

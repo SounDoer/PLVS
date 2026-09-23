@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkForUpdate } from "@/lib/updateCheck.js";
+import { useCoordinatorRole } from "../lib/runtimeRole.js";
 
 export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 export function useUpdateCheck(intervalMs = UPDATE_CHECK_INTERVAL_MS) {
-  const [updateInfo, setUpdateInfo] = useState({ status: "checking" });
+  const isCoordinator = useCoordinatorRole();
+  const [updateInfo, setUpdateInfo] = useState({
+    status: isCoordinator ? "checking" : "unavailable",
+  });
   const mountedRef = useRef(false);
   const inFlightRef = useRef(false);
 
   const refreshUpdateCheck = useCallback(async () => {
-    if (inFlightRef.current) return;
+    if (!isCoordinator || inFlightRef.current) return;
 
     inFlightRef.current = true;
     setUpdateInfo((current) => ({ ...current, status: "checking" }));
@@ -22,10 +26,16 @@ export function useUpdateCheck(intervalMs = UPDATE_CHECK_INTERVAL_MS) {
     } finally {
       inFlightRef.current = false;
     }
-  }, []);
+  }, [isCoordinator]);
 
   useEffect(() => {
     mountedRef.current = true;
+    if (!isCoordinator) {
+      setUpdateInfo({ status: "unavailable" });
+      return () => {
+        mountedRef.current = false;
+      };
+    }
     refreshUpdateCheck();
 
     if (!intervalMs) {
@@ -39,7 +49,7 @@ export function useUpdateCheck(intervalMs = UPDATE_CHECK_INTERVAL_MS) {
       mountedRef.current = false;
       window.clearInterval(intervalId);
     };
-  }, [intervalMs, refreshUpdateCheck]);
+  }, [intervalMs, refreshUpdateCheck, isCoordinator]);
 
   return {
     updateInfo,
