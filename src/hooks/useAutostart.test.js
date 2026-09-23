@@ -8,11 +8,14 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 import { isTauri } from "../ipc/env.js";
 import { invoke } from "@tauri-apps/api/core";
 import { useAutostart } from "./useAutostart.js";
+import { setCoordinatorRole } from "../lib/runtimeRole.js";
 
 describe("useAutostart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     isTauri.mockReturnValue(false);
+    delete window.__PLVS_INITIAL_STATE__;
+    setCoordinatorRole(undefined);
   });
 
   it("is not ready and disabled in non-Tauri environment", () => {
@@ -65,5 +68,43 @@ describe("useAutostart", () => {
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(result.current.autostartReady).toBe(false);
+  });
+
+  it("lets a participant update the shared preference without owning the OS registration", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      isCoordinator: false,
+      globalPreferences: { openAtLogin: false },
+      multiInstancePersistence: { globalPreferenceRevisions: { openAtLogin: 3 } },
+    };
+    invoke.mockResolvedValueOnce({ openAtLogin: 4 });
+    const { result } = renderHook(() => useAutostart());
+    await waitFor(() => expect(result.current.autostartReady).toBe(true));
+
+    await act(async () => result.current.setAutostartEnabledForControl(true));
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith("persistence_save_global_preferences", {
+      values: { openAtLogin: true },
+      expectedRevisions: { openAtLogin: 3 },
+    });
+    expect(result.current.autostartEnabled).toBe(true);
+  });
+
+  it("applies the shared preference after this process becomes coordinator", async () => {
+    isTauri.mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      isCoordinator: false,
+      globalPreferences: { openAtLogin: true },
+      multiInstancePersistence: { globalPreferenceRevisions: { openAtLogin: 1 } },
+    };
+    const { result } = renderHook(() => useAutostart());
+    await waitFor(() => expect(result.current.autostartReady).toBe(true));
+    expect(invoke).not.toHaveBeenCalled();
+
+    invoke.mockResolvedValue(false);
+    act(() => setCoordinatorRole(true));
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("plugin:autostart|enable"));
   });
 });
