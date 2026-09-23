@@ -45,7 +45,8 @@ pub struct InstanceDescriptor {
   registration_token: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstanceSummary {
   pub instance_id: String,
   pub workspace_id: String,

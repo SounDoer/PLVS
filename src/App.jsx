@@ -82,6 +82,7 @@ import {
   primaryMonitor,
 } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
+import { useInstanceIdentity } from "./hooks/useInstanceIdentity.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
@@ -1724,6 +1725,7 @@ function AppContent() {
     const display = formatAudioDeviceLabel(selectedSource.label);
     return display.secondary || display.primary;
   }, [selectedSource]);
+  useInstanceIdentity({ sourceLabel: sourceDisplayName, running });
   // The restart itself is driven by `captureFormatSignature`; this only tells the user why their
   // measurement just started over.
   const previousDefaultOutputLabelRef = useRef(defaultOutputLabel);

@@ -170,6 +170,8 @@ pub fn run() {
       persistence::commands::persistence_library_delete,
       persistence::commands::persistence_library_reorder,
       persistence::commands::persistence_library_replace,
+      coordinator::runtime_publish_instance_state,
+      coordinator::runtime_list_instances,
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
@@ -244,6 +246,7 @@ pub fn run() {
       app.manage(runtime_identity);
       app.manage(coordinator_role);
       app.manage(registration);
+      app.manage(registry);
       let hydrated = session.hydrate()?;
       app
         .state::<persistence::commands::PersistenceRuntime>()

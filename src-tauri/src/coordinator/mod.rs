@@ -7,6 +7,7 @@ use std::{
 use atomic_write_file::AtomicWriteFile;
 use fs4::{FileExt, TryLockError};
 use serde::{Deserialize, Serialize};
+use tauri::State;
 
 use crate::runtime_identity::RuntimeIdentity;
 
@@ -60,6 +61,43 @@ impl CoordinatorRole {
   pub fn generation(&self) -> Option<u64> {
     self.lease.as_ref().map(CoordinatorLease::generation)
   }
+}
+
+#[tauri::command]
+pub fn runtime_publish_instance_state(
+  identity: State<'_, RuntimeIdentity>,
+  registration: State<'_, InstanceRegistration>,
+  registry: State<'_, InstanceRegistry>,
+  source_label: Option<String>,
+  capture_status: String,
+  visible: bool,
+  focus_sequence: u64,
+) -> Result<String, String> {
+  let capture_status = match capture_status.as_str() {
+    "running" => CaptureStatus::Running,
+    "stopped" => CaptureStatus::Stopped,
+    _ => return Err("Unknown instance capture status.".to_string()),
+  };
+  registration.publish(&InstanceRuntimeState {
+    source_label,
+    capture_status,
+    visible,
+    focus_sequence,
+  })?;
+  let _ = registry.remove_stale()?;
+  summarize_instances(registry.list()?)
+    .into_iter()
+    .find(|instance| instance.instance_id == identity.instance_id())
+    .map(|instance| instance.display_name)
+    .ok_or_else(|| "Published instance is missing from the live registry.".to_string())
+}
+
+#[tauri::command]
+pub fn runtime_list_instances(
+  registry: State<'_, InstanceRegistry>,
+) -> Result<Vec<InstanceSummary>, String> {
+  let _ = registry.remove_stale()?;
+  Ok(summarize_instances(registry.list()?))
 }
 
 impl CoordinatorLease {
