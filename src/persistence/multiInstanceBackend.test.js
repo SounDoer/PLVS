@@ -217,6 +217,7 @@ describe("multiInstanceBackend", () => {
       list: [{ id: "one", name: "Changed Elsewhere" }],
     });
     expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenCalledWith({ origin: "remote" });
     unsubscribe();
   });
 });

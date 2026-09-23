@@ -25,10 +25,12 @@ export function useThemeSettings() {
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark, customThemes),
     [appearance, themeId, systemPrefersDark, customThemes]
   );
-  const resolvedTheme = useMemo(
-    () => getTheme(resolvedThemeId, customThemes),
-    [resolvedThemeId, customThemes]
-  );
+  const resolvedThemeIdRef = useRef(resolvedThemeId);
+  const [resolvedTheme, setResolvedTheme] = useState(() => getTheme(resolvedThemeId, customThemes));
+
+  useEffect(() => {
+    resolvedThemeIdRef.current = resolvedThemeId;
+  }, [resolvedThemeId]);
 
   function setAppearance(nextAppearance) {
     const next = nextAppearance === "fixed" ? "fixed" : "system";
@@ -50,6 +52,7 @@ export function useThemeSettings() {
     const next = Object.fromEntries(documents.map((theme) => [theme.id, theme]));
     customThemesRef.current = next;
     setCustomThemes(next);
+    setResolvedTheme(getTheme(resolvedThemeIdRef.current, next));
   }, []);
 
   const readAppearanceForControl = useCallback(() => {
@@ -114,8 +117,15 @@ export function useThemeSettings() {
   }, []);
 
   useEffect(() => {
-    applyThemeToDocument(resolvedThemeId, customThemes);
-  }, [resolvedThemeId, customThemes]);
+    setResolvedTheme(getTheme(resolvedThemeId, customThemesRef.current));
+  }, [resolvedThemeId]);
+
+  useEffect(() => {
+    applyThemeToDocument(resolvedThemeId, {
+      ...customThemes,
+      ...(resolvedTheme?.id === resolvedThemeId ? { [resolvedThemeId]: resolvedTheme } : {}),
+    });
+  }, [resolvedThemeId, resolvedTheme, customThemes]);
 
   useEffect(() => {
     settingsStore.patch({

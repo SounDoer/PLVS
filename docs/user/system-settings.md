@@ -37,6 +37,10 @@ in one file. Importing Everything replaces your whole setup and restarts PLVS ra
 This moves configuration only, never measurement data. **Reset PLVS to Default** restores a fresh
 installation.
 
+With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
+Profile, or Preset does not silently replace the snapshot already active in another workbench; that
+workbench keeps measuring with its current snapshot until you explicitly apply a selection.
+
 ## Crash reports and feedback
 
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending

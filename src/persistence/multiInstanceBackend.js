@@ -244,8 +244,8 @@ export function createMultiInstanceBackend() {
     }
   }
 
-  function notify(key) {
-    for (const listener of subscribers.get(key) || []) listener();
+  function notify(key, event) {
+    for (const listener of subscribers.get(key) || []) listener(event);
   }
 
   function applyRemoteCollection(kind, hydrated) {
@@ -273,7 +273,7 @@ export function createMultiInstanceBackend() {
     persistedDocuments.set(kind, clone(documentsFor(key, next)));
     itemRevisions.set(kind, new Map(Object.entries(hydrated.libraryItemRevisions?.[kind] || {})));
     collectionRevisions.set(kind, remoteRevision);
-    notify(key);
+    notify(key, { origin: "remote" });
   }
 
   async function refresh() {

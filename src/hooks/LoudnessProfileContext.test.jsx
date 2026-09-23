@@ -132,6 +132,29 @@ describe("cold initialization", () => {
 });
 
 describe("public flat-library API", () => {
+  it("shows a peer profile edit in the Library without changing the active runtime snapshot", async () => {
+    const original = profile("active", "Local Snapshot", -23);
+    seed([original], profileSelectionId(original.id));
+    let storeListener;
+    const subscribe = settingsStore.subscribe.bind(settingsStore);
+    vi.spyOn(settingsStore, "subscribe").mockImplementation((listener) => {
+      storeListener = listener;
+      return subscribe(listener);
+    });
+    const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+    expect(result.current.document.name).toBe("Local Snapshot");
+
+    const peerEdit = profile("active", "Peer Edit", -14);
+    act(() => {
+      seed([peerEdit], profileSelectionId(peerEdit.id));
+      storeListener({ origin: "remote" });
+    });
+
+    await waitFor(() => expect(result.current.profiles[0].name).toBe("Peer Edit"));
+    expect(result.current.document.name).toBe("Local Snapshot");
+    expect(result.current.referenceLufs).toBe(-23);
+  });
+
   it("exposes profiles/removeProfile without legacy or duplicate APIs", () => {
     const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
     expect(result.current.profiles).toHaveLength(1);

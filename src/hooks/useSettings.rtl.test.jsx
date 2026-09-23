@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { presetsStore } from "../persistence/index.js";
+import { presetsStore, themesStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { getAdapter } from "../transfer/libraryAdapters.js";
 import { useSettings } from "./useSettings.js";
@@ -85,6 +85,27 @@ describe("useSettings", () => {
     await waitFor(() => {
       expect(result.current.customThemes?.["t-1"]?.name).toBe("Imported");
     });
+  });
+
+  it("refreshes an active Theme in the Library without applying the peer edit", async () => {
+    const original = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "t-active",
+      name: "Local Snapshot",
+    };
+    themesStore.patch({ themes: { [original.id]: original }, order: [original.id] });
+    const { result } = renderHook(() => useSettings());
+    act(() => result.current.setFixedThemeIdFromPicker(original.id));
+    await waitFor(() => expect(result.current.resolvedTheme.name).toBe("Local Snapshot"));
+
+    const peerEdit = { ...original, name: "Peer Edit" };
+    act(() => {
+      themesStore.patch({ themes: { [original.id]: peerEdit }, order: [original.id] });
+      themesStore.notifyLocal();
+    });
+
+    await waitFor(() => expect(result.current.customThemes[original.id].name).toBe("Peer Edit"));
+    expect(result.current.resolvedTheme.name).toBe("Local Snapshot");
   });
 
   it("exposes no loudness reference: the active Loudness Profile owns it", () => {

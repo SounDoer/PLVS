@@ -66,12 +66,19 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   const [state, setState] = useState(readState);
   const initialStateRef = useRef(state);
   const stateRef = useRef(state);
+  const [activeDocumentSnapshot, setActiveDocumentSnapshot] = useState(() =>
+    resolveActiveDocument(state)
+  );
 
   useEffect(() => {
-    const syncState = () => {
+    const syncState = (event) => {
+      const previous = stateRef.current;
       const next = readState();
       stateRef.current = next;
       setState(next);
+      if (event?.origin !== "remote" || next.active !== previous.active) {
+        setActiveDocumentSnapshot(resolveActiveDocument(next));
+      }
     };
     const unsubscribe = settingsStore.subscribe(syncState);
     const raw = settingsStore.read().loudnessProfiles;
@@ -99,6 +106,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     const next = normalizeLoudnessProfiles(updater(prev));
     stateRef.current = next;
     setState(next);
+    setActiveDocumentSnapshot(resolveActiveDocument(next));
     writeState(next);
     if (presetDirty && next.active !== prev.active) presetsStore.patch({ dirty: true });
   }, []);
@@ -209,6 +217,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       const next = normalizeLoudnessProfiles(planned.loudnessProfiles);
       stateRef.current = next;
       setState(next);
+      setActiveDocumentSnapshot(resolveActiveDocument(next));
       writeState(next);
     }
     if (planned.presets) {
@@ -323,8 +332,8 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   // Save would persist -- otherwise the meter answers "is this threshold sane" about a document
   // the persistence layer would reject.
   const document = useMemo(
-    () => (draft ? normalizeRuleDocument(draft.document) : resolveActiveDocument(state)),
-    [draft, state]
+    () => (draft ? normalizeRuleDocument(draft.document) : activeDocumentSnapshot),
+    [draft, activeDocumentSnapshot]
   );
 
   /// Blocked under a dirty draft: the draft outranks the selection, so the click would look like it
