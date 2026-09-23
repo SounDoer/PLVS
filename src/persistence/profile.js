@@ -102,7 +102,12 @@ export async function reloadAfterProfileChange() {
     if (pendingProfileOperation) {
       const operation = pendingProfileOperation;
       pendingProfileOperation = null;
-      await commitGlobalOperation(operation);
+      try {
+        await commitGlobalOperation(operation);
+      } catch (error) {
+        await abortGlobalOperation(operation);
+        throw error;
+      }
     }
     await closeTrayIcon();
     await relaunch();

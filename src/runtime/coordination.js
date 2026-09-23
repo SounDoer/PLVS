@@ -211,19 +211,16 @@ export async function abortGlobalOperation(operation) {
 }
 
 export async function commitGlobalOperation(operation) {
-  try {
-    await flushPersistence();
-    const commits = await issue(
-      "commitGlobal",
-      operation.id,
-      operation.issued.map((command) => command.instanceId)
-    );
-    const acknowledgements = await waitFor(commits);
-    const failed = acknowledgements.find((ack) => ack.outcome !== "completed");
-    if (failed) throw new Error(failed.detail ?? "Another PLVS workbench could not close.");
-  } finally {
-    await invoke("runtime_finish_operation", { operationId: operation.id }).catch(() => {});
-  }
+  await flushPersistence();
+  const commits = await issue(
+    "commitGlobal",
+    operation.id,
+    operation.issued.map((command) => command.instanceId)
+  );
+  const acknowledgements = await waitFor(commits);
+  const failed = acknowledgements.find((ack) => ack.outcome !== "completed");
+  if (failed) throw new Error(failed.detail ?? "Another PLVS workbench could not close.");
+  await invoke("runtime_finish_operation", { operationId: operation.id });
 }
 
 export async function issueInstanceCommand(instanceId, action) {

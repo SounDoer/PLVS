@@ -61,7 +61,7 @@ export function useConfigurationProfileActions() {
       }
       const raw = await readProfileFile(path);
       await importProfile(JSON.parse(raw));
-      reloadAfterProfileChange();
+      await reloadAfterProfileChange();
     } catch (_) {
       setConfigurationStatus("Import failed");
     } finally {
@@ -75,7 +75,7 @@ export function useConfigurationProfileActions() {
     setConfigurationStatus("");
     try {
       await resetProfile();
-      reloadAfterProfileChange();
+      await reloadAfterProfileChange();
     } catch (_) {
       setConfigurationStatus("Reset failed");
       setConfigurationBusy(false);

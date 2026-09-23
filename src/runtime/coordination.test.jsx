@@ -228,7 +228,7 @@ describe("runtime coordination", () => {
       "runtime_issue_commands",
       expect.objectContaining({ action: "commitGlobal" })
     );
-    expect(mocks.invoke).toHaveBeenCalledWith("runtime_finish_operation", {
+    expect(mocks.invoke).not.toHaveBeenCalledWith("runtime_finish_operation", {
       operationId: "operation-a",
     });
   });

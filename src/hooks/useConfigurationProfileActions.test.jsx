@@ -95,4 +95,20 @@ describe("useConfigurationProfileActions", () => {
       expect(result.current.configurationBusy).toBe(false);
     });
   });
+
+  it("reports a coordinated reload failure as an import failure", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    mocks.pickConfigurationProfileFile.mockResolvedValue("C:\\profile.plvsconfig");
+    mocks.readProfileFile.mockResolvedValue('{"app":"PLVS","kind":"configuration-profile"}');
+    mocks.importProfile.mockResolvedValue(undefined);
+    mocks.reloadAfterProfileChange.mockRejectedValue(new Error("peer failed"));
+    const { result } = renderHook(() => useConfigurationProfileActions());
+
+    await act(async () => {
+      await result.current.importConfiguration();
+    });
+
+    expect(result.current.configurationStatus).toBe("Import failed");
+    expect(result.current.configurationBusy).toBe(false);
+  });
 });

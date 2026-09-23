@@ -34,9 +34,10 @@ async function importProfileModule({ tauri = false, commandMocks = {} } = {}) {
     relaunch: commandMocks.relaunch ?? vi.fn(async () => {}),
   }));
   vi.doMock("../runtime/coordination.js", () => ({
-    prepareGlobalOperation: vi.fn(async () => ({ id: "profile", issued: [] })),
-    commitGlobalOperation: vi.fn(async () => {}),
-    abortGlobalOperation: vi.fn(async () => {}),
+    prepareGlobalOperation:
+      commandMocks.prepareGlobalOperation ?? vi.fn(async () => ({ id: "profile", issued: [] })),
+    commitGlobalOperation: commandMocks.commitGlobalOperation ?? vi.fn(async () => {}),
+    abortGlobalOperation: commandMocks.abortGlobalOperation ?? vi.fn(async () => {}),
   }));
   return import("./profile.js");
 }
@@ -224,6 +225,27 @@ describe("profile API", () => {
     await reloadAfterProfileChange();
 
     expect(relaunch).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts the coordinated profile operation when peer shutdown cannot commit", async () => {
+    const operation = { id: "profile", issued: [{ instanceId: "peer" }] };
+    const abortGlobalOperation = vi.fn(async () => {});
+    const { importProfile, reloadAfterProfileChange } = await importProfileModule({
+      tauri: true,
+      commandMocks: {
+        prepareGlobalOperation: vi.fn(async () => operation),
+        importProfileCommand: vi.fn(async () => {}),
+        commitGlobalOperation: vi.fn(async () => {
+          throw new Error("peer failed");
+        }),
+        abortGlobalOperation,
+      },
+    });
+    await importProfile({ app: "PLVS", kind: "configuration-profile", version: 1 });
+
+    await expect(reloadAfterProfileChange()).rejects.toThrow("peer failed");
+
+    expect(abortGlobalOperation).toHaveBeenCalledWith(operation);
   });
 
   it("falls back to webview reload outside Tauri", async () => {
