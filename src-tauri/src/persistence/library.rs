@@ -11,7 +11,9 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 const DATABASE_SCHEMA_VERSION: i64 = 1;
-const BUSY_TIMEOUT: Duration = Duration::from_secs(2);
+// SQLite permits one WAL writer at a time; concurrent workbenches should wait instead of losing a
+// valid write during a short burst of cross-process contention.
+const DATABASE_BUSY_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -728,7 +730,7 @@ impl LibraryRepository {
   pub(super) fn connection(&self) -> Result<Connection, LibraryError> {
     let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection
-      .busy_timeout(BUSY_TIMEOUT)
+      .busy_timeout(DATABASE_BUSY_TIMEOUT)
       .map_err(map_sqlite_error)?;
     connection
       .pragma_update(None, "foreign_keys", "ON")
@@ -738,7 +740,7 @@ impl LibraryRepository {
 }
 
 fn enable_wal(connection: &Connection) -> Result<(), LibraryError> {
-  let deadline = Instant::now() + BUSY_TIMEOUT;
+  let deadline = Instant::now() + DATABASE_BUSY_TIMEOUT;
   loop {
     let current =
       connection.pragma_query_value(None, "journal_mode", |row| row.get::<_, String>(0));
@@ -770,21 +772,9 @@ fn sqlite_is_busy(error: &rusqlite::Error) -> bool {
   )
 }
 
-fn retry_sqlite_busy<T>(mut operation: impl FnMut() -> rusqlite::Result<T>) -> rusqlite::Result<T> {
-  let deadline = Instant::now() + BUSY_TIMEOUT;
-  loop {
-    match operation() {
-      Err(error) if sqlite_is_busy(&error) && Instant::now() < deadline => {
-        std::thread::sleep(Duration::from_millis(10));
-      }
-      result => return result,
-    }
-  }
-}
-
 fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
-  retry_sqlite_busy(|| {
-    connection.execute_batch(
+  connection
+    .execute_batch(
       "CREATE TABLE IF NOT EXISTS library_items (
          kind TEXT NOT NULL,
          item_id TEXT NOT NULL,
@@ -821,13 +811,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
        INSERT OR IGNORE INTO workspace_restore_set (workspace_id, position) VALUES ('default', 0);
        INSERT OR IGNORE INTO workspace_registry_state (singleton, revision) VALUES (1, 0);",
     )
-  })
-  .map_err(map_sqlite_error)?;
-  let current_version: i64 =
-    retry_sqlite_busy(|| connection.pragma_query_value(None, "user_version", |row| row.get(0)))
-      .map_err(map_sqlite_error)?;
+    .map_err(map_sqlite_error)?;
+  let current_version: i64 = connection
+    .pragma_query_value(None, "user_version", |row| row.get(0))
+    .map_err(map_sqlite_error)?;
   if current_version == 0 {
-    retry_sqlite_busy(|| connection.pragma_update(None, "user_version", DATABASE_SCHEMA_VERSION))
+    connection
+      .pragma_update(None, "user_version", DATABASE_SCHEMA_VERSION)
       .map_err(map_sqlite_error)?;
   } else if current_version != DATABASE_SCHEMA_VERSION {
     return Err(LibraryError::Storage(format!(
