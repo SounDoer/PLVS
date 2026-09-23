@@ -265,10 +265,8 @@ export function createMultiInstanceBackend() {
 
   function applyRemoteCollection(kind, hydrated) {
     const remoteRevision = hydrated.libraryCollectionRevisions?.[kind] ?? 0;
-    if (remoteRevision <= (collectionRevisions.get(kind) ?? 0)) return;
     const key =
       kind === "preset" ? "plvs:presets" : kind === "theme" ? "plvs:themes" : "plvs:settings";
-    if (dirty.has(key)) return;
     const current = cache.get(key) || {};
     let next;
     if (kind === "preset") {
@@ -284,10 +282,20 @@ export function createMultiInstanceBackend() {
         },
       };
     }
-    cache.set(key, clone(next));
-    persistedDocuments.set(kind, clone(documentsFor(key, next)));
+    const remoteDocuments = documentsFor(key, next);
+    const currentRevision = collectionRevisions.get(kind) ?? 0;
+    if (remoteRevision < currentRevision) return;
+    if (
+      remoteRevision === currentRevision &&
+      signature(remoteDocuments) === signature(persistedDocuments.get(kind) || [])
+    ) {
+      return;
+    }
+    persistedDocuments.set(kind, clone(remoteDocuments));
     itemRevisions.set(kind, new Map(Object.entries(hydrated.libraryItemRevisions?.[kind] || {})));
     collectionRevisions.set(kind, remoteRevision);
+    if (dirty.has(key)) return;
+    cache.set(key, clone(next));
     notify(key, { origin: "remote" });
   }
 

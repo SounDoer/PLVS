@@ -287,4 +287,36 @@ describe("multiInstanceBackend", () => {
     expect(changed).toHaveBeenCalledWith({ origin: "remote" });
     unsubscribe();
   });
+
+  it("reconciles authoritative Library contents even when the revision is already known", async () => {
+    invoke.mockResolvedValueOnce({
+      presets: {
+        activeId: "two",
+        list: [
+          { id: "one", name: "One" },
+          { id: "two", name: "Two" },
+          { id: "peer", name: "Peer Addition" },
+        ],
+      },
+      themes: { themes: {}, order: [] },
+      settings: { loudnessProfiles: { profiles: [{ id: "broadcast" }] } },
+      globalPreferences: { askToSendCrashReports: true },
+      globalPreferenceRevisions: { askToSendCrashReports: 5 },
+      libraryItemRevisions: {
+        preset: { one: 3, two: 4, peer: 1 },
+        theme: {},
+        loudnessProfile: { broadcast: 2 },
+      },
+      libraryCollectionRevisions: { preset: 7, theme: 0, loudnessProfile: 2 },
+    });
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+
+    await backend.refresh();
+
+    expect(backend.get("plvs:presets").list).toContainEqual({
+      id: "peer",
+      name: "Peer Addition",
+    });
+  });
 });
