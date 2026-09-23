@@ -770,9 +770,21 @@ fn sqlite_is_busy(error: &rusqlite::Error) -> bool {
   )
 }
 
+fn retry_sqlite_busy<T>(mut operation: impl FnMut() -> rusqlite::Result<T>) -> rusqlite::Result<T> {
+  let deadline = Instant::now() + BUSY_TIMEOUT;
+  loop {
+    match operation() {
+      Err(error) if sqlite_is_busy(&error) && Instant::now() < deadline => {
+        std::thread::sleep(Duration::from_millis(10));
+      }
+      result => return result,
+    }
+  }
+}
+
 fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
-  connection
-    .execute_batch(
+  retry_sqlite_busy(|| {
+    connection.execute_batch(
       "CREATE TABLE IF NOT EXISTS library_items (
          kind TEXT NOT NULL,
          item_id TEXT NOT NULL,
@@ -809,13 +821,13 @@ fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
        INSERT OR IGNORE INTO workspace_restore_set (workspace_id, position) VALUES ('default', 0);
        INSERT OR IGNORE INTO workspace_registry_state (singleton, revision) VALUES (1, 0);",
     )
-    .map_err(map_sqlite_error)?;
-  let current_version: i64 = connection
-    .pragma_query_value(None, "user_version", |row| row.get(0))
-    .map_err(map_sqlite_error)?;
+  })
+  .map_err(map_sqlite_error)?;
+  let current_version: i64 =
+    retry_sqlite_busy(|| connection.pragma_query_value(None, "user_version", |row| row.get(0)))
+      .map_err(map_sqlite_error)?;
   if current_version == 0 {
-    connection
-      .pragma_update(None, "user_version", DATABASE_SCHEMA_VERSION)
+    retry_sqlite_busy(|| connection.pragma_update(None, "user_version", DATABASE_SCHEMA_VERSION))
       .map_err(map_sqlite_error)?;
   } else if current_version != DATABASE_SCHEMA_VERSION {
     return Err(LibraryError::Storage(format!(
