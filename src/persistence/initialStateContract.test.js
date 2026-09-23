@@ -26,6 +26,19 @@ const READERS = {
     "plvs:themes",
   ],
   "hooks/useDockMode.js": ["dockState"],
+  "hooks/useInstanceIdentity.js": ["agentControl"],
+  "ipc/capturePrefs.js": ["captureDeviceId", "multiInstancePersistence"],
+  "lib/clearShortcutPrefs.js": ["globalPreferences", "multiInstancePersistence"],
+  "lib/runtimeRole.js": ["isCoordinator"],
+  "persistence/index.js": ["multiInstancePersistence"],
+  "persistence/multiInstanceBackend.js": [
+    "plvs:settings",
+    "plvs:workspace",
+    "plvs:presets",
+    "plvs:themes",
+    "globalPreferences",
+    "multiInstancePersistence",
+  ],
   "agentControl/appSnapshot.js": ["agentControl"],
 };
 
@@ -49,8 +62,11 @@ function scriptFunctionBody() {
 }
 
 function injectedKeys() {
-  const body = scriptFunctionBody();
-  return new Set([...body.matchAll(/"([^"]+)":/g)].map(([, key]) => key));
+  const start = RUST_SOURCE.indexOf("struct InitialStateValues");
+  expect(start, "src-tauri/src/lib.rs declares InitialStateValues").toBeGreaterThan(-1);
+  const end = RUST_SOURCE.indexOf("fn initial_state_script", start);
+  const declaration = RUST_SOURCE.slice(start, end);
+  return new Set([...declaration.matchAll(/serde\(rename = "([^"]+)"\)/g)].map(([, key]) => key));
 }
 
 describe("injected initial state contract", () => {
