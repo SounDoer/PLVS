@@ -40,20 +40,22 @@ describe("useInstanceIdentity", () => {
     );
 
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
-    expect(invoke).toHaveBeenLastCalledWith(
-      "runtime_publish_instance_state",
-      expect.objectContaining({ sourceLabel: "Spotify", captureStatus: "stopped", visible: true })
-    );
+    expect(invoke).toHaveBeenLastCalledWith("runtime_publish_instance_state", {
+      update: expect.objectContaining({
+        sourceLabel: "Spotify",
+        captureStatus: "stopped",
+        visible: true,
+      }),
+    });
     expect(setTitle).toHaveBeenCalledWith("PLVS Development — Spotify");
     expect(ownsCoordinatorResources()).toBe(false);
 
     rerender({ sourceLabel: "VLC", running: true });
     invoke.mockResolvedValue({ displayName: "VLC", isCoordinator: true });
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
-    expect(invoke).toHaveBeenLastCalledWith(
-      "runtime_publish_instance_state",
-      expect.objectContaining({ sourceLabel: "VLC", captureStatus: "running" })
-    );
+    expect(invoke).toHaveBeenLastCalledWith("runtime_publish_instance_state", {
+      update: expect.objectContaining({ sourceLabel: "VLC", captureStatus: "running" }),
+    });
     await waitFor(() => expect(ownsCoordinatorResources()).toBe(true));
   });
 });

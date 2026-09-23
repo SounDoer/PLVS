@@ -25,10 +25,12 @@ export function useInstanceIdentity({ sourceLabel, running }) {
         ]);
         if (focused) focusSequence = Date.now();
         const published = await invoke("runtime_publish_instance_state", {
-          sourceLabel: sourceLabel || null,
-          captureStatus: running ? "running" : "stopped",
-          visible,
-          focusSequence,
+          update: {
+            sourceLabel: sourceLabel || null,
+            captureStatus: running ? "running" : "stopped",
+            visible,
+            focusSequence,
+          },
         });
         if (!disposed) {
           setCoordinatorRole(published.isCoordinator);

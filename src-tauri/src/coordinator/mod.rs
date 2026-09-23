@@ -125,6 +125,15 @@ pub struct PublishedInstanceState {
   coordinator_generation: Option<u64>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstanceStateUpdate {
+  source_label: Option<String>,
+  capture_status: String,
+  visible: bool,
+  focus_sequence: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RestoreLaunch {
   pub workspace_id: String,
@@ -211,21 +220,18 @@ pub fn runtime_publish_instance_state(
   registry: State<'_, InstanceRegistry>,
   role: State<'_, CoordinatorRole>,
   persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
-  source_label: Option<String>,
-  capture_status: String,
-  visible: bool,
-  focus_sequence: u64,
+  update: InstanceStateUpdate,
 ) -> Result<PublishedInstanceState, String> {
-  let capture_status = match capture_status.as_str() {
+  let capture_status = match update.capture_status.as_str() {
     "running" => CaptureStatus::Running,
     "stopped" => CaptureStatus::Stopped,
     _ => return Err("Unknown instance capture status.".to_string()),
   };
   registration.publish(&InstanceRuntimeState {
-    source_label,
+    source_label: update.source_label,
     capture_status,
-    visible,
-    focus_sequence,
+    visible: update.visible,
+    focus_sequence: update.focus_sequence,
   })?;
   let identity_root = persistence.identity_root()?;
   if role.try_promote(&identity_root, &identity)? {
