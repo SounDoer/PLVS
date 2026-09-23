@@ -157,7 +157,7 @@ impl RuntimeCommandMailbox {
       .write(true)
       .create(true)
       .truncate(false)
-      .open(self.command_lock_path(instance_id))
+      .open(self.command_lock_path())
       .map_err(|error| format!("Unable to open runtime command lock: {error}"))?;
     FileExt::lock(&lock)
       .map_err(|error| format!("Unable to lock the runtime command mailbox: {error}"))?;
@@ -298,8 +298,8 @@ impl RuntimeCommandMailbox {
       .join(format!("{command_id}.json"))
   }
 
-  fn command_lock_path(&self, instance_id: &str) -> PathBuf {
-    self.directory.join(format!("{instance_id}.lock"))
+  fn command_lock_path(&self) -> PathBuf {
+    self.directory.join("mailbox.lock")
   }
 }
 
