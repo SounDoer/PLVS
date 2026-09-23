@@ -204,6 +204,58 @@ impl LibraryRepository {
     }))
   }
 
+  pub fn delete(&self, kind: &str, id: &str, expected_revision: i64) -> Result<i64, LibraryError> {
+    validate_key(kind, "Library kind")?;
+    validate_key(id, "Library item ID")?;
+    if expected_revision < 1 {
+      return Err(LibraryError::Conflict(
+        "Expected Library item revision must be positive.".to_string(),
+      ));
+    }
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    let deleted = transaction.execute(
+      "DELETE FROM library_items
+       WHERE kind = ?1 AND item_id = ?2 AND revision = ?3",
+      params![kind, id, expected_revision],
+    )?;
+    if deleted == 0 {
+      let current_revision = transaction
+        .query_row(
+          "SELECT revision FROM library_items WHERE kind = ?1 AND item_id = ?2",
+          params![kind, id],
+          |row| row.get::<_, i64>(0),
+        )
+        .optional()?;
+      return Err(match current_revision {
+        Some(revision) => LibraryError::Conflict(format!(
+          "Library item changed from expected revision {expected_revision} to revision {revision}."
+        )),
+        None => LibraryError::Conflict(format!(
+          "The {kind} Library item with ID {id} no longer exists."
+        )),
+      });
+    }
+    let current_collection_revision = transaction
+      .query_row(
+        "SELECT revision FROM library_collections WHERE kind = ?1",
+        [kind],
+        |row| row.get::<_, i64>(0),
+      )
+      .optional()?
+      .unwrap_or(0);
+    transaction.execute(
+      "INSERT INTO library_collections (kind, revision)
+       VALUES (?1, 1)
+       ON CONFLICT(kind) DO UPDATE SET revision = revision + 1",
+      [kind],
+    )?;
+    transaction.commit().map_err(map_sqlite_error)?;
+    Ok(current_collection_revision + 1)
+  }
+
   pub fn collection_revision(&self, kind: &str) -> Result<i64, LibraryError> {
     validate_key(kind, "Library kind")?;
     let connection = self.connection()?;

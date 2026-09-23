@@ -1,4 +1,4 @@
-use app_lib::persistence::LibraryRepository;
+use app_lib::persistence::{LibraryError, LibraryRepository};
 use serde_json::json;
 
 fn temp_root() -> std::path::PathBuf {
@@ -180,5 +180,29 @@ fn global_preferences_use_the_same_compare_and_swap_rule() {
   assert_eq!(updated.revision, 2);
   assert_eq!(updated.value, false);
 
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn deleting_an_item_requires_its_revision_and_advances_the_collection() {
+  let root = temp_root().with_extension("delete");
+  let library = LibraryRepository::open(&root).unwrap();
+  library
+    .create("preset", "one", &json!({ "id": "one" }))
+    .unwrap();
+  library
+    .create("preset", "two", &json!({ "id": "two" }))
+    .unwrap();
+  let before = library.collection_revision("preset").unwrap();
+
+  let conflict = library
+    .delete("preset", "one", 2)
+    .expect_err("stale or invented item revision is refused");
+  assert!(matches!(conflict, LibraryError::Conflict(_)));
+  let after = library.delete("preset", "one", 1).unwrap();
+
+  assert_eq!(after, before + 1);
+  assert!(library.read("preset", "one").unwrap().is_none());
+  assert_eq!(library.list("preset").unwrap()[0].id, "two");
   let _ = std::fs::remove_dir_all(root);
 }
