@@ -23,23 +23,25 @@ export function useClearShortcut(onClearRef) {
 
   useEffect(() => {
     let mounted = true;
-    loadClearShortcutPrefs().then((prefs) => {
-      if (!mounted) return;
-      setShortcutState(prefs.shortcut);
-      setGlobalState(prefs.global);
-      setReady(true);
-    });
+    const sync = () => {
+      loadClearShortcutPrefs().then((prefs) => {
+        if (!mounted) return;
+        setShortcutState(prefs.shortcut);
+        setGlobalState(prefs.global);
+        setReady(true);
+      });
+    };
+    sync();
+    window.addEventListener("plvs-global-preferences-changed", sync);
     return () => {
       mounted = false;
+      window.removeEventListener("plvs-global-preferences-changed", sync);
     };
   }, []);
 
   useEffect(() => {
     if (!ready || !isTauri()) return;
-    if (!ownsCoordinatorResources()) {
-      setRegistrationError(null);
-      return;
-    }
+    if (!ownsCoordinatorResources()) return;
     let cancelled = false;
     (async () => {
       const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");

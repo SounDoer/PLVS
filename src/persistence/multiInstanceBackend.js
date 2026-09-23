@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 const FLUSH_DELAY_MS = 200;
+const REFRESH_INTERVAL_MS = 1000;
 const DOMAIN_KIND = {
   "plvs:presets": "preset",
   "plvs:themes": "theme",
@@ -97,8 +98,11 @@ export function createMultiInstanceBackend() {
   }
 
   const dirty = new Map();
+  const subscribers = new Map();
   let flushTimer = null;
+  let refreshTimer = null;
   let activeDrain = null;
+  let activeRefresh = null;
   let unreportedFailure = null;
 
   async function persistCollection(kind, nextDocuments) {
@@ -240,6 +244,83 @@ export function createMultiInstanceBackend() {
     }
   }
 
+  function notify(key) {
+    for (const listener of subscribers.get(key) || []) listener();
+  }
+
+  function applyRemoteCollection(kind, hydrated) {
+    const remoteRevision = hydrated.libraryCollectionRevisions?.[kind] ?? 0;
+    if (remoteRevision <= (collectionRevisions.get(kind) ?? 0)) return;
+    const key =
+      kind === "preset" ? "plvs:presets" : kind === "theme" ? "plvs:themes" : "plvs:settings";
+    if (dirty.has(key)) return;
+    const current = cache.get(key) || {};
+    let next;
+    if (kind === "preset") {
+      next = { ...current, list: hydrated.presets?.list || [] };
+    } else if (kind === "theme") {
+      next = hydrated.themes || { themes: {}, order: [] };
+    } else {
+      next = {
+        ...current,
+        loudnessProfiles: {
+          ...(current.loudnessProfiles || {}),
+          profiles: hydrated.settings?.loudnessProfiles?.profiles || [],
+        },
+      };
+    }
+    cache.set(key, clone(next));
+    persistedDocuments.set(kind, clone(documentsFor(key, next)));
+    itemRevisions.set(kind, new Map(Object.entries(hydrated.libraryItemRevisions?.[kind] || {})));
+    collectionRevisions.set(kind, remoteRevision);
+    notify(key);
+  }
+
+  async function refresh() {
+    if (activeDrain || dirty.size) return;
+    if (activeRefresh) return activeRefresh;
+    const refreshing = invoke("persistence_hydrate")
+      .then((hydrated) => {
+        for (const kind of ["preset", "theme", "loudnessProfile"])
+          applyRemoteCollection(kind, hydrated);
+        const nextGlobals = hydrated.globalPreferences || {};
+        if (
+          signature(
+            [...persistedGlobalPreferences].sort(([left], [right]) => left.localeCompare(right))
+          ) !==
+          signature(
+            Object.entries(nextGlobals).sort(([left], [right]) => left.localeCompare(right))
+          )
+        ) {
+          persistedGlobalPreferences.clear();
+          for (const [key, value] of Object.entries(nextGlobals))
+            persistedGlobalPreferences.set(key, clone(value));
+          globalPreferenceRevisions.clear();
+          for (const [key, revision] of Object.entries(hydrated.globalPreferenceRevisions || {}))
+            globalPreferenceRevisions.set(key, revision);
+          seed.globalPreferences = clone(nextGlobals);
+          metadata.globalPreferenceRevisions = clone(hydrated.globalPreferenceRevisions || {});
+          window.dispatchEvent(new CustomEvent("plvs-global-preferences-changed"));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (activeRefresh === refreshing) activeRefresh = null;
+      });
+    activeRefresh = refreshing;
+    return refreshing;
+  }
+
+  function updateRefreshTimer() {
+    const hasSubscribers = [...subscribers.values()].some((listeners) => listeners.size);
+    if (hasSubscribers && !refreshTimer) {
+      refreshTimer = setInterval(() => void refresh(), REFRESH_INTERVAL_MS);
+    } else if (!hasSubscribers && refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+  }
+
   return {
     get(key) {
       const value = cache.get(key);
@@ -257,9 +338,16 @@ export function createMultiInstanceBackend() {
       dirty.set(key, true);
       schedule();
     },
-    subscribe() {
-      return () => {};
+    subscribe(key, listener) {
+      if (!subscribers.has(key)) subscribers.set(key, new Set());
+      subscribers.get(key).add(listener);
+      updateRefreshTimer();
+      return () => {
+        subscribers.get(key)?.delete(listener);
+        updateRefreshTimer();
+      };
     },
+    refresh,
     async flush() {
       if (flushTimer) {
         clearTimeout(flushTimer);

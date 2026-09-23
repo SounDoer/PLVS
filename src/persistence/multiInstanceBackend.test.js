@@ -189,4 +189,34 @@ describe("multiInstanceBackend", () => {
       value: { panelOrder: ["spectrum"] },
     });
   });
+
+  it("refreshes a peer Library change without replacing the active Preset selection", async () => {
+    invoke.mockResolvedValueOnce({
+      presets: { activeId: "two", list: [{ id: "one", name: "Changed Elsewhere" }] },
+      themes: { themes: {}, order: [] },
+      settings: { loudnessProfiles: { profiles: [{ id: "broadcast" }] } },
+      globalPreferences: { askToSendCrashReports: true },
+      globalPreferenceRevisions: { askToSendCrashReports: 5 },
+      libraryItemRevisions: {
+        preset: { one: 4 },
+        theme: {},
+        loudnessProfile: { broadcast: 2 },
+      },
+      libraryCollectionRevisions: { preset: 8, theme: 0, loudnessProfile: 2 },
+    });
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const changed = vi.fn();
+    const unsubscribe = backend.subscribe("plvs:presets", changed);
+
+    await backend.refresh();
+
+    expect(backend.get("plvs:presets")).toEqual({
+      activeId: "one",
+      dirty: false,
+      list: [{ id: "one", name: "Changed Elsewhere" }],
+    });
+    expect(changed).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
 });
