@@ -152,15 +152,7 @@ impl RuntimeCommandMailbox {
     ) {
       return Err("Unknown runtime coordination action.".to_string());
     }
-    let lock = OpenOptions::new()
-      .read(true)
-      .write(true)
-      .create(true)
-      .truncate(false)
-      .open(self.command_lock_path())
-      .map_err(|error| format!("Unable to open runtime command lock: {error}"))?;
-    FileExt::lock(&lock)
-      .map_err(|error| format!("Unable to lock the runtime command mailbox: {error}"))?;
+    let _lock = self.lock_mailbox()?;
     if let Some(pending) = self.poll(instance_id)? {
       let replaces_same_operation =
         pending.operation_id == operation_id && matches!(action, "abortGlobal" | "commitGlobal");
@@ -233,6 +225,7 @@ impl RuntimeCommandMailbox {
     if !matches!(outcome, "ready" | "completed" | "blocked" | "failed") {
       return Err("Unknown runtime command outcome.".to_string());
     }
+    let _lock = self.lock_mailbox()?;
     let ack = RuntimeCommandAck {
       schema_version: COMMAND_SCHEMA_VERSION,
       command_id: command.command_id.clone(),
@@ -244,6 +237,8 @@ impl RuntimeCommandMailbox {
     write_json_atomic(&self.ack_path(&command.command_id), &ack)?;
     let path = self.pending_path(&command.instance_id);
     if self.poll(&command.instance_id)?.as_ref() == Some(command) {
+      #[cfg(test)]
+      tests::pause_if_consuming_matched_command(&command.command_id);
       fs::remove_file(path)
         .map_err(|error| format!("Unable to consume runtime command: {error}"))?;
     }
@@ -286,15 +281,7 @@ impl RuntimeCommandMailbox {
 
   pub fn discard_instance(&self, instance_id: &str) -> Result<(), String> {
     validate_component(instance_id)?;
-    let lock = OpenOptions::new()
-      .read(true)
-      .write(true)
-      .create(true)
-      .truncate(false)
-      .open(self.command_lock_path())
-      .map_err(|error| format!("Unable to open runtime command lock: {error}"))?;
-    FileExt::lock(&lock)
-      .map_err(|error| format!("Unable to lock the runtime command mailbox: {error}"))?;
+    let _lock = self.lock_mailbox()?;
     match fs::remove_file(self.pending_path(instance_id)) {
       Ok(()) => {}
       Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -346,6 +333,19 @@ impl RuntimeCommandMailbox {
   fn command_lock_path(&self) -> PathBuf {
     self.directory.join("mailbox.lock")
   }
+
+  fn lock_mailbox(&self) -> Result<File, String> {
+    let lock = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .truncate(false)
+      .open(self.command_lock_path())
+      .map_err(|error| format!("Unable to open runtime command lock: {error}"))?;
+    FileExt::lock(&lock)
+      .map_err(|error| format!("Unable to lock the runtime command mailbox: {error}"))?;
+    Ok(lock)
+  }
 }
 
 fn validate_component(value: &str) -> Result<(), String> {
@@ -369,7 +369,27 @@ fn random_id() -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
+  use std::sync::{Mutex, OnceLock};
+
   use super::*;
+
+  fn matched_command_pause() -> &'static Mutex<Option<(String, Duration)>> {
+    static PAUSE: OnceLock<Mutex<Option<(String, Duration)>>> = OnceLock::new();
+    PAUSE.get_or_init(|| Mutex::new(None))
+  }
+
+  pub(super) fn pause_if_consuming_matched_command(command_id: &str) {
+    let pause = matched_command_pause()
+      .lock()
+      .expect("matched command pause poisoned")
+      .clone();
+    if let Some((id, duration)) = pause {
+      if id == command_id {
+        std::thread::sleep(duration);
+      }
+    }
+  }
+
   fn test_root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
       "plvs-runtime-commands-{name}-{}",
@@ -516,5 +536,63 @@ mod tests {
     assert!(mailbox.poll("instance-a").unwrap().is_none());
     assert!(mailbox.poll("instance-b").unwrap().is_some());
     let _ = fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn acknowledgement_keeps_a_command_replaced_after_the_pending_file_matched() {
+    let root = test_root("ack-replacement");
+    let _ = fs::remove_dir_all(&root);
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    mailbox
+      .issue("instance-a", "operation-a", "prepareGlobal")
+      .unwrap();
+    let prepare = mailbox.poll("instance-a").unwrap().unwrap();
+    *matched_command_pause()
+      .lock()
+      .expect("matched command pause poisoned") =
+      Some((prepare.command_id.clone(), Duration::from_millis(500)));
+    let pause_guard = scopeguard_clear_pause();
+
+    let acknowledging = mailbox.clone();
+    let command = prepare.clone();
+    let acknowledged = std::thread::spawn(move || {
+      acknowledging.acknowledge(&command, "ready", None).unwrap();
+    });
+    let started = Instant::now();
+    while !mailbox.ack_path(&prepare.command_id).is_file() {
+      assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "acknowledgement was not published"
+      );
+      std::thread::sleep(Duration::from_millis(5));
+    }
+
+    let commit = mailbox
+      .issue("instance-a", "operation-a", "commitGlobal")
+      .unwrap();
+    acknowledged
+      .join()
+      .expect("acknowledgement thread panicked");
+    drop(pause_guard);
+
+    let pending = mailbox
+      .poll("instance-a")
+      .unwrap()
+      .expect("replacement command must remain pending");
+    assert_eq!(pending.command_id, commit.command_id);
+    assert_eq!(pending.action, "commitGlobal");
+    let _ = fs::remove_dir_all(root);
+  }
+
+  fn scopeguard_clear_pause() -> impl Drop {
+    struct Guard;
+    impl Drop for Guard {
+      fn drop(&mut self) {
+        *matched_command_pause()
+          .lock()
+          .expect("matched command pause poisoned") = None;
+      }
+    }
+    Guard
   }
 }
