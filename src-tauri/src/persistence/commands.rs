@@ -5,8 +5,8 @@ use serde_json::Value;
 use tauri::State;
 
 use super::{
-  HydratedWorkspace, LibraryCollection, LibraryError, LibraryItem, WorkspaceDomain,
-  WorkspacePersistenceSession, WorkspaceValue,
+  GlobalPreference, HydratedWorkspace, LibraryCollection, LibraryError, LibraryItem,
+  WorkspaceDomain, WorkspacePersistenceSession, WorkspaceValue,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -106,6 +106,58 @@ impl PersistenceRuntime {
       .as_ref()
       .ok_or_else(|| "Multi-instance persistence is not ready.".to_string())?
       .save_workspace_value(key, value)
+  }
+
+  pub fn global_preference(&self, key: &str) -> Result<Option<GlobalPreference>, String> {
+    let current = self
+      .session
+      .lock()
+      .map_err(|_| "Persistence runtime is unavailable.".to_string())?;
+    current
+      .as_ref()
+      .ok_or_else(|| "Multi-instance persistence is not ready.".to_string())?
+      .library()
+      .read_global_preference(key)
+      .map_err(|error| error.to_string())
+  }
+
+  pub fn save_global_preference(
+    &self,
+    key: &str,
+    value: &Value,
+  ) -> Result<GlobalPreference, String> {
+    let current = self
+      .session
+      .lock()
+      .map_err(|_| "Persistence runtime is unavailable.".to_string())?;
+    let session = current
+      .as_ref()
+      .ok_or_else(|| "Multi-instance persistence is not ready.".to_string())?;
+    let expected_revision = session
+      .library()
+      .read_global_preference(key)
+      .map_err(|error| error.to_string())?
+      .map(|preference| preference.revision)
+      .unwrap_or(0);
+    session
+      .library()
+      .set_global_preference(key, expected_revision, value)
+      .map_err(|error| error.to_string())
+  }
+
+  pub(crate) fn with_session_raw<T>(
+    &self,
+    action: impl FnOnce(&WorkspacePersistenceSession) -> Result<T, String>,
+  ) -> Result<T, String> {
+    let current = self
+      .session
+      .lock()
+      .map_err(|_| "Persistence runtime is unavailable.".to_string())?;
+    action(
+      current
+        .as_ref()
+        .ok_or_else(|| "Multi-instance persistence is not ready.".to_string())?,
+    )
   }
 
   fn with_session<T>(

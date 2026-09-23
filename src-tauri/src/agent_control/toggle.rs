@@ -36,6 +36,18 @@ pub fn read_enabled_from_disk() -> bool {
   let Ok(path) = crate::profile::store_file_path() else {
     return default_enabled();
   };
+  if let Some(root) = path.parent().map(|parent| parent.join("multi-instance")) {
+    if root.is_dir() {
+      if let Ok(repository) = crate::persistence::LibraryRepository::open(&root) {
+        return repository
+          .read_global_preference(ENABLED_KEY)
+          .ok()
+          .flatten()
+          .and_then(|preference| preference.value.as_bool())
+          .unwrap_or_else(default_enabled);
+      }
+    }
+  }
   let Ok(map) = crate::profile::read_store_map(&path) else {
     return default_enabled();
   };
@@ -106,6 +118,11 @@ fn compose_status(
 const STORE_FILE: &str = "plvs-settings.json";
 
 fn persist_enabled(app: &AppHandle, enabled: bool) -> Result<(), String> {
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  if runtime.is_installed() {
+    runtime.save_global_preference(ENABLED_KEY, &Value::Bool(enabled))?;
+    return Ok(());
+  }
   let store = app
     .store(STORE_FILE)
     .map_err(|error| format!("store load: {error}"))?;
@@ -114,6 +131,15 @@ fn persist_enabled(app: &AppHandle, enabled: bool) -> Result<(), String> {
 }
 
 pub(crate) fn read_enabled(app: &AppHandle) -> bool {
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  if runtime.is_installed() {
+    return runtime
+      .global_preference(ENABLED_KEY)
+      .ok()
+      .flatten()
+      .and_then(|preference| preference.value.as_bool())
+      .unwrap_or_else(default_enabled);
+  }
   let Ok(store) = app.store(STORE_FILE) else {
     return default_enabled();
   };

@@ -39,7 +39,6 @@ mod window_state;
 use std::time::Duration;
 
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_store::StoreExt;
 
 #[cfg(target_os = "macos")]
 pub use audio::macos_capture_apps::{list_capture_applications, CaptureApplication};
@@ -70,23 +69,33 @@ use state::AppState;
 /// does not fail anywhere -- the reader sees `undefined` and falls back to its defaults, which
 /// reaches the user as an app that came up empty. Kept separate from `setup` so the key set and
 /// the pass-through can be tested; `setup` only supplies the values.
-fn initial_state_script(
-  settings: &serde_json::Value,
-  workspace: &serde_json::Value,
-  presets: &serde_json::Value,
-  themes: &serde_json::Value,
-  dock_state: &Option<dock::DockStateRecord>,
-  agent_control: &serde_json::Value,
-) -> String {
-  let initial = serde_json::json!({
-    "plvs:settings": settings,
-    "plvs:workspace": workspace,
-    "plvs:presets": presets,
-    "plvs:themes": themes,
-    "dockState": dock_state,
-    "agentControl": agent_control,
-  });
-  format!("window.__PLVS_INITIAL_STATE__ = {};", initial)
+#[derive(serde::Serialize)]
+struct InitialStateValues<'a> {
+  #[serde(rename = "plvs:settings")]
+  settings: &'a serde_json::Value,
+  #[serde(rename = "plvs:workspace")]
+  workspace: &'a serde_json::Value,
+  #[serde(rename = "plvs:presets")]
+  presets: &'a serde_json::Value,
+  #[serde(rename = "plvs:themes")]
+  themes: &'a serde_json::Value,
+  #[serde(rename = "dockState")]
+  dock_state: &'a Option<dock::DockStateRecord>,
+  #[serde(rename = "agentControl")]
+  agent_control: &'a serde_json::Value,
+  #[serde(rename = "captureDeviceId")]
+  capture_device_id: &'a serde_json::Value,
+  #[serde(rename = "globalPreferences")]
+  global_preferences: &'a serde_json::Value,
+  #[serde(rename = "multiInstancePersistence")]
+  multi_instance_persistence: &'a serde_json::Value,
+}
+
+fn initial_state_script(initial: InitialStateValues<'_>) -> String {
+  format!(
+    "window.__PLVS_INITIAL_STATE__ = {};",
+    serde_json::to_string(&initial).expect("initial state is serializable")
+  )
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -211,16 +220,26 @@ pub fn run() {
       .map_err(|error| format!("agent artifact storage: {error}"))?;
       app.manage(artifact_store);
 
-      // --- Persistence: read store, inject initial state, restore window (pre-paint) ---
-      // Note: the JS pluginStoreBackend uses "plvs:settings" / "plvs:workspace" as store keys.
-      let store = app
-        .store("plvs-settings.json")
-        .map_err(|e| format!("store load: {e}"))?;
+      // --- Persistence: migrate once, hydrate the selected Workspace, restore pre-paint state. ---
+      let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory: {error}"))?;
+      let legacy_store_path = app_data_dir.join("plvs-settings.json");
+      let prepared = persistence::prepare_identity_storage(&app_data_dir, &legacy_store_path)?;
+      let session = persistence::WorkspacePersistenceSession::open(
+        &prepared.root,
+        runtime_identity.workspace_id(),
+      )?;
+      let hydrated = session.hydrate()?;
+      app
+        .state::<persistence::commands::PersistenceRuntime>()
+        .install(session)?;
 
-      let settings = store.get("plvs:settings").unwrap_or(serde_json::json!({}));
-      let workspace = store.get("plvs:workspace").unwrap_or(serde_json::json!({}));
-      let presets = store.get("plvs:presets").unwrap_or(serde_json::json!({}));
-      let themes = store.get("plvs:themes").unwrap_or(serde_json::json!({}));
+      let settings = hydrated.settings;
+      let workspace = hydrated.workspace;
+      let presets = hydrated.presets;
+      let themes = hydrated.themes;
       let log_dir = app
         .path()
         .app_log_dir()
@@ -267,7 +286,11 @@ pub fn run() {
         }
         _ => {}
       }
-      let agent_control_enabled = agent_control::toggle::read_enabled(app.handle());
+      let agent_control_enabled = hydrated
+        .global_preferences
+        .get(agent_control::toggle::ENABLED_KEY)
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or_else(agent_control::toggle::default_enabled);
       let agent_control = serde_json::json!({
         // `available` is platform support alone. Whether the endpoint is actually open is
         // `enabled`, which the user owns from Settings.
@@ -278,31 +301,36 @@ pub fn run() {
         "identifier": env!("PLVS_APP_ID"),
         "platform": std::env::consts::OS,
       });
-      let dock_state: Option<dock::DockStateRecord> = store
-        .get(dock::DOCK_STATE_KEY)
-        .and_then(|value| serde_json::from_value(value).ok())
+      let dock_state: Option<dock::DockStateRecord> = serde_json::from_value(hydrated.dock_state)
+        .ok()
         .map(dock::DockStateRecord::normalize_for_platform);
       #[cfg(not(target_os = "windows"))]
       if let Some(state) = dock_state.as_ref() {
         dock::write_dock_state(app.handle(), state);
       }
-      let init_script = initial_state_script(
-        &settings,
-        &workspace,
-        &presets,
-        &themes,
-        &dock_state,
-        &agent_control,
-      );
+      let global_preferences = serde_json::to_value(&hydrated.global_preferences)
+        .map_err(|error| format!("global preference boot snapshot: {error}"))?;
+      let multi_instance_persistence = serde_json::json!({
+        "itemRevisions": hydrated.library_item_revisions,
+        "collectionRevisions": hydrated.library_collection_revisions,
+        "globalPreferenceRevisions": hydrated.global_preference_revisions,
+      });
+      let init_script = initial_state_script(InitialStateValues {
+        settings: &settings,
+        workspace: &workspace,
+        presets: &presets,
+        themes: &themes,
+        dock_state: &dock_state,
+        agent_control: &agent_control,
+        capture_device_id: &hydrated.capture_device_id,
+        global_preferences: &global_preferences,
+        multi_instance_persistence: &multi_instance_persistence,
+      });
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
       // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
-      let saved_bounds: Option<WindowBounds> =
-        clean_active_preset_window_bounds(&presets).or_else(|| {
-          store
-            .get("windowBounds")
-            .and_then(|v| serde_json::from_value(v).ok())
-        });
+      let saved_bounds: Option<WindowBounds> = clean_active_preset_window_bounds(&presets)
+        .or_else(|| serde_json::from_value(hydrated.window_bounds).ok());
       let boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       let initial_decorations = !boot_docked && !startup_window_is_frameless(&settings, &presets);
@@ -523,14 +551,17 @@ mod tests {
 
   #[test]
   fn injects_every_key_the_frontend_reads() {
-    let snapshot = parse_snapshot(&initial_state_script(
-      &json!({}),
-      &json!({}),
-      &json!({}),
-      &json!({}),
-      &None,
-      &json!({}),
-    ));
+    let snapshot = parse_snapshot(&initial_state_script(InitialStateValues {
+      settings: &json!({}),
+      workspace: &json!({}),
+      presets: &json!({}),
+      themes: &json!({}),
+      dock_state: &None,
+      agent_control: &json!({}),
+      capture_device_id: &json!("default"),
+      global_preferences: &json!({}),
+      multi_instance_persistence: &json!({}),
+    }));
     let mut keys: Vec<&String> = snapshot
       .as_object()
       .expect("snapshot is an object")
@@ -541,7 +572,10 @@ mod tests {
       keys,
       vec![
         "agentControl",
+        "captureDeviceId",
         "dockState",
+        "globalPreferences",
+        "multiInstancePersistence",
         "plvs:presets",
         "plvs:settings",
         "plvs:themes",
@@ -566,14 +600,17 @@ mod tests {
     let presets = json!({ "list": [{ "id": "p1" }], "activeId": "p1" });
     let themes = json!({ "custom": [] });
     let agent_control = json!({ "available": true, "enabled": false });
-    let snapshot = parse_snapshot(&initial_state_script(
-      &settings,
-      &workspace,
-      &presets,
-      &themes,
-      &None,
-      &agent_control,
-    ));
+    let snapshot = parse_snapshot(&initial_state_script(InitialStateValues {
+      settings: &settings,
+      workspace: &workspace,
+      presets: &presets,
+      themes: &themes,
+      dock_state: &None,
+      agent_control: &agent_control,
+      capture_device_id: &json!("default"),
+      global_preferences: &json!({}),
+      multi_instance_persistence: &json!({}),
+    }));
     assert_eq!(snapshot["plvs:settings"], settings);
     assert_eq!(snapshot["plvs:workspace"], workspace);
     assert_eq!(snapshot["plvs:presets"], presets);
@@ -583,14 +620,17 @@ mod tests {
 
   #[test]
   fn carries_dock_state_under_the_field_names_the_frontend_reads() {
-    let snapshot = parse_snapshot(&initial_state_script(
-      &json!({}),
-      &json!({}),
-      &json!({}),
-      &json!({}),
-      &Some(dock_record()),
-      &json!({}),
-    ));
+    let snapshot = parse_snapshot(&initial_state_script(InitialStateValues {
+      settings: &json!({}),
+      workspace: &json!({}),
+      presets: &json!({}),
+      themes: &json!({}),
+      dock_state: &Some(dock_record()),
+      agent_control: &json!({}),
+      capture_device_id: &json!("default"),
+      global_preferences: &json!({}),
+      multi_instance_persistence: &json!({}),
+    }));
     // `normalizeDockState` in hooks/useDockMode.js reads exactly these names, and a mismatch
     // reads as a default rather than an error -- `reserveSpace` even defaults to the opposite.
     assert_eq!(

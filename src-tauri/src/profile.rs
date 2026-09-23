@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{json, Map, Value};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreExt;
 
 /// The one store file. Its name predates the other three domains: it holds `plvs:settings`,
@@ -50,10 +50,15 @@ fn normalize_capture_device_id(value: Option<&Value>) -> Value {
 }
 
 fn is_device_id_shape(id: &str) -> bool {
-  let Some(rest) = id.strip_prefix("in:").or_else(|| id.strip_prefix("out:")) else {
-    return false;
-  };
-  !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit())
+  if let Some(rest) = id.strip_prefix("in:").or_else(|| id.strip_prefix("out:")) {
+    return !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit());
+  }
+  id.strip_prefix("lb-")
+    .or_else(|| id.strip_prefix("cap-"))
+    .or_else(|| id.strip_prefix("app-"))
+    .is_some_and(|rest| {
+      rest.len() == 32 && rest.chars().all(|character| character.is_ascii_hexdigit())
+    })
 }
 
 fn normalize_window_bounds(value: Option<&Value>) -> Value {
@@ -199,6 +204,182 @@ pub fn build_profile_snapshot_from_store(store: &Map<String, Value>) -> Value {
   })
 }
 
+fn profile_from_hydrated(hydrated: crate::persistence::HydratedWorkspace) -> Value {
+  json!({
+    "settings": hydrated.settings,
+    "workspace": hydrated.workspace,
+    "presets": hydrated.presets,
+    "themes": hydrated.themes,
+    "windowBounds": hydrated.window_bounds,
+    "captureDeviceId": hydrated.capture_device_id,
+    "clearShortcut": hydrated.global_preferences.get("clearShortcut").cloned()
+      .unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
+    "clearGlobal": hydrated.global_preferences.get("clearGlobal").cloned()
+      .unwrap_or(json!(false)),
+  })
+}
+
+fn profile_snapshot_from_hydrated(hydrated: crate::persistence::HydratedWorkspace) -> Value {
+  let raw = profile_from_hydrated(hydrated);
+  json!({
+    "app": PROFILE_APP,
+    "kind": PROFILE_KIND,
+    "version": PROFILE_VERSION,
+    "exportedAt": chrono_like_utc_now(),
+    "settings": raw["settings"],
+    "workspace": raw["workspace"],
+    "presets": raw["presets"],
+    "themes": raw["themes"],
+    "windowBounds": raw["windowBounds"],
+    "captureDeviceId": raw["captureDeviceId"],
+    "clearShortcut": raw["clearShortcut"],
+    "clearGlobal": raw["clearGlobal"],
+  })
+}
+
+fn transactional_root_for_store_path(store_path: &Path) -> Option<PathBuf> {
+  let root = store_path.parent()?.join("multi-instance");
+  root.is_dir().then_some(root)
+}
+
+fn ordered_theme_documents(themes: &Value) -> Vec<Value> {
+  let Some(object) = themes.as_object() else {
+    return Vec::new();
+  };
+  let documents = object
+    .get("themes")
+    .and_then(Value::as_object)
+    .cloned()
+    .unwrap_or_default();
+  let mut seen = std::collections::HashSet::new();
+  let mut ordered = Vec::new();
+  for id in object
+    .get("order")
+    .and_then(Value::as_array)
+    .into_iter()
+    .flatten()
+    .filter_map(Value::as_str)
+  {
+    if let Some(document) = documents.get(id) {
+      ordered.push(document.clone());
+      seen.insert(id.to_string());
+    }
+  }
+  for (id, document) in documents {
+    if seen.insert(id) {
+      ordered.push(document);
+    }
+  }
+  ordered
+}
+
+fn replace_profile_collection(
+  session: &crate::persistence::WorkspacePersistenceSession,
+  kind: &str,
+  documents: Vec<Value>,
+) -> Result<(), String> {
+  let items = session
+    .library()
+    .list(kind)
+    .map_err(|error| error.to_string())?;
+  let revisions = items
+    .into_iter()
+    .map(|item| (item.id, item.revision))
+    .collect();
+  let collection_revision = session
+    .library()
+    .collection_revision(kind)
+    .map_err(|error| error.to_string())?;
+  session
+    .library()
+    .replace_collection(kind, &documents, collection_revision, &revisions)
+    .map(|_| ())
+    .map_err(|error| error.to_string())
+}
+
+fn apply_profile_to_session(
+  session: &crate::persistence::WorkspacePersistenceSession,
+  profile: Value,
+) -> Result<(), String> {
+  let values = normalize_profile_for_store(profile);
+  let settings = values
+    .get("plvs:settings")
+    .cloned()
+    .unwrap_or_else(|| json!({}));
+  let presets = values
+    .get("plvs:presets")
+    .cloned()
+    .unwrap_or_else(|| json!({}));
+  let themes = values
+    .get("plvs:themes")
+    .cloned()
+    .unwrap_or_else(|| json!({}));
+  let preset_documents = presets
+    .get("list")
+    .and_then(Value::as_array)
+    .cloned()
+    .unwrap_or_default();
+  let profile_documents = settings
+    .get("loudnessProfiles")
+    .and_then(Value::as_object)
+    .and_then(|profiles| profiles.get("profiles"))
+    .and_then(Value::as_array)
+    .cloned()
+    .unwrap_or_default();
+  replace_profile_collection(session, "preset", preset_documents)?;
+  replace_profile_collection(session, "theme", ordered_theme_documents(&themes))?;
+  replace_profile_collection(session, "loudnessProfile", profile_documents)?;
+
+  session.save_instance_domain(crate::persistence::WorkspaceDomain::Settings, &settings)?;
+  session.save_instance_domain(
+    crate::persistence::WorkspaceDomain::Workspace,
+    values.get("plvs:workspace").unwrap_or(&json!({})),
+  )?;
+  session.save_instance_domain(crate::persistence::WorkspaceDomain::Presets, &presets)?;
+  session.save_workspace_value(
+    crate::persistence::WorkspaceValue::WindowBounds,
+    values.get("windowBounds").unwrap_or(&Value::Null),
+  )?;
+  session.save_workspace_value(
+    crate::persistence::WorkspaceValue::CaptureDeviceId,
+    values.get("captureDeviceId").unwrap_or(&json!("default")),
+  )?;
+
+  let mut global_values = std::collections::BTreeMap::from([
+    (
+      "clearShortcut".to_string(),
+      values
+        .get("clearShortcut")
+        .cloned()
+        .unwrap_or_else(|| json!(DEFAULT_CLEAR_SHORTCUT)),
+    ),
+    (
+      "clearGlobal".to_string(),
+      values.get("clearGlobal").cloned().unwrap_or(json!(false)),
+    ),
+  ]);
+  if let Some(consent) = settings.get("askToSendCrashReports") {
+    global_values.insert("askToSendCrashReports".to_string(), consent.clone());
+  }
+  let mut expected = std::collections::BTreeMap::new();
+  for key in global_values.keys() {
+    expected.insert(
+      key.clone(),
+      session
+        .library()
+        .read_global_preference(key)
+        .map_err(|error| error.to_string())?
+        .map(|preference| preference.revision)
+        .unwrap_or(0),
+    );
+  }
+  session
+    .library()
+    .set_global_preferences(&expected, &global_values)
+    .map(|_| ())
+    .map_err(|error| error.to_string())
+}
+
 fn chrono_like_utc_now() -> String {
   time::OffsetDateTime::now_utc()
     .format(&time::format_description::well_known::Rfc3339)
@@ -208,6 +389,10 @@ fn chrono_like_utc_now() -> String {
 /// Headless export of the installed configuration profile.
 pub fn export_profile_from_disk() -> Result<Value, String> {
   let path = store_file_path()?;
+  if let Some(root) = transactional_root_for_store_path(&path) {
+    return crate::persistence::hydrate_workspace(&root, "default")
+      .map(profile_snapshot_from_hydrated);
+  }
   let store = read_store_map(&path)?;
   Ok(build_profile_snapshot_from_store(&store))
 }
@@ -219,6 +404,11 @@ pub fn import_profile_to_disk(
 ) -> Result<PathBuf, String> {
   validate_profile_identity(&profile)?;
   let path = store_file_path()?;
+  if let Some(root) = transactional_root_for_store_path(&path) {
+    let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default")?;
+    apply_profile_to_session(&session, profile)?;
+    return Ok(root);
+  }
   let mut store = read_store_map(&path)?;
   let values = normalize_profile_for_store(profile);
 
@@ -268,6 +458,10 @@ pub fn import_profile_to_disk(
 
 #[tauri::command]
 pub fn export_profile(app: AppHandle) -> Result<Value, String> {
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  if runtime.is_installed() {
+    return runtime.with_session_raw(|session| session.hydrate().map(profile_from_hydrated));
+  }
   let store = app
     .store(STORE_FILE)
     .map_err(|e| format!("store load: {e}"))?;
@@ -286,6 +480,10 @@ pub fn export_profile(app: AppHandle) -> Result<Value, String> {
 #[tauri::command]
 pub fn import_profile(app: AppHandle, profile: Value) -> Result<(), String> {
   validate_profile_identity(&profile)?;
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  if runtime.is_installed() {
+    return runtime.with_session_raw(|session| apply_profile_to_session(session, profile));
+  }
   let store = app
     .store(STORE_FILE)
     .map_err(|e| format!("store load: {e}"))?;
@@ -307,6 +505,15 @@ pub fn import_profile(app: AppHandle, profile: Value) -> Result<(), String> {
 
 #[tauri::command]
 pub fn reset_profile(app: AppHandle) -> Result<(), String> {
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  if runtime.is_installed() {
+    return runtime.with_session_raw(|session| {
+      apply_profile_to_session(
+        session,
+        json!({ "app": PROFILE_APP, "kind": PROFILE_KIND, "version": PROFILE_VERSION }),
+      )
+    });
+  }
   let store = app
     .store(STORE_FILE)
     .map_err(|e| format!("store load: {e}"))?;
@@ -358,6 +565,50 @@ mod tests {
     assert_eq!(values["captureDeviceId"], "out:2");
     assert_eq!(values["clearShortcut"], "CmdOrCtrl+L");
     assert_eq!(values["clearGlobal"], true);
+  }
+
+  #[test]
+  fn transactional_profile_replaces_shared_library_and_workspace_state() {
+    let root =
+      std::env::temp_dir().join(format!("plvs-transactional-profile-{}", std::process::id()));
+    let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();
+    apply_profile_to_session(
+      &session,
+      json!({
+        "settings": {
+          "referenceLufs": -18,
+          "loudnessProfiles": {
+            "active": "profile:broadcast",
+            "profiles": [{ "id": "broadcast", "name": "Broadcast" }]
+          }
+        },
+        "workspace": { "panelOrder": ["loudness"] },
+        "presets": {
+          "activeId": "one",
+          "list": [{ "id": "one", "name": "One" }]
+        },
+        "themes": {
+          "themes": { "dark": { "id": "dark", "name": "Dark" } },
+          "order": ["dark"]
+        },
+        "windowBounds": { "x": 10, "y": 20, "width": 800, "height": 600 },
+        "captureDeviceId": "out:2",
+        "clearShortcut": "CmdOrCtrl+L",
+        "clearGlobal": true
+      }),
+    )
+    .unwrap();
+
+    let exported = profile_from_hydrated(session.hydrate().unwrap());
+    assert_eq!(exported["settings"]["referenceLufs"], -18);
+    assert_eq!(exported["presets"]["list"][0]["id"], "one");
+    assert_eq!(exported["themes"]["order"], json!(["dark"]));
+    assert_eq!(exported["captureDeviceId"], "out:2");
+    assert_eq!(exported["clearShortcut"], "CmdOrCtrl+L");
+    assert_eq!(exported["clearGlobal"], true);
+
+    drop(session);
+    let _ = std::fs::remove_dir_all(root);
   }
 
   #[test]
