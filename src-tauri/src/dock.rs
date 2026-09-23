@@ -1,6 +1,13 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::{
+  fs::{File, OpenOptions},
+  path::Path,
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+  },
+};
 
+use fs4::{FileExt, TryLockError};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
@@ -191,6 +198,75 @@ pub struct DockedFlag(pub Arc<AtomicBool>);
 /// Frontend reconciliation must not treat DockedFlag's default value as final
 /// until this becomes true.
 pub struct DockBootReady(pub Arc<AtomicBool>);
+
+#[derive(Debug)]
+struct HeldDockReservation {
+  key: String,
+  file: File,
+}
+
+/// Process-scoped ownership for the one system work-area reservation identified by monitor+edge.
+/// The lock handle is released by the OS after a crash, so another live workbench can recover it.
+#[derive(Debug, Default)]
+pub struct DockReservationLease(Mutex<Option<HeldDockReservation>>);
+
+impl DockReservationLease {
+  pub fn acquire(
+    &self,
+    identity_root: &Path,
+    monitor: &str,
+    edge: DockEdge,
+  ) -> Result<bool, String> {
+    let key = format!("{monitor}:{}", edge.as_key());
+    let mut held = self.0.lock().expect("dock reservation lease poisoned");
+    if held.as_ref().is_some_and(|lease| lease.key == key) {
+      return Ok(true);
+    }
+    let directory = identity_root.join("runtime").join("dock-reservations");
+    std::fs::create_dir_all(&directory)
+      .map_err(|error| format!("Unable to create Dock reservation directory: {error}"))?;
+    let path = directory.join(format!("{:016x}.lock", stable_key_hash(key.as_bytes())));
+    let file = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .truncate(false)
+      .open(path)
+      .map_err(|error| format!("Unable to open Dock reservation lock: {error}"))?;
+    match FileExt::try_lock(&file) {
+      Ok(()) => {
+        *held = Some(HeldDockReservation { key, file });
+        Ok(true)
+      }
+      Err(TryLockError::WouldBlock) => Ok(false),
+      Err(TryLockError::Error(error)) => {
+        Err(format!("Unable to acquire Dock reservation lock: {error}"))
+      }
+    }
+  }
+
+  pub fn release(&self) {
+    let mut held = self.0.lock().expect("dock reservation lease poisoned");
+    if let Some(lease) = held.take() {
+      let _ = FileExt::unlock(&lease.file);
+    }
+  }
+}
+
+impl DockEdge {
+  fn as_key(self) -> &'static str {
+    match self {
+      Self::Top => "top",
+      Self::Bottom => "bottom",
+    }
+  }
+}
+
+fn stable_key_hash(bytes: &[u8]) -> u64 {
+  bytes.iter().fold(0xcbf29ce484222325_u64, |hash, byte| {
+    (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+  })
+}
 
 pub const DOCK_STATE_KEY: &str = "dockState";
 
@@ -393,7 +469,7 @@ pub fn enter_dock<R: tauri::Runtime>(
   let previous = read_dock_state(window.app_handle());
   let was_docked = flag.0.load(Ordering::Relaxed);
   let previous_form = capture_window_form(&window, !was_docked)?;
-  let reserve_space = reserve_space_with_support(
+  let requested_reserve_space = reserve_space_with_support(
     reserve_space.unwrap_or_else(|| {
       previous
         .as_ref()
@@ -408,7 +484,7 @@ pub fn enter_dock<R: tauri::Runtime>(
       .map(|state| state.height)
       .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT)
   }));
-  let transition = (|| -> Result<Option<String>, String> {
+  let transition = (|| -> Result<(Option<String>, bool), String> {
     #[cfg(target_os = "windows")]
     crate::appbar::set_reserved(&window, false, edge, height)?;
     // Persist the latest normal-form geometry, then raise the suppression flag
@@ -418,14 +494,43 @@ pub fn enter_dock<R: tauri::Runtime>(
     }
     flag.0.store(true, Ordering::Relaxed);
     let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, was_docked)?;
+    let mut reserve_space = requested_reserve_space;
     #[cfg(target_os = "windows")]
     if reserve_space {
-      crate::appbar::set_reserved(&window, true, edge, height)?;
+      let monitor_key = monitor.as_deref().unwrap_or("primary");
+      let root = window
+        .app_handle()
+        .state::<crate::persistence::commands::PersistenceRuntime>()
+        .identity_root()?;
+      if window
+        .app_handle()
+        .state::<DockReservationLease>()
+        .acquire(&root, monitor_key, edge)?
+      {
+        if let Err(error) = crate::appbar::set_reserved(&window, true, edge, height) {
+          window
+            .app_handle()
+            .state::<DockReservationLease>()
+            .release();
+          return Err(error);
+        }
+      } else {
+        window
+          .app_handle()
+          .state::<DockReservationLease>()
+          .release();
+        reserve_space = false;
+      }
+    } else {
+      window
+        .app_handle()
+        .state::<DockReservationLease>()
+        .release();
     }
-    Ok(monitor)
+    Ok((monitor, reserve_space))
   })();
-  let monitor = match transition {
-    Ok(monitor) => monitor,
+  let (monitor, reserve_space) = match transition {
+    Ok(result) => result,
     Err(error) => {
       flag.0.store(was_docked, Ordering::Relaxed);
       restore_window_form(&window, previous_form);
@@ -464,14 +569,19 @@ pub fn exit_dock<R: tauri::Runtime>(
 ) -> Result<(), String> {
   crate::dock_accessories::hide_all(window.app_handle());
   #[cfg(target_os = "windows")]
-  crate::appbar::set_reserved(
+  let unreserve_result = crate::appbar::set_reserved(
     &window,
     false,
     DockEdge::Bottom,
     read_dock_state(window.app_handle())
       .map(|state| clamp_dock_height(state.height))
       .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
-  )?;
+  );
+  window
+    .app_handle()
+    .state::<DockReservationLease>()
+    .release();
+  unreserve_result?;
   window
     .set_resizable(true)
     .map_err(|e| format!("resizable: {e}"))?;
@@ -569,10 +679,42 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
 
   #[cfg(target_os = "windows")]
   {
+    let previous = read_dock_state(window.app_handle());
     let height = read_dock_state(window.app_handle())
       .map(|state| clamp_dock_height(state.height))
       .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT);
-    crate::appbar::set_reserved(&window, enabled, edge, height)?;
+    if enabled {
+      let root = window
+        .app_handle()
+        .state::<crate::persistence::commands::PersistenceRuntime>()
+        .identity_root()?;
+      let monitor = previous
+        .as_ref()
+        .and_then(|state| state.monitor.as_deref())
+        .unwrap_or("primary");
+      if !window
+        .app_handle()
+        .state::<DockReservationLease>()
+        .acquire(&root, monitor, edge)?
+      {
+        return Err("Another PLVS instance already reserves this screen edge.".into());
+      }
+    }
+    if let Err(error) = crate::appbar::set_reserved(&window, enabled, edge, height) {
+      if enabled {
+        window
+          .app_handle()
+          .state::<DockReservationLease>()
+          .release();
+      }
+      return Err(error);
+    }
+    if !enabled {
+      window
+        .app_handle()
+        .state::<DockReservationLease>()
+        .release();
+    }
   }
   #[cfg(not(target_os = "windows"))]
   if enabled {
@@ -717,6 +859,31 @@ pub fn set_dock_height<R: tauri::Runtime>(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn only_one_process_role_can_reserve_the_same_monitor_edge() {
+    let root = std::env::temp_dir().join(format!(
+      "plvs-dock-lease-{}-{}",
+      std::process::id(),
+      std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+    ));
+    let first = DockReservationLease::default();
+    let second = DockReservationLease::default();
+
+    assert!(first.acquire(&root, "DISPLAY-1", DockEdge::Top).unwrap());
+    assert!(!second.acquire(&root, "DISPLAY-1", DockEdge::Top).unwrap());
+    assert!(second
+      .acquire(&root, "DISPLAY-1", DockEdge::Bottom)
+      .unwrap());
+
+    first.release();
+    assert!(second.acquire(&root, "DISPLAY-1", DockEdge::Top).unwrap());
+    second.release();
+    let _ = std::fs::remove_dir_all(root);
+  }
 
   fn wa() -> MonitorRect {
     // e.g. 1920x1080 monitor with a 40px taskbar at the bottom

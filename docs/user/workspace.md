@@ -29,6 +29,10 @@ for switching the Loudness Profile and editing which modules the strip shows. Th
 reserve its screen space so maximised windows do not cover it. Hover a Stats readout or an icon-only
 Dock action for the same themed explanation shown in the normal workspace.
 
+When several PLVS workbenches use Dock, only one can reserve a particular monitor edge. A second
+Dock on that same edge remains visible as an overlay and does not disturb the existing reservation.
+Top and bottom edges are independent.
+
 ## Persistence
 
 Your layout, presets, and view choices are remembered and restored the next time you open PLVS.

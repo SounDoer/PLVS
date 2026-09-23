@@ -136,6 +136,7 @@ pub fn run() {
     .manage(dock::DockBootReady(std::sync::Arc::new(
       std::sync::atomic::AtomicBool::new(false),
     )))
+    .manage(dock::DockReservationLease::default())
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
       ipc::commands::list_capture_applications,
@@ -469,8 +470,20 @@ pub fn run() {
         && boot_dock.as_ref().is_some_and(|d| d.reserve_space)
       {
         if let Some(d) = boot_dock.as_ref() {
-          if let Err(e) = appbar::set_reserved(&window, true, d.edge, d.height) {
-            log::warn!("appbar restore failed, continuing as overlay dock: {e}");
+          let monitor = d.monitor.as_deref().unwrap_or("primary");
+          let lease = app.state::<dock::DockReservationLease>();
+          let acquired = lease
+            .acquire(&prepared.root, monitor, d.edge)
+            .unwrap_or_else(|error| {
+              log::warn!("dock reservation lease unavailable: {error}");
+              false
+            });
+          let reservation = acquired
+            .then(|| appbar::set_reserved(&window, true, d.edge, d.height))
+            .transpose();
+          if !acquired || reservation.is_err() {
+            lease.release();
+            log::warn!("dock reservation is occupied or unavailable; continuing as overlay Dock");
             let mut overlay = d.clone();
             overlay.reserve_space = false;
             dock::write_dock_state(window.app_handle(), &overlay);
