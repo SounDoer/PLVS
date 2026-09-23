@@ -2601,6 +2601,7 @@ impl ControlFailure {
         | "confirmationRequired"
         | "channelConfigurationChanged"
         | "deviceInventoryChanged"
+        | "sourceUnselected"
         | "deviceUnavailable",
       ) => 4,
       (_, "timeout" | "cancelled") => 5,
@@ -5593,6 +5594,17 @@ mod tests {
       serde_json::to_value(report).unwrap()["error"]["code"],
       "revisionConflict"
     );
+
+    let source_unselected = ControlFailure::application(
+      descriptor_app(),
+      ControlError {
+        code: "sourceUnselected".to_string(),
+        message: "Choose a Source before starting Live capture.".to_string(),
+        details: None,
+      },
+      None,
+    );
+    assert_eq!(source_unselected.exit_code, 4);
 
     let authentication_error = FakeClient {
       response: Ok(AppCall {
