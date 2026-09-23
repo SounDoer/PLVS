@@ -143,6 +143,45 @@ describe("runtime coordination", () => {
     unmount();
   });
 
+  it("restores capture when retiring a quitting workbench fails", async () => {
+    const stop = vi.fn().mockResolvedValue();
+    const start = vi.fn().mockResolvedValue();
+    const command = {
+      commandId: "command-a",
+      operationId: "quit-a",
+      instanceId: "instance-a",
+      action: "quitInstance",
+    };
+    mocks.invoke.mockImplementation((name) => {
+      if (name === "runtime_poll_command") return Promise.resolve(command);
+      if (name === "runtime_retire_current_workspace") {
+        return Promise.reject(new Error("catalog unavailable"));
+      }
+      return Promise.resolve();
+    });
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        stop,
+        start,
+        show: vi.fn(),
+      })
+    );
+
+    await act(async () => {});
+
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(mocks.exit).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: "command-a",
+      outcome: "failed",
+      detail: "Error: catalog unavailable",
+    });
+    unmount();
+  });
+
   it("refuses an identity-wide operation before issuing commands when this editor is open", async () => {
     const { unmount } = renderHook(() =>
       useRuntimeCoordination({

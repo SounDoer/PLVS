@@ -70,8 +70,13 @@ async function handleRuntimeCommand(command, prepared) {
         await acknowledge(command, "blocked", current.blockingEditors.join(", "));
         return;
       }
-      await stopAndFlush(current);
-      await invoke("runtime_retire_current_workspace");
+      const wasRunning = await stopAndFlush(current);
+      try {
+        await invoke("runtime_retire_current_workspace");
+      } catch (error) {
+        if (wasRunning) await current.start();
+        throw error;
+      }
       await acknowledge(command, "completed");
       await exit(0);
       return;
