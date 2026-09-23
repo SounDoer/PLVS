@@ -185,12 +185,12 @@ export async function abortGlobalOperation(operation) {
 
 export async function commitGlobalOperation(operation) {
   try {
+    await flushPersistence();
     const commits = await issue(
       "commitGlobal",
       operation.id,
       operation.issued.map((command) => command.instanceId)
     );
-    await flushPersistence();
     const acknowledgements = await waitFor(commits);
     const failed = acknowledgements.find((ack) => ack.outcome !== "completed");
     if (failed) throw new Error(failed.detail ?? "Another PLVS workbench could not close.");

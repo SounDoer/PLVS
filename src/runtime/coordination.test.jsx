@@ -13,7 +13,11 @@ vi.mock("@tauri-apps/plugin-process", () => ({ exit: mocks.exit }));
 vi.mock("../persistence/index.js", () => ({ flushPersistence: mocks.flush }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 
-import { prepareGlobalOperation, useRuntimeCoordination } from "./coordination.js";
+import {
+  commitGlobalOperation,
+  prepareGlobalOperation,
+  useRuntimeCoordination,
+} from "./coordination.js";
 
 describe("runtime coordination", () => {
   beforeEach(() => {
@@ -126,5 +130,25 @@ describe("runtime coordination", () => {
       operationId: expect.any(String),
     });
     unmount();
+  });
+
+  it("does not tell peers to close when the coordinator cannot flush its own state", async () => {
+    mocks.flush.mockRejectedValueOnce(new Error("disk full"));
+    mocks.invoke.mockResolvedValue([]);
+    const operation = {
+      id: "operation-a",
+      issued: [{ instanceId: "instance-a" }],
+      localWasRunning: false,
+    };
+
+    await expect(commitGlobalOperation(operation)).rejects.toThrow("disk full");
+
+    expect(mocks.invoke).not.toHaveBeenCalledWith(
+      "runtime_issue_commands",
+      expect.objectContaining({ action: "commitGlobal" })
+    );
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_finish_operation", {
+      operationId: "operation-a",
+    });
   });
 });
