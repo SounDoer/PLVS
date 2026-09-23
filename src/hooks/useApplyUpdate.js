@@ -117,12 +117,20 @@ export function useApplyUpdate() {
         return;
       }
 
+      let peersClosed = false;
       try {
         await commitGlobalOperation(operation);
+        peersClosed = true;
         if (splitInstall) await update.install({ timeout: UPDATE_DOWNLOAD_TIMEOUT_MS });
         const succeeded = await runRelaunch();
         if (!succeeded) operationRef.current = false;
       } catch {
+        if (peersClosed) {
+          const restored = await runRelaunch();
+          if (restored) return;
+        } else if (operation) {
+          await abortGlobalOperation(operation);
+        }
         operationRef.current = false;
         setInstallStatus("restart-error");
       }

@@ -200,6 +200,37 @@ describe("useApplyUpdate", () => {
     expect(calls).toEqual(["prepare", "download", "commit", "install", "relaunch"]);
   });
 
+  it("relaunches to restore peer workbenches when a split install fails after they close", async () => {
+    const update = {
+      download: vi.fn().mockResolvedValue(),
+      install: vi.fn().mockRejectedValue(new Error("installer failed")),
+    };
+    relaunchMock.mockResolvedValue();
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => result.current.install(update));
+
+    expect(coordination.commit).toHaveBeenCalledTimes(1);
+    expect(update.install).toHaveBeenCalledTimes(1);
+    expect(relaunchMock).toHaveBeenCalledTimes(1);
+    expect(result.current.installStatus).toBe("restarting");
+  });
+
+  it("aborts the prepared operation when peer shutdown cannot commit", async () => {
+    coordination.commit.mockRejectedValueOnce(new Error("peer flush failed"));
+    const update = {
+      download: vi.fn().mockResolvedValue(),
+      install: vi.fn(),
+    };
+    const { result } = renderHook(() => useApplyUpdate());
+
+    await act(async () => result.current.install(update));
+
+    expect(update.install).not.toHaveBeenCalled();
+    expect(coordination.abort).toHaveBeenCalledWith({ id: "operation", issued: [] });
+    expect(result.current.installStatus).toBe("restart-error");
+  });
+
   it("ignores a concurrent install request before React state updates", async () => {
     let resolveInstall;
     const pendingInstall = new Promise((resolve) => {
