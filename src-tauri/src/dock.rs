@@ -6,8 +6,8 @@ use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 
 use crate::window_state::{
-  clamp_to_visible, default_window_bounds, primary_fit_target, save_window_bounds, MonitorRect,
-  WindowBounds,
+  clamp_to_visible, default_window_bounds, primary_fit_target, read_persisted_window_bounds,
+  save_window_bounds, MonitorRect, WindowBounds,
 };
 
 /// Logical (DPI-independent) strip height. Single source of truth: the
@@ -202,10 +202,20 @@ pub struct DockStateSnapshot {
 }
 
 pub fn read_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<DockStateRecord> {
-  let store = app.store("plvs-settings.json").ok()?;
-  store
-    .get(DOCK_STATE_KEY)
-    .and_then(|v| serde_json::from_value(v).ok())
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  let value = if runtime.is_installed() {
+    runtime
+      .workspace_value(crate::persistence::WorkspaceValue::DockState)
+      .ok()
+      .flatten()
+  } else {
+    app
+      .store("plvs-settings.json")
+      .ok()
+      .and_then(|store| store.get(DOCK_STATE_KEY))
+  }?;
+  serde_json::from_value(value)
+    .ok()
     .map(DockStateRecord::normalize_for_platform)
 }
 
@@ -213,12 +223,13 @@ pub(crate) fn write_dock_state<R: tauri::Runtime>(
   app: &tauri::AppHandle<R>,
   record: &DockStateRecord,
 ) {
-  if let Ok(store) = app.store("plvs-settings.json") {
-    let record = record.clone().normalize_for_platform();
-    store.set(
-      DOCK_STATE_KEY,
-      serde_json::to_value(record).unwrap_or_default(),
-    );
+  let record = record.clone().normalize_for_platform();
+  let value = serde_json::to_value(record).unwrap_or_default();
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  if runtime.is_installed() {
+    let _ = runtime.save_workspace_value(crate::persistence::WorkspaceValue::DockState, &value);
+  } else if let Ok(store) = app.store("plvs-settings.json") {
+    store.set(DOCK_STATE_KEY, value);
     let _ = store.save();
   }
 }
@@ -474,14 +485,8 @@ pub fn exit_dock<R: tauri::Runtime>(
   window
     .set_always_on_top(always_on_top)
     .map_err(|e| format!("always on top: {e}"))?;
-  let app = window.app_handle();
-  let saved: Option<WindowBounds> = bounds.or_else(|| {
-    app
-      .store("plvs-settings.json")
-      .ok()
-      .and_then(|s| s.get("windowBounds"))
-      .and_then(|v| serde_json::from_value(v).ok())
-  });
+  let saved: Option<WindowBounds> =
+    bounds.or_else(|| read_persisted_window_bounds(window.app_handle()));
   let monitors: Vec<MonitorRect> = window
     .available_monitors()
     .unwrap_or_default()
@@ -513,6 +518,7 @@ pub fn exit_dock<R: tauri::Runtime>(
     let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
     let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
   }
+  let app = window.app_handle();
   let prev = read_dock_state(app);
   write_dock_state(
     app,

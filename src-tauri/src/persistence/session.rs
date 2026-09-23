@@ -107,6 +107,14 @@ impl WorkspacePersistenceSession {
     self.save_state_value(key.key(), value.clone())
   }
 
+  pub fn workspace_value(&self, key: WorkspaceValue) -> Result<Option<Value>, String> {
+    self
+      .state
+      .lock()
+      .map(|state| state.get(key.key()).cloned())
+      .map_err(|_| "Workspace persistence session is unavailable.".to_string())
+  }
+
   fn save_state_value(&self, key: &str, value: Value) -> Result<(), String> {
     let mut state = self
       .state

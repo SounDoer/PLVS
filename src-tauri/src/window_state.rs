@@ -294,19 +294,42 @@ fn persist_window_bounds<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   bounds: WindowBounds,
 ) -> Result<(), String> {
-  let store = window
-    .app_handle()
-    .store("plvs-settings.json")
-    .map_err(|error| format!("window bounds store: {error}"))?;
-  store.set(
-    "windowBounds",
-    serde_json::to_value(bounds).unwrap_or_default(),
-  );
-  store
-    .save()
-    .map_err(|error| format!("save window bounds: {error}"))?;
+  let app = window.app_handle();
+  let value = serde_json::to_value(bounds).unwrap_or_default();
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  if runtime.is_installed() {
+    runtime
+      .save_workspace_value(crate::persistence::WorkspaceValue::WindowBounds, &value)
+      .map_err(|error| format!("save workspace window bounds: {error}"))?;
+  } else {
+    let store = app
+      .store("plvs-settings.json")
+      .map_err(|error| format!("window bounds store: {error}"))?;
+    store.set("windowBounds", value);
+    store
+      .save()
+      .map_err(|error| format!("save window bounds: {error}"))?;
+  }
   let _ = window.app_handle().emit("window-bounds-changed", bounds);
   Ok(())
+}
+
+pub(crate) fn read_persisted_window_bounds<R: tauri::Runtime>(
+  app: &tauri::AppHandle<R>,
+) -> Option<WindowBounds> {
+  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+  let value = if runtime.is_installed() {
+    runtime
+      .workspace_value(crate::persistence::WorkspaceValue::WindowBounds)
+      .ok()
+      .flatten()
+  } else {
+    app
+      .store("plvs-settings.json")
+      .ok()
+      .and_then(|store| store.get("windowBounds"))
+  }?;
+  serde_json::from_value(value).ok()
 }
 
 /// Read the current outer bounds of the window and write them to the top-level
@@ -315,18 +338,12 @@ fn persist_window_bounds<R: tauri::Runtime>(
 /// `windowBounds` is a Rust-owned sibling key — NOT a field inside `plvs:settings`.
 /// The JS pluginStoreBackend holds an in-memory copy of `plvs:settings` seeded at boot;
 /// if window geometry lived inside that object, a JS settings write would re-persist the
-/// stale boot bounds and clobber the geometry Rust just saved. Separate keys = separate
-/// owners, no cross-process clobber. Both keys still live in the one `plvs-settings.json`.
+/// stale boot bounds and clobber the geometry Rust just saved. In multi-instance storage this
+/// sibling belongs to the owning Workspace rather than the shared Library.
 pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
   let is_maximized = window.is_maximized().unwrap_or(false);
   // When maximized, persist the flag but keep the last normal size/position already on file.
-  let store = match window.app_handle().store("plvs-settings.json") {
-    Ok(s) => s,
-    Err(_) => return,
-  };
-  let prev: Option<WindowBounds> = store
-    .get("windowBounds")
-    .and_then(|v| serde_json::from_value(v).ok());
+  let prev = read_persisted_window_bounds(window.app_handle());
 
   let bounds = if is_maximized {
     match prev {

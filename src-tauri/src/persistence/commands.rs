@@ -78,6 +78,36 @@ impl PersistenceRuntime {
     Ok(())
   }
 
+  pub fn is_installed(&self) -> bool {
+    self
+      .session
+      .lock()
+      .map(|session| session.is_some())
+      .unwrap_or(false)
+  }
+
+  pub fn workspace_value(&self, key: WorkspaceValue) -> Result<Option<Value>, String> {
+    let current = self
+      .session
+      .lock()
+      .map_err(|_| "Persistence runtime is unavailable.".to_string())?;
+    current
+      .as_ref()
+      .ok_or_else(|| "Multi-instance persistence is not ready.".to_string())?
+      .workspace_value(key)
+  }
+
+  pub fn save_workspace_value(&self, key: WorkspaceValue, value: &Value) -> Result<(), String> {
+    let current = self
+      .session
+      .lock()
+      .map_err(|_| "Persistence runtime is unavailable.".to_string())?;
+    current
+      .as_ref()
+      .ok_or_else(|| "Multi-instance persistence is not ready.".to_string())?
+      .save_workspace_value(key, value)
+  }
+
   fn with_session<T>(
     &self,
     action: impl FnOnce(&WorkspacePersistenceSession) -> Result<T, PersistenceCommandError>,
