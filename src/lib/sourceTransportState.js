@@ -14,7 +14,13 @@ function liveSnapshotTimeMs({ elapsedMs = 0, selectedOffset, selectedSnapshotTim
   return Math.max(0, elapsedMs - selectedOffset * 1000);
 }
 
-function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selectedSnapshotTimeMs }) {
+function deriveLiveState({
+  running,
+  liveSourceSelected = true,
+  selectedOffset = -1,
+  elapsedMs = 0,
+  selectedSnapshotTimeMs,
+}) {
   if (selectedOffset >= 0) {
     return {
       sourceLabel: "Live",
@@ -35,6 +41,17 @@ function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selected
       actionLabel: "STOP",
       chromeState: "live",
       actionKind: "stopLive",
+      primaryActionDisabled: false,
+    };
+  }
+
+  if (!liveSourceSelected) {
+    return {
+      sourceLabel: "Live",
+      statusLabel: "No Source",
+      actionLabel: "CHOOSE",
+      chromeState: "ready",
+      actionKind: "chooseSource",
       primaryActionDisabled: false,
     };
   }

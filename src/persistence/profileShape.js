@@ -33,8 +33,12 @@ function clonePlainObject(value) {
 }
 
 function normalizeCaptureDeviceId(value) {
+  if (value === null) return null;
   if (value === "default") return "default";
-  return typeof value === "string" && /^(in|out):\d+$/.test(value) ? value : "default";
+  if (typeof value !== "string") return "default";
+  return /^(in|out):\d+$/.test(value) || /^(lb|cap|app)-[0-9a-f]{32}$/.test(value)
+    ? value
+    : "default";
 }
 
 function normalizeWindowBounds(value) {

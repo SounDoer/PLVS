@@ -4,11 +4,11 @@ Arrange panels into the layout your session needs.
 
 ## Multiple workbenches
 
-Launch PLVS again when you need to meter another Source. Each launch opens a separate workbench
-with its own Source, layout, active Preset, active Loudness Profile, Theme, window position and
-Dock state. There is no workbench naming or profile-creation step: PLVS uses the selected Source as
-the operating-system window and target name, adding `(2)`, `(3)` and so on while identical Source
-names are running.
+Launch PLVS again when you need to meter another Source. Each additional workbench opens Stopped
+with no Source selected; choose one from **Sources** before starting capture. It then keeps its own
+Source, layout, active Preset, active Loudness Profile, Theme, window position and Dock state. There
+is no workbench naming or profile-creation step: PLVS uses the selected Source as the operating-system
+window and target name, adding `(2)`, `(3)` and so on while identical Source names are running.
 
 Saved Presets, Themes and Loudness Profiles remain one shared Library, so importing or saving an
 item makes it available to every workbench without automatically applying it to their active

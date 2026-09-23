@@ -126,7 +126,7 @@ function initialSourceSections(selectedId, audioOutputs, audioInputs, captureApp
     output: true,
     input:
       audioInputs.some((device) => device.id === selectedId) ||
-      selectedId.startsWith("cap-") ||
+      selectedId?.startsWith("cap-") ||
       /^in:\d+$/.test(selectedId),
     applications:
       captureApplications.some((application) => application.id === selectedId) ||
@@ -196,6 +196,15 @@ export function AppHeader({
     setSourcesOpen(false);
   };
 
+  const handlePrimaryAction = (actionKind) => {
+    if (actionKind === "chooseSource") {
+      void onRefreshSources?.();
+      setSourcesOpen(true);
+      return;
+    }
+    onSourceTransportAction(actionKind);
+  };
+
   return (
     <header
       className={autoHideControls ? SHELL_HEADER_OVERLAY : SHELL_HEADER}
@@ -209,7 +218,7 @@ export function AppHeader({
         state={sourceTransportState}
         sourceMode={sourceMode}
         onSourceModeChange={onSourceModeChange}
-        onPrimaryAction={onSourceTransportAction}
+        onPrimaryAction={handlePrimaryAction}
       />
       {notice ? (
         <HoverTip

@@ -131,10 +131,13 @@ pub fn hydrate_workspace(
     workspace: Value::Object(object_at(state, "plvs:workspace")),
     presets: Value::Object(presets),
     themes: json!({ "themes": theme_documents, "order": theme_order }),
-    capture_device_id: state
-      .get("captureDeviceId")
-      .cloned()
-      .unwrap_or_else(|| json!("default")),
+    capture_device_id: state.get("captureDeviceId").cloned().unwrap_or_else(|| {
+      if state.get("source").is_some_and(Value::is_null) {
+        Value::Null
+      } else {
+        json!("default")
+      }
+    }),
     window_bounds: state.get("windowBounds").cloned().unwrap_or(Value::Null),
     dock_state: state.get("dockState").cloned().unwrap_or(Value::Null),
     global_preferences,

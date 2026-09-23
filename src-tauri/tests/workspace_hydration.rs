@@ -1,4 +1,4 @@
-use app_lib::persistence::{hydrate_workspace, migrate_legacy_store};
+use app_lib::persistence::{hydrate_workspace, migrate_legacy_store, WorkspaceCatalog};
 use serde_json::json;
 
 #[test]
@@ -79,4 +79,21 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
   assert_eq!(hydrated.library_collection_revisions["loudnessProfile"], 1);
 
   let _ = std::fs::remove_dir_all(parent);
+}
+
+#[test]
+fn a_new_additional_workbench_hydrates_without_selecting_automatic() {
+  let root = std::env::temp_dir().join(format!(
+    "plvs-blank-workspace-hydration-{}",
+    std::process::id()
+  ));
+  let catalog = WorkspaceCatalog::open(&root).expect("open workspace catalog");
+  let workspace_id = catalog
+    .allocate_blank_workbench()
+    .expect("allocate additional workbench");
+
+  let hydrated = hydrate_workspace(&root, &workspace_id).expect("hydrate additional workbench");
+
+  assert_eq!(hydrated.capture_device_id, serde_json::Value::Null);
+  let _ = std::fs::remove_dir_all(root);
 }

@@ -42,6 +42,22 @@ const context = {
 };
 
 describe("Transport Control", () => {
+  it("refuses LIVE start until an additional workbench selects a Source", () => {
+    const stopped = buildTransportSnapshot(runtime, { ...context, requestedDeviceId: null });
+
+    expect(
+      planTransportMutation(
+        stopped,
+        "transport.live.start",
+        {},
+        {
+          ...context,
+          liveSourceSelected: false,
+        }
+      ).refusal
+    ).toEqual({ code: "sourceUnselected" });
+  });
+
   it("serializes lifecycle state without intake objects", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     expect(snapshot).toEqual({

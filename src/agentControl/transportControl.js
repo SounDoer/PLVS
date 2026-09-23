@@ -38,7 +38,8 @@ export function buildTransportSnapshot(runtime, context = {}) {
     source: runtime.sourceMode === "file" ? "file" : "live",
     live: {
       state: runtime.liveLifecycle ?? (runtime.running ? "running" : "stopped"),
-      requestedDeviceId: context.requestedDeviceId ?? "default",
+      requestedDeviceId:
+        context.requestedDeviceId === undefined ? "default" : context.requestedDeviceId,
       resolvedDeviceId: runtime.liveResolvedDeviceId ?? null,
       startedAt: runtime.liveStartedAt ?? null,
       atLiveEdge: context.atLiveEdge !== false,
@@ -174,6 +175,9 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     });
   }
   if (method === "transport.live.start") {
+    if (context.liveSourceSelected === false) {
+      return result({ refusal: { code: "sourceUnselected" } });
+    }
     if (snapshot.live.state === "running") return result();
     if (["starting", "stopping"].includes(snapshot.live.state)) {
       return result({ refusal: { code: "transitionInProgress", state: snapshot.live.state } });

@@ -85,10 +85,12 @@ null.
 }
 ```
 
-`requestedId` is the durable user choice. An exact selection reports `mode: "exact"` and includes
-its exact ID in `resolved`; Automatic reports a null resolved ID because it is a policy. The Live
-summary says whether capture is running, whether a device restart is settling, and whether the
-running engine has acknowledged the requested selection.
+`requestedId` is the durable user choice. A newly created additional workbench reports
+`requestedId: null`, `mode: "unselected"`, `available: false`, and `resolved: null` until a Source is
+chosen. An exact selection reports `mode: "exact"` and includes its exact ID in `resolved`;
+Automatic reports a null resolved ID because it is a policy. The Live summary says whether capture
+is running, whether a device restart is settling, and whether the running engine has acknowledged
+the requested selection.
 
 ## Exact selection and concurrency
 

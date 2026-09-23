@@ -337,7 +337,7 @@ function ordinarySettingsStateSignature(settings) {
 }
 
 function requestedDeviceSignature(device) {
-  return device?.snapshot?.requestedId ?? "default";
+  return device?.snapshot?.requestedId === undefined ? "default" : device.snapshot.requestedId;
 }
 
 function deviceInspection(device, requestedId = device?.snapshot?.requestedId) {

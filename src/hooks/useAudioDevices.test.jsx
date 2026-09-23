@@ -60,6 +60,7 @@ function deferred() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete window.__PLVS_INITIAL_STATE__;
   mocks.deviceListHandler = null;
   mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue("default");
   mocks.loadCaptureDeviceId.mockResolvedValue("default");
@@ -79,6 +80,23 @@ beforeEach(() => {
 });
 
 describe("useAudioDevices", () => {
+  it("keeps a new additional workspace unselected until the user chooses a Source", async () => {
+    window.__PLVS_INITIAL_STATE__ = {
+      captureDeviceId: null,
+      multiInstancePersistence: { itemRevisions: {}, collectionRevisions: {} },
+    };
+    mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue(null);
+    mocks.loadCaptureDeviceId.mockResolvedValue(null);
+    const { result } = renderHook(() => useAudioDevices());
+
+    expect(result.current.captureDeviceId).toBeNull();
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+
+    expect(result.current.captureDeviceId).toBeNull();
+    expect(result.current.safeAudioDeviceId).toBeNull();
+    expect(mocks.saveCaptureDeviceId).not.toHaveBeenCalled();
+  });
+
   it("publishes one coherent inventory snapshot and awaits selection persistence", async () => {
     const save = deferred();
     mocks.saveCaptureDeviceId.mockReturnValueOnce(save.promise);

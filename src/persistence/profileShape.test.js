@@ -171,6 +171,14 @@ describe("profileShape", () => {
     expect(buildProfileSnapshot({ captureDeviceId: "speaker" }).captureDeviceId).toBe("default");
   });
 
+  it("preserves an unselected or stable modern Source in configuration profiles", () => {
+    expect(buildProfileSnapshot({ captureDeviceId: null }).captureDeviceId).toBeNull();
+    expect(
+      buildProfileSnapshot({ captureDeviceId: "app-00112233445566778899aabbccddeeff" })
+        .captureDeviceId
+    ).toBe("app-00112233445566778899aabbccddeeff");
+  });
+
   it("drops invalid window bounds", () => {
     expect(
       buildProfileSnapshot({ windowBounds: { x: 0, y: 0, width: 0, height: 1 } }).windowBounds

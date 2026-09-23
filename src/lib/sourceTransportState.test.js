@@ -2,6 +2,22 @@ import { describe, expect, it } from "vitest";
 import { deriveSourceTransportState } from "./sourceTransportState.js";
 
 describe("deriveSourceTransportState", () => {
+  it("guides an unselected workbench to choose a Source instead of starting Automatic", () => {
+    expect(
+      deriveSourceTransportState({
+        sourceMode: "live",
+        liveSourceSelected: false,
+        running: false,
+        selectedOffset: -1,
+      })
+    ).toMatchObject({
+      statusLabel: "No Source",
+      actionLabel: "CHOOSE",
+      actionKind: "chooseSource",
+      primaryActionDisabled: false,
+    });
+  });
+
   it("derives the live ready state", () => {
     expect(
       deriveSourceTransportState({
