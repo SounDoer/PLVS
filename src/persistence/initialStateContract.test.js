@@ -26,6 +26,7 @@ const READERS = {
     "plvs:themes",
   ],
   "hooks/useDockMode.js": ["dockState"],
+  "hooks/useAudioDevices.js": ["captureDeviceId", "multiInstancePersistence"],
   "hooks/useInstanceIdentity.js": ["agentControl"],
   "hooks/useTray.js": ["instanceId"],
   "hooks/useAutostart.js": ["globalPreferences", "multiInstancePersistence"],
