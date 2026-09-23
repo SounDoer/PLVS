@@ -9,10 +9,17 @@
  */
 import { createLocalStorageBackend } from "./localStorageBackend.js";
 import { createPluginStoreBackend } from "./pluginStoreBackend.js";
+import { createMultiInstanceBackend } from "./multiInstanceBackend.js";
 import { createDomainStore } from "./createDomainStore.js";
 import { isTauri } from "../ipc/env.js";
 
-const backend = isTauri() ? createPluginStoreBackend() : createLocalStorageBackend();
+const transactionalBoot =
+  typeof window !== "undefined" && window.__PLVS_INITIAL_STATE__?.multiInstancePersistence;
+const backend = isTauri()
+  ? transactionalBoot
+    ? createMultiInstanceBackend()
+    : createPluginStoreBackend()
+  : createLocalStorageBackend();
 
 function migrateWorkspace(raw) {
   const { customPresets: _customPresets, activePresetId: _activePresetId, ...rest } = raw;

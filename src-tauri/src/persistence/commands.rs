@@ -25,6 +25,13 @@ pub struct PersistenceCommandError {
   pub message: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryMutationResult {
+  pub item: LibraryItem,
+  pub collection_revision: i64,
+}
+
 impl PersistenceCommandError {
   fn unavailable() -> Self {
     Self {
@@ -124,12 +131,20 @@ pub fn persistence_library_create(
   kind: String,
   id: String,
   document: Value,
-) -> Result<LibraryItem, PersistenceCommandError> {
+) -> Result<LibraryMutationResult, PersistenceCommandError> {
   runtime.with_session(|session| {
-    session
+    let item = session
       .library()
       .create(&kind, &id, &document)
-      .map_err(Into::into)
+      .map_err(PersistenceCommandError::from)?;
+    let collection_revision = session
+      .library()
+      .collection_revision(&kind)
+      .map_err(PersistenceCommandError::from)?;
+    Ok(LibraryMutationResult {
+      item,
+      collection_revision,
+    })
   })
 }
 
@@ -140,12 +155,20 @@ pub fn persistence_library_update(
   id: String,
   expected_revision: i64,
   document: Value,
-) -> Result<LibraryItem, PersistenceCommandError> {
+) -> Result<LibraryMutationResult, PersistenceCommandError> {
   runtime.with_session(|session| {
-    session
+    let item = session
       .library()
       .update(&kind, &id, expected_revision, &document)
-      .map_err(Into::into)
+      .map_err(PersistenceCommandError::from)?;
+    let collection_revision = session
+      .library()
+      .collection_revision(&kind)
+      .map_err(PersistenceCommandError::from)?;
+    Ok(LibraryMutationResult {
+      item,
+      collection_revision,
+    })
   })
 }
 

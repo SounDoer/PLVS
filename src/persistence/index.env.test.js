@@ -25,4 +25,25 @@ describe("persistence backend selection", () => {
     expect(settingsStore.read()).toEqual({ referenceLufs: -12 });
     localStorage.clear();
   });
+
+  it("uses the transactional backend only when Rust injects its boot metadata", async () => {
+    const invoke = vi.fn().mockResolvedValue(undefined);
+    vi.doMock("../ipc/env.js", () => ({ isTauri: () => true }));
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+    window.__PLVS_INITIAL_STATE__ = {
+      "plvs:settings": { referenceLufs: -19, loudnessProfiles: { profiles: [] } },
+      multiInstancePersistence: {
+        itemRevisions: { loudnessProfile: {} },
+        collectionRevisions: { loudnessProfile: 0 },
+      },
+    };
+    const { settingsStore, flushPersistence } = await import("./index.js");
+    settingsStore.patch({ referenceLufs: -18 });
+    await flushPersistence();
+
+    expect(invoke).toHaveBeenCalledWith("persistence_save_domain", {
+      domain: "settings",
+      value: { referenceLufs: -18, loudnessProfiles: { profiles: [] } },
+    });
+  });
 });

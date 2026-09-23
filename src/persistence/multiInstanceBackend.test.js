@@ -1,0 +1,170 @@
+/** @vitest-environment jsdom */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const invoke = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
+
+function seed() {
+  window.__PLVS_INITIAL_STATE__ = {
+    "plvs:settings": {
+      referenceLufs: -23,
+      loudnessProfiles: {
+        active: "profile:broadcast",
+        profiles: [{ id: "broadcast", name: "Broadcast" }],
+      },
+    },
+    "plvs:workspace": { panelOrder: ["loudness"] },
+    "plvs:presets": {
+      activeId: "one",
+      dirty: false,
+      list: [
+        { id: "one", name: "One" },
+        { id: "two", name: "Two" },
+      ],
+    },
+    "plvs:themes": { themes: {}, order: [] },
+    multiInstancePersistence: {
+      itemRevisions: {
+        preset: { one: 3, two: 4 },
+        loudnessProfile: { broadcast: 2 },
+        theme: {},
+      },
+      collectionRevisions: { preset: 7, loudnessProfile: 2, theme: 0 },
+    },
+  };
+}
+
+describe("multiInstanceBackend", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    invoke.mockReset();
+    delete document.documentElement.dataset.surface;
+    seed();
+  });
+
+  it("persists an active Preset change only to the owning workspace", async () => {
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    backend.set("plvs:presets", {
+      ...backend.get("plvs:presets"),
+      activeId: "two",
+      dirty: true,
+    });
+    await backend.flush();
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith("persistence_save_domain", {
+      domain: "presets",
+      value: expect.objectContaining({ activeId: "two", dirty: true }),
+    });
+  });
+
+  it("keeps Dock accessory surfaces read-only", async () => {
+    document.documentElement.dataset.surface = "dock-editor";
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+
+    expect(() => backend.set("plvs:settings", { referenceLufs: -8 })).toThrow(/dock-editor/);
+    expect(() => backend.remove("plvs:presets")).toThrow(/dock-editor/);
+    delete document.documentElement.dataset.surface;
+  });
+
+  it("updates one shared item with its item revision instead of replacing the collection", async () => {
+    invoke.mockResolvedValueOnce({
+      item: { id: "one", revision: 4, document: { id: "one", name: "Changed" } },
+      collectionRevision: 8,
+    });
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    backend.set("plvs:presets", {
+      ...backend.get("plvs:presets"),
+      list: [
+        { id: "one", name: "Changed" },
+        { id: "two", name: "Two" },
+      ],
+    });
+    await backend.flush();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "persistence_library_update", {
+      kind: "preset",
+      id: "one",
+      expectedRevision: 3,
+      document: { id: "one", name: "Changed" },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(2, "persistence_save_domain", {
+      domain: "presets",
+      value: expect.any(Object),
+    });
+  });
+
+  it("uses an atomic replacement for a multi-item import", async () => {
+    invoke.mockResolvedValueOnce({
+      items: [
+        { id: "three", revision: 1, document: { id: "three" } },
+        { id: "four", revision: 1, document: { id: "four" } },
+      ],
+      collectionRevision: 8,
+    });
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    backend.set("plvs:presets", {
+      activeId: null,
+      list: [{ id: "three" }, { id: "four" }],
+    });
+    await backend.flush();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "persistence_library_replace", {
+      kind: "preset",
+      documents: [{ id: "three" }, { id: "four" }],
+      expectedCollectionRevision: 7,
+      expectedItemRevisions: { one: 3, two: 4 },
+    });
+  });
+
+  it("surfaces a conflict at the durable flush boundary without discarding the local draft", async () => {
+    const conflict = { reason: "conflict", message: "changed by another instance" };
+    invoke.mockRejectedValueOnce(conflict);
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const changed = {
+      ...backend.get("plvs:presets"),
+      list: [
+        { id: "one", name: "Local Draft" },
+        { id: "two", name: "Two" },
+      ],
+    };
+    backend.set("plvs:presets", changed);
+
+    await expect(backend.flush()).rejects.toBe(conflict);
+    expect(backend.get("plvs:presets")).toEqual(changed);
+  });
+
+  it("retries the failed write and any later queued domains after a conflict", async () => {
+    const conflict = { reason: "conflict", message: "changed by another instance" };
+    invoke
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce({
+        item: { id: "one", revision: 4, document: { id: "one", name: "Local Draft" } },
+        collectionRevision: 8,
+      })
+      .mockResolvedValue(undefined);
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    backend.set("plvs:presets", {
+      ...backend.get("plvs:presets"),
+      list: [
+        { id: "one", name: "Local Draft" },
+        { id: "two", name: "Two" },
+      ],
+    });
+    backend.set("plvs:workspace", { panelOrder: ["spectrum"] });
+
+    await expect(backend.flush()).rejects.toBe(conflict);
+    await expect(backend.flush()).resolves.toBeUndefined();
+
+    expect(invoke).toHaveBeenCalledWith("persistence_save_domain", {
+      domain: "workspace",
+      value: { panelOrder: ["spectrum"] },
+    });
+  });
+});
