@@ -60,8 +60,11 @@ not begin merely because a decision is recorded here.
   measurement data.
 - Accent and Primary Data remain independent even when a built-in Theme assigns them the same
   color.
-- Primary Data is the main measurement emphasis. Secondary Data is an independent comparison,
-  channel, or side color; it is distinct from a companion color derived from Primary Data.
+- Primary Data and Secondary Data are independent first and second data-series colors. They can
+  distinguish concurrent measurements, comparisons, channels, or sides; `Secondary` does not mean
+  lower importance or reduced visual emphasis. A companion color derived from Primary Data remains
+  an internal option for genuinely related variants, not the default substitute for a second
+  meaningful series.
 - The exact surface-ladder recipe and contrast-content recipes for colored backgrounds remain open
   for the later Interface and recipe review.
 
