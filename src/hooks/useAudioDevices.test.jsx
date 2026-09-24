@@ -80,7 +80,7 @@ beforeEach(() => {
 });
 
 describe("useAudioDevices", () => {
-  it("keeps an explicitly unselected Source until the user chooses one", async () => {
+  it("normalizes an unexpected null Source to Automatic", async () => {
     window.__PLVS_INITIAL_STATE__ = {
       captureDeviceId: null,
       multiInstancePersistence: { itemRevisions: {}, collectionRevisions: {} },
@@ -89,11 +89,11 @@ describe("useAudioDevices", () => {
     mocks.loadCaptureDeviceId.mockResolvedValue(null);
     const { result } = renderHook(() => useAudioDevices());
 
-    expect(result.current.captureDeviceId).toBeNull();
+    expect(result.current.captureDeviceId).toBe("default");
     await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
 
-    expect(result.current.captureDeviceId).toBeNull();
-    expect(result.current.safeAudioDeviceId).toBeNull();
+    expect(result.current.captureDeviceId).toBe("default");
+    expect(result.current.safeAudioDeviceId).toBe("default");
     expect(mocks.saveCaptureDeviceId).not.toHaveBeenCalled();
   });
 

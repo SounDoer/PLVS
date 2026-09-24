@@ -26,11 +26,11 @@ describe("capturePrefs transactional desktop persistence", () => {
     expect(loadStore).not.toHaveBeenCalled();
   });
 
-  it("preserves an explicitly unselected Source", async () => {
+  it("normalizes a null Source to Automatic", async () => {
     window.__PLVS_INITIAL_STATE__.captureDeviceId = null;
     const { loadCaptureDeviceId } = await import("./capturePrefs.js");
 
-    await expect(loadCaptureDeviceId()).resolves.toBeNull();
+    await expect(loadCaptureDeviceId()).resolves.toBe("default");
     expect(loadStore).not.toHaveBeenCalled();
   });
 

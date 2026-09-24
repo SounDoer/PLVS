@@ -42,22 +42,6 @@ const context = {
 };
 
 describe("Transport Control", () => {
-  it("refuses LIVE start when the Source is explicitly unselected", () => {
-    const stopped = buildTransportSnapshot(runtime, { ...context, requestedDeviceId: null });
-
-    expect(
-      planTransportMutation(
-        stopped,
-        "transport.live.start",
-        {},
-        {
-          ...context,
-          liveSourceSelected: false,
-        }
-      ).refusal
-    ).toEqual({ code: "sourceUnselected" });
-  });
-
   it("serializes lifecycle state without intake objects", () => {
     const snapshot = buildTransportSnapshot(runtime, context);
     expect(snapshot).toEqual({

@@ -13,8 +13,7 @@ const STORE_KEY = "captureDeviceId";
 /** Legacy key (pre–plugin-store); still read once for migration. */
 export const LEGACY_CAPTURE_DEVICE_LS_KEY = "plvs.captureDeviceId";
 
-function validateId(raw, { allowUnselected = false } = {}) {
-  if (allowUnselected && raw === null) return null;
+function validateId(raw) {
   if (raw === "default") return "default";
   if (typeof raw === "string" && /^(lb|cap)-[0-9a-f]{32}$/.test(raw)) return raw;
   if (typeof raw === "string" && /^app-[0-9a-f]{32}$/.test(raw)) return raw;
@@ -45,7 +44,7 @@ export async function loadCaptureDeviceId() {
     return readCaptureDeviceIdFromLocalStorage();
   }
   if (transactionalBoot()) {
-    return validateId(window.__PLVS_INITIAL_STATE__?.captureDeviceId, { allowUnselected: true });
+    return validateId(window.__PLVS_INITIAL_STATE__?.captureDeviceId);
   }
   const { Store } = await import("@tauri-apps/plugin-store");
   const store = await Store.load(STORE_FILE);

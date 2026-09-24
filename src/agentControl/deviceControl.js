@@ -107,13 +107,11 @@ function resolvedAutomatic(automatic) {
 
 /** Build the public selection and Live relationship from the owner's coherent snapshot. */
 export function buildDeviceInspection(snapshot, live = {}) {
-  const requestedId = snapshot.requestedId === null ? null : snapshot.requestedId || "default";
-  const unselected = requestedId === null;
+  const requestedId = snapshot.requestedId || "default";
   const automatic = requestedId === "default";
-  const device =
-    automatic || unselected
-      ? null
-      : (snapshot.allDevices.find((candidate) => candidate.id === requestedId) ?? null);
+  const device = automatic
+    ? null
+    : (snapshot.allDevices.find((candidate) => candidate.id === requestedId) ?? null);
   const state = live.state ?? (live.running ? "running" : "stopped");
   const transition =
     live.transition ?? (state === "starting" || state === "stopping" ? state : null);
@@ -130,13 +128,9 @@ export function buildDeviceInspection(snapshot, live = {}) {
     observedAt: snapshot.observedAt,
     selection: {
       requestedId,
-      mode: unselected ? "unselected" : automatic ? "automatic" : "exact",
-      available: unselected ? false : automatic ? snapshot.automatic.available : device !== null,
-      resolved: unselected
-        ? null
-        : automatic
-          ? resolvedAutomatic(snapshot.automatic)
-          : resolvedExact(device),
+      mode: automatic ? "automatic" : "exact",
+      available: automatic ? snapshot.automatic.available : device !== null,
+      resolved: automatic ? resolvedAutomatic(snapshot.automatic) : resolvedExact(device),
       transition: snapshot.migrationState?.state ?? null,
     },
     live: {
@@ -165,7 +159,7 @@ function emptyPlan(from, to) {
 
 /** Plan exact-ID/default selection without touching React, persistence, File state, or capture. */
 export function planDeviceSelection(snapshot, params, live = {}) {
-  const from = snapshot.requestedId === null ? null : snapshot.requestedId || "default";
+  const from = snapshot.requestedId || "default";
   const to = params.deviceId;
   const result = emptyPlan(from, to);
 

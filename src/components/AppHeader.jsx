@@ -197,11 +197,6 @@ export function AppHeader({
   };
 
   const handlePrimaryAction = (actionKind) => {
-    if (actionKind === "chooseSource") {
-      void onRefreshSources?.();
-      setSourcesOpen(true);
-      return;
-    }
     onSourceTransportAction(actionKind);
   };
 

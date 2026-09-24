@@ -57,21 +57,6 @@ describe("useSourceTransportActions", () => {
     expect(props.stopLive).not.toHaveBeenCalled();
   });
 
-  it("refuses every direct start path until the workbench has a Source", () => {
-    const onLiveSourceRequired = vi.fn();
-    const { result, props } = renderActions({
-      liveSourceSelected: false,
-      onLiveSourceRequired,
-    });
-
-    act(() => {
-      result.current.onStartClick();
-    });
-
-    expect(onLiveSourceRequired).toHaveBeenCalledOnce();
-    expect(props.startLive).not.toHaveBeenCalled();
-  });
-
   it("chooses a file and starts analysis with current settings", async () => {
     mocks.pickMediaFile.mockResolvedValue("C:/audio/test.wav");
     const settings = { dialogue: { enabled: true, engine: "webrtc" } };

@@ -44,7 +44,6 @@ function normalizeCaptureApplications(applications) {
 function initialRequestedId() {
   const boot = typeof window !== "undefined" ? window.__PLVS_INITIAL_STATE__ : undefined;
   if (boot?.multiInstancePersistence) {
-    if (boot.captureDeviceId === null) return null;
     if (typeof boot.captureDeviceId === "string") return boot.captureDeviceId;
     return "default";
   }
@@ -282,7 +281,7 @@ export function useAudioDevices({
     const sequence = selectionSequenceRef.current;
     void loadCaptureDeviceId().then((requestedId) => {
       if (!cancelled && mountedRef.current && sequence === selectionSequenceRef.current) {
-        updateSnapshot((current) => ({ ...current, requestedId }));
+        updateSnapshot((current) => ({ ...current, requestedId: requestedId || "default" }));
       }
     });
     return () => {
@@ -300,13 +299,7 @@ export function useAudioDevices({
   }, [refreshCaptureApplications, snapshot.requestedId]);
 
   useEffect(() => {
-    if (
-      !isTauri() ||
-      !snapshot.inventoryReady ||
-      snapshot.requestedId === null ||
-      snapshot.requestedId === "default"
-    )
-      return;
+    if (!isTauri() || !snapshot.inventoryReady || snapshot.requestedId === "default") return;
     // Application IDs are stable identities rather than device endpoints. Preserve an application
     // selection while it is not running so the same selection can rebind to its next PID.
     if (/^app-[0-9a-f]{32}$/.test(snapshot.requestedId)) return;
@@ -354,7 +347,6 @@ export function useAudioDevices({
   }, [selectCaptureDevice, snapshot, updateSnapshot]);
 
   const safeAudioDeviceId = useMemo(() => {
-    if (snapshot.requestedId === null) return null;
     const allowed = new Set([
       "default",
       ...snapshot.allDevices.map((device) => device.id),

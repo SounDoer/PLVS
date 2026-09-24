@@ -175,9 +175,6 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     });
   }
   if (method === "transport.live.start") {
-    if (context.liveSourceSelected === false) {
-      return result({ refusal: { code: "sourceUnselected" } });
-    }
     if (snapshot.live.state === "running") return result();
     if (["starting", "stopping"].includes(snapshot.live.state)) {
       return result({ refusal: { code: "transitionInProgress", state: snapshot.live.state } });

@@ -4,8 +4,6 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
 
 export function useSourceTransportActions({
   sourceMode,
-  liveSourceSelected = true,
-  onLiveSourceRequired,
   running,
   selectedOffset,
   setSelectedOffset,
@@ -103,20 +101,8 @@ export function useSourceTransportActions({
       stopLive();
       return;
     }
-    if (!liveSourceSelected) {
-      onLiveSourceRequired?.();
-      return;
-    }
     startLive();
-  }, [
-    liveSourceSelected,
-    onLiveSourceRequired,
-    running,
-    selectedOffset,
-    setSelectedOffset,
-    startLive,
-    stopLive,
-  ]);
+  }, [running, selectedOffset, setSelectedOffset, startLive, stopLive]);
 
   const onSourceTransportAction = useCallback(
     async (actionKind) => {
@@ -126,10 +112,6 @@ export function useSourceTransportActions({
       }
       if (actionKind === "startLive" || actionKind === "stopLive") {
         runLiveStartAction();
-        return;
-      }
-      if (actionKind === "chooseSource") {
-        onLiveSourceRequired?.();
         return;
       }
       if (actionKind === "returnToFileResult") {
@@ -159,7 +141,6 @@ export function useSourceTransportActions({
     [
       activeFileSession,
       openFile,
-      onLiveSourceRequired,
       reanalyzeActiveFile,
       runLiveStartAction,
       setSelectedOffset,

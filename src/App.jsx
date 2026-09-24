@@ -1045,7 +1045,6 @@ function AppContent() {
 
   const sourceTransportState = deriveSourceTransportState({
     sourceMode,
-    liveSourceSelected: captureDeviceId !== null,
     running,
     selectedOffset,
     latestTimestampMs,
@@ -1583,7 +1582,6 @@ function AppContent() {
     transportContext: {
       docked,
       deviceTransitioning: meterRuntime.liveDeviceTransition !== null,
-      liveSourceSelected: captureDeviceId !== null,
     },
     executeTransport: executeAgentControlTransport,
     device: agentControlDevice,
@@ -1880,9 +1878,6 @@ function AppContent() {
     onSourceModeChange,
   } = useSourceTransportActions({
     sourceMode,
-    liveSourceSelected: captureDeviceId !== null,
-    onLiveSourceRequired: () =>
-      raiseNotice("guard", "Choose a Source before starting Live capture."),
     running,
     selectedOffset,
     setSelectedOffset,

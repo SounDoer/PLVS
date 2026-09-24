@@ -171,8 +171,8 @@ describe("profileShape", () => {
     expect(buildProfileSnapshot({ captureDeviceId: "speaker" }).captureDeviceId).toBe("default");
   });
 
-  it("preserves an unselected or stable modern Source in configuration profiles", () => {
-    expect(buildProfileSnapshot({ captureDeviceId: null }).captureDeviceId).toBeNull();
+  it("normalizes a null Source and preserves a stable modern Source", () => {
+    expect(buildProfileSnapshot({ captureDeviceId: null }).captureDeviceId).toBe("default");
     expect(
       buildProfileSnapshot({ captureDeviceId: "app-00112233445566778899aabbccddeeff" })
         .captureDeviceId

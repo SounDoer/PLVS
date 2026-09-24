@@ -127,19 +127,6 @@ describe("Device Control inventory", () => {
 });
 
 describe("Device Control inspection", () => {
-  it("reports an explicitly unselected Source", () => {
-    expect(
-      buildDeviceInspection({ ...inventory(), requestedId: null }, { state: "stopped" })
-    ).toMatchObject({
-      selection: {
-        requestedId: null,
-        mode: "unselected",
-        available: false,
-        resolved: null,
-      },
-    });
-  });
-
   it("reports exact and automatic resolution plus migration and Live settlement", () => {
     const state = inventory();
     expect(

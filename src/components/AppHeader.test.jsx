@@ -97,25 +97,6 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
   });
 
-  it("opens Sources from the primary action when a new workbench has no Source", () => {
-    const { props } = renderHeader({
-      safeAudioDeviceId: null,
-      sourceTransportState: {
-        chromeState: "ready",
-        sourceLabel: "LIVE",
-        statusLabel: "No Source",
-        actionLabel: "CHOOSE",
-        actionKind: "chooseSource",
-        primaryActionDisabled: false,
-      },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "CHOOSE" }));
-
-    expect(screen.getByRole("button", { name: "Automatic (default system output)" })).toBeTruthy();
-    expect(props.onSourceTransportAction).not.toHaveBeenCalled();
-  });
-
   it("renders an error transport notice with tooltip text", () => {
     renderHeader({
       notice: {

@@ -44,9 +44,6 @@ fn plain_object(value: Option<Value>) -> Value {
 }
 
 fn normalize_capture_device_id(value: Option<&Value>) -> Value {
-  if value.is_some_and(Value::is_null) {
-    return Value::Null;
-  }
   match value.and_then(Value::as_str) {
     Some("default") => json!("default"),
     Some(id) if is_device_id_shape(id) => json!(id),
@@ -894,9 +891,9 @@ mod tests {
   }
 
   #[test]
-  fn preserves_an_unselected_capture_source_in_a_profile() {
+  fn normalizes_a_null_capture_source_to_automatic() {
     let values = normalize_profile_for_store(json!({ "captureDeviceId": null }));
-    assert_eq!(values["captureDeviceId"], Value::Null);
+    assert_eq!(values["captureDeviceId"], "default");
   }
 
   #[test]
