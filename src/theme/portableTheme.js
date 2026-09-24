@@ -1,5 +1,6 @@
 import { normalizeThemeDocument } from "./migrations/migrateV1Theme.js";
 import { validateThemeDocument, ThemeDocumentError } from "./themeLibrary.js";
+import { analyzeThemeVisuals } from "./themeVisualAnalysis.js";
 import {
   CORE_COLOR_KEYS,
   FREQUENCY_COLOR_KEYS,
@@ -200,6 +201,20 @@ export function validatePortableTheme(raw) {
   }
   if (issues.length > 0) throw new PortableThemeError(issues);
   return portableFromAuthoring(authoring);
+}
+
+/**
+ * Strict community-intake result for one portable Theme. Invalid documents throw
+ * PortableThemeError; valid documents retain all visual warnings, while only the covered WCAG
+ * contrast failures make communityPublication.eligible false.
+ */
+export function assessPortableThemeCommunityPublication(raw) {
+  const document = validatePortableTheme(raw);
+  const authoring = validateThemeDocument(asAuthoringDocument(document));
+  return {
+    document,
+    ...analyzeThemeVisuals({ id: "custom-community-assessment", ...authoring }),
+  };
 }
 
 /** Convert any readable persisted Theme into its stable, provenance-free portable form. */

@@ -4,6 +4,7 @@ import {
   PORTABLE_THEME_FORMAT_VERSION,
   PORTABLE_THEME_KIND,
   PortableThemeError,
+  assessPortableThemeCommunityPublication,
   hashPortableTheme,
   portableToStoredTheme,
   serializePortableTheme,
@@ -110,5 +111,32 @@ describe("portable Theme contract", () => {
     expect(() => portableToStoredTheme(themeToPortable(storedTheme()), "bad id")).toThrow(
       PortableThemeError
     );
+  });
+
+  it("shares one strict community publication assessment with future intake and CI", () => {
+    const accessible = themeToPortable(storedTheme());
+    expect(assessPortableThemeCommunityPublication(accessible)).toMatchObject({
+      document: accessible,
+      communityPublication: { eligible: true, blockers: [] },
+    });
+
+    const lowContrast = structuredClone(accessible);
+    lowContrast.overrides["interface.text.annotation"] = {
+      kind: "color",
+      value: "#151515",
+    };
+    expect(assessPortableThemeCommunityPublication(lowContrast)).toMatchObject({
+      communityPublication: {
+        eligible: false,
+        blockers: [
+          expect.objectContaining({
+            code: "accessibilityContrast",
+            standard: "WCAG 2.2 SC 1.4.3",
+          }),
+        ],
+      },
+    });
+
+    expect(() => assessPortableThemeCommunityPublication({})).toThrow(PortableThemeError);
   });
 });

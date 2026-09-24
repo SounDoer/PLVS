@@ -28,10 +28,74 @@ describe("Theme visual analysis", () => {
       ])
     );
     expect(new Set(report.warnings.map((item) => item.id)).size).toBe(report.warnings.length);
+    expect(report.communityPublication).toEqual({
+      eligible: true,
+      scope: "coveredContrastChecks",
+      blockers: [],
+    });
   });
 
   it.each(Object.keys(BUILTIN_THEMES_V2))("ships %s without high-confidence warnings", (id) => {
-    expect(analyzeThemeVisuals(BUILTIN_THEMES_V2[id]).warnings).toEqual([]);
+    const report = analyzeThemeVisuals(BUILTIN_THEMES_V2[id]);
+    expect(report.warnings).toEqual([]);
+    expect(report.communityPublication).toEqual({
+      eligible: true,
+      blockers: [],
+      scope: "coveredContrastChecks",
+    });
+  });
+
+  it("blocks community publication only for covered WCAG contrast failures", () => {
+    const lowContrast = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+    lowContrast.overrides["interface.text.annotation"] = { kind: "color", value: "#151515" };
+
+    const report = analyzeThemeVisuals(lowContrast);
+
+    expect(report.communityPublication.eligible).toBe(false);
+    expect(report.communityPublication.blockers).toContainEqual(
+      expect.objectContaining({
+        warningId: "contrast:interface.text.annotation+interface.surface.panel",
+        code: "accessibilityContrast",
+        standard: "WCAG 2.2 SC 1.4.3",
+        roleIds: ["interface.text.annotation", "interface.surface.panel"],
+        metric: expect.objectContaining({ target: 4.5 }),
+      })
+    );
+  });
+
+  it("uses the WCAG non-text threshold for essential measurement graphics", () => {
+    const hiddenTrace = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+    hiddenTrace.core.primaryData = hiddenTrace.core.surface;
+
+    const report = analyzeThemeVisuals(hiddenTrace);
+
+    expect(report.communityPublication.blockers).toContainEqual(
+      expect.objectContaining({
+        warningId: "contrast:data.primary+interface.surface.panel",
+        standard: "WCAG 2.2 SC 1.4.11",
+        metric: expect.objectContaining({ target: 3 }),
+      })
+    );
+  });
+
+  it("allows heuristic visual warnings through the community publication policy", () => {
+    const closeStatusColors = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+    closeStatusColors.palettes.status.safe = closeStatusColors.palettes.status.warning;
+
+    const report = analyzeThemeVisuals(closeStatusColors);
+
+    expect(report.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "separation",
+        roleIds: ["palette.status.safe", "palette.status.warning"],
+        publicationBlocker: null,
+      })
+    );
+    expect(report.communityPublication).toEqual({
+      eligible: true,
+      blockers: [],
+      scope: "coveredContrastChecks",
+    });
   });
 
   it("uses stable contrast and perceptual distance measurements", () => {

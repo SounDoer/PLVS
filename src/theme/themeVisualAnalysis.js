@@ -29,7 +29,20 @@ export function themeColorDistance(a, b) {
   return Math.hypot(first.L - second.L, a1 - a2, b1 - b2);
 }
 
-function warning({ code, title, message, roleIds, target, section, metric, consumers }) {
+const WCAG_TEXT_CONTRAST = "WCAG 2.2 SC 1.4.3";
+const WCAG_NON_TEXT_CONTRAST = "WCAG 2.2 SC 1.4.11";
+
+function warning({
+  code,
+  title,
+  message,
+  roleIds,
+  target,
+  section,
+  metric,
+  consumers,
+  publicationBlocker = null,
+}) {
   return {
     id: `${code}:${roleIds.join("+")}`,
     severity: "warning",
@@ -41,6 +54,7 @@ function warning({ code, title, message, roleIds, target, section, metric, consu
     section,
     metric,
     consumers,
+    publicationBlocker,
   };
 }
 
@@ -58,6 +72,12 @@ function contrastWarning(resolved, spec) {
     section: spec.section,
     metric: { label: "Contrast", value: Number(ratio.toFixed(3)), target: spec.targetRatio },
     consumers: spec.consumers,
+    publicationBlocker: spec.standard
+      ? {
+          code: "accessibilityContrast",
+          standard: spec.standard,
+        }
+      : null,
   });
 }
 
@@ -89,6 +109,7 @@ const CONTRAST_CHECKS = [
     target: { page: "core", id: "core.text" },
     section: "Core",
     consumers: ["headings", "values", "body text"],
+    standard: WCAG_TEXT_CONTRAST,
   },
   {
     label: "Secondary Text on Panel",
@@ -98,6 +119,17 @@ const CONTRAST_CHECKS = [
     target: { page: "advanced", id: "interface.text.secondary" },
     section: "Interface",
     consumers: ["descriptions", "metadata", "supporting labels"],
+    standard: WCAG_TEXT_CONTRAST,
+  },
+  {
+    label: "Annotation Text on Panel",
+    foreground: "interface.text.annotation",
+    background: "interface.surface.panel",
+    targetRatio: 4.5,
+    target: { page: "advanced", id: "interface.text.annotation" },
+    section: "Interface",
+    consumers: ["chart axes", "units", "technical readouts"],
+    standard: WCAG_TEXT_CONTRAST,
   },
   {
     label: "Content on Accent",
@@ -107,6 +139,7 @@ const CONTRAST_CHECKS = [
     target: { page: "advanced", id: "interface.content.onAccent" },
     section: "Interface",
     consumers: ["primary controls", "selected solid controls"],
+    standard: WCAG_TEXT_CONTRAST,
   },
   ...[
     ["Success", "success"],
@@ -121,6 +154,7 @@ const CONTRAST_CHECKS = [
       target: { page: "advanced", id: `interface.content.on${label}` },
       section: "Interface",
       consumers: [`solid ${key} controls`, `${key} chips`],
+      standard: WCAG_TEXT_CONTRAST,
     },
     {
       label: `${label} feedback on Panel`,
@@ -132,6 +166,21 @@ const CONTRAST_CHECKS = [
       consumers: [`${key} messages`, `${key} badges`],
     },
   ]),
+  ...[
+    ["Primary Data", "data.primary", "core.primaryData"],
+    ["Primary Snapshot", "data.snapshot.primary", "waveform.snapshot"],
+    ["Secondary Data", "data.secondary", "core.secondaryData"],
+    ["Secondary Snapshot", "data.snapshot.secondary", "spectrum.secondarySnapshot"],
+  ].map(([label, foreground, targetId]) => ({
+    label: `${label} on Panel`,
+    foreground,
+    background: "interface.surface.panel",
+    targetRatio: 3,
+    target: targetFor(targetId),
+    section: targetId.startsWith("core.") ? "Core" : "Modules",
+    consumers: ["essential chart lines", "measurement traces", "small data markers"],
+    standard: WCAG_NON_TEXT_CONTRAST,
+  })),
 ];
 
 const SEPARATION_CHECKS = [
@@ -170,6 +219,7 @@ const SEPARATION_CHECKS = [
 
 function targetFor(id) {
   if (id.startsWith("palette.")) return { page: "palettes", id };
+  if (id.startsWith("core.")) return { page: "core", id };
   return { page: "advanced", id };
 }
 
@@ -238,5 +288,21 @@ export function analyzeThemeVisuals(theme) {
     );
   }
 
-  return { warnings };
+  const blockers = warnings
+    .filter((item) => item.publicationBlocker)
+    .map((item) => ({
+      warningId: item.id,
+      ...item.publicationBlocker,
+      roleIds: item.roleIds,
+      metric: item.metric,
+    }));
+
+  return {
+    warnings,
+    communityPublication: {
+      eligible: blockers.length === 0,
+      blockers,
+      scope: "coveredContrastChecks",
+    },
+  };
 }

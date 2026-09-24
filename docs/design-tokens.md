@@ -179,7 +179,7 @@ Current PLVS Dark values:
 | `--accent-foreground`      | same as `--foreground`      | Text on accent surface                |
 | `--border`                 | `rgba(255, 255, 255, 0.09)` | Borders and dividers                  |
 | `--input`                  | `rgba(255, 255, 255, 0.14)` | Input field border                    |
-| `--ring`                   | `#b35300`                   | Focus ring — follows interface accent |
+| `--ring`                   | `#b35300`                   | Legacy compatibility token; not painted |
 | `--destructive`            | `#b83238`                   | Error / danger state                  |
 | `--destructive-foreground` | `#f2f2f2`                   | Text on destructive                   |
 | `--radius`                 | `0.625rem`                  | Base border radius (card level)       |
@@ -250,6 +250,20 @@ The deterministic Semantic Gallery validates text and content contrast plus key 
 Status, and Frequency distances in normal color, protanopia, deuteranopia, tritanopia, and
 grayscale simulations. These simulations are comparison aids; real renderer review and redundant
 encoding remain part of approval.
+
+### Community publication analysis
+
+Community intake uses `assessPortableThemeCommunityPublication()` after strict portable-document
+validation. A malformed, incompatible, or unresolvable Theme is invalid rather than a visual
+warning. For a valid Theme, covered WCAG 2.2 contrast failures block catalogue publication:
+
+- SC 1.4.3 at 4.5:1 for the small text pairs the analyser covers, including Annotation Text;
+- SC 1.4.11 at 3:1 for the essential data and snapshot graphics the analyser covers.
+
+The result is deliberately scoped as `coveredContrastChecks`; it is a deterministic catalogue gate,
+not a claim that PLVS or the Theme has complete WCAG conformance. PLVS-specific OKLab separation,
+surface hierarchy, and Intensity-stop findings remain non-blocking visual warnings. Local save,
+portable copy, import, and file export retain those intentional choices.
 
 ### Component: Status, feedback, and activity
 
