@@ -63,6 +63,13 @@ describe("shellLayout token names", () => {
     expect(SHELL_FOOTER).not.toContain("border-white/");
   });
 
+  it("shell surface effects derive from Theme-owned colors", () => {
+    for (const className of [SHELL_HEADER, SHELL_FOOTER]) {
+      expect(className).toContain("--ui-surface-highlight");
+      expect(className).not.toMatch(/rgba\(/);
+    }
+  });
+
   it("panel title groups clip overflow before action buttons", () => {
     expect(PANEL_HEADER_BAR).toContain("@container");
     expect(PANEL_HEADER_TITLE_GROUP).toContain("min-w-0");

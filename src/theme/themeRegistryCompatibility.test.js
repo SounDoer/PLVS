@@ -9,7 +9,7 @@ describe("validateThemeRegistryCompatibility", () => {
         overrides: {
           missing: { kind: "color", value: "#ffffff" },
           "interface.text.primary": { kind: "effect", color: "#ffffff", opacity: 1 },
-          "spectrum.primary": { kind: "reference", source: "palette.status.good" },
+          "spectrum.primary": { kind: "reference", source: "palette.status.safe" },
         },
       })
     ).toEqual([

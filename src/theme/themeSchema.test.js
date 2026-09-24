@@ -9,7 +9,7 @@ import {
 
 function validTheme(overrides = {}) {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     semanticsVersion: 1,
     id: "custom.sunrise",
     name: "Sunrise",
@@ -26,7 +26,12 @@ function validTheme(overrides = {}) {
       status: applyPalettePreset("status", "status-plvs"),
       intensity: applyPalettePreset("intensity", "intensity-inferno"),
       frequency: applyPalettePreset("frequency", "frequency-plvs"),
-      interface: { presetId: null, critical: "#f94144" },
+      interface: {
+        presetId: null,
+        success: "#34d399",
+        warning: "#fbbf24",
+        danger: "#f94144",
+      },
     },
     overrides: {},
     ...overrides,
@@ -46,7 +51,7 @@ describe("normalizeThemeDocumentShape", () => {
     });
 
     expect(normalizeThemeDocumentShape(raw)).toEqual({
-      formatVersion: 1,
+      formatVersion: 2,
       semanticsVersion: 1,
       id: "custom.sunrise",
       name: "Sunrise",
@@ -77,17 +82,27 @@ describe("normalizeThemeDocumentShape", () => {
     expect(normalizeThemeDocumentShape(raw)).toBeNull();
   });
 
-  it("keeps an interface critical that differs from the status one", () => {
+  it("keeps Interface Danger independent from measurement Critical", () => {
     const raw = validTheme();
     raw.palettes.status.critical = "#d03535";
-    raw.palettes.interface = { critical: "#df202e" };
-    expect(normalizeThemeDocumentShape(raw)?.palettes.interface.critical).toBe("#df202e");
+    raw.palettes.interface = {
+      presetId: null,
+      success: "#18976a",
+      warning: "#b26a00",
+      danger: "#df202e",
+    };
+    expect(normalizeThemeDocumentShape(raw)?.palettes.interface.danger).toBe("#df202e");
     expect(normalizeThemeDocumentShape(raw)?.palettes.status.critical).toBe("#d03535");
   });
 
   it("rejects a present but malformed interface palette", () => {
     const raw = validTheme();
-    raw.palettes.interface = { critical: "not a color" };
+    raw.palettes.interface = {
+      presetId: null,
+      success: "#18976a",
+      warning: "#b26a00",
+      danger: "not a color",
+    };
     expect(normalizeThemeDocumentShape(raw)).toBeNull();
   });
 
@@ -98,7 +113,7 @@ describe("normalizeThemeDocumentShape", () => {
   });
 
   it.each([
-    ["wrong format version", { formatVersion: 2 }],
+    ["wrong format version", { formatVersion: 3 }],
     ["wrong semantics version", { semanticsVersion: 2 }],
     ["invalid ID", { id: "bad id" }],
     ["invalid scheme", { colorScheme: "system" }],
@@ -150,7 +165,7 @@ describe("normalizeThemeDocumentShape", () => {
 
   it("provides a boolean version guard", () => {
     expect(isCurrentThemeDocument(validTheme())).toBe(true);
-    expect(isCurrentThemeDocument({ formatVersion: 1, semanticsVersion: 1 })).toBe(false);
+    expect(isCurrentThemeDocument({ formatVersion: 2, semanticsVersion: 1 })).toBe(false);
   });
 });
 

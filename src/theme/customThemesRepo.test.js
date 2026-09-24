@@ -56,7 +56,7 @@ describe("customThemesRepo", () => {
     upsertCustomTheme({ ...listCustomThemes()["custom-old"], name: "Updated" });
     const stored = JSON.parse(localStorage.getItem("plvs:themes"));
     expect(stored.themes["custom-old"]).toMatchObject({
-      formatVersion: 1,
+      formatVersion: 2,
       semanticsVersion: 1,
     });
     expect(stored.themes["custom-old"].name).toBe("Updated");

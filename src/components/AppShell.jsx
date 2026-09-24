@@ -122,7 +122,7 @@ export function AppShell({
                     {footer.audioDrop ? (
                       <span
                         title={describeAudioDrop(footer.audioDrop)}
-                        className="inline-flex shrink-0 items-center gap-1 text-[color:var(--ui-signal-warn)]"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-xs bg-[color:var(--ui-interface-warning)] px-1 text-[color:var(--ui-content-on-warning)]"
                       >
                         <TriangleAlert className="size-[1em]" aria-hidden="true" />
                         Audio Dropped

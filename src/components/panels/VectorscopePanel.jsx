@@ -63,9 +63,9 @@ function hasPairSignal(peakDb, x, y) {
 function correlationMarkerClass(value) {
   const corr = clampCorrelation(value);
   if (corr === null) return "bg-[color:var(--muted-foreground)]";
-  if (corr < 0) return "bg-[color:var(--ui-signal-bad)]";
-  if (corr < 0.35) return "bg-[color:var(--ui-signal-warn)]";
-  return "bg-[color:var(--ui-signal-good)]";
+  if (corr < 0) return "bg-[color:var(--ui-vectorscope-correlation-critical)]";
+  if (corr < 0.35) return "bg-[color:var(--ui-vectorscope-correlation-warning)]";
+  return "bg-[color:var(--ui-vectorscope-correlation-safe)]";
 }
 
 function smoothCorrelation(previous, next) {

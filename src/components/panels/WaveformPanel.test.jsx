@@ -151,7 +151,7 @@ describe("drawWaveformCanvas", () => {
       },
     });
 
-    expect(strokes).toEqual(["#123456"]);
+    expect(strokes).toEqual(["#654321", "#123456"]);
     expect(fills).toEqual(["#123456"]);
     document.documentElement.style.removeProperty("--ui-waveform-trace-snap");
   });
@@ -183,7 +183,7 @@ describe("drawWaveformCanvas", () => {
       selected: false,
     });
 
-    expect(lineWidths).toEqual([2.5]);
+    expect(lineWidths).toEqual([1, 2.5]);
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
   });
 

@@ -422,7 +422,9 @@ describe("VectorscopePanel", () => {
     const liveMarker = container.querySelector("[data-vectorscope-correlation-marker]");
     expect(liveMarker?.className).toContain("transition-[left,background-color]");
     expect(liveMarker?.getAttribute("style")).toContain("left: 25%");
-    expect(liveMarker?.className).toContain("bg-[color:var(--ui-signal-bad)]");
+    expect(liveMarker?.className).toContain(
+      "bg-[color:var(--ui-vectorscope-correlation-critical)]"
+    );
 
     const snapshot = renderPanel({
       selectedOffset: 2,

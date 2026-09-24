@@ -7,12 +7,16 @@ import { listPalettePresets } from "../../theme/palettePresets.js";
 import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
 
 const STATUS_COLORS = [
-  ["good", "Good"],
+  ["safe", "Safe"],
   ["warning", "Warning"],
   ["critical", "Critical"],
 ];
 
-const INTERFACE_COLORS = [["critical", "Critical"]];
+const INTERFACE_COLORS = [
+  ["success", "Success"],
+  ["warning", "Warning"],
+  ["danger", "Danger"],
+];
 
 const FREQUENCY_COLORS = [
   ["low", "Low"],
@@ -194,7 +198,7 @@ export function PalettesPage({ draft, onColor, onStop, onStops, onApplyPreset })
     <div className="flex flex-col gap-5">
       <SimplePalette
         title="Status"
-        description="Good, warning, and critical meaning across meters and rules."
+        description="Safe, warning, and critical measurement meaning across meters and rules."
         kind="status"
         palette={draft.palettes.status}
         colors={STATUS_COLORS}
@@ -218,7 +222,7 @@ export function PalettesPage({ draft, onColor, onStop, onStops, onApplyPreset })
       />
       <SimplePalette
         title="Interface"
-        description="Destructive controls. Separate from the meters' critical so one can move without the other."
+        description="Application success, warning, and danger. Independent from measurement Status."
         kind="interface"
         palette={draft.palettes.interface}
         colors={INTERFACE_COLORS}

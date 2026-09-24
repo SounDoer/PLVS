@@ -31,8 +31,8 @@ describe("loudnessTraceGradientStops", () => {
       NORMAL
     );
     // Top band (0..-10) is the breach; bottom band (-10..-40) is normal.
-    expect(stops[0]).toEqual({ offset: 0, color: "var(--ui-signal-bad)" });
-    expect(stops[1].color).toBe("var(--ui-signal-bad)");
+    expect(stops[0]).toEqual({ offset: 0, color: "var(--ui-waveform-critical-range)" });
+    expect(stops[1].color).toBe("var(--ui-waveform-critical-range)");
     expect(stops[2].color).toBe(NORMAL);
     expect(stops.at(-1)).toEqual({ offset: 1, color: NORMAL });
     // The colour changes at the threshold's offset.
@@ -43,7 +43,7 @@ describe("loudnessTraceGradientStops", () => {
     const colors = stopsColors([{ op: "<", value: -30, severity: "warn" }]);
     // Top band normal, bottom band (below -30) warns.
     expect(colors[0]).toBe(NORMAL);
-    expect(colors.at(-1)).toBe("var(--ui-signal-warn)");
+    expect(colors.at(-1)).toBe("var(--ui-waveform-warning-range)");
   });
 
   it("tints both ends of a band, leaving the middle normal", () => {
@@ -51,9 +51,9 @@ describe("loudnessTraceGradientStops", () => {
       { op: ">", value: -10, severity: "fail" },
       { op: "<", value: -30, severity: "fail" },
     ]);
-    expect(colors[0]).toBe("var(--ui-signal-bad)"); // top: too loud
+    expect(colors[0]).toBe("var(--ui-waveform-critical-range)"); // top: too loud
     expect(colors).toContain(NORMAL); // middle: in spec
-    expect(colors.at(-1)).toBe("var(--ui-signal-bad)"); // bottom: too quiet
+    expect(colors.at(-1)).toBe("var(--ui-waveform-critical-range)"); // bottom: too quiet
   });
 
   it("takes the most severe rule where warn and fail overlap", () => {
@@ -62,8 +62,8 @@ describe("loudnessTraceGradientStops", () => {
       { op: ">", value: -10, severity: "fail" },
     ]);
     // Above -10: fail. Between -20 and -10: warn. Below -20: normal.
-    expect(colors[0]).toBe("var(--ui-signal-bad)");
-    expect(colors).toContain("var(--ui-signal-warn)");
+    expect(colors[0]).toBe("var(--ui-waveform-critical-range)");
+    expect(colors).toContain("var(--ui-waveform-warning-range)");
     expect(colors.at(-1)).toBe(NORMAL);
   });
 });

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 const STATE_CONFIG = {
   ready: {
     bg: "bg-secondary",
-    border: "border border-white/10",
+    border: "border border-border",
     color: "text-muted-foreground",
     label: "READY",
     showClock: (clock) => clock != null,
@@ -11,19 +11,19 @@ const STATE_CONFIG = {
     dotGlow: "",
   },
   live: {
-    bg: "bg-[color:color-mix(in_srgb,var(--ui-signal-bad)_8%,transparent)]",
-    border: "border border-[color:color-mix(in_srgb,var(--ui-signal-bad)_30%,transparent)]",
-    color: "text-[color:var(--ui-signal-bad)]",
+    bg: "bg-[color:color-mix(in_srgb,var(--ui-activity-live)_8%,transparent)]",
+    border: "border border-[color:color-mix(in_srgb,var(--ui-activity-live)_30%,transparent)]",
+    color: "text-[color:var(--ui-activity-live)]",
     label: "LIVE",
     showClock: () => true,
     dotPulse: true,
     dotGlow:
-      "shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-signal-bad)_18%,transparent),0_0_6px_var(--ui-signal-bad)]",
+      "shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-activity-live)_18%,transparent),0_0_6px_var(--ui-activity-live)]",
   },
   snapshot: {
-    bg: "bg-[color:color-mix(in_srgb,var(--ui-signal-warn)_8%,transparent)]",
-    border: "border border-[color:color-mix(in_srgb,var(--ui-signal-warn)_30%,transparent)]",
-    color: "text-[color:var(--ui-signal-warn)]",
+    bg: "bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_8%,transparent)]",
+    border: "border border-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_30%,transparent)]",
+    color: "text-[color:var(--ui-activity-snapshot)]",
     label: "SNAP",
     showClock: (clock) => clock != null,
     dotPulse: false,

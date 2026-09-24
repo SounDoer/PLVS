@@ -47,15 +47,15 @@ describe("SourceTransportCluster", () => {
   });
 
   it("keeps live and snapshot chrome readable at minimum panel opacity", () => {
-    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-bad)_8%,transparent)");
-    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-bad)_12%,transparent)");
-    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-warn)_8%,transparent)");
-    expect(source).toContain("color-mix(in_srgb,var(--ui-signal-warn)_12%,transparent)");
+    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-live)_8%,transparent)");
+    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-live)_12%,transparent)");
+    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-snapshot)_8%,transparent)");
+    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-snapshot)_12%,transparent)");
     expect(source).not.toContain(
-      "var(--ui-signal-bad)_8%,transparent)_var(--panel-opacity-control)"
+      "var(--ui-activity-live)_8%,transparent)_var(--panel-opacity-control)"
     );
     expect(source).not.toContain(
-      "var(--ui-signal-warn)_8%,transparent)_var(--panel-opacity-control)"
+      "var(--ui-activity-snapshot)_8%,transparent)_var(--panel-opacity-control)"
     );
   });
 

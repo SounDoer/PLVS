@@ -71,6 +71,46 @@ describe("theme color contract", () => {
       .map(([path]) => path);
 
     expect(offenders).toEqual([]);
+
+    const loudness = readFileSync(
+      new URL("../panels/LoudnessHistoryChart.jsx", import.meta.url),
+      "utf8"
+    );
+    const spectrum = readFileSync(new URL("../panels/SpectrumPanel.jsx", import.meta.url), "utf8");
+    const stereoMap = readFileSync(new URL("../panels/StereoMapPlot.jsx", import.meta.url), "utf8");
+    const waveform = readFileSync(new URL("../panels/WaveformPanel.jsx", import.meta.url), "utf8");
+    expect(loudness).toContain("var(--ui-loudness-grid)");
+    expect(spectrum).toContain("var(--ui-spectrum-grid)");
+    expect(stereoMap).toContain("themeColors.grid");
+    expect(waveform).toContain("themeColors.grid");
+  });
+
+  it("keeps timeline Selection ownership local to each module", () => {
+    const spectrogram = readFileSync(
+      new URL("../panels/SpectrogramPanel.jsx", import.meta.url),
+      "utf8"
+    );
+    const waveform = readFileSync(new URL("../panels/WaveformPanel.jsx", import.meta.url), "utf8");
+
+    expect(spectrogram).toContain("spectrogramTheme.selection");
+    expect(waveform).toContain("themeColors.selection");
+    expect(spectrogram).not.toContain('stroke="var(--ui-loudness-selection)"');
+    expect(waveform).not.toContain('stroke="var(--ui-loudness-selection)"');
+  });
+
+  it("does not route runtime consumers through the retired shared signal bindings", () => {
+    const offenders = Object.entries(appSources())
+      .filter(
+        ([path]) =>
+          !path.includes("/theme/legacy/") &&
+          !path.endsWith("/theme/legacyBuiltinThemes.js") &&
+          !path.endsWith("/theme/buildThemeTokens.js") &&
+          !path.includes("/theme/fixtures/")
+      )
+      .filter(([, source]) => /--ui-signal-(?:good|warn|bad)/.test(source))
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
   });
 
   it("casts shadows in a colour the theme owns", () => {

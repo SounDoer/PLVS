@@ -6,7 +6,7 @@ import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
 
 function authoringTheme(overrides = {}) {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     semanticsVersion: 1,
     id: "test-theme",
     name: "Test Theme",
@@ -23,7 +23,12 @@ function authoringTheme(overrides = {}) {
       status: applyPalettePreset("status", "status-plvs"),
       intensity: applyPalettePreset("intensity", "intensity-inferno"),
       frequency: applyPalettePreset("frequency", "frequency-plvs"),
-      interface: { presetId: null, critical: "#f94144" },
+      interface: {
+        presetId: null,
+        success: "#34d399",
+        warning: "#fbbf24",
+        danger: "#f94144",
+      },
     },
     overrides: {},
     ...overrides,
@@ -79,15 +84,15 @@ describe("compileTheme", () => {
     theme.core.primaryData = "#ffffff";
     theme.palettes.status = {
       presetId: null,
-      good: "#112233",
+      safe: "#112233",
       warning: "#445566",
       critical: "#778899",
     };
     const resolved = compileTheme(theme);
 
-    expect(resolved.css["--ui-signal-good"]).toBe("#112233");
-    expect(resolved.css["--ui-signal-warn"]).toBe("#445566");
-    expect(resolved.css["--ui-signal-bad"]).toBe("#778899");
+    expect(resolved.css["--ui-level-safe"]).toBe("#112233");
+    expect(resolved.css["--ui-stats-warning-value"]).toBe("#445566");
+    expect(resolved.css["--ui-vectorscope-correlation-critical"]).toBe("#778899");
   });
 
   it("applies explicit colors and compatible references after automatic recipes", () => {
@@ -114,7 +119,7 @@ describe("compileTheme", () => {
       compileTheme(
         authoringTheme({
           overrides: {
-            "spectrum.primary": { kind: "reference", source: "palette.status.good" },
+            "spectrum.primary": { kind: "reference", source: "palette.status.safe" },
           },
         })
       )
@@ -172,14 +177,12 @@ describe("compileTheme", () => {
     );
   });
 
-  it("supports explicit leaf effect overrides without making Core colors translucent", () => {
+  it("rejects explicit effect opacity for compiler-owned effects", () => {
     const theme = authoringTheme({
       overrides: {
         "interface.border.default": { kind: "effect", color: "#112233", opacity: 0.25 },
       },
     });
-    const resolved = compileTheme(theme);
-    expect(resolved.roles["core.surface"]).toBe("#151515");
-    expect(resolved.css["--border"]).toBe("rgba(17, 34, 51, 0.25)");
+    expect(() => compileTheme(theme)).toThrow("Override mode effect is not allowed");
   });
 });

@@ -3,17 +3,17 @@ const PRESETS = Object.freeze({
     Object.freeze({
       id: "status-plvs",
       label: "PLVS Default",
-      value: Object.freeze({ good: "#34d399", warning: "#fbbf24", critical: "#f97373" }),
+      value: Object.freeze({ safe: "#34d399", warning: "#fbbf24", critical: "#f97373" }),
     }),
     Object.freeze({
       id: "status-bold",
       label: "Bold",
-      value: Object.freeze({ good: "#22c55e", warning: "#f59e0b", critical: "#ef4444" }),
+      value: Object.freeze({ safe: "#22c55e", warning: "#f59e0b", critical: "#ef4444" }),
     }),
     Object.freeze({
       id: "status-cool",
       label: "Cool",
-      value: Object.freeze({ good: "#14b8a6", warning: "#eab308", critical: "#e11d48" }),
+      value: Object.freeze({ safe: "#14b8a6", warning: "#eab308", critical: "#e11d48" }),
     }),
   ]),
   intensity: Object.freeze([

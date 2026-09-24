@@ -47,7 +47,7 @@ describe("Theme Control authoring validation", () => {
       core: { ...authoring().core, workspace: "rgb(16 17 20)" },
     });
     expect(document).toMatchObject({
-      formatVersion: 1,
+      formatVersion: 2,
       semanticsVersion: 1,
       name: "Studio",
       colorScheme: "dark",
@@ -58,7 +58,7 @@ describe("Theme Control authoring validation", () => {
 
   it("reports format and semantics incompatibilities independently", () => {
     expect(() =>
-      validateThemeDocument(authoring({ formatVersion: 2, semanticsVersion: 2 }))
+      validateThemeDocument(authoring({ formatVersion: 3, semanticsVersion: 2 }))
     ).toThrowError(
       expect.objectContaining({
         issues: expect.arrayContaining([
@@ -79,7 +79,7 @@ describe("Theme Control authoring validation", () => {
       palettes: {
         status: {
           presetId: "missing",
-          good: "#000",
+          safe: "#000",
           warning: "#fff",
           critical: "transparent",
           extra: 1,

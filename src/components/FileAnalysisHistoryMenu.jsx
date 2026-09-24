@@ -117,7 +117,7 @@ export function FileAnalysisHistoryMenu({
                         className={cn(
                           "mt-0.5 block truncate text-[length:var(--ui-fs-caption)] tabular-nums",
                           session.state === "error"
-                            ? "text-[color:var(--ui-signal-bad)]"
+                            ? "text-[color:var(--ui-feedback-danger)]"
                             : "text-muted-foreground"
                         )}
                       >
@@ -132,7 +132,7 @@ export function FileAnalysisHistoryMenu({
                       type="button"
                       onClick={() => onStopFile?.(session.id)}
                       aria-label={`Stop analyzing ${session.fileName}`}
-                      className="rounded-xs p-1 text-[color:var(--ui-signal-bad)] transition-colors hover:bg-muted/50"
+                      className="rounded-xs p-1 text-[color:var(--ui-activity-live)] transition-colors hover:bg-muted/50"
                     >
                       <Square className="size-[length:var(--ui-icon-management-action)]" />
                     </button>

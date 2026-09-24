@@ -6,20 +6,91 @@ const SEMANTIC_ROLE_BINDINGS = {
   "--popover": "interface.surface.raised",
   "--secondary": "interface.surface.control",
   "--muted": "interface.surface.muted",
-  "--accent": "interface.surface.interactive",
+  "--accent": "interface.surface.selected",
   "--foreground": "interface.text.primary",
   "--muted-foreground": "interface.text.secondary",
-  "--card-foreground": "interface.content.onPanel",
-  "--popover-foreground": "interface.content.onRaised",
-  "--secondary-foreground": "interface.content.onControl",
-  "--accent-foreground": "interface.content.onInteractive",
   "--primary-foreground": "interface.content.onAccent",
-  "--destructive-foreground": "interface.content.onCritical",
+  "--destructive-foreground": "interface.content.onDanger",
   "--border": "interface.border.default",
-  "--input": "interface.border.input",
   "--ring": "interface.focusRing",
-  "--destructive": "interface.critical",
 };
+
+const INTERNAL_ROLE_IDS = new Set([
+  "interface.content.onPanel",
+  "interface.content.onRaised",
+  "interface.content.onControl",
+  "interface.content.onSelected",
+  "interface.border.input",
+]);
+
+const FORMAT_1_ROLE_RENAMES = Object.freeze({
+  "palette.status.good": "palette.status.safe",
+  "palette.interface.critical": "palette.interface.danger",
+  "interface.surface.interactive": "interface.surface.selected",
+  "interface.content.onInteractive": "interface.content.onSelected",
+  "interface.content.onCritical": "interface.content.onDanger",
+  "interface.critical": "interface.danger",
+});
+
+function migrateOverrides(rawOverrides) {
+  if (!rawOverrides || typeof rawOverrides !== "object" || Array.isArray(rawOverrides)) return null;
+  const overrides = {};
+  for (const [oldRoleId, oldOverride] of Object.entries(rawOverrides)) {
+    if (oldRoleId === "interface.critical" || oldRoleId === "interface.danger") continue;
+    const roleId = FORMAT_1_ROLE_RENAMES[oldRoleId] ?? oldRoleId;
+    if (INTERNAL_ROLE_IDS.has(roleId)) continue;
+    if (!oldOverride || typeof oldOverride !== "object" || Array.isArray(oldOverride)) return null;
+    overrides[roleId] =
+      oldOverride.kind === "effect"
+        ? { kind: "color", value: oldOverride.color }
+        : oldOverride.kind === "reference"
+          ? {
+              ...oldOverride,
+              source: FORMAT_1_ROLE_RENAMES[oldOverride.source] ?? oldOverride.source,
+            }
+          : structuredClone(oldOverride);
+  }
+  return overrides;
+}
+
+function migrateSingleVersionShape(raw) {
+  const status = raw.palettes?.status;
+  const oldInterface = raw.palettes?.interface;
+  const oldDangerOverride =
+    raw.overrides?.["interface.critical"] ?? raw.overrides?.["interface.danger"];
+  const migratedDanger =
+    oldDangerOverride?.kind === "color"
+      ? oldDangerOverride.value
+      : (oldInterface?.danger ?? oldInterface?.critical ?? status?.critical);
+  const overrides = migrateOverrides(raw.overrides ?? {});
+  if (!overrides) return null;
+  return normalizeThemeDocumentShape({
+    ...raw,
+    formatVersion: 2,
+    semanticsVersion: 1,
+    palettes: {
+      ...raw.palettes,
+      status: status
+        ? {
+            presetId: status.presetId ?? null,
+            safe: status.good,
+            warning: status.warning,
+            critical: status.critical,
+          }
+        : null,
+      interface: status
+        ? {
+            presetId: null,
+            success: oldInterface?.success ?? status.good,
+            warning: oldInterface?.warning ?? status.warning,
+            danger: migratedDanger,
+          }
+        : null,
+    },
+    overrides,
+    version: undefined,
+  });
+}
 
 function rgbHex(r, g, b) {
   return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
@@ -30,9 +101,8 @@ function overrideFromCss(value) {
   const match = /^rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)$/i.exec(value);
   if (!match) return null;
   return {
-    kind: "effect",
-    color: rgbHex(Number(match[1]), Number(match[2]), Number(match[3])),
-    opacity: Number(match[4]),
+    kind: "color",
+    value: rgbHex(Number(match[1]), Number(match[2]), Number(match[3])),
   };
 }
 
@@ -86,7 +156,7 @@ export function migrateV1Theme(raw) {
   }));
 
   return normalizeThemeDocumentShape({
-    formatVersion: 1,
+    formatVersion: 2,
     semanticsVersion: 1,
     id: raw.id,
     name: raw.name.trim().slice(0, 64),
@@ -102,7 +172,7 @@ export function migrateV1Theme(raw) {
     palettes: {
       status: {
         presetId: null,
-        good: raw.seeds.signal.good,
+        safe: raw.seeds.signal.good,
         warning: raw.seeds.signal.warn,
         critical: raw.seeds.signal.bad,
       },
@@ -113,7 +183,12 @@ export function migrateV1Theme(raw) {
         mid: css["--ui-waveform-frequency-mid"],
         high: css["--ui-waveform-frequency-high"],
       },
-      interface: { presetId: null, critical: raw.seeds.signal.bad },
+      interface: {
+        presetId: null,
+        success: raw.seeds.signal.good,
+        warning: raw.seeds.signal.warn,
+        danger: css["--destructive"],
+      },
     },
     overrides,
   });
@@ -122,24 +197,30 @@ export function migrateV1Theme(raw) {
 /** Explicitly migrate the former single-version Theme V2 shape. */
 export function migrateV2Theme(raw) {
   if (!raw || typeof raw !== "object" || raw.version !== 2) return null;
-  return normalizeThemeDocumentShape({
-    ...raw,
-    formatVersion: 1,
-    semanticsVersion: 1,
-    palettes: {
-      ...raw.palettes,
-      interface: raw.palettes?.interface ?? {
-        presetId: null,
-        critical: raw.palettes?.status?.critical,
-      },
-    },
-    version: undefined,
-  });
+  return migrateSingleVersionShape(raw);
+}
+
+export function migrateFormat1Theme(raw) {
+  if (raw?.formatVersion !== 1 || raw?.semanticsVersion !== 1) return null;
+  return migrateSingleVersionShape(raw);
 }
 
 export function migrateThemeDocument(raw) {
   const current = normalizeThemeDocumentShape(raw);
   if (current) return { theme: current, notes: [] };
+  const format1 = migrateFormat1Theme(raw);
+  if (format1) {
+    return {
+      theme: format1,
+      notes: [
+        {
+          code: "rename-theme-semantics",
+          message:
+            "Renamed Status Good to Safe, expanded Interface feedback, and renamed selected and danger roles.",
+        },
+      ],
+    };
+  }
   const v2 = migrateV2Theme(raw);
   if (v2) {
     return {
@@ -147,13 +228,13 @@ export function migrateThemeDocument(raw) {
       notes: [
         {
           code: "split-version-fields",
-          message: "Replaced Theme V2 with formatVersion 1 and semanticsVersion 1.",
+          message: "Replaced Theme V2 with formatVersion 2 and semanticsVersion 1.",
         },
         ...(raw.palettes?.interface == null
           ? [
               {
-                code: "seed-interface-critical",
-                message: "Seeded Interface Critical from Status Critical.",
+                code: "seed-interface-feedback",
+                message: "Seeded Interface Success, Warning, and Danger from legacy values.",
               },
             ]
           : []),

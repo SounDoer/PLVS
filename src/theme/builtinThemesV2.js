@@ -21,7 +21,7 @@ export function isThemeId(id) {
 
 function makeBuiltin({ id, name, colorScheme, core, status, interfaceCritical, frequency }) {
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     semanticsVersion: 1,
     id,
     name,
@@ -31,7 +31,12 @@ function makeBuiltin({ id, name, colorScheme, core, status, interfaceCritical, f
       status: { presetId: "status-plvs", ...status },
       intensity: { presetId: "intensity-inferno", stops: INFERNO_STOPS },
       frequency: { presetId: "frequency-plvs", ...frequency },
-      interface: { presetId: null, critical: interfaceCritical },
+      interface: {
+        presetId: null,
+        success: status.safe,
+        warning: status.warning,
+        danger: interfaceCritical,
+      },
     },
     overrides: {},
   };
@@ -57,7 +62,7 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       primaryData: "#fb923c",
       secondaryData: "#38bdf8",
     },
-    status: { good: "#34d399", warning: "#fbbf24", critical: "#f97373" },
+    status: { safe: "#34d399", warning: "#fbbf24", critical: "#f97373" },
     interfaceCritical: "#f94144",
     frequency: { low: "#ff2d3d", mid: "#fb923c", high: "#356dff" },
   }),
@@ -73,7 +78,7 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       primaryData: "#e07020",
       secondaryData: "#0e7490",
     },
-    status: { good: "#18976a", warning: "#fbbf24", critical: "#d03535" },
+    status: { safe: "#18976a", warning: "#fbbf24", critical: "#d03535" },
     interfaceCritical: "#df202e",
     frequency: { low: "#d9481c", mid: "#a21caf", high: "#3730a3" },
   }),

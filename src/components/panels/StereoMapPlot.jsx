@@ -332,12 +332,14 @@ function resolveColors(themeColors, paletteKey) {
   const warn = parseColor(themeColors.warning) || FALLBACK_COLOR;
   const bad = parseColor(themeColors.critical) || FALLBACK_COLOR;
   const good = parseColor(themeColors.good) || FALLBACK_COLOR;
+  const grid = parseColor(themeColors.grid) || FALLBACK_COLOR;
   return {
     primary,
     secondary,
     warn,
     bad,
     good,
+    grid,
     primaryCss: rgbToCss(primary),
     secondaryCss: rgbToCss(secondary),
   };
@@ -490,6 +492,7 @@ export function StereoMapPlot({
       rgbToCss(colors.warn),
       rgbToCss(colors.bad),
       rgbToCss(colors.good),
+      rgbToCss(colors.grid),
       fillOpacity,
       lineWidth,
       sourceVersion,
@@ -540,6 +543,13 @@ export function StereoMapPlot({
 
     // No line is drawn at zero, but the runs still fill down to it.
     const baselineY = yFor(0, range) * scaleY;
+
+    ctx.strokeStyle = rgbToCss(colors.grid);
+    ctx.lineWidth = dpr;
+    ctx.beginPath();
+    ctx.moveTo(0, baselineY);
+    ctx.lineTo(width, baselineY);
+    ctx.stroke();
 
     const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range);
     ctx.lineWidth = lineWidth;

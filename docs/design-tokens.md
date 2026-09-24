@@ -217,15 +217,24 @@ dedicated Y-axis tick.
 | `--ui-waveform-frequency-neutral` | `#484850` (dark) | Broadband / unavailable spectral color  |
 | `--ui-waveform-centroid`          | scheme-aware     | Spectral centroid overlay trace         |
 
-### Component: Signal (semantic state colors)
+### Component: Status, feedback, and activity
 
-Values that carry a pass/warn/fail meaning — not brand-derived.
+The Status Palette is measurement-only. Each instrument consumes it through module-local resolved
+roles, so a local override cannot recolor another module. Interface feedback and application
+activity use separate Interface Palette sources.
 
-| Token              | Value     | Role                         |
-| ------------------ | --------- | ---------------------------- |
-| `--ui-signal-bad`  | `#f97373` | General error / clip state   |
-| `--ui-signal-warn` | `#fbbf24` | General warning state        |
-| `--ui-signal-good` | `#34d399` | General safe / healthy state |
+| Binding family                               | Role                                                  |
+| -------------------------------------------- | ----------------------------------------------------- |
+| `--ui-level-{safe,warning,critical}`          | Level Meter gradient and profile markers              |
+| `--ui-stats-{warning,critical}-value`         | Stats and Dock Stats profile values                    |
+| `--ui-vectorscope-correlation-*`              | Vectorscope and Dock Vectorscope correlation marker   |
+| Stereo Map Canvas `safeRange` / `warningRange` / `criticalRange` | Stereo Map status-based modes             |
+| `--ui-waveform-{warning,critical}-range`      | Loudness Profile breach portions                      |
+| `--ui-feedback-{success,warning,danger}`      | Application feedback on ordinary or tinted surfaces   |
+| `--ui-activity-{live,snapshot}`               | Live capture, recording, and snapshot activity        |
+
+The retired `--ui-signal-good`, `--ui-signal-warn`, and `--ui-signal-bad` names exist only in the
+frozen V1 migration path and must not be used by runtime consumers.
 
 ### Component: Spectrogram Colormap
 

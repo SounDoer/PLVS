@@ -50,8 +50,8 @@ function MeterFill({ value, min, max, peakFamily, style }) {
           width: `${widthPct(value, min, max)}%`,
           background:
             peakFamily && value >= CLIP_DB
-              ? "var(--ui-signal-bad)"
-              : "linear-gradient(to right, var(--ui-signal-good), var(--ui-signal-warn))",
+              ? "var(--ui-level-critical)"
+              : "linear-gradient(to right, var(--ui-level-safe), var(--ui-level-warning))",
         }}
       />
     </div>

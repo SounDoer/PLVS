@@ -125,7 +125,7 @@ export function buildSemanticGallerySvg(themeId, manifest) {
     ["Raised", "interface.surface.raised"],
     ["Control", "interface.surface.control"],
     ["Muted", "interface.surface.muted"],
-    ["Selected", "interface.surface.interactive"],
+    ["Selected", "interface.surface.selected"],
   ];
   surfaceRoles.forEach(([label, id], index) =>
     sections.push(swatch(64 + index * 218, 174, 198, 124, role(id), label, primary, border))
@@ -167,9 +167,9 @@ export function buildSemanticGallerySvg(themeId, manifest) {
       540,
       180,
       42,
-      role("palette.interface.critical"),
+      role("palette.interface.danger"),
       "Danger",
-      role("interface.content.onCritical"),
+      role("interface.content.onDanger"),
       border
     )
   );
@@ -185,7 +185,7 @@ export function buildSemanticGallerySvg(themeId, manifest) {
     ["Secondary", "core.secondaryData"],
     ["Snapshot", "data.snapshot.primary"],
     ["Selection", "data.selection"],
-    ["Safe", "palette.status.good"],
+    ["Safe", "palette.status.safe"],
     ["Warning", "palette.status.warning"],
     ["Critical", "palette.status.critical"],
     ["Low", "palette.frequency.low"],

@@ -168,7 +168,7 @@ describe("DockHeader", () => {
     );
 
     const notice = screen.getByText("Could not reserve screen space. Dock remains an overlay.");
-    expect(notice.className).toContain("ui-signal-bad");
+    expect(notice.className).toContain("ui-feedback-danger");
     expect(notice.title).toBe("");
     fireEvent.mouseEnter(notice);
     const tooltip = screen.getByRole("tooltip");

@@ -31,9 +31,9 @@ function hasPairSignal(peakDb, x, y) {
 }
 
 function markerColor(value) {
-  if (value < 0) return "var(--ui-signal-bad)";
-  if (value < 0.35) return "var(--ui-signal-warn)";
-  return "var(--ui-signal-good)";
+  if (value < 0) return "var(--ui-vectorscope-correlation-critical)";
+  if (value < 0.35) return "var(--ui-vectorscope-correlation-warning)";
+  return "var(--ui-vectorscope-correlation-safe)";
 }
 
 function formatCorrelation(value) {

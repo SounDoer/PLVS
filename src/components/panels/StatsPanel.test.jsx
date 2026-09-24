@@ -308,7 +308,7 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated"],
     });
 
-    expect(valueClassFor("Integrated")).toContain("--ui-signal-bad");
+    expect(valueClassFor("Integrated")).toContain("--ui-stats-critical-value");
     expect(labelClassFor("Integrated")).toContain("text-foreground");
   });
 
@@ -319,7 +319,7 @@ describe("StatsPanel profile status colours", () => {
       visibleIds: ["integrated"],
     });
 
-    expect(valueClassFor("Integrated")).toContain("--ui-signal-warn");
+    expect(valueClassFor("Integrated")).toContain("--ui-stats-warning-value");
   });
 
   it("leaves an unwatched metric's value white and its label muted", () => {

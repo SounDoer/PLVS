@@ -135,6 +135,13 @@ export function drawWaveformCanvas(
   // No line is drawn at zero; the trace is still measured from it.
   const cy = H / 2;
 
+  ctx.strokeStyle = themeColors.grid;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, cy);
+  ctx.lineTo(W, cy);
+  ctx.stroke();
+
   if (firstBucket < 0 || !bucketCount || !mins?.length || !maxes?.length) return;
 
   const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
@@ -464,6 +471,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
         />
         <TimelineSelectionEdgeHint
           direction={selectionEdge}
+          color={themeColors.selection}
           className={
             selectionEdge === "left"
               ? "left-[calc(var(--ui-chart-y-axis-rail-w)+var(--ui-chart-axis-gap))]"
@@ -511,7 +519,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
                 x2={selLineX}
                 y1={0}
                 y2={1}
-                stroke="var(--ui-loudness-selection)"
+                stroke={themeColors.selection}
                 strokeWidth="var(--ui-loudness-selection-stroke-width)"
                 strokeDasharray="5 4"
                 vectorEffect="non-scaling-stroke"

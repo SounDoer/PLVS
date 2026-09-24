@@ -107,7 +107,7 @@ describe("AppHeader", () => {
     });
 
     const notice = screen.getByText("Error: Audio unavailable");
-    expect(notice.className).toContain("ui-signal-bad");
+    expect(notice.className).toContain("ui-feedback-danger");
     expect(notice.title).toBe("");
     fireEvent.mouseEnter(notice);
     expect(screen.getByRole("tooltip").textContent).toBe("audio_start: device unavailable");

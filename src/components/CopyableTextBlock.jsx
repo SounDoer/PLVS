@@ -63,8 +63,9 @@ export function CopyableTextBlock({ value, ariaLabel = "copy text", className })
           className={cn(
             "rounded-xs p-1 text-muted-foreground/60 transition-colors",
             "hover:bg-muted/60 hover:text-foreground focus-visible:bg-muted/60 focus-visible:text-foreground",
-            copyState === "copied" && "text-primary",
-            copyState === "failed" && "text-destructive"
+            copyState === "copied" &&
+              "bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]",
+            copyState === "failed" && "text-[color:var(--ui-feedback-danger)]"
           )}
         >
           <CopyIcon className="size-[length:var(--ui-icon-management-action)]" aria-hidden />

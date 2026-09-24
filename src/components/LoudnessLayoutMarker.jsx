@@ -3,9 +3,8 @@ import { cn } from "@/lib/utils";
 
 export const UNKNOWN_LAYOUT_TIP = "Layout not recognized. Loudness uses channels 1–2 only.";
 
-const WARN_CHIP_BG = "bg-[color:color-mix(in_srgb,var(--ui-signal-warn)_8%,transparent)]";
-const WARN_CHIP_BORDER =
-  "border border-[color:color-mix(in_srgb,var(--ui-signal-warn)_30%,transparent)]";
+const WARN_CHIP_BG = "bg-[color:var(--ui-interface-warning)]";
+const WARN_CHIP_BORDER = "border border-transparent";
 
 /**
  * Shown wherever loudness is read out while the engine measured Ch1/Ch2 of an unrecognized
@@ -25,7 +24,7 @@ export function LoudnessLayoutMarker({ known, dense = false, className }) {
         role="img"
         aria-label="layout not recognized, loudness uses channels 1 and 2 only"
         className={cn(
-          "rounded-xs leading-none text-[color:var(--ui-signal-warn)]",
+          "rounded-xs leading-none text-[color:var(--ui-content-on-warning)]",
           WARN_CHIP_BG,
           WARN_CHIP_BORDER,
           dense

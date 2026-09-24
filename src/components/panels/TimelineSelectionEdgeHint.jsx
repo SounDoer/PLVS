@@ -2,7 +2,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Points toward the globally selected sample when it is outside this panel's time window. */
-export function TimelineSelectionEdgeHint({ direction, className }) {
+export function TimelineSelectionEdgeHint({
+  direction,
+  className,
+  color = "var(--ui-loudness-selection)",
+}) {
   if (direction !== "left" && direction !== "right") return null;
 
   const pointsLeft = direction === "left";
@@ -14,10 +18,11 @@ export function TimelineSelectionEdgeHint({ direction, className }) {
       data-direction={direction}
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute inset-y-0 z-20 w-4 text-[color:var(--ui-loudness-selection)]",
+        "pointer-events-none absolute inset-y-0 z-20 w-4",
         pointsLeft ? "left-0" : "right-0",
         className
       )}
+      style={{ color }}
     >
       <div
         className="absolute inset-0"

@@ -77,7 +77,7 @@ export const THEME_RECIPES = Object.freeze({
   "surface-muted": recipe([[SOLID, SOLID]], SOLID, ([surface, text]) =>
     mixHex(surface, text, 0.07)
   ),
-  "surface-interactive": recipe([[SOLID, SOLID]], SOLID, ([surface, accent]) =>
+  "surface-selected": recipe([[SOLID, SOLID]], SOLID, ([surface, accent]) =>
     mixHex(surface, accent, 0.12)
   ),
   "text-primary": recipe([[SOLID], [SOLID, SOLID, SOLID]], SOLID, ([text]) => text),
@@ -103,7 +103,7 @@ export const THEME_RECIPES = Object.freeze({
       context.colorScheme === "dark" ? 0.5 : 0.18
     )
   ),
-  critical: recipe([[SOLID]], SOLID, ([critical]) => critical),
+  semantic: recipe([[SOLID]], SOLID, ([color]) => color),
   companion: recipe([[SOLID, SOLID]], SOLID, ([primary], context) =>
     transformHex(primary, COMPANION[context.colorScheme])
   ),

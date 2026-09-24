@@ -57,7 +57,7 @@ export function DockHeader({ state, onAction, onPointer }) {
               className={cn(
                 "block truncate text-[length:var(--ui-fs-status)] font-medium",
                 state.notice.kind === "error"
-                  ? "text-[color:var(--ui-signal-bad)]"
+                  ? "text-[color:var(--ui-feedback-danger)]"
                   : "text-muted-foreground"
               )}
             >

@@ -355,7 +355,7 @@ describe("normalizeAgentControlRequest", () => {
   });
 
   it("normalizes Theme queries and every mutation shape", () => {
-    const document = { formatVersion: 1, semanticsVersion: 1, name: "Studio" };
+    const document = { formatVersion: 2, semanticsVersion: 1, name: "Studio" };
     const cases = [
       ["theme.describe", { themeId: "plvs-dark" }],
       ["theme.select", { themeId: "plvs-light", expectedRevision: 2, dryRun: true }],

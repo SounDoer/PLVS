@@ -6,9 +6,9 @@
 
 const VALUE_CLASS = {
   ok: "text-foreground",
-  warn: "text-[color:var(--ui-signal-warn)]",
-  pending: "text-[color:var(--ui-signal-warn)]",
-  fail: "text-[color:var(--ui-signal-bad)]",
+  warn: "text-[color:var(--ui-stats-warning-value)]",
+  pending: "text-[color:var(--ui-stats-warning-value)]",
+  fail: "text-[color:var(--ui-stats-critical-value)]",
 };
 
 /// Stats / Dock value colour. The value never dims: unwatched and off both stay at `foreground`,
@@ -28,9 +28,9 @@ export function loudnessLabelClass(watched) {
 
 const MARKER_CLASS = {
   ok: "text-foreground",
-  warn: "text-[color:var(--ui-signal-warn)]",
-  pending: "text-[color:var(--ui-signal-warn)]",
-  fail: "text-[color:var(--ui-signal-bad)]",
+  warn: "text-[color:var(--ui-level-warning)]",
+  pending: "text-[color:var(--ui-level-warning)]",
+  fail: "text-[color:var(--ui-level-critical)]",
 };
 
 /// Level-meter readout marker colour. With no profile the marker keeps its accent readout colour

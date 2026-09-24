@@ -226,7 +226,7 @@ export function AppHeader({
             className={cn(
               "truncate text-[length:var(--ui-fs-status)] font-medium",
               notice.kind === "error"
-                ? "text-[color:var(--ui-signal-bad)]"
+                ? "text-[color:var(--ui-feedback-danger)]"
                 : "text-muted-foreground"
             )}
           >

@@ -1,6 +1,6 @@
 import { normalizeOpaqueColor } from "./themeColorMath.js";
 
-export const THEME_FORMAT_VERSION = 1;
+export const THEME_FORMAT_VERSION = 2;
 export const THEME_SEMANTICS_VERSION = 1;
 export const THEME_NAME_MAX_LENGTH = 64;
 
@@ -13,8 +13,8 @@ export const CORE_COLOR_KEYS = Object.freeze([
   "secondaryData",
 ]);
 
-export const STATUS_COLOR_KEYS = Object.freeze(["good", "warning", "critical"]);
-export const INTERFACE_COLOR_KEYS = Object.freeze(["critical"]);
+export const STATUS_COLOR_KEYS = Object.freeze(["safe", "warning", "critical"]);
+export const INTERFACE_COLOR_KEYS = Object.freeze(["success", "warning", "danger"]);
 export const FREQUENCY_COLOR_KEYS = Object.freeze(["low", "mid", "high"]);
 export const THEME_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 

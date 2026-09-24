@@ -6,6 +6,7 @@ export function selectWaveformCanvasColors(resolved) {
     trace: resolved.canvas["waveform.trace"],
     snapshot: resolved.canvas["waveform.snapshot"],
     grid: resolved.canvas["waveform.grid"],
+    selection: resolved.canvas["waveform.selection"],
     frequencyLow: resolved.canvas["waveform.frequencyLow"],
     frequencyMid: resolved.canvas["waveform.frequencyMid"],
     frequencyHigh: resolved.canvas["waveform.frequencyHigh"],
@@ -21,9 +22,9 @@ export function selectStereoMapCanvasColors(resolved) {
     primarySnapshot: resolved.canvas["stereoMap.primarySnapshot"],
     secondarySnapshot: resolved.canvas["stereoMap.secondarySnapshot"],
     grid: resolved.canvas["stereoMap.grid"],
-    good: resolved.roles["palette.status.good"],
-    warning: resolved.roles["palette.status.warning"],
-    critical: resolved.roles["palette.status.critical"],
+    good: resolved.canvas["stereoMap.safeRange"],
+    warning: resolved.canvas["stereoMap.warningRange"],
+    critical: resolved.canvas["stereoMap.criticalRange"],
   };
 }
 

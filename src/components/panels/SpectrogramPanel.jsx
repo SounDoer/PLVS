@@ -680,7 +680,7 @@ export function SpectrogramPanel() {
                       x2={selLineSvgX}
                       y1={0}
                       y2={1000}
-                      stroke="var(--ui-loudness-selection)"
+                      stroke={spectrogramTheme.selection}
                       strokeWidth="var(--ui-loudness-selection-stroke-width)"
                       strokeDasharray="5 4"
                       vectorEffect="non-scaling-stroke"
@@ -689,7 +689,10 @@ export function SpectrogramPanel() {
                 </svg>
               ) : null}
               <TimelineLatestEdgeHint active={(effectiveOffsetSamples ?? 0) > 0} />
-              <TimelineSelectionEdgeHint direction={selectionEdge} />
+              <TimelineSelectionEdgeHint
+                direction={selectionEdge}
+                color={spectrogramTheme.selection}
+              />
               {spectrogramHover && (
                 <div className="pointer-events-none absolute inset-0">
                   {/* Vertical crosshair */}

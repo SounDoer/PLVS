@@ -836,6 +836,23 @@ export function SpectrumPanel() {
                       />
                     </linearGradient>
                   </defs>
+                  <g data-spectrum-grid aria-hidden="true">
+                    {spectrumYTicks.map(({ v }) => {
+                      const y = spectrumDbToTopFrac(v, spectrumRange) * 260;
+                      return (
+                        <line
+                          key={v}
+                          x1={0}
+                          x2={1000}
+                          y1={y}
+                          y2={y}
+                          stroke="var(--ui-spectrum-grid)"
+                          strokeWidth="1"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      );
+                    })}
+                  </g>
                   {displayPanelSpectrumPath ? (
                     <g>
                       <path

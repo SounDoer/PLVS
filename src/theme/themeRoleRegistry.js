@@ -40,9 +40,6 @@ const colorOverride = (section, label, description) =>
 const dataOverride = (section, label, description, references) =>
   advanced(section, label, description, ["color", "reference"], references);
 
-const effectOverride = (section, label, description) =>
-  advanced(section, label, description, ["color", "effect"]);
-
 const RAW_THEME_ROLE_REGISTRY = [
   direct("core.workspace", "color", { bindings: { css: ["--background"] } }),
   direct("core.surface"),
@@ -50,12 +47,12 @@ const RAW_THEME_ROLE_REGISTRY = [
   direct("core.interfaceAccent", "color", { bindings: { css: ["--primary"] } }),
   direct("core.primaryData"),
   direct("core.secondaryData"),
-  direct("palette.status.good"),
+  direct("palette.status.safe"),
   direct("palette.status.warning"),
   direct("palette.status.critical"),
-  // Destructive interface controls read their own red: the meters' critical is a
-  // data color, and moving one should not drag the other.
-  direct("palette.interface.critical"),
+  direct("palette.interface.success"),
+  direct("palette.interface.warning"),
+  direct("palette.interface.danger"),
   direct("palette.intensity.stops", "palette"),
   direct("palette.frequency.low"),
   direct("palette.frequency.mid"),
@@ -93,17 +90,13 @@ const RAW_THEME_ROLE_REGISTRY = [
     bindings: { css: ["--muted"] },
     advanced: colorOverride("Interface", "Muted Surface", "Subdued and inactive regions."),
   }),
-  role("interface.surface.interactive", {
+  role("interface.surface.selected", {
     kind: "color",
     family: "interface",
-    recipe: "surface-interactive",
+    recipe: "surface-selected",
     dependencies: ["core.surface", "core.interfaceAccent"],
     bindings: { css: ["--accent"] },
-    advanced: colorOverride(
-      "Interface",
-      "Interactive Surface",
-      "Selected and emphasized controls."
-    ),
+    advanced: colorOverride("Interface", "Selected Surface", "Selected and emphasized controls."),
   }),
   role("interface.text.primary", {
     kind: "color",
@@ -150,7 +143,6 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "text-primary",
     dependencies: ["core.text"],
     bindings: { css: ["--card-foreground"] },
-    advanced: colorOverride("Interface", "Text on Panel", "Content placed on panel surfaces."),
   }),
   role("interface.content.onRaised", {
     kind: "color",
@@ -158,11 +150,6 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "text-primary",
     dependencies: ["core.text"],
     bindings: { css: ["--popover-foreground"] },
-    advanced: colorOverride(
-      "Interface",
-      "Text on Raised Surface",
-      "Content placed on popovers and raised layers."
-    ),
   }),
   role("interface.content.onControl", {
     kind: "color",
@@ -170,21 +157,39 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "text-primary",
     dependencies: ["core.text"],
     bindings: { css: ["--secondary-foreground"] },
-    advanced: colorOverride("Interface", "Text on Control", "Content placed on neutral controls."),
   }),
-  role("interface.content.onInteractive", {
+  role("interface.content.onSelected", {
     kind: "color",
     family: "interface",
     recipe: "text-primary",
     dependencies: ["core.text"],
     bindings: { css: ["--accent-foreground"] },
+  }),
+  role("interface.content.onSuccess", {
+    kind: "color",
+    family: "interface",
+    recipe: "text-primary",
+    dependencies: ["core.text"],
+    bindings: { css: ["--ui-content-on-success"] },
     advanced: colorOverride(
       "Interface",
-      "Text on Interactive Surface",
-      "Content placed on selected controls."
+      "Text on Success",
+      "Content placed on solid success-colored areas."
     ),
   }),
-  role("interface.content.onCritical", {
+  role("interface.content.onWarning", {
+    kind: "color",
+    family: "interface",
+    recipe: "text-primary",
+    dependencies: ["core.text"],
+    bindings: { css: ["--ui-content-on-warning"] },
+    advanced: colorOverride(
+      "Interface",
+      "Text on Warning",
+      "Content placed on solid warning-colored areas."
+    ),
+  }),
+  role("interface.content.onDanger", {
     kind: "color",
     family: "interface",
     recipe: "text-primary",
@@ -192,8 +197,8 @@ const RAW_THEME_ROLE_REGISTRY = [
     bindings: { css: ["--destructive-foreground"] },
     advanced: colorOverride(
       "Interface",
-      "Text on Critical",
-      "Content placed on critical-colored areas."
+      "Text on Danger",
+      "Content placed on solid danger-colored areas."
     ),
   }),
   role("interface.border.default", {
@@ -202,7 +207,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "border",
     dependencies: ["core.surface", "core.text"],
     bindings: { css: ["--border"] },
-    advanced: effectOverride("Interface", "Default Border", "Panel and control separators."),
+    advanced: colorOverride("Interface", "Border Color", "Panel and control separators."),
   }),
   role("interface.border.input", {
     kind: "effect",
@@ -210,7 +215,6 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "input-border",
     dependencies: ["interface.border.default", "core.surface"],
     bindings: { css: ["--input"] },
-    advanced: effectOverride("Interface", "Input Border", "Editable field boundaries."),
   }),
   role("interface.focusRing", {
     kind: "color",
@@ -218,7 +222,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "focus-ring",
     dependencies: ["core.interfaceAccent", "core.surface"],
     bindings: { css: ["--ring"] },
-    advanced: colorOverride("Interface", "Focus Ring", "Keyboard focus indicator."),
+    advanced: colorOverride("Interface", "Focus Color", "Keyboard focus indicator."),
   }),
   role("interface.shadow", {
     kind: "effect",
@@ -226,19 +230,81 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "shadow",
     dependencies: ["core.workspace", "core.text"],
     bindings: { css: ["--ui-shadow-color"] },
-    advanced: effectOverride("Interface", "Shadow", "Cast by floating panels and dialogs."),
+    advanced: colorOverride("Interface", "Shadow Color", "Cast by floating panels and dialogs."),
   }),
-  role("interface.critical", {
+  role("interface.success", {
     kind: "color",
     family: "interface",
-    recipe: "critical",
-    dependencies: ["palette.interface.critical"],
-    bindings: { css: ["--destructive"] },
+    recipe: "semantic",
+    dependencies: ["palette.interface.success"],
+    bindings: { css: ["--ui-interface-success"] },
+  }),
+  role("interface.warning", {
+    kind: "color",
+    family: "interface",
+    recipe: "semantic",
+    dependencies: ["palette.interface.warning"],
+    bindings: { css: ["--ui-interface-warning"] },
+  }),
+  role("interface.danger", {
+    kind: "color",
+    family: "interface",
+    recipe: "semantic",
+    dependencies: ["palette.interface.danger"],
+    bindings: { css: ["--destructive", "--ui-interface-danger"] },
+  }),
+  role("interface.feedback.success", {
+    kind: "color",
+    family: "interface",
+    recipe: "semantic",
+    dependencies: ["interface.success"],
+    bindings: { css: ["--ui-feedback-success"] },
     advanced: colorOverride(
       "Interface",
-      "Critical Action",
-      "Destructive controls and critical emphasis."
+      "Success",
+      "Successful application feedback on ordinary or tinted surfaces."
     ),
+  }),
+  role("interface.feedback.warning", {
+    kind: "color",
+    family: "interface",
+    recipe: "semantic",
+    dependencies: ["interface.warning"],
+    bindings: { css: ["--ui-feedback-warning"] },
+    advanced: colorOverride(
+      "Interface",
+      "Warning",
+      "Application cautions and recoverable problems."
+    ),
+  }),
+  role("interface.feedback.danger", {
+    kind: "color",
+    family: "interface",
+    recipe: "semantic",
+    dependencies: ["interface.danger"],
+    bindings: { css: ["--ui-feedback-danger"] },
+    advanced: colorOverride(
+      "Interface",
+      "Danger",
+      "Errors, invalid states, and destructive emphasis."
+    ),
+  }),
+
+  role("activity.live", {
+    kind: "color",
+    family: "activity",
+    recipe: "semantic",
+    dependencies: ["interface.danger"],
+    bindings: { css: ["--ui-activity-live"] },
+    advanced: colorOverride("Activity", "Live", "Live capture and recording activity."),
+  }),
+  role("activity.snapshot", {
+    kind: "color",
+    family: "activity",
+    recipe: "semantic",
+    dependencies: ["interface.warning"],
+    bindings: { css: ["--ui-activity-snapshot"] },
+    advanced: colorOverride("Activity", "Snapshot", "Snapshot capture activity."),
   }),
 
   role("data.primary", {
@@ -306,22 +372,19 @@ const RAW_THEME_ROLE_REGISTRY = [
     kind: "color",
     family: "meter",
     recipe: "identity",
-    dependencies: ["palette.status.good"],
-    bindings: { css: ["--ui-signal-good", "--ui-meter-gradient-bottom"] },
+    dependencies: ["palette.status.safe"],
   }),
   role("meter.warning", {
     kind: "color",
     family: "meter",
     recipe: "identity",
     dependencies: ["palette.status.warning"],
-    bindings: { css: ["--ui-signal-warn", "--ui-meter-gradient-mid"] },
   }),
   role("meter.critical", {
     kind: "color",
     family: "meter",
     recipe: "identity",
     dependencies: ["palette.status.critical"],
-    bindings: { css: ["--ui-signal-bad", "--ui-meter-gradient-top"] },
   }),
 
   ...moduleRoles(),
@@ -387,7 +450,7 @@ function moduleRoles() {
       "Selection",
       "data.selection",
       "identity",
-      { css: ["--ui-loudness-selection"], canvas: ["loudness.selection"] },
+      { css: ["--ui-loudness-selection"] },
       primaryRefs
     ),
     moduleColor(
@@ -442,7 +505,7 @@ function moduleRoles() {
       "Grid",
       "data.grid",
       "identity",
-      { css: ["--ui-spectrum-grid"], canvas: ["spectrum.grid"] },
+      { css: ["--ui-spectrum-grid"] },
       primaryRefs
     ),
 
@@ -456,7 +519,7 @@ function moduleRoles() {
     moduleColor(
       "spectrogram.ink",
       "Spectrogram",
-      "Monochrome Ink",
+      "Monochrome Lines",
       "interface.text.secondary",
       "identity",
       { canvas: ["spectrogram.ink"] },
@@ -465,7 +528,7 @@ function moduleRoles() {
     moduleColor(
       "spectrogram.surfaceInk",
       "Spectrogram",
-      "Surface Ink",
+      "Monochrome Surface",
       "interface.text.primary",
       "identity",
       { canvas: ["spectrogram.surfaceInk"] },
@@ -538,6 +601,33 @@ function moduleRoles() {
       { css: ["--ui-vectorscope-grid-stroke"], canvas: ["vectorscope.grid"] },
       primaryRefs
     ),
+    moduleColor(
+      "vectorscope.correlationSafe",
+      "Vectorscope",
+      "Correlation Safe",
+      "palette.status.safe",
+      "identity",
+      { css: ["--ui-vectorscope-correlation-safe"] },
+      ["palette.status.safe"]
+    ),
+    moduleColor(
+      "vectorscope.correlationWarning",
+      "Vectorscope",
+      "Correlation Warning",
+      "palette.status.warning",
+      "identity",
+      { css: ["--ui-vectorscope-correlation-warning"] },
+      ["palette.status.warning"]
+    ),
+    moduleColor(
+      "vectorscope.correlationCritical",
+      "Vectorscope",
+      "Correlation Critical",
+      "palette.status.critical",
+      "identity",
+      { css: ["--ui-vectorscope-correlation-critical"] },
+      ["palette.status.critical"]
+    ),
 
     moduleColor(
       "stereoMap.primary",
@@ -583,6 +673,33 @@ function moduleRoles() {
       "identity",
       { canvas: ["stereoMap.grid"] },
       primaryRefs
+    ),
+    moduleColor(
+      "stereoMap.safeRange",
+      "Stereo Map",
+      "Safe Range",
+      "palette.status.safe",
+      "identity",
+      { canvas: ["stereoMap.safeRange"] },
+      ["palette.status.safe"]
+    ),
+    moduleColor(
+      "stereoMap.warningRange",
+      "Stereo Map",
+      "Warning Range",
+      "palette.status.warning",
+      "identity",
+      { canvas: ["stereoMap.warningRange"] },
+      ["palette.status.warning"]
+    ),
+    moduleColor(
+      "stereoMap.criticalRange",
+      "Stereo Map",
+      "Critical Range",
+      "palette.status.critical",
+      "identity",
+      { canvas: ["stereoMap.criticalRange"] },
+      ["palette.status.critical"]
     ),
 
     moduleColor(
@@ -633,7 +750,7 @@ function moduleRoles() {
     moduleColor(
       "waveform.frequencyNeutral",
       "Waveform",
-      "Frequency Neutral",
+      "No Dominant Frequency",
       "core.surface",
       "frequency-neutral",
       { css: ["--ui-waveform-frequency-neutral"], canvas: ["waveform.frequencyNeutral"] },
@@ -643,7 +760,7 @@ function moduleRoles() {
     moduleColor(
       "waveform.centroid",
       "Waveform",
-      "Centroid",
+      "Spectral Centroid",
       "core.text",
       "centroid",
       { css: ["--ui-waveform-centroid"], canvas: ["waveform.centroid"] },
@@ -667,6 +784,69 @@ function moduleRoles() {
       "identity",
       { canvas: ["waveform.selection"] },
       primaryRefs
+    ),
+    moduleColor(
+      "waveform.warningRange",
+      "Waveform",
+      "Warning Range",
+      "palette.status.warning",
+      "identity",
+      { css: ["--ui-waveform-warning-range"] },
+      ["palette.status.warning"]
+    ),
+    moduleColor(
+      "waveform.criticalRange",
+      "Waveform",
+      "Critical Range",
+      "palette.status.critical",
+      "identity",
+      { css: ["--ui-waveform-critical-range"] },
+      ["palette.status.critical"]
+    ),
+    moduleColor(
+      "level.safe",
+      "Level Meter",
+      "Safe",
+      "palette.status.safe",
+      "identity",
+      { css: ["--ui-level-safe", "--ui-meter-gradient-bottom"] },
+      ["palette.status.safe"]
+    ),
+    moduleColor(
+      "level.warning",
+      "Level Meter",
+      "Warning",
+      "palette.status.warning",
+      "identity",
+      { css: ["--ui-level-warning", "--ui-meter-gradient-mid"] },
+      ["palette.status.warning"]
+    ),
+    moduleColor(
+      "level.critical",
+      "Level Meter",
+      "Critical",
+      "palette.status.critical",
+      "identity",
+      { css: ["--ui-level-critical", "--ui-meter-gradient-top"] },
+      ["palette.status.critical"]
+    ),
+    moduleColor(
+      "stats.warningValue",
+      "Stats",
+      "Warning Value",
+      "palette.status.warning",
+      "identity",
+      { css: ["--ui-stats-warning-value"] },
+      ["palette.status.warning"]
+    ),
+    moduleColor(
+      "stats.criticalValue",
+      "Stats",
+      "Critical Value",
+      "palette.status.critical",
+      "identity",
+      { css: ["--ui-stats-critical-value"] },
+      ["palette.status.critical"]
     ),
   ];
 }

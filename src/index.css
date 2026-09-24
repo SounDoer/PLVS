@@ -71,6 +71,9 @@
 :root {
   /* Half weight, matching the ratio Tailwind's own xs rung had to the others. */
   --ui-shadow-subtle: color-mix(in srgb, var(--ui-shadow-color) 50%, transparent);
+  --ui-surface-highlight: color-mix(in srgb, var(--foreground) 4%, transparent);
+  --ui-surface-highlight-soft: color-mix(in srgb, var(--foreground) 2.6%, transparent);
+  --ui-overlay-shadow: color-mix(in srgb, var(--ui-shadow-color) 36%, transparent);
 
   --ui-font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -136,9 +139,9 @@ html[data-surface="dock-editor"] #root {
 .meter-gradient {
   background: linear-gradient(
     180deg,
-    var(--ui-meter-gradient-top, #ef4444) 0%,
-    var(--ui-meter-gradient-mid, #f59e0b) var(--ui-meter-gradient-mid-stop, 40%),
-    var(--ui-meter-gradient-bottom, #22c55e) 100%
+    var(--ui-meter-gradient-top) 0%,
+    var(--ui-meter-gradient-mid) var(--ui-meter-gradient-mid-stop, 40%),
+    var(--ui-meter-gradient-bottom) 100%
   );
   opacity: var(--panel-opacity-meter, 1);
 }

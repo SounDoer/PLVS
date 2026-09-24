@@ -100,9 +100,9 @@ function mockStereoMapColors() {
         "--ui-stereo-map-primary-snap": "#111111",
         "--ui-stereo-map-secondary": "#222222",
         "--ui-stereo-map-secondary-snap": "#222222",
-        "--ui-signal-bad": "#444444",
-        "--ui-signal-warn": "#333333",
-        "--ui-signal-good": "#555555",
+        "--ui-stereo-map-critical-range": "#444444",
+        "--ui-stereo-map-warning-range": "#333333",
+        "--ui-stereo-map-safe-range": "#555555",
         "--border": "#666666",
       })[name] ?? "",
   });

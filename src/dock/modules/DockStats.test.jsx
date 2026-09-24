@@ -270,7 +270,7 @@ describe("DockStats profile status colours", () => {
     // read as a breach in one panel and neutral in the other.
     selectTestProfile();
     renderWith(METRICS, visible, {}, "standard", { integrated: -18 });
-    expect(valueClass()).toContain("--ui-signal-bad");
+    expect(valueClass()).toContain("--ui-stats-critical-value");
   });
 
   it("keeps an in-range watched value at foreground", () => {
@@ -321,7 +321,7 @@ describe("Dock Stats and the main window under one provider", () => {
 
     const classes = truePeakValueClasses(container);
     expect(classes).toHaveLength(2);
-    for (const className of classes) expect(className).toContain("--ui-signal-bad");
+    for (const className of classes) expect(className).toContain("--ui-stats-critical-value");
   });
 
   it("leaves the metric neutral in both surfaces while the profile is Off", () => {
@@ -360,7 +360,7 @@ describe("Dock Stats and the main window under one provider", () => {
 
       const classes = truePeakValueClasses(container);
       expect(classes).toHaveLength(2);
-      for (const className of classes) expect(className).toContain("--ui-signal-bad");
+      for (const className of classes) expect(className).toContain("--ui-stats-critical-value");
     });
   }
 });

@@ -9,8 +9,8 @@
 /// its plain colour: no filled rules, or nothing breaches anywhere in the visible range.
 
 const SEVERITY_COLOR = {
-  warn: "var(--ui-signal-warn)",
-  fail: "var(--ui-signal-bad)",
+  warn: "var(--ui-waveform-warning-range)",
+  fail: "var(--ui-waveform-critical-range)",
 };
 const SEVERITY_RANK = { warn: 1, fail: 2 };
 

@@ -864,3 +864,41 @@ and resolved values instead of relying only on generic exception text. Agent Con
 authoring contract and examples use the two version fields. These changes deliberately retain the
 existing role vocabulary and legacy explicit effect override representation until the later
 renderer-ownership and portable-format phases can migrate them with their full consumers.
+
+## Phase 3 implementation boundary — 2026-09-24
+
+Phase 3 completes renderer ownership without tuning built-in colors or reshaping the Theme Editor.
+The authoring document advances to `formatVersion: 2`: Status Good is now Safe, Interface Critical
+is now Danger, Interactive Surface is now Selected Surface, and the Interface Palette explicitly
+contains Success, Warning, and Danger. Current-shape and legacy migrations own those renames and
+the Interface seed decisions. Existing built-in color values remain unchanged for later
+gallery-led tuning.
+
+Application feedback and activity no longer borrow measurement Status bindings. Solid feedback,
+tinted feedback, `LIVE`, `SNAP`, recording, history warnings, validation errors, and copy success
+now resolve through Interface or Activity roles. The retained hard-coded production colors are the
+crash boundary, which must render before Theme runtime is available, and the modal scrim. Shell
+highlights and overlay shadows are internal compositions of Theme-owned Text and Shadow colors.
+Border, Focus, and Shadow are the only public effect-color choices; Input Border, surface
+highlights, neutral surface foreground aliases, effect opacity, and shadow geometry remain internal.
+Legacy authored effect colors migrate while opacity returns to the compiler-owned recipe.
+
+Measurement ownership is split by module. Level Meter Safe/Warning/Critical, Stats Warning and
+Critical Values, Vectorscope Correlation Safe/Warning/Critical, Stereo Map Safe/Warning/Critical
+Ranges, and the Warning/Critical range colors used by Loudness Profile traces each follow global
+Status under Auto but can be overridden without recoloring another instrument. The normal and Dock
+renderers share their module roles. Production source and tests no longer consume the ambiguous
+`--ui-signal-good`, `--ui-signal-warn`, or `--ui-signal-bad` bindings.
+
+The seven audited binding gaps are closed: Loudness and Spectrum render their CSS grid roles;
+Stereo Map and Waveform render their Canvas grid roles; Waveform and Spectrogram render their own
+Selection roles; and the inapplicable Loudness Selection and Spectrum Grid Canvas publications are
+removed. Spectrogram's monochrome labels, Waveform's frequency-neutral and centroid labels, and the
+new module roles use the approved public vocabulary.
+
+The post-change Windows evidence is reproducible with the Phase 1 runner. Both
+`theme:gallery:semantic` and the Agent Control-backed `theme:gallery:product` completed into the
+local `artifacts/theme-gallery/phase3-renderer-ownership/` evidence directory. The inspected contact
+sheets confirm Dark and Light compiler output, real module rendering, module grids, and local
+Selection rendering. The evidence remains gitignored; the generator, manifest, role-contract tests,
+and renderer tests are the committed baseline.

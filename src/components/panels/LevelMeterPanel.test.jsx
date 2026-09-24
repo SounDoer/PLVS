@@ -230,7 +230,7 @@ describe("LevelMeterPanel", () => {
     });
 
     expect(container.querySelector("[data-level-tp-max-marker]").className).toContain(
-      "--ui-signal-bad"
+      "--ui-level-critical"
     );
   });
 

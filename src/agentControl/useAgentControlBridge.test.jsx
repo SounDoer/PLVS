@@ -4313,7 +4313,7 @@ describe("useAgentControlBridge", () => {
       });
       expect(builtin.result).toMatchObject({
         revision: 0,
-        theme: { id: "plvs-dark", formatVersion: 1, semanticsVersion: 1 },
+        theme: { id: "plvs-dark", formatVersion: 2, semanticsVersion: 1 },
         kind: "builtin",
         active: true,
         index: null,
@@ -4322,7 +4322,7 @@ describe("useAgentControlBridge", () => {
         theme: {
           id: "custom-studio",
           name: "Studio",
-          formatVersion: 1,
+          formatVersion: 2,
           semanticsVersion: 1,
         },
         kind: "custom",

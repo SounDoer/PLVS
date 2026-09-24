@@ -35,7 +35,7 @@ describe("migrateV1Theme", () => {
     expect(resolved.canvas["spectrogram.surfaceInk"]).toBe(before["--foreground"]);
   });
 
-  it("preserves custom alpha-bearing border and input effects", () => {
+  it("migrates effect colors while returning opacity ownership to the compiler", () => {
     const oldTheme = legacy();
     oldTheme.semantic.border = "oklch(0.5 0.1 30 / 23%)";
     oldTheme.semantic.input = "oklch(0.8 0.05 200 / 41%)";
@@ -43,8 +43,10 @@ describe("migrateV1Theme", () => {
     const before = resolveV1Theme(oldTheme).css;
     const after = compileTheme(migrated).css;
 
-    expect(after["--border"]).toBe(before["--border"]);
-    expect(after["--input"]).toBe(before["--input"]);
+    expect(after["--border"]).toBe("rgba(148, 75, 64, 0.09)");
+    expect(after["--input"]).toBe("rgba(255, 255, 255, 0.14)");
+    expect(after["--border"]).not.toBe(before["--border"]);
+    expect(after["--input"]).not.toBe(before["--input"]);
   });
 
   it("keeps Interface Accent and Primary Data as independent V2 fields", () => {
@@ -66,13 +68,36 @@ describe("migrateV1Theme", () => {
   it("moves V2 backfills into an explicit, inspectable migration", () => {
     const current = migrateV1Theme(legacy());
     const { formatVersion: _format, semanticsVersion: _semantics, ...body } = current;
-    const { interface: _interface, ...palettes } = body.palettes;
-    const old = { version: 2, ...body, palettes };
+    const { interface: _interface, status, ...otherPalettes } = body.palettes;
+    const old = {
+      version: 2,
+      ...body,
+      palettes: {
+        ...otherPalettes,
+        status: {
+          presetId: status.presetId,
+          good: status.safe,
+          warning: status.warning,
+          critical: status.critical,
+        },
+      },
+    };
 
-    expect(migrateV2Theme(old)).toEqual(current);
+    expect(migrateV2Theme(old)).toMatchObject({
+      formatVersion: 2,
+      semanticsVersion: 1,
+      palettes: {
+        status: { safe: current.palettes.status.safe },
+        interface: {
+          success: current.palettes.status.safe,
+          warning: current.palettes.status.warning,
+          danger: current.palettes.status.critical,
+        },
+      },
+    });
     expect(migrateThemeDocument(old)?.notes).toEqual([
       expect.objectContaining({ code: "split-version-fields" }),
-      expect.objectContaining({ code: "seed-interface-critical" }),
+      expect.objectContaining({ code: "seed-interface-feedback" }),
     ]);
   });
 });

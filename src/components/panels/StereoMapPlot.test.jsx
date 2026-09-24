@@ -121,9 +121,9 @@ describe("StereoMapPlot", () => {
     );
 
     // One continuous run of 3 valid bands draws as a single path regardless of band count:
-    // 1 curve stroke, 1 fill. This is the point of the gradient rewrite — a run's draw cost
+    // 1 grid stroke, 1 curve stroke, 1 fill. This is the point of the gradient rewrite — a run's draw cost
     // no longer scales with how many bands (or how much the value swings between them) it contains.
-    expect(ctx.stroke).toHaveBeenCalledTimes(1);
+    expect(ctx.stroke).toHaveBeenCalledTimes(2);
     expect(ctx.fill).toHaveBeenCalledTimes(1);
     // One gradient serves both passes -- the fill's constant factor rides on globalAlpha -- so a
     // run costs one stop per band, not two.
@@ -145,7 +145,7 @@ describe("StereoMapPlot", () => {
     );
 
     // One run (band0-band1); band2 is invalid so it never contributes a stop.
-    expect(ctx.stroke).toHaveBeenCalledTimes(1);
+    expect(ctx.stroke).toHaveBeenCalledTimes(2);
     expect(ctx.fill).toHaveBeenCalledTimes(1);
     expect(ctx.gradients[0].stops).toHaveLength(2);
   });
@@ -213,9 +213,9 @@ describe("StereoMapPlot", () => {
     const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
       getPropertyValue: (name) =>
         ({
-          "--ui-signal-bad": "#ff0000",
-          "--ui-signal-warn": "#00ff00",
-          "--ui-signal-good": "#0000ff",
+          "--ui-stereo-map-critical-range": "#ff0000",
+          "--ui-stereo-map-warning-range": "#00ff00",
+          "--ui-stereo-map-safe-range": "#0000ff",
           "--border": "#888888",
         })[name] ?? "",
     });
@@ -242,9 +242,9 @@ describe("StereoMapPlot", () => {
     const styleSpy2 = vi.spyOn(window, "getComputedStyle").mockReturnValue({
       getPropertyValue: (name) =>
         ({
-          "--ui-signal-bad": "#ff0000",
-          "--ui-signal-warn": "#00ff00",
-          "--ui-signal-good": "#0000ff",
+          "--ui-stereo-map-critical-range": "#ff0000",
+          "--ui-stereo-map-warning-range": "#00ff00",
+          "--ui-stereo-map-safe-range": "#0000ff",
           "--border": "#888888",
         })[name] ?? "",
     });
@@ -302,7 +302,7 @@ describe("StereoMapPlot", () => {
     // Fewer draws than the old one-per-segment approach would have needed for 3 segments only if
     // any adjacent segments actually share a color; here segments are: mid(-2,-2)->primary,
     // mid(-2,2)=0->secondary, mid(2,2)->secondary — bands 1-3 merge into one secondary draw.
-    expect(ctx.stroke).toHaveBeenCalledTimes(2); // primary run + merged secondary run
+    expect(ctx.stroke).toHaveBeenCalledTimes(3); // grid + primary run + merged secondary run
   });
 
   it("draws two Hold outlines for Position (maximum + minimum) and one for other modes", () => {
@@ -318,8 +318,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 curve stroke + 2 hold outline strokes.
-    expect(ctxPosition.stroke).toHaveBeenCalledTimes(3);
+    // 1 grid stroke + 1 curve stroke + 2 hold outline strokes.
+    expect(ctxPosition.stroke).toHaveBeenCalledTimes(4);
 
     const ctxOther = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctxOther);
@@ -333,8 +333,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 curve stroke + 1 hold outline stroke.
-    expect(ctxOther.stroke).toHaveBeenCalledTimes(2);
+    // 1 grid stroke + 1 curve stroke + 1 hold outline stroke.
+    expect(ctxOther.stroke).toHaveBeenCalledTimes(3);
   });
 
   it("omits Hold outlines when holdVisible is false even with Hold data present", () => {
@@ -350,8 +350,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 curve stroke only.
-    expect(ctx.stroke).toHaveBeenCalledTimes(1);
+    // 1 grid stroke + 1 curve stroke only.
+    expect(ctx.stroke).toHaveBeenCalledTimes(2);
   });
 
   it("breaks Hold outline runs at invalid (null) values, same as the main curve", () => {
@@ -367,8 +367,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 curve stroke + 2 separate hold-run strokes (one band each side of the gap).
-    expect(ctx.stroke).toHaveBeenCalledTimes(3);
+    // 1 grid stroke + 1 curve stroke + 2 separate hold-run strokes (one band each side of the gap).
+    expect(ctx.stroke).toHaveBeenCalledTimes(4);
   });
 
   it("skips redrawing when a rerender changes nothing that affects the picture", () => {

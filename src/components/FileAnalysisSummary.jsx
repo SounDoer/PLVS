@@ -74,7 +74,7 @@ export function FileAnalysisSummary({
         <ExportReportMenu onExportReport={onExportReport} onCopyReport={onCopyReport} />
       ) : null}
       {isComplete && fileSession?.historyTruncated ? (
-        <p className="min-w-0 text-[length:var(--ui-fs-control)] text-[color:var(--ui-signal-warn)]">
+        <p className="min-w-0 text-[length:var(--ui-fs-control)] text-[color:var(--ui-feedback-warning)]">
           Delivery metrics cover the whole file. Scrub history is limited to the last{" "}
           {formatClock(fileSession.historyCoveredMs ?? 0)}.
         </p>
@@ -120,7 +120,12 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium text-foreground shadow-sm transition-colors hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)]"
+          className={cn(
+            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium shadow-sm transition-colors",
+            copied
+              ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]"
+              : "bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] text-foreground hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)]"
+          )}
         >
           <Icon className="size-[1.15em]" aria-hidden="true" />
           <span>{copied ? "Copied" : "Export"}</span>

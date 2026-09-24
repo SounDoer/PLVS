@@ -271,6 +271,23 @@ export function LoudnessHistoryChart({
             {mStops ? <RuleGradient id={mGradId} stops={mStops} /> : null}
             {stStops ? <RuleGradient id={stGradId} stops={stStops} /> : null}
           </defs>
+          <g data-loudness-grid aria-hidden="true">
+            {historyYAxisTicksLabeled.map(({ v }) => {
+              const y = loudnessFromTopFrac(v, loudnessYRange) * 220;
+              return (
+                <line
+                  key={v}
+                  x1={0}
+                  x2={600}
+                  y1={y}
+                  y2={y}
+                  stroke="var(--ui-loudness-grid)"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
+              );
+            })}
+          </g>
           {showMomentary && displayHistoryPathM && (
             <path
               d={displayHistoryPathM}

@@ -71,7 +71,7 @@ compiled tokens, CSS variables, generated CSS, or editor state.
 
 ```json
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "semanticsVersion": 1,
   "name": "Studio",
   "colorScheme": "dark",
@@ -86,7 +86,7 @@ compiled tokens, CSS variables, generated CSS, or editor state.
   "palettes": {
     "status": {
       "presetId": null,
-      "good": "#34d399",
+      "safe": "#34d399",
       "warning": "#fbbf24",
       "critical": "#f97373"
     },
@@ -103,15 +103,20 @@ compiled tokens, CSS variables, generated CSS, or editor state.
       "mid": "#fb923c",
       "high": "#356dff"
     },
-    "interface": { "presetId": null, "critical": "#f94144" }
+    "interface": {
+      "presetId": null,
+      "success": "#34d399",
+      "warning": "#fbbf24",
+      "danger": "#f94144"
+    }
   },
   "overrides": {}
 }
 ```
 
 The document must omit `id`: create generates it and update takes it from the command line. The
-document is strict and complete, not JSON Patch. `formatVersion` and `semanticsVersion` must each be
-1; `name` must trim to non-empty;
+document is strict and complete, not JSON Patch. `formatVersion` must be 2 and `semanticsVersion`
+must be 1; `name` must trim to non-empty;
 `colorScheme` is `light` or `dark`; all required core and palette members must be present. Override
 keys must name public compiler roles, colors must be valid CSS colors, intensity stops must be
 ordered from 0 through 1, and a non-null palette `presetId` must match that palette's canonical

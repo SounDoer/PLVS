@@ -31,7 +31,7 @@ describe("Theme Role Registry", () => {
 
     expect(centroid.advanced).toMatchObject({
       section: "Waveform",
-      label: "Centroid",
+      label: "Spectral Centroid",
       allowedModes: ["color", "reference"],
     });
     expect(centroid.dependencies).toContain("core.text");
