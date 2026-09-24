@@ -11,7 +11,9 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 const DATABASE_SCHEMA_VERSION: i64 = 1;
-const BUSY_TIMEOUT: Duration = Duration::from_secs(2);
+// SQLite permits one WAL writer at a time; concurrent workbenches should wait instead of losing a
+// valid write during a short burst of cross-process contention.
+const DATABASE_BUSY_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -728,7 +730,7 @@ impl LibraryRepository {
   pub(super) fn connection(&self) -> Result<Connection, LibraryError> {
     let connection = Connection::open(&self.database_path).map_err(map_sqlite_error)?;
     connection
-      .busy_timeout(BUSY_TIMEOUT)
+      .busy_timeout(DATABASE_BUSY_TIMEOUT)
       .map_err(map_sqlite_error)?;
     connection
       .pragma_update(None, "foreign_keys", "ON")
@@ -738,7 +740,7 @@ impl LibraryRepository {
 }
 
 fn enable_wal(connection: &Connection) -> Result<(), LibraryError> {
-  let deadline = Instant::now() + BUSY_TIMEOUT;
+  let deadline = Instant::now() + DATABASE_BUSY_TIMEOUT;
   loop {
     let current =
       connection.pragma_query_value(None, "journal_mode", |row| row.get::<_, String>(0));

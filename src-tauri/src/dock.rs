@@ -1,14 +1,17 @@
+use std::sync::{
+  atomic::{AtomicBool, Ordering},
+  Arc,
+};
+
+#[cfg(any(target_os = "windows", test))]
+use fs4::{FileExt, TryLockError};
+use serde::{Deserialize, Serialize};
+#[cfg(any(target_os = "windows", test))]
 use std::{
   fs::{File, OpenOptions},
   path::Path,
-  sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-  },
+  sync::Mutex,
 };
-
-use fs4::{FileExt, TryLockError};
-use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 
@@ -199,6 +202,7 @@ pub struct DockedFlag(pub Arc<AtomicBool>);
 /// until this becomes true.
 pub struct DockBootReady(pub Arc<AtomicBool>);
 
+#[cfg(any(target_os = "windows", test))]
 #[derive(Debug)]
 struct HeldDockReservation {
   key: String,
@@ -208,9 +212,12 @@ struct HeldDockReservation {
 /// Process-scoped ownership for the one system work-area reservation identified by monitor+edge.
 /// The lock handle is released by the OS after a crash, so another live workbench can recover it.
 #[derive(Debug, Default)]
-pub struct DockReservationLease(Mutex<Option<HeldDockReservation>>);
+pub struct DockReservationLease(
+  #[cfg(any(target_os = "windows", test))] Mutex<Option<HeldDockReservation>>,
+);
 
 impl DockReservationLease {
+  #[cfg(any(target_os = "windows", test))]
   pub fn acquire(
     &self,
     identity_root: &Path,
@@ -246,14 +253,18 @@ impl DockReservationLease {
   }
 
   pub fn release(&self) {
-    let mut held = self.0.lock().expect("dock reservation lease poisoned");
-    if let Some(lease) = held.take() {
-      let _ = FileExt::unlock(&lease.file);
+    #[cfg(any(target_os = "windows", test))]
+    {
+      let mut held = self.0.lock().expect("dock reservation lease poisoned");
+      if let Some(lease) = held.take() {
+        let _ = FileExt::unlock(&lease.file);
+      }
     }
   }
 }
 
 impl DockEdge {
+  #[cfg(any(target_os = "windows", test))]
   fn as_key(self) -> &'static str {
     match self {
       Self::Top => "top",
@@ -262,6 +273,7 @@ impl DockEdge {
   }
 }
 
+#[cfg(any(target_os = "windows", test))]
 fn stable_key_hash(bytes: &[u8]) -> u64 {
   bytes.iter().fold(0xcbf29ce484222325_u64, |hash, byte| {
     (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
@@ -494,7 +506,9 @@ pub fn enter_dock<R: tauri::Runtime>(
     }
     flag.0.store(true, Ordering::Relaxed);
     let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, was_docked)?;
-    let mut reserve_space = requested_reserve_space;
+    let reserve_space = requested_reserve_space;
+    #[cfg(target_os = "windows")]
+    let mut reserve_space = reserve_space;
     #[cfg(target_os = "windows")]
     if reserve_space {
       let monitor_key = monitor.as_deref().unwrap_or("primary");
@@ -581,6 +595,7 @@ pub fn exit_dock<R: tauri::Runtime>(
     .app_handle()
     .state::<DockReservationLease>()
     .release();
+  #[cfg(target_os = "windows")]
   unreserve_result?;
   window
     .set_resizable(true)
