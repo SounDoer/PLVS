@@ -1,13 +1,14 @@
 # Theme System Model Design
 
 Date: 2026-09-23  
-Status: Active design discussion
+Status: Approved design direction; implementation and gallery validation pending
 
 ## Purpose
 
-This record captures decisions made while reviewing the Theme System Audit. It is intentionally
-incremental: unresolved areas remain open until they have been discussed, and implementation does
-not begin merely because a decision is recorded here.
+This record captures decisions made while reviewing the Theme System Audit. It was developed
+incrementally and now records the approved direction; exact built-in values remain subject to the
+agreed deterministic gallery. Implementation does not begin merely because a decision is recorded
+here.
 
 ## Confirmed decisions
 
@@ -24,6 +25,12 @@ not begin merely because a decision is recorded here.
 - Palette preset provenance is advisory metadata, not canonical content, validity, or identity.
 - Gallery evidence records its exact application version, platform, dimensions, and data fixture
   separately from the Theme document.
+- Future community sharing should support direct website `Copy` and PLVS `Paste/Import` so users do
+  not have to download and locate a `.plvstheme` file. Clipboard sharing is a transport for the same
+  canonical portable Theme document, with the same validation, compatibility checks, limits, and
+  artifact identity; it must not create a second content format.
+- The exact clipboard representation, browser permission and fallback behavior, paste entry point,
+  and human-readable versus compact encoding are deferred to a focused sharing-UX discussion.
 
 ### Public role boundary
 
@@ -46,6 +53,9 @@ not begin merely because a decision is recorded here.
   colors to Core.
 - Expose the Theme's Dark or Light appearance explicitly alongside the Core Colors. Appearance is
   a compilation and native-surface choice, not a color inferred from the six values.
+- Appearance is not a standalone tab. A compact Dark/Light segmented control sits with the Theme
+  identity at the top of the editor, or at the top of Basic on constrained layouts, so the scheme
+  remains visible without creating a one-control destination.
 - The editor labels are `Workspace`, `Surface`, `Text`, `Accent`, `Primary Data`, and
   `Secondary Data`.
 - The persisted field remains `core.interfaceAccent`; simplifying its editor label does not rename
@@ -65,8 +75,8 @@ not begin merely because a decision is recorded here.
   lower importance or reduced visual emphasis. A companion color derived from Primary Data remains
   an internal option for genuinely related variants, not the default substitute for a second
   meaningful series.
-- The exact surface-ladder recipe and contrast-content recipes for colored backgrounds remain open
-  for the later Interface and recipe review.
+- Exact surface-recipe deltas and built-in color values remain gallery decisions rather than
+  additional authoring concepts.
 
 ### Status Palette
 
@@ -131,17 +141,27 @@ not begin merely because a decision is recorded here.
 - Interface Success covers successful application feedback. Interface Warning covers application
   cautions and recoverable problems. Interface Danger covers errors, invalid states, and
   destructive actions.
-- Each authored Interface color is a seed for usage-specific foreground, tint surface, solid
-  surface, border or ring, and content-on-color roles. The same value is not published unchanged to
-  every usage.
+- Each authored Interface color is the corresponding solid substrate and the seed for
+  usage-specific foreground, tint, border, and ring derivations. Content-on-color is a separate
+  paired role; no second authored or automatically darkened solid color is introduced.
 - Status remains measurement-only; Badge variants, validation, application messages, and dangerous
   controls use Interface roles instead of borrowing meter colors.
 - No Interface Info input is added without an independent production meaning. Neutral information
   continues to use normal Text or Accent-derived roles.
 - `LIVE`, `SNAP`, and recording are activity modes rather than measurement status or feedback
-  severity. They receive dedicated internal roles such as `activity.live`, `activity.snapshot`, and
-  `activity.recording`; those roles may have defaults that reference Interface colors but do not add
+  severity. The public Advanced roles are `activity.live` and `activity.snapshot`; they do not add
   Core or Palette inputs.
+- Advanced exposes a compact `Activity` section with only `Live` and `Snapshot`. Each resolved
+  color drives its label or dot, border, tint, and glow through internal composition rules; neither
+  requires a content-on role.
+- Activity Auto deliberately reuses Interface Palette sources rather than adding another authored
+  color set: Live follows Interface Danger (the renamed old Interface Critical), and Snapshot
+  follows Interface Warning. These dependencies never point to measurement Status or Data Snapshot
+  roles. Follow and Custom use the normal Advanced override model and detach the individual
+  Activity role from its Auto source.
+- Screen Recording means Agent Control visual capture of a PLVS surface. It is a small internal
+  consumer that follows the resolved Live color and is not independently exposed or serialized as
+  a public override. Ready remains neutral and does not gain an Activity color.
 - The ambiguous `--ui-signal-*` binding family must be split by consumer into measurement,
   Interface feedback, and activity bindings. Binding names remain internal implementation details.
 - A compatibility migration maps old Status Good to Status Safe, retains old Status Warning and
@@ -162,6 +182,13 @@ not begin merely because a decision is recorded here.
   distinct roles and must not continue to share an identical default recipe.
 - Selected carries a visible Accent relationship without becoming the solid Accent used for primary
   actions.
+- In the opaque baseline, Surface roles are not a single five-step lightness ladder. Panel is the
+  ordinary substrate; Raised separates through surface difference together with Border and Shadow;
+  Control makes operable regions discoverable; Muted is quieter and must not resemble an operable
+  Control; Selected carries the Accent relationship.
+- The current compiler gives Control and Muted the same `Surface -> Text` 7% recipe. Their default
+  results must become visibly distinct without adding another public Surface role. Exact values and
+  recipe deltas remain gallery decisions rather than being approved from percentages alone.
 - Raised, Control, and Muted are not one monotonic lightness ladder because they express different
   semantic dimensions.
 - Hover remains an internal state derived from the relevant surface role; it does not add a Core
@@ -179,6 +206,12 @@ not begin merely because a decision is recorded here.
   units, axes, and ticks.
 - Annotation is not a third, faintest hierarchy level. Its typically smaller size may require more
   contrast than Secondary.
+- Current built-in opaque Panel measurements are approximately 16.31:1 / 6.10:1 / 8.42:1 for
+  Dark Primary / Secondary / Annotation and 17.05:1 / 4.53:1 / 6.84:1 for Light. Light Secondary
+  sits too close to the 4.5:1 threshold and should gain modest headroom in the default recipe.
+- Validate these roles at their real font sizes and weights. Ordinary text colors do not fade with
+  structural Panel transparency; Disabled treatment remains a component-composition concern and
+  is not represented by reusing Secondary.
 - Neutral surfaces do not receive separate content-on roles. Workspace, Panel, Raised, Control,
   and Selected use Primary or Secondary Text as appropriate; Muted normally uses Secondary Text.
   Their surface recipes and validation must keep those shared text roles readable.
@@ -186,8 +219,10 @@ not begin merely because a decision is recorded here.
   to the smaller semantic text set, not evidence that each requires a public Theme role.
 - Retain four symmetric solid-surface content roles: `Content on Accent`, `Content on Success`,
   `Content on Warning`, and `Content on Danger`.
-- Each content-on role is contrast-derived for its actual solid substrate and may be overridden in
-  Advanced. A tint foreground and content on a solid semantic surface remain different roles.
+- The corresponding Accent, Success, Warning, or Danger value is the actual solid substrate. Do not
+  add a second `Solid Accent` color or a conditional recipe that silently darkens particular hues.
+- Each content-on role is paired with that substrate and may be overridden in Advanced. A tint
+  foreground and content on a solid semantic surface remain different roles.
 - `Content on Accent` is consumed by primary actions and `Content on Danger` by destructive actions.
 - Existing copy-success states in `CopyableTextBlock` and the file-report Export trigger become
   short-lived solid Success controls that consume `Content on Success`.
@@ -195,14 +230,16 @@ not begin merely because a decision is recorded here.
   treatments that consume `Content on Warning`.
 - Completed file-history rows remain neutral, History Truncated remains a Warning foreground/tint,
   and activity and measurement states are not recolored merely to create semantic consumers.
-- Interface Success, Warning, and Danger also derive usage-specific foreground, tint, border, and
-  solid-surface roles. Existing hard-coded Badge variants migrate to those Interface roles.
+- Interface Success, Warning, and Danger also derive usage-specific foreground, tint, and border
+  roles. Their base values serve directly as solid substrates. Existing hard-coded Badge variants
+  migrate to those Interface roles.
 - Built-in Themes must meet the approved text-contrast gate. Custom Themes receive explicit
   warnings for unsafe combinations while retaining intentional override freedom.
-- In Advanced, these semantics appear under one `Text & Icons` section with three subgroups:
-  `General` contains Primary, Secondary, and Annotation; `Feedback` contains Success, Warning, and
-  Danger text-and-icon colors used on ordinary or tinted feedback; `Contrast` contains Accent,
-  Success, Warning, and Danger text-and-icon colors used on the corresponding solid backgrounds.
+- Advanced Interface uses one consistent grouping depth: `Surfaces`, `Text & Icons`, `Feedback`,
+  `Contrast`, and `Effects` are siblings. `Text & Icons` contains Primary, Secondary, and
+  Annotation; `Feedback` contains Success, Warning, and Danger text-and-icon colors used on
+  ordinary or tinted feedback; `Contrast` contains Accent, Success, Warning, and Danger
+  text-and-icon colors used on the corresponding solid backgrounds.
 - The editor does not expose `Foreground`, `Content on`, or `Solid Surface Content` as user-facing
   group names. A Contrast description explains that the Palette or Core input controls the solid
   background while the Advanced value controls the text and icons placed on it.
@@ -230,7 +267,7 @@ not begin merely because a decision is recorded here.
   limited to floating layers before the product chooses a compositor policy. This audit does not
   pre-emptively require every rendered panel to become opaque.
 
-## Open areas
+## Data, Meter, and module decisions
 
 ### Data, Meter, and module override boundary
 
@@ -283,8 +320,6 @@ not begin merely because a decision is recorded here.
   rather than an unspecified future placeholder. It must gain a real consumer, gallery case, and
   visual contract before the public Theme format is frozen.
 
-The next area is applying the same retention test to Spectrum.
-
 ### Spectrum module roles
 
 - Retain Primary Trace and Secondary Trace. Their Auto recipes follow Primary Data and Secondary
@@ -300,8 +335,6 @@ The next area is applying the same retention test to Spectrum.
   modules. A Spectrum Selection role should be added only if a distinct selected mark or region is
   designed, not merely for symmetry with other modules.
 
-The next area is applying the same retention test to Spectrogram.
-
 ### Spectrogram module roles
 
 - Retain all six currently consumed Spectrogram Advanced roles: the two monochrome data inks,
@@ -315,8 +348,6 @@ The next area is applying the same retention test to Spectrogram.
 - Grid and Grid Subdivisions remain separately overrideable because they are real major and minor
   floor-rule consumers in the 3D renderer. Axis Labels and Selection likewise remain because the
   Canvas renderer consumes them directly.
-
-The next area is applying the same retention test to Vectorscope.
 
 ### Vectorscope module roles
 
@@ -332,8 +363,6 @@ The next area is applying the same retention test to Vectorscope.
   are reviewed consistently for local overrides whether they render a small marker or a large data
   field; specific labels state the affected object so the scope remains clear.
 
-The next area is applying the same retention test to Stereo Map.
-
 ### Stereo Map module roles
 
 - Retain Primary Side, Secondary Side, Primary Snapshot, Secondary Snapshot, and Grid.
@@ -348,8 +377,6 @@ The next area is applying the same retention test to Stereo Map.
 - Do not add a Stereo Map Selection role. Selecting a historical time switches the complete plot
   to its Primary and Secondary Snapshot appearance rather than drawing a selected time-position
   mark.
-
-The next area is applying the same retention test to Waveform.
 
 ### Waveform module roles
 
@@ -378,9 +405,6 @@ The next area is applying the same retention test to Waveform.
   shared edge hint consume `--ui-loudness-selection`. Each module must consume its own resolved
   Selection role or a correctly named shared selection binding.
 
-The next area is deciding which Meter and measurement modules receive local overrides for the
-global Status Palette.
-
 ### Level Meter module roles
 
 - Add local `Safe`, `Warning`, and `Critical` Advanced roles for Level Meter. Auto follows the
@@ -400,6 +424,46 @@ global Status Palette.
 - Normal Stats and Dock Stats share these module roles. Do not add a Safe Value role without a
   distinct safe-colored consumer.
 
+### Theme Editor presentation
+
+- Keep `Core`, `Palettes`, and `Advanced` as the three primary tabs. Appearance is the compact
+  Dark/Light control beside the Theme identity rather than a fourth tab.
+- Advanced uses one level of collapsible sections: Interface, Activity, then modules in Module
+  Catalog order. Module rows stay flat. Interface uses visible, non-collapsible subgroup headings
+  rather than nested accordions.
+- Advanced provides role search, shows each section's customized count, and offers a draft-local
+  `Reset Section to Auto` action. Search temporarily reveals matching sections without replacing
+  the user's prior expansion state.
+- Keep short page and subgroup explanations visible. Move each individual role's description from
+  a second text line into the existing themed HoverTip behavior, revealed on pointer hover and
+  keyboard focus. Associate the control with an equivalent hidden description for assistive
+  technology; tooltip content wraps to a bounded width and is not the sole accessible source.
+- Use one shared 20 px square Theme Editor swatch beside labels in Core, simple Palettes, Intensity
+  stops, and Advanced. It has the same radius and Theme Border treatment everywhere. Gradient
+  preview strips and the Theme Picker's composite preview are different controls and do not inherit
+  the square-swatch geometry.
+- The HoverTip itself must use Interface Border rather than the current fixed white border.
+- Preserve both preview forms against the same editor Draft. Existing Live Preview automatically
+  publishes the Draft to the user's current real Workspace. An optional `Open Theme Preview`
+  presents controlled `Overview` and `Modules` scenes for roles, modules, and states absent from the
+  current Workspace.
+- Theme Preview is read-only with respect to Workspace data and layout and renders only while open.
+  It does not create another editor transaction: the existing Save commits the shared Draft and
+  Cancel restores the prior Theme and closes or restores the preview.
+- Editor validation distinguishes blocking structural or compilation errors from non-blocking
+  visual warnings. A warning never silently changes a color and does not prevent a local Theme from
+  being saved.
+- Advanced shows a deduplicated warning summary with jump targets, per-role warning indicators, and
+  warning counts on collapsed sections. Warning details name the related roles, measured value,
+  recommended target, and representative affected consumers.
+- Initial inline analysis is limited to high-confidence checks: text/content contrast, feedback
+  contrast, important data and snapshot separation, Status and Frequency distinction, Intensity
+  ordering and endpoints, and obvious surface collisions. Platform composition, animation, thin
+  crossing traces, full color-vision simulation, and native effects remain gallery checks.
+- Built-in Dark and Light may not ship with an accepted high-confidence warning. Local custom Themes
+  retain intentional freedom. Community publication receives the same structured report; which
+  severe warnings eventually block publication remains a later catalogue-policy decision.
+
 ### Module roles across normal and Dock surfaces
 
 - A normal panel and its Dock representation share the same semantic module roles by default.
@@ -408,8 +472,14 @@ global Status Palette.
 - Module-local Status overrides therefore apply to the matching Dock module where it presents the
   same measurement meaning. Application activity and feedback that currently borrow
   `--ui-signal-*` migrate to Activity or Interface roles instead.
-
-The next area is the boundary between roles, recipes, dependencies, references, and bindings.
+- Resolve the seven currently unconsumed published bindings explicitly: remove the inapplicable
+  Loudness Selection Canvas binding and Spectrum Grid Canvas binding; connect the retained
+  Loudness Grid and Spectrum Grid CSS bindings; connect Stereo Map Grid and Waveform Grid Canvas
+  bindings; and connect Waveform Selection through its selector and painter instead of borrowing
+  Loudness Selection.
+- Removing an inapplicable renderer binding does not remove the semantic role. Every retained
+  Advanced control must nevertheless have at least one real product consumer and a contract test
+  proving the affected surface or state before the public format freezes.
 
 ### Public roles and internal resolution
 
@@ -456,9 +526,6 @@ The next area is the boundary between roles, recipes, dependencies, references, 
   Shared documents serialize only Follow and Custom overrides, never Auto or resolved recipe
   results.
 
-The next area is assigning validation responsibility across document schema, registry compatibility,
-compiler resolution, and migrations.
-
 ### Validation and migration boundaries
 
 - Theme ingestion follows an explicit pipeline: parse, shape validation, version migration,
@@ -478,15 +545,13 @@ compiler resolution, and migrations.
 - Visual and accessibility analysis reports contrast, distinguishability, grid visibility, and
   related quality warnings. Unsafe Custom choices may remain intentional; those warnings do not
   masquerade as structural schema errors.
-- Remove the current Interface-palette backfill from ordinary V2 normalization. Seeding Interface
-  Danger from an older Status Critical is a semantic migration: retain the measurement Critical,
-  copy it as the initial Interface Danger, and record that compatibility decision explicitly.
+- Remove the current Interface-palette backfill from ordinary V2 normalization. The explicit
+  migration retains measurement Status, maps old Status Good to Safe, seeds new Interface Success
+  and Warning from the corresponding old Status values, and maps old Interface Critical to
+  Interface Danger. It records each compatibility decision.
 - Invalid colors, unknown public roles, forbidden Reference sources, unresolved graphs, and
   unsupported versions are errors. Contrast and visual-quality findings are warnings unless a
   stricter built-in-Theme release gate applies.
-
-The next area is the exact separation between document-format version and semantic compiler
-version.
 
 ### Format and semantics versioning
 
@@ -497,18 +562,19 @@ version.
   Palette shape changes, and override representation changes.
 - Semantics migrations handle changes that can alter a resolved Theme without changing its stored
   fields, such as new surface, snapshot, grid, or contrast recipes.
-- A semantics migration may adopt an explicitly documented corrected Auto rule when intent is
-  preserved. Where a user's deliberate appearance could be lost, it pins the minimum necessary
-  legacy results as Custom overrides or requires a before-and-after confirmation when intent cannot
-  be inferred safely.
+- Migration preserves authored Core and Palette values, Custom values, and compatible Follow
+  relationships. Auto remains Auto and adopts the explicitly documented corrected rule for the new
+  semantics version; migration does not manufacture Custom overrides merely to preserve an old
+  recipe result. A deliberate value or Reference that cannot be mapped safely is an actionable
+  incompatibility rather than a silent fallback.
+- Local persisted Themes migrate deterministically without a blocking startup dialog and retain a
+  structured, inspectable migration note. Import of an older shared Theme presents migrations and
+  adaptations in the import preview before mutation.
 - Changing an Auto recipe without incrementing and migrating `semanticsVersion` is forbidden. The
   migration report identifies meaning-changing steps; it does not silently reinterpret a shared
   document.
 - Import order is format migration, semantics migration, current registry compatibility
   validation, compilation, then visual analysis.
-
-The next area is renderer coverage: CSS, SVG, Canvas, Dock, native surfaces, and remaining local or
-hard-coded color derivations.
 
 ### Theme color and surface composition
 
@@ -518,6 +584,17 @@ hard-coded color derivations.
 - Theme colors answer what material or semantic color a surface has. Design tokens answer how that
   material is painted. The final composited pixel is environment-dependent output and is never
   written back into the Theme document.
+- Native integration is an appearance adapter, not a public color family. The Theme provides its
+  Dark/Light appearance intent; Windows and macOS own outer-window clipping, native shadow, and
+  platform material rendering. PLVS Theme continues to own every WebView, CSS, SVG, and Canvas
+  surface inside that native container.
+- The tray menu is PLVS-designed in content, ordering, checked and enabled state, and behavior, but
+  Tauri `Menu`, `Submenu`, `MenuItem`, and `CheckMenuItem` are rendered by the operating system.
+  Theme may select an appropriate tray icon and appearance hint; it does not promise menu
+  background, hover, typography, checkmark, radius, or shadow colors.
+- Registry-native color bindings remain internal and empty until a concrete controllable native
+  consumer exists. Architecture documentation must not describe native colors as complete merely
+  because the compiler carries `colorScheme`.
 - Core, Palette, and ordinary Advanced color inputs remain opaque. Theme Editor color controls do
   not expose alpha for them. Effect and compositor opacity stays system-managed.
 - Component classes do not invent local `/55`, `/85`, fixed RGBA highlight, or similar surface
@@ -576,9 +653,6 @@ hard-coded color derivations.
   baseline renders that shell as an opaque Raised Surface and lets internal modules inherit it by
   default.
 
-The next area is assigning each PLVS surface to this stack before choosing the final compositor
-policy.
-
 ### Dark and Light visual evaluation order
 
 - Evaluate Dark and Light independently; shared recipe structure does not imply that identical
@@ -604,8 +678,48 @@ policy.
 - Current measured failures remain baseline evidence rather than accepted targets: Dark content on
   Accent is about 2.02:1, Dark content on Critical about 3.20:1, Light content on Critical about
   4.00:1, Light Warning on Panel about 1.49:1, and Light Primary Data on Panel about 2.87:1.
-
-The next area is turning this evaluation into a deterministic Theme gallery manifest.
+- Treat the Dark Accent failure first as a built-in color-pair problem, not as evidence for a new
+  Theme mechanism. Dark should choose one Accent that works acceptably both as an emphasis color
+  on neutral surfaces and as a solid substrate for light `Content on Accent`.
+- The compiler must not inspect a hue and conditionally substitute a darker solid variant. Custom
+  Themes retain their authored Accent/content pair; analysis reports unsafe contrast without
+  silently changing the colors or preventing ordinary save and use.
+- Only if the gallery proves that one Accent cannot satisfy both jobs across the intended design
+  should a separate solid-surface role be reconsidered. That decision requires evidence across
+  multiple hues and both schemes rather than the current orange alone.
+- Built-in Status and Interface colors share recognizable semantic hue families without sharing
+  values or identity: Safe and Success are green-family, both Warnings are amber-family, and
+  Critical and Danger are red-family. Measurement tuning must not move Interface feedback colors,
+  and Interface tuning must not change meter encodings.
+- Built-in Dark pairs solid Interface Success, Warning, and Danger with light content. Built-in
+  Light pairs them with dark content. These are authored default pairs, not runtime hue detection
+  or automatic darkening. Exact values remain a gallery decision.
+- Accent and Primary Data remain independently editable even when a built-in Theme deliberately
+  gives them the same orange value. Semantic independence does not require visual difference in
+  the defaults.
+- Retain the built-in orange Primary and blue-family Secondary direction as the first gallery
+  candidate. Validate Primary, Secondary, Primary Snapshot, and Secondary Snapshot together at
+  real line widths, crossings, and overlaps in both schemes and with color-vision simulations
+  before changing exact values or snapshot recipes.
+- Built-in Dark and Light Frequency palettes retain the same semantic hue families: Low is red,
+  Mid is orange, and High is blue. Each scheme may tune lightness and chroma independently, but
+  Light must not change Mid to purple merely to obtain contrast.
+- Validate the Frequency anchors and their interpolation in Waveform and any other real consumer;
+  pay particular attention to Low/Mid separation because both are warm hues. Exact values remain
+  a gallery decision.
+- Retain canonical Inferno as the initial built-in Intensity scale in both schemes so that intensity
+  reading does not change with application appearance. Do not introduce a separate Light scale
+  without gallery evidence.
+- Validate its low and high endpoints, no-data and below-floor states, 2D/3D consistency, and Grid,
+  Selection, and Axis Label overlays. The surrounding renderer treatment may differ by scheme even
+  when the Intensity values remain identical.
+- Retain the built-in Dark Status direction of green Safe, bright amber Warning, and red Critical.
+  Built-in Light uses the same hue meanings but must replace the current bright Warning with a
+  darker amber that remains visible on light panels. This is a default-value correction, not a new
+  Theme mechanism.
+- Validate Status values as thin rules, small markers, values, range boundaries, and gradients in
+  Level Meter, Stats, Vectorscope, and Stereo Map. Status does not gain content-on roles; those
+  belong to the separate Interface feedback semantics.
 
 ### Deterministic Theme gallery
 
@@ -632,5 +746,53 @@ The next area is turning this evaluation into a deterministic Theme gallery mani
 - Pixel differences are diagnostic signals, not automatic visual verdicts. Approval considers
   contrast, OKLCH separation, redundant encoding, renderer correctness, and human review together.
 
-The next area is evaluating the actual built-in Dark and Light colors, beginning with Accent and
-colored-content contrast.
+## Agreed implementation sequence
+
+1. Capture the current deterministic visual baseline and build the Semantic and Product Gallery
+   harness before changing Theme behavior.
+2. Reshape the contract and compiler boundary: separate format and semantics versions, correct
+   resolved kinds, split validation responsibilities, and implement tested migrations.
+3. Complete renderer ownership: add the agreed Interface and Activity roles, remove unapproved
+   hard-coded colors, repair bindings, connect committed Grid and Selection consumers, and add the
+   approved module-local overrides.
+4. Reshape Theme Editor navigation, labels, grouping, swatches, HoverTips, search, reset behavior,
+   warning presentation, and preview entry while preserving blocking Draft/Save/Cancel semantics.
+5. Build and compare the opaque structural-surface baseline, redesign Panel Opacity and its
+   migration, and verify Dock, Hide Chrome, fullscreen, and native composition boundaries.
+6. Tune built-in Dark and Light values only after the model and consumers are correct, using the
+   approved gallery and accessibility evidence.
+7. Freeze the canonical portable document, converters, validators, round-trip behavior, and hash;
+   later file and clipboard sharing routes consume that same contract.
+
+Changes may be committed in coherent batches rather than one commit per discussion decision.
+
+## Public Theme format freeze gates
+
+The portable Theme format must not freeze until all of the following are true:
+
+- every public or editable role has a real production consumer, Semantic Gallery case, Product
+  Gallery case, and renderer-binding contract test;
+- Theme Editor exposes no no-op control, and every retained committed Grid or Selection role is
+  connected to its renderer;
+- every production-visible color has a Theme owner or a small reviewed exception entry; normal UI,
+  Activity, Interface feedback, data, measurement, CSS, SVG, Canvas, and Dock do not borrow
+  unrelated semantic bindings;
+- schema, migration, registry compatibility, compiler, and visual-analysis responsibilities are
+  separated and return structured path-aware results;
+- format and semantics migrations preserve explicit authoring intent, never silently fall back to
+  Auto, and have representative CSS, SVG, Canvas, Dock, and appearance verification;
+- canonical export, validate, import, and re-export are stable, and canonical content hashes are
+  reproducible;
+- desktop, CLI, repository validation, and future community validation share the same portable
+  converters and validators;
+- unknown required roles, references, modules, or unsupported versions cannot disappear silently;
+- built-in Dark and Light pass the approved high-confidence warning gate, color-vision review, and
+  human review across the mandatory deterministic gallery;
+- Windows and macOS approve the relevant opaque, transparency, Dock, Hide Chrome, fullscreen, and
+  native appearance cases;
+- architecture, design-token, user, migration, and public-format documentation match the verified
+  implementation.
+
+The user-facing Theme Preview and the complete website Copy/Paste experience may follow the format
+freeze, but the underlying deterministic galleries, canonical portable document, and shared
+validation must already be reliable.
