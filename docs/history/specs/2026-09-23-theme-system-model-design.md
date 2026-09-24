@@ -252,5 +252,24 @@ not begin merely because a decision is recorded here.
   only when a module-local difference is plausible, its semantic meaning is stable, its source is
   clear in the editor, and the result can be covered by the gallery.
 
-The next area is applying that retention test to each module's Advanced roles, beginning with
-Loudness.
+### Loudness module roles
+
+- Momentary and Short-term remain separate Advanced roles because both are important concurrent
+  series and need reliable visual distinction.
+- Momentary Auto follows Primary Data. Short-term Auto follows Secondary Data instead of deriving a
+  companion color from Primary Data.
+- Primary and Secondary describe the first and second concurrent data series here, not an
+  importance hierarchy. Short-term must not be rendered with reduced emphasis merely because it
+  uses Secondary Data.
+- Momentary Snapshot and Short-term Snapshot remain module roles and derive from the corresponding
+  live series by default. A Custom override may change either snapshot locally.
+- Reference Guide remains a Loudness role because the current chart consumes it and its meaning is
+  specific to that visualisation.
+- Loudness Selection remains as a local override whose Auto source is the shared data-selection
+  semantic. Spectrogram, Waveform, and timeline selection affordances must stop consuming the
+  Loudness-named CSS binding and use their own resolved role or a correctly named shared binding.
+- Loudness Grid is removed from public Advanced authoring and the shared Theme format while the
+  module draws no grid. An internal dormant binding is not sufficient reason to freeze a public
+  role; the option can be designed and added when a real consumer exists.
+
+The next area is applying the same retention test to Spectrum.
