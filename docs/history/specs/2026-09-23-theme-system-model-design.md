@@ -509,3 +509,72 @@ version.
 
 The next area is renderer coverage: CSS, SVG, Canvas, Dock, native surfaces, and remaining local or
 hard-coded color derivations.
+
+### Theme color and surface composition
+
+- Separate four layers: opaque authored Theme colors; opaque compiler-resolved semantic surfaces;
+  product-owned composition tokens such as opacity, blur, highlight strength, and shadow geometry;
+  and runtime environment choices such as the user's Panel Opacity and native Glass.
+- Theme colors answer what material or semantic color a surface has. Design tokens answer how that
+  material is painted. The final composited pixel is environment-dependent output and is never
+  written back into the Theme document.
+- Core, Palette, and ordinary Advanced color inputs remain opaque. Theme Editor color controls do
+  not expose alpha for them. Effect and compositor opacity stays system-managed.
+- Component classes do not invent local `/55`, `/85`, fixed RGBA highlight, or similar surface
+  composition. Named composition tokens apply transparency at explicit surface boundaries and
+  avoid recursively fading Workspace, Panel, child Control, and Border.
+- Build a fully opaque structural-surface variant as the first validation baseline. Workspace,
+  normal panels, headers, footers, controls, muted and selected surfaces, popovers, and dialogs use
+  opaque resolved colors; backdrop blur and saturation are disabled for those surfaces in this
+  variant.
+- `Fully opaque` does not ban alpha from directional shadows, the approved modal scrim,
+  anti-aliasing, data-area fills, disabled-state emphasis, or transparent pixels outside a rounded
+  native window. Those are effects or geometry rather than structural surface colors.
+- The opaque baseline is an experiment, not a final visual decision. The gallery compares it with
+  the current translucent implementation and a hybrid variant in which ordinary structure stays
+  opaque while explicitly floating or native-environment surfaces may composite.
+- The opaque baseline runs with Panel Opacity at 100 percent. The later matrix separately tests the
+  user opacity preference so the product can decide whether it remains a supported compositor
+  control, changes scope, or is retired.
+- Hide Chrome changes native decorations but does not redefine Theme or compositor semantics. On
+  the reviewed Windows configuration, the normal borderless main window retains the system-owned
+  rounded clip and native shadow, so PLVS should not add a duplicate root radius or transparent
+  padding merely to recreate that silhouette.
+- The opaque Workspace may fill the main WebView and rely on the verified native clip. Maximized
+  and fullscreen states must remain edge-to-edge, and Windows and macOS gallery coverage must
+  confirm that rounded clipping survives the opaque baseline before this becomes a cross-platform
+  guarantee.
+- Dock remains a distinct window-shape case: Dock mode removes native decorations and shadow, so a
+  transparent window exterior may still be required around its explicitly drawn visible shell.
+- The current `panelOpacity` setting is not one coherent panel compositor control. It directly sets
+  Workspace opacity, multiplies Panel and Header backgrounds by different constants, fades borders,
+  Dock and fullscreen backgrounds, and also fades Level Meter and Spectrogram data with a separate
+  floor. It therefore mixes window transparency, structural hierarchy, and data visibility.
+- Remove data, text, focus, semantic state, and measurement marks from the opacity setting's scope.
+  They remain fully legible regardless of structural-surface composition.
+- The opaque baseline removes the current `P * 0.55` Panel and `P * 0.60` Header behavior and runs
+  structural surfaces at 100 percent. It tests the semantic surface recipes without blur, fixed
+  highlights, or accidental Workspace blending.
+- Do not decide the future slider merely by renaming it. Gallery comparison determines whether the
+  product retains a coherent Window Transparency or Surface Transparency control, replaces it with
+  named compositor modes, or removes it.
+- `panelOpacity` is persisted in settings, saved Views, Presets, and Agent Control. Any replacement
+  therefore requires an explicit view-state migration and synchronized public control contract; an
+  old numeric value must not be silently reinterpreted with materially different visual meaning.
+- In the opaque baseline, Workspace uses Workspace Color; normal Header, Footer, and module panels
+  use Panel; floating Header and Footer, popovers, tooltips, dialogs, and editors use Raised;
+  interactive controls use Control; de-emphasised regions use Muted; and selected controls use
+  Selected. Panel content inherits its parent instead of adding another background layer.
+- Opaque hierarchy is established in order: validate Workspace-to-Panel separation, then Border,
+  Raised Surface plus Shadow, Control affordance, Muted de-emphasis, and Selected recognition.
+  Blur or highlight is reconsidered only after those semantic layers are proven insufficient.
+- Muted is not implemented by fading an entire component, and Hover is an internal opaque color
+  derived from the relevant surface where possible. Fixed white inset highlights are absent from
+  the baseline; any later highlight must be a named, scheme-aware product effect with an explicit
+  purpose.
+- The Dock window may keep transparent pixels outside its rounded visible shell, but the opaque
+  baseline renders that shell as an opaque Raised Surface and lets internal modules inherit it by
+  default.
+
+The next area is assigning each PLVS surface to this stack before choosing the final compositor
+policy.
