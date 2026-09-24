@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  ANNOTATION_TEXT,
   CAPTION_TEXT,
   FOOTER_DIVIDER,
   FOOTER_LABEL,
@@ -19,6 +20,8 @@ describe("shellLayout token names", () => {
   it("CAPTION_TEXT uses --ui-fs-axis (not the retired --ui-fs-axis-value)", () => {
     expect(CAPTION_TEXT).toContain("--ui-fs-axis");
     expect(CAPTION_TEXT).not.toContain("--ui-fs-axis-value");
+    expect(CAPTION_TEXT).toContain("--ui-text-annotation");
+    expect(ANNOTATION_TEXT).toContain("--ui-text-annotation");
   });
 
   it("SHELL_FOOTER uses --ui-fs-status", () => {

@@ -119,6 +119,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     family: "interface",
     recipe: "text-annotation",
     dependencies: ["core.text", "core.surface"],
+    bindings: { css: ["--ui-text-annotation"] },
     advanced: colorOverride(
       "Interface",
       "Annotation Text",
@@ -222,7 +223,12 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "focus-ring",
     dependencies: ["core.interfaceAccent", "core.surface"],
     bindings: { css: ["--ring"] },
-    advanced: colorOverride("Interface", "Focus Color", "Keyboard focus indicator."),
+    // Kept as an import-only compatibility target for themes created before
+    // PLVS removed focus rings. The editor must not offer a no-op control.
+    advanced: {
+      ...colorOverride("Interface", "Focus Color", "Legacy focus-ring compatibility token."),
+      editorVisible: false,
+    },
   }),
   role("interface.shadow", {
     kind: "effect",
@@ -553,16 +559,15 @@ function moduleRoles() {
       { canvas: ["spectrogram.gridSubtle"] },
       primaryRefs
     ),
-    // Axis labels are text, not rules: they need the contrast of the DOM axis
-    // labels on every other chart, which read `--muted-foreground`.
+    // Axis labels are annotations, matching the DOM axes on every other chart.
     moduleColor(
       "spectrogram.axisLabel",
       "Spectrogram",
       "Axis Labels",
-      "interface.text.secondary",
+      "interface.text.annotation",
       "identity",
       { canvas: ["spectrogram.axisLabel"] },
-      ["core.text", ...primaryRefs]
+      ["interface.text.annotation", "core.text", ...primaryRefs]
     ),
     moduleColor(
       "spectrogram.selection",

@@ -40,6 +40,20 @@ describe("Theme Role Registry", () => {
     expect(getThemeRole("missing")).toBeNull();
   });
 
+  it("publishes Annotation Text to products while keeping the unused focus token internal", () => {
+    expect(getThemeRole("interface.text.annotation")).toMatchObject({
+      bindings: { css: ["--ui-text-annotation"] },
+      advanced: { label: "Annotation Text" },
+    });
+    expect(getThemeRole("spectrogram.axisLabel").dependencies).toEqual([
+      "interface.text.annotation",
+    ]);
+    expect(getThemeRole("interface.focusRing").advanced).toMatchObject({
+      label: "Focus Color",
+      editorVisible: false,
+    });
+  });
+
   it("freezes the public registry deeply", () => {
     expect(Object.isFrozen(THEME_ROLE_REGISTRY)).toBe(true);
     expect(Object.isFrozen(getThemeRole("waveform.centroid").advanced)).toBe(true);

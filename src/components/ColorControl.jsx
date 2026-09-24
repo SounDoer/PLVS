@@ -43,12 +43,8 @@ export function ColorControl({ label, value, onChange, allowAlpha = true, descri
             type="button"
             aria-label={label}
             aria-describedby={description ? descriptionId : undefined}
-            // Without its own ring this falls back to the UA focus outline, which
-            // renders white regardless of the theme and boxes the whole row. The
-            // ring is dropped while the panel is open: the trigger keeps focus
-            // there, and any keypress -- a bare Shift is enough in Chromium --
-            // flips :focus-visible on, framing a row whose panel is already the
-            // thing being looked at.
+            // Focus outlines are suppressed by the app-level interaction contract.
+            // Keep this trigger free of a local ring so it cannot reintroduce one.
             className="flex items-center gap-2 rounded-xs text-left"
           >
             <ThemeEditorSwatch color={value} />

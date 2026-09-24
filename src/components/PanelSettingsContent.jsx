@@ -470,7 +470,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
         className="h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors"
         style={{ width: `${widthCh}ch` }}
       />
-      {suffix ? <span className="text-muted-foreground/60">{suffix}</span> : null}
+      {suffix ? <span className="text-[color:var(--ui-text-annotation)]">{suffix}</span> : null}
     </div>
   );
 }

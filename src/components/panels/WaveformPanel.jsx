@@ -491,7 +491,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
               style={{ left: `${waveformHover.leftPct}%` }}
             />
             {/* Popover */}
-            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm">
+            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)] shadow-sm">
               <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                 {waveformHover.timeLabel}
               </div>
@@ -694,7 +694,7 @@ function WaveformLane({
         data-waveform-label-rail
         className={cn(
           W_LOUDNESS_Y_AXIS,
-          "flex shrink-0 items-center justify-end text-[length:var(--ui-fs-axis)] text-muted-foreground"
+          "flex shrink-0 items-center justify-end text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]"
         )}
       >
         {label}

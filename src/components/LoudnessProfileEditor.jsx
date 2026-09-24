@@ -229,7 +229,9 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         onCommit={(next) => onPatch({ value: next ?? undefined })}
       />
 
-      <span className={cn(UNIT_COL_CLASS, "text-muted-foreground/60")}>{meta?.unit}</span>
+      <span className={cn(UNIT_COL_CLASS, "text-[color:var(--ui-text-annotation)]")}>
+        {meta?.unit}
+      </span>
 
       <Select
         value={rule.severity ?? "warn"}
@@ -511,7 +513,9 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
               value={ruleDocument.referenceLufs ?? null}
               onCommit={(next) => onEdit((d) => withReferenceLufs(d, next))}
             />
-            <span className={cn(UNIT_COL_CLASS, "text-muted-foreground/60")}>LUFS</span>
+            <span className={cn(UNIT_COL_CLASS, "text-[color:var(--ui-text-annotation)]")}>
+              LUFS
+            </span>
             <span className={SEVERITY_COL_CLASS} />
             <span className={REMOVE_COL_CLASS} />
           </div>

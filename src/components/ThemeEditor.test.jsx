@@ -82,6 +82,8 @@ describe("ThemeEditor", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
 
     expect(screen.getByText("Panel Surface")).toBeTruthy();
+    expect(screen.getByText("Annotation Text")).toBeTruthy();
+    expect(screen.queryByText("Focus Color")).toBeNull();
     expect(screen.getByText("Waveform")).toBeTruthy();
     expect(screen.queryByText(/--/)).toBeNull();
   });

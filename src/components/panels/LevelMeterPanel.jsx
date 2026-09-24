@@ -306,13 +306,13 @@ export function LevelMeterPanel() {
                     showMarker ? "hidden" : "flex"
                   )}
                 >
-                  <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
+                  <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-[color:var(--ui-text-annotation)]">
                     {formatLevelValue(readoutValue)}
                   </span>
                 </div>
                 <div
                   data-level-mode-label
-                  className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
+                  className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-[color:var(--ui-text-annotation)]"
                 >
                   {modeMeta.meterLabel ?? modeMeta.label}
                 </div>
@@ -398,13 +398,13 @@ export function LevelMeterPanel() {
                     data-peak-value
                     className="@max-[48px]:hidden absolute inset-x-0 top-[var(--ui-meter-label-top-inset)] flex justify-center text-[length:var(--ui-fs-display)]"
                   >
-                    <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-muted-foreground">
+                    <span className="w-[5ch] whitespace-nowrap text-center font-[family-name:var(--ui-font-mono)] tabular-nums text-[color:var(--ui-text-annotation)]">
                       {formatLevelValue(readoutValue)}
                     </span>
                   </div>
                   <div
                     data-peak-channel-label
-                    className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-muted-foreground"
+                    className="@max-[24px]:hidden absolute inset-x-0 bottom-[var(--ui-chart-inset-bottom)] text-center text-[length:var(--ui-fs-display)] text-[color:var(--ui-text-annotation)]"
                   >
                     {c.label}
                   </div>

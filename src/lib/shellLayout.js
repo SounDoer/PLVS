@@ -56,7 +56,8 @@ export const FOOTER_VALUE = "min-w-0 truncate tabular-nums text-muted-foreground
 export const FOOTER_DIVIDER = "mx-1.5 h-3 w-px shrink-0 bg-border";
 
 /** Axis tick / caption text (replaces former `.ui-caption`). */
-export const CAPTION_TEXT = "text-[length:var(--ui-fs-axis)] text-muted-foreground";
+export const ANNOTATION_TEXT = "text-[color:var(--ui-text-annotation)]";
+export const CAPTION_TEXT = `text-[length:var(--ui-fs-axis)] ${ANNOTATION_TEXT}`;
 
 /**
  * Bottom metric line shared by panels whose chart area sits above an inline

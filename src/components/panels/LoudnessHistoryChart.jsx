@@ -25,7 +25,7 @@ const LOUDNESS_Y_VIEWPORT = { absMin: -64, absMax: 0, minSpan: 12, scale: "linea
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
 const LOUDNESS_HUD_BOX_POPOVER =
-  "rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground shadow-sm";
+  "rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)] shadow-sm";
 
 export function LoudnessHistoryChart({
   plotAreaRef,

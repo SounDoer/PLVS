@@ -37,8 +37,19 @@ including a bare modifier. Components must not reintroduce a `focus-visible:ring
 `focus-visible:outline-*` of their own; a contract test in
 `src/components/ui/themeColorContract.test.js` fails if one appears.
 
-`--ring` still exists and is still compiled, because menu and list keyboard highlighting
-is a background change (`focus:bg-accent`) rather than an outline and is unaffected.
+`interface.focusRing` still compiles the internal `--ring` compatibility token so existing custom
+themes continue to load, but it is hidden from the Advanced editor and no PLVS component paints
+it. Menu and list keyboard highlighting is a background change (`focus:bg-accent`) and is
+unaffected.
+
+## Annotation Text
+
+`interface.text.annotation` publishes `--ui-text-annotation`. It is the compact technical-text
+role: chart axes, units, channel/mode labels, hover HUD readouts, and other labels that annotate a
+measurement. Explanatory copy and supporting UI labels stay on `interface.text.secondary`.
+
+The 3D spectrogram cannot inherit a DOM text colour, so its `spectrogram.axisLabel` canvas role
+follows Annotation Text by default. Other axes and technical labels consume the CSS token directly.
 
 ## Scaling with Interface Size
 

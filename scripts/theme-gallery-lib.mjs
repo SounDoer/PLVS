@@ -288,11 +288,9 @@ export function buildSemanticGallerySvg(themeId, manifest) {
   sections.push(
     `<text x="860" y="714" fill="${secondary}" font-size="14">Intensity</text><rect x="860" y="732" width="492" height="64" rx="10" fill="url(#intensity)"/>`
   );
+  sections.push(`<text x="860" y="838" fill="${secondary}" font-size="14">Border / shadow effects</text>`);
   sections.push(
-    `<text x="860" y="838" fill="${secondary}" font-size="14">Focus / border / shadow effects</text>`
-  );
-  sections.push(
-    `<rect x="860" y="862" width="492" height="128" rx="14" fill="${role("interface.surface.raised")}" stroke="${border}" stroke-width="2"/><rect x="890" y="892" width="180" height="54" rx="9" fill="${role("interface.surface.control")}" stroke="${role("interface.focusRing")}" stroke-width="3"/><text x="914" y="926" fill="${primary}" font-size="15">Focused Control</text>`
+    `<rect x="860" y="862" width="492" height="128" rx="14" fill="${role("interface.surface.raised")}" stroke="${border}" stroke-width="2"/><rect x="890" y="892" width="180" height="54" rx="9" fill="${role("interface.surface.control")}"/><text x="914" y="926" fill="${primary}" font-size="15">Raised Control</text>`
   );
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Inter, Segoe UI, sans-serif">${sections.join("")}</svg>`,

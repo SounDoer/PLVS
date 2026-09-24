@@ -247,10 +247,10 @@ export function VectorscopePolarPlot({
       <canvas ref={canvasRef} className="block h-full w-full" aria-hidden />
       {showLabels ? (
         <>
-          <span className="pointer-events-none absolute bottom-0 left-0 max-w-[42%] truncate text-[length:var(--ui-fs-axis)] font-medium text-muted-foreground">
+          <span className="pointer-events-none absolute bottom-0 left-0 max-w-[42%] truncate text-[length:var(--ui-fs-axis)] font-medium text-[color:var(--ui-text-annotation)]">
             {firstLabel}
           </span>
-          <span className="pointer-events-none absolute bottom-0 right-0 max-w-[42%] truncate text-right text-[length:var(--ui-fs-axis)] font-medium text-muted-foreground">
+          <span className="pointer-events-none absolute bottom-0 right-0 max-w-[42%] truncate text-right text-[length:var(--ui-fs-axis)] font-medium text-[color:var(--ui-text-annotation)]">
             {secondLabel}
           </span>
         </>

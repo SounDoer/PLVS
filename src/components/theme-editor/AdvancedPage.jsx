@@ -38,7 +38,9 @@ function interfaceGroup(roleId) {
 }
 
 const ADVANCED_SECTIONS = Object.entries(
-  THEME_ROLE_REGISTRY.filter((role) => role.advanced).reduce((sections, role) => {
+  THEME_ROLE_REGISTRY.filter(
+    (role) => role.advanced && role.advanced.editorVisible !== false
+  ).reduce((sections, role) => {
     (sections[role.advanced.section] ??= []).push(role);
     return sections;
   }, {})

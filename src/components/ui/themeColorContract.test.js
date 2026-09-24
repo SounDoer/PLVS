@@ -40,6 +40,30 @@ describe("theme color contract", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("routes technical annotations through the public Annotation Text role", () => {
+    const registry = readFileSync(
+      new URL("../../theme/themeRoleRegistry.js", import.meta.url),
+      "utf8"
+    );
+    const consumers = [
+      "../panels/LoudnessHistoryChart.jsx",
+      "../panels/SpectrogramPanel.jsx",
+      "../panels/SpectrumPanel.jsx",
+      "../panels/StereoMapPanel.jsx",
+      "../panels/WaveformPanel.jsx",
+      "../panels/LevelMeterPanel.jsx",
+      "../../lib/shellLayout.js",
+    ];
+
+    expect(registry).toContain('css: ["--ui-text-annotation"]');
+    expect(registry).toMatch(/"spectrogram\.axisLabel"[\s\S]*?"interface\.text\.annotation"/);
+    for (const path of consumers) {
+      expect(readFileSync(new URL(path, import.meta.url), "utf8"), path).toContain(
+        "--ui-text-annotation"
+      );
+    }
+  });
+
   it("never spends the accent surface on hover", () => {
     // `--accent` marks what is currently active. Hover is where the pointer is,
     // which is not the same claim and must not borrow the same color.
