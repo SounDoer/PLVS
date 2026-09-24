@@ -41,7 +41,7 @@ describe("customThemesRepo", () => {
     expect(listCustomThemes()).toEqual({});
   });
 
-  it("reads V1 without writeback, then persists V2 on the next explicit mutation", () => {
+  it("reads V1 without writeback, then persists the current shape on explicit mutation", () => {
     const old = mk("custom-old", "Old");
     localStorage.setItem(
       "plvs:themes",
@@ -55,7 +55,10 @@ describe("customThemesRepo", () => {
 
     upsertCustomTheme({ ...listCustomThemes()["custom-old"], name: "Updated" });
     const stored = JSON.parse(localStorage.getItem("plvs:themes"));
-    expect(stored.themes["custom-old"].version).toBe(2);
+    expect(stored.themes["custom-old"]).toMatchObject({
+      formatVersion: 1,
+      semanticsVersion: 1,
+    });
     expect(stored.themes["custom-old"].name).toBe("Updated");
   });
 

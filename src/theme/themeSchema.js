@@ -1,6 +1,7 @@
 import { normalizeOpaqueColor } from "./themeColorMath.js";
 
-export const THEME_DOCUMENT_VERSION = 2;
+export const THEME_FORMAT_VERSION = 1;
+export const THEME_SEMANTICS_VERSION = 1;
 export const THEME_NAME_MAX_LENGTH = 64;
 
 export const CORE_COLOR_KEYS = Object.freeze([
@@ -123,15 +124,20 @@ function normalizeOverrides(raw) {
 }
 
 /**
- * Normalize a Theme V2 authoring document. Registry compatibility is validated by the compiler;
- * this boundary validates the versioned persisted shape and color/palette structure only.
+ * Normalize the current Theme authoring shape. Registry compatibility is a separate boundary;
+ * this function validates only declared versions and color/palette structure.
  *
  * @param {unknown} raw
  * @returns {object|null}
  */
-export function normalizeThemeV2(raw) {
+export function normalizeThemeDocumentShape(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  if (raw.version !== THEME_DOCUMENT_VERSION) return null;
+  if (
+    raw.formatVersion !== THEME_FORMAT_VERSION ||
+    raw.semanticsVersion !== THEME_SEMANTICS_VERSION
+  ) {
+    return null;
+  }
   const id = normalizeThemeId(raw.id);
   const name = normalizeThemeName(raw.name);
   const colorScheme =
@@ -144,17 +150,11 @@ export function normalizeThemeV2(raw) {
   if (!id || !name || !colorScheme || !core || !status || !intensity || !frequency || !overrides) {
     return null;
   }
-  // Documents written before the interface palette existed carry one red for
-  // both the meters and the destructive controls. Seeding the new input from
-  // the old one keeps them looking identical until someone splits them.
-  const interfaceDefault = { presetId: null, critical: status.critical };
-  const interfacePalette =
-    raw.palettes?.interface == null
-      ? interfaceDefault
-      : normalizeSimplePalette(raw.palettes.interface, INTERFACE_COLOR_KEYS);
+  const interfacePalette = normalizeSimplePalette(raw.palettes?.interface, INTERFACE_COLOR_KEYS);
   if (!interfacePalette) return null;
   return {
-    version: THEME_DOCUMENT_VERSION,
+    formatVersion: THEME_FORMAT_VERSION,
+    semanticsVersion: THEME_SEMANTICS_VERSION,
     id,
     name,
     colorScheme,
@@ -164,6 +164,6 @@ export function normalizeThemeV2(raw) {
   };
 }
 
-export function isThemeV2(raw) {
-  return normalizeThemeV2(raw) !== null;
+export function isCurrentThemeDocument(raw) {
+  return normalizeThemeDocumentShape(raw) !== null;
 }

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { compileTheme } from "./compileTheme.js";
+import { compileTheme, ThemeCompilerError } from "./compileTheme.js";
 import { applyPalettePreset } from "./palettePresets.js";
 import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
 
 function authoringTheme(overrides = {}) {
   return {
-    version: 2,
+    formatVersion: 1,
+    semanticsVersion: 1,
     id: "test-theme",
     name: "Test Theme",
     colorScheme: "dark",
@@ -22,6 +23,7 @@ function authoringTheme(overrides = {}) {
       status: applyPalettePreset("status", "status-plvs"),
       intensity: applyPalettePreset("intensity", "intensity-inferno"),
       frequency: applyPalettePreset("frequency", "frequency-plvs"),
+      interface: { presetId: null, critical: "#f94144" },
     },
     overrides: {},
     ...overrides,
@@ -119,6 +121,22 @@ describe("compileTheme", () => {
     ).toThrow("is not compatible");
   });
 
+  it("reports compiler failures with stable codes and paths", () => {
+    let error;
+    try {
+      compileTheme(
+        authoringTheme({ overrides: { "missing.role": { kind: "color", value: "#123456" } } })
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(ThemeCompilerError);
+    expect(error.issues).toEqual([
+      expect.objectContaining({ code: "unknownRole", path: "$.overrides.missing.role" }),
+    ]);
+  });
+
   it("keeps effect opacity separate from its source color", () => {
     const resolved = compileTheme(authoringTheme());
 
@@ -127,6 +145,31 @@ describe("compileTheme", () => {
       opacity: 0.09,
     });
     expect(resolved.css["--border"]).toBe("rgba(255, 255, 255, 0.09)");
+  });
+
+  it("preserves compiler-owned opacity for a color override on an effect role", () => {
+    const resolved = compileTheme(
+      authoringTheme({
+        overrides: {
+          "interface.border.default": { kind: "color", value: "#112233" },
+        },
+      })
+    );
+
+    expect(resolved.roles["interface.border.default"]).toEqual({
+      color: "#112233",
+      opacity: 0.09,
+    });
+  });
+
+  it("refuses a recipe result that does not match its registered value kind", () => {
+    const registry = THEME_ROLE_REGISTRY.map((entry) =>
+      entry.id === "interface.surface.panel" ? { ...entry, valueKind: "colorEffect" } : entry
+    );
+
+    expect(() => compileTheme(authoringTheme(), { registry })).toThrow(
+      "Recipe surface-panel outputs solidColor, not colorEffect, for interface.surface.panel."
+    );
   });
 
   it("supports explicit leaf effect overrides without making Core colors translucent", () => {

@@ -111,7 +111,7 @@ need it. When adding a top-level directory, add a row in the same commit.
 | `analysis/` | Analysis requests derived from panel configuration |
 | `lib/` | Engine integration and history storage (FrameIntake, history slabs, etc.) |
 | `math/` | Pure functions: history paths, formatting, spectrum and channel-layout calculations |
-| `theme/` | Theme V2: built-in themes, Role Registry, compiler, runtime publication, V1 migration |
+| `theme/` | Theme documents, explicit format/semantics migration, typed Role Registry and recipes, compiler, runtime publication |
 | `preferences/` | Non-colour interface tuning (layout, fonts, radii, interface size) and applying it to the document |
 | `config/` | Static configuration shared with the Rust DSP, such as scale definitions |
 | `settings/` | Setting defaults and option lists |
@@ -204,16 +204,16 @@ First-paint flow (`src/main.jsx`):
 
 1. Read `appearance` (`system`|`fixed`) and `themeId` through `settingsStore` (under Tauri, Rust pre-injects `window.__PLVS_INITIAL_STATE__`; the browser dev environment uses `localStorage`)
 2. `resolveThemeId` (with `prefers-color-scheme`) → current `themeId`
-3. `themeRegistry` returns the built-in or migrated custom V2 authoring document
-4. `compileTheme` compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
+3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 1`, `semanticsVersion: 1`)
+4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
 5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles only layout / font size / geometry / non-colour variables
 
 **Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005):
 
 | Layer            | Output                                                                                                            | Defined / published in                                                      |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Authoring intent | Core Colors, Status / Intensity / Frequency / Interface Palettes, sparse Advanced overrides (unused by built-ins) | `builtinThemesV2.js` or a persisted V2 document                             |
-| Resolved roles   | Complete interface, instrument, effect and native roles                                                           | `themeRoleRegistry.js` → `compileTheme.js`                                  |
+| Authoring intent | Versioned Core Colors, Status / Intensity / Frequency / Interface Palettes, sparse Advanced overrides (unused by built-ins) | `builtinThemesV2.js` or a migrated persisted document                       |
+| Resolved roles   | Complete `solidColor`, `colorEffect`, and `colorScale` interface, instrument, effect and native roles              | `themeRoleRegistry.js` + `themeRecipes.js` → `compileTheme.js`              |
 | CSS / SVG        | `--background`, `--foreground`, `--primary` and `--ui-*` color tokens                                             | Resolved Theme `css` → `themeRuntime.js`                                    |
 | Canvas           | Colour bundles for Waveform, Vectorscope, Stereo Map, Spectrogram, etc.                                           | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
 | UI layout        | Non-colour `--ui-*`: font size, spacing, radius, line width                                                       | `data.js` → `applyLayoutToDocument`                                         |

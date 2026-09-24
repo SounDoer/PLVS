@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import { applyPalettePreset } from "./palettePresets.js";
-import { isThemeV2, normalizeThemeName, normalizeThemeV2 } from "./themeSchema.js";
+import {
+  isCurrentThemeDocument,
+  normalizeThemeDocumentShape,
+  normalizeThemeName,
+} from "./themeSchema.js";
 
 function validTheme(overrides = {}) {
   return {
-    version: 2,
+    formatVersion: 1,
+    semanticsVersion: 1,
     id: "custom.sunrise",
     name: "Sunrise",
     colorScheme: "light",
@@ -21,13 +26,14 @@ function validTheme(overrides = {}) {
       status: applyPalettePreset("status", "status-plvs"),
       intensity: applyPalettePreset("intensity", "intensity-inferno"),
       frequency: applyPalettePreset("frequency", "frequency-plvs"),
+      interface: { presetId: null, critical: "#f94144" },
     },
     overrides: {},
     ...overrides,
   };
 }
 
-describe("normalizeThemeV2", () => {
+describe("normalizeThemeDocumentShape", () => {
   it("normalizes the persisted authoring shape deterministically", () => {
     const raw = validTheme({
       name: "  Sunrise  ",
@@ -39,8 +45,9 @@ describe("normalizeThemeV2", () => {
       ignored: true,
     });
 
-    expect(normalizeThemeV2(raw)).toEqual({
-      version: 2,
+    expect(normalizeThemeDocumentShape(raw)).toEqual({
+      formatVersion: 1,
+      semanticsVersion: 1,
       id: "custom.sunrise",
       name: "Sunrise",
       colorScheme: "light",
@@ -54,7 +61,6 @@ describe("normalizeThemeV2", () => {
       },
       palettes: {
         ...raw.palettes,
-        interface: { presetId: null, critical: raw.palettes.status.critical },
       },
       overrides: {
         "waveform.centroid": { kind: "color", value: "#ffffff" },
@@ -64,50 +70,48 @@ describe("normalizeThemeV2", () => {
     });
   });
 
-  it("seeds the interface palette from status critical when a document predates it", () => {
+  it("does not invent a missing interface palette", () => {
     const raw = validTheme();
     raw.palettes.status.critical = "#d03535";
     delete raw.palettes.interface;
-    expect(normalizeThemeV2(raw)?.palettes.interface).toEqual({
-      presetId: null,
-      critical: "#d03535",
-    });
+    expect(normalizeThemeDocumentShape(raw)).toBeNull();
   });
 
   it("keeps an interface critical that differs from the status one", () => {
     const raw = validTheme();
     raw.palettes.status.critical = "#d03535";
     raw.palettes.interface = { critical: "#df202e" };
-    expect(normalizeThemeV2(raw)?.palettes.interface.critical).toBe("#df202e");
-    expect(normalizeThemeV2(raw)?.palettes.status.critical).toBe("#d03535");
+    expect(normalizeThemeDocumentShape(raw)?.palettes.interface.critical).toBe("#df202e");
+    expect(normalizeThemeDocumentShape(raw)?.palettes.status.critical).toBe("#d03535");
   });
 
   it("rejects a present but malformed interface palette", () => {
     const raw = validTheme();
     raw.palettes.interface = { critical: "not a color" };
-    expect(normalizeThemeV2(raw)).toBeNull();
+    expect(normalizeThemeDocumentShape(raw)).toBeNull();
   });
 
   it("allows an unknown preset ID because palette values are saved snapshots", () => {
     const raw = validTheme();
     raw.palettes.status.presetId = "status-future";
-    expect(normalizeThemeV2(raw)?.palettes.status.presetId).toBe("status-future");
+    expect(normalizeThemeDocumentShape(raw)?.palettes.status.presetId).toBe("status-future");
   });
 
   it.each([
-    ["wrong version", { version: 1 }],
+    ["wrong format version", { formatVersion: 2 }],
+    ["wrong semantics version", { semanticsVersion: 2 }],
     ["invalid ID", { id: "bad id" }],
     ["invalid scheme", { colorScheme: "system" }],
     ["empty name", { name: "   " }],
     ["missing core role", { core: { workspace: "#000000" } }],
   ])("rejects %s", (_label, override) => {
-    expect(normalizeThemeV2(validTheme(override))).toBeNull();
+    expect(normalizeThemeDocumentShape(validTheme(override))).toBeNull();
   });
 
   it("rejects alpha-bearing identity colors", () => {
     const raw = validTheme();
     raw.core.workspace = "rgb(0 0 0 / 0.5)";
-    expect(normalizeThemeV2(raw)).toBeNull();
+    expect(normalizeThemeDocumentShape(raw)).toBeNull();
   });
 
   it.each([
@@ -133,18 +137,20 @@ describe("normalizeThemeV2", () => {
   ])("rejects invalid Intensity stops", (stops) => {
     const raw = validTheme();
     raw.palettes.intensity.stops = stops;
-    expect(normalizeThemeV2(raw)).toBeNull();
+    expect(normalizeThemeDocumentShape(raw)).toBeNull();
   });
 
   it("rejects malformed overrides", () => {
     expect(
-      normalizeThemeV2(validTheme({ overrides: { "waveform.centroid": { kind: "magic" } } }))
+      normalizeThemeDocumentShape(
+        validTheme({ overrides: { "waveform.centroid": { kind: "magic" } } })
+      )
     ).toBeNull();
   });
 
   it("provides a boolean version guard", () => {
-    expect(isThemeV2(validTheme())).toBe(true);
-    expect(isThemeV2({ version: 2 })).toBe(false);
+    expect(isCurrentThemeDocument(validTheme())).toBe(true);
+    expect(isCurrentThemeDocument({ formatVersion: 1, semanticsVersion: 1 })).toBe(false);
   });
 });
 

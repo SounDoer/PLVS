@@ -841,3 +841,26 @@ native Glass remain named focused cases. They must be promoted to automated scen
 the same metadata/report convention as the relevant platform or interaction harness becomes
 available. A focused case is not represented as covered merely because a synthetic Semantic
 Gallery example resembles it.
+
+## Phase 2 implementation boundary — 2026-09-24
+
+Phase 2 establishes the contract/compiler boundary without changing built-in colors, public role
+names, renderer ownership, or default product output. The current authoring document now declares
+`formatVersion: 1` and `semanticsVersion: 1`; the former single `version: 2` shape is accepted only
+by an explicit migration. That migration returns structured notes and owns the historical
+Interface Critical backfill. Ordinary current-shape normalization no longer invents a missing
+palette.
+
+The Role Registry now exposes resolved `valueKind` as `solidColor`, `colorEffect`, or `colorScale`.
+Border, Input Border, and Shadow are effects rather than mislabeled colors. The executable recipe
+catalog is the single source for recipe names, allowed input-kind signatures, output kinds, and
+resolution behavior; both registry construction and compilation validate that contract. A color
+override on an effect role replaces its color while retaining compiler-owned opacity, preserving
+the approved authored-color/product-composition boundary.
+
+Shape validation and current-registry compatibility validation are separate functions. Compiler
+failures expose stable codes and paths for invalid registries, recipes, graphs, override intent,
+and resolved values instead of relying only on generic exception text. Agent Control's strict
+authoring contract and examples use the two version fields. These changes deliberately retain the
+existing role vocabulary and legacy explicit effect override representation until the later
+renderer-ownership and portable-format phases can migrate them with their full consumers.

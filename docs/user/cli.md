@@ -251,7 +251,7 @@ plvs-cli theme delete <id> --expected-revision <n> --json [--dry-run]
 plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
 ```
 
-See [Theme Control](../agent-control/themes.md) for Theme V2 authoring, built-in permissions, selection
+See [Theme Control](../agent-control/themes.md) for Theme authoring, built-in permissions, selection
 and fallback semantics, revision behavior, and editor blocking.
 
 Everything configuration export uses the same `.plvsconfig` document as Settings:

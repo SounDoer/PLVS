@@ -7,7 +7,7 @@ export function isCustomThemeId(id) {
 
 const defaultMakeId = () => `${CUSTOM_THEME_ID_PREFIX}${crypto.randomUUID()}`;
 
-/** Snapshot a Theme V2 authoring document into a new unsaved custom-theme draft. */
+/** Snapshot a current Theme authoring document into a new unsaved custom-theme draft. */
 export function makeCustomThemeV2FromBase(base, name, makeId = defaultMakeId) {
   return {
     ...structuredClone(base),

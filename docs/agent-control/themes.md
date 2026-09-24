@@ -61,17 +61,18 @@ order, followed by custom Themes in persisted order:
 }
 ```
 
-`theme describe <id>` accepts either kind and returns the complete normalized Theme V2 authoring
+`theme describe <id>` accepts either kind and returns the complete normalized current Theme authoring
 document with `kind`, `active`, and custom-library `index` (`null` for a built-in). It never exposes
 compiled tokens, CSS variables, generated CSS, or editor state.
 
-## Theme V2 authoring document
+## Theme authoring document
 
 `create` and `update` read one complete UTF-8 JSON document from a file or `-` for stdin:
 
 ```json
 {
-  "version": 2,
+  "formatVersion": 1,
+  "semanticsVersion": 1,
   "name": "Studio",
   "colorScheme": "dark",
   "core": {
@@ -109,7 +110,8 @@ compiled tokens, CSS variables, generated CSS, or editor state.
 ```
 
 The document must omit `id`: create generates it and update takes it from the command line. The
-document is strict and complete, not JSON Patch. `version` must be 2; `name` must trim to non-empty;
+document is strict and complete, not JSON Patch. `formatVersion` and `semanticsVersion` must each be
+1; `name` must trim to non-empty;
 `colorScheme` is `light` or `dark`; all required core and palette members must be present. Override
 keys must name public compiler roles, colors must be valid CSS colors, intensity stops must be
 ordered from 0 through 1, and a non-null palette `presetId` must match that palette's canonical
@@ -154,7 +156,7 @@ Theme's same-scheme `fallbackThemeId`.
 ## Revision, persistence, and editors
 
 Every mutation requires `--expected-revision`. Theme revision identity includes Appearance mode and
-fixed selection, custom Theme order, and every complete normalized custom Theme V2 document. It
+fixed selection, custom Theme order, and every complete normalized current Theme document. It
 excludes built-in constants and the environmentally resolved System Theme. GUI and CLI operations
 therefore participate in the same optimistic-concurrency boundary.
 

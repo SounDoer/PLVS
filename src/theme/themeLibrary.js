@@ -1,23 +1,25 @@
 import { BUILTIN_THEMES_V2, THEME_IDS } from "./builtinThemesV2.js";
-import { compileTheme } from "./compileTheme.js";
+import { compileTheme, ThemeCompilerError } from "./compileTheme.js";
 import { isCustomThemeId } from "./customTheme.js";
 import { getPalettePreset } from "./palettePresets.js";
-import { getThemeRole } from "./themeRoleRegistry.js";
+import { validateThemeRegistryCompatibility } from "./themeRegistryCompatibility.js";
 import {
   CORE_COLOR_KEYS,
   FREQUENCY_COLOR_KEYS,
   INTERFACE_COLOR_KEYS,
   STATUS_COLOR_KEYS,
-  THEME_DOCUMENT_VERSION,
+  THEME_FORMAT_VERSION,
   THEME_NAME_MAX_LENGTH,
+  THEME_SEMANTICS_VERSION,
   normalizeThemeId,
   normalizeThemeName,
-  normalizeThemeV2,
+  normalizeThemeDocumentShape,
 } from "./themeSchema.js";
 import { normalizeOpaqueColor } from "./themeColorMath.js";
 
 const DOCUMENT_FIELDS = new Set([
-  "version",
+  "formatVersion",
+  "semanticsVersion",
   "name",
   "colorScheme",
   "core",
@@ -168,18 +170,6 @@ function validateOverrides(raw, issues) {
       continue;
     }
     unknownFields(override, allowedFields, overridePath, issues);
-    const role = getThemeRole(roleId);
-    if (!role) {
-      issues.push(issue("unknownRole", overridePath, `Unknown Theme role: ${roleId}.`));
-    } else if (!role.advanced || !role.advanced.allowedModes.includes(override.kind)) {
-      issues.push(
-        issue(
-          "overrideNotAllowed",
-          `${overridePath}.kind`,
-          `Override kind ${override.kind} is not allowed for ${roleId}.`
-        )
-      );
-    }
     if (override.kind === "color") validateColor(override.value, `${overridePath}.value`, issues);
     if (override.kind === "effect") {
       validateColor(override.color, `${overridePath}.color`, issues);
@@ -199,14 +189,6 @@ function validateOverrides(raw, issues) {
         issues.push(
           issue("invalidReference", `${overridePath}.source`, "source must be a valid role ID.")
         );
-      } else if (role && !role.advanced?.references.includes(override.source)) {
-        issues.push(
-          issue(
-            "incompatibleReference",
-            `${overridePath}.source`,
-            `Reference ${override.source} is not compatible with ${roleId}.`
-          )
-        );
       }
     }
   }
@@ -221,7 +203,7 @@ export class ThemeDocumentError extends Error {
   }
 }
 
-/** Strictly validate and normalize a complete, id-free public Theme V2 authoring document. */
+/** Strictly validate and normalize a complete, id-free current public Theme document. */
 export function validateThemeDocument(raw) {
   if (!isPlainObject(raw)) {
     throw new ThemeDocumentError([
@@ -230,8 +212,23 @@ export function validateThemeDocument(raw) {
   }
   const issues = [];
   unknownFields(raw, DOCUMENT_FIELDS, "$", issues);
-  if (raw.version !== THEME_DOCUMENT_VERSION) {
-    issues.push(issue("invalidVersion", "$.version", `version must be ${THEME_DOCUMENT_VERSION}.`));
+  if (raw.formatVersion !== THEME_FORMAT_VERSION) {
+    issues.push(
+      issue(
+        "unsupportedFormatVersion",
+        "$.formatVersion",
+        `formatVersion must be ${THEME_FORMAT_VERSION}.`
+      )
+    );
+  }
+  if (raw.semanticsVersion !== THEME_SEMANTICS_VERSION) {
+    issues.push(
+      issue(
+        "unsupportedSemanticsVersion",
+        "$.semanticsVersion",
+        `semanticsVersion must be ${THEME_SEMANTICS_VERSION}.`
+      )
+    );
   }
   if (!normalizeThemeName(raw.name)) {
     issues.push(
@@ -256,9 +253,14 @@ export function validateThemeDocument(raw) {
     validateSimplePalette(raw.palettes.interface, "interface", INTERFACE_COLOR_KEYS, issues);
   }
   validateOverrides(raw.overrides, issues);
+  issues.push(...validateThemeRegistryCompatibility(raw));
   if (issues.length > 0) throw new ThemeDocumentError(issues);
 
-  const normalized = normalizeThemeV2({ ...raw, name: raw.name.trim(), id: "custom-authoring" });
+  const normalized = normalizeThemeDocumentShape({
+    ...raw,
+    name: raw.name.trim(),
+    id: "custom-authoring",
+  });
   if (!normalized) {
     throw new ThemeDocumentError([
       issue("invalidTheme", "$", "The Theme document could not be normalized."),
@@ -267,6 +269,9 @@ export function validateThemeDocument(raw) {
   try {
     compileTheme(normalized);
   } catch (error) {
+    if (error instanceof ThemeCompilerError) {
+      throw new ThemeDocumentError(error.issues);
+    }
     throw new ThemeDocumentError([
       issue(
         "compilerIncompatible",
@@ -366,7 +371,7 @@ function generatedTheme(state, document, makeId) {
       ]),
     };
   }
-  return { theme: normalizeThemeV2({ id, ...document }) };
+  return { theme: normalizeThemeDocumentShape({ id, ...document }) };
 }
 
 export function planThemeCreate(state, rawDocument, { makeId } = {}) {
@@ -402,8 +407,8 @@ export function planThemeUpdate(state, themeId, rawDocument) {
   const target = mutableTheme(state, themeId);
   if (target.error) return target.error;
   return validatedPlan(state, rawDocument, (document) => {
-    const theme = normalizeThemeV2({ id: themeId, ...document });
-    if (JSON.stringify(theme) === JSON.stringify(normalizeThemeV2(target.theme)))
+    const theme = normalizeThemeDocumentShape({ id: themeId, ...document });
+    if (JSON.stringify(theme) === JSON.stringify(normalizeThemeDocumentShape(target.theme)))
       return { ...invalid(state, []), theme };
     return {
       state: { ...state, themes: state.themes.map((item) => (item.id === themeId ? theme : item)) },

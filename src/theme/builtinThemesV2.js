@@ -21,7 +21,8 @@ export function isThemeId(id) {
 
 function makeBuiltin({ id, name, colorScheme, core, status, interfaceCritical, frequency }) {
   return {
-    version: 2,
+    formatVersion: 1,
+    semanticsVersion: 1,
     id,
     name,
     colorScheme,

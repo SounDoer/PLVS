@@ -8,7 +8,7 @@ function readState() {
   return { themes, order };
 }
 
-/** @returns {Record<string, object>} normalized Theme V2 documents keyed by id */
+/** @returns {Record<string, object>} normalized current Theme documents keyed by id */
 export function listCustomThemes() {
   const { themes } = readState();
   /** @type {Record<string, object>} */
@@ -22,12 +22,12 @@ export function listCustomThemes() {
   return out;
 }
 
-/** @returns {Record<string, object>} normalized Theme V2 documents keyed by id */
+/** @returns {Record<string, object>} normalized current Theme documents keyed by id */
 export function listCustomThemeDocuments() {
   return listCustomThemes();
 }
 
-/** @returns {object[]} normalized Theme V2 documents in display order */
+/** @returns {object[]} normalized current Theme documents in display order */
 export function listCustomThemeDocumentsOrdered() {
   return listCustomThemesOrdered();
 }

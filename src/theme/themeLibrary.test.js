@@ -41,14 +41,32 @@ function state(selectedThemeId = null) {
 }
 
 describe("Theme Control authoring validation", () => {
-  it("returns a normalized id-free Theme V2 document", () => {
+  it("returns a normalized id-free current Theme document", () => {
     const document = validateThemeDocument({
       ...authoring(),
       core: { ...authoring().core, workspace: "rgb(16 17 20)" },
     });
-    expect(document).toMatchObject({ version: 2, name: "Studio", colorScheme: "dark" });
+    expect(document).toMatchObject({
+      formatVersion: 1,
+      semanticsVersion: 1,
+      name: "Studio",
+      colorScheme: "dark",
+    });
     expect(document.core.workspace).toBe("#101114");
     expect(document).not.toHaveProperty("id");
+  });
+
+  it("reports format and semantics incompatibilities independently", () => {
+    expect(() =>
+      validateThemeDocument(authoring({ formatVersion: 2, semanticsVersion: 2 }))
+    ).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "unsupportedFormatVersion" }),
+          expect.objectContaining({ code: "unsupportedSemanticsVersion" }),
+        ]),
+      })
+    );
   });
 
   it("rejects unknown, incomplete, repairable, palette, stop, and override input", () => {

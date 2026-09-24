@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { BUILTIN_THEMES_V2, getBuiltinThemeV2 } from "./builtinThemesV2.js";
 import { compileTheme } from "./compileTheme.js";
 import { V1_BUILTIN_RESOLVED } from "./fixtures/v1BuiltinResolved.js";
-import { isThemeV2 } from "./themeSchema.js";
+import { isCurrentThemeDocument } from "./themeSchema.js";
 
 const REVIEWED_NON_EXACT = new Set(["--ui-loudness-grid", "--ui-vectorscope-grid-stroke"]);
 
@@ -37,7 +37,7 @@ const ADOPTED_AUTOMATIC = {
 
 describe("Theme V2 builtins", () => {
   it.each(Object.keys(BUILTIN_THEMES_V2))("normalizes and compiles %s", (id) => {
-    expect(isThemeV2(BUILTIN_THEMES_V2[id])).toBe(true);
+    expect(isCurrentThemeDocument(BUILTIN_THEMES_V2[id])).toBe(true);
     expect(() => compileTheme(BUILTIN_THEMES_V2[id])).not.toThrow();
   });
 

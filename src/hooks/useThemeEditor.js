@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
 import { applyPalettePreset } from "../theme/palettePresets.js";
-import { normalizeThemeName, normalizeThemeV2 } from "../theme/themeSchema.js";
+import { normalizeThemeDocumentShape, normalizeThemeName } from "../theme/themeSchema.js";
 
 const noop = () => {};
 
@@ -268,7 +268,7 @@ export function useThemeEditor(opts) {
     draft,
     dirty,
     stale,
-    canSave: normalizeThemeV2(draft) != null,
+    canSave: normalizeThemeDocumentShape(draft) != null,
     canUndo: historyAvailability.undo,
     canRedo: historyAvailability.redo,
     beginCreate,

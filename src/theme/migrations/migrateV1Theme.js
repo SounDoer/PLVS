@@ -1,5 +1,5 @@
 import { resolveV1Theme } from "../legacy/resolveV1Theme.js";
-import { normalizeThemeV2 } from "../themeSchema.js";
+import { normalizeThemeDocumentShape } from "../themeSchema.js";
 
 const SEMANTIC_ROLE_BINDINGS = {
   "--card": "interface.surface.panel",
@@ -36,7 +36,7 @@ function overrideFromCss(value) {
   };
 }
 
-/** Convert one valid legacy custom-theme document into normalized Theme V2 authoring intent. */
+/** Convert one valid legacy custom-theme document into current authoring intent. */
 export function migrateV1Theme(raw) {
   if (!raw || typeof raw !== "object" || raw.version != null) return null;
   if (typeof raw.id !== "string" || !raw.id.startsWith("custom-")) return null;
@@ -85,8 +85,9 @@ export function migrateV1Theme(raw) {
     color: rgbHex(channels[0], channels[1], channels[2]),
   }));
 
-  return normalizeThemeV2({
-    version: 2,
+  return normalizeThemeDocumentShape({
+    formatVersion: 1,
+    semanticsVersion: 1,
     id: raw.id,
     name: raw.name.trim().slice(0, 64),
     colorScheme: raw.colorScheme,
@@ -112,13 +113,67 @@ export function migrateV1Theme(raw) {
         mid: css["--ui-waveform-frequency-mid"],
         high: css["--ui-waveform-frequency-high"],
       },
+      interface: { presetId: null, critical: raw.seeds.signal.bad },
     },
     overrides,
   });
 }
 
-/** One versioned ingress for individual custom-theme documents. */
+/** Explicitly migrate the former single-version Theme V2 shape. */
+export function migrateV2Theme(raw) {
+  if (!raw || typeof raw !== "object" || raw.version !== 2) return null;
+  return normalizeThemeDocumentShape({
+    ...raw,
+    formatVersion: 1,
+    semanticsVersion: 1,
+    palettes: {
+      ...raw.palettes,
+      interface: raw.palettes?.interface ?? {
+        presetId: null,
+        critical: raw.palettes?.status?.critical,
+      },
+    },
+    version: undefined,
+  });
+}
+
+export function migrateThemeDocument(raw) {
+  const current = normalizeThemeDocumentShape(raw);
+  if (current) return { theme: current, notes: [] };
+  const v2 = migrateV2Theme(raw);
+  if (v2) {
+    return {
+      theme: v2,
+      notes: [
+        {
+          code: "split-version-fields",
+          message: "Replaced Theme V2 with formatVersion 1 and semanticsVersion 1.",
+        },
+        ...(raw.palettes?.interface == null
+          ? [
+              {
+                code: "seed-interface-critical",
+                message: "Seeded Interface Critical from Status Critical.",
+              },
+            ]
+          : []),
+      ],
+    };
+  }
+  const v1 = migrateV1Theme(raw);
+  if (!v1) return null;
+  return {
+    theme: v1,
+    notes: [
+      {
+        code: "migrate-legacy-theme",
+        message: "Migrated the legacy unversioned Theme to the current format and semantics.",
+      },
+    ],
+  };
+}
+
+/** One versioned ingress for individual persisted custom-theme documents. */
 export function normalizeThemeDocument(raw) {
-  if (raw?.version === 2) return normalizeThemeV2(raw);
-  return migrateV1Theme(raw);
+  return migrateThemeDocument(raw)?.theme ?? null;
 }

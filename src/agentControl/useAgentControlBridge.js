@@ -64,7 +64,7 @@ import {
 import { PackValidationError } from "../transfer/packShape.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { listThemeSummaries } from "../theme/themeLibrary.js";
-import { normalizeThemeV2 } from "../theme/themeSchema.js";
+import { normalizeThemeDocumentShape } from "../theme/themeSchema.js";
 import {
   planPresetApply,
   planPresetApplyResources,
@@ -220,7 +220,7 @@ function themeStateSignature(state) {
         state?.appearance?.mode === "fixed" ? (state.appearance.selectedThemeId ?? null) : null,
     },
     themes: (Array.isArray(state?.themes) ? state.themes : [])
-      .map((theme) => normalizeThemeV2(theme))
+      .map((theme) => normalizeThemeDocumentShape(theme))
       .filter(Boolean),
   });
 }

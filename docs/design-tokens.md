@@ -2,7 +2,8 @@
 
 PLVS UI token system — established from design review, May 2026.  
 Implement via `src/preferences/data.js` + `src/preferences/applyDocumentTheme.js`.  
-Color themes are V2 authoring documents compiled through `src/theme/compileTheme.js`.
+Color themes are format- and semantics-versioned authoring documents compiled through
+`src/theme/compileTheme.js`.
 
 ---
 
@@ -14,8 +15,9 @@ Three layers. Components consume **Semantic** (shadcn) or **Component** tokens o
 Authoring    Six Core Colors, three purpose-specific Palettes, and sparse Advanced overrides.
              Builtins live in builtinThemesV2.js; custom documents use the same schema.
 
-Resolved     themeRoleRegistry.js defines every meaningful visible role and its dependencies.
-             compileTheme.js produces one complete immutable CSS / Canvas / effect contract.
+Resolved     themeRoleRegistry.js defines every meaningful visible role, its value kind, and its
+             dependencies. themeRecipes.js owns executable typed recipe contracts. compileTheme.js
+             produces one complete immutable CSS / Canvas / effect contract.
 
 Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
              Theme colors are written by themeRuntime; layout tokens by applyLayoutToDocument().

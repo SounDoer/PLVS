@@ -1,33 +1,23 @@
-const KNOWN_RECIPES = new Set([
-  "identity",
-  "surface-panel",
-  "surface-raised",
-  "surface-control",
-  "surface-muted",
-  "surface-interactive",
-  "text-primary",
-  "text-secondary",
-  "text-annotation",
-  "border",
-  "input-border",
-  "focus-ring",
-  "shadow",
-  "critical",
-  "companion",
-  "snapshot",
-  "selection",
-  "grid",
-  "grid-subtle",
-  "frequency-neutral",
-  "centroid",
-]);
+import { recipeContract, THEME_RECIPES, THEME_VALUE_KINDS } from "./themeRecipes.js";
 
 const BINDING_KINDS = ["css", "canvas", "native"];
-const ROLE_KINDS = new Set(["color", "palette", "effect"]);
+const ROLE_KINDS = new Set(Object.values(THEME_VALUE_KINDS));
 const AUTHORING_FAMILIES = new Set(["core", "palette"]);
+const LEGACY_KIND_TO_VALUE_KIND = Object.freeze({
+  color: THEME_VALUE_KINDS.SOLID_COLOR,
+  palette: THEME_VALUE_KINDS.COLOR_SCALE,
+  effect: THEME_VALUE_KINDS.COLOR_EFFECT,
+});
 
 function role(id, options) {
-  return { id, dependencies: [], bindings: {}, ...options };
+  const { kind, ...rest } = options;
+  return {
+    id,
+    dependencies: [],
+    bindings: {},
+    valueKind: LEGACY_KIND_TO_VALUE_KIND[kind] ?? kind,
+    ...rest,
+  };
 }
 
 function direct(id, kind = "color", options = {}) {
@@ -207,7 +197,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     ),
   }),
   role("interface.border.default", {
-    kind: "color",
+    kind: "effect",
     family: "interface",
     recipe: "border",
     dependencies: ["core.surface", "core.text"],
@@ -215,7 +205,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     advanced: effectOverride("Interface", "Default Border", "Panel and control separators."),
   }),
   role("interface.border.input", {
-    kind: "color",
+    kind: "effect",
     family: "interface",
     recipe: "input-border",
     dependencies: ["interface.border.default", "core.surface"],
@@ -231,7 +221,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     advanced: colorOverride("Interface", "Focus Ring", "Keyboard focus indicator."),
   }),
   role("interface.shadow", {
-    kind: "color",
+    kind: "effect",
     family: "interface",
     recipe: "shadow",
     dependencies: ["core.workspace", "core.text"],
@@ -715,8 +705,10 @@ export function validateThemeRoleRegistry(roles) {
 
   const bindingOwners = new Map();
   for (const entry of byId.values()) {
-    if (!ROLE_KINDS.has(entry.kind)) errors.push(`Unknown kind for ${entry.id}: ${entry.kind}.`);
-    if (!KNOWN_RECIPES.has(entry.recipe)) {
+    if (!ROLE_KINDS.has(entry.valueKind)) {
+      errors.push(`Unknown value kind for ${entry.id}: ${entry.valueKind}.`);
+    }
+    if (!THEME_RECIPES[entry.recipe]) {
       errors.push(`Unknown recipe for ${entry.id}: ${entry.recipe}.`);
     }
     if (!Array.isArray(entry.dependencies)) {
@@ -727,6 +719,7 @@ export function validateThemeRoleRegistry(roles) {
           errors.push(`Missing dependency for ${entry.id}: ${dependency}.`);
       }
     }
+    validateRecipeContract(entry, byId, errors);
     validateAdvanced(entry, byId, errors);
     validateBindings(entry, bindingOwners, errors);
   }
@@ -757,9 +750,30 @@ function validateAdvanced(entry, byId, errors) {
   for (const reference of references) {
     const source = byId.get(reference);
     if (!source) errors.push(`Missing compatible reference for ${entry.id}: ${reference}.`);
-    else if (source.kind !== entry.kind) {
+    else if (source.valueKind !== entry.valueKind) {
       errors.push(`Incompatible reference for ${entry.id}: ${reference}.`);
     }
+  }
+}
+
+function validateRecipeContract(entry, byId, errors) {
+  const contract = recipeContract(entry.recipe, entry.valueKind);
+  if (!contract || !Array.isArray(entry.dependencies)) return;
+  if (contract.outputKind !== entry.valueKind) {
+    errors.push(
+      `Recipe ${entry.recipe} outputs ${contract.outputKind}, not ${entry.valueKind}, for ${entry.id}.`
+    );
+  }
+  const actualInputs = entry.dependencies.map((dependency) => byId.get(dependency)?.valueKind);
+  const matches = contract.inputKinds.some(
+    (signature) =>
+      signature.length === actualInputs.length &&
+      signature.every((kind, index) => kind === actualInputs[index])
+  );
+  if (!matches && actualInputs.every(Boolean)) {
+    errors.push(
+      `Recipe ${entry.recipe} cannot consume ${actualInputs.join(", ")} for ${entry.id}.`
+    );
   }
 }
 
@@ -772,6 +786,9 @@ function validateBindings(entry, owners, errors) {
     if (!BINDING_KINDS.includes(kind) || !Array.isArray(values)) {
       errors.push(`Invalid binding group for ${entry.id}: ${kind}.`);
       continue;
+    }
+    if (kind === "css" && entry.valueKind === THEME_VALUE_KINDS.COLOR_SCALE) {
+      errors.push(`A colorScale role cannot publish a CSS color binding: ${entry.id}.`);
     }
     for (const value of values) {
       if (typeof value !== "string" || !value.trim()) {
@@ -831,4 +848,4 @@ export function getThemeRole(id) {
   return THEME_ROLES_BY_ID.get(id) ?? null;
 }
 
-export { KNOWN_RECIPES };
+export const KNOWN_RECIPES = new Set(Object.keys(THEME_RECIPES));

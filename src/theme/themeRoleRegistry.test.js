@@ -10,7 +10,7 @@ import {
 function testRole(id, override = {}) {
   return {
     id,
-    kind: "color",
+    valueKind: "solidColor",
     family: "test",
     recipe: "identity",
     dependencies: [],
@@ -66,7 +66,7 @@ describe("Theme Role Registry", () => {
 
   it("reports unknown recipes and incompatible references", () => {
     const errors = validateThemeRoleRegistry([
-      testRole("palette", { kind: "palette", recipe: "unknown" }),
+      testRole("palette", { valueKind: "colorScale", recipe: "unknown" }),
       testRole("color", {
         advanced: {
           section: "Test",
@@ -82,6 +82,26 @@ describe("Theme Role Registry", () => {
     expect(errors).toContain("Incompatible reference for color: palette.");
   });
 
+  it("validates recipe input and output value kinds", () => {
+    const errors = validateThemeRoleRegistry([
+      testRole("source", { valueKind: "colorScale" }),
+      testRole("consumer", {
+        recipe: "surface-panel",
+        dependencies: ["source", "source"],
+      }),
+      testRole("effect", {
+        valueKind: "solidColor",
+        recipe: "border",
+        dependencies: ["consumer", "consumer"],
+      }),
+    ]);
+
+    expect(errors).toContain(
+      "Recipe surface-panel cannot consume colorScale, colorScale for consumer."
+    );
+    expect(errors).toContain("Recipe border outputs colorEffect, not solidColor, for effect.");
+  });
+
   it("reports malformed Advanced metadata and duplicate bindings", () => {
     const errors = validateThemeRoleRegistry([
       testRole("a", {
@@ -94,6 +114,17 @@ describe("Theme Role Registry", () => {
     expect(errors).toContain("Advanced metadata is incomplete for a.");
     expect(errors).toContain("Advanced modes are missing for a.");
     expect(errors).toContain("Duplicate css binding --test: a and b.");
+  });
+
+  it("rejects a color scale published as one CSS color", () => {
+    const errors = validateThemeRoleRegistry([
+      testRole("scale", {
+        valueKind: "colorScale",
+        bindings: { css: ["--invalid-scale"] },
+      }),
+    ]);
+
+    expect(errors).toContain("A colorScale role cannot publish a CSS color binding: scale.");
   });
 
   it("requires every direct authoring role to feed a registered consumer", () => {

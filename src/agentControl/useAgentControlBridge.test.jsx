@@ -4294,7 +4294,7 @@ describe("useAgentControlBridge", () => {
       return { ...document, ...overrides };
     }
 
-    it("inspects Appearance and describes built-in and custom V2 documents", async () => {
+    it("inspects Appearance and describes built-in and custom current documents", async () => {
       seedThemeLibrary([makeTheme("custom-studio", "Studio")]);
       mountWithThemes();
       await waitUntilReady();
@@ -4313,13 +4313,18 @@ describe("useAgentControlBridge", () => {
       });
       expect(builtin.result).toMatchObject({
         revision: 0,
-        theme: { id: "plvs-dark", version: 2 },
+        theme: { id: "plvs-dark", formatVersion: 1, semanticsVersion: 1 },
         kind: "builtin",
         active: true,
         index: null,
       });
       expect(custom.result).toMatchObject({
-        theme: { id: "custom-studio", name: "Studio", version: 2 },
+        theme: {
+          id: "custom-studio",
+          name: "Studio",
+          formatVersion: 1,
+          semanticsVersion: 1,
+        },
         kind: "custom",
         active: false,
         index: 0,
