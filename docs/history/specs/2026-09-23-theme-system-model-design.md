@@ -204,7 +204,31 @@ not begin merely because a decision is recorded here.
   group names. A Contrast description explains that the Palette or Core input controls the solid
   background while the Advanced value controls the text and icons placed on it.
 
+### Interface effect roles
+
+- Advanced exposes only three effect choices: `Border Color`, `Focus Color`, and `Shadow Color`.
+- Theme authors choose opaque colors for these roles. The editor does not expose opacity or alpha
+  controls; effect opacity remains a compiler-owned part of the resolved recipe.
+- Input Border is not a separate authoring choice. It derives from Border Color with a stronger
+  system-managed treatment so controls remain legible without adding a nearly duplicate option.
+- Surface highlights remain internal derivations rather than public Theme roles.
+- Focus means keyboard and accessibility focus indication. Selected, active, and drag states must
+  bind to their own semantics instead of reusing Focus merely because the current rendering looks
+  similar.
+- Shadow geometry, blur, spread, and elevation remain design-system tokens outside Theme
+  authoring. Theme controls only the shadow color; its effective strength is resolved internally.
+- Resolved implementation types still distinguish a solid `Color`, an `Effect` containing color
+  and compiler-owned opacity, and an ordered `Color Scale`. The current registry declarations that
+  label border and shadow outputs as plain colors must be corrected when implementation begins.
+- Authored surface colors remain opaque. Components may still composite surfaces with opacity and
+  backdrop blur, but those compositor treatments are not Theme values and must not silently change
+  the authored color's meaning.
+- The gallery compares fully opaque surfaces, the current translucent treatments, and translucency
+  limited to floating layers before the product chooses a compositor policy. This audit does not
+  pre-emptively require every rendered panel to become opaque.
+
 ## Open areas
 
-The next area is the remaining Interface effect model: default and input borders, focus indication,
-shadow, and how color-plus-opacity values are typed and exposed.
+The next area is the boundary between Data, Meter, and module-specific roles: which values are
+portable visual semantics, which are measurement semantics, and which belong to an individual
+visualisation rather than the global Theme contract.
