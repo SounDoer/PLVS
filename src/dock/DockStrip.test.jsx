@@ -44,6 +44,14 @@ function renderStrip(props = {}) {
 }
 
 describe("DockStrip", () => {
+  it("applies surface opacity once to the Dock shell", () => {
+    renderStrip();
+    expect(screen.getByTestId("dock-strip").style.background).toContain("--surface-opacity");
+    for (const module of screen.getAllByTestId("dock-module")) {
+      expect(module.style.opacity).toBe("");
+    }
+  });
+
   it("renders the enabled modules in order", () => {
     renderStrip();
     expect(screen.getAllByTestId("dock-module")).toHaveLength(2);

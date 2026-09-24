@@ -81,9 +81,7 @@
 }
 
 html {
-  --panel-opacity: 100%;
-  --panel-opacity-card: 55%;
-  --panel-opacity-header: 60%;
+  --surface-opacity: 100%;
   height: 100%;
 }
 
@@ -91,7 +89,7 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background-color: color-mix(in srgb, var(--background) var(--panel-opacity, 100%), transparent);
+  background-color: color-mix(in srgb, var(--background) var(--surface-opacity), transparent);
   color: var(--foreground);
 }
 
@@ -143,7 +141,6 @@ html[data-surface="dock-editor"] #root {
     var(--ui-meter-gradient-mid) var(--ui-meter-gradient-mid-stop, 40%),
     var(--ui-meter-gradient-bottom) 100%
   );
-  opacity: var(--panel-opacity-meter, 1);
 }
 
 /* PLVS shows no focus outline anywhere -- see the note in design-tokens.md.

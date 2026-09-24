@@ -36,4 +36,19 @@ describe("panel chart chrome", () => {
       expect(source, `${file} should not use ${classSnippet}`).not.toContain(classSnippet);
     }
   });
+
+  it("keeps measurement renderers outside structural surface opacity", () => {
+    for (const file of [
+      "LevelMeterPanel.jsx",
+      "LoudnessHistoryChart.jsx",
+      "SpectrogramPanel.jsx",
+      "SpectrumPanel.jsx",
+      "VectorscopePanel.jsx",
+      "WaveformPanel.jsx",
+    ]) {
+      const source = readFileSync(join(__dirname, file), "utf8");
+      expect(source, file).not.toContain("--surface-opacity");
+      expect(source, file).not.toContain("--panel-opacity");
+    }
+  });
 });

@@ -95,7 +95,7 @@ export function buildPublicPresetSnapshot(preset, context = {}) {
       bounds: preset.windowBounds ?? null,
       pinned: preset.windowPinned === true,
       focusView,
-      panelOpacity: Number.isFinite(preset.panelOpacity) ? preset.panelOpacity : 100,
+      surfaceOpacity: Number.isFinite(preset.surfaceOpacity) ? preset.surfaceOpacity : 100,
       glassEnabled: preset.glassEnabled === true,
     },
     dock: buildSavedDock(preset, context),

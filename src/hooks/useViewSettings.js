@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { presetsStore, settingsStore } from "../persistence/index.js";
 import {
   normalizeGlassEnabled,
-  normalizePanelOpacity,
+  normalizeSurfaceOpacity,
   normalizeSettingsFocusView,
 } from "../settings/defaults.js";
 
@@ -10,8 +10,8 @@ export function useViewSettings() {
   const [focusView, setFocusViewState] = useState(() =>
     normalizeSettingsFocusView(settingsStore.read().focusView)
   );
-  const [panelOpacity, setPanelOpacityState] = useState(() =>
-    normalizePanelOpacity(settingsStore.read().panelOpacity)
+  const [surfaceOpacity, setSurfaceOpacityState] = useState(() =>
+    normalizeSurfaceOpacity(settingsStore.read().surfaceOpacity)
   );
   const [glassEnabled, setGlassEnabledState] = useState(() =>
     normalizeGlassEnabled(settingsStore.read().glassEnabled)
@@ -40,12 +40,12 @@ export function useViewSettings() {
     setFocusView({ ...focusView, borderless: value === true });
   }
 
-  function setPanelOpacity(value) {
-    const next = normalizePanelOpacity(value);
+  function setSurfaceOpacity(value) {
+    const next = normalizeSurfaceOpacity(value);
     // Driven by a range input's `onInput`, so this runs on every pixel of a drag.
-    settingsStore.patchCoalesced({ panelOpacity: next });
+    settingsStore.patchCoalesced({ surfaceOpacity: next });
     markPresetDirty();
-    setPanelOpacityState(next);
+    setSurfaceOpacityState(next);
   }
 
   function setGlassEnabled(value) {
@@ -60,7 +60,7 @@ export function useViewSettings() {
       settingsStore.subscribe(() => {
         const settings = settingsStore.read();
         setFocusViewState(normalizeSettingsFocusView(settings.focusView));
-        setPanelOpacityState(normalizePanelOpacity(settings.panelOpacity));
+        setSurfaceOpacityState(normalizeSurfaceOpacity(settings.surfaceOpacity));
         setGlassEnabledState(normalizeGlassEnabled(settings.glassEnabled));
       }),
     []
@@ -72,8 +72,8 @@ export function useViewSettings() {
     setAutoHideControls,
     setCompactPanels,
     setBorderless,
-    panelOpacity,
-    setPanelOpacity,
+    surfaceOpacity,
+    setSurfaceOpacity,
     glassEnabled,
     setGlassEnabled,
   };

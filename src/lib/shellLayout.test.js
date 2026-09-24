@@ -63,9 +63,11 @@ describe("shellLayout token names", () => {
     expect(SHELL_FOOTER).not.toContain("border-white/");
   });
 
-  it("shell surface effects derive from Theme-owned colors", () => {
+  it("shell structure uses the surface opacity while borders stay semantic", () => {
     for (const className of [SHELL_HEADER, SHELL_FOOTER]) {
-      expect(className).toContain("--ui-surface-highlight");
+      expect(className).toContain("--surface-opacity");
+      expect(className).toContain("border-border");
+      expect(className).not.toContain("--ui-surface-highlight");
       expect(className).not.toMatch(/rgba\(/);
     }
   });

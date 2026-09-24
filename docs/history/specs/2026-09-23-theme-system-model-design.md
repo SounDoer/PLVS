@@ -653,6 +653,36 @@ here.
   baseline renders that shell as an opaque Raised Surface and lets internal modules inherit it by
   default.
 
+#### Phase 5 implementation result (2026-09-24)
+
+- The Dark and Light Product Gallery was captured before and after the opaque experiment under
+  `artifacts/theme-gallery/phase5-current-translucent` and
+  `artifacts/theme-gallery/phase5-opaque-experiment`. The empty-shell comparison changed 88.42%
+  of Dark pixels and 88.52% of Light pixels, confirming that the old fixed-alpha composition was
+  affecting the whole structural hierarchy rather than a small decorative detail.
+- Product review retained the continuous slider and chose **Surface Opacity**. It remains a 0–100
+  percent View control; 100 percent is the deterministic opaque baseline. It applies once to the
+  Workspace, normal Header/Footer, panel, fullscreen, file-summary, and Dock shell fills.
+- Text, borders, controls, focus, semantic state, SVG/Canvas data, and measurement marks are outside
+  the slider's scope and stay opaque. Floating overlays and editors use opaque Raised surfaces.
+  Backdrop blur, saturation, fixed inset highlights, and the former `P * 0.55` / `P * 0.60`
+  multipliers are absent from the structural baseline.
+- The internal and Agent Control field is renamed from `panelOpacity` to `surfaceOpacity`.
+  Settings, Presets, and configuration-profile import explicitly translate the old field on read;
+  new writes and exports use only `surfaceOpacity`. The numeric value is retained so the user's
+  expressed transparency preference is not discarded, while the new name makes the narrower
+  rendering contract observable instead of silently redefining the old public field.
+- Hide Chrome changes only native decorations, fullscreen uses the same Workspace composition,
+  and Dock applies the control to its single Raised shell while modules inherit it. Windows is the
+  available native-composition baseline for this phase; macOS native Glass remains a required
+  platform-specific gallery check before changing that adapter.
+- The implemented baseline completed the Dark/Light Product Gallery at
+  `artifacts/theme-gallery/phase5-surface-opacity`. Focused Windows captures at 35 percent cover the
+  normal shell, Hide Chrome, and the 82 px Dock shell; their text, borders, controls, state marks,
+  and measurement renderers remain opaque while the structural fill composites with the native
+  window. The gallery runner now forces and verifies `surfaceOpacity: 100` for reproducible standard
+  captures, then restores the user's initial value.
+
 ### Dark and Light visual evaluation order
 
 - Evaluate Dark and Light independently; shared recipe structure does not imply that identical

@@ -43,7 +43,7 @@ export function FileAnalysisSummary({
   return (
     <section
       className={cn(
-        "flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-[color:color-mix(in_srgb,var(--border)_var(--panel-opacity-header),transparent)] bg-[color:color-mix(in_srgb,var(--card)_var(--panel-opacity-header),transparent)] py-2 text-[length:var(--ui-fs-body)] text-popover-foreground",
+        "flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-border bg-[color:color-mix(in_srgb,var(--card)_var(--surface-opacity),transparent)] py-2 text-[length:var(--ui-fs-body)] text-popover-foreground",
         SHELL_SURFACE_BASE,
         SHELL_SURFACE_SOFT_SHADOW
       )}
@@ -124,7 +124,7 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
             "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium shadow-sm transition-colors",
             copied
               ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]"
-              : "bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header),transparent)] text-foreground hover:bg-[color:color-mix(in_srgb,color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header),transparent)]"
+              : "bg-secondary text-secondary-foreground hover:bg-muted"
           )}
         >
           <Icon className="size-[1.15em]" aria-hidden="true" />

@@ -11,7 +11,7 @@ describe("buildPublicPresetSnapshot", () => {
       windowBounds: { x: 10, y: 20, width: 800, height: 600, isMaximized: false },
       windowPinned: true,
       focusView: { autoHideControls: true, compactPanels: false, borderless: true },
-      panelOpacity: 75,
+      surfaceOpacity: 75,
       glassEnabled: true,
       dock: {
         enabled: false,
@@ -48,7 +48,7 @@ describe("buildPublicPresetSnapshot", () => {
         bounds: stored.windowBounds,
         pinned: true,
         focusView: { autoHideControls: true, compactPanels: false, borderless: true },
-        panelOpacity: 75,
+        surfaceOpacity: 75,
         glassEnabled: true,
       },
       dock: {

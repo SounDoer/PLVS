@@ -67,14 +67,10 @@ function renderMenu(props = {}) {
 }
 
 describe("FileAnalysisHistoryMenu", () => {
-  it("routes the trigger surface through panel opacity", () => {
-    expect(source).toContain(
-      "color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header)"
-    );
-    expect(source).toContain(
-      "color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header)"
-    );
-    expect(source).not.toContain("bg-background/35");
+  it("keeps the trigger surface opaque", () => {
+    expect(source).toContain("bg-secondary");
+    expect(source).toContain("hover:bg-muted");
+    expect(source).not.toContain("--surface-opacity");
   });
 
   it("shows a compact trigger count", () => {

@@ -13,5 +13,5 @@ Current values, platform writability, and Dock ownership are runtime state and a
 | `focusView.autoHideControls` | boolean | - | `false` | - | - |
 | `focusView.compactPanels` | boolean | - | `false` | - | - |
 | `focusView.borderless` | boolean | - | `false` | - | - |
-| `panelOpacity` | integer | percent | `100` | 0 to 100 | - |
+| `surfaceOpacity` | integer | percent | `100` | 0 to 100 | - |
 | `glassEnabled` | boolean | - | `false` | - | - |

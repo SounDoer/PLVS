@@ -17,7 +17,7 @@ describe("useViewSettings", () => {
       compactPanels: false,
       borderless: false,
     });
-    expect(result.current.panelOpacity).toBe(100);
+    expect(result.current.surfaceOpacity).toBe(100);
     expect(result.current.glassEnabled).toBe(false);
   });
 
@@ -27,7 +27,7 @@ describe("useViewSettings", () => {
 
     act(() => {
       result.current.setAutoHideControls(true);
-      result.current.setPanelOpacity(72);
+      result.current.setSurfaceOpacity(72);
       result.current.setGlassEnabled(true);
     });
 
@@ -37,7 +37,7 @@ describe("useViewSettings", () => {
         compactPanels: false,
         borderless: false,
       },
-      panelOpacity: 72,
+      surfaceOpacity: 72,
       glassEnabled: true,
     });
     expect(presetsStore.read().dirty).toBe(true);
@@ -50,7 +50,7 @@ describe("useViewSettings", () => {
       "plvs:settings",
       JSON.stringify({
         focusView: { autoHideControls: true, compactPanels: true, borderless: true },
-        panelOpacity: 64,
+        surfaceOpacity: 64,
         glassEnabled: true,
       })
     );
@@ -64,7 +64,7 @@ describe("useViewSettings", () => {
         compactPanels: true,
         borderless: true,
       });
-      expect(result.current.panelOpacity).toBe(64);
+      expect(result.current.surfaceOpacity).toBe(64);
       expect(result.current.glassEnabled).toBe(true);
     });
   });

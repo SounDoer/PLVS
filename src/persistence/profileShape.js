@@ -3,7 +3,7 @@ import { LOUDNESS_PROFILE_OFF, parseSelection } from "../lib/loudnessProfileCata
 import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
 import {
-  normalizePanelOpacity,
+  normalizeSurfaceOpacity,
   normalizeReferenceLufs,
   normalizeInterfaceSize,
   normalizeSettingsFocusView,
@@ -66,7 +66,13 @@ function normalizeSettings(settings) {
   const next = clonePlainObject(settings);
   if ("referenceLufs" in next) next.referenceLufs = normalizeReferenceLufs(next.referenceLufs);
   if ("focusView" in next) next.focusView = normalizeSettingsFocusView(next.focusView);
-  if ("panelOpacity" in next) next.panelOpacity = normalizePanelOpacity(next.panelOpacity);
+  if (!("surfaceOpacity" in next) && "panelOpacity" in next) {
+    next.surfaceOpacity = next.panelOpacity;
+  }
+  delete next.panelOpacity;
+  if ("surfaceOpacity" in next) {
+    next.surfaceOpacity = normalizeSurfaceOpacity(next.surfaceOpacity);
+  }
   if ("themeEditorPos" in next) next.themeEditorPos = normalizeThemeEditorPos(next.themeEditorPos);
   if ("interfaceSize" in next) next.interfaceSize = normalizeInterfaceSize(next.interfaceSize);
   if ("channelLabelOverrides" in next) {
@@ -97,8 +103,12 @@ function normalizePresets(presets, loudnessProfiles) {
     )
     .map((preset) => {
       const { kind, id } = parseSelection(preset.loudnessProfileActive);
+      const { panelOpacity: _panelOpacity, ...rest } = preset;
+      if ("surfaceOpacity" in preset || "panelOpacity" in preset) {
+        rest.surfaceOpacity = normalizeSurfaceOpacity(preset.surfaceOpacity ?? preset.panelOpacity);
+      }
       return {
-        ...preset,
+        ...rest,
         loudnessProfileActive:
           kind === "profile" && profileIds.has(id)
             ? preset.loudnessProfileActive

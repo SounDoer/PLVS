@@ -1,5 +1,5 @@
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
-import { DEFAULT_PANEL_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
+import { DEFAULT_SURFACE_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -32,8 +32,8 @@ export function FocusViewPopoverContent({
   setAutoHideControls = () => {},
   setCompactPanels = () => {},
   setBorderless = () => {},
-  panelOpacity = DEFAULT_PANEL_OPACITY,
-  setPanelOpacity = () => {},
+  surfaceOpacity = DEFAULT_SURFACE_OPACITY,
+  setSurfaceOpacity = () => {},
   glassEnabled = DEFAULT_GLASS_ENABLED,
   setGlassEnabled = () => {},
   showDock = false,
@@ -75,22 +75,22 @@ export function FocusViewPopoverContent({
       />
       <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1.5">
         <Label
-          htmlFor="panel-opacity"
+          htmlFor="surface-opacity"
           className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground"
         >
-          Opacity
+          Surface Opacity
         </Label>
         <input
-          id="panel-opacity"
-          aria-label="Panel opacity"
+          id="surface-opacity"
+          aria-label="Surface opacity"
           type="range"
           min={0}
           max={100}
           step={1}
-          value={panelOpacity}
-          onInput={(e) => setPanelOpacity(Number(e.target.value))}
+          value={surfaceOpacity}
+          onInput={(e) => setSurfaceOpacity(Number(e.target.value))}
           className="plvs-range w-20"
-          style={{ "--range-pct": `${panelOpacity}%` }}
+          style={{ "--range-pct": `${surfaceOpacity}%` }}
         />
       </div>
       {isMac ? (

@@ -21,6 +21,13 @@ describe("persistence index", () => {
     expect(JSON.parse(localStorage.getItem("plvs:settings"))).toEqual({ referenceLufs: -23 });
   });
 
+  it("migrates the legacy panel opacity setting to surface opacity", () => {
+    localStorage.setItem("plvs:settings", JSON.stringify({ panelOpacity: 72 }));
+
+    expect(settingsStore.read()).toEqual({ surfaceOpacity: 72 });
+    expect(settingsStore.export()).not.toHaveProperty("panelOpacity");
+  });
+
   it("workspaceStore persists under plvs:workspace", () => {
     workspaceStore.patch({ visibleModules: ["levelMeter"] });
     expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({
@@ -33,6 +40,19 @@ describe("persistence index", () => {
     expect(JSON.parse(localStorage.getItem("plvs:presets"))).toEqual({
       list: [],
       activeId: null,
+    });
+  });
+
+  it("migrates legacy panel opacity in preset snapshots", () => {
+    localStorage.setItem(
+      "plvs:presets",
+      JSON.stringify({ list: [{ id: "p1", name: "Legacy", panelOpacity: 41 }] })
+    );
+
+    expect(presetsStore.read().list[0]).toEqual({
+      id: "p1",
+      name: "Legacy",
+      surfaceOpacity: 41,
     });
   });
 

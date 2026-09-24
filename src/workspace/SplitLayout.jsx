@@ -358,7 +358,8 @@ function FullscreenOverlay() {
       data-visual-capture-ready="true"
       className="absolute inset-0 z-50 flex flex-col outline-none"
       style={{
-        backgroundColor: "color-mix(in srgb, var(--background) var(--panel-opacity), transparent)",
+        backgroundColor:
+          "color-mix(in srgb, var(--background) var(--surface-opacity), transparent)",
       }}
       onKeyDown={(e) => e.key === "Escape" && setFullscreen(null)}
       tabIndex={-1}

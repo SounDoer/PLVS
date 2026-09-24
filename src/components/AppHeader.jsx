@@ -167,8 +167,8 @@ export function AppHeader({
   setAutoHideControls,
   setCompactPanels,
   setBorderless,
-  panelOpacity,
-  setPanelOpacity,
+  surfaceOpacity,
+  setSurfaceOpacity,
   glassEnabled,
   setGlassEnabled,
   showDock,
@@ -400,8 +400,8 @@ export function AppHeader({
               setAutoHideControls={setAutoHideControls}
               setCompactPanels={setCompactPanels}
               setBorderless={setBorderless}
-              panelOpacity={panelOpacity}
-              setPanelOpacity={setPanelOpacity}
+              surfaceOpacity={surfaceOpacity}
+              setSurfaceOpacity={setSurfaceOpacity}
               glassEnabled={glassEnabled}
               setGlassEnabled={setGlassEnabled}
               showDock={showDock}

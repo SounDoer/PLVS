@@ -292,8 +292,8 @@ function AppContent() {
     setFocusView,
     channelLabelOverrides,
     setChannelLabelOverrides,
-    panelOpacity,
-    setPanelOpacity: setPanelOpacityStored,
+    surfaceOpacity,
+    setSurfaceOpacity: setSurfaceOpacityStored,
     glassEnabled,
     setGlassEnabled: setGlassEnabledStored,
   } = settings;
@@ -463,7 +463,9 @@ function AppContent() {
       if (changed.some((path) => path.startsWith("view.focusView."))) {
         setFocusView(next.focusView);
       }
-      if (changed.includes("view.panelOpacity")) setPanelOpacityStored(next.panelOpacity);
+      if (changed.includes("view.surfaceOpacity")) {
+        setSurfaceOpacityStored(next.surfaceOpacity);
+      }
       if (changed.includes("view.glassEnabled")) setGlassEnabledStored(next.glassEnabled);
     },
     [
@@ -474,17 +476,17 @@ function AppContent() {
       resolvedTheme.colorScheme,
       setFocusView,
       setGlassEnabledStored,
-      setPanelOpacityStored,
+      setSurfaceOpacityStored,
       setPinnedStored,
     ]
   );
   const setPinned = useCallback(
     (value) =>
       void applyViewState(
-        { pinned: value === true, focusView, panelOpacity, glassEnabled },
+        { pinned: value === true, focusView, surfaceOpacity, glassEnabled },
         { changed: ["view.pinned"] }
       ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, panelOpacity]
+    [applyViewState, focusView, glassEnabled, surfaceOpacity]
   );
   const setFocusField = useCallback(
     (field, value) =>
@@ -492,12 +494,12 @@ function AppContent() {
         {
           pinned,
           focusView: { ...focusView, [field]: value === true },
-          panelOpacity,
+          surfaceOpacity,
           glassEnabled,
         },
         { changed: [`view.focusView.${field}`] }
       ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, panelOpacity, pinned]
+    [applyViewState, focusView, glassEnabled, surfaceOpacity, pinned]
   );
   const setAutoHideControls = useCallback(
     (value) => setFocusField("autoHideControls", value),
@@ -508,21 +510,21 @@ function AppContent() {
     [setFocusField]
   );
   const setBorderless = useCallback((value) => setFocusField("borderless", value), [setFocusField]);
-  const setPanelOpacity = useCallback(
+  const setSurfaceOpacity = useCallback(
     (value) =>
       void applyViewState(
-        { pinned, focusView, panelOpacity: value, glassEnabled },
-        { changed: ["view.panelOpacity"] }
+        { pinned, focusView, surfaceOpacity: value, glassEnabled },
+        { changed: ["view.surfaceOpacity"] }
       ).catch(() => {}),
     [applyViewState, focusView, glassEnabled, pinned]
   );
   const setGlassEnabled = useCallback(
     (value) =>
       void applyViewState(
-        { pinned, focusView, panelOpacity, glassEnabled: value === true },
+        { pinned, focusView, surfaceOpacity, glassEnabled: value === true },
         { changed: ["view.glassEnabled"] }
       ).catch(() => {}),
-    [applyViewState, focusView, panelOpacity, pinned]
+    [applyViewState, focusView, surfaceOpacity, pinned]
   );
 
   const {
@@ -824,8 +826,8 @@ function AppContent() {
     setWindowPinned: setPinnedStored,
     focusView,
     setFocusView,
-    panelOpacity,
-    setPanelOpacity: setPanelOpacityStored,
+    surfaceOpacity,
+    setSurfaceOpacity: setSurfaceOpacityStored,
     glassEnabled,
     setGlassEnabled: setGlassEnabledStored,
     dock: presetDockState,
@@ -1283,7 +1285,7 @@ function AppContent() {
   );
   const agentControlViewContext = useMemo(
     () => ({
-      view: { pinned, focusView, panelOpacity, glassEnabled },
+      view: { pinned, focusView, surfaceOpacity, glassEnabled },
       platform: agentControlRuntime.platform,
       docked,
       applyView: applyViewState,
@@ -1294,7 +1296,7 @@ function AppContent() {
       docked,
       focusView,
       glassEnabled,
-      panelOpacity,
+      surfaceOpacity,
       pinned,
     ]
   );
@@ -1615,12 +1617,8 @@ function AppContent() {
 
   useEffect(() => {
     const s = document.documentElement.style;
-    const p = panelOpacity;
-    s.setProperty("--panel-opacity", `${p}%`);
-    s.setProperty("--panel-opacity-card", `${Math.round(p * 0.55)}%`);
-    s.setProperty("--panel-opacity-header", `${Math.round(p * 0.6)}%`);
-    s.setProperty("--panel-opacity-meter", String(Math.max(0.25, p / 100)));
-  }, [panelOpacity]);
+    s.setProperty("--surface-opacity", `${surfaceOpacity}%`);
+  }, [surfaceOpacity]);
 
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
 
@@ -1757,7 +1755,7 @@ function AppContent() {
     focusView.autoHideControls ||
     focusView.compactPanels ||
     focusView.borderless ||
-    panelOpacity < 100;
+    surfaceOpacity < 100;
   const frameless = focusView.autoHideControls || focusView.borderless;
   const {
     controlsVisible: focusControlsVisible,
@@ -2340,8 +2338,8 @@ function AppContent() {
     setAutoHideControls,
     setCompactPanels,
     setBorderless,
-    panelOpacity,
-    setPanelOpacity,
+    surfaceOpacity,
+    setSurfaceOpacity,
     glassEnabled,
     setGlassEnabled,
     showDock: isTauri() && supportsDockMode(),

@@ -8,7 +8,7 @@ import {
 export const DEFAULT_REFERENCE_LUFS = LOUDNESS_DEFAULT_REFERENCE_LUFS;
 export const DEFAULT_CLOSE_ACTION = "ask";
 export const CLOSE_ACTION_OPTIONS = Object.freeze(["ask", "tray", "quit"]);
-export const DEFAULT_PANEL_OPACITY = 100;
+export const DEFAULT_SURFACE_OPACITY = 100;
 export const DEFAULT_GLASS_ENABLED = false;
 export const DEFAULT_HISTORY_RETENTION_SEC = 3600;
 export const DEFAULT_DIALOGUE_VAD_ENGINE = DIALOGUE_VAD_ENGINE_FALLBACK;
@@ -44,10 +44,10 @@ export function normalizeThemeEditorPos(raw) {
   return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : DEFAULT_THEME_EDITOR_POS;
 }
 
-export function normalizePanelOpacity(raw) {
-  if (raw == null) return DEFAULT_PANEL_OPACITY;
+export function normalizeSurfaceOpacity(raw) {
+  if (raw == null) return DEFAULT_SURFACE_OPACITY;
   const n = Number(raw);
-  if (!Number.isFinite(n)) return DEFAULT_PANEL_OPACITY;
+  if (!Number.isFinite(n)) return DEFAULT_SURFACE_OPACITY;
   return Math.round(Math.max(0, Math.min(100, n)));
 }
 

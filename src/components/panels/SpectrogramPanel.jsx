@@ -593,14 +593,12 @@ export function SpectrogramPanel() {
                 <canvas
                   data-spectrogram-gl=""
                   ref={glCanvasRef}
-                  style={{ opacity: "var(--panel-opacity-meter, 1)" }}
                   className="pointer-events-none absolute inset-0 h-full w-full"
                 />
               ) : null}
               <canvas
                 ref={canvasRef}
                 style={{
-                  opacity: "var(--panel-opacity-meter, 1)",
                   cursor: historyChartInteractive
                     ? chartDragging
                       ? "grabbing"

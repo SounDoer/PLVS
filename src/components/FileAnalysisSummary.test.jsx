@@ -19,20 +19,16 @@ const menuProps = {
 };
 
 describe("FileAnalysisSummary", () => {
-  it("routes the file-mode summary shell through panel opacity", () => {
-    expect(source).toContain("var(--card)_var(--panel-opacity-header)");
-    expect(source).toContain("var(--border)_var(--panel-opacity-header)");
-    expect(source).not.toContain("border-border bg-card/55");
+  it("routes the file-mode summary shell through surface opacity", () => {
+    expect(source).toContain("var(--card)_var(--surface-opacity)");
+    expect(source).toContain("border-border");
+    expect(source).not.toContain("var(--border)_var(--surface-opacity)");
   });
 
-  it("routes actionable file summary surfaces through panel opacity", () => {
-    expect(source).toContain(
-      "color-mix(in_srgb,var(--background)_35%,transparent)_var(--panel-opacity-header)"
-    );
-    expect(source).toContain(
-      "color-mix(in_srgb,var(--muted)_55%,transparent)_var(--panel-opacity-header)"
-    );
-    expect(source).not.toContain("bg-background/35");
+  it("keeps actionable file summary surfaces opaque", () => {
+    expect(source).toContain("bg-secondary");
+    expect(source).toContain("hover:bg-muted");
+    expect(source).not.toContain("--panel-opacity");
   });
 
   it("renders delivery metrics as text pairs rather than framed chips", () => {

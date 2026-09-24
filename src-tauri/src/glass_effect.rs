@@ -10,7 +10,7 @@ fn clear_all_vibrancy<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> Re
 }
 
 /// Applies (or clears) an OS-level frosted-glass effect on the transparent area created by
-/// `panelOpacity`. macOS-only: `NSVisualEffectView` vibrancy composes cleanly with this app's
+/// `surfaceOpacity`. macOS-only: `NSVisualEffectView` vibrancy composes cleanly with this app's
 /// per-pixel-transparent window. Windows has no equivalent that does — the legacy Acrylic API
 /// forces a visible tint floor regardless of alpha, and Mica (Windows 11's own backdrop
 /// material) doesn't render at all behind a layered/transparent window like this one — so the

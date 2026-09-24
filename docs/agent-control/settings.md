@@ -37,7 +37,7 @@ The following are intentionally outside Settings Control:
   [Loudness Profile Control](loudness-profiles.md). Sharing a Loudness Profile is Library
   Transfer's ([`libraries.md`](libraries.md)).
 - Workspace, panels, and axes.
-- Focus View, panel opacity, glass, window geometry, and Dock; these are working-scene state captured
+- Focus View, surface opacity, glass, window geometry, and Dock; these are working-scene state captured
   by Presets rather than ordinary global Settings.
 - Portable configuration export and import, which belong to
   [Configuration Transfer](config.md), and whole-configuration reset, which has no public command.

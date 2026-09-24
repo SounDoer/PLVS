@@ -57,7 +57,7 @@ describe("profileShape", () => {
       kind: "configuration-profile",
       version: 1,
       exportedAt: "2026-06-27T00:00:00.000Z",
-      settings: { referenceLufs: -23, panelOpacity: 100 },
+      settings: { referenceLufs: -23, surfaceOpacity: 100 },
       workspace: { visibleModules: ["levelMeter"] },
       presets: { list: [VALID_PRESET], activeId: "p1" },
       themes: { themes: {}, order: [] },

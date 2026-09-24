@@ -25,7 +25,7 @@ View Control uses the same public names already returned by `preset describe`:
     "compactPanels": false,
     "borderless": false
   },
-  "panelOpacity": 100,
+  "surfaceOpacity": 100,
   "glassEnabled": false
 }
 ```
@@ -34,7 +34,8 @@ View Control uses the same public names already returned by `preset describe`:
   one scene concept does not acquire two public names.
 - `focusView` is merge-patched. Omitted members retain their current values. Each member is a
   boolean.
-- `panelOpacity` is an integer percentage from 0 through 100. Strict writes reject fractions,
+- `surfaceOpacity` is an integer percentage from 0 through 100. It changes structural surface
+  fills while text, measurement data, state, focus, and borders stay opaque. Strict writes reject fractions,
   numeric strings, and out-of-range values instead of using the persistence loader's rounding and
   clamping behavior.
 - `glassEnabled` is a boolean stored with the scene. It is writable only on macOS, where the GUI
@@ -59,7 +60,7 @@ While Dock is active, Rust owns topmost state and window chrome. Updates to `pin
 `focusView.autoHideControls`, or `focusView.borderless` remain valid stored-scene changes but do not
 fight the Dock window form. A changed touched field that is dormant for this reason returns a
 `currentlyInactive` warning with reason `dockOwnsWindowPresentation`. The stored values are
-reasserted through the existing Dock exit path. `focusView.compactPanels` and `panelOpacity` remain
+reasserted through the existing Dock exit path. `focusView.compactPanels` and `surfaceOpacity` remain
 ordinary frontend presentation values.
 
 View Control does not enter, exit, or reconfigure Dock; that remains exclusively
@@ -79,7 +80,7 @@ functions for:
 - applying or suspending Always on Top;
 - applying window decorations derived from Auto-hide Controls and Borderless;
 - applying or clearing macOS Glass;
-- committing Focus View and panel opacity.
+- committing Focus View and surface opacity.
 
 The Agent Control path must not call the current GUI hooks and then assume their fire-and-forget
 effects succeeded. Native failures that those hooks presently suppress must become observable to
@@ -104,7 +105,7 @@ as Settings Control. A persistence failure after committed View state reports
     "compactPanels": false,
     "borderless": false
   },
-  "panelOpacity": 100,
+  "surfaceOpacity": 100,
   "glassEnabled": false
 }
 ```

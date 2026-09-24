@@ -33,6 +33,12 @@ export function validateGalleryManifest(manifest) {
     }
   }
   const scenes = manifest?.product?.scenes;
+  if (
+    manifest?.product?.compositor?.mode !== "opaque-baseline" ||
+    manifest?.product?.compositor?.surfaceOpacity !== 100
+  ) {
+    issues.push("$.product.compositor must define the 100% opaque baseline.");
+  }
   if (!Array.isArray(scenes) || scenes.length === 0) {
     issues.push("$.product.scenes must be a non-empty array.");
   } else {

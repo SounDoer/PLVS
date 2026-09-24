@@ -540,24 +540,24 @@ describe("usePresets", () => {
     expect(result.current.presets.activeId).toBeNull();
   });
 
-  it("captures and restores panelOpacity in presets", async () => {
-    const setPanelOpacity = vi.fn();
-    const { result } = renderPresetHook({ panelOpacity: 75, setPanelOpacity });
+  it("captures and restores surfaceOpacity in presets", async () => {
+    const setSurfaceOpacity = vi.fn();
+    const { result } = renderPresetHook({ surfaceOpacity: 75, setSurfaceOpacity });
     await act(async () => {
       await result.current.presets.save("WithOpacity");
     });
     const saved = presetsStore.read().list[0];
-    expect(saved.panelOpacity).toBe(75);
+    expect(saved.surfaceOpacity).toBe(75);
 
     // Apply restores it
     await act(async () => {
       await result.current.presets.apply(saved.id);
     });
-    expect(setPanelOpacity).toHaveBeenCalledWith(75);
+    expect(setSurfaceOpacity).toHaveBeenCalledWith(75);
   });
 
-  it("does not call setPanelOpacity when applying an older preset without panelOpacity", async () => {
-    const setPanelOpacity = vi.fn();
+  it("does not call setSurfaceOpacity when applying an older preset without it", async () => {
+    const setSurfaceOpacity = vi.fn();
     presetsStore.patch({
       list: [
         {
@@ -571,11 +571,11 @@ describe("usePresets", () => {
       ],
       activeId: null,
     });
-    const { result } = renderPresetHook({ setPanelOpacity });
+    const { result } = renderPresetHook({ setSurfaceOpacity });
     await act(async () => {
       await result.current.presets.apply("p-old");
     });
-    expect(setPanelOpacity).not.toHaveBeenCalled();
+    expect(setSurfaceOpacity).not.toHaveBeenCalled();
   });
 
   it("captures and restores glassEnabled in presets", async () => {
@@ -1036,7 +1036,7 @@ describe("usePresets under an active blocking editor", () => {
     const spies = {
       setWindowPinned: vi.fn(),
       setFocusView: vi.fn(),
-      setPanelOpacity: vi.fn(),
+      setSurfaceOpacity: vi.fn(),
       setGlassEnabled: vi.fn(),
       applyDockPreset: vi.fn(async () => false),
       applyLoudnessProfileSnapshot: vi.fn(),
@@ -1099,7 +1099,7 @@ describe("usePresets under an active blocking editor", () => {
     expect(view.spies.applyDockPreset).not.toHaveBeenCalled();
     expect(view.spies.setFocusView).not.toHaveBeenCalled();
     expect(view.spies.setWindowPinned).not.toHaveBeenCalled();
-    expect(view.spies.setPanelOpacity).not.toHaveBeenCalled();
+    expect(view.spies.setSurfaceOpacity).not.toHaveBeenCalled();
     expect(view.spies.setGlassEnabled).not.toHaveBeenCalled();
     expect(view.spies.applyLoudnessProfileSnapshot).not.toHaveBeenCalled();
     expect(mocks.applyWindowBounds).not.toHaveBeenCalled();

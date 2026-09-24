@@ -5,7 +5,7 @@ import {
   DEFAULT_GLASS_ENABLED,
   DEFAULT_HISTORY_RETENTION_SEC,
   DEFAULT_INTERFACE_SIZE,
-  DEFAULT_PANEL_OPACITY,
+  DEFAULT_SURFACE_OPACITY,
   DEFAULT_REFERENCE_LUFS,
   DEFAULT_THEME_EDITOR_POS,
   HISTORY_RETENTION_OPTIONS_SEC,
@@ -15,7 +15,7 @@ import {
   normalizeGlassEnabled,
   normalizeHistoryRetentionSec,
   normalizeInterfaceSize,
-  normalizePanelOpacity,
+  normalizeSurfaceOpacity,
   normalizeReferenceLufs,
   normalizeThemeEditorPos,
   normalizeSettingsFocusView,
@@ -60,16 +60,16 @@ describe("settings defaults", () => {
     expect(normalizeThemeEditorPos({ x: "12", y: 24 })).toEqual(DEFAULT_THEME_EDITOR_POS);
   });
 
-  it("normalizes panel opacity", () => {
-    expect(normalizePanelOpacity(null)).toBe(DEFAULT_PANEL_OPACITY);
-    expect(normalizePanelOpacity(undefined)).toBe(DEFAULT_PANEL_OPACITY);
-    expect(normalizePanelOpacity(-10)).toBe(0);
-    expect(normalizePanelOpacity(150)).toBe(100);
-    expect(normalizePanelOpacity(55.7)).toBe(56);
-    expect(normalizePanelOpacity(0)).toBe(0);
-    expect(normalizePanelOpacity(50)).toBe(50);
-    expect(normalizePanelOpacity(100)).toBe(100);
-    expect(normalizePanelOpacity("abc")).toBe(DEFAULT_PANEL_OPACITY);
+  it("normalizes surface opacity", () => {
+    expect(normalizeSurfaceOpacity(null)).toBe(DEFAULT_SURFACE_OPACITY);
+    expect(normalizeSurfaceOpacity(undefined)).toBe(DEFAULT_SURFACE_OPACITY);
+    expect(normalizeSurfaceOpacity(-10)).toBe(0);
+    expect(normalizeSurfaceOpacity(150)).toBe(100);
+    expect(normalizeSurfaceOpacity(55.7)).toBe(56);
+    expect(normalizeSurfaceOpacity(0)).toBe(0);
+    expect(normalizeSurfaceOpacity(50)).toBe(50);
+    expect(normalizeSurfaceOpacity(100)).toBe(100);
+    expect(normalizeSurfaceOpacity("abc")).toBe(DEFAULT_SURFACE_OPACITY);
   });
 
   it("normalizes history retention seconds", () => {

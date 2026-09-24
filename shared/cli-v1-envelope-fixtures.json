@@ -123,7 +123,7 @@
               "compactPanels": true,
               "borderless": false
             },
-            "panelOpacity": 100,
+            "surfaceOpacity": 100,
             "glassEnabled": false
           },
           "preset": { "activeId": "preset-1", "dirty": true }

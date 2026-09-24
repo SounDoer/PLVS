@@ -43,8 +43,8 @@ export function usePresets({
   setWindowPinned = () => {},
   focusView = DEFAULT_FOCUS_VIEW,
   setFocusView = () => {},
-  panelOpacity = 100,
-  setPanelOpacity = () => {},
+  surfaceOpacity = 100,
+  setSurfaceOpacity = () => {},
   glassEnabled = false,
   setGlassEnabled = () => {},
   dock = {
@@ -144,7 +144,7 @@ export function usePresets({
       axisViewports: normalizeAxisViewportsState(workspaceState.axisViewports),
       windowPinned: windowPinned === true,
       focusView: normalizeFocusView(focusView),
-      panelOpacity,
+      surfaceOpacity,
       glassEnabled,
       dock: {
         enabled: dock.enabled === true,
@@ -164,7 +164,7 @@ export function usePresets({
     snapshotLoudnessProfile,
     windowPinned,
     focusView,
-    panelOpacity,
+    surfaceOpacity,
     glassEnabled,
     dock,
     workspaceState.axisViewports,
@@ -288,8 +288,8 @@ export function usePresets({
       if (presetFocusView) {
         setFocusView(presetFocusView);
       }
-      if (typeof preset.panelOpacity === "number") {
-        setPanelOpacity(preset.panelOpacity);
+      if (typeof preset.surfaceOpacity === "number") {
+        setSurfaceOpacity(preset.surfaceOpacity);
       }
       if (typeof preset.glassEnabled === "boolean") {
         setGlassEnabled(preset.glassEnabled);
@@ -302,7 +302,7 @@ export function usePresets({
       setView,
       setWindowPinned,
       setFocusView,
-      setPanelOpacity,
+      setSurfaceOpacity,
       setGlassEnabled,
       applyDockPreset,
       suppressPresetDivergence,

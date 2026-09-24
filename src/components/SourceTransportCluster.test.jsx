@@ -39,14 +39,14 @@ describe("SourceTransportCluster", () => {
     expect(source).not.toContain("var(--primary)_12%,transparent");
   });
 
-  it("keeps ready chrome readable at minimum panel opacity", () => {
+  it("keeps ready chrome readable at minimum surface opacity", () => {
     expect(source).toContain("var(--secondary)_55%,transparent");
     expect(source).toContain("var(--border)_70%,transparent");
     expect(source).not.toContain("var(--primary)_var(--panel-opacity-control)");
     expect(source).not.toContain("var(--secondary)_var(--panel-opacity-control)");
   });
 
-  it("keeps live and snapshot chrome readable at minimum panel opacity", () => {
+  it("keeps live and snapshot chrome readable at minimum surface opacity", () => {
     expect(source).toContain("color-mix(in_srgb,var(--ui-activity-live)_8%,transparent)");
     expect(source).toContain("color-mix(in_srgb,var(--ui-activity-live)_12%,transparent)");
     expect(source).toContain("color-mix(in_srgb,var(--ui-activity-snapshot)_8%,transparent)");

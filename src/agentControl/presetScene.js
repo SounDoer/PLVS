@@ -12,7 +12,7 @@ const SNAPSHOT_GROUPS = [
     "workspace",
     ["tree", "panelsById", "panelOrder", "panelControlsById", "pinnedPanelsById", "axisViewports"],
   ],
-  ["window", ["windowBounds", "windowPinned", "focusView", "panelOpacity", "glassEnabled"]],
+  ["window", ["windowBounds", "windowPinned", "focusView", "surfaceOpacity", "glassEnabled"]],
   ["dock", ["dock"]],
   ["loudnessProfile", ["loudnessProfileActive"]],
 ];

@@ -81,9 +81,9 @@ describe("FocusViewPopoverContent", () => {
   });
 
   it("uses the custom opacity range style", () => {
-    render(<FocusViewPopoverContent panelOpacity={42} />);
+    render(<FocusViewPopoverContent surfaceOpacity={42} />);
 
-    const opacityRange = screen.getByRole("slider", { name: "Panel opacity" });
+    const opacityRange = screen.getByRole("slider", { name: "Surface opacity" });
 
     expect(opacityRange.classList.contains("plvs-range")).toBe(true);
     expect(opacityRange.style.getPropertyValue("--range-pct")).toBe("42%");
@@ -154,7 +154,7 @@ describe("FocusViewPopoverContent", () => {
       mockPlatform("Win32");
       render(<FocusViewPopoverContent showDock />);
 
-      const opacity = screen.getByRole("slider", { name: "Panel opacity" });
+      const opacity = screen.getByRole("slider", { name: "Surface opacity" });
       const dock = screen.getByRole("combobox", { name: "Dock position" });
       expect(opacity.compareDocumentPosition(dock)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });

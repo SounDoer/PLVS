@@ -12,6 +12,7 @@
     "themes": ["plvs-dark", "plvs-light"]
   },
   "product": {
+    "compositor": { "mode": "opaque-baseline", "surfaceOpacity": 100 },
     "themes": ["plvs-dark", "plvs-light"],
     "requiredModules": [
       "levelMeter",

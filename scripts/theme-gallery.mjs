@@ -24,6 +24,8 @@ const REQUIRED_PRODUCT_METHODS = [
   "theme.inspect",
   "theme.select",
   "theme.followSystem",
+  "view.inspect",
+  "view.update",
   "panel.update",
   "axis.shared.update",
   "transport.inspect",
@@ -244,6 +246,7 @@ async function runProductGallery({ manifest, outDir, executable }) {
 
   const initialApp = run("initial inspect", ["inspect", "--json"]);
   const initialTheme = run("initial theme", ["theme", "inspect", "--json"]);
+  const initialView = run("initial view", ["view", "inspect", "--json"]);
   const initialTransport = run("initial transport", ["transport", "inspect", "--json"]);
   const initialPanels = new Map(initialApp.workspace.panels.map((panel) => [panel.id, panel]));
   const missingModules = manifest.product.requiredModules.filter(
@@ -262,6 +265,11 @@ async function runProductGallery({ manifest, outDir, executable }) {
   let createdSessionId = null;
 
   try {
+    if (initialView.view.surfaceOpacity !== 100) {
+      const viewPatchPath = join(productDir, ".opaque-baseline-view.json");
+      await writeFile(viewPatchPath, `${JSON.stringify({ surfaceOpacity: 100 })}\n`, "utf8");
+      mutate(run, "set opaque gallery baseline", ["view", "update", viewPatchPath]);
+    }
     for (const session of fileSessions(initialTransport)) {
       if (comparablePath(session.path) === comparablePath(fixturePath)) {
         mutate(run, "remove prior gallery fixture session", [
@@ -347,14 +355,29 @@ async function runProductGallery({ manifest, outDir, executable }) {
           initialTheme.appearance.selectedThemeId,
         ]);
     } catch {}
+    if (initialView.view.surfaceOpacity !== 100) {
+      const restoreViewPath = join(productDir, ".restore-view.json");
+      await writeFile(
+        restoreViewPath,
+        `${JSON.stringify({ surfaceOpacity: initialView.view.surfaceOpacity })}\n`,
+        "utf8"
+      );
+      try {
+        mutate(run, "restore Surface Opacity", ["view", "update", restoreViewPath]);
+      } catch {}
+    }
   }
 
   const restoredApp = run("restored inspect", ["inspect", "--json"]);
   const restoredTheme = run("restored theme", ["theme", "inspect", "--json"]);
+  const restoredView = run("restored view", ["view", "inspect", "--json"]);
   const restoredTransport = run("restored transport", ["transport", "inspect", "--json"]);
   const restorationIssues = [];
   if (!sameJson(restoredTheme.appearance, initialTheme.appearance)) {
     restorationIssues.push("Theme appearance");
+  }
+  if (restoredView.view.surfaceOpacity !== initialView.view.surfaceOpacity) {
+    restorationIssues.push("Surface Opacity");
   }
   if (restoredTransport.source !== initialTransport.source) restorationIssues.push("source mode");
   if (restoredTransport.live?.state !== initialTransport.live?.state) {
@@ -390,6 +413,7 @@ async function runProductGallery({ manifest, outDir, executable }) {
     platform: process.platform,
     runtime: capabilities.runtime,
     fixture: { ...manifest.fixture, path: fixturePath, sha256: fixtureSha256 },
+    compositor: { mode: "opaque-baseline", surfaceOpacity: 100 },
     initialRevision: initialApp.revision,
     captures,
     contactPath,

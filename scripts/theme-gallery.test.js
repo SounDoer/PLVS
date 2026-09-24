@@ -16,6 +16,10 @@ describe("Theme Gallery", () => {
     expect(validateGalleryManifest(manifest)).toEqual([]);
     expect(manifest.semantic.themes).toEqual(["plvs-dark", "plvs-light"]);
     expect(manifest.product.themes).toEqual(["plvs-dark", "plvs-light"]);
+    expect(manifest.product.compositor).toEqual({
+      mode: "opaque-baseline",
+      surfaceOpacity: 100,
+    });
     const panelIds = new Set(manifest.product.scenes.map((scene) => scene.panelId).filter(Boolean));
     expect([...panelIds].sort()).toEqual(
       [

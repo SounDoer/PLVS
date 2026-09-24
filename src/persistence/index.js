@@ -12,6 +12,7 @@ import { createPluginStoreBackend } from "./pluginStoreBackend.js";
 import { createMultiInstanceBackend } from "./multiInstanceBackend.js";
 import { createDomainStore } from "./createDomainStore.js";
 import { isTauri } from "../ipc/env.js";
+import { normalizeSurfaceOpacity } from "../settings/defaults.js";
 
 const transactionalBoot =
   typeof window !== "undefined" && window.__PLVS_INITIAL_STATE__?.multiInstancePersistence;
@@ -26,7 +27,34 @@ function migrateWorkspace(raw) {
   return rest;
 }
 
-export const settingsStore = createDomainStore({ name: "plvs:settings", backend });
+function migrateSettings(raw) {
+  const { panelOpacity, ...rest } = raw;
+  if (!("surfaceOpacity" in rest) && panelOpacity != null) {
+    rest.surfaceOpacity = normalizeSurfaceOpacity(panelOpacity);
+  }
+  return rest;
+}
+
+function migratePresets(raw) {
+  if (!Array.isArray(raw.list)) return raw;
+  return {
+    ...raw,
+    list: raw.list.map((preset) => {
+      if (!preset || typeof preset !== "object" || Array.isArray(preset)) return preset;
+      const { panelOpacity, ...rest } = preset;
+      if (!("surfaceOpacity" in rest) && panelOpacity != null) {
+        rest.surfaceOpacity = normalizeSurfaceOpacity(panelOpacity);
+      }
+      return rest;
+    }),
+  };
+}
+
+export const settingsStore = createDomainStore({
+  name: "plvs:settings",
+  backend,
+  migrate: migrateSettings,
+});
 export const workspaceStore = createDomainStore({
   name: "plvs:workspace",
   backend,
@@ -35,6 +63,7 @@ export const workspaceStore = createDomainStore({
 export const presetsStore = createDomainStore({
   name: "plvs:presets",
   backend,
+  migrate: migratePresets,
   notifySameContext: true,
 });
 export const themesStore = createDomainStore({ name: "plvs:themes", backend });

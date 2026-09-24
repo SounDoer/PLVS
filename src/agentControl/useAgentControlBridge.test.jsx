@@ -151,7 +151,7 @@ const deviceLiveStopped = { state: "stopped", transition: null, usingRequestedSe
 const defaultView = {
   pinned: false,
   focusView: { autoHideControls: false, compactPanels: false, borderless: false },
-  panelOpacity: 100,
+  surfaceOpacity: 100,
   glassEnabled: false,
 };
 
@@ -2009,7 +2009,7 @@ describe("useAgentControlBridge", () => {
       view: defaultView,
       runtime: { windowPresentation: { state: "active", owner: "view" } },
       availability: { glassEnabled: { writable: false, reason: "platformUnsupported" } },
-      schema: { panelOpacity: { type: "integer", minimum: 0, maximum: 100 } },
+      schema: { surfaceOpacity: { type: "integer", minimum: 0, maximum: 100 } },
     });
 
     const dryRun = await send(
@@ -2033,16 +2033,16 @@ describe("useAgentControlBridge", () => {
     expect(unchanged.result).toMatchObject({ revision: 0, view: defaultView });
 
     const committed = await send(
-      request("view.update", { patch: { pinned: true, panelOpacity: 82 } }, "view-update")
+      request("view.update", { patch: { pinned: true, surfaceOpacity: 82 } }, "view-update")
     );
     expect(committed.error).toBeUndefined();
     expect(committed.result).toMatchObject({
       dryRun: false,
       revision: 1,
       changed: true,
-      effects: ["alwaysOnTop", "panelOpacity"],
+      effects: ["alwaysOnTop", "surfaceOpacity"],
       state: {
-        view: { pinned: true, panelOpacity: 82 },
+        view: { pinned: true, surfaceOpacity: 82 },
         preset: { activeId: "preset-1", dirty: true },
       },
     });
@@ -2050,7 +2050,7 @@ describe("useAgentControlBridge", () => {
     const inspected = await send(request("view.inspect", {}, "view-after-update"));
     expect(inspected.result).toMatchObject({
       revision: 1,
-      view: { pinned: true, panelOpacity: 82 },
+      view: { pinned: true, surfaceOpacity: 82 },
     });
   });
 
@@ -2060,13 +2060,13 @@ describe("useAgentControlBridge", () => {
     await waitUntilReady();
 
     const invalid = await send(
-      request("view.update", { patch: { panelOpacity: 80.5 } }, "view-invalid")
+      request("view.update", { patch: { surfaceOpacity: 80.5 } }, "view-invalid")
     );
     expect(invalid.error).toMatchObject({
       code: -32602,
       data: {
         reason: "invalidView",
-        details: { issues: [{ code: "invalidRange", path: "$.panelOpacity" }] },
+        details: { issues: [{ code: "invalidRange", path: "$.surfaceOpacity" }] },
       },
     });
     const unavailable = await send(

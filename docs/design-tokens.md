@@ -102,6 +102,18 @@ Tailwind rewrites the colour slot of a shadow value and discards anything wrappe
 `color-mix()` written inside `@theme` is silently dropped. The one rung that wants less weight
 reads `--ui-shadow-subtle`, mixed in `:root` instead.
 
+## Structural Surface Opacity
+
+`--surface-opacity` is a product-composition input, not a Theme color. It is a percentage and
+defaults to `100%`. Apply it once to the fill at a structural boundary—Workspace, normal shell,
+panel, fullscreen, file-summary shell, or Dock shell—using the boundary's opaque semantic color.
+Do not apply it to a parent with CSS `opacity`, multiply it by a local fixed alpha, or route borders,
+controls, typography, focus/state marks, Canvas, or SVG measurement data through it. Raised
+overlays and editors remain opaque so their content has a stable reading surface.
+
+At `100%`, the authored semantic hierarchy is the deterministic visual baseline. Lower values
+expose the native window compositor without weakening the foreground information layer.
+
 ## Modal Scrim
 
 `SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,

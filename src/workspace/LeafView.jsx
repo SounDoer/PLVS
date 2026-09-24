@@ -254,8 +254,7 @@ export function LeafView({ node, path, style }) {
       data-visual-panel-id={activeTab}
       data-visual-capture-ready={activeTab ? "true" : undefined}
       className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden rounded-md shadow-sm backdrop-blur-[24px] transition-[border-color,box-shadow] duration-150",
-        "border border-[color:color-mix(in_srgb,var(--border)_var(--panel-opacity),transparent)] hover:border-border",
+        "relative flex min-h-0 flex-col overflow-hidden rounded-md border border-border shadow-sm transition-[border-color,box-shadow] duration-150",
         isPanelHoverHighlighted && "border-primary/70 ring-2 ring-primary/60 ring-offset-0",
         isDragging &&
           (zoneHint === "above" || zoneHint === "below") &&
@@ -266,6 +265,7 @@ export function LeafView({ node, path, style }) {
       )}
       style={{
         ...style,
+        backgroundColor: "color-mix(in srgb, var(--card) var(--surface-opacity), transparent)",
         ...(slotPinnedSize
           ? {
               width: slotPinnedSize.width,
@@ -273,8 +273,6 @@ export function LeafView({ node, path, style }) {
               alignSelf: "flex-start",
             }
           : null),
-        backgroundColor:
-          "color-mix(in srgb, var(--card) var(--panel-opacity-card, 55%), transparent)",
       }}
     >
       {/* Zone hint: above */}
