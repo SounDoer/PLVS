@@ -156,21 +156,21 @@ Current PLVS Dark values:
 | `--foreground`             | `#f2f2f2`                   | Primary text                          |
 | `--card`                   | `#151515`                   | Panel surface                         |
 | `--card-foreground`        | same as `--foreground`      | Text on panels                        |
-| `--popover`                | same as `--card`            | Popover background                    |
+| `--popover`                | `#1c1c1c`                   | Raised surface                        |
 | `--popover-foreground`     | same as `--foreground`      | Popover text                          |
-| `--primary`                | `#fb923c`                   | Interface accent                      |
-| `--primary-foreground`     | `#070707`                   | Text on primary buttons               |
-| `--secondary`              | `#232323`                   | Secondary surface                     |
+| `--primary`                | `#b35300`                   | Interface accent                      |
+| `--primary-foreground`     | `#f2f2f2`                   | Text on primary buttons               |
+| `--secondary`              | `#272727`                   | Control surface                       |
 | `--secondary-foreground`   | same as `--foreground`      | Text on secondary surface             |
-| `--muted`                  | same as `--secondary`       | Muted surface                         |
-| `--muted-foreground`       | `#898989`                   | Secondary / muted text                |
-| `--accent`                 | same as `--secondary`       | Accent surface                        |
+| `--muted`                  | `#191919`                   | Muted surface                         |
+| `--muted-foreground`       | `#959595`                   | Secondary / muted text                |
+| `--accent`                 | `#3b2410`                   | Selected surface                      |
 | `--accent-foreground`      | same as `--foreground`      | Text on accent surface                |
 | `--border`                 | `rgba(255, 255, 255, 0.09)` | Borders and dividers                  |
 | `--input`                  | `rgba(255, 255, 255, 0.14)` | Input field border                    |
-| `--ring`                   | `#fb923c`                   | Focus ring — follows interface accent |
-| `--destructive`            | `#f94144`                   | Error / danger state                  |
-| `--destructive-foreground` | `#fafafa`                   | Text on destructive                   |
+| `--ring`                   | `#b35300`                   | Focus ring — follows interface accent |
+| `--destructive`            | `#b83238`                   | Error / danger state                  |
+| `--destructive-foreground` | `#f2f2f2`                   | Text on destructive                   |
 | `--radius`                 | `0.625rem`                  | Base border radius (card level)       |
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
@@ -219,15 +219,26 @@ dedicated Y-axis tick.
 | `--ui-vectorscope-grid-stroke`    | `#282828`        | Vectorscope axis and grid strokes       |
 | `--ui-spectrum-primary`           | `#fb923c`        | Spectrum primary path + fill            |
 | `--ui-spectrum-primary-snap`      | `#fbd34d`        | Spectrum primary snapshot path + fill   |
-| `--ui-spectrum-secondary`         | `#38bdf8`        | Spectrum secondary path + fill          |
-| `--ui-spectrum-secondary-snap`    | `#b1d2ff`        | Spectrum secondary snapshot path + fill |
+| `--ui-spectrum-secondary`         | `#209bda`        | Spectrum secondary path + fill          |
+| `--ui-spectrum-secondary-snap`    | `#9cafff`        | Spectrum secondary snapshot path + fill |
 | `--ui-waveform-trace`             | `#fb923c`        | Waveform envelope stroke + fill         |
 | `--ui-waveform-trace-snap`        | derived          | Waveform snapshot trace                 |
 | `--ui-waveform-frequency-low`     | `#ff2d3d` (dark) | Low-frequency Waveform hue anchor       |
 | `--ui-waveform-frequency-mid`     | `#fb923c` (dark) | Mid-frequency Waveform hue anchor       |
 | `--ui-waveform-frequency-high`    | `#356dff` (dark) | High-frequency Waveform hue anchor      |
-| `--ui-waveform-frequency-neutral` | `#484850` (dark) | Broadband / unavailable spectral color  |
+| `--ui-waveform-frequency-neutral` | `#4c4c4c` (dark) | Broadband / unavailable spectral color  |
 | `--ui-waveform-centroid`          | scheme-aware     | Spectral centroid overlay trace         |
+
+Built-in values are authored per color scheme rather than transformed at runtime. Dark and Light
+share semantic hue direction—orange Primary Data, blue Secondary Data, red/orange/blue Frequency,
+and green/amber/red Status—but may use different lightness and chroma. Accent is independently
+authored from Primary Data, Interface feedback is independently authored from measurement Status,
+and both schemes retain the same canonical Inferno Intensity stops.
+
+The deterministic Semantic Gallery validates text and content contrast plus key data, snapshot,
+Status, and Frequency distances in normal color, protanopia, deuteranopia, tritanopia, and
+grayscale simulations. These simulations are comparison aids; real renderer review and redundant
+encoding remain part of approval.
 
 ### Component: Status, feedback, and activity
 

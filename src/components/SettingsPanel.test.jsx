@@ -374,7 +374,7 @@ describe("SettingsPanel", () => {
     expect(content.className).not.toMatch(/(?:^|\s)w-72(?:\s|$)/);
   });
 
-  it("previews all six core colors, including two that share a value", () => {
+  it("previews all six independently authored core colors", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
 
@@ -386,10 +386,15 @@ describe("SettingsPanel", () => {
       .map((node) => node.style.backgroundColor || node.style.color)
       .filter(Boolean);
 
-    // interfaceAccent and primaryData are the same hex here: the old strip merged
-    // them into one wider band, so both have to appear as separate marks.
-    expect(painted.filter((c) => c === hexToRgb(dark.interfaceAccent))).toHaveLength(2);
-    for (const key of ["workspace", "surface", "text", "secondaryData"]) {
+    expect(dark.interfaceAccent).not.toBe(dark.primaryData);
+    for (const key of [
+      "workspace",
+      "surface",
+      "text",
+      "interfaceAccent",
+      "primaryData",
+      "secondaryData",
+    ]) {
       expect(painted).toContain(hexToRgb(dark[key]));
     }
   });

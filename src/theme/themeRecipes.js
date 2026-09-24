@@ -72,17 +72,17 @@ export const THEME_RECIPES = Object.freeze({
     mixHex(surface, text, 0.03)
   ),
   "surface-control": recipe([[SOLID, SOLID]], SOLID, ([surface, text]) =>
-    mixHex(surface, text, 0.07)
+    mixHex(surface, text, 0.08)
   ),
   "surface-muted": recipe([[SOLID, SOLID]], SOLID, ([surface, text]) =>
-    mixHex(surface, text, 0.07)
+    mixHex(surface, text, 0.02)
   ),
   "surface-selected": recipe([[SOLID, SOLID]], SOLID, ([surface, accent]) =>
-    mixHex(surface, accent, 0.12)
+    mixHex(surface, accent, 0.24)
   ),
   "text-primary": recipe([[SOLID], [SOLID, SOLID, SOLID]], SOLID, ([text]) => text),
-  "text-secondary": recipe([[SOLID, SOLID]], SOLID, ([text, surface]) =>
-    mixHex(surface, text, 0.58)
+  "text-secondary": recipe([[SOLID, SOLID]], SOLID, ([text, surface], context) =>
+    mixHex(surface, text, context.colorScheme === "light" ? 0.62 : 0.58)
   ),
   "text-annotation": recipe([[SOLID, SOLID]], SOLID, ([text, surface]) =>
     mixHex(surface, text, 0.7)

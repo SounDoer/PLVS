@@ -9,7 +9,8 @@
   "semantic": {
     "width": 1440,
     "height": 1120,
-    "themes": ["plvs-dark", "plvs-light"]
+    "themes": ["plvs-dark", "plvs-light"],
+    "simulations": ["protanopia", "deuteranopia", "tritanopia", "grayscale"]
   },
   "product": {
     "compositor": { "mode": "opaque-baseline", "surfaceOpacity": 100 },

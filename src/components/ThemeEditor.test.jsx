@@ -162,8 +162,11 @@ describe("ThemeEditor", () => {
   });
 
   it("summarizes visual warnings and jumps to the related role", async () => {
-    render(<ThemeEditor {...BASE_PROPS} />);
-    expect(screen.getByText(/Visual Warnings/)).toBeTruthy();
+    const draft = structuredClone(DRAFT);
+    draft.overrides["interface.surface.control"] = { kind: "color", value: "#222222" };
+    draft.overrides["interface.surface.muted"] = { kind: "color", value: "#222222" };
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} />);
+    expect(screen.getByText(/Visual Warning/)).toBeTruthy();
     expect(screen.getByText(/Roles: interface\.surface\.control/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Review interface.surface.muted" }));
 

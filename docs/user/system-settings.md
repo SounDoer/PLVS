@@ -42,6 +42,11 @@ main identity colors, **Palettes** controls shared data scales, and **Advanced**
 per-interface and per-module overrides. Advanced roles stay on **Auto** unless you customize them,
 and can be searched or reset to Auto a section at a time.
 
+The built-in Light and Dark themes are tuned independently: each keeps opaque Workspace, panel,
+control, muted, and selected surfaces distinct, and uses scheme-appropriate text and feedback
+contrast. Measurement colors keep the same meanings in both appearances even when their exact
+values differ.
+
 The editor reports visual warnings such as weak contrast or colors that are hard to distinguish.
 Warnings do not block saving a local theme: expand the summary to review the affected roles and
 jump to a relevant control. **Open Theme Preview** shows controlled overview and module scenes from

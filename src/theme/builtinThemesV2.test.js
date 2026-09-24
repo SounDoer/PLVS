@@ -13,25 +13,50 @@ const REVIEWED_NON_EXACT = new Set(["--ui-loudness-grid", "--ui-vectorscope-grid
 // than skipping the binding, so unintended drift still fails here.
 const ADOPTED_AUTOMATIC = {
   "plvs-dark": {
+    "--primary": "#b35300",
     "--popover": "#1c1c1c",
-    "--secondary": "#242424",
-    "--muted": "#242424",
-    "--accent": "#31241a",
+    "--secondary": "#272727",
+    "--muted": "#191919",
+    "--accent": "#3b2410",
     "--muted-foreground": "#959595",
     "--primary-foreground": "#f2f2f2",
     "--destructive-foreground": "#f2f2f2",
+    "--ring": "#b35300",
+    "--destructive": "#b83238",
+    "--ui-spectrum-secondary": "#209bda",
+    "--ui-spectrum-secondary-snap": "#9cafff",
+    "--ui-stereo-map-secondary": "#209bda",
+    "--ui-stereo-map-secondary-snap": "#9cafff",
     "--ui-waveform-frequency-neutral": "#4c4c4c",
     "--ui-waveform-centroid": "#f2f2f2",
   },
   "plvs-light": {
+    "--primary": "#c45f13",
     "--popover": "#eeeae7",
-    "--secondary": "#e5e1de",
-    "--muted": "#e5e1de",
-    "--accent": "#f2e2d5",
-    "--muted-foreground": "#736d6a",
+    "--secondary": "#e3dfdc",
+    "--muted": "#f1ece9",
+    "--accent": "#e9ceb9",
+    "--muted-foreground": "#6a6461",
     "--destructive-foreground": "#140e0a",
-    "--ui-waveform-frequency-neutral": "#a9a7a6",
+    "--ring": "#c45f13",
+    "--destructive": "#e43b46",
+    "--ui-loudness-momentary": "#d16718",
+    "--ui-loudness-shortterm": "#8f3400",
+    "--ui-loudness-momentary-snap": "#8a4700",
+    "--ui-loudness-shortterm-snap": "#511500",
+    "--ui-loudness-selection": "#8a4700",
+    "--ui-spectrum-primary": "#d16718",
+    "--ui-spectrum-primary-snap": "#8a4700",
+    "--ui-vectorscope-trace": "#d16718",
+    "--ui-vectorscope-trace-snap": "#8a4700",
+    "--ui-stereo-map-primary": "#d16718",
+    "--ui-stereo-map-primary-snap": "#8a4700",
+    "--ui-waveform-trace": "#d16718",
+    "--ui-waveform-trace-snap": "#8a4700",
+    "--ui-waveform-frequency-mid": "#c06f00",
+    "--ui-waveform-frequency-neutral": "#aeacab",
     "--ui-waveform-centroid": "#140e0a",
+    "--ui-meter-gradient-mid": "#9f6200",
   },
 };
 
@@ -42,7 +67,7 @@ describe("Theme V2 builtins", () => {
   });
 
   it.each(Object.keys(BUILTIN_THEMES_V2))(
-    "preserves every comparable opaque V1 binding for %s",
+    "preserves every untuned comparable V1 binding for %s",
     (id) => {
       const current = V1_BUILTIN_RESOLVED[id].css;
       const next = compileTheme(BUILTIN_THEMES_V2[id]).css;

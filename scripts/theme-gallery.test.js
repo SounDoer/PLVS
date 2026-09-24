@@ -7,6 +7,7 @@ import {
   contrastRatio,
   createStereoFixtureWav,
   readGalleryManifest,
+  simulateColorVision,
   validateGalleryManifest,
 } from "./theme-gallery-lib.mjs";
 
@@ -16,6 +17,12 @@ describe("Theme Gallery", () => {
     expect(validateGalleryManifest(manifest)).toEqual([]);
     expect(manifest.semantic.themes).toEqual(["plvs-dark", "plvs-light"]);
     expect(manifest.product.themes).toEqual(["plvs-dark", "plvs-light"]);
+    expect(manifest.semantic.simulations).toEqual([
+      "protanopia",
+      "deuteranopia",
+      "tritanopia",
+      "grayscale",
+    ]);
     expect(manifest.product.compositor).toEqual({
       mode: "opaque-baseline",
       surfaceOpacity: 100,
@@ -43,8 +50,29 @@ describe("Theme Gallery", () => {
       expect(svg).toContain(`width="${manifest.semantic.width}"`);
       expect(svg).toContain("Semantic Gallery");
       expect(svg).toContain(resolved.roles["core.primaryData"]);
-      expect(buildSemanticMetrics(themeId, resolved).contrast.length).toBeGreaterThan(5);
+      const metrics = buildSemanticMetrics(themeId, resolved);
+      expect(metrics.contrast.length).toBeGreaterThan(5);
+      expect(metrics.distinction.length).toBeGreaterThan(25);
+      expect(metrics.contrast.filter(({ pass }) => !pass)).toEqual([]);
+      expect(metrics.distinction.filter(({ pass }) => !pass)).toEqual([]);
     }
+  });
+
+  it("simulates supported color-vision modes deterministically", () => {
+    expect(simulateColorVision("#ff0000", "protanopia")).toBe("#271d00");
+    expect(simulateColorVision("#123456", "grayscale")).toBe("#2f2f2f");
+    expect(() => simulateColorVision("#123456", "unknown")).toThrow(
+      "Unknown color-vision simulation"
+    );
+  });
+
+  it("rejects an incomplete or duplicated simulation matrix", async () => {
+    const manifest = await readGalleryManifest();
+    const invalid = structuredClone(manifest);
+    invalid.semantic.simulations = ["protanopia", "protanopia", "tritanopia", "grayscale"];
+    expect(validateGalleryManifest(invalid)).toContain(
+      "$.semantic.simulations must contain every supported color-vision mode once."
+    );
   });
 
   it("uses the standard contrast calculation", () => {

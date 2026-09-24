@@ -751,6 +751,31 @@ here.
   Level Meter, Stats, Vectorscope, and Stereo Map. Status does not gain content-on roles; those
   belong to the separate Interface feedback semantics.
 
+#### Phase 6 implementation result (2026-09-24)
+
+- Dark and Light keep the approved semantic directions while receiving independently authored
+  built-in values. Accent is now distinct from Primary Data, Interface Success/Warning/Danger are
+  distinct from measurement Status, Light Frequency Mid returns to orange, and both schemes keep
+  the canonical Inferno Intensity scale.
+- The opaque surface recipes now separate Panel, Raised, Control, Muted, and Selected instead of
+  letting Control and Muted collide. Light Secondary Text receives scheme-specific headroom. No
+  schema, public Role, binding, editor control, Surface Opacity behavior, or custom-Theme runtime
+  transformation changes in this phase.
+- Both built-ins produce zero high-confidence visual-analysis warnings. Their Content on Accent,
+  Success, Warning, and Danger pairs all exceed 4.5:1. In the Semantic Gallery, Dark Accent on
+  Panel measures 3.61:1, while Light Accent, Primary Data, Secondary Data, and Warning on Panel
+  measure 3.75:1, 3.30:1, 4.77:1, and 4.43:1 respectively; the corresponding pre-tuning Light
+  failures were 2.87:1, 2.87:1, and 1.49:1 for Accent, Primary Data, and Warning.
+- The Semantic Gallery now emits deterministic protanopia, deuteranopia, tritanopia, and grayscale
+  contact sheets. Seven key data, snapshot, Status, and Frequency pairs are checked in normal color
+  and all four simulations: 35 comparisons per built-in, with no failed distance gate. Simulation
+  is diagnostic rather than a substitute for redundant encoding or renderer review.
+- The real Agent Control-backed Windows Product Gallery and the Semantic Gallery completed under
+  `artifacts/theme-gallery/phase6-builtins`. Human review retained vivid orange measurement data,
+  confirmed the darker Light Warning and orange Frequency Mid, and found the surface ladder and
+  key trace families legible in both appearances. macOS remains a platform verification item for
+  the later public-format freeze rather than a reason to add platform-dependent built-in colors.
+
 ### Deterministic Theme gallery
 
 - Build two complementary galleries. The Semantic Gallery presents controlled Role relationships

@@ -190,21 +190,31 @@ export function analyzeThemeVisuals(theme) {
   }
 
   const surfacePairs = [
-    ["interface.surface.panel", "interface.surface.raised", "Panel and Raised Surface"],
-    ["interface.surface.control", "interface.surface.muted", "Control and Muted Surface"],
-    ["interface.surface.control", "interface.surface.selected", "Control and Selected Surface"],
+    ["interface.surface.panel", "interface.surface.raised", "Panel and Raised Surface", 0.015],
+    ["interface.surface.control", "interface.surface.muted", "Control and Muted Surface", 0.04],
+    [
+      "interface.surface.control",
+      "interface.surface.selected",
+      "Control and Selected Surface",
+      0.04,
+    ],
   ];
-  for (const [first, second, label] of surfacePairs) {
-    if (resolved.roles[first] !== resolved.roles[second]) continue;
+  for (const [first, second, label, targetDistance] of surfacePairs) {
+    const distance = themeColorDistance(resolved.roles[first], resolved.roles[second]);
+    if (distance >= targetDistance) continue;
     warnings.push(
       warning({
         code: "surfaceCollision",
-        title: `${label} resolve identically`,
-        message: `${label} both resolve to ${resolved.roles[first]}; their hierarchy or state may disappear.`,
+        title: `${label} are difficult to distinguish`,
+        message: `${label} measure ${distance.toFixed(3)} OKLab distance; their hierarchy or state may disappear.`,
         roleIds: [first, second],
         target: { page: "advanced", id: second },
         section: "Interface",
-        metric: { label: "Color distance", value: 0, target: 0.04 },
+        metric: {
+          label: "Color distance",
+          value: Number(distance.toFixed(4)),
+          target: targetDistance,
+        },
         consumers: ["panels", "controls", "selected and muted states"],
       })
     );

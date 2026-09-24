@@ -22,7 +22,7 @@ describe("Theme V2 first-paint CSS", () => {
     const css = expectedCss();
     expect(css).toContain(":root {");
     expect(css).not.toContain(".dark {");
-    expect(css).toContain("--primary: #fb923c;");
+    expect(css).toContain("--primary: #b35300;");
   });
 
   it("matches the committed generated file (run npm run theme:generate after editing V2 builtins)", () => {

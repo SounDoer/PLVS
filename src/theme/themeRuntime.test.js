@@ -67,6 +67,6 @@ describe("themeRuntime", () => {
     expect(root.dataset.theme).toBe("plvs-light");
     expect(root.dataset.themeRevision).toBe(String(resolved.revision));
     expect(root.style.getPropertyValue("color-scheme")).toBe("light");
-    expect(root.style.getPropertyValue("--ui-spectrum-primary")).toBe("#e07020");
+    expect(root.style.getPropertyValue("--ui-spectrum-primary")).toBe("#d16718");
   });
 });

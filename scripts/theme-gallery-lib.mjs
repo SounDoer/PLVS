@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { compileTheme } from "../src/theme/compileTheme.js";
+import { themeColorDistance } from "../src/theme/themeVisualAnalysis.js";
 
 export const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const defaultManifestPath = join(
@@ -31,6 +32,21 @@ export function validateGalleryManifest(manifest) {
     for (const id of themes) {
       if (!BUILTIN_THEMES_V2[id]) issues.push(`$.${section}.themes contains unknown Theme ${id}.`);
     }
+  }
+  const simulations = manifest?.semantic?.simulations;
+  const supportedSimulations = new Set([
+    "protanopia",
+    "deuteranopia",
+    "tritanopia",
+    "grayscale",
+  ]);
+  if (
+    !Array.isArray(simulations) ||
+    simulations.length !== supportedSimulations.size ||
+    simulations.some((mode) => !supportedSimulations.has(mode)) ||
+    new Set(simulations).size !== supportedSimulations.size
+  ) {
+    issues.push("$.semantic.simulations must contain every supported color-vision mode once.");
   }
   const scenes = manifest?.product?.scenes;
   if (
@@ -86,6 +102,44 @@ function luminance(hex) {
 export function contrastRatio(a, b) {
   const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (lighter + 0.05) / (darker + 0.05);
+}
+
+// These fixed encoded-sRGB transforms are deterministic comparison aids, not clinical models.
+const COLOR_VISION_MATRICES = Object.freeze({
+  protanopia: [
+    [0.152286, 1.052583, -0.204868],
+    [0.114503, 0.786281, 0.099216],
+    [-0.003882, -0.048116, 1.051998],
+  ],
+  deuteranopia: [
+    [0.367322, 0.860646, -0.227968],
+    [0.280085, 0.672501, 0.047413],
+    [-0.01182, 0.04294, 0.968881],
+  ],
+  tritanopia: [
+    [1.255528, -0.076749, -0.178779],
+    [-0.078411, 0.930809, 0.147602],
+    [0.004733, 0.691367, 0.3039],
+  ],
+  grayscale: [
+    [0.2126, 0.7152, 0.0722],
+    [0.2126, 0.7152, 0.0722],
+    [0.2126, 0.7152, 0.0722],
+  ],
+});
+
+function matrixColor(hex, matrix) {
+  const input = hexChannels(hex);
+  const output = matrix.map((row) =>
+    Math.max(0, Math.min(255, row.reduce((sum, weight, index) => sum + weight * input[index], 0)))
+  );
+  return `#${output.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function simulateColorVision(hex, mode) {
+  const matrix = COLOR_VISION_MATRICES[mode];
+  if (!matrix) throw new Error(`Unknown color-vision simulation: ${mode}.`);
+  return matrixColor(hex, matrix);
 }
 
 function colorOf(value) {
@@ -257,6 +311,16 @@ export function buildSemanticMetrics(themeId, resolved) {
     ["secondary-data-on-panel", "core.secondaryData", "interface.surface.panel", 3],
     ["warning-on-panel", "palette.status.warning", "interface.surface.panel", 3],
   ];
+  const distinctionPairs = [
+    ["primary-secondary", "data.primary", "data.secondary"],
+    ["primary-snapshot", "data.primary", "data.snapshot.primary"],
+    ["secondary-snapshot", "data.secondary", "data.snapshot.secondary"],
+    ["status-safe-warning", "palette.status.safe", "palette.status.warning"],
+    ["status-warning-critical", "palette.status.warning", "palette.status.critical"],
+    ["frequency-low-mid", "palette.frequency.low", "palette.frequency.mid"],
+    ["frequency-mid-high", "palette.frequency.mid", "palette.frequency.high"],
+  ];
+  const simulationModes = ["normal", "protanopia", "deuteranopia", "tritanopia", "grayscale"];
   return {
     themeId,
     colorScheme: resolved.colorScheme,
@@ -271,6 +335,24 @@ export function buildSemanticMetrics(themeId, resolved) {
         pass: ratio >= target,
       };
     }),
+    distinction: simulationModes.flatMap((mode) =>
+      distinctionPairs.map(([id, first, second]) => {
+        const firstColor = mode === "normal" ? color(first) : simulateColorVision(color(first), mode);
+        const secondColor =
+          mode === "normal" ? color(second) : simulateColorVision(color(second), mode);
+        const distance = themeColorDistance(firstColor, secondColor);
+        const target = mode === "normal" ? 0.08 : 0.05;
+        return {
+          id,
+          mode,
+          first,
+          second,
+          distance: Number(distance.toFixed(4)),
+          target,
+          pass: distance >= target,
+        };
+      })
+    ),
   };
 }
 
@@ -305,7 +387,24 @@ export async function generateSemanticGallery({ manifest, outDir }) {
     .composite(images.map((input, index) => ({ input, left: index * 720, top: 0 })))
     .png()
     .toFile(contactPath);
-  return { artifacts, contactPath };
+  const simulationContactPaths = {};
+  for (const mode of manifest.semantic.simulations) {
+    const matrix = COLOR_VISION_MATRICES[mode];
+    const simulated = await Promise.all(
+      artifacts.map(({ pngPath }) =>
+        sharp(pngPath).resize({ width: 720 }).recomb(matrix).png().toBuffer()
+      )
+    );
+    const simulationPath = join(semanticDir, `${mode}-contact-sheet.png`);
+    await sharp({
+      create: { width: 1440, height: metadata.height, channels: 4, background: "#202020" },
+    })
+      .composite(simulated.map((input, index) => ({ input, left: index * 720, top: 0 })))
+      .png()
+      .toFile(simulationPath);
+    simulationContactPaths[mode] = simulationPath;
+  }
+  return { artifacts, contactPath, simulationContactPaths };
 }
 
 export function createStereoFixtureWav({ durationSeconds, sampleRate, channels }) {

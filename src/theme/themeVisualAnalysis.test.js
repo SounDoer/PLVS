@@ -10,6 +10,9 @@ import {
 describe("Theme visual analysis", () => {
   it("reports structured, actionable warnings without mutating the document", () => {
     const theme = structuredClone(BUILTIN_THEMES_V2["plvs-light"]);
+    theme.palettes.interface.warning = "#fbbf24";
+    theme.overrides["interface.surface.control"] = { kind: "color", value: "#e5e1de" };
+    theme.overrides["interface.surface.muted"] = { kind: "color", value: "#e5e1de" };
     const before = structuredClone(theme);
     const report = analyzeThemeVisuals(theme);
 
@@ -25,6 +28,10 @@ describe("Theme visual analysis", () => {
       ])
     );
     expect(new Set(report.warnings.map((item) => item.id)).size).toBe(report.warnings.length);
+  });
+
+  it.each(Object.keys(BUILTIN_THEMES_V2))("ships %s without high-confidence warnings", (id) => {
+    expect(analyzeThemeVisuals(BUILTIN_THEMES_V2[id]).warnings).toEqual([]);
   });
 
   it("uses stable contrast and perceptual distance measurements", () => {

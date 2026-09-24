@@ -19,7 +19,7 @@ export function isThemeId(id) {
   return typeof id === "string" && THEME_IDS.includes(id);
 }
 
-function makeBuiltin({ id, name, colorScheme, core, status, interfaceCritical, frequency }) {
+function makeBuiltin({ id, name, colorScheme, core, status, interfacePalette, frequency }) {
   return {
     formatVersion: 2,
     semanticsVersion: 1,
@@ -33,9 +33,7 @@ function makeBuiltin({ id, name, colorScheme, core, status, interfaceCritical, f
       frequency: { presetId: "frequency-plvs", ...frequency },
       interface: {
         presetId: null,
-        success: status.safe,
-        warning: status.warning,
-        danger: interfaceCritical,
+        ...interfacePalette,
       },
     },
     overrides: {},
@@ -58,12 +56,12 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       workspace: "#070707",
       surface: "#151515",
       text: "#f2f2f2",
-      interfaceAccent: "#fb923c",
+      interfaceAccent: "#b35300",
       primaryData: "#fb923c",
-      secondaryData: "#38bdf8",
+      secondaryData: "#209bda",
     },
     status: { safe: "#34d399", warning: "#fbbf24", critical: "#f97373" },
-    interfaceCritical: "#f94144",
+    interfacePalette: { success: "#147a54", warning: "#936000", danger: "#b83238" },
     frequency: { low: "#ff2d3d", mid: "#fb923c", high: "#356dff" },
   }),
   "plvs-light": makeBuiltin({
@@ -74,13 +72,13 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       workspace: "#fbf8f5",
       surface: "#f5f1ee",
       text: "#140e0a",
-      interfaceAccent: "#e07020",
-      primaryData: "#e07020",
+      interfaceAccent: "#c45f13",
+      primaryData: "#d16718",
       secondaryData: "#0e7490",
     },
-    status: { safe: "#18976a", warning: "#fbbf24", critical: "#d03535" },
-    interfaceCritical: "#df202e",
-    frequency: { low: "#d9481c", mid: "#a21caf", high: "#3730a3" },
+    status: { safe: "#18976a", warning: "#9f6200", critical: "#d03535" },
+    interfacePalette: { success: "#1a9064", warning: "#b17000", danger: "#e43b46" },
+    frequency: { low: "#d9481c", mid: "#c06f00", high: "#3730a3" },
   }),
 });
 
