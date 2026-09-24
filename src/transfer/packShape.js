@@ -10,6 +10,7 @@ import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeThemeDocument } from "../theme/migrations/migrateV1Theme.js";
 import {
   PORTABLE_THEME_FORMAT_VERSION,
+  PORTABLE_THEME_KIND,
   PORTABLE_THEME_SEMANTICS_VERSION,
   PortableThemeError,
   portableToStoredTheme,
@@ -230,6 +231,13 @@ function descriptorForKind(kind) {
 export function parsePack(raw, expectedType) {
   const expected = packDescriptor(expectedType);
 
+  if (expectedType === "themes" && raw?.kind === PORTABLE_THEME_KIND) {
+    return parsePortableThemeTransfer(raw, {
+      invalidMessage: "This Theme file contains an invalid Theme.",
+      newerMessage: "This Theme file was made by a newer version of PLVS.",
+    });
+  }
+
   if (!raw || typeof raw !== "object" || Array.isArray(raw) || raw.app !== PACK_APP) {
     throw new PackValidationError("This is not a PLVS file.");
   }
@@ -283,20 +291,19 @@ export function parsePack(raw, expectedType) {
   return parsed;
 }
 
-/** Parse the canonical portable Theme copied by a community page, without inventing a new format. */
-export function parseClipboardTheme(raw) {
+function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {
   if (
     raw?.formatVersion > PORTABLE_THEME_FORMAT_VERSION ||
     raw?.semanticsVersion > PORTABLE_THEME_SEMANTICS_VERSION
   ) {
-    throw new PackValidationError("This Theme requires a newer version of PLVS.");
+    throw new PackValidationError(newerMessage);
   }
   let theme;
   try {
-    theme = portableToStoredTheme(raw, "custom-pasted-theme");
+    theme = portableToStoredTheme(raw, "custom-shared-theme");
   } catch (error) {
     if (!(error instanceof PortableThemeError)) throw error;
-    throw new PackValidationError("Clipboard doesn't contain a PLVS Theme.", error.issues);
+    throw new PackValidationError(invalidMessage, error.issues);
   }
   return {
     app: PACK_APP,
@@ -305,4 +312,12 @@ export function parseClipboardTheme(raw) {
     exportedAt: "",
     items: [theme],
   };
+}
+
+/** Parse the canonical portable Theme copied by a community page, without inventing a new format. */
+export function parseClipboardTheme(raw) {
+  return parsePortableThemeTransfer(raw, {
+    invalidMessage: "Clipboard doesn't contain a PLVS Theme.",
+    newerMessage: "This Theme requires a newer version of PLVS.",
+  });
 }

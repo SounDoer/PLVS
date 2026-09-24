@@ -227,6 +227,23 @@ describe("usePackTransfer export outcome", () => {
 });
 
 describe("usePackTransfer import", () => {
+  it("opens file review for a directly downloaded portable Theme", async () => {
+    readProfileFile.mockResolvedValue(clipboardTheme("Downloaded Theme"));
+    pickPackFile.mockResolvedValue("C:/Downloaded Theme.plvstheme");
+
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => {
+      await result.current.beginImport("themes");
+    });
+
+    expect(result.current.review).toMatchObject({
+      type: "themes",
+      origin: "file",
+      itemPlan: [{ name: "Downloaded Theme", disposition: "added" }],
+    });
+    expect(themesStore.read()).toEqual({});
+  });
+
   it("opens a review with the plan and writes nothing yet", async () => {
     readProfileFile.mockResolvedValue(
       JSON.stringify({

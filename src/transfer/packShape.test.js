@@ -172,7 +172,7 @@ describe("parseClipboardTheme", () => {
     expect(parseClipboardTheme(portable)).toMatchObject({
       kind: "theme-pack",
       version: THEME_PACK_VERSION,
-      items: [{ id: "custom-pasted-theme", name: "From Community", formatVersion: 2 }],
+      items: [{ id: "custom-shared-theme", name: "From Community", formatVersion: 2 }],
     });
   });
 
@@ -187,5 +187,29 @@ describe("parseClipboardTheme", () => {
     expect(() => parseClipboardTheme({ ...portable, formatVersion: 99 })).toThrow(
       "This Theme requires a newer version of PLVS."
     );
+  });
+});
+
+describe("direct portable Theme files", () => {
+  it("imports the same canonical document served by Download .plvstheme", () => {
+    const portable = themeToPortable({
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-light"]),
+      id: "custom-download",
+      name: "Downloaded Theme",
+    });
+
+    expect(parsePack(portable, "themes")).toMatchObject({
+      kind: "theme-pack",
+      version: THEME_PACK_VERSION,
+      items: [{ id: "custom-shared-theme", name: "Downloaded Theme", colorScheme: "light" }],
+    });
+  });
+
+  it("keeps direct portable files out of unrelated library imports", () => {
+    const portable = themeToPortable({
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-download",
+    });
+    expect(() => parsePack(portable, "presets")).toThrow("This is not a PLVS file.");
   });
 });

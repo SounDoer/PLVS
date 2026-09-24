@@ -276,6 +276,12 @@ non-PNG, or non-PLVS-sourced images fail validation. An interactive website prev
 outside the first-release publication contract and is not a launch gate. The desktop Theme Editor
 preview remains a separate local authoring aid.
 
+Community distribution has one canonical payload with two transports. `Copy Theme` writes the
+portable Theme JSON to the clipboard; the secondary `Download .plvstheme` action serves those exact
+same bytes. PLVS accepts that direct portable document through Paste or file Import, while file
+Import continues to accept the existing multi-item Theme pack envelope. The download is therefore
+a fallback and archival path, not a second public Theme format.
+
 ### Component: Status, feedback, and activity
 
 The Status Palette is measurement-only. Each instrument consumes it through module-local resolved
