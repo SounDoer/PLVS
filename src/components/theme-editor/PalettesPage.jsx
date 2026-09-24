@@ -77,13 +77,14 @@ function SimplePalette({ title, description, kind, palette, colors, onColor, onA
       <PaletteStrip colors={colors.map(([key]) => palette[key])} />
       <div className="grid grid-cols-3 gap-2">
         {colors.map(([key, label]) => (
-          <ColorControl
-            key={key}
-            label={label}
-            value={palette[key]}
-            onChange={(color) => onColor(kind, key, color)}
-            allowAlpha={false}
-          />
+          <div key={key} data-theme-target={`palette.${kind}.${key}`}>
+            <ColorControl
+              label={label}
+              value={palette[key]}
+              onChange={(color) => onColor(kind, key, color)}
+              allowAlpha={false}
+            />
+          </div>
         ))}
       </div>
     </section>
@@ -146,7 +147,11 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
           const previous = palette.stops[index - 1]?.position ?? 0;
           const next = palette.stops[index + 1]?.position ?? 1;
           return (
-            <div key={`${index}-${stop.position}`} className="flex items-center gap-2">
+            <div
+              key={`${index}-${stop.position}`}
+              data-theme-target={`palette.intensity.stops.${index}`}
+              className="flex items-center gap-2"
+            >
               <ColorControl
                 label={`Stop ${index + 1}`}
                 value={stop.color}

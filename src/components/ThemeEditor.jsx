@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Check, Pencil, Redo2, Undo2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Eye, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
@@ -7,6 +7,9 @@ import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
+import { ThemeWarningSummary } from "./theme-editor/ThemeWarningSummary.jsx";
+import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
+import { analyzeThemeVisuals } from "../theme/themeVisualAnalysis.js";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -49,12 +52,14 @@ const CORE_COLORS = [
  * @param {{
  *   draft: object,
  *   onName: (s: string) => void,
+ *   onColorScheme: (scheme: "dark"|"light") => void,
  *   onCore: (key: string, css: string) => void,
  *   onPaletteColor: (palette: string, key: string, css: string) => void,
  *   onIntensityStop: (index: number, css: string) => void,
  *   onIntensityStops: (stops: object[]) => void,
  *   onApplyPreset: (palette: string, presetId: string) => void,
  *   onOverride: (roleId: string, override: object|null) => void,
+ *   onResetOverrides: (roleIds: string[]) => void,
  *   onUndo: () => void,
  *   onRedo: () => void,
  *   canUndo?: boolean,
@@ -72,12 +77,14 @@ const CORE_COLORS = [
 export function ThemeEditor({
   draft,
   onName,
+  onColorScheme = () => {},
   onCore,
   onPaletteColor,
   onIntensityStop,
   onIntensityStops,
   onApplyPreset,
   onOverride,
+  onResetOverrides = () => {},
   onUndo,
   onRedo,
   canUndo = false,
@@ -93,6 +100,19 @@ export function ThemeEditor({
 }) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const [page, setPage] = useState("core");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [focusTarget, setFocusTarget] = useState(null);
+  const visualWarnings = useMemo(() => analyzeThemeVisuals(draft).warnings, [draft]);
+  const clearFocusTarget = useCallback(() => setFocusTarget(null), []);
+
+  useEffect(() => {
+    if (!focusTarget || focusTarget.page === "advanced" || focusTarget.page !== page) return;
+    requestAnimationFrame(() => {
+      const target = document.querySelector(`[data-theme-target="${focusTarget.id}"]`);
+      target?.scrollIntoView?.({ block: "center" });
+      setFocusTarget(null);
+    });
+  }, [focusTarget, page]);
 
   // The name edits like the Loudness Profile editor: static until the pencil opens an input, which
   // commits on blur / Enter / the confirm button and reverts on Escape / the cancel button.
@@ -237,6 +257,24 @@ export function ThemeEditor({
                   <span className="text-muted-foreground">Untitled</span>
                 )}
               </span>
+              <div
+                role="group"
+                aria-label="Theme appearance"
+                className="flex rounded-md border border-border bg-muted/40 p-0.5"
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                {["dark", "light"].map((scheme) => (
+                  <button
+                    key={scheme}
+                    type="button"
+                    aria-pressed={draft.colorScheme === scheme}
+                    onClick={() => onColorScheme(scheme)}
+                    className={`rounded-xs px-1.5 py-0.5 text-[length:var(--ui-fs-axis)] capitalize ${draft.colorScheme === scheme ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    {scheme}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 aria-label="Undo theme change"
@@ -308,6 +346,13 @@ export function ThemeEditor({
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto px-3 py-2">
+          <ThemeWarningSummary
+            warnings={visualWarnings}
+            onJump={(target) => {
+              setPage(target.page);
+              setFocusTarget(target);
+            }}
+          />
           {page === "core" ? (
             <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
               <div>
@@ -317,16 +362,14 @@ export function ThemeEditor({
                 </p>
               </div>
               {CORE_COLORS.map(({ key, label, description }) => (
-                <div key={key} className="flex flex-col gap-0.5">
+                <div key={key} data-theme-target={`core.${key}`}>
                   <ColorControl
                     label={label}
+                    description={description}
                     value={draft.core[key]}
                     onChange={(color) => onCore(key, color)}
                     allowAlpha={false}
                   />
-                  <p className="pl-7 text-[length:var(--ui-fs-metric-meta)] leading-tight text-muted-foreground">
-                    {description}
-                  </p>
                 </div>
               ))}
             </section>
@@ -337,9 +380,17 @@ export function ThemeEditor({
               onStop={onIntensityStop}
               onStops={onIntensityStops}
               onApplyPreset={onApplyPreset}
+              focusTarget={focusTarget?.page === "palettes" ? focusTarget.id : null}
             />
           ) : (
-            <AdvancedPage draft={draft} onOverride={onOverride} />
+            <AdvancedPage
+              draft={draft}
+              onOverride={onOverride}
+              onResetOverrides={onResetOverrides}
+              warnings={visualWarnings}
+              focusRoleId={focusTarget?.page === "advanced" ? focusTarget.id : null}
+              onFocusHandled={clearFocusTarget}
+            />
           )}
         </div>
 
@@ -352,6 +403,9 @@ export function ThemeEditor({
             <span />
           )}
           <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setPreviewOpen(true)}>
+              <Eye /> Open Theme Preview
+            </Button>
             <Button variant="ghost" onClick={handleCancel}>
               Cancel
             </Button>
@@ -370,6 +424,7 @@ export function ThemeEditor({
         confirmLabel="Discard Changes"
         onConfirm={onCancel}
       />
+      {previewOpen ? <ThemePreview draft={draft} onClose={() => setPreviewOpen(false)} /> : null}
     </>
   );
 }

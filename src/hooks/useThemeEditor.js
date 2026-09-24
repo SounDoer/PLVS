@@ -140,6 +140,14 @@ export function useThemeEditor(opts) {
     [edit]
   );
 
+  const updateColorScheme = useCallback(
+    (colorScheme) => {
+      if (colorScheme !== "dark" && colorScheme !== "light") return;
+      edit((draft) => ({ ...draft, colorScheme }), "colorScheme");
+    },
+    [edit]
+  );
+
   const updatePaletteColor = useCallback(
     (palette, key, value) =>
       edit(
@@ -217,6 +225,19 @@ export function useThemeEditor(opts) {
     [edit]
   );
 
+  const resetOverrides = useCallback(
+    (roleIds) =>
+      edit(
+        (draft) => {
+          const overrides = { ...draft.overrides };
+          for (const roleId of roleIds) delete overrides[roleId];
+          return { ...draft, overrides };
+        },
+        `override-section:${[...roleIds].sort().join(",")}`
+      ),
+    [edit]
+  );
+
   const moveHistory = useCallback(
     (from, to) => {
       const history = historyRef.current;
@@ -274,12 +295,14 @@ export function useThemeEditor(opts) {
     beginCreate,
     beginEdit,
     setName,
+    updateColorScheme,
     updateCore,
     updatePaletteColor,
     updateIntensityStop,
     updateIntensityStops,
     applyPreset,
     updateOverride,
+    resetOverrides,
     undo,
     redo,
     syncSource,

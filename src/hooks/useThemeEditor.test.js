@@ -66,6 +66,23 @@ describe("useThemeEditor", () => {
     expect(listCustomThemeDocuments()).toEqual({});
   });
 
+  it("changes Appearance and resets an Advanced section as one draft operation", () => {
+    const publish = vi.fn();
+    const { result } = setup(publish);
+    act(() => result.current.beginCreate("S"));
+
+    act(() => result.current.updateColorScheme("light"));
+    expect(result.current.draft.colorScheme).toBe("light");
+
+    act(() => result.current.updateOverride("waveform.trace", { kind: "color", value: "#123456" }));
+    act(() =>
+      result.current.updateOverride("waveform.snapshot", { kind: "color", value: "#654321" })
+    );
+    act(() => result.current.resetOverrides(["waveform.trace", "waveform.snapshot"]));
+    expect(result.current.draft.overrides).not.toHaveProperty("waveform.trace");
+    expect(result.current.draft.overrides).not.toHaveProperty("waveform.snapshot");
+  });
+
   it("undoes and redoes coalesced changes without writing persistence", () => {
     const publish = vi.fn();
     const { result } = setup(publish);

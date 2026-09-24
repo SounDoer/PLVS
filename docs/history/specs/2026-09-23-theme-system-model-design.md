@@ -902,3 +902,29 @@ local `artifacts/theme-gallery/phase3-renderer-ownership/` evidence directory. T
 sheets confirm Dark and Light compiler output, real module rendering, module grids, and local
 Selection rendering. The evidence remains gitignored; the generator, manifest, role-contract tests,
 and renderer tests are the committed baseline.
+
+## Phase 4 implementation boundary — 2026-09-24
+
+Phase 4 reshapes Theme Editor presentation and validation without changing Theme document shape,
+compiler recipes, role bindings, built-in color values, or portable sharing. Dark/Light appearance
+is now a compact control beside Theme identity. Core, Palettes, and Advanced remain the three
+primary pages and use one shared 20 px Theme swatch. Long role descriptions moved from persistent
+secondary rows into HoverTips with screen-reader descriptions.
+
+Advanced follows Interface, Activity, then Module Catalog order. Interface is subdivided into
+Surfaces, Text & Icons, Feedback, Contrast, and Effects. A search temporarily reveals matches
+without replacing the author's expansion state. Each section reports its customized count and can
+remove all of its draft overrides in one undoable Reset Section to Auto operation.
+
+The editor analyzes the compiled Draft for high-confidence contrast, data/snapshot, status,
+frequency, surface, and adjacent-intensity risks. Results are structured non-blocking visual
+warnings with metrics, affected consumers, per-role indicators, and navigation back to a relevant
+control. Structural compiler failures remain the separate blocking validation class. Local custom
+Themes may still be saved with warnings; built-in Theme warning gates and color tuning remain later
+phases.
+
+`Open Theme Preview` renders Overview and Modules scenes from the same in-memory Draft and resolved
+CSS bindings as the editor. It is read-only with respect to Workspace data and layout, owns no
+second draft or transaction, and disappears with the editor. The preview covers semantic surfaces,
+text/content pairs, feedback/activity, measurement status, all eight Workspace modules, and the
+Intensity scale; the real Workspace continues to receive the existing live Draft publication.

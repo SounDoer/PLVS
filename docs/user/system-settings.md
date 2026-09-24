@@ -37,7 +37,15 @@ focused most recently.
 
 **Interface Size** scales the whole interface. **Appearance** follows the system theme by default or
 uses a fixed theme. Light and Dark ship built in, and the theme editor lets you build and save your
-own themes.
+own themes. A custom theme keeps its Dark or Light appearance beside its name; **Core** holds the
+main identity colors, **Palettes** controls shared data scales, and **Advanced** contains optional
+per-interface and per-module overrides. Advanced roles stay on **Auto** unless you customize them,
+and can be searched or reset to Auto a section at a time.
+
+The editor reports visual warnings such as weak contrast or colors that are hard to distinguish.
+Warnings do not block saving a local theme: expand the summary to review the affected roles and
+jump to a relevant control. **Open Theme Preview** shows controlled overview and module scenes from
+the current unsaved draft without changing Workspace data or layout.
 
 ## History and dialogue detection
 

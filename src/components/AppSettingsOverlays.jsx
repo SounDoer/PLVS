@@ -196,12 +196,14 @@ export function AppSettingsOverlays({
         <ThemeEditor
           draft={editor.draft}
           onName={editor.setName}
+          onColorScheme={editor.updateColorScheme}
           onCore={editor.updateCore}
           onPaletteColor={editor.updatePaletteColor}
           onIntensityStop={editor.updateIntensityStop}
           onIntensityStops={editor.updateIntensityStops}
           onApplyPreset={editor.applyPreset}
           onOverride={editor.updateOverride}
+          onResetOverrides={editor.resetOverrides}
           onUndo={editor.undo}
           onRedo={editor.redo}
           canUndo={editor.canUndo}
