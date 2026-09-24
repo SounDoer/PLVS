@@ -578,3 +578,59 @@ hard-coded color derivations.
 
 The next area is assigning each PLVS surface to this stack before choosing the final compositor
 policy.
+
+### Dark and Light visual evaluation order
+
+- Evaluate Dark and Light independently; shared recipe structure does not imply that identical
+  constants produce equivalent hierarchy or contrast in both schemes.
+- Validate the opaque surface ladder first: Workspace, Panel, Raised, Control, Muted, and Selected.
+  Then validate text and content contrast, data-series distinction, Palette behavior, and finally
+  complete product scenes.
+- Use 4.5:1 as the normal and small-text target, including compact annotations and axis labels;
+  3:1 applies to large text and necessary graphical or control boundaries. Nonessential decoration
+  is assessed separately from information-bearing marks.
+- Exercise Primary, Secondary, Snapshot, Selection, Warning, and Critical together. Secondary is
+  not visually demoted by name; state colors do not replace series identity where the design keeps
+  a normal series color.
+- Status evaluation covers meter gradients, small markers, rule-result text, and continuous module
+  encodings. Frequency evaluation covers anchor distinction, interpolation, neutral fallback, and
+  avoidance of unrelated state meaning. Intensity evaluation covers monotonic energy reading,
+  quiet-detail retention, strong-signal emphasis, and 2D/3D consistency.
+- Product scenes cover Empty, Live, File, Snapshot, Selection, Warning, Critical, Disabled, Hover,
+  keyboard focus, dialogs, popovers, Dock, Hide Chrome, fullscreen, representative sizes and
+  channel topologies, and Windows and macOS.
+- Composition is assessed in order: opaque baseline, redesigned translucent candidate, then native
+  Glass. A later effect cannot be used to approve an inadequate opaque semantic model.
+- Current measured failures remain baseline evidence rather than accepted targets: Dark content on
+  Accent is about 2.02:1, Dark content on Critical about 3.20:1, Light content on Critical about
+  4.00:1, Light Warning on Panel about 1.49:1, and Light Primary Data on Panel about 2.87:1.
+
+The next area is turning this evaluation into a deterministic Theme gallery manifest.
+
+### Deterministic Theme gallery
+
+- Build two complementary galleries. The Semantic Gallery presents controlled Role relationships
+  and editor outcomes; the Product Gallery runs real PLVS renderers and proves actual integration.
+  A synthetic gallery example never counts as a production consumer.
+- Core Product scenes cover shell surfaces, controls, feedback, Level Meter, Loudness, Spectrum,
+  Waveform, 2D Spectrogram, 3D Lines, 3D Surface, Vectorscope, Stereo Map, Stats, Dock, dialogs, and
+  window modes.
+- The mandatory matrix runs every core scene in built-in Dark and Light with the opaque compositor
+  at a representative size. Focused matrices add compositor variants, narrow and wide modules,
+  Dock heights, Spectrogram modes, topology, window modes, DPI, and platforms without expanding
+  every dimension into an unreviewable Cartesian product.
+- A versioned machine-readable manifest owns Theme ID or document hash, compositor, deterministic
+  fixture and hash, workspace state, interaction state, viewport, scale, platform, expected Agent
+  Control revision, covered public roles, and renderer surfaces.
+- Capture waits for revision-correlated application readiness rather than an arbitrary sleep. The
+  deterministic fixture and state transition path are shared across reruns.
+- Outputs include individual images, comparison contact sheets or a local switchable gallery, and
+  a machine-readable report containing metadata, contrast, perceptual distance, binding coverage,
+  and pixel-difference signals.
+- Every public Advanced role requires a real production consumer, a Semantic Gallery case, a
+  Product Gallery case, and a binding contract test before format freeze.
+- Pixel differences are diagnostic signals, not automatic visual verdicts. Approval considers
+  contrast, OKLCH separation, redundant encoding, renderer correctness, and human review together.
+
+The next area is evaluating the actual built-in Dark and Light colors, beginning with Accent and
+colored-content contrast.
