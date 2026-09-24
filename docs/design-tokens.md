@@ -282,6 +282,14 @@ same bytes. PLVS accepts that direct portable document through Paste or file Imp
 Import continues to accept the existing multi-item Theme pack envelope. The download is therefore
 a fallback and archival path, not a second public Theme format.
 
+Community pages describe the artefact's one authored appearance as `Dark Theme` or `Light Theme`;
+they never imply that one Theme supports both schemes. A paired design is published as two distinct
+Theme artefacts and therefore has two identities. The primary compatibility copy is generated from
+one central Format/Semantics-to-release mapping: `Requires PLVS <minimum> or later`, or a closed
+`Works with PLVS <minimum>-<maximum>` range if later compatibility evidence requires one. Expanded
+technical details show `Theme Format 1 · Semantics 1`. Public-page generation fails while the first
+shipping release remains unassigned, preventing a guessed minimum version from reaching users.
+
 ### Component: Status, feedback, and activity
 
 The Status Palette is measurement-only. Each instrument consumes it through module-local resolved
