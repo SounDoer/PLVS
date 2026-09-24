@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { openExternalUrl, openLicenseNotices } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
@@ -38,6 +38,7 @@ export function AppSettingsOverlays({
     resetConfiguration,
   } = useConfigurationProfileActions();
   const pack = usePackTransfer();
+  const { beginThemePaste } = pack;
   const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
   });
@@ -51,6 +52,25 @@ export function AppSettingsOverlays({
     resetInstall,
   } = updateControls;
   const { editor, editorPos, moveEditor } = settings;
+
+  useEffect(() => {
+    const onPaste = (event) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      const text = event.clipboardData?.getData("text/plain");
+      if (!text) return;
+      event.preventDefault();
+      void beginThemePaste(text);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [beginThemePaste]);
 
   function openUpdateDialog() {
     resetInstall();
@@ -123,6 +143,7 @@ export function AppSettingsOverlays({
         configurationStatus={configurationStatus}
         onPackExport={setPickType}
         onPackImport={pack.beginImport}
+        onPasteTheme={pack.pasteThemeFromClipboard}
         packBusy={pack.busy}
         packStatus={pack.status}
         agentControlStatus={agentControlStatus}
@@ -190,6 +211,15 @@ export function AppSettingsOverlays({
           onConfirm={pack.confirmImport}
           onClose={pack.cancelImport}
         />
+      ) : null}
+
+      {!settings.settingsOpen && pack.status ? (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-[70] -translate-x-1/2 rounded-md border border-border bg-popover px-3 py-2 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-lg"
+        >
+          {pack.status}
+        </div>
       ) : null}
 
       {editor.isEditing ? (

@@ -9,6 +9,8 @@ import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeThemeDocument } from "../theme/migrations/migrateV1Theme.js";
 import {
+  PORTABLE_THEME_FORMAT_VERSION,
+  PORTABLE_THEME_SEMANTICS_VERSION,
   PortableThemeError,
   portableToStoredTheme,
   themeToPortable,
@@ -279,4 +281,28 @@ export function parsePack(raw, expectedType) {
   }
 
   return parsed;
+}
+
+/** Parse the canonical portable Theme copied by a community page, without inventing a new format. */
+export function parseClipboardTheme(raw) {
+  if (
+    raw?.formatVersion > PORTABLE_THEME_FORMAT_VERSION ||
+    raw?.semanticsVersion > PORTABLE_THEME_SEMANTICS_VERSION
+  ) {
+    throw new PackValidationError("This Theme requires a newer version of PLVS.");
+  }
+  let theme;
+  try {
+    theme = portableToStoredTheme(raw, "custom-pasted-theme");
+  } catch (error) {
+    if (!(error instanceof PortableThemeError)) throw error;
+    throw new PackValidationError("Clipboard doesn't contain a PLVS Theme.", error.issues);
+  }
+  return {
+    app: PACK_APP,
+    kind: PACK_KINDS.themes.kind,
+    version: THEME_PACK_VERSION,
+    exportedAt: "",
+    items: [theme],
+  };
 }

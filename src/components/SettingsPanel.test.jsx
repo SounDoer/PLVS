@@ -781,12 +781,22 @@ describe("SettingsPanel", () => {
 
   it("offers export and import for each library above the Everything row", () => {
     const onPackExport = vi.fn();
-    render(<SettingsPanel {...BASE_PROPS} onPackExport={onPackExport} onPackImport={vi.fn()} />);
+    const onPasteTheme = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        onPackExport={onPackExport}
+        onPackImport={vi.fn()}
+        onPasteTheme={onPasteTheme}
+      />
+    );
 
     for (const label of ["loudness profiles", "presets", "theme"]) {
       expect(screen.getByRole("button", { name: `Export ${label}` })).toBeTruthy();
       expect(screen.getByRole("button", { name: `Import ${label}` })).toBeTruthy();
     }
+    expect(screen.getByRole("button", { name: "Paste theme" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Paste presets" })).toBeNull();
 
     const rows = Array.from(document.querySelectorAll("[data-settings-row]"));
     const index = (label) => rows.findIndex((row) => row.textContent.startsWith(label));
@@ -796,6 +806,8 @@ describe("SettingsPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
     expect(onPackExport).toHaveBeenCalledWith("presets");
+    fireEvent.click(screen.getByRole("button", { name: "Paste theme" }));
+    expect(onPasteTheme).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -83,7 +83,9 @@ export function ItemPickerDialog({
   const contentRef = useRef(null);
   const dragRef = useRef(null);
   const label = PACK_KINDS[type].label;
-  const title = mode === "pick" ? `Export ${label}` : `Import ${label}`;
+  const clipboardTheme = mode === "review" && review?.origin === "clipboard";
+  const title =
+    mode === "pick" ? `Export ${label}` : clipboardTheme ? "Paste Theme" : `Import ${label}`;
 
   useEffect(() => {
     if (!open) {
@@ -230,7 +232,7 @@ export function ItemPickerDialog({
                 Export
               </Button>
             ) : (
-              <Button onClick={onConfirm}>Import</Button>
+              <Button onClick={onConfirm}>{clipboardTheme ? "Add Theme" : "Import"}</Button>
             )}
           </div>
         </Dialog.Content>

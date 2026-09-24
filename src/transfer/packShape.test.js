@@ -5,9 +5,11 @@ import {
   THEME_PACK_VERSION,
   PackValidationError,
   buildPack,
+  parseClipboardTheme,
   parsePack,
 } from "./packShape.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { themeToPortable } from "../theme/portableTheme.js";
 
 describe("buildPack", () => {
   it("stamps the envelope for a loudness pack", () => {
@@ -156,5 +158,34 @@ describe("parsePack", () => {
       "presets"
     );
     expect(parsed.loudnessProfiles).toEqual([]);
+  });
+});
+
+describe("parseClipboardTheme", () => {
+  it("accepts the canonical portable document directly", () => {
+    const portable = themeToPortable({
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-web",
+      name: "From Community",
+    });
+
+    expect(parseClipboardTheme(portable)).toMatchObject({
+      kind: "theme-pack",
+      version: THEME_PACK_VERSION,
+      items: [{ id: "custom-pasted-theme", name: "From Community", formatVersion: 2 }],
+    });
+  });
+
+  it("gives clipboard-specific errors for unrelated or newer content", () => {
+    expect(() => parseClipboardTheme({ message: "hello" })).toThrow(
+      "Clipboard doesn't contain a PLVS Theme."
+    );
+    const portable = themeToPortable({
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-web",
+    });
+    expect(() => parseClipboardTheme({ ...portable, formatVersion: 99 })).toThrow(
+      "This Theme requires a newer version of PLVS."
+    );
   });
 });

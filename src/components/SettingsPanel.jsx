@@ -209,6 +209,7 @@ export function SettingsPanel({
   configurationStatus = "",
   onPackExport = () => {},
   onPackImport = () => {},
+  onPasteTheme = () => {},
   packBusy = false,
   packStatus = "",
   agentControlStatus = undefined,
@@ -661,6 +662,17 @@ export function SettingsPanel({
                         >
                           Import
                         </button>
+                        {row.type === "themes" ? (
+                          <button
+                            type="button"
+                            onClick={onPasteTheme}
+                            disabled={packBusy}
+                            aria-label="Paste theme"
+                            className={CONFIG_TEXT_BTN_CLASS}
+                          >
+                            Paste
+                          </button>
+                        ) : null}
                       </div>
                     </SettingsRow>
                   ))}

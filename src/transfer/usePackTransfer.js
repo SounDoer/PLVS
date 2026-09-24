@@ -13,7 +13,13 @@ import { pickPackFile, savePackFile } from "../ipc/fileDialog.js";
 import { collectPackItems } from "./collectPackItems.js";
 import { getAdapter } from "./libraryAdapters.js";
 import { planPackImport } from "./mergeIntoLibrary.js";
-import { PackValidationError, buildPack, packDescriptor, parsePack } from "./packShape.js";
+import {
+  PackValidationError,
+  buildPack,
+  packDescriptor,
+  parseClipboardTheme,
+  parsePack,
+} from "./packShape.js";
 
 function defaultFileName(descriptor, items) {
   const base = items.length === 1 ? items[0].name : descriptor.defaultBaseName;
@@ -107,7 +113,7 @@ export function usePackTransfer() {
           existingItems: getAdapter(type).list(),
           existingProfiles: type === "presets" ? getAdapter("loudness").list() : [],
         });
-        setReview({ type, pack, ...planned });
+        setReview({ type, origin: "file", pack, ...planned });
       } catch (error) {
         // The specific messages cover problems with the file's *contents* -- what a recipient of
         // a shared file actually hits. A filesystem failure here (deleted between picking and
@@ -122,16 +128,77 @@ export function usePackTransfer() {
     [busy, setStatus]
   );
 
+  const beginThemePaste = useCallback(
+    async (text) => {
+      if (busy) return;
+      setBusy(true);
+      setStatus("");
+      setReview(null);
+      try {
+        let raw;
+        try {
+          raw = JSON.parse(text);
+        } catch (_) {
+          throw new PackValidationError("Clipboard doesn't contain a PLVS Theme.");
+        }
+        const pack = parseClipboardTheme(raw);
+        const planned = planPackImport("themes", pack, {
+          existingItems: getAdapter("themes").list(),
+        });
+        setReview({ type: "themes", origin: "clipboard", pack, ...planned });
+      } catch (error) {
+        setStatus(
+          error instanceof PackValidationError
+            ? error.message
+            : "PLVS couldn't read the clipboard. Use Import to choose a .plvstheme file instead."
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, setStatus]
+  );
+
+  const pasteThemeFromClipboard = useCallback(async () => {
+    if (busy) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      await beginThemePaste(text);
+    } catch (_) {
+      setStatus(
+        "PLVS couldn't read the clipboard. Use Import to choose a .plvstheme file instead."
+      );
+    }
+  }, [beginThemePaste, busy, setStatus]);
+
   const confirmImport = useCallback(() => {
     if (!review) return;
     const { type, profileAdditions, itemAdditions } = review;
     if (profileAdditions.length > 0) getAdapter("loudness").append(profileAdditions);
     getAdapter(type).append(itemAdditions);
-    setStatus(`${packDescriptor(type).label} imported`);
+    if (review.origin === "clipboard") {
+      setStatus(
+        itemAdditions.length > 0
+          ? "Theme added to your library."
+          : "Theme is already in your library."
+      );
+    } else {
+      setStatus(`${packDescriptor(type).label} imported`);
+    }
     setReview(null);
   }, [review, setStatus]);
 
   const cancelImport = useCallback(() => setReview(null), []);
 
-  return { busy, status, review, exportSelection, beginImport, confirmImport, cancelImport };
+  return {
+    busy,
+    status,
+    review,
+    exportSelection,
+    beginImport,
+    beginThemePaste,
+    pasteThemeFromClipboard,
+    confirmImport,
+    cancelImport,
+  };
 }

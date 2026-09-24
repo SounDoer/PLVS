@@ -4,7 +4,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { AppSettingsOverlays } from "./AppSettingsOverlays.jsx";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
-import { presetsStore, settingsStore } from "../persistence/index.js";
+import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
 
 const mocks = vi.hoisted(() => ({
   exportConfiguration: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock("./SettingsPanel.jsx", () => ({
     onSetAgentControlEnabled,
     onPackExport,
     onPackImport,
+    onPasteTheme,
     packBusy,
     packStatus,
   }) => (
@@ -91,6 +94,10 @@ vi.mock("./SettingsPanel.jsx", () => ({
       <button type="button" onClick={() => onPackImport("loudness")}>
         Import loudness
       </button>
+      <button type="button" onClick={onPasteTheme}>
+        Paste theme
+      </button>
+      <input aria-label="mock text input" />
     </div>
   ),
 }));
@@ -228,6 +235,7 @@ describe("AppSettingsOverlays", () => {
     // here rather than in that test's own teardown, so test order never matters.
     mocks.isTauri.mockReturnValue(false);
     presetsStore.reset();
+    themesStore.reset();
   });
 
   it("forwards the global dialogue detection engine setting", () => {
@@ -393,6 +401,36 @@ describe("AppSettingsOverlays", () => {
         "Import is available in the desktop app"
       )
     );
+  });
+
+  it("opens Theme import review when a portable Theme is pasted globally", async () => {
+    const text = serializePortableTheme(
+      themeToPortable({
+        ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+        id: "custom-community",
+        name: "Pasted Theme",
+      })
+    );
+    renderOverlays();
+
+    fireEvent.paste(window, { clipboardData: { getData: () => text } });
+
+    expect(await screen.findByRole("dialog", { name: "Paste Theme" })).toBeTruthy();
+    expect(screen.getByText("Pasted Theme")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
+    expect(themesStore.read()).toEqual({});
+  });
+
+  it("leaves ordinary paste alone while a text field owns focus", () => {
+    renderOverlays();
+    const input = screen.getByRole("textbox", { name: "mock text input" });
+
+    expect(fireEvent.paste(input, { clipboardData: { getData: () => "ordinary text" } })).toBe(
+      true
+    );
+
+    expect(screen.queryByRole("dialog", { name: "Paste Theme" })).toBeNull();
+    expect(screen.getByTestId("pack-status").textContent).toBe("");
   });
 
   it("renders the theme editor when custom theme editing is active", () => {

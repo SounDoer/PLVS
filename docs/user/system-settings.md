@@ -89,6 +89,12 @@ local IDs and the palette preset originally used to choose those colors are not 
 Theme. PLVS still imports older Theme pack files. If any Theme entry is damaged or incompatible,
 the import reports the problem and adds nothing instead of silently skipping that entry.
 
+Community Theme pages can copy that same portable Theme document to the clipboard. In PLVS, press
+**Ctrl+V** on Windows or **Command+V** on macOS anywhere outside a text field, or choose **Paste**
+on the Theme row in Settings. PLVS opens the normal Theme import review before adding anything; it
+never activates or overwrites a Theme just because it was pasted. The Theme row's file **Import**
+remains available when clipboard access is unavailable.
+
 ## Crash reports and feedback
 
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending
