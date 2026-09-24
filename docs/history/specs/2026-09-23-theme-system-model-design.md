@@ -196,6 +196,13 @@ not begin merely because a decision is recorded here.
   solid-surface roles. Existing hard-coded Badge variants migrate to those Interface roles.
 - Built-in Themes must meet the approved text-contrast gate. Custom Themes receive explicit
   warnings for unsafe combinations while retaining intentional override freedom.
+- In Advanced, these semantics appear under one `Text & Icons` section with three subgroups:
+  `General` contains Primary, Secondary, and Annotation; `Feedback` contains Success, Warning, and
+  Danger text-and-icon colors used on ordinary or tinted feedback; `Contrast` contains Accent,
+  Success, Warning, and Danger text-and-icon colors used on the corresponding solid backgrounds.
+- The editor does not expose `Foreground`, `Content on`, or `Solid Surface Content` as user-facing
+  group names. A Contrast description explains that the Palette or Core input controls the solid
+  background while the Advanced value controls the text and icons placed on it.
 
 ## Open areas
 
