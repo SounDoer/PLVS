@@ -43,8 +43,8 @@ optimistic `running` boolean.
 capture startup, and frame-channel readiness. Running is a no-op; starting/stopping returns
 `transitionInProgress`. It does not change a historical viewport. If FILE analysis is active, start
 requires `--allow-stop-file-analysis`, stops that analysis while retaining partial results, and
-reports the effect. A newly created additional workbench refuses start with `sourceUnselected`
-until `device select` or the Sources picker chooses a Source.
+reports the effect. A newly created additional workbench opens Stopped with Automatic selected, so
+`live start` uses the same default-output policy as the first workbench.
 
 `live stop` awaits native shutdown, retains measurement/history and device selection, and is a
 no-op when stopped. `live clear` targets LIVE data regardless of the visible source: while running

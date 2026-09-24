@@ -42,7 +42,7 @@ const context = {
 };
 
 describe("Transport Control", () => {
-  it("refuses LIVE start until an additional workbench selects a Source", () => {
+  it("refuses LIVE start when the Source is explicitly unselected", () => {
     const stopped = buildTransportSnapshot(runtime, { ...context, requestedDeviceId: null });
 
     expect(

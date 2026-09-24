@@ -63,7 +63,7 @@ impl WorkspaceCatalog {
       }
     };
     WorkspaceStore::open(&self.identity_root, &workspace_id)?.save(&serde_json::json!({
-      "source": null,
+      "captureDeviceId": "default",
       "captureStatus": "stopped"
     }))?;
     transaction

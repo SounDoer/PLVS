@@ -26,7 +26,7 @@ describe("capturePrefs transactional desktop persistence", () => {
     expect(loadStore).not.toHaveBeenCalled();
   });
 
-  it("preserves an unselected Source in a new additional workspace", async () => {
+  it("preserves an explicitly unselected Source", async () => {
     window.__PLVS_INITIAL_STATE__.captureDeviceId = null;
     const { loadCaptureDeviceId } = await import("./capturePrefs.js");
 

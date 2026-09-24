@@ -127,7 +127,7 @@ describe("Device Control inventory", () => {
 });
 
 describe("Device Control inspection", () => {
-  it("reports a new additional workbench as unselected", () => {
+  it("reports an explicitly unselected Source", () => {
     expect(
       buildDeviceInspection({ ...inventory(), requestedId: null }, { state: "stopped" })
     ).toMatchObject({

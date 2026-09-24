@@ -5,7 +5,7 @@ fn temp_root() -> std::path::PathBuf {
 }
 
 #[test]
-fn first_launch_restores_default_and_additional_launches_allocate_blank_workbenches() {
+fn first_launch_restores_default_and_additional_launches_allocate_stopped_workbenches() {
   let root = temp_root();
   let catalog = WorkspaceCatalog::open(&root).expect("open workspace catalog");
   assert_eq!(catalog.restore_set().unwrap(), vec!["default"]);
@@ -30,7 +30,7 @@ fn first_launch_restores_default_and_additional_launches_allocate_blank_workbenc
       .load()
       .unwrap()
       .expect("blank workbench state");
-    assert_eq!(state["source"], serde_json::Value::Null);
+    assert_eq!(state["captureDeviceId"], "default");
     assert_eq!(state["captureStatus"], "stopped");
   }
 

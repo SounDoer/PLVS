@@ -80,7 +80,7 @@ beforeEach(() => {
 });
 
 describe("useAudioDevices", () => {
-  it("keeps a new additional workspace unselected until the user chooses a Source", async () => {
+  it("keeps an explicitly unselected Source until the user chooses one", async () => {
     window.__PLVS_INITIAL_STATE__ = {
       captureDeviceId: null,
       multiInstancePersistence: { itemRevisions: {}, collectionRevisions: {} },

@@ -1,4 +1,6 @@
-use app_lib::persistence::{hydrate_workspace, migrate_legacy_store, WorkspaceCatalog};
+use app_lib::persistence::{
+  hydrate_workspace, migrate_legacy_store, WorkspaceCatalog, WorkspaceStore,
+};
 use serde_json::json;
 
 #[test]
@@ -82,7 +84,7 @@ fn migrated_shared_items_are_recomposed_with_instance_owned_active_state() {
 }
 
 #[test]
-fn a_new_additional_workbench_hydrates_without_selecting_automatic() {
+fn a_new_additional_workbench_hydrates_stopped_with_automatic_selected() {
   let root = std::env::temp_dir().join(format!(
     "plvs-blank-workspace-hydration-{}",
     std::process::id()
@@ -94,6 +96,27 @@ fn a_new_additional_workbench_hydrates_without_selecting_automatic() {
 
   let hydrated = hydrate_workspace(&root, &workspace_id).expect("hydrate additional workbench");
 
-  assert_eq!(hydrated.capture_device_id, serde_json::Value::Null);
+  assert_eq!(hydrated.capture_device_id, json!("default"));
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn an_existing_source_free_workbench_falls_back_to_automatic() {
+  let root = std::env::temp_dir().join(format!(
+    "plvs-source-free-workspace-hydration-{}",
+    std::process::id()
+  ));
+  WorkspaceStore::open(&root, "workspace-existing")
+    .unwrap()
+    .save(&json!({
+      "source": null,
+      "captureStatus": "stopped"
+    }))
+    .unwrap();
+
+  let hydrated =
+    hydrate_workspace(&root, "workspace-existing").expect("hydrate existing workbench");
+
+  assert_eq!(hydrated.capture_device_id, json!("default"));
   let _ = std::fs::remove_dir_all(root);
 }
