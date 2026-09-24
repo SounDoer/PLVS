@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { compileTheme } from "../src/theme/compileTheme.js";
+import { COMMUNITY_THEME_PREVIEW_ASSETS } from "../src/theme/communityThemePreview.js";
 import {
   buildSemanticGallerySvg,
   buildSemanticMetrics,
@@ -39,6 +40,31 @@ describe("Theme Gallery", () => {
         "waveform",
         "stereo-map",
       ].sort()
+    );
+    const publicationSceneIds = COMMUNITY_THEME_PREVIEW_ASSETS.filter(
+      ({ kind }) => kind === "product"
+    ).map(({ sceneId }) => sceneId);
+    expect(publicationSceneIds).toEqual([
+      "workspace-file",
+      "level-meter-file",
+      "loudness-file",
+      "stats-file",
+      "vectorscope-file",
+      "spectrum-file",
+      "spectrogram-heatmap",
+      "waveform-file",
+      "stereo-map-file",
+    ]);
+  });
+
+  it("fails when the baseline no longer contains a required publication scene", async () => {
+    const manifest = await readGalleryManifest();
+    const incomplete = structuredClone(manifest);
+    incomplete.product.scenes = incomplete.product.scenes.filter(
+      ({ id }) => id !== "vectorscope-file"
+    );
+    expect(validateGalleryManifest(incomplete)).toContain(
+      "Community preview asset product-vectorscope-file references missing scene vectorscope-file."
     );
   });
 
