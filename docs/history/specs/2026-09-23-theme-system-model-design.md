@@ -167,7 +167,37 @@ not begin merely because a decision is recorded here.
   de-emphasis, and Selected recognition independently for Dark and Light Themes before recipe
   constants are approved.
 
+### Interface text and content roles
+
+- Retain `Primary`, `Secondary`, and `Annotation` as the three text semantics derived from Core
+  Text.
+- Primary covers ordinary text, headings, important values, and normal icons. Secondary covers
+  supporting labels, descriptions, and metadata. Annotation covers compact technical labels,
+  units, axes, and ticks.
+- Annotation is not a third, faintest hierarchy level. Its typically smaller size may require more
+  contrast than Secondary.
+- Neutral surfaces do not receive separate content-on roles. Workspace, Panel, Raised, Control,
+  and Selected use Primary or Secondary Text as appropriate; Muted normally uses Secondary Text.
+  Their surface recipes and validation must keep those shared text roles readable.
+- Renderer variables such as card, popover, control, selected, and muted foregrounds are bindings
+  to the smaller semantic text set, not evidence that each requires a public Theme role.
+- Retain four symmetric solid-surface content roles: `Content on Accent`, `Content on Success`,
+  `Content on Warning`, and `Content on Danger`.
+- Each content-on role is contrast-derived for its actual solid substrate and may be overridden in
+  Advanced. A tint foreground and content on a solid semantic surface remain different roles.
+- `Content on Accent` is consumed by primary actions and `Content on Danger` by destructive actions.
+- Existing copy-success states in `CopyableTextBlock` and the file-report Export trigger become
+  short-lived solid Success controls that consume `Content on Success`.
+- The unknown-loudness-layout marker and Audio Dropped indicator become compact solid Warning
+  treatments that consume `Content on Warning`.
+- Completed file-history rows remain neutral, History Truncated remains a Warning foreground/tint,
+  and activity and measurement states are not recolored merely to create semantic consumers.
+- Interface Success, Warning, and Danger also derive usage-specific foreground, tint, border, and
+  solid-surface roles. Existing hard-coded Badge variants migrate to those Interface roles.
+- Built-in Themes must meet the approved text-contrast gate. Custom Themes receive explicit
+  warnings for unsafe combinations while retaining intentional override freedom.
+
 ## Open areas
 
-The next area is Interface text and substrate-specific content: Primary, Secondary, Annotation, and
-content on neutral, Accent, Interface, and activity surfaces.
+The next area is the remaining Interface effect model: default and input borders, focus indication,
+shadow, and how color-plus-opacity values are typed and exposed.
