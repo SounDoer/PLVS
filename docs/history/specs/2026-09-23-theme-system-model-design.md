@@ -229,6 +229,28 @@ not begin merely because a decision is recorded here.
 
 ## Open areas
 
-The next area is the boundary between Data, Meter, and module-specific roles: which values are
-portable visual semantics, which are measurement semantics, and which belong to an individual
-visualisation rather than the global Theme contract.
+### Data, Meter, and module override boundary
+
+- Core Primary Data and Secondary Data are global authoring seeds. Generic data roles such as
+  companion, snapshot, selection, grid, and annotation form an internal derivation layer rather
+  than a separate Advanced editor section.
+- Meter Safe, Warning, and Critical consume the measurement Status Palette. Meter is a consumer,
+  not a second authored Palette, and does not duplicate those three global choices by default.
+- Module-specific Advanced roles remain valid even when their Auto recipe follows a global Core or
+  Palette input. They allow one visualisation to depart from the global rule without changing
+  other current or future consumers.
+- Retain the existing `Auto`, explicit `Follow …`, and `Custom` model. Auto means use the module
+  role's default recipe; Follow stores an intentional reference to a compatible source; Custom
+  stores a local authored color. An explicit Follow can therefore remain meaningful even when its
+  current output happens to equal Auto.
+- Waveform Low, Mid, and High Frequency remain available as local Advanced roles. Auto follows the
+  matching Frequency Palette anchor, while Custom can compensate for Waveform-specific rendering
+  or background conditions without redefining the global frequency semantics.
+- Editing a global source updates Auto and explicit Follow consumers but does not erase Custom
+  overrides. Returning a role to Auto removes its stored override from the shared Theme document.
+- A module option is not rejected merely because a global default exists. Each option is retained
+  only when a module-local difference is plausible, its semantic meaning is stable, its source is
+  clear in the editor, and the result can be covered by the gallery.
+
+The next area is applying that retention test to each module's Advanced roles, beginning with
+Loudness.
