@@ -410,3 +410,102 @@ global Status Palette.
   `--ui-signal-*` migrate to Activity or Interface roles instead.
 
 The next area is the boundary between roles, recipes, dependencies, references, and bindings.
+
+### Public roles and internal resolution
+
+- Retain Role, Recipe, Dependency, Reference, and Binding as distinct concepts. The problem is not
+  their existence but their currently implicit layering.
+- A public override role must be a visible Advanced option, be understandable without renderer
+  knowledge, have a real or immediately committed consumer, retain stable meaning across renderer
+  refactors, be independently gallery-testable, and have an explicit migration path.
+- Public role IDs are semantic targets such as `waveform.frequencyLow`; internal roles such as
+  `data.snapshot.primary`, `data.selection`, `data.grid`, and `meter.safe` are compiler nodes and do
+  not become portable fields merely because they exist in the registry.
+- Rename semantic IDs before format freeze where current implementation language or superseded
+  terminology leaks through: Status Good becomes Safe, Interactive Surface becomes Selected
+  Surface, Interface Critical becomes Danger, and Spectrogram Ink and Surface Ink become
+  Monochrome Lines and Monochrome Surface.
+- Keep concise module IDs such as `waveform.trace`; adding a `module.` prefix provides no semantic
+  value.
+- References are an explicit public allowlist per override role, not arbitrary graph edges. Initial
+  public reference sources are stable Core and Palette authoring sources. Internal derived roles do
+  not appear in Follow menus or shared documents.
+- The registry may remain one canonical inventory, but its shape must visibly separate public
+  override metadata, internal resolution metadata, and renderer bindings. Recipe, Dependency, and
+  Binding data are never serialized into a shared Theme.
+
+### Auto, Follow, and Custom semantics
+
+- `Auto` means no stored override. The role follows its versioned default recipe and may adopt an
+  explicitly migrated recipe improvement in a future semantic compiler version.
+- `Follow` is stored user intent. It binds the target role to an approved public Core or Palette
+  source and continues to follow that authored value even if the target role's future Auto recipe
+  changes.
+- `Custom` stores a local authored color for the target role and is unaffected by later edits to
+  the former source. Returning to Auto deletes the stored override rather than serializing the
+  current resolved output.
+- Auto and Follow may resolve to the same color today without being redundant. The editor keeps
+  both because one accepts the module's evolving default and the other pins the semantic source.
+- Initial public References do not chain through other Advanced override roles. Restricting sources
+  to stable Core and Palette roots avoids reference cycles, fragile cross-module coupling, and
+  internal graph leakage.
+- A migration renames both override targets and Reference sources when their semantic IDs change.
+  A removed or reinterpreted source must produce an explicit migration or actionable incompatibility
+  error; it must never silently fall back to Auto.
+- The editor shows the resolved swatch for every mode and identifies an explicit Follow source.
+  Shared documents serialize only Follow and Custom overrides, never Auto or resolved recipe
+  results.
+
+The next area is assigning validation responsibility across document schema, registry compatibility,
+compiler resolution, and migrations.
+
+### Validation and migration boundaries
+
+- Theme ingestion follows an explicit pipeline: parse, shape validation, version migration,
+  current registry compatibility validation, compilation, then visual and accessibility analysis.
+- Schema validation owns document shape, declared versions, required fields, primitive types, color
+  syntax, numeric ranges, and identifier syntax. It does not invent missing semantic values or
+  inspect renderer bindings.
+- Migrations own every meaning-changing compatibility step. They are deterministic, ordered by
+  version, and return migration notes or actionable incompatibilities where intent cannot be
+  preserved.
+- Registry compatibility validation owns whether an override target is public, whether its mode is
+  allowed, and whether a Reference source is on that target's explicit compatibility allowlist.
+  It reports all relevant issues together rather than failing on the first compiler exception.
+- Compiler validation owns dependency resolution, recipe input and output kinds, complete role
+  resolution, and complete unique renderer bindings. The compiler remains defensive but is not an
+  implicit migration engine.
+- Visual and accessibility analysis reports contrast, distinguishability, grid visibility, and
+  related quality warnings. Unsafe Custom choices may remain intentional; those warnings do not
+  masquerade as structural schema errors.
+- Remove the current Interface-palette backfill from ordinary V2 normalization. Seeding Interface
+  Danger from an older Status Critical is a semantic migration: retain the measurement Critical,
+  copy it as the initial Interface Danger, and record that compatibility decision explicitly.
+- Invalid colors, unknown public roles, forbidden Reference sources, unresolved graphs, and
+  unsupported versions are errors. Contrast and visual-quality findings are warnings unless a
+  stricter built-in-Theme release gate applies.
+
+The next area is the exact separation between document-format version and semantic compiler
+version.
+
+### Format and semantics versioning
+
+- Replace the overloaded single public version with two protocol-owned integer fields:
+  `formatVersion` describes how to parse the document and `semanticsVersion` describes how Auto
+  recipes are interpreted. Neither is the PLVS application version or a package SemVer.
+- Format migrations handle structural changes such as Good to Safe, Interface Critical to Danger,
+  Palette shape changes, and override representation changes.
+- Semantics migrations handle changes that can alter a resolved Theme without changing its stored
+  fields, such as new surface, snapshot, grid, or contrast recipes.
+- A semantics migration may adopt an explicitly documented corrected Auto rule when intent is
+  preserved. Where a user's deliberate appearance could be lost, it pins the minimum necessary
+  legacy results as Custom overrides or requires a before-and-after confirmation when intent cannot
+  be inferred safely.
+- Changing an Auto recipe without incrementing and migrating `semanticsVersion` is forbidden. The
+  migration report identifies meaning-changing steps; it does not silently reinterpret a shared
+  document.
+- Import order is format migration, semantics migration, current registry compatibility
+  validation, compilation, then visual analysis.
+
+The next area is renderer coverage: CSS, SVG, Canvas, Dock, native surfaces, and remaining local or
+hard-coded color derivations.
