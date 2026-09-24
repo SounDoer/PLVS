@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "fixture": {
+    "id": "theme-gallery-stereo-v1",
+    "durationSeconds": 15,
+    "sampleRate": 48000,
+    "channels": 2
+  },
+  "semantic": {
+    "width": 1440,
+    "height": 1120,
+    "themes": ["plvs-dark", "plvs-light"]
+  },
+  "product": {
+    "themes": ["plvs-dark", "plvs-light"],
+    "requiredModules": [
+      "levelMeter",
+      "loudness",
+      "stats",
+      "vectorscope",
+      "spectrum",
+      "spectrogram",
+      "waveform",
+      "stereo-map"
+    ],
+    "scenes": [
+      {
+        "id": "shell-empty",
+        "state": "empty",
+        "target": "main",
+        "covers": ["shell", "empty", "controls"]
+      },
+      {
+        "id": "workspace-file",
+        "state": "file",
+        "target": "workspace",
+        "covers": ["shell", "file", "all-modules"]
+      },
+      {
+        "id": "level-meter-file",
+        "state": "file",
+        "target": "panel",
+        "panelId": "levelMeter",
+        "covers": ["levelMeter", "safe", "warning", "critical", "max-hold"]
+      },
+      {
+        "id": "loudness-file",
+        "state": "file",
+        "target": "panel",
+        "panelId": "loudness",
+        "covers": ["loudness", "primary", "secondary"]
+      },
+      {
+        "id": "stats-file",
+        "state": "file",
+        "target": "panel",
+        "panelId": "stats",
+        "covers": ["stats", "values", "annotations"]
+      },
+      {
+        "id": "vectorscope-file",
+        "state": "file",
+        "target": "panel",
+        "panelId": "vectorscope",
+        "covers": ["vectorscope", "trace", "grid", "correlation"]
+      },
+      {
+        "id": "spectrum-file",
+        "state": "file",
+        "target": "panel",
+        "panelId": "spectrum",
+        "covers": ["spectrum", "primary", "secondary", "max-decay"]
+      },
+      {
+        "id": "spectrogram-heatmap",
+        "state": "file",
+        "target": "panel",
+        "panelId": "spectrogram",
+        "panelPatch": { "mode": "heatmap" },
+        "covers": ["spectrogram", "heatmap", "intensity"]
+      },
+      {
+        "id": "spectrogram-lines-colorized",
+        "state": "file",
+        "target": "panel",
+        "panelId": "spectrogram",
+        "panelPatch": { "mode": "lines", "threeD": { "colorize": true } },
+        "covers": ["spectrogram", "3d-lines", "intensity", "grid", "axis-labels"]
+      },
+      {
+        "id": "spectrogram-surface-monochrome",
+        "state": "file",
+        "target": "panel",
+        "panelId": "spectrogram",
+        "panelPatch": { "mode": "surface", "threeD": { "colorize": false } },
+        "covers": ["spectrogram", "3d-surface", "monochrome", "grid-subdivisions"]
+      },
+      {
+        "id": "loudness-history-selection",
+        "state": "file",
+        "target": "panel",
+        "panelId": "loudness",
+        "axisPatch": { "kind": "time", "range": { "windowSec": 8, "offsetSec": 3 } },
+        "covers": ["loudness", "snapshot", "selection", "history"]
+      },
+      {
+        "id": "spectrogram-history-selection",
+        "state": "file",
+        "target": "panel",
+        "panelId": "spectrogram",
+        "axisPatch": { "kind": "time", "range": { "windowSec": 8, "offsetSec": 3 } },
+        "panelPatch": { "mode": "heatmap" },
+        "covers": ["spectrogram", "snapshot", "selection", "history"]
+      },
+      {
+        "id": "waveform-history-selection",
+        "state": "file",
+        "target": "panel",
+        "panelId": "waveform",
+        "axisPatch": { "kind": "time", "range": { "windowSec": 8, "offsetSec": 3 } },
+        "covers": ["waveform", "snapshot", "selection", "history"]
+      },
+      {
+        "id": "waveform-file",
+        "state": "file",
+        "target": "panel",
+        "panelId": "waveform",
+        "axisPatch": { "kind": "time", "range": { "windowSec": 15, "offsetSec": 0 } },
+        "covers": ["waveform", "frequency", "centroid"]
+      },
+      {
+        "id": "stereo-map-file",
+        "state": "file",
+        "target": "panel",
+        "panelId": "stereo-map",
+        "covers": ["stereo-map", "primary", "secondary", "grid"]
+      }
+    ],
+    "focusedMatrix": [
+      "narrow-and-wide-panels",
+      "dock-56-82-160",
+      "mono-stereo-high-channel-count",
+      "hover-keyboard-focus-disabled",
+      "dialogs-popovers-theme-editor",
+      "hide-chrome-fullscreen",
+      "windows-macos-dpi",
+      "native-glass"
+    ]
+  }
+}

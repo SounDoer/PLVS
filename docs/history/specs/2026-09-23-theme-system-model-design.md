@@ -796,3 +796,48 @@ The portable Theme format must not freeze until all of the following are true:
 The user-facing Theme Preview and the complete website Copy/Paste experience may follow the format
 freeze, but the underlying deterministic galleries, canonical portable document, and shared
 validation must already be reliable.
+
+## Phase 1 implementation baseline — 2026-09-24
+
+Phase 1 now has a versioned manifest and repeatable runner under `scripts/theme-gallery/`. This
+implementation deliberately changes no Theme document shape, recipe, role, binding, built-in
+color, product component, or Agent Control contract.
+
+The runner provides two evidence paths:
+
+- `npm run theme:gallery:semantic` compiles the real built-in Theme documents with
+  `compileTheme`, renders fixed-size Dark and Light semantic sheets, and records machine-readable
+  contrast results. It covers surface hierarchy, text hierarchy, content-on-color pairs, global
+  data, snapshot and selection relationships, measurement Status, Frequency, Intensity, focus,
+  border, and representative module-role relationships. SVG is retained beside PNG so labels and
+  resolved values remain inspectable.
+- `npm run theme:gallery:product` connects to the running development-identity application through
+  the existing Agent Control CLI. It generates one deterministic 15-second stereo PCM fixture,
+  analyzes it through the real FILE pipeline, selects Dark and Light through Theme Control, and
+  captures revision-correlated real renderer output. The core product set includes the complete
+  shell and Workspace, all eight Workspace modules, Spectrogram Heatmap, colorized 3D Lines, and
+  monochrome 3D Surface. Focused history scenes exercise Snapshot and Selection rendering in
+  Loudness, Spectrogram, and Waveform. It restores the prior Theme, Spectrogram controls, source
+  posture, shared axes, and removes its own FILE session.
+
+`npm run theme:gallery` produces both sets, comparison contact sheets, and `report.json` beneath a
+caller-selected or timestamped `artifacts/theme-gallery/` directory. The report records commit,
+platform, runtime, Theme, fixture identity and SHA-256, capture revision, measurement correlation,
+actual pixel dimensions, artifact SHA-256, semantic coverage labels, and current focused-matrix
+work still requiring additional capture. Generated evidence remains local and is intentionally
+gitignored; the manifest and generator are the reproducible source.
+
+The first Windows capture at design-close commit `08793e2c` reproduced the audit findings without
+changing them: Dark and Light Control and Muted resolve identically; Light Accent/Primary Data on
+Panel measure 2.873:1, Light Warning on Panel measures 1.486:1, and Light Secondary Text on Panel
+measures 4.534:1. Real product captures also make the weak Light Spectrogram and Stereo Map marks
+directly comparable with Dark. These are baseline observations for later tuning, not Phase 1 color
+changes.
+
+The manifest separates the mandatory core run from the focused matrix rather than forming an
+unreviewable Cartesian product. Narrow/wide panels, Dock heights, channel topology, hover/focus and
+disabled interaction, dialogs and popovers, Theme Editor, Hide Chrome/fullscreen, DPI, macOS, and
+native Glass remain named focused cases. They must be promoted to automated scenes or captured by
+the same metadata/report convention as the relevant platform or interaction harness becomes
+available. A focused case is not represented as covered merely because a synthetic Semantic
+Gallery example resembles it.
