@@ -26,6 +26,7 @@ audio**.
 - **Multichannel** from mono through 9.1.6
 - **Session history and snapshots**, plus **File Mode** for analysing local audio files
 - **Dock mode**, compact views, and custom themes
+- **Multiple workbenches** for metering several Sources side by side, sharing one Library
 - **`plvs-cli`** for diagnosing the installation and controlling the running app
 - **Private**: audio stays on your device, with no telemetry by default
 

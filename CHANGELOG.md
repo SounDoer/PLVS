@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-24
+
+### Added
+
+- Multiple workbenches: launch PLVS again to meter another Source. Each workbench keeps its own
+  Source, layout, active Preset, Loudness Profile, Theme, window position and Dock state, and is
+  named after its Source. Presets, Themes and Loudness Profiles stay in one shared Library.
+  Multiple workbenches are qualified on Windows; macOS support is still being verified.
+- The system tray's **Workbenches** submenu shows, starts, stops or quits an individual workbench;
+  **Quit PLVS** closes the whole set.
+- `plvs-cli instances` lists running workbenches; `--instance` or `PLVS_INSTANCE_ID` targets one.
+- When two workbenches edit the same Library item, the second save offers **Reload** or **Save as
+  Copy** instead of overwriting; open Theme and Loudness Profile editors warn when their saved
+  source changed elsewhere.
+- The update dialog shows a progress bar while the update downloads.
+
+### Changed
+
+- Open at Login restores the saved set of workbenches; the global Clear shortcut goes to the most
+  recently focused workbench.
+- Updates, configuration import and Reset first check every workbench for open drafts, stop
+  capture and save; a refusal or timeout cancels the operation.
+- Settings are now stored per workbench plus a shared Library; existing settings migrate
+  automatically on first launch. An interrupted import is rolled back on the next launch.
+- Local crash reports include random instance and workspace identifiers.
+
 ## [0.16.2] - 2026-09-23
 
 ### Fixed

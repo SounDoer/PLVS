@@ -4,6 +4,9 @@ Arrange panels into the layout your session needs.
 
 ## Multiple workbenches
 
+Multiple workbenches are qualified on Windows. On macOS, launching PLVS again may bring the running
+window forward instead of opening another workbench; that behaviour is still being verified.
+
 Launch PLVS again when you need to meter another Source. Each additional workbench opens Stopped
 with Automatic selected, so its Transport looks and behaves like the first workbench without
 starting capture by itself. Press **Start** to meter the default output, or choose another Source
