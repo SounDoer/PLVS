@@ -68,12 +68,31 @@ revision, and writes no persistence.
   "pack": {
     "app": "PLVS",
     "kind": "theme-pack",
-    "version": 1,
+    "version": 2,
     "exportedAt": "2026-09-06T00:00:00Z",
-    "items": []
+    "items": [
+      {
+        "sourceId": "custom-studio",
+        "document": {
+          "kind": "plvs-theme",
+          "formatVersion": 1,
+          "semanticsVersion": 1,
+          "name": "Studio",
+          "colorScheme": "dark",
+          "core": {},
+          "palettes": {},
+          "overrides": {}
+        }
+      }
+    ]
   }
 }
 ```
+
+The abbreviated `core` and `palettes` objects above show the envelope only; real exports contain
+every required literal color and intensity stop. `sourceId` is merge metadata. The nested portable
+document deliberately has no local ID or palette `presetId`. Theme Pack V1 remains accepted on
+import; new exports use V2. Preset and Loudness Profile packs remain V1.
 
 `--all` and `--ids` are mutually exclusive on the CLI and exactly one is required. On the wire the
 whole-library form is the **absence** of `ids`, not `ids: null`: the parameter validator accepts
@@ -176,11 +195,10 @@ selection, and a command touching both Settings and Themes advances the one glob
 once.
 
 An import whose every item is `skipped` is a successful no-op: `changed: false`, no revision
-increment, no persistence write. So is an import whose every item **failed validation** — pack
-parsing filters unreadable items silently, matching the GUI, so a corrupted or partly foreign file
-reports `changed: false` and an empty plan rather than an error. That is consistent behaviour, not a
-defect, but a caller must not read "nothing changed" as "already up to date": compare `plan.items`
-against the item count of the file it submitted.
+increment, no persistence write. Theme import is stricter than the former Pack V1 implementation:
+if any Theme is unreadable, incompatible, or duplicated by `sourceId` within the file, the complete
+import fails with `invalidPack` and nothing is added. Preset and Loudness Profile packs retain their
+existing normalization behavior.
 
 A dry run and a no-op both return the revision from _before_ the request, and neither flushes
 persistence, because both return before any write exists to persist. The returned revision is never
@@ -213,7 +231,8 @@ This family reuses the existing envelope and codes and adds two:
 - `invalidPack` — the document is not a valid pack for this family. The message is the one written
   for a person who received a shared file, and distinguishes "not a PLVS file", a whole
   configuration file, another library's file, a missing version, and a file made by a newer version
-  of PLVS. It carries no `details`. Exit code 3.
+  of PLVS. Invalid Theme content additionally carries `details.issues`, with a code, JSON path, and
+  message for every detected problem. Exit code 3.
 
 `revisionConflict`, `persistenceFailed`, and `commandFailed` behave as they do everywhere else. A
 `persistenceFailed` after the library committed reports `stateCommitted: true` and the resulting

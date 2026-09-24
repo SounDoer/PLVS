@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PACK_KINDS,
   PACK_VERSION,
+  THEME_PACK_VERSION,
   PackValidationError,
   buildPack,
   parsePack,
@@ -54,13 +55,17 @@ describe("buildPack", () => {
     const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
     const pack = buildPack("themes", [theme], { exportedAt: "x" });
     expect(pack.kind).toBe("theme-pack");
+    expect(pack.version).toBe(THEME_PACK_VERSION);
     expect(pack.items.length).toBe(1);
-    expect(pack.items[0].id).toBe("t1");
+    expect(pack.items[0].sourceId).toBe("t1");
+    expect(pack.items[0].document.kind).toBe("plvs-theme");
+    expect(pack.items[0].document).not.toHaveProperty("id");
   });
 
-  it("drops a malformed theme document", () => {
-    const pack = buildPack("themes", [{ version: 2, id: "bad" }], { exportedAt: "x" });
-    expect(pack.items).toEqual([]);
+  it("rejects a malformed theme document instead of silently dropping it", () => {
+    expect(() => buildPack("themes", [{ version: 2, id: "bad" }], { exportedAt: "x" })).toThrow(
+      PackValidationError
+    );
   });
 });
 
@@ -111,9 +116,38 @@ describe("parsePack", () => {
     expect(() => parsePack({ ...good, version: "1" }, "themes")).toThrow(/missing a version/i);
   });
 
-  it("drops items the normalizer rejects rather than failing the file", () => {
-    const parsed = parsePack({ ...good, items: [{ nope: true }] }, "themes");
-    expect(parsed.items).toEqual([]);
+  it("rejects invalid legacy Theme entries rather than silently dropping them", () => {
+    expect(() => parsePack({ ...good, items: [{ nope: true }] }, "themes")).toThrowError(
+      expect.objectContaining({
+        issues: [expect.objectContaining({ path: "$.items[0]" })],
+      })
+    );
+  });
+
+  it("imports the portable Theme envelope into the current stored shape", () => {
+    const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
+    const portablePack = buildPack("themes", [theme], { exportedAt: "x" });
+    const parsed = parsePack(portablePack, "themes");
+    expect(parsed.version).toBe(THEME_PACK_VERSION);
+    expect(parsed.items).toEqual([
+      expect.objectContaining({ id: "t1", name: "T1", formatVersion: 2 }),
+    ]);
+    expect(parsed.items[0].palettes.status.presetId).toBeNull();
+  });
+
+  it("aggregates invalid portable entries and duplicate source IDs", () => {
+    const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
+    const pack = buildPack("themes", [theme], { exportedAt: "x" });
+    pack.items.push(structuredClone(pack.items[0]));
+    pack.items[0].document.core.workspace = "transparent";
+    expect(() => parsePack(pack, "themes")).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: "$.items[0].document.core.workspace" }),
+          expect.objectContaining({ code: "duplicateThemeId" }),
+        ]),
+      })
+    );
   });
 
   it("defaults a preset pack's loudnessProfiles to an empty array", () => {

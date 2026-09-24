@@ -4601,7 +4601,9 @@ describe("useAgentControlBridge", () => {
       const response = await send(request("theme.export", {}, "theme-export"));
 
       expect(response.result.pack.kind).toBe("theme-pack");
-      expect(response.result.pack.items.map((item) => item.id)).toEqual(["t-1"]);
+      expect(response.result.pack.version).toBe(2);
+      expect(response.result.pack.items.map((item) => item.sourceId)).toEqual(["t-1"]);
+      expect(response.result.pack.items[0].document).not.toHaveProperty("id");
     });
 
     it("fails an export naming an id that is not in the library", async () => {
@@ -4986,6 +4988,36 @@ describe("useAgentControlBridge", () => {
       expect(response.error.code).toBe(-32602);
       expect(response.error.data.reason).toBe("invalidPack");
       expect(response.error.message).toMatch(/Presets file/);
+      expect(readThemeLibrary()).toEqual([]);
+    });
+
+    it("returns path-addressed issues for an invalid portable Theme", async () => {
+      mount();
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "theme.import",
+          {
+            pack: {
+              app: "PLVS",
+              kind: "theme-pack",
+              version: 2,
+              items: [{ sourceId: "t-1", document: { kind: "plvs-theme" } }],
+            },
+          },
+          "invalid-portable-theme"
+        )
+      );
+
+      expect(response.error.data).toMatchObject({
+        reason: "invalidPack",
+        details: {
+          issues: expect.arrayContaining([
+            expect.objectContaining({ path: "$.items[0].document.formatVersion" }),
+          ]),
+        },
+      });
       expect(readThemeLibrary()).toEqual([]);
     });
 

@@ -3,6 +3,7 @@ import {
   parseSelection,
   profileSelectionId,
 } from "../lib/loudnessProfileCatalog.js";
+import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
 
 /// The conflict rules for importing a pack, as a pure function: no store, no React, no IO.
 ///
@@ -45,7 +46,7 @@ function freeName(name, taken) {
  * @returns {{ additions: object[], plan: Array<{sourceId: string, finalId: string, name: string,
  *   disposition: "added" | "skipped" | "duplicated"}> }}
  */
-export function planMerge(existing, incoming, { makeId = defaultMakeId } = {}) {
+export function planMerge(existing, incoming, { makeId = defaultMakeId, equal = deepEqual } = {}) {
   const byId = new Map(existing.map((item) => [item.id, item]));
   const takenNames = new Set(existing.map((item) => item.name));
   const additions = [];
@@ -54,7 +55,7 @@ export function planMerge(existing, incoming, { makeId = defaultMakeId } = {}) {
   for (const item of incoming) {
     const local = byId.get(item.id);
 
-    if (local && deepEqual(local, item)) {
+    if (local && equal(local, item)) {
       plan.push({ sourceId: item.id, finalId: item.id, name: item.name, disposition: "skipped" });
       continue;
     }
@@ -71,6 +72,10 @@ export function planMerge(existing, incoming, { makeId = defaultMakeId } = {}) {
   }
 
   return { additions, plan };
+}
+
+function portableThemesEqual(a, b) {
+  return serializePortableTheme(themeToPortable(a)) === serializePortableTheme(themeToPortable(b));
 }
 
 /// Rewrites a preset's profile reference through the id map the profile stage produced. A
@@ -109,7 +114,10 @@ export function planPackImport(
   { existingItems, existingProfiles = [], makeId = defaultMakeId } = {}
 ) {
   if (type !== "presets") {
-    const { additions, plan } = planMerge(existingItems, pack.items, { makeId });
+    const { additions, plan } = planMerge(existingItems, pack.items, {
+      makeId,
+      ...(type === "themes" ? { equal: portableThemesEqual } : {}),
+    });
     return { profileAdditions: [], profilePlan: [], itemAdditions: additions, itemPlan: plan };
   }
 

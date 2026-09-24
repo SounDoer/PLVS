@@ -8,12 +8,19 @@
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeThemeDocument } from "../theme/migrations/migrateV1Theme.js";
+import {
+  PortableThemeError,
+  portableToStoredTheme,
+  themeToPortable,
+} from "../theme/portableTheme.js";
+import { normalizeThemeId } from "../theme/themeSchema.js";
 // `panelInstances.js` imports `moduleCatalog.js` only. Never reach `workspace/registry.jsx` from
 // here -- it evaluates every canvas panel and costs about two seconds per import.
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 
 export const PACK_APP = "PLVS";
 export const PACK_VERSION = 1;
+export const THEME_PACK_VERSION = 2;
 
 function normalizePresetEntry(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -51,6 +58,7 @@ export const PACK_KINDS = {
     filterName: "PLVS Themes",
     defaultBaseName: "plvs-themes",
     normalizeItem: normalizeThemeDocument,
+    version: THEME_PACK_VERSION,
   },
 };
 
@@ -76,6 +84,32 @@ export function buildPack(
   { exportedAt = new Date().toISOString(), loudnessProfiles = [] } = {}
 ) {
   const descriptor = packDescriptor(type);
+  if (type === "themes") {
+    const sourceItems = Array.isArray(items) ? items : [];
+    const portableItems = sourceItems.map((item, index) => {
+      const sourceId = normalizeThemeId(item?.id);
+      if (!sourceId) {
+        throw new PackValidationError("A Theme selected for export has an invalid ID.", [
+          issue("invalidThemeId", `$.items[${index}].sourceId`, "The source Theme ID is invalid."),
+        ]);
+      }
+      try {
+        return { sourceId, document: themeToPortable(item) };
+      } catch (error) {
+        if (!(error instanceof PortableThemeError)) throw error;
+        throw new PackValidationError("A Theme selected for export is invalid.", [
+          ...prefixIssues(error.issues, `$.items[${index}].document`),
+        ]);
+      }
+    });
+    return {
+      app: PACK_APP,
+      kind: descriptor.kind,
+      version: descriptor.version,
+      exportedAt,
+      items: portableItems,
+    };
+  }
   const normalizedItems = (Array.isArray(items) ? items : [])
     .map((item) => descriptor.normalizeItem(item))
     .filter(Boolean);
@@ -103,10 +137,88 @@ export function buildPack(
 const CONFIGURATION_PROFILE_KIND = "configuration-profile";
 
 export class PackValidationError extends Error {
-  constructor(message) {
+  constructor(message, issues = []) {
     super(message);
     this.name = "PackValidationError";
+    this.issues = issues;
   }
+}
+
+function issue(code, path, message) {
+  return { code, path, message };
+}
+
+function prefixIssues(issues, prefix) {
+  return issues.map((entry) => ({
+    ...entry,
+    path: entry.path === "$" ? prefix : `${prefix}${entry.path.slice(1)}`,
+  }));
+}
+
+function parseLegacyThemeItems(raw) {
+  if (!Array.isArray(raw.items)) {
+    throw new PackValidationError("This Theme file is missing its items.", [
+      issue("invalidItems", "$.items", "items must be an array."),
+    ]);
+  }
+  const issues = [];
+  const items = raw.items.map((item, index) => {
+    const normalized = normalizeThemeDocument(item);
+    if (!normalized) {
+      issues.push(
+        issue("invalidLegacyTheme", `$.items[${index}]`, "This legacy Theme entry cannot be read.")
+      );
+    }
+    return normalized;
+  });
+  if (issues.length > 0) {
+    throw new PackValidationError("This Theme file contains an invalid Theme.", issues);
+  }
+  return items;
+}
+
+function parsePortableThemeItems(raw) {
+  if (!Array.isArray(raw.items)) {
+    throw new PackValidationError("This Theme file is missing its items.", [
+      issue("invalidItems", "$.items", "items must be an array."),
+    ]);
+  }
+  const issues = [];
+  const seenIds = new Set();
+  const items = [];
+  raw.items.forEach((item, index) => {
+    const path = `$.items[${index}]`;
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      issues.push(issue("invalidThemeEntry", path, "A Theme pack entry must be an object."));
+      return;
+    }
+    for (const field of Object.keys(item)) {
+      if (field !== "sourceId" && field !== "document") {
+        issues.push(issue("unknownField", `${path}.${field}`, `Unknown field: ${field}.`));
+      }
+    }
+    const sourceId = normalizeThemeId(item.sourceId);
+    if (!sourceId) {
+      issues.push(issue("invalidThemeId", `${path}.sourceId`, "sourceId is invalid."));
+    } else if (seenIds.has(sourceId)) {
+      issues.push(
+        issue("duplicateThemeId", `${path}.sourceId`, `Duplicate sourceId: ${sourceId}.`)
+      );
+    } else {
+      seenIds.add(sourceId);
+    }
+    if (!sourceId) return;
+    try {
+      items.push(portableToStoredTheme(item.document, sourceId));
+    } catch (error) {
+      if (!(error instanceof PortableThemeError)) throw error;
+      issues.push(...prefixIssues(error.issues, `${path}.document`));
+    }
+  });
+  if (issues.length > 0) {
+    throw new PackValidationError("This Theme file contains an invalid Theme.", issues);
+  }
+  return items;
 }
 
 function descriptorForKind(kind) {
@@ -136,13 +248,19 @@ export function parsePack(raw, expectedType) {
   if (!Number.isInteger(raw.version) || raw.version < 1) {
     throw new PackValidationError("This file is missing a version.");
   }
-  if (raw.version > PACK_VERSION) {
+  const latestVersion = expected.version ?? PACK_VERSION;
+  if (raw.version > latestVersion) {
     throw new PackValidationError("This file was made by a newer version of PLVS.");
   }
 
-  const items = (Array.isArray(raw.items) ? raw.items : [])
-    .map((item) => expected.normalizeItem(item))
-    .filter(Boolean);
+  const items =
+    expectedType === "themes"
+      ? raw.version === 1
+        ? parseLegacyThemeItems(raw)
+        : parsePortableThemeItems(raw)
+      : (Array.isArray(raw.items) ? raw.items : [])
+          .map((item) => expected.normalizeItem(item))
+          .filter(Boolean);
 
   const parsed = {
     app: PACK_APP,

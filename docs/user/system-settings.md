@@ -83,6 +83,12 @@ choose **Reload** for the committed version or **Save as Copy** to preserve the 
 new ID. An open Theme or Loudness Profile editor keeps its local draft and shows a warning as soon
 as PLVS observes that its saved source changed elsewhere.
 
+A `.plvstheme` file carries portable Theme authoring choices rather than device-local state. It
+keeps the Theme's name, Dark/Light scheme, Core and Palette colors, and Advanced customizations;
+local IDs and the palette preset originally used to choose those colors are not part of the shared
+Theme. PLVS still imports older Theme pack files. If any Theme entry is damaged or incompatible,
+the import reports the problem and adds nothing instead of silently skipping that entry.
+
 ## Crash reports and feedback
 
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending

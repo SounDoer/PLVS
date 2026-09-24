@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { planMerge, planPackImport } from "./mergeIntoLibrary.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 
 function counter() {
   let n = 0;
@@ -130,6 +131,26 @@ describe("planPackImport", () => {
     const result = planPackImport("themes", pack, { existingItems: [], makeId: counter() });
     expect(result.profileAdditions).toEqual([]);
     expect(result.profilePlan).toEqual([]);
+  });
+
+  it("treats palette preset provenance as irrelevant to Theme identity", () => {
+    const local = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-studio",
+      name: "Studio",
+    };
+    const imported = structuredClone(local);
+    imported.palettes.status.presetId = null;
+    imported.palettes.intensity.presetId = null;
+    imported.palettes.frequency.presetId = null;
+
+    const result = planPackImport(
+      "themes",
+      { app: "PLVS", kind: "theme-pack", version: 2, exportedAt: "x", items: [imported] },
+      { existingItems: [local], makeId: counter() }
+    );
+    expect(result.itemAdditions).toEqual([]);
+    expect(result.itemPlan[0].disposition).toBe("skipped");
   });
 
   it("imports a preset with its profile and keeps the reference", () => {

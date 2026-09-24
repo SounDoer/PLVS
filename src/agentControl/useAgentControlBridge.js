@@ -3252,7 +3252,13 @@ export function useAgentControlBridge({
             if (!(error instanceof PackValidationError)) throw error;
             // The message is the one a recipient of a shared file needs -- which library the file
             // belongs to, or that it is a whole configuration -- so it is passed through verbatim.
-            throw semanticFailure("invalidPack", "$.params.pack", error.message, -32602);
+            throw semanticFailure(
+              "invalidPack",
+              "$.params.pack",
+              error.message,
+              -32602,
+              error.issues.length > 0 ? { issues: error.issues } : undefined
+            );
           }
 
           const result = {
