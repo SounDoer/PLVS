@@ -254,6 +254,14 @@ not begin merely because a decision is recorded here.
 - A module option is not rejected merely because a global default exists. Each option is retained
   only when a module-local difference is plausible, its semantic meaning is stable, its source is
   clear in the editor, and the result can be covered by the gallery.
+- Standardise the user-facing structural role label as `Grid` across Loudness, Spectrum,
+  Spectrogram, Vectorscope, Stereo Map, and Waveform. Grid includes plot grid lines, structural axis
+  lines, and reference rules, but never text. Ordinary axis and tick text follows Annotation or
+  Secondary Text; a module exposes `Axis Labels` only when it has a real independently themed text
+  consumer, as the 3D Spectrogram Canvas does.
+- Retain `Grid Subdivisions` only where a real secondary grid layer exists. Additional modules may
+  add the same role during the imminent grid design rather than encoding major and minor lines into
+  an ambiguous `Grid and Axes` label.
 
 ### Loudness module roles
 
@@ -271,8 +279,134 @@ not begin merely because a decision is recorded here.
 - Loudness Selection remains as a local override whose Auto source is the shared data-selection
   semantic. Spectrogram, Waveform, and timeline selection affordances must stop consuming the
   Loudness-named CSS binding and use their own resolved role or a correctly named shared binding.
-- Loudness Grid is removed from public Advanced authoring and the shared Theme format while the
-  module draws no grid. An internal dormant binding is not sufficient reason to freeze a public
-  role; the option can be designed and added when a real consumer exists.
+- Retain Loudness Grid in Advanced because module-grid design is the next committed design area,
+  rather than an unspecified future placeholder. It must gain a real consumer, gallery case, and
+  visual contract before the public Theme format is frozen.
 
 The next area is applying the same retention test to Spectrum.
+
+### Spectrum module roles
+
+- Retain Primary Trace and Secondary Trace. Their Auto recipes follow Primary Data and Secondary
+  Data respectively, while explicit Follow and Custom remain available.
+- Retain Primary Snapshot and Secondary Snapshot. Each derives from its corresponding live trace by
+  default and may be overridden locally.
+- Retain Spectrum Grid in Advanced because module-grid design is the next committed design area.
+  It must gain a real consumer, gallery case, and visual contract before the public Theme format is
+  frozen.
+- Spectrum does not currently need a Selection color. Selecting a historical time replaces the
+  displayed frequency curves with their Primary Snapshot and Secondary Snapshot colors; Spectrum's
+  horizontal axis is frequency, so it does not draw the time-position marker used by timeline
+  modules. A Spectrum Selection role should be added only if a distinct selected mark or region is
+  designed, not merely for symmetry with other modules.
+
+The next area is applying the same retention test to Spectrogram.
+
+### Spectrogram module roles
+
+- Retain all six currently consumed Spectrogram Advanced roles: the two monochrome data inks,
+  Grid, Grid Subdivisions, Axis Labels, and Selection.
+- Rename the user-facing `Monochrome Ink` label to `Monochrome Lines`. It controls 3D Lines mode
+  when Colorize is disabled and follows Secondary Text by default.
+- Rename the user-facing `Surface Ink` label to `Monochrome Surface`. It controls 3D Surface mode
+  when Colorize is disabled and follows Primary Text by default.
+- When Colorize is enabled, the data body follows the global Intensity scale. The module's Grid,
+  Grid Subdivisions, Axis Labels, and Selection remain independent local roles.
+- Grid and Grid Subdivisions remain separately overrideable because they are real major and minor
+  floor-rule consumers in the 3D renderer. Axis Labels and Selection likewise remain because the
+  Canvas renderer consumes them directly.
+
+The next area is applying the same retention test to Vectorscope.
+
+### Vectorscope module roles
+
+- Retain Trace, Snapshot, and Grid. Trace follows Primary Data by default, Snapshot derives
+  from Trace, and the grid is a real consumer in the Lissajous and Polar renderers.
+- Do not add a Vectorscope Selection role. Selecting a historical time replaces the complete plot
+  with its Snapshot appearance; the module has no time axis or distinct selected-position mark.
+- The correlation marker continues to express measurement Safe, Warning, and Critical semantics.
+  Add module-local `Correlation Safe`, `Correlation Warning`, and `Correlation Critical` Advanced
+  roles. Auto follows the corresponding global Status color, while Custom affects only the
+  Vectorscope correlation marker and does not recolor the main trace.
+- The size of a rendered mark is not a stable reason to deny a module override. Palette consumers
+  are reviewed consistently for local overrides whether they render a small marker or a large data
+  field; specific labels state the affected object so the scope remains clear.
+
+The next area is applying the same retention test to Stereo Map.
+
+### Stereo Map module roles
+
+- Retain Primary Side, Secondary Side, Primary Snapshot, Secondary Snapshot, and Grid.
+  The live sides follow Primary and Secondary Data by default, and each snapshot derives from its
+  corresponding live series.
+- Retain Grid and Axes for the imminent module-grid design. It must become a real rendered consumer
+  and gallery case before the public Theme format is frozen.
+- Position and M/S Ratio modes encode their data with Primary and Secondary colors. Correlation and
+  Mono Loss modes instead encode their data with a continuous Critical-to-Warning-to-Safe scale.
+- Add local `Safe Range`, `Warning Range`, and `Critical Range` Advanced roles. Auto follows the
+  corresponding global Status color, while Custom changes only Stereo Map's Status-based modes.
+- Do not add a Stereo Map Selection role. Selecting a historical time switches the complete plot
+  to its Primary and Secondary Snapshot appearance rather than drawing a selected time-position
+  mark.
+
+The next area is applying the same retention test to Waveform.
+
+### Waveform module roles
+
+- Retain all nine Waveform Advanced roles in the same flat module list used by other sections. Do
+  not introduce Waveform-only subgroup UI; conceptual categories may be used in documentation and
+  gallery coverage without changing the editor hierarchy.
+- Trace follows Primary Data and Snapshot derives from Trace by default.
+- Low, Mid, and High Frequency follow the corresponding global Frequency anchors by default and
+  retain module-local Custom overrides.
+- Rename the user-facing `Frequency Neutral` label to `No Dominant Frequency`. It is the neutral
+  fallback for silence, noise, broadband material, or unavailable spectral classification; it is
+  not another frequency band. Auto continues to derive it from Surface and the three Frequency
+  anchors.
+- Rename the user-facing `Centroid` label to `Spectral Centroid`. Auto follows Text and Custom may
+  tune the overlay specifically for Waveform.
+- Retain Grid for the imminent module-grid design and retain Selection as the local selected-time
+  marker color.
+- Add local `Warning Range` and `Critical Range` Advanced roles for Loudness Profile coloring. Auto
+  follows global Status Warning and Critical; Custom affects only the breached portions of
+  Loudness traces.
+- Do not add a Loudness Safe Range role. In-range portions retain their Momentary or Short-term
+  series color so the two measurements remain identifiable; recoloring both with Status Safe would
+  erase that distinction without representing an existing visual role.
+- Repair the current binding boundary during implementation: `waveform.selection` exists in the
+  registry but is absent from `selectWaveformCanvasColors`, while the rendered selection line and
+  shared edge hint consume `--ui-loudness-selection`. Each module must consume its own resolved
+  Selection role or a correctly named shared selection binding.
+
+The next area is deciding which Meter and measurement modules receive local overrides for the
+global Status Palette.
+
+### Level Meter module roles
+
+- Add local `Safe`, `Warning`, and `Critical` Advanced roles for Level Meter. Auto follows the
+  corresponding global Status color; Custom changes only the Level Meter gradient.
+- The normal panel and Dock rendering of Level Meter share the same module roles. Dock is another
+  surface for the same instrument, not a separate authored color system.
+- Replace the current shared `--ui-signal-*` dependency with resolved module bindings so a Level
+  Meter override cannot recolor Vectorscope, Stereo Map, Stats, or application feedback.
+
+### Stats module roles
+
+- Add local `Warning Value` and `Critical Value` Advanced roles for Stats. Auto follows global
+  Status Warning and Critical; Custom affects only Stats readouts.
+- Pending measurements continue to use Warning Value because the result is not yet valid and needs
+  attention without representing a failure. Normal, unwatched, and in-range values retain Primary
+  Text rather than Status Safe, avoiding an all-green measurement table.
+- Normal Stats and Dock Stats share these module roles. Do not add a Safe Value role without a
+  distinct safe-colored consumer.
+
+### Module roles across normal and Dock surfaces
+
+- A normal panel and its Dock representation share the same semantic module roles by default.
+  Dock may resolve substrate-specific contrast internally, but it does not create a parallel public
+  color system merely because its geometry and density differ.
+- Module-local Status overrides therefore apply to the matching Dock module where it presents the
+  same measurement meaning. Application activity and feedback that currently borrow
+  `--ui-signal-*` migrate to Activity or Interface roles instead.
+
+The next area is the boundary between roles, recipes, dependencies, references, and bindings.
