@@ -69,30 +69,32 @@ revision, and writes no persistence.
     "app": "PLVS",
     "kind": "theme-pack",
     "version": 2,
-    "exportedAt": "2026-09-06T00:00:00Z",
     "items": [
       {
-        "sourceId": "custom-studio",
-        "document": {
-          "kind": "plvs-theme",
-          "formatVersion": 1,
-          "semanticsVersion": 1,
-          "name": "Studio",
-          "colorScheme": "dark",
-          "core": {},
-          "palettes": {},
-          "overrides": {}
-        }
+        "id": "custom-studio",
+        "kind": "plvs-theme",
+        "formatVersion": 1,
+        "semanticsVersion": 1,
+        "name": "Studio",
+        "colorScheme": "dark",
+        "core": {},
+        "palettes": {},
+        "overrides": {}
       }
-    ]
+    ],
+    "dependencies": []
   }
 }
 ```
 
 The abbreviated `core` and `palettes` objects above show the envelope only; real exports contain
-every required literal color and intensity stop. `sourceId` is merge metadata. The nested portable
-document deliberately has no local ID or palette `presetId`. Theme Pack V1 remains accepted on
-import; new exports use V2. Preset and Loudness Profile packs remain V1.
+every required literal color and intensity stop. Theme Pack V2 uses the shared Pack V2 envelope:
+only `app`, `kind`, `version`, an optional `createdWith: { "appVersion" }`, a non-empty `items`
+list, and a `dependencies` list that is always empty for Themes; there is no `exportedAt`. Each item
+is a portable `plvs-theme` document plus its `id`, which is merge metadata and not part of the
+Theme's content identity. Items carry no palette `presetId`. Exporting a custom Theme library that
+is empty fails with `themeNotExportable`, because Pack V2 cannot be empty. Theme Pack V1 remains
+accepted on import; new exports use V2. Preset and Loudness Profile packs remain V1.
 
 `--all` and `--ids` are mutually exclusive on the CLI and exactly one is required. On the wire the
 whole-library form is the **absence** of `ids`, not `ids: null`: the parameter validator accepts
@@ -196,9 +198,10 @@ once.
 
 An import whose every item is `skipped` is a successful no-op: `changed: false`, no revision
 increment, no persistence write. Theme import is stricter than the former Pack V1 implementation:
-if any Theme is unreadable, incompatible, or duplicated by `sourceId` within the file, the complete
-import fails with `invalidPack` and nothing is added. Preset and Loudness Profile packs retain their
-existing normalization behavior.
+if any Theme is unreadable, incompatible, or duplicated by `id` within the file, or if a V2 envelope
+has unknown fields, no items, or non-empty `dependencies`, the complete import fails with
+`invalidPack` and nothing is added. Preset and Loudness Profile packs retain their existing
+normalization behavior.
 
 A dry run and a no-op both return the revision from _before_ the request, and neither flushes
 persistence, because both return before any write exists to persist. The returned revision is never
@@ -227,7 +230,8 @@ This family reuses the existing envelope and codes and adds two:
 
 - `presetNotFound`, `themeNotFound`, `loudnessProfileNotFound` — an id in `--ids` is not in that
   library. `details.missingIds` lists all of them. Exit code 3.
-- `themeNotExportable` — a Theme export explicitly named a built-in Theme. Exit code 3.
+- `themeNotExportable` — a Theme export explicitly named a built-in Theme, or the export would be an
+  empty or invalid Theme pack (`details.issues` then lists the problems). Exit code 3.
 - `invalidPack` — the document is not a valid pack for this family. The message is the one written
   for a person who received a shared file, and distinguishes "not a PLVS file", a whole
   configuration file, another library's file, a missing version, and a file made by a newer version

@@ -1,4 +1,4 @@
-# ADR 0008: Separate portable Theme documents from persisted and compiled state
+# ADR 0009: Separate portable Theme documents from persisted and compiled state
 
 ## Status
 
@@ -27,9 +27,11 @@ the complete compiler output, including private recipes and bindings that are no
   content identity as SHA-256 of that canonical UTF-8 JSON.
 - Use the same pure converter and strict validator for GUI and Agent Control transfer. Validation
   reports path-addressed issues and rejects the whole Theme pack when any Theme is invalid.
-- Store the source installation's merge ID beside, not inside, the portable document in Theme Pack
-  V2. Import assigns that ID locally through the existing merge rules and restores palette
-  `presetId` fields as `null`.
+- Theme Pack V2 uses the shared Pack V2 envelope: `app`, `kind`, `version`, optional
+  `createdWith`, a non-empty `items` list and a `dependencies` list that is always empty for
+  Themes, with no `exportedAt`. Each item is the portable document plus the source installation's
+  `id`. That ID is merge metadata only: it is excluded from content identity, and import assigns it
+  locally through the existing merge rules and restores palette `presetId` fields as `null`.
 - Continue reading Theme Pack V1 through the persistence migration boundary, but reject unreadable
   entries instead of silently dropping them. Loudness and Preset pack versions do not change.
 
@@ -46,4 +48,4 @@ the complete compiler output, including private recipes and bindings that are no
 
 Contract tests cover provenance-free export, strict validation, import/re-export round trips,
 canonical serialization and SHA-256 identity, Pack V1 compatibility, Pack V2 conversion, duplicate
-source IDs, and merge equality that ignores preset provenance.
+IDs, the Pack V2 envelope, and merge equality that ignores preset provenance.

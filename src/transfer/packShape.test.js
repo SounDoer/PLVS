@@ -56,12 +56,20 @@ describe("buildPack", () => {
   it("stamps the envelope for a theme pack", () => {
     const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
     const pack = buildPack("themes", [theme], { exportedAt: "x" });
+    expect(Object.keys(pack)).toEqual(["app", "kind", "version", "items", "dependencies"]);
     expect(pack.kind).toBe("theme-pack");
     expect(pack.version).toBe(THEME_PACK_VERSION);
+    expect(pack.dependencies).toEqual([]);
     expect(pack.items.length).toBe(1);
-    expect(pack.items[0].sourceId).toBe("t1");
-    expect(pack.items[0].document.kind).toBe("plvs-theme");
-    expect(pack.items[0].document).not.toHaveProperty("id");
+    expect(pack.items[0].id).toBe("t1");
+    expect(pack.items[0].kind).toBe("plvs-theme");
+    expect(pack.items[0].palettes.status).not.toHaveProperty("presetId");
+  });
+
+  it("refuses to export an empty Theme pack", () => {
+    expect(() => buildPack("themes", [])).toThrowError(
+      expect.objectContaining({ issues: [expect.objectContaining({ code: "emptyItems" })] })
+    );
   });
 
   it("rejects a malformed theme document instead of silently dropping it", () => {
@@ -137,19 +145,48 @@ describe("parsePack", () => {
     expect(parsed.items[0].palettes.status.presetId).toBeNull();
   });
 
-  it("aggregates invalid portable entries and duplicate source IDs", () => {
+  it("aggregates invalid portable entries and duplicate IDs", () => {
     const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
     const pack = buildPack("themes", [theme], { exportedAt: "x" });
     pack.items.push(structuredClone(pack.items[0]));
-    pack.items[0].document.core.workspace = "transparent";
+    pack.items[0].core.workspace = "transparent";
     expect(() => parsePack(pack, "themes")).toThrowError(
       expect.objectContaining({
         issues: expect.arrayContaining([
-          expect.objectContaining({ path: "$.items[0].document.core.workspace" }),
-          expect.objectContaining({ code: "duplicateThemeId" }),
+          expect.objectContaining({ path: "$.items[0].core.workspace" }),
+          expect.objectContaining({ code: "duplicateThemeId", path: "$.items[1].id" }),
         ]),
       })
     );
+  });
+
+  it("enforces the shared Pack V2 envelope for Theme packs", () => {
+    const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
+    const pack = buildPack("themes", [theme]);
+    const issuesOf = (raw) => {
+      try {
+        parsePack(raw, "themes");
+      } catch (error) {
+        return error.issues.map(({ code, path }) => ({ code, path }));
+      }
+      return [];
+    };
+
+    expect(issuesOf({ ...pack, exportedAt: "x" })).toEqual([
+      { code: "unknownField", path: "$.exportedAt" },
+    ]);
+    const { dependencies: _dependencies, ...withoutDependencies } = pack;
+    expect(issuesOf(withoutDependencies)).toEqual([
+      { code: "invalidDependencies", path: "$.dependencies" },
+    ]);
+    expect(issuesOf({ ...pack, dependencies: [{ kind: "loudness-profile", items: [] }] })).toEqual([
+      { code: "unsupportedDependency", path: "$.dependencies" },
+    ]);
+    expect(issuesOf({ ...pack, items: [] })).toEqual([{ code: "invalidItems", path: "$.items" }]);
+    expect(issuesOf({ ...pack, createdWith: { appVersion: "0.17.0", host: "x" } })).toEqual([
+      { code: "unknownField", path: "$.createdWith.host" },
+    ]);
+    expect(issuesOf({ ...pack, createdWith: { appVersion: "0.17.0" } })).toEqual([]);
   });
 
   it("defaults a preset pack's loudnessProfiles to an empty array", () => {

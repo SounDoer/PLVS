@@ -89,19 +89,25 @@ export function buildPack(
   const descriptor = packDescriptor(type);
   if (type === "themes") {
     const sourceItems = Array.isArray(items) ? items : [];
+    // Pack V2 requires at least one primary Item, so an empty library has nothing to export.
+    if (sourceItems.length === 0) {
+      throw new PackValidationError("There are no custom Themes to export.", [
+        issue("emptyItems", "$.items", "A Theme pack needs at least one Theme."),
+      ]);
+    }
     const portableItems = sourceItems.map((item, index) => {
-      const sourceId = normalizeThemeId(item?.id);
-      if (!sourceId) {
+      const id = normalizeThemeId(item?.id);
+      if (!id) {
         throw new PackValidationError("A Theme selected for export has an invalid ID.", [
-          issue("invalidThemeId", `$.items[${index}].sourceId`, "The source Theme ID is invalid."),
+          issue("invalidThemeId", `$.items[${index}].id`, "The Theme ID is invalid."),
         ]);
       }
       try {
-        return { sourceId, document: themeToPortable(item) };
+        return { id, ...themeToPortable(item) };
       } catch (error) {
         if (!(error instanceof PortableThemeError)) throw error;
         throw new PackValidationError("A Theme selected for export is invalid.", [
-          ...prefixIssues(error.issues, `$.items[${index}].document`),
+          ...prefixIssues(error.issues, `$.items[${index}]`),
         ]);
       }
     });
@@ -109,8 +115,8 @@ export function buildPack(
       app: PACK_APP,
       kind: descriptor.kind,
       version: descriptor.version,
-      exportedAt,
       items: portableItems,
+      dependencies: [],
     };
   }
   const normalizedItems = (Array.isArray(items) ? items : [])
@@ -180,42 +186,75 @@ function parseLegacyThemeItems(raw) {
   return items;
 }
 
+const PACK_V2_FIELDS = new Set(["app", "kind", "version", "createdWith", "items", "dependencies"]);
+
+function isObjectRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function collectPackV2EnvelopeIssues(raw, issues) {
+  for (const field of Object.keys(raw)) {
+    if (!PACK_V2_FIELDS.has(field)) {
+      issues.push(issue("unknownField", `$.${field}`, `Unknown field: ${field}.`));
+    }
+  }
+  if ("createdWith" in raw) {
+    if (!isObjectRecord(raw.createdWith)) {
+      issues.push(issue("invalidCreatedWith", "$.createdWith", "createdWith must be an object."));
+    } else {
+      for (const field of Object.keys(raw.createdWith)) {
+        if (field !== "appVersion") {
+          issues.push(issue("unknownField", `$.createdWith.${field}`, `Unknown field: ${field}.`));
+        }
+      }
+      if ("appVersion" in raw.createdWith && typeof raw.createdWith.appVersion !== "string") {
+        issues.push(
+          issue("invalidAppVersion", "$.createdWith.appVersion", "appVersion must be a string.")
+        );
+      }
+    }
+  }
+  if (!Array.isArray(raw.dependencies)) {
+    issues.push(issue("invalidDependencies", "$.dependencies", "dependencies must be an array."));
+  } else if (raw.dependencies.length > 0) {
+    issues.push(
+      issue("unsupportedDependency", "$.dependencies", "A Theme pack has no dependencies.")
+    );
+  }
+}
+
 function parsePortableThemeItems(raw) {
-  if (!Array.isArray(raw.items)) {
+  if (!Array.isArray(raw.items) || raw.items.length === 0) {
     throw new PackValidationError("This Theme file is missing its items.", [
-      issue("invalidItems", "$.items", "items must be an array."),
+      issue("invalidItems", "$.items", "items must be a non-empty array."),
     ]);
   }
   const issues = [];
+  collectPackV2EnvelopeIssues(raw, issues);
   const seenIds = new Set();
   const items = [];
   raw.items.forEach((item, index) => {
     const path = `$.items[${index}]`;
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
+    if (!isObjectRecord(item)) {
       issues.push(issue("invalidThemeEntry", path, "A Theme pack entry must be an object."));
       return;
     }
-    for (const field of Object.keys(item)) {
-      if (field !== "sourceId" && field !== "document") {
-        issues.push(issue("unknownField", `${path}.${field}`, `Unknown field: ${field}.`));
-      }
+    const { id: rawId, ...document } = item;
+    const id = normalizeThemeId(rawId);
+    if (!id) {
+      issues.push(issue("invalidThemeId", `${path}.id`, "id is invalid."));
+      return;
     }
-    const sourceId = normalizeThemeId(item.sourceId);
-    if (!sourceId) {
-      issues.push(issue("invalidThemeId", `${path}.sourceId`, "sourceId is invalid."));
-    } else if (seenIds.has(sourceId)) {
-      issues.push(
-        issue("duplicateThemeId", `${path}.sourceId`, `Duplicate sourceId: ${sourceId}.`)
-      );
+    if (seenIds.has(id)) {
+      issues.push(issue("duplicateThemeId", `${path}.id`, `Duplicate id: ${id}.`));
     } else {
-      seenIds.add(sourceId);
+      seenIds.add(id);
     }
-    if (!sourceId) return;
     try {
-      items.push(portableToStoredTheme(item.document, sourceId));
+      items.push(portableToStoredTheme(document, id));
     } catch (error) {
       if (!(error instanceof PortableThemeError)) throw error;
-      issues.push(...prefixIssues(error.issues, `${path}.document`));
+      issues.push(...prefixIssues(error.issues, path));
     }
   });
   if (issues.length > 0) {

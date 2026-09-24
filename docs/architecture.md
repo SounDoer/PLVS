@@ -234,7 +234,7 @@ New consumers must not import them.
 ### Portable Theme boundary
 
 The persisted authoring document, portable sharing document, and compiled result are separate
-contracts (ADR 0008). A portable `plvs-theme` document contains only stable authoring meaning:
+contracts (ADR 0009). A portable `plvs-theme` document contains only stable authoring meaning:
 name, Dark/Light scheme, literal Core and Palette colors, and explicit public Advanced overrides.
 It has its own `formatVersion` and `semanticsVersion` and never contains a local Theme ID, palette
 preset provenance, recipes, dependencies, resolved roles, CSS variables, Canvas keys, or native
@@ -242,8 +242,10 @@ bindings.
 
 `src/theme/portableTheme.js` is the pure conversion and validation boundary shared by desktop and
 Agent Control transfer. It canonicalizes normalized fields and sorted overrides; SHA-256 over that
-canonical UTF-8 JSON is the content identity. Theme Pack V2 keeps `sourceId` outside the portable
-document only for merge handling. Import converts the portable document back to the current
+canonical UTF-8 JSON is the content identity. Theme Pack V2 uses the shared Pack V2 envelope
+(`app`, `kind`, `version`, optional `createdWith`, non-empty `items`, and an empty `dependencies`
+list); each item is the portable document plus its local `id`, which only merge handling reads and
+content identity excludes. Import converts the portable document back to the current
 persisted shape with palette preset IDs set to `null`, then the normal compiler/registry validation
 still applies. Theme Pack V1 remains readable through the legacy migration path, but no invalid
 Theme entry is silently discarded.

@@ -4602,8 +4602,25 @@ describe("useAgentControlBridge", () => {
 
       expect(response.result.pack.kind).toBe("theme-pack");
       expect(response.result.pack.version).toBe(2);
-      expect(response.result.pack.items.map((item) => item.sourceId)).toEqual(["t-1"]);
-      expect(response.result.pack.items[0].document).not.toHaveProperty("id");
+      expect(response.result.pack.items.map((item) => item.id)).toEqual(["t-1"]);
+      expect(response.result.pack.items[0].kind).toBe("plvs-theme");
+      expect(response.result.pack.dependencies).toEqual([]);
+    });
+
+    it("refuses to export an empty custom Theme library", async () => {
+      mount();
+      await waitUntilReady();
+
+      const response = await send(request("theme.export", {}, "theme-export-empty"));
+
+      expect(response.error).toMatchObject({
+        code: -32602,
+        data: {
+          reason: "themeNotExportable",
+          path: "$.params",
+          details: { issues: [expect.objectContaining({ code: "emptyItems" })] },
+        },
+      });
     });
 
     it("fails an export naming an id that is not in the library", async () => {
@@ -5003,7 +5020,8 @@ describe("useAgentControlBridge", () => {
               app: "PLVS",
               kind: "theme-pack",
               version: 2,
-              items: [{ sourceId: "t-1", document: { kind: "plvs-theme" } }],
+              items: [{ id: "t-1", kind: "plvs-theme" }],
+              dependencies: [],
             },
           },
           "invalid-portable-theme"
@@ -5014,7 +5032,7 @@ describe("useAgentControlBridge", () => {
         reason: "invalidPack",
         details: {
           issues: expect.arrayContaining([
-            expect.objectContaining({ path: "$.items[0].document.formatVersion" }),
+            expect.objectContaining({ path: "$.items[0].formatVersion" }),
           ]),
         },
       });

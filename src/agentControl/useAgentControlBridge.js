@@ -3212,7 +3212,21 @@ export function useAgentControlBridge({
                 { themeIds: builtinIds }
               );
             }
-            const planned = planLibraryExport(family, request.params.ids);
+            let planned;
+            try {
+              planned = planLibraryExport(family, request.params.ids);
+            } catch (error) {
+              // Only Theme packs validate on export: an empty library or an unreadable stored
+              // Theme cannot become a Pack V2 file this build would accept back.
+              if (!(error instanceof PackValidationError) || family !== "theme") throw error;
+              throw semanticFailure(
+                "themeNotExportable",
+                "$.params",
+                error.message,
+                -32602,
+                error.issues.length > 0 ? { issues: error.issues } : undefined
+              );
+            }
             if (planned.missingIds.length > 0) {
               throw semanticFailure(
                 notFoundCode,
