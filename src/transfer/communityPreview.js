@@ -3,7 +3,7 @@ import {
   validatePortableLoudnessProfile,
 } from "../lib/portableLoudnessProfile.js";
 import { validatePublishablePack } from "./communityPack.js";
-import { COMMUNITY_PREVIEW_FIXTURE_V1 } from "./fixtures/communityPreviewV1.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V2 } from "./fixtures/communityPreviewV2.js";
 import { hashPortablePreset } from "./portablePreset.js";
 
 export const COMMUNITY_PREVIEW_CONTRACT_VERSION = 1;
@@ -91,7 +91,7 @@ export async function buildCommunityPreviewPlan(rawPack, type) {
     type === "loudness"
       ? await hashPortableLoudnessProfile(publication.portableItem)
       : await hashPortablePreset(publication.portableItem);
-  const fixtureHash = await hashCommunityPreviewFixture(COMMUNITY_PREVIEW_FIXTURE_V1);
+  const fixtureHash = await hashCommunityPreviewFixture(COMMUNITY_PREVIEW_FIXTURE_V2);
   const dependencyItems = rawPack.dependencies?.flatMap((group) =>
     group.kind === "loudness-profile" ? group.items : []
   );
@@ -125,7 +125,7 @@ export async function buildCommunityPreviewPlan(rawPack, type) {
       clock: "fixture",
       stableRenderBarrier: { documentFonts: "ready", animationFrames: 2, canvases: "settled" },
     },
-    fixture: structuredClone(COMMUNITY_PREVIEW_FIXTURE_V1),
+    fixture: structuredClone(COMMUNITY_PREVIEW_FIXTURE_V2),
     fixtureHash,
     item: {
       type,

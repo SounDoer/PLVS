@@ -159,7 +159,8 @@ function singlePanelState(moduleId) {
 }
 
 function ThemeProductExample({ plan, sceneId }) {
-  const moduleId = sceneId.replace(/-file$/, "");
+  const moduleId =
+    sceneId === "spectrogram-heatmap" ? "spectrogram" : sceneId.replace(/-file$/, "");
   const normalizedModuleId =
     moduleId === "level-meter" ? "levelMeter" : moduleId === "stereo-map" ? "stereo-map" : moduleId;
   const state =

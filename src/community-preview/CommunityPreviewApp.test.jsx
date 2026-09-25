@@ -94,6 +94,22 @@ describe("Community preview browser harness", () => {
     expect(screen.getByLabelText("Integrated -19.0")).toBeTruthy();
   });
 
+  it("renders the complete production Workspace with valid Stereo Map fixture data", async () => {
+    const preset = {
+      id: "stereo-overview",
+      name: "Stereo Overview",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const plan = await buildCommunityPreviewPlan(buildPack("presets", [preset]), "presets");
+
+    render(<CommunityPreviewApp plan={plan} asset={plan.assets[0]} />);
+
+    expect(screen.getByText("Stereo Map")).toBeTruthy();
+    expect(screen.getByTestId("stereo-map-chart")).toBeTruthy();
+  });
+
   it("applies a portable Theme to semantic and real product scenes", async () => {
     const stored = {
       ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
@@ -111,5 +127,10 @@ describe("Community preview browser harness", () => {
     render(<CommunityPreviewApp plan={plan} asset={statsAsset} />);
     expect(screen.getByText("Stats")).toBeTruthy();
     expect(screen.getByText("Integrated")).toBeTruthy();
+    cleanup();
+
+    const spectrogramAsset = plan.assets.find(({ sceneId }) => sceneId === "spectrogram-heatmap");
+    render(<CommunityPreviewApp plan={plan} asset={spectrogramAsset} />);
+    expect(screen.getByText("Spectrogram")).toBeTruthy();
   });
 });

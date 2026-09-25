@@ -6,9 +6,29 @@ function keyed(value) {
   return new Proxy(Object.create(null), { get: () => value });
 }
 
-function spectrumResult() {
-  const bandCentersHz = [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-  const smoothDb = [-58, -47, -38, -31, -28, -30, -35, -42, -51, -63];
+function interpolateValue(left, right, fraction) {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return left.map((value, index) => value + (right[index] - value) * fraction);
+  }
+  return left + (right - left) * fraction;
+}
+
+function expandTimeline(rows, clock, select) {
+  const expanded = [];
+  let upper = 1;
+  for (let atMs = clock.startMs; atMs <= clock.durationMs; atMs += clock.frameIntervalMs) {
+    while (upper < rows.length - 1 && rows[upper].atMs < atMs) upper += 1;
+    const left = rows[Math.max(0, upper - 1)];
+    const right = rows[upper] ?? left;
+    const span = right.atMs - left.atMs;
+    const fraction = span > 0 ? (atMs - left.atMs) / span : 0;
+    expanded.push(select(left, right, fraction, atMs));
+  }
+  return expanded;
+}
+
+function spectrumResult(fixture) {
+  const { bandCentersHz, smoothDb } = fixture.visuals.spectrum;
   return {
     bandCentersHz,
     smoothDb,
@@ -20,6 +40,22 @@ function spectrumResult() {
 
 export function buildCommunityPreviewFixtureValues(fixture) {
   const frame = fixture.measurementFrame;
+  const spectrum = spectrumResult(fixture);
+  const spectrogramRows = expandTimeline(
+    fixture.visuals.spectrogram,
+    fixture.clock,
+    (left, right, fraction, atMs) => ({
+      bands: spectrum.bandCentersHz.map((fCenter) => ({ fCenter })),
+      dbList: interpolateValue(left.db, right.db, fraction),
+      timestampMs: atMs,
+    })
+  );
+  const spectrogramView = {
+    length: spectrogramRows.length,
+    version: 1,
+    rowAt: (index) => spectrogramRows[index],
+    timestampAt: (index) => spectrogramRows[index]?.timestampMs ?? Number.NaN,
+  };
   const displayAudio = {
     peakDb: frame.peaksDbfs,
     rmsDb: frame.rmsDbfs,
@@ -33,28 +69,53 @@ export function buildCommunityPreviewFixtureValues(fixture) {
     correlation: 0.78,
     sideToMidDb: -8.2,
     loudnessLayoutKnown: true,
-    spectrumResultsByKey: keyed(spectrumResult()),
+    spectrumResultsByKey: keyed(spectrum),
     vectorscopeResultsByKey: keyed({
-      path: "M 250 440 C 330 330 420 285 500 80 C 555 270 650 350 750 440",
-      correlation: 0.78,
+      path: fixture.visuals.vectorscope.path,
+      correlation: fixture.visuals.vectorscope.correlation,
       pairX: 0,
       pairY: 1,
     }),
-    stereoMapResultsByKey: keyed({
-      bands: [
-        { frequencyHz: 125, value: -0.35, energy: 0.65 },
-        { frequencyHz: 500, value: -0.1, energy: 0.82 },
-        { frequencyHz: 2000, value: 0.18, energy: 0.74 },
-        { frequencyHz: 8000, value: 0.42, energy: 0.48 },
-      ],
-    }),
+    stereoMapResultsByKey: keyed(fixture.visuals.stereoMap),
   };
-  const histSourceList = fixture.loudnessHistory.map((row) => ({
+  const loudnessRows = expandTimeline(
+    fixture.loudnessHistory,
+    fixture.clock,
+    (left, right, fraction, atMs) => ({
+      atMs,
+      momentaryLufs: interpolateValue(left.momentaryLufs, right.momentaryLufs, fraction),
+      shortTermLufs: interpolateValue(left.shortTermLufs, right.shortTermLufs, fraction),
+    })
+  );
+  const waveformRows = expandTimeline(
+    fixture.visuals.waveform,
+    fixture.clock,
+    (left, right, fraction, atMs) => ({
+      atMs,
+      min: interpolateValue(left.min, right.min, fraction),
+      max: interpolateValue(left.max, right.max, fraction),
+      dominantHz: interpolateValue(left.dominantHz, right.dominantHz, fraction),
+    })
+  );
+  const histSourceList = loudnessRows.map((row, index) => {
+    const waveform = waveformRows[index];
+    return {
+      timestampMs: row.atMs,
+      m: row.momentaryLufs,
+      st: row.shortTermLufs,
+      min: waveform.min,
+      max: waveform.max,
+      waveformMin: waveform.min,
+      waveformMax: waveform.max,
+    };
+  });
+  const visualWaveformHist = waveformRows.map((row) => ({
     timestampMs: row.atMs,
-    m: row.momentaryLufs,
-    st: row.shortTermLufs,
-    min: [-0.25, -0.2],
-    max: [0.25, 0.2],
+    waveformMin: row.min,
+    waveformMax: row.max,
+    dominantFrequencyHz: [row.dominantHz, row.dominantHz * 1.25],
+    spectralCentroidHz: [row.dominantHz * 2, row.dominantHz * 2.25],
+    tonality: [0.8, 0.72],
   }));
   const totalSamples = histSourceList.length;
   return {
@@ -68,8 +129,8 @@ export function buildCommunityPreviewFixtureValues(fixture) {
       vectorscopePairX: 0,
       vectorscopePairY: 1,
       spectrumChannelOptions: fixture.audio.channelLabels.map((label, value) => ({ label, value })),
-      vsGridDiagInset: 0.18,
-      vsGridDiagFar: 0.82,
+      vsGridDiagInset: 18,
+      vsGridDiagFar: 82,
     },
     metricsData: {
       statsMetrics: buildStatsMetrics(displayAudio),
@@ -105,15 +166,15 @@ export function buildCommunityPreviewFixtureValues(fixture) {
       sourceMode: "file",
       frequencyMarkerRef: { current: null },
       frequencyMarkerIndex: -1,
-      getSpectrogramSnapsForKey: () => [],
+      getSpectrogramSnapsForKey: () => spectrogramView,
       snapshotSpectrumByKey: {},
       resolveSpectrumSnapshotForKey: () => null,
       resolveVectorscopeSnapshotForKey: () => null,
       resolveStereoMapSnapshotForKey: () => null,
-      getVectorscopeHistoryForKey: () => [],
-      getStereoMapHistoryForKey: () => [],
+      getVectorscopeHistoryForKey: () => null,
+      getStereoMapHistoryForKey: () => null,
       captureCurrentSnapshot: noop,
-      visualWaveformHist: histSourceList,
+      visualWaveformHist,
       waveformHistoryIndex: null,
     },
   };
