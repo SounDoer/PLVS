@@ -264,6 +264,22 @@ pub fn spawn_missing_restored_workspaces(
   Ok(())
 }
 
+pub fn spawn_ordinary_workbench(isolated_app_data: Option<&Path>) -> Result<(), String> {
+  let executable = std::env::current_exe()
+    .map_err(|error| format!("Unable to locate PLVS for an additional workbench: {error}"))?;
+  let mut command = std::process::Command::new(executable);
+  if let Some(path) = isolated_app_data {
+    command.arg("--plvs-test-app-data-root").arg(path);
+  }
+  command
+    .stdin(std::process::Stdio::null())
+    .stdout(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
+    .spawn()
+    .map_err(|error| format!("Unable to open an additional PLVS workbench: {error}"))?;
+  Ok(())
+}
+
 pub fn current_unix_time_ms() -> Result<u128, String> {
   std::time::SystemTime::now()
     .duration_since(std::time::UNIX_EPOCH)

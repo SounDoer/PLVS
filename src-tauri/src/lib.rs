@@ -62,6 +62,25 @@ use crate::window_state::{
 };
 use state::AppState;
 
+#[derive(Debug, Clone)]
+struct AppLaunchContext {
+  isolated_app_data: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MacosReopenAction {
+  OpenAdditionalWorkbench,
+  ShowExistingWorkbench,
+}
+
+fn macos_reopen_action(has_visible_windows: bool) -> MacosReopenAction {
+  if has_visible_windows {
+    MacosReopenAction::OpenAdditionalWorkbench
+  } else {
+    MacosReopenAction::ShowExistingWorkbench
+  }
+}
+
 fn runtime_log_file_name() -> String {
   format!("{}-{}", env!("PLVS_APP_NAME"), std::process::id())
 }
@@ -185,6 +204,9 @@ pub fn run() {
     )))
     .manage(dock::DockReservationLease::default())
     .manage(coordinator::RuntimeOperationCoordinator::default())
+    .manage(AppLaunchContext {
+      isolated_app_data: startup_test_root.clone(),
+    })
     .invoke_handler(tauri::generate_handler![
       ipc::commands::list_audio_devices,
       ipc::commands::list_capture_applications,
@@ -662,8 +684,33 @@ pub fn run() {
         .map_err(|e| format!("device watch thread: {e}"))?;
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(|app, event| {
+      #[cfg(target_os = "macos")]
+      if let tauri::RunEvent::Reopen {
+        has_visible_windows,
+        ..
+      } = event
+      {
+        match macos_reopen_action(has_visible_windows) {
+          MacosReopenAction::OpenAdditionalWorkbench => {
+            let context = app.state::<AppLaunchContext>();
+            if let Err(error) =
+              coordinator::spawn_ordinary_workbench(context.isolated_app_data.as_deref())
+            {
+              log::warn!("Unable to handle the macOS reopen request: {error}");
+            }
+          }
+          MacosReopenAction::ShowExistingWorkbench => {
+            if let Some(window) = app.get_webview_window("main") {
+              let _ = window.show();
+              let _ = window.set_focus();
+            }
+          }
+        }
+      }
+    });
 }
 
 #[cfg(test)]
@@ -689,6 +736,18 @@ mod tests {
       reserve_space: true,
       height: 96,
     }
+  }
+
+  #[test]
+  fn macos_reopen_opens_an_additional_workbench_only_while_one_is_visible() {
+    assert_eq!(
+      macos_reopen_action(true),
+      MacosReopenAction::OpenAdditionalWorkbench
+    );
+    assert_eq!(
+      macos_reopen_action(false),
+      MacosReopenAction::ShowExistingWorkbench
+    );
   }
 
   #[test]

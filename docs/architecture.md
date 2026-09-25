@@ -68,6 +68,10 @@ ordering, revisions, global preferences and the ordered restore set. Item and co
 expected revisions; Workspace state never shares a writer and measurement history is never
 persisted.
 
+On macOS, LaunchServices sends a reopen event to the running application instead of starting a
+second process. A reopen with a visible workbench spawns an ordinary additional process; when all
+windows are hidden it only shows the existing workbench.
+
 An identity-scoped file lock elects one coordinator generation. The coordinator owns the Tray,
 global shortcut, Open at Login registration and updater. Every process publishes a heartbeat
 descriptor containing its random instance ID, Workspace ID, Source-derived label, capture state,

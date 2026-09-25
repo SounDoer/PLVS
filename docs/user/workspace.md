@@ -4,8 +4,9 @@ Arrange panels into the layout your session needs.
 
 ## Multiple workbenches
 
-Multiple workbenches are qualified on Windows. On macOS, launching PLVS again may bring the running
-window forward instead of opening another workbench; that behaviour is still being verified.
+Multiple workbenches are supported on Windows and macOS. On macOS, launching PLVS again while a
+workbench is visible opens another workbench; launching it while all PLVS windows are hidden brings
+an existing workbench forward instead.
 
 Launch PLVS again when you need to meter another Source. Each additional workbench opens Stopped
 with Automatic selected, so its Transport looks and behaves like the first workbench without
