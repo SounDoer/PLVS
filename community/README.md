@@ -17,6 +17,7 @@ Validate this source boundary with:
 ```text
 npm run community:source:check
 npm run community:source:check -- path/to/external/catalogue
+npm run community:site -- path/to/external/catalogue path/to/output/community
 ```
 
 Validation opens every Release artifact through PLVS's stable Community contract. Listing IDs,
@@ -28,3 +29,7 @@ Every Release must reference exactly the preview IDs required by that derived co
 validator rejects missing or additional slots, checks the PNG structure, and seals each image's
 exact byte length and SHA-256 hash. Preview generation remains a PLVS-owned curator/CI operation;
 the Listing format has no publisher-selected cover image or screenshot field.
+
+The static-site command generates the Community root, all three family pages, stable Listing detail
+URLs, and an isolated copy of each validated download and preview. Its default output is the ignored
+`artifacts/community-site/` directory; deployment passes an explicit assembled-site destination.

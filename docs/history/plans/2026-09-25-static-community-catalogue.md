@@ -50,7 +50,7 @@ Gate: one source tree either produces a complete normalized catalogue or fails b
 
 ## Phase 3 — Static generation and browsing
 
-- [ ] Generate `/community/`, family browse views, and stable Listing detail URLs under `landing/`.
+- [x] Generate `/community/`, family browse views, and stable Listing detail URLs under `landing/`.
 - [ ] Add client-side search over title, summary, description, and free tags.
 - [ ] Add reliable filters from machine-derived type, module, metric, Theme scheme, feature, and
       compatibility facets.

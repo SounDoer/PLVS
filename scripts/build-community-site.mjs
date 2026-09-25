@@ -1,0 +1,185 @@
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { marked } from "marked";
+import { readCommunitySource } from "./community-catalogue-source.mjs";
+
+const FAMILIES = {
+  loudness: { label: "Loudness Profiles", singular: "Loudness Profile" },
+  presets: { label: "Presets", singular: "Preset" },
+  themes: { label: "Themes", singular: "Theme" },
+};
+
+const escapeHtml = (value) =>
+  String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+function page(title, description, body) {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="stylesheet" href="/assets/community.css" />
+  </head>
+  <body>
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="/"><img src="/assets/app-icon.svg" alt="" />PLVS</a>
+      <div class="nav-links"><a href="/community/" aria-current="page">Community</a><a href="/docs/">Docs</a><a href="https://github.com/SounDoer/PLVS">GitHub</a></div>
+    </nav>
+    ${body}
+    <footer><span>PLVS Community</span><a href="/">Back to PLVS</a></footer>
+  </body>
+</html>
+`;
+}
+
+function typeNav(active = null) {
+  return `<nav class="family-nav" aria-label="Community categories">
+    <a href="/community/"${active === null ? ' aria-current="page"' : ""}>All</a>
+    ${Object.entries(FAMILIES)
+      .map(
+        ([type, family]) =>
+          `<a href="/community/${type}/"${active === type ? ' aria-current="page"' : ""}>${family.label}</a>`
+      )
+      .join("\n    ")}
+  </nav>`;
+}
+
+function latestPublished(listing) {
+  return [...listing.releases].reverse().find(({ status }) => status === "published") ?? null;
+}
+
+function card(listing) {
+  const release = latestPublished(listing);
+  const preview = release?.previews[0];
+  const previewUrl = preview
+    ? `/community/files/${listing.id}/v${release.number}/${preview.id}.png`
+    : null;
+  return `<article class="card">
+    <a class="card-media" href="/community/${listing.type}/${listing.slug}/" aria-label="View ${escapeHtml(listing.title)}">
+      ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="" loading="lazy" />` : `<span>${FAMILIES[listing.type].singular}</span>`}
+    </a>
+    <div class="card-body">
+      <div class="meta"><span>${FAMILIES[listing.type].singular}</span><span>${escapeHtml(listing.classification)}</span></div>
+      <h2><a href="/community/${listing.type}/${listing.slug}/">${escapeHtml(listing.title)}</a></h2>
+      <p>${escapeHtml(listing.summary)}</p>
+      <div class="tags">${listing.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
+    </div>
+  </article>`;
+}
+
+function browsePage(listings, activeType = null) {
+  const visible = activeType ? listings.filter(({ type }) => type === activeType) : listings;
+  const title = activeType ? FAMILIES[activeType].label : "Community Catalogue";
+  const intro = activeType
+    ? `Browse curated ${FAMILIES[activeType].label.toLowerCase()} for PLVS.`
+    : "Curated Loudness Profiles, Presets, and Themes for PLVS.";
+  return page(
+    `${title} — PLVS`,
+    intro,
+    `<main class="catalogue">
+      <header class="hero"><p class="eyebrow">PLVS Community</p><h1>${title}</h1><p>${intro}</p></header>
+      ${typeNav(activeType)}
+      ${
+        visible.length > 0
+          ? `<section class="card-grid" aria-label="${escapeHtml(title)}">${visible.map(card).join("\n")}</section>`
+          : `<section class="empty"><h2>Nothing published yet</h2><p>The catalogue structure is ready. Curated releases will appear here after validation.</p></section>`
+      }
+    </main>`
+  );
+}
+
+function renderSummary(summary) {
+  return Object.entries(summary)
+    .map(([key, value]) => {
+      const label = key.replaceAll(/([A-Z])/g, " $1").replace(/^./, (part) => part.toUpperCase());
+      const display = Array.isArray(value) ? value.join(", ") || "None" : String(value);
+      return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(display)}</dd></div>`;
+    })
+    .join("");
+}
+
+function detailPage(listing) {
+  const current = latestPublished(listing);
+  const metadata = current?.metadata;
+  const previews = current?.previews ?? [];
+  const author = listing.author
+    ? listing.author.url
+      ? `<a href="${escapeHtml(listing.author.url)}" rel="author noopener">${escapeHtml(listing.author.name)}</a>`
+      : escapeHtml(listing.author.name)
+    : "PLVS curators";
+  const releases = [...listing.releases]
+    .reverse()
+    .map((release) => {
+      const download = `/community/files/${listing.id}/v${release.number}/${basename(release.artifact)}`;
+      return `<article class="release">
+        <div><h3>Release ${release.number}</h3><p>${escapeHtml(release.publishedAt)} · ${escapeHtml(release.status)}</p></div>
+        <div class="markdown">${marked.parse(release.notesMarkdown)}</div>
+        ${release.status === "published" ? `<a class="button secondary" href="${download}" download>Download</a>` : `<p class="withdrawn">Withdrawn: ${escapeHtml(release.withdrawalReason)}</p>`}
+      </article>`;
+    })
+    .join("\n");
+  return page(
+    `${listing.title} — PLVS Community`,
+    listing.summary,
+    `<main class="detail">
+      <p class="breadcrumb"><a href="/community/">Community</a> / <a href="/community/${listing.type}/">${FAMILIES[listing.type].label}</a></p>
+      <header class="detail-hero"><div><p class="eyebrow">${FAMILIES[listing.type].singular} · ${escapeHtml(listing.classification)}</p><h1>${escapeHtml(listing.title)}</h1><p class="lede">${escapeHtml(listing.summary)}</p><p class="byline">By ${author}</p>${current ? `<a class="button" href="/community/files/${listing.id}/v${current.number}/${basename(current.artifact)}" download>Download Release ${current.number}</a>` : ""}</div>${previews[0] ? `<img src="/community/files/${listing.id}/v${current.number}/${basename(previews[0].path)}" alt="Preview of ${escapeHtml(listing.title)}" />` : ""}</header>
+      <section class="detail-grid"><article class="prose"><h2>About</h2><div class="markdown">${marked.parse(listing.descriptionMarkdown)}</div></article>${metadata ? `<aside><h2>Content</h2><dl>${renderSummary(metadata.content.summary)}</dl><dl><div><dt>File size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div><div><dt>SHA-256</dt><dd class="hash">${escapeHtml(metadata.artifact.sha256)}</dd></div></dl></aside>` : ""}</section>
+      ${previews.length > 0 ? `<section><h2>Previews</h2><div class="preview-grid">${previews.map((preview) => `<figure><img src="/community/files/${listing.id}/v${current.number}/${preview.id}.png" alt="${escapeHtml(preview.id.replaceAll("-", " "))}" loading="lazy" /><figcaption>${escapeHtml(preview.id.replaceAll("-", " "))}</figcaption></figure>`).join("")}</div></section>` : ""}
+      <section><h2>Release history</h2><div class="release-list">${releases}</div></section>
+    </main>`
+  );
+}
+
+async function writePage(path, html) {
+  await mkdir(resolve(path, ".."), { recursive: true });
+  await writeFile(path, html);
+}
+
+async function copyReleaseFiles(source, output, listing) {
+  for (const release of listing.releases) {
+    const target = join(output, "files", listing.id, `v${release.number}`);
+    await mkdir(target, { recursive: true });
+    await copyFile(join(source.root, release.artifact), join(target, basename(release.artifact)));
+    for (const preview of release.previews) {
+      await copyFile(join(source.root, preview.path), join(target, `${preview.id}.png`));
+    }
+  }
+}
+
+export async function buildCommunitySite({ contentDirectory, outputDirectory } = {}) {
+  const source = await readCommunitySource(contentDirectory ?? resolve("community", "catalogue"));
+  const output = resolve(outputDirectory ?? resolve("artifacts", "community-site"));
+  const listings = source.listings.map(({ document }) => document);
+  await mkdir(output, { recursive: true });
+  await writePage(join(output, "index.html"), browsePage(listings));
+  for (const type of Object.keys(FAMILIES)) {
+    await writePage(join(output, type, "index.html"), browsePage(listings, type));
+  }
+  for (const listing of listings) {
+    await writePage(join(output, listing.type, listing.slug, "index.html"), detailPage(listing));
+    await copyReleaseFiles(source, output, listing);
+  }
+  return { outputDirectory: output, listingCount: listings.length, pageCount: 4 + listings.length };
+}
+
+async function main(args) {
+  if (args.length > 2)
+    throw new Error("Usage: npm run community:site -- [content-directory] [output-directory]");
+  const result = await buildCommunitySite({ contentDirectory: args[0], outputDirectory: args[1] });
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+}
+
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  main(process.argv.slice(2)).catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}
