@@ -75,7 +75,7 @@ Gate: GUI, Agent Control and CLI produce the same plan for the same Pack and loc
 
 ## Phase 6 — Community handoff
 
-- [ ] Add deterministic Loudness Profile and Preset preview inputs and golden fixtures.
+- [x] Add deterministic Loudness Profile and Preset preview inputs and golden fixtures.
 - [ ] Expose a repository/CI validator for immutable catalogue artefacts.
 - [ ] Produce the exact Catalogue metadata derived from Pack contents and compatibility facts.
 - [ ] Hand the stable validator, hashes and preview contract to the static Catalogue implementation.
