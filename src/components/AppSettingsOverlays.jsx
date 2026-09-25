@@ -19,6 +19,7 @@ export function AppSettingsOverlays({
   updateControls,
   appVersion,
   loudnessProfile,
+  presets,
   crashReportSetting,
   crashReporting,
   packTransfer = null,
@@ -213,6 +214,30 @@ export function AppSettingsOverlays({
           review={pack.review}
           onConfirm={pack.confirmImport}
           onClose={pack.cancelImport}
+        />
+      ) : null}
+
+      {pack.completion ? (
+        <ItemPickerDialog
+          open
+          mode="complete"
+          type={pack.completion.type}
+          review={pack.completion}
+          onAction={() =>
+            pack.runCompletionAction(async (type, id) => {
+              if (type === "themes") {
+                settings.setFixedThemeIdFromPicker(id);
+                return true;
+              }
+              if (type === "loudness") {
+                if (loudnessProfile.draftBlocksLibraryActions) return false;
+                loudnessProfile.select(`profile:${id}`);
+                return true;
+              }
+              return presets.apply(id);
+            })
+          }
+          onClose={pack.dismissCompletion}
         />
       ) : null}
 

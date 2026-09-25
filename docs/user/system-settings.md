@@ -99,6 +99,12 @@ library**, or **Import as a copy**, shows bundled Loudness Profile dependencies,
 adaptations such as collision renaming or a missing legacy dependency. Confirming the review is the
 only step that writes to the Library.
 
+Import only adds saved Library content, so it remains available while a Theme or Loudness Profile
+draft is open and never discards that draft. After a single Item is imported, PLVS offers a separate
+**Use Theme**, **Use Profile**, or **Apply Preset** action. That follow-up uses the same safety rules
+as the normal Library controls; if it is refused, the successfully imported Item stays in the
+Library.
+
 With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
 Profile, or Preset does not silently replace the snapshot already active in another workbench; that
 workbench keeps measuring with its current snapshot until you explicitly apply a selection.

@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or empty exports are refused, and existing Pack V1 `.plvspreset` files remain importable.
 - Shared Item import now auto-detects Loudness Profile, Preset, and Theme files, previews
   dependencies and add/skip/copy outcomes, and reports collision or legacy-dependency adaptations
-  before writing. Saved Profiles, Presets, and custom Themes also have one-item Export actions.
+  before writing. Saved Profiles, Presets, and custom Themes also have one-item Export actions, and
+  a completed single-item import offers a separate Use or Apply action without coupling activation
+  to the Library write.
 
 ## [0.17.0] - 2026-09-24
 

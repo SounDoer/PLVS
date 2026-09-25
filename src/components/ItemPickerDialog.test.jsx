@@ -199,6 +199,54 @@ describe("ItemPickerDialog review mode", () => {
   });
 });
 
+describe("ItemPickerDialog completion mode", () => {
+  it.each([
+    ["themes", "Use Theme"],
+    ["loudness", "Use Profile"],
+    ["presets", "Apply Preset"],
+  ])("offers the explicit %s follow-up action", (type, actionLabel) => {
+    const onAction = vi.fn();
+    render(
+      <ItemPickerDialog
+        open
+        mode="complete"
+        type={type}
+        review={{
+          itemPlan: [
+            { sourceId: "shared", finalId: "local", name: "Shared", disposition: "added" },
+          ],
+        }}
+        onAction={onAction}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByText("Import Complete")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: actionLabel }));
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not imply one follow-up target after a multi-item import", () => {
+    render(
+      <ItemPickerDialog
+        open
+        mode="complete"
+        type="themes"
+        review={{
+          itemPlan: [
+            { sourceId: "a", finalId: "a", name: "A", disposition: "added" },
+            { sourceId: "b", finalId: "b", name: "B", disposition: "added" },
+          ],
+        }}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: "Use Theme" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Done" })).toBeTruthy();
+  });
+});
+
 describe("ItemPickerDialog dragging", () => {
   function renderDialog(open) {
     return render(

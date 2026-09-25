@@ -46,6 +46,7 @@ export function usePackTransfer() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useTransientStatus();
   const [review, setReview] = useState(null);
+  const [completion, setCompletion] = useState(null);
 
   // No `flushPersistence()` here: unlike `profile.js`'s `exportProfile()`, which round-trips
   // through a Rust command that reads the store file from disk, this hook's reads never leave
@@ -93,6 +94,7 @@ export function usePackTransfer() {
       setBusy(true);
       setStatus("");
       setReview(null);
+      setCompletion(null);
       try {
         if (!isTauri()) {
           setStatus("Import is available in the desktop app");
@@ -128,6 +130,7 @@ export function usePackTransfer() {
     setBusy(true);
     setStatus("");
     setReview(null);
+    setCompletion(null);
     try {
       if (!isTauri()) {
         setStatus("Import is available in the desktop app");
@@ -155,6 +158,7 @@ export function usePackTransfer() {
       setBusy(true);
       setStatus("");
       setReview(null);
+      setCompletion(null);
       try {
         let raw;
         try {
@@ -206,15 +210,47 @@ export function usePackTransfer() {
     } else {
       setStatus(`${packDescriptor(type).label} imported`);
     }
+    setCompletion({
+      type,
+      origin: review.origin,
+      itemPlan: review.itemPlan,
+    });
     setReview(null);
   }, [review, setStatus]);
 
   const cancelImport = useCallback(() => setReview(null), []);
 
+  const runCompletionAction = useCallback(
+    async (action) => {
+      if (!completion || completion.itemPlan.length !== 1 || busy) return false;
+      setBusy(true);
+      const entry = completion.itemPlan[0];
+      try {
+        const applied = await action(completion.type, entry.finalId);
+        if (applied === false) {
+          setStatus(`${entry.name} was imported, but the follow-up action was refused.`);
+          return false;
+        }
+        setCompletion(null);
+        return true;
+      } catch (error) {
+        const reason = error instanceof Error ? ` ${error.message}` : "";
+        setStatus(`${entry.name} was imported.${reason}`);
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, completion, setStatus]
+  );
+
+  const dismissCompletion = useCallback(() => setCompletion(null), []);
+
   return {
     busy,
     status,
     review,
+    completion,
     exportSelection,
     beginImport,
     beginSharedImport,
@@ -222,5 +258,7 @@ export function usePackTransfer() {
     pasteThemeFromClipboard,
     confirmImport,
     cancelImport,
+    runCompletionAction,
+    dismissCompletion,
   };
 }

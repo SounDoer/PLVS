@@ -67,8 +67,8 @@ bypass blocking editors.
 - [x] Add item-level Export for saved Presets and custom Themes where not already exposed.
 - [x] Replace per-row import entry points with `Import Shared Item…` dispatch by extension/kind.
 - [x] Show dependencies, add/skip/copy outcomes, compatibility errors and adaptation warnings.
-- [ ] Keep append-only import available while draft editors are open.
-- [ ] Offer explicit post-import View/Use/Apply actions without rolling back a successful import
+- [x] Keep append-only import available while draft editors are open.
+- [x] Offer explicit post-import View/Use/Apply actions without rolling back a successful import
       when the action is refused.
 
 Gate: GUI, Agent Control and CLI produce the same plan for the same Pack and local libraries.

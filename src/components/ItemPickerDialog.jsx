@@ -23,6 +23,12 @@ const DISPOSITION_LABEL = {
   duplicated: "Import as a copy",
 };
 
+const COMPLETION_ACTION_LABEL = {
+  loudness: "Use Profile",
+  presets: "Apply Preset",
+  themes: "Use Theme",
+};
+
 function PlanRow({ entry }) {
   return (
     <li className="flex items-center justify-between gap-3 py-1 text-[length:var(--ui-fs-control)]">
@@ -74,6 +80,7 @@ export function ItemPickerDialog({
   review = null,
   onExport = () => {},
   onConfirm = () => {},
+  onAction = () => {},
   onClose = () => {},
 }) {
   const [selected, setSelected] = useState(() => new Set());
@@ -85,7 +92,14 @@ export function ItemPickerDialog({
   const label = PACK_KINDS[type].label;
   const clipboardTheme = mode === "review" && review?.origin === "clipboard";
   const title =
-    mode === "pick" ? `Export ${label}` : clipboardTheme ? "Paste Theme" : `Import ${label}`;
+    mode === "pick"
+      ? `Export ${label}`
+      : mode === "complete"
+        ? "Import Complete"
+        : clipboardTheme
+          ? "Paste Theme"
+          : `Import ${label}`;
+  const singleCompletion = mode === "complete" && review?.itemPlan?.length === 1;
 
   useEffect(() => {
     if (!open) {
@@ -170,7 +184,9 @@ export function ItemPickerDialog({
             <Dialog.Description className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
               {mode === "pick"
                 ? `Choose which ${label.toLowerCase()} to export.`
-                : `Review what will be added to your library.`}
+                : mode === "complete"
+                  ? `The ${label.toLowerCase()} are now in your library.`
+                  : `Review what will be added to your library.`}
             </Dialog.Description>
           </div>
 
@@ -215,7 +231,7 @@ export function ItemPickerDialog({
               </AlsoIncluded>
             ) : null}
 
-            {mode === "review" && profilePlan.length > 0 ? (
+            {mode !== "pick" && profilePlan.length > 0 ? (
               <AlsoIncluded>
                 {profilePlan.map((entry) => (
                   <PlanRow key={entry.sourceId} entry={entry} />
@@ -244,12 +260,16 @@ export function ItemPickerDialog({
 
           <div className="flex justify-end gap-2 border-t border-border pt-2">
             <Button variant="ghost" onClick={handleDismiss}>
-              Cancel
+              {mode === "complete" ? "Done" : "Cancel"}
             </Button>
             {mode === "pick" ? (
               <Button disabled={selected.size === 0} onClick={() => onExport([...selected])}>
                 Export
               </Button>
+            ) : mode === "complete" ? (
+              singleCompletion ? (
+                <Button onClick={onAction}>{COMPLETION_ACTION_LABEL[type]}</Button>
+              ) : null
             ) : (
               <Button onClick={onConfirm}>{clipboardTheme ? "Add Theme" : "Import"}</Button>
             )}

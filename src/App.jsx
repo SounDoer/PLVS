@@ -2429,6 +2429,7 @@ function AppContent() {
         crashReportSetting={crashReportSetting}
         crashReporting={crashReporting}
         packTransfer={packTransfer}
+        presets={presets}
         loudnessProfile={loudnessProfile}
         channelSettings={{
           channelCount,

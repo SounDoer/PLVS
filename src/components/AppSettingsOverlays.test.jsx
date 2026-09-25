@@ -222,6 +222,77 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
 }
 
 describe("AppSettingsOverlays", () => {
+  it("keeps append-only import confirmation available while a draft editor is open", () => {
+    const confirmImport = vi.fn();
+    const packTransfer = {
+      busy: false,
+      status: "",
+      review: {
+        type: "themes",
+        origin: "file",
+        itemPlan: [{ sourceId: "shared", finalId: "shared", name: "Shared", disposition: "added" }],
+        profilePlan: [],
+        warnings: [],
+      },
+      completion: null,
+      exportSelection: vi.fn(),
+      beginSharedImport: vi.fn(),
+      beginThemePaste: vi.fn(),
+      pasteThemeFromClipboard: vi.fn(),
+      confirmImport,
+      cancelImport: vi.fn(),
+      runCompletionAction: vi.fn(),
+      dismissCompletion: vi.fn(),
+    };
+    const settings = makeSettings({
+      editor: {
+        ...makeSettings().editor,
+        isEditing: true,
+        draft: { id: "draft", name: "Draft" },
+      },
+    });
+
+    renderOverlays(settings, {}, { packTransfer });
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+
+    expect(confirmImport).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes an imported Preset's explicit Apply action through the existing Preset API", async () => {
+    const apply = vi.fn().mockResolvedValue(true);
+    const runCompletionAction = vi.fn(async (action) => action("presets", "imported-preset"));
+    const packTransfer = {
+      busy: false,
+      status: "",
+      review: null,
+      completion: {
+        type: "presets",
+        itemPlan: [
+          {
+            sourceId: "shared-preset",
+            finalId: "imported-preset",
+            name: "Shared Preset",
+            disposition: "added",
+          },
+        ],
+      },
+      exportSelection: vi.fn(),
+      beginSharedImport: vi.fn(),
+      beginThemePaste: vi.fn(),
+      pasteThemeFromClipboard: vi.fn(),
+      confirmImport: vi.fn(),
+      cancelImport: vi.fn(),
+      runCompletionAction,
+      dismissCompletion: vi.fn(),
+    };
+
+    renderOverlays(makeSettings(), {}, { packTransfer, presets: { apply } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply Preset" }));
+
+    await waitFor(() => expect(apply).toHaveBeenCalledWith("imported-preset"));
+    expect(runCompletionAction).toHaveBeenCalledTimes(1);
+  });
+
   it("forwards the global interface size setting", () => {
     const settings = makeSettings();
     renderOverlays(settings);

@@ -320,6 +320,54 @@ describe("usePackTransfer import", () => {
     });
 
     expect(settingsStore.read().loudnessProfiles.profiles.map((p) => p.id)).toEqual(["a"]);
+    expect(result.current.completion).toMatchObject({
+      type: "loudness",
+      itemPlan: [{ finalId: "a", name: "A" }],
+    });
+  });
+
+  it("keeps an imported item when its explicit follow-up action is refused", async () => {
+    readProfileFile.mockResolvedValue(
+      JSON.stringify({
+        app: "PLVS",
+        kind: "loudness-pack",
+        version: 1,
+        items: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      })
+    );
+    pickPackFile.mockResolvedValue("C:/in.plvsloudness");
+    const refused = vi.fn(() => false);
+
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => result.current.beginImport("loudness"));
+    act(() => result.current.confirmImport());
+    await act(async () => result.current.runCompletionAction(refused));
+
+    expect(refused).toHaveBeenCalledWith("loudness", "a");
+    expect(settingsStore.read().loudnessProfiles.profiles.map((p) => p.id)).toEqual(["a"]);
+    expect(result.current.completion.itemPlan[0].finalId).toBe("a");
+    expect(result.current.status).toContain("was imported");
+    expect(result.current.status).toContain("refused");
+  });
+
+  it("closes import completion after a successful explicit follow-up action", async () => {
+    readProfileFile.mockResolvedValue(
+      JSON.stringify({
+        app: "PLVS",
+        kind: "loudness-pack",
+        version: 1,
+        items: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      })
+    );
+    pickPackFile.mockResolvedValue("C:/in.plvsloudness");
+
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => result.current.beginImport("loudness"));
+    act(() => result.current.confirmImport());
+    await act(async () => result.current.runCompletionAction(() => true));
+
+    expect(result.current.completion).toBeNull();
+    expect(settingsStore.read().loudnessProfiles.profiles.map((p) => p.id)).toEqual(["a"]);
   });
 
   it("reports the specific reason for a wrong-kind file", async () => {
