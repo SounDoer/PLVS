@@ -23,10 +23,34 @@ afterEach(() => {
   }
 });
 
-function writeFixtureSource(directory, { status = "published" } = {}) {
+function writeFixtureSource(directory, { status = "published", statuses = [status] } = {}) {
   mkdirSync(join(directory, "listings"));
   mkdirSync(join(directory, "artifacts"));
   mkdirSync(join(directory, "previews"));
+  const multiple = statuses.length > 1;
+  const releases = statuses.map((releaseStatus, index) => {
+    const number = index + 1;
+    return {
+      number,
+      publishedAt: `2026-09-${24 + number}`,
+      status: releaseStatus,
+      notesMarkdown: `Release ${number}.`,
+      artifact: multiple
+        ? `artifacts/broadcast-v${number}.plvsloudness`
+        : "artifacts/broadcast.plvsloudness",
+      previews: [
+        {
+          id: "profile-summary",
+          path: multiple ? `previews/v${number}/summary.png` : "previews/summary.png",
+        },
+        {
+          id: "profile-stats-example",
+          path: multiple ? `previews/v${number}/stats.png` : "previews/stats.png",
+        },
+      ],
+      ...(releaseStatus === "withdrawn" ? { withdrawalReason: "Unsafe guidance." } : {}),
+    };
+  });
   writeFileSync(
     join(directory, "manifest.json"),
     JSON.stringify({ schemaVersion: 1, listings: ["listings/broadcast.json"] })
@@ -44,20 +68,7 @@ function writeFixtureSource(directory, { status = "published" } = {}) {
       descriptionMarkdown: "Designed for **broadcast delivery**.",
       tags: ["Broadcast"],
       author: { name: "Example Author", url: "https://example.com" },
-      releases: [
-        {
-          number: 1,
-          publishedAt: "2026-09-25",
-          status,
-          notesMarkdown: "Initial release.",
-          artifact: "artifacts/broadcast.plvsloudness",
-          previews: [
-            { id: "profile-summary", path: "previews/summary.png" },
-            { id: "profile-stats-example", path: "previews/stats.png" },
-          ],
-          ...(status === "withdrawn" ? { withdrawalReason: "Unsafe guidance." } : {}),
-        },
-      ],
+      releases,
     })
   );
   const pack = buildPack("loudness", [
@@ -68,12 +79,14 @@ function writeFixtureSource(directory, { status = "published" } = {}) {
       rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
     },
   ]);
-  writeFileSync(
-    join(directory, "artifacts", "broadcast.plvsloudness"),
-    `${JSON.stringify(pack, null, 2)}\n`
-  );
-  writeFileSync(join(directory, "previews", "summary.png"), PNG);
-  writeFileSync(join(directory, "previews", "stats.png"), PNG);
+  for (const release of releases) {
+    mkdirSync(join(directory, release.artifact, ".."), { recursive: true });
+    writeFileSync(join(directory, release.artifact), `${JSON.stringify(pack, null, 2)}\n`);
+    for (const preview of release.previews) {
+      mkdirSync(join(directory, preview.path, ".."), { recursive: true });
+      writeFileSync(join(directory, preview.path), PNG);
+    }
+  }
 }
 
 function writeAssembledSite(directory) {
@@ -111,9 +124,15 @@ describe("Community static site generator", () => {
   it("builds browse, detail, download, and sealed preview files", async () => {
     const source = temporaryDirectory("plvs-community-source-");
     const output = temporaryDirectory("plvs-community-output-");
+    const site = temporaryDirectory("plvs-community-site-");
     writeFixtureSource(source);
+    writeAssembledSite(site);
 
-    const result = await buildCommunitySite({ contentDirectory: source, outputDirectory: output });
+    const result = await buildCommunitySite({
+      contentDirectory: source,
+      outputDirectory: output,
+      siteDirectory: site,
+    });
     expect(result).toMatchObject({ listingCount: 1, visibleListingCount: 1, pageCount: 5 });
     const root = readFileSync(join(output, "index.html"), "utf8");
     const detail = readFileSync(join(output, "loudness", "broadcast-safe", "index.html"), "utf8");
@@ -135,6 +154,25 @@ describe("Community static site generator", () => {
     expect(
       readFileSync(join(output, "files", "broadcast", "v1", "broadcast.plvsloudness"), "utf8")
     ).toContain('"kind": "loudness-pack"');
+    expect(readFileSync(join(site, "index.html"), "utf8")).toContain("Community");
+    expect(readFileSync(join(site, "docs", "index.html"), "utf8")).toContain("Community");
+  });
+
+  it("keeps a partially withdrawn Listing visible and links only its published Release", async () => {
+    const source = temporaryDirectory("plvs-community-partial-");
+    const output = temporaryDirectory("plvs-community-output-");
+    writeFixtureSource(source, { statuses: ["withdrawn", "published"] });
+
+    await expect(
+      buildCommunitySite({ contentDirectory: source, outputDirectory: output })
+    ).resolves.toMatchObject({ listingCount: 1, visibleListingCount: 1 });
+    const browse = readFileSync(join(output, "index.html"), "utf8");
+    const detail = readFileSync(join(output, "loudness", "broadcast-safe", "index.html"), "utf8");
+    expect(browse).toContain("Broadcast Safe");
+    expect(detail).toContain("Download Release 2");
+    expect(detail).toContain("Withdrawn: Unsafe guidance.");
+    expect(detail).not.toContain('href="/community/files/broadcast/v1/broadcast-v1.plvsloudness"');
+    expect(detail).toContain('href="/community/files/broadcast/v2/broadcast-v2.plvsloudness"');
   });
 
   it("hides a fully withdrawn Listing from browse while preserving its historical detail page", async () => {

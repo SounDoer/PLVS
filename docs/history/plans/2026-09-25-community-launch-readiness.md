@@ -50,10 +50,10 @@ submission path and no manual editing of hashes or generated metadata.
 
 ## Phase 5 — Catalogue launch behaviour
 
-- [ ] Hide fully withdrawn Listings from all browse and search views while retaining detail pages.
-- [ ] Remove download/copy actions when no published Release exists.
-- [ ] Gate landing and docs Community navigation on visible assembled content.
-- [ ] Test empty, active, partially withdrawn and fully withdrawn Catalogues without JavaScript.
+- [x] Hide fully withdrawn Listings from all browse and search views while retaining detail pages.
+- [x] Remove download/copy actions when no published Release exists.
+- [x] Gate landing and docs Community navigation on visible assembled content.
+- [x] Test empty, active, partially withdrawn and fully withdrawn Catalogues without JavaScript.
 
 Gate: visitors never reach an empty promoted feature or download withdrawn content, and historical
 URLs remain explanatory rather than becoming 404s.
