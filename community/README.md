@@ -39,3 +39,5 @@ The normal landing workflow publishes the Catalogue with an app Release. A separ
 Community workflow can publish a chosen content ref sooner, but it rebuilds the rest of the site
 from the latest stable Release tag. Its content checkout is isolated from the site checkout so the
 path can later point at a dedicated repository without changing the validator or builder commands.
+The deployed Catalogue records its exact content commit in `community/publication.json`; the next
+manual deployment reads that marker and refuses any candidate that rewrites its published history.

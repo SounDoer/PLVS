@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-Community pages strictly from the latest stable PLVS Release.
 - Maintainers can compare candidate Catalogue content with its published predecessor and reject
   deleted, replaced, inserted, restored, or otherwise rewritten Listing and Release history.
+- Manual Community deployment records the exact published content commit and automatically uses it
+  as the immutable-history baseline for the next deployment.
 - Loudness Profile exports now use strict Pack V2 portable documents. Incomplete rules, empty
   Profiles, invalid IDs, and empty exports are refused instead of being silently omitted; existing
   Pack V1 `.plvsloudness` files remain importable.

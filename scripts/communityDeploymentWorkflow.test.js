@@ -17,9 +17,20 @@ describe("Community content deployment", () => {
     expect(workflow).toContain(
       "node site-source/scripts/validate-community-source.mjs content-source/community/catalogue"
     );
+    expect(workflow).toContain("path: published-content-source");
+    expect(workflow).toContain(
+      "node site-source/scripts/community-catalogue-update.mjs published-content-source/community/catalogue content-source/community/catalogue"
+    );
     expect(workflow).toContain(
       "node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community"
     );
+  });
+
+  it("discovers and republishes the exact deployed content identity", () => {
+    expect(workflow).toContain("community/publication.json?run=${{ github.run_id }}");
+    expect(workflow).toContain('[[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]');
+    expect(workflow).toContain("git -C content-source rev-parse HEAD");
+    expect(workflow).toContain("> _site/community/publication.json");
   });
 
   it("deploys one complete Pages artifact under the shared pages lock", () => {

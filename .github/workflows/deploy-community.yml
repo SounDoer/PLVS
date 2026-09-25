@@ -37,6 +37,33 @@ jobs:
         with:
           ref: ${{ steps.release.outputs.tag }}
           path: site-source
+      - name: Resolve the published content baseline
+        id: content-baseline
+        env:
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          RELEASE_FALLBACK: ${{ steps.release.outputs.tag }}
+        run: |
+          host=$(tr -d '\r\n' < site-source/landing/CNAME)
+          marker=$(mktemp)
+          status=$(curl --silent --show-error --output "$marker" --write-out "%{http_code}" "https://$host/community/publication.json?run=${{ github.run_id }}")
+          if [ "$status" = "404" ]; then
+            echo "ref=$RELEASE_FALLBACK" >> "$GITHUB_OUTPUT"
+          elif [ "$status" = "200" ]; then
+            repository=$(jq --exit-status --raw-output '.repository' "$marker")
+            commit_sha=$(jq --exit-status --raw-output '.commitSha' "$marker")
+            test "$repository" = "$EXPECTED_REPOSITORY"
+            [[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]
+            echo "ref=$commit_sha" >> "$GITHUB_OUTPUT"
+          else
+            echo "Cannot read the published Community marker (HTTP $status)." >&2
+            exit 1
+          fi
+      - name: Check out published Community content
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.content-baseline.outputs.ref }}
+          path: published-content-source
+          sparse-checkout: community/catalogue
       - name: Check out Community content
         uses: actions/checkout@v7
         with:
@@ -52,12 +79,16 @@ jobs:
         working-directory: site-source
         run: npm ci
       - name: Validate Community content
-        run: node site-source/scripts/validate-community-source.mjs content-source/community/catalogue
+        run: |
+          node site-source/scripts/validate-community-source.mjs content-source/community/catalogue
+          node site-source/scripts/community-catalogue-update.mjs published-content-source/community/catalogue content-source/community/catalogue
       - name: Assemble the released site with new Community content
         run: |
           cp -r site-source/landing _site
           (cd site-source && node scripts/build-user-docs.mjs ../_site/docs/index.html)
           node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community
+          candidate_sha=$(git -C content-source rev-parse HEAD)
+          jq --null-input --arg repository "${{ github.repository }}" --arg commitSha "$candidate_sha" '{ schemaVersion: 1, repository: $repository, commitSha: $commitSha }' > _site/community/publication.json
           rm _site/docs/template.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
