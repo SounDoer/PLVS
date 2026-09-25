@@ -968,8 +968,9 @@ transparent-background leakage, Canvas truncation, or Theme binding mismatch. Th
 separate packaging defect: the published macOS FFmpeg 7.1 sidecars linked to the CI runner's
 Homebrew X11 installation. A locally rebuilt portable pair passed the 20-test file-analysis smoke
 and unblocked the complete gallery. The sidecar workflow and fetcher now reject non-system dynamic
-libraries, but the pinned release assets still require a workflow rebuild and checksum update
-before the published macOS path is repaired.
+libraries. Workflow run `36089061860` rebuilt and replaced both pinned macOS release assets, passed
+the real decode and portability gates, and the repository now pins their new checksums. The
+published macOS fetch, file-analysis, and complete Theme Gallery path is repaired.
 
 ## Phase 4 implementation boundary — 2026-09-24
 

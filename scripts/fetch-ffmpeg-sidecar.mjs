@@ -29,11 +29,11 @@ const ASSETS = {
   darwin: [
     {
       name: "ffmpeg-aarch64-apple-darwin",
-      sha256: "f8848c33fea2ce6622d923f6b843741675071e9e9b2546829f41904f488c9ec3",
+      sha256: "ef3464777eaac4e6fac6aa5fd8c5a18baa8a3ca798d0c5168d9d71626b4f5bb9",
     },
     {
       name: "ffprobe-aarch64-apple-darwin",
-      sha256: "4acfbafd635f9a22f23aefa8b4268c26e05af99a7c901347d6f624e6a7c60ccf",
+      sha256: "467267643ef8ef5a045fefb0a62b08f999b30f35637d9dbf2d681e19ac17d90c",
     },
   ],
 };
