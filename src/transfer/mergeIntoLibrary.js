@@ -3,7 +3,11 @@ import {
   parseSelection,
   profileSelectionId,
 } from "../lib/loudnessProfileCatalog.js";
-import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
+import {
+  PortableThemeError,
+  serializePortableTheme,
+  themeToPortable,
+} from "../theme/portableTheme.js";
 
 /// The conflict rules for importing a pack, as a pure function: no store, no React, no IO.
 ///
@@ -78,6 +82,48 @@ function portableThemesEqual(a, b) {
   return serializePortableTheme(themeToPortable(a)) === serializePortableTheme(themeToPortable(b));
 }
 
+function portableThemeIdentity(theme) {
+  try {
+    return serializePortableTheme(themeToPortable(theme));
+  } catch (error) {
+    // A local Theme this build cannot express portably can never equal incoming content.
+    if (error instanceof PortableThemeError) return null;
+    throw error;
+  }
+}
+
+/// Plans a standalone portable Theme (clipboard, community download). It carries no ID, so its
+/// identity is its content: equal content anywhere in the library is skipped, anything else is
+/// added under a freshly minted local ID rather than colliding with a placeholder.
+function planContentMerge(existing, incoming, makeId) {
+  const byIdentity = new Map();
+  for (const item of existing) {
+    const identity = portableThemeIdentity(item);
+    if (identity && !byIdentity.has(identity)) byIdentity.set(identity, item);
+  }
+  const takenNames = new Set(existing.map((item) => item.name));
+  const additions = [];
+  const plan = [];
+
+  for (const item of incoming) {
+    const identity = serializePortableTheme(themeToPortable(item));
+    const local = byIdentity.get(identity);
+    if (local) {
+      plan.push({ sourceId: item.id, finalId: local.id, name: local.name, disposition: "skipped" });
+      continue;
+    }
+    const finalId = makeId();
+    const name = freeName(item.name, takenNames);
+    const added = { ...item, id: finalId, name };
+    takenNames.add(name);
+    byIdentity.set(identity, added);
+    additions.push(added);
+    plan.push({ sourceId: item.id, finalId, name, disposition: "added" });
+  }
+
+  return { additions, plan };
+}
+
 /// Rewrites a preset's profile reference through the id map the profile stage produced. A
 /// reference the pack did not carry cannot be honoured on this machine, so it degrades to Off --
 /// the same thing `normalizePresets` already does for a dangling reference, made explicit here so
@@ -113,6 +159,10 @@ export function planPackImport(
   pack,
   { existingItems, existingProfiles = [], makeId = defaultMakeId } = {}
 ) {
+  if (type === "themes" && pack.identity === "content") {
+    const { additions, plan } = planContentMerge(existingItems, pack.items, makeId);
+    return { profileAdditions: [], profilePlan: [], itemAdditions: additions, itemPlan: plan };
+  }
   if (type !== "presets") {
     const { additions, plan } = planMerge(existingItems, pack.items, {
       makeId,

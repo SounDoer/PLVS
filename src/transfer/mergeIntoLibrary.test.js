@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { planMerge, planPackImport } from "./mergeIntoLibrary.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { themeToPortable } from "../theme/portableTheme.js";
+import { parseClipboardTheme } from "./packShape.js";
 
 function counter() {
   let n = 0;
@@ -151,6 +153,51 @@ describe("planPackImport", () => {
     );
     expect(result.itemAdditions).toEqual([]);
     expect(result.itemPlan[0].disposition).toBe("skipped");
+  });
+
+  describe("a standalone portable Theme", () => {
+    const theme = (id, name, accent) => {
+      const document = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id, name };
+      document.core.interfaceAccent = accent;
+      return document;
+    };
+    const pasted = (name, accent) =>
+      parseClipboardTheme(themeToPortable(theme("custom-source", name, accent)));
+
+    it("skips content already in the library under any ID", () => {
+      const local = theme("custom-local", "Shared", "#ff3fa4");
+      const result = planPackImport("themes", pasted("Shared", "#ff3fa4"), {
+        existingItems: [theme("custom-shared-theme", "Other", "#123456"), local],
+        makeId: counter(),
+      });
+      expect(result.itemAdditions).toEqual([]);
+      expect(result.itemPlan).toEqual([
+        expect.objectContaining({
+          finalId: "custom-local",
+          name: "Shared",
+          disposition: "skipped",
+        }),
+      ]);
+    });
+
+    it("adds new content under a fresh ID instead of colliding with the placeholder", () => {
+      const result = planPackImport("themes", pasted("Shared", "#ff3fa4"), {
+        existingItems: [theme("custom-shared-theme", "Other", "#123456")],
+        makeId: counter(),
+      });
+      expect(result.itemPlan).toEqual([
+        expect.objectContaining({ finalId: "new-1", name: "Shared", disposition: "added" }),
+      ]);
+      expect(result.itemAdditions[0].id).toBe("new-1");
+    });
+
+    it("still renames a new Theme whose name is taken", () => {
+      const result = planPackImport("themes", pasted("Other", "#ff3fa4"), {
+        existingItems: [theme("custom-shared-theme", "Other", "#123456")],
+        makeId: counter(),
+      });
+      expect(result.itemPlan[0]).toMatchObject({ name: "Other (2)", disposition: "added" });
+    });
   });
 
   it("imports a preset with its profile and keeps the reference", () => {

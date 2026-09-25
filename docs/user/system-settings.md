@@ -93,8 +93,10 @@ Community Theme pages offer **Copy Theme** as the primary action and **Download 
 secondary option. Both deliver the same canonical portable Theme document. In PLVS, press
 **Ctrl+V** on Windows or **Command+V** on macOS anywhere outside a text field, or choose **Paste** on
 the Theme row in Settings. PLVS opens the normal Theme import review before adding anything; it
-never activates or overwrites a Theme just because it was pasted. Downloaded `.plvstheme` files use
-the same **Import** action as PLVS-exported Theme pack files.
+never activates or overwrites a Theme just because it was pasted. A copied or downloaded Theme is
+recognized by its content: if an identical Theme, including its name, is already in your library,
+the review says so and nothing is added. Downloaded `.plvstheme` files use the same **Import** action
+as PLVS-exported Theme pack files.
 
 ## Crash reports and feedback
 

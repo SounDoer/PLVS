@@ -339,6 +339,8 @@ function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {
   }
   let theme;
   try {
+    // A standalone portable document has no ID; this placeholder only satisfies the stored shape.
+    // `identity: "content"` tells the import planner to match by content and mint a local ID.
     theme = portableToStoredTheme(raw, "custom-shared-theme");
   } catch (error) {
     if (!(error instanceof PortableThemeError)) throw error;
@@ -349,6 +351,7 @@ function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {
     kind: PACK_KINDS.themes.kind,
     version: THEME_PACK_VERSION,
     exportedAt: "",
+    identity: "content",
     items: [theme],
   };
 }

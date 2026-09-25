@@ -164,7 +164,10 @@ and `preset reorder` take documents. `--expected-revision` is required and `--dr
 ```
 
 - `disposition` is `added`, `skipped` (same id, identical content), or `duplicated` (same id,
-  different content — a fresh id is minted and the name gains a ` (2)` suffix).
+  different content — a fresh id is minted and the name gains a ` (2)` suffix). A standalone
+  `plvs-theme` document passed to `theme import` has no id: it is `skipped` when identical content,
+  name included, exists under any id (`finalId` names that Theme), and otherwise `added` under a
+  freshly minted id; it is never `duplicated`.
 - `plan.loudnessProfiles` describes the profiles a Preset pack bundled. See [Vocabulary](#vocabulary).
 - `state` reports the resulting library in the same shape that family's `list` returns, so a caller
   does not have to follow a successful import with a `list`. It reports the requested family only:

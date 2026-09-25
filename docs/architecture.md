@@ -247,8 +247,10 @@ canonical UTF-8 JSON is the content identity. Theme Pack V2 uses the shared Pack
 list); each item is the portable document plus its local `id`, which only merge handling reads and
 content identity excludes. Import converts the portable document back to the current
 persisted shape with palette preset IDs set to `null`, then the normal compiler/registry validation
-still applies. Theme Pack V1 remains readable through the legacy migration path, but no invalid
-Theme entry is silently discarded.
+still applies. A standalone `plvs-theme` document (clipboard or community download) has no ID, so
+import matches it by content identity against the whole custom library and mints a fresh local ID
+for new content; Theme Pack items keep the ID-based merge rules. Theme Pack V1 remains readable
+through the legacy migration path, but no invalid Theme entry is silently discarded.
 
 ---
 
