@@ -33,3 +33,8 @@ the Listing format has no publisher-selected cover image or screenshot field.
 The static-site command generates the Community root, all three family pages, stable Listing detail
 URLs, and an isolated copy of each validated download and preview. Its default output is the ignored
 `artifacts/community-site/` directory; deployment passes an explicit assembled-site destination.
+
+The normal landing workflow publishes the Catalogue with an app Release. A separate manual
+Community workflow can publish a chosen content ref sooner, but it rebuilds the rest of the site
+from the latest stable Release tag. Its content checkout is isolated from the site checkout so the
+path can later point at a dedicated repository without changing the validator or builder commands.

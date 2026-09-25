@@ -1,0 +1,67 @@
+name: Deploy Community Content
+
+# Publishes new Catalogue content against the latest stable PLVS website. Website code, user docs,
+# and the generator always come from that Release tag, never from an unreleased development ref.
+# The second checkout is deliberately isolated so it can become a separate content repository.
+on:
+  workflow_dispatch:
+    inputs:
+      content_ref:
+        description: Commit, tag, or branch containing the Community content to publish
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve the released website source
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "tag=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)" >> "$GITHUB_OUTPUT"
+      - name: Check out released website code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          path: site-source
+      - name: Check out Community content
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.content_ref }}
+          path: content-source
+          sparse-checkout: community/catalogue
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: site-source/.nvmrc
+          cache: npm
+          cache-dependency-path: site-source/package-lock.json
+      - name: Install the released site toolchain
+        working-directory: site-source
+        run: npm ci
+      - name: Validate Community content
+        run: node site-source/scripts/validate-community-source.mjs content-source/community/catalogue
+      - name: Assemble the released site with new Community content
+        run: |
+          cp -r site-source/landing _site
+          (cd site-source && node scripts/build-user-docs.mjs ../_site/docs/index.html)
+          node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community
+          rm _site/docs/template.html
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site/
+      - id: deployment
+        uses: actions/deploy-pages@v5

@@ -66,9 +66,9 @@ only enhances search and filtering.
 
 - [x] Generate Catalogue output during site assembly without committing derived pages or metadata.
 - [x] Test the site against a fixture content repository and the default local source.
-- [ ] Add an independent content deployment path that cannot accidentally publish unreleased
+- [x] Add an independent content deployment path that cannot accidentally publish unreleased
       desktop documentation or marketing changes.
-- [ ] Preserve the same builder invocation when the content directory moves to another checkout.
+- [x] Preserve the same builder invocation when the content directory moves to another checkout.
 
 Gate: a content-only change validates, builds, and deploys without a desktop release, while landing
 changes retain their release-bound deployment policy.
