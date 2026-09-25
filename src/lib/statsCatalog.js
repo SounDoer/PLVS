@@ -1,4 +1,4 @@
-import { fmtMetric } from "../math/formatMath";
+import { fmtMetric } from "../math/formatMath.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 

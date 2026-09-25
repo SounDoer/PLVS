@@ -17,7 +17,13 @@ npm run theme:generate   # optional: regenerates src/generated/theme-fallbacks.c
 npm run lint
 npm test
 npm run build
+npm run community:validate -- path/to/item.plvspreset
 ```
+
+`community:validate` is the repository/CI intake boundary for one immutable Community artifact. It
+accepts `.plvsloudness`, `.plvspreset`, or `.plvstheme`, requires canonical Pack V2 bytes and one
+primary Item, and prints a JSON report containing the exact byte length, SHA-256, versions, and
+derived compatibility facts.
 
 Desktop (Tauri):
 

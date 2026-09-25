@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Community preview planning now provides versioned, deterministic Loudness Profile and Preset
   inputs with a pinned stereo measurement/history fixture, fixed render environment and separate
   Workspace and optional Dock surfaces.
+- Repository and CI workflows can validate one immutable Community artifact with
+  `npm run community:validate -- <file>`, which rejects legacy, multi-item, misnamed,
+  non-canonical, or non-UTF-8 files and reports their exact byte identity.
 
 ## [0.17.0] - 2026-09-24
 
