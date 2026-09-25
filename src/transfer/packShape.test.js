@@ -8,7 +8,9 @@ import {
   buildPack,
   parseClipboardTheme,
   parsePack,
+  parsePackText,
 } from "./packShape.js";
+import { MAX_PACK_BYTES } from "./packV2.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { themeToPortable } from "../theme/portableTheme.js";
 
@@ -258,6 +260,29 @@ describe("parsePack", () => {
         ]),
       })
     );
+  });
+});
+
+describe("parsePackText", () => {
+  it("rejects oversized input before JSON parsing", () => {
+    expect(() => parsePackText("x".repeat(MAX_PACK_BYTES + 1), "loudness")).toThrowError(
+      expect.objectContaining({
+        issues: [
+          expect.objectContaining({
+            severity: "error",
+            code: "packTooLarge",
+            path: "$",
+          }),
+        ],
+      })
+    );
+  });
+
+  it("distinguishes invalid JSON from a structurally invalid Pack", () => {
+    expect(() => parsePackText("not json", "loudness")).toThrowError(
+      expect.objectContaining({ issues: [expect.objectContaining({ code: "invalidJson" })] })
+    );
+    expect(() => parsePackText("{}", "loudness")).toThrow("This is not a PLVS file.");
   });
 });
 

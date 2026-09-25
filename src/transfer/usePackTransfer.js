@@ -19,7 +19,7 @@ import {
   buildPack,
   packDescriptor,
   parseClipboardTheme,
-  parsePack,
+  parsePackText,
 } from "./packShape.js";
 
 function defaultFileName(descriptor, items) {
@@ -102,14 +102,7 @@ export function usePackTransfer() {
         if (!path) return;
 
         const text = await readProfileFile(path);
-        let raw;
-        try {
-          raw = JSON.parse(text);
-        } catch (_) {
-          throw new PackValidationError("This file could not be read.");
-        }
-
-        const pack = parsePack(raw, type);
+        const pack = parsePackText(text, type);
         const planned = planPackImport(type, pack, {
           existingItems: getAdapter(type).list(),
           existingProfiles: type === "presets" ? getAdapter("loudness").list() : [],

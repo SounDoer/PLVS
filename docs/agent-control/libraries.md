@@ -99,6 +99,10 @@ threshold and cannot be semantically empty. Exporting an empty or invalid librar
 Pack V1 remains accepted on import; new Theme and Loudness Profile exports use V2. Preset packs
 remain V1.
 
+All Pack imports are bounded before mutation. Encoded files may be at most 2 MiB and nesting depth
+is limited to 32. Pack V2 permits at most 256 primary Items; limit failures return path-addressed
+`invalidPack` details rather than truncating the Pack.
+
 PLVS 0.17 and earlier returned Theme Pack V1 from `theme export`: `version: 1`, an `exportedAt`
 timestamp, stored Theme documents with `version: 2` and palette `presetId` fields, and an empty
 library exported as `items: []`. A caller that reads those fields must switch to the V2 shape above

@@ -17,8 +17,8 @@ and future Community CI share the same validation and planning facts.
 - [x] Write new Loudness exports with the shared Pack V2 envelope.
 - [x] Keep tolerant Loudness Pack V1 import.
 - [x] Make empty or invalid Agent Control exports fail as `loudnessProfileNotExportable`.
-- [ ] Enforce the encoded Pack byte/depth/item limits at the common file and Agent Control ingress.
-- [ ] Add publication assessment and canonical serialization/hash helpers.
+- [x] Enforce the encoded Pack byte/depth/item limits at the common file and Agent Control ingress.
+- [x] Add publication assessment and canonical serialization/hash helpers.
 - [ ] Add item-level Export in the Loudness Profile UI.
 
 Gate: a valid saved Profile round-trips V2 exactly; an incomplete or empty Profile fails before a
@@ -26,11 +26,11 @@ file is written; Pack V1 still imports.
 
 ## Phase 2 — Shared Pack V2 parser and issue model
 
-- [ ] Extract the Theme/Loudness envelope checks into one family-neutral parser.
-- [ ] Add required `severity` and optional structured `details` to transfer issues.
-- [ ] Enforce safe item IDs, duplicate detection and family limits consistently.
-- [ ] Add `validatePublishablePack` with the one-primary-item Community restriction.
-- [ ] Preserve family-specific messages only at UI/CLI presentation boundaries.
+- [x] Extract the Theme/Loudness envelope checks into one family-neutral parser.
+- [x] Add required `severity` and optional structured `details` to transfer issues.
+- [x] Enforce safe item IDs, duplicate detection and family limits consistently.
+- [x] Add `validatePublishablePack` with the one-primary-item Community restriction.
+- [x] Preserve family-specific messages only at UI/CLI presentation boundaries.
 
 Gate: envelope behavior is table-tested across all three kinds and cannot drift by family.
 

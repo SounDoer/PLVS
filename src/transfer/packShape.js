@@ -22,6 +22,15 @@ import {
   themeToPortable,
 } from "../theme/portableTheme.js";
 import { normalizeThemeId } from "../theme/themeSchema.js";
+import {
+  collectPackResourceIssues,
+  collectPackV2EnvelopeIssues,
+  MAX_PACK_BYTES,
+  normalizePortableItemId,
+  packIssue,
+  parsePackV2Items,
+  prefixPackIssues,
+} from "./packV2.js";
 // `panelInstances.js` imports `moduleCatalog.js` only. Never reach `workspace/registry.jsx` from
 // here -- it evaluates every canvas panel and costs about two seconds per import.
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
@@ -192,14 +201,11 @@ export class PackValidationError extends Error {
 }
 
 function issue(code, path, message) {
-  return { code, path, message };
+  return packIssue(code, path, message);
 }
 
 function prefixIssues(issues, prefix) {
-  return issues.map((entry) => ({
-    ...entry,
-    path: entry.path === "$" ? prefix : `${prefix}${entry.path.slice(1)}`,
-  }));
+  return prefixPackIssues(issues, prefix);
 }
 
 function parseLegacyThemeItems(raw) {
@@ -224,133 +230,45 @@ function parseLegacyThemeItems(raw) {
   return items;
 }
 
-const PACK_V2_FIELDS = new Set(["app", "kind", "version", "createdWith", "items", "dependencies"]);
-const PORTABLE_ITEM_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
-const RESERVED_ITEM_IDS = new Set(["__proto__", "prototype", "constructor"]);
-
-function isObjectRecord(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function normalizePortableItemId(value) {
-  if (typeof value !== "string" || !PORTABLE_ITEM_ID.test(value)) return null;
-  return RESERVED_ITEM_IDS.has(value) ? null : value;
-}
-
-function collectPackV2EnvelopeIssues(raw, issues, { dependencyKind = null } = {}) {
-  for (const field of Object.keys(raw)) {
-    if (!PACK_V2_FIELDS.has(field)) {
-      issues.push(issue("unknownField", `$.${field}`, `Unknown field: ${field}.`));
-    }
-  }
-  if ("createdWith" in raw) {
-    if (!isObjectRecord(raw.createdWith)) {
-      issues.push(issue("invalidCreatedWith", "$.createdWith", "createdWith must be an object."));
-    } else {
-      for (const field of Object.keys(raw.createdWith)) {
-        if (field !== "appVersion") {
-          issues.push(issue("unknownField", `$.createdWith.${field}`, `Unknown field: ${field}.`));
-        }
-      }
-      if ("appVersion" in raw.createdWith && typeof raw.createdWith.appVersion !== "string") {
-        issues.push(
-          issue("invalidAppVersion", "$.createdWith.appVersion", "appVersion must be a string.")
-        );
-      }
-    }
-  }
-  if (!Array.isArray(raw.dependencies)) {
-    issues.push(issue("invalidDependencies", "$.dependencies", "dependencies must be an array."));
-  } else if (dependencyKind === null && raw.dependencies.length > 0) {
-    issues.push(
-      issue("unsupportedDependency", "$.dependencies", "This pack kind has no dependencies.")
-    );
-  }
-}
-
 function parsePortableLoudnessItems(raw) {
-  if (!Array.isArray(raw.items) || raw.items.length === 0) {
-    throw new PackValidationError("This Loudness Profile file is missing its items.", [
-      issue("invalidItems", "$.items", "items must be a non-empty array."),
-    ]);
-  }
-  const issues = [];
-  collectPackV2EnvelopeIssues(raw, issues);
-  const seenIds = new Set();
-  const items = [];
-  raw.items.forEach((item, index) => {
-    const path = `$.items[${index}]`;
-    if (!isObjectRecord(item)) {
-      issues.push(
-        issue("invalidProfileEntry", path, "A Loudness Profile entry must be an object.")
-      );
-      return;
-    }
-    const { id: rawId, ...document } = item;
-    const id = normalizePortableItemId(rawId);
-    if (!id) {
-      issues.push(issue("invalidProfileId", `${path}.id`, "id is invalid."));
-      return;
-    }
-    if (seenIds.has(id)) {
-      issues.push(issue("duplicateProfileId", `${path}.id`, `Duplicate id: ${id}.`));
-    } else {
-      seenIds.add(id);
-    }
-    try {
-      items.push(portableToStoredLoudnessProfile(document, id));
-    } catch (error) {
-      if (!(error instanceof PortableLoudnessProfileError)) throw error;
-      issues.push(...prefixIssues(error.issues, path));
-    }
+  const issues = collectPackV2EnvelopeIssues(raw);
+  const parsed = parsePackV2Items(raw, {
+    entryLabel: "Loudness Profile",
+    invalidEntryCode: "invalidProfileEntry",
+    invalidIdCode: "invalidProfileId",
+    duplicateIdCode: "duplicateProfileId",
+    convert: portableToStoredLoudnessProfile,
   });
+  issues.push(...parsed.issues);
   if (issues.length > 0) {
     throw new PackValidationError(
       "This Loudness Profile file contains an invalid Loudness Profile.",
       issues
     );
   }
-  return items;
+  return parsed.items;
 }
 
 function parsePortableThemeItems(raw) {
-  if (!Array.isArray(raw.items) || raw.items.length === 0) {
-    throw new PackValidationError("This Theme file is missing its items.", [
-      issue("invalidItems", "$.items", "items must be a non-empty array."),
-    ]);
-  }
-  const issues = [];
-  collectPackV2EnvelopeIssues(raw, issues);
-  const seenIds = new Set();
-  const items = [];
-  raw.items.forEach((item, index) => {
-    const path = `$.items[${index}]`;
-    if (!isObjectRecord(item)) {
-      issues.push(issue("invalidThemeEntry", path, "A Theme pack entry must be an object."));
-      return;
-    }
-    const { id: rawId, ...document } = item;
-    const id = normalizeThemeId(rawId);
-    if (!id) {
-      issues.push(issue("invalidThemeId", `${path}.id`, "id is invalid."));
-      return;
-    }
-    if (seenIds.has(id)) {
-      issues.push(issue("duplicateThemeId", `${path}.id`, `Duplicate id: ${id}.`));
-    } else {
-      seenIds.add(id);
-    }
-    try {
-      items.push(portableToStoredTheme(document, id));
-    } catch (error) {
-      if (!(error instanceof PortableThemeError)) throw error;
-      issues.push(...prefixIssues(error.issues, path));
-    }
+  const issues = collectPackV2EnvelopeIssues(raw);
+  const parsed = parsePackV2Items(raw, {
+    entryLabel: "Theme",
+    invalidEntryCode: "invalidThemeEntry",
+    invalidIdCode: "invalidThemeId",
+    duplicateIdCode: "duplicateThemeId",
+    convert(document, id) {
+      const themeId = normalizeThemeId(id);
+      if (!themeId) {
+        throw new PortableThemeError([issue("invalidThemeId", "$.id", "The Theme ID is invalid.")]);
+      }
+      return portableToStoredTheme(document, themeId);
+    },
   });
+  issues.push(...parsed.issues);
   if (issues.length > 0) {
     throw new PackValidationError("This Theme file contains an invalid Theme.", issues);
   }
-  return items;
+  return parsed.items;
 }
 
 function descriptorForKind(kind) {
@@ -391,6 +309,12 @@ export function parsePack(raw, expectedType) {
   if (raw.version > latestVersion) {
     throw new PackValidationError("This file was made by a newer version of PLVS.");
   }
+  if (raw.version === 1) {
+    const resourceIssues = collectPackResourceIssues(raw);
+    if (resourceIssues.length > 0) {
+      throw new PackValidationError("This file exceeds PLVS sharing limits.", resourceIssues);
+    }
+  }
 
   const items =
     expectedType === "loudness" && raw.version === LOUDNESS_PACK_VERSION
@@ -420,6 +344,33 @@ export function parsePack(raw, expectedType) {
   }
 
   return parsed;
+}
+
+/** Enforces the encoded byte limit before JSON parsing, then applies the normal family parser. */
+export function parsePackText(text, expectedType) {
+  if (typeof text !== "string") {
+    throw new PackValidationError("This file could not be read.", [
+      issue("invalidJson", "$", "The Pack must be encoded as JSON text."),
+    ]);
+  }
+  const byteLength = new TextEncoder().encode(text).byteLength;
+  if (byteLength > MAX_PACK_BYTES) {
+    throw new PackValidationError("This file is too large to import.", [
+      {
+        ...issue("packTooLarge", "$", `The Pack exceeds the ${MAX_PACK_BYTES}-byte limit.`),
+        details: { byteLength, limit: MAX_PACK_BYTES },
+      },
+    ]);
+  }
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (_) {
+    throw new PackValidationError("This file could not be read.", [
+      issue("invalidJson", "$", "The file does not contain valid JSON."),
+    ]);
+  }
+  return parsePack(raw, expectedType);
 }
 
 function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {

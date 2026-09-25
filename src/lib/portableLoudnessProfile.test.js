@@ -3,8 +3,11 @@ import {
   MAX_PORTABLE_LOUDNESS_PROFILE_NAME_LENGTH,
   MAX_PORTABLE_LOUDNESS_PROFILE_RULES,
   PortableLoudnessProfileError,
+  assessPortableLoudnessProfileCommunityPublication,
+  hashPortableLoudnessProfile,
   loudnessProfileToPortable,
   portableToStoredLoudnessProfile,
+  serializePortableLoudnessProfile,
   validatePortableLoudnessProfile,
 } from "./portableLoudnessProfile.js";
 
@@ -89,6 +92,27 @@ describe("portable Loudness Profile", () => {
           expect.objectContaining({ code: "unsupportedFormatVersion", path: "$.formatVersion" }),
         ]),
       })
+    );
+  });
+
+  it("publishes canonical compatibility facts and stable content identity", async () => {
+    const document = portable({
+      rules: [
+        { metricId: "truePeak", op: ">", value: -1, severity: "fail" },
+        { metricId: "integrated", op: "<", value: -24, severity: "warn" },
+        { metricId: "truePeak", op: ">", value: -0.5, severity: "warn" },
+      ],
+    });
+    expect(assessPortableLoudnessProfileCommunityPublication(document)).toMatchObject({
+      compatibility: { metricIds: ["integrated", "truePeak"] },
+      communityPublication: { eligible: true, blockers: [] },
+    });
+    expect(serializePortableLoudnessProfile(document)).toBe(
+      JSON.stringify(validatePortableLoudnessProfile(document))
+    );
+    expect(await hashPortableLoudnessProfile(document)).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(await hashPortableLoudnessProfile(document)).toBe(
+      await hashPortableLoudnessProfile(structuredClone(document))
     );
   });
 });

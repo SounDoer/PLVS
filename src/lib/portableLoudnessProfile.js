@@ -188,3 +188,30 @@ export function portableToStoredLoudnessProfile(raw, id) {
     rules: portable.rules.map((rule) => ({ ...rule })),
   };
 }
+
+/** Strict Community-intake result shared by the future catalogue validator and CI. */
+export function assessPortableLoudnessProfileCommunityPublication(raw) {
+  const document = validatePortableLoudnessProfile(raw);
+  return {
+    document,
+    compatibility: {
+      metricIds: [...new Set(document.rules.map(({ metricId }) => metricId))].sort(),
+    },
+    communityPublication: { eligible: true, blockers: [] },
+  };
+}
+
+/** Canonical UTF-8 JSON input used for portable Loudness Profile identity. */
+export function serializePortableLoudnessProfile(raw) {
+  return JSON.stringify(validatePortableLoudnessProfile(raw));
+}
+
+/** A reproducible content identity that deliberately excludes the pack-local item ID. */
+export async function hashPortableLoudnessProfile(raw) {
+  const bytes = new TextEncoder().encode(serializePortableLoudnessProfile(raw));
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  const hex = [...new Uint8Array(digest)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+  return `sha256:${hex}`;
+}
