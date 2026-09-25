@@ -18,6 +18,7 @@
     "community:validate": "node scripts/validate-community-artifact.mjs",
     "community:metadata": "node scripts/derive-community-metadata.mjs",
     "community:preview": "node scripts/generate-community-previews.mjs",
+    "community:curate": "node scripts/curate-community-catalogue.mjs",
     "community:source:check": "node scripts/validate-community-source.mjs",
     "community:update:check": "node scripts/community-catalogue-update.mjs",
     "community:site": "node scripts/build-community-site.mjs",

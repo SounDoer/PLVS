@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `npm run community:preview -- <artifact> <new-output-directory>` uses pinned Chromium to generate
   the exact contract-owned PNG set and deterministic seal report. It refuses existing or unsafe
   output paths and never edits Catalogue records or deploys content.
+- `npm run community:curate` now provides a read-only candidate dry run and an explicit `--write`
+  step that generates previews only for new Releases, rechecks immutable published history, and
+  builds a local review site with machine-readable and Markdown change reports without deploying.
 - Community Catalogue source validation now opens every Release through PLVS's stable publication
   contract, derives immutable metadata from the exact artifact bytes, and seals the exact required
   generated PNG preview set without accepting publisher-selected screenshots.

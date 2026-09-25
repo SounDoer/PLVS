@@ -269,7 +269,7 @@ async function resolveReleases(root, listing, listingIndex) {
   return releases;
 }
 
-export async function readCommunitySource(contentDirectory) {
+export async function readCommunitySourceRecords(contentDirectory) {
   const root = resolve(contentDirectory);
   const manifestPath = resolve(root, "manifest.json");
   if (!inside(root, manifestPath)) throw new Error("Resolved manifest escaped the content root.");
@@ -337,8 +337,7 @@ export async function readCommunitySource(contentDirectory) {
           identities.preview.set(previewKey, relativePath);
         }
       }
-      const releases = await resolveReleases(root, document, index);
-      listings.push({ sourcePath: relativePath, document: { ...document, releases } });
+      listings.push({ sourcePath: relativePath, document });
     } catch (error) {
       if (error instanceof CommunitySourceError) throw error;
       if (!Array.isArray(error?.issues)) throw error;
@@ -352,4 +351,14 @@ export async function readCommunitySource(contentDirectory) {
     }
   }
   return { root, manifest, listings };
+}
+
+export async function readCommunitySource(contentDirectory) {
+  const source = await readCommunitySourceRecords(contentDirectory);
+  const listings = [];
+  for (const [index, listing] of source.listings.entries()) {
+    const releases = await resolveReleases(source.root, listing.document, index);
+    listings.push({ ...listing, document: { ...listing.document, releases } });
+  }
+  return { ...source, listings };
 }

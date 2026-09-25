@@ -59,7 +59,8 @@ One command accepts a candidate content directory and an output directory. For e
 1. validates the canonical Pack V2 artifact;
 2. derives the versioned preview plan;
 3. generates the complete preview set into Release-owned paths;
-4. rewrites only that Release's preview path records;
+4. checks the new Release's declared preview IDs and paths against that plan without rewriting the
+   Listing record;
 5. validates the complete candidate source;
 6. compares it with the exact published content commit when one exists;
 7. builds a local static site for review.

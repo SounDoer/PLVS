@@ -22,6 +22,8 @@ npm run community:metadata -- path/to/item.plvspreset
 npx playwright install chromium # once per clone/worktree when generating Community previews
 npm run community:preview -- path/to/item.plvspreset path/to/new-preview-directory
 npm run community:source:check -- path/to/catalogue
+npm run community:curate -- path/to/published path/to/candidate path/to/new-review-output
+npm run community:curate -- --write path/to/published path/to/candidate path/to/new-review-output
 ```
 
 `community:validate` is the repository/CI intake boundary for one immutable Community artifact. It
@@ -43,6 +45,39 @@ installing dependencies on a machine that generates previews.
 `community:source:check` validates the detachable Catalogue content manifest. The directory argument
 is optional while content lives at `community/catalogue`; external Catalogue checkouts pass their
 own root without changing website code.
+
+### Curating Community content
+
+`community:curate` is the maintainer path from a candidate content tree to a local review. The first
+form above is always a dry run: it validates the candidate records and new canonical artifacts,
+compares all existing Release records and bytes with the published baseline, and prints a concise
+JSON summary of additions, one-way withdrawals, and Listing copy edits. It writes nothing.
+
+After reading that summary, repeat the same command with `--write`. This generates previews only for
+new Releases, validates the now-complete candidate and its immutable history, then creates a new
+review directory containing `site/`, `report.json`, and `report.md`. Preview IDs and paths belong in
+the new Release record; dimensions, hashes, Pack-derived metadata, and site copies are generated.
+The command refuses an existing review directory or existing new-Release preview target, and it
+does not commit or deploy. Serve the review directory's `site/` as a static website when browser
+review is useful; for example, `npx vite preview --outDir path/to/review/site`.
+
+The baseline must be the exact content commit currently named by the deployed
+`/community/publication.json`, not an arbitrary old checkout. For the first publication, use the
+stable PLVS Release tag that supplies the empty Catalogue. Keep both checkouts unchanged while
+curating so the byte comparison remains meaningful.
+
+To publish after review, commit the candidate content, wait for the normal merge gate, then dispatch
+`.github/workflows/deploy-community.yml` with that exact commit SHA as `content_ref`. The workflow
+repeats source and immutable-history validation against the deployed marker before GitHub Pages is
+changed. The first public Catalogue instead ships through the normal PLVS Release workflow so the
+navigation and initial content appear together.
+
+To withdraw a bad Release, leave its artifact, previews, paths, notes, and date untouched; change
+only `status` to `withdrawn` and add `withdrawalReason`, then run the dry run and `--write` review
+again. Never delete, restore, renumber, or replace a published Release. Before deployment, recovery
+means fixing the candidate and creating a fresh review directory—the live Pages artifact is
+unchanged. After deployment, publish a withdrawal or a higher-numbered corrective Release; do not
+redeploy an older tree as though the newer history never existed.
 
 Desktop (Tauri):
 

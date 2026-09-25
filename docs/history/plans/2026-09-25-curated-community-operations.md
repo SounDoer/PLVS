@@ -1,7 +1,7 @@
 # Curated Community Operations Plan
 
 Date: 2026-09-25
-Status: In progress
+Status: Complete
 
 ## Scope
 
@@ -17,7 +17,7 @@ permission model.
 - [x] Allow Listing copy to improve, a new higher-numbered Release to be appended, or a published
       Release to move once to Withdrawn with a reason.
 - [x] Reject deletion, restoration, history insertion, path replacement, and byte replacement.
-- [ ] Document maintainer validation, publication, withdrawal, and rollback commands.
+- [x] Document maintainer validation, publication, withdrawal, and rollback commands.
 - [x] Cover accepted, appended, withdrawn, and rejected updates with end-to-end fixtures.
 
 Gate: maintainers can update curated content without rewriting anything a visitor could previously

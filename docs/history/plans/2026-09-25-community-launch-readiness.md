@@ -39,11 +39,11 @@ Catalogue records or deploys anything.
 
 ## Phase 4 — Maintainer curation
 
-- [ ] Add a dry-run-first curator command for a candidate content tree and published baseline.
-- [ ] Generate only new Release previews; refuse every old Release mutation.
-- [ ] Build a review site and concise add/withdraw/change report without deploying.
-- [ ] Document validation, preview generation, local review, publication, withdrawal and recovery.
-- [ ] Mark the curated-operations plan complete when its final documentation item lands.
+- [x] Add a dry-run-first curator command for a candidate content tree and published baseline.
+- [x] Generate only new Release previews; refuse every old Release mutation.
+- [x] Build a review site and concise add/withdraw/change report without deploying.
+- [x] Document validation, preview generation, local review, publication, withdrawal and recovery.
+- [x] Mark the curated-operations plan complete when its final documentation item lands.
 
 Gate: a maintainer can prepare and review a candidate from commands alone, with no public
 submission path and no manual editing of hashes or generated metadata.
