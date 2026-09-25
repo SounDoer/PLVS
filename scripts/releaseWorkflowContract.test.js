@@ -177,6 +177,22 @@ describe("Immutable Windows Preview Build", () => {
     expect(previewBuildSkill).toContain("--commit $sha --event workflow_dispatch");
   });
 
+  it("installs the Linux system dependencies required by the repository gate", () => {
+    expect(previewBuildWorkflow).toContain(
+      "Install Linux dependencies (Tauri / WebKit / audio)"
+    );
+    for (const dependency of [
+      "libasound2-dev",
+      "libwebkit2gtk-4.1-dev",
+      "libgtk-3-dev",
+      "libayatana-appindicator3-dev",
+      "librsvg2-dev",
+      "patchelf",
+    ]) {
+      expect(previewBuildWorkflow).toContain(dependency);
+    }
+  });
+
   it("publishes a verified immutable Draft instead of overwriting a rolling release", () => {
     expect(previewBuildWorkflow).toContain("node scripts/validate-preview-bundle.mjs");
     expect(previewBuildWorkflow).toContain("--draft");
