@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the applicable preview contract without inventing author-owned Listing fields.
 - Static Catalogue tooling has one versioned `communityContract.js` handoff surface for validation,
   metadata, canonical Item hashes, and all preview contracts.
+- The initial Catalogue content source now lives outside `landing/` behind a versioned manifest and
+  an external-directory-capable validation command, preserving a clean future repository split.
 
 ## [0.17.0] - 2026-09-24
 

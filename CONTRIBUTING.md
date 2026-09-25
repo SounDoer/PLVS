@@ -19,6 +19,7 @@ npm test
 npm run build
 npm run community:validate -- path/to/item.plvspreset
 npm run community:metadata -- path/to/item.plvspreset
+npm run community:source:check -- path/to/catalogue
 ```
 
 `community:validate` is the repository/CI intake boundary for one immutable Community artifact. It
@@ -30,6 +31,10 @@ derived compatibility facts.
 input: content identity and summary, dependency hashes, compatibility facets, and the versioned
 preview plan. Author, description, tags, licence, and release notes are submission metadata and are
 therefore never invented from the artifact.
+
+`community:source:check` validates the detachable Catalogue content manifest. The directory argument
+is optional while content lives at `community/catalogue`; external Catalogue checkouts pass their
+own root without changing website code.
 
 Desktop (Tauri):
 
