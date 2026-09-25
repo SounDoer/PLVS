@@ -35,6 +35,30 @@ fn a_committed_library_item_is_visible_after_reopening_the_repository() {
 }
 
 #[test]
+fn a_library_document_keeps_every_float_digit_through_a_round_trip() {
+  // Theme intensity stops such as 26/255 must survive exactly, or the portable Theme identity
+  // changes after one save and pasting the same Theme again imports a duplicate.
+  let root = temp_root().with_extension("float");
+  let repository = LibraryRepository::open(&root).expect("open library repository");
+  let text =
+    r#"{"id":"studio","stops":[0.10196078431372549,0.9019607843137255,0.30196078431372547]}"#;
+  let document: serde_json::Value = serde_json::from_str(text).expect("parse document");
+
+  repository
+    .create("theme", "studio", &document)
+    .expect("create theme");
+  drop(repository);
+  let reopened = LibraryRepository::open(&root).expect("reopen library repository");
+  let stored = reopened
+    .read("theme", "studio")
+    .expect("read theme")
+    .expect("theme exists");
+  assert_eq!(serde_json::to_string(&stored.document).unwrap(), text);
+
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn the_first_editor_wins_when_two_edits_share_one_base_revision() {
   let root = temp_root().with_extension("conflict");
   let first = LibraryRepository::open(&root).expect("open first repository");

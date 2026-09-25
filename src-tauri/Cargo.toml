@@ -49,7 +49,9 @@ serde_json = "1.0"
 tauri-build = { version = "2.6.1", features = [] }
 
 [dependencies]
-serde_json = "1.0"
+# float_roundtrip: the default fast float parser can move the last digit, which changes
+# persisted Theme documents and their portable identity after a single save.
+serde_json = { version = "1.0", features = ["float_roundtrip"] }
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.1", features = ["tray-icon", "image-png", "macos-private-api"] }
