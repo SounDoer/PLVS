@@ -16,6 +16,7 @@
     "theme:gallery:semantic": "node scripts/theme-gallery.mjs --semantic-only",
     "theme:gallery:product": "node scripts/theme-gallery.mjs --product-only",
     "community:validate": "node scripts/validate-community-artifact.mjs",
+    "community:metadata": "node scripts/derive-community-metadata.mjs",
     "agent:generate": "node scripts/generate-agent-discovery.mjs",
     "docs:agent-control": "vitest run publicSurfaceDocs --update",
     "docs:site": "node scripts/build-user-docs.mjs",

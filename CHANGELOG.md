@@ -26,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repository and CI workflows can validate one immutable Community artifact with
   `npm run community:validate -- <file>`, which rejects legacy, multi-item, misnamed,
   non-canonical, or non-UTF-8 files and reports their exact byte identity.
+- `npm run community:metadata -- <file>` derives deterministic static-Catalogue input from the same
+  validated artifact: content summaries and hashes, dependency identity, compatibility facets, and
+  the applicable preview contract without inventing author-owned Listing fields.
 
 ## [0.17.0] - 2026-09-24
 

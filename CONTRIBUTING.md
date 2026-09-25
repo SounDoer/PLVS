@@ -18,12 +18,18 @@ npm run lint
 npm test
 npm run build
 npm run community:validate -- path/to/item.plvspreset
+npm run community:metadata -- path/to/item.plvspreset
 ```
 
 `community:validate` is the repository/CI intake boundary for one immutable Community artifact. It
 accepts `.plvsloudness`, `.plvspreset`, or `.plvstheme`, requires canonical Pack V2 bytes and one
 primary Item, and prints a JSON report containing the exact byte length, SHA-256, versions, and
 derived compatibility facts.
+
+`community:metadata` runs the same validation boundary and emits only Pack-derived static Catalogue
+input: content identity and summary, dependency hashes, compatibility facets, and the versioned
+preview plan. Author, description, tags, licence, and release notes are submission metadata and are
+therefore never invented from the artifact.
 
 Desktop (Tauri):
 
