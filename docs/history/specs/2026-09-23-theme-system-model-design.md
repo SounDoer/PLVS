@@ -958,6 +958,19 @@ sheets confirm Dark and Light compiler output, real module rendering, module gri
 Selection rendering. The evidence remains gitignored; the generator, manifest, role-contract tests,
 and renderer tests are the committed baseline.
 
+The macOS validation completed on 2026-09-25. The Semantic Gallery completed for Dark and Light,
+and the Product Gallery produced all 30 real-renderer captures with state restoration verified in
+`artifacts/theme-gallery/macos-semantic-fixed-sidecar/` and
+`artifacts/theme-gallery/macos-product-fixed-sidecar/`. Main, Workspace, and every module surface
+also passed direct Agent Control screenshots; the earlier `renderNotSettled` observation did not
+recur once a single selected frontend was ready. Visual review found no macOS-only clipping,
+transparent-background leakage, Canvas truncation, or Theme binding mismatch. The run exposed a
+separate packaging defect: the published macOS FFmpeg 7.1 sidecars linked to the CI runner's
+Homebrew X11 installation. A locally rebuilt portable pair passed the 20-test file-analysis smoke
+and unblocked the complete gallery. The sidecar workflow and fetcher now reject non-system dynamic
+libraries, but the pinned release assets still require a workflow rebuild and checksum update
+before the published macOS path is repaired.
+
 ## Phase 4 implementation boundary — 2026-09-24
 
 Phase 4 reshapes Theme Editor presentation and validation without changing Theme document shape,

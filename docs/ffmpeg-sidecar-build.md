@@ -41,7 +41,7 @@ on install. Files must be named:
 - `src-tauri/binaries/ffprobe-<target-triple>.exe`
 
 Get the triple from `rustc -vV` (the `host:` line). On Windows it is `x86_64-pc-windows-msvc`. (The
-FFmpeg binary itself is built with MinGW, but the name must match the *Rust* target triple so Tauri
+FFmpeg binary itself is built with MinGW, but the name must match the _Rust_ target triple so Tauri
 can find it — the sidecar's own toolchain is irrelevant since it runs as a standalone process.)
 
 ## Dev shortcut
@@ -115,7 +115,7 @@ strip ffmpeg.exe ffprobe.exe
 - The **output** side is easy to over-trim. PLVS decodes to raw f32le PCM on a pipe, which needs all
   three of: `--enable-protocol=pipe` (for `pipe:1` stdout and `-progress pipe:2`), the
   `--enable-encoder=pcm_f32le`, and the `--enable-muxer=pcm_f32le` (the muxer's component name is
-  `pcm_f32le`, *not* `f32le` — `f32le` is only the `-f` format alias).
+  `pcm_f32le`, _not_ `f32le` — `f32le` is only the `-f` format alias).
 - `--disable-gpl --disable-nonfree` keeps the build under **LGPL** (see below).
 
 ### 4. Install with the triple naming
@@ -136,8 +136,10 @@ ffmpeg.exe -nostdin -loglevel error -progress pipe:2 -i SAMPLE.mkv \
 The macOS (`aarch64-apple-darwin`) binary is built on a CI runner — see
 `.github/workflows/build-ffmpeg-sidecar-macos.yml` — which compiles the same trimmed configuration on
 `macos-latest` (native clang/make, no winlibs/Git-Bash layer; drop `--target-os`/`--arch` and the
-`-static` link flag, add `-mmacosx-version-min`) and uploads the result to the release. PLVS ships no
-Linux app, so no Linux binary is built.
+`-static` link flag, add `-mmacosx-version-min`, and explicitly disable Xlib, XCB and SDL
+autodetection) and uploads the result to the release. The workflow rejects any dependency outside
+`/usr/lib` and `/System/Library`; the fetch script repeats that portability check and executes each
+downloaded tool before accepting it. PLVS ships no Linux app, so no Linux binary is built.
 
 ## Licensing materials
 

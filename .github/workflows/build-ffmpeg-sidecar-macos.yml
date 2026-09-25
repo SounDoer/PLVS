@@ -35,7 +35,8 @@ jobs:
             --disable-everything --disable-gpl --disable-nonfree \
             --disable-doc --disable-avdevice --disable-postproc --disable-swscale \
             --disable-network --disable-encoders --disable-muxers --disable-filters \
-            --disable-x86asm \
+            --disable-x86asm --disable-xlib --disable-libxcb --disable-libxcb-shm \
+            --disable-libxcb-xfixes --disable-libxcb-shape --disable-sdl2 \
             --enable-small --enable-static --disable-shared \
             --enable-ffmpeg --enable-ffprobe \
             --extra-cflags="-mmacosx-version-min=${MIN_MACOS}" \
@@ -52,6 +53,20 @@ jobs:
       - name: Sanity-check decoders
         working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
         run: ./ffmpeg -hide_banner -decoders | grep -E ' (ac3|eac3|dca|opus) '
+
+      - name: Reject non-system dynamic-library dependencies
+        working-directory: ffmpeg-${{ env.FFMPEG_VERSION }}
+        run: |
+          for binary in ffmpeg ffprobe; do
+            echo "Dependencies for ${binary}:"
+            otool -L "./${binary}"
+            unexpected=$(otool -L "./${binary}" | tail -n +2 | awk '{print $1}' | grep -Ev '^(/usr/lib/|/System/Library/)' || true)
+            if [ -n "${unexpected}" ]; then
+              echo "${binary} contains non-system dynamic-library dependencies:"
+              echo "${unexpected}"
+              exit 1
+            fi
+          done
 
       # Prove the trimmed binary actually decodes to PCM (not just that the decoders are listed).
       # A full ffmpeg from Homebrew synthesises one sample per codec; our `./ffmpeg` then decodes

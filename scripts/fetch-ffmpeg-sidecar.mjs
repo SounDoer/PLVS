@@ -6,6 +6,7 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,9 +47,36 @@ async function fileSha256(path) {
     .digest("hex");
 }
 
+function verifyRuntime(dest, name) {
+  if (process.platform === "darwin") {
+    const linked = spawnSync("otool", ["-L", dest], { encoding: "utf8", timeout: 10_000 });
+    if (linked.status !== 0) {
+      throw new Error(`could not inspect dynamic-library dependencies for ${name}`);
+    }
+    const unexpected = linked.stdout
+      .split(/\r?\n/)
+      .slice(1)
+      .map((line) => line.trim().split(/\s+/, 1)[0])
+      .filter(Boolean)
+      .filter((path) => !path.startsWith("/usr/lib/") && !path.startsWith("/System/Library/"));
+    if (unexpected.length) {
+      throw new Error(
+        `${name} is not portable: it links to non-system libraries:\n  ${unexpected.join("\n  ")}`
+      );
+    }
+  }
+  const version = spawnSync(dest, ["-version"], { encoding: "utf8", timeout: 10_000 });
+  if (version.status !== 0) {
+    const detail =
+      version.error?.message || (version.stderr ?? "").trim() || `exit status ${version.status}`;
+    throw new Error(`${name} passed its checksum but cannot run: ${detail}`);
+  }
+}
+
 async function ensureAsset({ name, sha256: expected }) {
   const dest = join(outDir, name);
   if (existsSync(dest) && (await fileSha256(dest)) === expected) {
+    verifyRuntime(dest, name);
     console.log(`✓ ${name} present and verified`);
     return;
   }
@@ -63,6 +91,7 @@ async function ensureAsset({ name, sha256: expected }) {
   }
   await writeFile(dest, buf);
   if (process.platform !== "win32") await chmod(dest, 0o755); // sidecars must be executable on Unix
+  verifyRuntime(dest, name);
   console.log(`✓ ${name} downloaded and verified (${buf.length} bytes)`);
 }
 
