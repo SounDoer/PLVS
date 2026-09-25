@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Community Catalogue source validation now opens every Release through PLVS's stable publication
+  contract and derives immutable metadata from the exact artifact bytes.
 - Loudness Profile exports now use strict Pack V2 portable documents. Incomplete rules, empty
   Profiles, invalid IDs, and empty exports are refused instead of being silently omitted; existing
   Pack V1 `.plvsloudness` files remain importable.

@@ -43,7 +43,7 @@ source; no website module depends on the repository-relative default.
       model without embedding portable Item facts in author-controlled fields.
 - [x] Validate free tags, restricted Markdown, stable IDs/slugs, monotonic releases, safe paths,
       and Official/Community classification.
-- [ ] Resolve every Release artifact through `communityContract.js` and reject metadata drift.
+- [x] Resolve every Release artifact through `communityContract.js` and reject metadata drift.
 - [ ] Seal required generated previews and reject publisher-controlled primary screenshots.
 
 Gate: one source tree either produces a complete normalized catalogue or fails before output.
@@ -54,7 +54,7 @@ Gate: one source tree either produces a complete normalized catalogue or fails b
 - [ ] Add client-side search over title, summary, description, and free tags.
 - [ ] Add reliable filters from machine-derived type, module, metric, Theme scheme, feature, and
       compatibility facets.
-- [ ] Show content summary, dependencies, compatibility, licence, size/hash, download/install
+- [ ] Show content summary, dependencies, compatibility, attribution, size/hash, download/install
       instructions, previews, and Release history.
 - [ ] Add responsive, accessible empty/no-result states and navigation from the existing landing
       and docs pages.

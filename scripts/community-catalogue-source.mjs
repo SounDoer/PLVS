@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, isAbsolute, relative, resolve, sep } from "node:path";
+import { deriveCommunityCatalogueMetadata } from "../src/transfer/communityContract.js";
 import { validateCommunityListingRecord } from "./community-catalogue-record.mjs";
 
 export const COMMUNITY_SOURCE_SCHEMA_VERSION = 1;
@@ -119,12 +120,88 @@ async function readJson(path, errorPath) {
   }
 }
 
+async function readArtifact(path, errorPath) {
+  let bytes;
+  try {
+    bytes = await readFile(path);
+  } catch (error) {
+    throw new CommunitySourceError([
+      issue("missingArtifact", errorPath, "The referenced Release artifact is missing.", {
+        path,
+        cause: error instanceof Error ? error.code : null,
+      }),
+    ]);
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch (_) {
+    throw new CommunitySourceError([
+      issue("invalidArtifactEncoding", errorPath, "Release artifacts must use valid UTF-8.", {
+        path,
+      }),
+    ]);
+  }
+}
+
+function prefixedIssues(error, path, details) {
+  if (!Array.isArray(error?.issues)) return null;
+  return error.issues.map((entry) => ({
+    ...entry,
+    path: `${path}${entry.path === "$" ? "" : entry.path.slice(1)}`,
+    details: { ...(entry.details ?? {}), ...details },
+  }));
+}
+
+async function resolveReleases(root, listing, listingIndex) {
+  const releases = [];
+  for (const [releaseIndex, release] of listing.releases.entries()) {
+    const sourcePath = release.artifact;
+    const errorPath = `$.listings[${listingIndex}].releases[${releaseIndex}].artifact`;
+    const artifactPath = resolve(root, sourcePath);
+    if (!inside(root, artifactPath)) {
+      throw new CommunitySourceError([
+        issue(
+          "artifactPathEscapesRoot",
+          errorPath,
+          "The Release artifact escapes the content root."
+        ),
+      ]);
+    }
+    const text = await readArtifact(artifactPath, errorPath);
+    let metadata;
+    try {
+      metadata = await deriveCommunityCatalogueMetadata(text);
+    } catch (error) {
+      const issues = prefixedIssues(error, errorPath, { sourcePath });
+      if (!issues) throw error;
+      throw new CommunitySourceError(issues);
+    }
+    if (metadata.content.type !== listing.type) {
+      throw new CommunitySourceError([
+        issue(
+          "artifactTypeMismatch",
+          errorPath,
+          `The artifact contains ${metadata.content.type}, but the Listing type is ${listing.type}.`,
+          { sourcePath, artifactType: metadata.content.type, listingType: listing.type }
+        ),
+      ]);
+    }
+    metadata = {
+      ...metadata,
+      artifact: { ...metadata.artifact, fileName: basename(sourcePath) },
+    };
+    releases.push({ ...release, metadata });
+  }
+  return releases;
+}
+
 export async function readCommunitySource(contentDirectory) {
   const root = resolve(contentDirectory);
   const manifestPath = resolve(root, "manifest.json");
   if (!inside(root, manifestPath)) throw new Error("Resolved manifest escaped the content root.");
   const manifest = validateCommunitySourceManifest(await readJson(manifestPath, "$"));
   const listings = [];
+  const identities = { id: new Map(), slug: new Map(), artifact: new Map() };
   for (const [index, relativePath] of manifest.listings.entries()) {
     const path = resolve(root, relativePath);
     if (!inside(root, path)) {
@@ -138,8 +215,43 @@ export async function readCommunitySource(contentDirectory) {
     }
     const raw = await readJson(path, `$.listings[${index}]`);
     try {
-      listings.push({ sourcePath: relativePath, document: validateCommunityListingRecord(raw) });
+      const document = validateCommunityListingRecord(raw);
+      for (const [kind, value] of [
+        ["id", document.id],
+        ["slug", document.slug],
+      ]) {
+        const first = identities[kind].get(value);
+        if (first != null) {
+          throw new CommunitySourceError([
+            issue(
+              kind === "id" ? "duplicateListingId" : "duplicateListingSlug",
+              `$.listings[${index}].${kind}`,
+              `Duplicate Listing ${kind}: ${value}.`,
+              { sourcePath: relativePath, firstSourcePath: first }
+            ),
+          ]);
+        }
+        identities[kind].set(value, relativePath);
+      }
+      for (const [releaseIndex, release] of document.releases.entries()) {
+        const key = release.artifact.toLocaleLowerCase("en-US");
+        const first = identities.artifact.get(key);
+        if (first != null) {
+          throw new CommunitySourceError([
+            issue(
+              "duplicateArtifactPath",
+              `$.listings[${index}].releases[${releaseIndex}].artifact`,
+              `Each Release must own a distinct artifact path: ${release.artifact}.`,
+              { sourcePath: relativePath, firstSourcePath: first }
+            ),
+          ]);
+        }
+        identities.artifact.set(key, relativePath);
+      }
+      const releases = await resolveReleases(root, document, index);
+      listings.push({ sourcePath: relativePath, document: { ...document, releases } });
     } catch (error) {
+      if (error instanceof CommunitySourceError) throw error;
       if (!Array.isArray(error?.issues)) throw error;
       throw new CommunitySourceError(
         error.issues.map((entry) => ({

@@ -18,3 +18,8 @@ Validate this source boundary with:
 npm run community:source:check
 npm run community:source:check -- path/to/external/catalogue
 ```
+
+Validation opens every Release artifact through PLVS's stable Community contract. Listing IDs,
+slugs, and artifact paths must be unique; the file must be canonical UTF-8 Pack V2 content whose
+actual Item family matches the Listing. Machine-owned hashes, compatibility facts, facets, and
+preview requirements are derived from those bytes rather than copied into Listing JSON.
