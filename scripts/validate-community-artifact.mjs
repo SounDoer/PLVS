@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { validateCommunityArtifactText } from "../src/transfer/communityArtifact.js";
+import { validateCommunityArtifactText } from "../src/transfer/communityContract.js";
 
 export async function validateCommunityArtifactFile(path) {
   const bytes = await readFile(path);

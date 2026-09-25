@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { deriveCommunityCatalogueMetadata } from "../src/transfer/communityCatalogueMetadata.js";
+import { deriveCommunityCatalogueMetadata } from "../src/transfer/communityContract.js";
 
 export async function deriveCommunityMetadataFile(path) {
   const bytes = await readFile(path);

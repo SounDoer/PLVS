@@ -1,7 +1,7 @@
 # Community Portable Content V1 Implementation Plan
 
 Date: 2026-09-25  
-Status: In progress  
+Status: Complete
 Design: `docs/history/specs/2026-09-25-community-portable-content-v1-design.md`
 
 ## Objective
@@ -78,7 +78,7 @@ Gate: GUI, Agent Control and CLI produce the same plan for the same Pack and loc
 - [x] Add deterministic Loudness Profile and Preset preview inputs and golden fixtures.
 - [x] Expose a repository/CI validator for immutable catalogue artefacts.
 - [x] Produce the exact Catalogue metadata derived from Pack contents and compatibility facts.
-- [ ] Hand the stable validator, hashes and preview contract to the static Catalogue implementation.
+- [x] Hand the stable validator, hashes and preview contract to the static Catalogue implementation.
 
 The website catalogue, submission workflow and independent content deployment are a subsequent
 plan. Accounts, direct publishing, file association and `Open in PLVS` remain deferred.

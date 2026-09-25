@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `npm run community:metadata -- <file>` derives deterministic static-Catalogue input from the same
   validated artifact: content summaries and hashes, dependency identity, compatibility facets, and
   the applicable preview contract without inventing author-owned Listing fields.
+- Static Catalogue tooling has one versioned `communityContract.js` handoff surface for validation,
+  metadata, canonical Item hashes, and all preview contracts.
 
 ## [0.17.0] - 2026-09-24
 
