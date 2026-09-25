@@ -28,11 +28,11 @@ persistence, audio hardware or external network access.
 
 ## Phase 3 — Capture command
 
-- [ ] Add the pinned browser dependency and update dependency attribution.
-- [ ] Implement `community:preview` for one artifact and an explicit output directory.
-- [ ] Enforce contract viewports, PNG output, exact asset sets and safe output paths.
-- [ ] Emit a deterministic JSON report and pass generated assets through Catalogue sealing.
-- [ ] Cover all three families, malformed requests, missing settlement and filesystem refusal.
+- [x] Add the pinned browser dependency and update dependency attribution.
+- [x] Implement `community:preview` for one artifact and an explicit output directory.
+- [x] Enforce contract viewports, PNG output, exact asset sets and safe output paths.
+- [x] Emit a deterministic JSON report and pass generated assets through Catalogue sealing.
+- [x] Cover all three families, malformed requests, missing settlement and filesystem refusal.
 
 Gate: one command turns each valid artifact into its complete sealed preview set and never modifies
 Catalogue records or deploys anything.
