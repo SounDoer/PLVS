@@ -43,11 +43,40 @@ describe("Community Catalogue source boundary", () => {
       join(directory, "manifest.json"),
       JSON.stringify({ schemaVersion: 1, listings: ["listings/example.json"] })
     );
-    writeFileSync(join(directory, "listings", "example.json"), '{"id":"example"}');
+    writeFileSync(
+      join(directory, "listings", "example.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "example",
+        slug: "example",
+        type: "themes",
+        classification: "official",
+        title: "Example",
+        summary: "An example Theme.",
+        descriptionMarkdown: "A fixture Listing.",
+        tags: [],
+        author: null,
+        releases: [
+          {
+            number: 1,
+            publishedAt: "2026-09-25",
+            status: "published",
+            notesMarkdown: "Initial release.",
+            artifact: "artifacts/example.plvstheme",
+            previews: [],
+          },
+        ],
+      })
+    );
 
     await expect(readCommunitySource(directory)).resolves.toMatchObject({
       manifest: { schemaVersion: 1, listings: ["listings/example.json"] },
-      listings: [{ sourcePath: "listings/example.json", document: { id: "example" } }],
+      listings: [
+        {
+          sourcePath: "listings/example.json",
+          document: expect.objectContaining({ id: "example", type: "themes" }),
+        },
+      ],
     });
   });
 

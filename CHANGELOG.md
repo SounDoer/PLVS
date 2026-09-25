@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metadata, canonical Item hashes, and all preview contracts.
 - The initial Catalogue content source now lives outside `landing/` behind a versioned manifest and
   an external-directory-capable validation command, preserving a clean future repository split.
+- Curated Listing and Release records now have strict IDs, slugs, classification, attribution,
+  restricted Markdown, tags, immutable Release ordering, withdrawal state, and safe artifact and
+  preview paths. Per-Item licence metadata is deliberately excluded in favour of one future
+  repository-wide submission rule.
 
 ## [0.17.0] - 2026-09-24
 

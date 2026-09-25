@@ -5,8 +5,12 @@ is deliberately outside `landing/`: website code reads it only through the versi
 an explicit content-directory argument, so this tree can move to a separate repository later.
 
 `catalogue/manifest.json` is allowed to stay empty while the Catalogue generator and UI are built.
-Do not add a real Listing or artifact until the Listing/Release schema, licence policy, preview
-sealing, and curator workflow are complete.
+Do not add a real Listing or artifact until the Listing/Release schema, repository-wide submission
+permission, preview sealing, and curator workflow are complete.
+
+Listing and Release records intentionally contain no per-Item licence field. Before third-party
+submissions open, this content repository will define one contribution/publication permission rule
+that applies to every accepted artifact.
 
 Validate this source boundary with:
 

@@ -13,12 +13,15 @@ same tree can later move to a dedicated repository without changing page URLs or
 The portable artifact, validation, hashing, metadata, and preview contracts are already complete in
 `src/transfer/communityContract.js`. This plan consumes them; it does not duplicate their rules.
 
+Catalogue records do not carry per-Item or per-Release licence fields. Permission is one
+content-repository-wide submission rule, to be selected before third-party submissions open.
+
 ## Deferred decisions
 
 These are not needed for the source/build boundary and must be settled before the matching public
 workflow is enabled:
 
-- accepted licence policy and whether an allowlist is required;
+- the content repository's single contribution/publication permission rule;
 - author attribution and verification fields before accounts exist;
 - submission channel, moderation checklist, and withdrawal operations;
 - final content-repository host and independent deployment trigger.
@@ -36,9 +39,9 @@ source; no website module depends on the repository-relative default.
 
 ## Phase 2 — Curated Listing and Release records
 
-- [ ] Define strict Listing/Release schemas around the approved Listing, Release, and Artifact
+- [x] Define strict Listing/Release schemas around the approved Listing, Release, and Artifact
       model without embedding portable Item facts in author-controlled fields.
-- [ ] Validate free tags, restricted Markdown, stable IDs/slugs, monotonic releases, safe paths,
+- [x] Validate free tags, restricted Markdown, stable IDs/slugs, monotonic releases, safe paths,
       and Official/Community classification.
 - [ ] Resolve every Release artifact through `communityContract.js` and reject metadata drift.
 - [ ] Seal required generated previews and reject publisher-controlled primary screenshots.

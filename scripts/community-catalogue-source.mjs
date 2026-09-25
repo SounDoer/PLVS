@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { validateCommunityListingRecord } from "./community-catalogue-record.mjs";
 
 export const COMMUNITY_SOURCE_SCHEMA_VERSION = 1;
 
@@ -135,10 +136,19 @@ export async function readCommunitySource(contentDirectory) {
         ),
       ]);
     }
-    listings.push({
-      sourcePath: relativePath,
-      document: await readJson(path, `$.listings[${index}]`),
-    });
+    const raw = await readJson(path, `$.listings[${index}]`);
+    try {
+      listings.push({ sourcePath: relativePath, document: validateCommunityListingRecord(raw) });
+    } catch (error) {
+      if (!Array.isArray(error?.issues)) throw error;
+      throw new CommunitySourceError(
+        error.issues.map((entry) => ({
+          ...entry,
+          path: `$.listings[${index}]${entry.path === "$" ? "" : entry.path.slice(1)}`,
+          details: { ...(entry.details ?? {}), sourcePath: relativePath },
+        }))
+      );
+    }
   }
   return { root, manifest, listings };
 }
