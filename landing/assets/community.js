@@ -10,6 +10,15 @@ export function matchesCatalogueCard(dataset, query, filters) {
   );
 }
 
+export async function copyCommunityArtifact(
+  url,
+  { fetchImpl = fetch, clipboard = navigator.clipboard } = {}
+) {
+  const response = await fetchImpl(url);
+  if (!response.ok) throw new Error(`Download failed with HTTP ${response.status}.`);
+  await clipboard.writeText(await response.text());
+}
+
 function enhanceCatalogue() {
   const controls = document.querySelector("[data-catalogue-controls]");
   const grid = document.querySelector("[data-catalogue-grid]");
@@ -37,3 +46,23 @@ function enhanceCatalogue() {
 }
 
 if (typeof document !== "undefined") enhanceCatalogue();
+
+function enhanceCopyAction() {
+  const button = document.querySelector("[data-copy-artifact]");
+  if (!button) return;
+  const status = document.querySelector("[data-copy-status]");
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    status.textContent = "Copying…";
+    try {
+      await copyCommunityArtifact(button.dataset.copyArtifact);
+      status.textContent = "Theme copied. Paste it in PLVS.";
+    } catch (_) {
+      status.textContent = "Copy failed. Use the download instead.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+if (typeof document !== "undefined") enhanceCopyAction();

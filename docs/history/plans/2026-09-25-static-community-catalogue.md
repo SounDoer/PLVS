@@ -54,7 +54,7 @@ Gate: one source tree either produces a complete normalized catalogue or fails b
 - [x] Add client-side search over title, summary, description, and free tags.
 - [x] Add reliable filters from machine-derived type, module, metric, Theme scheme, feature, and
       compatibility facets.
-- [ ] Show content summary, dependencies, compatibility, attribution, size/hash, download/install
+- [x] Show content summary, dependencies, compatibility, attribution, size/hash, download/install
       instructions, previews, and Release history.
 - [ ] Add responsive, accessible empty/no-result states and navigation from the existing landing
       and docs pages.

@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generated PNG preview set without accepting publisher-selected screenshots.
 - `npm run community:site` generates static Community browse, family, and Listing detail pages plus
   isolated copies of their validated downloads and previews. Optional client-side search and
-  machine-derived filters enhance the fully navigable static pages.
+  machine-derived filters enhance the fully navigable static pages; detail pages include verified
+  facts, compatibility, dependencies, install guidance, previews, and Release history.
 - Loudness Profile exports now use strict Pack V2 portable documents. Incomplete rules, empty
   Profiles, invalid IDs, and empty exports are refused instead of being silently omitted; existing
   Pack V1 `.plvsloudness` files remain importable.

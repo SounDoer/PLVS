@@ -222,12 +222,48 @@ h1 {
   background: var(--accent);
   color: #070707;
   font-weight: 700;
+  border: 0;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
 }
 .button.secondary {
   margin: 0;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--ink);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.copy-status {
+  flex-basis: 100%;
+  min-height: 1.4em;
+  color: var(--muted);
+  font-size: 13px;
+}
+.muted,
+.dependency-list span {
+  color: var(--muted);
+}
+.dependency-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+.dependency-list li {
+  display: grid;
+  gap: 4px;
+}
+.steps {
+  max-width: 760px;
+  padding-left: 22px;
+  color: #c8c8c8;
+  line-height: 1.7;
 }
 .detail section {
   margin-top: 72px;

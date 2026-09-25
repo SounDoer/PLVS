@@ -150,6 +150,23 @@ function renderSummary(summary) {
     .join("");
 }
 
+function renderCompatibility(metadata) {
+  const entries = [
+    ["Modules", metadata.facets.moduleIds],
+    ["Metrics", metadata.facets.metricIds],
+    ["Theme scheme", metadata.facets.themeScheme ? [metadata.facets.themeScheme] : []],
+    ["Optional features", metadata.facets.optionalCapabilities],
+  ].filter(([, values]) => values.length > 0);
+  return entries.length > 0
+    ? `<dl>${entries.map(([label, values]) => `<div><dt>${label}</dt><dd>${values.map(escapeHtml).join(", ")}</dd></div>`).join("")}</dl>`
+    : `<p class="muted">No optional compatibility requirements.</p>`;
+}
+
+function renderDependencies(metadata) {
+  if (metadata.dependencies.length === 0) return `<p class="muted">No bundled dependencies.</p>`;
+  return `<ul class="dependency-list">${metadata.dependencies.map((dependency) => `<li><strong>${escapeHtml(dependency.name)}</strong><span>${escapeHtml(dependency.kind)} · ${escapeHtml(dependency.id)}</span></li>`).join("")}</ul>`;
+}
+
 function detailPage(listing) {
   const current = latestPublished(listing);
   const metadata = current?.metadata;
@@ -159,6 +176,14 @@ function detailPage(listing) {
       ? `<a href="${escapeHtml(listing.author.url)}" rel="author noopener">${escapeHtml(listing.author.name)}</a>`
       : escapeHtml(listing.author.name)
     : "PLVS curators";
+  const currentDownload = current
+    ? `/community/files/${listing.id}/v${current.number}/${basename(current.artifact)}`
+    : null;
+  const primaryAction = current
+    ? listing.type === "themes"
+      ? `<div class="actions"><button class="button" type="button" data-copy-artifact="${currentDownload}">Copy Theme</button><a class="button secondary" href="${currentDownload}" download>Download .plvstheme</a><span class="copy-status" data-copy-status aria-live="polite"></span></div>`
+      : `<a class="button" href="${currentDownload}" download>Download Release ${current.number}</a>`
+    : "";
   const releases = [...listing.releases]
     .reverse()
     .map((release) => {
@@ -175,8 +200,10 @@ function detailPage(listing) {
     listing.summary,
     `<main class="detail">
       <p class="breadcrumb"><a href="/community/">Community</a> / <a href="/community/${listing.type}/">${FAMILIES[listing.type].label}</a></p>
-      <header class="detail-hero"><div><p class="eyebrow">${FAMILIES[listing.type].singular} · ${escapeHtml(listing.classification)}</p><h1>${escapeHtml(listing.title)}</h1><p class="lede">${escapeHtml(listing.summary)}</p><p class="byline">By ${author}</p>${current ? `<a class="button" href="/community/files/${listing.id}/v${current.number}/${basename(current.artifact)}" download>Download Release ${current.number}</a>` : ""}</div>${previews[0] ? `<img src="/community/files/${listing.id}/v${current.number}/${basename(previews[0].path)}" alt="Preview of ${escapeHtml(listing.title)}" />` : ""}</header>
+      <header class="detail-hero"><div><p class="eyebrow">${FAMILIES[listing.type].singular} · ${escapeHtml(listing.classification)}</p><h1>${escapeHtml(listing.title)}</h1><p class="lede">${escapeHtml(listing.summary)}</p><p class="byline">By ${author}</p>${primaryAction}</div>${previews[0] ? `<img src="/community/files/${listing.id}/v${current.number}/${previews[0].id}.png" alt="Preview of ${escapeHtml(listing.title)}" />` : ""}</header>
       <section class="detail-grid"><article class="prose"><h2>About</h2><div class="markdown">${marked.parse(listing.descriptionMarkdown)}</div></article>${metadata ? `<aside><h2>Content</h2><dl>${renderSummary(metadata.content.summary)}</dl><dl><div><dt>File size</dt><dd>${metadata.artifact.byteLength.toLocaleString("en-US")} bytes</dd></div><div><dt>SHA-256</dt><dd class="hash">${escapeHtml(metadata.artifact.sha256)}</dd></div></dl></aside>` : ""}</section>
+      ${metadata ? `<section class="detail-grid"><article><h2>Compatibility</h2>${renderCompatibility(metadata)}</article><article><h2>Dependencies</h2>${renderDependencies(metadata)}</article></section>` : ""}
+      ${current ? `<section><h2>Install in PLVS</h2><ol class="steps"><li>Download the current Release file.</li><li>Open PLVS Settings and choose <strong>Import Shared Item…</strong>.</li><li>Review what will be added, then confirm the import. Applying or activating the Item is a separate choice.</li></ol></section>` : ""}
       ${previews.length > 0 ? `<section><h2>Previews</h2><div class="preview-grid">${previews.map((preview) => `<figure><img src="/community/files/${listing.id}/v${current.number}/${preview.id}.png" alt="${escapeHtml(preview.id.replaceAll("-", " "))}" loading="lazy" /><figcaption>${escapeHtml(preview.id.replaceAll("-", " "))}</figcaption></figure>`).join("")}</div></section>` : ""}
       <section><h2>Release history</h2><div class="release-list">${releases}</div></section>
     </main>`

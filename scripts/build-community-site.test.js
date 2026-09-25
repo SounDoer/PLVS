@@ -104,6 +104,10 @@ describe("Community static site generator", () => {
     expect(detail).toContain("Designed for <strong>broadcast delivery</strong>.");
     expect(detail).toContain("Example Author");
     expect(detail).toContain("Download Release 1");
+    expect(detail).toContain("Compatibility");
+    expect(detail).toContain("No bundled dependencies");
+    expect(detail).toContain("Import Shared Item…");
+    expect(detail).toContain("/community/files/broadcast/v1/profile-summary.png");
     expect(detail.toLowerCase()).not.toContain("license");
     expect(readFileSync(join(output, "files", "broadcast", "v1", "profile-summary.png"))).toEqual(
       PNG
