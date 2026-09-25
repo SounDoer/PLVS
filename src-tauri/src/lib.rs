@@ -62,17 +62,21 @@ use crate::window_state::{
 };
 use state::AppState;
 
+// Only the macOS reopen handler reads these; the unit test covers the pure logic everywhere.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 #[derive(Debug, Clone)]
 struct AppLaunchContext {
   isolated_app_data: Option<PathBuf>,
 }
 
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MacosReopenAction {
   OpenAdditionalWorkbench,
   ShowExistingWorkbench,
 }
 
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 fn macos_reopen_action(has_visible_windows: bool) -> MacosReopenAction {
   if has_visible_windows {
     MacosReopenAction::OpenAdditionalWorkbench
@@ -687,6 +691,8 @@ pub fn run() {
     .build(tauri::generate_context!())
     .expect("error while building tauri application")
     .run(|app, event| {
+      #[cfg(not(target_os = "macos"))]
+      let _ = (app, event);
       #[cfg(target_os = "macos")]
       if let tauri::RunEvent::Reopen {
         has_visible_windows,
