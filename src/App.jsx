@@ -57,6 +57,7 @@ import { roleTokensToLabels, seedTokensFromLabels } from "./math/channelRoles.js
 import { rolesForLayout, standardLayoutIdForCount } from "./math/channelLayoutTable.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
+import { usePackTransfer } from "./transfer/usePackTransfer.js";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
 import { isMacOS, supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
@@ -278,6 +279,7 @@ function AppContent() {
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
   const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
   const settings = useSettings({ onClearRef });
+  const packTransfer = usePackTransfer();
   // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
   // those overlays with the strip at boot; keeping discovery here lets App restore the main window
   // before presenting the report instead of silently waiting for the user to exit Dock manually.
@@ -2349,6 +2351,7 @@ function AppContent() {
     presets,
     loudnessProfile,
     loudnessProfileStats,
+    onExportLibraryItem: (type, id) => packTransfer.exportSelection(type, [id]),
     setSettingsOpen,
   };
   const fileSummaryProps = {
@@ -2425,6 +2428,7 @@ function AppContent() {
         settings={settings}
         crashReportSetting={crashReportSetting}
         crashReporting={crashReporting}
+        packTransfer={packTransfer}
         loudnessProfile={loudnessProfile}
         channelSettings={{
           channelCount,

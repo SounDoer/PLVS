@@ -38,10 +38,15 @@ function makeController(overrides = {}) {
   };
 }
 
-function renderPopover({ overrides, stats, showTitle = true } = {}) {
+function renderPopover({ overrides, stats, showTitle = true, onExport } = {}) {
   const profile = makeController(overrides);
   const view = render(
-    <LoudnessProfilePopoverContent profile={profile} stats={stats} showTitle={showTitle} />
+    <LoudnessProfilePopoverContent
+      profile={profile}
+      stats={stats}
+      showTitle={showTitle}
+      onExport={onExport}
+    />
   );
   return { profile, ...view };
 }
@@ -90,6 +95,14 @@ describe("LoudnessProfilePopoverContent listing", () => {
   it("optionally hides the title", () => {
     renderPopover({ showTitle: false });
     expect(screen.queryByText("Loudness Profile")).toBeNull();
+  });
+
+  it("exports one saved Loudness Profile from its row", () => {
+    const onExport = vi.fn();
+    renderPopover({ onExport });
+
+    fireEvent.click(screen.getByRole("button", { name: `Export ${SAVED.name}` }));
+    expect(onExport).toHaveBeenCalledWith(SAVED.id);
   });
 
   it("marks the active profile and selects rows by profile selection id", () => {

@@ -9,7 +9,7 @@ import { useCallback, useState } from "react";
 import { useTransientStatus } from "../hooks/useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { pickPackFile, savePackFile } from "../ipc/fileDialog.js";
+import { pickPackFile, pickSharedPackFile, savePackFile } from "../ipc/fileDialog.js";
 import { readClipboardText } from "../ipc/clipboard.js";
 import { collectPackItems } from "./collectPackItems.js";
 import { getAdapter } from "./libraryAdapters.js";
@@ -20,6 +20,7 @@ import {
   packDescriptor,
   parseClipboardTheme,
   parsePackText,
+  parseSharedPackText,
 } from "./packShape.js";
 
 function defaultFileName(descriptor, items) {
@@ -122,6 +123,32 @@ export function usePackTransfer() {
     [busy, setStatus]
   );
 
+  const beginSharedImport = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    setStatus("");
+    setReview(null);
+    try {
+      if (!isTauri()) {
+        setStatus("Import is available in the desktop app");
+        return;
+      }
+      const path = await pickSharedPackFile();
+      if (!path) return;
+      const text = await readProfileFile(path);
+      const { type, pack } = parseSharedPackText(text);
+      const planned = planPackImport(type, pack, {
+        existingItems: getAdapter(type).list(),
+        existingProfiles: type === "presets" ? getAdapter("loudness").list() : [],
+      });
+      setReview({ type, origin: "file", pack, ...planned });
+    } catch (error) {
+      setStatus(error instanceof PackValidationError ? error.message : "Import failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, setStatus]);
+
   const beginThemePaste = useCallback(
     async (text) => {
       if (busy) return;
@@ -190,6 +217,7 @@ export function usePackTransfer() {
     review,
     exportSelection,
     beginImport,
+    beginSharedImport,
     beginThemePaste,
     pasteThemeFromClipboard,
     confirmImport,

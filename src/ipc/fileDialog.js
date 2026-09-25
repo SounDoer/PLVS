@@ -21,6 +21,7 @@ export const MEDIA_EXTENSIONS = [
   "wmv",
 ];
 const PROFILE_EXTENSIONS = ["plvsconfig"];
+const SHARED_ITEM_EXTENSIONS = ["plvsloudness", "plvspreset", "plvstheme"];
 const REPORT_FILTERS = {
   json: { name: "PLVS Report", extensions: ["json"] },
   markdown: { name: "PLVS Report (Markdown)", extensions: ["md"] },
@@ -73,6 +74,16 @@ export async function pickPackFile(descriptor) {
     multiple: false,
     directory: false,
     filters: [{ name: descriptor.filterName, extensions: [descriptor.extension] }],
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+/** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+export async function pickSharedPackFile() {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: "PLVS Shared Item", extensions: SHARED_ITEM_EXTENSIONS }],
   });
   return typeof selected === "string" ? selected : null;
 }

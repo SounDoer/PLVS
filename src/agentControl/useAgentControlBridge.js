@@ -3298,7 +3298,7 @@ export function useAgentControlBridge({
             dryRun: request.params.dryRun === true,
             revision: currentRevision,
             changed: planned.changed,
-            warnings: [],
+            warnings: planned.warnings,
             plan: planned.plan,
             state: { [stateKey]: buildLibraryList(family) },
           };

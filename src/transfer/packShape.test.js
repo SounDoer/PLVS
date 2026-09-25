@@ -10,6 +10,7 @@ import {
   parseClipboardTheme,
   parsePack,
   parsePackText,
+  parseSharedPackText,
 } from "./packShape.js";
 import { MAX_PACK_BYTES } from "./packV2.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
@@ -366,6 +367,33 @@ describe("parsePackText", () => {
       expect.objectContaining({ issues: [expect.objectContaining({ code: "invalidJson" })] })
     );
     expect(() => parsePackText("{}", "loudness")).toThrow("This is not a PLVS file.");
+  });
+});
+
+describe("parseSharedPackText", () => {
+  it("dispatches Pack files and standalone portable Themes by kind", () => {
+    const profile = { id: "profile-a", name: "Broadcast", referenceLufs: -23, rules: [] };
+    expect(parseSharedPackText(JSON.stringify(buildPack("loudness", [profile]))).type).toBe(
+      "loudness"
+    );
+    expect(
+      parseSharedPackText(
+        JSON.stringify(
+          themeToPortable({
+            ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+            id: "custom-shared",
+            name: "Shared",
+          })
+        )
+      ).type
+    ).toBe("themes");
+  });
+
+  it("rejects configurations and unknown JSON with specific messages", () => {
+    expect(() =>
+      parseSharedPackText(JSON.stringify({ app: "PLVS", kind: "configuration-profile" }))
+    ).toThrow(/whole configuration file/);
+    expect(() => parseSharedPackText("{}")).toThrow(/not a PLVS shared item file/);
   });
 });
 

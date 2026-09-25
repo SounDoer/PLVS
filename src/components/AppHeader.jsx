@@ -176,6 +176,7 @@ export function AppHeader({
   onDockChange,
   dockDisabled,
   presets,
+  onExportLibraryItem = () => {},
   setSettingsOpen,
 }) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -365,7 +366,11 @@ export function AppHeader({
             </span>
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
-            <LoudnessProfilePopoverContent profile={loudnessProfile} stats={loudnessProfileStats} />
+            <LoudnessProfilePopoverContent
+              profile={loudnessProfile}
+              stats={loudnessProfileStats}
+              onExport={(id) => onExportLibraryItem("loudness", id)}
+            />
           </PopoverContent>
         </Popover>
         <Popover onOpenChange={autoHideControls ? holdFocusControls : undefined}>
@@ -425,7 +430,10 @@ export function AppHeader({
             </span>
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
-            <PresetsPopoverContent presets={presets} />
+            <PresetsPopoverContent
+              presets={presets}
+              onExport={(id) => onExportLibraryItem("presets", id)}
+            />
           </PopoverContent>
         </Popover>
         <IconButton

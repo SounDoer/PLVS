@@ -77,6 +77,19 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByText("Mix")).toBeTruthy();
   });
 
+  it("exports one saved Preset from its row", () => {
+    const onExport = vi.fn();
+    render(
+      <PresetsPopoverContent
+        presets={{ ...NOOP_PRESETS, list: [{ id: "a", name: "Focus" }] }}
+        onExport={onExport}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Export preset Focus" }));
+    expect(onExport).toHaveBeenCalledWith("a");
+  });
+
   it("marks the active preset", () => {
     render(
       <PresetsPopoverContent

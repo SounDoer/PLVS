@@ -4879,6 +4879,42 @@ describe("useAgentControlBridge", () => {
       expect(response.result.revision).toBe(before + 1);
     });
 
+    it("returns Import Plan collision warnings through Agent Control", async () => {
+      settingsStore.patch({
+        loudnessProfiles: {
+          profiles: [{ ...PROFILE_A, referenceLufs: -16 }],
+          active: "off",
+        },
+      });
+      mount({ loudnessProfilesFromStore: true });
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "loudnessProfile.import",
+          {
+            pack: {
+              app: "PLVS",
+              kind: "loudness-pack",
+              version: 1,
+              items: [PROFILE_A],
+            },
+            dryRun: true,
+          },
+          "loudness-import-collision"
+        )
+      );
+
+      expect(response.result.warnings).toEqual([
+        expect.objectContaining({
+          severity: "warning",
+          code: "idCollisionCopied",
+          path: "$.items[0].id",
+        }),
+      ]);
+      expect(response.result.plan.items[0].disposition).toBe("duplicated");
+    });
+
     it("refuses to export an empty Loudness Profile library as Pack V2", async () => {
       mount({ loudnessProfilesFromStore: true });
       await waitUntilReady();

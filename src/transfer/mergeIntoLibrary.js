@@ -145,6 +145,42 @@ function canonicalizeStoredPresetProfile(preset) {
   return kind === "profile" ? preset : { ...preset, loudnessProfileActive: LOUDNESS_PROFILE_OFF };
 }
 
+function importWarning(code, path, message, details) {
+  return { severity: "warning", code, path, message, ...(details ? { details } : {}) };
+}
+
+function collisionWarnings(plan, incoming, basePath) {
+  return plan.flatMap((entry, index) => {
+    const source = incoming[index];
+    if (entry.disposition === "duplicated") {
+      return [
+        importWarning(
+          "idCollisionCopied",
+          `${basePath}[${index}].id`,
+          `${source.name} uses an existing ID with different content and will be imported as ${entry.name}.`,
+          {
+            sourceId: entry.sourceId,
+            finalId: entry.finalId,
+            requestedName: source.name,
+            effectiveName: entry.name,
+          }
+        ),
+      ];
+    }
+    if (entry.disposition === "added" && entry.name !== source.name) {
+      return [
+        importWarning(
+          "nameCollisionRenamed",
+          `${basePath}[${index}].name`,
+          `${source.name} will be imported as ${entry.name} because that name is already in use.`,
+          { requested: source.name, effective: entry.name }
+        ),
+      ];
+    }
+    return [];
+  });
+}
+
 /**
  * The whole import decision for one pack, without writing anything.
  *
@@ -152,7 +188,7 @@ function canonicalizeStoredPresetProfile(preset) {
  * @param {object} pack a `parsePack` result
  * @param {{existingItems: object[], existingProfiles?: object[], makeId?: () => string}} context
  * @returns {{ profileAdditions: object[], profilePlan: object[], itemAdditions: object[],
- *   itemPlan: object[] }}
+ *   itemPlan: object[], warnings: object[] }}
  */
 export function planPackImport(
   type,
@@ -161,14 +197,26 @@ export function planPackImport(
 ) {
   if (type === "themes" && pack.identity === "content") {
     const { additions, plan } = planContentMerge(existingItems, pack.items, makeId);
-    return { profileAdditions: [], profilePlan: [], itemAdditions: additions, itemPlan: plan };
+    return {
+      profileAdditions: [],
+      profilePlan: [],
+      itemAdditions: additions,
+      itemPlan: plan,
+      warnings: collisionWarnings(plan, pack.items, "$.items"),
+    };
   }
   if (type !== "presets") {
     const { additions, plan } = planMerge(existingItems, pack.items, {
       makeId,
       ...(type === "themes" ? { equal: portableThemesEqual } : {}),
     });
-    return { profileAdditions: [], profilePlan: [], itemAdditions: additions, itemPlan: plan };
+    return {
+      profileAdditions: [],
+      profilePlan: [],
+      itemAdditions: additions,
+      itemPlan: plan,
+      warnings: collisionWarnings(plan, pack.items, "$.items"),
+    };
   }
 
   /// Both stages below share one `makeId`, but a minted profile id can never collide with a
@@ -178,7 +226,21 @@ export function planPackImport(
   /// preset stage mints any id.
   const profiles = planMerge(existingProfiles, pack.loudnessProfiles ?? [], { makeId });
   const idMap = new Map(profiles.plan.map((entry) => [entry.sourceId, entry.finalId]));
-  const remapped = pack.items.map((preset) => remapPresetProfile(preset, idMap));
+  const warnings = [];
+  const remapped = pack.items.map((preset, index) => {
+    const selection = parseSelection(preset.loudnessProfileActive);
+    if (selection.kind === "profile" && !idMap.has(selection.id)) {
+      warnings.push(
+        importWarning(
+          "missingDependencyAdapted",
+          `$.items[${index}].loudnessProfileActive`,
+          `${preset.name} refers to a Loudness Profile that is not in this legacy Pack and will use Off.`,
+          { dependencyId: selection.id, requested: selection.id, effective: null }
+        )
+      );
+    }
+    return remapPresetProfile(preset, idMap);
+  });
   const comparableExisting = existingItems.map(canonicalizeStoredPresetProfile);
   const items = planMerge(comparableExisting, remapped, { makeId });
 
@@ -187,5 +249,14 @@ export function planPackImport(
     profilePlan: profiles.plan,
     itemAdditions: items.additions,
     itemPlan: items.plan,
+    warnings: [
+      ...warnings,
+      ...collisionWarnings(
+        profiles.plan,
+        pack.loudnessProfiles ?? [],
+        pack.version === 2 ? "$.dependencies[0].items" : "$.loudnessProfiles"
+      ),
+      ...collisionWarnings(items.plan, remapped, "$.items"),
+    ],
   };
 }

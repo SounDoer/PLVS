@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, GripVertical, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, Download, GripVertical, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,11 @@ const DRAG_HANDLE_CLASS =
  * from usePresets(). Whole-row click applies; row-tail icons do
  * Update / Rename / Delete. Rename is inline.
  */
-export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true }) {
+export function PresetsPopoverContent({
+  presets = NOOP_PRESETS,
+  showTitle = true,
+  onExport = () => {},
+}) {
   // Apply, Save and Update capture or replace the whole scene, so they are refused while a
   // draft-style editor is open. The controller refuses them whatever this renders; showing them
   // disabled is what makes the refusal legible, and the caption below says how to clear it.
@@ -229,6 +233,17 @@ export function PresetsPopoverContent({ presets = NOOP_PRESETS, showTitle = true
                         )}
                       >
                         <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Export preset ${preset.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onExport(preset.id);
+                        }}
+                        className="rounded-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <Download className="size-[length:var(--ui-icon-management-action)]" />
                       </button>
                       <button
                         type="button"

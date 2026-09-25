@@ -64,12 +64,17 @@ Rename channel labels and choose the channel layout; see [Multichannel](multicha
 
 ## Import, export, and reset
 
-Export and import **Loudness Profiles**, **Presets**, and **Themes** individually, or **Everything**
-in one file. Importing Everything replaces your whole setup and restarts PLVS rather than merging.
-This moves configuration only, never measurement data. With several workbenches open, PLVS first
-checks every workbench for an open draft, stops capture and saves before replacing shared data; the
-workbench where you chose Import receives the instance-owned fields. **Reset PLVS to Default** uses
-the same coordinated restart and restores a fresh installation.
+Export **Loudness Profiles**, **Presets**, and **Themes** from their Library rows. **Import Shared
+Item…** accepts any of their shared file types and chooses the right review from the file's document
+kind. **Everything** uses one configuration file instead: importing it replaces your whole setup
+and restarts PLVS rather than merging. These operations move configuration only, never measurement
+data. With several workbenches open, PLVS first checks every workbench for an open draft, stops
+capture and saves before replacing shared data; the workbench where you chose Import receives the
+instance-owned fields. **Reset PLVS to Default** uses the same coordinated restart and restores a
+fresh installation.
+
+For a one-item file, use **Export** on the saved Loudness Profile, Preset, or custom Theme itself.
+The Settings Library rows retain multi-select export for sharing several Items together.
 
 If storage fails or PLVS exits during that replacement, the incomplete import is rolled back. A
 recovery journal completes that rollback automatically the next time the target workbench opens,
@@ -88,6 +93,11 @@ keeps the reference attached when both are imported. Import adds the content to 
 does not apply it. When you later apply the Preset, PLVS adapts optional Dock, reserved-space,
 Glass, display-size, and channel choices to the current machine without rewriting the saved Library
 item. Older Preset pack files remain importable.
+
+Before a shared file is added, the import review lists each Item as **Add**, **Already in your
+library**, or **Import as a copy**, shows bundled Loudness Profile dependencies, and calls out safe
+adaptations such as collision renaming or a missing legacy dependency. Confirming the review is the
+only step that writes to the Library.
 
 With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
 Profile, or Preset does not silently replace the snapshot already active in another workbench; that

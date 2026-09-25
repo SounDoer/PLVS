@@ -472,8 +472,7 @@ export function parsePack(raw, expectedType) {
   return parsed;
 }
 
-/** Enforces the encoded byte limit before JSON parsing, then applies the normal family parser. */
-export function parsePackText(text, expectedType) {
+function parseJsonText(text) {
   if (typeof text !== "string") {
     throw new PackValidationError("This file could not be read.", [
       issue("invalidJson", "$", "The Pack must be encoded as JSON text."),
@@ -496,7 +495,30 @@ export function parsePackText(text, expectedType) {
       issue("invalidJson", "$", "The file does not contain valid JSON."),
     ]);
   }
-  return parsePack(raw, expectedType);
+  return raw;
+}
+
+/** Enforces the encoded byte limit before JSON parsing, then applies the normal family parser. */
+export function parsePackText(text, expectedType) {
+  return parsePack(parseJsonText(text), expectedType);
+}
+
+/** Dispatches one shared Item file by its document kind, then runs the same strict family parser. */
+export function parseSharedPackText(text) {
+  const raw = parseJsonText(text);
+  if (raw?.kind === PORTABLE_THEME_KIND) {
+    return { type: "themes", pack: parsePack(raw, "themes") };
+  }
+  if (raw?.kind === CONFIGURATION_PROFILE_KIND) {
+    throw new PackValidationError(
+      "This is a whole configuration file. Import it from the Configuration row."
+    );
+  }
+  const descriptor = descriptorForKind(raw?.kind);
+  if (!descriptor || raw?.app !== PACK_APP) {
+    throw new PackValidationError("This is not a PLVS shared item file.");
+  }
+  return { type: descriptor.type, pack: parsePack(raw, descriptor.type) };
 }
 
 function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {

@@ -198,19 +198,22 @@ and `preset reorder` take documents. `--expected-revision` is required and `--dr
 - `state` reports the resulting library in the same shape that family's `list` returns, so a caller
   does not have to follow a successful import with a `list`. It reports the requested family only:
   a `preset.import` that also added bundled Loudness Profiles reports `presets` and not `profiles`.
-- `warnings` is always an empty array today. Nothing populates it. See below.
+- `warnings` describes retained adaptations: ID collisions imported under a fresh ID, incoming name
+  collisions renamed with a numeric suffix, and a legacy Preset reference downgraded to Profile
+  Off because its Pack did not carry that dependency. Every warning has `severity: "warning"`, a
+  stable `code`, JSON `path`, human `message`, and structured `details`.
 
 A dry run is the real code path minus the append, not a parallel simulation: the whole import
 decision is computed by a pure function before anything is written. It returns the identical `plan`
 and writes nothing.
 
-### Warnings and the silent profile downgrade
+### Import warnings
 
-`warnings` is present for envelope consistency and is reserved. No import produces one today, and
-one case in particular is not reported: when an imported Preset refers to a Loudness Profile the
-pack did not bundle, the reference cannot be honoured on this machine and is downgraded to Off. That
-is a change to the imported Preset that the caller is not told about, in a field the caller may be
-watching. Compare `plan.items` against the pack when the Presets carry profile selections.
+`idCollisionCopied` reports a same-ID/different-content collision and includes the source and final
+IDs and names. `nameCollisionRenamed` reports a new Item whose name gained a numeric suffix.
+`missingDependencyAdapted` applies only to tolerant Preset Pack V1 import: the Preset is retained,
+but a Profile reference absent from the legacy Pack becomes Off. Strict Pack V2 rejects a missing
+dependency instead of warning and adapting it.
 
 ### Revision and no-ops
 

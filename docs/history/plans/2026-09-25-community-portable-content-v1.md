@@ -19,7 +19,7 @@ and future Community CI share the same validation and planning facts.
 - [x] Make empty or invalid Agent Control exports fail as `loudnessProfileNotExportable`.
 - [x] Enforce the encoded Pack byte/depth/item limits at the common file and Agent Control ingress.
 - [x] Add publication assessment and canonical serialization/hash helpers.
-- [ ] Add item-level Export in the Loudness Profile UI.
+- [x] Add item-level Export in the Loudness Profile UI.
 
 Gate: a valid saved Profile round-trips V2 exactly; an incomplete or empty Profile fails before a
 file is written; Pack V1 still imports.
@@ -53,7 +53,7 @@ ID leaks into the imported Preset.
 - [x] Replace Pack V1 `loudnessProfiles` with one V2 `loudness-profile` dependency group.
 - [x] Validate references, duplicate groups, duplicate IDs, missing and unused dependencies.
 - [x] Remap dependency IDs before converting primary Presets.
-- [ ] Return Import Plan warnings for retained but suspicious content and collision outcomes.
+- [x] Return Import Plan warnings for retained but suspicious content and collision outcomes.
 - [x] Implement `planPresetApply` with requested/effective adaptations for platform, display, Dock,
       Glass, channels and preferred sizes.
 - [x] Prove the Apply commit uses existing scene-operation guards before mutation.
@@ -64,9 +64,9 @@ bypass blocking editors.
 ## Phase 5 — Desktop and CLI transfer UX
 
 - [x] Switch Preset export to Pack V2 while retaining Pack V1 import.
-- [ ] Add item-level Export for saved Presets and custom Themes where not already exposed.
-- [ ] Replace per-row import entry points with `Import Shared Item…` dispatch by extension/kind.
-- [ ] Show dependencies, add/skip/copy outcomes, compatibility errors and adaptation warnings.
+- [x] Add item-level Export for saved Presets and custom Themes where not already exposed.
+- [x] Replace per-row import entry points with `Import Shared Item…` dispatch by extension/kind.
+- [x] Show dependencies, add/skip/copy outcomes, compatibility errors and adaptation warnings.
 - [ ] Keep append-only import available while draft editors are open.
 - [ ] Offer explicit post-import View/Use/Apply actions without rolling back a successful import
       when the action is refused.

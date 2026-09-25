@@ -201,6 +201,7 @@ export function SettingsPanel({
   customizeBuiltinTheme = () => {},
   duplicateCustomTheme = () => {},
   deleteCustomTheme = () => {},
+  onExportTheme = () => {},
   themeControlsDisabled = false,
   onExportConfiguration = () => {},
   onImportConfiguration = () => {},
@@ -208,7 +209,7 @@ export function SettingsPanel({
   configurationBusy = false,
   configurationStatus = "",
   onPackExport = () => {},
-  onPackImport = () => {},
+  onSharedPackImport = () => {},
   onPasteTheme = () => {},
   packBusy = false,
   packStatus = "",
@@ -480,6 +481,7 @@ export function SettingsPanel({
                         onCustomize={customizeBuiltinTheme}
                         onEdit={editCustomTheme}
                         onDuplicate={duplicateCustomTheme}
+                        onExport={onExportTheme}
                         onDelete={deleteCustomTheme}
                         onCreate={createCustomTheme}
                         disabled={themeControlsDisabled}
@@ -653,15 +655,6 @@ export function SettingsPanel({
                         >
                           Export
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => onPackImport(row.type)}
-                          disabled={packBusy}
-                          aria-label={`Import ${row.aria}`}
-                          className={CONFIG_TEXT_BTN_CLASS}
-                        >
-                          Import
-                        </button>
                         {row.type === "themes" ? (
                           <button
                             type="button"
@@ -676,6 +669,17 @@ export function SettingsPanel({
                       </div>
                     </SettingsRow>
                   ))}
+                  <SettingsRow label="Shared Item" className="settings-row-stackable">
+                    <button
+                      type="button"
+                      onClick={onSharedPackImport}
+                      disabled={packBusy}
+                      aria-label="Import shared item"
+                      className={CONFIG_TEXT_BTN_CLASS}
+                    >
+                      Import…
+                    </button>
+                  </SettingsRow>
                   {packStatus ? (
                     <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
                       {packStatus}

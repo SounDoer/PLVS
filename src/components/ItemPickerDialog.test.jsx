@@ -155,6 +155,32 @@ describe("ItemPickerDialog review mode", () => {
     expect(screen.getByText("Alpha")).toBeTruthy();
   });
 
+  it("shows structured import adaptations before confirmation", () => {
+    render(
+      <ItemPickerDialog
+        open
+        mode="review"
+        type="presets"
+        review={{
+          ...review,
+          warnings: [
+            {
+              severity: "warning",
+              code: "idCollisionCopied",
+              path: "$.items[0].id",
+              message: "P1 will be imported as a copy.",
+            },
+          ],
+        }}
+        onConfirm={() => {}}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByRole("region", { name: "Import Warnings" })).toBeTruthy();
+    expect(screen.getByText("P1 will be imported as a copy.")).toBeTruthy();
+  });
+
   it("confirms only when Import is pressed", () => {
     const onConfirm = vi.fn();
     render(

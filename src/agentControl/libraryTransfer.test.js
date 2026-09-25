@@ -117,6 +117,25 @@ describe("planLibraryImport", () => {
     expect(planned.plan.items[0].disposition).toBe("skipped");
   });
 
+  it("returns structured collision warnings without writing", () => {
+    settingsStore.patch({ loudnessProfiles: { profiles: [PROFILE_A] } });
+    const planned = planLibraryImport("loudnessProfile", {
+      app: "PLVS",
+      kind: "loudness-pack",
+      version: 1,
+      items: [{ ...PROFILE_A, referenceLufs: -16 }],
+    });
+
+    expect(planned.warnings).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        code: "idCollisionCopied",
+        path: "$.items[0].id",
+      }),
+    ]);
+    expect(settingsStore.read().loudnessProfiles.profiles).toEqual([PROFILE_A]);
+  });
+
   it("re-imports a legacy Preset with an omitted Off profile as a no-op", () => {
     const preset = { id: "p-1", name: "Legacy", panelOrder: [], panelsById: {} };
     presetsStore.patch({ list: [preset] });

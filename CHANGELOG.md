@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preset exports now use strict Pack V2 portable documents with artefact-local panel keys and
   explicit Loudness Profile dependencies. Host geometry and transient state are excluded, invalid
   or empty exports are refused, and existing Pack V1 `.plvspreset` files remain importable.
+- Shared Item import now auto-detects Loudness Profile, Preset, and Theme files, previews
+  dependencies and add/skip/copy outcomes, and reports collision or legacy-dependency adaptations
+  before writing. Saved Profiles, Presets, and custom Themes also have one-item Export actions.
 
 ## [0.17.0] - 2026-09-24
 

@@ -17,9 +17,11 @@ vi.mock("../ipc/commands.js", () => ({
 }));
 
 const pickPackFile = vi.fn();
+const pickSharedPackFile = vi.fn();
 const savePackFile = vi.fn();
 vi.mock("../ipc/fileDialog.js", () => ({
   pickPackFile: (...args) => pickPackFile(...args),
+  pickSharedPackFile: (...args) => pickSharedPackFile(...args),
   savePackFile: (...args) => savePackFile(...args),
 }));
 
@@ -236,6 +238,29 @@ describe("usePackTransfer export outcome", () => {
 });
 
 describe("usePackTransfer import", () => {
+  it("dispatches a shared Item file by document kind", async () => {
+    readProfileFile.mockResolvedValue(
+      JSON.stringify({
+        app: "PLVS",
+        kind: "loudness-pack",
+        version: 1,
+        items: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      })
+    );
+    pickSharedPackFile.mockResolvedValue("C:/renamed-shared-item.plvstheme");
+
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => {
+      await result.current.beginSharedImport();
+    });
+
+    expect(result.current.review).toMatchObject({
+      type: "loudness",
+      origin: "file",
+      itemPlan: [{ sourceId: "a", disposition: "added" }],
+    });
+  });
+
   it("opens file review for a directly downloaded portable Theme", async () => {
     readProfileFile.mockResolvedValue(clipboardTheme("Downloaded Theme"));
     pickPackFile.mockResolvedValue("C:/Downloaded Theme.plvstheme");

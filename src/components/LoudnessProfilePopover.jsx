@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { GripVertical, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Download, GripVertical, SlidersHorizontal, Trash2 } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { AddButton } from "@/components/AddButton";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
@@ -54,6 +54,7 @@ export function LoudnessProfilePopoverContent({
   stats = null,
   showTitle = true,
   manageable = true,
+  onExport = () => {},
 }) {
   const { active, document, profiles, draftBlocksLibraryActions, reorderProfiles } = profile;
 
@@ -141,6 +142,15 @@ export function LoudnessProfilePopoverContent({
                     className={cn(ICON_BUTTON_CLASS, blockedClass)}
                   >
                     <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Export ${entry.name}`}
+                    title="Export"
+                    onClick={() => onExport(entry.id)}
+                    className={ICON_BUTTON_CLASS}
+                  >
+                    <Download className="size-[length:var(--ui-icon-management-action)]" />
                   </button>
                   <InlineConfirm
                     onConfirm={() => profile.removeProfile(entry.id)}

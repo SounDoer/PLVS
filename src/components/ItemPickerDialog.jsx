@@ -142,6 +142,7 @@ export function ItemPickerDialog({
   );
   const shownDependencies = dependencies.filter((dep) => neededProfileIds.has(dep.id));
   const profilePlan = review?.profilePlan ?? [];
+  const warnings = review?.warnings ?? [];
 
   function handleDismiss() {
     onClose();
@@ -220,6 +221,24 @@ export function ItemPickerDialog({
                   <PlanRow key={entry.sourceId} entry={entry} />
                 ))}
               </AlsoIncluded>
+            ) : null}
+
+            {mode === "review" && warnings.length > 0 ? (
+              <section className="mt-3 border-t border-border pt-2" aria-label="Import Warnings">
+                <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
+                  Adaptations
+                </h3>
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {warnings.map((warning, index) => (
+                    <li
+                      key={`${warning.code}-${warning.path}-${index}`}
+                      className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground"
+                    >
+                      {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ) : null}
           </div>
 

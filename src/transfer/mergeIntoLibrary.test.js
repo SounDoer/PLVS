@@ -156,6 +156,30 @@ describe("planPackImport", () => {
     expect(result.itemPlan[0].disposition).toBe("skipped");
   });
 
+  it("reports ID and name collision adaptations as structured warnings", () => {
+    const local = { ...A, id: "a" };
+    const byId = { ...A, referenceLufs: -16 };
+    const byName = { ...A, id: "b" };
+    const result = planPackImport(
+      "loudness",
+      { app: "PLVS", kind: "loudness-pack", version: 1, items: [byId, byName] },
+      { existingItems: [local], makeId: counter() }
+    );
+
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        code: "idCollisionCopied",
+        path: "$.items[0].id",
+      }),
+      expect.objectContaining({
+        severity: "warning",
+        code: "nameCollisionRenamed",
+        path: "$.items[1].name",
+      }),
+    ]);
+  });
+
   describe("a standalone portable Theme", () => {
     const theme = (id, name, accent) => {
       const document = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id, name };
@@ -222,6 +246,14 @@ describe("planPackImport", () => {
     });
     expect(result.profileAdditions[0].id).toBe("new-1");
     expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:new-1");
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        severity: "warning",
+        code: "idCollisionCopied",
+        path: "$.loudnessProfiles[0].id",
+        details: expect.objectContaining({ sourceId: "pa", finalId: "new-1" }),
+      })
+    );
   });
 
   it("remaps a Pack V2 dependency collision before adding the Portable Preset", () => {
@@ -248,6 +280,12 @@ describe("planPackImport", () => {
       disposition: "duplicated",
     });
     expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:new-1");
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        code: "idCollisionCopied",
+        path: "$.dependencies[0].items[0].id",
+      })
+    );
   });
 
   it("keeps the reference when the profile was already in the library", () => {
@@ -270,6 +308,14 @@ describe("planPackImport", () => {
       makeId: counter(),
     });
     expect(result.itemAdditions[0].loudnessProfileActive).toBe("off");
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        code: "missingDependencyAdapted",
+        path: "$.items[0].loudnessProfileActive",
+        details: { dependencyId: "missing", requested: "missing", effective: null },
+      }),
+    ]);
   });
 
   it("leaves an Off preset alone", () => {

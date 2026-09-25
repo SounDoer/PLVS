@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   // against; the one test that needs the desktop save dialog flips it for its own duration.
   isTauri: vi.fn(() => false),
   savePackFile: vi.fn(),
+  pickSharedPackFile: vi.fn(),
   writeProfileFile: vi.fn(),
 }));
 
@@ -26,6 +27,7 @@ vi.mock("../ipc/env.js", () => ({ isTauri: () => mocks.isTauri() }));
 vi.mock("../ipc/fileDialog.js", () => ({
   savePackFile: (...args) => mocks.savePackFile(...args),
   pickPackFile: vi.fn(),
+  pickSharedPackFile: (...args) => mocks.pickSharedPackFile(...args),
 }));
 
 vi.mock("../hooks/useConfigurationProfileActions.js", () => ({
@@ -58,7 +60,7 @@ vi.mock("./SettingsPanel.jsx", () => ({
     setDialogueVadEngine,
     onSetAgentControlEnabled,
     onPackExport,
-    onPackImport,
+    onSharedPackImport,
     onPasteTheme,
     packBusy,
     packStatus,
@@ -92,8 +94,8 @@ vi.mock("./SettingsPanel.jsx", () => ({
       <button type="button" onClick={() => onPackExport("presets")}>
         Export presets
       </button>
-      <button type="button" onClick={() => onPackImport("loudness")}>
-        Import loudness
+      <button type="button" onClick={onSharedPackImport}>
+        Import shared item
       </button>
       <button type="button" onClick={onPasteTheme}>
         Paste theme
@@ -403,7 +405,7 @@ describe("AppSettingsOverlays", () => {
   it("surfaces the pack transfer status after an import attempt outside the desktop app", async () => {
     renderOverlays();
 
-    fireEvent.click(screen.getByRole("button", { name: "Import loudness" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import shared item" }));
 
     await waitFor(() =>
       expect(screen.getByTestId("pack-status").textContent).toBe(

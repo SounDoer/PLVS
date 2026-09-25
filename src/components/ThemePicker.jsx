@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Copy, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, Download, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { AddButton } from "./AddButton.jsx";
 import { IconButton } from "./IconButton.jsx";
@@ -97,6 +97,7 @@ export function ThemePicker({
   onCustomize,
   onEdit,
   onDuplicate,
+  onExport = () => {},
   onDelete,
   onCreate,
   disabled = false,
@@ -181,6 +182,12 @@ export function ThemePicker({
                   tip="Duplicate"
                   icon={<Copy className="size-[length:var(--ui-icon-management-action)]" />}
                   onClick={() => onDuplicate(theme.id)}
+                />
+                <Action
+                  label={`Export ${theme.name}`}
+                  tip="Export"
+                  icon={<Download className="size-[length:var(--ui-icon-management-action)]" />}
+                  onClick={() => onExport(theme.id)}
                 />
                 <InlineConfirm
                   onConfirm={() => {

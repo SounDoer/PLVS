@@ -334,8 +334,26 @@ describe("SettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
     expect(screen.getByRole("button", { name: "Edit Custom Theme" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Duplicate Custom Theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Export Custom Theme" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete Custom Theme" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add Theme" })).toBeTruthy();
+  });
+
+  it("exports one custom Theme from its picker row", () => {
+    const onExportTheme = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="custom-1"
+        customThemeOptions={[CUSTOM_THEME_OPTION]}
+        onExportTheme={onExportTheme}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Theme" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export Custom Theme" }));
+    expect(onExportTheme).toHaveBeenCalledWith("custom-1");
   });
 
   it("keeps the theme picker clickable while the settings sheet blanks body pointer events", () => {
@@ -779,22 +797,24 @@ describe("SettingsPanel", () => {
     expect(onOpenFeedback).toHaveBeenCalledTimes(1);
   });
 
-  it("offers export and import for each library above the Everything row", () => {
+  it("offers per-library export and one shared-item import above the Everything row", () => {
     const onPackExport = vi.fn();
+    const onSharedPackImport = vi.fn();
     const onPasteTheme = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
         onPackExport={onPackExport}
-        onPackImport={vi.fn()}
+        onSharedPackImport={onSharedPackImport}
         onPasteTheme={onPasteTheme}
       />
     );
 
     for (const label of ["loudness profiles", "presets", "theme"]) {
       expect(screen.getByRole("button", { name: `Export ${label}` })).toBeTruthy();
-      expect(screen.getByRole("button", { name: `Import ${label}` })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: `Import ${label}` })).toBeNull();
     }
+    expect(screen.getByRole("button", { name: "Import shared item" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Paste theme" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Paste presets" })).toBeNull();
 
@@ -806,6 +826,8 @@ describe("SettingsPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
     expect(onPackExport).toHaveBeenCalledWith("presets");
+    fireEvent.click(screen.getByRole("button", { name: "Import shared item" }));
+    expect(onSharedPackImport).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Paste theme" }));
     expect(onPasteTheme).toHaveBeenCalledTimes(1);
   });

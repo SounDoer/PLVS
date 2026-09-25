@@ -21,6 +21,7 @@ export function AppSettingsOverlays({
   loudnessProfile,
   crashReportSetting,
   crashReporting,
+  packTransfer = null,
   onAgentControlEnabledChange = () => {},
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -37,7 +38,8 @@ export function AppSettingsOverlays({
     importConfiguration,
     resetConfiguration,
   } = useConfigurationProfileActions();
-  const pack = usePackTransfer();
+  const localPack = usePackTransfer();
+  const pack = packTransfer ?? localPack;
   const { beginThemePaste } = pack;
   const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
@@ -135,6 +137,7 @@ export function AppSettingsOverlays({
         customizeBuiltinTheme={settings.customizeBuiltinTheme}
         duplicateCustomTheme={settings.duplicateCustomTheme}
         deleteCustomTheme={settings.deleteCustomTheme}
+        onExportTheme={(id) => pack.exportSelection("themes", [id])}
         themeControlsDisabled={editor.isEditing}
         onExportConfiguration={exportConfiguration}
         onImportConfiguration={importConfiguration}
@@ -142,7 +145,7 @@ export function AppSettingsOverlays({
         configurationBusy={configurationBusy}
         configurationStatus={configurationStatus}
         onPackExport={setPickType}
-        onPackImport={pack.beginImport}
+        onSharedPackImport={pack.beginSharedImport}
         onPasteTheme={pack.pasteThemeFromClipboard}
         packBusy={pack.busy}
         packStatus={pack.status}

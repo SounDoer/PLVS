@@ -54,7 +54,7 @@ export function planLibraryExport(family, ids) {
  * is not a valid pack for this family; its message is written for a person who received a shared
  * file and is passed through verbatim.
  *
- * @returns {{ changed: boolean, writes: string[], plan: { items: object[],
+ * @returns {{ changed: boolean, writes: string[], warnings: object[], plan: { items: object[],
  *   loudnessProfiles: object[] }, commit: () => void }} `commit` performs the append; a dry run
  *   simply never calls it. `writes` names the families `commit` will actually write.
  */
@@ -80,6 +80,7 @@ export function planLibraryImport(family, raw) {
   return {
     changed: writes.length > 0,
     writes,
+    warnings: planned.warnings,
     plan: {
       items: planned.itemPlan,
       loudnessProfiles: planned.profilePlan,
