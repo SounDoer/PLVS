@@ -76,6 +76,13 @@ function writeFixtureSource(directory) {
 }
 
 describe("Community static site generator", () => {
+  it("is part of release-bound landing site assembly", () => {
+    const workflow = readFileSync(join(".github", "workflows", "deploy-landing.yml"), "utf8");
+    expect(workflow).toContain(
+      "node scripts/build-community-site.mjs community/catalogue _site/community"
+    );
+  });
+
   it("builds useful empty browse pages", async () => {
     const source = temporaryDirectory("plvs-community-empty-");
     const output = temporaryDirectory("plvs-community-output-");

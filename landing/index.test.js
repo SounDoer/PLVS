@@ -21,6 +21,10 @@ describe("landing page navigation", () => {
   test("links to the docs subpage from the nav", () => {
     expect(html).toContain('href="docs/"');
   });
+
+  test("links to the generated Community Catalogue", () => {
+    expect(html).toContain('href="community/"');
+  });
 });
 
 describe("landing page assets", () => {

@@ -56,7 +56,7 @@ Gate: one source tree either produces a complete normalized catalogue or fails b
       compatibility facets.
 - [x] Show content summary, dependencies, compatibility, attribution, size/hash, download/install
       instructions, previews, and Release history.
-- [ ] Add responsive, accessible empty/no-result states and navigation from the existing landing
+- [x] Add responsive, accessible empty/no-result states and navigation from the existing landing
       and docs pages.
 
 Gate: generated pages work with JavaScript disabled for navigation and core content; JavaScript
@@ -64,8 +64,8 @@ only enhances search and filtering.
 
 ## Phase 4 — Build and deployment isolation
 
-- [ ] Generate Catalogue output during site assembly without committing derived pages or metadata.
-- [ ] Test the site against a fixture content repository and the default local source.
+- [x] Generate Catalogue output during site assembly without committing derived pages or metadata.
+- [x] Test the site against a fixture content repository and the default local source.
 - [ ] Add an independent content deployment path that cannot accidentally publish unreleased
       desktop documentation or marketing changes.
 - [ ] Preserve the same builder invocation when the content directory moves to another checkout.

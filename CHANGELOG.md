@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   isolated copies of their validated downloads and previews. Optional client-side search and
   machine-derived filters enhance the fully navigable static pages; detail pages include verified
   facts, compatibility, dependencies, install guidance, previews, and Release history.
+- Release-bound website assembly now generates the Community Catalogue and links it from the landing
+  page and user guide navigation without committing derived pages.
 - Loudness Profile exports now use strict Pack V2 portable documents. Incomplete rules, empty
   Profiles, invalid IDs, and empty exports are refused instead of being silently omitted; existing
   Pack V1 `.plvsloudness` files remain importable.
