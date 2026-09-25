@@ -99,6 +99,8 @@ describe("Community static site generator", () => {
     const detail = readFileSync(join(output, "loudness", "broadcast-safe", "index.html"), "utf8");
     expect(root).toContain("Broadcast Safe");
     expect(root).toContain("/community/loudness/broadcast-safe/");
+    expect(root).toContain("data-catalogue-search");
+    expect(root).toContain('data-metric="truePeak"');
     expect(detail).toContain("Designed for <strong>broadcast delivery</strong>.");
     expect(detail).toContain("Example Author");
     expect(detail).toContain("Download Release 1");

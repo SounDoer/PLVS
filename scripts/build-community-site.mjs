@@ -26,6 +26,7 @@ function page(title, description, body) {
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
     <link rel="stylesheet" href="/assets/community.css" />
+    <script type="module" src="/assets/community.js"></script>
   </head>
   <body>
     <nav class="nav" aria-label="Main navigation">
@@ -57,11 +58,26 @@ function latestPublished(listing) {
 
 function card(listing) {
   const release = latestPublished(listing);
+  const facets = release?.metadata.facets ?? {};
   const preview = release?.previews[0];
   const previewUrl = preview
     ? `/community/files/${listing.id}/v${release.number}/${preview.id}.png`
     : null;
-  return `<article class="card">
+  const searchText = [listing.title, listing.summary, listing.descriptionMarkdown, ...listing.tags]
+    .join(" ")
+    .toLocaleLowerCase("en-US");
+  const attributes = {
+    search: searchText,
+    type: listing.type,
+    module: (facets.moduleIds ?? []).join("|"),
+    metric: (facets.metricIds ?? []).join("|"),
+    scheme: facets.themeScheme ?? "",
+    feature: (facets.optionalCapabilities ?? []).join("|"),
+    dependency: (facets.dependencyIds ?? []).join("|"),
+  };
+  return `<article class="card" ${Object.entries(attributes)
+    .map(([key, value]) => `data-${key}="${escapeHtml(value)}"`)
+    .join(" ")}>
     <a class="card-media" href="/community/${listing.type}/${listing.slug}/" aria-label="View ${escapeHtml(listing.title)}">
       ${previewUrl ? `<img src="${escapeHtml(previewUrl)}" alt="" loading="lazy" />` : `<span>${FAMILIES[listing.type].singular}</span>`}
     </a>
@@ -72,6 +88,34 @@ function card(listing) {
       <div class="tags">${listing.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
     </div>
   </article>`;
+}
+
+function facetValues(listings, key) {
+  return [
+    ...new Set(
+      listings.flatMap((listing) => {
+        const value = latestPublished(listing)?.metadata.facets?.[key];
+        return Array.isArray(value) ? value : value ? [value] : [];
+      })
+    ),
+  ].sort((left, right) => left.localeCompare(right, "en-US"));
+}
+
+function selectFilter(name, label, values) {
+  return `<label><span>${label}</span><select data-catalogue-filter="${name}"><option value="">All</option>${values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}</select></label>`;
+}
+
+function browseControls(listings, activeType) {
+  return `<form class="browse-controls" data-catalogue-controls>
+    <label class="search"><span>Search</span><input type="search" data-catalogue-search placeholder="Search Community" /></label>
+    ${activeType === null ? selectFilter("type", "Type", Object.keys(FAMILIES)) : ""}
+    ${selectFilter("module", "Module", facetValues(listings, "moduleIds"))}
+    ${selectFilter("metric", "Metric", facetValues(listings, "metricIds"))}
+    ${selectFilter("scheme", "Theme Scheme", facetValues(listings, "themeScheme"))}
+    ${selectFilter("feature", "Feature", facetValues(listings, "optionalCapabilities"))}
+    ${selectFilter("dependency", "Dependency", facetValues(listings, "dependencyIds"))}
+    <button type="reset">Clear</button>
+  </form>`;
 }
 
 function browsePage(listings, activeType = null) {
@@ -86,9 +130,10 @@ function browsePage(listings, activeType = null) {
     `<main class="catalogue">
       <header class="hero"><p class="eyebrow">PLVS Community</p><h1>${title}</h1><p>${intro}</p></header>
       ${typeNav(activeType)}
+      ${browseControls(visible, activeType)}
       ${
         visible.length > 0
-          ? `<section class="card-grid" aria-label="${escapeHtml(title)}">${visible.map(card).join("\n")}</section>`
+          ? `<section class="card-grid" data-catalogue-grid aria-label="${escapeHtml(title)}">${visible.map(card).join("\n")}</section><section class="empty" data-catalogue-empty hidden aria-live="polite"><h2>No matching Items</h2><p>Try clearing one or more filters.</p></section>`
           : `<section class="empty"><h2>Nothing published yet</h2><p>The catalogue structure is ready. Curated releases will appear here after validation.</p></section>`
       }
     </main>`
