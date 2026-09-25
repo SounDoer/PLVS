@@ -109,9 +109,16 @@ describe("Community Catalogue metadata", () => {
     expect(metadata.facets.themeScheme).toBe("dark");
     expect(metadata.preview).toMatchObject({
       renderer: { name: "plvs-theme-gallery", version: 1 },
-      fixture: null,
+      fixture: {
+        id: "plvs-community-stereo-v1",
+        version: 1,
+        sha256: "sha256:b495d86078dc285d562709b0e8345db528f2a28977fdc3aff41070332cbc9ec3",
+      },
     });
     expect(metadata.preview.assets).toHaveLength(10);
+    expect(metadata.preview.assets.every(({ viewport }) => viewport.deviceScaleFactor === 1)).toBe(
+      true
+    );
   });
 
   it("is deterministic and never invents author-owned Listing fields", async () => {

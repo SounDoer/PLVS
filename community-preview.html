@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" data-community-preview-ready="false">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PLVS Community Preview Renderer</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        caret-color: transparent !important;
+        pointer-events: none !important;
+        transition: none !important;
+      }
+      html[data-community-preview-asset="semantic-overview"] [aria-label="Theme preview"] {
+        max-height: calc(100vh - 3rem) !important;
+        max-width: none !important;
+        width: calc(100vw - 3rem) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="community-preview-root"></div>
+    <script type="module" src="/src/community-preview/main.jsx"></script>
+  </body>
+</html>

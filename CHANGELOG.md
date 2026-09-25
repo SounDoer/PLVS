@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Generated Community previews now have a versioned result contract that binds the exact required
   PNG set to its renderer, canonical content and fixed fixture identities, dimensions, byte lengths
   and SHA-256 hashes.
+- A dedicated Community browser harness renders validated Profiles, Presets and Themes through the
+  production editor, Stats, Workspace, Dock and Theme components with fixed data, no Tauri boot,
+  persistence or network access, and an explicit font/frame/canvas readiness barrier.
 - Community Catalogue source validation now opens every Release through PLVS's stable publication
   contract, derives immutable metadata from the exact artifact bytes, and seals the exact required
   generated PNG preview set without accepting publisher-selected screenshots.

@@ -28,11 +28,14 @@ describe("community Theme preview contract", () => {
       generatorSource: "plvs",
       acceptsPublisherMedia: false,
       interactivePreview: false,
+      fixture: expect.objectContaining({ id: "plvs-community-stereo-v1", version: 1 }),
+      fixtureHash: "sha256:b495d86078dc285d562709b0e8345db528f2a28977fdc3aff41070332cbc9ec3",
       theme: {
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         colorScheme: "dark",
         formatVersion: 1,
         semanticsVersion: 1,
+        document: expect.objectContaining({ kind: "plvs-theme", name: "Community Preview" }),
       },
       communityPublication: { eligible: true, blockers: [] },
     });
@@ -48,6 +51,7 @@ describe("community Theme preview contract", () => {
         generator: "plvs-theme-gallery",
         contractVersion: 1,
         themeContentHash: plan.theme.contentHash,
+        fixtureHash: plan.fixtureHash,
       },
     });
     expect(plan.assets.filter(({ kind }) => kind === "product")).toHaveLength(9);

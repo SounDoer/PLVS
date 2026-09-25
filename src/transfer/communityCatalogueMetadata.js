@@ -48,13 +48,18 @@ function compactPreviewPlan(type, plan) {
     return {
       contractVersion: plan.contractVersion,
       renderer: { name: plan.generator, version: plan.contractVersion },
-      fixture: null,
-      assets: plan.assets.map(({ id, kind, renderer, sceneId, format }) => ({
+      fixture: {
+        id: plan.fixture.id,
+        version: plan.fixture.version,
+        sha256: plan.fixtureHash,
+      },
+      assets: plan.assets.map(({ id, kind, renderer, sceneId, format, viewport }) => ({
         id,
         kind,
         renderer,
         ...(sceneId ? { sceneId } : {}),
         format,
+        viewport,
       })),
     };
   }

@@ -1,6 +1,24 @@
 import { assessPortableThemeCommunityPublication, hashPortableTheme } from "./portableTheme.js";
+import { COMMUNITY_PREVIEW_FIXTURE_V1 } from "../transfer/fixtures/communityPreviewV1.js";
+import { hashCommunityPreviewFixture } from "../transfer/communityPreview.js";
 
 export const COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION = 1;
+
+const SEMANTIC_VIEWPORT = Object.freeze({
+  widthCssPx: 1440,
+  heightCssPx: 1120,
+  deviceScaleFactor: 1,
+});
+const WORKSPACE_VIEWPORT = Object.freeze({
+  widthCssPx: 1280,
+  heightCssPx: 720,
+  deviceScaleFactor: 1,
+});
+const PANEL_VIEWPORT = Object.freeze({
+  widthCssPx: 720,
+  heightCssPx: 480,
+  deviceScaleFactor: 1,
+});
 
 export const COMMUNITY_THEME_PREVIEW_ASSETS = Object.freeze([
   Object.freeze({
@@ -8,6 +26,7 @@ export const COMMUNITY_THEME_PREVIEW_ASSETS = Object.freeze([
     kind: "semantic",
     renderer: "semantic-gallery",
     format: "png",
+    viewport: SEMANTIC_VIEWPORT,
   }),
   ...[
     "workspace-file",
@@ -26,6 +45,7 @@ export const COMMUNITY_THEME_PREVIEW_ASSETS = Object.freeze([
       renderer: "product-gallery",
       sceneId,
       format: "png",
+      viewport: sceneId === "workspace-file" ? WORKSPACE_VIEWPORT : PANEL_VIEWPORT,
     })
   ),
 ]);
@@ -82,17 +102,21 @@ export function validateCommunityThemePreviewRequest(raw) {
 export async function buildCommunityThemePreviewPlan(raw) {
   const { theme: assessment } = validateCommunityThemePreviewRequest(raw);
   const contentHash = await hashPortableTheme(assessment.document);
+  const fixtureHash = await hashCommunityPreviewFixture(COMMUNITY_PREVIEW_FIXTURE_V1);
   return {
     contractVersion: COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION,
     generator: "plvs-theme-gallery",
     generatorSource: "plvs",
     acceptsPublisherMedia: false,
     interactivePreview: false,
+    fixture: structuredClone(COMMUNITY_PREVIEW_FIXTURE_V1),
+    fixtureHash,
     theme: {
       contentHash,
       colorScheme: assessment.document.colorScheme,
       formatVersion: assessment.document.formatVersion,
       semanticsVersion: assessment.document.semanticsVersion,
+      document: assessment.document,
     },
     communityPublication: assessment.communityPublication,
     assets: COMMUNITY_THEME_PREVIEW_ASSETS.map((asset) => ({
@@ -101,6 +125,7 @@ export async function buildCommunityThemePreviewPlan(raw) {
         generator: "plvs-theme-gallery",
         contractVersion: COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION,
         themeContentHash: contentHash,
+        fixtureHash,
       },
     })),
   };
@@ -170,7 +195,8 @@ export function validateCommunityThemePreviewArtifacts(plan, rawArtifacts) {
       !isPlainObject(source) ||
       source.generator !== "plvs-theme-gallery" ||
       source.contractVersion !== COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION ||
-      source.themeContentHash !== plan?.theme?.contentHash
+      source.themeContentHash !== plan?.theme?.contentHash ||
+      source.fixtureHash !== plan?.fixtureHash
     ) {
       issues.push({
         code: "untrustedAssetSource",

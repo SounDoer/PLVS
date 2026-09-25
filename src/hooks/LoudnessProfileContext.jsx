@@ -492,6 +492,22 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   );
 }
 
+/** Fixed, side-effect-free Profile context for trusted visual fixtures. */
+export function LoudnessProfilePreviewProvider({ document, children }) {
+  const value = useMemo(
+    () => ({
+      document,
+      referenceLufs: document?.referenceLufs ?? null,
+      draft: null,
+      state: { active: "preview", profiles: document ? [document] : [] },
+    }),
+    [document]
+  );
+  return (
+    <LoudnessProfileContext.Provider value={value}>{children}</LoudnessProfileContext.Provider>
+  );
+}
+
 /// Throws outside the provider on purpose: a component rendered outside it would silently read a
 /// second, unshared copy of the profile, which is exactly the dock/main split this owner exists
 /// to prevent.

@@ -26,7 +26,7 @@ function sortJson(value) {
   );
 }
 
-async function hashJson(value) {
+export async function hashCommunityPreviewFixture(value) {
   const bytes = new TextEncoder().encode(JSON.stringify(sortJson(value)));
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
   return `sha256:${[...new Uint8Array(digest)]
@@ -91,7 +91,7 @@ export async function buildCommunityPreviewPlan(rawPack, type) {
     type === "loudness"
       ? await hashPortableLoudnessProfile(publication.portableItem)
       : await hashPortablePreset(publication.portableItem);
-  const fixtureHash = await hashJson(COMMUNITY_PREVIEW_FIXTURE_V1);
+  const fixtureHash = await hashCommunityPreviewFixture(COMMUNITY_PREVIEW_FIXTURE_V1);
   const dependencyItems = rawPack.dependencies?.flatMap((group) =>
     group.kind === "loudness-profile" ? group.items : []
   );

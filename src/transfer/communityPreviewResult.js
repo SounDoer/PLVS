@@ -61,7 +61,7 @@ function expectedIdentity(plan) {
     return {
       renderer: { name: plan.generator, version: plan.contractVersion },
       contentHash: plan.theme.contentHash,
-      fixtureHash: null,
+      fixtureHash: plan.fixtureHash,
     };
   }
   return null;

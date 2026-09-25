@@ -199,6 +199,28 @@ export function WorkspaceProvider({ children }) {
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 
+/**
+ * In-memory provider for trusted render fixtures. It deliberately exposes the same business
+ * actions as the real Workspace while omitting every persistence read and write.
+ */
+export function WorkspacePreviewProvider({ state: initialState, children }) {
+  const [state, dispatch] = useReducer(workspaceReducer, initialState);
+  const [hoveredPanelId, setHoveredPanelId] = useState(null);
+  const actions = useMemo(() => bindWorkspaceActions(dispatch), []);
+  const value = useMemo(
+    () => ({
+      state,
+      hoveredPanelId,
+      setHoveredPanelId,
+      waitForWorkspacePersistenceEnqueue: () => Promise.resolve(),
+      replaceWorkspace: actions.setView,
+      ...actions,
+    }),
+    [state, hoveredPanelId, actions]
+  );
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+}
+
 /** @returns {{ state: import('./types.js').WorkspaceState } & ReturnType<import('./reducer.js').bindWorkspaceActions>} */
 export function useWorkspaceStore() {
   const ctx = useContext(WorkspaceContext);

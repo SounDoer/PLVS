@@ -70,6 +70,12 @@ export default defineConfig({
     // code exactly as it ships and only emits the map beside it, so a recorded frame can be named
     // (`scripts/webview-cpu-profile.mjs --dist`).
     sourcemap: !!process.env.TAURI_DEBUG || process.env.PLVS_BUILD_SOURCEMAP === "1",
+    rollupOptions: {
+      input: {
+        index: fileURLToPath(new URL("./index.html", import.meta.url)),
+        communityPreview: fileURLToPath(new URL("./community-preview.html", import.meta.url)),
+      },
+    },
     // PLVS is a local Tauri app with one primary route; keep the warning for real growth.
     chunkSizeWarningLimit: 900,
   },

@@ -17,11 +17,11 @@ Gate: visibility, withdrawal and renderer ownership fail in tests before impleme
 
 ## Phase 2 — Browser preview harness
 
-- [ ] Add a preview-only Vite entry that cannot enter the normal desktop boot path.
-- [ ] Build fixture providers for measurement, history, Loudness Profile, Workspace and Dock state.
-- [ ] Render the production Loudness Profile editor, Stats panel, Workspace and Dock components.
-- [ ] Render portable custom Themes across the Theme semantic overview and fixed product scenes.
-- [ ] Expose explicit font/canvas/render settlement and reject interactive or network state.
+- [x] Add a preview-only Vite entry that cannot enter the normal desktop boot path.
+- [x] Build fixture providers for measurement, history, Loudness Profile, Workspace and Dock state.
+- [x] Render the production Loudness Profile editor, Stats panel, Workspace and Dock components.
+- [x] Render portable custom Themes across the Theme semantic overview and fixed product scenes.
+- [x] Expose explicit font/canvas/render settlement and reject interactive or network state.
 
 Gate: every contract asset can be inspected in a browser from a validated Pack without Tauri,
 persistence, audio hardware or external network access.
