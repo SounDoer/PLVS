@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, isAbsolute, relative, resolve, sep } from "node:path";
 import { deriveCommunityCatalogueMetadata } from "../src/transfer/communityContract.js";
@@ -143,6 +144,78 @@ async function readArtifact(path, errorPath) {
   }
 }
 
+function isPng(bytes) {
+  const signature = Buffer.from("89504e470d0a1a0a", "hex");
+  if (bytes.length < 45 || !bytes.subarray(0, signature.length).equals(signature)) return false;
+  if (bytes.readUInt32BE(8) !== 13 || bytes.toString("ascii", 12, 16) !== "IHDR") return false;
+  if (bytes.readUInt32BE(16) === 0 || bytes.readUInt32BE(20) === 0) return false;
+  return bytes.toString("ascii", bytes.length - 8, bytes.length - 4) === "IEND";
+}
+
+async function sealPreviews(root, release, metadata, listingIndex, releaseIndex) {
+  const expectedIds = metadata.preview.assets.map(({ id }) => id);
+  const receivedIds = release.previews.map(({ id }) => id);
+  const releasePath = `$.listings[${listingIndex}].releases[${releaseIndex}].previews`;
+  if (
+    expectedIds.length !== receivedIds.length ||
+    expectedIds.some((id) => !receivedIds.includes(id))
+  ) {
+    throw new CommunitySourceError([
+      issue(
+        "previewSetMismatch",
+        releasePath,
+        "Release previews must exactly match the current PLVS preview contract.",
+        { expectedIds, receivedIds }
+      ),
+    ]);
+  }
+
+  const previewsById = new Map(release.previews.map((preview) => [preview.id, preview]));
+  const sealed = [];
+  for (const id of expectedIds) {
+    const preview = previewsById.get(id);
+    const previewIndex = release.previews.indexOf(preview);
+    const errorPath = `${releasePath}[${previewIndex}].path`;
+    const filePath = resolve(root, preview.path);
+    if (!inside(root, filePath)) {
+      throw new CommunitySourceError([
+        issue("previewPathEscapesRoot", errorPath, "The preview path escapes the content root."),
+      ]);
+    }
+    let bytes;
+    try {
+      bytes = await readFile(filePath);
+    } catch (error) {
+      throw new CommunitySourceError([
+        issue("missingPreview", errorPath, "The required generated preview is missing.", {
+          path: preview.path,
+          cause: error instanceof Error ? error.code : null,
+        }),
+      ]);
+    }
+    if (!isPng(bytes)) {
+      throw new CommunitySourceError([
+        issue("invalidPreviewPng", errorPath, "The preview must be a structurally valid PNG.", {
+          path: preview.path,
+        }),
+      ]);
+    }
+    sealed.push({
+      ...preview,
+      mediaType: "image/png",
+      byteLength: bytes.byteLength,
+      sha256: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+      source: {
+        renderer: metadata.preview.renderer,
+        contractVersion: metadata.preview.contractVersion,
+        itemContentHash: metadata.content.contentHash,
+        fixtureHash: metadata.preview.fixture?.sha256 ?? null,
+      },
+    });
+  }
+  return sealed;
+}
+
 function prefixedIssues(error, path, details) {
   if (!Array.isArray(error?.issues)) return null;
   return error.issues.map((entry) => ({
@@ -190,7 +263,8 @@ async function resolveReleases(root, listing, listingIndex) {
       ...metadata,
       artifact: { ...metadata.artifact, fileName: basename(sourcePath) },
     };
-    releases.push({ ...release, metadata });
+    const previews = await sealPreviews(root, release, metadata, listingIndex, releaseIndex);
+    releases.push({ ...release, previews, metadata });
   }
   return releases;
 }
@@ -201,7 +275,7 @@ export async function readCommunitySource(contentDirectory) {
   if (!inside(root, manifestPath)) throw new Error("Resolved manifest escaped the content root.");
   const manifest = validateCommunitySourceManifest(await readJson(manifestPath, "$"));
   const listings = [];
-  const identities = { id: new Map(), slug: new Map(), artifact: new Map() };
+  const identities = { id: new Map(), slug: new Map(), artifact: new Map(), preview: new Map() };
   for (const [index, relativePath] of manifest.listings.entries()) {
     const path = resolve(root, relativePath);
     if (!inside(root, path)) {
@@ -247,6 +321,21 @@ export async function readCommunitySource(contentDirectory) {
           ]);
         }
         identities.artifact.set(key, relativePath);
+        for (const [previewIndex, preview] of release.previews.entries()) {
+          const previewKey = preview.path.toLocaleLowerCase("en-US");
+          const previewFirst = identities.preview.get(previewKey);
+          if (previewFirst != null) {
+            throw new CommunitySourceError([
+              issue(
+                "duplicatePreviewPath",
+                `$.listings[${index}].releases[${releaseIndex}].previews[${previewIndex}].path`,
+                `Each generated preview must have a distinct path: ${preview.path}.`,
+                { sourcePath: relativePath, firstSourcePath: previewFirst }
+              ),
+            ]);
+          }
+          identities.preview.set(previewKey, relativePath);
+        }
       }
       const releases = await resolveReleases(root, document, index);
       listings.push({ sourcePath: relativePath, document: { ...document, releases } });

@@ -23,3 +23,8 @@ Validation opens every Release artifact through PLVS's stable Community contract
 slugs, and artifact paths must be unique; the file must be canonical UTF-8 Pack V2 content whose
 actual Item family matches the Listing. Machine-owned hashes, compatibility facts, facets, and
 preview requirements are derived from those bytes rather than copied into Listing JSON.
+
+Every Release must reference exactly the preview IDs required by that derived contract. The source
+validator rejects missing or additional slots, checks the PNG structure, and seals each image's
+exact byte length and SHA-256 hash. Preview generation remains a PLVS-owned curator/CI operation;
+the Listing format has no publisher-selected cover image or screenshot field.

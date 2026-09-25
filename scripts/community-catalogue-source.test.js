@@ -11,6 +11,10 @@ import {
 import { validateCommunitySourceDirectory } from "./validate-community-source.mjs";
 
 const temporaryDirectories = [];
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64"
+);
 const PROFILE = {
   id: "broadcast",
   name: "Broadcast",
@@ -20,6 +24,20 @@ const PROFILE = {
 
 function artifact() {
   return `${JSON.stringify(buildPack("loudness", [PROFILE]), null, 2)}\n`;
+}
+
+function previewRecords(prefix = "previews/example") {
+  return [
+    { id: "profile-summary", path: `${prefix}/profile-summary.png` },
+    { id: "profile-stats-example", path: `${prefix}/profile-stats-example.png` },
+  ];
+}
+
+function writePreviews(directory, records = previewRecords()) {
+  for (const preview of records) {
+    mkdirSync(join(directory, preview.path, ".."), { recursive: true });
+    writeFileSync(join(directory, preview.path), PNG);
+  }
 }
 
 function temporarySource() {
@@ -75,12 +93,13 @@ describe("Community Catalogue source boundary", () => {
             status: "published",
             notesMarkdown: "Initial release.",
             artifact: "artifacts/example.plvsloudness",
-            previews: [],
+            previews: previewRecords(),
           },
         ],
       })
     );
     writeFileSync(join(directory, "artifacts", "example.plvsloudness"), artifact());
+    writePreviews(directory);
 
     await expect(readCommunitySource(directory)).resolves.toMatchObject({
       manifest: { schemaVersion: 1, listings: ["listings/example.json"] },
@@ -95,11 +114,63 @@ describe("Community Catalogue source boundary", () => {
                 metadata: expect.objectContaining({
                   content: expect.objectContaining({ type: "loudness", itemId: "broadcast" }),
                 }),
+                previews: [
+                  expect.objectContaining({
+                    id: "profile-summary",
+                    mediaType: "image/png",
+                    sha256: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+                  }),
+                  expect.objectContaining({ id: "profile-stats-example" }),
+                ],
               }),
             ],
           }),
         },
       ],
+    });
+  });
+
+  it("requires the exact generated preview set and valid PNG bytes", async () => {
+    const directory = temporarySource();
+    writeFileSync(
+      join(directory, "manifest.json"),
+      JSON.stringify({ schemaVersion: 1, listings: ["listing.json"] })
+    );
+    const listing = {
+      schemaVersion: 1,
+      id: "example",
+      slug: "example",
+      type: "loudness",
+      classification: "community",
+      title: "Example",
+      summary: "An example.",
+      descriptionMarkdown: "Fixture.",
+      tags: [],
+      author: null,
+      releases: [
+        {
+          number: 1,
+          publishedAt: "2026-09-25",
+          status: "published",
+          notesMarkdown: "Initial.",
+          artifact: "example.plvsloudness",
+          previews: [{ id: "profile-summary", path: "summary.png" }],
+        },
+      ],
+    };
+    writeFileSync(join(directory, "listing.json"), JSON.stringify(listing));
+    writeFileSync(join(directory, "example.plvsloudness"), artifact());
+    writeFileSync(join(directory, "summary.png"), PNG);
+    await expect(readCommunitySource(directory)).rejects.toMatchObject({
+      issues: [expect.objectContaining({ code: "previewSetMismatch" })],
+    });
+
+    listing.releases[0].previews = previewRecords();
+    writeFileSync(join(directory, "listing.json"), JSON.stringify(listing));
+    writePreviews(directory);
+    writeFileSync(join(directory, listing.releases[0].previews[0].path), "not a png");
+    await expect(readCommunitySource(directory)).rejects.toMatchObject({
+      issues: [expect.objectContaining({ code: "invalidPreviewPng" })],
     });
   });
 
@@ -179,11 +250,12 @@ describe("Community Catalogue source boundary", () => {
           status: "published",
           notesMarkdown: "Initial.",
           artifact: artifactPath,
-          previews: [],
+          previews: previewRecords(`${id}-previews`),
         },
       ],
     });
     writeFileSync(join(directory, "shared.plvsloudness"), artifact());
+    writePreviews(directory, previewRecords("same-previews"));
     writeFileSync(
       join(directory, "one.json"),
       JSON.stringify(listing("same", "one", "shared.plvsloudness"))

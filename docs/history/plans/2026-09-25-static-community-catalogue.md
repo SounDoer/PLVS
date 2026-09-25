@@ -44,7 +44,7 @@ source; no website module depends on the repository-relative default.
 - [x] Validate free tags, restricted Markdown, stable IDs/slugs, monotonic releases, safe paths,
       and Official/Community classification.
 - [x] Resolve every Release artifact through `communityContract.js` and reject metadata drift.
-- [ ] Seal required generated previews and reject publisher-controlled primary screenshots.
+- [x] Seal required generated previews and reject publisher-controlled primary screenshots.
 
 Gate: one source tree either produces a complete normalized catalogue or fails before output.
 
