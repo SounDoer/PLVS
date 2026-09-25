@@ -198,6 +198,11 @@ describe("Immutable Windows Preview Build", () => {
     expect(previewBuildWorkflow).toContain("--draft");
     expect(previewBuildWorkflow).toContain("--prerelease");
     expect(previewBuildWorkflow).toContain("--draft=false --prerelease --latest=false");
+    expect(previewBuildWorkflow).toContain("--json targetCommitish");
+    expect(previewBuildWorkflow).toContain("Draft ${TAG} moved away from the tested commit");
+    expect(previewBuildWorkflow).not.toContain(
+      'gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}"'
+    );
     expect(previewBuildWorkflow).toContain("gh release verify");
     expect(previewBuildWorkflow).toContain(".immutable");
     expect(previewBuildWorkflow).toContain(".[10:][] | .tag_name");
