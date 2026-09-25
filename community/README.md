@@ -17,6 +17,7 @@ Validate this source boundary with:
 ```text
 npm run community:source:check
 npm run community:source:check -- path/to/external/catalogue
+npm run community:update:check -- path/to/published/catalogue path/to/candidate/catalogue
 npm run community:site -- path/to/external/catalogue path/to/output/community
 ```
 
