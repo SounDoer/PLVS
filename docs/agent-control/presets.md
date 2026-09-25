@@ -230,13 +230,21 @@ Preset Apply distinguishes a resource that has a safe fallback from a current-mo
   size and are re-centered on the monitor instead.
 - A platform without Dock support drops the saved Dock state, applies the rest of the Preset, and
   produces `dockUnsupported`.
+- A platform that cannot reserve screen space keeps Dock in overlay mode and produces
+  `dockReserveSpaceUnsupported`; unsupported Glass is disabled with `glassUnsupported`.
+- Saved Spectrum, Spectrogram, Vectorscope, and Stereo Map channel selections are clamped to the
+  current channel topology and produce `channelSelectionAdapted` for each affected Panel.
+- When the runtime supplies a Dock width constraint, preferred widths beyond it produce
+  `dockPreferredWidthConstrained`; the authoring preference remains saved while the rendered strip
+  uses the effective available width.
 - FILE mode is different: both direct Dock entry and a Preset that requires Dock are refused. Preset
   Apply reports the existing shared contract `code: fileModeActive`, `reason: fileMode`, and
   `operation: preset.apply`, and the preflight refusal has no side effects.
 
-Warnings report both requested and effective values where applicable. Agent Control must preserve
-the structured scene-refusal error from the shared controller rather than collapsing it into the
-GUI-facing boolean result.
+Warnings carry a JSON `path` and report both requested and effective values where applicable. The
+effective Preset is applied only to the current scene; these adaptations never rewrite the saved
+Library entry. Agent Control must preserve the structured scene-refusal error from the shared
+controller rather than collapsing it into the GUI-facing boolean result.
 
 ## No-op semantics
 

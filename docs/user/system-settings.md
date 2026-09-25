@@ -80,6 +80,15 @@ and the future Community catalogue. Every exported rule must have a threshold, a
 contain a reference or at least one complete rule; PLVS reports an export error instead of silently
 dropping unfinished content. Older `.plvsloudness` files remain importable.
 
+New Preset exports use the same strict sharing boundary. A `.plvspreset` file carries the public
+Workspace layout, module controls and axes, presentation choices, and Dock layout without local
+panel IDs, monitor identity, window position, source/device selection, measurements, or history.
+If a Preset selects a custom Loudness Profile, the file bundles that Profile as a dependency and
+keeps the reference attached when both are imported. Import adds the content to the Library but
+does not apply it. When you later apply the Preset, PLVS adapts optional Dock, reserved-space,
+Glass, display-size, and channel choices to the current machine without rewriting the saved Library
+item. Older Preset pack files remain importable.
+
 With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
 Profile, or Preset does not silently replace the snapshot already active in another workbench; that
 workbench keeps measuring with its current snapshot until you explicitly apply a selection.

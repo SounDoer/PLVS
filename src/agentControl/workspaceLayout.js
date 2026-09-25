@@ -67,6 +67,7 @@ function effectivePublicWeights(sizes, childCount) {
 }
 
 function serializeNode(node) {
+  if (node === null) return null;
   if (node.type === "leaf") {
     if (node.tabs.length === 1) {
       return { type: "panel", panelId: node.tabs[0] };

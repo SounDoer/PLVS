@@ -88,16 +88,18 @@ revision, and writes no persistence.
 ```
 
 The abbreviated `core` and `palettes` objects above show the envelope only; real exports contain
-every required literal color and intensity stop. Theme and Loudness Profile Pack V2 use the shared
-Pack V2 envelope: only `app`, `kind`, `version`, an optional
-`createdWith: { "appVersion" }`, a non-empty `items` list, and a `dependencies` list that is always
-empty for these families; there is no `exportedAt`. Each item is a portable `plvs-theme` or
-`plvs-loudness-profile` document plus its `id`, which is merge metadata and not part of content
-identity. Theme items carry no palette `presetId`; Loudness Profile items require every rule
-threshold and cannot be semantically empty. Exporting an empty or invalid library fails with
-`themeNotExportable` or `loudnessProfileNotExportable`, because Pack V2 cannot be empty or lossy.
-Pack V1 remains accepted on import; new Theme and Loudness Profile exports use V2. Preset packs
-remain V1.
+every required literal color and intensity stop. All three libraries use the shared Pack V2
+envelope: only `app`, `kind`, `version`, an optional `createdWith: { "appVersion" }`, a non-empty
+`items` list, and a `dependencies` list; there is no `exportedAt`. Dependencies are empty for Theme
+and Loudness Profile packs. Each item is a portable `plvs-theme`, `plvs-loudness-profile`, or
+`plvs-preset` document plus its `id`, which is merge metadata and not part of content identity.
+Theme items carry no palette `presetId`; Loudness Profile items require every rule threshold and
+cannot be semantically empty. Preset items carry public layout, control, axis, presentation, and
+Dock meaning under artefact-local panel keys. A Preset pack may carry one `loudness-profile`
+dependency group containing the Profiles its Preset items reference. Exporting an empty or invalid
+library fails with `themeNotExportable`, `loudnessProfileNotExportable`, or
+`presetNotExportable`, because Pack V2 cannot be empty or lossy. Pack V1 remains accepted on import;
+all new library exports use V2.
 
 All Pack imports are bounded before mutation. Encoded files may be at most 2 MiB and nesting depth
 is limited to 32. Pack V2 permits at most 256 primary Items; limit failures return path-addressed
@@ -114,6 +116,11 @@ placed the stored `{ id, name, referenceLufs, rules }` record directly in `items
 persistence normalizer. V2 adds the portable Item `kind`, `formatVersion` and `semanticsVersion`,
 removes `exportedAt`, requires `dependencies: []`, and fails instead of dropping incomplete rules or
 empty Profiles.
+
+PLVS 0.17 and earlier also returned Preset Pack V1 from `preset export`. V1 placed persisted Preset
+snapshots directly in `items`, used a special top-level `loudnessProfiles` list, and included
+machine-local panel IDs and host state. V2 uses portable Preset items, replaces the special field
+with the dependency group, and excludes host-only and transient state.
 
 `--all` and `--ids` are mutually exclusive on the CLI and exactly one is required. On the wire the
 whole-library form is the **absence** of `ids`, not `ids: null`: the parameter validator accepts
@@ -219,11 +226,10 @@ selection, and a command touching both Settings and Themes advances the one glob
 once.
 
 An import whose every item is `skipped` is a successful no-op: `changed: false`, no revision
-increment, no persistence write. Theme and Loudness Profile Pack V2 import are strict: if any Item
-is unreadable, incompatible, incomplete, or duplicated by `id` within the file, or if a V2 envelope
-has unknown fields, no items, or non-empty `dependencies`, the complete import fails with
-`invalidPack` and nothing is added. Their Pack V1 imports retain the former tolerant normalization
-behavior. Preset packs retain their existing V1 behavior.
+increment, no persistence write. Pack V2 import is strict: if any Item or dependency is unreadable,
+incompatible, incomplete, duplicated by `id` within its list, or unresolved, or if the envelope has
+unknown fields or no primary items, the complete import fails with `invalidPack` and nothing is
+added. Pack V1 imports retain the former tolerant normalization behavior.
 
 A dry run and a no-op both return the revision from _before_ the request, and neither flushes
 persistence, because both return before any write exists to persist. The returned revision is never
@@ -257,6 +263,9 @@ This family reuses the existing envelope and codes and adds these semantic reaso
 - `loudnessProfileNotExportable` — the export would be an empty or invalid Loudness Profile Pack V2,
   including an incomplete rule or semantically empty Profile. `details.issues` lists the problems.
   Exit code 3.
+- `presetNotExportable` — the export would be an empty or invalid Preset Pack V2, including an
+  unresolved Loudness Profile dependency or unsupported portable content. `details.issues` lists
+  the problems. Exit code 3.
 - `invalidPack` — the document is not a valid pack for this family. The message is the one written
   for a person who received a shared file, and distinguishes "not a PLVS file", a whole
   configuration file, another library's file, a missing version, and a file made by a newer version

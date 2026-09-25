@@ -35,6 +35,10 @@ function workspace(overrides = {}) {
 }
 
 describe("serializeWorkspaceLayout", () => {
+  it("serializes an empty Workspace", () => {
+    expect(serializeWorkspaceLayout({ tree: null })).toBeNull();
+  });
+
   it("serializes a single-tab leaf as an existing panel reference", () => {
     expect(serializeWorkspaceLayout(workspace())).toEqual({
       type: "panel",

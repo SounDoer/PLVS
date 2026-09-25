@@ -3,6 +3,7 @@ import {
   PACK_KINDS,
   PACK_VERSION,
   LOUDNESS_PACK_VERSION,
+  PRESET_PACK_VERSION,
   THEME_PACK_VERSION,
   PackValidationError,
   buildPack,
@@ -13,6 +14,7 @@ import {
 import { MAX_PACK_BYTES } from "./packV2.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { themeToPortable } from "../theme/portableTheme.js";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 
 describe("buildPack", () => {
   it("stamps the envelope for a loudness pack", () => {
@@ -45,7 +47,13 @@ describe("buildPack", () => {
   });
 
   it("carries referenced profiles on a preset pack and omits unreferenced ones", () => {
-    const preset = { id: "p1", name: "P1", loudnessProfileActive: "profile:a", tree: null };
+    const preset = {
+      id: "p1",
+      name: "P1",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      loudnessProfileActive: "profile:a",
+      dock: { enabled: false },
+    };
     const profiles = [
       { id: "a", name: "A", referenceLufs: -23, rules: [] },
       { id: "b", name: "B", referenceLufs: -16, rules: [] },
@@ -54,7 +62,11 @@ describe("buildPack", () => {
       exportedAt: "x",
       loudnessProfiles: profiles,
     });
-    expect(pack.loudnessProfiles.map((p) => p.id)).toEqual(["a"]);
+    expect(pack.version).toBe(PRESET_PACK_VERSION);
+    expect(pack.dependencies).toHaveLength(1);
+    expect(pack.dependencies[0].kind).toBe("loudness-profile");
+    expect(pack.dependencies[0].items.map((p) => p.id)).toEqual(["a"]);
+    expect(pack).not.toHaveProperty("loudnessProfiles");
   });
 
   it("omits the loudnessProfiles field on non-preset kinds", () => {
@@ -257,6 +269,77 @@ describe("parsePack", () => {
         issues: expect.arrayContaining([
           expect.objectContaining({ code: "incompleteRule", path: "$.items[0].rules[0].value" }),
           expect.objectContaining({ code: "duplicateProfileId", path: "$.items[1].id" }),
+        ]),
+      })
+    );
+  });
+
+  it("round-trips Preset Pack V2 with a strict Loudness Profile dependency", () => {
+    const profile = { id: "broadcast", name: "Broadcast", referenceLufs: -23, rules: [] };
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "profile:broadcast",
+    };
+    const pack = buildPack("presets", [preset], { loudnessProfiles: [profile] });
+    expect(pack).toMatchObject({
+      kind: "preset-pack",
+      version: PRESET_PACK_VERSION,
+      dependencies: [{ kind: "loudness-profile" }],
+    });
+    const parsed = parsePack(pack, "presets");
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.items[0]).toMatchObject({
+      id: "mix",
+      name: "Mix",
+      loudnessProfileActive: "profile:broadcast",
+    });
+    expect(parsed.loudnessProfiles).toEqual([profile]);
+  });
+
+  it("rejects a Portable Preset whose declared dependency is not bundled", () => {
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const pack = buildPack("presets", [preset]);
+    pack.items[0].loudnessProfile.dependencyId = "missing";
+    expect(() => parsePack(pack, "presets")).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: "missingDependency",
+            path: "$.items[0].loudnessProfile.dependencyId",
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("rejects a bundled Loudness Profile that no Portable Preset references", () => {
+    const profile = { id: "broadcast", name: "Broadcast", referenceLufs: -23, rules: [] };
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "profile:broadcast",
+    };
+    const pack = buildPack("presets", [preset], { loudnessProfiles: [profile] });
+    pack.items[0].loudnessProfile.dependencyId = null;
+
+    expect(() => parsePack(pack, "presets")).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: "unusedDependency",
+            path: "$.dependencies[0].items[0].id",
+          }),
         ]),
       })
     );

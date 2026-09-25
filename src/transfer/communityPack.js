@@ -8,11 +8,16 @@ import {
 } from "../theme/portableTheme.js";
 import { PackValidationError, packDescriptor, parsePack } from "./packShape.js";
 import { PACK_V2_VERSION, packIssue, prefixPackIssues } from "./packV2.js";
+import { assessPortablePresetCommunityPublication, PortablePresetError } from "./portablePreset.js";
 
 const ASSESSORS = {
   loudness: {
     errorType: PortableLoudnessProfileError,
     assess: assessPortableLoudnessProfileCommunityPublication,
+  },
+  presets: {
+    errorType: PortablePresetError,
+    assess: assessPortablePresetCommunityPublication,
   },
   themes: {
     errorType: PortableThemeError,
@@ -57,9 +62,14 @@ export function validatePublishablePack(raw, expectedType) {
   }
 
   const { id: _id, ...portableItem } = raw.items[0];
+  const dependencyIds = (raw.dependencies ?? []).flatMap((group) =>
+    group?.kind === "loudness-profile" && Array.isArray(group.items)
+      ? group.items.map(({ id }) => id)
+      : []
+  );
   let assessment;
   try {
-    assessment = family.assess(portableItem);
+    assessment = family.assess(portableItem, { dependencyIds });
   } catch (error) {
     if (!(error instanceof family.errorType)) throw error;
     throw new PackValidationError("The primary Item is not publishable.", [
@@ -77,6 +87,19 @@ export function validatePublishablePack(raw, expectedType) {
           blocker.message ?? "The Item does not pass Community publication policy.",
           { blocker }
         )
+      ),
+    ]);
+  }
+
+  const usedDependencies = new Set(assessment.compatibility?.dependencyIds ?? []);
+  const unusedDependencies = dependencyIds.filter((id) => !usedDependencies.has(id));
+  if (unusedDependencies.length > 0) {
+    throw new PackValidationError("A Community release cannot carry unused dependencies.", [
+      packIssue(
+        "unusedDependency",
+        "$.dependencies",
+        "Every bundled dependency must be referenced by the primary Item.",
+        { dependencyIds: unusedDependencies }
       ),
     ]);
   }

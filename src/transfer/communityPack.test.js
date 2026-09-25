@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
-import { buildPack, PackValidationError } from "./packShape.js";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
+import { buildPack } from "./packShape.js";
 import { validatePublishablePack } from "./communityPack.js";
 
 const PROFILE = {
@@ -59,12 +60,41 @@ describe("Community Pack publication validation", () => {
     );
   });
 
-  it("keeps Preset publication closed until Portable Preset V1 lands", () => {
-    expect(() =>
-      validatePublishablePack(
-        { app: "PLVS", kind: "preset-pack", version: 2, items: [{}], dependencies: [] },
-        "presets"
-      )
-    ).toThrow(PackValidationError);
+  it("publishes a strict Portable Preset and its referenced dependency", () => {
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "profile:broadcast",
+    };
+    const pack = buildPack("presets", [preset], { loudnessProfiles: [PROFILE] });
+    expect(validatePublishablePack(pack, "presets")).toMatchObject({
+      type: "presets",
+      portableItem: { kind: "plvs-preset", name: "Mix" },
+      assessment: {
+        compatibility: { dependencyIds: ["broadcast"] },
+        communityPublication: { eligible: true, blockers: [] },
+      },
+    });
+  });
+
+  it("rejects unused Community dependencies", () => {
+    const preset = {
+      id: "mix",
+      name: "Mix",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "off",
+    };
+    const pack = buildPack("presets", [preset]);
+    pack.dependencies = [
+      { kind: "loudness-profile", items: [buildPack("loudness", [PROFILE]).items[0]] },
+    ];
+    expect(() => validatePublishablePack(pack, "presets")).toThrowError(
+      expect.objectContaining({
+        issues: [expect.objectContaining({ code: "unusedDependency" })],
+      })
+    );
   });
 });

@@ -22,6 +22,7 @@ import {
   themeToPortable,
 } from "../theme/portableTheme.js";
 import { normalizeThemeId } from "../theme/themeSchema.js";
+import { PortablePresetError, portableToStoredPreset, presetToPortable } from "./portablePreset.js";
 import {
   collectPackResourceIssues,
   collectPackV2EnvelopeIssues,
@@ -38,6 +39,7 @@ import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 export const PACK_APP = "PLVS";
 export const PACK_VERSION = 1;
 export const LOUDNESS_PACK_VERSION = 2;
+export const PRESET_PACK_VERSION = 2;
 export const THEME_PACK_VERSION = 2;
 
 function normalizePresetEntry(raw) {
@@ -68,6 +70,7 @@ export const PACK_KINDS = {
     filterName: "PLVS Presets",
     defaultBaseName: "plvs-presets",
     normalizeItem: normalizePresetEntry,
+    version: PRESET_PACK_VERSION,
   },
   themes: {
     type: "themes",
@@ -132,6 +135,62 @@ export function buildPack(
       version: descriptor.version,
       items: portableItems,
       dependencies: [],
+    };
+  }
+  if (type === "presets") {
+    const sourceItems = Array.isArray(items) ? items : [];
+    if (sourceItems.length === 0) {
+      throw new PackValidationError("There are no Presets to export.", [
+        issue("emptyItems", "$.items", "A Preset pack needs at least one item."),
+      ]);
+    }
+    const profiles = Array.isArray(loudnessProfiles) ? loudnessProfiles : [];
+    const portableItems = sourceItems.map((item, index) => {
+      const id = normalizePortableItemId(item?.id);
+      if (!id) {
+        throw new PackValidationError("A Preset selected for export has an invalid ID.", [
+          issue("invalidPresetId", `$.items[${index}].id`, "The Preset ID is invalid."),
+        ]);
+      }
+      try {
+        return { id, ...presetToPortable(item, { loudnessProfiles: profiles }) };
+      } catch (error) {
+        if (!(error instanceof PortablePresetError)) throw error;
+        throw new PackValidationError("A Preset selected for export is invalid.", [
+          ...prefixIssues(error.issues, `$.items[${index}]`),
+        ]);
+      }
+    });
+    const wanted = referencedProfileIds(sourceItems);
+    const dependencyItems = profiles
+      .filter((profile) => wanted.has(profile.id))
+      .map((profile, index) => {
+        const id = normalizePortableItemId(profile?.id);
+        if (!id) {
+          throw new PackValidationError("A bundled Loudness Profile has an invalid ID.", [
+            issue(
+              "invalidProfileId",
+              `$.dependencies[0].items[${index}].id`,
+              "The Loudness Profile ID is invalid."
+            ),
+          ]);
+        }
+        try {
+          return { id, ...loudnessProfileToPortable(profile) };
+        } catch (error) {
+          if (!(error instanceof PortableLoudnessProfileError)) throw error;
+          throw new PackValidationError("A bundled Loudness Profile is invalid.", [
+            ...prefixIssues(error.issues, `$.dependencies[0].items[${index}]`),
+          ]);
+        }
+      });
+    return {
+      app: PACK_APP,
+      kind: descriptor.kind,
+      version: descriptor.version,
+      items: portableItems,
+      dependencies:
+        dependencyItems.length > 0 ? [{ kind: "loudness-profile", items: dependencyItems }] : [],
     };
   }
   if (type === "themes") {
@@ -271,6 +330,66 @@ function parsePortableThemeItems(raw) {
   return parsed.items;
 }
 
+function parsePortablePresetItems(raw) {
+  const issues = collectPackV2EnvelopeIssues(raw, {
+    allowedDependencyKind: "loudness-profile",
+  });
+  const dependencyGroupIndex = Array.isArray(raw.dependencies)
+    ? raw.dependencies.findIndex((group) => group?.kind === "loudness-profile")
+    : -1;
+  const dependencyGroup = dependencyGroupIndex >= 0 ? raw.dependencies[dependencyGroupIndex] : null;
+  const dependencyItemsPath =
+    dependencyGroupIndex >= 0
+      ? `$.dependencies[${dependencyGroupIndex}].items`
+      : "$.dependencies[0].items";
+  const profiles = parsePackV2Items(raw, {
+    entryLabel: "Loudness Profile dependency",
+    invalidEntryCode: "invalidProfileEntry",
+    invalidIdCode: "invalidProfileId",
+    duplicateIdCode: "duplicateProfileId",
+    convert: portableToStoredLoudnessProfile,
+    items: dependencyGroup?.items ?? [],
+    itemsPath: dependencyItemsPath,
+  });
+  issues.push(...profiles.issues);
+  const dependencyIds = new Set(profiles.items.map(({ id }) => id));
+  const presets = parsePackV2Items(raw, {
+    entryLabel: "Preset",
+    invalidEntryCode: "invalidPresetEntry",
+    invalidIdCode: "invalidPresetId",
+    duplicateIdCode: "duplicatePresetId",
+    convert(document, id) {
+      return portableToStoredPreset(document, id, {
+        resolveDependencyId: (dependencyId) =>
+          dependencyIds.has(dependencyId) ? dependencyId : null,
+      });
+    },
+  });
+  issues.push(...presets.issues);
+  const referencedDependencyIds = new Set(
+    Array.isArray(raw.items)
+      ? raw.items
+          .map((item) => item?.loudnessProfile?.dependencyId)
+          .filter((id) => typeof id === "string")
+      : []
+  );
+  profiles.items.forEach((profile, index) => {
+    if (!referencedDependencyIds.has(profile.id)) {
+      issues.push(
+        issue(
+          "unusedDependency",
+          `${dependencyItemsPath}[${index}].id`,
+          `Loudness Profile dependency ${profile.id} is not referenced by a Preset.`
+        )
+      );
+    }
+  });
+  if (issues.length > 0) {
+    throw new PackValidationError("This Preset file contains invalid portable content.", issues);
+  }
+  return { items: presets.items, loudnessProfiles: profiles.items };
+}
+
 function descriptorForKind(kind) {
   return Object.values(PACK_KINDS).find((entry) => entry.kind === kind) ?? null;
 }
@@ -316,8 +435,13 @@ export function parsePack(raw, expectedType) {
     }
   }
 
-  const items =
-    expectedType === "loudness" && raw.version === LOUDNESS_PACK_VERSION
+  const portablePresets =
+    expectedType === "presets" && raw.version === PRESET_PACK_VERSION
+      ? parsePortablePresetItems(raw)
+      : null;
+  const items = portablePresets
+    ? portablePresets.items
+    : expectedType === "loudness" && raw.version === LOUDNESS_PACK_VERSION
       ? parsePortableLoudnessItems(raw)
       : expectedType === "themes"
         ? raw.version === 1
@@ -338,9 +462,11 @@ export function parsePack(raw, expectedType) {
   };
 
   if (expectedType === "presets") {
-    parsed.loudnessProfiles = (Array.isArray(raw.loudnessProfiles) ? raw.loudnessProfiles : [])
-      .map((profile) => normalizeRuleDocument(profile))
-      .filter(Boolean);
+    parsed.loudnessProfiles = portablePresets
+      ? portablePresets.loudnessProfiles
+      : (Array.isArray(raw.loudnessProfiles) ? raw.loudnessProfiles : [])
+          .map((profile) => normalizeRuleDocument(profile))
+          .filter(Boolean);
   }
 
   return parsed;

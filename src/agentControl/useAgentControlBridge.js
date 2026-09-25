@@ -2789,10 +2789,13 @@ export function useAgentControlBridge({
               -32020
             );
           }
-          presets.preflightApplySnapshot(request.params.presetId);
           const resources = planPresetApplyResources(target, {
             loudnessProfiles,
             dockSupported: dock.supported === true,
+            reserveSpaceSupported: dock.supported === true && dockContext.platform === "windows",
+            glassSupported: viewContext.platform === "macos",
+            channelCount: analysisContext.channelCount,
+            channelLabels: analysisContext.channelLabels,
             monitors: dockContext.monitors,
             fallbackMonitor: dockContext.fallbackMonitor,
             monitorInventoryReady: dockContext.monitorInventoryReady,
@@ -2807,10 +2810,15 @@ export function useAgentControlBridge({
               { issues: resources.issues }
             );
           }
+          presets.preflightApplySnapshot(request.params.presetId, {
+            presetOverride: resources.preset,
+          });
           const currentSnapshot = await presets.captureSnapshot();
           assertRevisions();
           presets.assertSceneOperationAllowed(request.method);
-          const scenePlan = planPresetApply(state, request.params.presetId, currentSnapshot);
+          const scenePlan = planPresetApply(state, request.params.presetId, currentSnapshot, {
+            targetPreset: resources.preset,
+          });
           const planned = {
             ...scenePlan,
             warnings: [...resources.warnings, ...scenePlan.warnings],
@@ -2846,7 +2854,7 @@ export function useAgentControlBridge({
           // need not carry a complete Workspace record.
           let targetView = null;
           if (planned.changed.includes("workspace")) {
-            targetView = presetWorkspaceView(target);
+            targetView = presetWorkspaceView(resources.preset);
             workspaceCommitted = new Promise((resolve, reject) => {
               settlementRef.current = {
                 matches: (currentWorkspace) =>
@@ -2860,6 +2868,7 @@ export function useAgentControlBridge({
             if (planned.applyScene) {
               const applied = await presets.applySnapshot(request.params.presetId, {
                 applyWorkspace: planned.changed.includes("workspace"),
+                presetOverride: resources.preset,
               });
               if (!applied) throw new Error("Preset target disappeared before application.");
             } else if (!presets.activateSnapshot(request.params.presetId)) {
@@ -3217,15 +3226,18 @@ export function useAgentControlBridge({
               planned = planLibraryExport(family, request.params.ids);
             } catch (error) {
               // Pack V2 export is strict: an empty library or an unreadable stored item cannot
-              // become a file this build would accept back. Presets remain on tolerant Pack V1.
+              // become a file this build would accept back.
               if (
                 !(error instanceof PackValidationError) ||
-                !["theme", "loudnessProfile"].includes(family)
+                !["preset", "theme", "loudnessProfile"].includes(family)
               ) {
                 throw error;
               }
-              const reason =
-                family === "theme" ? "themeNotExportable" : "loudnessProfileNotExportable";
+              const reason = {
+                preset: "presetNotExportable",
+                theme: "themeNotExportable",
+                loudnessProfile: "loudnessProfileNotExportable",
+              }[family];
               throw semanticFailure(
                 reason,
                 "$.params",

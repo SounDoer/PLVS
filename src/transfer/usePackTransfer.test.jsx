@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 
 // `isTauri` is a vi.fn created inside the factory (not a variable closed over from this file's
 // top level) because `persistence/index.js` below calls it eagerly at import time, before any
@@ -135,7 +136,8 @@ describe("usePackTransfer export", () => {
         {
           id: "p1",
           name: "Preset 1",
-          panelsById: {},
+          ...structuredClone(DEFAULT_WORKSPACE_STATE),
+          dock: { enabled: false },
           loudnessProfileActive: "profile:a",
         },
       ],
@@ -149,7 +151,9 @@ describe("usePackTransfer export", () => {
 
     const written = JSON.parse(writeProfileFile.mock.calls[0][1]);
     expect(written.items.map((item) => item.id)).toEqual(["p1"]);
-    expect(written.loudnessProfiles.map((profile) => profile.id)).toEqual(["a"]);
+    expect(written.dependencies).toHaveLength(1);
+    expect(written.dependencies[0].kind).toBe("loudness-profile");
+    expect(written.dependencies[0].items.map((profile) => profile.id)).toEqual(["a"]);
   });
 
   it("downloads a Blob instead of writing through Tauri outside the desktop app", async () => {

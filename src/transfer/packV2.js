@@ -155,6 +155,59 @@ export function collectPackV2EnvelopeIssues(raw, { allowedDependencyKind = null 
       issues.push(
         packIssue("unsupportedDependency", "$.dependencies", "This pack kind has no dependencies.")
       );
+    } else if (allowedDependencyKind !== null) {
+      const seenKinds = new Set();
+      raw.dependencies.forEach((group, index) => {
+        const path = `$.dependencies[${index}]`;
+        if (!isObjectRecord(group)) {
+          issues.push(
+            packIssue("invalidDependencyGroup", path, "A dependency group must be an object.")
+          );
+          return;
+        }
+        for (const field of Object.keys(group)) {
+          if (!["kind", "items"].includes(field)) {
+            issues.push(packIssue("unknownField", `${path}.${field}`, `Unknown field: ${field}.`));
+          }
+        }
+        if (group.kind !== allowedDependencyKind) {
+          issues.push(
+            packIssue(
+              "unsupportedDependency",
+              `${path}.kind`,
+              `Only ${allowedDependencyKind} dependencies are supported.`
+            )
+          );
+        } else if (seenKinds.has(group.kind)) {
+          issues.push(
+            packIssue(
+              "duplicateDependencyGroup",
+              `${path}.kind`,
+              `Dependency kind ${group.kind} appears more than once.`
+            )
+          );
+        } else {
+          seenKinds.add(group.kind);
+        }
+        if (!Array.isArray(group.items) || group.items.length === 0) {
+          issues.push(
+            packIssue(
+              "invalidDependencyItems",
+              `${path}.items`,
+              "Dependency items must be a non-empty array."
+            )
+          );
+        } else if (group.items.length > MAX_PACK_DEPENDENCY_ITEMS) {
+          issues.push(
+            packIssue(
+              "tooManyDependencyItems",
+              `${path}.items`,
+              `A dependency group may contain at most ${MAX_PACK_DEPENDENCY_ITEMS} Items.`,
+              { count: group.items.length, limit: MAX_PACK_DEPENDENCY_ITEMS }
+            )
+          );
+        }
+      });
     }
   }
   return issues;
@@ -165,14 +218,22 @@ export function collectPackV2EnvelopeIssues(raw, { allowedDependencyKind = null 
  */
 export function parsePackV2Items(
   raw,
-  { entryLabel, invalidEntryCode, invalidIdCode, duplicateIdCode, convert }
+  {
+    entryLabel,
+    invalidEntryCode,
+    invalidIdCode,
+    duplicateIdCode,
+    convert,
+    items = raw.items,
+    itemsPath = "$.items",
+  }
 ) {
-  if (!Array.isArray(raw.items)) return { items: [], issues: [] };
+  if (!Array.isArray(items)) return { items: [], issues: [] };
   const issues = [];
   const seenIds = new Set();
-  const items = [];
-  raw.items.forEach((item, index) => {
-    const path = `$.items[${index}]`;
+  const convertedItems = [];
+  items.forEach((item, index) => {
+    const path = `${itemsPath}[${index}]`;
     if (!isObjectRecord(item)) {
       issues.push(packIssue(invalidEntryCode, path, `A ${entryLabel} entry must be an object.`));
       return;
@@ -189,11 +250,11 @@ export function parsePackV2Items(
       seenIds.add(id);
     }
     try {
-      items.push(convert(document, id));
+      convertedItems.push(convert(document, id));
     } catch (error) {
       if (!Array.isArray(error?.issues)) throw error;
       issues.push(...prefixPackIssues(error.issues, path));
     }
   });
-  return { items, issues };
+  return { items: convertedItems, issues };
 }

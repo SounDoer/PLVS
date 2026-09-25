@@ -143,8 +143,8 @@ before the user-requested scene mutation.
 ## Compatibility and rollout
 
 - New Theme and Loudness Profile exports use Pack V2.
-- New Preset exports remain Pack V1 until Portable Preset V1, dependency validation and Apply Plan
-  land as one coherent slice.
+- New Preset exports use Pack V2 now that Portable Preset V1, dependency validation and Apply Plan
+  have landed as one coherent slice.
 - All three families continue to read Pack V1.
 - A newer Pack, format or semantics version is refused before mutation.
 - Desktop, Agent Control and CLI must consume the same converters and validators.

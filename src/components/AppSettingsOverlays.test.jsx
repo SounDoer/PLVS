@@ -7,6 +7,7 @@ import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessPr
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 
 const mocks = vi.hoisted(() => ({
   exportConfiguration: vi.fn(),
@@ -373,7 +374,15 @@ describe("AppSettingsOverlays", () => {
   // native save dialog threw the selection away and the user had to check every row again.
   it("keeps the export picker open when the save dialog is dismissed", async () => {
     presetsStore.patch({
-      list: [{ id: "p1", name: "P1", loudnessProfileActive: "off" }],
+      list: [
+        {
+          id: "p1",
+          name: "P1",
+          ...structuredClone(DEFAULT_WORKSPACE_STATE),
+          dock: { enabled: false },
+          loudnessProfileActive: "off",
+        },
+      ],
       activeId: null,
       dirty: false,
     });

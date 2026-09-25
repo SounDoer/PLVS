@@ -36,13 +36,13 @@ Gate: envelope behavior is table-tested across all three kinds and cannot drift 
 
 ## Phase 3 — Portable Preset V1 conversion
 
-- [ ] Define the exact Portable Preset schema in code from public Workspace, Panel and Axis
+- [x] Define the exact Portable Preset schema in code from public Workspace, Panel and Axis
       vocabulary; do not expose persistence objects.
-- [ ] Convert saved Preset snapshots to artefact-local panel keys.
-- [ ] Convert public semantic controls and axes, and reject unknown required semantics.
-- [ ] Exclude host-only and transient fields.
-- [ ] Convert imported portable panels back to freshly allocated local IDs.
-- [ ] Cover empty Workspace, tabs, weighted splits, linked axes, repeated Dock modules and maximum
+- [x] Convert saved Preset snapshots to artefact-local panel keys.
+- [x] Convert public semantic controls and axes, and reject unknown required semantics.
+- [x] Exclude host-only and transient fields.
+- [x] Convert imported portable panels back to freshly allocated local IDs.
+- [x] Cover empty Workspace, tabs, weighted splits, linked axes, repeated Dock modules and maximum
       depth/panel limits.
 
 Gate: export/import/re-export is canonical, layout references remain complete, and no source panel
@@ -50,20 +50,20 @@ ID leaks into the imported Preset.
 
 ## Phase 4 — Dependencies and planning
 
-- [ ] Replace Pack V1 `loudnessProfiles` with one V2 `loudness-profile` dependency group.
-- [ ] Validate references, duplicate groups, duplicate IDs, missing and unused dependencies.
-- [ ] Remap dependency IDs before converting primary Presets.
+- [x] Replace Pack V1 `loudnessProfiles` with one V2 `loudness-profile` dependency group.
+- [x] Validate references, duplicate groups, duplicate IDs, missing and unused dependencies.
+- [x] Remap dependency IDs before converting primary Presets.
 - [ ] Return Import Plan warnings for retained but suspicious content and collision outcomes.
-- [ ] Implement `planPresetApply` with requested/effective adaptations for platform, display, Dock,
+- [x] Implement `planPresetApply` with requested/effective adaptations for platform, display, Dock,
       Glass, channels and preferred sizes.
-- [ ] Prove the Apply commit uses existing scene-operation guards before mutation.
+- [x] Prove the Apply commit uses existing scene-operation guards before mutation.
 
 Gate: strict Preset packs are all-or-nothing; importing never activates content; applying cannot
 bypass blocking editors.
 
 ## Phase 5 — Desktop and CLI transfer UX
 
-- [ ] Switch Preset export to Pack V2 while retaining Pack V1 import.
+- [x] Switch Preset export to Pack V2 while retaining Pack V1 import.
 - [ ] Add item-level Export for saved Presets and custom Themes where not already exposed.
 - [ ] Replace per-row import entry points with `Import Shared Item…` dispatch by extension/kind.
 - [ ] Show dependencies, add/skip/copy outcomes, compatibility errors and adaptation warnings.

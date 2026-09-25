@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loudness Profile exports now use strict Pack V2 portable documents. Incomplete rules, empty
   Profiles, invalid IDs, and empty exports are refused instead of being silently omitted; existing
   Pack V1 `.plvsloudness` files remain importable.
+- Preset exports now use strict Pack V2 portable documents with artefact-local panel keys and
+  explicit Loudness Profile dependencies. Host geometry and transient state are excluded, invalid
+  or empty exports are refused, and existing Pack V1 `.plvspreset` files remain importable.
 
 ## [0.17.0] - 2026-09-24
 

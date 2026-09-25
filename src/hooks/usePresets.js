@@ -203,9 +203,10 @@ export function usePresets({
   );
 
   const preflightApplySnapshot = useCallback(
-    (id) => {
+    (id, { presetOverride = null } = {}) => {
       const current = normalizePresets(presetsStore.read());
-      const preset = current.list.find((p) => p.id === id);
+      const savedPreset = current.list.find((p) => p.id === id);
+      const preset = presetOverride?.id === id ? presetOverride : savedPreset;
       if (!preset) return null;
       const presetDock = {
         enabled: preset.dock?.enabled === true,
@@ -233,8 +234,8 @@ export function usePresets({
   );
 
   const applySnapshot = useCallback(
-    async (id, { applyWorkspace = true } = {}) => {
-      const preflight = preflightApplySnapshot(id);
+    async (id, { applyWorkspace = true, presetOverride = null } = {}) => {
+      const preflight = preflightApplySnapshot(id, { presetOverride });
       if (!preflight) return false;
       const { preset, presetDock } = preflight;
       if (preset.windowBounds && isTauri()) {

@@ -104,6 +104,15 @@ describe("Preset scene capture planning", () => {
     });
   });
 
+  it("plans scene changes against an effective runtime-adapted target without rewriting the library", () => {
+    const adapted = { ...current.list[0], windowPinned: true };
+    const planned = planPresetApply(current, "preset-1", snapshot, { targetPreset: adapted });
+
+    expect(planned.changed).toEqual(["window"]);
+    expect(planned.applyScene).toBe(true);
+    expect(planned.presets.list).toBe(current.list);
+  });
+
   it("preflights unavailable saved resources and adjusted bounds", () => {
     const preset = {
       id: "preset-1",
@@ -120,16 +129,26 @@ describe("Preset scene capture planning", () => {
         fallbackMonitor: "monitor-1",
         monitorRects: [{ x: 0, y: 0, width: 1920, height: 1080 }],
       })
-    ).toEqual({
+    ).toMatchObject({
       issues: [],
       warnings: [
-        { code: "loudnessProfileUnavailable", requested: "deleted", effective: null },
+        {
+          code: "loudnessProfileUnavailable",
+          path: "$.loudnessProfileActive",
+          requested: "deleted",
+          effective: null,
+        },
         {
           code: "dockMonitorUnavailable",
+          path: "$.dock.monitor",
           requested: "missing-monitor",
           effective: "monitor-1",
         },
       ],
+      preset: {
+        loudnessProfileActive: "off",
+        dock: { enabled: true, monitor: "monitor-1" },
+      },
     });
 
     expect(
@@ -143,6 +162,7 @@ describe("Preset scene capture planning", () => {
       ).warnings
     ).toContainEqual({
       code: "windowBoundsAdjusted",
+      path: "$.windowBounds",
       requested: preset.windowBounds,
       effective: { ...preset.windowBounds, x: 560, y: 240 },
     });
@@ -150,9 +170,17 @@ describe("Preset scene capture planning", () => {
 
   it("degrades unsupported Dock and rejects an impossible monitor fallback", () => {
     const preset = { id: "preset-1", dock: { enabled: true, monitor: "missing" } };
-    expect(planPresetApplyResources(preset, { dockSupported: false })).toEqual({
+    expect(planPresetApplyResources(preset, { dockSupported: false })).toMatchObject({
       issues: [],
-      warnings: [{ code: "dockUnsupported", requested: true, effective: false }],
+      warnings: [
+        {
+          code: "dockUnsupported",
+          path: "$.dock.enabled",
+          requested: true,
+          effective: false,
+        },
+      ],
+      preset: { dock: { enabled: false } },
     });
     expect(
       planPresetApplyResources(preset, {
@@ -162,5 +190,60 @@ describe("Preset scene capture planning", () => {
         monitorInventoryReady: true,
       }).issues
     ).toEqual([expect.objectContaining({ code: "monitorUnavailable" })]);
+  });
+
+  it("adapts optional presentation, Dock, width and channel capabilities", () => {
+    const preset = {
+      id: "preset-1",
+      name: "Surround",
+      glassEnabled: true,
+      panelOrder: ["spectrum", "scope"],
+      panelsById: {
+        spectrum: { id: "spectrum", moduleId: "spectrum" },
+        scope: { id: "scope", moduleId: "vectorscope" },
+      },
+      panelControlsById: {
+        spectrum: { spectrumChannel: { type: "pair", x: 4, y: 5 } },
+        scope: { vectorscopePair: { x: 4, y: 5 } },
+      },
+      dock: {
+        enabled: true,
+        monitor: null,
+        reserveSpace: true,
+        panelOrder: ["dock-scope"],
+        panelsById: { "dock-scope": { id: "dock-scope", moduleId: "stereo-map" } },
+        panelSizesById: { "dock-scope": 900 },
+        controlsByPanelId: { "dock-scope": { stereoMapPair: { x: 4, y: 5 } } },
+      },
+    };
+    const planned = planPresetApplyResources(preset, {
+      dockSupported: true,
+      reserveSpaceSupported: false,
+      glassSupported: false,
+      channelCount: 2,
+      channelLabels: ["L", "R"],
+      availableDockWidthCssPx: 640,
+    });
+
+    expect(planned.issues).toEqual([]);
+    expect(planned.warnings.map(({ code }) => code)).toEqual([
+      "dockReserveSpaceUnsupported",
+      "dockPreferredWidthConstrained",
+      "glassUnsupported",
+      "channelSelectionAdapted",
+      "channelSelectionAdapted",
+      "channelSelectionAdapted",
+    ]);
+    expect(planned.preset).toMatchObject({
+      glassEnabled: false,
+      panelControlsById: {
+        spectrum: { spectrumChannel: { type: "pair", x: 0, y: 1 } },
+        scope: { vectorscopePair: { x: 0, y: 1 } },
+      },
+      dock: {
+        reserveSpace: false,
+        controlsByPanelId: { "dock-scope": { stereoMapPair: { x: 0, y: 1 } } },
+      },
+    });
   });
 });

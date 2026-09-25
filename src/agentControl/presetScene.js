@@ -1,3 +1,6 @@
+import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
+import { deriveClampedPanelControls } from "../workspace/clampPanelControls.js";
+
 function issue(code, path, message) {
   return { code, path, message };
 }
@@ -67,14 +70,27 @@ function adjustedWindowBounds(bounds, monitors) {
 export function planPresetApplyResources(preset, context = {}) {
   const warnings = [];
   const issues = [];
+  const effectivePreset = structuredClone(preset);
   const profileId = savedProfileId(preset.loudnessProfileActive);
   if (profileId !== null && !(context.loudnessProfiles ?? []).some(({ id }) => id === profileId)) {
-    warnings.push({ code: "loudnessProfileUnavailable", requested: profileId, effective: null });
+    warnings.push({
+      code: "loudnessProfileUnavailable",
+      path: "$.loudnessProfileActive",
+      requested: profileId,
+      effective: null,
+    });
+    effectivePreset.loudnessProfileActive = "off";
   }
 
   if (preset.dock?.enabled === true) {
     if (context.dockSupported !== true) {
-      warnings.push({ code: "dockUnsupported", requested: true, effective: false });
+      warnings.push({
+        code: "dockUnsupported",
+        path: "$.dock.enabled",
+        requested: true,
+        effective: false,
+      });
+      effectivePreset.dock = { ...effectivePreset.dock, enabled: false };
     } else {
       const monitors = Array.isArray(context.monitors) ? context.monitors : [];
       const requested = typeof preset.dock.monitor === "string" ? preset.dock.monitor : null;
@@ -82,7 +98,13 @@ export function planPresetApplyResources(preset, context = {}) {
       if (requested !== null && !requestedAvailable && monitors.length > 0) {
         const effective =
           monitors.find(({ id }) => id === context.fallbackMonitor)?.id ?? monitors[0].id;
-        warnings.push({ code: "dockMonitorUnavailable", requested, effective });
+        warnings.push({
+          code: "dockMonitorUnavailable",
+          path: "$.dock.monitor",
+          requested,
+          effective,
+        });
+        effectivePreset.dock.monitor = effective;
       } else if (
         requested !== null &&
         !requestedAvailable &&
@@ -92,18 +114,105 @@ export function planPresetApplyResources(preset, context = {}) {
           issue("monitorUnavailable", "$.dock.monitor", "No monitor is available for Dock.")
         );
       }
+      if (preset.dock.reserveSpace === true && context.reserveSpaceSupported === false) {
+        warnings.push({
+          code: "dockReserveSpaceUnsupported",
+          path: "$.dock.reserveSpace",
+          requested: true,
+          effective: false,
+        });
+        effectivePreset.dock.reserveSpace = false;
+      }
+      const preferredWidth = Object.values(preset.dock.panelSizesById ?? {}).reduce(
+        (sum, width) => sum + (Number.isFinite(width) ? width : 0),
+        0
+      );
+      if (
+        Number.isFinite(context.availableDockWidthCssPx) &&
+        preferredWidth > context.availableDockWidthCssPx
+      ) {
+        warnings.push({
+          code: "dockPreferredWidthConstrained",
+          path: "$.dock.panelSizesById",
+          requested: preferredWidth,
+          effective: context.availableDockWidthCssPx,
+        });
+      }
     }
   } else if (preset.windowBounds) {
     const effective = adjustedWindowBounds(preset.windowBounds, context.monitorRects);
     if (JSON.stringify(effective) !== JSON.stringify(preset.windowBounds)) {
       warnings.push({
         code: "windowBoundsAdjusted",
+        path: "$.windowBounds",
         requested: preset.windowBounds,
         effective,
       });
+      effectivePreset.windowBounds = effective;
     }
   }
-  return { issues, warnings };
+
+  if (preset.glassEnabled === true && context.glassSupported === false) {
+    warnings.push({
+      code: "glassUnsupported",
+      path: "$.glassEnabled",
+      requested: true,
+      effective: false,
+    });
+    effectivePreset.glassEnabled = false;
+  }
+
+  if (Number.isInteger(context.channelCount) && context.channelCount > 0) {
+    const clampContext = {
+      channelCount: context.channelCount,
+      spectrumChannelOptions: buildSpectrumChannelOptions(
+        context.channelCount,
+        context.channelLabels ?? []
+      ),
+      peakLabelContext: context.peakLabelContext ?? {},
+    };
+    const containers = [
+      {
+        state: effectivePreset,
+        controlsKey: "panelControlsById",
+        path: "$.panelControlsById",
+      },
+      {
+        state: {
+          panelOrder: effectivePreset.dock?.panelOrder ?? [],
+          panelsById: effectivePreset.dock?.panelsById ?? {},
+          panelControlsById: effectivePreset.dock?.controlsByPanelId ?? {},
+        },
+        controlsKey: "dock.controlsByPanelId",
+        path: "$.dock.controlsByPanelId",
+      },
+    ];
+    for (const container of containers) {
+      for (const update of deriveClampedPanelControls(container.state, clampContext)) {
+        const moduleId = container.state.panelsById?.[update.panelId]?.moduleId;
+        const controlKey =
+          moduleId === "vectorscope"
+            ? "vectorscopePair"
+            : moduleId === "stereo-map"
+              ? "stereoMapPair"
+              : "spectrumChannel";
+        const requested = container.state.panelControlsById?.[update.panelId]?.[controlKey];
+        warnings.push({
+          code: "channelSelectionAdapted",
+          path: `${container.path}.${update.panelId}.${controlKey}`,
+          requested,
+          effective: update.panelControls[controlKey],
+        });
+        if (container.controlsKey === "panelControlsById") {
+          effectivePreset.panelControlsById[update.panelId] = update.panelControls;
+        } else {
+          effectivePreset.dock.controlsByPanelId[update.panelId] = update.panelControls;
+        }
+      }
+    }
+  }
+
+  return { preset: effectivePreset, issues, warnings };
 }
 
 export function planPresetSave(presets, name, snapshot, allocatedId = null) {
@@ -187,8 +296,9 @@ export function planPresetUpdate(presets, presetId, snapshot) {
   };
 }
 
-export function planPresetApply(presets, presetId, currentSnapshot) {
-  const preset = presets.list.find(({ id }) => id === presetId);
+export function planPresetApply(presets, presetId, currentSnapshot, { targetPreset } = {}) {
+  const savedPreset = presets.list.find(({ id }) => id === presetId);
+  const preset = targetPreset?.id === presetId ? targetPreset : savedPreset;
   if (!preset) {
     return {
       presets,

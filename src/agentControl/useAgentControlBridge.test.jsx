@@ -365,9 +365,12 @@ function Harness({
       setPresetState((current) => ({ ...current, activeId: id, dirty: false }));
       return true;
     },
-    applySnapshot: async (id) => {
+    applySnapshot: async (id, { presetOverride = null } = {}) => {
       if (applyPresetToWorkspace) {
-        const preset = presetState.list.find((entry) => entry.id === id);
+        const preset =
+          presetOverride?.id === id
+            ? presetOverride
+            : presetState.list.find((entry) => entry.id === id);
         // What the real applySnapshot does: the Workspace it installs is the *migrated* view of
         // the Preset, never the stored record itself.
         if (preset) store.replaceWorkspace(presetWorkspaceView(preset));
@@ -3353,9 +3356,69 @@ describe("useAgentControlBridge", () => {
     );
 
     expect(response.result.warnings).toEqual([
-      { code: "loudnessProfileUnavailable", requested: "deleted", effective: null },
-      { code: "dockMonitorUnavailable", requested: "missing-monitor", effective: "monitor-1" },
+      {
+        code: "loudnessProfileUnavailable",
+        path: "$.loudnessProfileActive",
+        requested: "deleted",
+        effective: null,
+      },
+      {
+        code: "dockMonitorUnavailable",
+        path: "$.dock.monitor",
+        requested: "missing-monitor",
+        effective: "monitor-1",
+      },
     ]);
+  });
+
+  it("commits the effective channel adaptation while keeping the saved Preset unchanged", async () => {
+    const target = {
+      id: "preset-1",
+      name: "Surround",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      tree: { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+      panelControlsById: {
+        ...structuredClone(DEFAULT_WORKSPACE_STATE.panelControlsById),
+        spectrum: {
+          ...structuredClone(DEFAULT_WORKSPACE_STATE.panelControlsById.spectrum),
+          spectrumChannel: { type: "pair", x: 4, y: 5 },
+        },
+      },
+    };
+    const view = mount({
+      applyPresetToWorkspace: true,
+      analysisContext: { channelCount: 2, channelLabels: ["L", "R"] },
+      capturePresetSnapshot: vi.fn(async () => ({
+        ...structuredClone(DEFAULT_WORKSPACE_STATE),
+        windowPinned: false,
+      })),
+      presets: { list: [target], activeId: null, dirty: false },
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request("preset.apply", { presetId: "preset-1" }, "preset-channel-adaptation")
+    );
+
+    expect(response.error).toBeUndefined();
+    expect(response.result.warnings).toEqual([
+      expect.objectContaining({
+        code: "channelSelectionAdapted",
+        path: "$.panelControlsById.spectrum.spectrumChannel",
+        requested: { type: "pair", x: 4, y: 5 },
+        effective: { type: "pair", x: 0, y: 1 },
+      }),
+    ]);
+    expect(view.store.state.panelControlsById.spectrum.spectrumChannel).toEqual({
+      type: "pair",
+      x: 0,
+      y: 1,
+    });
+    expect(target.panelControlsById.spectrum.spectrumChannel).toEqual({
+      type: "pair",
+      x: 4,
+      y: 5,
+    });
   });
 
   it("does not advance the public revision for transient fullscreen state", async () => {
@@ -4765,6 +4828,22 @@ describe("useAgentControlBridge", () => {
 
       expect(response.result.changed).toBe(true);
       expect(response.result.state.presets).toEqual([{ id: "p-1", name: "Mix" }]);
+    });
+
+    it("refuses to export an empty Preset library as Pack V2", async () => {
+      mount({ presetLibraryFromStore: true, presets: { list: [], activeId: null, dirty: false } });
+      await waitUntilReady();
+
+      const response = await send(request("preset.export", {}, "preset-export-empty"));
+
+      expect(response.error).toMatchObject({
+        code: -32602,
+        data: {
+          reason: "presetNotExportable",
+          path: "$.params",
+          details: { issues: [expect.objectContaining({ code: "emptyItems" })] },
+        },
+      });
     });
 
     it("imports a Loudness Profile pack through the Loudness library", async () => {

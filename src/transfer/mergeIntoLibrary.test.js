@@ -3,7 +3,8 @@ import { planMerge, planPackImport } from "./mergeIntoLibrary.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { themeToPortable } from "../theme/portableTheme.js";
-import { parseClipboardTheme } from "./packShape.js";
+import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
+import { buildPack, parseClipboardTheme, parsePack } from "./packShape.js";
 
 function counter() {
   let n = 0;
@@ -220,6 +221,32 @@ describe("planPackImport", () => {
       makeId: counter(),
     });
     expect(result.profileAdditions[0].id).toBe("new-1");
+    expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:new-1");
+  });
+
+  it("remaps a Pack V2 dependency collision before adding the Portable Preset", () => {
+    const storedPreset = {
+      id: "p1",
+      name: "P1",
+      ...structuredClone(DEFAULT_WORKSPACE_STATE),
+      dock: { enabled: false },
+      loudnessProfileActive: "profile:pa",
+    };
+    const parsed = parsePack(
+      buildPack("presets", [storedPreset], { loudnessProfiles: [P] }),
+      "presets"
+    );
+    const result = planPackImport("presets", parsed, {
+      existingItems: [],
+      existingProfiles: [{ ...P, referenceLufs: -16 }],
+      makeId: counter(),
+    });
+
+    expect(result.profilePlan[0]).toMatchObject({
+      sourceId: "pa",
+      finalId: "new-1",
+      disposition: "duplicated",
+    });
     expect(result.itemAdditions[0].loudnessProfileActive).toBe("profile:new-1");
   });
 
