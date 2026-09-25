@@ -96,6 +96,11 @@ Theme's content identity. Items carry no palette `presetId`. Exporting a custom 
 is empty fails with `themeNotExportable`, because Pack V2 cannot be empty. Theme Pack V1 remains
 accepted on import; new exports use V2. Preset and Loudness Profile packs remain V1.
 
+PLVS 0.17 and earlier returned Theme Pack V1 from `theme export`: `version: 1`, an `exportedAt`
+timestamp, stored Theme documents with `version: 2` and palette `presetId` fields, and an empty
+library exported as `items: []`. A caller that reads those fields must switch to the V2 shape above
+and handle `themeNotExportable` for an empty library. Item `id` and `name` keep their positions.
+
 `--all` and `--ids` are mutually exclusive on the CLI and exactly one is required. On the wire the
 whole-library form is the **absence** of `ids`, not `ids: null`: the parameter validator accepts
 only a non-empty array of non-empty strings, so `"ids": null` and `"ids": []` both fail with
