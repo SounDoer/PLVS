@@ -1,7 +1,7 @@
 # Static Community Catalogue Implementation Plan
 
 Date: 2026-09-25
-Status: In progress
+Status: Phase 1–4 complete; public submissions deferred
 
 ## Direction
 
@@ -13,18 +13,20 @@ same tree can later move to a dedicated repository without changing page URLs or
 The portable artifact, validation, hashing, metadata, and preview contracts are already complete in
 `src/transfer/communityContract.js`. This plan consumes them; it does not duplicate their rules.
 
-Catalogue records do not carry per-Item or per-Release licence fields. Permission is one
-content-repository-wide submission rule, to be selected before third-party submissions open.
+Catalogue records do not carry per-Item or per-Release licence fields. The current Catalogue is an
+officially curated publishing surface, not a public submission service. It exposes no submission
+button, form, email address, pull-request instruction, or implied contribution channel.
 
 ## Deferred decisions
 
-These are not needed for the source/build boundary and must be settled before the matching public
-workflow is enabled:
+These are deliberately outside the current project. If public submissions are proposed later,
+design them together as a new product and operations phase rather than inferring a workflow from
+the current repository layout:
 
 - the content repository's single contribution/publication permission rule;
 - author attribution and verification fields before accounts exist;
 - submission channel, moderation checklist, and withdrawal operations;
-- final content-repository host and independent deployment trigger.
+- final content-repository host and automated submission/deployment trigger.
 
 ## Phase 1 — Detachable content source
 
@@ -73,12 +75,17 @@ only enhances search and filtering.
 Gate: a content-only change validates, builds, and deploys without a desktop release, while landing
 changes retain their release-bound deployment policy.
 
-## Phase 5 — Submission and operations
+## Phase 5 — Public submission and operations (deferred)
 
-- [ ] Add submission instructions after licence and attribution policy is approved.
+- [ ] Decide whether PLVS should accept public submissions at all.
+- [ ] If enabled, choose the submission channel and approve repository-wide permission and
+      attribution terms before publishing any instructions.
 - [ ] Document curator validation, preview generation, immutable publication, new Release creation,
       withdrawal, and rollback.
 - [ ] Add end-to-end fixtures for accepted, rejected, updated, and withdrawn Releases.
+
+No Phase 5 work is implied by completing the static Catalogue. GitHub pull requests, web forms,
+email, and account-based submission are equally undecided.
 
 Accounts, ratings, comments, favourites, download rankings, automatic updates, `Open in PLVS`, and
 an in-app Community browser remain outside this plan.

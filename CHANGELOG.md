@@ -46,8 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an external-directory-capable validation command, preserving a clean future repository split.
 - Curated Listing and Release records now have strict IDs, slugs, classification, attribution,
   restricted Markdown, tags, immutable Release ordering, withdrawal state, and safe artifact and
-  preview paths. Per-Item licence metadata is deliberately excluded in favour of one future
-  repository-wide submission rule.
+  preview paths. Per-Item licence metadata is deliberately excluded, and no public submission
+  channel or permission model is implied by the current officially curated Catalogue.
 
 ## [0.17.0] - 2026-09-24
 
