@@ -1,0 +1,235 @@
+{
+  "app": "PLVS",
+  "kind": "preset-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "stereo-overview",
+      "kind": "plvs-preset",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Stereo Overview",
+      "workspace": {
+        "layout": {
+          "type": "split",
+          "direction": "horizontal",
+          "weights": [
+            0.15,
+            0.63,
+            0.22
+          ],
+          "children": [
+            {
+              "type": "panel",
+              "key": "panel-1"
+            },
+            {
+              "type": "split",
+              "direction": "vertical",
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "panel-2"
+                },
+                {
+                  "type": "panel",
+                  "key": "panel-3"
+                },
+                {
+                  "type": "panel",
+                  "key": "panel-4"
+                }
+              ]
+            },
+            {
+              "type": "split",
+              "direction": "vertical",
+              "weights": [
+                0.6,
+                0.4
+              ],
+              "children": [
+                {
+                  "type": "panel",
+                  "key": "panel-5"
+                },
+                {
+                  "type": "panel",
+                  "key": "panel-6"
+                }
+              ]
+            }
+          ]
+        },
+        "panels": [
+          {
+            "key": "panel-1",
+            "moduleId": "levelMeter",
+            "controls": {
+              "mode": "peak",
+              "playbackMax": false,
+              "floatingValue": false,
+              "tpMaxMarker": true,
+              "levelRangeDbfs": {
+                "min": -60,
+                "max": 3
+              },
+              "loudnessRangeLufs": {
+                "min": -64,
+                "max": 0
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "panel-2",
+            "moduleId": "loudness",
+            "controls": {
+              "layers": [
+                "momentary",
+                "shortTerm"
+              ],
+              "loudnessRangeLufs": {
+                "min": -64,
+                "max": 0
+              }
+            },
+            "axes": {
+              "time": {
+                "linked": true,
+                "windowSec": 60
+              }
+            }
+          },
+          {
+            "key": "panel-3",
+            "moduleId": "spectrum",
+            "controls": {
+              "channel": {
+                "type": "pair",
+                "x": 0,
+                "y": 1
+              },
+              "view": "lr",
+              "maxMode": "decay",
+              "peakLabels": false,
+              "speedPercent": 25,
+              "tiltDbPerOctave": 3,
+              "octaveSmoothing": "off",
+              "levelRangeDb": {
+                "min": -96,
+                "max": -12
+              }
+            },
+            "axes": {
+              "frequency": {
+                "linked": true,
+                "minHz": 20,
+                "maxHz": 20000
+              }
+            }
+          },
+          {
+            "key": "panel-4",
+            "moduleId": "stereo-map",
+            "controls": {
+              "mode": "position",
+              "channelPair": {
+                "x": 0,
+                "y": 1
+              },
+              "maxHold": false,
+              "speedPercent": 50,
+              "octaveSmoothing": "1/12",
+              "monoLossFloorDb": -24,
+              "msRatioRangeDb": {
+                "min": -48,
+                "max": 24
+              }
+            },
+            "axes": {
+              "frequency": {
+                "linked": true,
+                "minHz": 20,
+                "maxHz": 20000
+              }
+            }
+          },
+          {
+            "key": "panel-5",
+            "moduleId": "stats",
+            "controls": {
+              "metrics": {
+                "visible": [
+                  "momentary",
+                  "shortTerm",
+                  "integrated",
+                  "momentaryMax",
+                  "shortTermMax",
+                  "lra",
+                  "psr",
+                  "plr",
+                  "dialogueCoverage",
+                  "dialogueIntegrated",
+                  "dialogueRange",
+                  "dialogueOffset",
+                  "truePeak",
+                  "correlation",
+                  "sideToMid"
+                ],
+                "order": [
+                  "momentary",
+                  "shortTerm",
+                  "integrated",
+                  "momentaryMax",
+                  "shortTermMax",
+                  "lra",
+                  "psr",
+                  "plr",
+                  "dialogueCoverage",
+                  "dialogueIntegrated",
+                  "dialogueRange",
+                  "dialogueOffset",
+                  "truePeak",
+                  "correlation",
+                  "sideToMid"
+                ]
+              }
+            },
+            "axes": {}
+          },
+          {
+            "key": "panel-6",
+            "moduleId": "vectorscope",
+            "controls": {
+              "channelPair": {
+                "x": 0,
+                "y": 1
+              },
+              "mode": "lissajous",
+              "maxHold": false
+            },
+            "axes": {}
+          }
+        ]
+      },
+      "presentation": {
+        "alwaysOnTop": false,
+        "focusView": {
+          "autoHideControls": false,
+          "compactPanels": false,
+          "borderless": false
+        },
+        "panelOpacityPercent": 100,
+        "glassEnabled": false
+      },
+      "dock": {
+        "enabled": false
+      },
+      "loudnessProfile": {
+        "dependencyId": null
+      }
+    }
+  ],
+  "dependencies": []
+}

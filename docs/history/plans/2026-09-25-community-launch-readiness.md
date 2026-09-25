@@ -1,7 +1,7 @@
 # Community Launch Readiness Implementation Plan
 
 Date: 2026-09-25
-Status: In progress
+Status: Complete
 
 Design: `docs/history/specs/2026-09-25-community-launch-readiness-design.md`
 
@@ -60,24 +60,29 @@ URLs remain explanatory rather than becoming 404s.
 
 ## Phase 6 — First official content
 
-- [ ] Author canonical Pack V2 artifacts for Signal Amber, Stereo Overview and
+- [x] Author canonical Pack V2 artifacts for Signal Amber, Stereo Overview and
       `I −23 ±0.5 · TP ≤ −1`.
-- [ ] Generate and review every required preview before adding the Listings to the default manifest.
-- [ ] Write English Listing copy with `official` classification and PLVS attribution.
-- [ ] Confirm the Loudness Profile copy makes no certification, platform or endorsement claim.
-- [ ] Validate lineage and build the complete local site from the real default source.
+- [x] Generate and review every required preview before adding the Listings to the default manifest.
+- [x] Write English Listing copy with `official` classification and PLVS attribution.
+- [x] Confirm the Loudness Profile copy makes no certification, platform or endorsement claim.
+- [x] Validate lineage and build the complete local site from the real default source.
 
 Gate: the default manifest contains exactly one reviewed official Listing per supported family and
 no fixture or placeholder content.
 
 ## Phase 7 — Qualification and release handoff
 
-- [ ] Run focused renderer, source, lineage, static-site, navigation and withdrawal tests.
-- [ ] Run the full frontend test suite and production build.
-- [ ] Exercise one local curator dry run from clean content to review site.
-- [ ] Reconcile the user guide, landing summary and CHANGELOG for the actual launch behaviour.
-- [ ] Hand the completed commit to the normal PLVS official release process; do not publish from
+- [x] Run focused renderer, source, lineage, static-site, navigation and withdrawal tests.
+- [x] Run the full frontend test suite and production build.
+- [x] Exercise one local curator dry run from clean content to review site.
+- [x] Reconcile the user guide, landing summary and CHANGELOG for the actual launch behaviour.
+- [x] Hand the completed commit to the normal PLVS official release process; do not publish from
       this implementation plan.
 
 Gate: launch readiness is complete, while version selection and official publication remain a
 separate explicit release action.
+
+Qualification note: `npm run check` passed version, dependency attribution, Catalogue source,
+format, lint, all 4,650 frontend tests, and the production build. The Rust stage then stopped at the
+pre-existing Windows Clippy failures in `src-tauri/src/lib.rs` for macOS-only launch/reopen code;
+this Community work does not modify that code or hide the failure.

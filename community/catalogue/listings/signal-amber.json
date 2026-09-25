@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "id": "signal-amber",
+  "slug": "signal-amber",
+  "type": "themes",
+  "classification": "official",
+  "title": "Signal Amber",
+  "summary": "A dark monitoring theme with amber primary data and cyan secondary traces.",
+  "descriptionMarkdown": "Signal Amber keeps PLVS's restrained dark surfaces while giving primary measurements a warm amber focus. Cyan secondary traces and distinct status colours keep dense monitoring views legible without turning the interface into a light show.",
+  "tags": ["Dark", "Amber", "Monitoring"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-09-25",
+      "status": "published",
+      "notesMarkdown": "Initial official release.",
+      "artifact": "artifacts/signal-amber-v1.plvstheme",
+      "previews": [
+        {
+          "id": "semantic-overview",
+          "path": "previews/signal-amber/v1/semantic-overview.png"
+        },
+        {
+          "id": "product-workspace-file",
+          "path": "previews/signal-amber/v1/product-workspace-file.png"
+        },
+        {
+          "id": "product-level-meter-file",
+          "path": "previews/signal-amber/v1/product-level-meter-file.png"
+        },
+        {
+          "id": "product-loudness-file",
+          "path": "previews/signal-amber/v1/product-loudness-file.png"
+        },
+        {
+          "id": "product-stats-file",
+          "path": "previews/signal-amber/v1/product-stats-file.png"
+        },
+        {
+          "id": "product-vectorscope-file",
+          "path": "previews/signal-amber/v1/product-vectorscope-file.png"
+        },
+        {
+          "id": "product-spectrum-file",
+          "path": "previews/signal-amber/v1/product-spectrum-file.png"
+        },
+        {
+          "id": "product-spectrogram-heatmap",
+          "path": "previews/signal-amber/v1/product-spectrogram-heatmap.png"
+        },
+        {
+          "id": "product-waveform-file",
+          "path": "previews/signal-amber/v1/product-waveform-file.png"
+        },
+        {
+          "id": "product-stereo-map-file",
+          "path": "previews/signal-amber/v1/product-stereo-map-file.png"
+        }
+      ]
+    }
+  ]
+}

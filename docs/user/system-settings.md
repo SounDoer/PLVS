@@ -81,7 +81,7 @@ recovery journal completes that rollback automatically the next time the target 
 before its saved state is shown.
 
 New Loudness Profile exports use a strict portable format intended for sharing between installations
-and the future Community catalogue. Every exported rule must have a threshold, and a Profile must
+and through the Community Catalogue. Every exported rule must have a threshold, and a Profile must
 contain a reference or at least one complete rule; PLVS reports an export error instead of silently
 dropping unfinished content. Older `.plvsloudness` files remain importable.
 
@@ -127,6 +127,11 @@ never activates or overwrites a Theme just because it was pasted. A copied or do
 recognized by its content: if an identical Theme, including its name, is already in your library,
 the review says so and nothing is added. Downloaded `.plvstheme` files use the same **Import** action
 as PLVS-exported Theme pack files.
+
+The website's **Community** section contains a small maintainer-curated collection of Loudness
+Profiles, Presets, and Themes. Downloads use the same one-item formats and open the same import
+review described above. Catalogue metadata does not make a downloaded Item active, replace a
+Library entry, or bypass PLVS's compatibility checks.
 
 ## Crash reports and feedback
 

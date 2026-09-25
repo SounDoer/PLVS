@@ -1,0 +1,90 @@
+{
+  "app": "PLVS",
+  "kind": "theme-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "custom-signal-amber",
+      "kind": "plvs-theme",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "Signal Amber",
+      "colorScheme": "dark",
+      "core": {
+        "workspace": "#070707",
+        "surface": "#151515",
+        "text": "#f2f2f2",
+        "interfaceAccent": "#a84e00",
+        "primaryData": "#fbbf24",
+        "secondaryData": "#22d3ee"
+      },
+      "palettes": {
+        "status": {
+          "safe": "#34d399",
+          "warning": "#fbbf24",
+          "critical": "#f97373"
+        },
+        "intensity": {
+          "stops": [
+            {
+              "position": 0,
+              "color": "#000004"
+            },
+            {
+              "position": 0.10196078431372549,
+              "color": "#1e0c2f"
+            },
+            {
+              "position": 0.2,
+              "color": "#420f6e"
+            },
+            {
+              "position": 0.30196078431372547,
+              "color": "#710c8c"
+            },
+            {
+              "position": 0.4,
+              "color": "#9e0c8f"
+            },
+            {
+              "position": 0.5019607843137255,
+              "color": "#cb197f"
+            },
+            {
+              "position": 0.6,
+              "color": "#e74152"
+            },
+            {
+              "position": 0.7019607843137254,
+              "color": "#f5821e"
+            },
+            {
+              "position": 0.8,
+              "color": "#fbc40a"
+            },
+            {
+              "position": 0.9019607843137255,
+              "color": "#fceb64"
+            },
+            {
+              "position": 1,
+              "color": "#fcffa4"
+            }
+          ]
+        },
+        "frequency": {
+          "low": "#ef4444",
+          "mid": "#f59e0b",
+          "high": "#22d3ee"
+        },
+        "interface": {
+          "success": "#147a54",
+          "warning": "#936000",
+          "danger": "#b83238"
+        }
+      },
+      "overrides": {}
+    }
+  ],
+  "dependencies": []
+}

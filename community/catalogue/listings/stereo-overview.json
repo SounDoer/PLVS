@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "stereo-overview",
+  "slug": "stereo-overview",
+  "type": "presets",
+  "classification": "official",
+  "title": "Stereo Overview",
+  "summary": "A balanced six-panel workspace for everyday stereo monitoring.",
+  "descriptionMarkdown": "A general-purpose layout that keeps level and loudness trends, spectrum, stereo position, key statistics, and vectorscope visible together. It uses the first stereo channel pair, keeps the Dock off, and leaves Loudness Profile selection to the user.",
+  "tags": ["Stereo", "Workspace", "Monitoring"],
+  "author": {
+    "name": "PLVS",
+    "url": "https://github.com/SounDoer/PLVS"
+  },
+  "releases": [
+    {
+      "number": 1,
+      "publishedAt": "2026-09-25",
+      "status": "published",
+      "notesMarkdown": "Initial official release.",
+      "artifact": "artifacts/stereo-overview-v1.plvspreset",
+      "previews": [
+        {
+          "id": "preset-workspace",
+          "path": "previews/stereo-overview/v1/preset-workspace.png"
+        }
+      ]
+    }
+  ]
+}

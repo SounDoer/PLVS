@@ -1,0 +1,36 @@
+{
+  "app": "PLVS",
+  "kind": "loudness-pack",
+  "version": 2,
+  "items": [
+    {
+      "id": "i-23-tp-1",
+      "kind": "plvs-loudness-profile",
+      "formatVersion": 1,
+      "semanticsVersion": 1,
+      "name": "I −23 ±0.5 · TP ≤ −1",
+      "referenceLufs": -23,
+      "rules": [
+        {
+          "metricId": "integrated",
+          "op": ">",
+          "value": -22.5,
+          "severity": "fail"
+        },
+        {
+          "metricId": "integrated",
+          "op": "<",
+          "value": -23.5,
+          "severity": "fail"
+        },
+        {
+          "metricId": "truePeak",
+          "op": ">",
+          "value": -1,
+          "severity": "fail"
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}
