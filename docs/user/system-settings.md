@@ -75,6 +75,11 @@ If storage fails or PLVS exits during that replacement, the incomplete import is
 recovery journal completes that rollback automatically the next time the target workbench opens,
 before its saved state is shown.
 
+New Loudness Profile exports use a strict portable format intended for sharing between installations
+and the future Community catalogue. Every exported rule must have a threshold, and a Profile must
+contain a reference or at least one complete rule; PLVS reports an export error instead of silently
+dropping unfinished content. Older `.plvsloudness` files remain importable.
+
 With several workbenches open, Library changes appear in each one. A changed Theme, Loudness
 Profile, or Preset does not silently replace the snapshot already active in another workbench; that
 workbench keeps measuring with its current snapshot until you explicitly apply a selection.

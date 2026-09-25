@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PACK_KINDS,
   PACK_VERSION,
+  LOUDNESS_PACK_VERSION,
   THEME_PACK_VERSION,
   PackValidationError,
   buildPack,
@@ -19,15 +20,26 @@ describe("buildPack", () => {
     expect(pack).toEqual({
       app: "PLVS",
       kind: "loudness-pack",
-      version: PACK_VERSION,
-      exportedAt: "2026-09-05T00:00:00.000Z",
-      items: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      version: LOUDNESS_PACK_VERSION,
+      items: [
+        {
+          id: "a",
+          kind: "plvs-loudness-profile",
+          formatVersion: 1,
+          semanticsVersion: 1,
+          name: "A",
+          referenceLufs: -23,
+          rules: [],
+        },
+      ],
+      dependencies: [],
     });
   });
 
-  it("drops items the normalizer rejects", () => {
-    const pack = buildPack("loudness", [{ name: "no id" }], { exportedAt: "x" });
-    expect(pack.items).toEqual([]);
+  it("rejects invalid Loudness Profiles instead of silently dropping them", () => {
+    expect(() => buildPack("loudness", [{ name: "no id" }])).toThrowError(
+      expect.objectContaining({ issues: [expect.objectContaining({ code: "invalidProfileId" })] })
+    );
   });
 
   it("carries referenced profiles on a preset pack and omits unreferenced ones", () => {
@@ -44,8 +56,14 @@ describe("buildPack", () => {
   });
 
   it("omits the loudnessProfiles field on non-preset kinds", () => {
-    const pack = buildPack("loudness", [], { exportedAt: "x" });
+    const pack = buildPack("loudness", [{ id: "a", name: "A", referenceLufs: -23, rules: [] }]);
     expect("loudnessProfiles" in pack).toBe(false);
+  });
+
+  it("refuses to export an empty Loudness Profile pack", () => {
+    expect(() => buildPack("loudness", [])).toThrowError(
+      expect.objectContaining({ issues: [expect.objectContaining({ code: "emptyItems" })] })
+    );
   });
 
   it("exposes one descriptor per kind", () => {
@@ -195,6 +213,51 @@ describe("parsePack", () => {
       "presets"
     );
     expect(parsed.loudnessProfiles).toEqual([]);
+  });
+
+  it("imports strict Loudness Pack V2 and retains tolerant Pack V1 import", () => {
+    const profile = {
+      id: "profile-a",
+      name: "Broadcast",
+      referenceLufs: -23,
+      rules: [{ metricId: "truePeak", op: ">", value: -1, severity: "fail" }],
+    };
+    const pack = buildPack("loudness", [profile]);
+    expect(parsePack(pack, "loudness").items).toEqual([profile]);
+
+    expect(
+      parsePack(
+        {
+          app: "PLVS",
+          kind: "loudness-pack",
+          version: PACK_VERSION,
+          exportedAt: "legacy",
+          items: [{ ...profile, rules: [...profile.rules, { metricId: "unknown" }] }],
+        },
+        "loudness"
+      )
+    ).toEqual({
+      app: "PLVS",
+      kind: "loudness-pack",
+      version: PACK_VERSION,
+      exportedAt: "legacy",
+      items: [profile],
+    });
+  });
+
+  it("aggregates invalid Loudness Pack V2 entries and duplicate IDs", () => {
+    const profile = { id: "profile-a", name: "Broadcast", referenceLufs: -23, rules: [] };
+    const pack = buildPack("loudness", [profile]);
+    pack.items.push(structuredClone(pack.items[0]));
+    pack.items[0].rules.push({ metricId: "truePeak", op: ">", severity: "fail" });
+    expect(() => parsePack(pack, "loudness")).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "incompleteRule", path: "$.items[0].rules[0].value" }),
+          expect.objectContaining({ code: "duplicateProfileId", path: "$.items[1].id" }),
+        ]),
+      })
+    );
   });
 });
 

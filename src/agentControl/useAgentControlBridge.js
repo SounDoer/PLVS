@@ -3216,11 +3216,18 @@ export function useAgentControlBridge({
             try {
               planned = planLibraryExport(family, request.params.ids);
             } catch (error) {
-              // Only Theme packs validate on export: an empty library or an unreadable stored
-              // Theme cannot become a Pack V2 file this build would accept back.
-              if (!(error instanceof PackValidationError) || family !== "theme") throw error;
+              // Pack V2 export is strict: an empty library or an unreadable stored item cannot
+              // become a file this build would accept back. Presets remain on tolerant Pack V1.
+              if (
+                !(error instanceof PackValidationError) ||
+                !["theme", "loudnessProfile"].includes(family)
+              ) {
+                throw error;
+              }
+              const reason =
+                family === "theme" ? "themeNotExportable" : "loudnessProfileNotExportable";
               throw semanticFailure(
-                "themeNotExportable",
+                reason,
                 "$.params",
                 error.message,
                 -32602,

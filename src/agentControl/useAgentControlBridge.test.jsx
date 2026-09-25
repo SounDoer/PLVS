@@ -4800,6 +4800,22 @@ describe("useAgentControlBridge", () => {
       expect(response.result.revision).toBe(before + 1);
     });
 
+    it("refuses to export an empty Loudness Profile library as Pack V2", async () => {
+      mount({ loudnessProfilesFromStore: true });
+      await waitUntilReady();
+
+      const response = await send(request("loudnessProfile.export", {}, "loudness-export-empty"));
+
+      expect(response.error).toMatchObject({
+        code: -32602,
+        data: {
+          reason: "loudnessProfileNotExportable",
+          path: "$.params",
+          details: { issues: [expect.objectContaining({ code: "emptyItems" })] },
+        },
+      });
+    });
+
     it("settles a Preset import whose only write is a bundled Loudness Profile", async () => {
       // A shared pack re-imported after the recipient deleted the Profile it carries: the Preset is
       // byte-identical to the local one and is skipped, so `presetsStore` is never written and the

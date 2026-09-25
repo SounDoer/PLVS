@@ -7,6 +7,11 @@
 
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
+import {
+  PortableLoudnessProfileError,
+  loudnessProfileToPortable,
+  portableToStoredLoudnessProfile,
+} from "../lib/portableLoudnessProfile.js";
 import { normalizeThemeDocument } from "../theme/migrations/migrateV1Theme.js";
 import {
   PORTABLE_THEME_FORMAT_VERSION,
@@ -23,6 +28,7 @@ import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
 
 export const PACK_APP = "PLVS";
 export const PACK_VERSION = 1;
+export const LOUDNESS_PACK_VERSION = 2;
 export const THEME_PACK_VERSION = 2;
 
 function normalizePresetEntry(raw) {
@@ -43,6 +49,7 @@ export const PACK_KINDS = {
     filterName: "PLVS Loudness Profiles",
     defaultBaseName: "plvs-loudness",
     normalizeItem: normalizeRuleDocument,
+    version: LOUDNESS_PACK_VERSION,
   },
   presets: {
     type: "presets",
@@ -87,6 +94,37 @@ export function buildPack(
   { exportedAt = new Date().toISOString(), loudnessProfiles = [] } = {}
 ) {
   const descriptor = packDescriptor(type);
+  if (type === "loudness") {
+    const sourceItems = Array.isArray(items) ? items : [];
+    if (sourceItems.length === 0) {
+      throw new PackValidationError("There are no Loudness Profiles to export.", [
+        issue("emptyItems", "$.items", "A Loudness Profile pack needs at least one item."),
+      ]);
+    }
+    const portableItems = sourceItems.map((item, index) => {
+      const id = normalizePortableItemId(item?.id);
+      if (!id) {
+        throw new PackValidationError("A Loudness Profile selected for export has an invalid ID.", [
+          issue("invalidProfileId", `$.items[${index}].id`, "The Loudness Profile ID is invalid."),
+        ]);
+      }
+      try {
+        return { id, ...loudnessProfileToPortable(item) };
+      } catch (error) {
+        if (!(error instanceof PortableLoudnessProfileError)) throw error;
+        throw new PackValidationError("A Loudness Profile selected for export is invalid.", [
+          ...prefixIssues(error.issues, `$.items[${index}]`),
+        ]);
+      }
+    });
+    return {
+      app: PACK_APP,
+      kind: descriptor.kind,
+      version: descriptor.version,
+      items: portableItems,
+      dependencies: [],
+    };
+  }
   if (type === "themes") {
     const sourceItems = Array.isArray(items) ? items : [];
     // Pack V2 requires at least one primary Item, so an empty library has nothing to export.
@@ -187,12 +225,19 @@ function parseLegacyThemeItems(raw) {
 }
 
 const PACK_V2_FIELDS = new Set(["app", "kind", "version", "createdWith", "items", "dependencies"]);
+const PORTABLE_ITEM_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const RESERVED_ITEM_IDS = new Set(["__proto__", "prototype", "constructor"]);
 
 function isObjectRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function collectPackV2EnvelopeIssues(raw, issues) {
+function normalizePortableItemId(value) {
+  if (typeof value !== "string" || !PORTABLE_ITEM_ID.test(value)) return null;
+  return RESERVED_ITEM_IDS.has(value) ? null : value;
+}
+
+function collectPackV2EnvelopeIssues(raw, issues, { dependencyKind = null } = {}) {
   for (const field of Object.keys(raw)) {
     if (!PACK_V2_FIELDS.has(field)) {
       issues.push(issue("unknownField", `$.${field}`, `Unknown field: ${field}.`));
@@ -216,11 +261,56 @@ function collectPackV2EnvelopeIssues(raw, issues) {
   }
   if (!Array.isArray(raw.dependencies)) {
     issues.push(issue("invalidDependencies", "$.dependencies", "dependencies must be an array."));
-  } else if (raw.dependencies.length > 0) {
+  } else if (dependencyKind === null && raw.dependencies.length > 0) {
     issues.push(
-      issue("unsupportedDependency", "$.dependencies", "A Theme pack has no dependencies.")
+      issue("unsupportedDependency", "$.dependencies", "This pack kind has no dependencies.")
     );
   }
+}
+
+function parsePortableLoudnessItems(raw) {
+  if (!Array.isArray(raw.items) || raw.items.length === 0) {
+    throw new PackValidationError("This Loudness Profile file is missing its items.", [
+      issue("invalidItems", "$.items", "items must be a non-empty array."),
+    ]);
+  }
+  const issues = [];
+  collectPackV2EnvelopeIssues(raw, issues);
+  const seenIds = new Set();
+  const items = [];
+  raw.items.forEach((item, index) => {
+    const path = `$.items[${index}]`;
+    if (!isObjectRecord(item)) {
+      issues.push(
+        issue("invalidProfileEntry", path, "A Loudness Profile entry must be an object.")
+      );
+      return;
+    }
+    const { id: rawId, ...document } = item;
+    const id = normalizePortableItemId(rawId);
+    if (!id) {
+      issues.push(issue("invalidProfileId", `${path}.id`, "id is invalid."));
+      return;
+    }
+    if (seenIds.has(id)) {
+      issues.push(issue("duplicateProfileId", `${path}.id`, `Duplicate id: ${id}.`));
+    } else {
+      seenIds.add(id);
+    }
+    try {
+      items.push(portableToStoredLoudnessProfile(document, id));
+    } catch (error) {
+      if (!(error instanceof PortableLoudnessProfileError)) throw error;
+      issues.push(...prefixIssues(error.issues, path));
+    }
+  });
+  if (issues.length > 0) {
+    throw new PackValidationError(
+      "This Loudness Profile file contains an invalid Loudness Profile.",
+      issues
+    );
+  }
+  return items;
 }
 
 function parsePortableThemeItems(raw) {
@@ -303,13 +393,15 @@ export function parsePack(raw, expectedType) {
   }
 
   const items =
-    expectedType === "themes"
-      ? raw.version === 1
-        ? parseLegacyThemeItems(raw)
-        : parsePortableThemeItems(raw)
-      : (Array.isArray(raw.items) ? raw.items : [])
-          .map((item) => expected.normalizeItem(item))
-          .filter(Boolean);
+    expectedType === "loudness" && raw.version === LOUDNESS_PACK_VERSION
+      ? parsePortableLoudnessItems(raw)
+      : expectedType === "themes"
+        ? raw.version === 1
+          ? parseLegacyThemeItems(raw)
+          : parsePortableThemeItems(raw)
+        : (Array.isArray(raw.items) ? raw.items : [])
+            .map((item) => expected.normalizeItem(item))
+            .filter(Boolean);
 
   const parsed = {
     app: PACK_APP,

@@ -88,18 +88,28 @@ revision, and writes no persistence.
 ```
 
 The abbreviated `core` and `palettes` objects above show the envelope only; real exports contain
-every required literal color and intensity stop. Theme Pack V2 uses the shared Pack V2 envelope:
-only `app`, `kind`, `version`, an optional `createdWith: { "appVersion" }`, a non-empty `items`
-list, and a `dependencies` list that is always empty for Themes; there is no `exportedAt`. Each item
-is a portable `plvs-theme` document plus its `id`, which is merge metadata and not part of the
-Theme's content identity. Items carry no palette `presetId`. Exporting a custom Theme library that
-is empty fails with `themeNotExportable`, because Pack V2 cannot be empty. Theme Pack V1 remains
-accepted on import; new exports use V2. Preset and Loudness Profile packs remain V1.
+every required literal color and intensity stop. Theme and Loudness Profile Pack V2 use the shared
+Pack V2 envelope: only `app`, `kind`, `version`, an optional
+`createdWith: { "appVersion" }`, a non-empty `items` list, and a `dependencies` list that is always
+empty for these families; there is no `exportedAt`. Each item is a portable `plvs-theme` or
+`plvs-loudness-profile` document plus its `id`, which is merge metadata and not part of content
+identity. Theme items carry no palette `presetId`; Loudness Profile items require every rule
+threshold and cannot be semantically empty. Exporting an empty or invalid library fails with
+`themeNotExportable` or `loudnessProfileNotExportable`, because Pack V2 cannot be empty or lossy.
+Pack V1 remains accepted on import; new Theme and Loudness Profile exports use V2. Preset packs
+remain V1.
 
 PLVS 0.17 and earlier returned Theme Pack V1 from `theme export`: `version: 1`, an `exportedAt`
 timestamp, stored Theme documents with `version: 2` and palette `presetId` fields, and an empty
 library exported as `items: []`. A caller that reads those fields must switch to the V2 shape above
 and handle `themeNotExportable` for an empty library. Item `id` and `name` keep their positions.
+
+PLVS 0.17 and earlier also returned Loudness Profile Pack V1 from `loudness-profile export`. V1
+placed the stored `{ id, name, referenceLufs, rules }` record directly in `items`, carried
+`exportedAt`, permitted an empty `items` array, and could silently omit content rejected by the
+persistence normalizer. V2 adds the portable Item `kind`, `formatVersion` and `semanticsVersion`,
+removes `exportedAt`, requires `dependencies: []`, and fails instead of dropping incomplete rules or
+empty Profiles.
 
 `--all` and `--ids` are mutually exclusive on the CLI and exactly one is required. On the wire the
 whole-library form is the **absence** of `ids`, not `ids: null`: the parameter validator accepts
@@ -205,11 +215,11 @@ selection, and a command touching both Settings and Themes advances the one glob
 once.
 
 An import whose every item is `skipped` is a successful no-op: `changed: false`, no revision
-increment, no persistence write. Theme import is stricter than the former Pack V1 implementation:
-if any Theme is unreadable, incompatible, or duplicated by `id` within the file, or if a V2 envelope
+increment, no persistence write. Theme and Loudness Profile Pack V2 import are strict: if any Item
+is unreadable, incompatible, incomplete, or duplicated by `id` within the file, or if a V2 envelope
 has unknown fields, no items, or non-empty `dependencies`, the complete import fails with
-`invalidPack` and nothing is added. Preset and Loudness Profile packs retain their existing
-normalization behavior.
+`invalidPack` and nothing is added. Their Pack V1 imports retain the former tolerant normalization
+behavior. Preset packs retain their existing V1 behavior.
 
 A dry run and a no-op both return the revision from _before_ the request, and neither flushes
 persistence, because both return before any write exists to persist. The returned revision is never
@@ -234,12 +244,15 @@ refusing here would make the CLI stricter than the button it mirrors for no prot
 
 ## Errors
 
-This family reuses the existing envelope and codes and adds two:
+This family reuses the existing envelope and codes and adds these semantic reasons:
 
 - `presetNotFound`, `themeNotFound`, `loudnessProfileNotFound` — an id in `--ids` is not in that
   library. `details.missingIds` lists all of them. Exit code 3.
 - `themeNotExportable` — a Theme export explicitly named a built-in Theme, or the export would be an
   empty or invalid Theme pack (`details.issues` then lists the problems). Exit code 3.
+- `loudnessProfileNotExportable` — the export would be an empty or invalid Loudness Profile Pack V2,
+  including an incomplete rule or semantically empty Profile. `details.issues` lists the problems.
+  Exit code 3.
 - `invalidPack` — the document is not a valid pack for this family. The message is the one written
   for a person who received a shared file, and distinguishes "not a PLVS file", a whole
   configuration file, another library's file, a missing version, and a file made by a newer version

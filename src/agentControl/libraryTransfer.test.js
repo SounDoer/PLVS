@@ -68,11 +68,11 @@ describe("planLibraryExport", () => {
     expect(planned.pack).toBeNull();
   });
 
-  it("treats an empty ids array as 'export nothing', distinct from the whole library", () => {
+  it("rejects an empty ids array because Pack V2 cannot encode an empty library", () => {
     settingsStore.patch({ loudnessProfiles: { profiles: [PROFILE_A] } });
-    const planned = planLibraryExport("loudnessProfile", []);
-    expect(planned.missingIds).toEqual([]);
-    expect(planned.pack.items).toEqual([]);
+    expect(() => planLibraryExport("loudnessProfile", [])).toThrowError(
+      expect.objectContaining({ issues: [expect.objectContaining({ code: "emptyItems" })] })
+    );
   });
 });
 
