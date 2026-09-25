@@ -63,6 +63,7 @@
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "dialog:allow-open",
-    "dialog:allow-save"
+    "dialog:allow-save",
+    "clipboard-manager:allow-read-text"
   ]
 }

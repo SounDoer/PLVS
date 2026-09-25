@@ -79,6 +79,7 @@ atomic-write-file = "0.3.1"
 getrandom = "0.4.3"
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 subtle = "2.6.1"
+tauri-plugin-clipboard-manager = "2.3.3"
 
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.

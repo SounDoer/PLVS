@@ -10,6 +10,7 @@ import { useTransientStatus } from "../hooks/useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { pickPackFile, savePackFile } from "../ipc/fileDialog.js";
+import { readClipboardText } from "../ipc/clipboard.js";
 import { collectPackItems } from "./collectPackItems.js";
 import { getAdapter } from "./libraryAdapters.js";
 import { planPackImport } from "./mergeIntoLibrary.js";
@@ -162,7 +163,7 @@ export function usePackTransfer() {
   const pasteThemeFromClipboard = useCallback(async () => {
     if (busy) return;
     try {
-      const text = await navigator.clipboard.readText();
+      const text = await readClipboardText();
       await beginThemePaste(text);
     } catch (_) {
       setStatus(

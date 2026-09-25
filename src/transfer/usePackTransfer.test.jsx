@@ -22,6 +22,11 @@ vi.mock("../ipc/fileDialog.js", () => ({
   savePackFile: (...args) => savePackFile(...args),
 }));
 
+const readClipboardText = vi.fn();
+vi.mock("../ipc/clipboard.js", () => ({
+  readClipboardText: (...args) => readClipboardText(...args),
+}));
+
 import { isTauri } from "../ipc/env.js";
 import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
 import { STATUS_DISMISS_MS } from "../hooks/useTransientStatus.js";
@@ -350,18 +355,14 @@ describe("usePackTransfer Theme paste", () => {
   });
 
   it("uses the clipboard reader for the discoverable Paste button", async () => {
-    const readText = vi.fn().mockResolvedValue(clipboardTheme("Button Theme"));
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { readText },
-    });
+    readClipboardText.mockResolvedValue(clipboardTheme("Button Theme"));
     const { result } = renderHook(() => usePackTransfer());
 
     await act(async () => {
       await result.current.pasteThemeFromClipboard();
     });
 
-    expect(readText).toHaveBeenCalledTimes(1);
+    expect(readClipboardText).toHaveBeenCalledTimes(1);
     expect(result.current.review.itemPlan[0].name).toBe("Button Theme");
   });
 });

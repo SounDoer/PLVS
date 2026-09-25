@@ -22,6 +22,13 @@ describe("default Tauri capabilities", () => {
     expect(capability.permissions).toContain("dialog:allow-save");
   });
 
+  it("allows only native clipboard text reads for pasting shared Themes", () => {
+    const clipboard = capability.permissions.filter(
+      (permission) => typeof permission === "string" && permission.startsWith("clipboard-manager:")
+    );
+    expect(clipboard).toEqual(["clipboard-manager:allow-read-text"]);
+  });
+
   it("allows the updater plugin to check and install updates", () => {
     expect(capability.permissions).toContain("updater:default");
   });
