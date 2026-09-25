@@ -23,7 +23,7 @@ afterEach(() => {
   }
 });
 
-function writeFixtureSource(directory) {
+function writeFixtureSource(directory, { status = "published" } = {}) {
   mkdirSync(join(directory, "listings"));
   mkdirSync(join(directory, "artifacts"));
   mkdirSync(join(directory, "previews"));
@@ -48,13 +48,14 @@ function writeFixtureSource(directory) {
         {
           number: 1,
           publishedAt: "2026-09-25",
-          status: "published",
+          status,
           notesMarkdown: "Initial release.",
           artifact: "artifacts/broadcast.plvsloudness",
           previews: [
             { id: "profile-summary", path: "previews/summary.png" },
             { id: "profile-stats-example", path: "previews/stats.png" },
           ],
+          ...(status === "withdrawn" ? { withdrawalReason: "Unsafe guidance." } : {}),
         },
       ],
     })
@@ -75,24 +76,36 @@ function writeFixtureSource(directory) {
   writeFileSync(join(directory, "previews", "stats.png"), PNG);
 }
 
+function writeAssembledSite(directory) {
+  mkdirSync(join(directory, "docs"), { recursive: true });
+  const html =
+    '<nav>Before<!-- COMMUNITY_NAV_START --><a href="community/">Community</a><!-- COMMUNITY_NAV_END -->After</nav>';
+  writeFileSync(join(directory, "index.html"), html);
+  writeFileSync(join(directory, "docs", "index.html"), html.replace("community/", "../community/"));
+}
+
 describe("Community static site generator", () => {
   it("is part of release-bound landing site assembly", () => {
     const workflow = readFileSync(join(".github", "workflows", "deploy-landing.yml"), "utf8");
     expect(workflow).toContain(
-      "node scripts/build-community-site.mjs community/catalogue _site/community"
+      "node scripts/build-community-site.mjs community/catalogue _site/community _site"
     );
   });
 
   it("builds useful empty browse pages", async () => {
     const source = temporaryDirectory("plvs-community-empty-");
     const output = temporaryDirectory("plvs-community-output-");
+    const site = temporaryDirectory("plvs-community-site-");
     writeFileSync(join(source, "manifest.json"), '{"schemaVersion":1,"listings":[]}');
+    writeAssembledSite(site);
 
     await expect(
-      buildCommunitySite({ contentDirectory: source, outputDirectory: output })
-    ).resolves.toMatchObject({ listingCount: 0, pageCount: 4 });
+      buildCommunitySite({ contentDirectory: source, outputDirectory: output, siteDirectory: site })
+    ).resolves.toMatchObject({ listingCount: 0, visibleListingCount: 0, pageCount: 4 });
     expect(readFileSync(join(output, "index.html"), "utf8")).toContain("Nothing published yet");
     expect(readFileSync(join(output, "themes", "index.html"), "utf8")).toContain("Themes");
+    expect(readFileSync(join(site, "index.html"), "utf8")).not.toContain("Community");
+    expect(readFileSync(join(site, "docs", "index.html"), "utf8")).not.toContain("Community");
   });
 
   it("builds browse, detail, download, and sealed preview files", async () => {
@@ -101,7 +114,7 @@ describe("Community static site generator", () => {
     writeFixtureSource(source);
 
     const result = await buildCommunitySite({ contentDirectory: source, outputDirectory: output });
-    expect(result).toMatchObject({ listingCount: 1, pageCount: 5 });
+    expect(result).toMatchObject({ listingCount: 1, visibleListingCount: 1, pageCount: 5 });
     const root = readFileSync(join(output, "index.html"), "utf8");
     const detail = readFileSync(join(output, "loudness", "broadcast-safe", "index.html"), "utf8");
     expect(root).toContain("Broadcast Safe");
@@ -122,5 +135,20 @@ describe("Community static site generator", () => {
     expect(
       readFileSync(join(output, "files", "broadcast", "v1", "broadcast.plvsloudness"), "utf8")
     ).toContain('"kind": "loudness-pack"');
+  });
+
+  it("hides a fully withdrawn Listing from browse while preserving its historical detail page", async () => {
+    const source = temporaryDirectory("plvs-community-withdrawn-");
+    const output = temporaryDirectory("plvs-community-output-");
+    writeFixtureSource(source, { status: "withdrawn" });
+
+    await expect(
+      buildCommunitySite({ contentDirectory: source, outputDirectory: output })
+    ).resolves.toMatchObject({ listingCount: 1, visibleListingCount: 0 });
+    expect(readFileSync(join(output, "index.html"), "utf8")).not.toContain("Broadcast Safe");
+    const detail = readFileSync(join(output, "loudness", "broadcast-safe", "index.html"), "utf8");
+    expect(detail).toContain("Broadcast Safe");
+    expect(detail).toContain("Withdrawn: Unsafe guidance.");
+    expect(detail).not.toContain("Download Release 1");
   });
 });

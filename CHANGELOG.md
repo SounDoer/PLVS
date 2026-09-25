@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Community navigation is omitted when an assembled Catalogue has no visible Release. A Listing
+  whose Releases are all withdrawn disappears from browse and search while retaining its historical
+  detail page without a download action.
+- Generated Community previews now have a versioned result contract that binds the exact required
+  PNG set to its renderer, canonical content and fixed fixture identities, dimensions, byte lengths
+  and SHA-256 hashes.
 - Community Catalogue source validation now opens every Release through PLVS's stable publication
   contract, derives immutable metadata from the exact artifact bytes, and seals the exact required
   generated PNG preview set without accepting publisher-selected screenshots.

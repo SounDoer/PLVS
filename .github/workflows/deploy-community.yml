@@ -86,7 +86,7 @@ jobs:
         run: |
           cp -r site-source/landing _site
           (cd site-source && node scripts/build-user-docs.mjs ../_site/docs/index.html)
-          node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community
+          node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community _site
           candidate_sha=$(git -C content-source rev-parse HEAD)
           jq --null-input --arg repository "${{ github.repository }}" --arg commitSha "$candidate_sha" '{ schemaVersion: 1, repository: $repository, commitSha: $commitSha }' > _site/community/publication.json
           rm _site/docs/template.html

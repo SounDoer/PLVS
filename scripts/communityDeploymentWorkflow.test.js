@@ -22,7 +22,7 @@ describe("Community content deployment", () => {
       "node site-source/scripts/community-catalogue-update.mjs published-content-source/community/catalogue content-source/community/catalogue"
     );
     expect(workflow).toContain(
-      "node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community"
+      "node site-source/scripts/build-community-site.mjs content-source/community/catalogue _site/community _site"
     );
   });
 

@@ -16,6 +16,10 @@ export {
   buildCommunityPreviewPlan,
 } from "./communityPreview.js";
 export {
+  COMMUNITY_PREVIEW_RESULT_VERSION,
+  validateCommunityPreviewResult,
+} from "./communityPreviewResult.js";
+export {
   COMMUNITY_THEME_PREVIEW_ASSETS,
   COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION,
   buildCommunityThemePreviewPlan,

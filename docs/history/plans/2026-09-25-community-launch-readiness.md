@@ -7,10 +7,10 @@ Design: `docs/history/specs/2026-09-25-community-launch-readiness-design.md`
 
 ## Phase 1 — Freeze launch contracts
 
-- [ ] Add contract tests for launch visibility and fully withdrawn Listings.
-- [ ] Add a preview-generation result contract: asset ID, dimensions, byte length, hash, renderer
+- [x] Add contract tests for launch visibility and fully withdrawn Listings.
+- [x] Add a preview-generation result contract: asset ID, dimensions, byte length, hash, renderer
       identity, content hash, and fixture hash.
-- [ ] Record why Community previews use an isolated browser harness rather than a running desktop
+- [x] Record why Community previews use an isolated browser harness rather than a running desktop
       capture rig or independently drawn marketing cards.
 
 Gate: visibility, withdrawal and renderer ownership fail in tests before implementation changes.

@@ -38,7 +38,7 @@ jobs:
         run: |
           cp -r landing _site
           node scripts/build-user-docs.mjs _site/docs/index.html
-          node scripts/build-community-site.mjs community/catalogue _site/community
+          node scripts/build-community-site.mjs community/catalogue _site/community _site
           rm _site/docs/template.html
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

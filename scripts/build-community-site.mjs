@@ -215,6 +215,23 @@ async function writePage(path, html) {
   await writeFile(path, html);
 }
 
+const COMMUNITY_NAVIGATION = /<!-- COMMUNITY_NAV_START -->([\s\S]*?)<!-- COMMUNITY_NAV_END -->/g;
+
+async function gateCommunityNavigation(siteDirectory, visible) {
+  if (!siteDirectory) return;
+  for (const relativePath of ["index.html", join("docs", "index.html")]) {
+    const path = join(siteDirectory, relativePath);
+    let html;
+    try {
+      html = await readFile(path, "utf8");
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
+    await writeFile(path, html.replace(COMMUNITY_NAVIGATION, visible ? "$1" : ""));
+  }
+}
+
 async function copyReleaseFiles(source, output, listing) {
   for (const release of listing.releases) {
     const target = join(output, "files", listing.id, `v${release.number}`);
@@ -226,26 +243,46 @@ async function copyReleaseFiles(source, output, listing) {
   }
 }
 
-export async function buildCommunitySite({ contentDirectory, outputDirectory } = {}) {
+export async function buildCommunitySite({
+  contentDirectory,
+  outputDirectory,
+  siteDirectory,
+} = {}) {
   const source = await readCommunitySource(contentDirectory ?? resolve("community", "catalogue"));
   const output = resolve(outputDirectory ?? resolve("artifacts", "community-site"));
   const listings = source.listings.map(({ document }) => document);
+  const visibleListings = listings.filter(latestPublished);
   await mkdir(output, { recursive: true });
-  await writePage(join(output, "index.html"), browsePage(listings));
+  await writePage(join(output, "index.html"), browsePage(visibleListings));
   for (const type of Object.keys(FAMILIES)) {
-    await writePage(join(output, type, "index.html"), browsePage(listings, type));
+    await writePage(join(output, type, "index.html"), browsePage(visibleListings, type));
   }
   for (const listing of listings) {
     await writePage(join(output, listing.type, listing.slug, "index.html"), detailPage(listing));
     await copyReleaseFiles(source, output, listing);
   }
-  return { outputDirectory: output, listingCount: listings.length, pageCount: 4 + listings.length };
+  await gateCommunityNavigation(
+    siteDirectory ? resolve(siteDirectory) : null,
+    visibleListings.length > 0
+  );
+  return {
+    outputDirectory: output,
+    listingCount: listings.length,
+    visibleListingCount: visibleListings.length,
+    pageCount: 4 + listings.length,
+  };
 }
 
 async function main(args) {
-  if (args.length > 2)
-    throw new Error("Usage: npm run community:site -- [content-directory] [output-directory]");
-  const result = await buildCommunitySite({ contentDirectory: args[0], outputDirectory: args[1] });
+  if (args.length > 3)
+    throw new Error(
+      "Usage: npm run community:site -- [content-directory] [output-directory] [assembled-site-directory]"
+    );
+  const result = await buildCommunitySite({
+    contentDirectory: args[0],
+    outputDirectory: args[1],
+    siteDirectory: args[2],
+  });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 

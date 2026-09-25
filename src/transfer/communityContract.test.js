@@ -5,6 +5,7 @@ import {
   COMMUNITY_CONTRACT_VERSION,
   COMMUNITY_PREVIEW_CONTRACT_VERSION,
   COMMUNITY_PREVIEW_RENDERER_VERSION,
+  COMMUNITY_PREVIEW_RESULT_VERSION,
   COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION,
   deriveCommunityCatalogueMetadata,
   validateCommunityArtifactText,
@@ -19,6 +20,7 @@ describe("static Catalogue handoff contract", () => {
       metadata: COMMUNITY_CATALOGUE_METADATA_VERSION,
       preview: COMMUNITY_PREVIEW_CONTRACT_VERSION,
       previewRenderer: COMMUNITY_PREVIEW_RENDERER_VERSION,
+      previewResult: COMMUNITY_PREVIEW_RESULT_VERSION,
       themePreview: COMMUNITY_THEME_PREVIEW_CONTRACT_VERSION,
     }).toEqual({
       contract: 1,
@@ -26,6 +28,7 @@ describe("static Catalogue handoff contract", () => {
       metadata: 1,
       preview: 1,
       previewRenderer: 1,
+      previewResult: 1,
       themePreview: 1,
     });
   });
