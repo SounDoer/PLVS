@@ -475,6 +475,31 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
   );
 }
 
+/// Warning and critical for one mode. Each bound is limited by the other, so an out-of-order entry
+/// is refused and restored by SettingsNumberInput instead of being silently repaired.
+export function SettingsThresholdInputs({ ariaLabel, warning, critical, min, max, onCommit }) {
+  return (
+    <div className="flex min-w-0 items-center gap-0.5">
+      <SettingsNumberInput
+        ariaLabel={`${ariaLabel} warning`}
+        value={warning}
+        min={min}
+        max={critical}
+        onCommit={(nextWarning) => onCommit(nextWarning, critical)}
+      />
+      <span className="text-muted-foreground/60">/</span>
+      <SettingsNumberInput
+        ariaLabel={`${ariaLabel} critical`}
+        value={critical}
+        min={warning}
+        max={max}
+        suffix="dB"
+        onCommit={(nextCritical) => onCommit(warning, nextCritical)}
+      />
+    </div>
+  );
+}
+
 export function WaveformSettingsRows({
   frequencyColor,
   lowMidSplitHz,
@@ -1214,6 +1239,18 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
         minValue={controls[row.key]}
         maxValue={ui.fixedMax}
         onCommit={(newMin) => commit({ [row.key]: newMin })}
+      />
+    );
+  }
+  if (ui.widget === "thresholds") {
+    return (
+      <SettingsThresholdInputs
+        ariaLabel={ui.ariaLabel}
+        warning={controls[row.minKey]}
+        critical={controls[row.maxKey]}
+        min={row.absMin}
+        max={row.absMax}
+        onCommit={(warning, critical) => commit({ [row.minKey]: warning, [row.maxKey]: critical })}
       />
     );
   }

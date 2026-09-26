@@ -516,6 +516,66 @@ describe("PanelSettingsContent", () => {
     });
   });
 
+  it("edits the Peak thresholds as one ordered pair", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    expect(screen.getByText("Warning / Critical")).toBeTruthy();
+    expect(screen.queryByLabelText("level meter rms thresholds warning")).toBeNull();
+    const warning = screen.getByLabelText("level meter peak thresholds warning");
+    expect(warning.value).toBe("-6");
+    expect(screen.getByLabelText("level meter peak thresholds critical").value).toBe("-1");
+
+    fireEvent.change(warning, { target: { value: "-12" } });
+    fireEvent.keyDown(warning, { key: "Enter" });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ levelMeterPeakWarningDb: -12, levelMeterPeakCriticalDb: -1 })
+    );
+  });
+
+  it("refuses a warning threshold above critical", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const warning = screen.getByLabelText("level meter peak thresholds warning");
+    fireEvent.change(warning, { target: { value: "0" } });
+    fireEvent.keyDown(warning, { key: "Enter" });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+    expect(warning.value).toBe("-6");
+  });
+
+  it("shows the RMS thresholds in RMS mode and none in loudness modes", () => {
+    const { rerender } = render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "rms" }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("level meter rms thresholds warning").value).toBe("-18");
+
+    rerender(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "momentary" }}
+        onPanelControlsChange={vi.fn()}
+      />
+    );
+    expect(screen.queryByText("Warning / Critical")).toBeNull();
+  });
+
   it("shows the TP Max switch and hides the value marker switch in Peak mode", () => {
     const onPanelControlsChange = vi.fn();
     render(

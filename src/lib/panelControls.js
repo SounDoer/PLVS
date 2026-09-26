@@ -100,7 +100,7 @@ function ids(options) {
 
 /// Shared by the Peak and RMS rows and by the Dock's settings row.
 export const LEVEL_METER_THRESHOLD_TOOLTIP =
-  "Levels where the bar turns fully warning and fully critical colour; it blends below each.";
+  "Levels where the bar reaches the full warning and critical color; it blends below each.";
 
 /// Warning and critical are repaired as a unit: each clamps to the scale and rounds, and a pair
 /// out of order falls back to the defaults. Equal values are allowed and mean "no warning band".
