@@ -556,6 +556,41 @@ describe("PanelSettingsContent", () => {
     expect(warning.value).toBe("-6");
   });
 
+  it("refuses a critical threshold below warning", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const critical = screen.getByLabelText("level meter peak thresholds critical");
+    fireEvent.change(critical, { target: { value: "-10" } });
+    fireEvent.keyDown(critical, { key: "Enter" });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+    expect(critical.value).toBe("-1");
+  });
+
+  it("accepts equal warning and critical", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const critical = screen.getByLabelText("level meter peak thresholds critical");
+    fireEvent.change(critical, { target: { value: "-6" } });
+    fireEvent.keyDown(critical, { key: "Enter" });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ levelMeterPeakWarningDb: -6, levelMeterPeakCriticalDb: -6 })
+    );
+  });
+
   it("shows the RMS thresholds in RMS mode and none in loudness modes", () => {
     const { rerender } = render(
       <PanelSettingsContent
