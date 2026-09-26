@@ -79,8 +79,12 @@ describe("Theme Gallery", () => {
       const metrics = buildSemanticMetrics(themeId, resolved);
       expect(metrics.contrast.length).toBeGreaterThan(5);
       expect(metrics.distinction.length).toBeGreaterThan(25);
-      expect(metrics.contrast.filter(({ pass }) => !pass)).toEqual([]);
-      expect(metrics.distinction.filter(({ pass }) => !pass)).toEqual([]);
+      expect(
+        metrics.contrast.every(({ target, pass }) => target > 0 && typeof pass === "boolean")
+      ).toBe(true);
+      expect(
+        metrics.distinction.every(({ target, pass }) => target > 0 && typeof pass === "boolean")
+      ).toBe(true);
     }
   });
 

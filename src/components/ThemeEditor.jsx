@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Eye, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,9 +7,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { clampPanelPos } from "../lib/dragClamp.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
-import { ThemeWarningSummary } from "./theme-editor/ThemeWarningSummary.jsx";
 import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
-import { analyzeThemeVisuals } from "../theme/themeVisualAnalysis.js";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -102,7 +100,6 @@ export function ThemeEditor({
   const [page, setPage] = useState("core");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [focusTarget, setFocusTarget] = useState(null);
-  const visualWarnings = useMemo(() => analyzeThemeVisuals(draft).warnings, [draft]);
   const clearFocusTarget = useCallback(() => setFocusTarget(null), []);
 
   useEffect(() => {
@@ -346,13 +343,6 @@ export function ThemeEditor({
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto px-3 py-2">
-          <ThemeWarningSummary
-            warnings={visualWarnings}
-            onJump={(target) => {
-              setPage(target.page);
-              setFocusTarget(target);
-            }}
-          />
           {page === "core" ? (
             <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
               <div>
@@ -387,7 +377,6 @@ export function ThemeEditor({
               draft={draft}
               onOverride={onOverride}
               onResetOverrides={onResetOverrides}
-              warnings={visualWarnings}
               focusRoleId={focusTarget?.page === "advanced" ? focusTarget.id : null}
               onFocusHandled={clearFocusTarget}
             />
@@ -424,7 +413,17 @@ export function ThemeEditor({
         confirmLabel="Discard Changes"
         onConfirm={onCancel}
       />
-      {previewOpen ? <ThemePreview draft={draft} onClose={() => setPreviewOpen(false)} /> : null}
+      {previewOpen ? (
+        <ThemePreview
+          draft={draft}
+          onClose={() => setPreviewOpen(false)}
+          onJump={(target) => {
+            setPreviewOpen(false);
+            setPage(target.page);
+            setFocusTarget(target);
+          }}
+        />
+      ) : null}
     </>
   );
 }

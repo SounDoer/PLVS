@@ -205,8 +205,8 @@ export function validatePortableTheme(raw) {
 
 /**
  * Strict community-intake result for one portable Theme. Invalid documents throw
- * PortableThemeError; valid documents retain all visual warnings, while only the covered WCAG
- * contrast failures make communityPublication.eligible false.
+ * PortableThemeError; valid documents retain all visual findings for review, but visual quality
+ * never changes communityPublication eligibility.
  */
 export function assessPortableThemeCommunityPublication(raw) {
   const document = validatePortableTheme(raw);

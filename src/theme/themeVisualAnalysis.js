@@ -41,7 +41,7 @@ function warning({
   section,
   metric,
   consumers,
-  publicationBlocker = null,
+  standard = null,
 }) {
   return {
     id: `${code}:${roleIds.join("+")}`,
@@ -54,7 +54,7 @@ function warning({
     section,
     metric,
     consumers,
-    publicationBlocker,
+    standard,
   };
 }
 
@@ -72,12 +72,7 @@ function contrastWarning(resolved, spec) {
     section: spec.section,
     metric: { label: "Contrast", value: Number(ratio.toFixed(3)), target: spec.targetRatio },
     consumers: spec.consumers,
-    publicationBlocker: spec.standard
-      ? {
-          code: "accessibilityContrast",
-          standard: spec.standard,
-        }
-      : null,
+    standard: spec.standard ?? null,
   });
 }
 
@@ -288,21 +283,12 @@ export function analyzeThemeVisuals(theme) {
     );
   }
 
-  const blockers = warnings
-    .filter((item) => item.publicationBlocker)
-    .map((item) => ({
-      warningId: item.id,
-      ...item.publicationBlocker,
-      roleIds: item.roleIds,
-      metric: item.metric,
-    }));
-
   return {
     warnings,
     communityPublication: {
-      eligible: blockers.length === 0,
-      blockers,
-      scope: "coveredContrastChecks",
+      eligible: true,
+      blockers: [],
+      scope: "visualReviewOnly",
     },
   };
 }

@@ -30,48 +30,55 @@ describe("Theme visual analysis", () => {
     expect(new Set(report.warnings.map((item) => item.id)).size).toBe(report.warnings.length);
     expect(report.communityPublication).toEqual({
       eligible: true,
-      scope: "coveredContrastChecks",
+      scope: "visualReviewOnly",
       blockers: [],
     });
   });
 
-  it.each(Object.keys(BUILTIN_THEMES_V2))("ships %s without high-confidence warnings", (id) => {
-    const report = analyzeThemeVisuals(BUILTIN_THEMES_V2[id]);
-    expect(report.warnings).toEqual([]);
-    expect(report.communityPublication).toEqual({
-      eligible: true,
-      blockers: [],
-      scope: "coveredContrastChecks",
-    });
-  });
+  it.each(Object.keys(BUILTIN_THEMES_V2))(
+    "analyzes built-in %s without making review a gate",
+    (id) => {
+      const report = analyzeThemeVisuals(BUILTIN_THEMES_V2[id]);
+      expect(Array.isArray(report.warnings)).toBe(true);
+      expect(report.communityPublication).toEqual({
+        eligible: true,
+        blockers: [],
+        scope: "visualReviewOnly",
+      });
+    }
+  );
 
-  it("blocks community publication only for covered WCAG contrast failures", () => {
+  it("keeps covered WCAG text findings as non-blocking visual review", () => {
     const lowContrast = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
     lowContrast.overrides["interface.text.annotation"] = { kind: "color", value: "#151515" };
 
     const report = analyzeThemeVisuals(lowContrast);
 
-    expect(report.communityPublication.eligible).toBe(false);
-    expect(report.communityPublication.blockers).toContainEqual(
+    expect(report.warnings).toContainEqual(
       expect.objectContaining({
-        warningId: "contrast:interface.text.annotation+interface.surface.panel",
-        code: "accessibilityContrast",
+        id: "contrast:interface.text.annotation+interface.surface.panel",
+        code: "contrast",
         standard: "WCAG 2.2 SC 1.4.3",
         roleIds: ["interface.text.annotation", "interface.surface.panel"],
         metric: expect.objectContaining({ target: 4.5 }),
       })
     );
+    expect(report.communityPublication).toEqual({
+      eligible: true,
+      blockers: [],
+      scope: "visualReviewOnly",
+    });
   });
 
-  it("uses the WCAG non-text threshold for essential measurement graphics", () => {
+  it("keeps the WCAG non-text threshold as non-blocking visual review", () => {
     const hiddenTrace = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
     hiddenTrace.core.primaryData = hiddenTrace.core.surface;
 
     const report = analyzeThemeVisuals(hiddenTrace);
 
-    expect(report.communityPublication.blockers).toContainEqual(
+    expect(report.warnings).toContainEqual(
       expect.objectContaining({
-        warningId: "contrast:data.primary+interface.surface.panel",
+        id: "contrast:data.primary+interface.surface.panel",
         standard: "WCAG 2.2 SC 1.4.11",
         metric: expect.objectContaining({ target: 3 }),
       })
@@ -88,13 +95,13 @@ describe("Theme visual analysis", () => {
       expect.objectContaining({
         code: "separation",
         roleIds: ["palette.status.safe", "palette.status.warning"],
-        publicationBlocker: null,
+        standard: null,
       })
     );
     expect(report.communityPublication).toEqual({
       eligible: true,
       blockers: [],
-      scope: "coveredContrastChecks",
+      scope: "visualReviewOnly",
     });
   });
 

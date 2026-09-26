@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { compileTheme } from "../../theme/compileTheme.js";
+import { analyzeThemeVisuals } from "../../theme/themeVisualAnalysis.js";
 import { Button } from "../ui/button.jsx";
 import { SCRIM_CLASS } from "../ui/surfaceStyles.js";
+import { ThemeVisualReview } from "./ThemeWarningSummary.jsx";
 
 function PreviewCard({ title, children }) {
   return (
@@ -136,9 +138,10 @@ function ModulesScene({ intensityGradient }) {
   );
 }
 
-export function ThemePreview({ draft, onClose }) {
+export function ThemePreview({ draft, onClose, onJump }) {
   const [page, setPage] = useState("overview");
   const resolved = useMemo(() => compileTheme(draft), [draft]);
+  const visualWarnings = useMemo(() => analyzeThemeVisuals(draft).warnings, [draft]);
   const style = useMemo(() => Object.fromEntries(Object.entries(resolved.css)), [resolved]);
   const intensityGradient = `linear-gradient(to right, ${resolved.roles["palette.intensity.stops"]
     .map((stop) => `${stop.color} ${stop.position * 100}%`)
@@ -172,6 +175,7 @@ export function ThemePreview({ draft, onClose }) {
             {[
               ["overview", "Overview"],
               ["modules", "Modules"],
+              ["review", "Visual Review"],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -188,8 +192,10 @@ export function ThemePreview({ draft, onClose }) {
           <div className="overflow-y-auto p-4">
             {page === "overview" ? (
               <OverviewScene />
-            ) : (
+            ) : page === "modules" ? (
               <ModulesScene intensityGradient={intensityGradient} />
+            ) : (
+              <ThemeVisualReview warnings={visualWarnings} onJump={onJump} />
             )}
           </div>
         </Dialog.Content>

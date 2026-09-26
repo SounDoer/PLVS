@@ -113,7 +113,7 @@ describe("portable Theme contract", () => {
     );
   });
 
-  it("shares one strict community publication assessment with future intake and CI", () => {
+  it("keeps visual review non-blocking in the shared community assessment", () => {
     const accessible = themeToPortable(storedTheme());
     expect(assessPortableThemeCommunityPublication(accessible)).toMatchObject({
       document: accessible,
@@ -127,14 +127,16 @@ describe("portable Theme contract", () => {
     };
     expect(assessPortableThemeCommunityPublication(lowContrast)).toMatchObject({
       communityPublication: {
-        eligible: false,
-        blockers: [
-          expect.objectContaining({
-            code: "accessibilityContrast",
-            standard: "WCAG 2.2 SC 1.4.3",
-          }),
-        ],
+        eligible: true,
+        blockers: [],
+        scope: "visualReviewOnly",
       },
+      warnings: [
+        expect.objectContaining({
+          code: "contrast",
+          standard: "WCAG 2.2 SC 1.4.3",
+        }),
+      ],
     });
 
     expect(() => assessPortableThemeCommunityPublication({})).toThrow(PortableThemeError);

@@ -163,15 +163,20 @@ describe("ThemeEditor", () => {
     expect(screen.queryByRole("dialog", { name: "Theme Preview" })).toBeNull();
   });
 
-  it("summarizes visual warnings and jumps to the related role", async () => {
+  it("keeps visual findings in Preview and jumps back to the related role", async () => {
     const draft = structuredClone(DRAFT);
     draft.overrides["interface.surface.control"] = { kind: "color", value: "#222222" };
     draft.overrides["interface.surface.muted"] = { kind: "color", value: "#222222" };
     render(<ThemeEditor {...BASE_PROPS} draft={draft} />);
-    expect(screen.getByText(/Visual Warning/)).toBeTruthy();
+    expect(screen.queryByText(/Control and Muted Surface are difficult to distinguish/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Theme Preview" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Visual Review" }));
+    expect(screen.getByRole("heading", { name: "Visual Review" })).toBeTruthy();
     expect(screen.getByText(/Roles: interface\.surface\.control/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Review interface.surface.muted" }));
 
+    expect(screen.queryByRole("dialog", { name: "Theme Preview" })).toBeNull();
     expect(screen.getByRole("tab", { name: "Advanced" }).getAttribute("aria-selected")).toBe(
       "true"
     );

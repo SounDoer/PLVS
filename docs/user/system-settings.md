@@ -47,10 +47,11 @@ control, muted, and selected surfaces distinct, and uses scheme-appropriate text
 contrast. Measurement colors keep the same meanings in both appearances even when their exact
 values differ.
 
-The editor reports visual warnings such as weak contrast or colors that are hard to distinguish.
-Warnings do not block saving a local theme: expand the summary to review the affected roles and
-jump to a relevant control. **Open Theme Preview** shows controlled overview and module scenes from
-the current unsaved draft without changing Workspace data or layout.
+**Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft
+without changing Workspace data or layout. Its **Visual Review** page reports recommended contrast,
+color-separation, surface, and Intensity targets and can jump back to an affected control. These
+findings are advisory: they do not interrupt editing or block saving, built-in Themes, or Community
+publication. Invalid Theme structure and unsupported versions remain errors.
 
 ## History and dialogue detection
 
