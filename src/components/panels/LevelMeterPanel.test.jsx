@@ -6,6 +6,7 @@ import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
 import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
 import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
+import { profileStops, stopsToGradient, thresholdStops } from "../../lib/levelMeterColors.js";
 
 const TEST_PROFILE = {
   id: "test-profile",
@@ -629,11 +630,78 @@ describe("LevelMeterPanel", () => {
   it("reveals a gradient fixed to the full bar instead of squashing it into the fill", () => {
     const { container } = renderPanel({ displayAudio: { peakDb: [-9.9, -9.9] } });
 
-    // Scaling the gradient would put the full green-to-red ramp into every bar whatever its
-    // level; a fixed gradient clipped from the top keeps each colour on its own dB.
-    const gradient = container.querySelector("[data-level-meter-bar-fill] .meter-gradient");
+    const gradient = container.querySelector("[data-level-meter-gradient]");
     expect(gradient.style.transform).not.toMatch(/scale/);
     const topInsetPct = parseFloat(gradient.style.clipPath.match(/inset\(([-\d.]+)%/)[1]);
     expect(topInsetPct).toBeCloseTo(((3 - -9.9) / 63) * 100, 3);
+  });
+
+  it("anchors the Peak colours to the Peak thresholds in the visible range", () => {
+    const { container } = renderPanel({
+      panelControls: {
+        levelMeterMode: "peak",
+        levelMeterPeakWarningDb: -12,
+        levelMeterPeakCriticalDb: -3,
+        levelMeterYMinDb: -30,
+        levelMeterYMaxDb: 0,
+      },
+    });
+
+    const gradient = container.querySelector("[data-level-meter-gradient]");
+    expect(gradient.dataset.levelMeterGradient).toBe(
+      stopsToGradient(thresholdStops(-60, -12, -3), -30, 0, "to top")
+    );
+  });
+
+  it("uses the RMS thresholds in RMS mode", () => {
+    const { container } = renderPanel({ panelControls: { levelMeterMode: "rms" } });
+    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
+      stopsToGradient(thresholdStops(-60, -18, -9), -60, 3, "to top")
+    );
+  });
+
+  it("shows the Momentary trace colour when no Profile judges Momentary", () => {
+    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
+      "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
+    );
+  });
+
+  it("follows a Momentary Max ceiling from the active Profile", () => {
+    const profileWithCeiling = {
+      ...TEST_PROFILE,
+      rules: [{ metricId: "momentaryMax", op: ">", value: -18, severity: "fail" }],
+    };
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: profileSelectionId(profileWithCeiling.id),
+        profiles: [profileWithCeiling],
+      },
+    });
+    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+
+    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
+      stopsToGradient(profileStops(profileWithCeiling, "momentary", -64), -64, 0, "to top")
+    );
+  });
+
+  it("colours the Floating Value by a Momentary Max ceiling", () => {
+    const profileWithCeiling = {
+      ...TEST_PROFILE,
+      rules: [{ metricId: "momentaryMax", op: ">", value: -18, severity: "fail" }],
+    };
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: profileSelectionId(profileWithCeiling.id),
+        profiles: [profileWithCeiling],
+      },
+    });
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-9, -9], momentary: -12 },
+      panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
+    });
+
+    const marker = container.querySelector("[data-level-value-marker]");
+    expect(marker.className).toContain("text-[color:var(--ui-level-critical)]");
   });
 });

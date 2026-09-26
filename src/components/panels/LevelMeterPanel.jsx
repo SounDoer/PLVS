@@ -22,6 +22,7 @@ import {
 } from "../../hooks/useLevelMeterPlaybackMax.js";
 import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
+import { levelMeterBackground, levelMeterMarkerStatus } from "../../lib/levelMeterColors.js";
 import { loudnessMeterMarkerClass } from "../../lib/loudnessProfileStatusClasses.js";
 import { AxisRail } from "./AxisRail.jsx";
 
@@ -55,7 +56,7 @@ function levelMeterValueMarkerClass(position) {
   return `${LEVEL_METER_VALUE_MARKER_BASE} ${LEVEL_METER_VALUE_MARKER_POSITION[position]}`;
 }
 
-function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
+function AnimatedLevelFill({ value, min, max, fromTopFrac, background }) {
   const reduceMotion = useReducedMotion();
   const clamped = Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : null;
   const clipTopFrac = clamped != null ? fromTopFrac(clamped) : 1;
@@ -77,18 +78,23 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
     <div className="absolute inset-0 overflow-hidden">
       {/* The gradient spans the whole bar and is clipped from the top, so each colour stays on
           its own level; scaling it would squeeze the full ramp into every fill. */}
-      <motion.div className="meter-gradient absolute inset-0" style={{ clipPath }} />
+      <motion.div
+        data-level-meter-gradient={background}
+        className="absolute inset-0"
+        style={{ clipPath, backgroundImage: background }}
+      />
     </div>
   );
 }
 
-function AnimatedPeakFill({ dbValue, yRange }) {
+function AnimatedPeakFill({ dbValue, yRange, background }) {
   return (
     <AnimatedLevelFill
       value={dbValue}
       min={yRange.min}
       max={yRange.max}
       fromTopFrac={(v) => rangedFromTopFrac(v, yRange.min, yRange.max)}
+      background={background}
     />
   );
 }
@@ -199,6 +205,13 @@ export function LevelMeterPanel() {
         min: normalizedPanelControls.loudnessYMinDb,
         max: normalizedPanelControls.loudnessYMaxDb,
       };
+  const fillBackground = levelMeterBackground({
+    mode: levelMeterMode,
+    controls: normalizedPanelControls,
+    profileDocument: loudnessProfileDocument,
+    viewMin: levelMeterYRange.min,
+    viewMax: levelMeterYRange.max,
+  });
   const levelMeterYAxis = useAxisInteraction({
     axis: "y",
     min: levelMeterYRange.min,
@@ -244,11 +257,13 @@ export function LevelMeterPanel() {
   if (!isPeakFamily) {
     const readoutValue = showPlaybackMax ? playbackMaxValue : liveLevelValue;
     const showMarker = showLevelValueMarker && Number.isFinite(readoutValue);
-    // levelMeterMode is the profile metric id here ("momentary" / "shortTerm"), so the marker
-    // follows the same rule the Stats row for this metric does.
-    const markerStatus = loudnessProfileEvaluate(loudnessProfileDocument, {
-      values: { [levelMeterMode]: readoutValue },
-    })[levelMeterMode];
+    // The metric's own rules as its Stats row judges them, plus
+    // its Max ceilings as the bar colour at the marker does -- see levelMeterMarkerStatus.
+    const markerStatus = levelMeterMarkerStatus(
+      loudnessProfileDocument,
+      levelMeterMode,
+      readoutValue
+    );
     const yAxisWidthClass = showMarker ? LEVEL_METER_Y_AXIS_WITH_MARKER : W_PEAK_TICKS;
     return (
       <div
@@ -297,6 +312,7 @@ export function LevelMeterPanel() {
                     fromTopFrac={(v) =>
                       rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max)
                     }
+                    background={fillBackground}
                   />
                 </div>
                 <div
@@ -392,7 +408,11 @@ export function LevelMeterPanel() {
                       "--ui-level-meter-bar-inset-x": LEVEL_METER_BAR_INSET_X,
                     }}
                   >
-                    <AnimatedPeakFill dbValue={c.valueDb} yRange={levelMeterYRange} />
+                    <AnimatedPeakFill
+                      dbValue={c.valueDb}
+                      yRange={levelMeterYRange}
+                      background={fillBackground}
+                    />
                   </div>
                   <div
                     data-peak-value
