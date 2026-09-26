@@ -625,4 +625,15 @@ describe("LevelMeterPanel", () => {
     expect(marker?.textContent).toBe("-2.0▲");
     expect(marker.style.top).toBe("0%");
   });
+
+  it("reveals a gradient fixed to the full bar instead of squashing it into the fill", () => {
+    const { container } = renderPanel({ displayAudio: { peakDb: [-9.9, -9.9] } });
+
+    // Scaling the gradient would put the full green-to-red ramp into every bar whatever its
+    // level; a fixed gradient clipped from the top keeps each colour on its own dB.
+    const gradient = container.querySelector("[data-level-meter-bar-fill] .meter-gradient");
+    expect(gradient.style.transform).not.toMatch(/scale/);
+    const topInsetPct = parseFloat(gradient.style.clipPath.match(/inset\(([-\d.]+)%/)[1]);
+    expect(topInsetPct).toBeCloseTo(((3 - -9.9) / 63) * 100, 3);
+  });
 });

@@ -167,4 +167,14 @@ describe("DockLevel", () => {
     expect(screen.getAllByTestId("dock-level-bar")).toHaveLength(2);
     expect(screen.getAllByText("-")).toHaveLength(2);
   });
+
+  it("sizes the fill gradient to the whole track rather than stretching it over the fill", () => {
+    renderWith({ displayAudio: { peakDb: [-12, -30] } });
+    for (const bar of screen.getAllByTestId("dock-level-bar")) {
+      const fill = bar.firstChild;
+      const widthPct = parseFloat(fill.style.width);
+      const gradientPct = parseFloat(fill.style.backgroundSize);
+      expect((widthPct * gradientPct) / 100).toBeCloseTo(100, 6);
+    }
+  });
 });

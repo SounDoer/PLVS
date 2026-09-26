@@ -38,6 +38,7 @@ function widthPct(value, min, max) {
 }
 
 function MeterFill({ value, min, max, peakFamily, style }) {
+  const width = widthPct(value, min, max);
   return (
     <div
       data-testid="dock-level-bar"
@@ -47,11 +48,16 @@ function MeterFill({ value, min, max, peakFamily, style }) {
       <div
         className="h-full rounded-xs"
         style={{
-          width: `${widthPct(value, min, max)}%`,
-          background:
-            peakFamily && value >= CLIP_DB
-              ? "var(--ui-level-critical)"
-              : "linear-gradient(to right, var(--ui-level-safe), var(--ui-level-warning))",
+          width: `${width}%`,
+          ...(peakFamily && value >= CLIP_DB
+            ? { backgroundColor: "var(--ui-level-critical)" }
+            : {
+                backgroundImage:
+                  "linear-gradient(to right, var(--ui-level-safe), var(--ui-level-warning))",
+              }),
+          // Sized to the whole track, so each colour stays on its own level instead of the
+          // ramp stretching over however much of the track the fill covers.
+          backgroundSize: width > 0 ? `${10000 / width}% 100%` : undefined,
         }}
       />
     </div>

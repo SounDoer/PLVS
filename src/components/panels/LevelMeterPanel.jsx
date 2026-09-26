@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useFrameData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
-import { motion, useReducedMotion, useSpring } from "framer-motion";
+import { motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useHoverTip } from "@/components/HoverTip";
 import { PANEL_MIN_PEAK, W_PEAK_TICKS } from "@/lib/shellLayout";
@@ -65,6 +65,7 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
     damping: reduceMotion ? 120 : 42,
     mass: reduceMotion ? 0.08 : 0.35,
   });
+  const clipPath = useTransform(spring, (scale) => `inset(${(1 - scale) * 100}% 0 0 0)`);
 
   useEffect(() => {
     spring.set(targetScaleY);
@@ -74,10 +75,9 @@ function AnimatedLevelFill({ value, min, max, fromTopFrac }) {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      <motion.div
-        className="meter-gradient absolute inset-0 will-change-transform"
-        style={{ scaleY: spring, transformOrigin: "bottom" }}
-      />
+      {/* The gradient spans the whole bar and is clipped from the top, so each colour stays on
+          its own level; scaling it would squeeze the full ramp into every fill. */}
+      <motion.div className="meter-gradient absolute inset-0" style={{ clipPath }} />
     </div>
   );
 }

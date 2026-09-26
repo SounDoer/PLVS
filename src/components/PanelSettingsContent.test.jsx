@@ -37,6 +37,7 @@ vi.mock("framer-motion", () => ({
   useDragControls: () => ({ start: () => {} }),
   useReducedMotion: () => false,
   useSpring: () => ({ set: vi.fn() }),
+  useTransform: () => undefined,
 }));
 
 /// PanelSettingsContent reads the profile, which now lives in a provider rather than a per-caller
