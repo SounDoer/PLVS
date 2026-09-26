@@ -6,7 +6,7 @@ import {
   HEIGHT_GAIN_MAX,
   HEIGHT_GAIN_MIN,
 } from "../math/spectrogram3dProjection.js";
-import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
+import { PEAK_DB_MAX, PEAK_DB_MIN, SPECTROGRAM_DB_MIN } from "../config/scales.js";
 import { AXIS_VIEWPORTS } from "../workspace/axisViewports.js";
 import { clampNumber, isNumber, normalizeRange, readStored } from "./rangeNormalization.js";
 
@@ -97,6 +97,45 @@ function ids(options) {
 // kind covers carries its own `normalize`. Row order is the key order of both
 // DEFAULT_PANEL_CONTROLS and normalizePanelControls' output.
 // ---------------------------------------------------------------------------
+
+/// Shared by the Peak and RMS rows and by the Dock's settings row.
+export const LEVEL_METER_THRESHOLD_TOOLTIP =
+  "Levels where the bar turns fully warning and fully critical colour; it blends below each.";
+
+/// Warning and critical are repaired as a unit: each clamps to the scale and rounds, and a pair
+/// out of order falls back to the defaults. Equal values are allowed and mean "no warning band".
+function normalizeThresholdPair(row, raw) {
+  const warning = Math.round(
+    clampNumber(raw?.[row.minKey], row.absMin, row.absMax, row.defaultMin)
+  );
+  const critical = Math.round(
+    clampNumber(raw?.[row.maxKey], row.absMin, row.absMax, row.defaultMax)
+  );
+  return warning <= critical
+    ? { [row.minKey]: warning, [row.maxKey]: critical }
+    : { [row.minKey]: row.defaultMin, [row.maxKey]: row.defaultMax };
+}
+
+function levelMeterThresholdRow(mode, minKey, maxKey, defaultMin, defaultMax) {
+  return {
+    minKey,
+    maxKey,
+    defaultMin,
+    defaultMax,
+    absMin: PEAK_DB_MIN,
+    absMax: PEAK_DB_MAX,
+    normalize: normalizeThresholdPair,
+    ui: {
+      tab: "levelMeter",
+      label: "Warning / Critical",
+      widget: "thresholds",
+      ariaLabel: `level meter ${mode} thresholds`,
+      order: 80,
+      tooltip: LEVEL_METER_THRESHOLD_TOOLTIP,
+      showWhen: (controls) => controls.levelMeterMode === mode,
+    },
+  };
+}
 
 const KINDS = {
   /** One of a fixed id list; anything else falls back to the default. */
@@ -510,6 +549,8 @@ const CONTROLS = [
     absMax: 0,
     minSpan: 12,
   },
+  levelMeterThresholdRow("peak", "levelMeterPeakWarningDb", "levelMeterPeakCriticalDb", -6, -1),
+  levelMeterThresholdRow("rms", "levelMeterRmsWarningDb", "levelMeterRmsCriticalDb", -18, -9),
   {
     kind: "linearRange",
     minKey: "levelMeterYMinDb",

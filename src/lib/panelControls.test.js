@@ -7,6 +7,7 @@ import {
   SPECTROGRAM_MODE_OPTIONS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
+  panelControlUiRows,
 } from "./panelControls.js";
 import { STATS_OPTIONS } from "./statsCatalog.js";
 
@@ -80,6 +81,10 @@ describe("panelControls", () => {
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
+      levelMeterPeakWarningDb: -6,
+      levelMeterPeakCriticalDb: -1,
+      levelMeterRmsWarningDb: -18,
+      levelMeterRmsCriticalDb: -9,
       vectorscopePair: { x: 0, y: 1 },
       vectorscopeMode: "lissajous",
       vectorscopePolarLevelMaxHold: false,
@@ -233,6 +238,10 @@ describe("panelControls", () => {
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
+      levelMeterPeakWarningDb: -6,
+      levelMeterPeakCriticalDb: -1,
+      levelMeterRmsWarningDb: -18,
+      levelMeterRmsCriticalDb: -9,
       vectorscopePair: { x: 0, y: 1 },
       vectorscopeMode: "lissajous",
       vectorscopePolarLevelMaxHold: false,
@@ -782,5 +791,48 @@ describe("waveform spectral controls", () => {
     expect(
       normalizePanelControls({ waveformLowMidSplitHz: 4000, waveformMidHighSplitHz: 1000 })
     ).toMatchObject({ waveformLowMidSplitHz: 200, waveformMidHighSplitHz: 2000 });
+  });
+});
+
+describe("Level Meter thresholds", () => {
+  it("defaults Peak to -6/-1 and RMS to -18/-9", () => {
+    expect(DEFAULT_PANEL_CONTROLS).toMatchObject({
+      levelMeterPeakWarningDb: -6,
+      levelMeterPeakCriticalDb: -1,
+      levelMeterRmsWarningDb: -18,
+      levelMeterRmsCriticalDb: -9,
+    });
+  });
+
+  it("keeps a valid pair, rounded, and allows equal values", () => {
+    expect(
+      normalizePanelControls({ levelMeterPeakWarningDb: -12.4, levelMeterPeakCriticalDb: -3 })
+    ).toMatchObject({ levelMeterPeakWarningDb: -12, levelMeterPeakCriticalDb: -3 });
+    expect(
+      normalizePanelControls({ levelMeterRmsWarningDb: -10, levelMeterRmsCriticalDb: -10 })
+    ).toMatchObject({ levelMeterRmsWarningDb: -10, levelMeterRmsCriticalDb: -10 });
+  });
+
+  it("clamps to the Peak scale", () => {
+    expect(
+      normalizePanelControls({ levelMeterPeakWarningDb: -90, levelMeterPeakCriticalDb: 9 })
+    ).toMatchObject({ levelMeterPeakWarningDb: -60, levelMeterPeakCriticalDb: 3 });
+  });
+
+  it("falls back to the defaults when warning is above critical", () => {
+    expect(
+      normalizePanelControls({ levelMeterPeakWarningDb: -1, levelMeterPeakCriticalDb: -6 })
+    ).toMatchObject({ levelMeterPeakWarningDb: -6, levelMeterPeakCriticalDb: -1 });
+  });
+
+  it("shows each pair in the Level Meter tab only for its own mode", () => {
+    const row = (minKey) =>
+      panelControlUiRows("levelMeter").find((candidate) => candidate.minKey === minKey);
+    const peak = row("levelMeterPeakWarningDb");
+    const rms = row("levelMeterRmsWarningDb");
+    expect(peak.ui.showWhen({ levelMeterMode: "peak" })).toBe(true);
+    expect(peak.ui.showWhen({ levelMeterMode: "rms" })).toBe(false);
+    expect(rms.ui.showWhen({ levelMeterMode: "rms" })).toBe(true);
+    expect(rms.ui.showWhen({ levelMeterMode: "momentary" })).toBe(false);
   });
 });
