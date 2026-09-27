@@ -95,7 +95,8 @@ previews both values without starting or stopping anything.
 - Peak and RMS use `levelRangeDbfs`; Momentary and Short-term use `loudnessRangeLufs`. Both are
   always returned.
 - `playbackMax` is effective for RMS, Momentary, and Short-term, not Peak. `floatingValue` is
-  effective for Momentary and Short-term. `tpMaxMarker` is effective for Peak.
+  effective for Momentary and Short-term. `tpMaxMarker` and `peakThresholdsDbfs` are effective for
+  Peak; `rmsThresholdsDbfs` is effective for RMS.
 - No panel-specific analysis status.
 
 ### Loudness

@@ -21,6 +21,14 @@ topology PLVS reports before a device is known; channel choices widen with the r
   "loudnessRangeLufs": {
     "min": -64,
     "max": 0
+  },
+  "peakThresholdsDbfs": {
+    "warning": -6,
+    "critical": -1
+  },
+  "rmsThresholdsDbfs": {
+    "warning": -18,
+    "critical": -9
   }
 }
 ```
@@ -33,6 +41,12 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | `playbackMax` | boolean | - | `false` | - | inactive (peakMode) |
 | `floatingValue` | boolean | - | `false` | - | inactive (nonLoudnessMode) |
 | `tpMaxMarker` | boolean | - | `false` | - | active |
+| `peakThresholdsDbfs` | object | dBFS | - | requires warning, critical; warning < critical | active |
+| `peakThresholdsDbfs.warning` | integer | - | - | -60 to 3 | - |
+| `peakThresholdsDbfs.critical` | integer | - | - | -60 to 3 | - |
+| `rmsThresholdsDbfs` | object | dBFS | - | requires warning, critical; warning < critical | inactive (nonRmsMode) |
+| `rmsThresholdsDbfs.warning` | integer | - | - | -60 to 3 | - |
+| `rmsThresholdsDbfs.critical` | integer | - | - | -60 to 3 | - |
 | `levelRangeDbfs` | object | dBFS | - | requires min, max; min < max; span >= 12 | active |
 | `levelRangeDbfs.min` | number | - | - | -60 to 3 | - |
 | `levelRangeDbfs.max` | number | - | - | -60 to 3 | - |

@@ -14,7 +14,7 @@ import { planPublicPanelControlPatch } from "./panelControlPatch.js";
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const PUBLIC_DOCK_CONTROLS = Object.freeze({
-  levelMeter: new Set(["mode", "readout", "showLabels"]),
+  levelMeter: new Set(["mode", "readout", "showLabels", "peakThresholdsDbfs", "rmsThresholdsDbfs"]),
   loudness: new Set(["layers", "loudnessRangeLufs", "showReadouts"]),
   stats: new Set(["metrics"]),
   vectorscope: new Set(["channelPair", "mode", "maxHold"]),
@@ -350,7 +350,13 @@ function publicControls(panel, raw, context) {
   const normalized = normalizeDockModuleControls(dockModuleId, raw);
   const all = readPublicPanelControls(panel.moduleId, normalized, context);
   if (panel.moduleId === "levelMeter") {
-    return { mode: all.mode, readout: normalized.readout, showLabels: normalized.showLabels };
+    return {
+      mode: all.mode,
+      readout: normalized.readout,
+      showLabels: normalized.showLabels,
+      peakThresholdsDbfs: all.peakThresholdsDbfs,
+      rmsThresholdsDbfs: all.rmsThresholdsDbfs,
+    };
   }
   if (panel.moduleId === "loudness") return { ...all, showReadouts: normalized.showReadouts };
   if (panel.moduleId === "spectrum") {

@@ -3,6 +3,20 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 
 describe("buildPublicPanelControlSchema", () => {
+  it("describes the Level Meter thresholds and marks the other mode's pair inactive", () => {
+    const schema = buildPublicPanelControlSchema("levelMeter", DEFAULT_PANEL_CONTROLS);
+    expect(schema.properties.peakThresholdsDbfs).toMatchObject({
+      effective: true,
+      default: { warning: -6, critical: -1 },
+      constraints: [{ kind: "ordered", lower: "warning", upper: "critical" }],
+    });
+    expect(schema.properties.rmsThresholdsDbfs).toMatchObject({
+      effective: false,
+      inactiveReason: "nonRmsMode",
+      default: { warning: -18, critical: -9 },
+    });
+  });
+
   it("describes Level Meter ranges and current mode-dependent effectiveness", () => {
     const schema = buildPublicPanelControlSchema("levelMeter", DEFAULT_PANEL_CONTROLS);
 

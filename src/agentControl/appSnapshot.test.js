@@ -193,6 +193,8 @@ describe("agent-control app snapshots", () => {
         tpMaxMarker: true,
         levelRangeDbfs: { min: -60, max: 3 },
         loudnessRangeLufs: { min: -64, max: 0 },
+        peakThresholdsDbfs: { warning: -6, critical: -1 },
+        rmsThresholdsDbfs: { warning: -18, critical: -9 },
       },
       axes: {},
       analysis: {},

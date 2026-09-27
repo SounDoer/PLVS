@@ -17,6 +17,14 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
         min: controls.loudnessYMinDb,
         max: controls.loudnessYMaxDb,
       },
+      peakThresholdsDbfs: {
+        warning: controls.levelMeterPeakWarningDb,
+        critical: controls.levelMeterPeakCriticalDb,
+      },
+      rmsThresholdsDbfs: {
+        warning: controls.levelMeterRmsWarningDb,
+        critical: controls.levelMeterRmsCriticalDb,
+      },
     };
   }
 

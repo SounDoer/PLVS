@@ -56,7 +56,13 @@ describe("Dock Control", () => {
           title: "Main",
           customTitle: "Main",
           width: 220,
-          controls: { mode: "peak", readout: "truePeakMax", showLabels: false },
+          controls: {
+            mode: "peak",
+            readout: "truePeakMax",
+            showLabels: false,
+            peakThresholdsDbfs: { warning: -6, critical: -1 },
+            rmsThresholdsDbfs: { warning: -18, critical: -9 },
+          },
           analysis: { status: "active" },
         },
       ],
@@ -116,6 +122,8 @@ describe("Dock Control", () => {
       mode: "rms",
       readout: "playbackMax",
       showLabels: true,
+      peakThresholdsDbfs: { warning: -6, critical: -1 },
+      rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });
     expect(planDockPanelPatch(dock, "level", { playbackMax: true }).issues).toEqual([
       expect.objectContaining({ code: "unknownControl" }),
@@ -132,6 +140,20 @@ describe("Dock Control", () => {
     ]);
   });
 
+  it("plans Dock level thresholds through the panel's own rules", () => {
+    const planned = planDockPanelPatch(
+      dock,
+      "level",
+      { peakThresholdsDbfs: { warning: -10, critical: -2 } },
+      {}
+    );
+    expect(planned.issues).toEqual([]);
+    expect(buildDockSnapshot(planned.dock).panels[1].controls.peakThresholdsDbfs).toEqual({
+      warning: -10,
+      critical: -2,
+    });
+  });
+
   it("leaves a Dock-only control the patch did not name alone", () => {
     // The fixture is non-default on both: readout truePeakMax, showLabels false. A patch naming one
     // of them used to reset the other, because the Dock-only controls are absent from the planned
@@ -143,6 +165,8 @@ describe("Dock Control", () => {
       mode: "peak",
       readout: "truePeakMax",
       showLabels: true,
+      peakThresholdsDbfs: { warning: -6, critical: -1 },
+      rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });
 
     const readout = planDockPanelPatch(dock, "level", { readout: "live" }, {});
@@ -151,6 +175,8 @@ describe("Dock Control", () => {
       mode: "peak",
       readout: "live",
       showLabels: false,
+      peakThresholdsDbfs: { warning: -6, critical: -1 },
+      rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });
   });
 

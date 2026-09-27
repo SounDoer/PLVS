@@ -13,6 +13,8 @@ describe("readPublicPanelControls", () => {
         levelMeterYMaxDb: -6,
         loudnessYMinDb: -36,
         loudnessYMaxDb: -12,
+        levelMeterPeakWarningDb: -12,
+        levelMeterRmsCriticalDb: -6,
       })
     ).toEqual({
       mode: "shortTerm",
@@ -21,6 +23,8 @@ describe("readPublicPanelControls", () => {
       tpMaxMarker: false,
       levelRangeDbfs: { min: -48, max: -6 },
       loudnessRangeLufs: { min: -36, max: -12 },
+      peakThresholdsDbfs: { warning: -12, critical: -1 },
+      rmsThresholdsDbfs: { warning: -18, critical: -6 },
     });
   });
 

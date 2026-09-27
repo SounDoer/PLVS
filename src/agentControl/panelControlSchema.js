@@ -35,6 +35,22 @@ function range(title, unit, defaultValue, minimum, maximum, minimumSpan, additio
   });
 }
 
+function thresholds(title, defaultValue) {
+  const bound = (name, description) =>
+    field("integer", name, description, { minimum: -60, maximum: 3 });
+  return field("object", title, `Levels where the bar turns fully warning and fully critical.`, {
+    unit: "dBFS",
+    default: defaultValue,
+    patchMode: "replace",
+    required: ["warning", "critical"],
+    properties: {
+      warning: bound("Warning", "Level of pure warning colour."),
+      critical: bound("Critical", "Level of pure critical colour."),
+    },
+    constraints: [{ kind: "ordered", lower: "warning", upper: "critical" }],
+  });
+}
+
 function topology(context) {
   const detected = Number.isInteger(context.channelCount) && context.channelCount > 0;
   return {
@@ -114,6 +130,16 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
         }),
         controls.levelMeterMode === "peak",
         "nonPeakMode"
+      ),
+      peakThresholdsDbfs: active(
+        thresholds("Peak Thresholds", defaults.peakThresholdsDbfs),
+        controls.levelMeterMode === "peak",
+        "nonPeakMode"
+      ),
+      rmsThresholdsDbfs: active(
+        thresholds("RMS Thresholds", defaults.rmsThresholdsDbfs),
+        controls.levelMeterMode === "rms",
+        "nonRmsMode"
       ),
       levelRangeDbfs: active(
         range("Level Range", "dBFS", defaults.levelRangeDbfs, -60, 3, 12),

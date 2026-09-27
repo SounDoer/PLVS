@@ -15,6 +15,8 @@ const LEVEL_METER_FIELDS = new Set([
   "tpMaxMarker",
   "levelRangeDbfs",
   "loudnessRangeLufs",
+  "peakThresholdsDbfs",
+  "rmsThresholdsDbfs",
 ]);
 const LEVEL_METER_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
 const STATS_IDS = new Set(STATS_CANONICAL_ORDER);
@@ -53,6 +55,32 @@ function validateRange(value, path, min, max, minSpan, issues) {
   }
 }
 
+function validateThresholds(value, path, issues) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    issues.push(issue("invalidType", path, `${path} must be a thresholds object.`));
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== "warning" && key !== "critical") {
+      issues.push(issue("unknownControl", `${path}.${key}`, `Unknown thresholds field: ${key}.`));
+    }
+  }
+  if (!Number.isInteger(value.warning) || !Number.isInteger(value.critical)) {
+    issues.push(
+      issue("invalidType", path, `${path} must contain integer warning and critical values.`)
+    );
+    return;
+  }
+  if (value.warning < -60 || value.critical > 3 || value.warning > value.critical) {
+    issues.push(issue("outOfRange", path, `${path} must satisfy -60 <= warning <= critical <= 3.`));
+  }
+}
+
+const LEVEL_METER_THRESHOLD_FIELDS = [
+  ["peakThresholdsDbfs", "levelMeterPeakWarningDb", "levelMeterPeakCriticalDb"],
+  ["rmsThresholdsDbfs", "levelMeterRmsWarningDb", "levelMeterRmsCriticalDb"],
+];
+
 export function planPublicPanelControlPatch(moduleId, currentPanelControls, patch, context = {}) {
   const current = normalizePanelControls(currentPanelControls);
   const panelControls = { ...current };
@@ -77,6 +105,9 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     if (hasOwn(patch, "loudnessRangeLufs")) {
       validateRange(patch.loudnessRangeLufs, "$.loudnessRangeLufs", -64, 0, 12, issues);
     }
+    for (const [publicKey] of LEVEL_METER_THRESHOLD_FIELDS) {
+      if (hasOwn(patch, publicKey)) validateThresholds(patch[publicKey], `$.${publicKey}`, issues);
+    }
     if (issues.length > 0) {
       return { panelControls: current, changed: [], warnings: [], issues };
     }
@@ -93,6 +124,17 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
         panelControls[internalKey] = patch[publicKey];
         changed.push(`controls.${publicKey}`);
+      }
+    }
+    for (const [publicKey, warningKey, criticalKey] of LEVEL_METER_THRESHOLD_FIELDS) {
+      if (!hasOwn(patch, publicKey)) continue;
+      if (patch[publicKey].warning !== current[warningKey]) {
+        panelControls[warningKey] = patch[publicKey].warning;
+        changed.push(`controls.${publicKey}.warning`);
+      }
+      if (patch[publicKey].critical !== current[criticalKey]) {
+        panelControls[criticalKey] = patch[publicKey].critical;
+        changed.push(`controls.${publicKey}.critical`);
       }
     }
     if (hasOwn(patch, "levelRangeDbfs")) {
@@ -130,6 +172,8 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     if (finalMode === "peak") warn("playbackMax", "peakMode");
     if (!loudnessMode) warn("floatingValue", "nonLoudnessMode");
     if (finalMode !== "peak") warn("tpMaxMarker", "nonPeakMode");
+    if (finalMode !== "peak") warn("peakThresholdsDbfs", "nonPeakMode");
+    if (finalMode !== "rms") warn("rmsThresholdsDbfs", "nonRmsMode");
     if (loudnessMode) warn("levelRangeDbfs", "loudnessMode");
     if (!loudnessMode) warn("loudnessRangeLufs", "levelMode");
     return { panelControls, changed, warnings, issues };

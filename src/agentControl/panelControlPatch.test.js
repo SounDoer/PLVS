@@ -3,6 +3,46 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
 
 describe("planPublicPanelControlPatch", () => {
+  it("patches Level Meter thresholds as ordered pairs", () => {
+    const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      peakThresholdsDbfs: { warning: -12, critical: -3 },
+    });
+    expect(result).toMatchObject({
+      issues: [],
+      changed: ["controls.peakThresholdsDbfs.warning", "controls.peakThresholdsDbfs.critical"],
+      warnings: [],
+    });
+    expect(result.panelControls).toMatchObject({
+      levelMeterPeakWarningDb: -12,
+      levelMeterPeakCriticalDb: -3,
+    });
+  });
+
+  it("rejects out-of-order or non-integer thresholds", () => {
+    const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      peakThresholdsDbfs: { warning: -1, critical: -6 },
+      rmsThresholdsDbfs: { warning: -18.5, critical: -9 },
+    });
+    expect(result.issues).toEqual([
+      expect.objectContaining({ code: "outOfRange", path: "$.peakThresholdsDbfs" }),
+      expect.objectContaining({ code: "invalidType", path: "$.rmsThresholdsDbfs" }),
+    ]);
+    expect(result.changed).toEqual([]);
+  });
+
+  it("warns when thresholds for another mode are patched", () => {
+    const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      rmsThresholdsDbfs: { warning: -20, critical: -10 },
+    });
+    expect(result.warnings).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.rmsThresholdsDbfs",
+        inactiveReason: "nonRmsMode",
+      },
+    ]);
+  });
+
   it("maps a valid Level Meter patch without changing unrelated stored controls", () => {
     const current = { ...DEFAULT_PANEL_CONTROLS, spectrumSpeedPercent: 70 };
     const result = planPublicPanelControlPatch("levelMeter", current, {

@@ -121,7 +121,13 @@ describe("buildPublicPresetSnapshot", () => {
         title: "Level Meter",
         customTitle: null,
         width: 180,
-        controls: { mode: "peak", readout: "truePeakMax", showLabels: false },
+        controls: {
+          mode: "peak",
+          readout: "truePeakMax",
+          showLabels: false,
+          peakThresholdsDbfs: { warning: -6, critical: -1 },
+          rmsThresholdsDbfs: { warning: -18, critical: -9 },
+        },
       },
     ]);
     expect(result.dock.panels[0].controls).not.toHaveProperty("playbackMax");
