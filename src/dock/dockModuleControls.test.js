@@ -194,6 +194,10 @@ describe("normalizeDockModuleControls", () => {
   it("defaults Level to live Peak and migrates legacy readouts", () => {
     expect(normalizeDockModuleControls("level", {})).toEqual({
       levelMeterMode: "peak",
+      levelMeterPeakWarningDb: -6,
+      levelMeterPeakCriticalDb: -1,
+      levelMeterRmsWarningDb: -18,
+      levelMeterRmsCriticalDb: -9,
       readout: "live",
       showLabels: true,
     });
@@ -358,6 +362,23 @@ describe("normalizeDockModuleControls", () => {
         stereoMapMsRatioYMaxDb: -10,
       })
     ).toMatchObject({ stereoMapMsRatioYMinDb: 0, stereoMapMsRatioYMaxDb: 0 });
+  });
+});
+
+describe("Level Meter Dock control family", () => {
+  it("carries the Level Meter thresholds on the Dock level module", () => {
+    expect(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level).toMatchObject({
+      levelMeterPeakWarningDb: -6,
+      levelMeterPeakCriticalDb: -1,
+      levelMeterRmsWarningDb: -18,
+      levelMeterRmsCriticalDb: -9,
+    });
+    expect(
+      normalizeDockModuleControls("level", {
+        levelMeterPeakWarningDb: -1,
+        levelMeterPeakCriticalDb: -6,
+      })
+    ).toMatchObject({ levelMeterPeakWarningDb: -6, levelMeterPeakCriticalDb: -1 });
   });
 });
 

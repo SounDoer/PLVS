@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { LoudnessProfileProvider } from "../hooks/LoudnessProfileContext.jsx";
 import { FrameDataProvider, HistoryDataProvider } from "../workspace/AudioDataContext.jsx";
 import { DockStrip } from "./DockStrip.jsx";
 
@@ -35,11 +36,13 @@ const BASE_PROPS = {
 
 function renderStrip(props = {}) {
   return render(
-    <FrameDataProvider value={{ displayAudio: { peakDb: [-12, -10] }, correlation: 0.3 }}>
-      <HistoryDataProvider value={{ histSourceList: [] }}>
-        <DockStrip {...BASE_PROPS} {...props} />
-      </HistoryDataProvider>
-    </FrameDataProvider>
+    <LoudnessProfileProvider>
+      <FrameDataProvider value={{ displayAudio: { peakDb: [-12, -10] }, correlation: 0.3 }}>
+        <HistoryDataProvider value={{ histSourceList: [] }}>
+          <DockStrip {...BASE_PROPS} {...props} />
+        </HistoryDataProvider>
+      </FrameDataProvider>
+    </LoudnessProfileProvider>
   );
 }
 
@@ -62,11 +65,13 @@ describe("DockStrip", () => {
     expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("standard");
 
     rerender(
-      <FrameDataProvider value={{ displayAudio: { peakDb: [-12, -10] }, correlation: 0.3 }}>
-        <HistoryDataProvider value={{ histSourceList: [] }}>
-          <DockStrip {...BASE_PROPS} height={120} />
-        </HistoryDataProvider>
-      </FrameDataProvider>
+      <LoudnessProfileProvider>
+        <FrameDataProvider value={{ displayAudio: { peakDb: [-12, -10] }, correlation: 0.3 }}>
+          <HistoryDataProvider value={{ histSourceList: [] }}>
+            <DockStrip {...BASE_PROPS} height={120} />
+          </HistoryDataProvider>
+        </FrameDataProvider>
+      </LoudnessProfileProvider>
     );
     expect(screen.getByTestId("dock-strip").dataset.heightMode).toBe("expanded");
   });

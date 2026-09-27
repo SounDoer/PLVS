@@ -1,9 +1,11 @@
 import { Fragment } from "react";
 import { LOUDNESS_DB_MAX, LOUDNESS_DB_MIN, PEAK_DB_MAX, PEAK_DB_MIN } from "../../config/scales.js";
+import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import {
   useLevelMeterPlaybackMax,
   useLevelMeterPlaybackMaxChannels,
 } from "../../hooks/useLevelMeterPlaybackMax.js";
+import { levelMeterBackground } from "../../lib/levelMeterColors.js";
 import { fmtMetric } from "../../math/formatMath.js";
 import { getPeakChannels } from "../../math/peakChannelMath.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
@@ -12,7 +14,6 @@ import { useHoverTip } from "../../components/HoverTip.jsx";
 
 const DOCK_TIP_CLASS = "w-max max-w-[calc(100vw-1rem)] whitespace-normal";
 
-const CLIP_DB = -0.1;
 const MODE_META = {
   peak: { field: "peakDb", label: "PK", unit: "dBFS", min: PEAK_DB_MIN, max: PEAK_DB_MAX },
   rms: { field: "rmsDb", label: "RMS", unit: "dBFS", min: PEAK_DB_MIN, max: PEAK_DB_MAX },
@@ -37,7 +38,7 @@ function widthPct(value, min, max) {
   return Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
 }
 
-function MeterFill({ value, min, max, peakFamily, style }) {
+function MeterFill({ value, min, max, background, style }) {
   const width = widthPct(value, min, max);
   return (
     <div
@@ -46,15 +47,11 @@ function MeterFill({ value, min, max, peakFamily, style }) {
       style={style}
     >
       <div
+        data-level-meter-gradient={background}
         className="h-full rounded-xs"
         style={{
           width: `${width}%`,
-          ...(peakFamily && value >= CLIP_DB
-            ? { backgroundColor: "var(--ui-level-critical)" }
-            : {
-                backgroundImage:
-                  "linear-gradient(to right, var(--ui-level-safe), var(--ui-level-warning))",
-              }),
+          backgroundImage: background,
           // Sized to the whole track, so each colour stays on its own level instead of the
           // ramp stretching over however much of the track the fill covers.
           backgroundSize: width > 0 ? `${10000 / width}% 100%` : undefined,
@@ -219,6 +216,15 @@ export function DockLevel({ controls = {}, heightMode = "standard" }) {
   const meta = MODE_META[mode];
   const peakFamily = mode === "peak" || mode === "rms";
   const readout = controls.readout ?? "live";
+  const { document: loudnessProfileDocument } = useLoudnessProfile();
+  const fillBackground = levelMeterBackground({
+    mode,
+    controls,
+    profileDocument: loudnessProfileDocument,
+    viewMin: meta.min,
+    viewMax: meta.max,
+    direction: "to right",
+  });
 
   const measuredChannels = peakFamily
     ? getPeakChannels(displayAudio, peakLabelContext, meta.field)
@@ -328,14 +334,19 @@ export function DockLevel({ controls = {}, heightMode = "standard" }) {
                     value={valueDb}
                     min={meta.min}
                     max={meta.max}
-                    peakFamily
+                    background={fillBackground}
                     style={{ gridColumn: barColumn, gridRow: row }}
                   />
                 </Fragment>
               );
             })
           ) : (
-            <MeterFill value={scalarValue} min={meta.min} max={meta.max} peakFamily={false} />
+            <MeterFill
+              value={scalarValue}
+              min={meta.min}
+              max={meta.max}
+              background={fillBackground}
+            />
           )}
         </div>
         <ReadoutRegion

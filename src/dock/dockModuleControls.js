@@ -27,7 +27,13 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
  * surfaces; only the subset differs, because the strip shows less than the panel does.
  */
 const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
-  level: ["levelMeterMode"],
+  level: [
+    "levelMeterMode",
+    "levelMeterPeakWarningDb",
+    "levelMeterPeakCriticalDb",
+    "levelMeterRmsWarningDb",
+    "levelMeterRmsCriticalDb",
+  ],
   loudness: ["loudnessHistoryVisibleLayerIds", "loudnessYMinDb", "loudnessYMaxDb"],
   spectrum: [
     "spectrumChannel",

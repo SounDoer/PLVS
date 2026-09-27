@@ -1,7 +1,11 @@
 /** @vitest-environment jsdom */
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
+import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
+import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
+import { stopsToGradient, thresholdStops } from "../../lib/levelMeterColors.js";
+import { settingsStore } from "../../persistence/index.js";
 import { FrameDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DockLevel } from "./DockLevel.jsx";
 
@@ -11,11 +15,15 @@ function renderWith(
   heightMode = "standard"
 ) {
   return render(
-    <FrameDataProvider value={frameData}>
-      <DockLevel controls={controls} heightMode={heightMode} />
-    </FrameDataProvider>
+    <LoudnessProfileProvider>
+      <FrameDataProvider value={frameData}>
+        <DockLevel controls={controls} heightMode={heightMode} />
+      </FrameDataProvider>
+    </LoudnessProfileProvider>
   );
 }
+
+afterEach(() => settingsStore.reset());
 
 describe("DockLevel", () => {
   it("renders live Peak bars, channel labels, and per-channel values", () => {
@@ -110,9 +118,11 @@ describe("DockLevel", () => {
     );
 
     rerender(
-      <FrameDataProvider value={{ displayAudio: { peakDb: [-7, -6], rmsDb: [-20, -10] } }}>
-        <DockLevel controls={controls} />
-      </FrameDataProvider>
+      <LoudnessProfileProvider>
+        <FrameDataProvider value={{ displayAudio: { peakDb: [-7, -6], rmsDb: [-20, -10] } }}>
+          <DockLevel controls={controls} />
+        </FrameDataProvider>
+      </LoudnessProfileProvider>
     );
 
     await waitFor(() => {
@@ -176,5 +186,57 @@ describe("DockLevel", () => {
       const gradientPct = parseFloat(fill.style.backgroundSize);
       expect((widthPct * gradientPct) / 100).toBeCloseTo(100, 6);
     }
+  });
+
+  it("anchors the Peak colours to the Dock's own thresholds over the whole track", () => {
+    renderWith(
+      { displayAudio: { peakDb: [-12, -30] } },
+      {
+        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
+        levelMeterPeakWarningDb: -10,
+        levelMeterPeakCriticalDb: -2,
+      }
+    );
+    const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
+    expect(fill.dataset.levelMeterGradient).toBe(
+      stopsToGradient(thresholdStops(-60, -10, -2), -60, 3, "to right")
+    );
+  });
+
+  it("no longer floods the whole bar critical at clip", () => {
+    renderWith({ displayAudio: { peakDb: [0, 0] } });
+    const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
+    expect(fill.dataset.levelMeterGradient).toBe(
+      stopsToGradient(thresholdStops(-60, -6, -1), -60, 3, "to right")
+    );
+  });
+
+  it("shows the Short-term trace colour when no Profile judges Short-term", () => {
+    renderWith(
+      { displayAudio: { shortTerm: -20 } },
+      { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "shortTerm" }
+    );
+    expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
+      "linear-gradient(to right, var(--ui-loudness-shortterm), var(--ui-loudness-shortterm))"
+    );
+  });
+
+  it("follows a Short-term Max ceiling from the active Profile", () => {
+    const profile = {
+      id: "dock-profile",
+      name: "Dock profile",
+      referenceLufs: null,
+      rules: [{ metricId: "shortTermMax", op: ">", value: -18, severity: "fail" }],
+    };
+    settingsStore.patch({
+      loudnessProfiles: { active: profileSelectionId(profile.id), profiles: [profile] },
+    });
+    renderWith(
+      { displayAudio: { shortTerm: -20 } },
+      { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "shortTerm" }
+    );
+    expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
+      `linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-critical) 71.875%)`
+    );
   });
 });
