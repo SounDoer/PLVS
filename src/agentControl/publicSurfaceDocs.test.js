@@ -52,7 +52,8 @@ function describeAllowed(field) {
   }
   if (field.required) parts.push(`requires ${field.required.join(", ")}`);
   for (const constraint of field.constraints ?? []) {
-    if (constraint.kind === "ordered") parts.push(`${constraint.lower} < ${constraint.upper}`);
+    if (constraint.kind === "ordered")
+      parts.push(`${constraint.lower} ${constraint.inclusive ? "<=" : "<"} ${constraint.upper}`);
     else if (constraint.kind === "minimumSpan") parts.push(`span >= ${constraint.value}`);
     else if (constraint.kind === "includes") parts.push(`includes ${json(constraint.value)}`);
     else if (constraint.kind === "fullPermutation") parts.push("every id exactly once");

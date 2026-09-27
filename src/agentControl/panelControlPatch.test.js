@@ -18,6 +18,17 @@ describe("planPublicPanelControlPatch", () => {
     });
   });
 
+  it("accepts equal warning and critical thresholds", () => {
+    const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      peakThresholdsDbfs: { warning: -3, critical: -3 },
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.panelControls).toMatchObject({
+      levelMeterPeakWarningDb: -3,
+      levelMeterPeakCriticalDb: -3,
+    });
+  });
+
   it("rejects out-of-order or non-integer thresholds", () => {
     const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
       peakThresholdsDbfs: { warning: -1, critical: -6 },

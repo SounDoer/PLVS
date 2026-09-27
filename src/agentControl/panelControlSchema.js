@@ -47,7 +47,7 @@ function thresholds(title, defaultValue) {
       warning: bound("Warning", "Level of pure warning colour."),
       critical: bound("Critical", "Level of pure critical colour."),
     },
-    constraints: [{ kind: "ordered", lower: "warning", upper: "critical" }],
+    constraints: [{ kind: "ordered", lower: "warning", upper: "critical", inclusive: true }],
   });
 }
 

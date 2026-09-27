@@ -8,7 +8,7 @@ describe("buildPublicPanelControlSchema", () => {
     expect(schema.properties.peakThresholdsDbfs).toMatchObject({
       effective: true,
       default: { warning: -6, critical: -1 },
-      constraints: [{ kind: "ordered", lower: "warning", upper: "critical" }],
+      constraints: [{ kind: "ordered", lower: "warning", upper: "critical", inclusive: true }],
     });
     expect(schema.properties.rmsThresholdsDbfs).toMatchObject({
       effective: false,
