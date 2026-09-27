@@ -209,6 +209,7 @@ describe("DockLevel", () => {
     expect(fill.dataset.levelMeterGradient).toBe(
       stopsToGradient(thresholdStops(-60, -6, -1), -60, 3, "to right")
     );
+    expect(fill.style.backgroundColor).toBe("");
   });
 
   it("shows the Short-term trace colour when no Profile judges Short-term", () => {

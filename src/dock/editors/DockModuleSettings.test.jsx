@@ -54,10 +54,29 @@ describe("DockModuleSettings", () => {
     fireEvent.click(screen.getByLabelText("Level mode"));
     fireEvent.click(screen.getByRole("option", { name: "RMS" }));
     expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
       levelMeterMode: "rms",
       readout: "live",
-      showLabels: true,
     });
+  });
+
+  it("edits the thresholds of the current level mode", () => {
+    const onChange = renderSettings("level");
+    const critical = screen.getByLabelText("level meter peak thresholds critical");
+    expect(critical.value).toBe("-1");
+    fireEvent.change(critical, { target: { value: "0" } });
+    fireEvent.keyDown(critical, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
+      levelMeterPeakCriticalDb: 0,
+    });
+  });
+
+  it("has no thresholds in loudness modes", () => {
+    renderSettings("level", {
+      controls: { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "momentary" },
+    });
+    expect(screen.queryByText("Warning / Critical")).toBeNull();
   });
 
   it("uses the shared Live and Labels controls for scalar Level modes", () => {

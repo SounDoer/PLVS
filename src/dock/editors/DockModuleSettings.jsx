@@ -7,6 +7,7 @@ import {
   SettingsSelect,
   SettingsSlider,
   SettingsSwitch,
+  SettingsThresholdInputs,
   SpectrumDisplaySettingsRows,
   StatsMetricsSettingsRow,
   WaveformSettingsRows,
@@ -17,11 +18,14 @@ import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { isDefaultDockModuleControls } from "../dockModuleControls.js";
 import {
   LEVEL_METER_MODE_OPTIONS,
+  LEVEL_METER_THRESHOLD_TOOLTIP,
+  normalizePanelControlRange,
   SPECTROGRAM_DB_FLOOR_TOOLTIP,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   SPECTRUM_TILT_TOOLTIP,
   VECTORSCOPE_MODE_OPTIONS,
 } from "../../lib/panelControls.js";
+import { PEAK_DB_MAX, PEAK_DB_MIN } from "../../config/scales.js";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 
 const STEREO_MAP_MODE_OPTIONS = [
@@ -92,6 +96,10 @@ function SettingsBody({
           { value: "live", label: "Live" },
           { value: "playbackMax", label: "Playback Max" },
         ];
+    const thresholdKeys = {
+      peak: ["levelMeterPeakWarningDb", "levelMeterPeakCriticalDb"],
+      rms: ["levelMeterRmsWarningDb", "levelMeterRmsCriticalDb"],
+    }[controls.levelMeterMode];
     return (
       <>
         <SettingsRow label="Mode">
@@ -116,6 +124,23 @@ function SettingsBody({
             onChange={(readout) => onChange({ ...controls, readout })}
           />
         </SettingsRow>
+        {thresholdKeys ? (
+          <SettingsRow label="Warning / Critical" tooltip={LEVEL_METER_THRESHOLD_TOOLTIP}>
+            <SettingsThresholdInputs
+              ariaLabel={`level meter ${controls.levelMeterMode} thresholds`}
+              warning={controls[thresholdKeys[0]]}
+              critical={controls[thresholdKeys[1]]}
+              min={PEAK_DB_MIN}
+              max={PEAK_DB_MAX}
+              onCommit={(warning, critical) =>
+                onChange({
+                  ...controls,
+                  ...normalizePanelControlRange(thresholdKeys[0], warning, critical),
+                })
+              }
+            />
+          </SettingsRow>
+        ) : null}
         <SettingsRow label="Labels">
           <SettingsSwitch
             aria-label="Show Level labels"
