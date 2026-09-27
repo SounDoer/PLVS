@@ -7,6 +7,7 @@ import { settingsStore } from "../../persistence/index.js";
 import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
 import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 import { profileStops, stopsToGradient, thresholdStops } from "../../lib/levelMeterColors.js";
+import { LOUDNESS_PROFILE_OFF } from "../../lib/loudnessProfileCatalog.js";
 
 const TEST_PROFILE = {
   id: "test-profile",
@@ -660,7 +661,17 @@ describe("LevelMeterPanel", () => {
     );
   });
 
-  it("shows the Momentary trace colour when no Profile judges Momentary", () => {
+  it("shows the Momentary trace colour under the starter Profile, which has no Momentary rule", () => {
+    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+    expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
+      "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
+    );
+  });
+
+  it("shows the Momentary trace colour under Profile Off", () => {
+    settingsStore.patch({
+      loudnessProfiles: { active: LOUDNESS_PROFILE_OFF, profiles: [TEST_PROFILE] },
+    });
     const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
       "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
@@ -702,6 +713,31 @@ describe("LevelMeterPanel", () => {
     });
 
     const marker = container.querySelector("[data-level-value-marker]");
+    expect(marker.className).toContain("text-[color:var(--ui-level-critical)]");
+  });
+
+  it("colours the Floating Value by Playback Max against a Momentary Max ceiling", async () => {
+    const profileWithCeiling = {
+      ...TEST_PROFILE,
+      rules: [{ metricId: "momentaryMax", op: ">", value: -18, severity: "fail" }],
+    };
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: profileSelectionId(profileWithCeiling.id),
+        profiles: [profileWithCeiling],
+      },
+    });
+    const { container } = renderPanel({
+      displayAudio: { peakDb: [-9, -9], momentary: -12 },
+      panelControls: {
+        levelMeterMode: "momentary",
+        levelMeterPlaybackMax: true,
+        levelMeterValueMarker: true,
+      },
+    });
+
+    const marker = container.querySelector("[data-level-value-marker]");
+    await waitFor(() => expect(marker.textContent).toBe("-12.0"));
     expect(marker.className).toContain("text-[color:var(--ui-level-critical)]");
   });
 });
