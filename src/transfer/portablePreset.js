@@ -117,9 +117,23 @@ function portableAxes(axes) {
   );
 }
 
+function omitDefaultControls(controls, defaults) {
+  return Object.fromEntries(
+    Object.entries(controls).filter(
+      ([key, value]) => JSON.stringify(value) !== JSON.stringify(defaults?.[key])
+    )
+  );
+}
+
 /** Converts one saved local Preset into the id-free portable authoring document. */
 export function presetToPortable(raw, { loudnessProfiles = [] } = {}) {
   const snapshot = buildPublicPresetSnapshot(raw, { loudnessProfiles });
+  // Import fills an omitted control with its default, so writing only changed controls keeps the
+  // file importable by an older build that predates a control the author never touched.
+  const defaults = buildPublicPresetSnapshot(
+    { ...raw, panelControlsById: {}, dock: { ...raw.dock, controlsByPanelId: {} } },
+    { loudnessProfiles }
+  );
   if (!snapshot.name) {
     throw new PortablePresetError([
       packIssue("invalidName", "$.name", "name must contain non-whitespace text."),
@@ -139,14 +153,14 @@ export function presetToPortable(raw, { loudnessProfiles = [] } = {}) {
 
   const panelIds = snapshot.workspace.panels.map(({ id }) => id);
   const idToKey = new Map(panelIds.map((id, index) => [id, `panel-${index + 1}`]));
-  const panels = snapshot.workspace.panels.map((panel) => {
+  const panels = snapshot.workspace.panels.map((panel, index) => {
     const storedPanel = raw.panelsById?.[panel.id];
     const pinned = raw.pinnedPanelsById?.[panel.id];
     return {
       key: idToKey.get(panel.id),
       moduleId: panel.moduleId,
       ...(storedPanel?.customTitle ? { title: storedPanel.customTitle } : {}),
-      controls: panel.controls,
+      controls: omitDefaultControls(panel.controls, defaults.workspace.panels[index].controls),
       axes: portableAxes(panel.axes),
       ...(pinned
         ? {
@@ -170,7 +184,7 @@ export function presetToPortable(raw, { loudnessProfiles = [] } = {}) {
           moduleId: panel.moduleId,
           ...(panel.customTitle ? { title: panel.customTitle } : {}),
           preferredWidthCssPx: panel.width,
-          controls: panel.controls,
+          controls: omitDefaultControls(panel.controls, defaults.dock.panels[index].controls),
         })),
       }
     : { enabled: false };

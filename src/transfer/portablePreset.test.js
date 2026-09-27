@@ -3,6 +3,7 @@ import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { MAX_LAYOUT_DEPTH, MAX_LAYOUT_PANELS } from "../agentControl/workspaceLayout.js";
 import { createDefaultPanelControls } from "../workspace/panelControlInstances.js";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
+import { buildPublicPresetSnapshot } from "../agentControl/presetSnapshot.js";
 import {
   PortablePresetError,
   assessPortablePresetCommunityPublication,
@@ -51,6 +52,75 @@ describe("Portable Preset V1", () => {
     expect(portable.workspace.panels[0]).not.toHaveProperty("id");
     expect(JSON.stringify(portable)).not.toContain("local-preset");
     expect(portable).not.toHaveProperty("windowBounds");
+  });
+
+  it("writes only the controls that differ from their defaults", () => {
+    const source = storedPreset({
+      dock: {
+        enabled: true,
+        edge: "bottom",
+        monitor: null,
+        reserveSpace: false,
+        height: 72,
+        panelsById: {
+          meter: { id: "meter", moduleId: "levelMeter" },
+          scope: { id: "scope", moduleId: "vectorscope" },
+        },
+        panelOrder: ["meter", "scope"],
+        panelSizesById: {},
+        controlsByPanelId: { meter: { levelMeterPeakWarningDb: -8 } },
+      },
+    });
+    const portable = presetToPortable(source);
+    const controlsOf = (moduleId) =>
+      portable.workspace.panels.find((panel) => panel.moduleId === moduleId).controls;
+
+    // The first-run Level Meter differs only in its TP Max marker, so the thresholds that older
+    // builds do not know about are not written.
+    expect(controlsOf("levelMeter")).toEqual({ tpMaxMarker: true });
+    expect(controlsOf("loudness")).toEqual({});
+    expect(portable.dock.panels.map(({ controls }) => controls)).toEqual([
+      { peakThresholdsDbfs: { warning: -8, critical: -1 } },
+      {},
+    ]);
+  });
+
+  it("imports a default-omitting export exactly like a fully written one", () => {
+    const source = storedPreset({
+      dock: {
+        enabled: true,
+        edge: "top",
+        monitor: null,
+        reserveSpace: false,
+        height: 72,
+        panelsById: Object.fromEntries(
+          ["levelMeter", "loudness", "stats", "vectorscope", "spectrum", "stereo-map"].map(
+            (moduleId) => [moduleId, { id: moduleId, moduleId }]
+          )
+        ),
+        panelOrder: ["levelMeter", "loudness", "stats", "vectorscope", "spectrum", "stereo-map"],
+        panelSizesById: {},
+        controlsByPanelId: { levelMeter: { readout: "truePeakMax" } },
+      },
+    });
+    source.panelControlsById.vectorscope.vectorscopeMaxHold = true;
+    const sparse = presetToPortable(source);
+    const full = structuredClone(sparse);
+    const snapshot = buildPublicPresetSnapshot(source);
+    full.workspace.panels.forEach((panel, index) => {
+      panel.controls = snapshot.workspace.panels[index].controls;
+    });
+    full.dock.panels.forEach((panel, index) => {
+      panel.controls = snapshot.dock.panels[index].controls;
+    });
+
+    const controlsInOrder = (stored) => ({
+      workspace: stored.panelOrder.map((id) => stored.panelControlsById[id]),
+      dock: stored.dock.panelOrder.map((id) => stored.dock.controlsByPanelId[id]),
+    });
+    expect(controlsInOrder(portableToStoredPreset(sparse, "sparse"))).toEqual(
+      controlsInOrder(portableToStoredPreset(full, "full"))
+    );
   });
 
   it("allocates fresh panel identities and resets transient history offsets on import", () => {
@@ -200,13 +270,7 @@ describe("Portable Preset V1", () => {
           moduleId: "levelMeter",
           title: "Peaks",
           preferredWidthCssPx: 180,
-          controls: {
-            mode: "peak",
-            readout: "truePeakMax",
-            showLabels: false,
-            peakThresholdsDbfs: { warning: -6, critical: -1 },
-            rmsThresholdsDbfs: { warning: -18, critical: -9 },
-          },
+          controls: { readout: "truePeakMax", showLabels: false },
         },
       ],
     });

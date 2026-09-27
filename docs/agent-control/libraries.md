@@ -95,7 +95,8 @@ and Loudness Profile packs. Each item is a portable `plvs-theme`, `plvs-loudness
 `plvs-preset` document plus its `id`, which is merge metadata and not part of content identity.
 Theme items carry no palette `presetId`; Loudness Profile items require every rule threshold and
 cannot be semantically empty. Preset items carry public layout, control, axis, presentation, and
-Dock meaning under artefact-local panel keys. A Preset pack may carry one `loudness-profile`
+Dock meaning under artefact-local panel keys; a panel's `controls` object lists only the controls
+that differ from their defaults, and import restores the rest. A Preset pack may carry one `loudness-profile`
 dependency group containing the Profiles its Preset items reference. Exporting an empty or invalid
 library fails with `themeNotExportable`, `loudnessProfileNotExportable`, or
 `presetNotExportable`, because Pack V2 cannot be empty or lossy. Pack V1 remains accepted on import;

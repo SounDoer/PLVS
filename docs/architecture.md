@@ -265,6 +265,18 @@ selection, measurements, history contents and offsets, active/dirty state, and e
 Import compiles the document back into the current persisted Preset shape with newly allocated
 panel IDs; it adds Library content without applying it.
 
+Import stays strict: an unknown control or field rejects the Item. Forward compatibility comes from
+the export side instead. A panel's `controls` object carries only the public controls that differ
+from their defaults, because import fills every omitted control with its default. A build that adds
+a public control therefore still produces files an older build can read, unless the author actually
+changed that control, which the older build could not honour anyway. The consequences are:
+
+- Adding a public control, or an optional field whose absence keeps the old behaviour, needs no
+  version change.
+- Changing the default or the meaning of an existing control changes what older files mean, so it
+  requires a `semanticsVersion` bump.
+- Adding a required field or changing the document structure requires a `formatVersion` bump.
+
 Preset Pack V2 carries referenced Loudness Profiles in its single `loudness-profile` dependency
 group. Dependencies are validated before primary Presets, then normal library merge planning
 allocates or reuses local Profile IDs and rewrites each imported Preset reference to that result.

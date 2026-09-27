@@ -93,7 +93,9 @@ If a Preset selects a custom Loudness Profile, the file bundles that Profile as 
 keeps the reference attached when both are imported. Import adds the content to the Library but
 does not apply it. When you later apply the Preset, PLVS adapts optional Dock, reserved-space,
 Glass, display-size, and channel choices to the current machine without rewriting the saved Library
-item. Older Preset pack files remain importable.
+item. Older Preset pack files remain importable. Module settings left at their defaults are not
+written into the file, so an earlier PLVS version can still import it unless the Preset changes a
+setting that version does not have.
 
 Before a shared file is added, the import review lists each Item as **Add**, **Already in your
 library**, or **Import as a copy**, shows bundled Loudness Profile dependencies, and calls out safe
