@@ -17,7 +17,13 @@ Integrated loudness is not judged until the measurement has settled.
 - The Loudness panel's reference line
 - The colouring of Stats readouts that breach a rule
 - The True Peak Max marker on the Level Meter
+- The Level Meter's Momentary and Short-term bar colours and Floating Value
 - The verdicts in a [File Mode](file-mode.md) report
+
+The Level Meter colours its Momentary and Short-term bars from rules on that metric and on its Max
+(Momentary Max, Short-term Max) that set an upper limit ("above"). A lower limit ("below") is not
+drawn on the bar — live loudness falls between phrases, so the bar would sit red — but Stats still
+judges it.
 
 ## Managing profiles
 

@@ -20,6 +20,13 @@ Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Shor
 a True Peak Max marker driven by the active [Loudness Profile](loudness-profiles.md); click the
 readout to reset the maximum.
 
+The bar colours belong to levels, not to the bar's height, so zooming the scale never changes the
+colour of a level. In Peak and RMS, **Warning / Critical** sets where the bar turns fully warning and
+fully critical colour, blending below each (defaults: Peak −6 / −1 dBFS, RMS −18 / −9 dBFS). In
+Momentary and Short-term the colours come from the active Loudness Profile's upper limits on that
+metric or its Max; with no such rule the bar shows the metric's Loudness curve colour, because
+nothing is judging it.
+
 ## Loudness
 
 Momentary and Short-term LUFS curves over time, following ITU-R BS.1770 measurement with EBU R128
