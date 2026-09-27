@@ -18,14 +18,13 @@ import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { isDefaultDockModuleControls } from "../dockModuleControls.js";
 import {
   LEVEL_METER_MODE_OPTIONS,
-  LEVEL_METER_THRESHOLD_TOOLTIP,
   normalizePanelControlRange,
+  panelControlUiRows,
   SPECTROGRAM_DB_FLOOR_TOOLTIP,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
   SPECTRUM_TILT_TOOLTIP,
   VECTORSCOPE_MODE_OPTIONS,
 } from "../../lib/panelControls.js";
-import { PEAK_DB_MAX, PEAK_DB_MIN } from "../../config/scales.js";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 
 const STEREO_MAP_MODE_OPTIONS = [
@@ -96,10 +95,9 @@ function SettingsBody({
           { value: "live", label: "Live" },
           { value: "playbackMax", label: "Playback Max" },
         ];
-    const thresholdKeys = {
-      peak: ["levelMeterPeakWarningDb", "levelMeterPeakCriticalDb"],
-      rms: ["levelMeterRmsWarningDb", "levelMeterRmsCriticalDb"],
-    }[controls.levelMeterMode];
+    const thresholdRow = panelControlUiRows("levelMeter").find(
+      (row) => row.ui.widget === "thresholds" && row.ui.showWhen(controls)
+    );
     return (
       <>
         <SettingsRow label="Mode">
@@ -124,18 +122,18 @@ function SettingsBody({
             onChange={(readout) => onChange({ ...controls, readout })}
           />
         </SettingsRow>
-        {thresholdKeys ? (
-          <SettingsRow label="Warning / Critical" tooltip={LEVEL_METER_THRESHOLD_TOOLTIP}>
+        {thresholdRow ? (
+          <SettingsRow label={thresholdRow.ui.label} tooltip={thresholdRow.ui.tooltip}>
             <SettingsThresholdInputs
-              ariaLabel={`level meter ${controls.levelMeterMode} thresholds`}
-              warning={controls[thresholdKeys[0]]}
-              critical={controls[thresholdKeys[1]]}
-              min={PEAK_DB_MIN}
-              max={PEAK_DB_MAX}
+              ariaLabel={thresholdRow.ui.ariaLabel}
+              warning={controls[thresholdRow.minKey]}
+              critical={controls[thresholdRow.maxKey]}
+              min={thresholdRow.absMin}
+              max={thresholdRow.absMax}
               onCommit={(warning, critical) =>
                 onChange({
                   ...controls,
-                  ...normalizePanelControlRange(thresholdKeys[0], warning, critical),
+                  ...normalizePanelControlRange(thresholdRow.minKey, warning, critical),
                 })
               }
             />

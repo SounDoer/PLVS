@@ -79,6 +79,18 @@ describe("DockModuleSettings", () => {
     expect(screen.queryByText("Warning / Critical")).toBeNull();
   });
 
+  it("edits the RMS thresholds without touching Peak", () => {
+    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "rms" };
+    const onChange = renderSettings("level", { controls });
+    const critical = screen.getByLabelText("level meter rms thresholds critical");
+    fireEvent.change(critical, { target: { value: "-6" } });
+    fireEvent.keyDown(critical, { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith({
+      ...controls,
+      levelMeterRmsCriticalDb: -6,
+    });
+  });
+
   it("uses the shared Live and Labels controls for scalar Level modes", () => {
     const controls = { mode: "shortTerm", readout: "live", showLabels: true };
     const onChange = renderSettings("level", { controls });
