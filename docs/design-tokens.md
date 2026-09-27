@@ -186,9 +186,11 @@ Current PLVS Dark values:
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
 
-### Component: Meter (peak bar gradient)
+### Component: Meter (Theme Preview swatch)
 
-Controls the three-stop gradient fill on Peak panel channel bars.
+Paints the three-stop gradient in the Theme Preview swatch only. The Level Meter's bars use
+`--ui-level-safe`/`warning`/`critical` instead, anchored to levels rather than to a fixed gradient --
+see `src/lib/levelMeterColors.js`.
 
 | Token                          | Value     | Role                      |
 | ------------------------------ | --------- | ------------------------- |
