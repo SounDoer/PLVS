@@ -221,6 +221,57 @@ describe("Portable Preset V1", () => {
     expect(stored.dock.panelOrder).toHaveLength(1);
   });
 
+  it("round-trips Level Meter thresholds for both a Workspace panel and a Dock module", () => {
+    const source = storedPreset({
+      dock: {
+        enabled: true,
+        edge: "top",
+        monitor: null,
+        reserveSpace: false,
+        height: 72,
+        panelsById: { meter: { id: "meter", moduleId: "levelMeter" } },
+        panelOrder: ["meter"],
+        panelSizesById: { meter: 180 },
+        controlsByPanelId: {
+          meter: {
+            levelMeterPeakWarningDb: -8,
+            levelMeterPeakCriticalDb: -3,
+            levelMeterRmsWarningDb: -30,
+            levelMeterRmsCriticalDb: -15,
+          },
+        },
+      },
+    });
+    source.panelControlsById.levelMeter = {
+      ...source.panelControlsById.levelMeter,
+      levelMeterPeakWarningDb: -10,
+      levelMeterPeakCriticalDb: -2,
+      levelMeterRmsWarningDb: -24,
+      levelMeterRmsCriticalDb: -12,
+    };
+
+    const portable = presetToPortable(source);
+    const imported = portableToStoredPreset(portable, "level-meter-thresholds");
+
+    const panelId = imported.panelOrder.find(
+      (id) => imported.panelsById[id].moduleId === "levelMeter"
+    );
+    expect(imported.panelControlsById[panelId]).toMatchObject({
+      levelMeterPeakWarningDb: -10,
+      levelMeterPeakCriticalDb: -2,
+      levelMeterRmsWarningDb: -24,
+      levelMeterRmsCriticalDb: -12,
+    });
+
+    const dockPanelId = imported.dock.panelOrder[0];
+    expect(imported.dock.controlsByPanelId[dockPanelId]).toMatchObject({
+      levelMeterPeakWarningDb: -8,
+      levelMeterPeakCriticalDb: -3,
+      levelMeterRmsWarningDb: -30,
+      levelMeterRmsCriticalDb: -15,
+    });
+  });
+
   it("keeps repeated Dock module instances distinct", () => {
     const source = storedPreset({
       dock: {
