@@ -22,7 +22,9 @@ readout to reset the maximum.
 
 The bar colours belong to levels, not to the bar's height, so zooming the scale never changes the
 colour of a level. In Peak and RMS, **Warning / Critical** sets where the bar turns fully warning and
-fully critical colour, blending below each (defaults: Peak −6 / −1 dBFS, RMS −18 / −9 dBFS). In
+fully critical colour, blending below each (defaults: Peak −6 / −1 dBFS, RMS −18 / −9 dBFS). These
+zones are a reading aid for headroom, not a compliance check: the Peak bars show sample peak, while
+delivery limits are judged on true peak by the True Peak Max marker and Stats. In
 Momentary and Short-term the colours come from the active Loudness Profile's upper limits on that
 metric or its Max; with no such rule the bar shows the metric's Loudness curve colour, because
 nothing is judging it. The Dock's level strip uses the same colours, with its own Warning / Critical
