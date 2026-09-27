@@ -56,6 +56,8 @@ function levelMeterValueMarkerClass(position) {
   return `${LEVEL_METER_VALUE_MARKER_BASE} ${LEVEL_METER_VALUE_MARKER_POSITION[position]}`;
 }
 
+/// `background` is a CSS background-image laid over the whole bar; the fill reveals it from the
+/// bottom.
 function AnimatedLevelFill({ value, min, max, fromTopFrac, background }) {
   const reduceMotion = useReducedMotion();
   const clamped = Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : null;
@@ -257,8 +259,8 @@ export function LevelMeterPanel() {
   if (!isPeakFamily) {
     const readoutValue = showPlaybackMax ? playbackMaxValue : liveLevelValue;
     const showMarker = showLevelValueMarker && Number.isFinite(readoutValue);
-    // The metric's own rules as its Stats row judges them, plus
-    // its Max ceilings as the bar colour at the marker does -- see levelMeterMarkerStatus.
+    // The metric's own rules as its Stats row judges them, plus its Max ceilings as the bar colour
+    // at the marker does -- see levelMeterMarkerStatus.
     const markerStatus = levelMeterMarkerStatus(
       loudnessProfileDocument,
       levelMeterMode,
