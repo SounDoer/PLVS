@@ -835,4 +835,17 @@ describe("Level Meter thresholds", () => {
     expect(rms.ui.showWhen({ levelMeterMode: "rms" })).toBe(true);
     expect(rms.ui.showWhen({ levelMeterMode: "momentary" })).toBe(false);
   });
+
+  it("survives being normalized twice, as a preset re-import would", () => {
+    const raw = {
+      levelMeterPeakWarningDb: -12,
+      levelMeterPeakCriticalDb: -3,
+      levelMeterRmsWarningDb: -20,
+      levelMeterRmsCriticalDb: -20,
+    };
+    const once = normalizePanelControls(raw);
+    const twice = normalizePanelControls(once);
+    expect(twice).toEqual(once);
+    expect(twice).toMatchObject(raw);
+  });
 });
