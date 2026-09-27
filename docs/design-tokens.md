@@ -194,7 +194,6 @@ Controls the three-stop gradient fill on Peak panel channel bars.
 | ------------------------------ | --------- | ------------------------- |
 | `--ui-meter-gradient-top`      | `#f97373` | Clip zone (red)           |
 | `--ui-meter-gradient-mid`      | `#fbbf24` | Warning zone (amber)      |
-| `--ui-meter-gradient-mid-stop` | `46%`     | Gradient transition point |
 | `--ui-meter-gradient-bottom`   | `#34d399` | Safe zone (green)         |
 
 ### Component: Instrument Traces

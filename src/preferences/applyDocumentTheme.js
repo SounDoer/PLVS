@@ -96,9 +96,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-drawer-row-gap", `${drawer.rowGapRem}rem`);
   setCssVar("--ui-drawer-row-min-h", `${drawer.rowMinHeightRem}rem`);
 
-  const peak = prefs.modules.peak.meterGradient;
-  setCssVar("--ui-meter-gradient-mid-stop", `${peak.midStopPercent}%`);
-
   const vs = prefs.modules.vectorscope;
   setCssVar("--ui-vectorscope-stroke-width", String(vs.strokeWidth));
   setCssVar("--ui-vectorscope-trace-opacity", String(vs.traceOpacity));

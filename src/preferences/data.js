@@ -132,11 +132,6 @@ export const UI_PREFERENCES = {
         rowGapRem: 0.5,
       },
     },
-    peak: {
-      meterGradient: {
-        midStopPercent: 46,
-      },
-    },
     vectorscope: {
       strokeWidth: 1.2,
       traceOpacity: 0.8,
