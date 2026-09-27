@@ -98,8 +98,9 @@ function ids(options) {
 // DEFAULT_PANEL_CONTROLS and normalizePanelControls' output.
 // ---------------------------------------------------------------------------
 
-/// Shared by the Peak and RMS rows and by the Dock's settings row.
-export const LEVEL_METER_THRESHOLD_TOOLTIP =
+/// Shared by the Peak and RMS rows. The Dock's settings row now reads its tooltip from the row's
+/// ui.tooltip instead.
+const LEVEL_METER_THRESHOLD_TOOLTIP =
   "Levels where the bar reaches the full warning and critical color; it blends below each.";
 
 /// Warning and critical are repaired as a unit: each clamps to the scale and rounds, and a pair
