@@ -14,14 +14,6 @@ topology PLVS reports before a device is known; channel choices widen with the r
   "playbackMax": false,
   "floatingValue": false,
   "tpMaxMarker": false,
-  "levelRangeDbfs": {
-    "min": -60,
-    "max": 3
-  },
-  "loudnessRangeLufs": {
-    "min": -64,
-    "max": 0
-  },
   "peakThresholdsDbfs": {
     "warning": -6,
     "critical": -1
@@ -29,6 +21,14 @@ topology PLVS reports before a device is known; channel choices widen with the r
   "rmsThresholdsDbfs": {
     "warning": -18,
     "critical": -9
+  },
+  "levelRangeDbfs": {
+    "min": -60,
+    "max": 3
+  },
+  "loudnessRangeLufs": {
+    "min": -64,
+    "max": 0
   }
 }
 ```

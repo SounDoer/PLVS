@@ -9,14 +9,6 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       playbackMax: controls.levelMeterPlaybackMax,
       floatingValue: controls.levelMeterValueMarker,
       tpMaxMarker: controls.levelMeterTpMaxMarker,
-      levelRangeDbfs: {
-        min: controls.levelMeterYMinDb,
-        max: controls.levelMeterYMaxDb,
-      },
-      loudnessRangeLufs: {
-        min: controls.loudnessYMinDb,
-        max: controls.loudnessYMaxDb,
-      },
       peakThresholdsDbfs: {
         warning: controls.levelMeterPeakWarningDb,
         critical: controls.levelMeterPeakCriticalDb,
@@ -24,6 +16,14 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       rmsThresholdsDbfs: {
         warning: controls.levelMeterRmsWarningDb,
         critical: controls.levelMeterRmsCriticalDb,
+      },
+      levelRangeDbfs: {
+        min: controls.levelMeterYMinDb,
+        max: controls.levelMeterYMaxDb,
+      },
+      loudnessRangeLufs: {
+        min: controls.loudnessYMinDb,
+        max: controls.loudnessYMaxDb,
       },
     };
   }

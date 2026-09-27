@@ -21,7 +21,9 @@ Schema compatibility. It describes:
 - current `effective` state and a stable `inactiveReason` for stored-but-dormant controls;
 - `patchMode: "replace"` for atomic objects and arrays, or `patchMode: "merge"` for nested partial
   patches such as Spectrogram `threeD` and Stats `metrics`;
-- relational constraints such as ordered ranges, minimum spans, or a required included value.
+- relational constraints such as ordered ranges, minimum spans, or a required included value; an
+  `ordered` constraint is strict (`lower < upper`) unless it carries `inclusive: true`, in which
+  case equality is allowed.
 
 Dynamic choices list only currently valid values. Before a device topology is known, PLVS exposes
 an assumed stereo L/R topology, and channel schemas report `channelTopology.status` as `assumed` or
