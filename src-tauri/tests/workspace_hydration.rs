@@ -97,3 +97,49 @@ fn a_new_additional_workbench_hydrates_stopped_with_automatic_selected() {
   assert_eq!(hydrated.capture_device_id, json!("default"));
   let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn an_untouched_empty_profile_library_is_left_for_the_frontend_to_seed() {
+  let root = std::env::temp_dir().join(format!(
+    "plvs-unseeded-profile-hydration-{}",
+    std::process::id()
+  ));
+  let catalog = WorkspaceCatalog::open(&root).expect("open workspace catalog");
+  let workspace_id = catalog
+    .allocate_blank_workbench()
+    .expect("allocate additional workbench");
+
+  let hydrated = hydrate_workspace(&root, &workspace_id).expect("hydrate additional workbench");
+
+  // No `profiles` array is the frontend's first-run signal to seed the starter profile.
+  assert!(hydrated.settings["loudnessProfiles"]
+    .get("profiles")
+    .is_none());
+  let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn a_library_the_user_emptied_stays_empty() {
+  let parent = std::env::temp_dir().join(format!(
+    "plvs-emptied-profile-hydration-{}",
+    std::process::id()
+  ));
+  std::fs::create_dir_all(&parent).unwrap();
+  let legacy_path = parent.join("plvs-settings.json");
+  let root = parent.join("multi-instance");
+  std::fs::write(
+    &legacy_path,
+    serde_json::to_vec_pretty(&json!({
+      "plvs:settings": { "loudnessProfiles": { "active": "off", "profiles": [] } }
+    }))
+    .unwrap(),
+  )
+  .unwrap();
+  migrate_legacy_store(&legacy_path, &root).unwrap();
+
+  let hydrated = hydrate_workspace(&root, "default").expect("hydrate default workspace");
+
+  assert_eq!(hydrated.settings["loudnessProfiles"]["profiles"], json!([]));
+  assert_eq!(hydrated.settings["loudnessProfiles"]["active"], "off");
+  let _ = std::fs::remove_dir_all(parent);
+}

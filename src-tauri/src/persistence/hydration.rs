@@ -69,15 +69,20 @@ pub fn hydrate_workspace(
     .remove("loudnessProfiles")
     .and_then(|value| value.as_object().cloned())
     .unwrap_or_default();
-  loudness_profiles.insert(
-    "profiles".to_string(),
-    Value::Array(
-      profile_items
-        .iter()
-        .map(|item| item.document.clone())
-        .collect(),
-    ),
-  );
+  // An empty library with no recorded selection has never been touched by the frontend (first
+  // run, or after Reset to Default). Leaving `profiles` out is its signal to seed the starter
+  // profile; an emptied library always carries `active`, so it stays empty.
+  if !profile_items.is_empty() || loudness_profiles.contains_key("active") {
+    loudness_profiles.insert(
+      "profiles".to_string(),
+      Value::Array(
+        profile_items
+          .iter()
+          .map(|item| item.document.clone())
+          .collect(),
+      ),
+    );
+  }
   settings.insert(
     "loudnessProfiles".to_string(),
     Value::Object(loudness_profiles),
