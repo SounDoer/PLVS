@@ -23,6 +23,11 @@ export const LEVEL_METER_MODE_OPTIONS = [
   { id: "shortTerm", label: "Short-term" },
 ];
 
+export const LEVEL_METER_BAR_COLOR_OPTIONS = [
+  { id: "gradient", label: "Gradient" },
+  { id: "levelZones", label: "Level Zones" },
+];
+
 export const VECTORSCOPE_MODE_OPTIONS = [
   { id: "lissajous", label: "Lissajous" },
   { id: "polarSample", label: "Polar Sample" },
@@ -98,10 +103,8 @@ function ids(options) {
 // DEFAULT_PANEL_CONTROLS and normalizePanelControls' output.
 // ---------------------------------------------------------------------------
 
-/// Shared by the Peak and RMS rows. The Dock's settings row now reads its tooltip from the row's
-/// ui.tooltip instead.
-const LEVEL_METER_THRESHOLD_TOOLTIP =
-  "Levels where the bar reaches the full warning and critical color; it blends below each.";
+/// Shared by the Peak and RMS rows. The Dock's settings row reads it from the row's ui.tooltip.
+const LEVEL_METER_THRESHOLD_TOOLTIP = "Levels where the bar turns warning and critical color.";
 
 /// Warning and critical are repaired as a unit: each clamps to the scale and rounds, and a pair
 /// out of order falls back to the defaults. Equal values are allowed and mean "no warning band".
@@ -133,7 +136,8 @@ function levelMeterThresholdRow(mode, minKey, maxKey, defaultMin, defaultMax) {
       ariaLabel: `level meter ${mode} thresholds`,
       order: 80,
       tooltip: LEVEL_METER_THRESHOLD_TOOLTIP,
-      showWhen: (controls) => controls.levelMeterMode === mode,
+      showWhen: (controls) =>
+        controls.levelMeterBarColors === "levelZones" && controls.levelMeterMode === mode,
     },
   };
 }
@@ -262,6 +266,23 @@ const CONTROLS = [
       widget: "switch",
       ariaLabel: "level meter TP Max",
       showWhen: (controls) => controls.levelMeterMode === "peak",
+    },
+  },
+  {
+    key: "levelMeterBarColors",
+    kind: "enum",
+    options: ids(LEVEL_METER_BAR_COLOR_OPTIONS),
+    default: "gradient",
+    ui: {
+      tab: "levelMeter",
+      label: "Bar Colors",
+      widget: "select",
+      ariaLabel: "level meter bar colors",
+      order: 75,
+      options: LEVEL_METER_BAR_COLOR_OPTIONS,
+      tooltip:
+        "Gradient is appearance only. Level Zones color the bar by level: Warning / Critical for " +
+        "Peak and RMS, the Loudness Profile's rules for Momentary and Short-term.",
     },
   },
   {
