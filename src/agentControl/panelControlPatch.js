@@ -787,6 +787,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       "speedPercent",
       "octaveSmoothing",
       "energyFadePercent",
+      "colorBlendPercent",
       "monoLossFloorDb",
       "msRatioRangeDb",
     ]);
@@ -853,6 +854,20 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       );
     }
     if (
+      hasOwn(patch, "colorBlendPercent") &&
+      (!Number.isInteger(patch.colorBlendPercent) ||
+        patch.colorBlendPercent < 0 ||
+        patch.colorBlendPercent > 100)
+    ) {
+      issues.push(
+        issue(
+          "outOfRange",
+          "$.colorBlendPercent",
+          "colorBlendPercent must be an integer from 0 to 100."
+        )
+      );
+    }
+    if (
       hasOwn(patch, "monoLossFloorDb") &&
       (!Number.isFinite(patch.monoLossFloorDb) ||
         patch.monoLossFloorDb < -60 ||
@@ -900,6 +915,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       ["speedPercent", "stereoMapSpeedPercent"],
       ["octaveSmoothing", "stereoMapOctaveSmoothing"],
       ["energyFadePercent", "stereoMapEnergyFadePercent"],
+      ["colorBlendPercent", "stereoMapColorBlendPercent"],
       ["monoLossFloorDb", "stereoMapMonoLossYMinDb"],
     ]) {
       if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
@@ -930,12 +946,20 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       "controls.speedPercent",
       "controls.octaveSmoothing",
       "controls.energyFadePercent",
+      "controls.colorBlendPercent",
       "controls.monoLossFloorDb",
       "controls.msRatioRangeDb.min",
       "controls.msRatioRangeDb.max",
     ];
     changed.sort((left, right) => order.indexOf(left) - order.indexOf(right));
     const warnings = [];
+    if (hasOwn(patch, "colorBlendPercent") && panelControls.stereoMapMode !== "position") {
+      warnings.push({
+        code: "currentlyInactive",
+        path: "controls.colorBlendPercent",
+        inactiveReason: "nonPositionMode",
+      });
+    }
     if (hasOwn(patch, "monoLossFloorDb") && panelControls.stereoMapMode !== "monoLossDb") {
       warnings.push({
         code: "currentlyInactive",

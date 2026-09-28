@@ -124,6 +124,8 @@ Dock is accepted. `dock.describe` and `dock panel describe` are authoritative fo
 
 Stereo Map's `energyFadePercent` is display-only in Dock too. Updating it redraws that instance
 without changing its analysis request identity or allocating another history.
+`colorBlendPercent` has the same key-neutral behavior and is effective only while that instance is
+in Position mode.
 
 Two Dock-only groups are public: Level Meter adds `readout` (`live`, `truePeakMax`, or
 `playbackMax`) and `showLabels`; Loudness adds `showReadouts`. The Level Meter readout must be

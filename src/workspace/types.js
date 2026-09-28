@@ -36,6 +36,7 @@
  *   stereoMapSpeedPercent: number,
  *   stereoMapOctaveSmoothing: string,
  *   stereoMapEnergyFadePercent: number,
+ *   stereoMapColorBlendPercent: number,
  *   stereoMapXMinFreq: number,
  *   stereoMapXMaxFreq: number,
  *   stereoMapMonoLossYMinDb: number,

@@ -79,6 +79,11 @@ lower values make quiet but valid bands easier to see, 0% gives every band above
 full visibility, and 100% restores the original full-strength energy fade. It changes the display
 immediately without restarting analysis or creating another history.
 
+In **Position**, **Color Blend** controls how wide the transition is between the Secondary and
+Primary channel colours. It defaults to 50%, blending from position -0.5 through +0.5. At 0% the
+colours switch sharply at centre; at 100% they blend across the complete -1 through +1 range. The
+setting is hidden in the other modes, where it has no effect.
+
 The Theme Editor's **Advanced → Stereo Map** section controls **Fill Opacity**, which defaults to
 20%. The same value applies to all four modes, live data, Snapshot data, and Dock. It affects only
 the area beneath the curve; the curve keeps the energy-adjusted opacity and Hold stays fully opaque.

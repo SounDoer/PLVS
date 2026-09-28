@@ -683,6 +683,24 @@ const CONTROLS = [
     },
   },
   {
+    key: "stereoMapColorBlendPercent",
+    kind: "number",
+    min: 0,
+    max: 100,
+    default: 50,
+    ui: {
+      tab: "stereo-map",
+      label: "Color Blend",
+      widget: "slider",
+      ariaLabel: "stereo map color blend",
+      step: 1,
+      format: (value) => `${value.toFixed(0)}%`,
+      tooltip:
+        "Controls the width of Position's Primary/Secondary color transition around center. 0% is a hard split; 100% blends across the full range.",
+      showWhen: (controls) => controls.stereoMapMode === STEREO_MAP_MODES.POSITION,
+    },
+  },
+  {
     kind: "logRange",
     minKey: "stereoMapXMinFreq",
     maxKey: "stereoMapXMaxFreq",

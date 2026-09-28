@@ -164,6 +164,8 @@ previews both values without starting or stopping anything.
 - `monoLossFloorDb` runs from -60 through -6 dB; its fixed 0 dB upper bound is not a control.
 - `energyFadePercent` is the display-only **Energy Fade Strength** percentage. It previews
   continuously and does not allocate another history.
+- `colorBlendPercent` is the display-only Position colour-transition width. It is effective only in
+  `position`; touching it in another mode warns with reason `nonPositionMode`.
 - Request identity: channel pair, speed, and octave smoothing. Modes and Energy Fade Strength share
-  the same data.
+  the same data; Color Blend does not change it either.
 - Frequency axis: read-only here.

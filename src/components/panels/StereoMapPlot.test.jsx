@@ -251,9 +251,83 @@ describe("StereoMapPlot", () => {
 
     // band0 (value -1, channelBlendT=0) is fully secondary (blue); band1 (value 1, t=1) fully
     // primary (red) — a continuous blend expressed as gradient stops, not a per-segment average.
+    // The default 50% blend also inserts flat-color boundaries at -0.5 and +0.5.
     const gradient = ctx.gradients[0];
     expect(gradient.stops[0].color).toBe("rgba(0, 0, 255, 1)");
-    expect(gradient.stops[1].color).toBe("rgba(255, 0, 0, 1)");
+    expect(gradient.stops.at(-1).color).toBe("rgba(255, 0, 0, 1)");
+  });
+
+  it("limits Position mixing to Color Blend width and redraws a zero-width hard split", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const props = {
+      mode: STEREO_MAP_MODES.POSITION,
+      bandCentersHz: [100, 10000],
+      points: [
+        { value: -1, opacity: 1, state: "ok" },
+        { value: 1, opacity: 1, state: "ok" },
+      ],
+      range: RANGE,
+      themeColors: TEST_CHANNEL_COLORS,
+    };
+    const { rerender } = render(<StereoMapPlot {...props} colorBlendPercent={50} />);
+
+    const halfBlendStops = ctx.gradients.at(-1).stops;
+    expect(halfBlendStops.map(({ color }) => color)).toEqual([
+      "rgba(0, 0, 255, 1)",
+      "rgba(0, 0, 255, 1)",
+      "rgba(255, 0, 0, 1)",
+      "rgba(255, 0, 0, 1)",
+    ]);
+    expect(halfBlendStops.map(({ offset }) => offset)).toEqual([
+      0,
+      expect.closeTo(0.25),
+      expect.closeTo(0.75),
+      1,
+    ]);
+
+    rerender(<StereoMapPlot {...props} colorBlendPercent={0} />);
+    const hardSplitStops = ctx.gradients.at(-1).stops;
+    expect(hardSplitStops.map(({ color }) => color)).toEqual([
+      "rgba(0, 0, 255, 1)",
+      "rgba(0, 0, 255, 1)",
+      "rgba(255, 0, 0, 1)",
+      "rgba(255, 0, 0, 1)",
+    ]);
+    expect(hardSplitStops.map(({ offset }) => offset)).toEqual([
+      0,
+      expect.closeTo(0.5),
+      expect.closeTo(0.5),
+      1,
+    ]);
+    expect(ctx.fill).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the zero-width hard split when a Position band lands exactly on center", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    render(
+      <StereoMapPlot
+        mode={STEREO_MAP_MODES.POSITION}
+        bandCentersHz={[100, 1000, 10000]}
+        points={[
+          { value: -1, opacity: 1, state: "ok" },
+          { value: 0, opacity: 1, state: "ok" },
+          { value: 1, opacity: 1, state: "ok" },
+        ]}
+        range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
+        colorBlendPercent={0}
+      />
+    );
+
+    const centerStops = ctx.gradients[0].stops.filter(({ offset }) =>
+      Number.isFinite(offset) ? Math.abs(offset - 0.5) < 1e-10 : false
+    );
+    expect(centerStops.map(({ color }) => color)).toEqual([
+      "rgba(0, 0, 255, 1)",
+      "rgba(255, 0, 0, 1)",
+    ]);
   });
 
   it("colors Correlation as Bad at -1 and Good at +1 via the three-stop signal tokens", () => {

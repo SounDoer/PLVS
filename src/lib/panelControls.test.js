@@ -145,6 +145,7 @@ describe("panelControls", () => {
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
       stereoMapEnergyFadePercent: 75,
+      stereoMapColorBlendPercent: 50,
       stereoMapOctaveSmoothing: "1/12",
       stereoMapXMinFreq: 20,
       stereoMapXMaxFreq: 20000,
@@ -278,6 +279,7 @@ describe("panelControls", () => {
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
       stereoMapEnergyFadePercent: 75,
+      stereoMapColorBlendPercent: 50,
       stereoMapOctaveSmoothing: "1/12",
       stereoMapXMinFreq: 20,
       stereoMapXMaxFreq: 20000,
@@ -539,6 +541,7 @@ describe("stereo map panel controls normalization", () => {
     expect(result.stereoMapHold).toBe(false);
     expect(result.stereoMapSpeedPercent).toBe(50);
     expect(result.stereoMapEnergyFadePercent).toBe(75);
+    expect(result.stereoMapColorBlendPercent).toBe(50);
     expect(result.stereoMapOctaveSmoothing).toBe("1/12");
     expect(result.stereoMapXMinFreq).toBe(20);
     expect(result.stereoMapXMaxFreq).toBe(20000);
@@ -608,6 +611,18 @@ describe("stereo map panel controls normalization", () => {
     ).toBe(62);
   });
 
+  it("clamps Color Blend to 0..100 percent", () => {
+    expect(
+      normalizePanelControls({ stereoMapColorBlendPercent: -1 }).stereoMapColorBlendPercent
+    ).toBe(0);
+    expect(
+      normalizePanelControls({ stereoMapColorBlendPercent: 101 }).stereoMapColorBlendPercent
+    ).toBe(100);
+    expect(
+      normalizePanelControls({ stereoMapColorBlendPercent: 35 }).stereoMapColorBlendPercent
+    ).toBe(35);
+  });
+
   it("accepts every Spectrum octave-smoothing option and falls back to 1/12 oct otherwise", () => {
     for (const id of ["off", "1/12", "1/6", "1/3"]) {
       expect(
@@ -664,6 +679,7 @@ describe("stereo map panel controls normalization", () => {
       stereoMapHold: true,
       stereoMapSpeedPercent: 60,
       stereoMapEnergyFadePercent: 65,
+      stereoMapColorBlendPercent: 35,
       stereoMapOctaveSmoothing: "1/6",
       stereoMapXMinFreq: 100,
       stereoMapXMaxFreq: 8000,

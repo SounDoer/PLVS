@@ -189,6 +189,29 @@ describe("DockModuleSettings", () => {
     });
   });
 
+  it("shows Dock Color Blend only for Stereo Map Position", () => {
+    const onChange = renderSettings("stereoMap", { channelCount: 2 });
+    const blend = screen.getByLabelText("Stereo Map color blend");
+    expect(blend.value).toBe("50");
+    fireEvent.change(blend, { target: { value: "25" } });
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap,
+      stereoMapColorBlendPercent: 25,
+    });
+  });
+
+  it("hides Dock Color Blend outside Stereo Map Position", () => {
+    renderSettings("stereoMap", {
+      channelCount: 2,
+      controls: {
+        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap,
+        stereoMapMode: "correlation",
+      },
+    });
+    expect(screen.queryByLabelText("Stereo Map color blend")).toBeNull();
+    expect(screen.getByLabelText("Stereo Map energy fade strength")).toBeTruthy();
+  });
+
   it("uses runtime Spectrum channels and only shows View for a pair", () => {
     const spectrumOptions = [
       { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },

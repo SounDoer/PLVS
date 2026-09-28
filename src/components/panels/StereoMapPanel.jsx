@@ -507,6 +507,7 @@ export function StereoMapPanel() {
                   paletteKey={paletteKey}
                   sourceVersion={isSnapshot ? selectedOffset : liveHistoryVersion}
                   energyFadePercent={normalizedPanelControls.stereoMapEnergyFadePercent}
+                  colorBlendPercent={normalizedPanelControls.stereoMapColorBlendPercent}
                 />
               </div>
               {stereoMapHover ? (

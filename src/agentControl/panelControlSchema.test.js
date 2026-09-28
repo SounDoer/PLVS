@@ -94,6 +94,24 @@ describe("buildPublicPanelControlSchema", () => {
       maximum: 100,
       effective: true,
     });
+    expect(schema.properties.colorBlendPercent).toMatchObject({
+      type: "integer",
+      title: "Color Blend",
+      unit: "%",
+      default: 50,
+      minimum: 0,
+      maximum: 100,
+      effective: true,
+    });
+
+    const correlation = buildPublicPanelControlSchema("stereo-map", {
+      ...DEFAULT_PANEL_CONTROLS,
+      stereoMapMode: "correlation",
+    });
+    expect(correlation.properties.colorBlendPercent).toMatchObject({
+      effective: false,
+      inactiveReason: "nonPositionMode",
+    });
   });
 
   it("describes mergeable nested controls and their dormant state", () => {

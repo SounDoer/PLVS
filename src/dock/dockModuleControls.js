@@ -63,6 +63,7 @@ const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
     "stereoMapSpeedPercent",
     "stereoMapOctaveSmoothing",
     "stereoMapEnergyFadePercent",
+    "stereoMapColorBlendPercent",
     "stereoMapXMinFreq",
     "stereoMapXMaxFreq",
     "stereoMapMonoLossYMinDb",

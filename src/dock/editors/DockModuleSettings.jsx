@@ -329,6 +329,7 @@ function SettingsBody({
           }))
         : [{ value: "0-1", label: "L/R" }];
     const pairValue = `${controls.stereoMapPair?.x ?? 0}-${controls.stereoMapPair?.y ?? 1}`;
+    const isPosition = controls.stereoMapMode === STEREO_MAP_MODES.POSITION;
     const isMonoLoss = controls.stereoMapMode === STEREO_MAP_MODES.MONO_LOSS_DB;
     const isMsRatio = controls.stereoMapMode === STEREO_MAP_MODES.MS_RATIO_DB;
     return (
@@ -404,6 +405,24 @@ function SettingsBody({
             }
           />
         </SettingsRow>
+        {isPosition ? (
+          <SettingsRow
+            label="Color Blend"
+            tooltip="Controls the width of Position's Primary/Secondary color transition around center. 0% is a hard split; 100% blends across the full range."
+          >
+            <SettingsSlider
+              ariaLabel="Stereo Map color blend"
+              min={0}
+              max={100}
+              step={1}
+              value={controls.stereoMapColorBlendPercent}
+              formatValue={(value) => `${value.toFixed(0)}%`}
+              onCommit={(stereoMapColorBlendPercent) =>
+                onChange({ ...controls, stereoMapColorBlendPercent })
+              }
+            />
+          </SettingsRow>
+        ) : null}
         <SettingsRow label="Frequency Range">
           <SettingsRangeInput
             minAriaLabel="stereo map frequency range min"

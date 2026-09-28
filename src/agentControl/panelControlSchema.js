@@ -423,6 +423,16 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
             effective: true,
           }
         ),
+        colorBlendPercent: active(
+          field("integer", "Color Blend", "Width of Position's channel-color transition.", {
+            unit: "%",
+            default: defaults.colorBlendPercent,
+            minimum: 0,
+            maximum: 100,
+          }),
+          controls.stereoMapMode === "position",
+          "nonPositionMode"
+        ),
         monoLossFloorDb: active(
           field("number", "Mono Loss Floor", "Lowest displayed mono-loss value.", {
             unit: "dB",

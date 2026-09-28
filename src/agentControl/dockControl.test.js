@@ -103,6 +103,7 @@ describe("Dock Control", () => {
     expect(result.modules.find(({ moduleId }) => moduleId === "stereo-map").controls).toMatchObject(
       {
         energyFadePercent: { type: "integer", unit: "%", default: 75 },
+        colorBlendPercent: { type: "integer", unit: "%", default: 50 },
       }
     );
     expect(

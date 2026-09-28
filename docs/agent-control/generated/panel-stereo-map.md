@@ -19,6 +19,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
   "speedPercent": 50,
   "octaveSmoothing": "1/12",
   "energyFadePercent": 75,
+  "colorBlendPercent": 50,
   "monoLossFloorDb": -24,
   "msRatioRangeDb": {
     "min": -48,
@@ -37,6 +38,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | `speedPercent` | integer | % | `50` | 0 to 100 | active |
 | `octaveSmoothing` | string | - | `"1/12"` | "off", "1/12", "1/6", "1/3" | active |
 | `energyFadePercent` | integer | % | `75` | 0 to 100 | active |
+| `colorBlendPercent` | integer | % | `50` | 0 to 100 | active |
 | `monoLossFloorDb` | number | dB | `-24` | -60 to -6 | inactive (nonMonoLossMode) |
 | `msRatioRangeDb` | object | dB | - | requires min, max; min < max; includes 0 | inactive (nonMsRatioMode) |
 | `msRatioRangeDb.min` | number | - | - | -96 to 48 | - |

@@ -27,17 +27,25 @@ function clamp01(t) {
   return Math.max(0, Math.min(1, t));
 }
 
+function normalizedChannelPosition(value, range) {
+  const span = range.upperBound - range.lowerBound;
+  if (!(span > 0)) return 0;
+  return clamp01((value - range.lowerBound) / span) * 2 - 1;
+}
+
 function energyFadeOpacity(opacity, strengthPercent) {
   const base = clamp01(opacity);
   if (base === 0 || base === 1) return base;
   return base ** (Math.max(0, Math.min(100, strengthPercent)) / 100);
 }
 
-// Position/M-S: 0 at the second/Mid channel, 1 at the first/Side channel.
-function channelBlendT(value, range) {
-  const span = range.upperBound - range.lowerBound;
-  if (!(span > 0)) return 0.5;
-  return clamp01((value - range.lowerBound) / span);
+// Position: 0 at the second channel, 1 at the first channel. Blend controls how much of the
+// normalized -1..+1 position range is used as the transition around center; zero is a hard split.
+function channelBlendT(value, range, blendPercent) {
+  const normalizedPosition = normalizedChannelPosition(value, range);
+  const blendWidth = clamp01(blendPercent / 100);
+  if (blendWidth === 0) return normalizedPosition >= 0 ? 1 : 0;
+  return clamp01((normalizedPosition + blendWidth) / (2 * blendWidth));
 }
 
 // Correlation: -1 (anti-phase) is Bad, +1 (in phase) is Good.
@@ -120,10 +128,14 @@ function threeStopSignalColor(t, warn, bad, good) {
   return mixColors(((clamped - 0.5) / 0.5) * 100, good, warn);
 }
 
-function segmentColor(mode, value, range, colors) {
+function segmentColor(mode, value, range, colors, colorBlendPercent = 100) {
   switch (mode) {
     case STEREO_MAP_MODES.POSITION:
-      return channelBlendColor(channelBlendT(value, range), colors.primary, colors.secondary);
+      return channelBlendColor(
+        channelBlendT(value, range, colorBlendPercent),
+        colors.primary,
+        colors.secondary
+      );
     case STEREO_MAP_MODES.CORRELATION:
       return threeStopSignalColor(correlationColorT(value), colors.warn, colors.bad, colors.good);
     case STEREO_MAP_MODES.MONO_LOSS_DB:
@@ -199,7 +211,8 @@ function buildHoldRuns(bandCentersHz, values, xMinHz, xMaxHz, range) {
 
 /**
  * Draws one continuous run (Position/Correlation/Mono Loss) as a single fill path + single stroke
- * path, colored with a canvas `CanvasGradient` carrying one stop per band. A per-segment
+ * path, colored with a canvas `CanvasGradient` carrying one stop per band plus any Position blend
+ * boundaries crossed between bands. A per-segment
  * `fillStyle`/`strokeStyle` reassignment forces the canvas backend to re-resolve the style on every
  * single draw call — cheap when consecutive segments happen to resolve to the same color (a calm,
  * slowly-varying region), but a real per-call cost when they don't (a region where the value swings
@@ -207,13 +220,25 @@ function buildHoldRuns(bandCentersHz, values, xMinHz, xMaxHz, range) {
  * bakes the whole run's color variation into one style object that costs the same to paint
  * regardless of how much the underlying values actually swing.
  */
-function drawGradientRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY) {
+function drawGradientRun(
+  ctx,
+  run,
+  mode,
+  range,
+  colors,
+  baselineY,
+  fillOpacity,
+  colorBlendPercent,
+  scaleX,
+  scaleY
+) {
   if (run.length < 2) return;
   const x0 = run[0].x * scaleX;
   const x1 = run[run.length - 1].x * scaleX;
   const span = x1 - x0;
 
-  const soleColor = (alpha) => withAlpha(segmentColor(mode, run[0].value, range, colors), alpha);
+  const soleColor = (alpha) =>
+    withAlpha(segmentColor(mode, run[0].value, range, colors, colorBlendPercent), alpha);
   // One gradient serves both passes. The stops carry the opacity that varies along the run, which
   // is the part a per-draw alpha could not express; the constant fill factor rides on globalAlpha,
   // which the canvas multiplies with each stop's alpha for the same result. Building it twice cost
@@ -222,12 +247,59 @@ function drawGradientRun(ctx, run, mode, range, colors, baselineY, fillOpacity, 
   let gradient = null;
   if (span > 0) {
     gradient = ctx.createLinearGradient(x0, 0, x1, 0);
-    for (const point of run) {
+    const addPointStop = (point) => {
       const t = clamp01((point.x * scaleX - x0) / span);
       gradient.addColorStop(
         t,
-        withAlpha(segmentColor(mode, point.value, range, colors), point.opacity)
+        withAlpha(segmentColor(mode, point.value, range, colors, colorBlendPercent), point.opacity)
       );
+    };
+    addPointStop(run[0]);
+    for (let index = 1; index < run.length; index += 1) {
+      const previous = run[index - 1];
+      const point = run[index];
+      if (mode === STEREO_MAP_MODES.POSITION) {
+        const previousPosition = normalizedChannelPosition(previous.value, range);
+        const position = normalizedChannelPosition(point.value, range);
+        const positionSpan = position - previousPosition;
+        const blendWidth = clamp01(colorBlendPercent / 100);
+        if (positionSpan !== 0) {
+          const hardSplitCrossed =
+            blendWidth === 0 &&
+            ((previousPosition < 0 && position >= 0) || (previousPosition >= 0 && position < 0));
+          const boundaries = hardSplitCrossed ? [0] : [-blendWidth, blendWidth];
+          const crossedBoundaries = boundaries
+            .filter((boundary) => {
+              if (hardSplitCrossed) return true;
+              return (
+                boundary > Math.min(previousPosition, position) &&
+                boundary < Math.max(previousPosition, position)
+              );
+            })
+            .sort((a, b) => (positionSpan > 0 ? a - b : b - a));
+          for (const boundary of crossedBoundaries) {
+            const fraction = (boundary - previousPosition) / positionSpan;
+            const boundaryX = previous.x + (point.x - previous.x) * fraction;
+            const boundaryOffset = clamp01((boundaryX * scaleX - x0) / span);
+            const boundaryOpacity =
+              previous.opacity + (point.opacity - previous.opacity) * fraction;
+            if (hardSplitCrossed) {
+              const beforeColor = positionSpan > 0 ? colors.secondaryCss : colors.primaryCss;
+              const afterColor = positionSpan > 0 ? colors.primaryCss : colors.secondaryCss;
+              gradient.addColorStop(boundaryOffset, withAlpha(beforeColor, boundaryOpacity));
+              // When the boundary is the current point, addPointStop below supplies the color on
+              // the far side. Otherwise a duplicate-position stop creates Canvas's hard edge.
+              if (fraction < 1) {
+                gradient.addColorStop(boundaryOffset, withAlpha(afterColor, boundaryOpacity));
+              }
+            } else {
+              const boundaryColor = boundary < 0 ? colors.secondaryCss : colors.primaryCss;
+              gradient.addColorStop(boundaryOffset, withAlpha(boundaryColor, boundaryOpacity));
+            }
+          }
+        }
+      }
+      addPointStop(point);
     }
   }
 
@@ -424,6 +496,7 @@ export function StereoMapPlot({
   themeColors: themeColorsOverride,
   sourceVersion = 0,
   energyFadePercent = 75,
+  colorBlendPercent = 50,
 }) {
   const resolvedThemeColors = useResolvedTheme(selectStereoMapCanvasColors);
   const themeColors = themeColorsOverride ?? resolvedThemeColors;
@@ -481,6 +554,7 @@ export function StereoMapPlot({
     const { strokeWidthCss } = geometryStyleRef.current;
     const fillOpacity = colors.fillOpacity;
     const fadeStrength = Math.max(0, Math.min(100, energyFadePercent));
+    const colorBlend = Math.max(0, Math.min(100, colorBlendPercent));
     const { dpr, width, height } = sizeRef.current;
     const lineWidth = strokeWidthCss * dpr;
 
@@ -507,6 +581,7 @@ export function StereoMapPlot({
       rgbToCss(colors.grid),
       fillOpacity,
       fadeStrength,
+      colorBlend,
       lineWidth,
       sourceVersion,
     ].join("|");
@@ -576,7 +651,18 @@ export function StereoMapPlot({
       mode === STEREO_MAP_MODES.MONO_LOSS_DB;
     for (const run of runs) {
       if (isGradientMode) {
-        drawGradientRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY);
+        drawGradientRun(
+          ctx,
+          run,
+          mode,
+          range,
+          colors,
+          baselineY,
+          fillOpacity,
+          colorBlend,
+          scaleX,
+          scaleY
+        );
       } else {
         drawBinaryRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY);
       }

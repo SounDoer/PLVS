@@ -74,6 +74,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       speedPercent: controls.stereoMapSpeedPercent,
       octaveSmoothing: controls.stereoMapOctaveSmoothing,
       energyFadePercent: controls.stereoMapEnergyFadePercent,
+      colorBlendPercent: controls.stereoMapColorBlendPercent,
       monoLossFloorDb: controls.stereoMapMonoLossYMinDb,
       msRatioRangeDb: {
         min: controls.stereoMapMsRatioYMinDb,

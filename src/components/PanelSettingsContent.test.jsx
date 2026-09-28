@@ -1108,6 +1108,37 @@ describe("PanelSettingsContent", () => {
     );
   });
 
+  it("shows Color Blend only in Position and updates it live", () => {
+    const onPanelControlsChange = vi.fn();
+    const props = {
+      activeTab: "stereo-map",
+      stereoMapPairOptions: [{ key: "0-1", label: "L/R", x: 0, y: 1 }],
+      stereoMapPairValueKey: "0-1",
+      stereoMapPairDisplayLabel: "L/R",
+      onStereoMapPairChange: vi.fn(),
+      onPanelControlsChange,
+    };
+    const { rerender } = render(
+      <PanelSettingsContent {...props} panelControls={DEFAULT_PANEL_CONTROLS} />
+    );
+
+    const blend = screen.getByLabelText("stereo map color blend");
+    expect(blend.value).toBe("50");
+    fireEvent.change(blend, { target: { value: "30" } });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapColorBlendPercent: 30 })
+    );
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, stereoMapMode: "correlation" }}
+      />
+    );
+    expect(screen.queryByLabelText("stereo map color blend")).toBeNull();
+    expect(screen.getByLabelText("stereo map energy fade strength")).toBeTruthy();
+  });
+
   it("commits the stereo map speed on keyboard release", () => {
     const onPanelControlsChange = vi.fn();
     render(

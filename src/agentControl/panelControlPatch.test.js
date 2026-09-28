@@ -430,6 +430,7 @@ describe("planPublicPanelControlPatch", () => {
         maxHold: true,
         speedPercent: 80,
         energyFadePercent: 60,
+        colorBlendPercent: 35,
         octaveSmoothing: "off",
         monoLossFloorDb: -30,
         msRatioRangeDb: { min: -36, max: 18 },
@@ -440,6 +441,10 @@ describe("planPublicPanelControlPatch", () => {
     expect(result).toMatchObject({
       issues: [],
       warnings: [
+        expect.objectContaining({
+          path: "controls.colorBlendPercent",
+          inactiveReason: "nonPositionMode",
+        }),
         expect.objectContaining({
           path: "controls.monoLossFloorDb",
           inactiveReason: "nonMonoLossMode",
@@ -453,6 +458,7 @@ describe("planPublicPanelControlPatch", () => {
         "controls.speedPercent",
         "controls.octaveSmoothing",
         "controls.energyFadePercent",
+        "controls.colorBlendPercent",
         "controls.monoLossFloorDb",
         "controls.msRatioRangeDb.min",
         "controls.msRatioRangeDb.max",
@@ -464,6 +470,7 @@ describe("planPublicPanelControlPatch", () => {
       stereoMapHold: true,
       stereoMapSpeedPercent: 80,
       stereoMapEnergyFadePercent: 60,
+      stereoMapColorBlendPercent: 35,
       stereoMapOctaveSmoothing: "off",
       stereoMapMonoLossYMinDb: -30,
       stereoMapMsRatioYMinDb: -36,
