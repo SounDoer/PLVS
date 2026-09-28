@@ -178,6 +178,16 @@ describe("DockLevel", () => {
     expect(screen.getAllByText("-")).toHaveLength(2);
   });
 
+  it("draws the Gradient over the whole track by default", () => {
+    renderWith({ displayAudio: { peakDb: [-12, -30] } });
+    for (const bar of screen.getAllByTestId("dock-level-bar")) {
+      expect(bar.firstChild.dataset.levelMeterGradient).toBe(
+        "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
+          "var(--ui-level-critical) 100%)"
+      );
+    }
+  });
+
   it("sizes the fill gradient to the whole track rather than stretching it over the fill", () => {
     renderWith({ displayAudio: { peakDb: [-12, -30] } });
     for (const bar of screen.getAllByTestId("dock-level-bar")) {

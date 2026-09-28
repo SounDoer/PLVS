@@ -29,6 +29,7 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
 const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
   level: [
     "levelMeterMode",
+    "levelMeterBarColors",
     "levelMeterPeakWarningDb",
     "levelMeterPeakCriticalDb",
     "levelMeterRmsWarningDb",

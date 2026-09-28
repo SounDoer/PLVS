@@ -98,6 +98,9 @@ function SettingsBody({
     const thresholdRow = panelControlUiRows("levelMeter").find(
       (row) => row.ui.widget === "thresholds" && row.ui.showWhen(controls)
     );
+    const barColorsRow = panelControlUiRows("levelMeter").find(
+      (row) => row.key === "levelMeterBarColors"
+    );
     return (
       <>
         <SettingsRow label="Mode">
@@ -120,6 +123,14 @@ function SettingsBody({
             value={controls.readout}
             options={readoutOptions}
             onChange={(readout) => onChange({ ...controls, readout })}
+          />
+        </SettingsRow>
+        <SettingsRow label={barColorsRow.ui.label} tooltip={barColorsRow.ui.tooltip}>
+          <SelectField
+            label={barColorsRow.ui.ariaLabel}
+            value={controls.levelMeterBarColors}
+            options={barColorsRow.ui.options.map(({ id, label }) => ({ value: id, label }))}
+            onChange={(levelMeterBarColors) => onChange({ ...controls, levelMeterBarColors })}
           />
         </SettingsRow>
         {thresholdRow ? (
