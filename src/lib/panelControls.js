@@ -666,6 +666,23 @@ const CONTROLS = [
     },
   },
   {
+    key: "stereoMapEnergyFadePercent",
+    kind: "number",
+    min: 0,
+    max: 100,
+    default: 75,
+    ui: {
+      tab: "stereo-map",
+      label: "Energy Fade Strength",
+      widget: "slider",
+      ariaLabel: "stereo map energy fade strength",
+      step: 1,
+      format: (value) => `${value.toFixed(0)}%`,
+      tooltip:
+        "Controls how strongly low-energy frequency bands fade. 0% keeps every band above the gate fully visible; 100% matches the original fade.",
+    },
+  },
+  {
     kind: "logRange",
     minKey: "stereoMapXMinFreq",
     maxKey: "stereoMapXMaxFreq",

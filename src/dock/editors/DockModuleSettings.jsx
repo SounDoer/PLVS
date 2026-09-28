@@ -388,6 +388,22 @@ function SettingsBody({
             }
           />
         </SettingsRow>
+        <SettingsRow
+          label="Energy Fade Strength"
+          tooltip="Controls how strongly low-energy frequency bands fade. 0% keeps every band above the gate fully visible; 100% matches the original fade."
+        >
+          <SettingsSlider
+            ariaLabel="Stereo Map energy fade strength"
+            min={0}
+            max={100}
+            step={1}
+            value={controls.stereoMapEnergyFadePercent}
+            formatValue={(value) => `${value.toFixed(0)}%`}
+            onCommit={(stereoMapEnergyFadePercent) =>
+              onChange({ ...controls, stereoMapEnergyFadePercent })
+            }
+          />
+        </SettingsRow>
         <SettingsRow label="Frequency Range">
           <SettingsRangeInput
             minAriaLabel="stereo map frequency range min"

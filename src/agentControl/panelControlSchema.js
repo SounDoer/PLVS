@@ -411,6 +411,18 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
           options: smoothingOptions,
           effective: true,
         }),
+        energyFadePercent: field(
+          "integer",
+          "Energy Fade Strength",
+          "Strength of low-energy frequency-band fading.",
+          {
+            unit: "%",
+            default: defaults.energyFadePercent,
+            minimum: 0,
+            maximum: 100,
+            effective: true,
+          }
+        ),
         monoLossFloorDb: active(
           field("number", "Mono Loss Floor", "Lowest displayed mono-loss value.", {
             unit: "dB",

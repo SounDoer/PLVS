@@ -36,6 +36,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
     "maxHold",
     "speedPercent",
     "octaveSmoothing",
+    "energyFadePercent",
     "monoLossFloorDb",
     "msRatioRangeDb",
     "frequencyRangeHz",

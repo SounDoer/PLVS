@@ -25,6 +25,7 @@ export function selectStereoMapCanvasColors(resolved) {
     good: resolved.canvas["stereoMap.safeRange"],
     warning: resolved.canvas["stereoMap.warningRange"],
     critical: resolved.canvas["stereoMap.criticalRange"],
+    fillOpacity: resolved.canvas["stereoMap.fillOpacity"],
   };
 }
 

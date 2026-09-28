@@ -27,6 +27,12 @@ function clamp01(t) {
   return Math.max(0, Math.min(1, t));
 }
 
+function energyFadeOpacity(opacity, strengthPercent) {
+  const base = clamp01(opacity);
+  if (base === 0 || base === 1) return base;
+  return base ** (Math.max(0, Math.min(100, strengthPercent)) / 100);
+}
+
 // Position/M-S: 0 at the second/Mid channel, 1 at the first/Side channel.
 function channelBlendT(value, range) {
   const span = range.upperBound - range.lowerBound;
@@ -142,7 +148,7 @@ function segmentColor(mode, value, range, colors) {
  * continuous stretch to be drawn; a break between runs is a real curve break (no interpolation
  * across an invalid band).
  */
-function buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range) {
+function buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range, energyFadePercent) {
   const runs = [];
   let current = null;
   for (let index = 0; index < points.length; index += 1) {
@@ -155,7 +161,10 @@ function buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range) {
       x: xFor(bandCentersHz[index], xMinHz, xMaxHz),
       y: yFor(point.value, range),
       value: point.value,
-      opacity: Number.isFinite(point.opacity) ? point.opacity : 1,
+      opacity: energyFadeOpacity(
+        Number.isFinite(point.opacity) ? point.opacity : 1,
+        energyFadePercent
+      ),
     };
     if (!current) {
       current = [];
@@ -342,6 +351,7 @@ function resolveColors(themeColors, paletteKey) {
     grid,
     primaryCss: rgbToCss(primary),
     secondaryCss: rgbToCss(secondary),
+    fillOpacity: Number.isFinite(themeColors.fillOpacity) ? clamp01(themeColors.fillOpacity) : 0.2,
   };
 }
 
@@ -413,6 +423,7 @@ export function StereoMapPlot({
   paletteKey = "live",
   themeColors: themeColorsOverride,
   sourceVersion = 0,
+  energyFadePercent = 75,
 }) {
   const resolvedThemeColors = useResolvedTheme(selectStereoMapCanvasColors);
   const themeColors = themeColorsOverride ?? resolvedThemeColors;
@@ -463,12 +474,13 @@ export function StereoMapPlot({
 
     if (!geometryStyleRef.current) {
       geometryStyleRef.current = {
-        fillOpacity: readCssNumber(canvas, "--ui-stereo-map-fill-opacity", 0.22) || 0.22,
-        strokeWidthCss: readCssNumber(canvas, "--ui-spectrum-stroke-width", 2) || 2,
+        strokeWidthCss: readCssNumber(canvas, "--ui-stereo-map-stroke-width", 1.5) || 1.5,
       };
     }
     const colors = resolveColors(themeColors, paletteKey);
-    const { fillOpacity, strokeWidthCss } = geometryStyleRef.current;
+    const { strokeWidthCss } = geometryStyleRef.current;
+    const fillOpacity = colors.fillOpacity;
+    const fadeStrength = Math.max(0, Math.min(100, energyFadePercent));
     const { dpr, width, height } = sizeRef.current;
     const lineWidth = strokeWidthCss * dpr;
 
@@ -494,6 +506,7 @@ export function StereoMapPlot({
       rgbToCss(colors.good),
       rgbToCss(colors.grid),
       fillOpacity,
+      fadeStrength,
       lineWidth,
       sourceVersion,
     ].join("|");
@@ -551,7 +564,7 @@ export function StereoMapPlot({
     ctx.lineTo(width, baselineY);
     ctx.stroke();
 
-    const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range);
+    const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range, fadeStrength);
     ctx.lineWidth = lineWidth;
     ctx.lineCap = "round";
     // Position/Correlation/Mono Loss vary continuously and are drawn with one gradient-colored path

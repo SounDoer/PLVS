@@ -162,5 +162,8 @@ previews both values without starting or stopping anything.
 - Channel-pair validation matches Vectorscope.
 - `maxHold` is effective in every mode. Mode-specific ranges stay stored while another mode is active.
 - `monoLossFloorDb` runs from -60 through -6 dB; its fixed 0 dB upper bound is not a control.
-- Request identity: channel pair, speed, and octave smoothing. Modes share the same data.
+- `energyFadePercent` is the display-only **Energy Fade Strength** percentage. It previews
+  continuously and does not allocate another history.
+- Request identity: channel pair, speed, and octave smoothing. Modes and Energy Fade Strength share
+  the same data.
 - Frequency axis: read-only here.

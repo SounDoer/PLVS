@@ -20,5 +20,6 @@ describe("Theme Canvas selectors", () => {
     expect(colors.good).toBe(resolved.roles["stereoMap.safeRange"]);
     expect(colors.warning).toBe(resolved.roles["stereoMap.warningRange"]);
     expect(colors.critical).toBe(resolved.roles["stereoMap.criticalRange"]);
+    expect(colors.fillOpacity).toBe(resolved.roles["stereoMap.fillOpacity"]);
   });
 });

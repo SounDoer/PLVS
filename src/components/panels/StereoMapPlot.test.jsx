@@ -13,6 +13,7 @@ const TEST_CHANNEL_COLORS = {
   good: "#0000ff",
   warning: "#00ff00",
   critical: "#ff0000",
+  fillOpacity: 0.2,
 };
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { applyThemeToDocument } from "../../uiPreferences.js";
@@ -117,6 +118,7 @@ describe("StereoMapPlot", () => {
         points={threeBandPoints()}
         range={RANGE}
         themeColors={TEST_CHANNEL_COLORS}
+        energyFadePercent={100}
       />
     );
 
@@ -166,15 +168,60 @@ describe("StereoMapPlot", () => {
         ]}
         range={RANGE}
         themeColors={TEST_CHANNEL_COLORS}
+        energyFadePercent={100}
       />
     );
 
     expect(ctx.strokedAlphas.at(-1)).toBe(1);
-    // The token is absent in the stub, so the fill factor is the code's own fallback.
-    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.22, 5);
+    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.2, 5);
     const gradient = ctx.gradients[0];
     expect(gradient.stops[0].color).toMatch(/, 0\.3\)$/);
     expect(gradient.stops[1].color).toMatch(/, 0\.9\)$/);
+  });
+
+  it("applies Energy Fade Strength at draw time and redraws live", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const props = {
+      mode: STEREO_MAP_MODES.CORRELATION,
+      bandCentersHz: [100, 1000],
+      points: [
+        { value: 0, opacity: 0.25, state: "ok" },
+        { value: 0.5, opacity: 1, state: "ok" },
+      ],
+      range: RANGE,
+      themeColors: TEST_CHANNEL_COLORS,
+    };
+    const { rerender } = render(<StereoMapPlot {...props} energyFadePercent={75} />);
+
+    const fadedAlpha = Number(ctx.gradients.at(-1).stops[0].color.match(/, ([\d.]+)\)$/)[1]);
+    expect(fadedAlpha).toBeCloseTo(0.25 ** 0.75, 5);
+
+    rerender(<StereoMapPlot {...props} energyFadePercent={0} />);
+    const fullAlpha = Number(ctx.gradients.at(-1).stops[0].color.match(/, ([\d.]+)\)$/)[1]);
+    expect(fullAlpha).toBe(1);
+    expect(ctx.fill).toHaveBeenCalledTimes(2);
+  });
+
+  it("redraws live when the Theme-owned fill opacity changes", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const props = {
+      mode: STEREO_MAP_MODES.CORRELATION,
+      bandCentersHz: [100, 1000],
+      points: threeBandPoints().slice(0, 2),
+      range: RANGE,
+    };
+    const { rerender } = render(
+      <StereoMapPlot {...props} themeColors={{ ...TEST_CHANNEL_COLORS, fillOpacity: 0.2 }} />
+    );
+    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.2, 5);
+
+    rerender(
+      <StereoMapPlot {...props} themeColors={{ ...TEST_CHANNEL_COLORS, fillOpacity: 0.4 }} />
+    );
+    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.4, 5);
+    expect(ctx.fill).toHaveBeenCalledTimes(2);
   });
 
   it("colors Position mode as a continuous blend between the primary and secondary tokens", () => {

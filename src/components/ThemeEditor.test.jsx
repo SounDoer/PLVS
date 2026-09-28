@@ -111,6 +111,23 @@ describe("ThemeEditor", () => {
     });
   });
 
+  it("edits Theme-owned Stereo Map fill opacity as a percentage", () => {
+    const draft = structuredClone(DRAFT);
+    draft.overrides["stereoMap.fillOpacity"] = { kind: "number", value: 0.35 };
+    const onOverride = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stereo Map" }));
+
+    const fill = screen.getByLabelText("Fill Opacity percent");
+    expect(fill.value).toBe("35");
+    fireEvent.change(fill, { target: { value: "40" } });
+    expect(onOverride).toHaveBeenCalledWith("stereoMap.fillOpacity", {
+      kind: "number",
+      value: 0.4,
+    });
+  });
+
   it("orders Advanced sections by the Module Catalog and shows Interface subgroups", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));

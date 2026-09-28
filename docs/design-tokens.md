@@ -641,8 +641,16 @@ Upper. Stroke width remains product-owned.
 ### Stereo Map
 
 ```
---ui-stereo-map-fill-opacity   0.22   Curve area fill opacity
+Stereo Map Canvas `fillOpacity`   0.20   Theme Advanced: curve area fill opacity
+--ui-stereo-map-stroke-width      1.5    Product-owned curve stroke width
 ```
+
+`stereoMap.fillOpacity` is a bounded Theme role exposed under **Advanced → Stereo Map** and shared
+by all four modes, live and Snapshot palettes, and Dock. Position blends the module-local Primary
+and Secondary data roles; Correlation and Mono Loss use the module-local Critical, Warning, and Safe
+ranges; M/S Ratio uses Primary for Mid and Secondary for Side. The panel's independent **Energy
+Fade Strength** transforms each measured per-band opacity while drawing and never enters the
+analysis request key. Stroke width remains product-owned and does not borrow Spectrum's token.
 
 ### Waveform
 

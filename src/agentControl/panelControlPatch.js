@@ -786,6 +786,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       "maxHold",
       "speedPercent",
       "octaveSmoothing",
+      "energyFadePercent",
       "monoLossFloorDb",
       "msRatioRangeDb",
     ]);
@@ -838,6 +839,20 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       issues.push(issue("invalidEnum", "$.octaveSmoothing", "octaveSmoothing is not supported."));
     }
     if (
+      hasOwn(patch, "energyFadePercent") &&
+      (!Number.isInteger(patch.energyFadePercent) ||
+        patch.energyFadePercent < 0 ||
+        patch.energyFadePercent > 100)
+    ) {
+      issues.push(
+        issue(
+          "outOfRange",
+          "$.energyFadePercent",
+          "energyFadePercent must be an integer from 0 to 100."
+        )
+      );
+    }
+    if (
       hasOwn(patch, "monoLossFloorDb") &&
       (!Number.isFinite(patch.monoLossFloorDb) ||
         patch.monoLossFloorDb < -60 ||
@@ -884,6 +899,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       ["maxHold", "stereoMapHold"],
       ["speedPercent", "stereoMapSpeedPercent"],
       ["octaveSmoothing", "stereoMapOctaveSmoothing"],
+      ["energyFadePercent", "stereoMapEnergyFadePercent"],
       ["monoLossFloorDb", "stereoMapMonoLossYMinDb"],
     ]) {
       if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
@@ -913,6 +929,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       "controls.maxHold",
       "controls.speedPercent",
       "controls.octaveSmoothing",
+      "controls.energyFadePercent",
       "controls.monoLossFloorDb",
       "controls.msRatioRangeDb.min",
       "controls.msRatioRangeDb.max",

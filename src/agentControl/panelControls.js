@@ -73,6 +73,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       maxHold: controls.stereoMapHold,
       speedPercent: controls.stereoMapSpeedPercent,
       octaveSmoothing: controls.stereoMapOctaveSmoothing,
+      energyFadePercent: controls.stereoMapEnergyFadePercent,
       monoLossFloorDb: controls.stereoMapMonoLossYMinDb,
       msRatioRangeDb: {
         min: controls.stereoMapMsRatioYMinDb,

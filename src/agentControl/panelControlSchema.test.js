@@ -82,6 +82,20 @@ describe("buildPublicPanelControlSchema", () => {
     });
   });
 
+  it("describes Stereo Map Energy Fade Strength as a bounded display percentage", () => {
+    const schema = buildPublicPanelControlSchema("stereo-map", DEFAULT_PANEL_CONTROLS);
+
+    expect(schema.properties.energyFadePercent).toMatchObject({
+      type: "integer",
+      title: "Energy Fade Strength",
+      unit: "%",
+      default: 75,
+      minimum: 0,
+      maximum: 100,
+      effective: true,
+    });
+  });
+
   it("describes mergeable nested controls and their dormant state", () => {
     const spectrogram = buildPublicPanelControlSchema("spectrogram", DEFAULT_PANEL_CONTROLS);
     const stats = buildPublicPanelControlSchema("stats", DEFAULT_PANEL_CONTROLS);

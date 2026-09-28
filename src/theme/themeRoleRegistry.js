@@ -722,6 +722,21 @@ function moduleRoles() {
       { canvas: ["stereoMap.grid"] },
       primaryRefs
     ),
+    role("stereoMap.fillOpacity", {
+      kind: "number",
+      family: "stereoMap",
+      recipe: "constant",
+      defaultValue: 0.2,
+      bindings: { canvas: ["stereoMap.fillOpacity"] },
+      advanced: numberOverride(
+        "Stereo Map",
+        "Fill Opacity",
+        "Opacity of the area between the Stereo Map curve and its zero baseline.",
+        0,
+        1,
+        0.01
+      ),
+    }),
     moduleColor(
       "stereoMap.safeRange",
       "Stereo Map",

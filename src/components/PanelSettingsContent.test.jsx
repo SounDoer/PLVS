@@ -1085,6 +1085,29 @@ describe("PanelSettingsContent", () => {
     );
   });
 
+  it("updates Stereo Map Energy Fade Strength live because it is display-only", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        stereoMapPairValueKey="0-1"
+        stereoMapPairDisplayLabel="L/R"
+        onStereoMapPairChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const fade = screen.getByLabelText("stereo map energy fade strength");
+    expect(fade.value).toBe("75");
+    fireEvent.change(fade, { target: { value: "60" } });
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapEnergyFadePercent: 60 })
+    );
+  });
+
   it("commits the stereo map speed on keyboard release", () => {
     const onPanelControlsChange = vi.fn();
     render(

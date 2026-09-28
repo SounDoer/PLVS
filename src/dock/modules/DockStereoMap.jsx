@@ -75,6 +75,7 @@ export function DockStereoMap({ controls = {} }) {
           xMinHz={normalizedControls.stereoMapXMinFreq}
           xMaxHz={normalizedControls.stereoMapXMaxFreq}
           paletteKey="live"
+          energyFadePercent={normalizedControls.stereoMapEnergyFadePercent}
         />
         {showPairLabels ? (
           <div

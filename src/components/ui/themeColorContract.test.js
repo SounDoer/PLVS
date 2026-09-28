@@ -122,11 +122,12 @@ describe("theme color contract", () => {
     expect(waveform).not.toContain('stroke="var(--ui-loudness-selection)"');
   });
 
-  it("keeps Stereo Map fill tuning independent from Spectrum", () => {
+  it("keeps Stereo Map geometry independent from Spectrum", () => {
     const stereoMap = readFileSync(new URL("../panels/StereoMapPlot.jsx", import.meta.url), "utf8");
 
-    expect(stereoMap).toContain("--ui-stereo-map-fill-opacity");
-    expect(stereoMap).not.toContain("--ui-spectrum-fill-top-opacity");
+    expect(stereoMap).toContain("--ui-stereo-map-stroke-width");
+    expect(stereoMap).not.toContain("--ui-spectrum-stroke-width");
+    expect(stereoMap).not.toContain("--ui-stereo-map-fill-opacity");
   });
 
   it("does not route runtime consumers through the retired shared signal bindings", () => {

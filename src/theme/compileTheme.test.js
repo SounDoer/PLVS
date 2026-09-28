@@ -97,6 +97,19 @@ describe("compileTheme", () => {
     expect(customized.css["--ui-spectrum-fill-bottom-opacity"]).toBe("0.08");
   });
 
+  it("publishes Stereo Map fill opacity to Canvas without a CSS token", () => {
+    const defaults = compileTheme(authoringTheme());
+    expect(defaults.roles["stereoMap.fillOpacity"]).toBe(0.2);
+    expect(defaults.canvas["stereoMap.fillOpacity"]).toBe(0.2);
+
+    const customized = compileTheme(
+      authoringTheme({
+        overrides: { "stereoMap.fillOpacity": { kind: "number", value: 0.4 } },
+      })
+    );
+    expect(customized.canvas["stereoMap.fillOpacity"]).toBe(0.4);
+  });
+
   it("rejects out-of-range or reversed Spectrum fill opacity overrides", () => {
     expect(() =>
       compileTheme(

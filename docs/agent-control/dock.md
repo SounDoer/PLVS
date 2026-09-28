@@ -122,6 +122,9 @@ the same public names, strict validation, dynamic channel choices, dormant-contr
 analysis-request semantics as the corresponding Workspace panel, but only the subset rendered by
 Dock is accepted. `dock.describe` and `dock panel describe` are authoritative for that subset.
 
+Stereo Map's `energyFadePercent` is display-only in Dock too. Updating it redraws that instance
+without changing its analysis request identity or allocating another history.
+
 Two Dock-only groups are public: Level Meter adds `readout` (`live`, `truePeakMax`, or
 `playbackMax`) and `showLabels`; Loudness adds `showReadouts`. The Level Meter readout must be
 compatible with its meter mode. Transport has no public Dock controls.

@@ -100,6 +100,11 @@ describe("Dock Control", () => {
       speedPercent: { type: "integer", unit: "%" },
       frequencyRangeHz: { type: "object", unit: "Hz" },
     });
+    expect(result.modules.find(({ moduleId }) => moduleId === "stereo-map").controls).toMatchObject(
+      {
+        energyFadePercent: { type: "integer", unit: "%", default: 75 },
+      }
+    );
     expect(
       result.modules.find(({ moduleId }) => moduleId === "spectrum").controls
     ).not.toHaveProperty("peakLabels");

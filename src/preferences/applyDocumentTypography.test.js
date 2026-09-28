@@ -26,7 +26,7 @@ const ICON_VARS = {
 const CHART_AXIS_ROW_HEIGHT = "max(0.8rem, calc(var(--ui-fs-axis) * 1.15))";
 const CHART_Y_AXIS_RAIL_WIDTH = "max(20px, calc(var(--ui-fs-axis) * 1.65))";
 const DRAWER_WIDTH_VAR = "--ui-drawer-w";
-const STEREO_MAP_FILL_OPACITY_VAR = "--ui-stereo-map-fill-opacity";
+const STEREO_MAP_STROKE_WIDTH_VAR = "--ui-stereo-map-stroke-width";
 
 describe("normal-mode typography variables", () => {
   afterEach(() => {
@@ -34,7 +34,7 @@ describe("normal-mode typography variables", () => {
       ...Object.keys(TYPOGRAPHY_VARS),
       ...Object.keys(ICON_VARS),
       DRAWER_WIDTH_VAR,
-      STEREO_MAP_FILL_OPACITY_VAR,
+      STEREO_MAP_STROKE_WIDTH_VAR,
     ]) {
       document.documentElement.style.removeProperty(name);
     }
@@ -73,11 +73,11 @@ describe("normal-mode typography variables", () => {
     expect(document.documentElement.style.getPropertyValue(DRAWER_WIDTH_VAR)).toBe("320px");
   });
 
-  it("publishes Stereo Map's fill opacity independently from Spectrum", () => {
+  it("publishes Stereo Map's stroke width independently from Spectrum", () => {
     applyLayoutToDocument(UI_PREFERENCES);
 
-    expect(document.documentElement.style.getPropertyValue(STEREO_MAP_FILL_OPACITY_VAR)).toBe(
-      "0.22"
+    expect(document.documentElement.style.getPropertyValue(STEREO_MAP_STROKE_WIDTH_VAR)).toBe(
+      "1.5"
     );
   });
 });

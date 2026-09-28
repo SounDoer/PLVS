@@ -74,6 +74,15 @@ Stereo image plotted across the frequency spectrum, so you can see where the wid
 between **Position**, **Correlation**, **Mono Loss**, and **M/S Ratio**, and hold the maximum to
 compare against what came before.
 
+**Energy Fade Strength** controls how strongly quiet frequency bands recede. It defaults to 75%:
+lower values make quiet but valid bands easier to see, 0% gives every band above the analysis gate
+full visibility, and 100% restores the original full-strength energy fade. It changes the display
+immediately without restarting analysis or creating another history.
+
+The Theme Editor's **Advanced → Stereo Map** section controls **Fill Opacity**, which defaults to
+20%. The same value applies to all four modes, live data, Snapshot data, and Dock. It affects only
+the area beneath the curve; the curve keeps the energy-adjusted opacity and Hold stays fully opaque.
+
 ## Waveform
 
 A DAW-style per-channel amplitude envelope over the session history. Optionally colour it by

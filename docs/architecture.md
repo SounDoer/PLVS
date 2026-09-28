@@ -212,14 +212,14 @@ First-paint flow (`src/main.jsx`):
 4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
 5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles layout, font size, geometry, and non-Theme product tuning
 
-**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005/0011):
+**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005/0011/0012):
 
 | Layer            | Output                                                                                                                      | Defined / published in                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Authoring intent | Versioned Core Colors, Status / Intensity / Frequency / Interface Palettes, sparse Advanced overrides (unused by built-ins) | `builtinThemesV2.js` or a migrated persisted document                       |
 | Resolved roles   | Complete `solidColor`, `colorEffect`, `colorScale`, and bounded visual `number` roles                                       | `themeRoleRegistry.js` + `themeRecipes.js` → `compileTheme.js`              |
 | CSS / SVG        | `--background`, `--foreground`, `--primary`, and Theme-owned `--ui-*` colour or visual-composition tokens                   | Resolved Theme `css` → `themeRuntime.js`                                    |
-| Canvas           | Colour bundles for Waveform, Vectorscope, Stereo Map, Spectrogram, etc.                                                     | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
+| Canvas           | Colour and bounded visual-composition bundles for Waveform, Vectorscope, Stereo Map, Spectrogram, etc.                      | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
 | UI layout        | Product-owned `--ui-*`: font size, spacing, radius, line width, and non-Theme tuning                                        | `data.js` → `applyLayoutToDocument`                                         |
 
 First-paint placeholder variables are written by `npm run theme:generate` to `src/generated/theme-fallbacks.css` (from the same source as the default dark semantics).

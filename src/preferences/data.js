@@ -146,7 +146,7 @@ export const UI_PREFERENCES = {
       },
     },
     stereoMap: {
-      fillOpacity: 0.22,
+      strokeWidth: 1.5,
     },
     waveform: {
       fillOpacity: 0.12,
