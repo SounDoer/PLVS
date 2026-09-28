@@ -24,15 +24,17 @@ Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Shor
 a True Peak Max marker driven by the active [Loudness Profile](loudness-profiles.md); click the
 readout to reset the maximum.
 
-The bar colours belong to levels, not to the bar's height, so zooming the scale never changes the
-colour of a level. In Peak and RMS, **Warning / Critical** sets where the bar turns fully warning and
-fully critical colour, blending below each (defaults: Peak −6 / −1 dBFS, RMS −18 / −9 dBFS). These
-zones are a reading aid for headroom, not a compliance check: the Peak bars show sample peak, while
-delivery limits are judged on true peak by the True Peak Max marker and Stats. In
-Momentary and Short-term the colours come from the active Loudness Profile's upper limits on that
-metric or its Max; with no such rule the bar shows the metric's Loudness curve colour, because
-nothing is judging it. The Dock's level strip uses the same colours, with its own Warning / Critical
-in its settings.
+**Bar Colors** chooses what the colours mean. **Gradient** (the default) is appearance only: one
+green-to-red ramp over the visible bar, in every mode, that zooms with the scale and ignores the
+Loudness Profile. **Level Zones** colour by level, with a hard change at each threshold, so a level
+keeps its colour at any zoom. In Peak and RMS, **Warning / Critical** sets the zones (defaults: Peak
+−6 / −1 dBFS, RMS −18 / −9 dBFS); they are a reading aid for headroom, not a compliance check,
+because the Peak bars show sample peak while delivery limits are judged on true peak by the True
+Peak Max marker and Stats. In Momentary and Short-term the zones come from the active Loudness
+Profile's upper limits on that metric or its Max; with no such rule the bar shows the metric's
+Loudness curve colour, because nothing is judging it. The readout markers follow the Profile under
+either option. The Dock's level strip has the same Bar Colors and its own Warning / Critical in its
+settings.
 
 ## Loudness
 
