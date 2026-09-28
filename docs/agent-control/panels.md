@@ -97,9 +97,10 @@ previews both values without starting or stopping anything.
 - Peak and RMS use `levelRangeDbfs`; Momentary and Short-term use `loudnessRangeLufs`. Both are
   always returned.
 - `playbackMax` is effective for RMS, Momentary, and Short-term, not Peak. `floatingValue` is
-  effective for Momentary and Short-term. `tpMaxMarker` is effective for Peak. `barColors` is
-  always effective. `peakThresholdsDbfs` is effective for Peak and `rmsThresholdsDbfs` for RMS, both
-  only under `barColors: "levelZones"`; otherwise they report `gradientBarColors`.
+  effective for Momentary and Short-term. `tpMaxMarker` is effective for Peak. Each `*BarColors`
+  field (`peakBarColors`, `rmsBarColors`, `momentaryBarColors`, `shortTermBarColors`) is effective in
+  its own mode. `peakThresholdsDbfs` is effective for Peak and `rmsThresholdsDbfs` for RMS, each only
+  when its mode's bar colors is `levelZones`; otherwise it reports `gradientBarColors`.
 - No panel-specific analysis status.
 
 ### Loudness

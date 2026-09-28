@@ -60,7 +60,10 @@ describe("Dock Control", () => {
             mode: "peak",
             readout: "truePeakMax",
             showLabels: false,
-            barColors: "gradient",
+            peakBarColors: "gradient",
+            rmsBarColors: "gradient",
+            momentaryBarColors: "gradient",
+            shortTermBarColors: "gradient",
             peakThresholdsDbfs: { warning: -6, critical: -1 },
             rmsThresholdsDbfs: { warning: -18, critical: -9 },
           },
@@ -134,7 +137,10 @@ describe("Dock Control", () => {
       mode: "rms",
       readout: "playbackMax",
       showLabels: true,
-      barColors: "gradient",
+      peakBarColors: "gradient",
+      rmsBarColors: "gradient",
+      momentaryBarColors: "gradient",
+      shortTermBarColors: "gradient",
       peakThresholdsDbfs: { warning: -6, critical: -1 },
       rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });
@@ -168,9 +174,9 @@ describe("Dock Control", () => {
   });
 
   it("plans Dock Bar Colors through the panel's own rules", () => {
-    const planned = planDockPanelPatch(dock, "level", { barColors: "levelZones" }, {});
+    const planned = planDockPanelPatch(dock, "level", { peakBarColors: "levelZones" }, {});
     expect(planned.issues).toEqual([]);
-    expect(buildDockSnapshot(planned.dock).panels[1].controls.barColors).toBe("levelZones");
+    expect(buildDockSnapshot(planned.dock).panels[1].controls.peakBarColors).toBe("levelZones");
   });
 
   it("leaves a Dock-only control the patch did not name alone", () => {
@@ -184,7 +190,10 @@ describe("Dock Control", () => {
       mode: "peak",
       readout: "truePeakMax",
       showLabels: true,
-      barColors: "gradient",
+      peakBarColors: "gradient",
+      rmsBarColors: "gradient",
+      momentaryBarColors: "gradient",
+      shortTermBarColors: "gradient",
       peakThresholdsDbfs: { warning: -6, critical: -1 },
       rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });
@@ -195,7 +204,10 @@ describe("Dock Control", () => {
       mode: "peak",
       readout: "live",
       showLabels: false,
-      barColors: "gradient",
+      peakBarColors: "gradient",
+      rmsBarColors: "gradient",
+      momentaryBarColors: "gradient",
+      shortTermBarColors: "gradient",
       peakThresholdsDbfs: { warning: -6, critical: -1 },
       rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });

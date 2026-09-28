@@ -1,4 +1,8 @@
-import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
+import {
+  DEFAULT_PANEL_CONTROLS,
+  LEVEL_METER_BAR_COLORS_KEYS,
+  normalizePanelControls,
+} from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 import { AXIS_VIEWPORTS, axisKindsForModule } from "../workspace/axisViewports.js";
@@ -13,7 +17,10 @@ const LEVEL_METER_FIELDS = new Set([
   "playbackMax",
   "floatingValue",
   "tpMaxMarker",
-  "barColors",
+  "peakBarColors",
+  "rmsBarColors",
+  "momentaryBarColors",
+  "shortTermBarColors",
   "levelRangeDbfs",
   "loudnessRangeLufs",
   "peakThresholdsDbfs",
@@ -21,6 +28,12 @@ const LEVEL_METER_FIELDS = new Set([
 ]);
 const LEVEL_METER_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
 const LEVEL_METER_BAR_COLORS = new Set(["gradient", "levelZones"]);
+const LEVEL_METER_BAR_COLORS_FIELDS = [
+  ["peakBarColors", "levelMeterPeakBarColors", "peak", "nonPeakMode"],
+  ["rmsBarColors", "levelMeterRmsBarColors", "rms", "nonRmsMode"],
+  ["momentaryBarColors", "levelMeterMomentaryBarColors", "momentary", "nonMomentaryMode"],
+  ["shortTermBarColors", "levelMeterShortTermBarColors", "shortTerm", "nonShortTermMode"],
+];
 const STATS_IDS = new Set(STATS_CANONICAL_ORDER);
 
 function issue(code, path, message) {
@@ -98,10 +111,16 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     if (hasOwn(patch, "mode") && !LEVEL_METER_MODES.has(patch.mode)) {
       issues.push(issue("invalidEnum", "$.mode", "mode is not a supported Level Meter mode."));
     }
-    if (hasOwn(patch, "barColors") && !LEVEL_METER_BAR_COLORS.has(patch.barColors)) {
-      issues.push(
-        issue("invalidEnum", "$.barColors", "barColors is not a supported Bar Colors option.")
-      );
+    for (const [publicKey] of LEVEL_METER_BAR_COLORS_FIELDS) {
+      if (hasOwn(patch, publicKey) && !LEVEL_METER_BAR_COLORS.has(patch[publicKey])) {
+        issues.push(
+          issue(
+            "invalidEnum",
+            `$.${publicKey}`,
+            `${publicKey} is not a supported Bar Colors option.`
+          )
+        );
+      }
     }
     for (const key of ["playbackMax", "floatingValue", "tpMaxMarker"]) {
       if (hasOwn(patch, key)) validateBoolean(patch[key], `$.${key}`, issues);
@@ -123,9 +142,11 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       panelControls.levelMeterMode = patch.mode;
       changed.push("controls.mode");
     }
-    if (hasOwn(patch, "barColors") && patch.barColors !== current.levelMeterBarColors) {
-      panelControls.levelMeterBarColors = patch.barColors;
-      changed.push("controls.barColors");
+    for (const [publicKey, internalKey] of LEVEL_METER_BAR_COLORS_FIELDS) {
+      if (hasOwn(patch, publicKey) && patch[publicKey] !== current[internalKey]) {
+        panelControls[internalKey] = patch[publicKey];
+        changed.push(`controls.${publicKey}`);
+      }
     }
     for (const [publicKey, internalKey] of [
       ["playbackMax", "levelMeterPlaybackMax"],
@@ -183,11 +204,14 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     if (finalMode === "peak") warn("playbackMax", "peakMode");
     if (!loudnessMode) warn("floatingValue", "nonLoudnessMode");
     if (finalMode !== "peak") warn("tpMaxMarker", "nonPeakMode");
-    const levelZones = panelControls.levelMeterBarColors === "levelZones";
+    for (const [publicKey, , mode, reason] of LEVEL_METER_BAR_COLORS_FIELDS) {
+      if (finalMode !== mode) warn(publicKey, reason);
+    }
+    const levelZones = (mode) => panelControls[LEVEL_METER_BAR_COLORS_KEYS[mode]] === "levelZones";
     if (finalMode !== "peak") warn("peakThresholdsDbfs", "nonPeakMode");
-    else if (!levelZones) warn("peakThresholdsDbfs", "gradientBarColors");
+    else if (!levelZones("peak")) warn("peakThresholdsDbfs", "gradientBarColors");
     if (finalMode !== "rms") warn("rmsThresholdsDbfs", "nonRmsMode");
-    else if (!levelZones) warn("rmsThresholdsDbfs", "gradientBarColors");
+    else if (!levelZones("rms")) warn("rmsThresholdsDbfs", "gradientBarColors");
     if (loudnessMode) warn("levelRangeDbfs", "loudnessMode");
     if (!loudnessMode) warn("loudnessRangeLufs", "levelMode");
     return { panelControls, changed, warnings, issues };
