@@ -38,14 +38,14 @@ function range(title, unit, defaultValue, minimum, maximum, minimumSpan, additio
 function thresholds(title, defaultValue) {
   const bound = (name, description) =>
     field("integer", name, description, { minimum: -60, maximum: 3 });
-  return field("object", title, `Levels where the bar turns fully warning and fully critical.`, {
+  return field("object", title, "Levels where the Level Zones bar turns warning and critical.", {
     unit: "dBFS",
     default: defaultValue,
     patchMode: "replace",
     required: ["warning", "critical"],
     properties: {
-      warning: bound("Warning", "Level of pure warning colour."),
-      critical: bound("Critical", "Level of pure critical colour."),
+      warning: bound("Warning", "Level where the warning zone starts."),
+      critical: bound("Critical", "Level where the critical zone starts."),
     },
     constraints: [{ kind: "ordered", lower: "warning", upper: "critical", inclusive: true }],
   });
