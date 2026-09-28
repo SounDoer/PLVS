@@ -158,6 +158,22 @@ describe("DockModuleSettings", () => {
     expect(onChange).toHaveBeenCalledWith({ ...controls, vectorscopeMode: "polarLevel" });
   });
 
+  it("shows live Persistence only for Polar Sample", () => {
+    const controls = {
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,
+      vectorscopeMode: "polarSample",
+    };
+    const onChange = renderSettings("correlation", { controls });
+    const persistence = screen.getByLabelText("Vectorscope polar sample persistence");
+
+    expect(persistence.value).toBe("400");
+    fireEvent.change(persistence, { target: { value: "650" } });
+    expect(onChange).toHaveBeenCalledWith({
+      ...controls,
+      vectorscopePolarSamplePersistenceMs: 650,
+    });
+  });
+
   it("toggles Max hold in Polar Level mode", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.correlation,

@@ -15,11 +15,7 @@ import {
   selectPersistenceWindow,
   drawPersistenceWindow,
 } from "../../math/vectorscopePersistence.js";
-import {
-  POLAR_LEVEL_WINDOW_MS,
-  POLAR_SAMPLE_WINDOW_MS,
-  selectPolarWindow,
-} from "../../math/vectorscopePolarMath.js";
+import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscopePolarMath.js";
 import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
 import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
@@ -232,7 +228,9 @@ export function VectorscopePanel() {
   );
   const persistenceActive = isLissajous && persistenceRows.length > 0;
   const polarWindowMs =
-    vectorscopeMode === "polarLevel" ? POLAR_LEVEL_WINDOW_MS : POLAR_SAMPLE_WINDOW_MS;
+    vectorscopeMode === "polarLevel"
+      ? POLAR_LEVEL_WINDOW_MS
+      : normalizedPanelControls.vectorscopePolarSamplePersistenceMs;
   const polarRows = useMemo(
     () =>
       !isLissajous && persistenceSlab ? selectPolarWindow(persistenceSlab, polarWindowMs) : [],
@@ -407,6 +405,7 @@ export function VectorscopePanel() {
                   showLabels={false}
                   maxHoldEnabled={normalizedPanelControls.vectorscopePolarLevelMaxHold}
                   maxHoldResetKey={maxHoldResetKey}
+                  persistenceMs={normalizedPanelControls.vectorscopePolarSamplePersistenceMs}
                   resetEpoch={vectorscopeResetEpoch}
                   identityKey={`${vectorscopeKey}:${px}:${py}`}
                   colors={vectorscopeColors}

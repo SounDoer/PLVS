@@ -82,6 +82,26 @@ describe("buildPublicPanelControlSchema", () => {
     });
   });
 
+  it("describes Polar Sample Persistence and its mode-dependent effectiveness", () => {
+    const inactive = buildPublicPanelControlSchema("vectorscope", DEFAULT_PANEL_CONTROLS);
+    expect(inactive.properties.persistenceMs).toMatchObject({
+      type: "integer",
+      title: "Persistence",
+      unit: "ms",
+      default: 400,
+      minimum: 0,
+      maximum: 1000,
+      effective: false,
+      inactiveReason: "nonPolarSampleMode",
+    });
+
+    const active = buildPublicPanelControlSchema("vectorscope", {
+      ...DEFAULT_PANEL_CONTROLS,
+      vectorscopeMode: "polarSample",
+    });
+    expect(active.properties.persistenceMs).toMatchObject({ effective: true });
+  });
+
   it("describes Stereo Map Energy Fade Strength as a bounded display percentage", () => {
     const schema = buildPublicPanelControlSchema("stereo-map", DEFAULT_PANEL_CONTROLS);
 

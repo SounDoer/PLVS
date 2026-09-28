@@ -212,7 +212,7 @@ First-paint flow (`src/main.jsx`):
 4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
 5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles layout, font size, geometry, and non-Theme product tuning
 
-**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005/0011/0012/0013/0014):
+**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005/0011/0012/0013/0014/0015):
 
 | Layer            | Output                                                                                                                      | Defined / published in                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |

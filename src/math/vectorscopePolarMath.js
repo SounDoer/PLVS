@@ -50,8 +50,9 @@ export function selectPolarWindow(slab, windowMs = POLAR_SAMPLE_WINDOW_MS) {
 }
 
 export function polarSampleAlpha(ageMs, windowMs = POLAR_SAMPLE_WINDOW_MS) {
-  if (!Number.isFinite(ageMs) || windowMs <= 0) return 0;
-  return 0.9 * (1 - Math.max(0, Math.min(1, ageMs / windowMs)));
+  if (!Number.isFinite(ageMs)) return 0;
+  if (windowMs <= 0) return ageMs <= 0 ? 1 : 0;
+  return 1 - Math.max(0, Math.min(1, ageMs / windowMs));
 }
 
 function binIndexForAngle(angle, binCount) {

@@ -1,10 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
-import {
-  POLAR_LEVEL_WINDOW_MS,
-  POLAR_SAMPLE_WINDOW_MS,
-  selectPolarWindow,
-} from "../../math/vectorscopePolarMath.js";
+import { POLAR_LEVEL_WINDOW_MS, selectPolarWindow } from "../../math/vectorscopePolarMath.js";
 import { VectorscopePolarPlot } from "../../components/panels/VectorscopePolarPlot.jsx";
 import { useFrameData, useHistoryData } from "../../workspace/AudioDataContext.jsx";
 import { dockVectorscopeKey } from "../dockAnalysisRequest.js";
@@ -100,7 +96,10 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
   const secondLabel = labels[pairY] ?? `Ch ${pairY + 1}`;
   const polarSlab = isLissajous ? null : historyData?.getVectorscopeHistoryForKey?.(key);
   const polarVersion = polarSlab?.version ?? 0;
-  const polarWindowMs = mode === "polarLevel" ? POLAR_LEVEL_WINDOW_MS : POLAR_SAMPLE_WINDOW_MS;
+  const polarWindowMs =
+    mode === "polarLevel"
+      ? POLAR_LEVEL_WINDOW_MS
+      : normalizedControls.vectorscopePolarSamplePersistenceMs;
   const polarRows = useMemo(
     () => (polarSlab ? selectPolarWindow(polarSlab, polarWindowMs) : []),
     // The slab mutates in place; version is the intentional invalidation key.
@@ -205,6 +204,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 showLabels={false}
                 maxHoldEnabled={normalizedControls.vectorscopePolarLevelMaxHold}
                 maxHoldResetKey={maxHoldResetKey}
+                persistenceMs={normalizedControls.vectorscopePolarSamplePersistenceMs}
                 resetEpoch={historyData?.vectorscopeResetEpoch ?? 0}
                 identityKey={key}
               />

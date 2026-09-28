@@ -31,6 +31,23 @@ function stereoMapControls(first, second, overrides = {}) {
 }
 
 describe("analysisRequests", () => {
+  it("keeps Vectorscope Polar Sample persistence out of request identity", () => {
+    const baseline = vectorscopeRequestKeyFromControls(DEFAULT_PANEL_CONTROLS);
+
+    expect(
+      vectorscopeRequestKeyFromControls({
+        ...DEFAULT_PANEL_CONTROLS,
+        vectorscopePolarSamplePersistenceMs: 0,
+      })
+    ).toBe(baseline);
+    expect(
+      vectorscopeRequestKeyFromControls({
+        ...DEFAULT_PANEL_CONTROLS,
+        vectorscopePolarSamplePersistenceMs: 1000,
+      })
+    ).toBe(baseline);
+  });
+
   it("activates shared spectral Waveform analysis for either display toggle", () => {
     const makeState = (controls) =>
       state({

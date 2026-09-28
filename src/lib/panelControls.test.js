@@ -87,6 +87,7 @@ describe("panelControls", () => {
       levelMeterRmsCriticalDb: -9,
       vectorscopePair: { x: 0, y: 1 },
       vectorscopeMode: "lissajous",
+      vectorscopePolarSamplePersistenceMs: 400,
       vectorscopePolarLevelMaxHold: false,
       spectrumChannel: { type: "pair", x: 0, y: 1 },
       spectrumView: "combined",
@@ -246,6 +247,7 @@ describe("panelControls", () => {
       levelMeterRmsCriticalDb: -9,
       vectorscopePair: { x: 0, y: 1 },
       vectorscopeMode: "lissajous",
+      vectorscopePolarSamplePersistenceMs: 400,
       vectorscopePolarLevelMaxHold: false,
       spectrumChannel: { type: "single", ch: 3 },
       spectrumView: "combined",
@@ -376,6 +378,18 @@ describe("panelControls", () => {
     expect(normalizePanelControls({ vectorscopeMode: "unknown" }).vectorscopeMode).toBe(
       "lissajous"
     );
+    expect(
+      normalizePanelControls({ vectorscopePolarSamplePersistenceMs: -1 })
+        .vectorscopePolarSamplePersistenceMs
+    ).toBe(0);
+    expect(
+      normalizePanelControls({ vectorscopePolarSamplePersistenceMs: 1001 })
+        .vectorscopePolarSamplePersistenceMs
+    ).toBe(1000);
+    expect(
+      normalizePanelControls({ vectorscopePolarSamplePersistenceMs: 650 })
+        .vectorscopePolarSamplePersistenceMs
+    ).toBe(650);
     expect(normalizePanelControls({ vectorscopePolarLevelMaxHold: true })).toHaveProperty(
       "vectorscopePolarLevelMaxHold",
       true

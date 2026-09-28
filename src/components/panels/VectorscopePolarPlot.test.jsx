@@ -97,6 +97,27 @@ describe("VectorscopePolarPlot", () => {
     expect(screen.getByText("L")).toBeTruthy();
     expect(screen.getByText("R")).toBeTruthy();
     expect(ctx.fill).toHaveBeenCalledTimes(2);
+    expect(ctx.filledAlphas).toEqual([1, 1]);
+  });
+
+  it("redraws Polar Sample with the selected persistence fade", () => {
+    const ctx = contextStub();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const props = {
+      mode: "polarSample",
+      rows: [
+        { pairs: new Float32Array([1, 1]), ageMs: 200, timestampMs: 0 },
+        { pairs: new Float32Array([1, 1]), ageMs: 0, timestampMs: 200 },
+      ],
+      firstLabel: "L",
+      secondLabel: "R",
+    };
+    const { rerender } = render(<VectorscopePolarPlot {...props} persistenceMs={400} />);
+
+    expect(ctx.filledAlphas.slice(-2)).toEqual([0.5, 1]);
+
+    rerender(<VectorscopePolarPlot {...props} persistenceMs={0} />);
+    expect(ctx.filledAlphas.slice(-2)).toEqual([0, 1]);
   });
 
   it("does not remeasure or repaint when only the parent rerenders", () => {
@@ -377,6 +398,7 @@ describe("VectorscopePolarPlot", () => {
 
     expect(screen.queryByText("L")).toBeNull();
     expect(screen.queryByText("R")).toBeNull();
+    expect(ctx.filledAlphas).toEqual([1]);
   });
 
   it("draws the reconstructed Max hold outline supplied for a snapshot", () => {

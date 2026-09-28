@@ -167,6 +167,38 @@ describe("planPublicPanelControlPatch", () => {
     ]);
   });
 
+  it("maps Polar Sample Persistence and warns when it is inactive", () => {
+    const active = planPublicPanelControlPatch(
+      "vectorscope",
+      { ...DEFAULT_PANEL_CONTROLS, vectorscopeMode: "polarSample" },
+      { persistenceMs: 650 }
+    );
+    expect(active).toMatchObject({
+      issues: [],
+      warnings: [],
+      changed: ["controls.persistenceMs"],
+      panelControls: { vectorscopePolarSamplePersistenceMs: 650 },
+    });
+
+    const inactive = planPublicPanelControlPatch("vectorscope", DEFAULT_PANEL_CONTROLS, {
+      persistenceMs: 650,
+    });
+    expect(inactive.warnings).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.persistenceMs",
+        inactiveReason: "nonPolarSampleMode",
+      },
+    ]);
+
+    const invalid = planPublicPanelControlPatch("vectorscope", DEFAULT_PANEL_CONTROLS, {
+      persistenceMs: 1001,
+    });
+    expect(invalid.issues).toEqual([
+      expect.objectContaining({ code: "outOfRange", path: "$.persistenceMs" }),
+    ]);
+  });
+
   it("maps a valid Waveform patch", () => {
     const result = planPublicPanelControlPatch("waveform", DEFAULT_PANEL_CONTROLS, {
       frequencyColor: true,

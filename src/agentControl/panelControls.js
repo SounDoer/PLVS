@@ -32,6 +32,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
     return {
       channelPair: controls.vectorscopePair,
       mode: controls.vectorscopeMode,
+      persistenceMs: controls.vectorscopePolarSamplePersistenceMs,
       maxHold: controls.vectorscopePolarLevelMaxHold,
     };
   }

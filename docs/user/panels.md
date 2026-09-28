@@ -68,6 +68,15 @@ theme. Choose the channel, tilt, smoothing, and level floor.
 Phase and correlation between a pair of channels, defaulting to Front L/R. Display it as
 **Lissajous**, **Polar Sample**, or **Polar Level**, with an optional max hold.
 
+In **Polar Sample**, **Persistence** controls how long the recent sample trail remains visible. It
+defaults to 400 ms, ranges from 0 to 1000 ms in 50 ms steps, and updates the display immediately.
+Samples fade linearly from the Theme's full Trace colour to transparent over that interval; 0 ms
+shows only the newest samples. A captured Snapshot uses the full Snapshot colour without an
+age-based fade. The setting is hidden in Lissajous and Polar Level, where it has no effect.
+
+Lissajous **Hold Slow** keeps its fixed phosphor-style trail. Persistence is a Polar Sample display
+choice only: changing it does not restart analysis or create another history.
+
 ## Stereo Map
 
 Stereo image plotted across the frequency spectrum, so you can see where the width lives. Switch

@@ -626,6 +626,12 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 --ui-vectorscope-grid-dash       "2.6 3.4"  Diagonal grid dash pattern
 ```
 
+Polar Sample uses the Theme's Trace colour at full opacity for the newest samples, then applies the
+panel's **Persistence** duration as a linear age fade to transparent. A Polar Sample Snapshot uses
+the Theme's Snapshot colour at full opacity. Persistence is a display-only panel setting rather
+than a Theme role because it controls time, not colour composition. Lissajous Hold Slow keeps its
+fixed phosphor-style fade, and stroke width remains product-owned.
+
 ### Spectrum
 
 ```

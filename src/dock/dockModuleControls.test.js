@@ -36,6 +36,8 @@ describe("normalizeDockControlsByModuleId", () => {
     expect(controls.correlation).toMatchObject({
       vectorscopePair: DEFAULT_PANEL_CONTROLS.vectorscopePair,
       vectorscopeMode: DEFAULT_PANEL_CONTROLS.vectorscopeMode,
+      vectorscopePolarSamplePersistenceMs:
+        DEFAULT_PANEL_CONTROLS.vectorscopePolarSamplePersistenceMs,
       vectorscopePolarLevelMaxHold: DEFAULT_PANEL_CONTROLS.vectorscopePolarLevelMaxHold,
     });
     expect(controls.spectrogram).toMatchObject({
@@ -240,11 +242,13 @@ describe("normalizeDockModuleControls", () => {
       normalizeDockModuleControls("correlation", {
         vectorscopePair: { x: 2, y: 3 },
         vectorscopeMode: "polarLevel",
+        vectorscopePolarSamplePersistenceMs: 650,
         vectorscopePolarLevelMaxHold: true,
       })
     ).toEqual({
       vectorscopePair: { x: 2, y: 3 },
       vectorscopeMode: "polarLevel",
+      vectorscopePolarSamplePersistenceMs: 650,
       vectorscopePolarLevelMaxHold: true,
     });
     expect(

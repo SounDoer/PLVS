@@ -127,6 +127,10 @@ without changing its analysis request identity or allocating another history.
 `colorBlendPercent` has the same key-neutral behavior and is effective only while that instance is
 in Position mode.
 
+Vectorscope's `persistenceMs` is also display-only and request-key neutral. It controls the 0–1000
+ms trail only while the Dock instance is in Polar Sample mode; other modes retain the stored value
+without applying it.
+
 Two Dock-only groups are public: Level Meter adds `readout` (`live`, `truePeakMax`, or
 `playbackMax`) and `showLabels`; Loudness adds `showReadouts`. The Level Meter readout must be
 compatible with its meter mode. Transport has no public Dock controls.

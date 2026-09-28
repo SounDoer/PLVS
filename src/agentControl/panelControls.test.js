@@ -33,11 +33,13 @@ describe("readPublicPanelControls", () => {
       readPublicPanelControls("vectorscope", {
         vectorscopePair: { x: 2, y: 5 },
         vectorscopeMode: "polarLevel",
+        vectorscopePolarSamplePersistenceMs: 650,
         vectorscopePolarLevelMaxHold: true,
       })
     ).toEqual({
       channelPair: { x: 2, y: 5 },
       mode: "polarLevel",
+      persistenceMs: 650,
       maxHold: true,
     });
   });

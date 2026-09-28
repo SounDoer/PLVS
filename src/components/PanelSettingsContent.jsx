@@ -1733,6 +1733,31 @@ export function PanelSettingsContent({
         </SettingsRow>
         {hasPanelControls &&
         typeof onPanelControlsChange === "function" &&
+        selectedMode.id === "polarSample" ? (
+          <SettingsRow
+            label="Persistence"
+            tooltip="Controls how long Polar Sample points remain visible. 0 ms shows only the newest samples."
+          >
+            <SettingsSlider
+              ariaLabel="vectorscope polar sample persistence"
+              min={0}
+              max={1000}
+              step={50}
+              value={normalizedPanelControls.vectorscopePolarSamplePersistenceMs}
+              formatValue={(value) => `${value.toFixed(0)} ms`}
+              onCommit={(vectorscopePolarSamplePersistenceMs) => {
+                onPanelControlsChange(
+                  normalizePanelControls({
+                    ...normalizedPanelControls,
+                    vectorscopePolarSamplePersistenceMs,
+                  })
+                );
+              }}
+            />
+          </SettingsRow>
+        ) : null}
+        {hasPanelControls &&
+        typeof onPanelControlsChange === "function" &&
         selectedMode.id === "polarLevel" ? (
           <SettingsRow label="Max Hold">
             <SettingsSwitch

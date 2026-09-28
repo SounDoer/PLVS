@@ -124,8 +124,12 @@ previews both values without starting or stopping anything.
 
 - `channelPair` takes in-range integer indices with `x < y`. Every distinct pair is valid, not only
   the UI's shortlist; reversed or invalid pairs are rejected, never swapped or clamped.
+- `persistenceMs` is the 0–1000 ms Polar Sample trail duration, in 50 ms UI steps and with a 400 ms
+  default. It is effective only in `polarSample`; touching it in another mode warns with reason
+  `nonPolarSampleMode`.
 - `maxHold` is effective only in `polarLevel`.
-- Request identity is the channel pair alone; mode and Max Hold do not affect it. Own request family.
+- Request identity is the channel pair alone; mode, Persistence, and Max Hold do not affect it. Own
+  request family.
 
 ### Spectrum
 

@@ -4,6 +4,7 @@ import {
   aggregatePolarLevel,
   polarSampleAlpha,
   POLAR_LEVEL_WINDOW_MS,
+  POLAR_SAMPLE_WINDOW_MS,
   projectPairToPolar,
   updatePolarLevelEnvelope,
   updatePolarMaxHold,
@@ -51,11 +52,11 @@ function projectedSamplePoint(point, geometry) {
   };
 }
 
-function drawPolarSample(ctx, rows, geometry, color, dpr, snapshot) {
+function drawPolarSample(ctx, rows, geometry, color, dpr, snapshot, persistenceMs) {
   ctx.fillStyle = color;
   const pointRadius = POINT_RADIUS_CSS_PX * dpr;
   for (const row of rows) {
-    ctx.globalAlpha = snapshot ? 0.9 : polarSampleAlpha(row.ageMs);
+    ctx.globalAlpha = snapshot ? 1 : polarSampleAlpha(row.ageMs, persistenceMs);
     for (let index = 0; index + 1 < row.pairs.length; index += 2) {
       const point = projectPairToPolar(row.pairs[index], row.pairs[index + 1]);
       if (point.radius <= SIGNAL_FLOOR_LINEAR) continue;
@@ -136,6 +137,7 @@ export function VectorscopePolarPlot({
   showLabels = true,
   maxHoldEnabled = false,
   maxHoldResetKey = 0,
+  persistenceMs = POLAR_SAMPLE_WINDOW_MS,
   resetEpoch = 0,
   identityKey = "",
   colors = DEFAULT_VECTORSCOPE_CANVAS_COLORS,
@@ -196,7 +198,7 @@ export function VectorscopePolarPlot({
 
     if (effectiveRows.length === 0) return;
     if (mode === "polarSample") {
-      drawPolarSample(ctx, effectiveRows, geometry, traceColor, dpr, snapshot);
+      drawPolarSample(ctx, effectiveRows, geometry, traceColor, dpr, snapshot, persistenceMs);
       return;
     }
 
@@ -235,6 +237,7 @@ export function VectorscopePolarPlot({
     maxHoldEnabled,
     maxHoldResetKey,
     mode,
+    persistenceMs,
     snapshot,
     snapshotMaxHold,
     stateIdentity,

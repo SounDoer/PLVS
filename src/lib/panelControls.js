@@ -276,6 +276,13 @@ const CONTROLS = [
     default: "lissajous",
   },
   {
+    key: "vectorscopePolarSamplePersistenceMs",
+    kind: "number",
+    min: 0,
+    max: 1000,
+    default: 400,
+  },
+  {
     /// vectorscopePolarLevelMaxHold was vectorscopePolarLevelPeakHold: this hold never decays
     /// (it's a running maximum cleared only by reset/Global Clear), unlike Spectrum's decaying
     /// "Max Decay", so "peak" was misleading here. Presets from before the rename still carry the

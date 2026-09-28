@@ -15,6 +15,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
     "y": 1
   },
   "mode": "lissajous",
+  "persistenceMs": 400,
   "maxHold": false
 }
 ```
@@ -25,6 +26,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | --- | --- | --- | --- | --- | --- |
 | `channelPair` | object | - | `{"x":0,"y":1}` | {"x":0,"y":1} | active |
 | `mode` | string | - | `"lissajous"` | "lissajous", "polarSample", "polarLevel" | active |
+| `persistenceMs` | integer | ms | `400` | 0 to 1000 | inactive (nonPolarSampleMode) |
 | `maxHold` | boolean | - | `false` | - | inactive (nonPolarLevelMode) |
 
 The last column is this field's availability while every control sits at its default. A field

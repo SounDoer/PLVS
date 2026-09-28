@@ -100,6 +100,11 @@ describe("Dock Control", () => {
       speedPercent: { type: "integer", unit: "%" },
       frequencyRangeHz: { type: "object", unit: "Hz" },
     });
+    expect(
+      result.modules.find(({ moduleId }) => moduleId === "vectorscope").controls
+    ).toMatchObject({
+      persistenceMs: { type: "integer", unit: "ms", default: 400 },
+    });
     expect(result.modules.find(({ moduleId }) => moduleId === "stereo-map").controls).toMatchObject(
       {
         energyFadePercent: { type: "integer", unit: "%", default: 75 },

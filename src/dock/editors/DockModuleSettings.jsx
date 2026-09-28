@@ -267,6 +267,24 @@ function SettingsBody({
             }}
           />
         </SettingsRow>
+        {controls.vectorscopeMode === "polarSample" ? (
+          <SettingsRow
+            label="Persistence"
+            tooltip="Controls how long Polar Sample points remain visible. 0 ms shows only the newest samples."
+          >
+            <SettingsSlider
+              ariaLabel="Vectorscope polar sample persistence"
+              min={0}
+              max={1000}
+              step={50}
+              value={controls.vectorscopePolarSamplePersistenceMs}
+              formatValue={(value) => `${value.toFixed(0)} ms`}
+              onCommit={(vectorscopePolarSamplePersistenceMs) =>
+                onChange({ ...controls, vectorscopePolarSamplePersistenceMs })
+              }
+            />
+          </SettingsRow>
+        ) : null}
         {controls.vectorscopeMode === "polarLevel" ? (
           <SettingsRow label="Max Hold">
             <SettingsSwitch

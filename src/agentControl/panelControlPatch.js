@@ -181,7 +181,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
 
   if (moduleId === "vectorscope") {
     const issues = [];
-    const allowed = new Set(["channelPair", "mode", "maxHold"]);
+    const allowed = new Set(["channelPair", "mode", "persistenceMs", "maxHold"]);
     for (const key of Object.keys(patch)) {
       if (!allowed.has(key)) {
         issues.push(issue("unknownControl", `$.${key}`, `Unknown Vectorscope control: ${key}.`));
@@ -216,6 +216,16 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       issues.push(issue("invalidEnum", "$.mode", "mode is not a supported Vectorscope mode."));
     }
     if (hasOwn(patch, "maxHold")) validateBoolean(patch.maxHold, "$.maxHold", issues);
+    if (
+      hasOwn(patch, "persistenceMs") &&
+      (!Number.isInteger(patch.persistenceMs) ||
+        patch.persistenceMs < 0 ||
+        patch.persistenceMs > 1000)
+    ) {
+      issues.push(
+        issue("outOfRange", "$.persistenceMs", "persistenceMs must be an integer from 0 to 1000.")
+      );
+    }
     if (issues.length > 0) {
       return { panelControls: current, changed: [], warnings: [], issues };
     }
@@ -229,20 +239,32 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
       panelControls.vectorscopeMode = patch.mode;
       changed.push("controls.mode");
     }
+    if (
+      hasOwn(patch, "persistenceMs") &&
+      patch.persistenceMs !== current.vectorscopePolarSamplePersistenceMs
+    ) {
+      panelControls.vectorscopePolarSamplePersistenceMs = patch.persistenceMs;
+      changed.push("controls.persistenceMs");
+    }
     if (hasOwn(patch, "maxHold") && patch.maxHold !== current.vectorscopePolarLevelMaxHold) {
       panelControls.vectorscopePolarLevelMaxHold = patch.maxHold;
       changed.push("controls.maxHold");
     }
-    const warnings =
-      hasOwn(patch, "maxHold") && panelControls.vectorscopeMode !== "polarLevel"
-        ? [
-            {
-              code: "currentlyInactive",
-              path: "controls.maxHold",
-              inactiveReason: "nonPolarLevelMode",
-            },
-          ]
-        : [];
+    const warnings = [];
+    if (hasOwn(patch, "persistenceMs") && panelControls.vectorscopeMode !== "polarSample") {
+      warnings.push({
+        code: "currentlyInactive",
+        path: "controls.persistenceMs",
+        inactiveReason: "nonPolarSampleMode",
+      });
+    }
+    if (hasOwn(patch, "maxHold") && panelControls.vectorscopeMode !== "polarLevel") {
+      warnings.push({
+        code: "currentlyInactive",
+        path: "controls.maxHold",
+        inactiveReason: "nonPolarLevelMode",
+      });
+    }
     return { panelControls, changed, warnings, issues };
   }
 

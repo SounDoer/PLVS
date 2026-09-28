@@ -17,7 +17,7 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
   levelMeter: new Set(["mode", "readout", "showLabels", "peakThresholdsDbfs", "rmsThresholdsDbfs"]),
   loudness: new Set(["layers", "loudnessRangeLufs", "showReadouts"]),
   stats: new Set(["metrics"]),
-  vectorscope: new Set(["channelPair", "mode", "maxHold"]),
+  vectorscope: new Set(["channelPair", "mode", "persistenceMs", "maxHold"]),
   spectrum: new Set([
     "channel",
     "view",

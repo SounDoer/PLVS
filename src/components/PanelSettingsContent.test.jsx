@@ -954,6 +954,45 @@ describe("PanelSettingsContent", () => {
     );
   });
 
+  it("shows live Persistence only for Polar Sample", () => {
+    const onPanelControlsChange = vi.fn();
+    const props = {
+      activeTab: "vectorscope",
+      channelCount: 2,
+      vectorscopeOptions: [{ key: "0-1", label: "L/R", x: 0, y: 1 }],
+      vectorscopeValueKey: "0-1",
+      vectorscopeDisplayLabel: "L/R",
+      onVectorscopeChange: vi.fn(),
+      onPanelControlsChange,
+    };
+    const { rerender } = render(
+      <PanelSettingsContent {...props} panelControls={DEFAULT_PANEL_CONTROLS} />
+    );
+
+    expect(screen.queryByLabelText("vectorscope polar sample persistence")).toBeNull();
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopeMode: "polarSample" }}
+      />
+    );
+    const persistence = screen.getByLabelText("vectorscope polar sample persistence");
+    expect(persistence.value).toBe("400");
+    fireEvent.change(persistence, { target: { value: "650" } });
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ vectorscopePolarSamplePersistenceMs: 650 })
+    );
+
+    rerender(
+      <PanelSettingsContent
+        {...props}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, vectorscopeMode: "polarLevel" }}
+      />
+    );
+    expect(screen.queryByLabelText("vectorscope polar sample persistence")).toBeNull();
+  });
+
   it("orders vectorscope Mode before Channel pair before Max hold", () => {
     const { container } = render(
       <PanelSettingsContent

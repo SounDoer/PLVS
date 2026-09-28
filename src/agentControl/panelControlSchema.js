@@ -186,6 +186,16 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
           options: ["lissajous", "polarSample", "polarLevel"],
           effective: true,
         }),
+        persistenceMs: active(
+          field("integer", "Persistence", "Duration of the Polar Sample trail.", {
+            unit: "ms",
+            default: defaults.persistenceMs,
+            minimum: 0,
+            maximum: 1000,
+          }),
+          controls.vectorscopeMode === "polarSample",
+          "nonPolarSampleMode"
+        ),
         maxHold: active(
           field("boolean", "Max Hold", "Hold the maximum polar level.", {
             default: defaults.maxHold,

@@ -63,10 +63,12 @@ describe("vectorscope polar window", () => {
   });
 
   it("maps sample age to fading opacity", () => {
-    expect(polarSampleAlpha(0)).toBeCloseTo(0.9);
-    expect(polarSampleAlpha(200)).toBeCloseTo(0.45);
+    expect(polarSampleAlpha(0)).toBe(1);
+    expect(polarSampleAlpha(200)).toBeCloseTo(0.5);
     expect(polarSampleAlpha(400)).toBe(0);
     expect(polarSampleAlpha(800)).toBe(0);
+    expect(polarSampleAlpha(0, 0)).toBe(1);
+    expect(polarSampleAlpha(1, 0)).toBe(0);
   });
 });
 
