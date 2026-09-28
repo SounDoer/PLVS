@@ -181,7 +181,7 @@ PCM frames → parallel DSP → pack `MeteringFrame` → Channel (~60 Hz) to the
 | visual history | 40 ms (~25 Hz)   | `VisualHistEntry` / `VISUAL_EMIT_MS`                  | `VISUAL_HIST_SAMPLE_SEC = 0.04` (spectrogram positions by timestamp) |
 | UI frame       | Delivery cadence | `FRAME_EMIT_MS = 16`, UI delivery + backpressure only | Not an analysis cadence; must not define history row counts          |
 
-- **`HIST_EMIT_MS = 95`** is a wall-clock **tolerance gate** for live (it lets a nominal 100 ms block emit when slightly under 100 ms), not a semantic period.
+- **Live emits one history row per loudness block**, with no wall-clock gate. Blocks are sample-clocked 100 ms of audio but close whenever PCM is drained; a slow build drains queued callbacks back to back, so the former 95 ms wall-clock gate dropped ~20% of rows in debug builds and compressed index-positioned panels against the timestamp-positioned spectrogram. `HIST_EMIT_MS = 95` remains only as the file-mode media-time checkpoint gate.
 - **File mode**: `FilePcmHistoryChunker` (`file_analysis/session.rs`) rectifies ffmpeg PCM of any size into one 100 ms block per call to the pipeline, so history row count depends only on media duration.
 - **Known limitation**: file-mode visual history is held at ~10 Hz by the 100 ms blocks (live is ~25 Hz). Because the spectrogram places frames by timestamp, the time axis is still correct, only coarser.
 - **Live does not use the chunker**: the capture source runs on the realtime-safe callback thread, which cannot perform the chunker's buffer allocation; live and file share the **contract** above, not the code path.

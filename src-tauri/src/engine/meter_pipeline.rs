@@ -31,7 +31,8 @@ const FRAME_EMIT_MS: u128 = 16;
 /// frames whenever the webview falls behind, and a lost grid would otherwise blank every spectrum
 /// panel for the rest of the session. One second of frames costs ~17 KiB.
 const BAND_GRID_RESEND_FRAMES: u32 = 64;
-/// Match `useAudioEngine.js` HIST_PUSH_MS / `App.jsx` HIST_SAMPLE_SEC cadence (~10 Hz).
+/// File-mode media-time gate for history checkpoints, matching `HIST_SAMPLE_SEC` (~10 Hz). Live
+/// history needs no gate: it emits one row per 100 ms loudness block.
 const HIST_EMIT_MS: u128 = 95;
 const VISUAL_EMIT_MS: u128 = 40;
 const VS_HISTORY_POINTS: usize = 100;
@@ -152,7 +153,6 @@ pub struct MeterPipeline {
   rms_window: RmsWindow,
   t0: Instant,
   last_frame_emit: Instant,
-  last_hist_emit: Instant,
   pending_loudness_hist: Option<(f64, f64)>,
   waveform: WaveformAccumulator,
   last_visual_emit: Instant,
@@ -211,7 +211,6 @@ impl MeterPipeline {
       rms_window: RmsWindow::new(sample_rate, channels, RMS_WINDOW_MS),
       t0: Instant::now(),
       last_frame_emit: Instant::now(),
-      last_hist_emit: instant_ago(Duration::from_millis(200)),
       pending_loudness_hist: None,
       waveform: WaveformAccumulator::new(channels),
       last_visual_emit: instant_ago(Duration::from_millis(200)),
@@ -236,7 +235,6 @@ impl MeterPipeline {
   pub fn clear_peak_and_history(&mut self) {
     self.pending_loudness_hist = None;
     self.t0 = Instant::now();
-    self.last_hist_emit = instant_ago(Duration::from_millis(200));
     self.m_max = f64::NEG_INFINITY;
     self.st_max = f64::NEG_INFINITY;
     self.tp_max_db = f64::NEG_INFINITY;
@@ -1046,11 +1044,9 @@ impl MeterPipeline {
         .queue_loudness(checkpoint);
       return;
     }
-    let now = Instant::now();
-    if now.duration_since(self.last_hist_emit).as_millis() < HIST_EMIT_MS {
-      return;
-    }
-    self.last_hist_emit = now;
+    // Live: every loudness block is exactly 100 ms of audio, so each one is a history row. Do not
+    // gate this on wall clock: blocks close whenever PCM is drained, and a slow build drains queued
+    // callbacks back to back, so a wall-clock gate drops rows and compresses the time axis.
     self.pending_loudness_hist = Some((lb.momentary, lb.short_term));
   }
 }
@@ -2276,6 +2272,28 @@ mod tests {
       stamped > 0,
       "no frame carried a tick, so nothing was checked"
     );
+  }
+
+  #[test]
+  fn live_history_emits_one_row_per_loudness_block_even_when_pcm_arrives_in_a_burst() {
+    // A slow (debug) build drains queued capture callbacks back to back, so loudness blocks close
+    // far less than 100 ms of wall time apart. Every block is still 100 ms of audio and must
+    // become one history row: the frontend maps row i to i * HIST_SAMPLE_SEC.
+    let sr = 48_000_u32;
+    let channels = 2_u16;
+    let mut pipeline = MeterPipeline::new(sr, channels);
+    let chunk_frames = sr as usize / 100;
+    let pcm = tone_on_channel(chunk_frames, channels as usize, sr as f64, 1000.0, 0);
+
+    let mut rows = 0_usize;
+    for _ in 0..100 {
+      let frame = push_pcm_no_requests(&mut pipeline, &pcm, None, false);
+      if frame.and_then(|f| f.loudness_hist_tick).is_some() {
+        rows += 1;
+      }
+    }
+
+    assert_eq!(rows, 10, "1 s of audio must yield ten 100 ms history rows");
   }
 
   #[test]
