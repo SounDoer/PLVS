@@ -30,6 +30,7 @@ export const ELEVATION_MIN_DEG = 5;
 export const ELEVATION_MAX_DEG = 85;
 export const HEIGHT_GAIN_MIN = 0.3;
 export const HEIGHT_GAIN_MAX = 3;
+export const LINES_AZIMUTH_GUARD_DEG = 1;
 const DEFAULT_HEIGHT_GAIN = 1;
 const FIT_MARGIN = 0.92;
 
@@ -58,6 +59,21 @@ export function clampViewParams({ azimuthDeg, elevationDeg, heightGain } = {}) {
       Math.max(HEIGHT_GAIN_MIN, finiteOr(heightGain, DEFAULT_HEIGHT_GAIN))
     ),
   };
+}
+
+/**
+ * Keep the 2D Canvas Lines renderer just outside the two edge-on projections where frequency and
+ * height share one screen direction. The stored/user-facing angle stays untouched; only Lines uses
+ * this render angle. Surface colours its mesh per vertex and does not need the guard.
+ */
+export function stabilizeLinesAzimuthDeg(azimuthDeg) {
+  const normalized = clampViewParams({ azimuthDeg }).azimuthDeg;
+  const guard = LINES_AZIMUTH_GUARD_DEG;
+  if (normalized < guard) return guard;
+  if (normalized > 360 - guard) return 360 - guard;
+  if (normalized > 180 - guard && normalized <= 180) return 180 - guard;
+  if (normalized > 180 && normalized < 180 + guard) return 180 + guard;
+  return normalized;
 }
 
 /**

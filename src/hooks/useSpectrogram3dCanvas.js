@@ -13,6 +13,7 @@ import {
   projectPointInto,
   clampViewParams,
   labelEdges,
+  stabilizeLinesAzimuthDeg,
 } from "../math/spectrogram3dProjection.js";
 import { sampleWaterfallGrid } from "../math/spectrogram3dGrid.js";
 import { spectrogramColorFracFromHeight } from "../theme/spectrogramColormap.js";
@@ -599,8 +600,12 @@ export function useSpectrogram3dCanvas({
         elevationDeg: p.elevationDeg,
         heightGain: p.heightGain,
       });
+      const isSurface = p.mode === "surface";
+      const renderAzimuthDeg = isSurface
+        ? view.azimuthDeg
+        : stabilizeLinesAzimuthDeg(view.azimuthDeg);
       const proj = buildProjection({
-        azimuthDeg: view.azimuthDeg,
+        azimuthDeg: renderAzimuthDeg,
         elevationDeg: view.elevationDeg,
         width: W,
         height: H,
@@ -614,8 +619,6 @@ export function useSpectrogram3dCanvas({
       // Surface used to rasterise into a smaller buffer and stretch the result back, because the
       // per-pixel walk cost what it cost. The GPU does not, so there is one pixel space now and
       // every length below is in it.
-      const isSurface = p.mode === "surface";
-
       const pointCount = pointCountFor(W);
       const cache = cacheRef.current;
       if (
@@ -876,16 +879,10 @@ export function useSpectrogram3dCanvas({
         return;
       }
 
-      // Both branches ramp now -- colorize picks the colour from the colormap, monochrome varies
-      // only alpha -- so the stops are built once per repaint and reused by every ridge.
-      //
-      // At azimuth 0 and 180 the frequency axis has no projected horizontal extent and the ramp's
-      // geometry degenerates. That is a legitimate view, not an error: fall back to a flat opaque
-      // stroke at exactly those two angles instead of dividing into it.
-      const canRamp = Math.abs(proj.fx) > 1e-6;
-      const stopColors = canRamp
-        ? buildStopColors(p.colormapLut, ink, p.dbFloor, p.colorize)
-        : null;
+      // Colorize picks the colour from the colormap and monochrome varies only alpha, so the stops
+      // are built once per repaint and reused by every ridge. Lines' render-only azimuth guard
+      // keeps the gradient axis non-degenerate at the two exact edge-on camera angles.
+      const stopColors = buildStopColors(p.colormapLut, ink, p.dbFloor, p.colorize);
 
       ctx.lineJoin = "round";
       ctx.lineWidth = RIDGE_LINE_WIDTH;
@@ -953,9 +950,7 @@ export function useSpectrogram3dCanvas({
           // Opaque apart from the old-end fade: the colour ramp already separates near from far,
           // so nothing here needs to buy depth by letting ridges accumulate.
           ctx.globalAlpha = edgeFade;
-          ctx.strokeStyle = stopColors
-            ? buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx)
-            : ink;
+          ctx.strokeStyle = buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx);
           ctx.stroke(curve);
         }
         ctx.globalAlpha = 1;

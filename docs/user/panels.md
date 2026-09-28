@@ -63,6 +63,11 @@ Secondary, and Snapshot fills.
 Frequency content over time, as a **2D Heatmap**, **3D Lines**, or **3D Surface**, coloured by your
 theme. Choose the channel, tilt, smoothing, and level floor.
 
+In 3D Lines, the mathematically edge-on 0° and 180° azimuths receive a one-degree render-only camera
+offset. The saved angle and control value stay unchanged, while the tiny offset prevents the
+frequency and height directions from collapsing together and preserves the normal level colour and
+opacity gradient. Adjacent angles and 3D Surface are unaffected.
+
 ## Vectorscope
 
 Phase and correlation between a pair of channels, defaulting to Front L/R. Display it as

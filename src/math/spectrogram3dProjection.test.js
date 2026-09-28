@@ -5,6 +5,7 @@ import {
   projectPointInto,
   clampViewParams,
   labelEdges,
+  stabilizeLinesAzimuthDeg,
   unprojectFloor,
 } from "./spectrogram3dProjection.js";
 
@@ -27,6 +28,31 @@ describe("clampViewParams", () => {
     expect(clampViewParams({ heightGain: 0.1 }).heightGain).toBe(0.3);
     expect(clampViewParams({ heightGain: 9 }).heightGain).toBe(3);
     expect(clampViewParams({ heightGain: Number.NaN }).heightGain).toBe(1);
+  });
+});
+
+describe("stabilizeLinesAzimuthDeg", () => {
+  it("nudges only the edge-on singularities and their sub-degree neighbourhoods", () => {
+    expect(stabilizeLinesAzimuthDeg(0)).toBe(1);
+    expect(stabilizeLinesAzimuthDeg(0.5)).toBe(1);
+    expect(stabilizeLinesAzimuthDeg(180)).toBe(179);
+    expect(stabilizeLinesAzimuthDeg(180.5)).toBe(181);
+    expect(stabilizeLinesAzimuthDeg(359.5)).toBe(359);
+
+    for (const azimuthDeg of [1, 45, 90, 179, 181, 270, 359]) {
+      expect(stabilizeLinesAzimuthDeg(azimuthDeg)).toBe(azimuthDeg);
+    }
+  });
+
+  it("always supplies Lines with a usable frequency projection", () => {
+    for (const azimuthDeg of [0, 180]) {
+      const proj = buildProjection({
+        azimuthDeg: stabilizeLinesAzimuthDeg(azimuthDeg),
+        elevationDeg: 60,
+        ...VIEW,
+      });
+      expect(Math.abs(proj.fx)).toBeGreaterThan(1e-6);
+    }
   });
 });
 
