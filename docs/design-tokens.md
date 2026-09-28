@@ -139,8 +139,9 @@ expose the native window compositor without weakening the foreground information
 ## Modal Scrim
 
 `SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
-carried by every modal and by the file-drop target. Callers add only their own stacking order; the
-scrim does not blur the content behind it.
+carried by every modal and by the file-drop target. Callers add only their own stacking order.
+The Settings Sheet adds `backdrop-blur-sm` to that scrim as modal focus feedback; its readable
+drawer remains opaque. Other scrim consumers do not inherit that blur.
 
 The scrim is deliberately not a theme colour. Darkening is a direction, not a hue, and a value
 derived from the theme reverses it: the retired `effect.scrim` role tinted the workspace, which on
@@ -178,11 +179,16 @@ checked, and an opaque thumb. Inactive selectable marks are opaque hollow `muted
 circles; active marks are solid Primary. A no-data state hides only unavailable data markers and
 does not dim the surrounding rail, axis, label, or control.
 
-Status decoration is flat. Live and Snapshot use solid semantic text/icons on opaque neutral
-surfaces. Success, Warning, and Danger badges also use an opaque neutral surface with a solid
-semantic foreground. Notices use an opaque neutral fill plus a solid semantic accent edge; invalid
-controls use a solid Danger border. Status colors do not create translucent washes, tinted borders,
-or glows.
+Status decoration is flat by default. Success, Warning, and Danger badges use an opaque neutral
+surface with a solid semantic foreground. Notices use an opaque neutral fill plus a solid semantic
+accent edge; invalid controls use a solid Danger border. Status colors do not create translucent
+washes or glows.
+
+The Source Transport is the deliberate emphasis exception. Live and Snapshot tint the opaque
+Control Surface (`secondary`) with their Activity role at 10% for the shell, 24% for the action,
+36% for action Hover, and 50% for the shell border. Text and icons use the full Activity color. The
+action stays an edgeless oval, and every mix ends in `secondary`, never `transparent`; these four
+strengths are a component recipe rather than Theme Editor roles.
 
 ## Color Tokens
 
