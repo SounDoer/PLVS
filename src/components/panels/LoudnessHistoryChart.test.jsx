@@ -73,7 +73,9 @@ describe("LoudnessHistoryChart", () => {
     expect(container.querySelectorAll("svg path")).toHaveLength(1);
     expect(path?.getAttribute("d")).toBe(baseProps.displayHistoryPathM);
     expect(path?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
-    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeTruthy();
+    const reference = container.querySelector("[data-testid='loudness-reference-line']");
+    expect(reference).toBeTruthy();
+    expect(reference?.getAttribute("opacity")).toBeNull();
   });
 
   it("keeps data trace stroke widths independent from SVG scaling", () => {

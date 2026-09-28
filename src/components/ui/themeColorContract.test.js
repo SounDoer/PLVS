@@ -122,6 +122,13 @@ describe("theme color contract", () => {
     expect(waveform).not.toContain('stroke="var(--ui-loudness-selection)"');
   });
 
+  it("keeps Stereo Map fill tuning independent from Spectrum", () => {
+    const stereoMap = readFileSync(new URL("../panels/StereoMapPlot.jsx", import.meta.url), "utf8");
+
+    expect(stereoMap).toContain("--ui-stereo-map-fill-opacity");
+    expect(stereoMap).not.toContain("--ui-spectrum-fill-top-opacity");
+  });
+
   it("does not route runtime consumers through the retired shared signal bindings", () => {
     const offenders = Object.entries(appSources())
       .filter(

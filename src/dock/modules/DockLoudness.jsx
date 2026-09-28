@@ -206,7 +206,6 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
               strokeWidth="1"
               strokeDasharray="3 3"
               vectorEffect="non-scaling-stroke"
-              opacity={0.7}
             />
           ) : null}
         </svg>

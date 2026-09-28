@@ -171,7 +171,7 @@ describe("StereoMapPlot", () => {
 
     expect(ctx.strokedAlphas.at(-1)).toBe(1);
     // The token is absent in the stub, so the fill factor is the code's own fallback.
-    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.18, 5);
+    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.22, 5);
     const gradient = ctx.gradients[0];
     expect(gradient.stops[0].color).toMatch(/, 0\.3\)$/);
     expect(gradient.stops[1].color).toMatch(/, 0\.9\)$/);
@@ -320,6 +320,7 @@ describe("StereoMapPlot", () => {
     );
     // 1 grid stroke + 1 curve stroke + 2 hold outline strokes.
     expect(ctxPosition.stroke).toHaveBeenCalledTimes(4);
+    expect(ctxPosition.strokedAlphas.slice(-2)).toEqual([1, 1]);
 
     const ctxOther = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctxOther);
@@ -335,6 +336,7 @@ describe("StereoMapPlot", () => {
     );
     // 1 grid stroke + 1 curve stroke + 1 hold outline stroke.
     expect(ctxOther.stroke).toHaveBeenCalledTimes(3);
+    expect(ctxOther.strokedAlphas.at(-1)).toBe(1);
   });
 
   it("omits Hold outlines when holdVisible is false even with Hold data present", () => {

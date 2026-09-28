@@ -319,7 +319,6 @@ export function LoudnessHistoryChart({
               strokeWidth="1"
               strokeDasharray="4 4"
               vectorEffect="non-scaling-stroke"
-              opacity={0.7}
             />
           ) : null}
           {selectedOffset >= 0 && showSelLine ? (

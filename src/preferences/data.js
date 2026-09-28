@@ -134,7 +134,6 @@ export const UI_PREFERENCES = {
     },
     vectorscope: {
       strokeWidth: 1.2,
-      traceOpacity: 0.8,
       gridDiagInsetPct: 1.2,
       plotRadius: 240,
       gridDiagDash: "2.6 3.4",
@@ -147,6 +146,9 @@ export const UI_PREFERENCES = {
         verticalSpacingPx: 56,
         horizontalSpacingPx: 34,
       },
+    },
+    stereoMap: {
+      fillOpacity: 0.22,
     },
     waveform: {
       fillOpacity: 0.12,

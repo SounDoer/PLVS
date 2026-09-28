@@ -79,6 +79,7 @@ describe("VectorscopePanel", () => {
     const trace = container.querySelector('path[stroke="var(--ui-vectorscope-trace)"]');
     expect(trace?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
     expect(trace?.getAttribute("stroke-width")).toBe("var(--ui-vectorscope-stroke-width)");
+    expect(trace?.getAttribute("opacity")).toBeNull();
   });
 
   it("shows the no-data empty state when its request has no history at the selected time", () => {

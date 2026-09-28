@@ -337,7 +337,7 @@ describe("VectorscopePolarPlot", () => {
     expect(ctx.filledAlphas).toEqual([1]);
     expect([ctx.strokedColors, ctx.strokedAlphas]).toEqual([
       ["#654321", "#123456"],
-      [1, 0.35],
+      [1, 1],
     ]);
   });
 

@@ -98,13 +98,15 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
 
   const vs = prefs.modules.vectorscope;
   setCssVar("--ui-vectorscope-stroke-width", String(vs.strokeWidth));
-  setCssVar("--ui-vectorscope-trace-opacity", String(vs.traceOpacity));
   setCssVar("--ui-vectorscope-grid-dash", vs.gridDiagDash);
 
   const spectrum = prefs.modules.spectrum;
   setCssVar("--ui-spectrum-stroke-width", String(spectrum.strokeWidth));
   setCssVar("--ui-spectrum-fill-top-opacity", String(spectrum.fillOpacityTop ?? 0.18));
   setCssVar("--ui-spectrum-fill-bottom-opacity", String(spectrum.fillOpacityBottom ?? 0.02));
+
+  const stereoMap = prefs.modules.stereoMap;
+  setCssVar("--ui-stereo-map-fill-opacity", String(stereoMap.fillOpacity ?? 0.22));
 
   const waveform = prefs.modules.waveform;
   setCssVar("--ui-waveform-fill-opacity", String(waveform.fillOpacity ?? 0.22));

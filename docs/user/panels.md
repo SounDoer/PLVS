@@ -14,6 +14,10 @@ here.
 | Stereo Map  | Stereo image across the frequency spectrum                                             |
 | Waveform    | Per-channel amplitude envelope over the session history                                |
 
+Line traces, reference guides, event markers, and max-hold outlines use their resolved Theme
+colours directly. Filled areas and time-, level-, or energy-based fades can still use transparency
+when it carries measurement meaning.
+
 ## Level Meter
 
 Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Short-term**. It can show

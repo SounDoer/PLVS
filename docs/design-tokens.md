@@ -204,7 +204,7 @@ Instrument traces are compiled from the V2 Primary Data, Secondary Data, Status,
 authoring roles. Components consume only the resolved `--ui-*` tokens below (or the equivalent
 Resolved Theme Canvas bundle); they never derive colors locally.
 
-For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune their lightness, saturation, slight hue shift, opacity, or stroke width per theme, but the pair should still feel related to Spectrum / Vectorscope accent colors rather than introducing a Loudness-only palette.
+For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune lightness, saturation, or a slight hue shift; product tuning owns the stroke widths. Neither layer should add opacity merely to distinguish the pair, and both colors should still feel related to Spectrum / Vectorscope accents rather than introducing a Loudness-only palette.
 
 Snapshot colors are state colors for selected historical data. Within a theme, loudness,
 vectorscope, and spectrum snap tokens should belong to one snapshot family. Do not treat snapshot
@@ -621,7 +621,6 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 
 ```
 --ui-vectorscope-stroke-width    1.2        Trace stroke width
---ui-vectorscope-axis-opacity    0.8        Axis line opacity
 --ui-vectorscope-grid-dash       "2.6 3.4"  Diagonal grid dash pattern
 ```
 
@@ -631,13 +630,18 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 --ui-spectrum-stroke-width           1.5    Trace stroke width; also the 3D spectrogram scrub marker
 --ui-spectrum-fill-top-opacity       0.22   Fill gradient top opacity
 --ui-spectrum-fill-bottom-opacity    0.03   Fill gradient bottom opacity
---ui-spectrum-grid-opacity           0.08   Grid line opacity
+```
+
+### Stereo Map
+
+```
+--ui-stereo-map-fill-opacity   0.22   Curve area fill opacity
 ```
 
 ### Waveform
 
 ```
---ui-waveform-fill-opacity   0.22   Envelope fill opacity
+--ui-waveform-fill-opacity   0.12   Envelope fill opacity
 --ui-waveform-stroke-width   1      Envelope stroke width
 ```
 

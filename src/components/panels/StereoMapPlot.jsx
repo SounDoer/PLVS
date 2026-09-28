@@ -463,7 +463,7 @@ export function StereoMapPlot({
 
     if (!geometryStyleRef.current) {
       geometryStyleRef.current = {
-        fillOpacity: readCssNumber(canvas, "--ui-spectrum-fill-top-opacity", 0.18) || 0.18,
+        fillOpacity: readCssNumber(canvas, "--ui-stereo-map-fill-opacity", 0.22) || 0.22,
         strokeWidthCss: readCssNumber(canvas, "--ui-spectrum-stroke-width", 2) || 2,
       };
     }
@@ -574,7 +574,6 @@ export function StereoMapPlot({
       const holdGroups = buildHoldGroups(mode, bandCentersHz, holdValues, xMinHz, xMaxHz, range);
       ctx.strokeStyle = colors.primaryCss;
       ctx.lineWidth = lineWidth;
-      ctx.globalAlpha = 0.45;
       for (const { runs: holdRuns } of holdGroups) {
         for (const run of holdRuns) {
           if (run.length === 0) continue;

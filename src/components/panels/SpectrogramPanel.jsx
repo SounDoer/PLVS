@@ -648,7 +648,6 @@ export function SpectrogramPanel() {
                             stroke="var(--muted-foreground)"
                             strokeWidth="1"
                             strokeDasharray="1 5"
-                            opacity="0.5"
                             vectorEffect="non-scaling-stroke"
                           >
                             <title>{label}</title>
@@ -666,7 +665,6 @@ export function SpectrogramPanel() {
                       stroke="var(--muted-foreground)"
                       strokeWidth="1"
                       strokeDasharray="2 4"
-                      opacity="0.55"
                       vectorEffect="non-scaling-stroke"
                     >
                       <title>{`Frequency channel changed: ${marker.from} -> ${marker.to}`}</title>

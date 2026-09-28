@@ -395,6 +395,7 @@ describe("SpectrogramPanel", () => {
 
     const lines = Array.from(container.querySelectorAll('line[stroke-dasharray="2 4"]'));
     expect(lines.map((line) => Number(line.getAttribute("x1")))).toEqual([0, 2000 / 3]);
+    expect(lines.every((line) => line.getAttribute("opacity") === null)).toBe(true);
     expect(lines.map((line) => line.querySelector("title")?.textContent)).toEqual([
       "Frequency channel changed: L/R -> C",
       "Frequency channel changed: C -> LFE",
@@ -453,6 +454,7 @@ describe("SpectrogramPanel", () => {
 
     const boundary = container.querySelector('line[stroke-dasharray="1 5"]');
     expect(boundary).toBeTruthy();
+    expect(boundary?.getAttribute("opacity")).toBeNull();
     // x = (1500 - 1000) / (2000 - 1000) * 1000 = 500
     expect(Number(boundary.getAttribute("x1"))).toBeCloseTo(500);
   });

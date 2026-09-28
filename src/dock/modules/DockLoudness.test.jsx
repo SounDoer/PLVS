@@ -118,7 +118,9 @@ describe("DockLoudness", () => {
     expect(momentary.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
     expect(shortTerm.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
     // The reference now shows as a guide line rather than tinting the traces.
-    expect(screen.getByTestId("dock-loudness-reference-line")).toBeTruthy();
+    const reference = screen.getByTestId("dock-loudness-reference-line");
+    expect(reference).toBeTruthy();
+    expect(reference.getAttribute("opacity")).toBeNull();
   });
 
   it("tints the momentary trace with a gradient when its own rule breaches", () => {

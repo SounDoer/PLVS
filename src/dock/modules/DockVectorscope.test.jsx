@@ -68,7 +68,9 @@ describe("DockVectorscope", () => {
       toJSON: () => ({}),
     });
     renderWith({ path: "M 0 0 L 260 260", correlation: 0.5, pairX: 0, pairY: 1 });
-    expect(screen.getByTestId("dock-vectorscope-trace").getAttribute("d")).toBe("M 0 0 L 260 260");
+    const trace = screen.getByTestId("dock-vectorscope-trace");
+    expect(trace.getAttribute("d")).toBe("M 0 0 L 260 260");
+    expect(trace.getAttribute("opacity")).toBeNull();
     expect(screen.getByText("+0.50")).toBeTruthy();
     expect(screen.getByTestId("dock-vectorscope-correlation-marker").style.left).toBe("75%");
     expect(screen.getByText("L").parentElement?.className).toContain("var(--ui-dock-fs-label)");

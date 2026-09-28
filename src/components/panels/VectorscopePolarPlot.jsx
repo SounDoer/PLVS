@@ -14,7 +14,6 @@ import { useObservedCanvasSize } from "../../hooks/useObservedCanvasSize.js";
 
 const PLOT_PADDING_CSS_PX = 10;
 const POINT_RADIUS_CSS_PX = 1.15;
-const PEAK_ALPHA = 0.35;
 const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 const POLAR_FIXED_EXTENT = Math.SQRT2;
 const POLAR_FLOOR_DB = -48;
@@ -122,7 +121,6 @@ function drawPolarLevel(ctx, envelope, held, geometry, wedgeColor, lineWidth) {
   }
   if (held && traceEnvelope(ctx, held, geometry)) {
     ctx.strokeStyle = wedgeColor;
-    ctx.globalAlpha = PEAK_ALPHA;
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
