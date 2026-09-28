@@ -92,6 +92,22 @@ describe("Theme Role Registry", () => {
     });
   });
 
+  it("registers classic Waveform fill opacity as a Canvas-bound numeric Advanced role", () => {
+    expect(getThemeRole("waveform.fillOpacity")).toMatchObject({
+      valueKind: "number",
+      defaultValue: 0.12,
+      bindings: { canvas: ["waveform.fillOpacity"] },
+      advanced: {
+        section: "Waveform",
+        label: "Classic Fill Opacity",
+        minimum: 0,
+        maximum: 1,
+        step: 0.01,
+        unit: "percent",
+      },
+    });
+  });
+
   it("freezes the public registry deeply", () => {
     expect(Object.isFrozen(THEME_ROLE_REGISTRY)).toBe(true);
     expect(Object.isFrozen(getThemeRole("waveform.centroid").advanced)).toBe(true);

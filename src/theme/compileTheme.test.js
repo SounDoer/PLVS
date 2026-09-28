@@ -110,6 +110,20 @@ describe("compileTheme", () => {
     expect(customized.canvas["stereoMap.fillOpacity"]).toBe(0.4);
   });
 
+  it("publishes classic Waveform fill opacity to Canvas without a CSS token", () => {
+    const defaults = compileTheme(authoringTheme());
+    expect(defaults.roles["waveform.fillOpacity"]).toBe(0.12);
+    expect(defaults.canvas["waveform.fillOpacity"]).toBe(0.12);
+    expect(defaults.css["--ui-waveform-fill-opacity"]).toBeUndefined();
+
+    const customized = compileTheme(
+      authoringTheme({
+        overrides: { "waveform.fillOpacity": { kind: "number", value: 0.35 } },
+      })
+    );
+    expect(customized.canvas["waveform.fillOpacity"]).toBe(0.35);
+  });
+
   it("keeps registered numeric roles valid when their override resolves to zero", () => {
     const resolved = compileTheme(
       authoringTheme({
@@ -117,6 +131,7 @@ describe("compileTheme", () => {
           "spectrum.fillOpacityTop": { kind: "number", value: 0 },
           "spectrum.fillOpacityBottom": { kind: "number", value: 0 },
           "stereoMap.fillOpacity": { kind: "number", value: 0 },
+          "waveform.fillOpacity": { kind: "number", value: 0 },
         },
       })
     );
@@ -125,6 +140,8 @@ describe("compileTheme", () => {
     expect(resolved.css["--ui-spectrum-fill-top-opacity"]).toBe("0");
     expect(resolved.roles["stereoMap.fillOpacity"]).toBe(0);
     expect(resolved.canvas["stereoMap.fillOpacity"]).toBe(0);
+    expect(resolved.roles["waveform.fillOpacity"]).toBe(0);
+    expect(resolved.canvas["waveform.fillOpacity"]).toBe(0);
   });
 
   it("rejects out-of-range or reversed Spectrum fill opacity overrides", () => {

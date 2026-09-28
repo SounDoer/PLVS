@@ -12,6 +12,7 @@ export function selectWaveformCanvasColors(resolved) {
     frequencyHigh: resolved.canvas["waveform.frequencyHigh"],
     frequencyNeutral: resolved.canvas["waveform.frequencyNeutral"],
     centroid: resolved.canvas["waveform.centroid"],
+    fillOpacity: resolved.canvas["waveform.fillOpacity"],
   };
 }
 

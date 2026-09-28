@@ -117,10 +117,11 @@ export function drawWaveformCanvas(
   const H = canvas.height;
 
   const strokeColor = selected ? themeColors.snapshot : themeColors.trace;
-  // Read through the theme-scoped cache: these are per-frame reads of values that change only
-  // with the theme. See `readCssToken`.
   const root = document.documentElement;
-  const fillOpacity = readCssNumber(root, "--ui-waveform-fill-opacity", 0.22) || 0.22;
+  const fillOpacity = Number.isFinite(themeColors.fillOpacity)
+    ? Math.max(0, Math.min(1, themeColors.fillOpacity))
+    : 0.12;
+  // Stroke width is product-owned geometry and remains a CSS token.
   const strokeWidth = readCssNumber(root, "--ui-waveform-stroke-width", 1) || 1;
   const spectralPalette = {
     low: parseCssRgb(themeColors.frequencyLow),

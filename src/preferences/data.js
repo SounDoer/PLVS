@@ -149,7 +149,6 @@ export const UI_PREFERENCES = {
       strokeWidth: 1.5,
     },
     waveform: {
-      fillOpacity: 0.12,
       strokeWidth: 1,
     },
   },

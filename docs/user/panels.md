@@ -93,6 +93,12 @@ the area beneath the curve; the curve keeps the energy-adjusted opacity and Hold
 A DAW-style per-channel amplitude envelope over the session history. Optionally colour it by
 frequency content and show the spectral centroid.
 
+The Theme Editor's **Advanced → Waveform → Classic Fill Opacity** setting controls the envelope
+fill while **Frequency Color** is off. It defaults to 12% and is shared by Workspace, Dock, Live,
+and Snapshot. The outline remains opaque. Frequency Color continues to use a fully opaque body so
+its Low, Mid, High, and Neutral colours do not change with the background; Spectral Centroid is
+unaffected.
+
 ## Reading history
 
 Every chart can be zoomed, panned, and scrubbed, with a live hover probe. How far back history goes

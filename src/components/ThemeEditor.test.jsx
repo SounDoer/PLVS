@@ -128,6 +128,23 @@ describe("ThemeEditor", () => {
     });
   });
 
+  it("edits Theme-owned classic Waveform fill opacity as a percentage", () => {
+    const draft = structuredClone(DRAFT);
+    draft.overrides["waveform.fillOpacity"] = { kind: "number", value: 0.12 };
+    const onOverride = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Waveform" }));
+
+    const fill = screen.getByLabelText("Classic Fill Opacity percent");
+    expect(fill.value).toBe("12");
+    fireEvent.change(fill, { target: { value: "18" } });
+    expect(onOverride).toHaveBeenCalledWith("waveform.fillOpacity", {
+      kind: "number",
+      value: 0.18,
+    });
+  });
+
   it("orders Advanced sections by the Module Catalog and shows Interface subgroups", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));

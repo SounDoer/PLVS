@@ -106,9 +106,7 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   const stereoMap = prefs.modules.stereoMap;
   setCssVar("--ui-stereo-map-stroke-width", String(stereoMap.strokeWidth ?? 1.5));
 
-  const waveform = prefs.modules.waveform;
-  setCssVar("--ui-waveform-fill-opacity", String(waveform.fillOpacity ?? 0.22));
-  setCssVar("--ui-waveform-stroke-width", String(waveform.strokeWidth ?? 1));
+  setCssVar("--ui-waveform-stroke-width", String(prefs.modules.waveform.strokeWidth ?? 1));
 }
 
 /**

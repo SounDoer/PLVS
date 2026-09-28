@@ -10,6 +10,7 @@ import {
   sliceDockWaveformHistory,
 } from "./DockWaveform.jsx";
 import { WaveformHistoryIndex } from "../../math/waveformHistoryIndex.js";
+import { DEFAULT_WAVEFORM_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 
 beforeAll(() => {
   class ResizeObserverStub {
@@ -126,6 +127,27 @@ describe("DockWaveform", () => {
     });
 
     expect(lineWidths).toEqual([2.5]);
+  });
+
+  it("uses Theme-owned classic fill opacity and accepts zero", () => {
+    const { canvas, context } = mockCanvas();
+    const fillAlphas = [];
+    context.globalAlpha = 1;
+    context.fill = vi.fn(() => fillAlphas.push(context.globalAlpha));
+
+    paintDockWaveformCanvas(canvas, {
+      mins: [[-0.75, -0.75]],
+      maxes: [[0.25, 0.25]],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      channelCount: 1,
+      themeColors: { ...DEFAULT_WAVEFORM_CANVAS_COLORS, fillOpacity: 0 },
+    });
+
+    expect(fillAlphas).toEqual([0]);
+    expect(context.globalAlpha).toBe(1);
   });
 
   it("fills the complete Frequency Color body at full opacity", () => {

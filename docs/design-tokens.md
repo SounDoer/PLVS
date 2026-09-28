@@ -656,9 +656,14 @@ key. Stroke width remains product-owned and does not borrow Spectrum's token.
 ### Waveform
 
 ```
---ui-waveform-fill-opacity   0.12   Envelope fill opacity
---ui-waveform-stroke-width   1      Envelope stroke width
+Waveform Canvas `fillOpacity`   0.12   Theme Advanced: classic envelope fill opacity
+--ui-waveform-stroke-width     1      Product-owned envelope stroke width
 ```
+
+`waveform.fillOpacity` is a bounded Theme role exposed as **Advanced → Waveform → Classic Fill
+Opacity**. It is shared by Workspace, Dock, Live, and Snapshot, and applies only while **Frequency
+Color** is off. Frequency Color remains fully opaque because its palette is the waveform body rather
+than an overlay; Spectral Centroid is unaffected.
 
 ---
 

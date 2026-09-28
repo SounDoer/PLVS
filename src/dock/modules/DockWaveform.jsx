@@ -90,7 +90,9 @@ export function paintDockWaveformCanvas(
   const height = canvas.height;
   const style = getComputedStyle(canvas);
   const traceColor = themeColors.trace;
-  const fillOpacity = cssNumber(style, "--ui-waveform-fill-opacity", 0.22);
+  const fillOpacity = Number.isFinite(themeColors.fillOpacity)
+    ? Math.max(0, Math.min(1, themeColors.fillOpacity))
+    : 0.12;
   const strokeWidth = cssNumber(style, "--ui-waveform-stroke-width", 1);
   const spectralPalette = {
     low: parseCssRgb(themeColors.frequencyLow),

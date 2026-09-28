@@ -130,6 +130,24 @@ describe("theme color contract", () => {
     expect(stereoMap).not.toContain("--ui-stereo-map-fill-opacity");
   });
 
+  it("keeps classic Waveform fill opacity in the Theme Canvas bundle", () => {
+    const waveform = readFileSync(new URL("../panels/WaveformPanel.jsx", import.meta.url), "utf8");
+    const dockWaveform = readFileSync(
+      new URL("../../dock/modules/DockWaveform.jsx", import.meta.url),
+      "utf8"
+    );
+    const layoutPublisher = readFileSync(
+      new URL("../../preferences/applyDocumentTheme.js", import.meta.url),
+      "utf8"
+    );
+
+    expect(waveform).toContain("themeColors.fillOpacity");
+    expect(dockWaveform).toContain("themeColors.fillOpacity");
+    expect(waveform).not.toContain("--ui-waveform-fill-opacity");
+    expect(dockWaveform).not.toContain("--ui-waveform-fill-opacity");
+    expect(layoutPublisher).not.toContain("--ui-waveform-fill-opacity");
+  });
+
   it("does not route runtime consumers through the retired shared signal bindings", () => {
     const offenders = Object.entries(appSources())
       .filter(

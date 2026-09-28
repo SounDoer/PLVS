@@ -11,6 +11,7 @@ describe("Theme Canvas selectors", () => {
 
     expect(colors.grid).toBe(resolved.roles["waveform.grid"]);
     expect(colors.selection).toBe(resolved.roles["waveform.selection"]);
+    expect(colors.fillOpacity).toBe(resolved.roles["waveform.fillOpacity"]);
   });
 
   it("publishes Stereo Map status ranges through module-local roles", () => {

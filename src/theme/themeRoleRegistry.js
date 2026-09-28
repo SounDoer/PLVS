@@ -848,6 +848,21 @@ function moduleRoles() {
       { canvas: ["waveform.selection"] },
       primaryRefs
     ),
+    role("waveform.fillOpacity", {
+      kind: "number",
+      family: "waveform",
+      recipe: "constant",
+      defaultValue: 0.12,
+      bindings: { canvas: ["waveform.fillOpacity"] },
+      advanced: numberOverride(
+        "Waveform",
+        "Classic Fill Opacity",
+        "Opacity of the classic waveform body when Frequency Color is off.",
+        0,
+        1,
+        0.01
+      ),
+    }),
     moduleColor(
       "waveform.warningRange",
       "Waveform",

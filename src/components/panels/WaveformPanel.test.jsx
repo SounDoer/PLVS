@@ -8,6 +8,7 @@ import {
   PanelInstanceProvider,
 } from "../../workspace/AudioDataContext.jsx";
 import { drawWaveformCanvas, WaveformPanel } from "./WaveformPanel.jsx";
+import { DEFAULT_WAVEFORM_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 
 const { sliceSpectralWaveformMetricsMock } = vi.hoisted(() => ({
   sliceSpectralWaveformMetricsMock: vi.fn(),
@@ -185,6 +186,38 @@ describe("drawWaveformCanvas", () => {
 
     expect(lineWidths).toEqual([1, 2.5]);
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
+  });
+
+  it("uses Theme-owned classic fill opacity and accepts zero", () => {
+    const fillAlphas = [];
+    const context = {
+      globalAlpha: 1,
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(() => fillAlphas.push(context.globalAlpha)),
+      stroke: vi.fn(),
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 40;
+    canvas.getContext = vi.fn(() => context);
+
+    drawWaveformCanvas(canvas, {
+      mins: [-0.75, -0.75],
+      maxes: [0.25, 0.25],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      selected: false,
+      themeColors: { ...DEFAULT_WAVEFORM_CANVAS_COLORS, fillOpacity: 0 },
+    });
+
+    expect(fillAlphas).toEqual([0]);
+    expect(context.globalAlpha).toBe(1);
   });
 
   it("fills the complete Frequency Color body at full opacity", () => {
