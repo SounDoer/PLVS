@@ -134,13 +134,13 @@ html[data-surface="dock-editor"] #root {
   background: transparent;
 }
 
-/* Theme Preview swatch only. The Level Meter computes its gradient from levels
-   (src/lib/levelMeterColors.js); this just shows the three colours together. */
+/* Theme Preview swatch only. It shows the Level Meter's Gradient option, whose warning stop sits
+   40% from the top (GRADIENT_WARNING_FROM_TOP_PERCENT in src/lib/levelMeterColors.js). */
 .meter-gradient {
   background: linear-gradient(
     180deg,
     var(--ui-meter-gradient-top) 0%,
-    var(--ui-meter-gradient-mid) 46%,
+    var(--ui-meter-gradient-mid) 40%,
     var(--ui-meter-gradient-bottom) 100%
   );
 }

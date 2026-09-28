@@ -20,8 +20,8 @@ export const LEVEL_METER_COLORS = Object.freeze({
   critical: "var(--ui-level-critical)",
 });
 
-/// Gradient's pure warning, measured from the top of the bar. Chosen by eye, not a level; the
-/// Theme Preview swatch (`.meter-gradient` in src/index.css) uses the same stop.
+/// Gradient's pure warning, measured from the top of the bar, not a level; the original, round
+/// value. The Theme Preview swatch (`.meter-gradient` in src/index.css) uses the same stop.
 const GRADIENT_WARNING_FROM_TOP_PERCENT = 40;
 
 const NEUTRAL_COLORS = Object.freeze({
