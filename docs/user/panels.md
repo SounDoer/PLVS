@@ -24,7 +24,8 @@ Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Shor
 a True Peak Max marker driven by the active [Loudness Profile](loudness-profiles.md); click the
 readout to reset the maximum.
 
-**Bar Colors** chooses what the colours mean. **Gradient** (the default) is appearance only: one
+**Bar Colors** chooses what the colours mean, separately for each mode: switching Mode brings back
+that mode's own choice. **Gradient** (the default) is appearance only: one
 green-to-red ramp over the visible bar, in every mode, that zooms with the scale and ignores the
 Loudness Profile. **Level Zones** colour by level, with a hard change at each threshold, so a level
 keeps its colour at any zoom. In Peak and RMS, **Warning / Critical** sets the zones (defaults: Peak
