@@ -10,13 +10,17 @@ const CHROME = {
     Icon: Play,
   },
   live: {
-    shell: "border border-border bg-secondary text-[color:var(--ui-activity-live)]",
-    action: "bg-background text-[color:var(--ui-activity-live)] hover:bg-muted/50",
+    shell:
+      "border border-[color:color-mix(in_srgb,var(--ui-activity-live)_50%,var(--secondary))] bg-[color:color-mix(in_srgb,var(--ui-activity-live)_10%,var(--secondary))] text-[color:var(--ui-activity-live)]",
+    action:
+      "bg-[color:color-mix(in_srgb,var(--ui-activity-live)_24%,var(--secondary))] text-[color:var(--ui-activity-live)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-live)_36%,var(--secondary))]",
     Icon: Square,
   },
   snapshot: {
-    shell: "border border-border bg-secondary text-[color:var(--ui-activity-snapshot)]",
-    action: "bg-background text-[color:var(--ui-activity-snapshot)] hover:bg-muted/50",
+    shell:
+      "border border-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_50%,var(--secondary))] bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_10%,var(--secondary))] text-[color:var(--ui-activity-snapshot)]",
+    action:
+      "bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_24%,var(--secondary))] text-[color:var(--ui-activity-snapshot)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_36%,var(--secondary))]",
     Icon: Radio,
   },
 };

@@ -47,10 +47,17 @@ describe("SourceTransportCluster", () => {
   });
 
   it("keeps live and snapshot chrome readable at minimum surface opacity", () => {
-    expect(source).toContain("bg-secondary text-[color:var(--ui-activity-live)]");
-    expect(source).toContain("bg-secondary text-[color:var(--ui-activity-snapshot)]");
-    expect(source).not.toContain("ui-activity-live)_8%,transparent");
-    expect(source).not.toContain("ui-activity-snapshot)_8%,transparent");
+    expect(source).toContain("var(--ui-activity-live)_10%,var(--secondary)");
+    expect(source).toContain("var(--ui-activity-snapshot)_10%,var(--secondary)");
+    expect(source).toContain("var(--ui-activity-live)_24%,var(--secondary)");
+    expect(source).toContain("var(--ui-activity-snapshot)_24%,var(--secondary)");
+    expect(source).toContain("var(--ui-activity-live)_36%,var(--secondary)");
+    expect(source).toContain("var(--ui-activity-snapshot)_36%,var(--secondary)");
+    expect(source).toContain("var(--ui-activity-live)_50%,var(--secondary)");
+    expect(source).toContain("var(--ui-activity-snapshot)_50%,var(--secondary)");
+    expect(source).not.toMatch(/ui-activity-(?:live|snapshot)[^\n]*transparent/);
+    expect(source).not.toContain("bg-background text-[color:var(--ui-activity-live)]");
+    expect(source).not.toContain("bg-background text-[color:var(--ui-activity-snapshot)]");
   });
 
   it("uses compact header control sizing", () => {
