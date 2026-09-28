@@ -29,6 +29,7 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
     className={cn(
       SCRIM_CLASS,
       "z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:fade-in",
+      "backdrop-blur-sm",
       className
     )}
     {...props}

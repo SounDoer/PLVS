@@ -84,6 +84,13 @@ describe("SettingsPanel", () => {
     expect(document.body.querySelector("[data-slot=sheet-content]").className).toContain(
       "settings-sheet"
     );
+    expect(document.body.querySelector("[data-slot=sheet-content]").className).toContain("bg-card");
+    expect(document.body.querySelector("[data-slot=sheet-content]").className).not.toMatch(
+      /bg-card\//
+    );
+    expect(document.body.querySelector("[data-slot=sheet-overlay]").className).toContain(
+      "backdrop-blur-sm"
+    );
   });
 
   it("updates the global interface size", () => {

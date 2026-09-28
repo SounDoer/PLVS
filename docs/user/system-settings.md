@@ -2,6 +2,9 @@
 
 Everything for making PLVS fit into how you work day to day.
 
+Opening Settings softly blurs and dims the workbench behind it while the Settings drawer stays
+opaque and clear.
+
 ## Startup and closing
 
 **Open at Login** launches PLVS when you sign in. It is one shared preference when several
