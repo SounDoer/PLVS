@@ -100,9 +100,7 @@ function SettingsBody({
       (row) => row.ui.widget === "thresholds" && row.ui.showWhen(controls)
     );
     const barColorsRow = panelControlUiRows("levelMeter").find(
-      (row) =>
-        row.key ===
-        (LEVEL_METER_BAR_COLORS_KEYS[controls.levelMeterMode] ?? LEVEL_METER_BAR_COLORS_KEYS.peak)
+      (row) => row.key === LEVEL_METER_BAR_COLORS_KEYS[controls.levelMeterMode]
     );
     return (
       <>

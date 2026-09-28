@@ -88,7 +88,7 @@ describe("DockEditorApp window behavior", () => {
       panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
       panelOrder: ["levelMeter"],
       controlsByPanelId: {
-        levelMeter: { mode: "peak", readout: "live", showLabels: true },
+        levelMeter: { levelMeterMode: "peak", readout: "live", showLabels: true },
       },
     };
     render(<DockEditorApp />);

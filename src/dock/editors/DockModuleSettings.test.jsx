@@ -114,8 +114,19 @@ describe("DockModuleSettings", () => {
     });
   });
 
+  it("switches RMS's own Bar Colors without touching Peak's", () => {
+    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "rms" };
+    const onChange = renderSettings("level", { controls });
+    fireEvent.click(screen.getByLabelText("level meter bar colors"));
+    fireEvent.click(screen.getByRole("option", { name: "Level Zones" }));
+    expect(onChange).toHaveBeenCalledWith({
+      ...controls,
+      levelMeterRmsBarColors: "levelZones",
+    });
+  });
+
   it("uses the shared Live and Labels controls for scalar Level modes", () => {
-    const controls = { mode: "shortTerm", readout: "live", showLabels: true };
+    const controls = { levelMeterMode: "shortTerm", readout: "live", showLabels: true };
     const onChange = renderSettings("level", { controls });
 
     fireEvent.click(screen.getByLabelText("Level readout"));
@@ -384,7 +395,7 @@ describe("DockModuleSettings", () => {
     const onReset = vi.fn();
     renderSettings("level", {
       title: "Level Meter",
-      controls: { mode: "rms", readout: "live", showLabels: true },
+      controls: { levelMeterMode: "rms", readout: "live", showLabels: true },
       onBack,
       onReset,
     });
@@ -401,7 +412,7 @@ describe("DockModuleSettings", () => {
   it("keeps a fixed reset action slot while confirmation is armed", () => {
     renderSettings("level", {
       title: "Level Meter",
-      controls: { mode: "rms", readout: "live", showLabels: true },
+      controls: { levelMeterMode: "rms", readout: "live", showLabels: true },
     });
     const reset = screen.getByRole("button", { name: "Reset Level Meter settings" });
     const slot = reset.closest(".flex.w-10");
