@@ -63,7 +63,7 @@ describe("DockModuleSettings", () => {
   it("edits the thresholds of the current level mode", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-      levelMeterBarColors: "levelZones",
+      levelMeterPeakBarColors: "levelZones",
     };
     const onChange = renderSettings("level", { controls });
     const critical = screen.getByLabelText("level meter peak thresholds critical");
@@ -80,7 +80,7 @@ describe("DockModuleSettings", () => {
     renderSettings("level", {
       controls: {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-        levelMeterBarColors: "levelZones",
+        levelMeterMomentaryBarColors: "levelZones",
         levelMeterMode: "momentary",
       },
     });
@@ -90,7 +90,7 @@ describe("DockModuleSettings", () => {
   it("edits the RMS thresholds without touching Peak", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-      levelMeterBarColors: "levelZones",
+      levelMeterRmsBarColors: "levelZones",
       levelMeterMode: "rms",
     };
     const onChange = renderSettings("level", { controls });
@@ -103,14 +103,14 @@ describe("DockModuleSettings", () => {
     });
   });
 
-  it("switches Bar Colors and hides thresholds under Gradient", () => {
+  it("switches the current mode's Bar Colors and hides thresholds under Gradient", () => {
     const onChange = renderSettings("level");
     expect(screen.queryByText("Warning / Critical")).toBeNull();
     fireEvent.click(screen.getByLabelText("level meter bar colors"));
     fireEvent.click(screen.getByRole("option", { name: "Level Zones" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-      levelMeterBarColors: "levelZones",
+      levelMeterPeakBarColors: "levelZones",
     });
   });
 

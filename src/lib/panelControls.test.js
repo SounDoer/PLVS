@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_PANEL_CONTROLS,
+  LEVEL_METER_BAR_COLORS_KEYS,
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTROGRAM_MODE_OPTIONS,
@@ -81,7 +82,10 @@ describe("panelControls", () => {
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
-      levelMeterBarColors: "gradient",
+      levelMeterPeakBarColors: "gradient",
+      levelMeterRmsBarColors: "gradient",
+      levelMeterMomentaryBarColors: "gradient",
+      levelMeterShortTermBarColors: "gradient",
       levelMeterPeakWarningDb: -6,
       levelMeterPeakCriticalDb: -1,
       levelMeterRmsWarningDb: -18,
@@ -242,7 +246,10 @@ describe("panelControls", () => {
       levelMeterPlaybackMax: false,
       levelMeterValueMarker: false,
       levelMeterTpMaxMarker: false,
-      levelMeterBarColors: "gradient",
+      levelMeterPeakBarColors: "gradient",
+      levelMeterRmsBarColors: "gradient",
+      levelMeterMomentaryBarColors: "gradient",
+      levelMeterShortTermBarColors: "gradient",
       levelMeterPeakWarningDb: -6,
       levelMeterPeakCriticalDb: -1,
       levelMeterRmsWarningDb: -18,
@@ -873,19 +880,23 @@ describe("Level Meter thresholds", () => {
     ).toMatchObject({ levelMeterPeakWarningDb: -6, levelMeterPeakCriticalDb: -1 });
   });
 
-  it("shows each pair only under Level Zones and for its own mode", () => {
+  it("shows each pair only under its own mode's Level Zones", () => {
     const row = (minKey) =>
       panelControlUiRows("levelMeter").find((candidate) => candidate.minKey === minKey);
     const peak = row("levelMeterPeakWarningDb");
     const rms = row("levelMeterRmsWarningDb");
-    const zones = { levelMeterBarColors: "levelZones" };
-    expect(peak.ui.showWhen({ ...zones, levelMeterMode: "peak" })).toBe(true);
-    expect(peak.ui.showWhen({ ...zones, levelMeterMode: "rms" })).toBe(false);
-    expect(peak.ui.showWhen({ levelMeterBarColors: "gradient", levelMeterMode: "peak" })).toBe(
+    expect(
+      peak.ui.showWhen({ levelMeterMode: "peak", levelMeterPeakBarColors: "levelZones" })
+    ).toBe(true);
+    expect(peak.ui.showWhen({ levelMeterMode: "peak", levelMeterRmsBarColors: "levelZones" })).toBe(
       false
     );
-    expect(rms.ui.showWhen({ ...zones, levelMeterMode: "rms" })).toBe(true);
-    expect(rms.ui.showWhen({ ...zones, levelMeterMode: "momentary" })).toBe(false);
+    expect(peak.ui.showWhen({ levelMeterMode: "rms", levelMeterPeakBarColors: "levelZones" })).toBe(
+      false
+    );
+    expect(rms.ui.showWhen({ levelMeterMode: "rms", levelMeterRmsBarColors: "levelZones" })).toBe(
+      true
+    );
   });
 
   it("survives being normalized twice, as a preset re-import would", () => {
@@ -903,28 +914,50 @@ describe("Level Meter thresholds", () => {
 });
 
 describe("Level Meter bar colors", () => {
-  it("defaults to Gradient and repairs unknown values", () => {
-    expect(DEFAULT_PANEL_CONTROLS.levelMeterBarColors).toBe("gradient");
-    expect(normalizePanelControls({ levelMeterBarColors: "levelZones" }).levelMeterBarColors).toBe(
-      "levelZones"
-    );
-    expect(normalizePanelControls({ levelMeterBarColors: "rainbow" }).levelMeterBarColors).toBe(
-      "gradient"
-    );
+  const KEYS = [
+    "levelMeterPeakBarColors",
+    "levelMeterRmsBarColors",
+    "levelMeterMomentaryBarColors",
+    "levelMeterShortTermBarColors",
+  ];
+
+  it("keeps one value per mode, each defaulting to Gradient", () => {
+    expect(Object.values(LEVEL_METER_BAR_COLORS_KEYS)).toEqual(KEYS);
+    for (const key of KEYS) expect(DEFAULT_PANEL_CONTROLS[key]).toBe("gradient");
+    expect(DEFAULT_PANEL_CONTROLS).not.toHaveProperty("levelMeterBarColors");
   });
 
-  it("is a Bar Colors select in the Level Meter tab, before the thresholds", () => {
-    const rows = panelControlUiRows("levelMeter");
-    const barColors = rows.find((row) => row.key === "levelMeterBarColors");
-    expect(barColors.ui).toMatchObject({
-      label: "Bar Colors",
-      widget: "select",
-      options: [
-        { id: "gradient", label: "Gradient" },
-        { id: "levelZones", label: "Level Zones" },
-      ],
+  it("repairs each value on its own", () => {
+    const normalized = normalizePanelControls({
+      levelMeterPeakBarColors: "levelZones",
+      levelMeterRmsBarColors: "rainbow",
     });
-    expect(rows.indexOf(barColors)).toBeLessThan(
+    expect(normalized).toMatchObject({
+      levelMeterPeakBarColors: "levelZones",
+      levelMeterRmsBarColors: "gradient",
+      levelMeterMomentaryBarColors: "gradient",
+      levelMeterShortTermBarColors: "gradient",
+    });
+  });
+
+  it("shows exactly one Bar Colors row, for the current mode, before the thresholds", () => {
+    const rows = panelControlUiRows("levelMeter");
+    for (const [mode, key] of Object.entries(LEVEL_METER_BAR_COLORS_KEYS)) {
+      const visible = rows.filter(
+        (row) => row.ui.label === "Bar Colors" && row.ui.showWhen({ levelMeterMode: mode })
+      );
+      expect(visible.map((row) => row.key)).toEqual([key]);
+      expect(visible[0].ui).toMatchObject({
+        widget: "select",
+        ariaLabel: "level meter bar colors",
+        options: [
+          { id: "gradient", label: "Gradient" },
+          { id: "levelZones", label: "Level Zones" },
+        ],
+      });
+    }
+    const firstBarColors = rows.findIndex((row) => row.ui.label === "Bar Colors");
+    expect(firstBarColors).toBeLessThan(
       rows.findIndex((row) => row.minKey === "levelMeterPeakWarningDb")
     );
   });

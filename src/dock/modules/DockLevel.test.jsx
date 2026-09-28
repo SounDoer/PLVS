@@ -203,7 +203,7 @@ describe("DockLevel", () => {
       { displayAudio: { peakDb: [-12, -30] } },
       {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-        levelMeterBarColors: "levelZones",
+        levelMeterPeakBarColors: "levelZones",
         levelMeterPeakWarningDb: -10,
         levelMeterPeakCriticalDb: -2,
       }
@@ -229,7 +229,7 @@ describe("DockLevel", () => {
       {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
         levelMeterMode: "shortTerm",
-        levelMeterBarColors: "levelZones",
+        levelMeterShortTermBarColors: "levelZones",
       }
     );
     expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
@@ -252,7 +252,7 @@ describe("DockLevel", () => {
       {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
         levelMeterMode: "shortTerm",
-        levelMeterBarColors: "levelZones",
+        levelMeterShortTermBarColors: "levelZones",
       }
     );
     expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(

@@ -148,7 +148,8 @@ describe("levelMeterBackground", () => {
 
   it("uses each mode's thresholds under Level Zones", () => {
     const controls = {
-      levelMeterBarColors: "levelZones",
+      levelMeterPeakBarColors: "levelZones",
+      levelMeterRmsBarColors: "levelZones",
       levelMeterPeakWarningDb: -12,
       levelMeterPeakCriticalDb: -3,
       levelMeterRmsWarningDb: -20,
@@ -167,7 +168,7 @@ describe("levelMeterBackground", () => {
     expect(
       levelMeterBackground({
         mode: "peak",
-        controls: { levelMeterBarColors: "levelZones" },
+        controls: { levelMeterPeakBarColors: "levelZones" },
         viewMin: -60,
         viewMax: 3,
       })
@@ -176,7 +177,10 @@ describe("levelMeterBackground", () => {
 
   it("shows the trace colour for unwatched loudness modes under Level Zones", () => {
     const view = {
-      controls: { levelMeterBarColors: "levelZones" },
+      controls: {
+        levelMeterMomentaryBarColors: "levelZones",
+        levelMeterShortTermBarColors: "levelZones",
+      },
       profileDocument: null,
       viewMin: -64,
       viewMax: 0,
@@ -193,12 +197,21 @@ describe("levelMeterBackground", () => {
     expect(
       levelMeterBackground({
         mode: "momentary",
-        controls: { levelMeterBarColors: "levelZones" },
+        controls: { levelMeterMomentaryBarColors: "levelZones" },
         profileDocument: judging,
         viewMin: -64,
         viewMax: 0,
       })
     ).toBe(zonesToGradient(profileZones(judging, "momentary"), -64, 0, "to top"));
+  });
+
+  it("reads only the current mode's Bar Colors", () => {
+    const controls = { levelMeterPeakBarColors: "levelZones" };
+    const view = { controls, viewMin: -60, viewMax: 3 };
+    expect(levelMeterBackground({ mode: "peak", ...view })).toBe(
+      zonesToGradient(thresholdZones(-6, -1), -60, 3, "to top")
+    );
+    expect(levelMeterBackground({ mode: "rms", ...view })).toBe(GRADIENT_UP);
   });
 });
 

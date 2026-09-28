@@ -521,7 +521,7 @@ describe("PanelSettingsContent", () => {
     render(
       <PanelSettingsContent
         activeTab="levelMeter"
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterBarColors: "levelZones" }}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterPeakBarColors: "levelZones" }}
         onPanelControlsChange={onPanelControlsChange}
       />
     );
@@ -544,7 +544,7 @@ describe("PanelSettingsContent", () => {
     render(
       <PanelSettingsContent
         activeTab="levelMeter"
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterBarColors: "levelZones" }}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterPeakBarColors: "levelZones" }}
         onPanelControlsChange={onPanelControlsChange}
       />
     );
@@ -561,7 +561,7 @@ describe("PanelSettingsContent", () => {
     render(
       <PanelSettingsContent
         activeTab="levelMeter"
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterBarColors: "levelZones" }}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterPeakBarColors: "levelZones" }}
         onPanelControlsChange={onPanelControlsChange}
       />
     );
@@ -578,7 +578,7 @@ describe("PanelSettingsContent", () => {
     render(
       <PanelSettingsContent
         activeTab="levelMeter"
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterBarColors: "levelZones" }}
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterPeakBarColors: "levelZones" }}
         onPanelControlsChange={onPanelControlsChange}
       />
     );
@@ -597,7 +597,7 @@ describe("PanelSettingsContent", () => {
         activeTab="levelMeter"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
-          levelMeterBarColors: "levelZones",
+          levelMeterRmsBarColors: "levelZones",
           levelMeterMode: "rms",
         }}
         onPanelControlsChange={vi.fn()}
@@ -610,7 +610,8 @@ describe("PanelSettingsContent", () => {
         activeTab="levelMeter"
         panelControls={{
           ...DEFAULT_PANEL_CONTROLS,
-          levelMeterBarColors: "levelZones",
+          levelMeterRmsBarColors: "levelZones",
+          levelMeterMomentaryBarColors: "levelZones",
           levelMeterMode: "momentary",
         }}
         onPanelControlsChange={vi.fn()}
@@ -633,8 +634,29 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(screen.getByLabelText("level meter bar colors"));
     fireEvent.click(screen.getByRole("option", { name: "Level Zones" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ levelMeterBarColors: "levelZones" })
+      expect.objectContaining({ levelMeterPeakBarColors: "levelZones" })
     );
+  });
+
+  it("changes only the current mode's Bar Colors", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="levelMeter"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, levelMeterMode: "rms" }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("level meter bar colors"));
+    fireEvent.click(screen.getByRole("option", { name: "Level Zones" }));
+    const next = onPanelControlsChange.mock.lastCall[0];
+    expect(next).toMatchObject({
+      levelMeterRmsBarColors: "levelZones",
+      levelMeterPeakBarColors: "gradient",
+      levelMeterMomentaryBarColors: "gradient",
+      levelMeterShortTermBarColors: "gradient",
+    });
   });
 
   it("shows the TP Max switch and hides the value marker switch in Peak mode", () => {
