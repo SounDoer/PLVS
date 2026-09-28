@@ -3,42 +3,42 @@ import {
   LEVEL_METER_COLORS,
   levelMeterBackground,
   levelMeterMarkerStatus,
-  profileStops,
-  stopsToGradient,
-  thresholdStops,
+  profileZones,
+  thresholdZones,
+  zonesToGradient,
 } from "./levelMeterColors.js";
 
 const { safe, warning, critical } = LEVEL_METER_COLORS;
+const GRADIENT_UP = `linear-gradient(to top, ${safe} 0%, ${warning} 60%, ${critical} 100%)`;
 
 function profile(rules) {
   return { id: "p", name: "P", referenceLufs: null, rules };
 }
 
-describe("thresholdStops", () => {
-  it("places safe at the scale minimum and each threshold at its level", () => {
-    expect(thresholdStops(-60, -6, -1)).toEqual([
-      { db: -60, color: safe },
+describe("thresholdZones", () => {
+  it("starts safe, then warning, then critical", () => {
+    expect(thresholdZones(-6, -1)).toEqual([
+      { db: -Infinity, color: safe },
       { db: -6, color: warning },
       { db: -1, color: critical },
     ]);
   });
 
-  it("drops the warning stop when both thresholds are equal", () => {
-    expect(thresholdStops(-60, -3, -3)).toEqual([
-      { db: -60, color: safe },
+  it("has no warning zone when both thresholds are equal", () => {
+    expect(thresholdZones(-3, -3)).toEqual([
+      { db: -Infinity, color: safe },
       { db: -3, color: critical },
     ]);
   });
 });
 
-describe("profileStops", () => {
+describe("profileZones", () => {
   it("returns null when no rule applies, so the caller shows the neutral colour", () => {
-    expect(profileStops(null, "momentary", -64)).toBeNull();
+    expect(profileZones(null, "momentary")).toBeNull();
     expect(
-      profileStops(
+      profileZones(
         profile([{ metricId: "integrated", op: ">", value: -22.5, severity: "fail" }]),
-        "momentary",
-        -64
+        "momentary"
       )
     ).toBeNull();
   });
@@ -49,8 +49,8 @@ describe("profileStops", () => {
       { metricId: "momentaryMax", op: ">", value: -16, severity: "fail" },
       { metricId: "shortTermMax", op: ">", value: -30, severity: "fail" },
     ]);
-    expect(profileStops(doc, "momentary", -64)).toEqual([
-      { db: -64, color: safe },
+    expect(profileZones(doc, "momentary")).toEqual([
+      { db: -Infinity, color: safe },
       { db: -20, color: warning },
       { db: -16, color: critical },
     ]);
@@ -61,58 +61,94 @@ describe("profileStops", () => {
       { metricId: "momentary", op: "<", value: -40, severity: "fail" },
       { metricId: "momentary", op: ">", value: undefined, severity: "fail" },
     ]);
-    expect(profileStops(doc, "momentary", -64)).toBeNull();
+    expect(profileZones(doc, "momentary")).toBeNull();
   });
 
-  it("keeps a stop only when it is more severe than every lower one", () => {
+  it("keeps a zone only when it is more severe than every lower one", () => {
     const doc = profile([
       { metricId: "shortTerm", op: ">", value: -20, severity: "fail" },
       { metricId: "shortTerm", op: ">", value: -18, severity: "warn" },
       { metricId: "shortTermMax", op: ">", value: -20, severity: "warn" },
     ]);
-    expect(profileStops(doc, "shortTerm", -64)).toEqual([
-      { db: -64, color: safe },
+    expect(profileZones(doc, "shortTerm")).toEqual([
+      { db: -Infinity, color: safe },
       { db: -20, color: critical },
     ]);
   });
 
-  it("does not synthesise a warning stop for a single fail rule", () => {
+  it("does not synthesise a warning zone for a single fail rule", () => {
     const doc = profile([{ metricId: "momentaryMax", op: ">", value: -18, severity: "fail" }]);
-    expect(profileStops(doc, "momentary", -64)).toEqual([
-      { db: -64, color: safe },
+    expect(profileZones(doc, "momentary")).toEqual([
+      { db: -Infinity, color: safe },
       { db: -18, color: critical },
     ]);
   });
-
-  it("drops the safe stop when the lowest threshold is at or below the scale minimum", () => {
-    const doc = profile([{ metricId: "momentary", op: ">", value: -70, severity: "fail" }]);
-    expect(profileStops(doc, "momentary", -64)).toEqual([{ db: -70, color: critical }]);
-  });
 });
 
-describe("stopsToGradient", () => {
-  it("converts levels to percentages of the visible range", () => {
-    expect(stopsToGradient(thresholdStops(-60, -6, -1), -60, 3, "to top")).toBe(
-      `linear-gradient(to top, ${safe} 0%, ${warning} 85.714%, ${critical} 93.651%)`
+describe("zonesToGradient", () => {
+  it("cuts hard at each threshold within the visible range", () => {
+    expect(zonesToGradient(thresholdZones(-6, -1), -60, 3, "to top")).toBe(
+      `linear-gradient(to top, ${safe} 0%, ${safe} 85.714%, ${warning} 85.714%, ` +
+        `${warning} 93.651%, ${critical} 93.651%, ${critical} 100%)`
     );
   });
 
-  it("keeps each stop on its level when the range is zoomed", () => {
-    expect(stopsToGradient(thresholdStops(-60, -6, -1), -30, 0, "to top")).toBe(
-      `linear-gradient(to top, ${safe} -100%, ${warning} 80%, ${critical} 96.667%)`
+  it("keeps each cut on its level when the range is zoomed", () => {
+    expect(zonesToGradient(thresholdZones(-12, -3), -30, 0, "to top")).toBe(
+      `linear-gradient(to top, ${safe} 0%, ${safe} 60%, ${warning} 60%, ` +
+        `${warning} 90%, ${critical} 90%, ${critical} 100%)`
     );
   });
 
-  it("renders a single stop as a solid image", () => {
-    expect(stopsToGradient([{ db: -70, color: critical }], -64, 0, "to right")).toBe(
+  it("clamps cuts outside the visible range to its edges", () => {
+    const zones = [
+      { db: -Infinity, color: safe },
+      { db: -70, color: critical },
+    ];
+    expect(zonesToGradient(zones, -64, 0, "to right")).toBe(
+      `linear-gradient(to right, ${safe} 0%, ${safe} 0%, ${critical} 0%, ${critical} 100%)`
+    );
+  });
+
+  it("renders a single zone as a solid image", () => {
+    expect(zonesToGradient([{ db: -Infinity, color: critical }], -64, 0, "to right")).toBe(
       `linear-gradient(to right, ${critical}, ${critical})`
     );
   });
 });
 
 describe("levelMeterBackground", () => {
-  it("uses the mode's own thresholds for Peak and RMS", () => {
+  const judging = profile([{ metricId: "momentaryMax", op: ">", value: -18, severity: "fail" }]);
+
+  it("draws the same Gradient in every mode by default, whatever the thresholds or Profile", () => {
+    for (const mode of ["peak", "rms", "momentary", "shortTerm"]) {
+      expect(
+        levelMeterBackground({
+          mode,
+          controls: { levelMeterPeakWarningDb: -30 },
+          profileDocument: judging,
+          viewMin: -30,
+          viewMax: 0,
+        })
+      ).toBe(GRADIENT_UP);
+    }
+  });
+
+  it("puts the Gradient along the direction it is given", () => {
+    expect(
+      levelMeterBackground({
+        mode: "peak",
+        controls: {},
+        viewMin: -60,
+        viewMax: 3,
+        direction: "to right",
+      })
+    ).toBe(`linear-gradient(to right, ${safe} 0%, ${warning} 60%, ${critical} 100%)`);
+  });
+
+  it("uses each mode's thresholds under Level Zones", () => {
     const controls = {
+      levelMeterBarColors: "levelZones",
       levelMeterPeakWarningDb: -12,
       levelMeterPeakCriticalDb: -3,
       levelMeterRmsWarningDb: -20,
@@ -120,21 +156,31 @@ describe("levelMeterBackground", () => {
     };
     const view = { viewMin: -60, viewMax: 3 };
     expect(levelMeterBackground({ mode: "peak", controls, ...view })).toBe(
-      stopsToGradient(thresholdStops(-60, -12, -3), -60, 3, "to top")
+      zonesToGradient(thresholdZones(-12, -3), -60, 3, "to top")
     );
     expect(levelMeterBackground({ mode: "rms", controls, ...view })).toBe(
-      stopsToGradient(thresholdStops(-60, -20, -10), -60, 3, "to top")
+      zonesToGradient(thresholdZones(-20, -10), -60, 3, "to top")
     );
   });
 
   it("falls back to the default thresholds for missing controls", () => {
-    expect(levelMeterBackground({ mode: "peak", controls: {}, viewMin: -60, viewMax: 3 })).toBe(
-      stopsToGradient(thresholdStops(-60, -6, -1), -60, 3, "to top")
-    );
+    expect(
+      levelMeterBackground({
+        mode: "peak",
+        controls: { levelMeterBarColors: "levelZones" },
+        viewMin: -60,
+        viewMax: 3,
+      })
+    ).toBe(zonesToGradient(thresholdZones(-6, -1), -60, 3, "to top"));
   });
 
-  it("shows the trace colour for unwatched loudness modes", () => {
-    const view = { controls: {}, profileDocument: null, viewMin: -64, viewMax: 0 };
+  it("shows the trace colour for unwatched loudness modes under Level Zones", () => {
+    const view = {
+      controls: { levelMeterBarColors: "levelZones" },
+      profileDocument: null,
+      viewMin: -64,
+      viewMax: 0,
+    };
     expect(levelMeterBackground({ mode: "momentary", ...view })).toBe(
       "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
     );
@@ -143,19 +189,16 @@ describe("levelMeterBackground", () => {
     );
   });
 
-  it("follows Profile ceilings for loudness modes", () => {
-    const profileDocument = profile([
-      { metricId: "momentaryMax", op: ">", value: -18, severity: "fail" },
-    ]);
+  it("follows Profile ceilings for loudness modes under Level Zones", () => {
     expect(
       levelMeterBackground({
         mode: "momentary",
-        controls: {},
-        profileDocument,
+        controls: { levelMeterBarColors: "levelZones" },
+        profileDocument: judging,
         viewMin: -64,
         viewMax: 0,
       })
-    ).toBe(stopsToGradient(profileStops(profileDocument, "momentary", -64), -64, 0, "to top"));
+    ).toBe(zonesToGradient(profileZones(judging, "momentary"), -64, 0, "to top"));
   });
 });
 

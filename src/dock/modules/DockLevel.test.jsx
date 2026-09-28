@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { DEFAULT_DOCK_CONTROLS_BY_MODULE_ID } from "../dockModuleControls.js";
 import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
 import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
-import { stopsToGradient, thresholdStops } from "../../lib/levelMeterColors.js";
+import { thresholdZones, zonesToGradient } from "../../lib/levelMeterColors.js";
 import { settingsStore } from "../../persistence/index.js";
 import { FrameDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { DockLevel } from "./DockLevel.jsx";
@@ -193,13 +193,14 @@ describe("DockLevel", () => {
       { displayAudio: { peakDb: [-12, -30] } },
       {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
+        levelMeterBarColors: "levelZones",
         levelMeterPeakWarningDb: -10,
         levelMeterPeakCriticalDb: -2,
       }
     );
     const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
     expect(fill.dataset.levelMeterGradient).toBe(
-      stopsToGradient(thresholdStops(-60, -10, -2), -60, 3, "to right")
+      zonesToGradient(thresholdZones(-10, -2), -60, 3, "to right")
     );
   });
 
@@ -207,7 +208,7 @@ describe("DockLevel", () => {
     renderWith({ displayAudio: { peakDb: [0, 0] } });
     const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
     expect(fill.dataset.levelMeterGradient).toBe(
-      stopsToGradient(thresholdStops(-60, -6, -1), -60, 3, "to right")
+      "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, var(--ui-level-critical) 100%)"
     );
     expect(fill.style.backgroundColor).toBe("");
   });
@@ -215,7 +216,11 @@ describe("DockLevel", () => {
   it("shows the Short-term trace colour when no Profile judges Short-term", () => {
     renderWith(
       { displayAudio: { shortTerm: -20 } },
-      { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "shortTerm" }
+      {
+        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
+        levelMeterMode: "shortTerm",
+        levelMeterBarColors: "levelZones",
+      }
     );
     expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
       "linear-gradient(to right, var(--ui-loudness-shortterm), var(--ui-loudness-shortterm))"
@@ -234,10 +239,14 @@ describe("DockLevel", () => {
     });
     renderWith(
       { displayAudio: { shortTerm: -20 } },
-      { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "shortTerm" }
+      {
+        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
+        levelMeterMode: "shortTerm",
+        levelMeterBarColors: "levelZones",
+      }
     );
     expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
-      `linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-critical) 71.875%)`
+      "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-safe) 71.875%, var(--ui-level-critical) 71.875%, var(--ui-level-critical) 100%)"
     );
   });
 });

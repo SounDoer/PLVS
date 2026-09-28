@@ -6,7 +6,7 @@ import { LevelMeterPanel } from "./LevelMeterPanel.jsx";
 import { settingsStore } from "../../persistence/index.js";
 import { profileSelectionId } from "../../lib/loudnessProfileCatalog.js";
 import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx";
-import { profileStops, stopsToGradient, thresholdStops } from "../../lib/levelMeterColors.js";
+import { profileZones, thresholdZones, zonesToGradient } from "../../lib/levelMeterColors.js";
 import { LOUDNESS_PROFILE_OFF } from "../../lib/loudnessProfileCatalog.js";
 
 const TEST_PROFILE = {
@@ -641,6 +641,7 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel({
       panelControls: {
         levelMeterMode: "peak",
+        levelMeterBarColors: "levelZones",
         levelMeterPeakWarningDb: -12,
         levelMeterPeakCriticalDb: -3,
         levelMeterYMinDb: -30,
@@ -650,19 +651,23 @@ describe("LevelMeterPanel", () => {
 
     const gradient = container.querySelector("[data-level-meter-gradient]");
     expect(gradient.dataset.levelMeterGradient).toBe(
-      stopsToGradient(thresholdStops(-60, -12, -3), -30, 0, "to top")
+      zonesToGradient(thresholdZones(-12, -3), -30, 0, "to top")
     );
   });
 
   it("uses the RMS thresholds in RMS mode", () => {
-    const { container } = renderPanel({ panelControls: { levelMeterMode: "rms" } });
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "rms", levelMeterBarColors: "levelZones" },
+    });
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
-      stopsToGradient(thresholdStops(-60, -18, -9), -60, 3, "to top")
+      zonesToGradient(thresholdZones(-18, -9), -60, 3, "to top")
     );
   });
 
   it("shows the Momentary trace colour under the starter Profile, which has no Momentary rule", () => {
-    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
+    });
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
       "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
     );
@@ -672,7 +677,9 @@ describe("LevelMeterPanel", () => {
     settingsStore.patch({
       loudnessProfiles: { active: LOUDNESS_PROFILE_OFF, profiles: [TEST_PROFILE] },
     });
-    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
+    });
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
       "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
     );
@@ -689,11 +696,36 @@ describe("LevelMeterPanel", () => {
         profiles: [profileWithCeiling],
       },
     });
-    const { container } = renderPanel({ panelControls: { levelMeterMode: "momentary" } });
+    const { container } = renderPanel({
+      panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
+    });
 
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
-      stopsToGradient(profileStops(profileWithCeiling, "momentary", -64), -64, 0, "to top")
+      zonesToGradient(profileZones(profileWithCeiling, "momentary"), -64, 0, "to top")
     );
+  });
+
+  it("draws the Gradient by default and ignores the Profile there", () => {
+    const profileWithCeiling = {
+      ...TEST_PROFILE,
+      rules: [{ metricId: "momentaryMax", op: ">", value: -18, severity: "fail" }],
+    };
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: profileSelectionId(profileWithCeiling.id),
+        profiles: [profileWithCeiling],
+      },
+    });
+    const gradient =
+      "linear-gradient(to top, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
+      "var(--ui-level-critical) 100%)";
+    for (const levelMeterMode of ["peak", "momentary"]) {
+      const { container, unmount } = renderPanel({ panelControls: { levelMeterMode } });
+      expect(
+        container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient
+      ).toBe(gradient);
+      unmount();
+    }
   });
 
   it("colours the Floating Value by a Momentary Max ceiling", () => {
