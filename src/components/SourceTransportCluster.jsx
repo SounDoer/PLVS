@@ -5,23 +5,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const CHROME = {
   ready: {
-    shell:
-      "border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] bg-[color:color-mix(in_srgb,var(--secondary)_55%,transparent)] text-muted-foreground",
-    action: "bg-primary text-foreground hover:brightness-[1.08]",
+    shell: "border border-border bg-secondary text-muted-foreground",
+    action: "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)]",
     Icon: Play,
   },
   live: {
-    shell:
-      "bg-[color:color-mix(in_srgb,var(--ui-activity-live)_8%,transparent)] text-[color:var(--ui-activity-live)] border border-[color:color-mix(in_srgb,var(--ui-activity-live)_30%,transparent)]",
-    action:
-      "bg-[color:color-mix(in_srgb,var(--ui-activity-live)_12%,transparent)] text-[color:var(--ui-activity-live)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-live)_16%,transparent)]",
+    shell: "border border-border bg-secondary text-[color:var(--ui-activity-live)]",
+    action: "bg-background text-[color:var(--ui-activity-live)] hover:bg-muted/50",
     Icon: Square,
   },
   snapshot: {
-    shell:
-      "bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_8%,transparent)] text-[color:var(--ui-activity-snapshot)] border border-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_30%,transparent)]",
-    action:
-      "bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_12%,transparent)] text-[color:var(--ui-activity-snapshot)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_16%,transparent)]",
+    shell: "border border-border bg-secondary text-[color:var(--ui-activity-snapshot)]",
+    action: "bg-background text-[color:var(--ui-activity-snapshot)] hover:bg-muted/50",
     Icon: Radio,
   },
 };
@@ -79,7 +74,7 @@ export function SourceTransportCluster({
               ref={triggerRef}
               type="button"
               aria-label={`Source: ${state.sourceLabel}`}
-              className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-foreground/5"
+              className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-muted/50"
             >
               {state.sourceLabel}
               <ChevronDown className="size-[1em]" />
@@ -108,8 +103,10 @@ export function SourceTransportCluster({
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    sourceMode === option.id ? "bg-primary" : "bg-muted-foreground/20"
+                    "size-1.5 shrink-0 rounded-full border",
+                    sourceMode === option.id
+                      ? "border-primary bg-primary"
+                      : "border-muted-foreground bg-transparent"
                   )}
                 />
                 <span className="min-w-0 font-medium text-foreground">{option.label}</span>
@@ -127,7 +124,7 @@ export function SourceTransportCluster({
         disabled={state.primaryActionDisabled}
         onClick={() => onPrimaryAction(state.actionKind)}
         className={cn(
-          "ml-1 flex h-full items-center gap-1.5 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40",
+          "ml-1 flex h-full items-center gap-1.5 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50",
           chrome.action
         )}
       >

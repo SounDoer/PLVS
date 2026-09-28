@@ -32,8 +32,8 @@ function ActiveDot({ active }) {
   return (
     <span
       className={cn(
-        "size-1.5 shrink-0 rounded-full",
-        active ? "bg-primary" : "bg-muted-foreground/20"
+        "size-1.5 shrink-0 rounded-full border",
+        active ? "border-primary bg-primary" : "border-muted-foreground bg-transparent"
       )}
     />
   );
@@ -62,7 +62,7 @@ export function LoudnessProfilePopoverContent({
   // that would discard that draft is refused by the provider; showing it disabled is what makes
   // the refusal legible. Renaming now lives inside that editor, beside the name.
   const blocked = draftBlocksLibraryActions === true;
-  const blockedClass = "disabled:opacity-40";
+  const blockedClass = "disabled:opacity-50";
 
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
@@ -197,7 +197,7 @@ export function LoudnessProfilePopoverContent({
       ) : null}
 
       {missingIds.length > 0 ? (
-        <div className="border-t border-border/40 px-2 py-1.5">
+        <div className="border-t border-border px-2 py-1.5">
           {/* Deliberately says nothing about dialogue gating: showing those rows is what enables
               the sidechain, but that is an implementation detail, not a thing to ask the user
               to reason about. */}

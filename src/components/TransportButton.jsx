@@ -3,19 +3,19 @@ import { cn } from "@/lib/utils";
 
 const STATE_CONFIG = {
   ready: {
-    className: "bg-primary text-primary-foreground hover:brightness-[1.08]",
+    className: "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)]",
     Icon: Play,
     label: "START",
   },
   live: {
     className:
-      "bg-transparent text-[color:var(--ui-activity-live)] border border-[color:color-mix(in_srgb,var(--ui-activity-live)_40%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-live)_8%,transparent)]",
+      "border border-border bg-secondary text-[color:var(--ui-activity-live)] hover:bg-muted/50",
     Icon: Square,
     label: "STOP",
   },
   snapshot: {
     className:
-      "bg-transparent text-[color:var(--ui-activity-snapshot)] border border-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_40%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_8%,transparent)]",
+      "border border-border bg-secondary text-[color:var(--ui-activity-snapshot)] hover:bg-muted/50",
     Icon: Radio,
     label: "LIVE",
   },

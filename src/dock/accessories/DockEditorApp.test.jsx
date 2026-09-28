@@ -183,9 +183,9 @@ describe("DockEditorApp window behavior", () => {
     expect(classes).not.toContain("min-w-64");
     expect(classes).not.toContain("w-[400px]");
     expect(classes).toContain("rounded-md");
-    expect(classes).toContain("border-border/70");
-    expect(classes).toContain("bg-popover/95");
-    expect(classes).toContain("shadow-sm");
+    expect(classes).toContain("border-border");
+    expect(classes).toContain("bg-popover");
+    expect(classes).toContain("shadow-raised");
   });
 
   it("uses the same semantic surface as regular popovers", () => {
@@ -196,7 +196,7 @@ describe("DockEditorApp window behavior", () => {
     expect(classes).toContain("border-border");
     expect(classes).toContain("bg-popover");
     expect(classes).toContain("text-popover-foreground");
-    expect(classes).toContain("shadow-md");
+    expect(classes).toContain("shadow-raised");
     expect(classes).not.toContain("backdrop-blur-sm");
   });
 

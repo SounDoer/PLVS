@@ -126,7 +126,7 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
               "transition-opacity duration-100 delay-100",
               "text-[length:var(--ui-fs-axis)] text-foreground bg-popover",
               "border border-border rounded-xs px-2 py-1",
-              "whitespace-nowrap shadow-md",
+              "whitespace-nowrap shadow-raised",
               tipClassName
             )}
             style={{ left: position.left, top: position.top }}

@@ -9,6 +9,7 @@ import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
+import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
 import {
@@ -25,7 +26,7 @@ const LOUDNESS_Y_VIEWPORT = { absMin: -64, absMax: 0, minSpan: 12, scale: "linea
 const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 
 const LOUDNESS_HUD_BOX_POPOVER =
-  "rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)] shadow-sm";
+  "rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]";
 
 export function LoudnessHistoryChart({
   plotAreaRef,
@@ -347,18 +348,7 @@ export function LoudnessHistoryChart({
               No layers selected
             </div>
           ) : null}
-          {historyHover?.leftPct != null ? (
-            <div
-              className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
-              style={{ left: `${historyHover.leftPct}%` }}
-            />
-          ) : null}
-          {historyHover?.topPct != null ? (
-            <div
-              className="absolute left-0 right-0 h-0 -translate-y-1/2 border-t border-dashed border-muted-foreground/40"
-              style={{ top: `${historyHover.topPct}%` }}
-            />
-          ) : null}
+          <ChartCrosshair leftPct={historyHover?.leftPct} topPct={historyHover?.topPct} />
           {historyHover ? (
             <div
               className={cn(

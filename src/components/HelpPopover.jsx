@@ -88,7 +88,7 @@ function iconForHint(item) {
 
 function Keycap({ children }) {
   return (
-    <span className="inline-flex h-[1.45em] items-center justify-center rounded-xs border border-border bg-background px-1.5 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground shadow-sm">
+    <span className="inline-flex h-[1.45em] items-center justify-center rounded-xs border border-border bg-background px-1.5 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground">
       {children}
     </span>
   );
@@ -163,7 +163,7 @@ export function HelpPopover({ items }) {
               <div
                 className={cn(
                   groupIndex > 0 && "mt-1.5",
-                  "text-[0.78em] font-semibold text-muted-foreground/70"
+                  "text-[0.78em] font-semibold text-muted-foreground"
                 )}
               >
                 {group.title}

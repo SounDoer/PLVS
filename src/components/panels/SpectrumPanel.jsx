@@ -17,6 +17,7 @@ import {
 } from "../../math/spectrumMath.js";
 import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { AxisRail } from "./AxisRail.jsx";
+import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
@@ -951,7 +952,7 @@ export function SpectrumPanel() {
                               : "var(--ui-spectrum-primary)",
                         }}
                       />
-                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xs border border-border bg-secondary px-1 py-px font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-[color:var(--ui-text-annotation)] shadow-sm">
+                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xs border border-border bg-secondary px-1 py-px font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-[color:var(--ui-text-annotation)]">
                         {peak.freqLabel}
                       </div>
                     </div>
@@ -960,16 +961,9 @@ export function SpectrumPanel() {
               ) : null}
               {spectrumHover && !chartDragging ? (
                 <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
+                  <ChartCrosshair leftPct={spectrumHover.leftPct} topPct={spectrumHover.topPct} />
                   <div
-                    className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
-                    style={{ left: `${spectrumHover.leftPct}%` }}
-                  />
-                  <div
-                    className="absolute left-0 right-0 border-t border-dashed border-muted-foreground/40"
-                    style={{ top: `${spectrumHover.topPct}%` }}
-                  />
-                  <div
-                    className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-spectrum-primary)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-spectrum-primary)_22%,transparent)]"
+                    className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-spectrum-primary)]"
                     style={{
                       left: `${spectrumHover.leftPct}%`,
                       top: `${spectrumHover.topPct}%`,
@@ -979,7 +973,7 @@ export function SpectrumPanel() {
                           : "var(--ui-spectrum-primary)",
                     }}
                   />
-                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)] shadow-sm">
+                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.freqLabel}
                     </div>

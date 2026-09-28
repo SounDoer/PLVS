@@ -48,7 +48,7 @@ function PanelRow({ panelId }) {
           // popover; `min-w-0` scrolls a long value inside the field instead of pushing the
           // shrink-0 confirm/cancel buttons off-panel.
           size={1}
-          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm"
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
           autoFocus
         />
         <ManagementIconAction
@@ -182,7 +182,7 @@ export function ModulesPopoverContent() {
           </p>
         ) : null}
       </div>
-      <div className="mt-1 flex items-center gap-1 border-t border-border/30 pt-1">
+      <div className="mt-1 flex items-center gap-1 border-t border-border pt-1">
         <AddButton label="Add Module" className="min-w-0 flex-1" onClick={() => setAdding(true)} />
         <InlineConfirm
           onConfirm={resetWorkspace}

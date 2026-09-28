@@ -122,11 +122,11 @@ export function ThemePicker({
           type="button"
           aria-label="Theme"
           disabled={disabled}
-          className="flex min-h-6 items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] hover:border-border hover:bg-muted/50 disabled:opacity-40"
+          className="flex min-h-6 items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] hover:border-border hover:bg-muted/50 disabled:opacity-50"
         >
           {selected ? <ThemeSwatch theme={selected} /> : null}
           <span>{selected?.name ?? "Theme"}</span>
-          <ChevronDown className="size-[1.15em] shrink-0 opacity-50" />
+          <ChevronDown className="size-[1.15em] shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
       {/* Sized to the names it holds, capped at the width it used to be fixed at:

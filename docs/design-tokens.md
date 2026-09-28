@@ -53,6 +53,11 @@ measurement. Explanatory copy and supporting UI labels stay on `interface.text.s
 The 3D spectrogram cannot inherit a DOM text colour, so its `spectrogram.axisLabel` canvas role
 follows Annotation Text by default. Other axes and technical labels consume the CSS token directly.
 
+PLVS has three UI text colors: Primary (`foreground`), Secondary (`muted-foreground`), and
+Annotation (`--ui-text-annotation`). Disabled is a 50% state applied once to the whole control, not
+a fourth text color. Do not create local `/N` text or icon variants to manufacture extra hierarchy;
+if these roles stop being sufficient, add a new role through a separate design decision.
+
 ## Scaling with Interface Size
 
 Interface Size rewrites the whole `--ui-fs-*` scale (`control` goes 13 → 15 → 17), so anything sized
@@ -100,26 +105,30 @@ spent a long time at `0.35`.
 
 ## Shadows
 
-`interface.shadow` publishes `--ui-shadow-color`, and the `--shadow-*` ladder in `index.css` is
-redefined against it. Tailwind's own shadows are black at fixed alphas, tuned for black on white:
-they follow no theme and barely read on a dark one. The geometry is kept — that ladder is the
-elevation cue — and only the colour is swapped, so every `shadow-*` in the app follows the theme
-without a single component naming a colour.
+`interface.shadow` publishes `--ui-shadow-color`. Product surfaces use three elevation levels:
+
+- **Flat:** no shadow. Workspace panels, Dock modules, shell chrome, controls, ordinary cards and
+  chart HUDs live here.
+- **Raised:** `shadow-raised`. Tooltips, popovers, dropdowns, panel settings, drag previews, toasts
+  and the file-drop prompt use it.
+- **Modal:** `shadow-modal`. Settings, editors and dialogs use it.
+
+Raised and Modal own their geometry and strength in `index.css`; components do not choose from a
+shadow-size ladder. Both take their color from the Theme-owned Shadow role.
 
 A shadow has to be darker than what it falls on, so it cannot simply track a core colour: on a
 light theme the workspace is the palest thing there is. The recipe takes whichever of `workspace`
 and `text` is darker — workspace on a dark theme, text on a light one — which keeps it dark while
 still letting the theme tint it. The colour scheme sets the weight: 50% on dark, 18% on light.
-
-Tailwind rewrites the colour slot of a shadow value and discards anything wrapped around it, so a
-`color-mix()` written inside `@theme` is silently dropped. The one rung that wants less weight
-reads `--ui-shadow-subtle`, mixed in `:root` instead.
+Contrast outlines around the color picker and recording indicator are not elevation and remain
+local to those components.
 
 ## Structural Surface Opacity
 
 `--surface-opacity` is a product-composition input, not a Theme color. It is a percentage and
 defaults to `100%`. Apply it once to the fill at a structural boundary—Workspace, normal shell,
-panel, fullscreen, file-summary shell, or Dock shell—using the boundary's opaque semantic color.
+panel, fullscreen, file-summary shell, or Dock shell—through `--ui-surface-workspace`,
+`--ui-surface-panel`, or `--ui-surface-dock`.
 Do not apply it to a parent with CSS `opacity`, multiply it by a local fixed alpha, or route borders,
 controls, typography, focus/state marks, Canvas, or SVG measurement data through it. Raised
 overlays and editors remain opaque so their content has a stable reading surface.
@@ -130,9 +139,8 @@ expose the native window compositor without weakening the foreground information
 ## Modal Scrim
 
 `SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
-carried by every modal — the settings drawer, the close confirmation, the update dialog, and the
-two editors' discard confirmations. Callers add their own stacking order and, in the drawer's case,
-the blur.
+carried by every modal and by the file-drop target. Callers add only their own stacking order; the
+scrim does not blur the content behind it.
 
 The scrim is deliberately not a theme colour. Darkening is a direction, not a hue, and a value
 derived from the theme reverses it: the retired `effect.scrim` role tinted the workspace, which on
@@ -153,9 +161,28 @@ Two states, never mixed.
 an open menu's trigger, an engaged toggle. Dropdown items say "selected" with a check mark and
 use the neutral highlight for traversal, mouse and keyboard alike.
 
-`hover:bg-secondary/*` survives only on controls already filled with `--secondary` (the `secondary`
-button and badge variants), where hover shifts the control's own fill rather than tinting a
-transparent one. Contract tests in `src/components/ui/themeColorContract.test.js` hold both rules.
+Filled controls use opaque derived Hover colors (`--ui-primary-hover`, `--ui-secondary-hover`, and
+`--ui-destructive-hover`) rather than alpha modifiers. Resize rails use direct `border` while idle,
+`primary/70` on Hover, and full Primary while active or focused. A snapped divider is full Primary
+without a glow.
+
+## Borders, Tracks, and State
+
+`--border` and `--input` are already Theme effects with their own alpha. Consume them directly for
+ordinary borders, dividers, control outlines, range tracks, and unchecked switches; adding a local
+`/N` double-attenuates them. Border follows the color scheme and the Advanced Border override, not
+Core Colors.
+
+Compact and standard switches share the same state language: Input when unchecked, Primary when
+checked, and an opaque thumb. Inactive selectable marks are opaque hollow `muted-foreground`
+circles; active marks are solid Primary. A no-data state hides only unavailable data markers and
+does not dim the surrounding rail, axis, label, or control.
+
+Status decoration is flat. Live and Snapshot use solid semantic text/icons on opaque neutral
+surfaces. Success, Warning, and Danger badges also use an opaque neutral surface with a solid
+semantic foreground. Notices use an opaque neutral fill plus a solid semantic accent edge; invalid
+controls use a solid Danger border. Status colors do not create translucent washes, tinted borders,
+or glows.
 
 ## Color Tokens
 

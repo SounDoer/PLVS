@@ -37,7 +37,7 @@ export function PresetsPopoverContent({
   // Deliberately not per-preset: a preset that carries no dock state is no safer to apply than one
   // that does, and a rule that depended on the row's contents could not be read off the screen.
   const blocked = presets.blocked === true;
-  const blockedClass = "disabled:opacity-40";
+  const blockedClass = "disabled:opacity-50";
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [drafts, setDrafts] = useState({});
@@ -110,7 +110,7 @@ export function PresetsPopoverContent({
           // popover, and `min-w-0` lets a long value scroll inside the field instead of pushing the
           // shrink-0 Save button off-panel. The panel adapts to the saved names, not to typing.
           size={1}
-          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm transition-colors placeholder:text-muted-foreground"
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] transition-colors placeholder:text-muted-foreground"
         />
         <Button
           type="button"
@@ -154,14 +154,14 @@ export function PresetsPopoverContent({
                       // pushing the shrink-0 confirm/cancel buttons off-panel.
                       size={1}
                       autoFocus
-                      className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] shadow-sm"
+                      className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
                     />
                     <button
                       type="button"
                       aria-label="Save rename"
                       onClick={() => commitRename(preset.id)}
                       disabled={!(drafts[preset.id] ?? "").trim()}
-                      className="shrink-0 rounded-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="shrink-0 rounded-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
                     >
                       <Check className="size-[length:var(--ui-icon-management-action)]" />
                     </button>
@@ -209,8 +209,10 @@ export function PresetsPopoverContent({
                             : undefined
                         }
                         className={cn(
-                          "size-1.5 shrink-0 rounded-full",
-                          isActive ? "bg-primary" : "bg-muted-foreground/20"
+                          "size-1.5 shrink-0 rounded-full border",
+                          isActive
+                            ? "border-primary bg-primary"
+                            : "border-muted-foreground bg-transparent"
                         )}
                       />
                       <TruncatingLabel

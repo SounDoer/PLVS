@@ -31,7 +31,7 @@ export function ManagementIconAction({
         aria-label={label}
         disabled={disabled}
         className={cn(
-          "rounded-xs p-0.5 text-muted-foreground opacity-70 transition-colors hover:text-foreground hover:opacity-100 disabled:pointer-events-none disabled:opacity-30",
+          "rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
           className
         )}
         onClick={onClick}

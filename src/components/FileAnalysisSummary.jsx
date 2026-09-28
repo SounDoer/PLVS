@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 import { formatMetric, formatSessionMetadataLine } from "@/lib/fileAnalysisDisplay";
-import { SHELL_SURFACE_BASE, SHELL_SURFACE_SOFT_SHADOW } from "@/lib/shellLayout";
+import { SHELL_SURFACE_BASE } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
 import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
 
@@ -43,9 +43,8 @@ export function FileAnalysisSummary({
   return (
     <section
       className={cn(
-        "flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-border bg-[color:color-mix(in_srgb,var(--card)_var(--surface-opacity),transparent)] py-2 text-[length:var(--ui-fs-body)] text-popover-foreground",
-        SHELL_SURFACE_BASE,
-        SHELL_SURFACE_SOFT_SHADOW
+        "flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-border bg-[color:var(--ui-surface-panel)] py-2 text-[length:var(--ui-fs-body)] text-popover-foreground",
+        SHELL_SURFACE_BASE
       )}
     >
       {historyMenu}
@@ -121,7 +120,7 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
         <button
           type="button"
           className={cn(
-            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--border)_70%,transparent)] px-2.5 text-[length:var(--ui-fs-control)] font-medium shadow-sm transition-colors",
+            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 text-[length:var(--ui-fs-control)] font-medium transition-colors",
             copied
               ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]"
               : "bg-secondary text-secondary-foreground hover:bg-muted"

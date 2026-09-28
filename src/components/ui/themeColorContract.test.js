@@ -75,11 +75,30 @@ describe("theme color contract", () => {
   });
 
   it("keeps one neutral hover for every transparent-base control", () => {
-    // `hover:bg-secondary/*` survives only where the control is already filled
-    // with it and hover shifts its own fill.
+    // Filled controls use opaque derived colours; transparent controls use muted/50.
     const offenders = Object.entries(appSources())
       .filter(([path]) => !/(?:^|\/)(?:badge|button)\.jsx$/.test(path))
       .filter(([, source]) => /hover:bg-secondary/.test(source))
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("does not attenuate ordinary Border, Input, or semantic text roles a second time", () => {
+    const offenders = Object.entries(appSources())
+      .filter(([, source]) =>
+        /(?:border-(?:border|input)|text-(?:foreground|muted-foreground|popover-foreground))\/[0-9]+/.test(
+          source
+        )
+      )
+      .map(([path]) => path);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("uses only semantic product elevations", () => {
+    const offenders = Object.entries(appSources())
+      .filter(([, source]) => /shadow-(?:xs|sm|md|lg|xl|2xl)(?:\s|"|')/.test(source))
       .map(([path]) => path);
 
     expect(offenders).toEqual([]);
@@ -163,24 +182,12 @@ describe("theme color contract", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("casts shadows in a colour the theme owns", () => {
-    // Tailwind's own shadows are black at a fixed alpha. The ladder is redefined
-    // against --ui-shadow-color, so every shadow-* utility in the app follows the
-    // theme without any component naming a colour.
+  it("publishes semantic Raised and Modal shadows in a colour the theme owns", () => {
     const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
     const theme = css.match(/@theme[^{]*\{[\s\S]*?\n\}/)?.[0] ?? "";
 
-    for (const rung of [
-      "--shadow-xs",
-      "--shadow-sm",
-      "--shadow-md",
-      "--shadow-lg",
-      "--shadow-xl",
-    ]) {
-      expect(theme).toContain(rung);
-    }
-    expect(theme).toMatch(/--shadow-sm:[^;]*var\(--ui-shadow-color\)/);
-    expect(theme).toMatch(/--shadow-xs:[^;]*var\(--ui-shadow-subtle\)/);
+    expect(theme).toMatch(/--shadow-raised:[^;]*var\(--ui-shadow-color\)/);
+    expect(theme).toMatch(/--shadow-modal:[^;]*var\(--ui-shadow-color\)/);
   });
 
   it("uses the destructive foreground token for destructive badges", () => {

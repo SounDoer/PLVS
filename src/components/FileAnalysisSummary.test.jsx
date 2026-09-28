@@ -20,7 +20,7 @@ const menuProps = {
 
 describe("FileAnalysisSummary", () => {
   it("routes the file-mode summary shell through surface opacity", () => {
-    expect(source).toContain("var(--card)_var(--surface-opacity)");
+    expect(source).toContain("var(--ui-surface-panel)");
     expect(source).toContain("border-border");
     expect(source).not.toContain("var(--border)_var(--surface-opacity)");
   });

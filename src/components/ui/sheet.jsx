@@ -4,7 +4,7 @@ import { cva } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { SCRIM_CLASS } from "./surfaceStyles.js";
+import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "./surfaceStyles.js";
 
 function Sheet(props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -29,7 +29,6 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
     className={cn(
       SCRIM_CLASS,
       "z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:fade-in",
-      "backdrop-blur-sm",
       className
     )}
     {...props}
@@ -38,7 +37,7 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 flex flex-col gap-0 bg-card text-card-foreground shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  `fixed z-50 flex flex-col gap-0 ${MODAL_SURFACE_CLASS} transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500`,
   {
     variants: {
       side: {
@@ -71,7 +70,7 @@ const SheetContent = React.forwardRef(
         {hideClose ? null : (
           <SheetPrimitive.Close
             type="button"
-            className="ring-offset-background absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 disabled:pointer-events-none"
+            className="ring-offset-background absolute top-4 right-4 rounded-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
           >
             <X className="size-[length:var(--ui-icon-shell-action)]" />
             <span className="sr-only">Close</span>

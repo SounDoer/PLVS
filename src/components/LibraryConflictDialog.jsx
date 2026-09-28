@@ -34,7 +34,7 @@ export function LibraryConflictDialog() {
     <Dialog.Root open={conflict !== null}>
       <Dialog.Portal>
         <Dialog.Overlay className={cn(SCRIM_CLASS, "z-[90]")} />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-[91] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-4 shadow-xl">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-[91] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-4 shadow-modal">
           <Dialog.Title className="font-semibold">{label} Changed Elsewhere</Dialog.Title>
           <Dialog.Description className="mt-2 text-[length:var(--ui-fs-control)] text-muted-foreground">
             Another PLVS workbench saved this item first. Reload its saved version, or keep your

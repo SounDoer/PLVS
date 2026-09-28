@@ -193,7 +193,7 @@ export function ThemeEditor({
         ref={ref}
         role="dialog"
         aria-label="Theme editor"
-        className="fixed z-50 flex max-h-[80vh] w-[var(--ui-editor-w)] flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
+        className="fixed z-50 flex max-h-[80vh] w-[var(--ui-editor-w)] flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-modal"
         style={{ left: pos.x, top: pos.y }}
       >
         <div
@@ -220,7 +220,7 @@ export function ThemeEditor({
                   }
                 }}
                 onBlur={commitName}
-                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm"
+                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}
@@ -257,7 +257,7 @@ export function ThemeEditor({
               <div
                 role="group"
                 aria-label="Theme appearance"
-                className="flex rounded-md border border-border bg-muted/40 p-0.5"
+                className="flex rounded-md border border-border bg-muted p-0.5"
                 onPointerDown={(event) => event.stopPropagation()}
               >
                 {["dark", "light"].map((scheme) => (
@@ -279,7 +279,7 @@ export function ThemeEditor({
                 disabled={!canUndo}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={onUndo}
-                className={`${HEADER_ACTION_CLASS} disabled:opacity-30`}
+                className={`${HEADER_ACTION_CLASS} disabled:opacity-50`}
               >
                 <Undo2 className="size-[length:var(--ui-icon-management-action)]" />
               </button>
@@ -290,7 +290,7 @@ export function ThemeEditor({
                 disabled={!canRedo}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={onRedo}
-                className={`${HEADER_ACTION_CLASS} disabled:opacity-30`}
+                className={`${HEADER_ACTION_CLASS} disabled:opacity-50`}
               >
                 <Redo2 className="size-[length:var(--ui-icon-management-action)]" />
               </button>
@@ -309,7 +309,7 @@ export function ThemeEditor({
         </div>
 
         {stale ? (
-          <p className="border-b border-warning/30 bg-warning/10 px-3 py-2 text-[length:var(--ui-fs-control)] text-warning">
+          <p className="border-l-2 border-[color:var(--ui-feedback-warning)] bg-secondary px-3 py-2 text-[length:var(--ui-fs-control)] text-foreground">
             This Theme changed in another PLVS workbench. Saving will ask whether to reload it or
             keep this draft as a copy.
           </p>

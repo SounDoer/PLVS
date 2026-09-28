@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { CAPTION_TEXT } from "@/lib/shellLayout";
 import { axisLabelClass } from "@/lib/axisLabelClasses.js";
 
-const RAIL_HOVER = "hover:bg-[color:color-mix(in_srgb,var(--muted)_34%,transparent)]";
+const RAIL_HOVER = "hover:bg-muted/50";
 
 // The chart display area insets its content at the top; a rail whose plot does that has to match,
 // or its labels name positions the plot draws elsewhere. Passing `inset` is how a rail declares it

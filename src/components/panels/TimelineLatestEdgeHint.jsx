@@ -1,5 +1,8 @@
 import { cn } from "@/lib/utils";
 
+const LATEST_EDGE_FADE_CLASS = "from-background/60";
+const LATEST_EDGE_LINE_CLASS = "border-muted-foreground/45";
+
 export function TimelineLatestEdgeHint({ active, className }) {
   if (!active) return null;
 
@@ -9,8 +12,15 @@ export function TimelineLatestEdgeHint({ active, className }) {
       aria-hidden="true"
       className={cn("pointer-events-none absolute inset-y-0 right-0 z-20 w-3", className)}
     >
-      <div className="absolute inset-y-0 right-0 w-3 bg-gradient-to-l from-background/60 to-transparent" />
-      <div className="absolute inset-y-0 right-0 border-r border-dashed border-muted-foreground/45" />
+      <div
+        className={cn(
+          "absolute inset-y-0 right-0 w-3 bg-gradient-to-l to-transparent",
+          LATEST_EDGE_FADE_CLASS
+        )}
+      />
+      <div
+        className={cn("absolute inset-y-0 right-0 border-r border-dashed", LATEST_EDGE_LINE_CLASS)}
+      />
     </div>
   );
 }

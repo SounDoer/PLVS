@@ -27,36 +27,30 @@ describe("SourceTransportCluster", () => {
   });
 
   it("uses semantic borders instead of hard-coded white tints", () => {
-    expect(source).toContain("var(--border)");
+    expect(source).toContain("border-border");
     expect(source).not.toContain("border-white/");
   });
 
   it("keeps a solid primary accent for the ready action segment", () => {
-    expect(source).toContain("bg-primary text-foreground");
+    expect(source).toContain("bg-primary text-primary-foreground");
     expect(source).not.toContain("bg-primary/15 text-primary");
-    expect(source).not.toContain("text-primary-foreground");
     expect(source).not.toContain("text-white");
     expect(source).not.toContain("var(--primary)_12%,transparent");
   });
 
   it("keeps ready chrome readable at minimum surface opacity", () => {
-    expect(source).toContain("var(--secondary)_55%,transparent");
-    expect(source).toContain("var(--border)_70%,transparent");
+    expect(source).toContain("border border-border bg-secondary");
+    expect(source).not.toContain("var(--secondary)_55%,transparent");
+    expect(source).not.toContain("var(--border)_70%,transparent");
     expect(source).not.toContain("var(--primary)_var(--panel-opacity-control)");
     expect(source).not.toContain("var(--secondary)_var(--panel-opacity-control)");
   });
 
   it("keeps live and snapshot chrome readable at minimum surface opacity", () => {
-    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-live)_8%,transparent)");
-    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-live)_12%,transparent)");
-    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-snapshot)_8%,transparent)");
-    expect(source).toContain("color-mix(in_srgb,var(--ui-activity-snapshot)_12%,transparent)");
-    expect(source).not.toContain(
-      "var(--ui-activity-live)_8%,transparent)_var(--panel-opacity-control)"
-    );
-    expect(source).not.toContain(
-      "var(--ui-activity-snapshot)_8%,transparent)_var(--panel-opacity-control)"
-    );
+    expect(source).toContain("bg-secondary text-[color:var(--ui-activity-live)]");
+    expect(source).toContain("bg-secondary text-[color:var(--ui-activity-snapshot)]");
+    expect(source).not.toContain("ui-activity-live)_8%,transparent");
+    expect(source).not.toContain("ui-activity-snapshot)_8%,transparent");
   });
 
   it("uses compact header control sizing", () => {

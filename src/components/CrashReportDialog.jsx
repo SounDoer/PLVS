@@ -74,7 +74,7 @@ export function CrashReportDialog({
         role="dialog"
         aria-modal="true"
         aria-label="PLVS Quit Unexpectedly"
-        className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-modal"
       >
         <header className="border-b border-border px-4 py-3">
           <h2 className="text-[length:var(--ui-fs-panel-title)] font-semibold">
@@ -120,7 +120,7 @@ export function CrashReportDialog({
           {showPreview ? (
             <pre
               aria-label="Crash report payload"
-              className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-muted/40 p-3 font-mono text-[length:var(--ui-fs-axis)]"
+              className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-muted p-3 font-mono text-[length:var(--ui-fs-axis)]"
             >
               {JSON.stringify(request, null, 2)}
             </pre>

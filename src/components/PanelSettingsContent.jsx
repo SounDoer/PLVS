@@ -30,6 +30,7 @@ import { AXIS_VIEWPORTS, axisKindForRangeRow } from "@/workspace/axisViewports.j
 import { HIST_SAMPLE_SEC } from "@/hooks/useLoudnessHistory.js";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { Switch } from "@/components/ui/switch";
+import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 import { HoverTip, useHoverTip } from "@/components/HoverTip.jsx";
 
@@ -39,21 +40,19 @@ const SETTINGS_SELECT_TRIGGER_CLASS =
 const SETTINGS_VALUE_IDLE_CLASS =
   "border-transparent bg-transparent hover:border-border hover:bg-muted/50 hover:text-foreground";
 
-const SETTINGS_VALUE_OPEN_CLASS = "border-primary/55 bg-secondary/30 text-foreground";
+const SETTINGS_VALUE_OPEN_CLASS = "border-primary bg-secondary text-foreground";
 
 const SETTINGS_DETAIL_SURFACE_CLASS =
-  "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden rounded-md bg-popover/35 p-0.5 ring-1 ring-border/30";
+  "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden rounded-md border border-border bg-secondary p-0.5";
 
 const SETTINGS_CHOICE_ROW_CLASS =
   "flex w-full min-w-0 items-center gap-1.5 rounded-xs px-1.5 py-0.5 text-left text-[length:var(--ui-fs-control)] text-popover-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground";
 
-const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary/85";
+const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary";
 
-const SETTINGS_SWITCH_CLASS =
-  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30";
+const SETTINGS_SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
-const SETTINGS_SWITCH_THUMB_CLASS =
-  "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
+const SETTINGS_SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
 export function SettingsGroup({ children }) {
   return <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5">{children}</div>;
@@ -103,7 +102,7 @@ export function SettingsResetButton({ ariaLabel, atDefault, onReset }) {
       tabIndex={atDefault ? -1 : 0}
       onClick={onReset}
       className={cn(
-        "rounded-xs text-muted-foreground/70 outline-none transition-colors hover:text-foreground",
+        "rounded-xs text-muted-foreground outline-none transition-colors hover:text-foreground",
         atDefault && "invisible"
       )}
     >
@@ -160,7 +159,7 @@ export function SettingsSlider({
     side: "top",
     align: "end",
     tipClassName:
-      "rounded-md border-border px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)] tabular-nums text-popover-foreground shadow-sm",
+      "rounded-md border-border px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)] tabular-nums text-popover-foreground",
   });
   const draftPercent = rangePercent(draftValue, min, max);
 
@@ -218,7 +217,7 @@ export function SettingsSlider({
         onBlur={hideTooltip}
         onChange={(event) => handleChange(event.target.value)}
         {...releaseHandlers}
-        className="plvs-range w-16 opacity-75 transition-opacity hover:opacity-100 focus-visible:opacity-100"
+        className="plvs-range w-16"
         style={{ "--range-pct": `${draftPercent}%` }}
       />
       {tooltipNode}
@@ -256,7 +255,7 @@ export function AxisLinkToggle({ kindId, label, tipLabel }) {
         onClick={() => viewport.setLinked(!viewport.linked)}
         className={cn(
           "flex shrink-0 items-center justify-center rounded-xs outline-none transition-colors",
-          viewport.linked ? "text-foreground" : "text-muted-foreground/50 hover:text-foreground"
+          viewport.linked ? "text-foreground" : "text-muted-foreground hover:text-foreground"
         )}
       >
         <Icon className="size-[length:var(--ui-icon-panel-action)]" />
@@ -379,7 +378,7 @@ export function SettingsRangeInput({
   const minWidthCh = Math.min(7, Math.max(4.5, draftMin.length + 1.5));
   const maxWidthCh = Math.min(7, Math.max(4.5, draftMax.length + 1.5));
   const inputClass =
-    "h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors";
+    "h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors";
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -395,7 +394,7 @@ export function SettingsRangeInput({
         className={inputClass}
         style={{ width: `${minWidthCh}ch` }}
       />
-      <span className="text-muted-foreground/60">-</span>
+      <span className="text-muted-foreground">-</span>
       <input
         aria-label={maxAriaLabel}
         type="text"
@@ -467,7 +466,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
             event.currentTarget.blur();
           }
         }}
-        className="h-6 rounded-md border border-border/60 bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors"
+        className="h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors"
         style={{ width: `${widthCh}ch` }}
       />
       {suffix ? <span className="text-[color:var(--ui-text-annotation)]">{suffix}</span> : null}
@@ -487,7 +486,7 @@ export function SettingsThresholdInputs({ ariaLabel, warning, critical, min, max
         max={critical}
         onCommit={(nextWarning) => onCommit(nextWarning, critical)}
       />
-      <span className="text-muted-foreground/60">/</span>
+      <span className="text-muted-foreground">/</span>
       <SettingsNumberInput
         ariaLabel={`${ariaLabel} critical`}
         value={critical}
@@ -574,7 +573,7 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) 
       )}
     >
       <span className="min-w-0 truncate">{summary}</span>
-      <DisclosureIcon aria-hidden="true" className="size-[1em] text-muted-foreground/60" />
+      <DisclosureIcon aria-hidden="true" className="size-[1em] text-muted-foreground" />
     </button>
   );
 }
@@ -646,7 +645,7 @@ export function SettingsSelect({
                           [opt.group]: current[opt.group] !== true,
                         }))
                       }
-                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xs px-2 pb-0.5 pt-1 text-left text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground/60 outline-none transition-colors hover:bg-muted/50 hover:text-muted-foreground"
+                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xs px-2 pb-0.5 pt-1 text-left text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
                     >
                       <span className="min-w-0 truncate">{opt.group}</span>
                       {groupCollapsed ? (
@@ -656,7 +655,7 @@ export function SettingsSelect({
                       )}
                     </button>
                   ) : (
-                    <div className="min-w-0 truncate px-2 pb-0.5 pt-1 text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground/60">
+                    <div className="min-w-0 truncate px-2 pb-0.5 pt-1 text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground">
                       {opt.group}
                     </div>
                   )
@@ -767,7 +766,7 @@ function SortableStatRow({ id, label, checked, onToggle }) {
       <span
         aria-hidden="true"
         onPointerDown={(event) => controls.start(event)}
-        className="flex cursor-grab touch-none items-center text-muted-foreground/25 transition-opacity group-hover:text-muted-foreground/70"
+        className="flex cursor-grab touch-none items-center text-muted-foreground transition-colors group-hover:text-foreground"
       >
         <GripVertical className="size-3.5" />
       </span>
@@ -816,7 +815,7 @@ export function SortableStatsList({
         ))}
       </Reorder.Group>
       {showReset ? (
-        <div className="mt-0.5 border-t border-border/30 pt-0.5">
+        <div className="mt-0.5 border-t border-border pt-0.5">
           <InlineConfirm
             onConfirm={onReset}
             confirmLabel="Confirm reset stats"
@@ -826,7 +825,7 @@ export function SortableStatsList({
                 type="button"
                 aria-label="Reset stats"
                 onClick={arm}
-                className="w-auto rounded-xs px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground/70 outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
+                className="w-auto rounded-xs px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
               >
                 Reset
               </button>

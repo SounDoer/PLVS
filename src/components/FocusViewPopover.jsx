@@ -103,7 +103,7 @@ export function FocusViewPopoverContent({
       ) : null}
       {showDock && supportsDockMode() ? (
         <>
-          <div className="mx-2 border-t border-border/60" />
+          <div className="mx-2 border-t border-border" />
           <div className="flex items-center justify-between gap-3 rounded-xs px-2 py-1.5">
             <Label
               htmlFor="focus-view-dock"
@@ -125,7 +125,7 @@ export function FocusViewPopoverContent({
               </SelectTrigger>
               <SelectContent
                 align="end"
-                className="min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
+                className="min-w-[var(--radix-select-trigger-width)] border-border [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
               >
                 <SelectItem value="off">Off</SelectItem>
                 <SelectItem value="top">Top</SelectItem>

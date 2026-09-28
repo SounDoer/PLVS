@@ -4,7 +4,15 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { SCRIM_CLASS } from "./surfaceStyles.js";
+import {
+  DOCK_SURFACE_CLASS,
+  MODAL_SURFACE_CLASS,
+  PANEL_SETTINGS_SURFACE_CLASS,
+  PANEL_SURFACE_CLASS,
+  POPOVER_SURFACE_CLASS,
+  SCRIM_CLASS,
+  WORKSPACE_SURFACE_CLASS,
+} from "./surfaceStyles.js";
 
 const SRC = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -35,5 +43,30 @@ describe("scrim", () => {
       .filter((path) => !path.endsWith("surfaceStyles.js"));
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("surface roles", () => {
+  it("keeps readable raised and modal surfaces opaque", () => {
+    for (const className of [POPOVER_SURFACE_CLASS, PANEL_SETTINGS_SURFACE_CLASS]) {
+      expect(className).toContain("bg-popover");
+      expect(className).toContain("shadow-raised");
+      expect(className).not.toMatch(/bg-popover\//);
+      expect(className).not.toContain("backdrop-blur");
+    }
+
+    expect(MODAL_SURFACE_CLASS).toContain("bg-card");
+    expect(MODAL_SURFACE_CLASS).toContain("shadow-modal");
+    expect(MODAL_SURFACE_CLASS).not.toMatch(/bg-card\//);
+  });
+
+  it("names each structural Surface Opacity boundary", () => {
+    expect(WORKSPACE_SURFACE_CLASS).toContain("--ui-surface-workspace");
+    expect(PANEL_SURFACE_CLASS).toContain("--ui-surface-panel");
+    expect(DOCK_SURFACE_CLASS).toContain("--ui-surface-dock");
+    for (const className of [WORKSPACE_SURFACE_CLASS, PANEL_SURFACE_CLASS, DOCK_SURFACE_CLASS]) {
+      expect(className).not.toContain("color-mix");
+      expect(className).not.toContain("opacity-");
+    }
   });
 });

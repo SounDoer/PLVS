@@ -9,7 +9,7 @@ export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false 
   return (
     <header
       data-panel-settings-header
-      className="flex min-h-7 shrink-0 items-center gap-1 border-b border-border/30 px-1.5 py-1"
+      className="flex min-h-7 shrink-0 items-center gap-1 border-b border-border px-1.5 py-1"
     >
       {onBack ? (
         <ManagementIconAction

@@ -5,6 +5,7 @@ import { DockHeightResizeHandle } from "./DockHeightResizeHandle.jsx";
 import { DockPanelResizeHandle } from "./DockPanelResizeHandle.jsx";
 import { dockHeightMode } from "./dockSizing.js";
 import { RecordingIndicator } from "../components/RecordingIndicator.jsx";
+import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
 
 /** The resizable meter strip. Accessory chrome lives in sibling windows. */
 export function DockStrip({
@@ -32,10 +33,10 @@ export function DockStrip({
       data-height-mode={heightMode}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
-      className="dock-strip relative h-screen w-screen select-none overflow-hidden text-foreground"
-      style={{
-        background: "color-mix(in srgb, var(--popover) var(--surface-opacity), transparent)",
-      }}
+      className={cn(
+        "dock-strip relative h-screen w-screen select-none overflow-hidden text-foreground",
+        DOCK_SURFACE_CLASS
+      )}
     >
       <DockHeightResizeHandle
         edge={edge}
@@ -43,7 +44,7 @@ export function DockStrip({
         disabled={heightResizeDisabled}
         onHeightChange={onHeightChange}
       />
-      <div className="flex h-full min-w-0 items-stretch divide-x divide-border/40">
+      <div className="flex h-full min-w-0 items-stretch divide-x divide-border">
         {panels.map((panel, index) => {
           const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
           const entry = DOCK_MODULE_REGISTRY[dockModuleId];

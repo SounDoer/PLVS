@@ -785,7 +785,7 @@ describe("SettingsPanel", () => {
     );
     expect(screen.getByText(/combo unavailable/i)).toBeTruthy();
     expect(screen.getByRole("switch", { name: /Global Shortcut/i }).className).toContain(
-      "ring-destructive"
+      "border-destructive"
     );
   });
 

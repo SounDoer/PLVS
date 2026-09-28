@@ -1,6 +1,9 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const SELECTION_EDGE_FADE_PERCENT = 22;
+const SELECTION_EDGE_LINE_CLASS = "border-current/65";
+
 /** Points toward the globally selected sample when it is outside this panel's time window. */
 export function TimelineSelectionEdgeHint({
   direction,
@@ -28,13 +31,14 @@ export function TimelineSelectionEdgeHint({
         className="absolute inset-0"
         style={{
           background: pointsLeft
-            ? "linear-gradient(to right, color-mix(in srgb, currentColor 22%, transparent), transparent)"
-            : "linear-gradient(to left, color-mix(in srgb, currentColor 22%, transparent), transparent)",
+            ? `linear-gradient(to right, color-mix(in srgb, currentColor ${SELECTION_EDGE_FADE_PERCENT}%, transparent), transparent)`
+            : `linear-gradient(to left, color-mix(in srgb, currentColor ${SELECTION_EDGE_FADE_PERCENT}%, transparent), transparent)`,
         }}
       />
       <div
         className={cn(
-          "absolute inset-y-0 border-dashed border-current/65",
+          "absolute inset-y-0 border-dashed",
+          SELECTION_EDGE_LINE_CLASS,
           pointsLeft ? "left-0 border-l" : "right-0 border-r"
         )}
       />

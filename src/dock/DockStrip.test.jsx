@@ -49,7 +49,8 @@ function renderStrip(props = {}) {
 describe("DockStrip", () => {
   it("applies surface opacity once to the Dock shell", () => {
     renderStrip();
-    expect(screen.getByTestId("dock-strip").style.background).toContain("--surface-opacity");
+    expect(screen.getByTestId("dock-strip").className).toContain("--ui-surface-dock");
+    expect(screen.getByTestId("dock-strip").style.background).toBe("");
     for (const module of screen.getAllByTestId("dock-module")) {
       expect(module.style.opacity).toBe("");
     }

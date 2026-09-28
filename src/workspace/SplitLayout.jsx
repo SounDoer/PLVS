@@ -1,6 +1,7 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Minimize2, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WORKSPACE_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
@@ -233,11 +234,18 @@ function SplitDivider({
     <div
       ref={ref}
       className={cn(
-        "shrink-0 transition-[background-color,box-shadow] hover:bg-primary/20 active:bg-primary/30 data-[snapped=true]:bg-primary/40 data-[snapped=true]:shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_45%,transparent)]",
+        "group flex shrink-0 items-center justify-center",
         isH ? "w-1.5 cursor-ew-resize" : "h-1.5 cursor-ns-resize"
       )}
       onMouseDown={handleMouseDown}
-    />
+    >
+      <div
+        className={cn(
+          "bg-border transition-colors group-hover:bg-primary/70 group-active:bg-primary group-data-[snapped=true]:bg-primary",
+          isH ? "h-full w-px" : "h-px w-full"
+        )}
+      />
+    </div>
   );
 }
 
@@ -356,11 +364,7 @@ function FullscreenOverlay() {
     <div
       data-visual-panel-id={fullscreenId}
       data-visual-capture-ready="true"
-      className="absolute inset-0 z-50 flex flex-col outline-none"
-      style={{
-        backgroundColor:
-          "color-mix(in srgb, var(--background) var(--surface-opacity), transparent)",
-      }}
+      className={cn("absolute inset-0 z-50 flex flex-col outline-none", WORKSPACE_SURFACE_CLASS)}
       onKeyDown={(e) => e.key === "Escape" && setFullscreen(null)}
       tabIndex={-1}
     >

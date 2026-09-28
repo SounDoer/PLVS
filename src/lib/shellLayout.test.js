@@ -10,7 +10,9 @@ import {
   PANEL_HEADER_TITLE_GROUP,
   SHELL_HEADER_ACTIONS,
   SHELL_FOOTER,
+  SHELL_FOOTER_OVERLAY,
   SHELL_HEADER,
+  SHELL_HEADER_OVERLAY,
   W_LOUDNESS_Y_AXIS,
   W_PEAK_TICKS,
   W_SPECTRUM_Y_AXIS,
@@ -68,10 +70,18 @@ describe("shellLayout token names", () => {
 
   it("shell structure uses the surface opacity while borders stay semantic", () => {
     for (const className of [SHELL_HEADER, SHELL_FOOTER]) {
-      expect(className).toContain("--surface-opacity");
+      expect(className).toContain("--ui-surface-panel");
       expect(className).toContain("border-border");
       expect(className).not.toContain("--ui-surface-highlight");
       expect(className).not.toMatch(/rgba\(/);
+    }
+  });
+
+  it("uses one semantic elevation for auto-revealed shell overlays", () => {
+    for (const className of [SHELL_HEADER_OVERLAY, SHELL_FOOTER_OVERLAY]) {
+      expect(className).toContain("bg-popover");
+      expect(className).toContain("shadow-raised");
+      expect(className).not.toContain("--ui-overlay-shadow");
     }
   });
 

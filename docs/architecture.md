@@ -230,8 +230,9 @@ separate View setting `surfaceOpacity` publishes
 `--surface-opacity` and is applied only where PLVS composes structural fills: the Workspace, normal
 shell surfaces, panels, fullscreen, file-summary shell, and Dock shell. Borders, controls, text,
 focus/state marks, and Canvas/SVG measurement data do not inherit that opacity. Floating overlays
-and editors use opaque Raised surfaces. Persisted `panelOpacity` values are migrated to the renamed
-field when Settings, Presets, or configuration profiles are read.
+use opaque Raised surfaces; editors and dialogs use opaque Modal surfaces. Persisted `panelOpacity`
+values are migrated to the renamed field when Settings, Presets, or configuration profiles are
+read.
 
 The old `builtinThemes.js`, `buildThemeTokens.js` and `legacy/resolveV1Theme.js` are not part of the
 runtime theme pipeline; they are kept only for the frozen V1 migration, fixtures and regression tests.

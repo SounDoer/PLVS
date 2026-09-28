@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { Maximize2, Pin, PinOff, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PANEL_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import {
   PANEL_HEADER_ACTION_BUTTON,
   PANEL_HEADER_ACTIONS,
@@ -254,7 +255,8 @@ export function LeafView({ node, path, style }) {
       data-visual-panel-id={activeTab}
       data-visual-capture-ready={activeTab ? "true" : undefined}
       className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden rounded-md border border-border shadow-sm transition-[border-color,box-shadow] duration-150",
+        "relative flex min-h-0 flex-col overflow-hidden rounded-md border border-border transition-[border-color,box-shadow] duration-150",
+        PANEL_SURFACE_CLASS,
         isPanelHoverHighlighted && "border-primary/70 ring-2 ring-primary/60 ring-offset-0",
         isDragging &&
           (zoneHint === "above" || zoneHint === "below") &&
@@ -265,7 +267,6 @@ export function LeafView({ node, path, style }) {
       )}
       style={{
         ...style,
-        backgroundColor: "color-mix(in srgb, var(--card) var(--surface-opacity), transparent)",
         ...(slotPinnedSize
           ? {
               width: slotPinnedSize.width,

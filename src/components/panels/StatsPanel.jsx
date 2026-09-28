@@ -56,8 +56,8 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, w
           data-testid="dialogue-active-dot"
           data-active={active ? "true" : "false"}
           className={cn(
-            "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-            active ? "bg-foreground" : "bg-muted-foreground/30"
+            "inline-block h-1.5 w-1.5 shrink-0 rounded-full border",
+            active ? "border-foreground bg-foreground" : "border-muted-foreground bg-transparent"
           )}
         />
       )}

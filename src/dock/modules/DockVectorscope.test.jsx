@@ -114,6 +114,8 @@ describe("DockVectorscope", () => {
     expect(screen.getByText("0")).toBeTruthy();
     expect(screen.getByTestId("dock-vectorscope-correlation-rail").className).toContain("w-full");
     const rail = screen.getByTestId("dock-vectorscope-correlation-rail");
+    expect(rail.className).toContain("--ui-vectorscope-grid-stroke");
+    expect(rail.className).not.toContain("opacity-");
     const readout = screen.getByText("Correlation").parentElement;
     expect(readout.className).toContain("justify-center");
     expect(rail.compareDocumentPosition(readout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -149,6 +151,9 @@ describe("DockVectorscope", () => {
     renderWith({ path: "M 20 20", correlation: 0, pairX: 0, pairY: 1 }, [-Infinity, -Infinity]);
     expect(screen.getByText("-")).toBeTruthy();
     expect(screen.queryByTestId("dock-vectorscope-correlation-marker")).toBeNull();
+    expect(screen.getByTestId("dock-vectorscope-correlation-rail").className).not.toContain(
+      "opacity-"
+    );
   });
 
   it.each([

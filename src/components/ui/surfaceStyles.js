@@ -9,7 +9,14 @@
  */
 export const SCRIM_CLASS = "fixed inset-0 bg-black/60";
 
-export const POPOVER_SURFACE_CLASS =
-  "rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none";
+export const WORKSPACE_SURFACE_CLASS = "bg-[color:var(--ui-surface-workspace)]";
+export const PANEL_SURFACE_CLASS = "bg-[color:var(--ui-surface-panel)]";
+export const DOCK_SURFACE_CLASS = "bg-[color:var(--ui-surface-dock)]";
 
-export const PANEL_SETTINGS_SURFACE_CLASS = "rounded-md border-border/70 bg-popover/95 shadow-sm";
+export const POPOVER_SURFACE_CLASS =
+  "rounded-md border border-border bg-popover text-popover-foreground shadow-raised outline-none";
+
+export const PANEL_SETTINGS_SURFACE_CLASS =
+  "rounded-md border border-border bg-popover text-popover-foreground shadow-raised";
+
+export const MODAL_SURFACE_CLASS = "border border-border bg-card text-card-foreground shadow-modal";

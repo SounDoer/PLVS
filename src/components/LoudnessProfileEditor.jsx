@@ -34,7 +34,7 @@ const DEFAULT_RULE_METRIC = "integrated";
 const TRIGGER_CLASS =
   "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-muted/50";
 const CONTENT_CLASS =
-  "min-w-[var(--radix-select-trigger-width)] border-border/50 [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
+  "min-w-[var(--radix-select-trigger-width)] border-border [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
 /// Reference's row and the rule list are two separate grid instances -- the rule list needs its own
 /// bounding box for the drag-reorder row-height math (see `usePointerReorder`), which Reference must
@@ -414,7 +414,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         ref={ref}
         role="dialog"
         aria-label="Loudness Profile editor"
-        className="fixed z-50 flex max-h-[80vh] w-[var(--ui-editor-w)] flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
+        className="fixed z-50 flex max-h-[80vh] w-[var(--ui-editor-w)] flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-modal"
         style={{ left: pos.x, top: pos.y }}
       >
         <div
@@ -441,7 +441,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
                   }
                 }}
                 onBlur={commitName}
-                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold shadow-sm"
+                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}
@@ -490,7 +490,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
         </div>
 
         {draft.stale ? (
-          <p className="border-b border-warning/30 bg-warning/10 px-3 py-2 text-[length:var(--ui-fs-control)] text-warning">
+          <p className="border-l-2 border-[color:var(--ui-feedback-warning)] bg-secondary px-3 py-2 text-[length:var(--ui-fs-control)] text-foreground">
             This Loudness Profile changed in another PLVS workbench. Saving will ask whether to
             reload it or keep this draft as a copy.
           </p>
@@ -548,7 +548,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
             </p>
           )}
 
-          <div className="border-t border-border/40 pt-1">
+          <div className="border-t border-border pt-1">
             <AddButton label="Add Rule" onClick={addRule} />
           </div>
         </div>

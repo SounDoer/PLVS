@@ -48,17 +48,9 @@
      and small controls, surfaces and standard controls, floating windows. sm and
      lg stay defined because dropping them would hand those utilities back to
      Tailwind's own defaults, which do not follow --radius at all. */
-  /* Tailwind's own shadows are black at fixed alphas, tuned for black on white,
-     so they neither follow the theme nor read on a dark one. Keep its geometry
-     -- that is the elevation ladder -- and swap the colour for the theme's.
-     Tailwind rewrites the colour slot of a shadow value, discarding anything
-     wrapped around it, so the one rung that wants less weight reads a variable
-     already mixed for it rather than a color-mix() written here. */
-  --shadow-xs: 0 1px 2px 0 var(--ui-shadow-subtle);
-  --shadow-sm: 0 1px 3px 0 var(--ui-shadow-color), 0 1px 2px -1px var(--ui-shadow-color);
-  --shadow-md: 0 4px 6px -1px var(--ui-shadow-color), 0 2px 4px -2px var(--ui-shadow-color);
-  --shadow-lg: 0 10px 15px -3px var(--ui-shadow-color), 0 4px 6px -4px var(--ui-shadow-color);
-  --shadow-xl: 0 20px 25px -5px var(--ui-shadow-color), 0 8px 10px -6px var(--ui-shadow-color);
+  /* Product elevation has two semantic levels. Flat surfaces omit shadows. */
+  --shadow-raised: 0 8px 24px -8px var(--ui-shadow-color), 0 2px 8px -4px var(--ui-shadow-color);
+  --shadow-modal: 0 24px 56px -16px var(--ui-shadow-color), 0 8px 24px -12px var(--ui-shadow-color);
 
   --radius-xs: calc(var(--radius) - 6px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -69,11 +61,12 @@
 
 /* Defaults aligned with --ui-* tokens injected by `applyLayoutToDocument` / `applyThemeToDocument` */
 :root {
-  /* Half weight, matching the ratio Tailwind's own xs rung had to the others. */
-  --ui-shadow-subtle: color-mix(in srgb, var(--ui-shadow-color) 50%, transparent);
-  --ui-surface-highlight: color-mix(in srgb, var(--foreground) 4%, transparent);
-  --ui-surface-highlight-soft: color-mix(in srgb, var(--foreground) 2.6%, transparent);
-  --ui-overlay-shadow: color-mix(in srgb, var(--ui-shadow-color) 36%, transparent);
+  --ui-surface-workspace: color-mix(in srgb, var(--background) var(--surface-opacity), transparent);
+  --ui-surface-panel: color-mix(in srgb, var(--card) var(--surface-opacity), transparent);
+  --ui-surface-dock: color-mix(in srgb, var(--popover) var(--surface-opacity), transparent);
+  --ui-primary-hover: color-mix(in srgb, var(--primary) 90%, var(--foreground));
+  --ui-destructive-hover: color-mix(in srgb, var(--destructive) 90%, var(--foreground));
+  --ui-secondary-hover: color-mix(in srgb, var(--secondary) 88%, var(--foreground));
 
   --ui-font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -89,7 +82,7 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background-color: color-mix(in srgb, var(--background) var(--surface-opacity), transparent);
+  background-color: var(--ui-surface-workspace);
   color: var(--foreground);
 }
 

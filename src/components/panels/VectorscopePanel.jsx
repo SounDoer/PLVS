@@ -433,15 +433,9 @@ export function VectorscopePanel() {
         data-vectorscope-correlation-rail
         className="mt-[var(--ui-chart-axis-gap)] h-3 shrink-0 px-[var(--ui-vector-corner-inset)]"
       >
-        <div
-          className={cn(
-            "relative h-full w-full",
-            hasCorrelationSignal ? "opacity-100" : "opacity-30"
-          )}
-          aria-hidden
-        >
+        <div className="relative h-full w-full" aria-hidden>
           <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2">
-            <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-[color:color-mix(in_srgb,var(--muted-foreground)_25%,transparent)]" />
+            <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-[color:var(--ui-vectorscope-grid-stroke)]" />
             <div className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
             <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
             <div className="absolute right-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />

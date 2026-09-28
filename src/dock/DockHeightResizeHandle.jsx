@@ -91,7 +91,7 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
     >
       <div
         className={cn(
-          "absolute left-0 right-0 h-px bg-border/40 transition-colors",
+          "absolute left-0 right-0 h-px bg-border transition-colors",
           "group-hover:bg-primary/70 group-focus-visible:bg-primary",
           edge === "top" ? "bottom-0" : "top-0"
         )}

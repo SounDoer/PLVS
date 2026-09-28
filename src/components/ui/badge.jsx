@@ -7,18 +7,16 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/90",
+        default:
+          "border-transparent bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)]",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)]",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
+          "border-transparent bg-destructive text-destructive-foreground hover:bg-[color:var(--ui-destructive-hover)]",
         outline: "text-foreground",
-        success:
-          "border-transparent bg-[color:color-mix(in_srgb,var(--ui-interface-success)_15%,transparent)] text-[color:var(--ui-feedback-success)]",
-        warning:
-          "border-transparent bg-[color:color-mix(in_srgb,var(--ui-interface-warning)_15%,transparent)] text-[color:var(--ui-feedback-warning)]",
-        danger:
-          "border-transparent bg-[color:color-mix(in_srgb,var(--ui-interface-danger)_15%,transparent)] text-[color:var(--ui-feedback-danger)]",
+        success: "border-border bg-secondary text-[color:var(--ui-feedback-success)]",
+        warning: "border-border bg-secondary text-[color:var(--ui-feedback-warning)]",
+        danger: "border-border bg-secondary text-[color:var(--ui-feedback-danger)]",
       },
     },
     defaultVariants: {

@@ -9,7 +9,7 @@ import { ThemeVisualReview } from "./ThemeWarningSummary.jsx";
 
 function PreviewCard({ title, children }) {
   return (
-    <section className="min-h-24 rounded-md border border-border bg-card p-3 text-card-foreground shadow-sm">
+    <section className="min-h-24 rounded-md border border-border bg-card p-3 text-card-foreground">
       <div className="mb-2 text-[length:var(--ui-fs-metric-meta)] font-semibold">{title}</div>
       {children}
     </section>
@@ -153,7 +153,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
         <Dialog.Overlay className={`${SCRIM_CLASS} z-[70]`} />
         <Dialog.Content
           aria-label="Theme preview"
-          className="fixed top-1/2 left-1/2 z-[71] flex max-h-[90vh] w-[calc(100%-3rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-xl"
+          className="fixed top-1/2 left-1/2 z-[71] flex max-h-[90vh] w-[calc(100%-3rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-modal"
           style={style}
         >
           <header className="flex items-center gap-2 border-b border-border px-4 py-3">

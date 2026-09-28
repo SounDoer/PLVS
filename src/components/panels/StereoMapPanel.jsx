@@ -9,6 +9,7 @@ import { normalizePanelControls } from "../../lib/panelControls.js";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { AxisRail } from "./AxisRail.jsx";
+import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
 import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
@@ -512,15 +513,12 @@ export function StereoMapPanel() {
               </div>
               {stereoMapHover ? (
                 <div className="pointer-events-none absolute inset-0 z-10">
-                  <div
-                    className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
-                    style={{ left: `${stereoMapHover.leftPct}%` }}
-                  />
+                  <ChartCrosshair leftPct={stereoMapHover.leftPct} />
                   <div
                     className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-stereo-map-primary)]"
                     style={{ left: `${stereoMapHover.leftPct}%`, top: `${stereoMapHover.topPct}%` }}
                   />
-                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)] shadow-sm">
+                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {stereoMapHover.freqLabel}
                     </div>

@@ -13,29 +13,24 @@ export const SHELL_INNER_FOCUS =
 
 export const SHELL_SURFACE_BASE = "rounded-md border px-[var(--ui-header-pad-x)]";
 
-export const SHELL_SURFACE_INSET_SHADOW = "shadow-[inset_0_1px_0_var(--ui-surface-highlight)]";
+export const SHELL_HEADER = `flex shrink-0 items-center gap-3 border-border bg-[color:var(--ui-surface-panel)] py-[var(--ui-header-pad-y)] z-10 ${SHELL_SURFACE_BASE}`;
 
-export const SHELL_SURFACE_SOFT_SHADOW =
-  "shadow-[inset_0_1px_0_var(--ui-surface-highlight),0_1px_0_var(--ui-surface-highlight-soft)]";
-
-export const SHELL_HEADER = `flex shrink-0 items-center gap-3 border-border bg-[color:color-mix(in_srgb,var(--card)_var(--surface-opacity),transparent)] py-[var(--ui-header-pad-y)] z-10 ${SHELL_SURFACE_BASE}`;
-
-export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 border-border bg-popover py-[var(--ui-header-pad-y)] shadow-[0_8px_24px_var(--ui-overlay-shadow)] z-30 ${SHELL_SURFACE_BASE}`;
+export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 border-border bg-popover py-[var(--ui-header-pad-y)] shadow-raised z-30 ${SHELL_SURFACE_BASE}`;
 
 export const SHELL_HEADER_ACTIONS = "flex items-center gap-[var(--ui-header-action-gap)]";
 
 export const SHELL_FOOTER =
-  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-[color:color-mix(in_srgb,var(--card)_var(--surface-opacity),transparent)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground";
+  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-[color:var(--ui-surface-panel)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground";
 
 export const SHELL_FOOTER_OVERLAY =
-  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-popover px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-[0_-8px_24px_var(--ui-overlay-shadow)] z-30";
+  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-popover px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-raised z-30";
 
 export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3 cursor-move";
 
 export const SHELL_BOTTOM_REVEAL_HOT_ZONE = "absolute bottom-0 left-0 right-0 z-20 h-3";
 
 export const PANEL_HEADER_BAR =
-  "@container relative flex h-7 shrink-0 items-center gap-0.5 border-b border-border/60 px-1 text-[length:var(--ui-fs-control)] font-medium";
+  "@container relative flex h-7 shrink-0 items-center gap-0.5 border-b border-border px-1 text-[length:var(--ui-fs-control)] font-medium";
 
 export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
 
@@ -49,7 +44,7 @@ export const PANEL_HEADER_TITLE_GROUP =
   "@max-[80px]:hidden flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0.5 text-[length:var(--ui-fs-panel-title)] font-medium";
 
 export const FOOTER_LABEL =
-  "text-[length:var(--ui-fs-status)] tracking-[0.06em] text-muted-foreground/60";
+  "text-[length:var(--ui-fs-status)] tracking-[0.06em] text-muted-foreground";
 
 export const FOOTER_VALUE = "min-w-0 truncate tabular-nums text-muted-foreground";
 
@@ -80,11 +75,3 @@ export const W_LOUDNESS_Y_AXIS = "w-[var(--ui-chart-y-axis-rail-w)]";
 export const W_SPECTRUM_Y_AXIS = "w-[var(--ui-chart-y-axis-rail-w)]";
 
 export const CHART_INSET_MIN_H = "min-h-[var(--ui-min-h-history-chart)]";
-
-/** Horizontal layout rails (column resize) */
-export const RESIZE_COL_CLASS =
-  "hidden w-[var(--ui-splitter-bar-thickness)] cursor-col-resize justify-self-center rounded-full opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";
-
-/** Vertical layout rails (row resize) */
-export const RESIZE_ROW_CLASS =
-  "hidden h-[var(--ui-splitter-bar-thickness)] cursor-row-resize self-center rounded-full opacity-0 transition-[opacity,background-color,box-shadow] duration-150 ease-out lg:block hover:opacity-100 active:opacity-100 hover:bg-[color-mix(in_srgb,var(--primary)_28%,var(--secondary))] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_40%,transparent),0_0_14px_color-mix(in_srgb,var(--primary)_25%,transparent)] active:bg-[color-mix(in_srgb,var(--primary)_30%,var(--secondary))] active:shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_45%,transparent),0_0_12px_color-mix(in_srgb,var(--primary)_24%,transparent)]";

@@ -5,15 +5,16 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-[length:var(--ui-fs-body)] font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[1.15em] shrink-0 [&_svg]:shrink-0 outline-none aria-invalid:ring-destructive/20 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-[length:var(--ui-fs-body)] font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[1.15em] shrink-0 [&_svg]:shrink-0 outline-none aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
-        outline:
-          "border border-border bg-background/40 backdrop-blur-md shadow-xs hover:bg-muted/50",
-        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+        default: "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)]",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-[color:var(--ui-destructive-hover)]",
+        outline: "border border-border bg-background hover:bg-muted/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)]",
         ghost: "hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
       },

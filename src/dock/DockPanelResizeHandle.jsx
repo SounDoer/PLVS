@@ -88,7 +88,7 @@ export function DockPanelResizeHandle({
         emit(event.key === "ArrowRight" ? step : -step, true);
       }}
     >
-      <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-border/40 transition-colors group-hover:bg-primary/70 group-focus-visible:bg-primary" />
+      <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-border transition-colors group-hover:bg-primary/70 group-focus-visible:bg-primary" />
     </div>
   );
 }

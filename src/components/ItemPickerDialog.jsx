@@ -7,9 +7,9 @@ import { PACK_KINDS } from "../transfer/packShape.js";
 import { clampPanelPos } from "../lib/dragClamp.js";
 
 const CENTERED_CONTENT_CLASS =
-  "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-xl";
+  "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-modal";
 const POSITIONED_CONTENT_CLASS =
-  "fixed z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-xl";
+  "fixed z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-modal";
 
 const EMPTY_MESSAGE = {
   loudness: "No loudness profiles to export.",

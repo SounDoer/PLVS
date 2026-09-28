@@ -86,7 +86,7 @@ function AdvancedRole({
   return (
     <div
       data-theme-target={role.id}
-      className="flex flex-col gap-1 border-t border-border/60 py-2 first:border-t-0"
+      className="flex flex-col gap-1 border-t border-border py-2 first:border-t-0"
     >
       <HoverTip
         tip={role.advanced.description}
@@ -338,7 +338,7 @@ export function AdvancedPage({
                 <button
                   type="button"
                   onClick={() => onResetOverrides(sectionRoles.map((role) => role.id))}
-                  className="inline-flex items-center gap-1 rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  className="inline-flex items-center gap-1 rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                 >
                   <RotateCcw className="size-[1em]" /> Reset Section to Auto
                 </button>

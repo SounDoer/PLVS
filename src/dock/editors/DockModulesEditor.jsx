@@ -107,7 +107,7 @@ function DockModuleRow({
           // `size={1}`, not the default 20: keeps the input's intrinsic width from widening the
           // shrink-to-fit editor; `flex-1` fills the width the module rows already set.
           size={1}
-          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm"
+          className="flex h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs"
           autoFocus
         />
         <ManagementIconAction
@@ -303,7 +303,7 @@ export function DockModulesEditor({
           <p className="px-2 py-3 text-xs text-muted-foreground">No modules</p>
         )}
 
-        <div className="mt-1 flex items-center gap-1 border-t border-border/30 pt-1">
+        <div className="mt-1 flex items-center gap-1 border-t border-border pt-1">
           <AddButton
             label="Add Module"
             className="min-w-0 flex-1"

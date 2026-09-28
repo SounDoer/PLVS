@@ -40,7 +40,7 @@ export function CopyableTextBlock({ value, ariaLabel = "copy text", className })
   return (
     <div
       className={cn(
-        "relative rounded-md border border-border/60 bg-muted/25 px-3 py-2.5 pr-10",
+        "relative rounded-md border border-border bg-muted px-3 py-2.5 pr-10",
         "transition-colors focus-within:border-border",
         className
       )}
@@ -50,7 +50,7 @@ export function CopyableTextBlock({ value, ariaLabel = "copy text", className })
         aria-label={`${ariaLabel} text`}
         aria-readonly="true"
         tabIndex={0}
-        className="whitespace-pre-wrap break-words font-mono text-[length:var(--ui-fs-axis)] leading-relaxed text-foreground/85 outline-none selection:bg-primary/30"
+        className="whitespace-pre-wrap break-words font-mono text-[length:var(--ui-fs-axis)] leading-relaxed text-foreground outline-none selection:bg-primary/30"
       >
         {value}
       </div>
@@ -61,8 +61,8 @@ export function CopyableTextBlock({ value, ariaLabel = "copy text", className })
           data-copy-state={copyState}
           onClick={copyText}
           className={cn(
-            "rounded-xs p-1 text-muted-foreground/60 transition-colors",
-            "hover:bg-muted/60 hover:text-foreground focus-visible:bg-muted/60 focus-visible:text-foreground",
+            "rounded-xs p-1 text-muted-foreground transition-colors",
+            "hover:bg-muted/50 hover:text-foreground focus-visible:bg-muted/50 focus-visible:text-foreground",
             copyState === "copied" &&
               "bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]",
             copyState === "failed" && "text-[color:var(--ui-feedback-danger)]"

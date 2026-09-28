@@ -96,8 +96,10 @@ function DockStatCell({
               <span
                 data-testid="dock-dialogue-active-dot"
                 data-active={dialogueActive ? "true" : "false"}
-                className={`size-1.5 shrink-0 rounded-full ${
-                  dialogueActive ? "bg-foreground" : "bg-muted-foreground/30"
+                className={`size-1.5 shrink-0 rounded-full border ${
+                  dialogueActive
+                    ? "border-foreground bg-foreground"
+                    : "border-muted-foreground bg-transparent"
                 }`}
               />
             ) : null
@@ -113,8 +115,10 @@ function DockStatCell({
               <span
                 data-testid="dock-dialogue-active-dot"
                 data-active={dialogueActive ? "true" : "false"}
-                className={`size-1.5 shrink-0 rounded-full ${
-                  dialogueActive ? "bg-foreground" : "bg-muted-foreground/30"
+                className={`size-1.5 shrink-0 rounded-full border ${
+                  dialogueActive
+                    ? "border-foreground bg-foreground"
+                    : "border-muted-foreground bg-transparent"
                 }`}
               />
             ) : null}

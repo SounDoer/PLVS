@@ -10,6 +10,7 @@ import { buildAdaptiveFreqTicks, rangedFreqToYFrac } from "../../config/scales";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas";
 import { useSpectrogram3dCanvas } from "../../hooks/useSpectrogram3dCanvas";
 import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
+import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
@@ -691,18 +692,12 @@ export function SpectrogramPanel() {
               />
               {spectrogramHover && (
                 <div className="pointer-events-none absolute inset-0">
-                  {/* Vertical crosshair */}
-                  <div
-                    className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
-                    style={{ left: `${spectrogramHover.leftPct}%` }}
-                  />
-                  {/* Horizontal crosshair */}
-                  <div
-                    className="absolute left-0 right-0 border-t border-dashed border-muted-foreground/40"
-                    style={{ top: `${spectrogramHover.topPct}%` }}
+                  <ChartCrosshair
+                    leftPct={spectrogramHover.leftPct}
+                    topPct={spectrogramHover.topPct}
                   />
                   {/* Popover */}
-                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)] shadow-sm">
+                  <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrogramHover.timeLabel}
                     </div>

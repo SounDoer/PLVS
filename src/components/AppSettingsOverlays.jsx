@@ -244,7 +244,7 @@ export function AppSettingsOverlays({
       {!settings.settingsOpen && pack.status ? (
         <div
           role="status"
-          className="fixed bottom-4 left-1/2 z-[70] -translate-x-1/2 rounded-md border border-border bg-popover px-3 py-2 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-lg"
+          className="fixed bottom-4 left-1/2 z-[70] -translate-x-1/2 rounded-md border border-border bg-popover px-3 py-2 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-raised"
         >
           {pack.status}
         </div>

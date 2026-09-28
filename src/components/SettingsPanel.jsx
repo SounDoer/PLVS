@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleHelp, ExternalLink, RotateCcw, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import {
   Select,
   SelectContent,
@@ -34,8 +35,7 @@ const DOCS_URL = "https://plvs.soundoer.com/docs/";
 const AGENT_CONTROL_PROMPT_STARTER =
   "Use PLVS’s built-in Agent Control CLI (`plvs-cli`). First inspect the available capabilities and current app state, then help me...";
 
-const SHEET_CLASS =
-  "settings-sheet gap-0 overflow-hidden border-border bg-card/95 p-0 backdrop-blur-[24px]";
+const SHEET_CLASS = "settings-sheet gap-0 overflow-hidden border-border bg-card p-0";
 
 const SHEET_HEADER_CLASS =
   "flex shrink-0 items-center justify-between border-b border-border px-[var(--ui-drawer-pad)] py-2";
@@ -58,24 +58,22 @@ const SELECT_TRIGGER_CLASS =
   "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-muted/50";
 
 const SELECT_CONTENT_CLASS =
-  "border-border/50 min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]";
+  "border-border min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]";
 
-const SWITCH_CLASS =
-  "h-4 w-7 border border-border/40 bg-secondary/85 transition-colors hover:border-border/70 hover:bg-muted-foreground/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:hover:border-primary data-[state=checked]:hover:bg-primary data-[state=unchecked]:bg-secondary/85 data-[state=unchecked]:hover:bg-muted-foreground/30";
+const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
-const SWITCH_THUMB_CLASS =
-  "size-3 bg-popover-foreground/80 shadow-none data-[state=checked]:translate-x-3 data-[state=checked]:bg-background/95 data-[state=unchecked]:translate-x-0";
+const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
 const ICON_BTN_CLASS =
-  "rounded-xs p-0.5 text-muted-foreground/60 transition-colors hover:text-muted-foreground";
+  "rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground";
 
 const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 
 const FOOTER_LINK_CLASS =
-  "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground/60 transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-40";
+  "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-50";
 
 const CONFIG_TEXT_BTN_CLASS =
-  "h-auto bg-transparent px-0 py-0 text-[length:var(--ui-fs-display)] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
+  "h-auto bg-transparent px-0 py-0 text-[length:var(--ui-fs-display)] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50";
 
 const PACK_ROWS = [
   { type: "loudness", label: "Loudness Profiles", aria: "loudness profiles" },
@@ -124,7 +122,7 @@ function SettingsLabelWithTip({ label, tip }) {
         <button
           type="button"
           aria-label={`${label} help: ${tip}`}
-          className="rounded-xs p-0.5 text-muted-foreground/55 transition-colors hover:text-muted-foreground"
+          className="rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground"
         >
           <CircleHelp className="size-[1em]" aria-hidden />
         </button>
@@ -369,7 +367,7 @@ export function SettingsPanel({
                   {KEYBOARD_SHORTCUTS.map((s) => (
                     <div key={s.id} className={KBD_ROW_CLASS}>
                       <span className="text-muted-foreground">{s.label}</span>
-                      <span className="font-mono tabular-nums text-muted-foreground/60 text-[length:var(--ui-fs-metric-meta)]">
+                      <span className="font-mono tabular-nums text-muted-foreground text-[length:var(--ui-fs-metric-meta)]">
                         {formatAcceleratorForDisplay(s.keys, { isMac })}
                       </span>
                     </div>
@@ -410,7 +408,7 @@ export function SettingsPanel({
                       checked={clearGlobal}
                       onCheckedChange={setClearGlobal}
                       disabled={!clearReady}
-                      className={cn(registrationError && "ring-2 ring-destructive")}
+                      className={cn(registrationError && "border-destructive")}
                     />
                   </SettingsRow>
                 </SettingsSection>
@@ -605,7 +603,7 @@ export function SettingsPanel({
                         <SettingsRow
                           key={i}
                           labelNode={
-                            <span className="shrink-0 tabular-nums font-mono text-[length:var(--ui-fs-axis)] text-muted-foreground/60">
+                            <span className="shrink-0 tabular-nums font-mono text-[length:var(--ui-fs-axis)] text-muted-foreground">
                               {i + 1}
                             </span>
                           }
@@ -629,7 +627,7 @@ export function SettingsPanel({
                       ))}
                     </div>
                   ) : (
-                    <span className="px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground/60">
+                    <span className="px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       Connect an input to label its channels.
                     </span>
                   )}
@@ -681,7 +679,7 @@ export function SettingsPanel({
                     </button>
                   </SettingsRow>
                   {packStatus ? (
-                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
+                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       {packStatus}
                     </div>
                   ) : null}
@@ -736,7 +734,7 @@ export function SettingsPanel({
                     </button>
                   </SettingsRow>
                   {configurationStatus ? (
-                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground/70">
+                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       {configurationStatus}
                     </div>
                   ) : null}
@@ -786,19 +784,19 @@ export function SettingsPanel({
                     <SettingsDivider />
                     <div className="flex flex-col gap-1 px-1.5 text-[length:var(--ui-fs-metric-meta)]">
                       <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                        <span className="shrink-0 font-mono tabular-nums text-muted-foreground/60">
+                        <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
                           v{appVersion}
                         </span>
-                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <span
                           className={cn(
                             "truncate",
-                            hasUpdate ? "text-primary" : "text-muted-foreground/60"
+                            hasUpdate ? "text-primary" : "text-muted-foreground"
                           )}
                         >
                           {updateStatusText}
                         </span>
-                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <button
                           type="button"
                           className={FOOTER_LINK_CLASS}
@@ -809,7 +807,10 @@ export function SettingsPanel({
                         </button>
                         {hasUpdate ? (
                           <>
-                            <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                            <span
+                              className="h-3 shrink-0 border-l border-border"
+                              aria-hidden="true"
+                            />
                             <button
                               type="button"
                               className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
@@ -828,7 +829,7 @@ export function SettingsPanel({
                         >
                           Licenses
                         </button>
-                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <button
                           type="button"
                           className={cn(
@@ -840,7 +841,7 @@ export function SettingsPanel({
                           Releases
                           <ExternalLink className="size-[1em]" />
                         </button>
-                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <button
                           type="button"
                           className={FOOTER_LINK_CLASS}
@@ -849,7 +850,7 @@ export function SettingsPanel({
                           Docs
                           <ExternalLink className="size-[1em]" />
                         </button>
-                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <button
                           type="button"
                           className={FOOTER_LINK_CLASS}
@@ -858,7 +859,7 @@ export function SettingsPanel({
                           Privacy
                           <ExternalLink className="size-[1em]" />
                         </button>
-                        <span className="shrink-0 text-muted-foreground/30">&middot;</span>
+                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <button
                           type="button"
                           className={FOOTER_LINK_CLASS}

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { PANEL_MIN_WAVEFORM, W_LOUDNESS_Y_AXIS } from "@/lib/shellLayout";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
+import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
   sliceWaveformSubHistory,
@@ -486,13 +487,9 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
             className="pointer-events-none absolute inset-0 z-[25]"
             style={{ left: WAVEFORM_CHART_LEFT }}
           >
-            {/* Vertical crosshair line */}
-            <div
-              className="absolute bottom-0 top-0 border-l border-dashed border-muted-foreground/55"
-              style={{ left: `${waveformHover.leftPct}%` }}
-            />
+            <ChartCrosshair leftPct={waveformHover.leftPct} />
             {/* Popover */}
-            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)] shadow-sm">
+            <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
               <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                 {waveformHover.timeLabel}
               </div>

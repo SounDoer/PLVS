@@ -85,7 +85,7 @@ export function FeedbackDialog({ onClose }) {
       ref={ref}
       role="dialog"
       aria-label="Send feedback"
-      className="fixed z-50 flex w-80 flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
+      className="fixed z-50 flex w-80 flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-modal"
       style={{ left: pos.x, top: pos.y }}
     >
       <div

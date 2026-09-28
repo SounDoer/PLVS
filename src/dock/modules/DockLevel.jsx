@@ -43,7 +43,7 @@ function MeterFill({ value, min, max, background, style }) {
   return (
     <div
       data-testid="dock-level-bar"
-      className="h-full min-h-[var(--ui-dock-bar-min-h)] w-full overflow-hidden rounded-xs bg-muted/40"
+      className="h-full min-h-[var(--ui-dock-bar-min-h)] w-full overflow-hidden rounded-xs"
       style={style}
     >
       <div

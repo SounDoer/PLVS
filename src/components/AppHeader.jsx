@@ -42,14 +42,14 @@ function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
       <span
         aria-hidden="true"
         className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          selected ? "bg-primary" : "bg-muted-foreground/20"
+          "size-1.5 shrink-0 rounded-full border",
+          selected ? "border-primary bg-primary" : "border-muted-foreground bg-transparent"
         )}
       />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-foreground">{primary}</span>
         {secondary ? (
-          <span className="mt-0.5 block truncate text-muted-foreground/70">{secondary}</span>
+          <span className="mt-0.5 block truncate text-muted-foreground">{secondary}</span>
         ) : null}
       </span>
     </button>
@@ -98,19 +98,19 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
           )}
         />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 font-medium text-muted-foreground/80">
+          <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
             {label}
             {selectedSummary ? (
               <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
             ) : null}
           </span>
           {selectedSummary ? (
-            <span className="mt-0.5 block truncate text-[length:var(--ui-fs-caption)] text-muted-foreground/70">
+            <span className="mt-0.5 block truncate text-[length:var(--ui-fs-caption)] text-muted-foreground">
               {selectedSummary}
             </span>
           ) : null}
         </span>
-        <span className="shrink-0 text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground/70">
+        <span className="shrink-0 text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground">
           {count}
         </span>
       </button>
@@ -284,7 +284,7 @@ export function AppHeader({
                   selected={safeAudioDeviceId === "default"}
                   onSelect={() => handleSourceSelect("default")}
                 />
-                <div className="mx-1 border-t border-border/60" />
+                <div className="mx-1 border-t border-border" />
                 <div
                   data-source-scroll
                   className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"

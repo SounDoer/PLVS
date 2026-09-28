@@ -181,6 +181,7 @@ describe("DockLevel", () => {
   it("draws the Gradient over the whole track by default", () => {
     renderWith({ displayAudio: { peakDb: [-12, -30] } });
     for (const bar of screen.getAllByTestId("dock-level-bar")) {
+      expect(bar.className).not.toContain("bg-");
       expect(bar.firstChild.dataset.levelMeterGradient).toBe(
         "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
           "var(--ui-level-critical) 100%)"

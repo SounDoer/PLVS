@@ -54,7 +54,7 @@ export function FileAnalysisHistoryMenu({
         <button
           type="button"
           aria-label={countLabel}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-[length:var(--ui-fs-control)] font-medium text-secondary-foreground shadow-sm transition-colors hover:bg-muted"
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-[length:var(--ui-fs-control)] font-medium text-secondary-foreground transition-colors hover:bg-muted"
         >
           <FileStack className="size-[1.15em]" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>
@@ -101,8 +101,10 @@ export function FileAnalysisHistoryMenu({
                   <span
                     aria-label={isActive ? `Active file ${session.fileName}` : undefined}
                     className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      isActive ? "bg-primary" : "bg-muted-foreground/20"
+                      "size-1.5 shrink-0 rounded-full border",
+                      isActive
+                        ? "border-primary bg-primary"
+                        : "border-muted-foreground bg-transparent"
                     )}
                   />
                   <span className="min-w-0 flex-1">
