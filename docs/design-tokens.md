@@ -12,15 +12,17 @@ Color themes are format- and semantics-versioned authoring documents compiled th
 Three layers. Components consume **Semantic** (shadcn) or **Component** tokens only — never raw palette values.
 
 ```
-Authoring    Six Core Colors, three purpose-specific Palettes, and sparse Advanced overrides.
+Authoring    Six Core Colors, purpose-specific Palettes, and sparse Advanced overrides.
              Builtins live in builtinThemesV2.js; custom documents use the same schema.
 
 Resolved     themeRoleRegistry.js defines every meaningful visible role, its value kind, and its
              dependencies. themeRecipes.js owns executable typed recipe contracts. compileTheme.js
-             produces one complete immutable CSS / Canvas / effect contract.
+             produces one complete immutable CSS / Canvas / effect contract. Curated bounded
+             numeric roles may own visual composition that must travel with a Theme (ADR 0011).
 
 Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
-             Theme colors are written by themeRuntime; layout tokens by applyLayoutToDocument().
+             Theme values are written by themeRuntime; layout and product-tuning tokens by
+             applyLayoutToDocument().
              Responsive Dock tokens are scoped by src/dock/dockTokens.css because they depend
              on the Dock window viewport height. Sub-namespaces include typography, spacing,
              radius, dataviz, and dock.
@@ -59,13 +61,13 @@ Extra Large, and nothing warns you.
 
 The rule: **if a box's job is to hold text, size it in units that scale with that text.**
 
-| Situation                       | Use                                                        |
-| ------------------------------- | ---------------------------------------------------------- |
-| Column holding a known label    | `w-[calc(<label>em + <padding>rem)]` — the em share covers the text and any icon, the rem share the padding and gaps |
-| Numeric field                   | `w-[7ch]` — `ch` follows the font                           |
-| Column holding a short unit     | `w-[3.2em]`                                                 |
-| Chart axis rail                 | `max(<px floor>, calc(var(--ui-fs-axis) * <ratio>))`, as `--ui-chart-y-axis-rail-w` already does |
-| Floating editor panel           | `--ui-editor-w`, which the Interface Size profiles set alongside `--ui-drawer-w` |
+| Situation                    | Use                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Column holding a known label | `w-[calc(<label>em + <padding>rem)]` — the em share covers the text and any icon, the rem share the padding and gaps |
+| Numeric field                | `w-[7ch]` — `ch` follows the font                                                                                    |
+| Column holding a short unit  | `w-[3.2em]`                                                                                                          |
+| Chart axis rail              | `max(<px floor>, calc(var(--ui-fs-axis) * <ratio>))`, as `--ui-chart-y-axis-rail-w` already does                     |
+| Floating editor panel        | `--ui-editor-w`, which the Interface Size profiles set alongside `--ui-drawer-w`                                     |
 
 Heights are the looser half of this: a control at `h-6` still holds 17px text, since flex centring
 plus visible overflow degrades quietly rather than clipping. Widths do not — they clip.
@@ -75,13 +77,13 @@ plus visible overflow degrades quietly rather than clipping. Widths do not — t
 Every module's grid resolves from one role, and the panel paints it at full strength. There is no
 second multiplier anywhere: a grid that should read lighter takes the lighter role, not an alpha.
 
-| Role              | Dark      | Used by                                                        |
-| ----------------- | --------- | -------------------------------------------------------------- |
-| `data.grid`       | `#282828` | Vectorscope diagonals, 3D floor frame |
+| Role              | Dark      | Used by                                                          |
+| ----------------- | --------- | ---------------------------------------------------------------- |
+| `data.grid`       | `#282828` | Vectorscope diagonals, 3D floor frame                            |
 | `data.gridSubtle` | `#1e1e1e` | Subdivisions inside a grid — today only the 3D spectrogram floor |
 
 Dimming in the draw call is what this replaces. Five panels each carried their own constant — `0.3`
-and `0.16` hardcoded in the 3D floor, `0.08` for the stereo map baseline read from the *spectrum's*
+and `0.16` hardcoded in the 3D floor, `0.08` for the stereo map baseline read from the _spectrum's_
 opacity token, and a spectrum grid drawn straight from `--border` at `0.08` for an effective alpha
 around `0.007`. None of it was visible to the theme, so none of it moved when a theme did.
 
@@ -161,28 +163,28 @@ transparent one. Contract tests in `src/components/ui/themeColorContract.test.js
 
 Current PLVS Dark values:
 
-| Token                      | Value                       | Role                                  |
-| -------------------------- | --------------------------- | ------------------------------------- |
-| `--background`             | `#070707`                   | Workspace background                  |
-| `--foreground`             | `#f2f2f2`                   | Primary text                          |
-| `--card`                   | `#151515`                   | Panel surface                         |
-| `--card-foreground`        | same as `--foreground`      | Text on panels                        |
-| `--popover`                | `#1c1c1c`                   | Raised surface                        |
-| `--popover-foreground`     | same as `--foreground`      | Popover text                          |
-| `--primary`                | `#b35300`                   | Interface accent                      |
-| `--primary-foreground`     | `#f2f2f2`                   | Text on primary buttons               |
-| `--secondary`              | `#272727`                   | Control surface                       |
-| `--secondary-foreground`   | same as `--foreground`      | Text on secondary surface             |
-| `--muted`                  | `#191919`                   | Muted surface                         |
-| `--muted-foreground`       | `#959595`                   | Secondary / muted text                |
-| `--accent`                 | `#3b2410`                   | Selected surface                      |
-| `--accent-foreground`      | same as `--foreground`      | Text on accent surface                |
-| `--border`                 | `rgba(255, 255, 255, 0.09)` | Borders and dividers                  |
-| `--input`                  | `rgba(255, 255, 255, 0.14)` | Input field border                    |
+| Token                      | Value                       | Role                                    |
+| -------------------------- | --------------------------- | --------------------------------------- |
+| `--background`             | `#070707`                   | Workspace background                    |
+| `--foreground`             | `#f2f2f2`                   | Primary text                            |
+| `--card`                   | `#151515`                   | Panel surface                           |
+| `--card-foreground`        | same as `--foreground`      | Text on panels                          |
+| `--popover`                | `#1c1c1c`                   | Raised surface                          |
+| `--popover-foreground`     | same as `--foreground`      | Popover text                            |
+| `--primary`                | `#b35300`                   | Interface accent                        |
+| `--primary-foreground`     | `#f2f2f2`                   | Text on primary buttons                 |
+| `--secondary`              | `#272727`                   | Control surface                         |
+| `--secondary-foreground`   | same as `--foreground`      | Text on secondary surface               |
+| `--muted`                  | `#191919`                   | Muted surface                           |
+| `--muted-foreground`       | `#959595`                   | Secondary / muted text                  |
+| `--accent`                 | `#3b2410`                   | Selected surface                        |
+| `--accent-foreground`      | same as `--foreground`      | Text on accent surface                  |
+| `--border`                 | `rgba(255, 255, 255, 0.09)` | Borders and dividers                    |
+| `--input`                  | `rgba(255, 255, 255, 0.14)` | Input field border                      |
 | `--ring`                   | `#b35300`                   | Legacy compatibility token; not painted |
-| `--destructive`            | `#b83238`                   | Error / danger state                  |
-| `--destructive-foreground` | `#f2f2f2`                   | Text on destructive                   |
-| `--radius`                 | `0.625rem`                  | Base border radius (card level)       |
+| `--destructive`            | `#b83238`                   | Error / danger state                    |
+| `--destructive-foreground` | `#f2f2f2`                   | Text on destructive                     |
+| `--radius`                 | `0.625rem`                  | Base border radius (card level)         |
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
 
@@ -192,11 +194,11 @@ Paints the three-stop gradient in the Theme Preview swatch only. The Level Meter
 `--ui-level-safe`/`warning`/`critical` instead, anchored to levels rather than to a fixed gradient --
 see `src/lib/levelMeterColors.js`.
 
-| Token                          | Value     | Role                      |
-| ------------------------------ | --------- | ------------------------- |
-| `--ui-meter-gradient-top`      | `#f97373` | Clip zone (red)           |
-| `--ui-meter-gradient-mid`      | `#fbbf24` | Warning zone (amber)      |
-| `--ui-meter-gradient-bottom`   | `#34d399` | Safe zone (green)         |
+| Token                        | Value     | Role                 |
+| ---------------------------- | --------- | -------------------- |
+| `--ui-meter-gradient-top`    | `#f97373` | Clip zone (red)      |
+| `--ui-meter-gradient-mid`    | `#fbbf24` | Warning zone (amber) |
+| `--ui-meter-gradient-bottom` | `#34d399` | Safe zone (green)    |
 
 ### Component: Instrument Traces
 
@@ -299,15 +301,15 @@ The Status Palette is measurement-only. Each instrument consumes it through modu
 roles, so a local override cannot recolor another module. Interface feedback and application
 activity use separate Interface Palette sources.
 
-| Binding family                               | Role                                                  |
-| -------------------------------------------- | ----------------------------------------------------- |
-| `--ui-level-{safe,warning,critical}`          | Level Meter gradient and profile markers              |
-| `--ui-stats-{warning,critical}-value`         | Stats and Dock Stats profile values                    |
-| `--ui-vectorscope-correlation-*`              | Vectorscope and Dock Vectorscope correlation marker   |
-| Stereo Map Canvas `safeRange` / `warningRange` / `criticalRange` | Stereo Map status-based modes             |
-| `--ui-waveform-{warning,critical}-range`      | Loudness Profile breach portions                      |
-| `--ui-feedback-{success,warning,danger}`      | Application feedback on ordinary or tinted surfaces   |
-| `--ui-activity-{live,snapshot}`               | Live capture, recording, and snapshot activity        |
+| Binding family                                                   | Role                                                |
+| ---------------------------------------------------------------- | --------------------------------------------------- |
+| `--ui-level-{safe,warning,critical}`                             | Level Meter gradient and profile markers            |
+| `--ui-stats-{warning,critical}-value`                            | Stats and Dock Stats profile values                 |
+| `--ui-vectorscope-correlation-*`                                 | Vectorscope and Dock Vectorscope correlation marker |
+| Stereo Map Canvas `safeRange` / `warningRange` / `criticalRange` | Stereo Map status-based modes                       |
+| `--ui-waveform-{warning,critical}-range`                         | Loudness Profile breach portions                    |
+| `--ui-feedback-{success,warning,danger}`                         | Application feedback on ordinary or tinted surfaces |
+| `--ui-activity-{live,snapshot}`                                  | Live capture, recording, and snapshot activity      |
 
 The retired `--ui-signal-good`, `--ui-signal-warn`, and `--ui-signal-bad` names exist only in the
 frozen V1 migration path and must not be used by runtime consumers.
@@ -628,9 +630,13 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 
 ```
 --ui-spectrum-stroke-width           1.5    Trace stroke width; also the 3D spectrogram scrub marker
---ui-spectrum-fill-top-opacity       0.22   Fill gradient top opacity
---ui-spectrum-fill-bottom-opacity    0.03   Fill gradient bottom opacity
+--ui-spectrum-fill-top-opacity       0.20   Theme Advanced: upper fill-gradient opacity
+--ui-spectrum-fill-bottom-opacity    0.02   Theme Advanced: lower fill-gradient opacity
 ```
+
+The two fill values are bounded Theme roles shared by Primary, Secondary, and Snapshot Spectrum
+areas. Theme Editor exposes them as percentages under **Advanced → Spectrum**; Lower cannot exceed
+Upper. Stroke width remains product-owned.
 
 ### Stereo Map
 
@@ -651,12 +657,12 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 
 Three rungs, all derived from `--radius` (`0.625rem`), plus the pill.
 
-| Utility        | Value  | Owner                                                              |
-| -------------- | ------ | ------------------------------------------------------------------ |
-| `rounded-xs`   | `4px`  | Items nested in a `p-1` container; any control under 28px tall       |
-| `rounded-md`   | `8px`  | Surfaces — panels, popovers, menus — and controls 28px and taller    |
-| `rounded-xl`   | `12px` | Floating windows: the draggable editors and the centred dialogs      |
-| `rounded-full` | pill   | Switches, sliders, resize rails, dots                                |
+| Utility        | Value  | Owner                                                             |
+| -------------- | ------ | ----------------------------------------------------------------- |
+| `rounded-xs`   | `4px`  | Items nested in a `p-1` container; any control under 28px tall    |
+| `rounded-md`   | `8px`  | Surfaces — panels, popovers, menus — and controls 28px and taller |
+| `rounded-xl`   | `12px` | Floating windows: the draggable editors and the centred dialogs   |
+| `rounded-full` | pill   | Switches, sliders, resize rails, dots                             |
 
 Two rules decide the rung, in this order:
 

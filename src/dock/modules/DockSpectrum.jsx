@@ -95,7 +95,7 @@ export function DockSpectrum({ controls }) {
             <stop
               offset="0%"
               stopColor="var(--ui-spectrum-primary)"
-              stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.18)"
+              stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
             />
             <stop
               offset="100%"
@@ -107,7 +107,7 @@ export function DockSpectrum({ controls }) {
             <stop
               offset="0%"
               stopColor="var(--ui-spectrum-secondary)"
-              stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.18)"
+              stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
             />
             <stop
               offset="100%"

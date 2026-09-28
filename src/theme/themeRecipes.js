@@ -4,6 +4,7 @@ export const THEME_VALUE_KINDS = Object.freeze({
   SOLID_COLOR: "solidColor",
   COLOR_EFFECT: "colorEffect",
   COLOR_SCALE: "colorScale",
+  NUMBER: "number",
 });
 
 const SNAP = {
@@ -67,6 +68,7 @@ function recipe(inputKinds, outputKind, resolve) {
  */
 export const THEME_RECIPES = Object.freeze({
   identity: recipe([[], ["$output"]], "$output", ([value]) => structuredClone(value)),
+  constant: recipe([[]], "$output", (_dependencies, _context, entry) => entry.defaultValue),
   "surface-panel": recipe([[SOLID, SOLID]], SOLID, ([, surface]) => surface),
   "surface-raised": recipe([[SOLID, SOLID]], SOLID, ([surface, text]) =>
     mixHex(surface, text, 0.03)
@@ -174,6 +176,9 @@ export function isThemeValueOfKind(value, kind) {
           isThemeValueOfKind(stop.color, THEME_VALUE_KINDS.SOLID_COLOR)
       )
     );
+  }
+  if (kind === THEME_VALUE_KINDS.NUMBER) {
+    return typeof value === "number" && Number.isFinite(value);
   }
   return false;
 }

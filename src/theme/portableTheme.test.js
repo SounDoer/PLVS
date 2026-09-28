@@ -42,6 +42,7 @@ describe("portable Theme contract", () => {
     const source = storedTheme({
       overrides: {
         "interface.surface.panel": { kind: "color", value: "rgb(16 32 48)" },
+        "spectrum.fillOpacityTop": { kind: "number", value: 0.32 },
       },
     });
     const portable = themeToPortable(source);
@@ -52,6 +53,10 @@ describe("portable Theme contract", () => {
     expect(imported.overrides["interface.surface.panel"]).toEqual({
       kind: "color",
       value: "#102030",
+    });
+    expect(imported.overrides["spectrum.fillOpacityTop"]).toEqual({
+      kind: "number",
+      value: 0.32,
     });
     expect(themeToPortable(imported)).toEqual(portable);
   });

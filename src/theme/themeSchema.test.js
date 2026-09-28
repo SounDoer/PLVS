@@ -45,6 +45,7 @@ describe("normalizeThemeDocumentShape", () => {
       overrides: {
         "waveform.centroid": { kind: "color", value: "RGB(255, 255, 255)" },
         "spectrum.primary": { kind: "reference", source: "core.secondaryData" },
+        "spectrum.fillOpacityTop": { kind: "number", value: 0.24 },
         "interface.border.default": { kind: "effect", color: "#fff", opacity: 0.09 },
       },
       ignored: true,
@@ -70,6 +71,7 @@ describe("normalizeThemeDocumentShape", () => {
       overrides: {
         "waveform.centroid": { kind: "color", value: "#ffffff" },
         "spectrum.primary": { kind: "reference", source: "core.secondaryData" },
+        "spectrum.fillOpacityTop": { kind: "number", value: 0.24 },
         "interface.border.default": { kind: "effect", color: "#ffffff", opacity: 0.09 },
       },
     });
@@ -159,6 +161,13 @@ describe("normalizeThemeDocumentShape", () => {
     expect(
       normalizeThemeDocumentShape(
         validTheme({ overrides: { "waveform.centroid": { kind: "magic" } } })
+      )
+    ).toBeNull();
+    expect(
+      normalizeThemeDocumentShape(
+        validTheme({
+          overrides: { "spectrum.fillOpacityTop": { kind: "number", value: Number.NaN } },
+        })
       )
     ).toBeNull();
   });

@@ -210,21 +210,23 @@ First-paint flow (`src/main.jsx`):
 2. `resolveThemeId` (with `prefers-color-scheme`) → current `themeId`
 3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 2`, `semanticsVersion: 1`)
 4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
-5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles only layout / font size / geometry / non-colour variables
+5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles layout, font size, geometry, and non-Theme product tuning
 
-**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005):
+**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005/0011):
 
 | Layer            | Output                                                                                                                      | Defined / published in                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Authoring intent | Versioned Core Colors, Status / Intensity / Frequency / Interface Palettes, sparse Advanced overrides (unused by built-ins) | `builtinThemesV2.js` or a migrated persisted document                       |
-| Resolved roles   | Complete `solidColor`, `colorEffect`, and `colorScale` interface, instrument, effect and native roles                       | `themeRoleRegistry.js` + `themeRecipes.js` → `compileTheme.js`              |
-| CSS / SVG        | `--background`, `--foreground`, `--primary` and `--ui-*` color tokens                                                       | Resolved Theme `css` → `themeRuntime.js`                                    |
+| Resolved roles   | Complete `solidColor`, `colorEffect`, `colorScale`, and bounded visual `number` roles                                       | `themeRoleRegistry.js` + `themeRecipes.js` → `compileTheme.js`              |
+| CSS / SVG        | `--background`, `--foreground`, `--primary`, and Theme-owned `--ui-*` colour or visual-composition tokens                   | Resolved Theme `css` → `themeRuntime.js`                                    |
 | Canvas           | Colour bundles for Waveform, Vectorscope, Stereo Map, Spectrogram, etc.                                                     | Resolved Theme `canvas` → `themeCanvasSelectors.js` / `useResolvedTheme.js` |
-| UI layout        | Non-colour `--ui-*`: font size, spacing, radius, line width                                                                 | `data.js` → `applyLayoutToDocument`                                         |
+| UI layout        | Product-owned `--ui-*`: font size, spacing, radius, line width, and non-Theme tuning                                        | `data.js` → `applyLayoutToDocument`                                         |
 
 First-paint placeholder variables are written by `npm run theme:generate` to `src/generated/theme-fallbacks.css` (from the same source as the default dark semantics).
 
-Theme roles resolve to opaque colors. The separate View setting `surfaceOpacity` publishes
+Theme colour roles resolve to opaque colours. A small set of bounded numeric roles may separately
+control Theme-owned visual composition without changing those identity colours (ADR 0011). The
+separate View setting `surfaceOpacity` publishes
 `--surface-opacity` and is applied only where PLVS composes structural fills: the Workspace, normal
 shell surfaces, panels, fullscreen, file-summary shell, and Dock shell. Borders, controls, text,
 focus/state marks, and Canvas/SVG measurement data do not inherit that opacity. Floating overlays
@@ -239,7 +241,8 @@ New consumers must not import them.
 
 The persisted authoring document, portable sharing document, and compiled result are separate
 contracts (ADR 0009). A portable `plvs-theme` document contains only stable authoring meaning:
-name, Dark/Light scheme, literal Core and Palette colors, and explicit public Advanced overrides.
+name, Dark/Light scheme, literal Core and Palette colours, and explicit public Advanced overrides,
+including bounded numeric overrides.
 It has its own `formatVersion` and `semanticsVersion` and never contains a local Theme ID, palette
 preset provenance, recipes, dependencies, resolved roles, CSS variables, Canvas keys, or native
 bindings.

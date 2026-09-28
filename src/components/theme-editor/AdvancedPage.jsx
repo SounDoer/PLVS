@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { ChevronDown, RotateCcw, Search, TriangleAlert } from "lucide-react";
+import { ChevronDown, Percent, RotateCcw, Search, TriangleAlert } from "lucide-react";
 import { ColorControl } from "../ColorControl.jsx";
 import { HoverTip } from "../HoverTip.jsx";
 import { compileTheme } from "../../theme/compileTheme.js";
@@ -56,10 +56,32 @@ function selectedMode(override) {
   return "custom";
 }
 
-function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
+function percentage(value) {
+  return Number((value * 100).toFixed(6));
+}
+
+function AdvancedRole({
+  role,
+  override,
+  resolved,
+  onOverride,
+  warnings,
+  numericMinimum,
+  numericMaximum,
+}) {
   const mode = selectedMode(override);
+  const numeric = role.valueKind === "number";
   const descriptionId = useId();
   const warningText = warnings.map((item) => item.message).join(" ");
+  const numericValue = override?.kind === "number" ? override.value : resolved;
+  const minimum = numericMinimum ?? role.advanced.minimum;
+  const maximum = numericMaximum ?? role.advanced.maximum;
+  const percent = percentage(numericValue);
+
+  const updateNumber = (raw) => {
+    const value = Math.min(maximum, Math.max(minimum, raw));
+    onOverride(role.id, { kind: "number", value });
+  };
 
   return (
     <div
@@ -73,7 +95,13 @@ function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
         className="flex items-center gap-2"
         tipClassName="w-max max-w-64 whitespace-normal"
       >
-        <ThemeEditorSwatch color={resolvedColor(resolved)} />
+        {numeric ? (
+          <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-xs border border-border text-muted-foreground">
+            <Percent className="size-[1em]" aria-hidden="true" />
+          </span>
+        ) : (
+          <ThemeEditorSwatch color={resolvedColor(resolved)} />
+        )}
         <div className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-metric-meta)] font-medium">
           {role.advanced.label}
         </div>
@@ -90,7 +118,12 @@ function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
           onValueChange={(value) => {
             if (value === "auto") onOverride(role.id, null);
             else if (value === "custom") {
-              onOverride(role.id, { kind: "color", value: resolvedColor(resolved) });
+              onOverride(
+                role.id,
+                numeric
+                  ? { kind: "number", value: resolved }
+                  : { kind: "color", value: resolvedColor(resolved) }
+              );
             } else onOverride(role.id, { kind: "reference", source: value.slice(10) });
           }}
         >
@@ -115,7 +148,32 @@ function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
           {role.advanced.description}
         </span>
       </HoverTip>
-      {mode === "custom" ? (
+      {mode === "custom" && numeric ? (
+        <div className="ml-7 flex items-center gap-2">
+          <input
+            type="range"
+            aria-label={`${role.advanced.label} value`}
+            min={minimum}
+            max={maximum}
+            step={role.advanced.step}
+            value={numericValue}
+            onInput={(event) => updateNumber(Number(event.currentTarget.value))}
+            className="plvs-range min-w-0 flex-1"
+            style={{ "--range-pct": `${percent}%` }}
+          />
+          <input
+            type="number"
+            aria-label={`${role.advanced.label} percent`}
+            min={percentage(minimum)}
+            max={percentage(maximum)}
+            step={percentage(role.advanced.step)}
+            value={percent}
+            onChange={(event) => updateNumber(Number(event.currentTarget.value) / 100)}
+            className="h-7 w-14 rounded-md border border-input bg-transparent px-1 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-meta)] tabular-nums"
+          />
+          <span className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">%</span>
+        </div>
+      ) : mode === "custom" ? (
         <div className="ml-7 flex items-center gap-3">
           <ColorControl
             label={`${role.advanced.label} Color`}
@@ -235,6 +293,14 @@ export function AdvancedPage({
           resolved: resolved.roles[role.id],
           onOverride,
           warnings: warningsByRole.get(role.id) ?? [],
+          numericMinimum:
+            role.id === "spectrum.fillOpacityTop"
+              ? resolved.roles["spectrum.fillOpacityBottom"]
+              : undefined,
+          numericMaximum:
+            role.id === "spectrum.fillOpacityBottom"
+              ? resolved.roles["spectrum.fillOpacityTop"]
+              : undefined,
         });
         return (
           <section key={section} className="rounded-md border border-border">

@@ -88,6 +88,29 @@ describe("ThemeEditor", () => {
     expect(screen.queryByText(/--/)).toBeNull();
   });
 
+  it("edits Theme-owned Spectrum fill opacity as constrained percentages", () => {
+    const draft = structuredClone(DRAFT);
+    draft.overrides["spectrum.fillOpacityTop"] = { kind: "number", value: 0.28 };
+    draft.overrides["spectrum.fillOpacityBottom"] = { kind: "number", value: 0.04 };
+    const onOverride = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Spectrum" }));
+
+    const upper = screen.getByLabelText("Fill Opacity — Upper percent");
+    const lower = screen.getByLabelText("Fill Opacity — Lower percent");
+    expect(upper.value).toBe("28");
+    expect(lower.value).toBe("4");
+    expect(upper.min).toBe("4");
+    expect(lower.max).toBe("28");
+
+    fireEvent.change(upper, { target: { value: "31" } });
+    expect(onOverride).toHaveBeenCalledWith("spectrum.fillOpacityTop", {
+      kind: "number",
+      value: 0.31,
+    });
+  });
+
   it("orders Advanced sections by the Module Catalog and shows Interface subgroups", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));

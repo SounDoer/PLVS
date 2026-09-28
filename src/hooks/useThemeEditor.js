@@ -2,9 +2,32 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
 import { applyPalettePreset } from "../theme/palettePresets.js";
+import { getThemeRole } from "../theme/themeRoleRegistry.js";
 import { normalizeThemeDocumentShape, normalizeThemeName } from "../theme/themeSchema.js";
 
 const noop = () => {};
+const SPECTRUM_FILL_TOP = "spectrum.fillOpacityTop";
+const SPECTRUM_FILL_BOTTOM = "spectrum.fillOpacityBottom";
+
+function resolvedNumberOverride(overrides, roleId) {
+  const override = overrides[roleId];
+  return override?.kind === "number" ? override.value : getThemeRole(roleId).defaultValue;
+}
+
+function constrainSpectrumFillOverrides(overrides, changedRoleId, changedOverride) {
+  if (changedRoleId !== SPECTRUM_FILL_TOP && changedRoleId !== SPECTRUM_FILL_BOTTOM) return;
+  const top = resolvedNumberOverride(overrides, SPECTRUM_FILL_TOP);
+  const bottom = resolvedNumberOverride(overrides, SPECTRUM_FILL_BOTTOM);
+  if (bottom <= top) return;
+
+  if (changedRoleId === SPECTRUM_FILL_TOP && changedOverride == null) {
+    overrides[SPECTRUM_FILL_BOTTOM] = { kind: "number", value: top };
+  } else if (changedRoleId === SPECTRUM_FILL_TOP) {
+    overrides[SPECTRUM_FILL_TOP] = { kind: "number", value: bottom };
+  } else {
+    overrides[SPECTRUM_FILL_BOTTOM] = { kind: "number", value: top };
+  }
+}
 
 /**
  * @param {{
@@ -220,6 +243,7 @@ export function useThemeEditor(opts) {
         const overrides = { ...draft.overrides };
         if (override == null) delete overrides[roleId];
         else overrides[roleId] = override;
+        constrainSpectrumFillOverrides(overrides, roleId, override);
         return { ...draft, overrides };
       }, `override:${roleId}`),
     [edit]

@@ -40,7 +40,9 @@ uses a fixed theme. Light and Dark ship built in, and the theme editor lets you 
 own themes. A custom theme keeps its Dark or Light appearance beside its name; **Core** holds the
 main identity colors, **Palettes** controls shared data scales, and **Advanced** contains optional
 per-interface and per-module overrides. Advanced roles stay on **Auto** unless you customize them,
-and can be searched or reset to Auto a section at a time.
+and can be searched or reset to Auto a section at a time. Most are colours; bounded visual values
+such as the Spectrum area's Upper and Lower fill opacity appear as percentage controls in the same
+module section and are saved with the Theme.
 
 The built-in Light and Dark themes are tuned independently: each keeps opaque Workspace, panel,
 control, muted, and selected surfaces distinct, and uses scheme-appropriate text and feedback

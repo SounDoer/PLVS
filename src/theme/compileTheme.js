@@ -39,6 +39,7 @@ function directValue(roleId, theme) {
 function cssValue(value, valueKind) {
   if (valueKind === THEME_VALUE_KINDS.SOLID_COLOR) return value;
   if (valueKind === THEME_VALUE_KINDS.COLOR_EFFECT) return rgbaCssValue(value);
+  if (valueKind === THEME_VALUE_KINDS.NUMBER) return String(value);
   throw new Error("A palette cannot be published as one CSS color.");
 }
 
@@ -65,6 +66,17 @@ function resolveOverride(entry, override, roles, automaticValue) {
     return override.value;
   }
   if (override.kind === "effect") return { color: override.color, opacity: override.opacity };
+  if (override.kind === "number") {
+    const { minimum, maximum } = entry.advanced;
+    if (override.value < minimum || override.value > maximum) {
+      throw compilerError(
+        "numberOutOfRange",
+        `$.overrides.${entry.id}.value`,
+        `Number override for ${entry.id} must be from ${minimum} through ${maximum}.`
+      );
+    }
+    return override.value;
+  }
   if (!entry.advanced.references.includes(override.source)) {
     throw compilerError(
       "incompatibleReference",
@@ -133,7 +145,7 @@ export function compileTheme(rawTheme, options = {}) {
           `Recipe input kinds do not match for ${id}.`
         );
       }
-      const automatic = authored ?? recipe.resolve(dependencies, context);
+      const automatic = authored ?? recipe.resolve(dependencies, context, entry);
       const overridden = resolveOverride(entry, override, roles, automatic);
       const resolved = overridden ?? automatic;
       if (!isThemeValueOfKind(resolved, entry.valueKind)) {
@@ -164,6 +176,14 @@ export function compileTheme(rawTheme, options = {}) {
         `Unknown override role: ${roleId}.`
       );
     }
+  }
+
+  if (roles["spectrum.fillOpacityBottom"] > roles["spectrum.fillOpacityTop"]) {
+    throw compilerError(
+      "unorderedSpectrumFillOpacity",
+      "$.overrides.spectrum.fillOpacityBottom",
+      "Spectrum lower fill opacity must not exceed upper fill opacity."
+    );
   }
 
   const css = {};

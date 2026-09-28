@@ -118,6 +118,12 @@ function normalizeOverrides(raw) {
       result[roleId] = { kind: "effect", color, opacity };
       continue;
     }
+    if (rawOverride.kind === "number") {
+      const value = rawOverride.value;
+      if (typeof value !== "number" || !Number.isFinite(value)) return null;
+      result[roleId] = { kind: "number", value };
+      continue;
+    }
     return null;
   }
   return result;

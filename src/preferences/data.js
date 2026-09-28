@@ -140,8 +140,6 @@ export const UI_PREFERENCES = {
     },
     spectrum: {
       strokeWidth: 1.5,
-      fillOpacityTop: 0.22,
-      fillOpacityBottom: 0.03,
       spectrumGrid: {
         verticalSpacingPx: 56,
         horizontalSpacingPx: 34,

@@ -3,16 +3,16 @@
 Eight meter panels read the same signal at once. Each panel's settings menu holds the options listed
 here.
 
-| Panel       | What it shows                                                                          |
-| ----------- | -------------------------------------------------------------------------------------- |
-| Level Meter | Per-channel level bars                                                                 |
-| Loudness    | Momentary and Short-term loudness history                                              |
-| Stats       | Configurable numeric readouts                                                          |
-| Spectrum    | FFT-based real-time analyzer                                                           |
-| Spectrogram | Time-frequency history                                                                 |
-| Vectorscope | Phase and correlation of a channel pair                                                |
-| Stereo Map  | Stereo image across the frequency spectrum                                             |
-| Waveform    | Per-channel amplitude envelope over the session history                                |
+| Panel       | What it shows                                           |
+| ----------- | ------------------------------------------------------- |
+| Level Meter | Per-channel level bars                                  |
+| Loudness    | Momentary and Short-term loudness history               |
+| Stats       | Configurable numeric readouts                           |
+| Spectrum    | FFT-based real-time analyzer                            |
+| Spectrogram | Time-frequency history                                  |
+| Vectorscope | Phase and correlation of a channel pair                 |
+| Stereo Map  | Stereo image across the frequency spectrum              |
+| Waveform    | Per-channel amplitude envelope over the session history |
 
 Line traces, reference guides, event markers, and max-hold outlines use their resolved Theme
 colours directly. Filled areas and time-, level-, or energy-based fades can still use transparency
@@ -53,6 +53,10 @@ An FFT-based real-time analyzer with a fixed reference view: per-band level in t
 aligned with common DAW practice rather than IEC 61260 filter-bank metrology. View it **Combined**,
 as **L / R**, or as **M / S**; add a maximum trace that **Decays** or **Holds**; adjust tilt, octave
 smoothing, and speed. Hover to read frequency and musical note.
+
+The Theme Editor's **Advanced → Spectrum** section controls the area fill's **Upper** and **Lower**
+opacity. They default to 20% and 2%; Lower cannot exceed Upper. The same pair applies to Primary,
+Secondary, and Snapshot fills.
 
 ## Spectrogram
 

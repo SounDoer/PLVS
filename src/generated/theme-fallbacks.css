@@ -46,6 +46,8 @@
   --ui-spectrum-primary-snap: #fbd34d;
   --ui-spectrum-secondary-snap: #9cafff;
   --ui-spectrum-grid: #282828;
+  --ui-spectrum-fill-top-opacity: 0.2;
+  --ui-spectrum-fill-bottom-opacity: 0.02;
   --ui-vectorscope-trace: #fb923c;
   --ui-vectorscope-trace-snap: #fbd34d;
   --ui-vectorscope-grid-stroke: #282828;

@@ -1,4 +1,9 @@
-import { recipeContract, THEME_RECIPES, THEME_VALUE_KINDS } from "./themeRecipes.js";
+import {
+  isThemeValueOfKind,
+  recipeContract,
+  THEME_RECIPES,
+  THEME_VALUE_KINDS,
+} from "./themeRecipes.js";
 
 const BINDING_KINDS = ["css", "canvas", "native"];
 const ROLE_KINDS = new Set(Object.values(THEME_VALUE_KINDS));
@@ -39,6 +44,14 @@ const colorOverride = (section, label, description) =>
 
 const dataOverride = (section, label, description, references) =>
   advanced(section, label, description, ["color", "reference"], references);
+
+const numberOverride = (section, label, description, minimum, maximum, step) => ({
+  ...advanced(section, label, description, ["number"]),
+  minimum,
+  maximum,
+  step,
+  unit: "percent",
+});
 
 const RAW_THEME_ROLE_REGISTRY = [
   direct("core.workspace", "color", { bindings: { css: ["--background"] } }),
@@ -514,6 +527,36 @@ function moduleRoles() {
       { css: ["--ui-spectrum-grid"] },
       primaryRefs
     ),
+    role("spectrum.fillOpacityTop", {
+      kind: "number",
+      family: "spectrum",
+      recipe: "constant",
+      defaultValue: 0.2,
+      bindings: { css: ["--ui-spectrum-fill-top-opacity"] },
+      advanced: numberOverride(
+        "Spectrum",
+        "Fill Opacity — Upper",
+        "Opacity of the Spectrum area fill at the top of the plot.",
+        0,
+        1,
+        0.01
+      ),
+    }),
+    role("spectrum.fillOpacityBottom", {
+      kind: "number",
+      family: "spectrum",
+      recipe: "constant",
+      defaultValue: 0.02,
+      bindings: { css: ["--ui-spectrum-fill-bottom-opacity"] },
+      advanced: numberOverride(
+        "Spectrum",
+        "Fill Opacity — Lower",
+        "Opacity of the Spectrum area fill at the bottom of the plot.",
+        0,
+        1,
+        0.01
+      ),
+    }),
 
     role("spectrogram.intensity", {
       kind: "palette",
@@ -925,12 +968,28 @@ function validateAdvanced(entry, byId, errors) {
     return;
   }
   const unknownModes = allowedModes.filter(
-    (mode) => mode !== "color" && mode !== "reference" && mode !== "effect"
+    (mode) => mode !== "color" && mode !== "reference" && mode !== "effect" && mode !== "number"
   );
   if (unknownModes.length)
     errors.push(`Unknown Advanced mode for ${entry.id}: ${unknownModes[0]}.`);
   if (!allowedModes.includes("reference") && references.length) {
     errors.push(`References are not enabled for ${entry.id}.`);
+  }
+  if (allowedModes.includes("number")) {
+    const { minimum, maximum, step, unit } = entry.advanced;
+    if (
+      entry.valueKind !== THEME_VALUE_KINDS.NUMBER ||
+      !Number.isFinite(minimum) ||
+      !Number.isFinite(maximum) ||
+      !Number.isFinite(step) ||
+      minimum >= maximum ||
+      step <= 0 ||
+      unit !== "percent" ||
+      entry.defaultValue < minimum ||
+      entry.defaultValue > maximum
+    ) {
+      errors.push(`Invalid numeric Advanced metadata for ${entry.id}.`);
+    }
   }
   for (const reference of references) {
     const source = byId.get(reference);
@@ -948,6 +1007,9 @@ function validateRecipeContract(entry, byId, errors) {
     errors.push(
       `Recipe ${entry.recipe} outputs ${contract.outputKind}, not ${entry.valueKind}, for ${entry.id}.`
     );
+  }
+  if (entry.recipe === "constant" && !isThemeValueOfKind(entry.defaultValue, entry.valueKind)) {
+    errors.push(`Invalid constant default for ${entry.id}.`);
   }
   const actualInputs = entry.dependencies.map((dependency) => byId.get(dependency)?.valueKind);
   const matches = contract.inputKinds.some(

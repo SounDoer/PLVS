@@ -54,6 +54,28 @@ describe("Theme Role Registry", () => {
     });
   });
 
+  it("registers Spectrum fill opacity as bounded numeric Advanced roles", () => {
+    expect(getThemeRole("spectrum.fillOpacityTop")).toMatchObject({
+      valueKind: "number",
+      defaultValue: 0.2,
+      bindings: { css: ["--ui-spectrum-fill-top-opacity"] },
+      advanced: {
+        section: "Spectrum",
+        label: "Fill Opacity — Upper",
+        allowedModes: ["number"],
+        minimum: 0,
+        maximum: 1,
+        step: 0.01,
+        unit: "percent",
+      },
+    });
+    expect(getThemeRole("spectrum.fillOpacityBottom")).toMatchObject({
+      valueKind: "number",
+      defaultValue: 0.02,
+      bindings: { css: ["--ui-spectrum-fill-bottom-opacity"] },
+    });
+  });
+
   it("freezes the public registry deeply", () => {
     expect(Object.isFrozen(THEME_ROLE_REGISTRY)).toBe(true);
     expect(Object.isFrozen(getThemeRole("waveform.centroid").advanced)).toBe(true);

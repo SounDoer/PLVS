@@ -78,6 +78,46 @@ describe("compileTheme", () => {
     expect(resolved.css["--ui-loudness-grid"]).toBe("#282828");
   });
 
+  it("publishes Theme-owned Spectrum fill opacity defaults and numeric overrides", () => {
+    const defaults = compileTheme(authoringTheme());
+    expect(defaults.roles["spectrum.fillOpacityTop"]).toBe(0.2);
+    expect(defaults.roles["spectrum.fillOpacityBottom"]).toBe(0.02);
+    expect(defaults.css["--ui-spectrum-fill-top-opacity"]).toBe("0.2");
+    expect(defaults.css["--ui-spectrum-fill-bottom-opacity"]).toBe("0.02");
+
+    const customized = compileTheme(
+      authoringTheme({
+        overrides: {
+          "spectrum.fillOpacityTop": { kind: "number", value: 0.35 },
+          "spectrum.fillOpacityBottom": { kind: "number", value: 0.08 },
+        },
+      })
+    );
+    expect(customized.css["--ui-spectrum-fill-top-opacity"]).toBe("0.35");
+    expect(customized.css["--ui-spectrum-fill-bottom-opacity"]).toBe("0.08");
+  });
+
+  it("rejects out-of-range or reversed Spectrum fill opacity overrides", () => {
+    expect(() =>
+      compileTheme(
+        authoringTheme({
+          overrides: { "spectrum.fillOpacityTop": { kind: "number", value: 1.01 } },
+        })
+      )
+    ).toThrow("must be from 0 through 1");
+
+    expect(() =>
+      compileTheme(
+        authoringTheme({
+          overrides: {
+            "spectrum.fillOpacityTop": { kind: "number", value: 0.1 },
+            "spectrum.fillOpacityBottom": { kind: "number", value: 0.2 },
+          },
+        })
+      )
+    ).toThrow("lower fill opacity must not exceed upper fill opacity");
+  });
+
   it("maps Status directly without deriving it from either accent", () => {
     const theme = authoringTheme();
     theme.core.interfaceAccent = "#000000";
