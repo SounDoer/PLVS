@@ -508,6 +508,15 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("v0.0.17")).toBeTruthy();
     expect(screen.getByText("Checking...")).toBeTruthy();
     expect(screen.getByText("Releases")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Licenses" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
+    expect(document.querySelector("[data-settings-footer-status]").className).toContain(
+      "justify-start"
+    );
+    const footerLinks = document.querySelector("[data-settings-footer-links]");
+    expect(footerLinks.className).toContain("flex-wrap");
+    expect(footerLinks.className).toContain("justify-start");
+    expect(footerLinks.querySelectorAll(".border-l")).toHaveLength(0);
   });
 
   it("shows up to date when the update check succeeds without a newer version", () => {
@@ -547,21 +556,6 @@ describe("SettingsPanel", () => {
 
     fireEvent.click(screen.getByText("Docs"));
     expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/docs/");
-  });
-
-  it("opens the Privacy Policy from the footer", () => {
-    const openExternalUrl = vi.fn();
-    render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" openExternalUrl={openExternalUrl} />);
-    fireEvent.click(screen.getByRole("button", { name: "Privacy" }));
-    expect(openExternalUrl).toHaveBeenCalledWith("https://plvs.soundoer.com/privacy/");
-  });
-
-  it("opens the installed license notices from the footer", () => {
-    const onOpenLicenses = vi.fn();
-    render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" onOpenLicenses={onOpenLicenses} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Licenses" }));
-    expect(onOpenLicenses).toHaveBeenCalledTimes(1);
   });
 
   it("calls onCheckForUpdate from the version row", () => {

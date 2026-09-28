@@ -28,8 +28,6 @@ import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
   DEFAULT_DIALOGUE_VAD_ENGINE,
 } from "@/lib/dialogueVadEngines.js";
-import { PRIVACY_POLICY_URL } from "@/ipc/openExternal.js";
-
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
 const AGENT_CONTROL_PROMPT_STARTER =
@@ -218,7 +216,6 @@ export function SettingsPanel({
   crashReportSettingBusy = false,
   crashReportSettingError = "",
   onAskToSendCrashReports = () => {},
-  onOpenLicenses = () => {},
   onOpenFeedback = () => {},
 }) {
   const reduceMotion = useReducedMotion();
@@ -782,8 +779,14 @@ export function SettingsPanel({
                 {appVersion ? (
                   <>
                     <SettingsDivider />
-                    <div className="flex flex-col gap-1 px-1.5 text-[length:var(--ui-fs-metric-meta)]">
-                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                    <div
+                      data-settings-footer
+                      className="flex flex-col gap-1 px-1.5 text-[length:var(--ui-fs-metric-meta)]"
+                    >
+                      <div
+                        data-settings-footer-status
+                        className="flex items-center justify-start gap-1.5 whitespace-nowrap"
+                      >
                         <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
                           v{appVersion}
                         </span>
@@ -821,15 +824,10 @@ export function SettingsPanel({
                           </>
                         ) : null}
                       </div>
-                      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                        <button
-                          type="button"
-                          className={FOOTER_LINK_CLASS}
-                          onClick={onOpenLicenses}
-                        >
-                          Licenses
-                        </button>
-                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
+                      <div
+                        data-settings-footer-links
+                        className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1"
+                      >
                         <button
                           type="button"
                           className={cn(
@@ -841,7 +839,6 @@ export function SettingsPanel({
                           Releases
                           <ExternalLink className="size-[1em]" />
                         </button>
-                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <button
                           type="button"
                           className={FOOTER_LINK_CLASS}
@@ -850,16 +847,6 @@ export function SettingsPanel({
                           Docs
                           <ExternalLink className="size-[1em]" />
                         </button>
-                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                        <button
-                          type="button"
-                          className={FOOTER_LINK_CLASS}
-                          onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
-                        >
-                          Privacy
-                          <ExternalLink className="size-[1em]" />
-                        </button>
-                        <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                         <button
                           type="button"
                           className={FOOTER_LINK_CLASS}

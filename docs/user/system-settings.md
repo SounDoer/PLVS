@@ -146,9 +146,10 @@ Library entry, or bypass PLVS's compatibility checks.
 PLVS saves crash reports locally. With **Ask To Send Crash Reports** enabled, it asks before sending
 one after a crash. Feedback diagnostics are attached only when you choose to include them. Audio
 samples are never attached. In a multi-workbench run, local crash records include random instance
-and workspace identifiers so the matching per-process log can be diagnosed. Open
-[Privacy](https://plvs.soundoer.com/privacy/) at the bottom of
-Settings for the exact contents, retention and deletion-request details.
+and workspace identifiers so the matching per-process log can be diagnosed. See the
+[Privacy Policy](https://plvs.soundoer.com/privacy/) for the exact contents, retention and
+deletion-request details. Feedback and crash-report prompts also link to that policy before any
+diagnostics are sent.
 
 ## Agent Control
 
@@ -157,7 +158,6 @@ Settings for the exact contents, retention and deletion-request details.
 
 ## Licenses
 
-Choose **Licenses** at the bottom of Settings to open the third-party notices installed with PLVS.
-The same `licenses` folder contains the complete PLVS MIT License and the license texts referenced
-by the notices. Portable users can also open that folder directly beside `plvs.exe`; in a macOS app
-bundle it is under `Contents/Resources/licenses`.
+Every package includes a `licenses` folder containing the third-party notices, the complete PLVS
+MIT License and the license texts referenced by the notices. Portable users can open that folder
+directly beside `plvs.exe`; in a macOS app bundle it is under `Contents/Resources/licenses`.

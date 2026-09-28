@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { openExternalUrl, openLicenseNotices } from "../ipc/openExternal.js";
+import { openExternalUrl } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
@@ -160,7 +160,6 @@ export function AppSettingsOverlays({
         crashReportSettingBusy={crashReportSetting.busy}
         crashReportSettingError={crashReportSetting.error}
         onAskToSendCrashReports={crashReportSetting.setEnabled}
-        onOpenLicenses={openLicenseNotices}
         onOpenFeedback={() => {
           settings.setSettingsOpen(false);
           setFeedbackOpen(true);
