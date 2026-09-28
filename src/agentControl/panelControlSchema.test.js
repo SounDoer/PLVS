@@ -3,17 +3,28 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 
 describe("buildPublicPanelControlSchema", () => {
-  it("describes the Level Meter thresholds and marks the other mode's pair inactive", () => {
-    const schema = buildPublicPanelControlSchema("levelMeter", DEFAULT_PANEL_CONTROLS);
-    expect(schema.properties.peakThresholdsDbfs).toMatchObject({
+  it("describes Bar Colors and when each threshold pair is effective", () => {
+    const byDefault = buildPublicPanelControlSchema("levelMeter", DEFAULT_PANEL_CONTROLS);
+    expect(byDefault.properties.barColors).toMatchObject({
       effective: true,
+      default: "gradient",
+      options: ["gradient", "levelZones"],
+    });
+    expect(byDefault.properties.peakThresholdsDbfs).toMatchObject({
+      effective: false,
+      inactiveReason: "gradientBarColors",
       default: { warning: -6, critical: -1 },
       constraints: [{ kind: "ordered", lower: "warning", upper: "critical", inclusive: true }],
     });
-    expect(schema.properties.rmsThresholdsDbfs).toMatchObject({
+
+    const zones = buildPublicPanelControlSchema("levelMeter", {
+      ...DEFAULT_PANEL_CONTROLS,
+      levelMeterBarColors: "levelZones",
+    });
+    expect(zones.properties.peakThresholdsDbfs.effective).toBe(true);
+    expect(zones.properties.rmsThresholdsDbfs).toMatchObject({
       effective: false,
       inactiveReason: "nonRmsMode",
-      default: { warning: -18, critical: -9 },
     });
   });
 

@@ -5,11 +5,16 @@ import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelContro
 describe("planPublicPanelControlPatch", () => {
   it("patches Level Meter thresholds as ordered pairs", () => {
     const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      barColors: "levelZones",
       peakThresholdsDbfs: { warning: -12, critical: -3 },
     });
     expect(result).toMatchObject({
       issues: [],
-      changed: ["controls.peakThresholdsDbfs.warning", "controls.peakThresholdsDbfs.critical"],
+      changed: [
+        "controls.barColors",
+        "controls.peakThresholdsDbfs.warning",
+        "controls.peakThresholdsDbfs.critical",
+      ],
       warnings: [],
     });
     expect(result.panelControls).toMatchObject({
@@ -20,6 +25,7 @@ describe("planPublicPanelControlPatch", () => {
 
   it("accepts equal warning and critical thresholds", () => {
     const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      barColors: "levelZones",
       peakThresholdsDbfs: { warning: -3, critical: -3 },
     });
     expect(result.issues).toEqual([]);
@@ -39,6 +45,40 @@ describe("planPublicPanelControlPatch", () => {
       expect.objectContaining({ code: "invalidType", path: "$.rmsThresholdsDbfs" }),
     ]);
     expect(result.changed).toEqual([]);
+  });
+
+  it("patches Bar Colors and rejects unknown values", () => {
+    const ok = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      barColors: "levelZones",
+    });
+    expect(ok).toMatchObject({ issues: [], changed: ["controls.barColors"], warnings: [] });
+    expect(ok.panelControls.levelMeterBarColors).toBe("levelZones");
+
+    const bad = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      barColors: "rainbow",
+    });
+    expect(bad.issues).toEqual([
+      expect.objectContaining({ code: "invalidEnum", path: "$.barColors" }),
+    ]);
+  });
+
+  it("warns that thresholds are inactive under Gradient, judged on the final state", () => {
+    const gradient = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      peakThresholdsDbfs: { warning: -12, critical: -3 },
+    });
+    expect(gradient.warnings).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.peakThresholdsDbfs",
+        inactiveReason: "gradientBarColors",
+      },
+    ]);
+
+    const zones = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+      barColors: "levelZones",
+      peakThresholdsDbfs: { warning: -12, critical: -3 },
+    });
+    expect(zones.warnings).toEqual([]);
   });
 
   it("warns when thresholds for another mode are patched", () => {

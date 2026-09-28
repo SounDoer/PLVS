@@ -125,6 +125,7 @@ describe("buildPublicPresetSnapshot", () => {
           mode: "peak",
           readout: "truePeakMax",
           showLabels: false,
+          barColors: "gradient",
           peakThresholdsDbfs: { warning: -6, critical: -1 },
           rmsThresholdsDbfs: { warning: -18, critical: -9 },
         },

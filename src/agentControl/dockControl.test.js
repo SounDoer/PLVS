@@ -60,6 +60,7 @@ describe("Dock Control", () => {
             mode: "peak",
             readout: "truePeakMax",
             showLabels: false,
+            barColors: "gradient",
             peakThresholdsDbfs: { warning: -6, critical: -1 },
             rmsThresholdsDbfs: { warning: -18, critical: -9 },
           },
@@ -133,6 +134,7 @@ describe("Dock Control", () => {
       mode: "rms",
       readout: "playbackMax",
       showLabels: true,
+      barColors: "gradient",
       peakThresholdsDbfs: { warning: -6, critical: -1 },
       rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });
@@ -165,6 +167,12 @@ describe("Dock Control", () => {
     });
   });
 
+  it("plans Dock Bar Colors through the panel's own rules", () => {
+    const planned = planDockPanelPatch(dock, "level", { barColors: "levelZones" }, {});
+    expect(planned.issues).toEqual([]);
+    expect(buildDockSnapshot(planned.dock).panels[1].controls.barColors).toBe("levelZones");
+  });
+
   it("leaves a Dock-only control the patch did not name alone", () => {
     // The fixture is non-default on both: readout truePeakMax, showLabels false. A patch naming one
     // of them used to reset the other, because the Dock-only controls are absent from the planned
@@ -176,6 +184,7 @@ describe("Dock Control", () => {
       mode: "peak",
       readout: "truePeakMax",
       showLabels: true,
+      barColors: "gradient",
       peakThresholdsDbfs: { warning: -6, critical: -1 },
       rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });
@@ -186,6 +195,7 @@ describe("Dock Control", () => {
       mode: "peak",
       readout: "live",
       showLabels: false,
+      barColors: "gradient",
       peakThresholdsDbfs: { warning: -6, critical: -1 },
       rmsThresholdsDbfs: { warning: -18, critical: -9 },
     });

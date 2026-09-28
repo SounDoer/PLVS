@@ -14,6 +14,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
   "playbackMax": false,
   "floatingValue": false,
   "tpMaxMarker": false,
+  "barColors": "gradient",
   "peakThresholdsDbfs": {
     "warning": -6,
     "critical": -1
@@ -41,7 +42,8 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | `playbackMax` | boolean | - | `false` | - | inactive (peakMode) |
 | `floatingValue` | boolean | - | `false` | - | inactive (nonLoudnessMode) |
 | `tpMaxMarker` | boolean | - | `false` | - | active |
-| `peakThresholdsDbfs` | object | dBFS | - | requires warning, critical; warning <= critical | active |
+| `barColors` | string | - | `"gradient"` | "gradient", "levelZones" | active |
+| `peakThresholdsDbfs` | object | dBFS | - | requires warning, critical; warning <= critical | inactive (gradientBarColors) |
 | `peakThresholdsDbfs.warning` | integer | - | - | -60 to 3 | - |
 | `peakThresholdsDbfs.critical` | integer | - | - | -60 to 3 | - |
 | `rmsThresholdsDbfs` | object | dBFS | - | requires warning, critical; warning <= critical | inactive (nonRmsMode) |

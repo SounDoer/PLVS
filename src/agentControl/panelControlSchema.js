@@ -104,6 +104,9 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
   if (moduleId === "levelMeter") {
     const loudnessMode =
       controls.levelMeterMode === "momentary" || controls.levelMeterMode === "shortTerm";
+    const levelZones = controls.levelMeterBarColors === "levelZones";
+    const thresholdsReason = (mode, modeReason) =>
+      controls.levelMeterMode !== mode ? modeReason : "gradientBarColors";
     return root({
       mode: field("string", "Mode", "Measurement displayed by the meter.", {
         default: defaults.mode,
@@ -131,15 +134,21 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
         controls.levelMeterMode === "peak",
         "nonPeakMode"
       ),
+      barColors: field(
+        "string",
+        "Bar Colors",
+        "Gradient is appearance only; Level Zones color the bar by thresholds or Profile rules.",
+        { default: defaults.barColors, options: ["gradient", "levelZones"], effective: true }
+      ),
       peakThresholdsDbfs: active(
         thresholds("Peak Thresholds", defaults.peakThresholdsDbfs),
-        controls.levelMeterMode === "peak",
-        "nonPeakMode"
+        controls.levelMeterMode === "peak" && levelZones,
+        thresholdsReason("peak", "nonPeakMode")
       ),
       rmsThresholdsDbfs: active(
         thresholds("RMS Thresholds", defaults.rmsThresholdsDbfs),
-        controls.levelMeterMode === "rms",
-        "nonRmsMode"
+        controls.levelMeterMode === "rms" && levelZones,
+        thresholdsReason("rms", "nonRmsMode")
       ),
       levelRangeDbfs: active(
         range("Level Range", "dBFS", defaults.levelRangeDbfs, -60, 3, 12),
