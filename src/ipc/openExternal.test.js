@@ -3,48 +3,40 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   isTauri: vi.fn(),
-  openPath: vi.fn(),
   openUrl: vi.fn(),
-  resolveResource: vi.fn(),
 }));
 
 vi.mock("./env.js", () => ({ isTauri: mocks.isTauri }));
-vi.mock("@tauri-apps/api/path", () => ({ resolveResource: mocks.resolveResource }));
-vi.mock("@tauri-apps/plugin-opener", () => ({
-  openPath: mocks.openPath,
-  openUrl: mocks.openUrl,
-}));
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: mocks.openUrl }));
 
-import { LICENSE_NOTICES_URL, openLicenseNotices } from "./openExternal.js";
+import { openExternalUrl, PRIVACY_POLICY_URL } from "./openExternal.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("openLicenseNotices", () => {
-  it("opens the installed notice from Tauri resources", async () => {
+describe("openExternalUrl", () => {
+  it("uses the desktop opener inside Tauri", async () => {
     mocks.isTauri.mockReturnValue(true);
-    mocks.resolveResource.mockResolvedValue(
-      "C:\\Program Files\\PLVS\\licenses\\THIRD-PARTY-NOTICES.txt"
-    );
 
-    await openLicenseNotices();
+    await openExternalUrl(PRIVACY_POLICY_URL);
 
-    expect(mocks.resolveResource).toHaveBeenCalledWith("licenses/THIRD-PARTY-NOTICES.txt");
-    expect(mocks.openPath).toHaveBeenCalledWith(
-      "C:\\Program Files\\PLVS\\licenses\\THIRD-PARTY-NOTICES.txt"
-    );
-    expect(mocks.openUrl).not.toHaveBeenCalled();
+    expect(mocks.openUrl).toHaveBeenCalledWith(PRIVACY_POLICY_URL);
   });
 
-  it("uses the public notice when rendered outside the desktop shell", async () => {
+  it("uses a browser tab outside the desktop shell", async () => {
     mocks.isTauri.mockReturnValue(false);
     const open = vi.spyOn(window, "open").mockImplementation(() => null);
 
-    await openLicenseNotices();
+    await openExternalUrl(PRIVACY_POLICY_URL);
 
-    expect(open).toHaveBeenCalledWith(LICENSE_NOTICES_URL, "_blank", "noopener,noreferrer");
-    expect(mocks.resolveResource).not.toHaveBeenCalled();
+    expect(open).toHaveBeenCalledWith(PRIVACY_POLICY_URL, "_blank", "noopener,noreferrer");
     open.mockRestore();
+  });
+
+  it("ignores an empty URL", async () => {
+    await openExternalUrl("");
+
+    expect(mocks.openUrl).not.toHaveBeenCalled();
   });
 });

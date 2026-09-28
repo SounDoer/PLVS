@@ -31,14 +31,9 @@
         },
         {
           "url": "https://plvs.soundoer.com/docs/*"
-        }
-      ]
-    },
-    {
-      "identifier": "opener:allow-open-path",
-      "allow": [
+        },
         {
-          "path": "$RESOURCE/licenses/THIRD-PARTY-NOTICES.txt"
+          "url": "https://plvs.soundoer.com/privacy/"
         }
       ]
     },

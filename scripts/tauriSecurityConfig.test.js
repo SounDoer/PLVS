@@ -78,11 +78,18 @@ describe("Tauri security configuration", () => {
     );
   });
 
-  it("allows opening only the installed third-party notice from app resources", () => {
+  it("allows opening the Privacy Policy in the system browser", () => {
+    const opener = defaultCapability.permissions.find(
+      (permission) => permission?.identifier === "opener:allow-open-url"
+    );
+    expect(opener?.allow).toContainEqual({ url: "https://plvs.soundoer.com/privacy/" });
+  });
+
+  it("does not grant local path opening after removing the in-app license entry", () => {
     const opener = defaultCapability.permissions.find(
       (permission) => permission?.identifier === "opener:allow-open-path"
     );
-    expect(opener?.allow).toEqual([{ path: "$RESOURCE/licenses/THIRD-PARTY-NOTICES.txt" }]);
+    expect(opener).toBeUndefined();
   });
 
   it("scopes default capabilities to known app windows", () => {
