@@ -29,9 +29,14 @@ A new Level Meter control, **Bar Colors**, with two options:
 | **Gradient** (default) | Appearance only. Nothing is judged; the colour follows the bar's height. |
 | **Level Zones**        | The colour is a level zone: thresholds, or the Loudness Profile's rules. |
 
-It applies to all four measurement modes (Peak, RMS, Momentary, Short-term), per panel instance and
-saved with presets like every other panel control. The Dock level module carries its own value with
-the same default and the same behaviour; nothing about the Dock is special-cased.
+Each measurement mode keeps its own value: `levelMeterPeakBarColors`, `levelMeterRmsBarColors`,
+`levelMeterMomentaryBarColors` and `levelMeterShortTermBarColors`, all defaulting to Gradient, per
+panel instance and saved with presets like every other panel control. A user can read headroom in
+Level Zones under Peak and keep the Gradient under Momentary; switching Mode brings back that mode's
+own choice. Settings show one **Bar Colors** row, for the current mode. The Dock level module carries
+its own four values with the same defaults and the same behaviour; nothing about the Dock is
+special-cased. (Revised 2026-09-28 during implementation: the first cut had one value shared by all
+four modes.)
 
 The UI label and tooltip use American spelling like every other UI string. Tooltip:
 "Gradient is appearance only. Level Zones color the bar by level: Warning / Critical for Peak and
@@ -87,12 +92,14 @@ No stop position returns to the theme or to preferences.
 
 ### Agent Control
 
-- New public field `barColors`, enum `"gradient" | "levelZones"`, default `"gradient"`, in Panel
-  Control and Dock Control.
+- Four public fields, one per mode, named like the threshold pairs: `peakBarColors`,
+  `rmsBarColors`, `momentaryBarColors`, `shortTermBarColors`; enum `"gradient" | "levelZones"`,
+  default `"gradient"`, in Panel Control and Dock Control. Each is effective in its own mode; otherwise
+  its inactive reason is `nonPeakMode` / `nonRmsMode` / `nonMomentaryMode` / `nonShortTermMode`.
 - `peakThresholdsDbfs` / `rmsThresholdsDbfs` stay. Their `effective` rule becomes "matching mode and
-  `barColors` is `levelZones`". The inactive reason is the mode one (`nonPeakMode` / `nonRmsMode`)
-  when the mode does not match, otherwise `gradientBarColors`. Patch warnings follow the same rule
-  against the final state of the patch.
+  that mode's bar colors is `levelZones`". The inactive reason is the mode one (`nonPeakMode` /
+  `nonRmsMode`) when the mode does not match, otherwise `gradientBarColors`. Patch warnings follow
+  the same rules against the final state of the patch.
 - Regenerate `docs/agent-control/generated/`; follow the synchronisation checklist in
   `docs/agent-control/README.md`.
 
@@ -109,13 +116,15 @@ existing "reading aid for headroom" sentence applies to Level Zones for Peak/RMS
   Level Zones hard-cut output for Peak/RMS (normal, equal thresholds, zoomed view) and for M/ST
   (no rule → neutral, single fail, warn + fail, suppression, `<` ignored, Max ceilings included,
   threshold below the visible range).
-- Control table: `levelMeterBarColors` default and repair; thresholds row visible only under Level
-  Zones and the matching mode.
+- Control table: the four per-mode bar colors keys, their defaults and repair; each Bar Colors row
+  visible only in its mode; thresholds row visible only under that mode's Level Zones.
+- Per-mode independence: changing one mode's Bar Colors leaves the other three untouched, and the
+  bar follows the current mode's value (panel and Dock).
 - Panel and Dock: default renders the Gradient; switching to Level Zones renders zones; a Profile
   changes the M/ST bar only under Level Zones; marker status unchanged under both.
 - Dock settings: the Bar Colors row, and thresholds hidden under Gradient.
-- Agent Control contract tests for `barColors` and the new inactive reason; preset round trip for
-  `barColors`.
+- Agent Control contract tests for the four bar colors fields and the inactive reasons; preset round
+  trip for per-mode bar colors.
 
 ## Out of scope
 
