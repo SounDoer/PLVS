@@ -110,6 +110,23 @@ describe("compileTheme", () => {
     expect(customized.canvas["stereoMap.fillOpacity"]).toBe(0.4);
   });
 
+  it("keeps registered numeric roles valid when their override resolves to zero", () => {
+    const resolved = compileTheme(
+      authoringTheme({
+        overrides: {
+          "spectrum.fillOpacityTop": { kind: "number", value: 0 },
+          "spectrum.fillOpacityBottom": { kind: "number", value: 0 },
+          "stereoMap.fillOpacity": { kind: "number", value: 0 },
+        },
+      })
+    );
+
+    expect(resolved.roles["spectrum.fillOpacityTop"]).toBe(0);
+    expect(resolved.css["--ui-spectrum-fill-top-opacity"]).toBe("0");
+    expect(resolved.roles["stereoMap.fillOpacity"]).toBe(0);
+    expect(resolved.canvas["stereoMap.fillOpacity"]).toBe(0);
+  });
+
   it("rejects out-of-range or reversed Spectrum fill opacity overrides", () => {
     expect(() =>
       compileTheme(

@@ -169,7 +169,7 @@ export function compileTheme(rawTheme, options = {}) {
   }
 
   for (const roleId of Object.keys(theme.overrides)) {
-    if (!roles[roleId]) {
+    if (!(roleId in roles)) {
       throw compilerError(
         "unknownRole",
         `$.overrides.${roleId}`,
