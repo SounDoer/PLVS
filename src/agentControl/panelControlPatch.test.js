@@ -81,6 +81,44 @@ describe("planPublicPanelControlPatch", () => {
     expect(zones.warnings).toEqual([]);
   });
 
+  it("judges threshold warnings on the patch's final mode and Bar Colors", () => {
+    expect(
+      planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+        mode: "rms",
+        barColors: "levelZones",
+        rmsThresholdsDbfs: { warning: -20, critical: -10 },
+      }).warnings
+    ).toEqual([]);
+
+    expect(
+      planPublicPanelControlPatch(
+        "levelMeter",
+        { ...DEFAULT_PANEL_CONTROLS, levelMeterBarColors: "levelZones" },
+        { barColors: "gradient", peakThresholdsDbfs: { warning: -12, critical: -3 } }
+      ).warnings
+    ).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.peakThresholdsDbfs",
+        inactiveReason: "gradientBarColors",
+      },
+    ]);
+
+    expect(
+      planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
+        mode: "rms",
+        barColors: "levelZones",
+        peakThresholdsDbfs: { warning: -12, critical: -3 },
+      }).warnings
+    ).toEqual([
+      {
+        code: "currentlyInactive",
+        path: "controls.peakThresholdsDbfs",
+        inactiveReason: "nonPeakMode",
+      },
+    ]);
+  });
+
   it("warns when thresholds for another mode are patched", () => {
     const result = planPublicPanelControlPatch("levelMeter", DEFAULT_PANEL_CONTROLS, {
       rmsThresholdsDbfs: { warning: -20, critical: -10 },
