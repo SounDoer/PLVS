@@ -166,6 +166,35 @@ Dock-enabled presets still round-trip their strip layout. Treat the fields in a 
 as dead snapshot data, not as a missing restore branch. This behaviour was investigated and retained
 on 2026-09-05.
 
+## Rendering changes
+
+### A renderer migration must match the old pixels, not just the old shapes
+
+Changing how a panel is drawn (CPU raster to WebGL, SVG to Canvas, one Canvas pattern to another)
+can change colour, alpha and line weight without changing a single visible shape. Unit tests cannot
+see it: jsdom has no WebGL, and Canvas tests mock the context. Screenshots viewed by eye miss it too,
+because the usual result is "a little softer", which reads as a style rather than a fault.
+
+The 2026-08-31 WebGL port of the 3D Surface is the incident. It set `premultipliedAlpha: false` while
+its blend already multiplied colour by alpha, so every translucent pixel was composited at alpha
+squared. The quiet-terrain fade tuned on 2026-08-03 against the CPU renderer lost strength, and the
+thin floor grid rendered faint and broken, with some pixels darker than the background. Nothing
+flagged it for a month, and a later opacity cleanup excluded "Spectrogram alpha" as already settled.
+It was found on 2026-09-29 only by comparing pixel values between Lines and Surface. The guard is
+`spectrogram3dGlRenderer.test.js`.
+
+When a change alters how something is rendered:
+
+1. Before and after, capture the same panel and state with
+   `npm run desktop:control -- visual screenshot --target panel --panel-id <id>`. A completed FILE
+   analysis gives repeatable data.
+2. Compare pixel values at a few fixed points: a grid line, a translucent fill, an antialiased edge.
+   Also compare against a sibling renderer that should match, as Lines matches Surface for the floor.
+3. Treat any pixel that comes out darker than both its background and its ink as a compositing
+   error, never as a style.
+
+Screen-space size rules for every renderer are in `docs/architecture.md` ("Screen-space sizes").
+
 ## Persistence
 
 ### Pick the correct domain

@@ -286,6 +286,47 @@ group. Dependencies are validated before primary Presets, then normal library me
 allocates or reuses local Profile IDs and rewrites each imported Preset reference to that result.
 Pack V1 remains readable through the legacy normalization path.
 
+### Screen-space sizes (CSS px vs device px)
+
+Every visual size PLVS specifies (stroke-width tokens such as `--ui-spectrum-stroke-width`, grid
+and guide lines, point radii, paddings) is **CSS px, meaning the final size on screen**. It must
+look the same at any `devicePixelRatio`. `devicePixelRatio` combines the display scale and, in
+WebView2, the Windows text scale. Interface Size swaps typography and iconography tokens only; it
+changes neither DPR nor line widths.
+
+How each renderer meets the rule:
+
+| Renderer                                                             | How a CSS-px length reaches the screen                                                                                                                                                                                                   |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SVG in a stretched viewBox (`preserveAspectRatio="none"`)            | every stroke sets `vector-effect="non-scaling-stroke"`; `stroke-width` and `stroke-dasharray` are then CSS px                                                                                                                            |
+| CSS borders                                                          | CSS px. At fractional DPR, Chromium floors border widths to whole device pixels, so a 1px border and a 1px SVG stroke can differ very slightly                                                                                           |
+| Canvas 2D                                                            | draws in backing-store (device) pixels under the identity transform and multiplies each length by the canvas's own scale; `ctx.scale(dpr)` is not used                                                                                   |
+| Canvas 2D with per-axis scales (Waveform: width capped, height full) | paths in backing pixels, strokes through `strokeCssWidth` (`src/lib/canvasCssScale.js`), which scales only the pen so it stays round on screen                                                                                           |
+| WebGL (Spectrogram 3D Surface)                                       | framebuffer and viewport in device pixels; a CSS-px width arrives as a device-px uniform. `gl.LINES` is always one device pixel, so lines with a specified width are extruded into quads (see the floor in `spectrogram3dGlRenderer.js`) |
+
+Rules:
+
+- Derive the scale from the canvas itself (`canvas.width / canvas.clientWidth`, per axis), never
+  from `window.devicePixelRatio` inside draw code. A capped backing store makes the global wrong.
+- Name constants with their unit (`*_CSS_PX`). A device-px value is a local derived at draw time.
+- Backing stores re-measure when the CSS box changes **and** when DPR changes with the box
+  unchanged (`watchDevicePixelRatio`), for example after the window is dragged to a monitor with a
+  different scale.
+- A DPR cap for performance may lower resolution; it must never change visual stroke weight.
+- WebGL canvases use `premultipliedAlpha: true` and shaders write premultiplied colour. Otherwise
+  every translucent pixel, including every antialiased edge, is multiplied by alpha twice, and a thin
+  line renders darker than its background.
+- Grids, axes and guides are 1 CSS px. Selection markers use `--ui-loudness-selection-stroke-width`
+  in every panel.
+- Icons and illustrative thumbnails that scale uniformly are exempt. Their stroke scales with the
+  graphic by design.
+
+Declared exceptions (device px on purpose):
+
+- **Spectrogram 3D Lines ridges**: 1 device px (`RIDGE_LINE_WIDTH`). Anything wider leaves the
+  renderer's hairline fast path, and the measured GPU cost is a cliff. On a scaled display the ridges
+  are therefore thinner than 1 CSS px.
+
 ---
 
 ## 7. Key terms

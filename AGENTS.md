@@ -180,6 +180,9 @@ rules below are the working set; the incident history and rationale live there.
   ingesting intake. Use exactly representable Float32 values in exact-equality fixtures.
 - **Dock presets:** a dock-disabled preset deliberately does not restore the strip layout stored in
   its snapshot.
+- **Rendering changes:** visual sizes are CSS px (`docs/architecture.md`, "Screen-space sizes").
+  Verify any change to how a panel renders by comparing Agent Control screenshot pixels before and
+  after; tests see neither compositing nor line weight.
 - **Persistence:** choose the domain in `src/persistence/index.js`; external writers must notify the
   owning React state. `plvs-settings.json` is the shared store and must not be casually renamed.
   During desktop development, never validate persistence across a Vite reload—restart the app and
