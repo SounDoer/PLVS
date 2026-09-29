@@ -1254,7 +1254,7 @@ describe("PanelSettingsContent", () => {
     );
   });
 
-  it("orders stereo map Mode before Channel pair before Max hold", () => {
+  it("orders stereo map Mode and its mode-local Grid before Channel pair and Max hold", () => {
     const { container } = render(
       <PanelSettingsContent
         activeTab="stereo-map"
@@ -1268,11 +1268,38 @@ describe("PanelSettingsContent", () => {
     );
 
     const text = container.textContent;
+    expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Grid"));
+    expect(text.indexOf("Grid")).toBeLessThan(text.indexOf("Channel Pair"));
     expect(text.indexOf("Mode")).toBeLessThan(text.indexOf("Channel Pair"));
     expect(text.indexOf("Channel Pair")).toBeLessThan(text.indexOf("Max Hold"));
     expect(text.indexOf("Max Hold")).toBeLessThan(text.indexOf("Speed"));
     expect(text.indexOf("Speed")).toBeLessThan(text.indexOf("Smoothing"));
     expect(text.indexOf("Smoothing")).toBeLessThan(text.indexOf("Frequency Range"));
+  });
+
+  it.each([
+    ["position", "stereoMapPositionGrid"],
+    ["correlation", "stereoMapCorrelationGrid"],
+    ["monoLossDb", "stereoMapMonoLossGrid"],
+    ["msRatioDb", "stereoMapMsRatioGrid"],
+  ])("stores Stereo Map Grid independently for %s", (stereoMapMode, gridKey) => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        panelControls={{ ...DEFAULT_PANEL_CONTROLS, stereoMapMode }}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const grid = screen.getByRole("switch", { name: "stereo map grid" });
+    expect(grid.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(grid);
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      stereoMapMode,
+      [gridKey]: true,
+    });
   });
 
   it("shows a Level Range only for Mono Loss and M/S Ratio, with Mono Loss pinned at 0 dB", () => {
@@ -1410,6 +1437,25 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByText("Ref")).toBeNull();
     // Layers, including the `ref` toggle, stay here.
     expect(screen.getByText("Layers")).toBeTruthy();
+  });
+
+  it("shows Loudness Grid off by default and persists the toggle", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="loudness"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const grid = screen.getByRole("switch", { name: "loudness grid" });
+    expect(grid.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(grid);
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      loudnessGrid: true,
+    });
   });
 
   it("renders Loudness layers as an inline labeled detail and toggles layer ids", () => {
@@ -1590,6 +1636,28 @@ describe("PanelSettingsContent", () => {
     fireEvent.click(screen.getByRole("button", { name: "spectrum view" }));
     fireEvent.click(screen.getByRole("option", { name: "M / S" }));
     expect(onSpectrumViewChange).toHaveBeenCalledWith("ms");
+  });
+
+  it("shows Spectrum Grid off by default after Smoothing and persists the toggle", () => {
+    const onPanelControlsChange = vi.fn();
+    const { container } = render(
+      <PanelSettingsContent
+        activeTab="spectrum"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const grid = screen.getByRole("switch", { name: "spectrum grid" });
+    expect(grid.getAttribute("aria-checked")).toBe("false");
+    expect(container.textContent.indexOf("Smoothing")).toBeLessThan(
+      container.textContent.indexOf("Grid")
+    );
+    fireEvent.click(grid);
+    expect(onPanelControlsChange).toHaveBeenCalledWith({
+      ...DEFAULT_PANEL_CONTROLS,
+      spectrumGrid: true,
+    });
   });
 
   it("renders spectrum curve legend inside the view chip", () => {
@@ -2029,6 +2097,7 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.getByRole("button", { name: "spectrogram mode" })).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "spectrogram 3d colorize" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "spectrogram 3d grid" })).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d height scale")).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
 
@@ -2040,6 +2109,9 @@ describe("PanelSettingsContent", () => {
     );
 
     expect(screen.getByRole("switch", { name: "spectrogram 3d colorize" })).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "spectrogram 3d grid" }).getAttribute("aria-checked")
+    ).toBe("false");
     expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
     expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
   });

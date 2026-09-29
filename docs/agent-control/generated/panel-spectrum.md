@@ -18,6 +18,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
   "view": "combined",
   "maxMode": "off",
   "peakLabels": false,
+  "grid": false,
   "speedPercent": 25,
   "tiltDbPerOctave": 3,
   "octaveSmoothing": "off",
@@ -36,6 +37,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | `view` | string | - | `"combined"` | "combined", "lr", "ms" | active |
 | `maxMode` | string | - | `"off"` | "off", "decay", "hold" | active |
 | `peakLabels` | boolean | - | `false` | - | active |
+| `grid` | boolean | - | `false` | - | active |
 | `speedPercent` | integer | % | `25` | 0 to 100 | active |
 | `tiltDbPerOctave` | number | dB/oct | `3` | 0 to 6; step 0.25 (UI hint) | active |
 | `octaveSmoothing` | string | - | `"off"` | "off", "1/12", "1/6", "1/3" | active |

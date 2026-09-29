@@ -140,10 +140,6 @@ export const UI_PREFERENCES = {
     },
     spectrum: {
       strokeWidth: 1.5,
-      spectrumGrid: {
-        verticalSpacingPx: 56,
-        horizontalSpacingPx: 34,
-      },
     },
     stereoMap: {
       strokeWidth: 1.5,

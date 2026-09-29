@@ -165,6 +165,7 @@ function SettingsBody({
     return (
       <>
         <LoudnessSettingsRows
+          showGrid={false}
           visibleLayerIds={controls.loudnessHistoryVisibleLayerIds}
           yMinDb={controls.loudnessYMinDb}
           yMaxDb={controls.loudnessYMaxDb}
@@ -220,6 +221,7 @@ function SettingsBody({
           </SettingsRow>
         ) : null}
         <SpectrumDisplaySettingsRows
+          showGrid={false}
           showPeakLabels={false}
           maxMode={controls.spectrumMaxMode}
           speedPercent={controls.spectrumSpeedPercent}

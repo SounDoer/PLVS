@@ -53,7 +53,9 @@ contrast. Measurement colors keep the same meanings in both appearances even whe
 values differ.
 
 **Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft
-without changing Workspace data or layout. Its **Visual Review** page reports recommended contrast,
+without changing Workspace data or layout. The module scenes include representative optional Grid
+lines and always-visible Vectorscope guides so their resolved colours can be reviewed. Its
+**Visual Review** page reports recommended contrast,
 color-separation, surface, and Intensity targets and can jump back to an affected control. These
 findings are advisory: they do not interrupt editing or block saving, built-in Themes, or Community
 publication. Invalid Theme structure and unsupported versions remain errors.

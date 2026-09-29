@@ -208,7 +208,7 @@ First-paint flow (`src/main.jsx`):
 
 1. Read `appearance` (`system`|`fixed`) and `themeId` through `settingsStore` (under Tauri, Rust pre-injects `window.__PLVS_INITIAL_STATE__`; the browser dev environment uses `localStorage`)
 2. `resolveThemeId` (with `prefers-color-scheme`) → current `themeId`
-3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 2`, `semanticsVersion: 1`)
+3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 2`, `semanticsVersion: 2`)
 4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
 5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles layout, font size, geometry, and non-Theme product tuning
 
@@ -329,12 +329,10 @@ Rules:
   line renders darker than its background.
 - Grids, axes and guides are 1 CSS px. Selection markers use `--ui-loudness-selection-stroke-width`
   in every panel.
-- Fixed horizontal reference lines on a canvas (the Waveform centre line, the Stereo Map zero line)
-  are hairlines (`src/lib/deviceHairline.js`): `max(1, floor(scale))` device pixels, centred so they
-  cover whole pixel rows. That is the rule Chromium applies to CSS borders. A 1 CSS px line at DPR
-  1.25 would otherwise smear across two or three rows. Moving marks and data traces are never
-  snapped. SVG lines are not snapped either: `shape-rendering="crispEdges"` was measured to drop
-  1 px grid lines entirely.
+- Optional chart grids use the current normalized axis tick models and discard boundary ticks, so
+  labels and guides stay aligned through pan and zoom without repainting the plot frame. Waveform
+  has no centre reference line and Stereo Map has no unconditional zero line. SVG grid lines are
+  not snapped: `shape-rendering="crispEdges"` was measured to drop 1 px lines entirely.
 - Icons and illustrative thumbnails that scale uniformly are exempt. Their stroke scales with the
   graphic by design.
 

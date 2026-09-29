@@ -116,10 +116,11 @@ describe("profile API", () => {
     });
     const { settingsStore, workspaceStore, presetsStore } = await import("./index.js");
     expect(settingsStore.read()).toMatchObject({ referenceLufs: -18 });
-    expect(workspaceStore.read()).toEqual({ panelOrder: ["x"] });
+    expect(workspaceStore.read()).toEqual({ panelOrder: ["x"], version: 1 });
     expect(presetsStore.read()).toEqual({
       list: [{ ...TEST_PRESET, loudnessProfileActive: "off" }],
       activeId: "p1",
+      version: 1,
     });
     expect(localStorage.getItem("plvs.captureDeviceId")).toBe("in:2");
   });
@@ -140,7 +141,7 @@ describe("profile API", () => {
     await importProfile(exported);
 
     expect(settingsStore.read().loudnessProfiles).toEqual(loudnessProfiles);
-    expect(presetsStore.read()).toEqual({ list: [TEST_PRESET], activeId: "p1" });
+    expect(presetsStore.read()).toEqual({ list: [TEST_PRESET], activeId: "p1", version: 1 });
   });
 
   it("resets every browser persistence domain", async () => {

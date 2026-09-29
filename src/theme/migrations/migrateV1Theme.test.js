@@ -12,7 +12,7 @@ import {
   normalizeThemeDocument,
 } from "./migrateV1Theme.js";
 
-const REVIEWED_REPLACEMENTS = new Set(["--ui-loudness-grid", "--ui-vectorscope-grid-stroke"]);
+const REVIEWED_REPLACEMENTS = new Set(["--ui-loudness-grid", "--ui-vectorscope-guides-stroke"]);
 
 function legacy(id = "custom-test", builtin = "plvs-dark") {
   return makeCustomThemeFromBase(BUILTIN_THEMES[builtin], "Legacy", () => id);
@@ -65,6 +65,30 @@ describe("migrateV1Theme", () => {
     expect(migrateV1Theme({ ...legacy(), colormap: [[0, [0, 0, 0]]] })).toBeNull();
   });
 
+  it("migrates semantics 1 Grid overrides into the clarified roles", () => {
+    const current = migrateV1Theme(legacy());
+    const semantics1 = {
+      ...current,
+      semanticsVersion: 1,
+      overrides: {
+        ...current.overrides,
+        "vectorscope.grid": { kind: "color", value: "#123456" },
+        "waveform.grid": { kind: "color", value: "#234567" },
+        "spectrogram.gridSubtle": { kind: "color", value: "#345678" },
+      },
+    };
+
+    const migrated = migrateThemeDocument(semantics1);
+    expect(migrated?.theme).toMatchObject({
+      semanticsVersion: 2,
+      overrides: { "vectorscope.guides": { kind: "color", value: "#123456" } },
+    });
+    expect(migrated?.theme.overrides).not.toHaveProperty("vectorscope.grid");
+    expect(migrated?.theme.overrides).not.toHaveProperty("waveform.grid");
+    expect(migrated?.theme.overrides).not.toHaveProperty("spectrogram.gridSubtle");
+    expect(migrated?.notes).toEqual([expect.objectContaining({ code: "clarify-grid-semantics" })]);
+  });
+
   it("moves V2 backfills into an explicit, inspectable migration", () => {
     const current = migrateV1Theme(legacy());
     const { formatVersion: _format, semanticsVersion: _semantics, ...body } = current;
@@ -85,7 +109,7 @@ describe("migrateV1Theme", () => {
 
     expect(migrateV2Theme(old)).toMatchObject({
       formatVersion: 2,
-      semanticsVersion: 1,
+      semanticsVersion: 2,
       palettes: {
         status: { safe: current.palettes.status.safe },
         interface: {

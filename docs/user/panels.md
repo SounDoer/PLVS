@@ -40,7 +40,8 @@ settings.
 ## Loudness
 
 Momentary and Short-term LUFS curves over time, following ITU-R BS.1770 measurement with EBU R128
-gating conventions. The reference line comes from the active Loudness Profile.
+gating conventions. The reference line comes from the active Loudness Profile. **Grid** adds
+horizontal guides at the visible loudness-axis ticks and is off by default.
 
 ## Stats
 
@@ -57,6 +58,9 @@ aligned with common DAW practice rather than IEC 61260 filter-bank metrology. Vi
 as **L / R**, or as **M / S**; add a maximum trace that **Decays** or **Holds**; adjust tilt, octave
 smoothing, and speed. Hover to read frequency and musical note.
 
+**Grid** adds horizontal level guides and vertical frequency guides at the visible axis ticks. It
+is off by default and follows the same pan and zoom ranges as the axes.
+
 The Theme Editor's **Advanced → Spectrum** section controls the area fill's **Upper** and **Lower**
 opacity. They default to 20% and 2%; Lower cannot exceed Upper. The same pair applies to Primary,
 Secondary, and Snapshot fills.
@@ -65,6 +69,9 @@ Secondary, and Snapshot fills.
 
 Frequency content over time, as a **2D Heatmap**, **3D Lines**, or **3D Surface**, coloured by your
 theme. Choose the channel, tilt, smoothing, and level floor.
+
+In **3D Lines** and **3D Surface**, **Grid** shows the floor grid. The same setting is shared by both
+3D modes, is hidden in 2D Heatmap, and is off by default.
 
 In 3D Lines, the mathematically edge-on 0° and 180° azimuths receive a one-degree render-only camera
 offset. The saved angle and control value stay unchanged, while the tiny offset prevents the
@@ -75,6 +82,9 @@ opacity gradient. Adjacent angles and 3D Surface are unaffected.
 
 Phase and correlation between a pair of channels, defaulting to Front L/R. Display it as
 **Lissajous**, **Polar Sample**, or **Polar Level**, with an optional max hold.
+
+The axes, diagonals, rings, and other orientation marks are always-visible measurement guides, not
+an optional Grid setting.
 
 In **Polar Sample**, **Persistence** controls how long the recent sample trail remains visible. It
 defaults to 400 ms, ranges from 0 to 1000 ms in 50 ms steps, and updates the display immediately.
@@ -90,6 +100,10 @@ choice only: changing it does not restart analysis or create another history.
 Stereo image plotted across the frequency spectrum, so you can see where the width lives. Switch
 between **Position**, **Correlation**, **Mono Loss**, and **M/S Ratio**, and hold the maximum to
 compare against what came before.
+
+Each mode has its own **Grid** choice, off by default. Switching modes restores that mode's choice;
+the guides follow the visible frequency and value axes. With Grid off, no standalone zero line is
+drawn.
 
 **Energy Fade Strength** controls how strongly quiet frequency bands recede. It defaults to 75%:
 lower values make quiet but valid bands easier to see, 0% gives every band above the analysis gate
@@ -109,6 +123,8 @@ the area beneath the curve; the curve keeps the energy-adjusted opacity and Hold
 
 A DAW-style per-channel amplitude envelope over the session history. Optionally colour it by
 frequency content and show the spectral centroid.
+
+Waveform has no optional Grid and does not draw a centre reference line.
 
 The Theme Editor's **Advanced → Waveform → Classic Fill Opacity** setting controls the envelope
 fill while **Frequency Color** is off. It defaults to 12% and is shared by Workspace, Dock, Live,

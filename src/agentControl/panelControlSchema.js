@@ -194,6 +194,10 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
         items: { type: "string", options },
         effective: true,
       }),
+      grid: field("boolean", "Grid", "Show major lines aligned with the Loudness axis.", {
+        default: defaults.grid,
+        effective: true,
+      }),
       loudnessRangeLufs: active(
         range("Loudness Range", "LUFS", defaults.loudnessRangeLufs, -64, 0, 12),
         true
@@ -323,6 +327,10 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
           default: defaults.peakLabels,
           effective: true,
         }),
+        grid: field("boolean", "Grid", "Show major lines aligned with both Spectrum axes.", {
+          default: defaults.grid,
+          effective: true,
+        }),
         speedPercent: field("integer", "Speed", "Spectrum response speed.", {
           unit: "%",
           default: defaults.speedPercent,
@@ -430,6 +438,41 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
           effective: true,
         }),
         channelPair: pairSchema(defaults.channelPair, context),
+        grid: field("object", "Grid", "Retained Grid visibility for every Stereo Map mode.", {
+          default: defaults.grid,
+          patchMode: "merge",
+          effective: true,
+          properties: {
+            position: active(
+              field("boolean", "Position Grid", "Show Grid in Position mode.", {
+                default: defaults.grid.position,
+              }),
+              controls.stereoMapMode === "position",
+              "nonPositionMode"
+            ),
+            correlation: active(
+              field("boolean", "Correlation Grid", "Show Grid in Correlation mode.", {
+                default: defaults.grid.correlation,
+              }),
+              controls.stereoMapMode === "correlation",
+              "nonCorrelationMode"
+            ),
+            monoLossDb: active(
+              field("boolean", "Mono Loss Grid", "Show Grid in Mono Loss mode.", {
+                default: defaults.grid.monoLossDb,
+              }),
+              controls.stereoMapMode === "monoLossDb",
+              "nonMonoLossMode"
+            ),
+            msRatioDb: active(
+              field("boolean", "M/S Ratio Grid", "Show Grid in M/S Ratio mode.", {
+                default: defaults.grid.msRatioDb,
+              }),
+              controls.stereoMapMode === "msRatioDb",
+              "nonMsRatioMode"
+            ),
+          },
+        }),
         maxHold: field("boolean", "Max Hold", "Hold maximum Stereo Map values.", {
           default: defaults.maxHold,
           effective: true,

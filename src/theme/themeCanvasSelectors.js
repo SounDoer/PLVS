@@ -5,7 +5,6 @@ export function selectWaveformCanvasColors(resolved) {
   return {
     trace: resolved.canvas["waveform.trace"],
     snapshot: resolved.canvas["waveform.snapshot"],
-    grid: resolved.canvas["waveform.grid"],
     selection: resolved.canvas["waveform.selection"],
     frequencyLow: resolved.canvas["waveform.frequencyLow"],
     frequencyMid: resolved.canvas["waveform.frequencyMid"],
@@ -36,7 +35,6 @@ export function selectSpectrogramCanvasTheme(resolved) {
     ink: resolved.canvas["spectrogram.ink"],
     surfaceInk: resolved.canvas["spectrogram.surfaceInk"],
     grid: resolved.canvas["spectrogram.grid"],
-    gridSubtle: resolved.canvas["spectrogram.gridSubtle"],
     axisLabel: resolved.canvas["spectrogram.axisLabel"],
     selection: resolved.canvas["spectrogram.selection"],
   };
@@ -46,7 +44,7 @@ export function selectVectorscopeCanvasColors(resolved) {
   return {
     trace: resolved.canvas["vectorscope.trace"],
     snapshot: resolved.canvas["vectorscope.snapshot"],
-    grid: resolved.canvas["vectorscope.grid"],
+    guides: resolved.canvas["vectorscope.guides"],
   };
 }
 

@@ -5,11 +5,11 @@ import { compileTheme } from "./compileTheme.js";
 import { selectStereoMapCanvasColors, selectWaveformCanvasColors } from "./themeCanvasSelectors.js";
 
 describe("Theme Canvas selectors", () => {
-  it("publishes Waveform Grid and Selection as independent module colors", () => {
+  it("publishes Waveform Selection without a retired Grid role", () => {
     const resolved = compileTheme(BUILTIN_THEMES_V2["plvs-dark"]);
     const colors = selectWaveformCanvasColors(resolved);
 
-    expect(colors.grid).toBe(resolved.roles["waveform.grid"]);
+    expect(colors.grid).toBeUndefined();
     expect(colors.selection).toBe(resolved.roles["waveform.selection"]);
     expect(colors.fillOpacity).toBe(resolved.roles["waveform.fillOpacity"]);
   });

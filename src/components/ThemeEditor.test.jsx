@@ -216,6 +216,8 @@ describe("ThemeEditor", () => {
     expect(screen.getByText("Controlled scenes from the current unsaved Draft")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Modules" }));
     expect(screen.getByText("Stereo Map")).toBeTruthy();
+    expect(document.querySelectorAll("[data-theme-preview-grid]")).toHaveLength(4);
+    expect(document.querySelector("[data-theme-preview-guides]")).toBeTruthy();
     fireEvent.keyDown(screen.getByRole("dialog", { name: "Theme Preview" }), { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Theme Preview" })).toBeNull();
   });

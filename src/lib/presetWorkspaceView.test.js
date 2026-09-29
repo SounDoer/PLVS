@@ -19,13 +19,22 @@ const stale = {
   name: "Saved Long Ago",
   ...DEFAULT_WORKSPACE_STATE,
   // Stored before some controls existed, and carrying one that has since been removed.
-  panelControlsById: { spectrum: { spectrumSpeedPercent: 40, removedLegacyControl: 7 } },
+  panelControlsById: {
+    spectrum: {
+      spectrumSpeedPercent: 40,
+      spectrumGrid: true,
+      stereoMapCorrelationGrid: true,
+      removedLegacyControl: 7,
+    },
+  },
 };
 
 describe("presetWorkspaceView", () => {
   it("migrates the stored controls rather than echoing them", () => {
     const view = presetWorkspaceView(stale);
     expect(view.panelControlsById.spectrum.spectrumSpeedPercent).toBe(40);
+    expect(view.panelControlsById.spectrum.spectrumGrid).toBe(true);
+    expect(view.panelControlsById.spectrum.stereoMapCorrelationGrid).toBe(true);
     expect(view.panelControlsById.spectrum).not.toHaveProperty("removedLegacyControl");
     // The point of the whole helper: the applied Workspace is not the stored record.
     expect(JSON.stringify(view.panelControlsById)).not.toBe(

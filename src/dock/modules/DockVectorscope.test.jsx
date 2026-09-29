@@ -114,7 +114,7 @@ describe("DockVectorscope", () => {
     expect(screen.getByText("0")).toBeTruthy();
     expect(screen.getByTestId("dock-vectorscope-correlation-rail").className).toContain("w-full");
     const rail = screen.getByTestId("dock-vectorscope-correlation-rail");
-    expect(rail.className).toContain("--ui-vectorscope-grid-stroke");
+    expect(rail.className).toContain("--ui-vectorscope-guides-stroke");
     expect(rail.className).not.toContain("opacity-");
     const readout = screen.getByText("Correlation").parentElement;
     expect(readout.className).toContain("justify-center");

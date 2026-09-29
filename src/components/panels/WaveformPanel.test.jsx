@@ -144,7 +144,6 @@ describe("drawWaveformCanvas", () => {
       themeColors: {
         trace: "#111111",
         snapshot: "#123456",
-        grid: "#654321",
         frequencyLow: "#ff0000",
         frequencyMid: "#00ff00",
         frequencyHigh: "#0000ff",
@@ -153,7 +152,7 @@ describe("drawWaveformCanvas", () => {
       },
     });
 
-    expect(strokes).toEqual(["#654321", "#123456"]);
+    expect(strokes).toEqual(["#123456"]);
     expect(fills).toEqual(["#123456"]);
     document.documentElement.style.removeProperty("--ui-waveform-trace-snap");
   });
@@ -186,13 +185,13 @@ describe("drawWaveformCanvas", () => {
       selected: false,
     });
 
-    expect(lineWidths).toEqual([1, 2.5]);
+    expect(lineWidths).toEqual([2.5]);
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
   });
 
   it("keeps every stroke round in CSS px when only the height uses full DPR", () => {
     // Width capped at 1:1, height at DPR 2. A pen in backing pixels would be 1 CSS px wide but only
-    // half a CSS px tall, so flat stretches of the trace and the centre line would render thinner.
+    // half a CSS px tall, so flat stretches of the trace would render thinner.
     document.documentElement.style.setProperty("--ui-waveform-stroke-width", "1.5");
     const strokes = [];
     let transform = [1, 0, 0, 1, 0, 0];
@@ -229,7 +228,6 @@ describe("drawWaveformCanvas", () => {
 
     const anisotropic = [1, 0, 0, 2, 0, 0];
     expect(strokes).toEqual([
-      { lineWidth: 1, transform: anisotropic },
       { lineWidth: 1.5, transform: anisotropic },
       { lineWidth: 1, transform: anisotropic },
     ]);
@@ -237,7 +235,7 @@ describe("drawWaveformCanvas", () => {
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
   });
 
-  it("snaps the centre line to whole device-pixel rows", () => {
+  it("draws no retired centre reference when there is no waveform data", () => {
     const moves = [];
     let transform = [1, 0, 0, 1, 0, 0];
     const strokes = [];
@@ -272,9 +270,8 @@ describe("drawWaveformCanvas", () => {
       selected: false,
     });
 
-    expect(moves[0]).toEqual([0, 41]);
-    // Pen height = lineWidth x vertical scale = exactly 2 device pixels.
-    expect(strokes[0].lineWidth * strokes[0].sy).toBeCloseTo(2);
+    expect(moves).toEqual([]);
+    expect(strokes).toEqual([]);
   });
 
   it("uses Theme-owned classic fill opacity and accepts zero", () => {

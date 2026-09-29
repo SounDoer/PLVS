@@ -22,9 +22,33 @@ const backend = isTauri()
     : createPluginStoreBackend()
   : createLocalStorageBackend();
 
-function migrateWorkspace(raw) {
+export const WORKSPACE_DOMAIN_VERSION = 1;
+export const PRESETS_DOMAIN_VERSION = 1;
+
+function turnOffLegacySpectrogramGrid(controlsById) {
+  if (!controlsById || typeof controlsById !== "object" || Array.isArray(controlsById)) {
+    return controlsById;
+  }
+  return Object.fromEntries(
+    Object.entries(controlsById).map(([panelId, controls]) => [
+      panelId,
+      controls && typeof controls === "object" && !Array.isArray(controls)
+        ? { ...controls, spectrogram3dFloor: false }
+        : controls,
+    ])
+  );
+}
+
+function migrateWorkspace(raw, version) {
   const { customPresets: _customPresets, activePresetId: _activePresetId, ...rest } = raw;
-  return rest;
+  if (version >= WORKSPACE_DOMAIN_VERSION) return rest;
+  return {
+    ...rest,
+    version: WORKSPACE_DOMAIN_VERSION,
+    ...(rest.panelControlsById !== undefined
+      ? { panelControlsById: turnOffLegacySpectrogramGrid(rest.panelControlsById) }
+      : null),
+  };
 }
 
 function migrateSettings(raw) {
@@ -35,17 +59,23 @@ function migrateSettings(raw) {
   return rest;
 }
 
-function migratePresets(raw) {
+function migratePresets(raw, version) {
   if (!Array.isArray(raw.list)) return raw;
   return {
     ...raw,
+    ...(version < PRESETS_DOMAIN_VERSION ? { version: PRESETS_DOMAIN_VERSION } : null),
     list: raw.list.map((preset) => {
       if (!preset || typeof preset !== "object" || Array.isArray(preset)) return preset;
       const { panelOpacity, ...rest } = preset;
       if (!("surfaceOpacity" in rest) && panelOpacity != null) {
         rest.surfaceOpacity = normalizeSurfaceOpacity(panelOpacity);
       }
-      return rest;
+      return version < PRESETS_DOMAIN_VERSION
+        ? {
+            ...rest,
+            panelControlsById: turnOffLegacySpectrogramGrid(rest.panelControlsById),
+          }
+        : rest;
     }),
   };
 }
@@ -59,11 +89,13 @@ export const workspaceStore = createDomainStore({
   name: "plvs:workspace",
   backend,
   migrate: migrateWorkspace,
+  writeVersion: WORKSPACE_DOMAIN_VERSION,
 });
 export const presetsStore = createDomainStore({
   name: "plvs:presets",
   backend,
   migrate: migratePresets,
+  writeVersion: PRESETS_DOMAIN_VERSION,
   notifySameContext: true,
 });
 export const themesStore = createDomainStore({ name: "plvs:themes", backend });

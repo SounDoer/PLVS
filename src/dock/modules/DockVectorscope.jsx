@@ -160,7 +160,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 y1="4"
                 x2="256"
                 y2="256"
-                stroke="var(--ui-vectorscope-grid-stroke)"
+                stroke="var(--ui-vectorscope-guides-stroke)"
                 strokeWidth="1"
                 strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
@@ -170,7 +170,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
                 y1="4"
                 x2="4"
                 y2="256"
-                stroke="var(--ui-vectorscope-grid-stroke)"
+                stroke="var(--ui-vectorscope-guides-stroke)"
                 strokeWidth="1"
                 strokeDasharray="var(--ui-vectorscope-grid-dash)"
                 vectorEffect="non-scaling-stroke"
@@ -227,7 +227,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
           <div className="flex w-full min-w-0 flex-col gap-1">
             <div
               data-testid="dock-vectorscope-correlation-rail"
-              className="relative h-[4px] w-full rounded-full bg-[color:var(--ui-vectorscope-grid-stroke)]"
+              className="relative h-[4px] w-full rounded-full bg-[color:var(--ui-vectorscope-guides-stroke)]"
             >
               <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground" />
               {displayCorrelation !== null ? (
@@ -265,7 +265,7 @@ export function DockVectorscope({ controls = {}, heightMode = "standard" }) {
               className="flex items-center gap-[var(--ui-dock-gap-column)] font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium leading-none text-muted-foreground"
             >
               <span className="shrink-0">-1</span>
-              <div className="relative h-[4px] min-w-6 flex-1 rounded-full bg-[color:var(--ui-vectorscope-grid-stroke)]">
+              <div className="relative h-[4px] min-w-6 flex-1 rounded-full bg-[color:var(--ui-vectorscope-guides-stroke)]">
                 <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted-foreground" />
                 {displayCorrelation !== null ? (
                   <div

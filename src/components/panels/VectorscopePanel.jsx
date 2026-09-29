@@ -34,7 +34,7 @@ function selectVectorscopeColors(resolved) {
   return {
     trace: resolved.canvas["vectorscope.trace"],
     snapshot: resolved.canvas["vectorscope.snapshot"],
-    grid: resolved.canvas["vectorscope.grid"],
+    guides: resolved.canvas["vectorscope.guides"],
   };
 }
 
@@ -344,7 +344,7 @@ export function VectorscopePanel() {
                     y1={vsGridDiagInset}
                     x2={vsGridDiagFar}
                     y2={vsGridDiagFar}
-                    stroke="var(--ui-vectorscope-grid-stroke)"
+                    stroke="var(--ui-vectorscope-guides-stroke)"
                     strokeWidth="1"
                     strokeDasharray="var(--ui-vectorscope-grid-dash)"
                     vectorEffect="non-scaling-stroke"
@@ -354,7 +354,7 @@ export function VectorscopePanel() {
                     y1={vsGridDiagInset}
                     x2={vsGridDiagInset}
                     y2={vsGridDiagFar}
-                    stroke="var(--ui-vectorscope-grid-stroke)"
+                    stroke="var(--ui-vectorscope-guides-stroke)"
                     strokeWidth="1"
                     strokeDasharray="var(--ui-vectorscope-grid-dash)"
                     vectorEffect="non-scaling-stroke"
@@ -435,7 +435,7 @@ export function VectorscopePanel() {
       >
         <div className="relative h-full w-full" aria-hidden>
           <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2">
-            <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-[color:var(--ui-vectorscope-grid-stroke)]" />
+            <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-[color:var(--ui-vectorscope-guides-stroke)]" />
             <div className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
             <div className="absolute left-1/2 top-1/2 h-0.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />
             <div className="absolute right-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-[color:var(--muted-foreground)]" />

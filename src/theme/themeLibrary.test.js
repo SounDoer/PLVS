@@ -48,7 +48,7 @@ describe("Theme Control authoring validation", () => {
     });
     expect(document).toMatchObject({
       formatVersion: 2,
-      semanticsVersion: 1,
+      semanticsVersion: 2,
       name: "Studio",
       colorScheme: "dark",
     });
@@ -58,7 +58,7 @@ describe("Theme Control authoring validation", () => {
 
   it("reports format and semantics incompatibilities independently", () => {
     expect(() =>
-      validateThemeDocument(authoring({ formatVersion: 3, semanticsVersion: 2 }))
+      validateThemeDocument(authoring({ formatVersion: 3, semanticsVersion: 1 }))
     ).toThrowError(
       expect.objectContaining({
         issues: expect.arrayContaining([

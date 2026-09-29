@@ -5,7 +5,7 @@ import { compileTheme } from "./compileTheme.js";
 import { V1_BUILTIN_RESOLVED } from "./fixtures/v1BuiltinResolved.js";
 import { isCurrentThemeDocument } from "./themeSchema.js";
 
-const REVIEWED_NON_EXACT = new Set(["--ui-loudness-grid", "--ui-vectorscope-grid-stroke"]);
+const REVIEWED_NON_EXACT = new Set(["--ui-loudness-grid", "--ui-vectorscope-guides-stroke"]);
 
 // ADR 0005 keeps V1 appearance as pinned overrides until an explicit "adopt
 // automatic colors" pass removes them. These bindings have been through that

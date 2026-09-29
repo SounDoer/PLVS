@@ -396,7 +396,7 @@ export function createSurfaceRenderer(canvas) {
     }
   }
 
-  function drawFloorLines(uniforms, lineWidth, gridColour, gridSubtleColour) {
+  function drawFloorLines(uniforms, lineWidth, gridColour) {
     const u = gpu.floorUniforms;
     gl.useProgram(gpu.floorProgram);
     gl.bindVertexArray(gpu.floorVao);
@@ -407,7 +407,7 @@ export function createSurfaceRenderer(canvas) {
     gl.uniform1f(u.lineWidth, lineWidth);
     gl.uniform4fv(u.lineColour, gridColour);
     gl.drawArrays(gl.TRIANGLES, 0, gpu.floor.outlineCount);
-    gl.uniform4fv(u.lineColour, gridSubtleColour);
+    gl.uniform4fv(u.lineColour, gridColour);
     gl.drawArrays(gl.TRIANGLES, gpu.floor.outlineCount, gpu.floor.divisionCount);
   }
 
@@ -422,7 +422,6 @@ export function createSurfaceRenderer(canvas) {
    * @param {boolean} frame.floor whether the floor grid is drawn at all
    * @param {number} frame.floorLineWidth floor line width in device px (1 CSS px x DPR)
    * @param {number[]} frame.gridColour floor outline, RGBA in 0..1
-   * @param {number[]} frame.gridSubtleColour floor divisions, RGBA in 0..1
    * @param {number[]} frame.highlightBand scrubbed tFrac range; min > max disables it
    * @param {number[]} frame.highlightColour
    */
@@ -442,7 +441,7 @@ export function createSurfaceRenderer(canvas) {
     // Under the terrain, and drawn before it: quiet terrain is translucent, so the grid showing
     // through is the recession the 2D heatmap and Lines have always given silence.
     if (frame.floor) {
-      drawFloorLines(uniforms, frame.floorLineWidth, frame.gridColour, frame.gridSubtleColour);
+      drawFloorLines(uniforms, frame.floorLineWidth, frame.gridColour);
     }
 
     if (mesh.indices.length === 0) return;

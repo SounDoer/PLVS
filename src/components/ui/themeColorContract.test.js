@@ -105,10 +105,8 @@ describe("theme color contract", () => {
   });
 
   it("paints grid lines at the colour the theme resolved for them", () => {
-    // Six modules resolve their grid from one role, but each used to dim it again
-    // on the way to the canvas -- 0.3 and 0.16 in the 3D floor, 0.08 borrowed
-    // from the spectrum's token for the stereo map's baseline. A second strength
-    // is a second role now (data.gridSubtle), not an alpha in a draw call.
+    // Optional panel grids resolve one colour from the theme and use it directly;
+    // renderers must not add module-specific opacity or borrow another panel's token.
     const offenders = Object.entries(appSources())
       .filter(([, source]) => /--ui-spectrum-grid-opacity|stroke="var\(--border\)"/.test(source))
       .map(([path]) => path);
@@ -121,11 +119,9 @@ describe("theme color contract", () => {
     );
     const spectrum = readFileSync(new URL("../panels/SpectrumPanel.jsx", import.meta.url), "utf8");
     const stereoMap = readFileSync(new URL("../panels/StereoMapPlot.jsx", import.meta.url), "utf8");
-    const waveform = readFileSync(new URL("../panels/WaveformPanel.jsx", import.meta.url), "utf8");
     expect(loudness).toContain("var(--ui-loudness-grid)");
     expect(spectrum).toContain("var(--ui-spectrum-grid)");
     expect(stereoMap).toContain("themeColors.grid");
-    expect(waveform).toContain("themeColors.grid");
   });
 
   it("keeps timeline Selection ownership local to each module", () => {

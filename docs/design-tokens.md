@@ -79,25 +79,19 @@ plus visible overflow degrades quietly rather than clipping. Widths do not — t
 
 ## Grid Lines
 
-Every module's grid resolves from one role, and the panel paints it at full strength. There is no
-second multiplier anywhere: a grid that should read lighter takes the lighter role, not an alpha.
-
-| Role              | Dark      | Used by                                                          |
-| ----------------- | --------- | ---------------------------------------------------------------- |
-| `data.grid`       | `#282828` | Vectorscope diagonals, 3D floor frame                            |
-| `data.gridSubtle` | `#1e1e1e` | Subdivisions inside a grid — today only the 3D spectrogram floor |
-
-Dimming in the draw call is what this replaces. Five panels each carried their own constant — `0.3`
-and `0.16` hardcoded in the 3D floor, `0.08` for the stereo map baseline read from the _spectrum's_
-opacity token, and a spectrum grid drawn straight from `--border` at `0.08` for an effective alpha
-around `0.007`. None of it was visible to the theme, so none of it moved when a theme did.
+Every optional panel Grid and every always-visible Vectorscope guide resolves from `data.grid`.
+The default recipe mixes the resolved Panel Surface 8% toward the resolved Border colour. The
+renderer paints that opaque result directly: there is no panel-specific opacity multiplier or
+weaker subdivision colour.
 
 A contract test in `src/components/ui/themeColorContract.test.js` rejects the two shapes that
 brought it back: a reference to `--ui-spectrum-grid-opacity`, and a grid stroked from `--border`.
 
-Only the Vectorscope and the 3D Spectrogram draw a grid. Spectrum, Stereo Map, Waveform and
-Loudness draw none; their roles stay in the registry against a future toggle, so each resolves a
-colour that nothing paints.
+Optional Grid is available in Loudness (Y axis), Spectrum (X and Y axes), Stereo Map (a separate
+choice for each mode), and the two 3D Spectrogram modes (one shared choice). It defaults off. The
+Vectorscope's orientation geometry is classified as Guides and stays visible. Waveform has neither
+a Grid nor a centre reference line; Stereo Map has no unconditional zero reference line. Dock
+modules do not expose optional Grid.
 
 A grid line is 1px. Below that a stroke lands on a fraction of a device pixel and the renderer
 pays for it in alpha, which reads as a colour problem and is not one — the vectorscope's diagonals
@@ -263,7 +257,7 @@ dedicated Y-axis tick.
 | `--ui-loudness-grid`              | `#282828`        | Loudness grid lines                     |
 | `--ui-vectorscope-trace`          | `#fb923c`        | Vectorscope path (live)                 |
 | `--ui-vectorscope-trace-snap`     | `#fbd34d`        | Vectorscope path (snap)                 |
-| `--ui-vectorscope-grid-stroke`    | `#282828`        | Vectorscope axis and grid strokes       |
+| `--ui-vectorscope-guides-stroke`  | `#282828`        | Vectorscope orientation guides          |
 | `--ui-spectrum-primary`           | `#fb923c`        | Spectrum primary path + fill            |
 | `--ui-spectrum-primary-snap`      | `#fbd34d`        | Spectrum primary snapshot path + fill   |
 | `--ui-spectrum-secondary`         | `#209bda`        | Spectrum secondary path + fill          |
@@ -325,7 +319,7 @@ they never imply that one Theme supports both schemes. A paired design is publis
 Theme artefacts and therefore has two identities. The primary compatibility copy is generated from
 one central Format/Semantics-to-release mapping: `Requires PLVS <minimum> or later`, or a closed
 `Works with PLVS <minimum>-<maximum>` range if later compatibility evidence requires one. Expanded
-technical details show `Theme Format 1 · Semantics 1`. Public-page generation fails while the first
+technical details show `Theme Format 1 · Semantics 2`. Public-page generation fails while the first
 shipping release remains unassigned, preventing a guessed minimum version from reaching users.
 
 ### Component: Status, feedback, and activity

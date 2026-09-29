@@ -6,7 +6,7 @@ import { selectStereoMapCanvasColors } from "../../theme/themeCanvasSelectors.js
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
-import { hairlineDevicePx, snapHairline } from "../../lib/deviceHairline.js";
+import { interiorGridTicks } from "./ChartGrid.jsx";
 
 // Same viewBox convention as Spectrum's inline SVG (and this component's own former SVG
 // implementation), so the curve, grid, and hover overlay all share one coordinate system across
@@ -458,6 +458,29 @@ function hashHoldValues(mode, holdValues) {
   return String(hashNumArray(holdValues));
 }
 
+function tickSignature(ticks) {
+  return interiorGridTicks(ticks)
+    .map((tick) => `${tick.key}:${tick.frac}`)
+    .join(",");
+}
+
+function drawGrid(ctx, xTicks, yTicks, width, height, dpr, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = dpr;
+  ctx.beginPath();
+  for (const tick of interiorGridTicks(xTicks)) {
+    const x = tick.frac * width;
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+  }
+  for (const tick of interiorGridTicks(yTicks)) {
+    const y = tick.frac * height;
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+  }
+  ctx.stroke();
+}
+
 /**
  * Renders one Stereo Map curve on canvas: filled area to the zero baseline, per-segment Good/Warn/
  * Bad or channel-blend coloring, low-energy opacity fade, curve breaks at invalid bands, and
@@ -492,6 +515,9 @@ export function StereoMapPlot({
   sourceVersion = 0,
   energyFadePercent = 75,
   colorBlendPercent = 50,
+  gridVisible = false,
+  xTicks = [],
+  yTicks = [],
 }) {
   const resolvedThemeColors = useResolvedTheme(selectStereoMapCanvasColors);
   const themeColors = themeColorsOverride ?? resolvedThemeColors;
@@ -547,6 +573,9 @@ export function StereoMapPlot({
       rgbToCss(colors.bad),
       rgbToCss(colors.good),
       rgbToCss(colors.grid),
+      gridVisible,
+      tickSignature(xTicks),
+      tickSignature(yTicks),
       fillOpacity,
       fadeStrength,
       colorBlend,
@@ -597,19 +626,12 @@ export function StereoMapPlot({
 
     ctx.clearRect(0, 0, width, height);
 
+    if (gridVisible) {
+      drawGrid(ctx, xTicks, yTicks, width, height, dpr, rgbToCss(colors.grid));
+    }
+
     // No line is drawn at zero, but the runs still fill down to it.
     const baselineY = yFor(0, range) * scaleY;
-
-    // A hairline on whole device-pixel rows (see deviceHairline.js). Only the stroke is snapped;
-    // the runs still fill to the exact baseline.
-    const gridPx = hairlineDevicePx(dpr);
-    const gridY = snapHairline(baselineY, gridPx);
-    ctx.strokeStyle = rgbToCss(colors.grid);
-    ctx.lineWidth = gridPx;
-    ctx.beginPath();
-    ctx.moveTo(0, gridY);
-    ctx.lineTo(width, gridY);
-    ctx.stroke();
 
     const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range, fadeStrength);
     ctx.lineWidth = lineWidth;

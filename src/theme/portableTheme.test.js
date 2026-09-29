@@ -30,7 +30,7 @@ describe("portable Theme contract", () => {
     expect(portable).toMatchObject({
       kind: PORTABLE_THEME_KIND,
       formatVersion: PORTABLE_THEME_FORMAT_VERSION,
-      semanticsVersion: 1,
+      semanticsVersion: 2,
       name: "Studio",
       colorScheme: "dark",
     });
@@ -82,7 +82,7 @@ describe("portable Theme contract", () => {
     expect(serializePortableTheme(firstPortable)).toBe(serializePortableTheme(secondPortable));
     expect(await hashPortableTheme(firstPortable)).toBe(await hashPortableTheme(secondPortable));
     expect(await hashPortableTheme(firstPortable)).toBe(
-      "sha256:c31f5cedb9faaf93194b167114eccaa0c996e81a40192d777fd931393e54875e"
+      "sha256:41879ddf6d335b0907d73f754c3c669135922f23a1cb2c9fb7cfbe6a91242558"
     );
   });
 
@@ -90,7 +90,7 @@ describe("portable Theme contract", () => {
     const portable = themeToPortable(storedTheme());
     portable.extra = true;
     portable.formatVersion = 99;
-    portable.semanticsVersion = 2;
+    portable.semanticsVersion = 999;
     portable.palettes.status.presetId = "status-default";
     portable.overrides["missing.role"] = { kind: "effect", color: "#ffffff", opacity: 0.5 };
 
@@ -109,6 +109,23 @@ describe("portable Theme contract", () => {
         ]),
       })
     );
+  });
+
+  it("migrates readable Semantics 1 Grid roles into canonical Semantics 2", () => {
+    const portable = themeToPortable(storedTheme());
+    portable.semanticsVersion = 1;
+    portable.overrides = {
+      "vectorscope.grid": { kind: "color", value: "#123456" },
+      "waveform.grid": { kind: "color", value: "#234567" },
+      "spectrogram.gridSubtle": { kind: "color", value: "#345678" },
+    };
+
+    expect(validatePortableTheme(portable)).toMatchObject({
+      semanticsVersion: 2,
+      overrides: { "vectorscope.guides": { kind: "color", value: "#123456" } },
+    });
+    expect(validatePortableTheme(portable).overrides).not.toHaveProperty("waveform.grid");
+    expect(validatePortableTheme(portable).overrides).not.toHaveProperty("spectrogram.gridSubtle");
   });
 
   it("rejects non-documents and invalid destination IDs", () => {

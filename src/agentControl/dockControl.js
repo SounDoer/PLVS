@@ -374,7 +374,13 @@ function publicControls(panel, raw, context) {
       rmsThresholdsDbfs: all.rmsThresholdsDbfs,
     };
   }
-  if (panel.moduleId === "loudness") return { ...all, showReadouts: normalized.showReadouts };
+  if (panel.moduleId === "loudness") {
+    return {
+      layers: all.layers,
+      loudnessRangeLufs: all.loudnessRangeLufs,
+      showReadouts: normalized.showReadouts,
+    };
+  }
   if (panel.moduleId === "spectrum") {
     return {
       channel: all.channel,
@@ -400,7 +406,15 @@ function publicControls(panel, raw, context) {
   }
   if (panel.moduleId === "stereo-map") {
     return {
-      ...all,
+      mode: all.mode,
+      channelPair: all.channelPair,
+      maxHold: all.maxHold,
+      speedPercent: all.speedPercent,
+      octaveSmoothing: all.octaveSmoothing,
+      energyFadePercent: all.energyFadePercent,
+      colorBlendPercent: all.colorBlendPercent,
+      monoLossFloorDb: all.monoLossFloorDb,
+      msRatioRangeDb: all.msRatioRangeDb,
       frequencyRangeHz: { min: normalized.stereoMapXMinFreq, max: normalized.stereoMapXMaxFreq },
     };
   }

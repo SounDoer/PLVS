@@ -58,6 +58,53 @@ function renderChart(loudnessHistoryVisibleLayerIds, overrides = {}) {
 }
 
 describe("LoudnessHistoryChart", () => {
+  it("renders only interior Y-axis Grid lines when enabled", () => {
+    const { container } = renderChart(["momentary"], {
+      gridVisible: true,
+      loudnessYMinDb: -36,
+      loudnessYMaxDb: -12,
+    });
+    const grid = container.querySelector("[data-loudness-grid]");
+
+    expect(grid).toBeTruthy();
+    expect(grid?.querySelectorAll("line")).toHaveLength(1);
+    expect(grid?.querySelector("line")?.getAttribute("stroke")).toBe("var(--ui-loudness-grid)");
+  });
+
+  it("does not render a Grid group by default", () => {
+    const { container } = renderChart(["momentary"]);
+    expect(container.querySelector("[data-loudness-grid]")).toBeNull();
+  });
+
+  it("leaves a visible Profile Reference unshadowed by a colliding Grid line", () => {
+    const { container } = renderChart(["momentary", "ref"], {
+      gridVisible: true,
+      loudnessYMinDb: -36,
+      loudnessYMaxDb: -12,
+    });
+
+    expect(container.querySelector("[data-loudness-grid]")?.querySelectorAll("line")).toHaveLength(
+      0
+    );
+    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeTruthy();
+  });
+
+  it("keeps an enabled Grid in the no-data chart", () => {
+    const { container } = renderChart(["momentary"], {
+      gridVisible: true,
+      hasHistoryData: false,
+      historyYAxisTicks: [
+        { v: -12, lb: "-12" },
+        { v: -18, lb: "-18" },
+        { v: -36, lb: "-36" },
+      ],
+      loudnessYMinDb: -36,
+      loudnessYMaxDb: -12,
+    });
+
+    expect(container.querySelector("[data-loudness-grid] line")).toBeTruthy();
+  });
+
   it("shows which edge contains a selected sample outside this panel's window", () => {
     renderChart(["momentary"], { selectionEdge: "left" });
 

@@ -349,7 +349,7 @@ describe("VectorscopePolarPlot", () => {
         firstLabel="L"
         secondLabel="R"
         maxHoldEnabled
-        colors={{ trace: "#123456", snapshot: "#abcdef", grid: "#654321" }}
+        colors={{ trace: "#123456", snapshot: "#abcdef", guides: "#654321" }}
       />
     );
     styleSpy.mockRestore();
@@ -383,7 +383,7 @@ describe("VectorscopePolarPlot", () => {
         firstLabel="L"
         secondLabel="R"
         maxHoldEnabled
-        colors={{ trace: "#123456", snapshot: "#abcdef", grid: "#654321" }}
+        colors={{ trace: "#123456", snapshot: "#abcdef", guides: "#654321" }}
       />
     );
     styleSpy.mockRestore();
@@ -405,7 +405,7 @@ describe("VectorscopePolarPlot", () => {
         snapshotPairs={allPolarLevelBinPairs()}
         firstLabel="L"
         secondLabel="R"
-        colors={{ trace: "#123456", snapshot: "#abcdef", grid: "#654321" }}
+        colors={{ trace: "#123456", snapshot: "#abcdef", guides: "#654321" }}
       />
     );
     styleSpy.mockRestore();

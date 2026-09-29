@@ -13,7 +13,7 @@ import {
 
 export const PORTABLE_THEME_KIND = "plvs-theme";
 export const PORTABLE_THEME_FORMAT_VERSION = 1;
-export const PORTABLE_THEME_SEMANTICS_VERSION = 1;
+export const PORTABLE_THEME_SEMANTICS_VERSION = 2;
 
 const PORTABLE_FIELDS = new Set([
   "kind",
@@ -123,6 +123,16 @@ function portableFromAuthoring(document) {
   };
 }
 
+function migrateReadablePortableTheme(raw) {
+  if (raw?.semanticsVersion !== 1) return raw;
+  const migrated = normalizeThemeDocument({
+    id: "custom-portable-migration",
+    ...asAuthoringDocument(raw),
+    semanticsVersion: 1,
+  });
+  return migrated ? portableFromAuthoring(migrated) : raw;
+}
+
 export class PortableThemeError extends Error {
   constructor(issues) {
     super("The portable Theme document is invalid.");
@@ -156,7 +166,7 @@ export function validatePortableTheme(raw) {
       )
     );
   }
-  if (raw.semanticsVersion !== PORTABLE_THEME_SEMANTICS_VERSION) {
+  if (![1, PORTABLE_THEME_SEMANTICS_VERSION].includes(raw.semanticsVersion)) {
     issues.push(
       issue(
         "unsupportedSemanticsVersion",
@@ -165,6 +175,8 @@ export function validatePortableTheme(raw) {
       )
     );
   }
+
+  const readable = migrateReadablePortableTheme(raw);
 
   if (isPlainObject(raw.palettes)) {
     for (const [kind, allowed] of Object.entries(SIMPLE_PALETTE_FIELDS)) {
@@ -193,7 +205,7 @@ export function validatePortableTheme(raw) {
 
   let authoring;
   try {
-    const candidate = asAuthoringDocument(raw);
+    const candidate = asAuthoringDocument(readable);
     authoring = validateThemeDocument(candidate);
   } catch (error) {
     if (error instanceof ThemeDocumentError) issues.push(...error.issues);

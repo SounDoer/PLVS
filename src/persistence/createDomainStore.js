@@ -24,10 +24,17 @@ const COALESCE_DELAY_MS = 250;
  *     subscribe: (key: string, fn: () => void) => () => void,
  *   },
  *   migrate?: (raw: object, version: number) => object,
+ *   writeVersion?: number,
  *   notifySameContext?: boolean,
  * }} opts
  */
-export function createDomainStore({ name, backend, migrate, notifySameContext = false }) {
+export function createDomainStore({
+  name,
+  backend,
+  migrate,
+  writeVersion,
+  notifySameContext = false,
+}) {
   const listeners = new Set();
   // Values accepted by `patchCoalesced` that have not reached the backend yet. They take part in
   // writes only. `read` deliberately does NOT merge them: doing so lets this context's in-flight
@@ -55,7 +62,12 @@ export function createDomainStore({ name, backend, migrate, notifySameContext = 
   }
   /** Writes stored state with any pending values, then `partial`, applied on top in that order. */
   function writeMerged(partial) {
-    const next = { ...read(), ...pending, ...partial };
+    const next = {
+      ...read(),
+      ...pending,
+      ...partial,
+      ...(Number.isFinite(writeVersion) ? { version: writeVersion } : null),
+    };
     cancelPending();
     backend.set(name, next);
   }

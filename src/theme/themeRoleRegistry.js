@@ -372,13 +372,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     kind: "color",
     family: "data",
     recipe: "grid",
-    dependencies: ["interface.border.default", "core.surface"],
-  }),
-  role("data.gridSubtle", {
-    kind: "color",
-    family: "data",
-    recipe: "grid-subtle",
-    dependencies: ["interface.border.default", "core.surface"],
+    dependencies: ["interface.border.default", "interface.surface.panel"],
   }),
   role("data.annotation", {
     kind: "color",
@@ -592,16 +586,6 @@ function moduleRoles() {
       { canvas: ["spectrogram.grid"] },
       primaryRefs
     ),
-    // The 3D floor's subdivisions, which sit under its frame.
-    moduleColor(
-      "spectrogram.gridSubtle",
-      "Spectrogram",
-      "Grid Subdivisions",
-      "data.gridSubtle",
-      "identity",
-      { canvas: ["spectrogram.gridSubtle"] },
-      primaryRefs
-    ),
     // Axis labels are annotations, matching the DOM axes on every other chart.
     moduleColor(
       "spectrogram.axisLabel",
@@ -641,12 +625,12 @@ function moduleRoles() {
       primaryRefs
     ),
     moduleColor(
-      "vectorscope.grid",
+      "vectorscope.guides",
       "Vectorscope",
-      "Grid and Axes",
+      "Guides",
       "data.grid",
       "identity",
-      { css: ["--ui-vectorscope-grid-stroke"], canvas: ["vectorscope.grid"] },
+      { css: ["--ui-vectorscope-guides-stroke"], canvas: ["vectorscope.guides"] },
       primaryRefs
     ),
     moduleColor(
@@ -716,7 +700,7 @@ function moduleRoles() {
     moduleColor(
       "stereoMap.grid",
       "Stereo Map",
-      "Grid and Axes",
+      "Grid",
       "data.grid",
       "identity",
       { canvas: ["stereoMap.grid"] },
@@ -829,15 +813,6 @@ function moduleRoles() {
       { css: ["--ui-waveform-centroid"], canvas: ["waveform.centroid"] },
       ["core.text", ...primaryRefs],
       ["core.surface"]
-    ),
-    moduleColor(
-      "waveform.grid",
-      "Waveform",
-      "Grid",
-      "data.grid",
-      "identity",
-      { canvas: ["waveform.grid"] },
-      primaryRefs
     ),
     moduleColor(
       "waveform.selection",

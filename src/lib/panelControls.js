@@ -89,6 +89,15 @@ export const STEREO_MAP_MODE_OPTIONS = [
   { id: STEREO_MAP_MODES.MS_RATIO_DB, label: "M/S Ratio" },
 ];
 
+export const STEREO_MAP_GRID_KEYS = Object.freeze({
+  [STEREO_MAP_MODES.POSITION]: "stereoMapPositionGrid",
+  [STEREO_MAP_MODES.CORRELATION]: "stereoMapCorrelationGrid",
+  [STEREO_MAP_MODES.MONO_LOSS_DB]: "stereoMapMonoLossGrid",
+  [STEREO_MAP_MODES.MS_RATIO_DB]: "stereoMapMsRatioGrid",
+});
+
+export const GRID_TOOLTIP = "Show grid lines aligned with the chart axes.";
+
 /// Every 3D-only row shares this condition; the 2D heatmap has no camera.
 function is3dSpectrogram(controls) {
   return controls.spectrogramMode !== "heatmap";
@@ -578,7 +587,7 @@ const CONTROLS = [
     // need a migration to buy nothing a reader of this line does not already get.
     key: "spectrogram3dFloor",
     kind: "boolean",
-    default: true,
+    default: false,
     ui: {
       tab: "spectrogram",
       label: "Grid",
@@ -642,6 +651,8 @@ const CONTROLS = [
     options: ids(LOUDNESS_HISTORY_LAYER_OPTIONS),
     default: ["momentary", "shortTerm", "ref"],
   },
+  { key: "loudnessGrid", kind: "boolean", default: false },
+  { key: "spectrumGrid", kind: "boolean", default: false },
   {
     key: "stereoMapMode",
     kind: "enum",
@@ -653,8 +664,23 @@ const CONTROLS = [
       widget: "select",
       ariaLabel: "stereo map mode",
       options: STEREO_MAP_MODE_OPTIONS,
+      order: -10,
     },
   },
+  ...Object.entries(STEREO_MAP_GRID_KEYS).map(([mode, key]) => ({
+    key,
+    kind: "boolean",
+    default: false,
+    ui: {
+      tab: "stereo-map",
+      label: "Grid",
+      widget: "switch",
+      ariaLabel: "stereo map grid",
+      tooltip: GRID_TOOLTIP,
+      order: -5,
+      showWhen: (controls) => controls.stereoMapMode === mode,
+    },
+  })),
   {
     /// Stored as `{ x, y }` like every other channel-index pair. It was `{ first, second }` until
     /// the Dock and the panel were put on one set of keys; the analysis request payload still

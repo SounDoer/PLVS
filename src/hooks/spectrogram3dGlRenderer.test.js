@@ -58,8 +58,7 @@ function drawOnce(renderer) {
     lutToken: {},
     floor: true,
     floorLineWidth: 2,
-    gridColour: [1, 1, 1, 1],
-    gridSubtleColour: [1, 1, 1, 1],
+    gridColour: [0.1, 0.2, 0.3, 1],
     highlightBand: [1, 0],
     highlightColour: [1, 1, 1, 1],
   });
@@ -128,6 +127,17 @@ describe("createSurfaceRenderer alpha compositing", () => {
     drawOnce(createSurfaceRenderer(canvas));
     const blends = calls.filter(([name]) => name.startsWith("blendFunc"));
     expect(blends).toEqual([["blendFunc", "ONE", "ONE_MINUS_SRC_ALPHA"]]);
+  });
+
+  it("uses the same resolved Grid colour for the floor outline and subdivisions", () => {
+    const { canvas, calls } = recordingCanvas();
+    drawOnce(createSurfaceRenderer(canvas));
+    const gridUploads = calls.filter(
+      ([name, , value]) =>
+        name === "uniform4fv" && JSON.stringify(value) === JSON.stringify([0.1, 0.2, 0.3, 1])
+    );
+
+    expect(gridUploads).toHaveLength(2);
   });
 
   it("writes premultiplied colour from every fragment shader", () => {

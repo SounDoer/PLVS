@@ -5,7 +5,7 @@ import {
   usePanelInstanceData,
 } from "../../workspace/AudioDataContext.jsx";
 import { stereoMapRequestKeyFromControls } from "../../analysis/analysisRequests.js";
-import { normalizePanelControls } from "../../lib/panelControls.js";
+import { normalizePanelControls, STEREO_MAP_GRID_KEYS } from "../../lib/panelControls.js";
 import { deriveStereoMapRow, STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { AxisRail } from "./AxisRail.jsx";
@@ -230,6 +230,25 @@ export function StereoMapPanel() {
     secondLabel,
     (yViewport ? editableYAxis : passiveYAxis).axisPx
   );
+  const yAxisTicks = useMemo(
+    () =>
+      yTicks.map(({ v, lb }) => ({
+        key: v,
+        label: lb,
+        frac: rangedFromTopFrac(v, range.lowerBound, range.upperBound),
+      })),
+    [range.lowerBound, range.upperBound, yTicks]
+  );
+  const xAxisTicks = useMemo(
+    () =>
+      freqTicks.map(({ v, lb }) => ({
+        key: v,
+        label: lb,
+        frac: rangedFreqToXFrac(v, xMinHz, xMaxHz),
+      })),
+    [freqTicks, xMaxHz, xMinHz]
+  );
+  const gridVisible = normalizedPanelControls[STEREO_MAP_GRID_KEYS[mode]];
 
   const snapResolved = isSnapshot
     ? resolveStereoMapSnapshotForKey?.(stereoMapKey, mode, range, { withHold: holdVisible })
@@ -460,11 +479,7 @@ export function StereoMapPanel() {
             className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
             interaction={yViewport ? editableYAxis : undefined}
             railRef={passiveYAxis.axisRef}
-            ticks={yTicks.map(({ v, lb }) => ({
-              key: v,
-              label: lb,
-              frac: rangedFromTopFrac(v, range.lowerBound, range.upperBound),
-            }))}
+            ticks={yAxisTicks}
           />
           <div className="relative min-h-0 min-w-0">
             <div
@@ -509,6 +524,9 @@ export function StereoMapPanel() {
                   sourceVersion={isSnapshot ? selectedOffset : liveHistoryVersion}
                   energyFadePercent={normalizedPanelControls.stereoMapEnergyFadePercent}
                   colorBlendPercent={normalizedPanelControls.stereoMapColorBlendPercent}
+                  gridVisible={gridVisible}
+                  xTicks={xAxisTicks}
+                  yTicks={yAxisTicks}
                 />
               </div>
               {stereoMapHover ? (
@@ -541,11 +559,7 @@ export function StereoMapPanel() {
             className="h-[var(--ui-chart-x-axis-row-h)] w-full"
             interaction={stereoMapXAxis}
             active={chartXAxisActive}
-            ticks={freqTicks.map(({ v: f, lb }) => ({
-              key: f,
-              label: lb,
-              frac: rangedFreqToXFrac(f, xMinHz, xMaxHz),
-            }))}
+            ticks={xAxisTicks}
           />
         </div>
       </div>

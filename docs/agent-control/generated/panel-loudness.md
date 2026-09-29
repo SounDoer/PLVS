@@ -14,6 +14,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
     "momentary",
     "shortTerm"
   ],
+  "grid": false,
   "loudnessRangeLufs": {
     "min": -64,
     "max": 0
@@ -26,6 +27,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | Field | Type | Unit | Default | Allowed | In the default state |
 | --- | --- | --- | --- | --- | --- |
 | `layers` | array | - | `["momentary","shortTerm"]` | "momentary", "shortTerm"; unique | active |
+| `grid` | boolean | - | `false` | - | active |
 | `loudnessRangeLufs` | object | LUFS | - | requires min, max; min < max; span >= 12 | active |
 | `loudnessRangeLufs.min` | number | - | - | -64 to 0 | - |
 | `loudnessRangeLufs.max` | number | - | - | -64 to 0 | - |

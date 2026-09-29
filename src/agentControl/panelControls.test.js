@@ -70,6 +70,7 @@ describe("readPublicPanelControls", () => {
       speedPercent: 70,
       tiltDbPerOctave: 4.5,
       octaveSmoothing: "1/6",
+      grid: false,
       levelRangeDb: { min: -72, max: -6 },
     });
   });
@@ -126,6 +127,12 @@ describe("readPublicPanelControls", () => {
       energyFadePercent: 65,
       colorBlendPercent: 35,
       octaveSmoothing: "off",
+      grid: {
+        position: false,
+        correlation: false,
+        monoLossDb: false,
+        msRatioDb: false,
+      },
       monoLossFloorDb: -30,
       msRatioRangeDb: { min: -36, max: 18 },
     });
@@ -201,10 +208,12 @@ describe("readPublicPanelControls", () => {
 
     expect(readPublicPanelControls("loudness", controls, { hasLoudnessReference: true })).toEqual({
       layers: ["momentary", "shortTerm", "reference"],
+      grid: false,
       loudnessRangeLufs: { min: -48, max: -6 },
     });
     expect(readPublicPanelControls("loudness", controls, { hasLoudnessReference: false })).toEqual({
       layers: ["momentary", "shortTerm"],
+      grid: false,
       loudnessRangeLufs: { min: -48, max: -6 },
     });
   });

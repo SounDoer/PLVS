@@ -50,7 +50,7 @@
   --ui-spectrum-fill-bottom-opacity: 0.02;
   --ui-vectorscope-trace: #fb923c;
   --ui-vectorscope-trace-snap: #fbd34d;
-  --ui-vectorscope-grid-stroke: #282828;
+  --ui-vectorscope-guides-stroke: #282828;
   --ui-vectorscope-correlation-safe: #34d399;
   --ui-vectorscope-correlation-warning: #fbbf24;
   --ui-vectorscope-correlation-critical: #f97373;

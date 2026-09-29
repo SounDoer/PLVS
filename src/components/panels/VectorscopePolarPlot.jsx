@@ -188,14 +188,14 @@ export function VectorscopePolarPlot({
     }
 
     const traceColor = snapshot ? colors.snapshot : colors.trace;
-    const gridColor = colors.grid;
+    const guideColor = colors.guides;
     const lineWidth = (readCssNumber(canvas, "--ui-vectorscope-stroke-width", 1) || 1) * dpr;
     const newestTimestamp = effectiveRows.at(-1)?.timestampMs;
 
     const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
     ctx.clearRect(0, 0, width, height);
     // 1 CSS px, the same grid weight as every other chart; it does not follow the trace token.
-    drawGrid(ctx, geometry, gridColor, dpr);
+    drawGrid(ctx, geometry, guideColor, dpr);
 
     if (effectiveRows.length === 0) return;
     if (mode === "polarSample") {

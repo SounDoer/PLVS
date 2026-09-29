@@ -149,6 +149,35 @@ describe("buildPublicPanelControlSchema", () => {
     });
   });
 
+  it("exposes optional Grid controls with Stereo Map mode-local effectiveness", () => {
+    expect(
+      buildPublicPanelControlSchema("loudness", DEFAULT_PANEL_CONTROLS).properties.grid
+    ).toMatchObject({
+      type: "boolean",
+      default: false,
+      effective: true,
+    });
+    expect(
+      buildPublicPanelControlSchema("spectrum", DEFAULT_PANEL_CONTROLS).properties.grid
+    ).toMatchObject({
+      type: "boolean",
+      default: false,
+      effective: true,
+    });
+
+    const stereoMap = buildPublicPanelControlSchema("stereo-map", DEFAULT_PANEL_CONTROLS);
+    expect(stereoMap.properties.grid).toMatchObject({
+      type: "object",
+      patchMode: "merge",
+      properties: {
+        position: { default: false, effective: true },
+        correlation: { default: false, effective: false, inactiveReason: "nonCorrelationMode" },
+        monoLossDb: { default: false, effective: false, inactiveReason: "nonMonoLossMode" },
+        msRatioDb: { default: false, effective: false, inactiveReason: "nonMsRatioMode" },
+      },
+    });
+  });
+
   it("describes mergeable nested controls and their dormant state", () => {
     const spectrogram = buildPublicPanelControlSchema("spectrogram", DEFAULT_PANEL_CONTROLS);
     const stats = buildPublicPanelControlSchema("stats", DEFAULT_PANEL_CONTROLS);

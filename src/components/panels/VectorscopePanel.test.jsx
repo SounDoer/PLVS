@@ -284,7 +284,7 @@ describe("VectorscopePanel", () => {
     expect(screen.getByText("+1")).toBeTruthy();
     expect(rail?.className).toContain("h-3");
     expect(rail?.className).toContain("mt-[var(--ui-chart-axis-gap)]");
-    expect(rail?.innerHTML).toContain("--ui-vectorscope-grid-stroke");
+    expect(rail?.innerHTML).toContain("--ui-vectorscope-guides-stroke");
     expect(rail?.innerHTML).not.toContain("opacity-30");
     expect(axis?.className).toContain("h-[var(--ui-chart-x-axis-row-h)]");
     expect(axis?.className).toContain("mt-[var(--ui-chart-axis-gap)]");

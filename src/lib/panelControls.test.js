@@ -6,6 +6,7 @@ import {
   LEVEL_METER_MODE_OPTIONS,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTROGRAM_MODE_OPTIONS,
+  STEREO_MAP_GRID_KEYS,
   VECTORSCOPE_MODE_OPTIONS,
   normalizePanelControls,
   panelControlUiRows,
@@ -113,7 +114,7 @@ describe("panelControls", () => {
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
       spectrogram3dElevationDeg: 60,
-      spectrogram3dFloor: true,
+      spectrogram3dFloor: false,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,
@@ -146,7 +147,13 @@ describe("panelControls", () => {
         "sideToMid",
       ],
       loudnessHistoryVisibleLayerIds: ["momentary", "shortTerm", "ref"],
+      loudnessGrid: false,
+      spectrumGrid: false,
       stereoMapMode: "position",
+      stereoMapPositionGrid: false,
+      stereoMapCorrelationGrid: false,
+      stereoMapMonoLossGrid: false,
+      stereoMapMsRatioGrid: false,
       stereoMapPair: { x: 0, y: 1 },
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
@@ -277,7 +284,7 @@ describe("panelControls", () => {
       spectrogram3dHeightGain: 1,
       spectrogram3dAzimuthDeg: 135,
       spectrogram3dElevationDeg: 60,
-      spectrogram3dFloor: true,
+      spectrogram3dFloor: false,
       loudnessYMinDb: -64,
       loudnessYMaxDb: 0,
       levelMeterYMinDb: -60,
@@ -285,7 +292,13 @@ describe("panelControls", () => {
       statsVisibleIds: ["momentary"],
       statsOrder: DEFAULT_PANEL_CONTROLS.statsOrder,
       loudnessHistoryVisibleLayerIds: ["ref"],
+      loudnessGrid: false,
+      spectrumGrid: false,
       stereoMapMode: "position",
+      stereoMapPositionGrid: false,
+      stereoMapCorrelationGrid: false,
+      stereoMapMonoLossGrid: false,
+      stereoMapMsRatioGrid: false,
       stereoMapPair: { x: 0, y: 1 },
       stereoMapHold: false,
       stereoMapSpeedPercent: 50,
@@ -803,13 +816,41 @@ describe("spectrogramMode", () => {
 });
 
 describe("spectrogram 3D tuning controls", () => {
-  it("defaults the floor grid on", () => {
-    expect(normalizePanelControls({}).spectrogram3dFloor).toBe(true);
+  it("defaults the floor grid off", () => {
+    expect(normalizePanelControls({}).spectrogram3dFloor).toBe(false);
   });
 
   it("rejects non-boolean floor", () => {
-    expect(normalizePanelControls({ spectrogram3dFloor: "yes" }).spectrogram3dFloor).toBe(true);
+    expect(normalizePanelControls({ spectrogram3dFloor: "yes" }).spectrogram3dFloor).toBe(false);
     expect(normalizePanelControls({ spectrogram3dFloor: false }).spectrogram3dFloor).toBe(false);
+    expect(normalizePanelControls({ spectrogram3dFloor: true }).spectrogram3dFloor).toBe(true);
+  });
+});
+
+describe("grid controls", () => {
+  it("defaults every optional grid off and accepts independent values", () => {
+    const normalized = normalizePanelControls({
+      loudnessGrid: true,
+      spectrumGrid: true,
+      stereoMapCorrelationGrid: true,
+    });
+    expect(normalized).toMatchObject({
+      loudnessGrid: true,
+      spectrumGrid: true,
+      stereoMapPositionGrid: false,
+      stereoMapCorrelationGrid: true,
+      stereoMapMonoLossGrid: false,
+      stereoMapMsRatioGrid: false,
+    });
+  });
+
+  it("maps every Stereo Map mode to one retained grid key", () => {
+    expect(STEREO_MAP_GRID_KEYS).toEqual({
+      position: "stereoMapPositionGrid",
+      correlation: "stereoMapCorrelationGrid",
+      monoLossDb: "stereoMapMonoLossGrid",
+      msRatioDb: "stereoMapMsRatioGrid",
+    });
   });
 });
 

@@ -361,6 +361,7 @@ describe("planPublicPanelControlPatch", () => {
       DEFAULT_PANEL_CONTROLS,
       {
         layers: ["shortTerm", "reference"],
+        grid: true,
         loudnessRangeLufs: { min: -48, max: -6 },
       },
       { hasLoudnessReference: true }
@@ -373,10 +374,12 @@ describe("planPublicPanelControlPatch", () => {
         "controls.layers",
         "controls.loudnessRangeLufs.min",
         "controls.loudnessRangeLufs.max",
+        "controls.grid",
       ],
     });
     expect(result.panelControls).toMatchObject({
       loudnessHistoryVisibleLayerIds: ["shortTerm", "ref"],
+      loudnessGrid: true,
       loudnessYMinDb: -48,
       loudnessYMaxDb: -6,
     });
@@ -445,6 +448,7 @@ describe("planPublicPanelControlPatch", () => {
       speedPercent: 70,
       tiltDbPerOctave: 4.5,
       octaveSmoothing: "1/6",
+      grid: true,
       levelRangeDb: { min: -72, max: -6 },
     });
 
@@ -455,6 +459,7 @@ describe("planPublicPanelControlPatch", () => {
         "controls.view",
         "controls.maxMode",
         "controls.peakLabels",
+        "controls.grid",
         "controls.speedPercent",
         "controls.tiltDbPerOctave",
         "controls.octaveSmoothing",
@@ -469,6 +474,7 @@ describe("planPublicPanelControlPatch", () => {
       spectrumSpeedPercent: 70,
       spectrumTiltDbPerOctave: 4.5,
       spectrumOctaveSmoothing: "1/6",
+      spectrumGrid: true,
       spectrumYMinDb: -72,
       spectrumYMaxDb: -6,
     });
@@ -508,7 +514,7 @@ describe("planPublicPanelControlPatch", () => {
       tiltDbPerOctave: 2.25,
       octaveSmoothing: "1/3",
       dbFloor: -66,
-      threeD: { elevationDeg: 45, heightScale: 1.5, grid: false },
+      threeD: { elevationDeg: 45, heightScale: 1.5, grid: true },
     });
 
     expect(result).toMatchObject({
@@ -531,7 +537,7 @@ describe("planPublicPanelControlPatch", () => {
       spectrogramDbFloor: -66,
       spectrogram3dElevationDeg: 45,
       spectrogram3dHeightGain: 1.5,
-      spectrogram3dFloor: false,
+      spectrogram3dFloor: true,
     });
   });
 
@@ -574,6 +580,7 @@ describe("planPublicPanelControlPatch", () => {
         energyFadePercent: 60,
         colorBlendPercent: 35,
         octaveSmoothing: "off",
+        grid: { msRatioDb: true },
         monoLossFloorDb: -30,
         msRatioRangeDb: { min: -36, max: 18 },
       },
@@ -597,6 +604,7 @@ describe("planPublicPanelControlPatch", () => {
         "controls.channelPair.x",
         "controls.channelPair.y",
         "controls.maxHold",
+        "controls.grid.msRatioDb",
         "controls.speedPercent",
         "controls.octaveSmoothing",
         "controls.energyFadePercent",
@@ -614,6 +622,7 @@ describe("planPublicPanelControlPatch", () => {
       stereoMapEnergyFadePercent: 60,
       stereoMapColorBlendPercent: 35,
       stereoMapOctaveSmoothing: "off",
+      stereoMapMsRatioGrid: true,
       stereoMapMonoLossYMinDb: -30,
       stereoMapMsRatioYMinDb: -36,
       stereoMapMsRatioYMaxDb: 18,
@@ -646,6 +655,7 @@ describe("planPublicPanelReset", () => {
       ...DEFAULT_PANEL_CONTROLS,
       spectrumMaxMode: "hold",
       spectrumSpeedPercent: 80,
+      spectrumGrid: true,
       linkFrequencyViewport: false,
       spectrumXMinFreq: 200,
       spectrumXMaxFreq: 5000,
@@ -656,6 +666,7 @@ describe("planPublicPanelReset", () => {
     expect(result.issues).toEqual([]);
     expect(result.changed).toContain("controls.maxMode");
     expect(result.changed).toContain("controls.speedPercent");
+    expect(result.changed).toContain("controls.grid");
     expect(result.changed).toContain("axes.frequency.linked");
     expect(result.panelControls).toMatchObject({
       spectrumMaxMode: "off",

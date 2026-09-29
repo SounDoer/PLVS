@@ -6,6 +6,8 @@ import {
   workspaceStore,
   presetsStore,
   themesStore,
+  WORKSPACE_DOMAIN_VERSION,
+  PRESETS_DOMAIN_VERSION,
   exportAll,
   flushPersistence,
   resetAll,
@@ -32,6 +34,7 @@ describe("persistence index", () => {
     workspaceStore.patch({ visibleModules: ["levelMeter"] });
     expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({
       visibleModules: ["levelMeter"],
+      version: WORKSPACE_DOMAIN_VERSION,
     });
   });
 
@@ -40,6 +43,7 @@ describe("persistence index", () => {
     expect(JSON.parse(localStorage.getItem("plvs:presets"))).toEqual({
       list: [],
       activeId: null,
+      version: PRESETS_DOMAIN_VERSION,
     });
   });
 
@@ -97,7 +101,10 @@ describe("persistence index", () => {
         customPresets: [{ id: "x" }],
       })
     );
-    expect(workspaceStore.export()).toEqual({ visibleModules: ["levelMeter"] });
+    expect(workspaceStore.export()).toEqual({
+      visibleModules: ["levelMeter"],
+      version: WORKSPACE_DOMAIN_VERSION,
+    });
   });
 
   it("exportAll returns all domains keyed by name", () => {
@@ -107,8 +114,8 @@ describe("persistence index", () => {
     themesStore.patch({ themes: {}, order: [] });
     expect(exportAll()).toEqual({
       settings: { referenceLufs: -23 },
-      workspace: { visibleModules: ["levelMeter"] },
-      presets: { list: [], activeId: null },
+      workspace: { visibleModules: ["levelMeter"], version: WORKSPACE_DOMAIN_VERSION },
+      presets: { list: [], activeId: null, version: PRESETS_DOMAIN_VERSION },
       themes: { themes: {}, order: [] },
     });
   });
@@ -121,7 +128,69 @@ describe("persistence index", () => {
 
     expect(JSON.parse(localStorage.getItem("plvs:workspace"))).toEqual({
       visibleModules: ["spectrum"],
+      version: WORKSPACE_DOMAIN_VERSION,
     });
+  });
+
+  it("turns the legacy Spectrogram grid off once in Workspace controls", () => {
+    localStorage.setItem(
+      "plvs:workspace",
+      JSON.stringify({
+        panelsById: { a: { moduleId: "spectrogram" }, b: { moduleId: "spectrogram" } },
+        panelControlsById: {
+          a: { spectrogram3dFloor: true, spectrumSpeedPercent: 10 },
+          b: { spectrogram3dFloor: false },
+        },
+      })
+    );
+
+    expect(workspaceStore.read()).toMatchObject({
+      version: WORKSPACE_DOMAIN_VERSION,
+      panelControlsById: {
+        a: { spectrogram3dFloor: false, spectrumSpeedPercent: 10 },
+        b: { spectrogram3dFloor: false },
+      },
+    });
+
+    workspaceStore.patch({
+      panelControlsById: { a: { spectrogram3dFloor: true }, b: { spectrogram3dFloor: false } },
+    });
+    expect(workspaceStore.read().panelControlsById.a.spectrogram3dFloor).toBe(true);
+  });
+
+  it("turns the legacy Spectrogram grid off once in every saved Preset", () => {
+    localStorage.setItem(
+      "plvs:presets",
+      JSON.stringify({
+        list: [
+          {
+            id: "legacy",
+            name: "Legacy",
+            panelControlsById: {
+              a: { spectrogram3dFloor: true },
+              b: { spectrumSpeedPercent: 20 },
+            },
+          },
+        ],
+      })
+    );
+
+    const migrated = presetsStore.read();
+    expect(migrated.version).toBe(PRESETS_DOMAIN_VERSION);
+    expect(migrated.list[0].panelControlsById).toEqual({
+      a: { spectrogram3dFloor: false },
+      b: { spectrumSpeedPercent: 20, spectrogram3dFloor: false },
+    });
+
+    presetsStore.patch({
+      list: [
+        {
+          ...migrated.list[0],
+          panelControlsById: { a: { spectrogram3dFloor: true } },
+        },
+      ],
+    });
+    expect(presetsStore.read().list[0].panelControlsById.a.spectrogram3dFloor).toBe(true);
   });
 
   it("resetAll clears all domains", () => {

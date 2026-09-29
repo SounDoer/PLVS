@@ -303,7 +303,7 @@ function drawSurfaceError(ctx, width, height, ink) {
 
 const FLOOR_DIVISIONS = 4;
 
-function drawFloor(ctx, proj, grid, gridSubtle, dpr) {
+function drawFloor(ctx, proj, grid, dpr) {
   ctx.save();
   ctx.strokeStyle = grid;
   ctx.lineWidth = dpr;
@@ -323,7 +323,7 @@ function drawFloor(ctx, proj, grid, gridSubtle, dpr) {
   ctx.closePath();
   ctx.stroke();
 
-  ctx.strokeStyle = gridSubtle;
+  ctx.strokeStyle = grid;
   ctx.beginPath();
   for (let i = 1; i < FLOOR_DIVISIONS; i++) {
     const k = i / FLOOR_DIVISIONS;
@@ -598,10 +598,6 @@ export function useSpectrogram3dCanvas({
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      const newest = snaps && snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
-      const bands = newest?.bands;
-      if (!bands || bands.length === 0 || span <= 0) return;
-
       const view = clampViewParams({
         azimuthDeg: p.azimuthDeg,
         elevationDeg: p.elevationDeg,
@@ -628,6 +624,67 @@ export function useSpectrogram3dCanvas({
       // every length below is in it.
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
       const cssWidth = W / dpr;
+      const ink = p.themeColors?.ink ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.ink;
+      const foreground = p.themeColors?.surfaceInk ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.surfaceInk;
+      const gridColor = p.themeColors?.grid ?? ink;
+      const axisLabelColor = p.themeColors?.axisLabel ?? gridColor;
+      const selection = p.themeColors?.selection ?? ink;
+      const getSurfaceRenderer = () => {
+        const glCanvas = glCanvasRef?.current;
+        if (!glCanvas) {
+          lastPaintRef.current.mode = undefined;
+          return undefined;
+        }
+        let held = rendererRef.current;
+        if (held.canvas !== glCanvas) {
+          held.renderer?.dispose();
+          try {
+            held = { canvas: glCanvas, renderer: createSurfaceRenderer(glCanvas) };
+          } catch {
+            held = { canvas: glCanvas, renderer: null };
+          }
+          rendererRef.current = held;
+        }
+        return held.renderer;
+      };
+
+      const newest = snaps && snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
+      const bands = newest?.bands;
+      if (!bands || bands.length === 0 || span <= 0) {
+        if (p.floor) {
+          if (!isSurface) drawFloor(ctx, proj, gridColor, dpr);
+          drawAxisLabels(ctx, proj, axisLabelColor, dpr);
+        }
+        if (isSurface) {
+          const renderer = getSurfaceRenderer();
+          if (renderer === undefined) return;
+          if (!renderer || renderer.state === "dead") {
+            drawSurfaceError(ctx, W, H, axisLabelColor);
+            return;
+          }
+          if (renderer.state !== "ok") return;
+          const probe = ensureOffscreen(offscreenRef, 1, 1);
+          renderer.resize(W, H);
+          renderer.draw({
+            mesh: { positions: new Float32Array(), indices: new Uint32Array() },
+            uniforms: buildGlUniforms({
+              proj,
+              width: W,
+              height: H,
+              heightGain: view.heightGain,
+            }),
+            lut: new Uint32Array(),
+            lutToken: null,
+            floor: !!p.floor,
+            floorLineWidth: dpr,
+            gridColour: argbToRgba(resolveArgbRef.current(probe.ctx, gridColor)),
+            highlightBand: [1, 0],
+            highlightColour: argbToRgba(resolveArgbRef.current(probe.ctx, selection)),
+          });
+        }
+        return;
+      }
+
       const pointCount = pointCountFor(cssWidth);
       const cache = cacheRef.current;
       if (
@@ -673,15 +730,9 @@ export function useSpectrogram3dCanvas({
       });
       if (grid.count === 0) return;
 
-      const ink = p.themeColors?.ink ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.ink;
       // Surface's monochrome ramp runs against the BRIGHTER foreground token: a solid terrain
       // needs the contrast, where floor lines and Lines' strokes read fine at muted. Everything
       // else in this hook keeps using `ink`.
-      const foreground = p.themeColors?.surfaceInk ?? DEFAULT_SPECTROGRAM_CANVAS_THEME.surfaceInk;
-      const gridColor = p.themeColors?.grid ?? ink;
-      const axisLabelColor = p.themeColors?.axisLabel ?? gridColor;
-      const gridSubtleColor = p.themeColors?.gridSubtle ?? gridColor;
-      const selection = p.themeColors?.selection ?? ink;
       const heightPx = proj.heightScale * view.heightGain;
 
       // Read once for both branches, and only the scrub marker uses it: Lines strokes its selected
@@ -697,7 +748,7 @@ export function useSpectrogram3dCanvas({
         // Surface draws its floor in GL instead, one call before the terrain: a WebGL canvas
         // stacked behind a 2D one would put the grid on top of the surface it belongs under.
         // Labels stay here in both modes -- they are text, and text belongs above the scene.
-        if (!isSurface) drawFloor(ctx, proj, gridColor, gridSubtleColor, dpr);
+        if (!isSurface) drawFloor(ctx, proj, gridColor, dpr);
         drawAxisLabels(ctx, proj, axisLabelColor, dpr);
       }
 
@@ -724,30 +775,8 @@ export function useSpectrogram3dCanvas({
       }
 
       if (isSurface) {
-        const glCanvas = glCanvasRef?.current;
-        if (!glCanvas) {
-          // Nothing about the canvas appearing moves the repaint signature, so a repaint that
-          // reached here without one would latch: the guard above would skip every later frame and
-          // the panel would stay blank until some unrelated parameter changed. Give the signature
-          // back instead. React commits the canvas in the same pass that switches the mode, so this
-          // is insurance rather than an expected path.
-          lastPaintRef.current.mode = undefined;
-          return;
-        }
-
-        // One renderer per canvas. Leaving Surface unmounts the canvas, so the next entry brings a
-        // new one and the old context has to go with it rather than leaking a GL context per visit.
-        let held = rendererRef.current;
-        if (held.canvas !== glCanvas) {
-          held.renderer?.dispose();
-          try {
-            held = { canvas: glCanvas, renderer: createSurfaceRenderer(glCanvas) };
-          } catch {
-            held = { canvas: glCanvas, renderer: null };
-          }
-          rendererRef.current = held;
-        }
-        const renderer = held.renderer;
+        const renderer = getSurfaceRenderer();
+        if (renderer === undefined) return;
         // A context that cannot be brought back reports, it does not switch modes. Quietly showing
         // a different meter than the one the user asked for is worse than saying it is broken, and
         // leaving Surface stays their action.
@@ -883,7 +912,6 @@ export function useSpectrogram3dCanvas({
           // 1 CSS px, the same weight the 2D floor strokes in Lines.
           floorLineWidth: dpr,
           gridColour: argbToRgba(resolveArgbRef.current(probe.ctx, gridColor)),
-          gridSubtleColour: argbToRgba(resolveArgbRef.current(probe.ctx, gridSubtleColor)),
           highlightBand,
           highlightColour: argbToRgba(resolveArgbRef.current(probe.ctx, selection)),
         });

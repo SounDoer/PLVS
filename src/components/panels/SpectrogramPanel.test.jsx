@@ -1058,6 +1058,33 @@ describe("SpectrogramPanel", () => {
 });
 
 describe("SpectrogramPanel WebGL surface", () => {
+  it("keeps one default-Off Grid value shared by Lines and Surface", () => {
+    const { rerender } = render(
+      spectrogramPanelTree({ panelControls: { spectrogramMode: "lines" } })
+    );
+    expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].floor).toBe(false);
+
+    rerender(
+      spectrogramPanelTree({
+        panelControls: { spectrogramMode: "surface", spectrogram3dFloor: true },
+      })
+    );
+    expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0]).toMatchObject({
+      mode: "surface",
+      floor: true,
+    });
+
+    rerender(
+      spectrogramPanelTree({
+        panelControls: { spectrogramMode: "lines", spectrogram3dFloor: true },
+      })
+    );
+    expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0]).toMatchObject({
+      mode: "lines",
+      floor: true,
+    });
+  });
+
   it("gives Surface mode its own GL canvas and keeps the 2D one for the other modes", () => {
     const { container, rerender } = render(
       spectrogramPanelTree({ panelControls: { spectrogramMode: "lines" } })

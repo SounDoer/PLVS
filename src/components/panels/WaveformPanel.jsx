@@ -17,7 +17,6 @@ import {
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { canvasCssScale, strokeCssWidth } from "../../lib/canvasCssScale.js";
-import { hairlineDevicePx, snapHairline } from "../../lib/deviceHairline.js";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
@@ -107,8 +106,7 @@ export function drawWaveformCanvas(
   const W = canvas.width;
   const H = canvas.height;
   // Paths are built in backing pixels, whose width is capped at 1:1 while the height keeps full
-  // DPR. Every line width below is CSS px, except the centre-line hairline, and is stroked through
-  // strokeCssWidth for that reason.
+  // DPR. Every line width below is CSS px and is stroked through strokeCssWidth for that reason.
   const cssScale = canvasCssScale(canvas);
 
   const strokeColor = selected ? themeColors.snapshot : themeColors.trace;
@@ -130,16 +128,6 @@ export function drawWaveformCanvas(
 
   // No line is drawn at zero; the trace is still measured from it.
   const cy = H / 2;
-
-  // A hairline: whole device-pixel rows, so it stays crisp at any scale (see deviceHairline.js).
-  const gridPx = hairlineDevicePx(cssScale.y);
-  const gridY = snapHairline(cy, gridPx);
-  ctx.strokeStyle = themeColors.grid;
-  ctx.lineWidth = gridPx / cssScale.y;
-  ctx.beginPath();
-  ctx.moveTo(0, gridY);
-  ctx.lineTo(W, gridY);
-  strokeCssWidth(ctx, cssScale);
 
   if (firstBucket < 0 || !bucketCount || !mins?.length || !maxes?.length) return;
 

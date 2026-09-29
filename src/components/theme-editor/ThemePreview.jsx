@@ -72,9 +72,24 @@ function OverviewScene() {
   );
 }
 
-function Trace({ color, secondColor }) {
+function PreviewGrid({ color }) {
   return (
-    <svg viewBox="0 0 160 48" className="h-12 w-full" aria-hidden="true">
+    <g stroke={color} strokeWidth="1" vectorEffect="non-scaling-stroke">
+      <path d="M40 0V48M80 0V48M120 0V48" />
+      <path d="M0 16H160M0 32H160" />
+    </g>
+  );
+}
+
+function Trace({ color, secondColor, gridColor }) {
+  return (
+    <svg
+      viewBox="0 0 160 48"
+      className="h-12 w-full"
+      aria-hidden="true"
+      data-theme-preview-grid={gridColor ? "" : undefined}
+    >
+      {gridColor ? <PreviewGrid color={gridColor} /> : null}
       <path
         d="M0 36 C25 35 28 8 48 22 S78 40 92 15 120 34 160 12"
         fill="none"
@@ -93,14 +108,18 @@ function Trace({ color, secondColor }) {
   );
 }
 
-function ModulesScene({ intensityGradient }) {
+function ModulesScene({ intensityGradient, gridColors }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <PreviewCard title="Level Meter">
         <div className="meter-gradient h-14 w-8 rounded-xs" />
       </PreviewCard>
       <PreviewCard title="Loudness">
-        <Trace color="var(--ui-loudness-momentary)" secondColor="var(--ui-loudness-shortterm)" />
+        <Trace
+          color="var(--ui-loudness-momentary)"
+          secondColor="var(--ui-loudness-shortterm)"
+          gridColor="var(--ui-loudness-grid)"
+        />
       </PreviewCard>
       <PreviewCard title="Stats">
         <div className="grid grid-cols-2 text-[length:var(--ui-fs-axis)]">
@@ -111,16 +130,35 @@ function ModulesScene({ intensityGradient }) {
         </div>
       </PreviewCard>
       <PreviewCard title="Vectorscope">
-        <div className="relative mx-auto size-14 rounded-full border border-[color:var(--ui-vectorscope-grid-stroke)]">
+        <div
+          data-theme-preview-guides=""
+          className="relative mx-auto size-14 rounded-full border border-[color:var(--ui-vectorscope-guides-stroke)]"
+        >
           <span className="absolute top-1/2 left-1/2 size-3 -translate-1/2 rounded-full bg-[color:var(--ui-vectorscope-trace)]" />
           <span className="absolute right-0 bottom-0 size-2 rounded-full bg-[color:var(--ui-vectorscope-correlation-warning)]" />
         </div>
       </PreviewCard>
       <PreviewCard title="Spectrum">
-        <Trace color="var(--ui-spectrum-primary)" secondColor="var(--ui-spectrum-secondary)" />
+        <Trace
+          color="var(--ui-spectrum-primary)"
+          secondColor="var(--ui-spectrum-secondary)"
+          gridColor="var(--ui-spectrum-grid)"
+        />
       </PreviewCard>
       <PreviewCard title="Spectrogram">
-        <div className="h-12 rounded-xs" style={{ background: intensityGradient }} />
+        <div
+          className="relative h-12 overflow-hidden rounded-xs"
+          style={{ background: intensityGradient }}
+        >
+          <svg
+            data-theme-preview-grid=""
+            viewBox="0 0 160 48"
+            className="absolute inset-0 size-full"
+            aria-hidden="true"
+          >
+            <PreviewGrid color={gridColors.spectrogram} />
+          </svg>
+        </div>
       </PreviewCard>
       <PreviewCard title="Waveform">
         <div className="flex flex-col gap-2">
@@ -129,7 +167,15 @@ function ModulesScene({ intensityGradient }) {
         </div>
       </PreviewCard>
       <PreviewCard title="Stereo Map">
-        <div className="flex h-12 items-end justify-center gap-4 border-b border-border">
+        <div className="relative flex h-12 items-end justify-center gap-4 overflow-hidden">
+          <svg
+            data-theme-preview-grid=""
+            viewBox="0 0 160 48"
+            className="absolute inset-0 size-full"
+            aria-hidden="true"
+          >
+            <PreviewGrid color={gridColors.stereoMap} />
+          </svg>
           <span className="h-9 w-5 bg-[color:var(--ui-stereo-map-primary)]" />
           <span className="h-5 w-5 bg-[color:var(--ui-stereo-map-secondary)]" />
         </div>
@@ -146,6 +192,10 @@ export function ThemePreview({ draft, onClose, onJump }) {
   const intensityGradient = `linear-gradient(to right, ${resolved.roles["palette.intensity.stops"]
     .map((stop) => `${stop.color} ${stop.position * 100}%`)
     .join(", ")})`;
+  const gridColors = {
+    spectrogram: resolved.roles["spectrogram.grid"],
+    stereoMap: resolved.roles["stereoMap.grid"],
+  };
 
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
@@ -193,7 +243,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
             {page === "overview" ? (
               <OverviewScene />
             ) : page === "modules" ? (
-              <ModulesScene intensityGradient={intensityGradient} />
+              <ModulesScene intensityGradient={intensityGradient} gridColors={gridColors} />
             ) : (
               <ThemeVisualReview warnings={visualWarnings} onJump={onJump} />
             )}

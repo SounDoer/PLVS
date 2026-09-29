@@ -325,8 +325,8 @@ describe("StereoMapPanel", () => {
 
     // Two valid bands (0 and 1) with an invalid band (2) between them and the grid edge means the
     // curve cannot be one unbroken run: it must render as a single segment (band0-band1), not a
-    // curve spanning all three bands. One grid stroke plus exactly one segment stroke/fill.
-    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    // curve spanning all three bands. Grid defaults off, so there is one segment stroke/fill.
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
     expect(ctx.fill).toHaveBeenCalledTimes(1);
   });
 
@@ -431,7 +431,7 @@ describe("StereoMapPanel", () => {
     );
     const ctxC = ctxByCanvas.get(containerC.querySelector("canvas"));
     // Pair 2:3 has no live row (pending) and no Hold slab for this key: nothing is stroked.
-    expect(ctxC.stroke).toHaveBeenCalledTimes(1); // grid only
+    expect(ctxC.stroke).toHaveBeenCalledTimes(0); // Grid defaults off
   });
 
   it("shows the current value and Hold on hover, and no energy readout", () => {
@@ -513,7 +513,7 @@ describe("StereoMapPanel", () => {
     // empty chart (nothing stroked) rather than the pair 0:1 data sitting under a
     // different key.
     expect(ctx.fill).not.toHaveBeenCalled();
-    expect(ctx.stroke).toHaveBeenCalledTimes(1); // grid only
+    expect(ctx.stroke).toHaveBeenCalledTimes(0); // Grid defaults off
   });
 
   it("shows the snapshot no-data state when its request key has no history at the selected time", () => {

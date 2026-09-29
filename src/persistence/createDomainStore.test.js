@@ -52,6 +52,13 @@ describe("createDomainStore", () => {
     expect(store.read()).not.toHaveProperty("version");
   });
 
+  it("stamps writes when a domain opts into a current version", () => {
+    const backend = memoryBackend();
+    const store = createDomainStore({ name: "plvs:workspace", backend, writeVersion: 3 });
+    store.patch({ panels: [] });
+    expect(store.read()).toEqual({ panels: [], version: 3 });
+  });
+
   it("calls migrate with (raw, version) using version ?? 0", () => {
     const backend = memoryBackend({ "plvs:settings": { a: 1 } });
     const migrate = vi.fn((raw) => raw);

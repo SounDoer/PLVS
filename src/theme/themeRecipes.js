@@ -118,9 +118,6 @@ export const THEME_RECIPES = Object.freeze({
   grid: recipe([[EFFECT, SOLID]], SOLID, ([border, surface]) =>
     mixHex(surface, colorOf(border), 0.08)
   ),
-  "grid-subtle": recipe([[EFFECT, SOLID]], SOLID, ([border, surface]) =>
-    mixHex(surface, colorOf(border), 0.04)
-  ),
   "frequency-neutral": recipe([[SOLID, SOLID, SOLID, SOLID]], SOLID, ([surface, low, mid, high]) =>
     mixHex(
       surface,

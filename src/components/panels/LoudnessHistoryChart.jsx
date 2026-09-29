@@ -12,6 +12,7 @@ import { AxisRail, timeAxisInteraction } from "./AxisRail.jsx";
 import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { TimelineLatestEdgeHint } from "./TimelineLatestEdgeHint.jsx";
 import { TimelineSelectionEdgeHint } from "./TimelineSelectionEdgeHint.jsx";
+import { ChartGrid } from "./ChartGrid.jsx";
 import {
   anchorFromPointer,
   panRange,
@@ -47,6 +48,7 @@ export function LoudnessHistoryChart({
   historyTimeAxisHandlers,
   isTimeAxisActive = false,
   loudnessHistoryVisibleLayerIds = [],
+  gridVisible = false,
   displayHistoryPathM,
   displayHistoryPathST,
   selectedOffset,
@@ -128,6 +130,24 @@ export function LoudnessHistoryChart({
   const historyYAxisTicksLabeled = useMemo(
     () => historyYAxisTicks.filter((t) => !(t.v === targetLufs && !hasHistoryData)),
     [historyYAxisTicks, targetLufs, hasHistoryData]
+  );
+  const historyYAxisAxisTicks = useMemo(
+    () =>
+      historyYAxisTicksLabeled.map(({ v, lb }) => ({
+        key: v,
+        value: v,
+        label: lb,
+        frac: loudnessFromTopFrac(v, loudnessYRange),
+        className: v === targetLufs ? "font-semibold" : "",
+      })),
+    [historyYAxisTicksLabeled, loudnessYRange, targetLufs]
+  );
+  const historyGridTicks = useMemo(
+    () =>
+      showReference
+        ? historyYAxisAxisTicks.filter((tick) => tick.value !== referenceLufs)
+        : historyYAxisAxisTicks,
+    [historyYAxisAxisTicks, referenceLufs, showReference]
   );
 
   const isSnap = selectedOffset >= 0;
@@ -221,12 +241,7 @@ export function LoudnessHistoryChart({
         className={cn(W_LOUDNESS_Y_AXIS, "min-h-0 shrink-0")}
         interaction={loudnessYAxis}
         active={chartYAxisActive}
-        ticks={historyYAxisTicksLabeled.map(({ v, lb }) => ({
-          key: v,
-          label: lb,
-          frac: loudnessFromTopFrac(v, loudnessYRange),
-          className: v === targetLufs ? "font-semibold" : "",
-        }))}
+        ticks={historyYAxisAxisTicks}
       />
 
       {/* Chart area */}
@@ -272,23 +287,14 @@ export function LoudnessHistoryChart({
             {mStops ? <RuleGradient id={mGradId} stops={mStops} /> : null}
             {stStops ? <RuleGradient id={stGradId} stops={stStops} /> : null}
           </defs>
-          <g data-loudness-grid aria-hidden="true">
-            {historyYAxisTicksLabeled.map(({ v }) => {
-              const y = loudnessFromTopFrac(v, loudnessYRange) * 220;
-              return (
-                <line
-                  key={v}
-                  x1={0}
-                  x2={600}
-                  y1={y}
-                  y2={y}
-                  stroke="var(--ui-loudness-grid)"
-                  strokeWidth="1"
-                  vectorEffect="non-scaling-stroke"
-                />
-              );
-            })}
-          </g>
+          <ChartGrid
+            visible={gridVisible}
+            yTicks={historyGridTicks}
+            width={600}
+            height={220}
+            stroke="var(--ui-loudness-grid)"
+            name="loudness"
+          />
           {showMomentary && displayHistoryPathM && (
             <path
               d={displayHistoryPathM}

@@ -1,6 +1,31 @@
 import { resolveV1Theme } from "../legacy/resolveV1Theme.js";
 import { normalizeThemeDocumentShape } from "../themeSchema.js";
 
+const RETIRED_GRID_ROLES = new Set(["data.gridSubtle", "spectrogram.gridSubtle", "waveform.grid"]);
+
+function migrateGridSemanticOverrides(rawOverrides) {
+  if (!rawOverrides || typeof rawOverrides !== "object" || Array.isArray(rawOverrides)) return null;
+  const overrides = {};
+  for (const [roleId, override] of Object.entries(rawOverrides)) {
+    if (RETIRED_GRID_ROLES.has(roleId)) continue;
+    const nextRoleId = roleId === "vectorscope.grid" ? "vectorscope.guides" : roleId;
+    const next = structuredClone(override);
+    if (next?.kind === "reference" && next.source === "vectorscope.grid") {
+      next.source = "vectorscope.guides";
+    }
+    if (next?.kind === "reference" && RETIRED_GRID_ROLES.has(next.source)) continue;
+    overrides[nextRoleId] = next;
+  }
+  return overrides;
+}
+
+export function migrateThemeSemantics1(raw) {
+  if (raw?.formatVersion !== 2 || raw?.semanticsVersion !== 1) return null;
+  const overrides = migrateGridSemanticOverrides(raw.overrides ?? {});
+  if (!overrides) return null;
+  return normalizeThemeDocumentShape({ ...raw, semanticsVersion: 2, overrides });
+}
+
 const SEMANTIC_ROLE_BINDINGS = {
   "--card": "interface.surface.panel",
   "--popover": "interface.surface.raised",
@@ -67,7 +92,7 @@ function migrateSingleVersionShape(raw) {
   return normalizeThemeDocumentShape({
     ...raw,
     formatVersion: 2,
-    semanticsVersion: 1,
+    semanticsVersion: 2,
     palettes: {
       ...raw.palettes,
       status: status
@@ -157,7 +182,7 @@ export function migrateV1Theme(raw) {
 
   return normalizeThemeDocumentShape({
     formatVersion: 2,
-    semanticsVersion: 1,
+    semanticsVersion: 2,
     id: raw.id,
     name: raw.name.trim().slice(0, 64),
     colorScheme: raw.colorScheme,
@@ -208,6 +233,19 @@ export function migrateFormat1Theme(raw) {
 export function migrateThemeDocument(raw) {
   const current = normalizeThemeDocumentShape(raw);
   if (current) return { theme: current, notes: [] };
+  const semantics1 = migrateThemeSemantics1(raw);
+  if (semantics1) {
+    return {
+      theme: semantics1,
+      notes: [
+        {
+          code: "clarify-grid-semantics",
+          message:
+            "Renamed Vectorscope Grid to Guides and removed retired Waveform and Spectrogram subdivision Grid overrides.",
+        },
+      ],
+    };
+  }
   const format1 = migrateFormat1Theme(raw);
   if (format1) {
     return {
@@ -228,7 +266,7 @@ export function migrateThemeDocument(raw) {
       notes: [
         {
           code: "split-version-fields",
-          message: "Replaced Theme V2 with formatVersion 2 and semanticsVersion 1.",
+          message: "Replaced Theme V2 with explicit formatVersion and semanticsVersion fields.",
         },
         ...(raw.palettes?.interface == null
           ? [

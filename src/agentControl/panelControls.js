@@ -47,6 +47,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       view: controls.spectrumView,
       maxMode: controls.spectrumMaxMode,
       peakLabels: controls.spectrumPeakLabels,
+      grid: controls.spectrumGrid,
       speedPercent: controls.spectrumSpeedPercent,
       tiltDbPerOctave: controls.spectrumTiltDbPerOctave,
       octaveSmoothing: controls.spectrumOctaveSmoothing,
@@ -85,6 +86,12 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
         min: controls.stereoMapMsRatioYMinDb,
         max: controls.stereoMapMsRatioYMaxDb,
       },
+      grid: {
+        position: controls.stereoMapPositionGrid,
+        correlation: controls.stereoMapCorrelationGrid,
+        monoLossDb: controls.stereoMapMonoLossGrid,
+        msRatioDb: controls.stereoMapMsRatioGrid,
+      },
     };
   }
 
@@ -116,6 +123,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       .concat(context.hasLoudnessReference === true && visible.has("ref") ? ["reference"] : []);
     return {
       layers,
+      grid: controls.loudnessGrid,
       loudnessRangeLufs: { min: controls.loudnessYMinDb, max: controls.loudnessYMaxDb },
     };
   }

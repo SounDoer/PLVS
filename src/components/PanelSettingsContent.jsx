@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { SPECTRUM_VIEW_OPTIONS, spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import {
   DEFAULT_PANEL_CONTROLS,
+  GRID_TOOLTIP,
   LOUDNESS_HISTORY_LAYER_OPTIONS,
   SPECTRUM_MAX_MODE_OPTIONS,
   SPECTRUM_OCTAVE_SMOOTHING_OPTIONS,
@@ -932,10 +933,13 @@ export function StatsMetricsSettingsRow({
 /// No Ref input: the reference value is owned by the active Loudness Profile, so a second
 /// editor here would be a competing writer. The `ref` layer toggle stays.
 export function LoudnessSettingsRows({
+  showGrid = true,
   visibleLayerIds,
+  grid,
   yMinDb,
   yMaxDb,
   onVisibleLayerIdsChange,
+  onGridChange,
   onYRangeChange,
 }) {
   const [layersOpen, setLayersOpen] = useState(false);
@@ -975,6 +979,15 @@ export function LoudnessSettingsRows({
           ) : null}
         </div>
       </SettingsRow>
+      {showGrid ? (
+        <SettingsRow label="Grid" tooltip={GRID_TOOLTIP}>
+          <SettingsSwitch
+            aria-label="loudness grid"
+            checked={grid}
+            onCheckedChange={onGridChange}
+          />
+        </SettingsRow>
+      ) : null}
       <SettingsRow label="Loudness Range">
         <SettingsRangeInput
           minAriaLabel="loudness range min"
@@ -992,6 +1005,7 @@ export function SpectrumDisplaySettingsRows({
   showPeak = true,
   showPeakLabels = showPeak,
   showDisplay = true,
+  showGrid = true,
   maxMode,
   peakLabels,
   speedPercent,
@@ -1001,6 +1015,7 @@ export function SpectrumDisplaySettingsRows({
   xMaxFreq,
   yMinDb,
   yMaxDb,
+  grid,
   onMaxModeChange,
   onPeakLabelsChange,
   onSpeedChange,
@@ -1008,6 +1023,7 @@ export function SpectrumDisplaySettingsRows({
   onTiltChange,
   onXRangeChange,
   onYRangeChange,
+  onGridChange,
 }) {
   const [smoothingOpen, setSmoothingOpen] = useState(false);
   const [maxModeOpen, setMaxModeOpen] = useState(false);
@@ -1084,6 +1100,15 @@ export function SpectrumDisplaySettingsRows({
               onChange={onOctaveSmoothingChange}
             />
           </SettingsRow>
+          {showGrid ? (
+            <SettingsRow label="Grid" tooltip={GRID_TOOLTIP}>
+              <SettingsSwitch
+                aria-label="spectrum grid"
+                checked={grid}
+                onCheckedChange={onGridChange}
+              />
+            </SettingsRow>
+          ) : null}
           <SettingsRow
             label="Frequency Range"
             controlAction={
@@ -1443,6 +1468,7 @@ export function PanelSettingsContent({
       <SettingsGroup title="Loudness">
         <LoudnessSettingsRows
           visibleLayerIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
+          grid={normalizedPanelControls.loudnessGrid}
           yMinDb={normalizedPanelControls.loudnessYMinDb}
           yMaxDb={normalizedPanelControls.loudnessYMaxDb}
           onVisibleLayerIdsChange={(loudnessHistoryVisibleLayerIds) => {
@@ -1451,6 +1477,11 @@ export function PanelSettingsContent({
                 ...normalizedPanelControls,
                 loudnessHistoryVisibleLayerIds,
               })
+            );
+          }}
+          onGridChange={(loudnessGrid) => {
+            onPanelControlsChange(
+              normalizePanelControls({ ...normalizedPanelControls, loudnessGrid })
             );
           }}
           onYRangeChange={(loudnessYMinDb, loudnessYMaxDb) => {
@@ -1576,6 +1607,7 @@ export function PanelSettingsContent({
           xMaxFreq={normalizedPanelControls.spectrumXMaxFreq}
           yMinDb={effectiveYMinDb}
           yMaxDb={effectiveYMaxDb}
+          grid={normalizedPanelControls.spectrumGrid}
           onMaxModeChange={(spectrumMaxMode) => {
             onPanelControlsChange?.(
               normalizePanelControls({ ...normalizedPanelControls, spectrumMaxMode })
@@ -1630,6 +1662,11 @@ export function PanelSettingsContent({
                 spectrumYMinDb: newMin,
                 spectrumYMaxDb: newMax,
               })
+            );
+          }}
+          onGridChange={(spectrumGrid) => {
+            onPanelControlsChange?.(
+              normalizePanelControls({ ...normalizedPanelControls, spectrumGrid })
             );
           }}
         />

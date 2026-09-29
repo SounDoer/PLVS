@@ -36,6 +36,15 @@ describe("DockModuleSettings", () => {
     expect(screen.getByLabelText(label)).toBeTruthy();
   });
 
+  it.each(["loudness", "spectrum", "spectrogram", "stereoMap", "waveform"])(
+    "keeps optional Grid out of compact %s settings",
+    (moduleId) => {
+      renderSettings(moduleId);
+      expect(screen.queryByLabelText(/grid/i)).toBeNull();
+      expect(screen.queryByText("Grid")).toBeNull();
+    }
+  );
+
   it("uses the shared Waveform controls in Dock settings", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.waveform,

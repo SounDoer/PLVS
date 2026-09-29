@@ -7,7 +7,7 @@ import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
 function authoringTheme(overrides = {}) {
   return {
     formatVersion: 2,
-    semanticsVersion: 1,
+    semanticsVersion: 2,
     id: "test-theme",
     name: "Test Theme",
     colorScheme: "dark",
@@ -77,6 +77,28 @@ describe("compileTheme", () => {
     expect(resolved.css["--ui-loudness-grid"]).toBe(resolved.roles["loudness.grid"]);
     expect(resolved.css["--ui-loudness-grid"]).toBe("#282828");
   });
+
+  it.each(["dark", "light"])(
+    "derives an opaque %s Grid from the resolved Panel Surface 8% toward Border",
+    (colorScheme) => {
+      const resolved = compileTheme(
+        authoringTheme({
+          colorScheme,
+          overrides: {
+            "interface.surface.panel": { kind: "color", value: "#000000" },
+            "interface.border.default": { kind: "color", value: "#ffffff" },
+          },
+        })
+      );
+
+      expect(resolved.roles["data.grid"]).toBe("#141414");
+      expect(resolved.roles["loudness.grid"]).toBe("#141414");
+      expect(resolved.roles["spectrum.grid"]).toBe("#141414");
+      expect(resolved.roles["spectrogram.grid"]).toBe("#141414");
+      expect(resolved.roles["stereoMap.grid"]).toBe("#141414");
+      expect(resolved.roles["vectorscope.guides"]).toBe("#141414");
+    }
+  );
 
   it("publishes Theme-owned Spectrum fill opacity defaults and numeric overrides", () => {
     const defaults = compileTheme(authoringTheme());

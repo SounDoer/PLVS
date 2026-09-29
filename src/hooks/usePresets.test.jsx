@@ -633,7 +633,7 @@ describe("usePresets", () => {
     act(() => result.current.presets.rename("p1", "Renamed"));
     expect(presetsStore.read().list[0].name).toBe("Renamed");
     act(() => result.current.presets.remove("p1"));
-    expect(presetsStore.read()).toEqual({ list: [], activeId: null, dirty: false });
+    expect(presetsStore.read()).toEqual({ list: [], activeId: null, dirty: false, version: 1 });
   });
 
   describe("dock in presets", () => {

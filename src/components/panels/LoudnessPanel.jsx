@@ -211,6 +211,7 @@ export function LoudnessPanel() {
           historyTimeAxisHandlers={historyTimeAxisHandlers}
           isTimeAxisActive={historyTimeAxisActive}
           loudnessHistoryVisibleLayerIds={loudnessHistoryVisibleLayerIds}
+          gridVisible={normalizedPanelControls.loudnessGrid}
           displayHistoryPathM={displayHistoryPathMForRange}
           displayHistoryPathST={displayHistoryPathSTForRange}
           selectedOffset={selectedOffset}

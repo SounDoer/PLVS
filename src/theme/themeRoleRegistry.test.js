@@ -40,6 +40,24 @@ describe("Theme Role Registry", () => {
     expect(getThemeRole("missing")).toBeNull();
   });
 
+  it("keeps optional Grid roles distinct from always-visible Vectorscope Guides", () => {
+    expect(getThemeRole("data.grid").dependencies).toEqual([
+      "interface.border.default",
+      "interface.surface.panel",
+    ]);
+    expect(getThemeRole("vectorscope.guides")).toMatchObject({
+      bindings: {
+        css: ["--ui-vectorscope-guides-stroke"],
+        canvas: ["vectorscope.guides"],
+      },
+      advanced: { section: "Vectorscope", label: "Guides" },
+    });
+    expect(getThemeRole("vectorscope.grid")).toBeNull();
+    expect(getThemeRole("data.gridSubtle")).toBeNull();
+    expect(getThemeRole("spectrogram.gridSubtle")).toBeNull();
+    expect(getThemeRole("waveform.grid")).toBeNull();
+  });
+
   it("publishes Annotation Text to products while keeping the unused focus token internal", () => {
     expect(getThemeRole("interface.text.annotation")).toMatchObject({
       bindings: { css: ["--ui-text-annotation"] },

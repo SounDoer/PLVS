@@ -90,6 +90,27 @@ afterEach(() => {
 });
 
 describe("SpectrumPanel", () => {
+  it("renders X and Y Grid lines only when enabled", () => {
+    const { container } = renderPanel(
+      liveAudioData(liveResult(), { panelControls: { spectrumGrid: true } })
+    );
+    const grid = container.querySelector("[data-spectrum-grid]");
+
+    expect(grid).toBeTruthy();
+    const lines = [...(grid?.querySelectorAll("line") ?? [])];
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.some((line) => line.getAttribute("x1") === line.getAttribute("x2"))).toBe(true);
+    expect(lines.some((line) => line.getAttribute("y1") === line.getAttribute("y2"))).toBe(true);
+    expect(lines.every((line) => line.getAttribute("stroke") === "var(--ui-spectrum-grid)")).toBe(
+      true
+    );
+  });
+
+  it("does not render a Grid group by default", () => {
+    const { container } = renderPanel(liveAudioData(liveResult()));
+    expect(container.querySelector("[data-spectrum-grid]")).toBeNull();
+  });
+
   it("reuses display data and paths across unrelated meter-frame renders", () => {
     setPanelCpuProfilerEnabled(true);
     const first = liveResult({

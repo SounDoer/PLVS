@@ -24,6 +24,12 @@ topology PLVS reports before a device is known; channel choices widen with the r
   "msRatioRangeDb": {
     "min": -48,
     "max": 24
+  },
+  "grid": {
+    "position": false,
+    "correlation": false,
+    "monoLossDb": false,
+    "msRatioDb": false
   }
 }
 ```
@@ -34,6 +40,11 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | --- | --- | --- | --- | --- | --- |
 | `mode` | string | - | `"position"` | "position", "correlation", "monoLossDb", "msRatioDb" | active |
 | `channelPair` | object | - | `{"x":0,"y":1}` | {"x":0,"y":1} | active |
+| `grid` | object | - | - | - | active |
+| `grid.position` | boolean | - | `false` | - | active |
+| `grid.correlation` | boolean | - | `false` | - | inactive (nonCorrelationMode) |
+| `grid.monoLossDb` | boolean | - | `false` | - | inactive (nonMonoLossMode) |
+| `grid.msRatioDb` | boolean | - | `false` | - | inactive (nonMsRatioMode) |
 | `maxHold` | boolean | - | `false` | - | active |
 | `speedPercent` | integer | % | `50` | 0 to 100 | active |
 | `octaveSmoothing` | string | - | `"1/12"` | "off", "1/12", "1/6", "1/3" | active |

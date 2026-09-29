@@ -32,12 +32,24 @@ describe("panelControlInstances", () => {
     };
 
     const controlsById = normalizePanelControlsById(panelsById, {
-      levelMeter: { levelMeterMode: "momentary" },
+      levelMeter: {
+        levelMeterMode: "momentary",
+        loudnessGrid: true,
+        spectrumGrid: true,
+        stereoMapPositionGrid: true,
+        spectrogram3dFloor: true,
+      },
       stale: { levelMeterMode: "shortTerm" },
     });
 
     expect(Object.keys(controlsById).sort()).toEqual(["levelMeter", "levelMeter-2"]);
     expect(controlsById.levelMeter.levelMeterMode).toBe("momentary");
+    expect(controlsById.levelMeter).toMatchObject({
+      loudnessGrid: true,
+      spectrumGrid: true,
+      stereoMapPositionGrid: true,
+      spectrogram3dFloor: true,
+    });
     expect(controlsById["levelMeter-2"].levelMeterMode).toBe("peak");
   });
 

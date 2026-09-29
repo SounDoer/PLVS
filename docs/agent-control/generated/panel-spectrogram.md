@@ -24,7 +24,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
     "elevationDeg": 60,
     "heightScale": 1,
     "colorize": true,
-    "grid": true
+    "grid": false
   }
 }
 ```
@@ -43,7 +43,7 @@ topology PLVS reports before a device is known; channel choices widen with the r
 | `threeD.elevationDeg` | number | deg | `60` | 5 to 85 | inactive (heatmapMode) |
 | `threeD.heightScale` | number | - | `1` | 0.3 to 3 | inactive (heatmapMode) |
 | `threeD.colorize` | boolean | - | `true` | - | inactive (heatmapMode) |
-| `threeD.grid` | boolean | - | `true` | - | inactive (heatmapMode) |
+| `threeD.grid` | boolean | - | `false` | - | inactive (heatmapMode) |
 
 The last column is this field's availability while every control sits at its default. A field
 reported inactive still accepts a patch; the result carries a `currentlyInactive` warning.

@@ -31,6 +31,41 @@ function stereoMapControls(first, second, overrides = {}) {
 }
 
 describe("analysisRequests", () => {
+  it("keeps every optional Grid display control out of analysis identity", () => {
+    const panelsById = {
+      loudness: { id: "loudness", moduleId: "loudness" },
+      spectrum: { id: "spectrum", moduleId: "spectrum" },
+      spectrogram: { id: "spectrogram", moduleId: "spectrogram" },
+      stereo: { id: "stereo", moduleId: "stereo-map" },
+    };
+    const baselineControls = Object.fromEntries(
+      Object.keys(panelsById).map((panelId) => [panelId, { ...DEFAULT_PANEL_CONTROLS }])
+    );
+    const baseline = deriveAnalysisRequests(
+      state({ panelsById, panelControlsById: baselineControls })
+    );
+    const withGrids = deriveAnalysisRequests(
+      state({
+        panelsById,
+        panelControlsById: {
+          ...baselineControls,
+          loudness: { ...baselineControls.loudness, loudnessGrid: true },
+          spectrum: { ...baselineControls.spectrum, spectrumGrid: true },
+          spectrogram: { ...baselineControls.spectrogram, spectrogram3dFloor: true },
+          stereo: {
+            ...baselineControls.stereo,
+            stereoMapPositionGrid: true,
+            stereoMapCorrelationGrid: true,
+            stereoMapMonoLossGrid: true,
+            stereoMapMsRatioGrid: true,
+          },
+        },
+      })
+    );
+
+    expect(withGrids).toEqual(baseline);
+  });
+
   it("keeps Vectorscope Polar Sample persistence out of request identity", () => {
     const baseline = vectorscopeRequestKeyFromControls(DEFAULT_PANEL_CONTROLS);
 

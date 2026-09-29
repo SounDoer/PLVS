@@ -116,7 +116,7 @@ describe("StereoMapPlot", () => {
     });
   });
 
-  it("draws the baseline grid line and one gradient-filled+stroked path per continuous run", () => {
+  it("draws one gradient-filled and stroked path per continuous run with Grid off", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     render(
@@ -131,9 +131,9 @@ describe("StereoMapPlot", () => {
     );
 
     // One continuous run of 3 valid bands draws as a single path regardless of band count:
-    // 1 grid stroke, 1 curve stroke, 1 fill. This is the point of the gradient rewrite — a run's draw cost
+    // 1 curve stroke, 1 fill. This is the point of the gradient rewrite — a run's draw cost
     // no longer scales with how many bands (or how much the value swings between them) it contains.
-    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
     expect(ctx.fill).toHaveBeenCalledTimes(1);
     // One gradient serves both passes -- the fill's constant factor rides on globalAlpha -- so a
     // run costs one stop per band, not two.
@@ -155,7 +155,7 @@ describe("StereoMapPlot", () => {
     );
 
     // One run (band0-band1); band2 is invalid so it never contributes a stop.
-    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
     expect(ctx.fill).toHaveBeenCalledTimes(1);
     expect(ctx.gradients[0].stops).toHaveLength(2);
   });
@@ -431,7 +431,7 @@ describe("StereoMapPlot", () => {
     // Fewer draws than the old one-per-segment approach would have needed for 3 segments only if
     // any adjacent segments actually share a color; here segments are: mid(-2,-2)->primary,
     // mid(-2,2)=0->secondary, mid(2,2)->secondary — bands 1-3 merge into one secondary draw.
-    expect(ctx.stroke).toHaveBeenCalledTimes(3); // grid + primary run + merged secondary run
+    expect(ctx.stroke).toHaveBeenCalledTimes(2); // primary run + merged secondary run
   });
 
   it("draws two Hold outlines for Position (maximum + minimum) and one for other modes", () => {
@@ -447,8 +447,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 grid stroke + 1 curve stroke + 2 hold outline strokes.
-    expect(ctxPosition.stroke).toHaveBeenCalledTimes(4);
+    // 1 curve stroke + 2 hold outline strokes.
+    expect(ctxPosition.stroke).toHaveBeenCalledTimes(3);
     expect(ctxPosition.strokedAlphas.slice(-2)).toEqual([1, 1]);
 
     const ctxOther = contextStub();
@@ -463,8 +463,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 grid stroke + 1 curve stroke + 1 hold outline stroke.
-    expect(ctxOther.stroke).toHaveBeenCalledTimes(3);
+    // 1 curve stroke + 1 hold outline stroke.
+    expect(ctxOther.stroke).toHaveBeenCalledTimes(2);
     expect(ctxOther.strokedAlphas.at(-1)).toBe(1);
   });
 
@@ -481,8 +481,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 grid stroke + 1 curve stroke only.
-    expect(ctx.stroke).toHaveBeenCalledTimes(2);
+    // 1 curve stroke only.
+    expect(ctx.stroke).toHaveBeenCalledTimes(1);
   });
 
   it("breaks Hold outline runs at invalid (null) values, same as the main curve", () => {
@@ -498,8 +498,8 @@ describe("StereoMapPlot", () => {
         range={RANGE}
       />
     );
-    // 1 grid stroke + 1 curve stroke + 2 separate hold-run strokes (one band each side of the gap).
-    expect(ctx.stroke).toHaveBeenCalledTimes(4);
+    // 1 curve stroke + 2 separate hold-run strokes (one band each side of the gap).
+    expect(ctx.stroke).toHaveBeenCalledTimes(3);
   });
 
   it("skips redrawing when a rerender changes nothing that affects the picture", () => {
@@ -672,6 +672,8 @@ describe("StereoMapPlot", () => {
         points={threeBandPoints()}
         range={RANGE}
         themeColors={TEST_CHANNEL_COLORS}
+        gridVisible
+        xTicks={[{ key: "1k", frac: 0.5 }]}
       />
     );
     const canvas = container.querySelector("canvas");
@@ -683,11 +685,11 @@ describe("StereoMapPlot", () => {
 
     expect(canvas.width).toBe(2000);
     expect(canvas.height).toBe(520);
-    // The redraw's baseline is still 1 CSS px, now two backing pixels.
+    // The redraw's Grid is still 1 CSS px, now two backing pixels.
     expect(baselineWidths.at(-2)).toBe(2);
   });
 
-  it("snaps the zero baseline to a whole device-pixel row at a floored width", () => {
+  it("draws enabled Grid at one CSS pixel without restoring the zero baseline", () => {
     vi.stubGlobal("devicePixelRatio", 1.5);
     const ctx = contextStub();
     const strokes = [];
@@ -701,16 +703,16 @@ describe("StereoMapPlot", () => {
       <StereoMapPlot
         mode={STEREO_MAP_MODES.CORRELATION}
         bandCentersHz={[100, 1000, 10000]}
-        points={threeBandPoints()}
+        points={[]}
         range={RANGE}
         themeColors={TEST_CHANNEL_COLORS}
+        gridVisible
+        xTicks={[{ key: "mid", frac: 0.5 }]}
       />
     );
     vi.unstubAllGlobals();
 
-    // 260 CSS px at DPR 1.5 is 390 backing rows; zero sits at 195. 1.5 floors to a 1 px hairline,
-    // centred on a pixel row.
-    expect(ctx.strokedPaths[0][0]).toEqual({ command: "moveTo", x: 0, y: 195.5 });
-    expect(strokes[0]).toBe(1);
+    expect(ctx.strokedPaths[0][0]).toEqual({ command: "moveTo", x: 750, y: 0 });
+    expect(strokes[0]).toBe(1.5);
   });
 });

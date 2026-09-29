@@ -17,6 +17,7 @@ import {
 } from "../../math/spectrumMath.js";
 import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { AxisRail } from "./AxisRail.jsx";
+import { ChartGrid } from "./ChartGrid.jsx";
 import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useChartHover } from "../../hooks/useChartHover";
@@ -175,6 +176,24 @@ export function SpectrumPanel() {
     spectrumYAxis.axisPx
   );
   const spectrumFreqTicks = buildAdaptiveFreqTicks(xMinFreq, xMaxFreq, spectrumXAxis.axisPx);
+  const spectrumYAxisTicks = useMemo(
+    () =>
+      spectrumYTicks.map(({ v, lb }) => ({
+        key: v,
+        label: lb,
+        frac: spectrumDbToTopFrac(v, spectrumRange),
+      })),
+    [spectrumRange, spectrumYTicks]
+  );
+  const spectrumXAxisTicks = useMemo(
+    () =>
+      spectrumFreqTicks.map(({ v, lb }) => ({
+        key: v,
+        label: lb,
+        frac: rangedFreqToXFrac(v, spectrumRange.minHz, spectrumRange.maxHz),
+      })),
+    [spectrumFreqTicks, spectrumRange.maxHz, spectrumRange.minHz]
+  );
   const holdDisplaySpectrumResultRef = useRef(null);
   // A new analysis key means a new band grid, and a hold from one grid means nothing on
   // another; the clear key and the switch itself start a new hold the same way.
@@ -739,11 +758,7 @@ export function SpectrumPanel() {
             className={cn(W_SPECTRUM_Y_AXIS, "min-h-0 shrink-0")}
             interaction={spectrumYAxis}
             active={chartAxisActive.y}
-            ticks={spectrumYTicks.map(({ v, lb }) => ({
-              key: v,
-              label: lb,
-              frac: spectrumDbToTopFrac(v, spectrumRange),
-            }))}
+            ticks={spectrumYAxisTicks}
           />
           <div className="relative min-h-0 min-w-0">
             <div
@@ -837,23 +852,15 @@ export function SpectrumPanel() {
                       />
                     </linearGradient>
                   </defs>
-                  <g data-spectrum-grid aria-hidden="true">
-                    {spectrumYTicks.map(({ v }) => {
-                      const y = spectrumDbToTopFrac(v, spectrumRange) * 260;
-                      return (
-                        <line
-                          key={v}
-                          x1={0}
-                          x2={1000}
-                          y1={y}
-                          y2={y}
-                          stroke="var(--ui-spectrum-grid)"
-                          strokeWidth="1"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      );
-                    })}
-                  </g>
+                  <ChartGrid
+                    visible={normalizedPanelControls.spectrumGrid}
+                    xTicks={spectrumXAxisTicks}
+                    yTicks={spectrumYAxisTicks}
+                    width={1000}
+                    height={260}
+                    stroke="var(--ui-spectrum-grid)"
+                    name="spectrum"
+                  />
                   {displayPanelSpectrumPath ? (
                     <g>
                       <path
@@ -1020,11 +1027,7 @@ export function SpectrumPanel() {
             className="h-[var(--ui-chart-x-axis-row-h)] w-full"
             interaction={spectrumXAxis}
             active={chartAxisActive.x}
-            ticks={spectrumFreqTicks.map(({ v: f, lb }) => ({
-              key: f,
-              label: lb,
-              frac: rangedFreqToXFrac(f, spectrumRange.minHz, spectrumRange.maxHz),
-            }))}
+            ticks={spectrumXAxisTicks}
           />
         </div>
       </div>
