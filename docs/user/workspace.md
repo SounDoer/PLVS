@@ -41,6 +41,10 @@ The Views menu pares the window down for monitoring: **Always on Top**, **Compac
 the transparency of Workspace, panel, and Dock fills; text, measurement data, states, focus rings,
 controls, and borders remain opaque for legibility.
 
+On Windows 11, **Hide Chrome** also hides the outer system window outline; turning it off restores
+the system outline. **Auto-hide Controls** also uses a chromeless window, so the outline stays hidden
+while that mode is enabled. Normal windows retain their native shadow in either mode.
+
 ## Dock
 
 On Windows, Dock parks a slim, always-on-top meter strip against the top or bottom edge of the

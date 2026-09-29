@@ -38,6 +38,10 @@ focused most recently.
 
 ## Appearance
 
+On Windows 11, the outer system window outline follows the window chrome: it is visible by default
+and hidden in chromeless views. Native shadows, rounded corners, and window resizing remain
+available in normal windows. Older Windows versions keep their default outline behaviour.
+
 **Interface Size** scales the whole interface. **Appearance** follows the system theme by default or
 uses a fixed theme. Light and Dark ship built in, and the theme editor lets you build and save your
 own themes. A custom theme keeps its Dark or Light appearance beside its name; **Core** holds the

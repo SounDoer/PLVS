@@ -398,6 +398,8 @@ fn restore_window_form<R: tauri::Runtime>(
   }
   let _ = window.set_resizable(snapshot.resizable);
   let _ = window.set_decorations(snapshot.decorations);
+  #[cfg(target_os = "windows")]
+  crate::window_chrome::set_native_border(window, snapshot.decorations);
   let _ = window.set_shadow(snapshot.shadow);
   let _ = window.set_always_on_top(snapshot.always_on_top);
   let _ = window.set_size(tauri::PhysicalSize::new(
@@ -445,6 +447,8 @@ pub fn apply_dock_form<R: tauri::Runtime>(
     window
       .set_decorations(false)
       .map_err(|e| format!("decorations: {e}"))?;
+    #[cfg(target_os = "windows")]
+    crate::window_chrome::set_native_border(window, false);
     let _ = window.set_shadow(false);
     window
       .set_always_on_top(true)
@@ -603,6 +607,8 @@ pub fn exit_dock<R: tauri::Runtime>(
   window
     .set_decorations(decorations)
     .map_err(|e| format!("decorations: {e}"))?;
+  #[cfg(target_os = "windows")]
+  crate::window_chrome::set_native_border(&window, decorations);
   // Normal windows keep the platform shadow even when borderless. Startup
   // relies on that DWM frame when pairing outer position with inner size; Dock
   // temporarily disables it for the strip, so restore it before normal bounds.

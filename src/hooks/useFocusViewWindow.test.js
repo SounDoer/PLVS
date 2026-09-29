@@ -69,8 +69,20 @@ describe("useFocusViewWindow", () => {
 
     await expect(setWindowDecorations(false)).resolves.toBe(true);
 
-    expect(mocks.invoke).toHaveBeenCalledWith("sync_main_webview_size");
+    expect(mocks.invoke).toHaveBeenCalledWith("sync_main_window_chrome");
   });
+
+  it.each([true, false])(
+    "synchronizes the native outline after setting decorations to %s",
+    async (enabled) => {
+      mocks.isDecorated.mockResolvedValue(!enabled);
+      await setWindowDecorations(enabled);
+      expect(mocks.invoke).toHaveBeenCalledWith("sync_main_window_chrome");
+      expect(mocks.setDecorations.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.invoke.mock.invocationCallOrder[0]
+      );
+    }
+  );
 
   it("skips all window calls while suspended (docked boot must keep strip chrome)", () => {
     renderHook(() => useFocusViewWindow(false, false, { suspended: true }));

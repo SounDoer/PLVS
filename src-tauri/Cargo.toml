@@ -112,6 +112,7 @@ windows-core = "0.62.2"
 winreg = "0.56"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
+  "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
   "Win32_Security",
   "Win32_Security_Authorization",

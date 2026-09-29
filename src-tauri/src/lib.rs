@@ -268,7 +268,7 @@ pub fn run() {
       dock_accessories::set_dock_accessories,
       dock_accessories::cursor_over_dock_surfaces,
       glass_effect::set_glass_effect,
-      window_chrome::sync_main_webview_size,
+      window_chrome::sync_main_window_chrome,
       agent_control::broker::agent_control_frontend_ready,
       agent_control::broker::agent_control_frontend_not_ready,
       agent_control::broker::agent_control_respond,
@@ -482,6 +482,9 @@ pub fn run() {
         .initialization_script(&init_script)
         .build()
         .map_err(|e| format!("window build: {e}"))?;
+
+      #[cfg(target_os = "windows")]
+      window_chrome::set_native_border(&window, initial_decorations);
 
       if let Err(error) = dock_accessories::create(app, &init_script) {
         log::warn!("dock accessories unavailable; normal mode will continue: {error}");

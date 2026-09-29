@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
-import { isMacOS } from "../lib/platform.js";
 
 export async function setWindowDecorations(enabled) {
   if (!isTauri()) return false;
@@ -14,7 +13,8 @@ export async function setWindowDecorations(enabled) {
   // On macOS, changing decorations changes the native content rect but WKWebView can retain the
   // old title-bar-sized frame, exposing a black strip at the bottom. Reapplying the reported inner
   // size makes Tauri synchronize the webview with the new content rect.
-  if (isMacOS()) await invoke("sync_main_webview_size");
+  // Windows also matches its DWM outline to decorations, retaining the native shadow.
+  await invoke("sync_main_window_chrome");
   return true;
 }
 
