@@ -204,7 +204,7 @@ describe("DockLevel", () => {
       { displayAudio: { peakDb: [-12, -30] } },
       {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-        levelMeterPeakBarColors: "levelZones",
+        levelMeterBarColors: "levelZones",
         levelMeterPeakWarningDb: -10,
         levelMeterPeakCriticalDb: -2,
       }
@@ -212,21 +212,6 @@ describe("DockLevel", () => {
     const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
     expect(fill.dataset.levelMeterGradient).toBe(
       zonesToGradient(thresholdZones(-10, -2), -60, 3, "to right")
-    );
-  });
-
-  it("leaves RMS on Gradient when only Peak's Bar Colors is Level Zones", () => {
-    renderWith(
-      { displayAudio: { rmsDb: [-20, -20] } },
-      {
-        ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-        levelMeterPeakBarColors: "levelZones",
-        levelMeterMode: "rms",
-      }
-    );
-    const fill = screen.getAllByTestId("dock-level-bar")[0].firstChild;
-    expect(fill.dataset.levelMeterGradient).toBe(
-      "linear-gradient(to right, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, var(--ui-level-critical) 100%)"
     );
   });
 
@@ -245,7 +230,7 @@ describe("DockLevel", () => {
       {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
         levelMeterMode: "shortTerm",
-        levelMeterShortTermBarColors: "levelZones",
+        levelMeterBarColors: "levelZones",
       }
     );
     expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(
@@ -268,7 +253,7 @@ describe("DockLevel", () => {
       {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
         levelMeterMode: "shortTerm",
-        levelMeterShortTermBarColors: "levelZones",
+        levelMeterBarColors: "levelZones",
       }
     );
     expect(screen.getByTestId("dock-level-bar").firstChild.dataset.levelMeterGradient).toBe(

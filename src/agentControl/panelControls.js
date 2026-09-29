@@ -9,10 +9,7 @@ export function readPublicPanelControls(moduleId, panelControls, context = {}) {
       playbackMax: controls.levelMeterPlaybackMax,
       floatingValue: controls.levelMeterValueMarker,
       tpMaxMarker: controls.levelMeterTpMaxMarker,
-      peakBarColors: controls.levelMeterPeakBarColors,
-      rmsBarColors: controls.levelMeterRmsBarColors,
-      momentaryBarColors: controls.levelMeterMomentaryBarColors,
-      shortTermBarColors: controls.levelMeterShortTermBarColors,
+      barColors: controls.levelMeterBarColors,
       peakThresholdsDbfs: {
         warning: controls.levelMeterPeakWarningDb,
         critical: controls.levelMeterPeakCriticalDb,

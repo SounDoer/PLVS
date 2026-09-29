@@ -196,10 +196,7 @@ describe("normalizeDockModuleControls", () => {
   it("defaults Level to live Peak and migrates legacy readouts", () => {
     expect(normalizeDockModuleControls("level", {})).toEqual({
       levelMeterMode: "peak",
-      levelMeterPeakBarColors: "gradient",
-      levelMeterRmsBarColors: "gradient",
-      levelMeterMomentaryBarColors: "gradient",
-      levelMeterShortTermBarColors: "gradient",
+      levelMeterBarColors: "gradient",
       levelMeterPeakWarningDb: -6,
       levelMeterPeakCriticalDb: -1,
       levelMeterRmsWarningDb: -18,
@@ -382,10 +379,7 @@ describe("normalizeDockModuleControls", () => {
 describe("Level Meter Dock control family", () => {
   it("carries the Level Meter thresholds on the Dock level module", () => {
     expect(DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level).toMatchObject({
-      levelMeterPeakBarColors: "gradient",
-      levelMeterRmsBarColors: "gradient",
-      levelMeterMomentaryBarColors: "gradient",
-      levelMeterShortTermBarColors: "gradient",
+      levelMeterBarColors: "gradient",
       levelMeterPeakWarningDb: -6,
       levelMeterPeakCriticalDb: -1,
       levelMeterRmsWarningDb: -18,

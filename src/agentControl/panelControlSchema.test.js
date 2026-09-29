@@ -5,14 +5,10 @@ import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 describe("buildPublicPanelControlSchema", () => {
   it("describes Bar Colors and when each threshold pair is effective", () => {
     const byDefault = buildPublicPanelControlSchema("levelMeter", DEFAULT_PANEL_CONTROLS);
-    expect(byDefault.properties.peakBarColors).toMatchObject({
+    expect(byDefault.properties.barColors).toMatchObject({
       effective: true,
       default: "gradient",
       options: ["gradient", "levelZones"],
-    });
-    expect(byDefault.properties.rmsBarColors).toMatchObject({
-      effective: false,
-      inactiveReason: "nonRmsMode",
     });
     expect(byDefault.properties.peakThresholdsDbfs).toMatchObject({
       effective: false,
@@ -23,7 +19,7 @@ describe("buildPublicPanelControlSchema", () => {
 
     const zones = buildPublicPanelControlSchema("levelMeter", {
       ...DEFAULT_PANEL_CONTROLS,
-      levelMeterPeakBarColors: "levelZones",
+      levelMeterBarColors: "levelZones",
     });
     expect(zones.properties.peakThresholdsDbfs.effective).toBe(true);
     expect(zones.properties.rmsThresholdsDbfs).toMatchObject({

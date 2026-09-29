@@ -17,7 +17,6 @@ import { dockModuleIdForPanelModuleId } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { isDefaultDockModuleControls } from "../dockModuleControls.js";
 import {
-  LEVEL_METER_BAR_COLORS_KEYS,
   LEVEL_METER_MODE_OPTIONS,
   normalizePanelControlRange,
   panelControlUiRows,
@@ -100,7 +99,7 @@ function SettingsBody({
       (row) => row.ui.widget === "thresholds" && row.ui.showWhen(controls)
     );
     const barColorsRow = panelControlUiRows("levelMeter").find(
-      (row) => row.key === LEVEL_METER_BAR_COLORS_KEYS[controls.levelMeterMode]
+      (row) => row.key === "levelMeterBarColors"
     );
     return (
       <>
@@ -129,9 +128,9 @@ function SettingsBody({
         <SettingsRow label={barColorsRow.ui.label} tooltip={barColorsRow.ui.tooltip}>
           <SelectField
             label={barColorsRow.ui.ariaLabel}
-            value={controls[barColorsRow.key]}
+            value={controls.levelMeterBarColors}
             options={barColorsRow.ui.options.map(({ id, label }) => ({ value: id, label }))}
-            onChange={(value) => onChange({ ...controls, [barColorsRow.key]: value })}
+            onChange={(levelMeterBarColors) => onChange({ ...controls, levelMeterBarColors })}
           />
         </SettingsRow>
         {thresholdRow ? (

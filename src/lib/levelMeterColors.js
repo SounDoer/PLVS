@@ -1,4 +1,4 @@
-/// Level Meter bar colours, in one of the two ways each mode's Bar Colors control offers.
+/// Level Meter bar colours, in one of the two ways the `levelMeterBarColors` control offers.
 ///
 /// Gradient is appearance only: one ramp over the visible bar, the same in every mode, judging
 /// nothing and ignoring the Loudness Profile. Level Zones colour by level with hard cuts, so the
@@ -12,7 +12,7 @@
 
 import { isRuleEmpty } from "./loudnessProfileCatalog.js";
 import { loudnessProfileEvaluate } from "./loudnessProfileEvaluate.js";
-import { DEFAULT_PANEL_CONTROLS, LEVEL_METER_BAR_COLORS_KEYS } from "./panelControls.js";
+import { DEFAULT_PANEL_CONTROLS } from "./panelControls.js";
 
 export const LEVEL_METER_COLORS = Object.freeze({
   safe: "var(--ui-level-safe)",
@@ -105,8 +105,7 @@ export function levelMeterBackground({
   viewMax,
   direction = "to top",
 }) {
-  const barColorsKey = LEVEL_METER_BAR_COLORS_KEYS[mode];
-  const barColors = controls?.[barColorsKey] ?? DEFAULT_PANEL_CONTROLS[barColorsKey];
+  const barColors = controls?.levelMeterBarColors ?? DEFAULT_PANEL_CONTROLS.levelMeterBarColors;
   if (barColors !== "levelZones") return gradient(direction);
 
   const keys = THRESHOLD_KEYS[mode];

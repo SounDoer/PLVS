@@ -641,7 +641,7 @@ describe("LevelMeterPanel", () => {
     const { container } = renderPanel({
       panelControls: {
         levelMeterMode: "peak",
-        levelMeterPeakBarColors: "levelZones",
+        levelMeterBarColors: "levelZones",
         levelMeterPeakWarningDb: -12,
         levelMeterPeakCriticalDb: -3,
         levelMeterYMinDb: -30,
@@ -657,35 +657,16 @@ describe("LevelMeterPanel", () => {
 
   it("uses the RMS thresholds in RMS mode", () => {
     const { container } = renderPanel({
-      panelControls: { levelMeterMode: "rms", levelMeterRmsBarColors: "levelZones" },
+      panelControls: { levelMeterMode: "rms", levelMeterBarColors: "levelZones" },
     });
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
       zonesToGradient(thresholdZones(-18, -9), -60, 3, "to top")
     );
   });
 
-  it("follows the current mode's own Bar Colors", () => {
-    const gradient =
-      "linear-gradient(to top, var(--ui-level-safe) 0%, var(--ui-level-warning) 60%, " +
-      "var(--ui-level-critical) 100%)";
-    const panelControls = { levelMeterPeakBarColors: "levelZones" };
-    const peak = renderPanel({ panelControls: { ...panelControls, levelMeterMode: "peak" } });
-    expect(
-      peak.container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient
-    ).toBe(zonesToGradient(thresholdZones(-6, -1), -60, 3, "to top"));
-    peak.unmount();
-
-    const momentary = renderPanel({
-      panelControls: { ...panelControls, levelMeterMode: "momentary" },
-    });
-    expect(
-      momentary.container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient
-    ).toBe(gradient);
-  });
-
   it("shows the Momentary trace colour under the starter Profile, which has no Momentary rule", () => {
     const { container } = renderPanel({
-      panelControls: { levelMeterMode: "momentary", levelMeterMomentaryBarColors: "levelZones" },
+      panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
     });
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
       "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
@@ -697,7 +678,7 @@ describe("LevelMeterPanel", () => {
       loudnessProfiles: { active: LOUDNESS_PROFILE_OFF, profiles: [TEST_PROFILE] },
     });
     const { container } = renderPanel({
-      panelControls: { levelMeterMode: "momentary", levelMeterMomentaryBarColors: "levelZones" },
+      panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
     });
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(
       "linear-gradient(to top, var(--ui-loudness-momentary), var(--ui-loudness-momentary))"
@@ -716,7 +697,7 @@ describe("LevelMeterPanel", () => {
       },
     });
     const { container } = renderPanel({
-      panelControls: { levelMeterMode: "momentary", levelMeterMomentaryBarColors: "levelZones" },
+      panelControls: { levelMeterMode: "momentary", levelMeterBarColors: "levelZones" },
     });
 
     expect(container.querySelector("[data-level-meter-gradient]").dataset.levelMeterGradient).toBe(

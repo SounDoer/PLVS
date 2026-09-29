@@ -1,8 +1,4 @@
-import {
-  DEFAULT_PANEL_CONTROLS,
-  LEVEL_METER_BAR_COLORS_KEYS,
-  normalizePanelControls,
-} from "../lib/panelControls.js";
+import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 import { readPublicPanelControls } from "./panelControls.js";
@@ -108,23 +104,9 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
   if (moduleId === "levelMeter") {
     const loudnessMode =
       controls.levelMeterMode === "momentary" || controls.levelMeterMode === "shortTerm";
-    const levelZones = (mode) => controls[LEVEL_METER_BAR_COLORS_KEYS[mode]] === "levelZones";
+    const levelZones = controls.levelMeterBarColors === "levelZones";
     const thresholdsReason = (mode, modeReason) =>
       controls.levelMeterMode !== mode ? modeReason : "gradientBarColors";
-    const barColors = (title, mode, reason) =>
-      active(
-        field(
-          "string",
-          title,
-          "Gradient is appearance only; Level Zones color the bar by thresholds or Profile rules.",
-          {
-            default: defaults[`${mode}BarColors`],
-            options: ["gradient", "levelZones"],
-          }
-        ),
-        controls.levelMeterMode === mode,
-        reason
-      );
     return root({
       mode: field("string", "Mode", "Measurement displayed by the meter.", {
         default: defaults.mode,
@@ -152,18 +134,20 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
         controls.levelMeterMode === "peak",
         "nonPeakMode"
       ),
-      peakBarColors: barColors("Peak Bar Colors", "peak", "nonPeakMode"),
-      rmsBarColors: barColors("RMS Bar Colors", "rms", "nonRmsMode"),
-      momentaryBarColors: barColors("Momentary Bar Colors", "momentary", "nonMomentaryMode"),
-      shortTermBarColors: barColors("Short-term Bar Colors", "shortTerm", "nonShortTermMode"),
+      barColors: field(
+        "string",
+        "Bar Colors",
+        "Gradient is appearance only; Level Zones color the bar by thresholds or Profile rules.",
+        { default: defaults.barColors, options: ["gradient", "levelZones"], effective: true }
+      ),
       peakThresholdsDbfs: active(
         thresholds("Peak Thresholds", defaults.peakThresholdsDbfs),
-        controls.levelMeterMode === "peak" && levelZones("peak"),
+        controls.levelMeterMode === "peak" && levelZones,
         thresholdsReason("peak", "nonPeakMode")
       ),
       rmsThresholdsDbfs: active(
         thresholds("RMS Thresholds", defaults.rmsThresholdsDbfs),
-        controls.levelMeterMode === "rms" && levelZones("rms"),
+        controls.levelMeterMode === "rms" && levelZones,
         thresholdsReason("rms", "nonRmsMode")
       ),
       levelRangeDbfs: active(

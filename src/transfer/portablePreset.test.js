@@ -312,7 +312,7 @@ describe("Portable Preset V1", () => {
       levelMeterPeakCriticalDb: -2,
       levelMeterRmsWarningDb: -24,
       levelMeterRmsCriticalDb: -12,
-      levelMeterPeakBarColors: "levelZones",
+      levelMeterBarColors: "levelZones",
     };
 
     const portable = presetToPortable(source);
@@ -326,8 +326,7 @@ describe("Portable Preset V1", () => {
       levelMeterPeakCriticalDb: -2,
       levelMeterRmsWarningDb: -24,
       levelMeterRmsCriticalDb: -12,
-      levelMeterPeakBarColors: "levelZones",
-      levelMeterRmsBarColors: "gradient",
+      levelMeterBarColors: "levelZones",
     });
 
     const dockPanelId = imported.dock.panelOrder[0];
@@ -336,7 +335,7 @@ describe("Portable Preset V1", () => {
       levelMeterPeakCriticalDb: -3,
       levelMeterRmsWarningDb: -30,
       levelMeterRmsCriticalDb: -15,
-      levelMeterPeakBarColors: "gradient",
+      levelMeterBarColors: "gradient",
     });
   });
 

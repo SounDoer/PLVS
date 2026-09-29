@@ -72,7 +72,7 @@ describe("DockModuleSettings", () => {
   it("edits the thresholds of the current level mode", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-      levelMeterPeakBarColors: "levelZones",
+      levelMeterBarColors: "levelZones",
     };
     const onChange = renderSettings("level", { controls });
     const critical = screen.getByLabelText("level meter peak thresholds critical");
@@ -89,7 +89,7 @@ describe("DockModuleSettings", () => {
     renderSettings("level", {
       controls: {
         ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-        levelMeterMomentaryBarColors: "levelZones",
+        levelMeterBarColors: "levelZones",
         levelMeterMode: "momentary",
       },
     });
@@ -99,7 +99,7 @@ describe("DockModuleSettings", () => {
   it("edits the RMS thresholds without touching Peak", () => {
     const controls = {
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-      levelMeterRmsBarColors: "levelZones",
+      levelMeterBarColors: "levelZones",
       levelMeterMode: "rms",
     };
     const onChange = renderSettings("level", { controls });
@@ -112,25 +112,14 @@ describe("DockModuleSettings", () => {
     });
   });
 
-  it("switches the current mode's Bar Colors and hides thresholds under Gradient", () => {
+  it("switches Bar Colors and hides thresholds under Gradient", () => {
     const onChange = renderSettings("level");
     expect(screen.queryByText("Warning / Critical")).toBeNull();
     fireEvent.click(screen.getByLabelText("level meter bar colors"));
     fireEvent.click(screen.getByRole("option", { name: "Level Zones" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level,
-      levelMeterPeakBarColors: "levelZones",
-    });
-  });
-
-  it("switches RMS's own Bar Colors without touching Peak's", () => {
-    const controls = { ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.level, levelMeterMode: "rms" };
-    const onChange = renderSettings("level", { controls });
-    fireEvent.click(screen.getByLabelText("level meter bar colors"));
-    fireEvent.click(screen.getByRole("option", { name: "Level Zones" }));
-    expect(onChange).toHaveBeenCalledWith({
-      ...controls,
-      levelMeterRmsBarColors: "levelZones",
+      levelMeterBarColors: "levelZones",
     });
   });
 

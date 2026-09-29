@@ -28,15 +28,6 @@ export const LEVEL_METER_BAR_COLOR_OPTIONS = [
   { id: "levelZones", label: "Level Zones" },
 ];
 
-/// Each measurement mode keeps its own Bar Colors, so switching Mode brings back that mode's
-/// choice: Level Zones for reading headroom in Peak can sit beside a Gradient in Momentary.
-export const LEVEL_METER_BAR_COLORS_KEYS = Object.freeze({
-  peak: "levelMeterPeakBarColors",
-  rms: "levelMeterRmsBarColors",
-  momentary: "levelMeterMomentaryBarColors",
-  shortTerm: "levelMeterShortTermBarColors",
-});
-
 export const VECTORSCOPE_MODE_OPTIONS = [
   { id: "lissajous", label: "Lissajous" },
   { id: "polarSample", label: "Polar Sample" },
@@ -155,32 +146,7 @@ function levelMeterThresholdRow(mode, minKey, maxKey, defaultMin, defaultMax) {
       order: 80,
       tooltip: LEVEL_METER_THRESHOLD_TOOLTIP,
       showWhen: (controls) =>
-        controls.levelMeterMode === mode &&
-        controls[LEVEL_METER_BAR_COLORS_KEYS[mode]] === "levelZones",
-    },
-  };
-}
-
-const LEVEL_METER_BAR_COLORS_TOOLTIP =
-  "Gradient is appearance only. Level Zones color the bar by level: Warning / Critical for " +
-  "Peak and RMS, the Loudness Profile's rules for Momentary and Short-term.";
-
-/// One row per mode, all labelled Bar Colors; `showWhen` leaves exactly one visible.
-function levelMeterBarColorsRow(mode, key) {
-  return {
-    key,
-    kind: "enum",
-    options: ids(LEVEL_METER_BAR_COLOR_OPTIONS),
-    default: "gradient",
-    ui: {
-      tab: "levelMeter",
-      label: "Bar Colors",
-      widget: "select",
-      ariaLabel: "level meter bar colors",
-      order: 75,
-      options: LEVEL_METER_BAR_COLOR_OPTIONS,
-      tooltip: LEVEL_METER_BAR_COLORS_TOOLTIP,
-      showWhen: (controls) => controls.levelMeterMode === mode,
+        controls.levelMeterBarColors === "levelZones" && controls.levelMeterMode === mode,
     },
   };
 }
@@ -311,9 +277,23 @@ const CONTROLS = [
       showWhen: (controls) => controls.levelMeterMode === "peak",
     },
   },
-  ...Object.entries(LEVEL_METER_BAR_COLORS_KEYS).map(([mode, key]) =>
-    levelMeterBarColorsRow(mode, key)
-  ),
+  {
+    key: "levelMeterBarColors",
+    kind: "enum",
+    options: ids(LEVEL_METER_BAR_COLOR_OPTIONS),
+    default: "gradient",
+    ui: {
+      tab: "levelMeter",
+      label: "Bar Colors",
+      widget: "select",
+      ariaLabel: "level meter bar colors",
+      order: 75,
+      options: LEVEL_METER_BAR_COLOR_OPTIONS,
+      tooltip:
+        "Gradient is appearance only. Level Zones color the bar by level: Warning / Critical for " +
+        "Peak and RMS, the Loudness Profile's rules for Momentary and Short-term.",
+    },
+  },
   {
     key: "vectorscopePair",
     kind: "pair",
