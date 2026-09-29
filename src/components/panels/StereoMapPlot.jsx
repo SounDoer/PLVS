@@ -6,6 +6,7 @@ import { selectStereoMapCanvasColors } from "../../theme/themeCanvasSelectors.js
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
 import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
+import { hairlineDevicePx, snapHairline } from "../../lib/deviceHairline.js";
 
 // Same viewBox convention as Spectrum's inline SVG (and this component's own former SVG
 // implementation), so the curve, grid, and hover overlay all share one coordinate system across
@@ -599,11 +600,15 @@ export function StereoMapPlot({
     // No line is drawn at zero, but the runs still fill down to it.
     const baselineY = yFor(0, range) * scaleY;
 
+    // A hairline on whole device-pixel rows (see deviceHairline.js). Only the stroke is snapped;
+    // the runs still fill to the exact baseline.
+    const gridPx = hairlineDevicePx(dpr);
+    const gridY = snapHairline(baselineY, gridPx);
     ctx.strokeStyle = rgbToCss(colors.grid);
-    ctx.lineWidth = dpr;
+    ctx.lineWidth = gridPx;
     ctx.beginPath();
-    ctx.moveTo(0, baselineY);
-    ctx.lineTo(width, baselineY);
+    ctx.moveTo(0, gridY);
+    ctx.lineTo(width, gridY);
     ctx.stroke();
 
     const runs = buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range, fadeStrength);

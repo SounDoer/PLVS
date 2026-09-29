@@ -237,6 +237,46 @@ describe("drawWaveformCanvas", () => {
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
   });
 
+  it("snaps the centre line to whole device-pixel rows", () => {
+    const moves = [];
+    let transform = [1, 0, 0, 1, 0, 0];
+    const strokes = [];
+    const context = {
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn((x, y) => moves.push([x, y])),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      setTransform: vi.fn((...args) => {
+        transform = args;
+      }),
+      stroke: vi.fn(() => strokes.push({ lineWidth: context.lineWidth, sy: transform[3] })),
+    };
+    const canvas = document.createElement("canvas");
+    // Height 81 at CSS 40: a 2.025 vertical scale, so the hairline is 2 device pixels and the
+    // raw centre (40.5) sits between rows.
+    canvas.width = 100;
+    canvas.height = 81;
+    Object.defineProperty(canvas, "clientWidth", { value: 100 });
+    Object.defineProperty(canvas, "clientHeight", { value: 40 });
+    canvas.getContext = vi.fn(() => context);
+
+    drawWaveformCanvas(canvas, {
+      mins: [],
+      maxes: [],
+      bucketCount: 0,
+      fracPhase: 0,
+      firstBucket: -1,
+      lastBucket: -1,
+      selected: false,
+    });
+
+    expect(moves[0]).toEqual([0, 41]);
+    // Pen height = lineWidth x vertical scale = exactly 2 device pixels.
+    expect(strokes[0].lineWidth * strokes[0].sy).toBeCloseTo(2);
+  });
+
   it("uses Theme-owned classic fill opacity and accepts zero", () => {
     const fillAlphas = [];
     const context = {

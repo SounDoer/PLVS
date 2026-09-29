@@ -686,4 +686,31 @@ describe("StereoMapPlot", () => {
     // The redraw's baseline is still 1 CSS px, now two backing pixels.
     expect(baselineWidths.at(-2)).toBe(2);
   });
+
+  it("snaps the zero baseline to a whole device-pixel row at a floored width", () => {
+    vi.stubGlobal("devicePixelRatio", 1.5);
+    const ctx = contextStub();
+    const strokes = [];
+    const stroke = ctx.stroke;
+    ctx.stroke = vi.fn(() => {
+      strokes.push(ctx.lineWidth);
+      stroke();
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    render(
+      <StereoMapPlot
+        mode={STEREO_MAP_MODES.CORRELATION}
+        bandCentersHz={[100, 1000, 10000]}
+        points={threeBandPoints()}
+        range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
+      />
+    );
+    vi.unstubAllGlobals();
+
+    // 260 CSS px at DPR 1.5 is 390 backing rows; zero sits at 195. 1.5 floors to a 1 px hairline,
+    // centred on a pixel row.
+    expect(ctx.strokedPaths[0][0]).toEqual({ command: "moveTo", x: 0, y: 195.5 });
+    expect(strokes[0]).toBe(1);
+  });
 });
