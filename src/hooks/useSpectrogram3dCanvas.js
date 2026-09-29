@@ -60,6 +60,7 @@ const POINT_MAX = 320;
 const GRADIENT_STOPS = 16;
 /**
  * Ridge stroke width, in DEVICE pixels, and the one number in this file that must not be raised.
+ * It is a declared exception to the CSS-px rule in docs/architecture.md ("Screen-space sizes").
  *
  * One device pixel is the boundary of the renderer's hairline fast path: a stroke that wide is
  * rasterised as line segments, while anything wider is first tessellated into filled polygons --
@@ -337,7 +338,7 @@ function drawFloor(ctx, proj, grid, gridSubtle, dpr) {
  * Axis names drawn along their own projected edge.
  *
  * Font size is multiplied by the device pixel ratio because the canvas coordinate system is
- * device pixels (see useCanvasSize / the DPI note in AGENTS.md), not CSS pixels. The ratio is
+ * device pixels (see "Screen-space sizes" in docs/architecture.md), not CSS pixels. The ratio is
  * derived from the canvas's own dimensions rather than read from window.devicePixelRatio, because
  * useCanvasSize accepts options that can cap the ratio per axis, and reading the global would then
  * disagree with reality.
@@ -678,11 +679,12 @@ export function useSpectrogram3dCanvas({
       const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
       // Read once for both branches, and only the scrub marker uses it: Lines strokes its selected
       // ridge at this width and Surface sizes its scrub band to it, so the marker carries the same
-      // weight whichever mode is showing. Reading the token rather than hardcoding is what keeps
-      // that true when the theme moves it. The mesh itself does not follow the token any more --
-      // see RIDGE_LINE_WIDTH.
-      const strokeCss = parseFloat(cssVar(canvas, "--ui-spectrum-stroke-width", "1.5")) || 1.5;
-      const selectedStrokePx = 2 * dpr * strokeCss;
+      // weight whichever mode is showing. It is the selection token every other panel's selection
+      // line uses, in CSS px, converted to this canvas's device pixels. The mesh itself does not
+      // follow any token -- see RIDGE_LINE_WIDTH.
+      const selectionCss =
+        parseFloat(cssVar(canvas, "--ui-loudness-selection-stroke-width", "1.2")) || 1.2;
+      const selectedStrokePx = dpr * selectionCss;
 
       if (p.floor) {
         // Surface draws its floor in GL instead, one call before the terrain: a WebGL canvas
@@ -871,6 +873,8 @@ export function useSpectrogram3dCanvas({
           lut: surfaceLutRef.current.lut,
           lutToken: surfaceLutRef.current,
           floor: !!p.floor,
+          // 1 CSS px, the same weight the 2D floor strokes in Lines.
+          floorLineWidth: dpr,
           gridColour: argbToRgba(resolveArgbRef.current(probe.ctx, gridColor)),
           gridSubtleColour: argbToRgba(resolveArgbRef.current(probe.ctx, gridSubtleColor)),
           highlightBand,
@@ -941,7 +945,7 @@ export function useSpectrogram3dCanvas({
           ctx.globalAlpha = edgeFade;
           ctx.strokeStyle = selection;
           // One stroke out of a hundred, so the hairline rule that governs the mesh does not apply
-          // to it: it stays on the themed width, which is also the width Surface sizes its scrub
+          // to it: it uses the selection width, which is also the width Surface sizes its scrub
           // band to. Both modes keep marking the scrubbed moment with the same weight.
           ctx.lineWidth = selectedStrokePx;
           ctx.stroke(curve);

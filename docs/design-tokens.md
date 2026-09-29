@@ -649,7 +649,7 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 ```
 --ui-loudness-momentary-stroke-width   1.2    Momentary trace stroke width
 --ui-loudness-shortterm-stroke-width   2      Short-term trace stroke width
---ui-loudness-selection-stroke-width   1.2    Selection overlay stroke width
+--ui-loudness-selection-stroke-width   1.2    Selection line width in every panel, incl. the 3D scrub marker
 ```
 
 ### Vectorscope
@@ -668,7 +668,7 @@ fixed phosphor-style fade, and stroke width remains product-owned.
 ### Spectrum
 
 ```
---ui-spectrum-stroke-width           1.5    Trace stroke width; also the 3D spectrogram scrub marker
+--ui-spectrum-stroke-width           1.5    Trace stroke width
 --ui-spectrum-fill-top-opacity       0.20   Theme Advanced: upper fill-gradient opacity
 --ui-spectrum-fill-bottom-opacity    0.02   Theme Advanced: lower fill-gradient opacity
 ```

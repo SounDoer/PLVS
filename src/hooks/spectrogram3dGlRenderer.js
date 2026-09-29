@@ -74,28 +74,50 @@ uniform vec4 highlightColour;
 out vec4 colour;
 void main() {
   if (tFrac >= highlightBand.x && tFrac <= highlightBand.y) {
-    colour = highlightColour;
+    colour = vec4(highlightColour.rgb * highlightColour.a, highlightColour.a);
     return;
   }
   float slope = length(vec2(dFdx(height), dFdy(height))) * sign(dFdy(height)) * slopeGain;
   float shade = 0.5 + 0.5 * (slope / (1.0 + abs(slope)));
   shade *= depthFadeFloor + (1.0 - depthFadeFloor) * nearness;
-  colour = texture(lut, vec2(shade, height));
+  vec4 table = texture(lut, vec2(shade, height));
+  colour = vec4(table.rgb * table.a, table.a);
 }
 `;
 
+/**
+ * Floor lines are extruded into quads in screen space rather than drawn as `gl.LINES`.
+ *
+ * A GL line is always one device pixel wide -- ANGLE supports no other width -- while the 2D floor
+ * that Lines draws is one CSS pixel. On a scaled display that made the grid lose half its weight the
+ * moment the view switched to Surface. Each vertex carries both ends of its segment, projects them,
+ * and offsets itself by half of `lineWidth` (device px) across the segment, and along it too when
+ * `cap` is set, so the closed outline's corners meet instead of leaving a notch.
+ */
 const FLOOR_VERTEX_SOURCE = `#version 300 es
-in vec2 corner;            // tFrac, fFrac on the floor plane
+layout(location = 0) in vec2 a;       // this segment's ends: tFrac, fFrac on the floor plane
+layout(location = 1) in vec2 b;
+layout(location = 2) in vec3 corner;  // along (0 at a, 1 at b), side (-1 or 1), cap (0 or 1)
 uniform vec2 origin;
 uniform vec2 tAxis;
 uniform vec2 fAxis;
 uniform vec2 viewport;
+uniform float lineWidth;
+vec2 project(vec2 p) {
+  return origin + (p.x - 0.5) * tAxis + (p.y - 0.5) * fAxis;
+}
 void main() {
-  float t = corner.x - 0.5;
-  float f = corner.y - 0.5;
-  float px = origin.x + t * tAxis.x + f * fAxis.x;
-  float py = origin.y + t * tAxis.y + f * fAxis.y;
-  gl_Position = vec4((px / viewport.x) * 2.0 - 1.0, 1.0 - (py / viewport.y) * 2.0, 0.0, 1.0);
+  vec2 pa = project(a);
+  vec2 pb = project(b);
+  vec2 d = pb - pa;
+  float len = length(d);
+  vec2 dir = len > 0.0 ? d / len : vec2(1.0, 0.0);
+  vec2 normal = vec2(-dir.y, dir.x);
+  float halfWidth = 0.5 * lineWidth;
+  vec2 p = mix(pa, pb, corner.x)
+    + normal * corner.y * halfWidth
+    + dir * (corner.x * 2.0 - 1.0) * corner.z * halfWidth;
+  gl_Position = vec4((p.x / viewport.x) * 2.0 - 1.0, 1.0 - (p.y / viewport.y) * 2.0, 0.0, 1.0);
 }
 `;
 
@@ -103,24 +125,55 @@ const FLOOR_FRAGMENT_SOURCE = `#version 300 es
 precision highp float;
 uniform vec4 lineColour;
 out vec4 colour;
-void main() { colour = lineColour; }
+void main() { colour = vec4(lineColour.rgb * lineColour.a, lineColour.a); }
 `;
 
 /** Matches the 2D floor's divisions, so switching renderers cannot move the grid. */
 const FLOOR_DIVISIONS = 4;
 
-/** The floor's outline and its interior divisions, as one line-segment list on the unit square. */
-function floorGeometry() {
-  const outline = [0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0];
+/** Floats per floor vertex: a (2), b (2), corner (3). See FLOOR_VERTEX_SOURCE. */
+export const FLOOR_VERTEX_FLOATS = 7;
+
+// Two triangles per segment, as (along, side) pairs.
+const QUAD_CORNERS = [
+  [0, -1],
+  [1, -1],
+  [1, 1],
+  [0, -1],
+  [1, 1],
+  [0, 1],
+];
+
+function pushSegments(out, segments, cap) {
+  for (const [a0, a1, b0, b1] of segments) {
+    for (const [along, side] of QUAD_CORNERS) out.push(a0, a1, b0, b1, along, side, cap);
+  }
+}
+
+/**
+ * The floor's outline and its interior divisions on the unit square, one quad per segment.
+ * Counts are in vertices. The outline is capped so its corners close, as the 2D floor's closed path
+ * does; the divisions are butt-ended, as the 2D floor's open segments are.
+ */
+export function floorLineGeometry() {
+  const outline = [
+    [0, 0, 1, 0],
+    [1, 0, 1, 1],
+    [1, 1, 0, 1],
+    [0, 1, 0, 0],
+  ];
   const divisions = [];
   for (let i = 1; i < FLOOR_DIVISIONS; i += 1) {
     const k = i / FLOOR_DIVISIONS;
-    divisions.push(k, 0, k, 1, 0, k, 1, k);
+    divisions.push([k, 0, k, 1], [0, k, 1, k]);
   }
+  const data = [];
+  pushSegments(data, outline, 1);
+  pushSegments(data, divisions, 0);
   return {
-    vertices: Float32Array.from([...outline, ...divisions]),
-    outlineCount: outline.length / 2,
-    divisionCount: divisions.length / 2,
+    vertices: Float32Array.from(data),
+    outlineCount: outline.length * QUAD_CORNERS.length,
+    divisionCount: divisions.length * QUAD_CORNERS.length,
   };
 }
 
@@ -182,7 +235,12 @@ export function createSurfaceRenderer(canvas) {
       alpha: true,
       antialias: true,
       depth: true,
-      premultipliedAlpha: false,
+      // Premultiplied, like every fragment shader here writes. With `false` the blend below left
+      // colour already multiplied by alpha, the compositor multiplied it again, and every
+      // translucent pixel came out at alpha squared: the fade band of quiet terrain, and every
+      // antialiased edge -- which is all a thin floor line is -- darker than the background it sat
+      // on. The floor read faint and broken; the pixels measured darker than the background.
+      premultipliedAlpha: true,
       preserveDrawingBuffer: false,
     });
     if (!context) throw new Error("WebGL2 unavailable");
@@ -190,7 +248,7 @@ export function createSurfaceRenderer(canvas) {
   }
 
   function buildGpuState() {
-    const floor = floorGeometry();
+    const floor = floorLineGeometry();
     const surfaceProgram = link(gl, SURFACE_VERTEX_SOURCE, SURFACE_FRAGMENT_SOURCE);
     const floorProgram = link(gl, FLOOR_VERTEX_SOURCE, FLOOR_FRAGMENT_SOURCE);
 
@@ -219,8 +277,13 @@ export function createSurfaceRenderer(canvas) {
     const floorVao = gl.createVertexArray();
     gl.bindVertexArray(floorVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, floorBuffer);
+    const stride = FLOOR_VERTEX_FLOATS * 4;
     gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 2, gl.FLOAT, false, stride, 2 * 4);
+    gl.enableVertexAttribArray(2);
+    gl.vertexAttribPointer(2, 3, gl.FLOAT, false, stride, 4 * 4);
     gl.bindVertexArray(null);
 
     lutToken = null;
@@ -245,6 +308,7 @@ export function createSurfaceRenderer(canvas) {
         "tAxis",
         "fAxis",
         "viewport",
+        "lineWidth",
         "lineColour",
       ]),
       lut,
@@ -332,7 +396,7 @@ export function createSurfaceRenderer(canvas) {
     }
   }
 
-  function drawFloorLines(uniforms, gridColour, gridSubtleColour) {
+  function drawFloorLines(uniforms, lineWidth, gridColour, gridSubtleColour) {
     const u = gpu.floorUniforms;
     gl.useProgram(gpu.floorProgram);
     gl.bindVertexArray(gpu.floorVao);
@@ -340,10 +404,11 @@ export function createSurfaceRenderer(canvas) {
     gl.uniform2fv(u.tAxis, uniforms.tAxis);
     gl.uniform2fv(u.fAxis, uniforms.fAxis);
     gl.uniform2fv(u.viewport, uniforms.viewport);
+    gl.uniform1f(u.lineWidth, lineWidth);
     gl.uniform4fv(u.lineColour, gridColour);
-    gl.drawArrays(gl.LINES, 0, gpu.floor.outlineCount);
+    gl.drawArrays(gl.TRIANGLES, 0, gpu.floor.outlineCount);
     gl.uniform4fv(u.lineColour, gridSubtleColour);
-    gl.drawArrays(gl.LINES, gpu.floor.outlineCount, gpu.floor.divisionCount);
+    gl.drawArrays(gl.TRIANGLES, gpu.floor.outlineCount, gpu.floor.divisionCount);
   }
 
   /**
@@ -355,6 +420,7 @@ export function createSurfaceRenderer(canvas) {
    * @param {Uint32Array} frame.lut packed ARGB, 256 * SHADE_LEVELS
    * @param {*} frame.lutToken identity of that table; it is re-uploaded only when this changes
    * @param {boolean} frame.floor whether the floor grid is drawn at all
+   * @param {number} frame.floorLineWidth floor line width in device px (1 CSS px x DPR)
    * @param {number[]} frame.gridColour floor outline, RGBA in 0..1
    * @param {number[]} frame.gridSubtleColour floor divisions, RGBA in 0..1
    * @param {number[]} frame.highlightBand scrubbed tFrac range; min > max disables it
@@ -371,11 +437,13 @@ export function createSurfaceRenderer(canvas) {
     gl.depthMask(true);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.BLEND);
-    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     // Under the terrain, and drawn before it: quiet terrain is translucent, so the grid showing
     // through is the recession the 2D heatmap and Lines have always given silence.
-    if (frame.floor) drawFloorLines(uniforms, frame.gridColour, frame.gridSubtleColour);
+    if (frame.floor) {
+      drawFloorLines(uniforms, frame.floorLineWidth, frame.gridColour, frame.gridSubtleColour);
+    }
 
     if (mesh.indices.length === 0) return;
 
