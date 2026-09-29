@@ -11,7 +11,7 @@ import {
 } from "../../math/vectorscopePolarMath.js";
 import { DEFAULT_VECTORSCOPE_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
-import { useObservedCanvasSize } from "../../hooks/useObservedCanvasSize.js";
+import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
 
 const PLOT_PADDING_CSS_PX = 10;
 const POINT_RADIUS_CSS_PX = 1.15;
@@ -154,7 +154,7 @@ export function VectorscopePolarPlot({
     () => (snapshot ? [{ pairs: snapshotPairs, ageMs: 0, timestampMs: 0 }] : rows),
     [rows, snapshot, snapshotPairs]
   );
-  const canvasSize = useObservedCanvasSize(canvasRef, enabled);
+  const canvasSize = useCanvasBackingStoreSize(canvasRef, enabled);
   // Max hold is a pure overlay: enabling/disabling it must not disturb the live envelope, and
   // updatePolarMaxHold already discards held values when disabled and reseeds from the current
   // envelope when re-enabled. So it stays out of the state-reset identity (including it here would

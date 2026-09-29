@@ -652,6 +652,11 @@ describe("StereoMapPlot", () => {
 
   it("re-measures and redraws at the new DPR when only the DPR changes", () => {
     vi.stubGlobal("devicePixelRatio", 1);
+    // The re-measure lands on the next animation frame; run frames inline.
+    vi.stubGlobal("requestAnimationFrame", (cb) => {
+      cb();
+      return 1;
+    });
     const ctx = contextStub();
     const baselineWidths = [];
     const stroke = ctx.stroke;

@@ -590,14 +590,28 @@ describe("SpectrogramPanel", () => {
     // the component passed to the mocked hook, then click at the exact device pixel that
     // projectPoint says corresponds to 20% across the time window.
     const onHistoryPointerDown = vi.fn();
-    const { container } = renderPanel({
-      historyChartInteractive: true,
-      onHistoryPointerDown,
-      panelControls: { spectrogramMode: "lines" },
-    });
+    // A 300x150 CSS box at DPR 1 sizes the backing store 300x150; the matching 1:1 CSS rect below
+    // makes the device-pixel conversion inside the panel's cursorToFloor helper a no-op here.
+    vi.stubGlobal("devicePixelRatio", 1);
+    const widthSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, "clientWidth", "get")
+      .mockReturnValue(300);
+    const heightSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, "clientHeight", "get")
+      .mockReturnValue(150);
+    let container;
+    try {
+      ({ container } = renderPanel({
+        historyChartInteractive: true,
+        onHistoryPointerDown,
+        panelControls: { spectrogramMode: "lines" },
+      }));
+    } finally {
+      widthSpy.mockRestore();
+      heightSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
     const canvas = container.querySelector("canvas");
-    // jsdom's canvas defaults to 300x150 device pixels; give it a matching 1:1 CSS rect so the
-    // device-pixel conversion inside the panel's cursorToFloor helper is a no-op here.
     canvas.getBoundingClientRect = () => ({
       left: 0,
       top: 0,
@@ -971,8 +985,8 @@ describe("SpectrogramPanel", () => {
     // Pins RIGHT_DOUBLE_CLICK_MS. Both clicks are stationary, so without the time bound the second
     // release satisfies every other condition and resets a viewpoint the user set minutes ago.
     // vi.useFakeTimers() also fakes requestAnimationFrame here; it is inert for this test, but
-    // useCanvasSize and useChartHover both schedule rAF, so a test copied from this one that expects
-    // hover state to update would need to flush it explicitly.
+    // useCanvasBackingStore and useChartHover both schedule rAF, so a test copied from this one
+    // that expects hover state to update would need to flush it explicitly.
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date(2026, 0, 1, 12, 0, 0));

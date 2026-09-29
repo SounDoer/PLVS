@@ -15,7 +15,7 @@ import {
   sliceWaveformSubHistoryFromIndex,
 } from "../../math/waveformMath.js";
 import { useChartHover } from "../../hooks/useChartHover";
-import { useCanvasSize } from "../../hooks/useCanvasSize";
+import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { canvasCssScale, strokeCssWidth } from "../../lib/canvasCssScale.js";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
@@ -41,18 +41,6 @@ import { readCssNumber } from "../../theme/cssTokens.js";
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-chart-y-axis-rail-w";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
 const WAVEFORM_MAX_DEVICE_PIXEL_RATIO = 1;
-function cssLengthToPx(value) {
-  const trimmed = value?.trim();
-  if (!trimmed) return 0;
-  const numeric = Number.parseFloat(trimmed);
-  if (!Number.isFinite(numeric)) return 0;
-  if (trimmed.endsWith("rem")) {
-    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
-    return numeric * (Number.isFinite(rootFontSize) ? rootFontSize : 16);
-  }
-  return numeric;
-}
-
 function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiveOffsetSamples) {
   const total = histSourceList.length;
   if (total === 0) {
@@ -296,35 +284,9 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
     showHistoryHud,
   } = audioData;
 
-  const lanesRef = useRef(null);
+  // Buckets are one per backing column, so their count is the lane canvas's own backing width,
+  // reported by the lanes. Every lane has the same box, hence the same width.
   const [canvasW, setCanvasW] = useState(0);
-  useEffect(() => {
-    const el = lanesRef.current;
-    if (!el) return;
-    let rafId = 0;
-
-    const measureWidth = () => {
-      rafId = 0;
-      const dpr = Math.min(window.devicePixelRatio || 1, WAVEFORM_MAX_DEVICE_PIXEL_RATIO);
-      const computedStyle = getComputedStyle(el);
-      const axisWidthPx =
-        el.querySelector("[data-waveform-label-rail]")?.getBoundingClientRect().width ?? 0;
-      const chartAxisGapPx = cssLengthToPx(computedStyle.getPropertyValue("--ui-chart-axis-gap"));
-      const cssW = Math.max(0, el.clientWidth - axisWidthPx - chartAxisGapPx);
-      const nextCanvasW = Math.round(cssW * dpr);
-      setCanvasW((prevCanvasW) => (prevCanvasW === nextCanvasW ? prevCanvasW : nextCanvasW));
-    };
-
-    const ro = new ResizeObserver(() => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(measureWidth);
-    });
-    ro.observe(el);
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      ro.disconnect();
-    };
-  }, []);
 
   const waveformSourceList = histSourceList ?? [];
   const effectiveChannels = channelCount >= 2 ? channelCount : Math.max(1, channelCount || 2);
@@ -445,7 +407,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
       )}
     >
       {/* Channel lanes + interaction overlay */}
-      <div ref={lanesRef} className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
+      <div className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
         {Array.from({ length: effectiveChannels }, (_, ch) => (
           <WaveformLane
             key={ch}
@@ -466,6 +428,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
             tonality={spectralMetrics.tonality[ch]}
             centroid={controls.waveformCentroid}
             themeColors={themeColors}
+            onBackingWidth={setCanvasW}
           />
         ))}
 
@@ -613,9 +576,9 @@ function WaveformLane({
   tonality,
   centroid,
   themeColors,
+  onBackingWidth,
 }) {
   const canvasRef = useRef(null);
-  const containerRef = useRef(null);
   const drawParamsRef = useRef(null);
   const rafRef = useRef(0);
 
@@ -630,7 +593,15 @@ function WaveformLane({
     });
   }, []);
 
-  useCanvasSize(canvasRef, containerRef, scheduleDraw, {
+  const onResize = useCallback(
+    ({ width }) => {
+      onBackingWidth(width);
+      scheduleDraw();
+    },
+    [onBackingWidth, scheduleDraw]
+  );
+  useCanvasBackingStore(canvasRef, {
+    onResize,
     // Cap width only: bucket count (decimation cost) tracks canvas width, so the fullscreen-perf
     // cap stays there. Height keeps full DPR so the near-zero envelope renders at real vertical
     // resolution instead of a sub-pixel hairline that flickers as it scrolls.
@@ -699,7 +670,7 @@ function WaveformLane({
       >
         {label}
       </div>
-      <div ref={containerRef} className="relative min-h-0 min-w-0 flex-1">
+      <div className="relative min-h-0 min-w-0 flex-1">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
       </div>
     </div>

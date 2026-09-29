@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
-import { useCanvasSize } from "../../hooks/useCanvasSize.js";
+import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { canvasCssScale, strokeCssWidth } from "../../lib/canvasCssScale.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
@@ -225,7 +225,6 @@ export function DockWaveform({ controls }) {
     visualWaveformHist = [],
   } = useHistoryData() ?? {};
   const canvasRef = useRef(null);
-  const plotRef = useRef(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const latestRow =
     typeof histSourceList.rowAt === "function"
@@ -257,7 +256,8 @@ export function DockWaveform({ controls }) {
       current.width === width && current.height === height ? current : { width, height }
     );
   }, []);
-  useCanvasSize(canvasRef, plotRef, onCanvasResize, {
+  useCanvasBackingStore(canvasRef, {
+    onResize: onCanvasResize,
     // Width capped for decimation cost; height stays full DPR so the near-zero envelope keeps real
     // vertical resolution instead of flickering as a sub-pixel hairline (see WaveformPanel).
     maxDevicePixelRatioX: MAX_DEVICE_PIXEL_RATIO,
@@ -375,7 +375,7 @@ export function DockWaveform({ controls }) {
           </span>
         ))}
       </div>
-      <div ref={plotRef} className="relative min-h-0 min-w-0 flex-1">
+      <div className="relative min-h-0 min-w-0 flex-1">
         <canvas
           ref={canvasRef}
           data-testid="dock-waveform-canvas"

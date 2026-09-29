@@ -340,8 +340,8 @@ function drawFloor(ctx, proj, grid, gridSubtle, dpr) {
  * Font size is multiplied by the device pixel ratio because the canvas coordinate system is
  * device pixels (see "Screen-space sizes" in docs/architecture.md), not CSS pixels. The ratio is
  * derived from the canvas's own dimensions rather than read from window.devicePixelRatio, because
- * useCanvasSize accepts options that can cap the ratio per axis, and reading the global would then
- * disagree with reality.
+ * useCanvasBackingStore accepts options that can cap the ratio per axis, and reading the global
+ * would then disagree with reality.
  *
  * This also means labels follow the Windows Accessibility text-size factor, which
  * devicePixelRatio already includes inside the webview. That is correct behaviour and must not be

@@ -496,6 +496,19 @@ describe("WaveformPanel", () => {
     expect(sliceWaveformSubHistoryMock).toHaveBeenCalledWith(history, 1, 0, 2, 0);
   });
 
+  it("sizes buckets to the lane canvas's own backing width", () => {
+    // One bucket per backing column. A width measured elsewhere (lanes minus the label rail) can
+    // be a column off from what the canvas actually has.
+    vi.stubGlobal("devicePixelRatio", 1);
+    vi.spyOn(HTMLCanvasElement.prototype, "clientWidth", "get").mockReturnValue(333);
+    vi.spyOn(HTMLCanvasElement.prototype, "clientHeight", "get").mockReturnValue(40);
+    vi.spyOn(HTMLDivElement.prototype, "clientWidth", "get").mockReturnValue(1000);
+
+    renderPanel({ histSourceList: [], visibleSamples: 1, channelCount: 2 });
+
+    expect(sliceWaveformSubHistoryMock).toHaveBeenLastCalledWith([], 1, 0, 2, 333);
+  });
+
   it("does not touch the spectral ring while both overlays are off", () => {
     // Both default to off, and nothing reads the result in that state: the arrays only reach
     // `drawWaveformCanvas`, which looks at them under Frequency Color and Centroid.
@@ -561,6 +574,8 @@ describe("WaveformPanel", () => {
       stroke: vi.fn(),
     };
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
+    vi.spyOn(HTMLCanvasElement.prototype, "clientWidth", "get").mockReturnValue(100);
+    vi.spyOn(HTMLCanvasElement.prototype, "clientHeight", "get").mockReturnValue(40);
 
     render(<StrictMode>{waveformPanelTree({ channelCount: 2 })}</StrictMode>);
     for (const [id, cb] of [...frames]) {

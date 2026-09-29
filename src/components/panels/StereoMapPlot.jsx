@@ -1,11 +1,11 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { rangedFreqToXFrac, rangedHistY } from "../../config/scales";
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { selectStereoMapCanvasColors } from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
-import { watchDevicePixelRatio } from "../../lib/devicePixelRatioWatch.js";
+import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
 
 // Same viewBox convention as Spectrum's inline SVG (and this component's own former SVG
 // implementation), so the curve, grid, and hover overlay all share one coordinate system across
@@ -397,13 +397,6 @@ function buildHoldGroups(mode, bandCentersHz, holdValues, xMinHz, xMaxHz, range)
   return holdGroups;
 }
 
-function measureCanvas(canvas) {
-  const dpr = window.devicePixelRatio || 1;
-  const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-  const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
-  return { dpr, width, height };
-}
-
 function resolveColors(themeColors, paletteKey) {
   const primary =
     parseColor(paletteKey === "snap" ? themeColors.primarySnapshot : themeColors.primary) ||
@@ -479,10 +472,10 @@ function hashHoldValues(mode, holdValues) {
  * Reading `canvas.clientWidth`/`clientHeight` or calling `getComputedStyle` forces a synchronous
  * layout/style flush — doing that unconditionally on every render (even ones the signature ends up
  * skipping) reintroduces the same class of cost the canvas rewrite was meant to remove, and is
- * disproportionately expensive here given how many draw calls a redraw performs. Size is tracked via
- * a mount-time measurement plus a ResizeObserver and a DPR watch (so a layout read only happens when
- * the element actually resizes or moves to a differently scaled display, not every render). Colors arrive as a resolved theme bundle and never require a
- * style read; computed style is retained only for non-color drawing geometry.
+ * disproportionately expensive here given how many draw calls a redraw performs. Size comes from
+ * `useCanvasBackingStoreSize`, which reads layout once on mount and then only from ResizeObserver
+ * entries. Colors arrive as a resolved theme bundle and never require a style read; computed style
+ * is retained only for non-color drawing geometry.
  */
 export function StereoMapPlot({
   mode,
@@ -511,41 +504,12 @@ export function StereoMapPlot({
     pointHash: null,
     holdHash: null,
   });
-  const sizeRef = useRef({ dpr: 1, width: 1, height: 1 });
+  const { dpr, width, height } = useCanvasBackingStoreSize(canvasRef);
   const geometryStyleRef = useRef(null);
-  const [, bumpResizeVersion] = useState(0);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    const measure = () => {
-      const next = measureCanvas(canvas);
-      const current = sizeRef.current;
-      if (
-        current.dpr === next.dpr &&
-        current.width === next.width &&
-        current.height === next.height
-      ) {
-        return;
-      }
-      sizeRef.current = next;
-      if (canvas.width !== next.width) canvas.width = next.width;
-      if (canvas.height !== next.height) canvas.height = next.height;
-      bumpResizeVersion((v) => v + 1);
-    };
-    measure();
-    const unwatchDpr = watchDevicePixelRatio(measure);
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    observer?.observe(canvas);
-    return () => {
-      observer?.disconnect();
-      unwatchDpr();
-    };
-  }, []);
-
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || width <= 0 || height <= 0) return;
     const ctx = canvas.getContext?.("2d");
     if (!ctx) return;
 
@@ -559,7 +523,6 @@ export function StereoMapPlot({
     const fillOpacity = colors.fillOpacity;
     const fadeStrength = Math.max(0, Math.min(100, energyFadePercent));
     const colorBlend = Math.max(0, Math.min(100, colorBlendPercent));
-    const { dpr, width, height } = sizeRef.current;
     const lineWidth = strokeWidthCss * dpr;
 
     // Skip the full redraw when nothing that affects the picture has changed. Parent components

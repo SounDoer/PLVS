@@ -309,9 +309,17 @@ Rules:
 - Derive the scale from the canvas itself (`canvas.width / canvas.clientWidth`, per axis), never
   from `window.devicePixelRatio` inside draw code. A capped backing store makes the global wrong.
 - Name constants with their unit (`*_CSS_PX`). A device-px value is a local derived at draw time.
-- Backing stores re-measure when the CSS box changes **and** when DPR changes with the box
+- Every 2D and WebGL canvas sizes its backing store through `useCanvasBackingStore`
+  (`src/hooks/useCanvasBackingStore.js`), which measures the canvas's own box. Where the browser
+  reports `devicePixelContentBoxSize` (Chromium, WebView2) the backing store takes exactly the
+  physical pixels the element covers, so it maps 1:1 onto the screen and is not resampled.
+  Elsewhere (WebKit) it falls back to `round(fractional CSS size x DPR)`, which can be a pixel off
+  and blur 1 px lines slightly. A capped axis always uses `round(CSS size x cap)`.
+- Backing stores re-measure when the box changes **and** when DPR changes with the box
   unchanged (`watchDevicePixelRatio`), for example after the window is dragged to a monitor with a
   different scale.
+- Waveform buckets are one per backing column, so the bucket count is the lane canvas's reported
+  backing width, never a width measured separately.
 - A DPR cap for performance may lower resolution; it must never change visual stroke weight.
 - WebGL canvases use `premultipliedAlpha: true` and shaders write premultiplied colour. Otherwise
   every translucent pixel, including every antialiased edge, is multiplied by alpha twice, and a thin

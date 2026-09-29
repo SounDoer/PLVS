@@ -20,7 +20,7 @@ import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
 import { SnapshotEmptyState, SNAPSHOT_NO_DATA_MESSAGE } from "./SnapshotEmptyState.jsx";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
-import { useObservedCanvasSize } from "../../hooks/useObservedCanvasSize.js";
+import { useCanvasBackingStoreSize } from "../../hooks/useCanvasBackingStore.js";
 
 const CORRELATION_SIGNAL_FLOOR_DB = -90;
 const LIVE_CORRELATION_DISPLAY_ALPHA = 0.25;
@@ -252,7 +252,7 @@ export function VectorscopePanel() {
     hasCorrelationSignal && clampCorrelation(gatedCorrelation) !== null;
   const liveCorrelationDisplayRef = useRef(null);
   const persistenceCanvasRef = useRef(null);
-  const persistenceCanvasSize = useObservedCanvasSize(
+  const persistenceCanvasSize = useCanvasBackingStoreSize(
     persistenceCanvasRef,
     panelActive && persistenceActive
   );

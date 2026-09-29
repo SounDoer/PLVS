@@ -14,7 +14,7 @@ import { ChartCrosshair } from "./ChartCrosshair.jsx";
 import { useAxisViewport } from "../../workspace/axisViewportHooks.js";
 import { useAxisActivePulse } from "../../hooks/useAxisActivePulse";
 import { useAxisInteraction } from "../../hooks/useAxisInteraction";
-import { useCanvasSize } from "../../hooks/useCanvasSize";
+import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { HISTORY_TIME_TICK_STEPS } from "../../math/historyMath";
 import {
   anchorFromPointer,
@@ -131,9 +131,9 @@ export function SpectrogramPanel() {
   // the exact unprojection instead. Returns null outside 3D, or before the first 3D repaint has
   // published a projection.
   //
-  // The projection works in the canvas's coordinate system, which useCanvasSize sizes in DEVICE
-  // pixels (canvas.width = clientWidth * devicePixelRatio), while pointer events arrive in CSS
-  // pixels. Skipping this conversion leaves everything offset on any scaled display.
+  // The projection works in the canvas's coordinate system, which useCanvasBackingStore sizes in
+  // DEVICE pixels, while pointer events arrive in CSS pixels. Skipping this conversion leaves
+  // everything offset on any scaled display.
   const cursorToFloor = useCallback(
     (e) => {
       if (!is3d) return null;
@@ -245,11 +245,12 @@ export function SpectrogramPanel() {
   // the handlers would rewrite interaction that has nothing to do with this renderer. Stacking is
   // DOM order -- this canvas is rendered first -- so it must stay the first child of the chart box.
   const glCanvasRef = useRef(null);
-  const containerRef = useRef(null);
   const [canvasSizeRevision, setCanvasSizeRevision] = useState(0);
   const [chartDragging, setChartDragging] = useState(false);
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();
-  useCanvasSize(canvasRef, containerRef, () => setCanvasSizeRevision((revision) => revision + 1));
+  useCanvasBackingStore(canvasRef, {
+    onResize: () => setCanvasSizeRevision((revision) => revision + 1),
+  });
 
   // Spectrograms are request-keyed: resolve this panel's key once and read both the live rolling
   // history and the frozen snapshot history for that key only.
@@ -589,7 +590,7 @@ export function SpectrogramPanel() {
 
           {/* Canvas chart */}
           <div className="relative min-h-0 min-w-0">
-            <div ref={containerRef} className="relative min-h-0 h-full">
+            <div className="relative min-h-0 h-full">
               {isGlSurface ? (
                 <canvas
                   data-spectrogram-gl=""

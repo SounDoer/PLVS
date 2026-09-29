@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { useCanvasSize } from "../../hooks/useCanvasSize.js";
+import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas.js";
 import { VISUAL_HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { resolveSpectrogramSampleMs } from "../../math/spectrogramTimeline.js";
@@ -17,7 +17,6 @@ export function DockSpectrogram({ controls }) {
   const spectrogramTheme = useResolvedTheme(selectSpectrogramCanvasTheme);
   const { getSpectrogramSnapsForKey } = useHistoryData() ?? {};
   const canvasRef = useRef(null);
-  const containerRef = useRef(null);
   const requestKey = dockSpectrumKey(controls);
   const snapRef = useMemo(
     () => ({
@@ -38,7 +37,7 @@ export function DockSpectrogram({ controls }) {
     [spectrogramTheme.intensityStops]
   );
 
-  useCanvasSize(canvasRef, containerRef, undefined, { maxDevicePixelRatio: 1 });
+  useCanvasBackingStore(canvasRef, { maxDevicePixelRatio: 1 });
   useSpectrogramCanvas({
     canvasRef,
     snapRef,
@@ -62,7 +61,7 @@ export function DockSpectrogram({ controls }) {
       {...dockHistoryInteractionProps(controls)}
       className="relative h-full min-w-0 flex-1 px-[var(--ui-dock-pad-x)] py-[var(--ui-dock-pad-y)]"
     >
-      <div ref={containerRef} className="relative h-full min-h-0 min-w-0">
+      <div className="relative h-full min-h-0 min-w-0">
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
         <DockHistoryWindowHud controls={controls} />
       </div>

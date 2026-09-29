@@ -1,14 +1,14 @@
 /** @vitest-environment jsdom */
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useCanvasSize } from "../../hooks/useCanvasSize.js";
+import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { useSpectrogramCanvas } from "../../hooks/useSpectrogramCanvas.js";
 import { FrameDataProvider, HistoryDataProvider } from "../../workspace/AudioDataContext.jsx";
 import { dockSpectrumKey } from "../dockAnalysisRequest.js";
 import { DEFAULT_PANEL_CONTROLS } from "../../lib/panelControls.js";
 import { DockSpectrogram } from "./DockSpectrogram.jsx";
 
-vi.mock("../../hooks/useCanvasSize.js", () => ({ useCanvasSize: vi.fn() }));
+vi.mock("../../hooks/useCanvasBackingStore.js", () => ({ useCanvasBackingStore: vi.fn() }));
 vi.mock("../../hooks/useSpectrogramCanvas.js", () => ({ useSpectrogramCanvas: vi.fn() }));
 
 function makeSnaps(list) {
@@ -34,7 +34,7 @@ function renderWith({ controls, snaps }) {
 
 describe("DockSpectrogram", () => {
   beforeEach(() => {
-    vi.mocked(useCanvasSize).mockClear();
+    vi.mocked(useCanvasBackingStore).mockClear();
     vi.mocked(useSpectrogramCanvas).mockClear();
   });
 
@@ -74,7 +74,7 @@ describe("DockSpectrogram", () => {
     const { container, getSpectrogramSnapsForKey } = renderWith({ controls, snaps });
 
     expect(container.querySelector("canvas")).not.toBeNull();
-    expect(useCanvasSize).toHaveBeenCalledWith(expect.anything(), expect.anything(), undefined, {
+    expect(useCanvasBackingStore).toHaveBeenCalledWith(expect.anything(), {
       maxDevicePixelRatio: 1,
     });
     expect(getSpectrogramSnapsForKey).toHaveBeenCalledWith(dockSpectrumKey(controls));
