@@ -863,13 +863,8 @@ export function SpectrumPanel() {
                   />
                   {displayPanelSpectrumPath ? (
                     <g>
-                      <path
-                        data-spectrum-max-fill="primary"
-                        d={displaySpectrumAreaPath}
-                        fill={
-                          selectedOffset >= 0 ? "url(#spectrumFillSnap)" : "url(#spectrumFillLive)"
-                        }
-                      />
+                      {/* Secondary is painted first so primary stays on top where the two
+                            coincide (mono in L/R, a one-sided pair in M/S). */}
                       {displaySpectrumAreaPathB ? (
                         <path
                           data-spectrum-max-fill="secondary"
@@ -882,18 +877,11 @@ export function SpectrumPanel() {
                         />
                       ) : null}
                       <path
-                        data-spectrum-live="primary"
-                        d={displayPanelSpectrumPath}
-                        fill="none"
-                        stroke={
-                          selectedOffset >= 0
-                            ? "var(--ui-spectrum-primary-snap)"
-                            : "var(--ui-spectrum-primary)"
+                        data-spectrum-max-fill="primary"
+                        d={displaySpectrumAreaPath}
+                        fill={
+                          selectedOffset >= 0 ? "url(#spectrumFillSnap)" : "url(#spectrumFillLive)"
                         }
-                        strokeWidth="var(--ui-spectrum-stroke-width)"
-                        vectorEffect="non-scaling-stroke"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
                       />
                       {displayPanelSpectrumPathB ? (
                         <path
@@ -911,6 +899,20 @@ export function SpectrumPanel() {
                           strokeLinejoin="round"
                         />
                       ) : null}
+                      <path
+                        data-spectrum-live="primary"
+                        d={displayPanelSpectrumPath}
+                        fill="none"
+                        stroke={
+                          selectedOffset >= 0
+                            ? "var(--ui-spectrum-primary-snap)"
+                            : "var(--ui-spectrum-primary)"
+                        }
+                        strokeWidth="var(--ui-spectrum-stroke-width)"
+                        vectorEffect="non-scaling-stroke"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                       {/* The clear gesture rides the fill's upper edge. Stroke only: a
                             clickable fill would turn most of the chart into a reset button and
                             swallow the click that captures a snapshot. */}

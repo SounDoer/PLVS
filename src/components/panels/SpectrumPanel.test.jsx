@@ -196,6 +196,30 @@ describe("SpectrumPanel", () => {
     expect(fillB?.getAttribute("d")).toBe(area(contour(peakDbB)));
   });
 
+  it("paints primary over secondary so identical curves show the primary color", () => {
+    const { container } = renderPanel(
+      liveAudioData(
+        liveResult({
+          bandCentersHz: BANDS,
+          smoothDb: [-40, -50],
+          smoothDbB: [-40, -50],
+          peakDb: [-20, -30],
+          peakDbB: [-20, -30],
+        }),
+        { panelControls: { spectrumMaxDecay: true }, spectrumViewLegend: null }
+      )
+    );
+
+    const order = [
+      ...container.querySelectorAll("[data-spectrum-live],[data-spectrum-max-fill]"),
+    ].map((el) =>
+      el.hasAttribute("data-spectrum-live")
+        ? `live-${el.getAttribute("data-spectrum-live")}`
+        : `fill-${el.getAttribute("data-spectrum-max-fill")}`
+    );
+    expect(order).toEqual(["fill-secondary", "fill-primary", "live-secondary", "live-primary"]);
+  });
+
   it("renders the secondary curve path with the live-b token when the result has a B path", () => {
     const { container } = renderPanel(
       liveAudioData(
