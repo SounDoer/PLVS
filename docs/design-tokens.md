@@ -80,7 +80,8 @@ plus visible overflow degrades quietly rather than clipping. Widths do not — t
 ## Grid Lines
 
 Every optional panel Grid and every always-visible Vectorscope guide resolves from `data.grid`.
-The default recipe mixes the resolved Panel Surface 8% toward the resolved Border colour. The
+The default recipe mixes the resolved Panel Surface 8% toward white in Dark or black in Light,
+independently from interface Border. The
 renderer paints that opaque result directly: there is no panel-specific opacity multiplier or
 weaker subdivision colour.
 
@@ -148,25 +149,34 @@ Two states, never mixed.
 
 | State   | Means                                   | Treatment                                                                                            |
 | ------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Neutral | The pointer or focus is here, right now | `hover:bg-muted/50`, plus `focus-within:bg-muted/50` on list rows                                    |
+| Neutral | The pointer or focus is here, right now | `hover:bg-ui-hover`, plus `focus-within:bg-ui-hover` on list rows                                    |
 | Accent  | This item is the active or selected one | `bg-accent text-accent-foreground` for regions; solid `bg-primary` for small marks and switch tracks |
 
-`--accent` (`interface.surface.interactive`) is accent-tinted, so spending it on hover reads as
+`--accent` (`interface.surface.selected`) is accent-tinted, so spending it on hover reads as
 "this is selected" every time the pointer crosses a row. It belongs only to persistent state —
 an open menu's trigger, an engaged toggle. Dropdown items say "selected" with a check mark and
 use the neutral highlight for traversal, mouse and keyboard alike.
 
 Filled controls use opaque derived Hover colors (`--ui-primary-hover`, `--ui-secondary-hover`, and
-`--ui-destructive-hover`) rather than alpha modifiers. Resize rails use direct `border` while idle,
-`primary/70` on Hover, and full Primary while active or focused. A snapped divider is full Primary
+`--ui-destructive-hover`) rather than alpha modifiers. Transparent-base controls use
+`--ui-neutral-hover`, an opaque equal mix of Raised and Muted surfaces. All interaction mixes are
+centralized in `index.css` and recomputed inside Theme Preview. Workspace resize rails are transparent while idle,
+`primary/70` on Hover, and full Primary while dragging. A snapped divider is full Primary
 without a glow.
 
 ## Borders, Tracks, and State
 
-`--border` and `--input` are already Theme effects with their own alpha. Consume them directly for
-ordinary borders, dividers, control outlines, range tracks, and unchecked switches; adding a local
-`/N` double-attenuates them. Border follows the color scheme and the Advanced Border override, not
-Core Colors.
+`--border` is an opaque colour; `--input` aliases the same resolved role. Consume them directly for
+ordinary borders, dividers, control outlines, range tracks, and unchecked switches without local
+alpha modifiers. Auto mixes Panel Surface 9% toward white in Dark or 10% toward black in Light.
+Advanced Border Color supplies the final opaque colour. Grid is independent of Border.
+
+Workspace panels have no permanent outer border or header underline. Surface colour, rounded
+corners, and spacing define each panel. The resize hit regions retain their size, but their lines
+appear only on hover or during dragging. Temporary location/drag rings remain. Header, Footer
+(including their auto-revealed variants), and the File analysis summary also omit outer borders;
+floating shell variants retain their Raised shadow.
+Inputs retain their existing affordances; no new Input Border editor setting is introduced.
 
 Compact and standard switches share the same state language: Input when unchecked, Primary when
 checked, and an opaque thumb. Inactive selectable marks are opaque hollow `muted-foreground`
@@ -182,7 +192,7 @@ The Source Transport is the deliberate emphasis exception. Live and Snapshot tin
 Control Surface (`secondary`) with their Activity role at 10% for the shell, 24% for the action,
 36% for action Hover, and 50% for the shell border. Text and icons use the full Activity color. The
 action stays an edgeless oval, and every mix ends in `secondary`, never `transparent`; these four
-strengths are a component recipe rather than Theme Editor roles.
+strengths are centralized CSS recipes rather than Theme Editor roles.
 
 ## Color Tokens
 
@@ -206,8 +216,8 @@ Current PLVS Dark values:
 | `--muted-foreground`       | `#959595`                   | Secondary / muted text                  |
 | `--accent`                 | `#3b2410`                   | Selected surface                        |
 | `--accent-foreground`      | same as `--foreground`      | Text on accent surface                  |
-| `--border`                 | `rgba(255, 255, 255, 0.09)` | Borders and dividers                    |
-| `--input`                  | `rgba(255, 255, 255, 0.14)` | Input field border                      |
+| `--border`                 | `#2a2a2a`                 | Borders and dividers                    |
+| `--input`                  | `#2a2a2a`                 | Shared control border                   |
 | `--ring`                   | `#b35300`                   | Legacy compatibility token; not painted |
 | `--destructive`            | `#b83238`                   | Error / danger state                    |
 | `--destructive-foreground` | `#f2f2f2`                   | Text on destructive                     |

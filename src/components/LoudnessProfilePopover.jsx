@@ -11,7 +11,7 @@ import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
 
 const ROW_CLASS =
-  "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50";
+  "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover";
 
 const DRAG_HANDLE_CLASS =
   "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing";

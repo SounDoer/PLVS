@@ -10,7 +10,7 @@ import {
 function validTheme(overrides = {}) {
   return {
     formatVersion: 2,
-    semanticsVersion: 2,
+    semanticsVersion: 3,
     id: "custom.sunrise",
     name: "Sunrise",
     colorScheme: "light",
@@ -53,7 +53,7 @@ describe("normalizeThemeDocumentShape", () => {
 
     expect(normalizeThemeDocumentShape(raw)).toEqual({
       formatVersion: 2,
-      semanticsVersion: 2,
+      semanticsVersion: 3,
       id: "custom.sunrise",
       name: "Sunrise",
       colorScheme: "light",

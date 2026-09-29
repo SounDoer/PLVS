@@ -73,7 +73,7 @@ function Action({ label, tip, icon, onClick }) {
 
 function ThemeRow({ theme, selected, onSelect, actions }) {
   return (
-    <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 hover:bg-muted/50">
+    <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 hover:bg-ui-hover">
       <button
         type="button"
         onClick={() => onSelect(theme.id)}
@@ -122,7 +122,7 @@ export function ThemePicker({
           type="button"
           aria-label="Theme"
           disabled={disabled}
-          className="flex min-h-6 items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] hover:border-border hover:bg-muted/50 disabled:opacity-50"
+          className="flex min-h-6 items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] hover:border-border hover:bg-ui-hover disabled:opacity-50"
         >
           {selected ? <ThemeSwatch theme={selected} /> : null}
           <span>{selected?.name ?? "Theme"}</span>

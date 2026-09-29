@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { useHoverTip } from "@/components/HoverTip";
 
 export const MANAGEMENT_ROW_CLASS =
-  "group flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50";
+  "group flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover";
 
 export const MANAGEMENT_ROW_ACTIONS_CLASS =
   "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100";

@@ -36,6 +36,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-ui-hover: var(--ui-neutral-hover);
 
   /* Radius ladder -- see design-tokens.md. Only xs / md / xl are in use: items
      and small controls, surfaces and standard controls, floating windows. sm and
@@ -65,9 +66,19 @@
 
 :root,
 .theme-preview {
+  /* Opaque interaction colours. Keep these scoped to the draft as well as the app. */
+  --ui-neutral-hover: color-mix(in srgb, var(--popover) 50%, var(--muted));
   --ui-primary-hover: color-mix(in srgb, var(--primary) 90%, var(--foreground));
   --ui-destructive-hover: color-mix(in srgb, var(--destructive) 90%, var(--foreground));
   --ui-secondary-hover: color-mix(in srgb, var(--secondary) 88%, var(--foreground));
+  --ui-live-border: color-mix(in srgb, var(--ui-activity-live) 50%, var(--secondary));
+  --ui-live-surface: color-mix(in srgb, var(--ui-activity-live) 10%, var(--secondary));
+  --ui-live-active: color-mix(in srgb, var(--ui-activity-live) 24%, var(--secondary));
+  --ui-live-hover: color-mix(in srgb, var(--ui-activity-live) 36%, var(--secondary));
+  --ui-snapshot-border: color-mix(in srgb, var(--ui-activity-snapshot) 50%, var(--secondary));
+  --ui-snapshot-surface: color-mix(in srgb, var(--ui-activity-snapshot) 10%, var(--secondary));
+  --ui-snapshot-active: color-mix(in srgb, var(--ui-activity-snapshot) 24%, var(--secondary));
+  --ui-snapshot-hover: color-mix(in srgb, var(--ui-activity-snapshot) 36%, var(--secondary));
 }
 
 html {

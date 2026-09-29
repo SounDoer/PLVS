@@ -5,7 +5,7 @@ import { validatePortableTheme } from "./portableTheme.js";
  * is intentionally unresolved until release planning chooses the version that actually ships it.
  */
 export const COMMUNITY_THEME_COMPATIBILITY = Object.freeze({
-  "1:2": Object.freeze({
+  "1:3": Object.freeze({
     minimumAppVersion: null,
     maximumAppVersion: null,
   }),

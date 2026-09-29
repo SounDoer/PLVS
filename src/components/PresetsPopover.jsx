@@ -177,7 +177,7 @@ export function PresetsPopoverContent({
                 ) : (
                   <div
                     className={cn(
-                      "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50",
+                      "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover",
                       draggingId === preset.id && "z-10 ring-1 ring-primary/60"
                     )}
                   >

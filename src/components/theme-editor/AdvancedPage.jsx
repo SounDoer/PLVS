@@ -338,7 +338,7 @@ export function AdvancedPage({
                 <button
                   type="button"
                   onClick={() => onResetOverrides(sectionRoles.map((role) => role.id))}
-                  className="inline-flex items-center gap-1 rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  className="inline-flex items-center gap-1 rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground hover:bg-ui-hover hover:text-foreground"
                 >
                   <RotateCcw className="size-[1em]" /> Reset Section to Auto
                 </button>

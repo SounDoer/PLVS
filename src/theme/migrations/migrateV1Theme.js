@@ -1,5 +1,6 @@
 import { resolveV1Theme } from "../legacy/resolveV1Theme.js";
 import { normalizeThemeDocumentShape } from "../themeSchema.js";
+import { migrateThemeSemantics2 } from "./migrateThemeSemantics2.js";
 
 const RETIRED_GRID_ROLES = new Set(["data.gridSubtle", "spectrogram.gridSubtle", "waveform.grid"]);
 
@@ -23,7 +24,7 @@ export function migrateThemeSemantics1(raw) {
   if (raw?.formatVersion !== 2 || raw?.semanticsVersion !== 1) return null;
   const overrides = migrateGridSemanticOverrides(raw.overrides ?? {});
   if (!overrides) return null;
-  return normalizeThemeDocumentShape({ ...raw, semanticsVersion: 2, overrides });
+  return migrateThemeSemantics2({ ...raw, semanticsVersion: 2, overrides });
 }
 
 const SEMANTIC_ROLE_BINDINGS = {
@@ -89,7 +90,7 @@ function migrateSingleVersionShape(raw) {
       : (oldInterface?.danger ?? oldInterface?.critical ?? status?.critical);
   const overrides = migrateOverrides(raw.overrides ?? {});
   if (!overrides) return null;
-  return normalizeThemeDocumentShape({
+  return migrateThemeSemantics2({
     ...raw,
     formatVersion: 2,
     semanticsVersion: 2,
@@ -180,7 +181,7 @@ export function migrateV1Theme(raw) {
     color: rgbHex(channels[0], channels[1], channels[2]),
   }));
 
-  return normalizeThemeDocumentShape({
+  return migrateThemeSemantics2({
     formatVersion: 2,
     semanticsVersion: 2,
     id: raw.id,
@@ -233,6 +234,19 @@ export function migrateFormat1Theme(raw) {
 export function migrateThemeDocument(raw) {
   const current = normalizeThemeDocumentShape(raw);
   if (current) return { theme: current, notes: [] };
+  const semantics2 = migrateThemeSemantics2(raw);
+  if (semantics2) {
+    return {
+      theme: semantics2,
+      notes: [
+        {
+          code: "opaque-interface-borders",
+          message:
+            "Flattened authored Border colours onto Panel Surface, unified input borders, and preserved inherited Grid colours independently.",
+        },
+      ],
+    };
+  }
   const semantics1 = migrateThemeSemantics1(raw);
   if (semantics1) {
     return {

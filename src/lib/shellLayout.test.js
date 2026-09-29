@@ -53,9 +53,10 @@ describe("shellLayout token names", () => {
     expect(SHELL_FOOTER).not.toMatch(/rounded-\[/);
   });
 
-  it("SHELL_HEADER border uses border-border (not a hardcoded white tint)", () => {
-    expect(SHELL_HEADER).toContain("border-border");
-    expect(SHELL_HEADER).not.toContain("border-white/");
+  it("normal and auto-revealed headers omit outer borders", () => {
+    for (const classes of [SHELL_HEADER, SHELL_HEADER_OVERLAY]) {
+      expect(classes).not.toMatch(/(?:^|\s)border(?:\s|-)/);
+    }
   });
 
   it("header actions use the header action gap variable", () => {
@@ -63,15 +64,15 @@ describe("shellLayout token names", () => {
     expect(SHELL_HEADER_ACTIONS).not.toContain("gap-1");
   });
 
-  it("SHELL_FOOTER border uses border-border (not a hardcoded white tint)", () => {
-    expect(SHELL_FOOTER).toContain("border-border");
-    expect(SHELL_FOOTER).not.toContain("border-white/");
+  it("normal and auto-revealed footers omit outer borders", () => {
+    for (const classes of [SHELL_FOOTER, SHELL_FOOTER_OVERLAY]) {
+      expect(classes).not.toMatch(/(?:^|\s)border(?:\s|-)/);
+    }
   });
 
-  it("shell structure uses the surface opacity while borders stay semantic", () => {
+  it("shell structure uses the surface opacity", () => {
     for (const className of [SHELL_HEADER, SHELL_FOOTER]) {
       expect(className).toContain("--ui-surface-panel");
-      expect(className).toContain("border-border");
       expect(className).not.toContain("--ui-surface-highlight");
       expect(className).not.toMatch(/rgba\(/);
     }

@@ -75,10 +75,12 @@ describe("theme color contract", () => {
   });
 
   it("keeps one neutral hover for every transparent-base control", () => {
-    // Filled controls use opaque derived colours; transparent controls use muted/50.
+    // Filled and transparent-base controls use centrally derived opaque colours.
     const offenders = Object.entries(appSources())
       .filter(([path]) => !/(?:^|\/)(?:badge|button)\.jsx$/.test(path))
-      .filter(([, source]) => /hover:bg-secondary/.test(source))
+      .filter(([, source]) =>
+        /hover:bg-secondary|(?:hover|focus|focus-within|focus-visible):bg-muted/.test(source)
+      )
       .map(([path]) => path);
 
     expect(offenders).toEqual([]);

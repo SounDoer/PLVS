@@ -54,7 +54,7 @@ export function FileAnalysisHistoryMenu({
         <button
           type="button"
           aria-label={countLabel}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-[length:var(--ui-fs-control)] font-medium text-secondary-foreground transition-colors hover:bg-muted"
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-[length:var(--ui-fs-control)] font-medium text-secondary-foreground transition-colors hover:bg-[color:var(--ui-secondary-hover)]"
         >
           <FileStack className="size-[1.15em]" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>
@@ -76,7 +76,7 @@ export function FileAnalysisHistoryMenu({
           <button
             type="button"
             onClick={() => onClearAllFiles?.()}
-            className="rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-destructive"
+            className="rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground transition-colors hover:bg-ui-hover hover:text-destructive"
             aria-label="Clear all file history"
           >
             Clear all
@@ -90,7 +90,7 @@ export function FileAnalysisHistoryMenu({
             return (
               <div
                 key={session.id}
-                className="group flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-muted/50 focus-within:bg-muted/50"
+                className="group flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover"
               >
                 <button
                   type="button"
@@ -134,7 +134,7 @@ export function FileAnalysisHistoryMenu({
                       type="button"
                       onClick={() => onStopFile?.(session.id)}
                       aria-label={`Stop analyzing ${session.fileName}`}
-                      className="rounded-xs p-1 text-[color:var(--ui-activity-live)] transition-colors hover:bg-muted/50"
+                      className="rounded-xs p-1 text-[color:var(--ui-activity-live)] transition-colors hover:bg-ui-hover"
                     >
                       <Square className="size-[length:var(--ui-icon-management-action)]" />
                     </button>

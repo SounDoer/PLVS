@@ -216,18 +216,22 @@ const RAW_THEME_ROLE_REGISTRY = [
     ),
   }),
   role("interface.border.default", {
-    kind: "effect",
+    kind: "color",
     family: "interface",
     recipe: "border",
-    dependencies: ["core.surface", "core.text"],
+    dependencies: ["interface.surface.panel"],
     bindings: { css: ["--border"] },
-    advanced: colorOverride("Interface", "Border Color", "Panel and control separators."),
+    advanced: colorOverride(
+      "Interface",
+      "Border Color",
+      "Opaque control outlines and interface separators."
+    ),
   }),
   role("interface.border.input", {
-    kind: "effect",
+    kind: "color",
     family: "interface",
-    recipe: "input-border",
-    dependencies: ["interface.border.default", "core.surface"],
+    recipe: "identity",
+    dependencies: ["interface.border.default"],
     bindings: { css: ["--input"] },
   }),
   role("interface.focusRing", {
@@ -372,7 +376,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     kind: "color",
     family: "data",
     recipe: "grid",
-    dependencies: ["interface.border.default", "interface.surface.panel"],
+    dependencies: ["interface.surface.panel"],
   }),
   role("data.annotation", {
     kind: "color",

@@ -32,7 +32,7 @@ const DEFAULT_RULE_METRIC = "integrated";
 // `auto` column would size independently in each, breaking the value/unit alignment between them.
 // `gap-1` tightens the base `gap-2` between label and chevron (tailwind-merge keeps this one).
 const TRIGGER_CLASS =
-  "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-muted/50";
+  "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-ui-hover";
 const CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] border-border [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
@@ -69,7 +69,7 @@ const REMOVE_COL_CLASS = "w-5";
 const HEADER_ACTION_CLASS = "shrink-0 rounded-xs text-muted-foreground hover:text-foreground";
 
 const NUM_INPUT_CLASS =
-  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-muted/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-ui-hover [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /**
  * One numeric field, committed on blur or Enter.

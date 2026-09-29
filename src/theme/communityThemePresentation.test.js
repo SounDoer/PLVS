@@ -26,8 +26,8 @@ describe("community Theme page presentation", () => {
         maximumAppVersion: null,
         label: null,
         formatVersion: 1,
-        semanticsVersion: 2,
-        technicalLabel: "Theme Format 1 · Semantics 2",
+        semanticsVersion: 3,
+        technicalLabel: "Theme Format 1 · Semantics 3",
       },
     });
   });
@@ -35,21 +35,21 @@ describe("community Theme page presentation", () => {
   it("renders the user-facing minimum from the central release mapping", () => {
     const presentation = requireResolvedCommunityThemePresentation(portable("plvs-dark"), {
       compatibility: {
-        "1:2": { minimumAppVersion: "0.18.0", maximumAppVersion: null },
+        "1:3": { minimumAppVersion: "0.18.0", maximumAppVersion: null },
       },
     });
 
     expect(presentation.compatibility).toMatchObject({
       status: "resolved",
       label: "Requires PLVS 0.18.0 or later",
-      technicalLabel: "Theme Format 1 · Semantics 2",
+      technicalLabel: "Theme Format 1 · Semantics 3",
     });
   });
 
   it("can close the range later without changing the Theme document", () => {
     const presentation = requireResolvedCommunityThemePresentation(portable("plvs-light"), {
       compatibility: {
-        "1:2": { minimumAppVersion: "0.18.0", maximumAppVersion: "0.24.3" },
+        "1:3": { minimumAppVersion: "0.18.0", maximumAppVersion: "0.24.3" },
       },
     });
     expect(presentation.compatibility.label).toBe("Works with PLVS 0.18.0-0.24.3");

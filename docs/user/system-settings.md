@@ -51,6 +51,20 @@ module section and are saved with the Theme.
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas
 has separate controls.
 
+**Advanced → Interface → Border Color** sets one opaque colour for ordinary interface separators
+and control outlines, including input fields. It does not change chart Grid or Guides colours;
+these follow the plot surface by default and retain their per-module Advanced controls. Older
+themes preserve an authored border's appearance against Panel Surface and any inherited Grid
+colours when imported or loaded. Input outlines now share the ordinary Border colour.
+
+Workspace panels use their surface colour, rounded corners, and spacing without permanent outer
+outlines or lines below their titles. Header, Footer, and the File analysis summary also omit outer
+outlines. The gaps between panels remain draggable: their resize line appears on hover and stays
+highlighted during a drag, then disappears when idle. Panel-location and drag-target highlights
+still appear when needed. Input fields retain their
+existing boundary cues. Hover colours are generated as opaque colours; disabled controls retain
+their reduced opacity. These interaction rules do not add Theme Editor settings.
+
 Imports and edits from another workbench refresh the Theme Library without replacing this
 workbench's applied Theme. Switch away and select the Theme again to apply its updated version.
 While the Theme editor is open, your unsaved draft remains visible; external changes mark an

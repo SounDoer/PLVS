@@ -69,7 +69,7 @@ function renderMenu(props = {}) {
 describe("FileAnalysisHistoryMenu", () => {
   it("keeps the trigger surface opaque", () => {
     expect(source).toContain("bg-secondary");
-    expect(source).toContain("hover:bg-muted");
+    expect(source).toContain("hover:bg-[color:var(--ui-secondary-hover)]");
     expect(source).not.toContain("--surface-opacity");
   });
 

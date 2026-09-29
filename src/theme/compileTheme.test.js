@@ -7,7 +7,7 @@ import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
 function authoringTheme(overrides = {}) {
   return {
     formatVersion: 2,
-    semanticsVersion: 2,
+    semanticsVersion: 3,
     id: "test-theme",
     name: "Test Theme",
     colorScheme: "dark",
@@ -100,7 +100,7 @@ describe("compileTheme", () => {
   });
 
   it.each(["dark", "light"])(
-    "derives an opaque %s Grid from the resolved Panel Surface 8% toward Border",
+    "derives an opaque %s Grid independently from Border",
     (colorScheme) => {
       const resolved = compileTheme(
         authoringTheme({
@@ -112,12 +112,17 @@ describe("compileTheme", () => {
         })
       );
 
-      expect(resolved.roles["data.grid"]).toBe("#141414");
-      expect(resolved.roles["loudness.grid"]).toBe("#141414");
-      expect(resolved.roles["spectrum.grid"]).toBe("#141414");
-      expect(resolved.roles["spectrogram.grid"]).toBe("#141414");
-      expect(resolved.roles["stereoMap.grid"]).toBe("#141414");
-      expect(resolved.roles["vectorscope.guides"]).toBe("#141414");
+      const expected = colorScheme === "dark" ? "#141414" : "#000000";
+      for (const role of [
+        "data.grid",
+        "loudness.grid",
+        "spectrum.grid",
+        "spectrogram.grid",
+        "stereoMap.grid",
+        "vectorscope.guides",
+      ]) {
+        expect(resolved.roles[role]).toBe(expected);
+      }
     }
   );
 
@@ -272,17 +277,15 @@ describe("compileTheme", () => {
     ]);
   });
 
-  it("keeps effect opacity separate from its source color", () => {
+  it("shares an opaque Border between ordinary and input controls", () => {
     const resolved = compileTheme(authoringTheme());
 
-    expect(resolved.roles["interface.border.default"]).toEqual({
-      color: "#ffffff",
-      opacity: 0.09,
-    });
-    expect(resolved.css["--border"]).toBe("rgba(255, 255, 255, 0.09)");
+    expect(resolved.roles["interface.border.default"]).toBe("#2a2a2a");
+    expect(resolved.css["--border"]).toBe("#2a2a2a");
+    expect(resolved.css["--input"]).toBe(resolved.css["--border"]);
   });
 
-  it("preserves compiler-owned opacity for a color override on an effect role", () => {
+  it("publishes the exact authored Border colour without changing Grid", () => {
     const resolved = compileTheme(
       authoringTheme({
         overrides: {
@@ -291,10 +294,20 @@ describe("compileTheme", () => {
       })
     );
 
-    expect(resolved.roles["interface.border.default"]).toEqual({
-      color: "#112233",
-      opacity: 0.09,
-    });
+    expect(resolved.css["--border"]).toBe("#112233");
+    expect(resolved.css["--input"]).toBe("#112233");
+    expect(resolved.roles["data.grid"]).toBe(compileTheme(authoringTheme()).roles["data.grid"]);
+  });
+
+  it("retains compiler-owned Shadow opacity when its colour is customized", () => {
+    const resolved = compileTheme(
+      authoringTheme({
+        overrides: {
+          "interface.shadow": { kind: "color", value: "#112233" },
+        },
+      })
+    );
+    expect(resolved.roles["interface.shadow"]).toEqual({ color: "#112233", opacity: 0.5 });
   });
 
   it("refuses a recipe result that does not match its registered value kind", () => {

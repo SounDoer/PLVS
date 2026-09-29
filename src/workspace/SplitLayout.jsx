@@ -241,7 +241,7 @@ function SplitDivider({
     >
       <div
         className={cn(
-          "bg-border transition-colors group-hover:bg-primary/70 group-active:bg-primary group-data-[snapped=true]:bg-primary",
+          "bg-transparent transition-colors group-hover:bg-primary/70 group-active:bg-primary group-data-[snapped=true]:bg-primary",
           isH ? "h-full w-px" : "h-px w-full"
         )}
       />

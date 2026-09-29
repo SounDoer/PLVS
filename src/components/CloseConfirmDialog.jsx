@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 
 const SELECT_TRIGGER_CLASS =
-  "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:border-border hover:bg-muted/50";
+  "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:border-border hover:bg-ui-hover";
 
 const SELECT_CONTENT_CLASS =
   "border-border min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
@@ -98,7 +98,7 @@ export function CloseConfirmDialog({
               type="button"
               onClick={handleCancel}
               disabled={busy}
-              className="rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-muted/50"
+              className="rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-ui-hover"
             >
               Cancel
             </button>

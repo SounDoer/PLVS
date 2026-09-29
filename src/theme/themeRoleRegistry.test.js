@@ -41,10 +41,7 @@ describe("Theme Role Registry", () => {
   });
 
   it("keeps optional Grid roles distinct from always-visible Vectorscope Guides", () => {
-    expect(getThemeRole("data.grid").dependencies).toEqual([
-      "interface.border.default",
-      "interface.surface.panel",
-    ]);
+    expect(getThemeRole("data.grid").dependencies).toEqual(["interface.surface.panel"]);
     expect(getThemeRole("vectorscope.guides")).toMatchObject({
       bindings: {
         css: ["--ui-vectorscope-guides-stroke"],
@@ -177,7 +174,7 @@ describe("Theme Role Registry", () => {
       }),
       testRole("effect", {
         valueKind: "solidColor",
-        recipe: "border",
+        recipe: "shadow",
         dependencies: ["consumer", "consumer"],
       }),
     ]);
@@ -185,7 +182,7 @@ describe("Theme Role Registry", () => {
     expect(errors).toContain(
       "Recipe surface-panel cannot consume colorScale, colorScale for consumer."
     );
-    expect(errors).toContain("Recipe border outputs colorEffect, not solidColor, for effect.");
+    expect(errors).toContain("Recipe shadow outputs colorEffect, not solidColor, for effect.");
   });
 
   it("reports malformed Advanced metadata and duplicate bindings", () => {

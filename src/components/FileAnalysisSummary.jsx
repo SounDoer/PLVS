@@ -43,7 +43,7 @@ export function FileAnalysisSummary({
   return (
     <section
       className={cn(
-        "flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-border bg-[color:var(--ui-surface-panel)] py-2 text-[length:var(--ui-fs-body)] text-popover-foreground",
+        "flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 bg-[color:var(--ui-surface-panel)] py-2 text-[length:var(--ui-fs-body)] text-popover-foreground",
         SHELL_SURFACE_BASE
       )}
     >
@@ -123,7 +123,7 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
             "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 text-[length:var(--ui-fs-control)] font-medium transition-colors",
             copied
               ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]"
-              : "bg-secondary text-secondary-foreground hover:bg-muted"
+              : "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)]"
           )}
         >
           <Icon className="size-[1.15em]" aria-hidden="true" />
@@ -147,7 +147,7 @@ function MenuItem({ onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-control)] text-foreground transition-colors hover:bg-muted/50"
+      className="flex w-full items-center rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-control)] text-foreground transition-colors hover:bg-ui-hover"
     >
       {children}
     </button>

@@ -11,26 +11,26 @@ export const SHELL_INNER =
 export const SHELL_INNER_FOCUS =
   "relative flex min-h-0 w-full flex-1 select-none flex-col p-[var(--ui-shell-pad)]";
 
-export const SHELL_SURFACE_BASE = "rounded-md border px-[var(--ui-header-pad-x)]";
+export const SHELL_SURFACE_BASE = "rounded-md px-[var(--ui-header-pad-x)]";
 
-export const SHELL_HEADER = `flex shrink-0 items-center gap-3 border-border bg-[color:var(--ui-surface-panel)] py-[var(--ui-header-pad-y)] z-10 ${SHELL_SURFACE_BASE}`;
+export const SHELL_HEADER = `flex shrink-0 items-center gap-3 bg-[color:var(--ui-surface-panel)] py-[var(--ui-header-pad-y)] z-10 ${SHELL_SURFACE_BASE}`;
 
-export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 border-border bg-popover py-[var(--ui-header-pad-y)] shadow-raised z-30 ${SHELL_SURFACE_BASE}`;
+export const SHELL_HEADER_OVERLAY = `absolute left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] top-[var(--ui-shell-pad)] flex shrink-0 items-center gap-3 bg-popover py-[var(--ui-header-pad-y)] shadow-raised z-30 ${SHELL_SURFACE_BASE}`;
 
 export const SHELL_HEADER_ACTIONS = "flex items-center gap-[var(--ui-header-action-gap)]";
 
 export const SHELL_FOOTER =
-  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-[color:var(--ui-surface-panel)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground";
+  "flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md bg-[color:var(--ui-surface-panel)] px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground";
 
 export const SHELL_FOOTER_OVERLAY =
-  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md border border-border bg-popover px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-raised z-30";
+  "absolute bottom-[var(--ui-shell-pad)] left-[var(--ui-shell-pad)] right-[var(--ui-shell-pad)] flex shrink-0 overflow-hidden items-center gap-x-2 rounded-md bg-popover px-[var(--ui-footer-pad-x)] py-[var(--ui-footer-pad-y)] text-[length:var(--ui-fs-status)] leading-[1.35] text-muted-foreground shadow-raised z-30";
 
 export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3 cursor-move";
 
 export const SHELL_BOTTOM_REVEAL_HOT_ZONE = "absolute bottom-0 left-0 right-0 z-20 h-3";
 
 export const PANEL_HEADER_BAR =
-  "@container relative flex h-7 shrink-0 items-center gap-0.5 border-b border-border px-1 text-[length:var(--ui-fs-control)] font-medium";
+  "@container relative flex h-7 shrink-0 items-center gap-0.5 px-1 text-[length:var(--ui-fs-control)] font-medium";
 
 export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
 

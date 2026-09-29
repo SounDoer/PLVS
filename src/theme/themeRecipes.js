@@ -1,4 +1,5 @@
 import { relativeLuminance } from "./colorMetrics.js";
+import { mixOpaqueColors as mixHex } from "./colorMix.js";
 import { hexToOklch, oklchToHex, transform } from "./colorTransform.js";
 
 export const THEME_VALUE_KINDS = Object.freeze({
@@ -26,12 +27,6 @@ function channelsHex(channels) {
   return `#${channels.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`;
 }
 
-function mixHex(from, to, amount) {
-  const a = hexChannels(from);
-  const b = hexChannels(to);
-  return channelsHex(a.map((value, index) => value + (b[index] - value) * amount));
-}
-
 function transformHex(hex, delta) {
   return oklchToHex(transform(hexToOklch(hex), delta));
 }
@@ -42,10 +37,6 @@ function desaturate(hex) {
 
 function effect(color, opacity) {
   return { color, opacity };
-}
-
-function colorOf(value) {
-  return typeof value === "string" ? value : value.color;
 }
 
 const SOLID = THEME_VALUE_KINDS.SOLID_COLOR;
@@ -82,14 +73,12 @@ export const THEME_RECIPES = Object.freeze({
   "text-annotation": recipe([[SOLID, SOLID]], SOLID, ([text, surface]) =>
     mixHex(surface, text, 0.7)
   ),
-  border: recipe([[SOLID, SOLID]], EFFECT, (_dependencies, context) =>
-    effect(
+  border: recipe([[SOLID]], SOLID, ([surface], context) =>
+    mixHex(
+      surface,
       context.colorScheme === "dark" ? "#ffffff" : "#000000",
       context.colorScheme === "dark" ? 0.09 : 0.1
     )
-  ),
-  "input-border": recipe([[EFFECT, SOLID]], EFFECT, (_dependencies, context) =>
-    effect(context.colorScheme === "dark" ? "#ffffff" : "#000000", 0.14)
   ),
   "focus-ring": recipe([[SOLID, SOLID]], SOLID, ([accent]) => accent),
   shadow: recipe([[SOLID, SOLID]], EFFECT, ([workspace, text], context) =>
@@ -108,8 +97,8 @@ export const THEME_RECIPES = Object.freeze({
   selection: recipe([[SOLID, SOLID]], SOLID, ([source], context) =>
     transformHex(source, SNAP[context.colorScheme])
   ),
-  grid: recipe([[EFFECT, SOLID]], SOLID, ([border, surface]) =>
-    mixHex(surface, colorOf(border), 0.08)
+  grid: recipe([[SOLID]], SOLID, ([surface], context) =>
+    mixHex(surface, context.colorScheme === "dark" ? "#ffffff" : "#000000", 0.08)
   ),
   "frequency-neutral": recipe([[SOLID, SOLID, SOLID, SOLID]], SOLID, ([surface, low, mid, high]) =>
     mixHex(

@@ -200,7 +200,7 @@ export function ItemPickerDialog({
                 <ul className="flex flex-col gap-0.5">
                   {items.map((item) => (
                     <li key={item.id}>
-                      <label className="flex items-center gap-2 rounded-md px-1 py-1 text-[length:var(--ui-fs-control)] hover:bg-muted/50">
+                      <label className="flex items-center gap-2 rounded-md px-1 py-1 text-[length:var(--ui-fs-control)] hover:bg-ui-hover">
                         <input
                           type="checkbox"
                           aria-label={item.name}

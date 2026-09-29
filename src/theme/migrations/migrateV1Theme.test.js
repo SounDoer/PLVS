@@ -12,7 +12,12 @@ import {
   normalizeThemeDocument,
 } from "./migrateV1Theme.js";
 
-const REVIEWED_REPLACEMENTS = new Set(["--ui-loudness-grid", "--ui-vectorscope-guides-stroke"]);
+const REVIEWED_REPLACEMENTS = new Set([
+  "--ui-loudness-grid",
+  "--ui-vectorscope-guides-stroke",
+  "--border",
+  "--input",
+]);
 
 function legacy(id = "custom-test", builtin = "plvs-dark") {
   return makeCustomThemeFromBase(BUILTIN_THEMES[builtin], "Legacy", () => id);
@@ -31,11 +36,13 @@ describe("migrateV1Theme", () => {
       expect(value, binding).toBe(before[binding]);
     }
     const resolved = compileTheme(migrated);
+    expect(after["--border"]).toBe(builtin === "plvs-dark" ? "#2a2a2a" : "#ddd9d6");
+    expect(after["--input"]).toBe(after["--border"]);
     expect(resolved.canvas["spectrogram.ink"]).toBe(before["--muted-foreground"]);
     expect(resolved.canvas["spectrogram.surfaceInk"]).toBe(before["--foreground"]);
   });
 
-  it("migrates effect colors while returning opacity ownership to the compiler", () => {
+  it("flattens the former compiler-owned border effect and unifies input borders", () => {
     const oldTheme = legacy();
     oldTheme.semantic.border = "oklch(0.5 0.1 30 / 23%)";
     oldTheme.semantic.input = "oklch(0.8 0.05 200 / 41%)";
@@ -43,8 +50,8 @@ describe("migrateV1Theme", () => {
     const before = resolveV1Theme(oldTheme).css;
     const after = compileTheme(migrated).css;
 
-    expect(after["--border"]).toBe("rgba(148, 75, 64, 0.09)");
-    expect(after["--input"]).toBe("rgba(255, 255, 255, 0.14)");
+    expect(after["--border"]).toBe("#201a19");
+    expect(after["--input"]).toBe("#201a19");
     expect(after["--border"]).not.toBe(before["--border"]);
     expect(after["--input"]).not.toBe(before["--input"]);
   });
@@ -80,7 +87,7 @@ describe("migrateV1Theme", () => {
 
     const migrated = migrateThemeDocument(semantics1);
     expect(migrated?.theme).toMatchObject({
-      semanticsVersion: 2,
+      semanticsVersion: 3,
       overrides: { "vectorscope.guides": { kind: "color", value: "#123456" } },
     });
     expect(migrated?.theme.overrides).not.toHaveProperty("vectorscope.grid");
@@ -109,7 +116,7 @@ describe("migrateV1Theme", () => {
 
     expect(migrateV2Theme(old)).toMatchObject({
       formatVersion: 2,
-      semanticsVersion: 2,
+      semanticsVersion: 3,
       palettes: {
         status: { safe: current.palettes.status.safe },
         interface: {

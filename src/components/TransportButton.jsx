@@ -9,13 +9,13 @@ const STATE_CONFIG = {
   },
   live: {
     className:
-      "border border-border bg-secondary text-[color:var(--ui-activity-live)] hover:bg-muted/50",
+      "border border-border bg-secondary text-[color:var(--ui-activity-live)] hover:bg-ui-hover",
     Icon: Square,
     label: "STOP",
   },
   snapshot: {
     className:
-      "border border-border bg-secondary text-[color:var(--ui-activity-snapshot)] hover:bg-muted/50",
+      "border border-border bg-secondary text-[color:var(--ui-activity-snapshot)] hover:bg-ui-hover",
     Icon: Radio,
     label: "LIVE",
   },

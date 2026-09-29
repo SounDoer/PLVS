@@ -208,7 +208,7 @@ First-paint flow (`src/main.jsx`):
 
 1. Read `appearance` (`system`|`fixed`) and `themeId` through `settingsStore` (under Tauri, Rust pre-injects `window.__PLVS_INITIAL_STATE__`; the browser dev environment uses `localStorage`)
 2. `resolveThemeId` (with `prefers-color-scheme`) → current `themeId`
-3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 2`, `semanticsVersion: 2`)
+3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 2`, `semanticsVersion: 3`)
 4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
 5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles layout, font size, geometry, and non-Theme product tuning
 
@@ -236,6 +236,15 @@ its own roles. Visual Review and Theme Gallery share the final-role contrast and
 from `themeVisualAnalysis.js`, rather than checking only the upstream Core colours. These findings
 remain advisory. The current built-in output snapshots are independent of frozen V1 migration
 fixtures; changing a default design does not rewrite compatibility history.
+
+Semantics 3 makes ordinary Border opaque, aliases Input Border to it, and derives Grid from Panel
+Surface independently. Semantics 2 documents migrate at the existing persistence/import ingress:
+authored Border colours are flattened using their former scheme alpha against resolved Panel
+Surface; inherited module Grid colours are retained as explicit overrides. Existing module Grid
+overrides and references survive. No opacity or separate input-border authoring control is added.
+Portable themes retain format 1 and now emit semantics 3; readable semantics 1 and 2 are migrated.
+See [ADR 0017](adr/0017-opaque-interface-borders-and-independent-grids.md) for the authoring boundary
+and the limits of appearance preservation across backgrounds.
 
 Theme colour roles resolve to opaque colours. A small set of bounded numeric roles may separately
 control Theme-owned visual composition without changing those identity colours (ADR 0011). The

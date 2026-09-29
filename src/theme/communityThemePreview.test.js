@@ -34,7 +34,7 @@ describe("community Theme preview contract", () => {
         contentHash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
         colorScheme: "dark",
         formatVersion: 1,
-        semanticsVersion: 2,
+        semanticsVersion: 3,
         document: expect.objectContaining({ kind: "plvs-theme", name: "Community Preview" }),
       },
       communityPublication: { eligible: true, blockers: [] },

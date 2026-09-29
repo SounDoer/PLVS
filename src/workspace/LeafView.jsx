@@ -45,7 +45,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
         "group flex items-center rounded-t-xs transition-colors",
         isActive
           ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+          : "text-muted-foreground hover:text-foreground hover:bg-ui-hover",
         isSourceTab && "opacity-35"
       )}
     >
@@ -255,9 +255,9 @@ export function LeafView({ node, path, style }) {
       data-visual-panel-id={activeTab}
       data-visual-capture-ready={activeTab ? "true" : undefined}
       className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden rounded-md border border-border transition-[border-color,box-shadow] duration-150",
+        "relative flex min-h-0 flex-col overflow-hidden rounded-md transition-shadow duration-150",
         PANEL_SURFACE_CLASS,
-        isPanelHoverHighlighted && "border-primary/70 ring-2 ring-primary/60 ring-offset-0",
+        isPanelHoverHighlighted && "ring-2 ring-primary/60 ring-offset-0",
         isDragging &&
           (zoneHint === "above" || zoneHint === "below") &&
           "ring-2 ring-primary ring-offset-0",

@@ -11,16 +11,16 @@ const CHROME = {
   },
   live: {
     shell:
-      "border border-[color:color-mix(in_srgb,var(--ui-activity-live)_50%,var(--secondary))] bg-[color:color-mix(in_srgb,var(--ui-activity-live)_10%,var(--secondary))] text-[color:var(--ui-activity-live)]",
+      "border border-[color:var(--ui-live-border)] bg-[color:var(--ui-live-surface)] text-[color:var(--ui-activity-live)]",
     action:
-      "bg-[color:color-mix(in_srgb,var(--ui-activity-live)_24%,var(--secondary))] text-[color:var(--ui-activity-live)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-live)_36%,var(--secondary))]",
+      "bg-[color:var(--ui-live-active)] text-[color:var(--ui-activity-live)] hover:bg-[color:var(--ui-live-hover)]",
     Icon: Square,
   },
   snapshot: {
     shell:
-      "border border-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_50%,var(--secondary))] bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_10%,var(--secondary))] text-[color:var(--ui-activity-snapshot)]",
+      "border border-[color:var(--ui-snapshot-border)] bg-[color:var(--ui-snapshot-surface)] text-[color:var(--ui-activity-snapshot)]",
     action:
-      "bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_24%,var(--secondary))] text-[color:var(--ui-activity-snapshot)] hover:bg-[color:color-mix(in_srgb,var(--ui-activity-snapshot)_36%,var(--secondary))]",
+      "bg-[color:var(--ui-snapshot-active)] text-[color:var(--ui-activity-snapshot)] hover:bg-[color:var(--ui-snapshot-hover)]",
     Icon: Radio,
   },
 };
@@ -78,7 +78,7 @@ export function SourceTransportCluster({
               ref={triggerRef}
               type="button"
               aria-label={`Source: ${state.sourceLabel}`}
-              className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-muted/50"
+              className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-ui-hover"
             >
               {state.sourceLabel}
               <ChevronDown className="size-[1em]" />
@@ -102,7 +102,7 @@ export function SourceTransportCluster({
                   setOpen(false);
                   if (option.id !== sourceMode) onSourceModeChange(option.id);
                 }}
-                className="flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] transition-colors hover:bg-muted/50"
+                className="flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] transition-colors hover:bg-ui-hover"
               >
                 <span
                   aria-hidden="true"

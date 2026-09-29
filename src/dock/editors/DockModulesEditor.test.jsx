@@ -181,7 +181,7 @@ describe("DockModulesEditor", () => {
     const actions = screen.getByRole("button", { name: "Rename Spectrum" }).closest("span");
 
     expect(row.className).toContain("py-1.5");
-    expect(row.className).toContain("focus-within:bg-muted/50");
+    expect(row.className).toContain("focus-within:bg-ui-hover");
     expect(actions?.className).toContain("group-hover:opacity-100");
     expect(actions?.className).toContain("group-focus-within:opacity-100");
   });
