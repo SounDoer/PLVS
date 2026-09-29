@@ -1,10 +1,9 @@
-import { oklchSafe } from "../theme/shadcnSemanticPreset.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
 import { UI_PREFERENCES } from "./data.js";
 
 function setCssVar(name, value) {
   if (value === undefined || value === null) return;
-  document.documentElement.style.setProperty(name, String(oklchSafe(value)));
+  document.documentElement.style.setProperty(name, String(value));
 }
 
 /**

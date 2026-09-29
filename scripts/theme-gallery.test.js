@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { compileTheme } from "../src/theme/compileTheme.js";
+import { analyzeThemeVisuals } from "../src/theme/themeVisualAnalysis.js";
+import { rgbaCssValue } from "../src/theme/themeRecipes.js";
 import { COMMUNITY_THEME_PREVIEW_ASSETS } from "../src/theme/communityThemePreview.js";
 import {
   buildSemanticGallerySvg,
@@ -76,7 +78,9 @@ describe("Theme Gallery", () => {
       expect(svg).toContain(`width="${manifest.semantic.width}"`);
       expect(svg).toContain("Semantic Gallery");
       expect(svg).toContain(resolved.roles["core.primaryData"]);
+      expect(svg).toContain(`stroke="${rgbaCssValue(resolved.roles["interface.border.default"])}"`);
       const metrics = buildSemanticMetrics(themeId, resolved);
+      expect(metrics.visualReview).toEqual(analyzeThemeVisuals(BUILTIN_THEMES_V2[themeId]));
       expect(metrics.contrast.length).toBeGreaterThan(5);
       expect(metrics.distinction.length).toBeGreaterThan(25);
       expect(
@@ -86,6 +90,22 @@ describe("Theme Gallery", () => {
         metrics.distinction.every(({ target, pass }) => target > 0 && typeof pass === "boolean")
       ).toBe(true);
     }
+  });
+
+  it("reports the same overridden module pair in Gallery metrics and editor review", () => {
+    const theme = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+    theme.overrides["waveform.snapshot"] = { kind: "reference", source: "core.primaryData" };
+    const metrics = buildSemanticMetrics(theme.id, compileTheme(theme));
+    expect(metrics.distinction).toContainEqual(
+      expect.objectContaining({
+        first: "waveform.trace",
+        second: "waveform.snapshot",
+        mode: "normal",
+        distance: 0,
+        pass: false,
+      })
+    );
+    expect(metrics.visualReview).toEqual(analyzeThemeVisuals(theme));
   });
 
   it("simulates supported color-vision modes deterministically", () => {

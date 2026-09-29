@@ -5,9 +5,8 @@
 @import "./generated/theme-fallbacks.css";
 @import "./dock/dockTokens.css";
 
-/* Runtime: `applyLayoutToDocument` / `applyThemeToDocument` inject `--ui-*`; Tailwind `chart-*` maps to `--chart-*`
- * from the active theme semantic (`applyShadcnSemanticTokensToDocument`). Theme id: `html[data-theme]`.
- */
+/* Runtime: themeRuntime publishes compiled CSS tokens; applyLayoutToDocument owns geometry.
+ * Theme id: html[data-theme]. */
 
 @theme inline {
   --color-background: var(--background);
@@ -38,12 +37,6 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-
   /* Radius ladder -- see design-tokens.md. Only xs / md / xl are in use: items
      and small controls, surfaces and standard controls, floating windows. sm and
      lg stay defined because dropping them would hand those utilities back to
@@ -64,13 +57,17 @@
   --ui-surface-workspace: color-mix(in srgb, var(--background) var(--surface-opacity), transparent);
   --ui-surface-panel: color-mix(in srgb, var(--card) var(--surface-opacity), transparent);
   --ui-surface-dock: color-mix(in srgb, var(--popover) var(--surface-opacity), transparent);
-  --ui-primary-hover: color-mix(in srgb, var(--primary) 90%, var(--foreground));
-  --ui-destructive-hover: color-mix(in srgb, var(--destructive) 90%, var(--foreground));
-  --ui-secondary-hover: color-mix(in srgb, var(--secondary) 88%, var(--foreground));
 
   --ui-font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-family: var(--ui-font-sans, Inter, system-ui, sans-serif);
+}
+
+:root,
+.theme-preview {
+  --ui-primary-hover: color-mix(in srgb, var(--primary) 90%, var(--foreground));
+  --ui-destructive-hover: color-mix(in srgb, var(--destructive) 90%, var(--foreground));
+  --ui-secondary-hover: color-mix(in srgb, var(--secondary) 88%, var(--foreground));
 }
 
 html {

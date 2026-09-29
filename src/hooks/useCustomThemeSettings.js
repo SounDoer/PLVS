@@ -152,6 +152,8 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
   );
 
   const editor = useThemeEditor({
+    publish: themeSettings.setPreviewTheme,
+    onFinish: themeSettings.finishThemePreview,
     activeTheme:
       BUILTIN_THEMES_V2[themeSettings.resolvedThemeId] ??
       listCustomThemeDocuments()[themeSettings.resolvedThemeId] ??

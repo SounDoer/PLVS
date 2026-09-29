@@ -224,6 +224,19 @@ First-paint flow (`src/main.jsx`):
 
 First-paint placeholder variables are written by `npm run theme:generate` to `src/generated/theme-fallbacks.css` (from the same source as the default dark semantics).
 
+The Theme settings owner distinguishes the shared Library, the workbench's applied document
+snapshot, and a temporary editor preview. Peer Library refreshes update the list without replacing
+the applied snapshot or the preview. Local saves update the applied snapshot; selection changes
+resolve a new one. Save/Cancel releases the preview, and Cancel restores the applied selection even
+when the editor was previewing an unselected Library item. The effective document also supplies the
+native appearance, so a draft's Dark/Light change follows the same publication lifecycle.
+
+Ordinary surface content inherits `interface.text.primary`; content on solid semantic actions has
+its own roles. Visual Review and Theme Gallery share the final-role contrast and separation checks
+from `themeVisualAnalysis.js`, rather than checking only the upstream Core colours. These findings
+remain advisory. The current built-in output snapshots are independent of frozen V1 migration
+fixtures; changing a default design does not rewrite compatibility history.
+
 Theme colour roles resolve to opaque colours. A small set of bounded numeric roles may separately
 control Theme-owned visual composition without changing those identity colours (ADR 0011). The
 separate View setting `surfaceOpacity` publishes

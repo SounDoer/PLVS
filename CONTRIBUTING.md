@@ -153,6 +153,49 @@ npm run smoke:capture         # real capture smoke test; needs VB-Cable and VLC 
 npm run soak:capture          # long capture run, 4 hours by default; the only check that finds leaks and metric drift
 ```
 
+## Theme design review
+
+Capture a baseline before changing built-in colours or renderer composition:
+
+```bash
+npm run theme:gallery:semantic -- --out-dir artifacts/theme-gallery/before-semantic
+npm run desktop
+# In a second terminal, with a stopped, empty Live workbench containing all eight modules:
+npm run theme:gallery:product -- --out-dir artifacts/theme-gallery/before-product
+```
+
+Repeat into separate `after-*` directories. Keep the same window bounds, interface size, display
+scale, and panel settings. The product runner analyzes a deterministic stereo file, captures both
+themes at 100% Surface Opacity, and restores selection, source, axes, and every panel control it
+changes. Each theme starts from the same panel controls and axes. The manifest includes classic
+Waveform fill and Stereo Map Position/M/S fill examples in addition to the ordinary panel scenes.
+The semantic report and the editor share final-role visual checks; warnings are review aids, not
+publication gates. Semantic borders retain their compiled alpha.
+
+The report's `focusedMatrix` entries start as `notCaptured`, with no evidence. They are a checklist,
+not proof that those conditions were tested. Record screenshot paths and observations separately
+for the conditions relevant to the design:
+
+| Surface | Conditions |
+| --- | --- |
+| Theme Preview | Overview controls, hover, disabled/selected controls, Modules fills, Visual Review links |
+| Actual menus and editors | Popover, Settings, Theme Editor, modal surface and text hierarchy |
+| Workspace | Narrow/wide panels, Live/Snapshot distinction, mono/stereo/high channel counts |
+| Dock | Live source, 56/82/160 CSS px; capture `main` after each acknowledged Dock transition |
+| Native composition | Supported OS/display scales, Glass and Surface Opacity, hide-chrome/fullscreen |
+
+Use Agent Control for desktop captures and compare pixel values for changed renderers. The Theme
+Preview is illustrative and cannot replace real panel screenshots. Dock cannot enter from File
+mode: restore Live first, preserve the existing capture state, and restore the original Dock height
+and enabled state when finished. Do not claim a platform or data mode was tested from a different
+one's screenshot.
+
+Current default-theme output lives in `builtinThemesV2.test.js` snapshots. Update those snapshots
+only after reviewing an intentional design change. Frozen V1 fixtures and migration tests are a
+separate compatibility contract and must not be rewritten to match the new defaults. Built-in
+themes still author no Advanced overrides; a shared recipe change also affects custom themes
+using Auto and needs corresponding compatibility review.
+
 ## Version numbers
 
 When releasing or bumping the version, change all of these together (and keep them identical):

@@ -13,7 +13,10 @@
     "simulations": ["protanopia", "deuteranopia", "tritanopia", "grayscale"]
   },
   "product": {
-    "compositor": { "mode": "opaque-baseline", "surfaceOpacity": 100 },
+    "compositor": {
+      "mode": "opaque-baseline",
+      "surfaceOpacity": 100
+    },
     "themes": ["plvs-dark", "plvs-light"],
     "requiredModules": [
       "levelMeter",
@@ -78,7 +81,9 @@
         "state": "file",
         "target": "panel",
         "panelId": "spectrogram",
-        "panelPatch": { "mode": "heatmap" },
+        "panelPatch": {
+          "mode": "heatmap"
+        },
         "covers": ["spectrogram", "heatmap", "intensity"]
       },
       {
@@ -86,7 +91,12 @@
         "state": "file",
         "target": "panel",
         "panelId": "spectrogram",
-        "panelPatch": { "mode": "lines", "threeD": { "colorize": true } },
+        "panelPatch": {
+          "mode": "lines",
+          "threeD": {
+            "colorize": true
+          }
+        },
         "covers": ["spectrogram", "3d-lines", "intensity", "grid", "axis-labels"]
       },
       {
@@ -94,7 +104,12 @@
         "state": "file",
         "target": "panel",
         "panelId": "spectrogram",
-        "panelPatch": { "mode": "surface", "threeD": { "colorize": false } },
+        "panelPatch": {
+          "mode": "surface",
+          "threeD": {
+            "colorize": false
+          }
+        },
         "covers": ["spectrogram", "3d-surface", "monochrome", "grid-subdivisions"]
       },
       {
@@ -102,7 +117,13 @@
         "state": "file",
         "target": "panel",
         "panelId": "loudness",
-        "axisPatch": { "kind": "time", "range": { "windowSec": 8, "offsetSec": 3 } },
+        "axisPatch": {
+          "kind": "time",
+          "range": {
+            "windowSec": 8,
+            "offsetSec": 3
+          }
+        },
         "covers": ["loudness", "snapshot", "selection", "history"]
       },
       {
@@ -110,8 +131,16 @@
         "state": "file",
         "target": "panel",
         "panelId": "spectrogram",
-        "axisPatch": { "kind": "time", "range": { "windowSec": 8, "offsetSec": 3 } },
-        "panelPatch": { "mode": "heatmap" },
+        "axisPatch": {
+          "kind": "time",
+          "range": {
+            "windowSec": 8,
+            "offsetSec": 3
+          }
+        },
+        "panelPatch": {
+          "mode": "heatmap"
+        },
         "covers": ["spectrogram", "snapshot", "selection", "history"]
       },
       {
@@ -119,7 +148,13 @@
         "state": "file",
         "target": "panel",
         "panelId": "waveform",
-        "axisPatch": { "kind": "time", "range": { "windowSec": 8, "offsetSec": 3 } },
+        "axisPatch": {
+          "kind": "time",
+          "range": {
+            "windowSec": 8,
+            "offsetSec": 3
+          }
+        },
         "covers": ["waveform", "snapshot", "selection", "history"]
       },
       {
@@ -127,8 +162,18 @@
         "state": "file",
         "target": "panel",
         "panelId": "waveform",
-        "axisPatch": { "kind": "time", "range": { "windowSec": 15, "offsetSec": 0 } },
-        "covers": ["waveform", "frequency", "centroid"]
+        "axisPatch": {
+          "kind": "time",
+          "range": {
+            "windowSec": 15,
+            "offsetSec": 0
+          }
+        },
+        "covers": ["waveform", "frequency", "centroid"],
+        "panelPatch": {
+          "frequencyColor": true,
+          "centroid": true
+        }
       },
       {
         "id": "stereo-map-file",
@@ -136,6 +181,50 @@
         "target": "panel",
         "panelId": "stereo-map",
         "covers": ["stereo-map", "primary", "secondary", "grid"]
+      },
+      {
+        "id": "waveform-classic-fill",
+        "state": "file",
+        "target": "panel",
+        "panelId": "waveform",
+        "panelPatch": {
+          "frequencyColor": false,
+          "centroid": false
+        },
+        "axisPatch": {
+          "kind": "time",
+          "range": {
+            "windowSec": 15,
+            "offsetSec": 0
+          }
+        },
+        "covers": ["waveform", "classic-fill", "trace"]
+      },
+      {
+        "id": "stereo-map-position-fill",
+        "state": "file",
+        "target": "panel",
+        "panelId": "stereo-map",
+        "panelPatch": {
+          "mode": "position",
+          "grid": {
+            "position": true
+          }
+        },
+        "covers": ["stereo-map", "position", "fill", "grid"]
+      },
+      {
+        "id": "stereo-map-ms-fill",
+        "state": "file",
+        "target": "panel",
+        "panelId": "stereo-map",
+        "panelPatch": {
+          "mode": "msRatioDb",
+          "grid": {
+            "msRatioDb": true
+          }
+        },
+        "covers": ["stereo-map", "mid-side", "fill", "grid"]
       }
     ],
     "focusedMatrix": [

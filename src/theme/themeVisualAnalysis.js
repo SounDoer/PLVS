@@ -1,33 +1,6 @@
 import { compileTheme } from "./compileTheme.js";
-import { hexToOklch } from "./colorTransform.js";
-
-function channels(hex) {
-  const value = Number.parseInt(hex.slice(1), 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-}
-
-function luminance(hex) {
-  const [r, g, b] = channels(hex).map((value) => {
-    const channel = value / 255;
-    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-  return r * 0.2126 + g * 0.7152 + b * 0.0722;
-}
-
-export function themeContrastRatio(a, b) {
-  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-export function themeColorDistance(a, b) {
-  const first = hexToOklch(a);
-  const second = hexToOklch(b);
-  const a1 = first.C * Math.cos((first.H * Math.PI) / 180);
-  const b1 = first.C * Math.sin((first.H * Math.PI) / 180);
-  const a2 = second.C * Math.cos((second.H * Math.PI) / 180);
-  const b2 = second.C * Math.sin((second.H * Math.PI) / 180);
-  return Math.hypot(first.L - second.L, a1 - a2, b1 - b2);
-}
+import { themeContrastRatio, themeColorDistance } from "./colorMetrics.js";
+export { themeContrastRatio, themeColorDistance } from "./colorMetrics.js";
 
 const WCAG_TEXT_CONTRAST = "WCAG 2.2 SC 1.4.3";
 const WCAG_NON_TEXT_CONTRAST = "WCAG 2.2 SC 1.4.11";
@@ -95,14 +68,14 @@ function separationWarning(resolved, first, second, options) {
   });
 }
 
-const CONTRAST_CHECKS = [
+export const THEME_CONTRAST_CHECKS = [
   {
     label: "Primary Text on Panel",
     foreground: "interface.text.primary",
     background: "interface.surface.panel",
     targetRatio: 4.5,
-    target: { page: "core", id: "core.text" },
-    section: "Core",
+    target: { page: "advanced", id: "interface.text.primary" },
+    section: "Interface",
     consumers: ["headings", "values", "body text"],
     standard: WCAG_TEXT_CONTRAST,
   },
@@ -162,30 +135,75 @@ const CONTRAST_CHECKS = [
     },
   ]),
   ...[
-    ["Primary Data", "data.primary", "core.primaryData"],
-    ["Primary Snapshot", "data.snapshot.primary", "waveform.snapshot"],
-    ["Secondary Data", "data.secondary", "core.secondaryData"],
-    ["Secondary Snapshot", "data.snapshot.secondary", "spectrum.secondarySnapshot"],
-  ].map(([label, foreground, targetId]) => ({
-    label: `${label} on Panel`,
+    ["Loudness Momentary", "loudness.momentary"],
+    ["Loudness Short-term", "loudness.shortTerm"],
+    ["Loudness Momentary Snapshot", "loudness.momentarySnapshot"],
+    ["Loudness Short-term Snapshot", "loudness.shortTermSnapshot"],
+    ["Spectrum Primary", "spectrum.primary"],
+    ["Spectrum Secondary", "spectrum.secondary"],
+    ["Spectrum Primary Snapshot", "spectrum.primarySnapshot"],
+    ["Spectrum Secondary Snapshot", "spectrum.secondarySnapshot"],
+    ["Waveform Trace", "waveform.trace"],
+    ["Waveform Snapshot", "waveform.snapshot"],
+    ["Vectorscope Trace", "vectorscope.trace"],
+    ["Vectorscope Snapshot", "vectorscope.snapshot"],
+    ["Stereo Map Primary", "stereoMap.primary"],
+    ["Stereo Map Secondary", "stereoMap.secondary"],
+    ["Stereo Map Primary Snapshot", "stereoMap.primarySnapshot"],
+    ["Stereo Map Secondary Snapshot", "stereoMap.secondarySnapshot"],
+    ["Spectrogram Axis Labels", "spectrogram.axisLabel"],
+    ["Stats Warning Value", "stats.warningValue"],
+    ["Stats Critical Value", "stats.criticalValue"],
+  ].map(([label, foreground]) => ({
+    label: label + " on Panel",
     foreground,
     background: "interface.surface.panel",
-    targetRatio: 3,
-    target: targetFor(targetId),
-    section: targetId.startsWith("core.") ? "Core" : "Modules",
-    consumers: ["essential chart lines", "measurement traces", "small data markers"],
-    standard: WCAG_NON_TEXT_CONTRAST,
+    targetRatio:
+      foreground.startsWith("stats.") || foreground === "spectrogram.axisLabel" ? 4.5 : 3,
+    target: targetFor(foreground),
+    section: "Modules",
+    consumers: [label],
+    standard:
+      foreground.startsWith("stats.") || foreground === "spectrogram.axisLabel"
+        ? WCAG_TEXT_CONTRAST
+        : WCAG_NON_TEXT_CONTRAST,
+  })),
+  ...[
+    ["Workspace", "core.workspace", "interface.text.primary"],
+    ["Raised", "interface.surface.raised", "interface.content.onRaised"],
+    ["Control", "interface.surface.control", "interface.content.onControl"],
+    ["Selected", "interface.surface.selected", "interface.content.onSelected"],
+  ].map(([label, background, foreground]) => ({
+    label: "Primary Text on " + label,
+    foreground,
+    background,
+    targetRatio: 4.5,
+    target: targetFor("interface.text.primary"),
+    section: "Interface",
+    consumers: [label + " content"],
+    standard: WCAG_TEXT_CONTRAST,
   })),
 ];
 
-const SEPARATION_CHECKS = [
-  ["data.primary", "data.snapshot.primary", "Primary Data and Snapshot", "waveform.snapshot"],
-  [
-    "data.secondary",
-    "data.snapshot.secondary",
-    "Secondary Data and Snapshot",
-    "spectrum.secondarySnapshot",
-  ],
+export const THEME_SEPARATION_CHECKS = [
+  ...[
+    ["loudness.momentary", "loudness.momentarySnapshot", "Loudness Momentary and Snapshot"],
+    ["loudness.shortTerm", "loudness.shortTermSnapshot", "Loudness Short-term and Snapshot"],
+    ["spectrum.primary", "spectrum.primarySnapshot", "Spectrum Primary and Snapshot"],
+    ["spectrum.secondary", "spectrum.secondarySnapshot", "Spectrum Secondary and Snapshot"],
+    ["waveform.trace", "waveform.snapshot", "Waveform Trace and Snapshot"],
+    ["vectorscope.trace", "vectorscope.snapshot", "Vectorscope Trace and Snapshot"],
+    ["stereoMap.primary", "stereoMap.primarySnapshot", "Stereo Map Primary and Snapshot"],
+    ["stereoMap.secondary", "stereoMap.secondarySnapshot", "Stereo Map Secondary and Snapshot"],
+    ["spectrum.primary", "spectrum.secondary", "Spectrum Primary and Secondary"],
+    ["stereoMap.primary", "stereoMap.secondary", "Stereo Map Primary and Secondary"],
+    ["waveform.frequencyLow", "waveform.frequencyMid", "Waveform Low and Mid Frequency"],
+    ["waveform.frequencyMid", "waveform.frequencyHigh", "Waveform Mid and High Frequency"],
+    ["level.safe", "level.warning", "Level Safe and Warning"],
+    ["level.warning", "level.critical", "Level Warning and Critical"],
+    ["stereoMap.safeRange", "stereoMap.warningRange", "Stereo Map Safe and Warning"],
+    ["stereoMap.warningRange", "stereoMap.criticalRange", "Stereo Map Warning and Critical"],
+  ].map(([first, second, label]) => [first, second, label, second]),
   [
     "palette.status.safe",
     "palette.status.warning",
@@ -219,10 +237,15 @@ function targetFor(id) {
 }
 
 export function analyzeThemeVisuals(theme) {
-  const resolved = compileTheme(theme);
-  const warnings = CONTRAST_CHECKS.map((spec) => contrastWarning(resolved, spec)).filter(Boolean);
+  return analyzeResolvedThemeVisuals(compileTheme(theme));
+}
 
-  for (const [first, second, label, targetId] of SEPARATION_CHECKS) {
+export function analyzeResolvedThemeVisuals(resolved) {
+  const warnings = THEME_CONTRAST_CHECKS.map((spec) => contrastWarning(resolved, spec)).filter(
+    Boolean
+  );
+
+  for (const [first, second, label, targetId] of THEME_SEPARATION_CHECKS) {
     const target = targetFor(targetId);
     const result = separationWarning(resolved, first, second, {
       label,

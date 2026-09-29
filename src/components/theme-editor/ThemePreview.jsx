@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { compileTheme } from "../../theme/compileTheme.js";
@@ -68,6 +68,23 @@ function OverviewScene() {
           </div>
         </div>
       </PreviewCard>
+      <PreviewCard title="Controls">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm">Primary</Button>
+          <Button size="sm" variant="secondary">
+            Secondary
+          </Button>
+          <Button size="sm" variant="destructive">
+            Delete
+          </Button>
+          <Button size="sm" disabled>
+            Disabled
+          </Button>
+          <Button size="sm" variant="ghost" className="bg-accent text-accent-foreground">
+            Selected
+          </Button>
+        </div>
+      </PreviewCard>
     </div>
   );
 }
@@ -81,7 +98,12 @@ function PreviewGrid({ color }) {
   );
 }
 
-function Trace({ color, secondColor, gridColor }) {
+function Trace({ color, secondColor, gridColor, fillTop = 0, fillBottom = fillTop }) {
+  const id = useId();
+  const traces = [
+    [secondColor, "M0 40 C30 32 40 18 62 30 S100 12 160 26"],
+    [color, "M0 36 C25 35 28 8 48 22 S78 40 92 15 120 34 160 12"],
+  ].filter(([ink]) => ink);
   return (
     <svg
       viewBox="0 0 160 48"
@@ -90,25 +112,23 @@ function Trace({ color, secondColor, gridColor }) {
       data-theme-preview-grid={gridColor ? "" : undefined}
     >
       {gridColor ? <PreviewGrid color={gridColor} /> : null}
-      <path
-        d="M0 36 C25 35 28 8 48 22 S78 40 92 15 120 34 160 12"
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-      />
-      {secondColor ? (
-        <path
-          d="M0 40 C30 32 40 18 62 30 S100 12 160 26"
-          fill="none"
-          stroke={secondColor}
-          strokeWidth="2"
-        />
-      ) : null}
+      {traces.map(([ink, path], index) => (
+        <g key={index}>
+          <defs>
+            <linearGradient id={`${id}-${index}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={ink} stopOpacity={fillTop} />
+              <stop offset="100%" stopColor={ink} stopOpacity={fillBottom} />
+            </linearGradient>
+          </defs>
+          <path d={`${path} L160 48H0Z`} fill={`url(#${id}-${index})`} />
+          <path d={path} fill="none" stroke={ink} strokeWidth="2" />
+        </g>
+      ))}
     </svg>
   );
 }
 
-function ModulesScene({ intensityGradient, gridColors }) {
+function ModulesScene({ intensityGradient, gridColors, resolved }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <PreviewCard title="Level Meter">
@@ -143,6 +163,8 @@ function ModulesScene({ intensityGradient, gridColors }) {
           color="var(--ui-spectrum-primary)"
           secondColor="var(--ui-spectrum-secondary)"
           gridColor="var(--ui-spectrum-grid)"
+          fillTop={resolved.roles["spectrum.fillOpacityTop"]}
+          fillBottom={resolved.roles["spectrum.fillOpacityBottom"]}
         />
       </PreviewCard>
       <PreviewCard title="Spectrogram">
@@ -161,24 +183,27 @@ function ModulesScene({ intensityGradient, gridColors }) {
         </div>
       </PreviewCard>
       <PreviewCard title="Waveform">
-        <div className="flex flex-col gap-2">
-          <div className="h-4 rounded-full bg-[color:var(--ui-waveform-trace)]" />
-          <div className="h-4 rounded-full bg-[color:var(--ui-waveform-trace-snap)]" />
-        </div>
+        <svg viewBox="0 0 160 48" className="h-12 w-full" aria-hidden="true">
+          {["waveform.trace", "waveform.snapshot"].map((role, index) => (
+            <g key={role} transform={`translate(0 ${index * 24})`}>
+              <path
+                d="M0 12L20 9L40 2L60 7L80 4L100 8L120 1L140 7L160 12L140 17L120 23L100 16L80 20L60 17L40 22L20 15Z"
+                fill={resolved.roles[role]}
+                fillOpacity={resolved.roles["waveform.fillOpacity"]}
+                stroke={resolved.roles[role]}
+                strokeWidth="1"
+              />
+            </g>
+          ))}
+        </svg>
       </PreviewCard>
       <PreviewCard title="Stereo Map">
-        <div className="relative flex h-12 items-end justify-center gap-4 overflow-hidden">
-          <svg
-            data-theme-preview-grid=""
-            viewBox="0 0 160 48"
-            className="absolute inset-0 size-full"
-            aria-hidden="true"
-          >
-            <PreviewGrid color={gridColors.stereoMap} />
-          </svg>
-          <span className="h-9 w-5 bg-[color:var(--ui-stereo-map-primary)]" />
-          <span className="h-5 w-5 bg-[color:var(--ui-stereo-map-secondary)]" />
-        </div>
+        <Trace
+          color={resolved.roles["stereoMap.primary"]}
+          secondColor={resolved.roles["stereoMap.secondary"]}
+          gridColor={gridColors.stereoMap}
+          fillTop={resolved.roles["stereoMap.fillOpacity"]}
+        />
       </PreviewCard>
     </div>
   );
@@ -188,7 +213,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
   const [page, setPage] = useState("overview");
   const resolved = useMemo(() => compileTheme(draft), [draft]);
   const visualWarnings = useMemo(() => analyzeThemeVisuals(draft).warnings, [draft]);
-  const style = useMemo(() => Object.fromEntries(Object.entries(resolved.css)), [resolved]);
+  const style = useMemo(() => ({ ...resolved.css, colorScheme: resolved.colorScheme }), [resolved]);
   const intensityGradient = `linear-gradient(to right, ${resolved.roles["palette.intensity.stops"]
     .map((stop) => `${stop.color} ${stop.position * 100}%`)
     .join(", ")})`;
@@ -203,7 +228,7 @@ export function ThemePreview({ draft, onClose, onJump }) {
         <Dialog.Overlay className={`${SCRIM_CLASS} z-[70]`} />
         <Dialog.Content
           aria-label="Theme preview"
-          className="fixed top-1/2 left-1/2 z-[71] flex max-h-[90vh] w-[calc(100%-3rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-modal"
+          className="theme-preview fixed top-1/2 left-1/2 z-[71] flex max-h-[90vh] w-[calc(100%-3rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-modal"
           style={style}
         >
           <header className="flex items-center gap-2 border-b border-border px-4 py-3">
@@ -243,7 +268,11 @@ export function ThemePreview({ draft, onClose, onJump }) {
             {page === "overview" ? (
               <OverviewScene />
             ) : page === "modules" ? (
-              <ModulesScene intensityGradient={intensityGradient} gridColors={gridColors} />
+              <ModulesScene
+                intensityGradient={intensityGradient}
+                gridColors={gridColors}
+                resolved={resolved}
+              />
             ) : (
               <ThemeVisualReview warnings={visualWarnings} onJump={onJump} />
             )}

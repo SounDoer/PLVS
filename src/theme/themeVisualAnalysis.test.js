@@ -8,6 +8,28 @@ import {
 } from "./themeVisualAnalysis.js";
 
 describe("Theme visual analysis", () => {
+  it("checks module overrides and clears the finding when its target is repaired", () => {
+    const theme = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+    theme.overrides["waveform.snapshot"] = { kind: "reference", source: "core.primaryData" };
+    const warningId = "separation:waveform.trace+waveform.snapshot";
+    expect(analyzeThemeVisuals(theme).warnings).toContainEqual(
+      expect.objectContaining({
+        id: warningId,
+        target: { page: "advanced", id: "waveform.snapshot" },
+        metric: expect.objectContaining({ value: 0 }),
+      })
+    );
+    theme.overrides["waveform.snapshot"] = { kind: "color", value: "#ffffff" };
+    expect(analyzeThemeVisuals(theme).warnings.some(({ id }) => id === warningId)).toBe(false);
+    theme.overrides["spectrum.secondary"] = { kind: "color", value: theme.core.surface };
+    expect(analyzeThemeVisuals(theme).warnings).toContainEqual(
+      expect.objectContaining({
+        id: "contrast:spectrum.secondary+interface.surface.panel",
+        target: { page: "advanced", id: "spectrum.secondary" },
+        metric: expect.objectContaining({ value: 1 }),
+      })
+    );
+  });
   it("reports structured, actionable warnings without mutating the document", () => {
     const theme = structuredClone(BUILTIN_THEMES_V2["plvs-light"]);
     theme.palettes.interface.warning = "#fbbf24";
@@ -78,7 +100,7 @@ describe("Theme visual analysis", () => {
 
     expect(report.warnings).toContainEqual(
       expect.objectContaining({
-        id: "contrast:data.primary+interface.surface.panel",
+        id: "contrast:waveform.trace+interface.surface.panel",
         standard: "WCAG 2.2 SC 1.4.11",
         metric: expect.objectContaining({ target: 3 }),
       })

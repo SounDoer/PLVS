@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  applyThemeToDocument,
   readPersistedShellThemeFields,
   readSystemPrefersDark,
   resolveThemeId,
@@ -8,6 +7,7 @@ import {
 import { listCustomThemes } from "../theme/customThemesRepo.js";
 import { getTheme, isKnownThemeId } from "../theme/themeRegistry.js";
 import { settingsStore, themesStore } from "../persistence/index.js";
+import { themeRuntime } from "../theme/themeRuntime.js";
 
 export function useThemeSettings() {
   const [appearance, setAppearanceState] = useState(
@@ -25,11 +25,23 @@ export function useThemeSettings() {
     () => resolveThemeId({ appearance, themeId }, systemPrefersDark, customThemes),
     [appearance, themeId, systemPrefersDark, customThemes]
   );
+  const [previewTheme, setPreviewTheme] = useState(null);
+  // Library refreshes are not Apply operations: each workbench keeps its applied
+  // document until local editing or a selection change explicitly replaces it.
+  const [appliedThemeSnapshot, setAppliedThemeSnapshot] = useState(() =>
+    getTheme(resolvedThemeId, customThemes)
+  );
   const resolvedThemeIdRef = useRef(resolvedThemeId);
-  const [resolvedTheme, setResolvedTheme] = useState(() => getTheme(resolvedThemeId, customThemes));
+  const selectedTheme =
+    appliedThemeSnapshot.id === resolvedThemeId
+      ? appliedThemeSnapshot
+      : getTheme(resolvedThemeId, customThemes);
+  const resolvedTheme = previewTheme ?? selectedTheme;
+  const finishThemePreview = useCallback(() => setPreviewTheme(null), []);
 
   useEffect(() => {
     resolvedThemeIdRef.current = resolvedThemeId;
+    setAppliedThemeSnapshot(getTheme(resolvedThemeId, customThemesRef.current));
   }, [resolvedThemeId]);
 
   function setAppearance(nextAppearance) {
@@ -52,7 +64,7 @@ export function useThemeSettings() {
     const next = Object.fromEntries(documents.map((theme) => [theme.id, theme]));
     customThemesRef.current = next;
     setCustomThemes(next);
-    setResolvedTheme(getTheme(resolvedThemeIdRef.current, next));
+    setAppliedThemeSnapshot(getTheme(resolvedThemeIdRef.current, next));
   }, []);
 
   const readAppearanceForControl = useCallback(() => {
@@ -117,15 +129,10 @@ export function useThemeSettings() {
   }, []);
 
   useEffect(() => {
-    setResolvedTheme(getTheme(resolvedThemeId, customThemesRef.current));
-  }, [resolvedThemeId]);
-
-  useEffect(() => {
-    applyThemeToDocument(resolvedThemeId, {
-      ...customThemes,
-      ...(resolvedTheme?.id === resolvedThemeId ? { [resolvedThemeId]: resolvedTheme } : {}),
-    });
-  }, [resolvedThemeId, resolvedTheme, customThemes]);
+    // A draft owns the visible theme until Save/Cancel. Library refreshes neither
+    // replace that preview nor republish the applied document over it.
+    themeRuntime.publishAuthoring(resolvedTheme);
+  }, [resolvedTheme]);
 
   useEffect(() => {
     settingsStore.patch({
@@ -167,7 +174,8 @@ export function useThemeSettings() {
     setFixedThemeIdFromPicker,
     fixedThemeSelectValue,
     customThemes,
-    setCustomThemes,
+    setPreviewTheme,
+    finishThemePreview,
     setCustomThemesFromController,
     readAppearanceForControl,
     applyAppearanceForControl,

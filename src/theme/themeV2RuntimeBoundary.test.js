@@ -4,8 +4,17 @@ import { dirname, extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SOURCE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const LEGACY_RUNTIME_IMPORTS = ["builtinThemes.js", "buildThemeTokens.js", "legacy/resolveV1Theme"];
-const FROZEN_V1_MODULES = new Set(["theme/builtinThemes.js", "theme/buildThemeTokens.js"]);
+const LEGACY_RUNTIME_IMPORTS = [
+  "builtinThemes.js",
+  "buildThemeTokens.js",
+  "legacy/resolveV1Theme",
+  "shadcnSemanticPreset",
+];
+const FROZEN_V1_MODULES = new Set([
+  "theme/builtinThemes.js",
+  "theme/buildThemeTokens.js",
+  "theme/shadcnSemanticPreset.js",
+]);
 
 function productionSources(directory = SOURCE_ROOT) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

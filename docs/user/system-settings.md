@@ -47,6 +47,16 @@ and can be searched or reset to Auto a section at a time. Most are colours; boun
 such as the Spectrum area's Upper and Lower fill opacity appear as percentage controls in the same
 module section and are saved with the Theme.
 
+**Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
+neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas
+has separate controls.
+
+Imports and edits from another workbench refresh the Theme Library without replacing this
+workbench's applied Theme. Switch away and select the Theme again to apply its updated version.
+While the Theme editor is open, your unsaved draft remains visible; external changes mark an
+existing draft as stale. **Cancel** restores this workbench's applied Theme, rather than applying
+the peer edit or keeping the preview of an unselected Library item.
+
 The built-in Light and Dark themes are tuned independently: each keeps opaque Workspace, panel,
 control, muted, and selected surfaces distinct, and uses scheme-appropriate text and feedback
 contrast. Measurement colors keep the same meanings in both appearances even when their exact
@@ -55,10 +65,14 @@ values differ.
 **Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft
 without changing Workspace data or layout. The module scenes include representative optional Grid
 lines and always-visible Vectorscope guides so their resolved colours can be reviewed. Its
+Spectrum, Stereo Map, and classic Waveform examples show their Theme-owned fill opacity, and the
+overview includes ordinary, selected, and disabled controls. These are illustrative scenes; use the
+real panels to judge geometry and data-dependent rendering. The
 **Visual Review** page reports recommended contrast,
 color-separation, surface, and Intensity targets and can jump back to an affected control. These
 findings are advisory: they do not interrupt editing or block saving, built-in Themes, or Community
 publication. Invalid Theme structure and unsupported versions remain errors.
+Module findings use the final overridden colours and link to the corresponding module control.
 
 ## History and dialogue detection
 

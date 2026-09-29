@@ -33,6 +33,28 @@ const BASE_PROPS = {
 };
 
 describe("ThemeEditor", () => {
+  it("previews theme-owned fills without attenuating trace strokes", () => {
+    const draft = structuredClone(DRAFT);
+    draft.overrides = {
+      "spectrum.fillOpacityTop": { kind: "number", value: 0.7 },
+      "spectrum.fillOpacityBottom": { kind: "number", value: 0.3 },
+      "stereoMap.fillOpacity": { kind: "number", value: 0.6 },
+      "waveform.fillOpacity": { kind: "number", value: 0.4 },
+    };
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open Theme Preview" }));
+    const preview = screen.getByRole("dialog", { name: "Theme Preview" });
+    expect(preview.style.colorScheme).toBe("dark");
+    fireEvent.click(screen.getByRole("tab", { name: "Modules" }));
+    const spectrum = screen.getByText("Spectrum").closest("section");
+    expect(spectrum.querySelector('stop[offset="0%"]').getAttribute("stop-opacity")).toBe("0.7");
+    expect(spectrum.querySelector('stop[offset="100%"]').getAttribute("stop-opacity")).toBe("0.3");
+    const stereoMap = screen.getByText("Stereo Map").closest("section");
+    expect(stereoMap.querySelector("stop").getAttribute("stop-opacity")).toBe("0.6");
+    const waveform = screen.getByText("Waveform").closest("section");
+    expect(waveform.querySelector("path").getAttribute("fill-opacity")).toBe("0.4");
+    expect(preview.querySelectorAll("[stroke-opacity], [opacity]")).toHaveLength(0);
+  });
   it("warns without replacing a stale Theme draft", () => {
     render(<ThemeEditor {...BASE_PROPS} stale />);
 

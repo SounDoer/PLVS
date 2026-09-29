@@ -36,6 +36,27 @@ function authoringTheme(overrides = {}) {
 }
 
 describe("compileTheme", () => {
+  it("propagates Primary Text to ordinary surfaces while preserving solid-action content", () => {
+    const resolved = compileTheme(
+      authoringTheme({
+        overrides: {
+          "interface.text.primary": { kind: "color", value: "#123456" },
+          "interface.content.onAccent": { kind: "color", value: "#abcdef" },
+        },
+      })
+    );
+    for (const binding of [
+      "--foreground",
+      "--card-foreground",
+      "--popover-foreground",
+      "--secondary-foreground",
+      "--accent-foreground",
+    ]) {
+      expect(resolved.css[binding], binding).toBe("#123456");
+    }
+    expect(resolved.css["--primary-foreground"]).toBe("#abcdef");
+    expect(resolved.css["--destructive-foreground"]).toBe("#f2f2f2");
+  });
   it("resolves every registered role and publication binding", () => {
     const resolved = compileTheme(authoringTheme());
 

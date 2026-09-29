@@ -106,21 +106,29 @@ describe("useCustomThemeSettings", () => {
     });
   });
 
-  it("keeps a Theme draft and marks it stale after an external Library refresh", () => {
+  it("keeps a Theme draft visible through external refresh and restores the applied snapshot on Cancel", async () => {
     const shared = {
       ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
       id: "custom-shared",
       name: "Shared",
     };
     upsertCustomTheme(shared);
+    settingsStore.patch({ appearance: "fixed", themeId: shared.id });
     const { result } = renderCustomThemeSettings();
     act(() => result.current.editCustomTheme(shared.id));
     act(() => result.current.editor.updateCore("workspace", "#222222"));
     const localDraft = structuredClone(result.current.editor.draft);
+    await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
 
     act(() => {
       themesStore.patch({
-        themes: { [shared.id]: { ...shared, name: "Changed elsewhere" } },
+        themes: {
+          [shared.id]: {
+            ...shared,
+            name: "Changed elsewhere",
+            core: { ...shared.core, workspace: "#334455" },
+          },
+        },
         order: [shared.id],
       });
       themesStore.notifyLocal();
@@ -128,6 +136,24 @@ describe("useCustomThemeSettings", () => {
 
     expect(result.current.editor.stale).toBe(true);
     expect(result.current.editor.draft).toEqual(localDraft);
+    expect(themeRuntime.getSnapshot().css["--background"]).toBe("#222222");
+    act(() => result.current.editor.cancel());
+    expect(themeRuntime.getSnapshot().css["--background"]).toBe(shared.core.workspace);
+    expect(themesStore.read().themes[shared.id].core.workspace).toBe("#334455");
+  });
+
+  it("cancels an unselected theme preview back to the selected theme", () => {
+    const shared = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-light"]),
+      id: "custom-other",
+      name: "Other",
+    };
+    upsertCustomTheme(shared);
+    const { result } = renderCustomThemeSettings();
+    act(() => result.current.editCustomTheme(shared.id));
+    expect(themeRuntime.getSnapshot().id).toBe(shared.id);
+    act(() => result.current.editor.cancel());
+    expect(themeRuntime.getSnapshot().id).toBe("plvs-dark");
   });
 
   it("customizes a builtin from its V2 authoring document", () => {

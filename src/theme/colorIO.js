@@ -1,4 +1,4 @@
-import { oklchToHex } from "./shadcnSemanticPreset.js"; // string oklch(...) -> hex/rgba
+import { oklchToHex } from "./cssColorConversion.js"; // string oklch(...) -> hex/rgba
 
 function clamp01(n) {
   return Math.max(0, Math.min(1, n));

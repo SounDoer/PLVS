@@ -153,12 +153,12 @@ describe("portable Theme contract", () => {
         blockers: [],
         scope: "visualReviewOnly",
       },
-      warnings: [
+      warnings: expect.arrayContaining([
         expect.objectContaining({
           code: "contrast",
           standard: "WCAG 2.2 SC 1.4.3",
         }),
-      ],
+      ]),
     });
 
     expect(() => assessPortableThemeCommunityPublication({})).toThrow(PortableThemeError);

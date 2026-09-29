@@ -7,7 +7,15 @@ import sharp from "sharp";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { compileTheme } from "../src/theme/compileTheme.js";
 import { COMMUNITY_THEME_PREVIEW_ASSETS } from "../src/theme/communityThemePreview.js";
-import { themeColorDistance } from "../src/theme/themeVisualAnalysis.js";
+import {
+  themeColorDistance,
+  themeContrastRatio,
+  THEME_CONTRAST_CHECKS,
+  THEME_SEPARATION_CHECKS,
+  analyzeResolvedThemeVisuals,
+} from "../src/theme/themeVisualAnalysis.js";
+import { rgbaCssValue } from "../src/theme/themeRecipes.js";
+export { themeContrastRatio as contrastRatio } from "../src/theme/colorMetrics.js";
 
 export const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const defaultManifestPath = join(
@@ -35,12 +43,7 @@ export function validateGalleryManifest(manifest) {
     }
   }
   const simulations = manifest?.semantic?.simulations;
-  const supportedSimulations = new Set([
-    "protanopia",
-    "deuteranopia",
-    "tritanopia",
-    "grayscale",
-  ]);
+  const supportedSimulations = new Set(["protanopia", "deuteranopia", "tritanopia", "grayscale"]);
   if (
     !Array.isArray(simulations) ||
     simulations.length !== supportedSimulations.size ||
@@ -99,19 +102,6 @@ function hexChannels(hex) {
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
 }
 
-function luminance(hex) {
-  const values = hexChannels(hex).map((value) => {
-    const channel = value / 255;
-    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  });
-  return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
-}
-
-export function contrastRatio(a, b) {
-  const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
 // These fixed encoded-sRGB transforms are deterministic comparison aids, not clinical models.
 const COLOR_VISION_MATRICES = Object.freeze({
   protanopia: [
@@ -139,7 +129,13 @@ const COLOR_VISION_MATRICES = Object.freeze({
 function matrixColor(hex, matrix) {
   const input = hexChannels(hex);
   const output = matrix.map((row) =>
-    Math.max(0, Math.min(255, row.reduce((sum, weight, index) => sum + weight * input[index], 0)))
+    Math.max(
+      0,
+      Math.min(
+        255,
+        row.reduce((sum, weight, index) => sum + weight * input[index], 0)
+      )
+    )
   );
   return `#${output.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`;
 }
@@ -151,7 +147,7 @@ export function simulateColorVision(hex, mode) {
 }
 
 function colorOf(value) {
-  return typeof value === "string" ? value : value.color;
+  return typeof value === "string" ? value : rgbaCssValue(value);
 }
 
 function escapeXml(value) {
@@ -227,7 +223,16 @@ export function buildSemanticGallerySvg(themeId, manifest) {
     )
   );
   sections.push(
-    swatch(258, 540, 180, 42, role("palette.status.warning"), "Warning", primary, border)
+    swatch(
+      258,
+      540,
+      180,
+      42,
+      role("interface.warning"),
+      "Warning",
+      role("interface.content.onWarning"),
+      border
+    )
   );
   sections.push(
     swatch(
@@ -296,7 +301,7 @@ export function buildSemanticGallerySvg(themeId, manifest) {
   sections.push(
     `<text x="860" y="714" fill="${secondary}" font-size="14">Intensity</text><rect x="860" y="732" width="492" height="64" rx="10" fill="url(#intensity)"/>`
   );
-  sections.push(`<text x="860" y="838" fill="${secondary}" font-size="14">Border / shadow effects</text>`);
+  sections.push(`<text x="860" y="838" fill="${secondary}" font-size="14">Border effects</text>`);
   sections.push(
     `<rect x="860" y="862" width="492" height="128" rx="14" fill="${role("interface.surface.raised")}" stroke="${border}" stroke-width="2"/><rect x="890" y="892" width="180" height="54" rx="9" fill="${role("interface.surface.control")}"/><text x="914" y="926" fill="${primary}" font-size="15">Raised Control</text>`
   );
@@ -308,30 +313,14 @@ export function buildSemanticGallerySvg(themeId, manifest) {
 
 export function buildSemanticMetrics(themeId, resolved) {
   const color = (id) => colorOf(resolved.roles[id]);
-  const pairs = [
-    ["primary-on-panel", "interface.text.primary", "interface.surface.panel", 4.5],
-    ["secondary-on-panel", "interface.text.secondary", "interface.surface.panel", 4.5],
-    ["annotation-on-panel", "interface.text.annotation", "interface.surface.panel", 4.5],
-    ["accent-on-panel", "core.interfaceAccent", "interface.surface.panel", 3],
-    ["primary-data-on-panel", "core.primaryData", "interface.surface.panel", 3],
-    ["secondary-data-on-panel", "core.secondaryData", "interface.surface.panel", 3],
-    ["warning-on-panel", "palette.status.warning", "interface.surface.panel", 3],
-  ];
-  const distinctionPairs = [
-    ["primary-secondary", "data.primary", "data.secondary"],
-    ["primary-snapshot", "data.primary", "data.snapshot.primary"],
-    ["secondary-snapshot", "data.secondary", "data.snapshot.secondary"],
-    ["status-safe-warning", "palette.status.safe", "palette.status.warning"],
-    ["status-warning-critical", "palette.status.warning", "palette.status.critical"],
-    ["frequency-low-mid", "palette.frequency.low", "palette.frequency.mid"],
-    ["frequency-mid-high", "palette.frequency.mid", "palette.frequency.high"],
-  ];
   const simulationModes = ["normal", "protanopia", "deuteranopia", "tritanopia", "grayscale"];
   return {
     themeId,
     colorScheme: resolved.colorScheme,
-    contrast: pairs.map(([id, foreground, background, target]) => {
-      const ratio = contrastRatio(color(foreground), color(background));
+    visualReview: analyzeResolvedThemeVisuals(resolved),
+    contrast: THEME_CONTRAST_CHECKS.map(({ foreground, background, targetRatio: target }) => {
+      const id = `${foreground}+${background}`;
+      const ratio = themeContrastRatio(color(foreground), color(background));
       return {
         id,
         foreground,
@@ -342,8 +331,10 @@ export function buildSemanticMetrics(themeId, resolved) {
       };
     }),
     distinction: simulationModes.flatMap((mode) =>
-      distinctionPairs.map(([id, first, second]) => {
-        const firstColor = mode === "normal" ? color(first) : simulateColorVision(color(first), mode);
+      THEME_SEPARATION_CHECKS.map(([first, second]) => {
+        const id = `${first}+${second}`;
+        const firstColor =
+          mode === "normal" ? color(first) : simulateColorVision(color(first), mode);
         const secondColor =
           mode === "normal" ? color(second) : simulateColorVision(color(second), mode);
         const distance = themeColorDistance(firstColor, secondColor);

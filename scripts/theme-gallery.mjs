@@ -257,12 +257,32 @@ async function runProductGallery({ manifest, outDir, executable }) {
       `The current Workspace is missing required gallery modules: ${missingModules.join(", ")}. Reset to the first-run layout and retry.`
     );
   }
+  const changedPanelIds = new Set(
+    manifest.product.scenes.filter((scene) => scene.panelPatch).map((scene) => scene.panelId)
+  );
   const fixturePath = join(productDir, `${manifest.fixture.id}.wav`);
   const fixture = createStereoFixtureWav(manifest.fixture);
   await writeFile(fixturePath, fixture);
   const fixtureSha256 = createHash("sha256").update(fixture).digest("hex");
   const captures = [];
   let createdSessionId = null;
+
+  async function resetSceneControls() {
+    for (const panelId of changedPanelIds) {
+      const controls = initialPanels.get(panelId)?.controls;
+      if (!controls) continue;
+      const path = join(productDir, ".baseline-" + panelId + ".json");
+      await writeFile(path, JSON.stringify(controls) + "\n", "utf8");
+      mutate(run, "reset " + panelId + " scene controls", ["panel", "update", panelId, path]);
+    }
+    for (const kind of ["frequency", "time"]) {
+      const range = sharedAxisRange(initialApp, kind);
+      if (!range) continue;
+      const path = join(productDir, ".baseline-" + kind + ".json");
+      await writeFile(path, JSON.stringify(range) + "\n", "utf8");
+      mutate(run, "reset " + kind + " scene axis", ["axis", "shared", "update", kind, path]);
+    }
+  }
 
   try {
     if (initialView.view.surfaceOpacity !== 100) {
@@ -292,23 +312,20 @@ async function runProductGallery({ manifest, outDir, executable }) {
     createdSessionId = session.id;
 
     for (const themeId of manifest.product.themes) {
+      await resetSceneControls();
       mutate(run, `select ${themeId}`, ["theme", "select", themeId]);
       for (const scene of manifest.product.scenes.filter((item) => item.state === "file")) {
         captures.push(await captureScene({ run, outDir: productDir, themeId, scene }));
       }
     }
   } finally {
-    const spectrogram = initialPanels.get("spectrogram");
-    if (spectrogram?.controls) {
-      const restorePath = join(productDir, ".restore-spectrogram.json");
-      await writeFile(restorePath, `${JSON.stringify(spectrogram.controls)}\n`, "utf8");
+    for (const panelId of changedPanelIds) {
+      const panel = initialPanels.get(panelId);
+      if (!panel?.controls) continue;
+      const restorePath = join(productDir, `.restore-${panelId}.json`);
+      await writeFile(restorePath, `${JSON.stringify(panel.controls)}\n`, "utf8");
       try {
-        mutate(run, "restore Spectrogram controls", [
-          "panel",
-          "update",
-          "spectrogram",
-          restorePath,
-        ]);
+        mutate(run, `restore ${panelId} controls`, ["panel", "update", panelId, restorePath]);
       } catch {}
     }
     if (
@@ -391,13 +408,15 @@ async function runProductGallery({ manifest, outDir, executable }) {
   ) {
     restorationIssues.push("File sessions");
   }
-  if (
-    !sameJson(
-      restoredApp.workspace.panels.find(({ id }) => id === "spectrogram")?.controls,
-      initialPanels.get("spectrogram")?.controls
-    )
-  ) {
-    restorationIssues.push("Spectrogram controls");
+  for (const panelId of changedPanelIds) {
+    if (
+      !sameJson(
+        restoredApp.workspace.panels.find(({ id }) => id === panelId)?.controls,
+        initialPanels.get(panelId)?.controls
+      )
+    ) {
+      restorationIssues.push(panelId + " controls");
+    }
   }
   for (const kind of ["frequency", "time"]) {
     if (!sameJson(sharedAxisRange(restoredApp, kind), sharedAxisRange(initialApp, kind))) {
@@ -418,7 +437,11 @@ async function runProductGallery({ manifest, outDir, executable }) {
     captures,
     contactPath,
     restoration: { verified: true, revision: restoredApp.revision },
-    focusedMatrix: manifest.product.focusedMatrix,
+    focusedMatrix: manifest.product.focusedMatrix.map((id) => ({
+      id,
+      status: "notCaptured",
+      evidence: [],
+    })),
   };
 }
 

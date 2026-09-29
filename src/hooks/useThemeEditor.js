@@ -38,7 +38,7 @@ function constrainSpectrumFillOverrides(overrides, changedRoleId, changedOverrid
  * }} opts
  */
 export function useThemeEditor(opts) {
-  const { activeTheme, onSave, publish: publishOverride, makeId, onChange } = opts;
+  const { activeTheme, onSave, publish: publishOverride, makeId, onChange, onFinish = noop } = opts;
   const publish = publishOverride ?? themeRuntime.publishAuthoring;
   const notify = onChange ?? noop;
   const [draft, setDraft] = useState(/** @type {object|null} */ (null));
@@ -81,7 +81,13 @@ export function useThemeEditor(opts) {
     [applyDraft]
   );
 
-  useEffect(() => cancelScheduledPublication, [cancelScheduledPublication]);
+  useEffect(
+    () => () => {
+      cancelScheduledPublication();
+      if (draftRef.current) onFinish();
+    },
+    [cancelScheduledPublication, onFinish]
+  );
 
   // Keep state and ref in sync so save/cancel can read the latest draft without a state-updater.
   const setDraftBoth = useCallback((next) => {
@@ -298,7 +304,8 @@ export function useThemeEditor(opts) {
     setDirty(false);
     setStale(false);
     if (d) notify();
-  }, [cancelScheduledPublication, notify, onSave, setDraftBoth, stale]);
+    onFinish();
+  }, [cancelScheduledPublication, notify, onSave, onFinish, setDraftBoth, stale]);
 
   const cancel = useCallback(() => {
     cancelScheduledPublication();
@@ -306,7 +313,8 @@ export function useThemeEditor(opts) {
     setDraftBoth(null);
     setDirty(false);
     setStale(false);
-  }, [cancelScheduledPublication, publish, setDraftBoth]);
+    onFinish();
+  }, [cancelScheduledPublication, publish, onFinish, setDraftBoth]);
 
   return {
     isEditing: draft != null,
