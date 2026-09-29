@@ -123,6 +123,7 @@ describe("drawWaveformCanvas", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(() => fills.push(context.fillStyle)),
       stroke: vi.fn(() => strokes.push(context.strokeStyle)),
     };
@@ -166,6 +167,7 @@ describe("drawWaveformCanvas", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(() => lineWidths.push(context.lineWidth)),
     };
@@ -188,6 +190,53 @@ describe("drawWaveformCanvas", () => {
     document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
   });
 
+  it("keeps every stroke round in CSS px when only the height uses full DPR", () => {
+    // Width capped at 1:1, height at DPR 2. A pen in backing pixels would be 1 CSS px wide but only
+    // half a CSS px tall, so flat stretches of the trace and the centre line would render thinner.
+    document.documentElement.style.setProperty("--ui-waveform-stroke-width", "1.5");
+    const strokes = [];
+    let transform = [1, 0, 0, 1, 0, 0];
+    const context = {
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      setTransform: vi.fn((...args) => {
+        transform = args;
+      }),
+      stroke: vi.fn(() => strokes.push({ lineWidth: context.lineWidth, transform })),
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 80;
+    Object.defineProperty(canvas, "clientWidth", { value: 100 });
+    Object.defineProperty(canvas, "clientHeight", { value: 40 });
+    canvas.getContext = vi.fn(() => context);
+
+    drawWaveformCanvas(canvas, {
+      mins: [-0.75, -0.75],
+      maxes: [0.25, 0.25],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      selected: false,
+      centroid: true,
+      spectralCentroidHz: [1000, 1000],
+    });
+
+    const anisotropic = [1, 0, 0, 2, 0, 0];
+    expect(strokes).toEqual([
+      { lineWidth: 1, transform: anisotropic },
+      { lineWidth: 1.5, transform: anisotropic },
+      { lineWidth: 1, transform: anisotropic },
+    ]);
+    expect(transform).toEqual([1, 0, 0, 1, 0, 0]);
+    document.documentElement.style.removeProperty("--ui-waveform-stroke-width");
+  });
+
   it("uses Theme-owned classic fill opacity and accepts zero", () => {
     const fillAlphas = [];
     const context = {
@@ -197,6 +246,7 @@ describe("drawWaveformCanvas", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(() => fillAlphas.push(context.globalAlpha)),
       stroke: vi.fn(),
     };
@@ -229,6 +279,7 @@ describe("drawWaveformCanvas", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(() => fillAlphas.push(context.globalAlpha)),
       stroke: vi.fn(),
     };
@@ -263,6 +314,7 @@ describe("drawWaveformCanvas", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(),
     };
@@ -297,6 +349,7 @@ describe("drawWaveformCanvas", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(),
     };
@@ -503,6 +556,7 @@ describe("WaveformPanel", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(),
     };
@@ -550,6 +604,7 @@ describe("WaveformPanel", () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       closePath: vi.fn(),
+      setTransform: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(),
     });

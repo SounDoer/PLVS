@@ -225,6 +225,7 @@ beforeEach(() => {
     moveTo: vi.fn(),
     lineTo: vi.fn(),
     closePath: vi.fn(),
+    setTransform: vi.fn(),
     fill: vi.fn(),
     stroke: vi.fn(),
     putImageData: vi.fn(),

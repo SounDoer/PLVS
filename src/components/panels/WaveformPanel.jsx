@@ -16,6 +16,7 @@ import {
 } from "../../math/waveformMath.js";
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCanvasSize } from "../../hooks/useCanvasSize";
+import { canvasCssScale, strokeCssWidth } from "../../lib/canvasCssScale.js";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
@@ -116,6 +117,9 @@ export function drawWaveformCanvas(
   if (!ctx) return;
   const W = canvas.width;
   const H = canvas.height;
+  // Paths are built in backing pixels, whose width is capped at 1:1 while the height keeps full
+  // DPR. Every line width below is CSS px and is stroked through strokeCssWidth for that reason.
+  const cssScale = canvasCssScale(canvas);
 
   const strokeColor = selected ? themeColors.snapshot : themeColors.trace;
   const root = document.documentElement;
@@ -142,7 +146,7 @@ export function drawWaveformCanvas(
   ctx.beginPath();
   ctx.moveTo(0, cy);
   ctx.lineTo(W, cy);
-  ctx.stroke();
+  strokeCssWidth(ctx, cssScale);
 
   if (firstBucket < 0 || !bucketCount || !mins?.length || !maxes?.length) return;
 
@@ -190,7 +194,7 @@ export function drawWaveformCanvas(
       ctx.lineTo(nextX, nextYMax);
       ctx.moveTo(x, yMin);
       ctx.lineTo(nextX, nextYMin);
-      ctx.stroke();
+      strokeCssWidth(ctx, cssScale);
     }
   } else {
     ctx.beginPath();
@@ -212,10 +216,8 @@ export function drawWaveformCanvas(
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.strokeStyle = strokeColor;
-    // WAVEFORM_MAX_DEVICE_PIXEL_RATIO caps the backing store width at 1:1 with CSS pixels, so the
-    // token is the width in device pixels as-is. Scaling it by dpr again doubles the trace on HiDPI.
     ctx.lineWidth = strokeWidth;
-    ctx.stroke();
+    strokeCssWidth(ctx, cssScale);
   }
 
   if (centroid && spectralCentroidHz?.length) {
@@ -235,7 +237,7 @@ export function drawWaveformCanvas(
       else ctx.moveTo(x, y);
       drawing = true;
     }
-    ctx.stroke();
+    strokeCssWidth(ctx, cssScale);
   }
 }
 

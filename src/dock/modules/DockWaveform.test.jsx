@@ -58,6 +58,7 @@ function mockCanvas(width = 100, height = 40) {
     beginPath: vi.fn(),
     clearRect: vi.fn(),
     closePath: vi.fn(),
+    setTransform: vi.fn(),
     fill: vi.fn(),
     lineTo: vi.fn(),
     moveTo: vi.fn(),
@@ -127,6 +128,32 @@ describe("DockWaveform", () => {
     });
 
     expect(lineWidths).toEqual([2.5]);
+  });
+
+  it("keeps the stroke round in CSS px when only the height uses full DPR", () => {
+    const { canvas, context } = mockCanvas(100, 80);
+    Object.defineProperty(canvas, "clientWidth", { value: 100 });
+    Object.defineProperty(canvas, "clientHeight", { value: 40 });
+    canvas.style.setProperty("--ui-waveform-stroke-width", "1.5");
+    const strokes = [];
+    let transform = [1, 0, 0, 1, 0, 0];
+    context.setTransform = vi.fn((...args) => {
+      transform = args;
+    });
+    context.stroke = vi.fn(() => strokes.push({ lineWidth: context.lineWidth, transform }));
+
+    paintDockWaveformCanvas(canvas, {
+      mins: [[-0.75, -0.75]],
+      maxes: [[0.25, 0.25]],
+      bucketCount: 2,
+      fracPhase: 0,
+      firstBucket: 0,
+      lastBucket: 1,
+      channelCount: 1,
+    });
+
+    expect(strokes).toEqual([{ lineWidth: 1.5, transform: [1, 0, 0, 2, 0, 0] }]);
+    expect(transform).toEqual([1, 0, 0, 1, 0, 0]);
   });
 
   it("uses Theme-owned classic fill opacity and accepts zero", () => {

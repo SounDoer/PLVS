@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { useCanvasSize } from "../../hooks/useCanvasSize.js";
+import { canvasCssScale, strokeCssWidth } from "../../lib/canvasCssScale.js";
 import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import {
   sliceWaveformSubHistory,
@@ -105,10 +106,11 @@ export function paintDockWaveformCanvas(
   const frequencyScale = waveformFrequencyScale({ lowMidSplitHz, midHighSplitHz }, spectralPalette);
   const bucketColor = [0, 0, 0];
   const centroidColor = themeColors.centroid;
-  // The backing store height now uses full DPR while width is capped, so it is no longer 1:1 with
-  // CSS pixels. Convert the CSS-px row gap into backing pixels before laying out the lanes.
-  const vScale = canvas.clientHeight > 0 ? height / canvas.clientHeight : 1;
-  const rowGap = cssNumber(style, "--ui-dock-gap-row", 0) * vScale;
+  // The backing store height uses full DPR while width is capped, so neither axis is guaranteed to
+  // be 1:1 with CSS pixels. The CSS-px row gap is converted into backing pixels, and every line
+  // width is CSS px stroked through strokeCssWidth.
+  const cssScale = canvasCssScale(canvas);
+  const rowGap = cssNumber(style, "--ui-dock-gap-row", 0) * cssScale.y;
   const laneHeight = Math.max(0, (height - rowGap * Math.max(0, channelCount - 1)) / channelCount);
 
   ctx.clearRect(0, 0, width, height);
@@ -165,7 +167,7 @@ export function paintDockWaveformCanvas(
         ctx.lineTo(nextX, nextYMax);
         ctx.moveTo(x, yMin);
         ctx.lineTo(nextX, nextYMin);
-        ctx.stroke();
+        strokeCssWidth(ctx, cssScale);
       }
     } else {
       ctx.beginPath();
@@ -188,7 +190,7 @@ export function paintDockWaveformCanvas(
       ctx.globalAlpha = 1;
       ctx.strokeStyle = traceColor;
       ctx.lineWidth = strokeWidth;
-      ctx.stroke();
+      strokeCssWidth(ctx, cssScale);
     }
 
     if (centroid && spectralCentroidHz?.[channel]?.length) {
@@ -208,7 +210,7 @@ export function paintDockWaveformCanvas(
         else ctx.moveTo(x, y);
         drawing = true;
       }
-      ctx.stroke();
+      strokeCssWidth(ctx, cssScale);
     }
   }
 }
