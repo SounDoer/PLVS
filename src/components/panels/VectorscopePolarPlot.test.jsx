@@ -362,6 +362,37 @@ describe("VectorscopePolarPlot", () => {
     ]);
   });
 
+  it("draws the grid at 1 CSS px like every other chart grid, whatever the trace width", () => {
+    vi.stubGlobal("devicePixelRatio", 2);
+    const ctx = contextStub();
+    const strokedWidths = [];
+    const stroke = ctx.stroke;
+    ctx.stroke = vi.fn(() => {
+      strokedWidths.push(ctx.lineWidth);
+      stroke();
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue({
+      getPropertyValue: () => "3",
+    });
+    render(
+      <VectorscopePolarPlot
+        mode="polarLevel"
+        rows={[{ pairs: allPolarLevelBinPairs(), ageMs: 0, timestampMs: 100 }]}
+        hasSignal
+        firstLabel="L"
+        secondLabel="R"
+        maxHoldEnabled
+        colors={{ trace: "#123456", snapshot: "#abcdef", grid: "#654321" }}
+      />
+    );
+    styleSpy.mockRestore();
+    vi.unstubAllGlobals();
+
+    // Grid: 1 CSS px at DPR 2. Held outline: the 3 CSS px trace token at DPR 2.
+    expect(strokedWidths).toEqual([2, 6]);
+  });
+
   it("uses the snapshot trace color for Polar snapshots", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);

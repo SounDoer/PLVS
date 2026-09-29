@@ -194,7 +194,8 @@ export function VectorscopePolarPlot({
 
     const geometry = plotGeometry(width, height, PLOT_PADDING_CSS_PX * dpr);
     ctx.clearRect(0, 0, width, height);
-    drawGrid(ctx, geometry, gridColor, Math.max(0.5 * dpr, lineWidth * 0.5));
+    // 1 CSS px, the same grid weight as every other chart; it does not follow the trace token.
+    drawGrid(ctx, geometry, gridColor, dpr);
 
     if (effectiveRows.length === 0) return;
     if (mode === "polarSample") {
