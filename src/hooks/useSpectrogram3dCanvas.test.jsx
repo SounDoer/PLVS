@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { useMemo, useRef } from "react";
 
-import { useSpectrogram3dCanvas } from "./useSpectrogram3dCanvas.js";
+import { pointCountFor, ridgeCountFor, useSpectrogram3dCanvas } from "./useSpectrogram3dCanvas.js";
 
 const THEME_COLORS = {};
 
@@ -85,5 +85,26 @@ describe("useSpectrogram3dCanvas scheduling", () => {
 
     rerender(<Harness sourceVersion={2} enabled canvasSizeRevision={1} />);
     expect(requestAnimationFrame).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("3D grid density", () => {
+  // The divisors were tuned against device width on a 125% display. Restated per CSS px, the counts
+  // must be unchanged there and must not change with DPR anywhere.
+  const legacyDeviceCount = (deviceWidth, divisor, min, max) =>
+    Math.round(Math.min(max, Math.max(min, deviceWidth / divisor)));
+
+  it("keeps the tuned ridge and point counts on the 125% display they were tuned on", () => {
+    for (const cssWidth of [200, 480, 800, 1106.4, 1536, 2400]) {
+      const deviceWidth = cssWidth * 1.25;
+      expect(ridgeCountFor(cssWidth)).toBe(legacyDeviceCount(deviceWidth, 14, 24, 140));
+      expect(pointCountFor(cssWidth)).toBe(legacyDeviceCount(deviceWidth, 6, 60, 320));
+    }
+  });
+
+  it("takes CSS width, so the same panel gets the same density at every DPR", () => {
+    // 800 CSS px is 800, 1000 or 1600 device px at 100%, 125% and 200%; the count is one number.
+    expect(ridgeCountFor(800)).toBe(71);
+    expect(pointCountFor(800)).toBe(167);
   });
 });

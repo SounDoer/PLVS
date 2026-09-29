@@ -321,6 +321,9 @@ Rules:
 - Waveform buckets are one per backing column, so the bucket count is the lane canvas's reported
   backing width, never a width measured separately.
 - A DPR cap for performance may lower resolution; it must never change visual stroke weight.
+- Visual density (how many ridges, sample points or decimation buckets a panel shows) is set per CSS
+  px, so a panel looks the same at every DPR and a scaled display does not multiply the drawing
+  cost. Only raster resolution (heatmap pixels, per-pixel sampling) follows device pixels.
 - WebGL canvases use `premultipliedAlpha: true` and shaders write premultiplied colour. Otherwise
   every translucent pixel, including every antialiased edge, is multiplied by alpha twice, and a thin
   line renders darker than its background.

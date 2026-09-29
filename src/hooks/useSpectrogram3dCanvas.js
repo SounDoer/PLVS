@@ -33,7 +33,13 @@ import { createSurfaceRenderer } from "./spectrogram3dGlRenderer.js";
 
 // Cost tracks the product of these two, so they can be traded against each other while tuning:
 // more ridges reads as denser time resolution, more points as finer spectral detail.
-const RIDGE_TARGET_DIVISOR = 14;
+//
+// Both are per CSS px, so a panel shows the same density at every DPR, and a 200% display does not
+// pay for twice the ridges. They were tuned as 14 and 6 per DEVICE px on a 125% display
+// (docs/history/notes/perf/spectrogram.md), so they are restated at that ratio: the counts there
+// are unchanged.
+const TUNED_DPR = 1.25;
+const RIDGE_TARGET_CSS_PX = 14 / TUNED_DPR;
 const RIDGE_MIN = 24;
 const RIDGE_MAX = 140;
 /**
@@ -54,7 +60,7 @@ const RIDGE_MAX = 140;
  * Lifting this further is a buffer-reuse question before it is a resolution one.
  */
 const SURFACE_RIDGE_MAX = 400;
-const POINT_TARGET_DIVISOR = 6;
+const POINT_TARGET_CSS_PX = 6 / TUNED_DPR;
 const POINT_MIN = 60;
 const POINT_MAX = 320;
 const GRADIENT_STOPS = 16;
@@ -115,12 +121,12 @@ const ENTER_FADE_TFRAC = 0;
  */
 const TIME_FADE_MAX_FRAC = 0.1;
 
-function ridgeCountFor(widthPx) {
-  return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, widthPx / RIDGE_TARGET_DIVISOR)));
+export function ridgeCountFor(cssWidth) {
+  return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, cssWidth / RIDGE_TARGET_CSS_PX)));
 }
 
-function pointCountFor(widthPx) {
-  return Math.round(Math.min(POINT_MAX, Math.max(POINT_MIN, widthPx / POINT_TARGET_DIVISOR)));
+export function pointCountFor(cssWidth) {
+  return Math.round(Math.min(POINT_MAX, Math.max(POINT_MIN, cssWidth / POINT_TARGET_CSS_PX)));
 }
 
 /**
@@ -620,7 +626,9 @@ export function useSpectrogram3dCanvas({
       // Surface used to rasterise into a smaller buffer and stretch the result back, because the
       // per-pixel walk cost what it cost. The GPU does not, so there is one pixel space now and
       // every length below is in it.
-      const pointCount = pointCountFor(W);
+      const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
+      const cssWidth = W / dpr;
+      const pointCount = pointCountFor(cssWidth);
       const cache = cacheRef.current;
       if (
         cache.pointCount !== pointCount ||
@@ -643,11 +651,11 @@ export function useSpectrogram3dCanvas({
 
       // Surface point-samples the time axis per column, so its row count is additionally capped by
       // how many samples the longest column actually takes -- see surfaceRowCap. Lines strokes a
-      // complete path per ridge instead of point-sampling, so ridgeCountFor(W) alone is still right
+      // complete path per ridge instead of point-sampling, so ridgeCountFor alone is still right
       // for it, and this cap must not apply there.
       const maxRidges = isSurface
         ? Math.min(SURFACE_RIDGE_MAX, surfaceRowCap(proj, H))
-        : ridgeCountFor(W);
+        : ridgeCountFor(cssWidth);
       const grid = sampleWaterfallGrid({
         view: snaps,
         startIdx,
@@ -676,7 +684,6 @@ export function useSpectrogram3dCanvas({
       const selection = p.themeColors?.selection ?? ink;
       const heightPx = proj.heightScale * view.heightGain;
 
-      const dpr = Math.max(1, W / Math.max(1, canvas.clientWidth));
       // Read once for both branches, and only the scrub marker uses it: Lines strokes its selected
       // ridge at this width and Surface sizes its scrub band to it, so the marker carries the same
       // weight whichever mode is showing. It is the selection token every other panel's selection
@@ -771,9 +778,9 @@ export function useSpectrogram3dCanvas({
         // The exiting fade does NOT ride the same stride. Gap tolerance asks "how far apart are two
         // rows"; the fade asks "how much of the WINDOW does the terrain sink over", which is a
         // spatial property of the window edge and says nothing about how finely time is sampled.
-        // Pinning it to ridgeCountFor(W) keeps the tuned width where it was reviewed, at every
+        // Pinning it to ridgeCountFor keeps the tuned width where it was reviewed, at every
         // panel size, while leaving the row count free to move.
-        const fadeStrideTFrac = 1 / ridgeCountFor(W);
+        const fadeStrideTFrac = 1 / ridgeCountFor(cssWidth);
         // ...and then widened, when the view demands it, so the ramp keeps a readable slope on
         // SCREEN rather than a fixed share of the data. See edgeRampWidth: the tuned width is the
         // floor, so at steep views nothing moves, and the cost is paid only at the flat views where
