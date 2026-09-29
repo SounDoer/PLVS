@@ -1751,7 +1751,7 @@ function AppContent() {
       ? `${selectedSource.type} · ${sourceDisplayName}`
       : "Not connected";
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
-  const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : "-";
+  const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
   const focusViewActive =
     pinned ||
     focusView.autoHideControls ||

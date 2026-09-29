@@ -360,7 +360,8 @@ describe("App smoke", () => {
 
     expect(footer().getByText("Source")).toBeTruthy();
     expect(footer().getByText("Not connected")).toBeTruthy();
-    expect(footer().getByText("Preset")).toBeTruthy();
+    // No preset is active, so the footer omits the Preset item rather than showing a dash.
+    expect(footer().queryByText("Preset")).toBeNull();
     // The starter profile is active on first run, so the footer names it.
     expect(footer().getByText("Loudness")).toBeTruthy();
     expect(footer().getByText("I −23 ±0.5 · TP ≤ −1")).toBeTruthy();

@@ -60,4 +60,13 @@ describe("AppShell footer", () => {
     );
     expect(screen.queryByRole("button", { name: /channel layout unknown/i })).toBeNull();
   });
+
+  it("shows the preset item only while a preset is active", () => {
+    const { rerender } = render(<AppShell {...baseProps} footer={baseFooter} />);
+    expect(screen.getByText("Preset")).toBeTruthy();
+    expect(screen.getByText("Default")).toBeTruthy();
+
+    rerender(<AppShell {...baseProps} footer={{ ...baseFooter, activePresetName: null }} />);
+    expect(screen.queryByText("Preset")).toBeNull();
+  });
 });

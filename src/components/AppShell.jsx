@@ -139,9 +139,13 @@ export function AppShell({
                         <span className={FOOTER_VALUE}>{footer.loudnessProfileName}</span>
                       </>
                     ) : null}
-                    <div className={FOOTER_DIVIDER} />
-                    <span className={FOOTER_LABEL}>Preset</span>
-                    <span className={FOOTER_VALUE}>{footer.activePresetName}</span>
+                    {footer.activePresetName ? (
+                      <>
+                        <div className={FOOTER_DIVIDER} />
+                        <span className={FOOTER_LABEL}>Preset</span>
+                        <span className={FOOTER_VALUE}>{footer.activePresetName}</span>
+                      </>
+                    ) : null}
                     {footer.hasUpdate ? (
                       <>
                         <div className={FOOTER_DIVIDER} />
