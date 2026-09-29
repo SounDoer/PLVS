@@ -3,6 +3,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useCanvasSize } from "./useCanvasSize";
 
+const dprWatch = vi.hoisted(() => ({ onChange: null, dispose: null }));
+vi.mock("../lib/devicePixelRatioWatch.js", () => ({
+  watchDevicePixelRatio: (onChange) => {
+    dprWatch.onChange = onChange;
+    dprWatch.dispose = vi.fn();
+    return dprWatch.dispose;
+  },
+}));
+
 let triggerResize;
 let mockDisconnect;
 let rafCallbacks;
@@ -135,10 +144,30 @@ describe("useCanvasSize", () => {
     expect(canvasRef.current.height).toBe(300);
   });
 
+  it("re-measures when DPR changes while the CSS size does not", () => {
+    vi.stubGlobal("devicePixelRatio", 1);
+    const { canvasRef, containerRef } = makeRefs(400, 300);
+    const onResize = vi.fn();
+    renderHook(() => useCanvasSize(canvasRef, containerRef, onResize));
+    triggerResize();
+    flushRaf();
+    expect(canvasRef.current.width).toBe(400);
+
+    // Dragged onto a 150% monitor: same CSS box, so no ResizeObserver notification.
+    vi.stubGlobal("devicePixelRatio", 1.5);
+    dprWatch.onChange();
+    flushRaf();
+
+    expect(canvasRef.current.width).toBe(600);
+    expect(canvasRef.current.height).toBe(450);
+    expect(onResize).toHaveBeenLastCalledWith({ width: 600, height: 450 });
+  });
+
   it("calls disconnect on unmount", () => {
     const { canvasRef, containerRef } = makeRefs();
     const { unmount } = renderHook(() => useCanvasSize(canvasRef, containerRef));
     unmount();
     expect(mockDisconnect).toHaveBeenCalledOnce();
+    expect(dprWatch.dispose).toHaveBeenCalledOnce();
   });
 });

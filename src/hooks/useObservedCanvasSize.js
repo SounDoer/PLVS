@@ -1,5 +1,7 @@
 import { useLayoutEffect, useState } from "react";
 
+import { watchDevicePixelRatio } from "../lib/devicePixelRatioWatch.js";
+
 const EMPTY_CANVAS_SIZE = Object.freeze({ dpr: 1, width: 0, height: 0 });
 
 /** Keeps a canvas backing store in sync without reading layout during ordinary React renders. */
@@ -28,9 +30,11 @@ export function useObservedCanvasSize(canvasRef, enabled = true) {
     const observer = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
     observer?.observe(canvas);
     window.addEventListener("resize", measure);
+    const unwatchDpr = watchDevicePixelRatio(measure);
     return () => {
       observer?.disconnect();
       window.removeEventListener("resize", measure);
+      unwatchDpr();
     };
   }, [canvasRef, enabled]);
 

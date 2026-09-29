@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { watchDevicePixelRatio } from "../lib/devicePixelRatioWatch.js";
+
 export function useCanvasSize(canvasRef, containerRef, onResize, options = {}) {
   const onResizeRef = useRef(onResize);
   // maxDevicePixelRatio caps both axes; the per-axis overrides let a caller cap one axis while
@@ -30,14 +32,17 @@ export function useCanvasSize(canvasRef, containerRef, onResize, options = {}) {
       onResizeRef.current?.({ width: canvas.width, height: canvas.height });
     };
 
-    const ro = new ResizeObserver(() => {
+    const schedule = () => {
       if (rafId) return;
       rafId = requestAnimationFrame(resize);
-    });
+    };
+    const ro = new ResizeObserver(schedule);
     ro.observe(container);
+    const unwatchDpr = watchDevicePixelRatio(schedule);
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       ro.disconnect();
+      unwatchDpr();
     };
   }, [canvasRef, containerRef, maxDprX, maxDprY]);
 }

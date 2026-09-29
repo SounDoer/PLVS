@@ -5,6 +5,7 @@ import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { selectStereoMapCanvasColors } from "../../theme/themeCanvasSelectors.js";
 import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 import { readCssNumber } from "../../theme/cssTokens.js";
+import { watchDevicePixelRatio } from "../../lib/devicePixelRatioWatch.js";
 
 // Same viewBox convention as Spectrum's inline SVG (and this component's own former SVG
 // implementation), so the curve, grid, and hover overlay all share one coordinate system across
@@ -479,8 +480,8 @@ function hashHoldValues(mode, holdValues) {
  * layout/style flush — doing that unconditionally on every render (even ones the signature ends up
  * skipping) reintroduces the same class of cost the canvas rewrite was meant to remove, and is
  * disproportionately expensive here given how many draw calls a redraw performs. Size is tracked via
- * a mount-time measurement plus a ResizeObserver (so a layout read only happens when the element
- * actually resizes, not every render). Colors arrive as a resolved theme bundle and never require a
+ * a mount-time measurement plus a ResizeObserver and a DPR watch (so a layout read only happens when
+ * the element actually resizes or moves to a differently scaled display, not every render). Colors arrive as a resolved theme bundle and never require a
  * style read; computed style is retained only for non-color drawing geometry.
  */
 export function StereoMapPlot({
@@ -533,10 +534,13 @@ export function StereoMapPlot({
       bumpResizeVersion((v) => v + 1);
     };
     measure();
-    if (typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(canvas);
-    return () => observer.disconnect();
+    const unwatchDpr = watchDevicePixelRatio(measure);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(canvas);
+    return () => {
+      observer?.disconnect();
+      unwatchDpr();
+    };
   }, []);
 
   useLayoutEffect(() => {

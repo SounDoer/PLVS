@@ -1,8 +1,16 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 
 import { StereoMapPlot } from "./StereoMapPlot.jsx";
+
+const dprWatch = vi.hoisted(() => ({ onChange: null }));
+vi.mock("../../lib/devicePixelRatioWatch.js", () => ({
+  watchDevicePixelRatio: (onChange) => {
+    dprWatch.onChange = onChange;
+    return () => {};
+  },
+}));
 
 const TEST_CHANNEL_COLORS = {
   primary: "#ff0000",
@@ -640,5 +648,37 @@ describe("StereoMapPlot", () => {
 
     expect(busyCtx.fill.mock.calls.length).toBe(calmCtx.fill.mock.calls.length);
     expect(busyCtx.stroke.mock.calls.length).toBe(calmCtx.stroke.mock.calls.length);
+  });
+
+  it("re-measures and redraws at the new DPR when only the DPR changes", () => {
+    vi.stubGlobal("devicePixelRatio", 1);
+    const ctx = contextStub();
+    const baselineWidths = [];
+    const stroke = ctx.stroke;
+    ctx.stroke = vi.fn(() => {
+      baselineWidths.push(ctx.lineWidth);
+      stroke();
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    const { container } = render(
+      <StereoMapPlot
+        mode={STEREO_MAP_MODES.CORRELATION}
+        bandCentersHz={[100, 1000, 10000]}
+        points={threeBandPoints()}
+        range={RANGE}
+        themeColors={TEST_CHANNEL_COLORS}
+      />
+    );
+    const canvas = container.querySelector("canvas");
+    expect(canvas.width).toBe(1000);
+
+    vi.stubGlobal("devicePixelRatio", 2);
+    act(() => dprWatch.onChange());
+    vi.unstubAllGlobals();
+
+    expect(canvas.width).toBe(2000);
+    expect(canvas.height).toBe(520);
+    // The redraw's baseline is still 1 CSS px, now two backing pixels.
+    expect(baselineWidths.at(-2)).toBe(2);
   });
 });

@@ -4,6 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useObservedCanvasSize } from "./useObservedCanvasSize.js";
 
+const dprWatch = vi.hoisted(() => ({ onChange: null, dispose: null }));
+vi.mock("../lib/devicePixelRatioWatch.js", () => ({
+  watchDevicePixelRatio: (onChange) => {
+    dprWatch.onChange = onChange;
+    dprWatch.dispose = vi.fn();
+    return dprWatch.dispose;
+  },
+}));
+
 describe("useObservedCanvasSize", () => {
   let notifyResize;
   let disconnect;
@@ -51,5 +60,21 @@ describe("useObservedCanvasSize", () => {
 
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();
+  });
+
+  it("re-measures when DPR changes while the CSS size does not", () => {
+    vi.stubGlobal("devicePixelRatio", 1);
+    const canvas = document.createElement("canvas");
+    Object.defineProperty(canvas, "clientWidth", { configurable: true, value: 200 });
+    Object.defineProperty(canvas, "clientHeight", { configurable: true, value: 120 });
+    const { result, unmount } = renderHook(() => useObservedCanvasSize({ current: canvas }, true));
+
+    vi.stubGlobal("devicePixelRatio", 2);
+    act(() => dprWatch.onChange());
+
+    expect(result.current).toEqual({ dpr: 2, width: 400, height: 240 });
+    expect(canvas.width).toBe(400);
+    unmount();
+    expect(dprWatch.dispose).toHaveBeenCalledOnce();
   });
 });
