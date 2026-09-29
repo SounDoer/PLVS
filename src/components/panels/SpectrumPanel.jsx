@@ -31,6 +31,7 @@ import {
   buildAdaptiveFreqTicks,
   rangedFreqToXFrac,
   spectrumDbToTopFrac,
+  spectrumFloorDb,
 } from "../../config/scales";
 import {
   anchorFromPointer,
@@ -631,12 +632,16 @@ export function SpectrumPanel() {
       const db = data.dbList[nearestIdx];
       if (!band || !Number.isFinite(db)) return null;
       const dbB = data.dbListB?.[nearestIdx];
+      // Below the display range is off the chart -- in silence, the bank's numerical floor --
+      // so it reads "-" and has no point to mark, like a curve that is not drawn there.
+      const floorDb = spectrumFloorDb(spectrumRange);
+      const onChart = db >= floorDb;
       return {
         leftPct: rangedFreqToXFrac(band.fCenter, spectrumRange.minHz, spectrumRange.maxHz) * 100,
-        topPct: spectrumDbToTopFrac(db, spectrumRange) * 100,
+        topPct: onChart ? spectrumDbToTopFrac(db, spectrumRange) * 100 : null,
         freqLabel: formatSpectrumFreq(band.fCenter),
-        dbLabel: `${db.toFixed(1)} dB`,
-        dbLabelB: Number.isFinite(dbB) ? `${dbB.toFixed(1)} dB` : null,
+        dbLabel: onChart ? `${db.toFixed(1)} dB` : "-",
+        dbLabelB: Number.isFinite(dbB) ? (dbB >= floorDb ? `${dbB.toFixed(1)} dB` : "-") : null,
         noteLabel: freqToNote(band.fCenter),
       };
     },
@@ -971,17 +976,19 @@ export function SpectrumPanel() {
               {spectrumHover && !chartDragging ? (
                 <div className="pointer-events-none absolute inset-x-0 top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inset-bottom)] z-10">
                   <ChartCrosshair leftPct={spectrumHover.leftPct} topPct={spectrumHover.topPct} />
-                  <div
-                    className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-spectrum-primary)]"
-                    style={{
-                      left: `${spectrumHover.leftPct}%`,
-                      top: `${spectrumHover.topPct}%`,
-                      backgroundColor:
-                        selectedOffset >= 0
-                          ? "var(--ui-spectrum-primary-snap)"
-                          : "var(--ui-spectrum-primary)",
-                    }}
-                  />
+                  {spectrumHover.topPct != null ? (
+                    <div
+                      className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background bg-[color:var(--ui-spectrum-primary)]"
+                      style={{
+                        left: `${spectrumHover.leftPct}%`,
+                        top: `${spectrumHover.topPct}%`,
+                        backgroundColor:
+                          selectedOffset >= 0
+                            ? "var(--ui-spectrum-primary-snap)"
+                            : "var(--ui-spectrum-primary)",
+                      }}
+                    />
+                  ) : null}
                   <div className="absolute left-[var(--ui-chart-hud-inset)] top-[var(--ui-chart-hud-inset)] rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]">
                     <div className="font-[family-name:var(--ui-font-mono)] tabular-nums">
                       {spectrumHover.freqLabel}

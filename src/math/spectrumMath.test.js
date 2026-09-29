@@ -68,6 +68,14 @@ describe("buildSpectrumSvgFromBandsAndDb", () => {
     const svg = buildSpectrumSvgFromBandsAndDb([1000], [10]);
     expect(svg).toMatch(/^M /);
   });
+
+  it("draws nothing when the whole row is below the range floor", () => {
+    const range = { yMaxDb: -12, yMinDb: -96 };
+    // Silence reaches the panel as the bank's numerical floor, far below any display range.
+    expect(buildSpectrumSvgFromBandsAndDb([100, 1000], [-187.2, -187.2], range)).toBe("");
+    expect(buildSpectrumSvgFromBandsAndDb([100, 1000], [-187.2, -60], range)).toMatch(/^M /);
+    expect(buildSpectrumSvgFromBandsAndDb([100, 1000], [-96, -96], range)).toMatch(/^M /);
+  });
 });
 
 describe("findSpectrumPeakCandidates", () => {

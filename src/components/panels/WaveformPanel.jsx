@@ -455,7 +455,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
                 <div key={label}>
                   {label}{" "}
                   <span className="font-[family-name:var(--ui-font-mono)] tabular-nums">
-                    {dbFs.toFixed(1)} dBFS
+                    {dbFs != null ? `${dbFs.toFixed(1)} dBFS` : "-"}
                   </span>
                 </div>
               ))}

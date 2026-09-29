@@ -165,6 +165,16 @@ describe("computeWaveformHoverPoint", () => {
     expect(r.leftPct).toBe(100);
   });
 
+  it("reports a silent column as no reading rather than the log floor", () => {
+    const columns = 4;
+    const maxes = [new Array(columns).fill(0), new Array(columns).fill(1e-12)];
+    const mins = [new Array(columns).fill(0), new Array(columns).fill(0)];
+    const r = computeWaveformHoverPoint(0.5, mins, maxes, columns, 0, 50, 0.1, ["L", "R"]);
+    expect(r.channels[0].dbFs).toBeNull();
+    // Non-zero amplitude is still a reading, clamped as before.
+    expect(r.channels[1].dbFs).toBeCloseTo(-180, 3);
+  });
+
   it("returns null for empty columns", () => {
     expect(computeWaveformHoverPoint(0.5, [[]], [[]], 0, 0, 50, 0.1, ["L"])).toBeNull();
   });

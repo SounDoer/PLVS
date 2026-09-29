@@ -148,7 +148,8 @@ export function computeHistoryHoverPoint(
  * @param {number} visibleSamples - window width in entries
  * @param {number} sampleSec - seconds per history entry
  * @param {string[]} labels - channel labels
- * @returns {{ leftPct: number, timeLabel: string, channels: Array<{ label: string, dbFs: number }> } | null}
+ * @returns {{ leftPct: number, timeLabel: string, channels: Array<{ label: string, dbFs: number | null }> } | null}
+ *   `dbFs` is null for a silent column, which has no level to report.
  */
 export function computeWaveformHoverPoint(
   xFrac,
@@ -172,10 +173,13 @@ export function computeWaveformHoverPoint(
   return {
     leftPct: xFrac * 100,
     timeLabel: formatHoverOffset(offsetSec),
-    channels: labels.map((label, ch) => ({
-      label,
-      dbFs: 20 * Math.log10(Math.max(1e-9, Math.abs(maxes[ch]?.[col] ?? 0))),
-    })),
+    channels: labels.map((label, ch) => {
+      const amplitude = Math.abs(maxes[ch]?.[col] ?? 0);
+      return {
+        label,
+        dbFs: amplitude === 0 ? null : 20 * Math.log10(Math.max(1e-9, amplitude)),
+      };
+    }),
   };
 }
 

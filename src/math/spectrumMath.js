@@ -1,4 +1,4 @@
-import { rangedFreqToXFrac, spectrumDbToYProjector } from "../config/scales.js";
+import { rangedFreqToXFrac, spectrumDbToYProjector, spectrumFloorDb } from "../config/scales.js";
 
 const SPECTRUM_VIEW_W = 1000.0;
 
@@ -37,6 +37,11 @@ function spectrumXStrings(centers, range) {
 
 export function buildSpectrumSvgFromBandsAndDb(centers, db, range = {}) {
   if (!centers.length || centers.length !== db.length) return "";
+  // Silence arrives as the bank's numerical floor (about -187 dB); drawn, it would clamp into a
+  // flat line along the bottom edge that reads as a measurement. A row wholly off the chart is
+  // not drawn at all.
+  const floorDb = spectrumFloorDb(range);
+  if (!db.some((value) => value >= floorDb)) return "";
   const xs = spectrumXStrings(centers, range);
   const projectY = spectrumDbToYProjector(range);
   const pts = new Array(centers.length);

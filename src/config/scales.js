@@ -113,6 +113,12 @@ export function spectrumDbToYProjector(range = {}) {
   return (d) => projectDb(d, yMinDb, yMaxDb, yRangeDb);
 }
 
+/** Bottom edge of the display range in dB; readings below it are off the chart. */
+export function spectrumFloorDb(range = {}) {
+  const { yMaxDb, yRangeDb } = normalizeSpectrumRange(range);
+  return yMaxDb - yRangeDb;
+}
+
 /** Tick line top as fraction of full viewBox height (same coords as spectrum trace) */
 export function spectrumDbToTopFrac(d, range = {}) {
   return spectrumDbToYViewBox(d, range) / SPEC_VIEW_H;
