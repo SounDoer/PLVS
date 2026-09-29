@@ -183,3 +183,16 @@ for position only.
   This dates from the WebGL port (`7b2dddaa`) and also dimmed the quiet-terrain fade band. It was
   fixed by writing premultiplied colour, after which the floor measured 23/32/32 against Lines'
   24/33/32.
+- D6 revisited the same day: a pixel-snapping attempt was built, measured with Agent Control
+  before and after screenshots at DPR 1, and **not committed**.
+  - SVG, using `shape-rendering="crispEdges"` with a whole-device-pixel width: most grid lines went
+    from two soft rows (`[39,27]`) to one crisp row (`[40]`), but one Loudness grid line **vanished
+    entirely**. With antialiasing off, a line exactly one pixel wide whose centre lands on a pixel
+    boundary can cover no pixel centre at all. `crispEdges` is not a safe way to snap SVG hairlines.
+    Crisp SVG lines would need their positions snapped in JS from the element's absolute
+    device-pixel position, and that goes stale on layout moves that do not resize the element.
+  - Canvas, snapping in backing-store space: the Stereo Map zero line went from four rows
+    (`[23,32,32,23]`) to two (`[30,30]`), not one. The canvas element's CSS box is fractional, so the
+    browser resamples the backing store onto the screen and undoes half the snap (S6). Canvas snapping
+    becomes worth doing only after backing stores are sized from `devicePixelContentBoxSize`, which
+    maps them 1:1 onto device pixels.
