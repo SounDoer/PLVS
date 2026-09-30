@@ -1,3 +1,4 @@
+import { RESIZE_HANDLE_LINE_CLASS } from "../lib/shellLayout.js";
 import { useRef } from "react";
 import { getDockPanelSizing } from "./dockPanelSizing.js";
 
@@ -11,6 +12,7 @@ export function DockPanelResizeHandle({
   onReset,
 }) {
   const dragRef = useRef(null);
+  const handleRef = useRef(null);
   const leftSizing = getDockPanelSizing(leftPanel.moduleId);
   const rightSizing = getDockPanelSizing(rightPanel.moduleId);
 
@@ -33,8 +35,16 @@ export function DockPanelResizeHandle({
     });
   };
 
+  function finishDrag() {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (handleRef.current) delete handleRef.current.dataset.dragging;
+    if (drag) emit(drag.latestDelta, true, drag.widths);
+  }
+
   return (
     <div
+      ref={handleRef}
       role="separator"
       aria-label={`Resize ${leftPanel.customTitle ?? leftPanel.moduleId} and ${
         rightPanel.customTitle ?? rightPanel.moduleId
@@ -50,6 +60,7 @@ export function DockPanelResizeHandle({
       onPointerDown={(event) => {
         if (disabled || event.button !== 0) return;
         event.preventDefault();
+        event.currentTarget.dataset.dragging = "true";
         event.currentTarget.setPointerCapture?.(event.pointerId);
         dragRef.current = {
           pointerId: event.pointerId,
@@ -70,14 +81,12 @@ export function DockPanelResizeHandle({
         const drag = dragRef.current;
         if (!drag || drag.pointerId !== event.pointerId) return;
         dragRef.current = null;
+        if (handleRef.current) delete handleRef.current.dataset.dragging;
         event.currentTarget.releasePointerCapture?.(event.pointerId);
         emit(drag.latestDelta, true, drag.widths);
       }}
-      onPointerCancel={() => {
-        const drag = dragRef.current;
-        dragRef.current = null;
-        if (drag) emit(drag.latestDelta, true, drag.widths);
-      }}
+      onPointerCancel={finishDrag}
+      onLostPointerCapture={finishDrag}
       onDoubleClick={() => {
         if (!disabled) onReset?.(leftPanel.id, rightPanel.id);
       }}
@@ -88,7 +97,9 @@ export function DockPanelResizeHandle({
         emit(event.key === "ArrowRight" ? step : -step, true);
       }}
     >
-      <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-border transition-colors group-hover:bg-primary/70 group-focus-visible:bg-primary" />
+      <div
+        className={`absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 ${RESIZE_HANDLE_LINE_CLASS}`}
+      />
     </div>
   );
 }

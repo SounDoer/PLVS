@@ -182,10 +182,10 @@ describe("ModulesPopoverContent", () => {
       ?.closest(".group");
     const leaf = container.querySelector("[data-leaf]");
 
-    expect(leaf?.className).not.toContain("ring-primary/60");
+    expect(leaf?.className).not.toContain("ring-primary");
     fireEvent.mouseEnter(statsRow);
-    expect(leaf?.className).toContain("ring-primary/60");
+    expect(leaf?.className).toContain("ring-primary");
     fireEvent.mouseLeave(statsRow);
-    expect(leaf?.className).not.toContain("ring-primary/60");
+    expect(leaf?.className).not.toContain("ring-primary");
   });
 });

@@ -1,3 +1,4 @@
+import { RESIZE_HANDLE_LINE_CLASS } from "../lib/shellLayout.js";
 import { useRef } from "react";
 import {
   DOCK_DEFAULT_HEIGHT,
@@ -11,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 export function DockHeightResizeHandle({ edge, height, disabled = false, onHeightChange }) {
   const dragRef = useRef(null);
+  const handleRef = useRef(null);
   const frameRef = useRef(null);
   const currentHeight = clampDockHeight(height);
 
@@ -19,8 +21,18 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
     void Promise.resolve(onHeightChange(clampDockHeight(nextHeight), { persist })).catch(() => {});
   };
 
+  function finishDrag() {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (handleRef.current) delete handleRef.current.dataset.dragging;
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    if (drag) commit(drag.latestHeight, true);
+  }
+
   return (
     <div
+      ref={handleRef}
       role="separator"
       aria-label="Resize Dock height"
       aria-orientation="horizontal"
@@ -38,6 +50,7 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
       onPointerDown={(event) => {
         if (disabled || event.button !== 0) return;
         event.preventDefault();
+        event.currentTarget.dataset.dragging = "true";
         event.currentTarget.setPointerCapture?.(event.pointerId);
         dragRef.current = {
           pointerId: event.pointerId,
@@ -68,18 +81,14 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
         const drag = dragRef.current;
         if (!drag || drag.pointerId !== event.pointerId) return;
         dragRef.current = null;
+        if (handleRef.current) delete handleRef.current.dataset.dragging;
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
         event.currentTarget.releasePointerCapture?.(event.pointerId);
         commit(drag.latestHeight, true);
       }}
-      onPointerCancel={() => {
-        const drag = dragRef.current;
-        dragRef.current = null;
-        if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-        if (drag) commit(drag.latestHeight, true);
-      }}
+      onPointerCancel={finishDrag}
+      onLostPointerCapture={finishDrag}
       onDoubleClick={() => commit(DOCK_DEFAULT_HEIGHT, true)}
       onKeyDown={(event) => {
         const step = event.shiftKey ? 16 : 4;
@@ -91,8 +100,8 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
     >
       <div
         className={cn(
-          "absolute left-0 right-0 h-px bg-border transition-colors",
-          "group-hover:bg-primary/70 group-focus-visible:bg-primary",
+          "absolute left-0 right-0 h-px",
+          RESIZE_HANDLE_LINE_CLASS,
           edge === "top" ? "bottom-0" : "top-0"
         )}
       />

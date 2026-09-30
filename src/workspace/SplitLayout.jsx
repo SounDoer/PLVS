@@ -7,6 +7,7 @@ import {
   PANEL_HEADER_ACTIONS,
   PANEL_HEADER_BAR,
   PANEL_HEADER_PIN_ICON,
+  RESIZE_HANDLE_LINE_CLASS,
 } from "@/lib/shellLayout";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { LeafView } from "./LeafView.jsx";
@@ -156,9 +157,12 @@ function SplitDivider({
 }) {
   const { state, resizeChildren } = useWorkspaceStore();
   const ref = useRef(null);
+  const dragCleanupRef = useRef(null);
+  useEffect(() => () => dragCleanupRef.current?.(), []);
   const isH = direction === "h";
 
   function handleMouseDown(e) {
+    if (e.button !== 0) return;
     e.preventDefault();
     const aboveEl = ref.current?.previousElementSibling;
     const belowEl = ref.current?.nextElementSibling;
@@ -186,6 +190,8 @@ function SplitDivider({
     const minAbove = getSubtreeMinSize(aboveNode, state, dimension);
     const minBelow = getSubtreeMinSize(belowNode, state, dimension);
     let snapped = false;
+    dragCleanupRef.current?.();
+    ref.current.dataset.dragging = "true";
 
     function onMove(ev) {
       const result = resolveSplitDragDelta({
@@ -222,12 +228,19 @@ function SplitDivider({
       );
     }
     function onUp() {
-      if (ref.current) delete ref.current.dataset.snapped;
+      if (ref.current) {
+        delete ref.current.dataset.snapped;
+        delete ref.current.dataset.dragging;
+      }
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("blur", onUp);
+      dragCleanupRef.current = null;
     }
+    dragCleanupRef.current = onUp;
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("blur", onUp);
   }
 
   return (
@@ -239,12 +252,7 @@ function SplitDivider({
       )}
       onMouseDown={handleMouseDown}
     >
-      <div
-        className={cn(
-          "bg-transparent transition-colors group-hover:bg-primary/70 group-active:bg-primary group-data-[snapped=true]:bg-primary",
-          isH ? "h-full w-px" : "h-px w-full"
-        )}
-      />
+      <div className={cn(RESIZE_HANDLE_LINE_CLASS, isH ? "h-full w-px" : "h-px w-full")} />
     </div>
   );
 }

@@ -66,7 +66,9 @@ colours when imported or loaded. Input outlines now share the ordinary Border co
 Workspace panels use their surface colour, rounded corners, and spacing without permanent outer
 outlines or lines below their titles. Header, Footer, and the File analysis summary also omit outer
 outlines. The gaps between panels remain draggable: their resize line appears on hover and stays
-highlighted during a drag, then disappears when idle. Panel-location and drag-target highlights
+highlighted during a drag, then disappears when idle. Workspace and Dock resize lines use opaque
+Border Color on hover or keyboard focus and Accent while dragging. Dock resize lines also
+disappear when idle. Panel-location outlines use opaque Accent. Panel-location and drag-target highlights
 still appear when needed. Input fields retain their
 existing boundary cues. Hover colours are generated as opaque colours; disabled controls retain
 their reduced opacity. These interaction rules do not add Theme Editor settings.

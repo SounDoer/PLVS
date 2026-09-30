@@ -257,7 +257,7 @@ export function LeafView({ node, path, style }) {
       className={cn(
         "relative flex min-h-0 flex-col overflow-hidden rounded-md transition-shadow duration-150",
         PANEL_SURFACE_CLASS,
-        isPanelHoverHighlighted && "ring-2 ring-primary/60 ring-offset-0",
+        isPanelHoverHighlighted && "ring-2 ring-primary ring-offset-0",
         isDragging &&
           (zoneHint === "above" || zoneHint === "below") &&
           "ring-2 ring-primary ring-offset-0",

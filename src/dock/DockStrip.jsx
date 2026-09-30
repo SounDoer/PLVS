@@ -44,7 +44,7 @@ export function DockStrip({
         disabled={heightResizeDisabled}
         onHeightChange={onHeightChange}
       />
-      <div className="flex h-full min-w-0 items-stretch divide-x divide-border">
+      <div className="flex h-full min-w-0 items-stretch">
         {panels.map((panel, index) => {
           const dockModuleId = dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId;
           const entry = DOCK_MODULE_REGISTRY[dockModuleId];
@@ -64,7 +64,7 @@ export function DockStrip({
               data-hover-highlighted={hoveredPanelId === panel.id ? "true" : undefined}
               className={cn(
                 "relative transition-[box-shadow] duration-150",
-                hoveredPanelId === panel.id && "relative z-10 ring-2 ring-inset ring-primary/60"
+                hoveredPanelId === panel.id && "relative z-10 ring-2 ring-inset ring-primary"
               )}
               style={{
                 minWidth: entry.minWidth,
