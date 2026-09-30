@@ -27,12 +27,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { build } from "esbuild";
 
-/** `drawWaveformCanvas` resolves two theme tokens through the per-theme cache. */
+/** `drawWaveformCanvas` reads one CSS token, the stroke width. */
 function installDomStubs() {
   const documentElement = { nodeType: 1 };
   globalThis.document = { documentElement };
   globalThis.getComputedStyle = () => ({
-    getPropertyValue: (name) => (name === "--ui-waveform-fill-opacity" ? "0.22" : "1"),
+    getPropertyValue: () => "1",
   });
 }
 installDomStubs();
@@ -155,6 +155,7 @@ function recordingContext() {
   const context = {
     clearRect: noop,
     closePath: noop,
+    setTransform: noop,
     beginPath: () => {
       counts.beginPath += 1;
     },
