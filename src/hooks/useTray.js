@@ -15,7 +15,14 @@ import {
   setCurrentTrayIcon,
 } from "../lib/trayIconLifecycle.js";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
+import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 import { issueInstanceCommand, quitAllInstances } from "../runtime/coordination.js";
+
+// The dark icon is a white glyph for a dark surface; the light icon is a black glyph.
+async function loadTrayIcon(scheme) {
+  const iconName = scheme === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
+  return Image.fromPath(await resolveResource(iconName));
+}
 
 // formatAudioDeviceLabel returns { primary, secondary, full }; a menu item's
 // text must be a single string. Reconstruct the picker's compact form.
@@ -277,6 +284,14 @@ export function useTray({
 }) {
   const isMac = isMacOS();
   const isCoordinator = useCoordinatorRole();
+  // On Windows the icon sits on the taskbar, whose mode is independent of the PLVS theme. The
+  // PLVS theme remains the fallback until the taskbar mode is known and on other platforms.
+  const taskbarColorScheme = useTaskbarColorScheme(isCoordinator && !isMac);
+  const iconScheme = taskbarColorScheme ?? colorScheme;
+  const iconSchemeRef = useRef(iconScheme);
+  useLayoutEffect(() => {
+    iconSchemeRef.current = iconScheme;
+  }, [iconScheme]);
   const trayRef = useRef(null);
   const sourceControlsRef = useRef(null);
   const sourceSyncQueueRef = useRef(Promise.resolve());
@@ -453,9 +468,8 @@ export function useTray({
       const snapshot = menuInputsRef.current;
       const built = await buildMenu(menuConfig(snapshot));
 
-      const iconName = colorScheme === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
-      const iconPath = await resolveResource(iconName);
-      const icon = await Image.fromPath(iconPath);
+      const createdScheme = iconSchemeRef.current;
+      const icon = await loadTrayIcon(createdScheme);
 
       await closeTrayIcon();
       if (cancelled) return;
@@ -479,6 +493,10 @@ export function useTray({
         setCurrentTrayIcon(tray);
         trayRef.current = tray;
         sourceControlsRef.current = built.sourceControls;
+        // The icon effect skipped any scheme change made before trayRef was set.
+        if (iconSchemeRef.current !== createdScheme) {
+          await tray.setIcon(await loadTrayIcon(iconSchemeRef.current));
+        }
         // State may have changed while the tray was being created; rebuild once
         // with whatever is current so no stale value shows.
         if (menuInputsRef.current !== snapshot) {
@@ -531,14 +549,12 @@ export function useTray({
     void queueSourceSync(sourceControlsRef.current, menuInputsRef.current);
   }, [safeAudioDeviceId, defaultOutputLabel, sourceBusy, queueSourceSync]);
 
-  // Update tray icon when color scheme changes.
+  // Update tray icon when the scheme it sits on changes.
   useEffect(() => {
     if (!isTauri() || !trayRef.current) return;
     (async () => {
-      const iconName = colorScheme === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
-      const iconPath = await resolveResource(iconName);
-      const icon = await Image.fromPath(iconPath);
+      const icon = await loadTrayIcon(iconScheme);
       await trayRef.current?.setIcon(icon);
     })();
-  }, [colorScheme]);
+  }, [iconScheme]);
 }

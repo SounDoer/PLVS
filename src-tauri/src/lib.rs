@@ -31,6 +31,7 @@ pub mod runtime_diagnostics;
 pub mod runtime_identity;
 mod sidecar;
 mod state;
+mod taskbar_theme;
 pub mod vad;
 pub mod visual_capture;
 mod window_chrome;
@@ -268,6 +269,7 @@ pub fn run() {
       dock_accessories::set_dock_accessories,
       dock_accessories::cursor_over_dock_surfaces,
       glass_effect::set_glass_effect,
+      taskbar_theme::taskbar_color_scheme,
       window_chrome::sync_main_window_chrome,
       agent_control::broker::agent_control_frontend_ready,
       agent_control::broker::agent_control_frontend_not_ready,

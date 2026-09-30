@@ -43,6 +43,7 @@ vi.mock("@tauri-apps/api/path", () => ({
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../lib/platform.js", () => ({ isMacOS: vi.fn(() => false) }));
+vi.mock("./useTaskbarColorScheme.js", () => ({ useTaskbarColorScheme: vi.fn(() => null) }));
 // Intentionally NOT mocked: formatAudioDeviceLabel returns an object
 // ({ primary, secondary, full }), and the real function must run so a test
 // catches any attempt to use that object as a menu item's text.
@@ -55,6 +56,7 @@ import { MenuItem, CheckMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isMacOS } from "../lib/platform.js";
 import { setCoordinatorRole } from "../lib/runtimeRole.js";
+import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 
 const defaultProps = {
   running: false,
@@ -99,6 +101,8 @@ describe("useTray", () => {
     coordination.issue.mockResolvedValue();
     coordination.quitAll.mockResolvedValue();
     isMacOS.mockReturnValue(false);
+    useTaskbarColorScheme.mockReturnValue(null);
+    resolveResource.mockImplementation(async (name) => `/fake/${name}`);
     TrayIcon.getById.mockResolvedValue(null);
     TrayIcon.removeById.mockResolvedValue(undefined);
     TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), close: vi.fn() });
@@ -110,7 +114,7 @@ describe("useTray", () => {
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     expect(resolveResource).toHaveBeenCalledWith("icons/tray-dark.png");
-    expect(Image.fromPath).toHaveBeenCalledWith("/fake/tray.png");
+    expect(Image.fromPath).toHaveBeenCalledWith("/fake/icons/tray-dark.png");
     expect(TrayIcon.new).toHaveBeenCalledWith(
       expect.objectContaining({ id: PLVS_TRAY_ID, icon: { __type: "MockImage" } })
     );
@@ -144,6 +148,53 @@ describe("useTray", () => {
     expect(TrayIcon.new).toHaveBeenCalledWith(
       expect.objectContaining({ icon: { __type: "MockImage" } })
     );
+  });
+
+  it("chooses the icon from the Windows taskbar mode, not the PLVS theme", async () => {
+    useTaskbarColorScheme.mockReturnValue("light");
+    renderHook(() => useTray({ ...defaultProps, colorScheme: "dark" }));
+    await act(async () => {});
+    expect(useTaskbarColorScheme).toHaveBeenLastCalledWith(true);
+    expect(resolveResource).toHaveBeenCalledWith("icons/tray-light.png");
+    expect(resolveResource).not.toHaveBeenCalledWith("icons/tray-dark.png");
+  });
+
+  it("does not follow the taskbar on macOS, where the icon is a template image", async () => {
+    isMacOS.mockReturnValue(true);
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    expect(useTaskbarColorScheme).toHaveBeenLastCalledWith(false);
+  });
+
+  it("swaps the icon when the taskbar mode changes", async () => {
+    const setIcon = vi.fn();
+    TrayIcon.new.mockResolvedValue({ setMenu: vi.fn(), setIcon, close: vi.fn() });
+    useTaskbarColorScheme.mockReturnValue("dark");
+    const { rerender } = renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    expect(setIcon).not.toHaveBeenCalled();
+
+    useTaskbarColorScheme.mockReturnValue("light");
+    await act(async () => rerender());
+
+    expect(Image.fromPath).toHaveBeenLastCalledWith("/fake/icons/tray-light.png");
+    expect(setIcon).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies a taskbar mode that arrives while the tray is being created", async () => {
+    const setIcon = vi.fn();
+    const pending = deferred();
+    TrayIcon.new.mockReturnValue(pending.promise);
+    const { rerender } = renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    expect(resolveResource).toHaveBeenCalledWith("icons/tray-dark.png");
+
+    useTaskbarColorScheme.mockReturnValue("light");
+    await act(async () => rerender());
+    await act(async () => pending.resolve({ setMenu: vi.fn(), setIcon, close: vi.fn() }));
+
+    expect(Image.fromPath).toHaveBeenLastCalledWith("/fake/icons/tray-light.png");
+    expect(setIcon).toHaveBeenCalledTimes(1);
   });
 
   it("lists Source-named workbenches and routes Start or Stop to the selected instance", async () => {
