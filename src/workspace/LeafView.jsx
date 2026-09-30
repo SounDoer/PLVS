@@ -1,5 +1,15 @@
 import { useCallback, useMemo, useRef } from "react";
-import { Maximize2, Pin, PinOff, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Maximize2,
+  Pin,
+  PinOff,
+  Plus,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PANEL_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import {
@@ -93,10 +103,59 @@ function getZoneHint(hoverDrop, path) {
   return hoverDrop.zone;
 }
 
-function getTabInsertX(tabIndex, totalTabs) {
-  if (totalTabs === 0 || tabIndex === 0) return "4px";
-  if (tabIndex >= totalTabs) return "calc(100% - 4px)";
-  return `${Math.round((tabIndex / totalTabs) * 100)}%`;
+const DROP_ZONE_PRESENTATION = {
+  above: { label: "Place Above", Icon: ArrowUp },
+  below: { label: "Place Below", Icon: ArrowDown },
+  left: { label: "Place Left", Icon: ArrowLeft },
+  right: { label: "Place Right", Icon: ArrowRight },
+};
+
+function DropHint({ Icon, label, panelTitle, className }) {
+  return (
+    <div
+      data-drop-hint
+      className={cn(
+        "pointer-events-none flex max-w-[calc(100%_-_1rem)] flex-col items-center px-2 py-1 text-center leading-tight",
+        className
+      )}
+    >
+      <div className="max-w-full truncate text-[length:var(--ui-fs-control)] font-semibold text-foreground">
+        {panelTitle}
+      </div>
+      <div className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-caption)] font-medium text-primary">
+        <Icon className="size-[length:var(--ui-icon-panel-action)] shrink-0" />
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+function DropPlacementPreview({ zone, panelTitle }) {
+  const presentation = DROP_ZONE_PRESENTATION[zone];
+  if (!presentation) return null;
+  const { Icon, label } = presentation;
+  const placementClass = {
+    above: "inset-x-0 top-0 h-1/2 rounded-t-md",
+    below: "inset-x-0 bottom-0 h-1/2 rounded-b-md",
+    left: "inset-y-0 left-0 w-1/2 rounded-l-md",
+    right: "inset-y-0 right-0 w-1/2 rounded-r-md",
+  }[zone];
+
+  return (
+    <div
+      data-drop-preview
+      data-drop-zone={zone}
+      className={cn(
+        "pointer-events-none absolute z-20 flex items-center justify-center",
+        placementClass
+      )}
+      style={{
+        backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)",
+      }}
+    >
+      <DropHint Icon={Icon} label={label} panelTitle={panelTitle} />
+    </div>
+  );
 }
 
 function getNodeAtPath(root, path) {
@@ -136,7 +195,7 @@ export function LeafView({ node, path, style }) {
     hoveredPanelId,
   } = useWorkspaceStore();
   const leafRef = useRef(null);
-  const { dragState, hoverDrop } = useDrag();
+  const { dragState, dragLabel, hoverDrop } = useDrag();
   const chromeData = usePanelChromeData();
   const compactPanels = chromeData?.compactPanels === true;
 
@@ -258,12 +317,7 @@ export function LeafView({ node, path, style }) {
         "relative flex min-h-0 flex-col overflow-hidden rounded-md transition-shadow duration-150",
         PANEL_SURFACE_CLASS,
         isPanelHoverHighlighted && "ring-2 ring-primary ring-offset-0",
-        isDragging &&
-          (zoneHint === "above" || zoneHint === "below") &&
-          "ring-2 ring-primary ring-offset-0",
-        isDragging &&
-          (zoneHint === "left" || zoneHint === "right") &&
-          "ring-2 ring-primary ring-offset-0"
+        isDragging && zoneHint && "ring-1 ring-primary ring-offset-0"
       )}
       style={{
         ...style,
@@ -276,48 +330,20 @@ export function LeafView({ node, path, style }) {
           : null),
       }}
     >
-      {/* Zone hint: above */}
-      {isDragging && zoneHint === "above" && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-1/2 items-start justify-center rounded-t-md border-t-2 border-dashed border-primary bg-primary/5 pt-2 text-[length:var(--ui-fs-caption)] text-primary">
-          Insert above
-        </div>
-      )}
-
-      {/* Zone hint: below */}
-      {isDragging && zoneHint === "below" && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-1/2 items-end justify-center rounded-b-md border-b-2 border-dashed border-primary bg-primary/5 pb-2 text-[length:var(--ui-fs-caption)] text-primary">
-          Insert below
-        </div>
-      )}
-
-      {/* Zone hint: left */}
-      {isDragging && zoneHint === "left" && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex w-1/2 items-center justify-center rounded-l-md border-l-2 border-dashed border-primary bg-primary/5 text-[length:var(--ui-fs-caption)] text-primary">
-          Insert left
-        </div>
-      )}
-
-      {/* Zone hint: right */}
-      {isDragging && zoneHint === "right" && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-1/2 items-center justify-center rounded-r-md border-r-2 border-dashed border-primary bg-primary/5 text-[length:var(--ui-fs-caption)] text-primary">
-          Insert right
-        </div>
-      )}
+      {isDragging && DROP_ZONE_PRESENTATION[zoneHint] ? (
+        <DropPlacementPreview zone={zoneHint} panelTitle={dragLabel} />
+      ) : null}
 
       {/* Slot header: tab bar + action buttons */}
       {!compactPanels && (
-        <div
-          data-leaf-tabs
-          className={cn(
-            PANEL_HEADER_BAR,
-            isDragging && zoneHint === "tabs" && "border-t-2 border-t-primary"
-          )}
-        >
-          {/* Tab insertion indicator */}
+        <div data-leaf-tabs className={PANEL_HEADER_BAR}>
+          {/* Tab placement hint */}
           {isDragging && zoneHint === "tabs" && (
-            <div
-              className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-primary"
-              style={{ left: getTabInsertX(hoverDrop?.tabIndex, visibleTabs.length) }}
+            <DropHint
+              Icon={Plus}
+              label="Add as Tab"
+              panelTitle={dragLabel}
+              className="absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2"
             />
           )}
 

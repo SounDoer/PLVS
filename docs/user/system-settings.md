@@ -86,8 +86,11 @@ outlines or lines below their titles. Header, Footer, and the File analysis summ
 outlines. The gaps between panels remain draggable: their resize line appears on hover and stays
 highlighted during a drag, then disappears when idle. Workspace and Dock resize lines use opaque
 Border Color on hover or keyboard focus and Accent while dragging. Dock resize lines also
-disappear when idle. Panel-location outlines use opaque Accent. Panel-location and drag-target highlights
-still appear when needed. Input fields retain their
+disappear when idle. Panel-location outlines use opaque Accent. While moving a Workspace panel, its
+prospective space is shown with a translucent Accent fill and no separate outline, leaving the panel
+beneath visible. Directional placement and tab insertion share the same unframed two-line hint. The
+preview itself identifies the dragged panel; invalid areas show a brief pointer label instead. Input
+fields retain their
 existing boundary cues. Hover colours are generated as opaque colours; disabled controls retain
 their reduced opacity. These interaction rules do not add Theme Editor settings.
 Panel title-bar buttons use opaque secondary text by default, with primary text and a subtle

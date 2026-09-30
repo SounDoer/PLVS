@@ -23,6 +23,9 @@ measurement.
 ## Split layout
 
 Drag panel edges to resize, and split or merge panes to change which meters are visible at once.
+When moving a panel, PLVS fills the space it will occupy after you release the pointer and labels the
+placement direction. Dropping on a panel title adds it as a tab; moving outside a valid panel shows
+**No Drop Target** and leaves the layout unchanged.
 
 ## Modules and presets
 

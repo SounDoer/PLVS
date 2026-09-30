@@ -10,7 +10,7 @@ export const DragContext = createContext(null);
  * Returns { targetPath, zone, tabIndex? } or null.
  */
 function computeDropTarget(x, y) {
-  const elements = document.elementsFromPoint(x, y);
+  const elements = document.elementsFromPoint?.(x, y) ?? [];
 
   const leafEl = elements.find((el) => el.hasAttribute("data-leaf"));
   if (leafEl) {
@@ -84,6 +84,7 @@ export function DragProvider({ children, onDrop }) {
   const startRef = useRef(null);
   const activeRef = useRef(false);
   const hoverDropRef = useRef(null);
+  const dragLabel = dragGhostLabel(state, dragState?.payload);
 
   const beginDrag = useCallback((e, payload) => {
     e.preventDefault();
@@ -109,6 +110,9 @@ export function DragProvider({ children, onDrop }) {
         if (Math.hypot(dx, dy) < 4) return;
         activeRef.current = true;
         setDragState({ payload: startRef.current.payload, x: e.clientX, y: e.clientY });
+        const drop = computeDropTarget(e.clientX, e.clientY);
+        hoverDropRef.current = drop;
+        setHoverDrop(drop);
       } else {
         setDragState((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null));
         const drop = computeDropTarget(e.clientX, e.clientY);
@@ -149,14 +153,18 @@ export function DragProvider({ children, onDrop }) {
   }, [onDrop]);
 
   return (
-    <DragContext.Provider value={{ dragState, hoverDrop, onTabMouseDown, onCreateMouseDown }}>
+    <DragContext.Provider
+      value={{ dragState, dragLabel, hoverDrop, onTabMouseDown, onCreateMouseDown }}
+    >
       {children}
-      {dragState && (
+      {dragState && !hoverDrop && (
         <div
-          className="pointer-events-none fixed z-50 rounded-xs border border-primary/60 bg-card px-2 py-0.5 text-[length:var(--ui-fs-control)] font-medium shadow-raised"
+          data-drag-ghost
+          data-drop-valid="false"
+          className="pointer-events-none fixed z-50 whitespace-nowrap text-[length:var(--ui-fs-control)] font-medium text-destructive"
           style={{ left: dragState.x + 14, top: dragState.y - 8 }}
         >
-          {dragGhostLabel(state, dragState.payload)}
+          {dragLabel} · No Drop Target
         </div>
       )}
     </DragContext.Provider>
