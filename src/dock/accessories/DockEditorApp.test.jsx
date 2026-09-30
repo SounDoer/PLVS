@@ -51,6 +51,29 @@ describe("DockEditorApp window behavior", () => {
     expect(action).toHaveBeenCalledWith("close-editor");
   });
 
+  it("keeps the editor open when interacting with a floating settings selector", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "module:levelMeter",
+      panelsById: { levelMeter: { id: "levelMeter", moduleId: "levelMeter" } },
+      panelOrder: ["levelMeter"],
+      controlsByPanelId: {
+        levelMeter: { levelMeterMode: "peak", readout: "live", showLabels: true },
+      },
+    };
+    render(<DockEditorApp />);
+    const trigger = screen.getByRole("combobox", { name: "Level mode" });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    const option = screen.getByRole("option", { name: "Momentary" });
+    fireEvent.pointerDown(option);
+    expect(action).not.toHaveBeenCalledWith("close-editor");
+    fireEvent.keyDown(option, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(action).not.toHaveBeenCalledWith("close-editor");
+    fireEvent.keyDown(trigger, { key: "Escape" });
+    expect(action).toHaveBeenCalledWith("close-editor");
+  });
+
   it("does not close on focus loss during an active editor drag", () => {
     render(<DockEditorApp />);
     const editor = screen.getByTestId("dock-editor");

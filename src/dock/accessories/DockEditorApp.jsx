@@ -51,7 +51,9 @@ export function DockEditorApp() {
   useEffect(() => {
     let blurTimer = null;
     const onPointerDown = (event) => {
-      const inside = rootRef.current?.contains(event.target) === true;
+      const inside =
+        rootRef.current?.contains(event.target) === true ||
+        event.target.closest?.("[data-settings-select-menu]") != null;
       pointerActiveRef.current = inside;
       if (!inside) action("close-editor");
     };

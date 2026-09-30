@@ -329,11 +329,13 @@ describe("DockModuleSettings", () => {
     expect(screen.queryByText("Peak Labels")).toBeNull();
   });
 
-  it("uses the themed inline selector instead of a native select", () => {
+  it("uses a themed floating selector instead of a native select", () => {
     renderSettings("spectrogram");
 
-    expect(screen.queryByRole("combobox")).toBeNull();
-    fireEvent.click(screen.getByLabelText("Spectrogram channel"));
+    expect(screen.getByRole("combobox", { name: "Spectrogram channel" })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Spectrogram channel" }), {
+      key: "ArrowDown",
+    });
     expect(screen.getByRole("listbox", { name: "Spectrogram channel" })).toBeTruthy();
     expect(screen.getByRole("option", { name: "Channels 1 + 2" })).toBeTruthy();
   });
@@ -363,7 +365,9 @@ describe("DockModuleSettings", () => {
     ];
     const onChange = renderSettings("spectrogram", { spectrumOptions, channelCount: 6 });
 
-    fireEvent.click(screen.getByLabelText("Spectrogram channel"));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Spectrogram channel" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "C" }));
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.spectrogram,

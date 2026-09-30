@@ -6,6 +6,29 @@ import { PanelSettingsMenu } from "./PanelSettingsMenu.jsx";
 import { DEFAULT_PANEL_CONTROLS } from "@/lib/panelControls.js";
 
 describe("PanelSettingsMenu", () => {
+  it("dismisses a nested selector before closing panel settings", () => {
+    const onChange = vi.fn();
+    render(
+      <PanelSettingsMenu
+        activeTab="levelMeter"
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onChange}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "level meter mode" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.keyDown(screen.getByRole("option", { name: "Momentary" }), { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "level meter mode" })).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "level meter mode" }), {
+      key: "Escape",
+    });
+    expect(screen.queryByRole("combobox")).toBeNull();
+  });
+
   it("exposes Waveform settings from the panel header", () => {
     render(
       <PanelSettingsMenu
@@ -52,8 +75,10 @@ describe("PanelSettingsMenu", () => {
     expect(scrollAreaClasses).toContain("overscroll-contain");
 
     expect(screen.getByLabelText("level meter mode")).toBeTruthy();
-    expect(screen.queryByRole("combobox")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
+    expect(screen.getByRole("combobox", { name: "level meter mode" })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "level meter mode" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "Momentary" }));
     expect(screen.getByText("Mode")).toBeTruthy();
 
@@ -148,7 +173,7 @@ describe("PanelSettingsMenu", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
-    expect(screen.getByRole("button", { name: "stereo map mode" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "stereo map channel" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "stereo map mode" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "stereo map channel" })).toBeTruthy();
   });
 });

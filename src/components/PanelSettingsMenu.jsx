@@ -95,6 +95,12 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
       <PopoverContent
         align="end"
         sideOffset={6}
+        onEscapeKeyDown={(event) => {
+          if (event.target.closest?.("[data-settings-select-menu]")) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (event.target.closest?.("[data-settings-select-menu]")) event.preventDefault();
+        }}
         className="flex max-h-[var(--radix-popover-content-available-height)] w-auto flex-col overflow-hidden p-1"
       >
         <PanelSettingsHeader

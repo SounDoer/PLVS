@@ -3,6 +3,11 @@
 Eight meter panels read the same signal at once. Each panel's settings menu holds the options listed
 here.
 
+Single-choice settings open floating dropdown menus, like System Settings, without moving the
+rows below them. Use the arrow keys to navigate, Enter to select, or Escape to dismiss the menu.
+Channel choices retain their group headings, including All Pairs, in one scrollable menu.
+Multi-choice layers, metric ordering, and other detailed editors continue to expand within the panel.
+
 | Panel       | What it shows                                           |
 | ----------- | ------------------------------------------------------- |
 | Level Meter | Per-channel level bars                                  |

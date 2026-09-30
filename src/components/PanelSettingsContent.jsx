@@ -1,3 +1,12 @@
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+} from "@/components/ui/select";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Check,
@@ -603,132 +612,74 @@ function SettingsOptionRow({
   );
 }
 
-export function SettingsSelect({
-  label,
-  ariaLabel,
-  options,
-  value,
-  onChange,
-  open,
-  onOpenChange,
-  collapsedGroups = [],
-}) {
-  const [expandedGroups, setExpandedGroups] = useState({});
-  const collapsedGroupSet = new Set(collapsedGroups);
-
+export function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOpenChange }) {
+  const groups = [];
+  for (const option of options) {
+    let group = groups.at(-1);
+    if (!group || group.label !== option.group) {
+      group = { label: option.group, options: [] };
+      groups.push(group);
+    }
+    group.options.push(option);
+  }
   return (
-    <div className="flex min-w-0 flex-col items-end">
-      <InlineDetailTrigger
-        ariaLabel={ariaLabel}
-        summary={label}
-        open={open}
-        onToggle={() => onOpenChange(!open)}
-        className="w-auto grid-cols-[auto_auto] gap-1.5 justify-self-end"
-      />
-      {open ? (
-        <div role="listbox" aria-label={ariaLabel} className={SETTINGS_DETAIL_SURFACE_CLASS}>
-          {options.map((opt, index) => {
-            const optionKey = opt.key ?? opt.id;
-            const previousGroup = index > 0 ? options[index - 1]?.group : null;
-            const showGroup = opt.group && opt.group !== previousGroup;
-            const groupCollapsed =
-              opt.group && collapsedGroupSet.has(opt.group) && expandedGroups[opt.group] !== true;
-            return (
-              <div key={optionKey}>
-                {showGroup ? (
-                  collapsedGroupSet.has(opt.group) ? (
-                    <button
-                      type="button"
-                      aria-expanded={!groupCollapsed}
-                      onClick={() =>
-                        setExpandedGroups((current) => ({
-                          ...current,
-                          [opt.group]: current[opt.group] !== true,
-                        }))
-                      }
-                      className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xs px-2 pb-0.5 pt-1 text-left text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground outline-none transition-colors hover:bg-ui-hover hover:text-foreground"
-                    >
-                      <span className="min-w-0 truncate">{opt.group}</span>
-                      {groupCollapsed ? (
-                        <ChevronDown aria-hidden="true" className="size-[1em] shrink-0" />
-                      ) : (
-                        <ChevronUp aria-hidden="true" className="size-[1em] shrink-0" />
-                      )}
-                    </button>
-                  ) : (
-                    <div className="min-w-0 truncate px-2 pb-0.5 pt-1 text-[length:var(--ui-fs-caption)] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {opt.group}
-                    </div>
-                  )
-                ) : null}
-                {groupCollapsed ? null : (
-                  <SettingsOptionRow
-                    role="option"
-                    aria-selected={optionKey === value}
-                    checked={optionKey === value}
-                    onClick={() => {
-                      onChange(optionKey);
-                      onOpenChange(false);
-                    }}
-                  >
-                    {typeof opt.renderLabel === "function" ? opt.renderLabel(opt) : opt.label}
-                  </SettingsOptionRow>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
+    <Select
+      value={String(value)}
+      open={open}
+      onOpenChange={onOpenChange}
+      onValueChange={(key) => {
+        const option = options.find((item) => String(item.key ?? item.id) === key);
+        if (option) onChange(option.key ?? option.id);
+      }}
+    >
+      <SelectTrigger
+        aria-label={ariaLabel}
+        className={cn(SETTINGS_SELECT_TRIGGER_CLASS, SETTINGS_VALUE_IDLE_CLASS, "w-auto shrink-0")}
+      >
+        <SelectValue>{label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent
+        data-settings-select-menu
+        position="popper"
+        align="end"
+        aria-label={ariaLabel}
+        onEscapeKeyDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onOpenChange(false);
+        }}
+        className="max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
+      >
+        {groups.map((group, index) => (
+          <SelectGroup key={index}>
+            {group.label ? <SelectLabel>{group.label}</SelectLabel> : null}
+            {group.options.map((option) => (
+              <SelectItem
+                key={option.key ?? option.id}
+                value={String(option.key ?? option.id)}
+                textValue={typeof option.label === "string" ? option.label : undefined}
+              >
+                {typeof option.renderLabel === "function"
+                  ? option.renderLabel(option)
+                  : option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
-/// A plain label-only choice list.
-function SettingsChoiceSelect({ ariaLabel, options, value, onChange, open, onOpenChange }) {
+function SettingsChoiceSelect({ options, value, ...props }) {
   const selectedOption = options.find((option) => option.id === value) ?? options[0];
   return (
-    <div className="flex min-w-0 flex-col items-end">
-      <InlineDetailTrigger
-        ariaLabel={ariaLabel}
-        summary={selectedOption.label}
-        open={open}
-        onToggle={() => onOpenChange(!open)}
-        className="w-auto grid-cols-[auto_auto] gap-1.5 justify-self-end"
-      />
-      {open ? (
-        <div role="listbox" aria-label={ariaLabel} className={SETTINGS_DETAIL_SURFACE_CLASS}>
-          {options.map((option) => {
-            const checked = option.id === value;
-            return (
-              <div
-                key={option.id}
-                role="option"
-                aria-selected={checked}
-                tabIndex={0}
-                data-settings-option-row
-                className={cn(SETTINGS_CHOICE_ROW_CLASS, "cursor-default")}
-                onClick={() => {
-                  onChange(option.id);
-                  onOpenChange(false);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onChange(option.id);
-                    onOpenChange(false);
-                  }
-                }}
-              >
-                <span data-settings-option-check className={cn(SETTINGS_CHOICE_CHECK_CLASS)}>
-                  {checked ? <Check aria-hidden="true" className="size-[1em]" /> : null}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{option.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
+    <SettingsSelect
+      {...props}
+      options={options}
+      value={selectedOption.id}
+      label={selectedOption.label}
+    />
   );
 }
 
@@ -1752,7 +1703,6 @@ export function PanelSettingsContent({
             value={selectedOption.key}
             open={vectorscopeChannelOpen}
             onOpenChange={setVectorscopeChannelOpen}
-            collapsedGroups={["All pairs"]}
             onChange={(key) => {
               const opt = vectorscopeOptions.find((o) => o.key === key);
               if (opt && typeof onVectorscopeChange === "function") {
@@ -1843,7 +1793,6 @@ export function PanelSettingsContent({
                 value={selectedOption.key}
                 open={stereoMapPairOpen}
                 onOpenChange={setStereoMapPairOpen}
-                collapsedGroups={["All pairs"]}
                 onChange={(key) => {
                   const opt = stereoMapPairOptions.find((o) => o.key === key);
                   if (opt) {

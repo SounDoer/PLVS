@@ -465,16 +465,16 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Mode")).toBeTruthy();
     const modeButton = screen.getByLabelText("level meter mode");
     const modeRow = screen.getByText("Mode").parentElement;
-    const modeControlCell = modeButton.parentElement?.parentElement;
+    const modeControlCell = modeButton.parentElement;
     expect(modeButton).toBeTruthy();
     expect(modeButton.className).toContain("h-6");
     expect(modeButton.className).toContain("text-popover-foreground");
     expect(modeButton.className).not.toContain("focus:border");
-    expect(modeButton.className).not.toContain("text-muted-foreground");
+    expect(modeButton.className.split(" ")).not.toContain("text-muted-foreground");
     expect(modeButton.className).not.toContain("h-7");
     expect(modeButton.className).not.toContain("min-w-[");
     expect(modeButton.textContent).not.toContain("Edit");
-    expect(modeButton.querySelector("svg")?.className.baseVal).toContain("size-[1em]");
+    expect(modeButton.querySelector("svg")?.className.baseVal).toContain("size-[1.15em]");
     expect(screen.getByText("Mode").className).toContain("text-muted-foreground");
     expect(screen.getByText("Mode").className).toContain("h-6");
     expect(screen.getByText("Mode").className).toContain("items-center");
@@ -492,22 +492,20 @@ describe("PanelSettingsContent", () => {
     expect(container.firstChild?.className).not.toContain("w-[17rem]");
     expect(screen.getByText("Peak")).toBeTruthy();
 
-    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "level meter mode" })).toBeTruthy();
     const modeRowClassBeforeOpen = modeRow?.className;
-    fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "level meter mode" }), {
+      key: "ArrowDown",
+    });
     expect(modeRow?.className).toBe(modeRowClassBeforeOpen);
     expect(modeButton.className).not.toContain("w-full");
     expect(modeButton.textContent).not.toContain("Hide");
     const peakOption = screen.getByRole("option", { name: "Peak" });
-    expect(peakOption.querySelector("[data-settings-option-check]")?.className).toContain("size-3");
-    expect(peakOption.querySelector("svg")?.className.baseVal).toContain("size-[1em]");
+    expect(peakOption.getAttribute("data-state")).toBe("checked");
     expect(screen.getByRole("option", { name: "RMS" })).toBeTruthy();
     const momentaryOption = screen.getByRole("option", { name: "Momentary" });
-    expect(modeRow?.contains(momentaryOption)).toBe(true);
-    expect(momentaryOption.getAttribute("data-settings-option-row")).toBe("true");
-    expect(momentaryOption.querySelector("[data-settings-option-check]")?.className).toContain(
-      "size-3"
-    );
+    expect(modeRow?.contains(momentaryOption)).toBe(false);
+    expect(momentaryOption.getAttribute("data-slot")).toBe("select-item");
     fireEvent.click(momentaryOption);
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -843,7 +841,9 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "level meter mode" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "level meter mode" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "Short-term" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -940,7 +940,9 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "vectorscope channel" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "vectorscope channel" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "L/C" }));
 
     expect(onVectorscopeChange).toHaveBeenCalledWith({ x: 0, y: 2 });
@@ -962,7 +964,9 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.getByText("Mode")).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "vectorscope polar level max hold" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "vectorscope mode" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "vectorscope mode" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "Polar Level" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ vectorscopeMode: "polarLevel" })
@@ -1038,7 +1042,7 @@ describe("PanelSettingsContent", () => {
     expect(text.indexOf("Channel Pair")).toBeLessThan(text.indexOf("Max Hold"));
   });
 
-  it("keeps vectorscope all-pairs options collapsed until opened", () => {
+  it("keeps vectorscope channel groups in one floating menu", () => {
     render(
       <PanelSettingsContent
         activeTab="vectorscope"
@@ -1054,13 +1058,12 @@ describe("PanelSettingsContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "vectorscope channel" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "vectorscope channel" }), {
+      key: "ArrowDown",
+    });
 
     expect(screen.getByRole("option", { name: "L/C" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "All pairs" })).toBeTruthy();
-    expect(screen.queryByRole("option", { name: "L/LFE" })).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "All pairs" }));
+    expect(screen.getByText("All pairs")).toBeTruthy();
 
     expect(screen.getByRole("option", { name: "L/LFE" })).toBeTruthy();
   });
@@ -1097,13 +1100,17 @@ describe("PanelSettingsContent", () => {
     };
     render(<PanelSettingsContent {...props} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "stereo map mode" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "stereo map mode" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "Correlation" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ stereoMapMode: "correlation" })
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "stereo map channel" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "stereo map channel" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "L/C" }));
     expect(props.onStereoMapPairChange).toHaveBeenCalledWith({ x: 0, y: 2 });
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
@@ -1115,7 +1122,9 @@ describe("PanelSettingsContent", () => {
       expect.objectContaining({ stereoMapHold: true })
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "stereo map octave smoothing" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "stereo map octave smoothing" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "1/3 oct" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ stereoMapOctaveSmoothing: "1/3" })
@@ -1609,9 +1618,11 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("View")).toBeTruthy();
     expect(screen.getByLabelText("spectrum view")).toBeTruthy();
     expect(screen.getByLabelText("spectrum view").className).not.toContain("min-w-[");
-    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "spectrum view" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "spectrum view" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "spectrum view" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "M / S" }));
     expect(onSpectrumViewChange).toHaveBeenCalledWith("ms");
   });
@@ -2073,7 +2084,7 @@ describe("PanelSettingsContent", () => {
     };
     const { rerender } = render(<PanelSettingsContent {...props} />);
 
-    expect(screen.getByRole("button", { name: "spectrogram mode" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "spectrogram mode" })).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "spectrogram 3d colorize" })).toBeNull();
     expect(screen.queryByRole("switch", { name: "spectrogram 3d grid" })).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d height scale")).toBeNull();
@@ -2187,7 +2198,9 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByLabelText("spectrogram 3d elevation")).toBeNull();
     expect(screen.queryByLabelText("spectrogram 3d height scale")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "spectrogram mode" }), {
+      key: "ArrowDown",
+    });
     fireEvent.click(screen.getByRole("option", { name: "3D Surface" }));
     expect(onPanelControlsChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ spectrogramMode: "surface" })
@@ -2205,14 +2218,16 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
 
     // The listbox marks "3D Surface" as the selected option, not just some other option.
-    fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
-    expect(screen.getByRole("option", { name: "3D Surface" }).getAttribute("aria-selected")).toBe(
-      "true"
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "spectrogram mode" }), {
+      key: "ArrowDown",
+    });
+    expect(screen.getByRole("option", { name: "3D Surface" }).getAttribute("data-state")).toBe(
+      "checked"
     );
-    expect(screen.getByRole("option", { name: "2D Heatmap" }).getAttribute("aria-selected")).toBe(
-      "false"
+    expect(screen.getByRole("option", { name: "2D Heatmap" }).getAttribute("data-state")).toBe(
+      "unchecked"
     );
-    fireEvent.click(screen.getByRole("button", { name: "spectrogram mode" }));
+    fireEvent.keyDown(screen.getByRole("listbox"), { key: "Escape" });
 
     rerender(
       <PanelSettingsContent
