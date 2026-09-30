@@ -197,28 +197,30 @@ strengths are centralized CSS recipes rather than Theme Editor roles.
 
 ### Shadcn Semantic
 
-Current PLVS Dark values:
+Values are compiled from the active Theme and are not recorded here. The current built-in output
+for both schemes is the reviewed snapshot in `src/theme/__snapshots__/builtinThemesV2.test.js.snap`;
+the authored inputs are in `src/theme/builtinThemesV2.js`.
 
-| Token                      | Value                  | Role                                    |
-| -------------------------- | ---------------------- | --------------------------------------- |
-| `--background`             | `#070707`              | Workspace background                    |
-| `--foreground`             | `#f2f2f2`              | Primary text                            |
-| `--card`                   | `#151515`              | Panel surface                           |
-| `--card-foreground`        | same as `--foreground` | Text on panels                          |
-| `--popover`                | `#1c1c1c`              | Raised surface                          |
-| `--popover-foreground`     | same as `--foreground` | Popover text                            |
-| `--primary`                | `#b35300`              | Interface accent                        |
-| `--primary-foreground`     | `#f2f2f2`              | Text on primary buttons                 |
-| `--secondary`              | `#272727`              | Control surface                         |
-| `--secondary-foreground`   | same as `--foreground` | Text on secondary surface               |
-| `--muted`                  | `#191919`              | Muted surface                           |
-| `--muted-foreground`       | `#959595`              | Secondary / muted text                  |
-| `--border`                 | `#2a2a2a`              | Borders and dividers                    |
-| `--input`                  | `#2a2a2a`              | Shared control border                   |
-| `--ring`                   | `#b35300`              | Legacy compatibility token; not painted |
-| `--destructive`            | `#b83238`              | Error / danger state                    |
-| `--destructive-foreground` | `#f2f2f2`              | Text on destructive                     |
-| `--radius`                 | `0.625rem`             | Base border radius (card level)         |
+| Token                      | Role                                                    |
+| -------------------------- | ------------------------------------------------------- |
+| `--background`             | Workspace background                                    |
+| `--foreground`             | Primary text                                            |
+| `--card`                   | Panel surface                                           |
+| `--card-foreground`        | Text on panels                                          |
+| `--popover`                | Raised surface                                          |
+| `--popover-foreground`     | Popover text                                            |
+| `--primary`                | Interface accent                                        |
+| `--primary-foreground`     | Text on primary buttons                                 |
+| `--secondary`              | Control surface                                         |
+| `--secondary-foreground`   | Text on secondary surface                               |
+| `--muted`                  | Muted surface                                           |
+| `--muted-foreground`       | Secondary / muted text                                  |
+| `--border`                 | Borders and dividers                                    |
+| `--input`                  | Shared control border                                   |
+| `--ring`                   | Legacy compatibility token; not painted                 |
+| `--destructive`            | Error / danger state                                    |
+| `--destructive-foreground` | Text on destructive                                     |
+| `--radius`                 | Base border radius; see [Radius Tokens](#radius-tokens) |
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
 
@@ -228,11 +230,11 @@ Paints the three-stop gradient in the Theme Preview swatch only. The Level Meter
 `--ui-level-safe`/`warning`/`critical` instead, anchored to levels rather than to a fixed gradient --
 see `src/lib/levelMeterColors.js`.
 
-| Token                        | Value     | Role                 |
-| ---------------------------- | --------- | -------------------- |
-| `--ui-meter-gradient-top`    | `#f97373` | Clip zone (red)      |
-| `--ui-meter-gradient-mid`    | `#fbbf24` | Warning zone (amber) |
-| `--ui-meter-gradient-bottom` | `#34d399` | Safe zone (green)    |
+| Token                        | Role                                            |
+| ---------------------------- | ----------------------------------------------- |
+| `--ui-meter-gradient-top`    | Clip zone; same role as `--ui-level-critical`   |
+| `--ui-meter-gradient-mid`    | Warning zone; same role as `--ui-level-warning` |
+| `--ui-meter-gradient-bottom` | Safe zone; same role as `--ui-level-safe`       |
 
 ### Component: Instrument Traces
 
@@ -254,28 +256,30 @@ The Loudness `Reference` layer is not drawn as a line or band. Instead, the refe
 **over-reference gradient** on the `M` and `ST` traces. The reference value is not shown as a
 dedicated Y-axis tick.
 
-| Token                             | Value            | Role                                    |
-| --------------------------------- | ---------------- | --------------------------------------- |
-| `--ui-loudness-momentary`         | `#fb923c`        | Loudness M live primary data trace      |
-| `--ui-loudness-momentary-snap`    | `#fbd34d`        | Loudness M snapshot trace               |
-| `--ui-loudness-shortterm`         | `#c66a2a`        | Loudness ST live sibling data trace     |
-| `--ui-loudness-shortterm-snap`    | `#cea536`        | Loudness ST snapshot sibling trace      |
-| `--ui-loudness-selection`         | `#fbd34d`        | Selected-offset baseline                |
-| `--ui-loudness-grid`              | `#282828`        | Loudness grid lines                     |
-| `--ui-vectorscope-trace`          | `#fb923c`        | Vectorscope path (live)                 |
-| `--ui-vectorscope-trace-snap`     | `#fbd34d`        | Vectorscope path (snap)                 |
-| `--ui-vectorscope-guides-stroke`  | `#282828`        | Vectorscope orientation guides          |
-| `--ui-spectrum-primary`           | `#fb923c`        | Spectrum primary path + fill            |
-| `--ui-spectrum-primary-snap`      | `#fbd34d`        | Spectrum primary snapshot path + fill   |
-| `--ui-spectrum-secondary`         | `#209bda`        | Spectrum secondary path + fill          |
-| `--ui-spectrum-secondary-snap`    | `#9cafff`        | Spectrum secondary snapshot path + fill |
-| `--ui-waveform-trace`             | `#fb923c`        | Waveform envelope stroke + fill         |
-| `--ui-waveform-trace-snap`        | derived          | Waveform snapshot trace                 |
-| `--ui-waveform-frequency-low`     | `#ff2d3d` (dark) | Low-frequency Waveform hue anchor       |
-| `--ui-waveform-frequency-mid`     | `#fb923c` (dark) | Mid-frequency Waveform hue anchor       |
-| `--ui-waveform-frequency-high`    | `#356dff` (dark) | High-frequency Waveform hue anchor      |
-| `--ui-waveform-frequency-neutral` | `#4c4c4c` (dark) | Broadband / unavailable spectral color  |
-| `--ui-waveform-centroid`          | scheme-aware     | Spectral centroid overlay trace         |
+Values come from the compiled Theme; see the built-in snapshot referenced under Shadcn Semantic.
+
+| Token                             | Role                                    |
+| --------------------------------- | --------------------------------------- |
+| `--ui-loudness-momentary`         | Loudness M live primary data trace      |
+| `--ui-loudness-momentary-snap`    | Loudness M snapshot trace               |
+| `--ui-loudness-shortterm`         | Loudness ST live sibling data trace     |
+| `--ui-loudness-shortterm-snap`    | Loudness ST snapshot sibling trace      |
+| `--ui-loudness-selection`         | Selected-offset baseline                |
+| `--ui-loudness-grid`              | Loudness grid lines                     |
+| `--ui-vectorscope-trace`          | Vectorscope path (live)                 |
+| `--ui-vectorscope-trace-snap`     | Vectorscope path (snap)                 |
+| `--ui-vectorscope-guides-stroke`  | Vectorscope orientation guides          |
+| `--ui-spectrum-primary`           | Spectrum primary path + fill            |
+| `--ui-spectrum-primary-snap`      | Spectrum primary snapshot path + fill   |
+| `--ui-spectrum-secondary`         | Spectrum secondary path + fill          |
+| `--ui-spectrum-secondary-snap`    | Spectrum secondary snapshot path + fill |
+| `--ui-waveform-trace`             | Waveform envelope stroke + fill         |
+| `--ui-waveform-trace-snap`        | Waveform snapshot trace                 |
+| `--ui-waveform-frequency-low`     | Low-frequency Waveform hue anchor       |
+| `--ui-waveform-frequency-mid`     | Mid-frequency Waveform hue anchor       |
+| `--ui-waveform-frequency-high`    | High-frequency Waveform hue anchor      |
+| `--ui-waveform-frequency-neutral` | Broadband / unavailable spectral color  |
+| `--ui-waveform-centroid`          | Spectral centroid overlay trace         |
 
 Built-in values are authored per color scheme rather than transformed at runtime. Dark and Light
 share semantic hue direction—orange Primary Data, blue Secondary Data, red/orange/blue Frequency,
