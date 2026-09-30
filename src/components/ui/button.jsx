@@ -9,12 +9,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)]",
+        default:
+          "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)] focus-visible:bg-[color:var(--ui-primary-hover)] active:bg-[color:var(--ui-primary-hover)]",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-[color:var(--ui-destructive-hover)]",
+          "bg-destructive text-destructive-foreground hover:bg-[color:var(--ui-destructive-hover)] focus-visible:bg-[color:var(--ui-destructive-hover)] active:bg-[color:var(--ui-destructive-hover)]",
         outline: "border border-border bg-background hover:bg-ui-hover",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)]",
+          "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)] focus-visible:bg-[color:var(--ui-secondary-hover)] active:bg-[color:var(--ui-secondary-hover)]",
         ghost: "hover:bg-ui-hover",
         link: "text-primary underline-offset-4 hover:underline",
       },

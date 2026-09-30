@@ -127,6 +127,7 @@ describe("ThemeEditor", () => {
     expect(lower.max).toBe("28");
 
     fireEvent.change(upper, { target: { value: "31" } });
+    fireEvent.blur(upper);
     expect(onOverride).toHaveBeenCalledWith("spectrum.fillOpacityTop", {
       kind: "number",
       value: 0.31,
@@ -144,6 +145,7 @@ describe("ThemeEditor", () => {
     const fill = screen.getByLabelText("Fill Opacity percent");
     expect(fill.value).toBe("35");
     fireEvent.change(fill, { target: { value: "40" } });
+    fireEvent.blur(fill);
     expect(onOverride).toHaveBeenCalledWith("stereoMap.fillOpacity", {
       kind: "number",
       value: 0.4,
@@ -161,6 +163,7 @@ describe("ThemeEditor", () => {
     const fill = screen.getByLabelText("Classic Fill Opacity percent");
     expect(fill.value).toBe("12");
     fireEvent.change(fill, { target: { value: "18" } });
+    fireEvent.blur(fill);
     expect(onOverride).toHaveBeenCalledWith("waveform.fillOpacity", {
       kind: "number",
       value: 0.18,

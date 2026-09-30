@@ -145,24 +145,23 @@ this ever needs to follow the theme, the opacity is what varies.
 
 ## Highlight States
 
-Two states, never mixed.
+Hover, keyboard focus, pressed buttons, and open configuration entries use neutral feedback.
+Transparent controls use `--ui-neutral-hover`, an opaque mix of Raised and Muted. Open menus
+retain their trigger highlight until closed; active configuration does not brighten a closed
+entry. Auxiliary actions may change only their text color. Filled action buttons retain their
+own opaque derived Hover colors. No state requires an outer focus ring or scale animation.
 
-| State   | Means                                   | Treatment                                                                                            |
-| ------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Neutral | The pointer or focus is here, right now | `hover:bg-ui-hover`, plus `focus-within:bg-ui-hover` on list rows                                    |
-| Accent  | This item is the active or selected one | `bg-accent text-accent-foreground` for regions; solid `bg-primary` for small marks and switch tracks |
+Small persistent marks use Primary: single- and multi-choice checks, checked switch tracks,
+and slider progress. Switch hover/focus adds an inset Border stroke to the thumb. Slider
+hover/focus fills the thumb with Neutral Hover; active adjustment fills it with Primary.
+Dark / Light segmented selection uses a neutral fill and primary text, not the Accent surface.
+The Accent surface remains a compatible Theme role, including its editor preview swatch.
 
-`--accent` (`interface.surface.selected`) is accent-tinted, so spending it on hover reads as
-"this is selected" every time the pointer crosses a row. It belongs only to persistent state —
-an open menu's trigger, an engaged toggle. Dropdown items say "selected" with a check mark and
-use the neutral highlight for traversal, mouse and keyboard alike.
-
-Filled controls use opaque derived Hover colors (`--ui-primary-hover`, `--ui-secondary-hover`, and
-`--ui-destructive-hover`) rather than alpha modifiers. Transparent-base controls use
-`--ui-neutral-hover`, an opaque equal mix of Raised and Muted surfaces. All interaction mixes are
-centralized in `index.css` and recomputed inside Theme Preview. Workspace resize rails are transparent while idle,
-`primary/70` on Hover, and full Primary while dragging. A snapped divider is full Primary
-without a glow.
+Ordinary fields hide their border at rest while reserving its space. Hover and editing restore
+the Border stroke and neutral fill; invalid drafts use Destructive borders. Read-only content
+remains readable; disabled controls apply 50% once and do not react to hover. Search and multiline
+fields retain their own boundaries. Workspace resize rails remain hidden at rest, Border on
+hover, and Primary during dragging.
 
 ## Borders, Tracks, and State
 
@@ -200,28 +199,28 @@ strengths are centralized CSS recipes rather than Theme Editor roles.
 
 Current PLVS Dark values:
 
-| Token                      | Value                       | Role                                    |
-| -------------------------- | --------------------------- | --------------------------------------- |
-| `--background`             | `#070707`                   | Workspace background                    |
-| `--foreground`             | `#f2f2f2`                   | Primary text                            |
-| `--card`                   | `#151515`                   | Panel surface                           |
-| `--card-foreground`        | same as `--foreground`      | Text on panels                          |
-| `--popover`                | `#1c1c1c`                   | Raised surface                          |
-| `--popover-foreground`     | same as `--foreground`      | Popover text                            |
-| `--primary`                | `#b35300`                   | Interface accent                        |
-| `--primary-foreground`     | `#f2f2f2`                   | Text on primary buttons                 |
-| `--secondary`              | `#272727`                   | Control surface                         |
-| `--secondary-foreground`   | same as `--foreground`      | Text on secondary surface               |
-| `--muted`                  | `#191919`                   | Muted surface                           |
-| `--muted-foreground`       | `#959595`                   | Secondary / muted text                  |
-| `--accent`                 | `#3b2410`                   | Selected surface                        |
-| `--accent-foreground`      | same as `--foreground`      | Text on accent surface                  |
-| `--border`                 | `#2a2a2a`                 | Borders and dividers                    |
-| `--input`                  | `#2a2a2a`                 | Shared control border                   |
-| `--ring`                   | `#b35300`                   | Legacy compatibility token; not painted |
-| `--destructive`            | `#b83238`                   | Error / danger state                    |
-| `--destructive-foreground` | `#f2f2f2`                   | Text on destructive                     |
-| `--radius`                 | `0.625rem`                  | Base border radius (card level)         |
+| Token                      | Value                  | Role                                    |
+| -------------------------- | ---------------------- | --------------------------------------- |
+| `--background`             | `#070707`              | Workspace background                    |
+| `--foreground`             | `#f2f2f2`              | Primary text                            |
+| `--card`                   | `#151515`              | Panel surface                           |
+| `--card-foreground`        | same as `--foreground` | Text on panels                          |
+| `--popover`                | `#1c1c1c`              | Raised surface                          |
+| `--popover-foreground`     | same as `--foreground` | Popover text                            |
+| `--primary`                | `#b35300`              | Interface accent                        |
+| `--primary-foreground`     | `#f2f2f2`              | Text on primary buttons                 |
+| `--secondary`              | `#272727`              | Control surface                         |
+| `--secondary-foreground`   | same as `--foreground` | Text on secondary surface               |
+| `--muted`                  | `#191919`              | Muted surface                           |
+| `--muted-foreground`       | `#959595`              | Secondary / muted text                  |
+| `--accent`                 | `#3b2410`              | Selected surface                        |
+| `--accent-foreground`      | same as `--foreground` | Text on accent surface                  |
+| `--border`                 | `#2a2a2a`              | Borders and dividers                    |
+| `--input`                  | `#2a2a2a`              | Shared control border                   |
+| `--ring`                   | `#b35300`              | Legacy compatibility token; not painted |
+| `--destructive`            | `#b83238`              | Error / danger state                    |
+| `--destructive-foreground` | `#f2f2f2`              | Text on destructive                     |
+| `--radius`                 | `0.625rem`             | Base border radius (card level)         |
 
 Do **not** create `--ui-*` aliases for any of the above — use the shadcn tokens directly.
 

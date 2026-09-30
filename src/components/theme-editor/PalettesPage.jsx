@@ -1,3 +1,4 @@
+import { RangeInput } from "@/components/ui/range-input.jsx";
 import { Plus, Trash2 } from "lucide-react";
 import { ColorControl } from "../ColorControl.jsx";
 import { IconButton } from "../IconButton.jsx";
@@ -158,7 +159,7 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
                 onChange={(color) => onStop(index, color)}
                 allowAlpha={false}
               />
-              <input
+              <RangeInput
                 aria-label={`Stop ${index + 1} position`}
                 type="range"
                 min={endpoint ? stop.position : previous + 0.01}

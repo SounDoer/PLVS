@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 
 const STATE_CONFIG = {
   ready: {
-    className: "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)]",
+    className:
+      "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)] focus-visible:bg-[color:var(--ui-primary-hover)] active:bg-[color:var(--ui-primary-hover)]",
     Icon: Play,
     label: "START",
   },

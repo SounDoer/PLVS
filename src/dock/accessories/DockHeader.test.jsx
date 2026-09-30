@@ -83,7 +83,7 @@ describe("DockHeader", () => {
     expect(onAction).toHaveBeenCalledWith("open-editor", { view: "presets", anchorX: 0 });
   });
 
-  it("highlights Presets for a clean active preset, but yields to the open-editor state", () => {
+  it("highlights Presets only while its editor is open", () => {
     const { rerender } = render(
       <DockHeader
         state={{ ...STATE, activeCleanPreset: true }}
@@ -93,7 +93,7 @@ describe("DockHeader", () => {
     );
     expect(
       screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
-    ).toBe(true);
+    ).toBe(false);
 
     rerender(
       <DockHeader
@@ -103,8 +103,8 @@ describe("DockHeader", () => {
       />
     );
     const button = screen.getByRole("button", { name: "Presets" });
-    expect(button.classList.contains("bg-accent")).toBe(true);
-    expect(button.classList.contains("text-foreground")).toBe(false);
+    expect(button.classList.contains("bg-ui-hover")).toBe(true);
+    expect(button.classList.contains("text-foreground")).toBe(true);
   });
 
   it("does not highlight Presets for a dirty or absent active preset", () => {
@@ -120,7 +120,7 @@ describe("DockHeader", () => {
     ).toBe(false);
   });
 
-  it("opens the Loudness Profile editor and highlights it while a profile is active", () => {
+  it("opens the Loudness Profile editor without highlighting active configuration", () => {
     const onAction = vi.fn();
     const { rerender } = render(
       <DockHeader state={{ ...STATE, loudnessProfileActive: false }} onAction={onAction} />
@@ -138,7 +138,7 @@ describe("DockHeader", () => {
     rerender(<DockHeader state={{ ...STATE, loudnessProfileActive: true }} onAction={onAction} />);
     expect(
       screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("emits a reserve toggle instead of a stale target value", () => {

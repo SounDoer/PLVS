@@ -18,6 +18,8 @@ describe("ColorControl", () => {
     render(<ColorControl label="Accent" value="#fb923c" onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: /accent/i }));
     fireEvent.input(screen.getByLabelText(/hex/i), { target: { value: "#22d3ee" } });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.blur(screen.getByLabelText(/hex/i));
     expect(onChange).toHaveBeenLastCalledWith("#22d3ee");
   });
   it("emits rgba when alpha < 1", () => {
@@ -85,9 +87,11 @@ describe("ColorControl", () => {
     expect(text.value).toBe("#12");
 
     fireEvent.input(text, { target: { value: "rgb(34 211 238)" } });
+    fireEvent.blur(text);
     expect(onChange).toHaveBeenLastCalledWith("#22d3ee");
 
     fireEvent.input(text, { target: { value: "oklch(0.8 0.1 200)" } });
+    fireEvent.blur(text);
     expect(onChange.mock.calls.at(-1)[0]).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

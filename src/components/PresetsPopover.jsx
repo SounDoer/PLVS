@@ -110,7 +110,7 @@ export function PresetsPopoverContent({
           // popover, and `min-w-0` lets a long value scroll inside the field instead of pushing the
           // shrink-0 Save button off-panel. The panel adapts to the saved names, not to typing.
           size={1}
-          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] transition-colors placeholder:text-muted-foreground"
+          className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] transition-colors placeholder:text-muted-foreground"
         />
         <Button
           type="button"
@@ -154,7 +154,7 @@ export function PresetsPopoverContent({
                       // pushing the shrink-0 confirm/cancel buttons off-panel.
                       size={1}
                       autoFocus
-                      className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
+                      className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
                     />
                     <button
                       type="button"

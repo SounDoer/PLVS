@@ -1,3 +1,4 @@
+import { RangeInput } from "@/components/ui/range-input.jsx";
 import {
   Select,
   SelectTrigger,
@@ -50,7 +51,7 @@ const SETTINGS_SELECT_TRIGGER_CLASS =
 const SETTINGS_VALUE_IDLE_CLASS =
   "border-transparent bg-transparent hover:border-border hover:bg-ui-hover hover:text-foreground";
 
-const SETTINGS_VALUE_OPEN_CLASS = "border-primary bg-secondary text-foreground";
+const SETTINGS_VALUE_OPEN_CLASS = "border-border bg-ui-hover text-foreground";
 
 const SETTINGS_DETAIL_SURFACE_CLASS =
   "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden rounded-md border border-border bg-secondary p-0.5";
@@ -157,20 +158,6 @@ export function SettingsSlider({
 }) {
   const [draftValue, setDraftValue] = useState(value);
   const displayValue = formatValue(draftValue);
-  // Portaled like every other tip: a bubble positioned inside the row pokes above it and is clipped
-  // by the scrolling settings body whenever the slider is the first row.
-  const {
-    anchorRef: tooltipAnchorRef,
-    showTip: showTooltip,
-    hideTip: hideTooltip,
-    tipNode: tooltipNode,
-  } = useHoverTip({
-    tip: displayValue,
-    side: "top",
-    align: "end",
-    tipClassName:
-      "rounded-md border-border px-1.5 py-0.5 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)] tabular-nums text-popover-foreground",
-  });
   const draftPercent = rangePercent(draftValue, min, max);
 
   useEffect(() => {
@@ -212,25 +199,20 @@ export function SettingsSlider({
 
   return (
     <div className="flex min-w-0 items-center justify-end">
-      <input
-        ref={tooltipAnchorRef}
+      <RangeInput
         aria-label={ariaLabel}
         aria-valuetext={displayValue}
+        valueLabel={displayValue}
         type="range"
         min={min}
         max={max}
         step={step}
         value={draftValue}
-        onMouseEnter={showTooltip}
-        onMouseLeave={hideTooltip}
-        onFocus={showTooltip}
-        onBlur={hideTooltip}
         onChange={(event) => handleChange(event.target.value)}
         {...releaseHandlers}
         className="plvs-range w-16"
         style={{ "--range-pct": `${draftPercent}%` }}
       />
-      {tooltipNode}
     </div>
   );
 }
@@ -363,6 +345,7 @@ export function SettingsRangeInput({
     Number.isFinite(value) ? String(Math.round(value)) : String(value ?? "");
   const [draftMin, setDraftMin] = useState(formatDraftValue(minValue));
   const [draftMax, setDraftMax] = useState(formatDraftValue(maxValue));
+  const skipNextBlurRef = useRef(false);
 
   useEffect(() => {
     setDraftMin(formatDraftValue(minValue));
@@ -372,7 +355,12 @@ export function SettingsRangeInput({
   const commit = (nextMin = draftMin, nextMax = draftMax) => {
     const parsedMin = Number(nextMin);
     const parsedMax = Number(nextMax);
-    if (!Number.isFinite(parsedMin) || !Number.isFinite(parsedMax)) {
+    if (
+      !nextMin.trim() ||
+      !nextMax.trim() ||
+      !Number.isFinite(parsedMin) ||
+      !Number.isFinite(parsedMax)
+    ) {
       setDraftMin(formatDraftValue(minValue));
       setDraftMax(formatDraftValue(maxValue));
       return;
@@ -383,12 +371,25 @@ export function SettingsRangeInput({
   const commitOnEnter = (event) => {
     if (event.key === "Enter") {
       event.currentTarget.blur();
+    } else if (event.key === "Escape") {
+      event.stopPropagation();
+      skipNextBlurRef.current = true;
+      setDraftMin(formatDraftValue(minValue));
+      setDraftMax(formatDraftValue(maxValue));
+      event.currentTarget.blur();
     }
+  };
+  const commitOnBlur = () => {
+    if (skipNextBlurRef.current) {
+      skipNextBlurRef.current = false;
+      return;
+    }
+    commit();
   };
   const minWidthCh = Math.min(7, Math.max(4.5, draftMin.length + 1.5));
   const maxWidthCh = Math.min(7, Math.max(4.5, draftMax.length + 1.5));
   const inputClass =
-    "h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors";
+    "plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors";
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -398,8 +399,9 @@ export function SettingsRangeInput({
         inputMode="decimal"
         step={step}
         value={draftMin}
+        aria-invalid={(draftMin.trim() !== "" && !Number.isFinite(Number(draftMin))) || undefined}
         onChange={(event) => setDraftMin(event.target.value)}
-        onBlur={() => commit()}
+        onBlur={commitOnBlur}
         onKeyDown={commitOnEnter}
         className={inputClass}
         style={{ width: `${minWidthCh}ch` }}
@@ -411,8 +413,9 @@ export function SettingsRangeInput({
         inputMode="decimal"
         step={step}
         value={draftMax}
+        aria-invalid={(draftMax.trim() !== "" && !Number.isFinite(Number(draftMax))) || undefined}
         onChange={(event) => setDraftMax(event.target.value)}
-        onBlur={() => commit()}
+        onBlur={commitOnBlur}
         onKeyDown={commitOnEnter}
         className={inputClass}
         style={{ width: `${maxWidthCh}ch` }}
@@ -436,6 +439,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
     const parsed = Number(nextDraft);
     const nextValue = Math.round(parsed / step) * step;
     if (
+      !nextDraft.trim() ||
       !Number.isFinite(parsed) ||
       !Number.isFinite(nextValue) ||
       nextValue < min ||
@@ -457,6 +461,11 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
         inputMode="numeric"
         step={step}
         value={draft}
+        aria-invalid={
+          (draft.trim() !== "" &&
+            (!Number.isFinite(Number(draft)) || Number(draft) < min || Number(draft) > max)) ||
+          undefined
+        }
         onChange={(event) => setDraft(event.target.value)}
         onBlur={(event) => {
           if (skipNextBlurRef.current) {
@@ -471,12 +480,13 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
             commit(event.currentTarget.value);
             event.currentTarget.blur();
           } else if (event.key === "Escape") {
+            event.stopPropagation();
             skipNextBlurRef.current = true;
             restore();
             event.currentTarget.blur();
           }
         }}
-        className="h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors"
+        className="plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors"
         style={{ width: `${widthCh}ch` }}
       />
       {suffix ? <span className="text-[color:var(--ui-text-annotation)]">{suffix}</span> : null}

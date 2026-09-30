@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from "react";
+import { RangeInput } from "@/components/ui/range-input.jsx";
+import { useEffect, useId, useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toEditable, fromEditable } from "../theme/colorIO.js";
@@ -11,6 +12,7 @@ import { ThemeEditorSwatch } from "./theme-editor/ThemeEditorSwatch.jsx";
  */
 export function ColorControl({ label, value, onChange, allowAlpha = true, description }) {
   const descriptionId = useId();
+  const skipBlur = useRef(false);
   const edit = toEditable(value);
   const [hex, setHex] = useState(edit.hex);
   const [alpha, setAlpha] = useState(edit.alpha);
@@ -59,7 +61,8 @@ export function ColorControl({ label, value, onChange, allowAlpha = true, descri
             onChange={(next) => emit(next, alpha)}
           />
           {allowAlpha ? (
-            <input
+            <RangeInput
+              valueLabel={`${Math.round(alpha * 100)}%`}
               aria-label={`${label} alpha`}
               type="range"
               min="0"
@@ -79,20 +82,29 @@ export function ColorControl({ label, value, onChange, allowAlpha = true, descri
               onInput={(event) => {
                 const raw = event.target.value;
                 setColorText(raw);
-                const normalized = normalizeOpaqueColor(raw);
-                if (normalized) emit(normalized, allowAlpha ? alpha : 1);
               }}
-              onBlur={() => setColorText(hex)}
+              aria-invalid={!normalizeOpaqueColor(colorText) || undefined}
+              onBlur={() => {
+                if (skipBlur.current) {
+                  skipBlur.current = false;
+                  return;
+                }
+                const normalized = normalizeOpaqueColor(colorText);
+                if (normalized) emit(normalized, allowAlpha ? alpha : 1);
+                else setColorText(hex);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") event.currentTarget.blur();
                 if (event.key === "Escape") {
+                  event.stopPropagation();
+                  skipBlur.current = true;
                   setColorText(hex);
                   event.currentTarget.blur();
                 }
               }}
               // `min-w-0` lets the field shrink past a text input's intrinsic width
               // (default `size=20`), which otherwise pushes it out of the popover.
-              className="min-w-0 flex-1 rounded-xs border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)]"
+              className="plvs-input min-w-0 flex-1 rounded-xs border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-metric-meta)]"
             />
           </div>
         </PopoverContent>

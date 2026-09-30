@@ -1,3 +1,4 @@
+import { RangeInput } from "@/components/ui/range-input.jsx";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
 import { DEFAULT_SURFACE_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
 import { Label } from "@/components/ui/label";
@@ -80,7 +81,8 @@ export function FocusViewPopoverContent({
         >
           Surface Opacity
         </Label>
-        <input
+        <RangeInput
+          valueLabel={`${surfaceOpacity}%`}
           id="surface-opacity"
           aria-label="Surface opacity"
           type="range"

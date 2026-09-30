@@ -161,6 +161,46 @@ html[data-surface="dock-editor"] #root {
   }
 }
 
+/* State feedback uses existing opaque theme roles, without introducing focus rings. */
+:is(.plvs-input, [data-control-field]) {
+  border-color: transparent;
+  background-color: transparent;
+}
+:is(.plvs-input, [data-control-field]):not(:disabled):not([readonly]):is(
+    :hover,
+    :focus-visible,
+    [data-state="open"]
+  ),
+.plvs-input:not(:disabled):not([readonly]):focus {
+  border-color: var(--border);
+  background-color: var(--ui-neutral-hover);
+}
+.plvs-input[aria-invalid="true"]:not(:disabled):not([readonly]) {
+  border-color: var(--destructive);
+}
+.plvs-input:disabled,
+.plvs-range:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Mirror each button's existing hover treatment for keyboard focus and press. */
+button:not(:disabled):is(:focus-visible, :active, [data-state="open"])[class~="hover:bg-ui-hover"] {
+  background-color: var(--ui-neutral-hover);
+}
+button:not(:disabled):is(
+    :focus-visible,
+    :active,
+    [data-state="open"]
+  )[class~="hover:text-foreground"] {
+  color: var(--foreground);
+}
+button:not(:disabled):is(:focus-visible, :active)[class~="hover:border-border"] {
+  border-color: var(--border);
+}
+[data-slot="switch"]:not(:disabled):is(:hover, :focus-visible, :active) [data-slot="switch-thumb"] {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
 .plvs-range {
   --range-pct: 100%;
   --range-track: var(--input);
@@ -170,6 +210,13 @@ html[data-surface="dock-editor"] #root {
   height: 1rem;
   background: transparent;
   cursor: pointer;
+}
+
+.plvs-range:not(:disabled):is(:hover, :focus-visible) {
+  --range-thumb: var(--ui-neutral-hover);
+}
+.plvs-range:not(:disabled):is(:active, [data-adjusting="true"]) {
+  --range-thumb: var(--primary);
 }
 
 .plvs-range::-webkit-slider-runnable-track {

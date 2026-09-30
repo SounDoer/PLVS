@@ -29,7 +29,7 @@ const SOURCES_POPOVER_CLASS =
 // wrapper picks up Radix's `data-state` via `asChild`, so `group` + `group-data-` needs no state of
 // its own and stays true to Popover's actual open/closed status.
 const TOOLBAR_TRIGGER_OPEN_CLASS =
-  "group-data-[state=open]:bg-accent group-data-[state=open]:text-accent-foreground";
+  "group-data-[state=open]:bg-ui-hover group-data-[state=open]:text-foreground";
 
 function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
@@ -161,7 +161,6 @@ export function AppHeader({
   setCaptureDeviceId,
   holdFocusControls,
   focusView,
-  focusViewActive,
   pinned,
   setPinned,
   setAutoHideControls,
@@ -358,10 +357,7 @@ export function AppHeader({
               <IconButton
                 icon={<Gauge className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Loudness Profile"
-                className={cn(
-                  loudnessProfile?.active !== "off" && "text-foreground",
-                  TOOLBAR_TRIGGER_OPEN_CLASS
-                )}
+                className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
           </PopoverTrigger>
@@ -393,7 +389,7 @@ export function AppHeader({
               <IconButton
                 icon={<Focus className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Views"
-                className={cn(focusViewActive && "text-foreground", TOOLBAR_TRIGGER_OPEN_CLASS)}
+                className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
           </PopoverTrigger>
@@ -422,10 +418,7 @@ export function AppHeader({
               <IconButton
                 icon={<Bookmark className="size-[length:var(--ui-icon-shell-action)]" />}
                 tip="Presets"
-                className={cn(
-                  presets?.activeId && !presets?.dirty && "text-foreground",
-                  TOOLBAR_TRIGGER_OPEN_CLASS
-                )}
+                className={TOOLBAR_TRIGGER_OPEN_CLASS}
               />
             </span>
           </PopoverTrigger>

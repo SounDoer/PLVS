@@ -5,6 +5,7 @@ import {
   Gauge,
   LayoutGrid,
   PanelTop,
+  PanelTopDashed,
   PictureInPicture2,
   Trash2,
 } from "lucide-react";
@@ -78,9 +79,7 @@ export function DockHeader({ state, onAction, onPointer }) {
           {...toolTipProps}
           aria-pressed={state.editorView === "loudness-profile"}
           className={cn(
-            state.editorView === "loudness-profile"
-              ? "bg-accent text-accent-foreground"
-              : state.loudnessProfileActive && "text-foreground"
+            state.editorView === "loudness-profile" ? "bg-ui-hover text-foreground" : undefined
           )}
           onClick={(event) => toggleEditor("loudness-profile", event)}
         />
@@ -89,19 +88,22 @@ export function DockHeader({ state, onAction, onPointer }) {
           tip="Edit modules"
           {...toolTipProps}
           aria-pressed={state.editorView === "modules"}
-          className={
-            state.editorView === "modules" ? "bg-accent text-accent-foreground" : undefined
-          }
+          className={state.editorView === "modules" ? "bg-ui-hover text-foreground" : undefined}
           onClick={(event) => toggleEditor("modules", event)}
         />
         {isWindows ? (
           <IconButton
-            icon={<PanelTop className="size-3.5" />}
+            icon={
+              state.reserveSpace ? (
+                <PanelTop className="size-3.5" />
+              ) : (
+                <PanelTopDashed className="size-3.5" />
+              )
+            }
             tip={state.reserveSpace ? "Stop reserving screen space" : "Reserve screen space"}
             {...toolTipProps}
             aria-pressed={state.reserveSpace}
             onClick={() => onAction("toggle-reserve-space")}
-            className={state.reserveSpace ? "bg-accent text-accent-foreground" : undefined}
           />
         ) : null}
         <IconButton
@@ -127,11 +129,7 @@ export function DockHeader({ state, onAction, onPointer }) {
           tip="Presets"
           {...toolTipProps}
           aria-pressed={state.editorView === "presets"}
-          className={cn(
-            state.editorView === "presets"
-              ? "bg-accent text-accent-foreground"
-              : state.activeCleanPreset && "text-foreground"
-          )}
+          className={cn(state.editorView === "presets" ? "bg-ui-hover text-foreground" : undefined)}
           onClick={(event) => toggleEditor("presets", event)}
         />
       </div>

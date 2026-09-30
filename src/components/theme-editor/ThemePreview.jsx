@@ -80,7 +80,7 @@ function OverviewScene() {
           <Button size="sm" disabled>
             Disabled
           </Button>
-          <Button size="sm" variant="ghost" className="bg-accent text-accent-foreground">
+          <Button size="sm" variant="ghost" className="bg-ui-hover text-foreground">
             Selected
           </Button>
         </div>

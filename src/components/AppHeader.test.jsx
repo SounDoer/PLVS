@@ -242,7 +242,7 @@ describe("AppHeader", () => {
     expect(buttons.indexOf("Loudness Profile")).toBeLessThan(buttons.indexOf("Modules"));
   });
 
-  it("marks the Loudness Profile trigger active only when a profile is selected", () => {
+  it("keeps the Loudness Profile trigger neutral when a profile is selected", () => {
     renderHeader({ loudnessProfile: { active: "off" } });
     expect(
       screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
@@ -252,10 +252,10 @@ describe("AppHeader", () => {
     renderHeader({ loudnessProfile: { active: "profile:test" } });
     expect(
       screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("orders Focus View before Presets and reflects Focus View active state", () => {
+  it("orders Views before Presets without highlighting active configuration", () => {
     const { container } = renderHeader({ focusViewActive: true });
     const toolbar = container.querySelector("header");
     const buttons = within(toolbar)
@@ -265,7 +265,7 @@ describe("AppHeader", () => {
     expect(buttons.indexOf("Views")).toBeLessThan(buttons.indexOf("Presets"));
     expect(
       screen.getByRole("button", { name: "Views" }).classList.contains("text-foreground")
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("renders Modules and Presets popovers from toolbar triggers", () => {
@@ -314,7 +314,7 @@ describe("AppHeader", () => {
     expect(holdFocusControls.mock.calls.filter(([open]) => open === true)).toHaveLength(3);
   });
 
-  it("marks the Presets trigger active only when a preset is applied and unmodified", () => {
+  it("keeps the Presets trigger neutral for clean and modified presets", () => {
     renderHeader({ presets: { ...NOOP_PRESETS, activeId: null } });
     expect(
       screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
@@ -324,7 +324,7 @@ describe("AppHeader", () => {
     renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix" } });
     expect(
       screen.getByRole("button", { name: "Presets" }).classList.contains("text-foreground")
-    ).toBe(true);
+    ).toBe(false);
 
     cleanup();
     renderHeader({ presets: { ...NOOP_PRESETS, activeId: "mix", dirty: true } });
@@ -347,8 +347,8 @@ describe("AppHeader", () => {
 
     for (const name of ["Sources", "Loudness Profile", "Modules", "Views", "Presets"]) {
       const button = screen.getByRole("button", { name });
-      expect(button.className).toContain("group-data-[state=open]:bg-accent");
-      expect(button.className).toContain("group-data-[state=open]:text-accent-foreground");
+      expect(button.className).toContain("group-data-[state=open]:bg-ui-hover");
+      expect(button.className).toContain("group-data-[state=open]:text-foreground");
 
       const trigger = button.closest('[data-slot="popover-trigger"]');
       expect(trigger.className).toContain("group");

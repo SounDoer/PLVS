@@ -7,6 +7,24 @@ opaque and clear.
 The drawer keeps a single border along its inner edge against the workbench. Floating menus and
 dialogs retain their full outlines and shadows.
 
+## Control feedback
+
+Ordinary dropdowns and setting fields are transparent with hidden borders at rest. Hovering,
+opening a dropdown, or editing a field shows a neutral background and border. Keyboard focus
+uses the same feedback without an outer focus ring. Single- and multi-choice checks use the
+accent color. Dark / Light selection in the Theme Editor uses a neutral selected background.
+
+Switch thumbs gain a subtle border on hover or keyboard focus. Slider thumbs use a neutral
+hover fill and an accent fill while dragging or holding an adjustment key. Sliders without an
+adjacent value show a value tooltip during hover, focus, and dragging; those with a visible value
+do not duplicate it. Disabled controls are dimmed and do not show interaction feedback.
+
+Numeric and color text fields commit on Enter or when focus leaves. Escape cancels the draft.
+Invalid required numeric entries restore the valid value rather than becoming zero. Loudness
+Profile rule fields retain their special empty value, meaning the bound is not judged. Color
+picker gestures and sliders still preview immediately, except analysis parameters that commit
+when adjustment finishes.
+
 ## Startup and closing
 
 **Open at Login** launches PLVS when you sign in. It is one shared preference when several

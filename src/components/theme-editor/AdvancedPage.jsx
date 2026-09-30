@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { RangeInput } from "@/components/ui/range-input.jsx";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, Percent, RotateCcw, Search, TriangleAlert } from "lucide-react";
 import { ColorControl } from "../ColorControl.jsx";
 import { HoverTip } from "../HoverTip.jsx";
@@ -58,6 +59,45 @@ function selectedMode(override) {
 
 function percentage(value) {
   return Number((value * 100).toFixed(6));
+}
+
+function PercentageInput({ value, min, max, step, label, onCommit }) {
+  const [draft, setDraft] = useState(String(value));
+  const skipBlur = useRef(false);
+  useEffect(() => setDraft(String(value)), [value]);
+  const number = Number(draft);
+  const valid = draft.trim() !== "" && Number.isFinite(number) && number >= min && number <= max;
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      aria-label={label}
+      aria-invalid={!valid || undefined}
+      value={draft}
+      min={min}
+      max={max}
+      step={step}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        if (skipBlur.current) {
+          skipBlur.current = false;
+          return;
+        }
+        if (valid) onCommit(number);
+        else setDraft(String(value));
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          skipBlur.current = true;
+          setDraft(String(value));
+          event.currentTarget.blur();
+        }
+      }}
+      className="plvs-input h-7 w-14 rounded-md border border-transparent bg-transparent px-1 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-meta)] tabular-nums"
+    />
+  );
 }
 
 function AdvancedRole({
@@ -150,7 +190,7 @@ function AdvancedRole({
       </HoverTip>
       {mode === "custom" && numeric ? (
         <div className="ml-7 flex items-center gap-2">
-          <input
+          <RangeInput
             type="range"
             aria-label={`${role.advanced.label} value`}
             min={minimum}
@@ -161,15 +201,13 @@ function AdvancedRole({
             className="plvs-range min-w-0 flex-1"
             style={{ "--range-pct": `${percent}%` }}
           />
-          <input
-            type="number"
-            aria-label={`${role.advanced.label} percent`}
+          <PercentageInput
+            label={`${role.advanced.label} percent`}
             min={percentage(minimum)}
             max={percentage(maximum)}
             step={percentage(role.advanced.step)}
             value={percent}
-            onChange={(event) => updateNumber(Number(event.currentTarget.value) / 100)}
-            className="h-7 w-14 rounded-md border border-input bg-transparent px-1 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-meta)] tabular-nums"
+            onCommit={(value) => updateNumber(value / 100)}
           />
           <span className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">%</span>
         </div>

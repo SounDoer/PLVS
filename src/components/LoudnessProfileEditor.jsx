@@ -70,7 +70,7 @@ const REMOVE_COL_CLASS = "w-5";
 const HEADER_ACTION_CLASS = "shrink-0 rounded-xs text-muted-foreground hover:text-foreground";
 
 const NUM_INPUT_CLASS =
-  "h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-ui-hover [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  "plvs-input h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:border-border hover:bg-ui-hover [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /**
  * One numeric field, committed on blur or Enter.
@@ -89,6 +89,7 @@ function RuleNumber({ ariaLabel, metricId, value, onCommit }) {
   const settled = (v) => (v == null ? "" : v.toFixed(statDecimals(metricId)));
   const [text, setText] = useState(() => settled(value));
   const inputRef = useRef(null);
+  const skipBlur = useRef(false);
 
   // Only adopt an incoming value when the user is not mid-edit. Without this, a re-render from
   // anywhere else -- a rename, a preset apply, the live preview settling -- overwrites whatever
@@ -122,9 +123,21 @@ function RuleNumber({ ariaLabel, metricId, value, onCommit }) {
       aria-label={ariaLabel}
       value={text}
       onChange={(event) => setText(event.target.value)}
-      onBlur={commit}
+      onBlur={() => {
+        if (skipBlur.current) {
+          skipBlur.current = false;
+          return;
+        }
+        commit();
+      }}
       onKeyDown={(event) => {
         if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          skipBlur.current = true;
+          setText(settled(value));
+          event.currentTarget.blur();
+        }
       }}
       className={NUM_INPUT_CLASS}
     />
@@ -442,7 +455,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
                   }
                 }}
                 onBlur={commitName}
-                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
+                className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}

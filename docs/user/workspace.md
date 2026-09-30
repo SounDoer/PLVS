@@ -29,6 +29,13 @@ Drag panel edges to resize, and split or merge panes to change which meters are 
 The **Modules** menu adds panels, including a second instance of a meter you want to watch two ways
 at once. The **Presets** menu saves and switches between whole layouts.
 
+Toolbar configuration entries such as Loudness Profile, Views, and Presets remain neutral while
+closed, even when their configuration is active. Hover and an open menu use the same neutral
+background and brighter icon. Inspect the menu for the selected configuration and modified state.
+The same convention applies in Dock. Direct feature toggles retain their on/off indication;
+Reserve Screen Space uses a solid top divider when enabled and a dashed top divider when disabled.
+Both states use the same neutral icon color at rest, without a persistent highlight.
+
 ## Snapshot
 
 Click any point on a history chart to freeze every meter at that moment, then return to live with one

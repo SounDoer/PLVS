@@ -96,7 +96,8 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
         align="end"
         sideOffset={6}
         onEscapeKeyDown={(event) => {
-          if (event.target.closest?.("[data-settings-select-menu]")) event.preventDefault();
+          if (event.target.closest?.("[data-settings-select-menu], .plvs-input"))
+            event.preventDefault();
         }}
         onInteractOutside={(event) => {
           if (event.target.closest?.("[data-settings-select-menu]")) event.preventDefault();

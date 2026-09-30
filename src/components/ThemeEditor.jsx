@@ -221,7 +221,7 @@ export function ThemeEditor({
                   }
                 }}
                 onBlur={commitName}
-                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
+                className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}
@@ -267,7 +267,7 @@ export function ThemeEditor({
                     type="button"
                     aria-pressed={draft.colorScheme === scheme}
                     onClick={() => onColorScheme(scheme)}
-                    className={`rounded-xs px-1.5 py-0.5 text-[length:var(--ui-fs-axis)] capitalize ${draft.colorScheme === scheme ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`rounded-xs px-1.5 py-0.5 text-[length:var(--ui-fs-axis)] capitalize ${draft.colorScheme === scheme ? "bg-ui-hover text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     {scheme}
                   </button>

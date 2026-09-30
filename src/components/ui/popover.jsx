@@ -48,6 +48,10 @@ const PopoverContent = React.forwardRef(
       // isn't highlighted as if it were pre-selected. Panels that genuinely
       // want to focus something can still pass their own onOpenAutoFocus.
       onOpenAutoFocus = (event) => event.preventDefault(),
+      onEscapeKeyDown = (event) => {
+        // Let fields cancel their draft before Escape dismisses the surrounding editor.
+        if (event.target.closest?.(".plvs-input")) event.preventDefault();
+      },
       ...props
     },
     ref
@@ -60,6 +64,7 @@ const PopoverContent = React.forwardRef(
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         onOpenAutoFocus={onOpenAutoFocus}
+        onEscapeKeyDown={onEscapeKeyDown}
         className={cn(
           // `pointer-events-auto` keeps the panel clickable inside a modal
           // Sheet: the Dialog sets `pointer-events: none` on <body>, and its

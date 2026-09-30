@@ -1996,11 +1996,8 @@ function AppContent() {
       edge: dockEdge,
       reserveSpace,
       editorView: dockAccessoryVisibility.editorView,
-      // Mirrors the normal-mode toolbar's Presets highlight (see AppHeader.jsx): a preset is
-      // "active" once applied and untouched since, matching the Loudness/Views semantic rather
-      // than the editor's own open/closed pressed state below.
+      // Configuration metadata is separate from the toolbar's open/closed presentation.
       activeCleanPreset: presets.activeId != null && !presets.dirty,
-      // Same highlight as the normal-mode toolbar's Loudness Profile entry.
       loudnessProfileActive: loudnessProfile.active !== LOUDNESS_PROFILE_OFF,
     }),
     [
