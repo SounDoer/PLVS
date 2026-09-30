@@ -41,7 +41,7 @@ including a bare modifier. Components must not reintroduce a `focus-visible:ring
 
 `interface.focusRing` still compiles the internal `--ring` compatibility token so existing custom
 themes continue to load, but it is hidden from the Advanced editor and no PLVS component paints
-it. Menu and list keyboard highlighting is a background change (`focus:bg-accent`) and is
+it. Menu and list keyboard highlighting is a background change (`focus:bg-ui-hover`) and is
 unaffected.
 
 ## Annotation Text
@@ -155,7 +155,7 @@ Small persistent marks use Primary: single- and multi-choice checks, checked swi
 and slider progress. Switch hover/focus adds an inset Border stroke to the thumb. Slider
 hover/focus fills the thumb with Neutral Hover; active adjustment fills it with Primary.
 Dark / Light segmented selection uses a neutral fill and primary text, not the Accent surface.
-The Accent surface remains a compatible Theme role, including its editor preview swatch.
+Selected Surface and its foreground role are retired; legacy overrides are removed at theme ingress.
 
 Ordinary fields hide their border at rest while reserving its space. Hover and editing restore
 the Border stroke and neutral fill; invalid drafts use Destructive borders. Read-only content
@@ -213,8 +213,6 @@ Current PLVS Dark values:
 | `--secondary-foreground`   | same as `--foreground` | Text on secondary surface               |
 | `--muted`                  | `#191919`              | Muted surface                           |
 | `--muted-foreground`       | `#959595`              | Secondary / muted text                  |
-| `--accent`                 | `#3b2410`              | Selected surface                        |
-| `--accent-foreground`      | same as `--foreground` | Text on accent surface                  |
 | `--border`                 | `#2a2a2a`              | Borders and dividers                    |
 | `--input`                  | `#2a2a2a`              | Shared control border                   |
 | `--ring`                   | `#b35300`              | Legacy compatibility token; not painted |

@@ -50,7 +50,6 @@ describe("compileTheme", () => {
       "--card-foreground",
       "--popover-foreground",
       "--secondary-foreground",
-      "--accent-foreground",
     ]) {
       expect(resolved.css[binding], binding).toBe("#123456");
     }

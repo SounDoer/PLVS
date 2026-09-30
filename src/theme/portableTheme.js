@@ -1,4 +1,7 @@
-import { normalizeThemeDocument } from "./migrations/migrateV1Theme.js";
+import {
+  normalizeThemeDocument,
+  stripRetiredSelectionOverrides,
+} from "./migrations/migrateV1Theme.js";
 import { validateThemeDocument, ThemeDocumentError } from "./themeLibrary.js";
 import { analyzeThemeVisuals } from "./themeVisualAnalysis.js";
 import {
@@ -176,7 +179,7 @@ export function validatePortableTheme(raw) {
     );
   }
 
-  const readable = migrateReadablePortableTheme(raw);
+  const readable = stripRetiredSelectionOverrides(migrateReadablePortableTheme(raw));
 
   if (isPlainObject(raw.palettes)) {
     for (const [kind, allowed] of Object.entries(SIMPLE_PALETTE_FIELDS)) {

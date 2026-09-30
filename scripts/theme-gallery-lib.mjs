@@ -189,7 +189,6 @@ export function buildSemanticGallerySvg(themeId, manifest) {
     ["Raised", "interface.surface.raised"],
     ["Control", "interface.surface.control"],
     ["Muted", "interface.surface.muted"],
-    ["Selected", "interface.surface.selected"],
   ];
   surfaceRoles.forEach(([label, id], index) =>
     sections.push(swatch(64 + index * 218, 174, 198, 124, role(id), label, primary, border))

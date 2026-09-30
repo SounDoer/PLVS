@@ -24,6 +24,37 @@ function legacy(id = "custom-test", builtin = "plvs-dark") {
 }
 
 describe("migrateV1Theme", () => {
+  it.each([1, 2, 3])(
+    "retires selection overrides from semantics %s without mutating the source",
+    (semanticsVersion) => {
+      const current = migrateV1Theme(legacy());
+      const raw = {
+        ...current,
+        semanticsVersion,
+        overrides: {
+          "interface.surface.selected": { kind: "color", value: "#ff0000" },
+          "interface.content.onSelected": { kind: "color", value: "#ffffff" },
+          "interface.text.secondary": { kind: "color", value: "#888888" },
+        },
+      };
+      const before = structuredClone(raw);
+      const result = normalizeThemeDocument(raw);
+      expect(result.overrides).toEqual({
+        "interface.text.secondary": { kind: "color", value: "#888888" },
+      });
+      expect(compileTheme(result).css["--accent"]).toBeUndefined();
+      expect(compileTheme(result).roles["interface.content.onSelected"]).toBeUndefined();
+      expect(raw).toEqual(before);
+      expect(() =>
+        compileTheme(
+          normalizeThemeDocument({
+            ...raw,
+            overrides: { "unknown.role": { kind: "color", value: "#ffffff" } },
+          })
+        )
+      ).toThrow();
+    }
+  );
   it.each(["plvs-dark", "plvs-light"])("preserves comparable %s output", (builtin) => {
     const oldTheme = legacy(`custom-${builtin}`, builtin);
     const migrated = migrateV1Theme(oldTheme);

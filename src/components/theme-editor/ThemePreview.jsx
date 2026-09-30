@@ -25,7 +25,6 @@ function OverviewScene() {
           <div className="rounded-xs bg-popover p-2">Raised</div>
           <div className="rounded-xs bg-secondary p-2">Control</div>
           <div className="rounded-xs bg-muted p-2 text-muted-foreground">Muted</div>
-          <div className="rounded-xs bg-accent p-2 text-accent-foreground">Selected</div>
         </div>
       </PreviewCard>
       <PreviewCard title="Text & Content">

@@ -1,4 +1,4 @@
-export const CHART_CROSSHAIR_CLASS = "border-dashed border-muted-foreground/50";
+export const CHART_CROSSHAIR_CLASS = "border-dashed border-muted-foreground/60";
 
 export function ChartCrosshair({ leftPct, topPct }) {
   return (

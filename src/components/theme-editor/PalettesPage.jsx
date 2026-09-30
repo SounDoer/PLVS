@@ -147,9 +147,15 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
           const endpoint = index === 0 || index === palette.stops.length - 1;
           const previous = palette.stops[index - 1]?.position ?? 0;
           const next = palette.stops[index + 1]?.position ?? 1;
+          const minimum = endpoint ? 0 : previous + 0.01;
+          const maximum = endpoint ? 1 : next - 0.01;
+          const progress =
+            maximum > minimum
+              ? Math.max(0, Math.min(100, ((stop.position - minimum) / (maximum - minimum)) * 100))
+              : 0;
           return (
             <div
-              key={`${index}-${stop.position}`}
+              key={index}
               data-theme-target={`palette.intensity.stops.${index}`}
               className="flex items-center gap-2"
             >
@@ -162,8 +168,8 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
               <RangeInput
                 aria-label={`Stop ${index + 1} position`}
                 type="range"
-                min={endpoint ? stop.position : previous + 0.01}
-                max={endpoint ? stop.position : next - 0.01}
+                min={minimum}
+                max={maximum}
                 step="0.01"
                 value={stop.position}
                 disabled={endpoint}
@@ -174,6 +180,9 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
                     )
                   )
                 }
+                style={{
+                  "--range-pct": `${progress}%`,
+                }}
                 className="plvs-range min-w-0 flex-1"
               />
               <span className="w-[3em] text-right text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">

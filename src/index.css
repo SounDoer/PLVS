@@ -27,9 +27,6 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
@@ -154,7 +151,7 @@ html[data-surface="dock-editor"] #root {
    next; the per-component focus rings that used to fight it are gone.
 
    Menus and lists are unaffected: their keyboard highlight is a background
-   change (`focus:bg-accent`), not an outline. */
+   change (`focus:bg-ui-hover`), not an outline. */
 @layer base {
   :focus-visible {
     outline: none;

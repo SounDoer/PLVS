@@ -140,3 +140,6 @@ unaffected.
 
 Every chart can be zoomed, panned, and scrubbed, with a live hover probe. How far back history goes
 is set by **History Length** in [System Settings](system-settings.md).
+
+Crosshair and latest-time edge guides use Secondary Text at 60% opacity. Off-window selection
+edge lines use the selection color at 60%. Their directional fading bands remain unchanged.

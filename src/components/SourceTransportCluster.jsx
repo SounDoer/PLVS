@@ -6,21 +6,22 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 const CHROME = {
   ready: {
     shell: "border border-border bg-secondary text-muted-foreground",
-    action: "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)]",
+    action:
+      "bg-primary text-primary-foreground hover:bg-[color:var(--ui-primary-hover)] focus-visible:bg-[color:var(--ui-primary-hover)] active:bg-[color:var(--ui-primary-hover)]",
     Icon: Play,
   },
   live: {
     shell:
       "border border-[color:var(--ui-live-border)] bg-[color:var(--ui-live-surface)] text-[color:var(--ui-activity-live)]",
     action:
-      "bg-[color:var(--ui-live-active)] text-[color:var(--ui-activity-live)] hover:bg-[color:var(--ui-live-hover)]",
+      "bg-[color:var(--ui-live-active)] text-[color:var(--ui-activity-live)] hover:bg-[color:var(--ui-live-hover)] focus-visible:bg-[color:var(--ui-live-hover)] active:bg-[color:var(--ui-live-hover)]",
     Icon: Square,
   },
   snapshot: {
     shell:
       "border border-[color:var(--ui-snapshot-border)] bg-[color:var(--ui-snapshot-surface)] text-[color:var(--ui-activity-snapshot)]",
     action:
-      "bg-[color:var(--ui-snapshot-active)] text-[color:var(--ui-activity-snapshot)] hover:bg-[color:var(--ui-snapshot-hover)]",
+      "bg-[color:var(--ui-snapshot-active)] text-[color:var(--ui-activity-snapshot)] hover:bg-[color:var(--ui-snapshot-hover)] focus-visible:bg-[color:var(--ui-snapshot-hover)] active:bg-[color:var(--ui-snapshot-hover)]",
     Icon: Radio,
   },
 };

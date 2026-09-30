@@ -3,6 +3,12 @@ import { normalizeThemeDocumentShape } from "../themeSchema.js";
 import { migrateThemeSemantics2 } from "./migrateThemeSemantics2.js";
 
 const RETIRED_GRID_ROLES = new Set(["data.gridSubtle", "spectrogram.gridSubtle", "waveform.grid"]);
+const RETIRED_SELECTION_ROLES = new Set([
+  "interface.surface.selected",
+  "interface.content.onSelected",
+  "interface.surface.interactive",
+  "interface.content.onInteractive",
+]);
 
 function migrateGridSemanticOverrides(rawOverrides) {
   if (!rawOverrides || typeof rawOverrides !== "object" || Array.isArray(rawOverrides)) return null;
@@ -32,7 +38,6 @@ const SEMANTIC_ROLE_BINDINGS = {
   "--popover": "interface.surface.raised",
   "--secondary": "interface.surface.control",
   "--muted": "interface.surface.muted",
-  "--accent": "interface.surface.selected",
   "--foreground": "interface.text.primary",
   "--muted-foreground": "interface.text.secondary",
   "--primary-foreground": "interface.content.onAccent",
@@ -45,15 +50,12 @@ const INTERNAL_ROLE_IDS = new Set([
   "interface.content.onPanel",
   "interface.content.onRaised",
   "interface.content.onControl",
-  "interface.content.onSelected",
   "interface.border.input",
 ]);
 
 const FORMAT_1_ROLE_RENAMES = Object.freeze({
   "palette.status.good": "palette.status.safe",
   "palette.interface.critical": "palette.interface.danger",
-  "interface.surface.interactive": "interface.surface.selected",
-  "interface.content.onInteractive": "interface.content.onSelected",
   "interface.content.onCritical": "interface.content.onDanger",
   "interface.critical": "interface.danger",
 });
@@ -62,6 +64,7 @@ function migrateOverrides(rawOverrides) {
   if (!rawOverrides || typeof rawOverrides !== "object" || Array.isArray(rawOverrides)) return null;
   const overrides = {};
   for (const [oldRoleId, oldOverride] of Object.entries(rawOverrides)) {
+    if (RETIRED_SELECTION_ROLES.has(oldRoleId)) continue;
     if (oldRoleId === "interface.critical" || oldRoleId === "interface.danger") continue;
     const roleId = FORMAT_1_ROLE_RENAMES[oldRoleId] ?? oldRoleId;
     if (INTERNAL_ROLE_IDS.has(roleId)) continue;
@@ -231,7 +234,22 @@ export function migrateFormat1Theme(raw) {
   return migrateSingleVersionShape(raw);
 }
 
+export function stripRetiredSelectionOverrides(raw) {
+  // Retired cosmetic overrides no longer have consumers. Remove them at every ingress
+  // without changing the saved source object or accepting other unknown role names.
+  if (raw?.overrides && typeof raw.overrides === "object" && !Array.isArray(raw.overrides)) {
+    raw = {
+      ...raw,
+      overrides: Object.fromEntries(
+        Object.entries(raw.overrides).filter(([id]) => !RETIRED_SELECTION_ROLES.has(id))
+      ),
+    };
+  }
+  return raw;
+}
+
 export function migrateThemeDocument(raw) {
+  raw = stripRetiredSelectionOverrides(raw);
   const current = normalizeThemeDocumentShape(raw);
   if (current) return { theme: current, notes: [] };
   const semantics2 = migrateThemeSemantics2(raw);

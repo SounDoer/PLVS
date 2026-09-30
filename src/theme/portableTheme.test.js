@@ -22,6 +22,16 @@ function storedTheme(overrides = {}) {
 }
 
 describe("portable Theme contract", () => {
+  it("imports retired selection colors without weakening unknown-role validation", () => {
+    const raw = themeToPortable(storedTheme());
+    raw.overrides["interface.surface.selected"] = { kind: "color", value: "#123456" };
+    raw.overrides["interface.content.onSelected"] = { kind: "color", value: "#ffffff" };
+    const before = structuredClone(raw);
+    expect(portableToStoredTheme(raw, "custom-imported").overrides).toEqual({});
+    expect(raw).toEqual(before);
+    raw.overrides["unknown.role"] = { kind: "color", value: "#123456" };
+    expect(() => validatePortableTheme(raw)).toThrow();
+  });
   it("exports authoring intent without local identity or preset provenance", () => {
     const theme = storedTheme();
     theme.palettes.status.presetId = "preset-from-another-installation";

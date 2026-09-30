@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 const LATEST_EDGE_FADE_CLASS = "from-background/60";
-const LATEST_EDGE_LINE_CLASS = "border-muted-foreground/45";
+const LATEST_EDGE_LINE_CLASS = "border-muted-foreground/60";
 
 export function TimelineLatestEdgeHint({ active, className }) {
   if (!active) return null;

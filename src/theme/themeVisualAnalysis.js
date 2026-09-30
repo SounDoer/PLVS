@@ -172,7 +172,6 @@ export const THEME_CONTRAST_CHECKS = [
     ["Workspace", "core.workspace", "interface.text.primary"],
     ["Raised", "interface.surface.raised", "interface.content.onRaised"],
     ["Control", "interface.surface.control", "interface.content.onControl"],
-    ["Selected", "interface.surface.selected", "interface.content.onSelected"],
   ].map(([label, background, foreground]) => ({
     label: "Primary Text on " + label,
     foreground,
@@ -260,12 +259,6 @@ export function analyzeResolvedThemeVisuals(resolved) {
   const surfacePairs = [
     ["interface.surface.panel", "interface.surface.raised", "Panel and Raised Surface", 0.015],
     ["interface.surface.control", "interface.surface.muted", "Control and Muted Surface", 0.04],
-    [
-      "interface.surface.control",
-      "interface.surface.selected",
-      "Control and Selected Surface",
-      0.04,
-    ],
   ];
   for (const [first, second, label, targetDistance] of surfacePairs) {
     const distance = themeColorDistance(resolved.roles[first], resolved.roles[second]);

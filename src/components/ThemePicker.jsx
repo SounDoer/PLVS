@@ -121,6 +121,7 @@ export function ThemePicker({
         <button
           type="button"
           aria-label="Theme"
+          data-control-field="true"
           disabled={disabled}
           className="flex min-h-6 items-center gap-2 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] hover:border-border hover:bg-ui-hover disabled:opacity-50"
         >

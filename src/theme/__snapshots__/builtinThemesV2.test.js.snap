@@ -81,8 +81,6 @@ exports[`Theme V2 builtins > matches the reviewed current design for plvs-dark 1
     "waveform.trace": "#fb923c",
   },
   "css": {
-    "--accent": "#3b2410",
-    "--accent-foreground": "#f2f2f2",
     "--background": "#070707",
     "--border": "#2a2a2a",
     "--card": "#151515",
@@ -241,8 +239,6 @@ exports[`Theme V2 builtins > matches the reviewed current design for plvs-light 
     "waveform.trace": "#d16718",
   },
   "css": {
-    "--accent": "#e9ceb9",
-    "--accent-foreground": "#140e0a",
     "--background": "#fbf8f5",
     "--border": "#ddd9d6",
     "--card": "#f5f1ee",

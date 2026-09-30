@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SELECTION_EDGE_FADE_PERCENT = 22;
-const SELECTION_EDGE_LINE_CLASS = "border-current/65";
+const SELECTION_EDGE_LINE_CLASS = "border-current/60";
 
 /** Points toward the globally selected sample when it is outside this panel's time window. */
 export function TimelineSelectionEdgeHint({

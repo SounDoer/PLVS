@@ -6,14 +6,14 @@ import { describe, expect, it } from "vitest";
 import { ChartCrosshair } from "./ChartCrosshair";
 
 describe("ChartCrosshair", () => {
-  it("uses one dashed half-strength guide style for both axes", () => {
+  it("uses one dashed 60%-strength guide style for both axes", () => {
     render(<ChartCrosshair leftPct={25} topPct={75} />);
 
     for (const axis of ["vertical", "horizontal"]) {
       const guide = document.querySelector(`[data-chart-crosshair="${axis}"]`);
       expect(guide).not.toBeNull();
       expect(guide.className).toContain("border-dashed");
-      expect(guide.className).toContain("border-muted-foreground/50");
+      expect(guide.className).toContain("border-muted-foreground/60");
     }
   });
 

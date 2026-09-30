@@ -103,14 +103,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     bindings: { css: ["--muted"] },
     advanced: colorOverride("Interface", "Muted Surface", "Subdued and inactive regions."),
   }),
-  role("interface.surface.selected", {
-    kind: "color",
-    family: "interface",
-    recipe: "surface-selected",
-    dependencies: ["core.surface", "core.interfaceAccent"],
-    bindings: { css: ["--accent"] },
-    advanced: colorOverride("Interface", "Selected Surface", "Selected and emphasized controls."),
-  }),
+
   role("interface.text.primary", {
     kind: "color",
     family: "interface",
@@ -172,13 +165,7 @@ const RAW_THEME_ROLE_REGISTRY = [
     dependencies: ["interface.text.primary"],
     bindings: { css: ["--secondary-foreground"] },
   }),
-  role("interface.content.onSelected", {
-    kind: "color",
-    family: "interface",
-    recipe: "text-primary",
-    dependencies: ["interface.text.primary"],
-    bindings: { css: ["--accent-foreground"] },
-  }),
+
   role("interface.content.onSuccess", {
     kind: "color",
     family: "interface",

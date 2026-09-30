@@ -224,3 +224,8 @@ diagnostics are sent.
 Every package includes a `licenses` folder containing the third-party notices, the complete PLVS
 MIT License and the license texts referenced by the notices. Portable users can open that folder
 directly beside `plvs.exe`; in a macOS app bundle it is under `Contents/Resources/licenses`.
+
+The retired Selected Surface theme setting is no longer shown or evaluated for contrast. Existing
+themes still import; obsolete selection-surface overrides are discarded without changing the
+remaining colors. Intensity palette position sliders retain focus while moving a stop and show
+progress within the stop’s permitted movement range.
