@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { discardCrashReport } from "../ipc/commands.js";
@@ -74,7 +74,7 @@ export function CrashReportDialog({
         role="dialog"
         aria-modal="true"
         aria-label="PLVS Quit Unexpectedly"
-        className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-modal"
+        className={`flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`}
       >
         <header className="border-b border-border px-4 py-3">
           <h2 className="text-[length:var(--ui-fs-panel-title)] font-semibold">

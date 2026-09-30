@@ -125,7 +125,7 @@ export function FocusViewPopoverContent({
               </SelectTrigger>
               <SelectContent
                 align="end"
-                className="min-w-[var(--radix-select-trigger-width)] border-border [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
+                className="min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
               >
                 <SelectItem value="off">Off</SelectItem>
                 <SelectItem value="top">Top</SelectItem>

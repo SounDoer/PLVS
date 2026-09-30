@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { PACK_KINDS } from "../transfer/packShape.js";
 import { clampPanelPos } from "../lib/dragClamp.js";
 
-const CENTERED_CONTENT_CLASS =
-  "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-modal";
-const POSITIONED_CONTENT_CLASS =
-  "fixed z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground shadow-modal";
+const CENTERED_CONTENT_CLASS = `fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl p-3 ${MODAL_SURFACE_CLASS}`;
+const POSITIONED_CONTENT_CLASS = `fixed z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl p-3 ${MODAL_SURFACE_CLASS}`;
 
 const EMPTY_MESSAGE = {
   loudness: "No loudness profiles to export.",

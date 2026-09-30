@@ -4,6 +4,8 @@ Everything for making PLVS fit into how you work day to day.
 
 Opening Settings softly blurs and dims the workbench behind it while the Settings drawer stays
 opaque and clear.
+The drawer keeps a single border along its inner edge against the workbench. Floating menus and
+dialogs retain their full outlines and shadows.
 
 ## Startup and closing
 

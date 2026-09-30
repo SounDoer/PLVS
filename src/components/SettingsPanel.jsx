@@ -56,7 +56,7 @@ const SELECT_TRIGGER_CLASS =
   "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-ui-hover";
 
 const SELECT_CONTENT_CLASS =
-  "border-border min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]";
+  "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]";
 
 const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 

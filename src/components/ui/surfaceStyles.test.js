@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import {
   DOCK_SURFACE_CLASS,
   MODAL_SURFACE_CLASS,
-  PANEL_SETTINGS_SURFACE_CLASS,
   PANEL_SURFACE_CLASS,
   POPOVER_SURFACE_CLASS,
   SCRIM_CLASS,
@@ -48,7 +47,7 @@ describe("scrim", () => {
 
 describe("surface roles", () => {
   it("keeps readable raised and modal surfaces opaque", () => {
-    for (const className of [POPOVER_SURFACE_CLASS, PANEL_SETTINGS_SURFACE_CLASS]) {
+    for (const className of [POPOVER_SURFACE_CLASS]) {
       expect(className).toContain("bg-popover");
       expect(className).toContain("shadow-raised");
       expect(className).not.toMatch(/bg-popover\//);

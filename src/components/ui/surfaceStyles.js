@@ -16,7 +16,5 @@ export const DOCK_SURFACE_CLASS = "bg-[color:var(--ui-surface-dock)]";
 export const POPOVER_SURFACE_CLASS =
   "rounded-md border border-border bg-popover text-popover-foreground shadow-raised outline-none";
 
-export const PANEL_SETTINGS_SURFACE_CLASS =
-  "rounded-md border border-border bg-popover text-popover-foreground shadow-raised";
-
-export const MODAL_SURFACE_CLASS = "border border-border bg-card text-card-foreground shadow-modal";
+export const MODAL_SURFACE_BASE_CLASS = "border-border bg-card text-card-foreground shadow-modal";
+export const MODAL_SURFACE_CLASS = `border ${MODAL_SURFACE_BASE_CLASS}`;

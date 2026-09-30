@@ -1,7 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 
 const SECONDARY_BUTTON_CLASS =
   "rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-ui-hover disabled:pointer-events-none disabled:opacity-50";
@@ -57,7 +57,7 @@ export function UpdateDialog({
           onClick={handleDismiss}
         />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card p-3 shadow-modal"
+          className={`fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl p-3 ${MODAL_SURFACE_CLASS}`}
           onEscapeKeyDown={(event) => {
             event.preventDefault();
             handleDismiss();

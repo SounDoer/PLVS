@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,7 +36,7 @@ export function ConfirmDialog({
         <Dialog.Overlay className={cn(SCRIM_CLASS, "z-[60]")} />
         <Dialog.Content
           role="alertdialog"
-          className="fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-modal"
+          className={`fixed left-1/2 top-1/2 z-[61] w-80 -translate-x-1/2 -translate-y-1/2 rounded-xl p-6 ${MODAL_SURFACE_CLASS}`}
         >
           <Dialog.Title className="mb-3 text-[length:var(--ui-fs-body)] font-semibold text-foreground">
             {title}

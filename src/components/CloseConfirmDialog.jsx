@@ -10,13 +10,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 
 const SELECT_TRIGGER_CLASS =
   "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:border-border hover:bg-ui-hover";
 
 const SELECT_CONTENT_CLASS =
-  "border-border min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
+  "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
 
 const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
@@ -58,7 +58,9 @@ export function CloseConfirmDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className={cn(SCRIM_CLASS, "z-50")} />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-card p-3 shadow-modal">
+        <Dialog.Content
+          className={`fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl p-3 ${MODAL_SURFACE_CLASS}`}
+        >
           <Dialog.Title className="sr-only">Close PLVS</Dialog.Title>
           {error ? (
             <div className="mb-3 max-w-80 px-1.5 text-[length:var(--ui-fs-control)] text-destructive">

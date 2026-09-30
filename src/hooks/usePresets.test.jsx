@@ -23,6 +23,8 @@ vi.mock("@tauri-apps/api/window", () => ({
   }),
 }));
 
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => {}) }));
+
 vi.mock("../ipc/commands.js", () => ({
   applyWindowBounds: mocks.applyWindowBounds,
   currentWindowBounds: mocks.currentWindowBounds,

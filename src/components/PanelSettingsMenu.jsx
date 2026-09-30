@@ -3,9 +3,7 @@ import { Settings2 } from "lucide-react";
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PANEL_SETTINGS_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
-import { cn } from "@/lib/utils";
 import { normalizePanelControls } from "@/lib/panelControls.js";
 import { spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import { isDefaultPanelControls } from "@/workspace/panelControlInstances.js";
@@ -97,10 +95,7 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
       <PopoverContent
         align="end"
         sideOffset={6}
-        className={cn(
-          "flex max-h-[var(--radix-popover-content-available-height)] w-auto flex-col overflow-hidden p-1",
-          PANEL_SETTINGS_SURFACE_CLASS
-        )}
+        className="flex max-h-[var(--radix-popover-content-available-height)] w-auto flex-col overflow-hidden p-1"
       >
         <PanelSettingsHeader
           title={title}

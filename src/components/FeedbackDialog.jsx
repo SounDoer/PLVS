@@ -1,3 +1,4 @@
+import { MODAL_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { clampPanelPos } from "../lib/dragClamp.js";
@@ -85,7 +86,7 @@ export function FeedbackDialog({ onClose }) {
       ref={ref}
       role="dialog"
       aria-label="Send feedback"
-      className="fixed z-50 flex w-80 flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-modal"
+      className={`fixed z-50 flex w-80 flex-col gap-2 overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`}
       style={{ left: pos.x, top: pos.y }}
     >
       <div

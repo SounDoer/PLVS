@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import {
-  PANEL_SETTINGS_SURFACE_CLASS,
-  POPOVER_SURFACE_CLASS,
-} from "../../components/ui/surfaceStyles.js";
+import { POPOVER_SURFACE_CLASS } from "../../components/ui/surfaceStyles.js";
 import { cn } from "../../lib/utils.js";
 import { useAccessoryClient } from "./useAccessoryClient.js";
 import { DockModulesEditor } from "../editors/DockModulesEditor.jsx";
@@ -159,7 +156,7 @@ export function DockEditorApp() {
       className={cn(
         "inline-block max-h-screen overflow-hidden",
         POPOVER_SURFACE_CLASS,
-        payload.view?.startsWith("module:") && cn("p-1", PANEL_SETTINGS_SURFACE_CLASS),
+        payload.view?.startsWith("module:") && "p-1",
         // Presets, Loudness Profile and Modules share the normal-mode toolbar popover's adaptive
         // range (grow to fit, capped at 18rem) so the dock menus match the header ones -- and so a
         // long name can no longer grow the uncapped `w-max` panel without bound.
