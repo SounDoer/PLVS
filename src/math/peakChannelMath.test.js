@@ -24,6 +24,11 @@ describe("getPeakChannels", () => {
     ]);
   });
 
+  it("uses the shared label context when peakDb is missing", () => {
+    const ch = getPeakChannels({ sampleL: -6, sampleR: -7 }, { overrideLabels: ["Left", "Right"] });
+    expect(ch.map(({ label }) => label)).toEqual(["Left", "Right"]);
+  });
+
   it("caps peakDb at 16 channels", () => {
     const peakDb = Array.from({ length: 20 }, (_, i) => -(i + 1));
     const ch = getPeakChannels({ peakDb });

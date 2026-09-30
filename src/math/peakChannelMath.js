@@ -22,8 +22,9 @@ export function getPeakChannels(displayAudio, labelCtx, field = "peakDb") {
 
   const l = Number.isFinite(displayAudio?.sampleL) ? displayAudio.sampleL : -Infinity;
   const r = Number.isFinite(displayAudio?.sampleR) ? displayAudio.sampleR : -Infinity;
+  const labels = getPeakMeterChannelLabels(2, labelCtx || {});
   return [
-    { label: "L", valueDb: l },
-    { label: "R", valueDb: r },
+    { label: labels[0] ?? "Ch 1", valueDb: l },
+    { label: labels[1] ?? "Ch 2", valueDb: r },
   ];
 }

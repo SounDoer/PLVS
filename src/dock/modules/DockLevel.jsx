@@ -8,6 +8,7 @@ import {
 import { levelMeterBackground } from "../../lib/levelMeterColors.js";
 import { fmtMetric } from "../../math/formatMath.js";
 import { getPeakChannels } from "../../math/peakChannelMath.js";
+import { getPeakMeterChannelLabels } from "../../math/peakMeterChannelLabels.js";
 import { useFrameData } from "../../workspace/AudioDataContext.jsx";
 import { DockExpandedMetric } from "./DockExpandedMetric.jsx";
 import { useHoverTip } from "../../components/HoverTip.jsx";
@@ -231,10 +232,10 @@ export function DockLevel({ controls = {}, heightMode = "standard" }) {
     : [];
   const channels =
     peakFamily && measuredChannels.length === 0
-      ? [
-          { label: "L", valueDb: -Infinity },
-          { label: "R", valueDb: -Infinity },
-        ]
+      ? getPeakMeterChannelLabels(2, peakLabelContext).map((label) => ({
+          label,
+          valueDb: -Infinity,
+        }))
       : measuredChannels;
   const channelValues = channels.map(({ valueDb }) => valueDb);
   const scalarValue = Number.isFinite(displayAudio?.[meta.field])

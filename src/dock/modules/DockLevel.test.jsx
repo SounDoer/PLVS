@@ -173,8 +173,13 @@ describe("DockLevel", () => {
   });
 
   it("shows an idle stereo fallback with no signal", () => {
-    renderWith({ displayAudio: { peakDb: [] } });
+    renderWith({
+      displayAudio: { peakDb: [] },
+      peakLabelContext: { overrideLabels: ["Left", "Right"] },
+    });
     expect(screen.getAllByTestId("dock-level-bar")).toHaveLength(2);
+    expect(screen.getByText("Left")).toBeTruthy();
+    expect(screen.getByText("Right")).toBeTruthy();
     expect(screen.getAllByText("-")).toHaveLength(2);
   });
 

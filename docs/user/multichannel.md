@@ -5,6 +5,8 @@ PLVS follows your source's channel layout, with a manual choice when needed.
 ## Automatic layout detection
 
 Mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 are recognised automatically from the channel count.
+Before capture starts, panels use an assumed stereo layout and show the placeholder channels as
+**L** and **R**. Once capture reports the real topology, its detected or selected labels take over.
 
 ## Manual layouts
 

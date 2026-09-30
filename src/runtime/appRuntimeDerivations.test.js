@@ -151,6 +151,21 @@ describe("app runtime derivations", () => {
     expect(runtime.selectedLayoutId).toBe("stereo");
   });
 
+  it("uses an assumed stereo label context while capture is idle", () => {
+    const runtime = deriveChannelLabelRuntime({
+      channelCount: 0,
+      channelLabelOverrides: {},
+    });
+
+    expect(runtime.channelAutoLabels).toEqual([]);
+    expect(runtime.selectedLayoutId).toBeNull();
+    expect(runtime.peakLabelContext).toEqual({
+      formatId: "stereo",
+      resolvedLayout: undefined,
+      overrideLabels: null,
+    });
+  });
+
   it("reports Custom only for an explicit role list that matches no layout", () => {
     const runtime = deriveChannelLabelRuntime({
       channelCount: 2,
