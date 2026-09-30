@@ -69,9 +69,8 @@ main identity colors, **Palettes** controls shared data scales, and **Advanced**
 per-interface and per-module overrides. Advanced roles stay on **Auto** unless you customize them,
 and can be searched or reset to Auto a section at a time. Advanced exposes color customization,
 not fill-opacity controls. Defaults remain 20% / 2% for Spectrum, 20% for Stereo Map, and 12% for
-classic Waveform. Previously saved fill-opacity overrides remain compatible; hiding the controls
-does not silently rewrite existing themes. Palette stop positions, the theme name, and Dark / Light
-appearance remain editable.
+classic Waveform. Fill opacity is fixed by the app and is not stored in or exported with Themes.
+Palette stop positions, the theme name, and Dark / Light appearance remain editable.
 
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas
@@ -114,7 +113,7 @@ values differ.
 **Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft
 without changing Workspace data or layout. The module scenes include representative optional Grid
 lines and always-visible Vectorscope guides so their resolved colours can be reviewed. Its
-Spectrum, Stereo Map, and classic Waveform examples show their Theme-owned fill opacity, and the
+Spectrum, Stereo Map, and classic Waveform examples show their fixed fill opacity, and the
 overview includes ordinary, selected, and disabled controls. These are illustrative scenes; use the
 real panels to judge geometry and data-dependent rendering. The
 **Visual Review** page reports recommended contrast,

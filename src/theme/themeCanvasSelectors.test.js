@@ -11,7 +11,7 @@ describe("Theme Canvas selectors", () => {
 
     expect(colors.grid).toBeUndefined();
     expect(colors.selection).toBe(resolved.roles["waveform.selection"]);
-    expect(colors.fillOpacity).toBe(resolved.roles["waveform.fillOpacity"]);
+    expect(colors).not.toHaveProperty("fillOpacity");
   });
 
   it("publishes Stereo Map status ranges through module-local roles", () => {
@@ -21,6 +21,6 @@ describe("Theme Canvas selectors", () => {
     expect(colors.good).toBe(resolved.roles["stereoMap.safeRange"]);
     expect(colors.warning).toBe(resolved.roles["stereoMap.warningRange"]);
     expect(colors.critical).toBe(resolved.roles["stereoMap.criticalRange"]);
-    expect(colors.fillOpacity).toBe(resolved.roles["stereoMap.fillOpacity"]);
+    expect(colors).not.toHaveProperty("fillOpacity");
   });
 });

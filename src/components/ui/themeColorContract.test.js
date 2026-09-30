@@ -147,7 +147,7 @@ describe("theme color contract", () => {
     expect(stereoMap).not.toContain("--ui-stereo-map-fill-opacity");
   });
 
-  it("keeps classic Waveform fill opacity in the Theme Canvas bundle", () => {
+  it("uses fixed classic Waveform fill in both renderers", () => {
     const waveform = readFileSync(new URL("../panels/WaveformPanel.jsx", import.meta.url), "utf8");
     const dockWaveform = readFileSync(
       new URL("../../dock/modules/DockWaveform.jsx", import.meta.url),
@@ -158,8 +158,8 @@ describe("theme color contract", () => {
       "utf8"
     );
 
-    expect(waveform).toContain("themeColors.fillOpacity");
-    expect(dockWaveform).toContain("themeColors.fillOpacity");
+    expect(waveform).toContain("WAVEFORM_FILL_OPACITY");
+    expect(dockWaveform).toContain("WAVEFORM_FILL_OPACITY");
     expect(waveform).not.toContain("--ui-waveform-fill-opacity");
     expect(dockWaveform).not.toContain("--ui-waveform-fill-opacity");
     expect(layoutPublisher).not.toContain("--ui-waveform-fill-opacity");

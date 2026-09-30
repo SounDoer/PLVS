@@ -21,7 +21,6 @@ const TEST_CHANNEL_COLORS = {
   good: "#0000ff",
   warning: "#00ff00",
   critical: "#ff0000",
-  fillOpacity: 0.2,
 };
 import { STEREO_MAP_MODES } from "../../math/stereoMapMath.js";
 import { applyThemeToDocument } from "../../uiPreferences.js";
@@ -211,7 +210,7 @@ describe("StereoMapPlot", () => {
     expect(ctx.fill).toHaveBeenCalledTimes(2);
   });
 
-  it("redraws live when the Theme-owned fill opacity changes", () => {
+  it("keeps fixed fill opacity when theme colors change", () => {
     const ctx = contextStub();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
     const props = {
@@ -220,15 +219,13 @@ describe("StereoMapPlot", () => {
       points: threeBandPoints().slice(0, 2),
       range: RANGE,
     };
-    const { rerender } = render(
-      <StereoMapPlot {...props} themeColors={{ ...TEST_CHANNEL_COLORS, fillOpacity: 0.2 }} />
-    );
+    const { rerender } = render(<StereoMapPlot {...props} themeColors={TEST_CHANNEL_COLORS} />);
     expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.2, 5);
 
     rerender(
-      <StereoMapPlot {...props} themeColors={{ ...TEST_CHANNEL_COLORS, fillOpacity: 0.4 }} />
+      <StereoMapPlot {...props} themeColors={{ ...TEST_CHANNEL_COLORS, primary: "#ffffff" }} />
     );
-    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.4, 5);
+    expect(ctx.filledAlphas.at(-1)).toBeCloseTo(0.2, 5);
     expect(ctx.fill).toHaveBeenCalledTimes(2);
   });
 

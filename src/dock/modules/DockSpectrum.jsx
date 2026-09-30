@@ -1,3 +1,4 @@
+import { SPECTRUM_FILL_TOP, SPECTRUM_FILL_BOTTOM } from "@/lib/chartFill.js";
 import { useCallback, useId, useRef, useState } from "react";
 import {
   applySpectrumTilt,
@@ -95,24 +96,24 @@ export function DockSpectrum({ controls }) {
             <stop
               offset="0%"
               stopColor="var(--ui-spectrum-primary)"
-              stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
+              stopOpacity={SPECTRUM_FILL_TOP}
             />
             <stop
               offset="100%"
               stopColor="var(--ui-spectrum-primary)"
-              stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
+              stopOpacity={SPECTRUM_FILL_BOTTOM}
             />
           </linearGradient>
           <linearGradient id={secondaryGradientId} x1="0" x2="0" y1="0" y2="1">
             <stop
               offset="0%"
               stopColor="var(--ui-spectrum-secondary)"
-              stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
+              stopOpacity={SPECTRUM_FILL_TOP}
             />
             <stop
               offset="100%"
               stopColor="var(--ui-spectrum-secondary)"
-              stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
+              stopOpacity={SPECTRUM_FILL_BOTTOM}
             />
           </linearGradient>
         </defs>

@@ -1,3 +1,4 @@
+import { STEREO_MAP_FILL_OPACITY } from "@/lib/chartFill.js";
 import { useLayoutEffect, useRef } from "react";
 
 import { rangedFreqToXFrac, rangedHistY } from "../../config/scales";
@@ -418,7 +419,7 @@ function resolveColors(themeColors, paletteKey) {
     grid,
     primaryCss: rgbToCss(primary),
     secondaryCss: rgbToCss(secondary),
-    fillOpacity: Number.isFinite(themeColors.fillOpacity) ? clamp01(themeColors.fillOpacity) : 0.2,
+    fillOpacity: STEREO_MAP_FILL_OPACITY,
   };
 }
 

@@ -1,3 +1,4 @@
+import { WAVEFORM_FILL_OPACITY } from "@/lib/chartFill.js";
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import {
   useFrameData,
@@ -111,9 +112,7 @@ export function drawWaveformCanvas(
 
   const strokeColor = selected ? themeColors.snapshot : themeColors.trace;
   const root = document.documentElement;
-  const fillOpacity = Number.isFinite(themeColors.fillOpacity)
-    ? Math.max(0, Math.min(1, themeColors.fillOpacity))
-    : 0.12;
+  const fillOpacity = WAVEFORM_FILL_OPACITY;
   // Stroke width is product-owned geometry and remains a CSS token.
   const strokeWidth = readCssNumber(root, "--ui-waveform-stroke-width", 1) || 1;
   const spectralPalette = {

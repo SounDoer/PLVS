@@ -33,26 +33,20 @@ const BASE_PROPS = {
 };
 
 describe("ThemeEditor", () => {
-  it("previews theme-owned fills without attenuating trace strokes", () => {
+  it("previews fixed fills without attenuating trace strokes", () => {
     const draft = structuredClone(DRAFT);
-    draft.overrides = {
-      "spectrum.fillOpacityTop": { kind: "number", value: 0.7 },
-      "spectrum.fillOpacityBottom": { kind: "number", value: 0.3 },
-      "stereoMap.fillOpacity": { kind: "number", value: 0.6 },
-      "waveform.fillOpacity": { kind: "number", value: 0.4 },
-    };
     render(<ThemeEditor {...BASE_PROPS} draft={draft} />);
     fireEvent.click(screen.getByRole("button", { name: "Open Theme Preview" }));
     const preview = screen.getByRole("dialog", { name: "Theme Preview" });
     expect(preview.style.colorScheme).toBe("dark");
     fireEvent.click(screen.getByRole("tab", { name: "Modules" }));
     const spectrum = screen.getByText("Spectrum").closest("section");
-    expect(spectrum.querySelector('stop[offset="0%"]').getAttribute("stop-opacity")).toBe("0.7");
-    expect(spectrum.querySelector('stop[offset="100%"]').getAttribute("stop-opacity")).toBe("0.3");
+    expect(spectrum.querySelector('stop[offset="0%"]').getAttribute("stop-opacity")).toBe("0.2");
+    expect(spectrum.querySelector('stop[offset="100%"]').getAttribute("stop-opacity")).toBe("0.02");
     const stereoMap = screen.getByText("Stereo Map").closest("section");
-    expect(stereoMap.querySelector("stop").getAttribute("stop-opacity")).toBe("0.6");
+    expect(stereoMap.querySelector("stop").getAttribute("stop-opacity")).toBe("0.2");
     const waveform = screen.getByText("Waveform").closest("section");
-    expect(waveform.querySelector("path").getAttribute("fill-opacity")).toBe("0.4");
+    expect(waveform.querySelector("path").getAttribute("fill-opacity")).toBe("0.12");
     expect(preview.querySelectorAll("[stroke-opacity], [opacity]")).toHaveLength(0);
   });
   it("warns without replacing a stale Theme draft", () => {
@@ -111,13 +105,10 @@ describe("ThemeEditor", () => {
   });
 
   it.each(["Spectrum", "Stereo Map", "Waveform"])(
-    "hides fill-opacity controls in %s, including saved overrides",
+    "hides fill-opacity controls in %s, without numeric settings",
     (section) => {
       const draft = structuredClone(DRAFT);
-      draft.overrides["spectrum.fillOpacityTop"] = { kind: "number", value: 0.28 };
-      draft.overrides["spectrum.fillOpacityBottom"] = { kind: "number", value: 0.04 };
-      draft.overrides["stereoMap.fillOpacity"] = { kind: "number", value: 0.35 };
-      draft.overrides["waveform.fillOpacity"] = { kind: "number", value: 0.18 };
+
       const before = structuredClone(draft);
       const onOverride = vi.fn();
       render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);

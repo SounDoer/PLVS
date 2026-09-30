@@ -69,60 +69,6 @@ describe("Theme Role Registry", () => {
     });
   });
 
-  it("registers Spectrum fill opacity as bounded numeric Advanced roles", () => {
-    expect(getThemeRole("spectrum.fillOpacityTop")).toMatchObject({
-      valueKind: "number",
-      defaultValue: 0.2,
-      bindings: { css: ["--ui-spectrum-fill-top-opacity"] },
-      advanced: {
-        section: "Spectrum",
-        label: "Fill Opacity — Upper",
-        allowedModes: ["number"],
-        minimum: 0,
-        maximum: 1,
-        step: 0.01,
-        unit: "percent",
-      },
-    });
-    expect(getThemeRole("spectrum.fillOpacityBottom")).toMatchObject({
-      valueKind: "number",
-      defaultValue: 0.02,
-      bindings: { css: ["--ui-spectrum-fill-bottom-opacity"] },
-    });
-  });
-
-  it("registers Stereo Map fill opacity as a Canvas-bound numeric Advanced role", () => {
-    expect(getThemeRole("stereoMap.fillOpacity")).toMatchObject({
-      valueKind: "number",
-      defaultValue: 0.2,
-      bindings: { canvas: ["stereoMap.fillOpacity"] },
-      advanced: {
-        section: "Stereo Map",
-        label: "Fill Opacity",
-        minimum: 0,
-        maximum: 1,
-        step: 0.01,
-        unit: "percent",
-      },
-    });
-  });
-
-  it("registers classic Waveform fill opacity as a Canvas-bound numeric Advanced role", () => {
-    expect(getThemeRole("waveform.fillOpacity")).toMatchObject({
-      valueKind: "number",
-      defaultValue: 0.12,
-      bindings: { canvas: ["waveform.fillOpacity"] },
-      advanced: {
-        section: "Waveform",
-        label: "Classic Fill Opacity",
-        minimum: 0,
-        maximum: 1,
-        step: 0.01,
-        unit: "percent",
-      },
-    });
-  });
-
   it("freezes the public registry deeply", () => {
     expect(Object.isFrozen(THEME_ROLE_REGISTRY)).toBe(true);
     expect(Object.isFrozen(getThemeRole("waveform.centroid").advanced)).toBe(true);

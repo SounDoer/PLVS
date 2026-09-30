@@ -17,8 +17,8 @@ Authoring    Six Core Colors, purpose-specific Palettes, and sparse Advanced ove
 
 Resolved     themeRoleRegistry.js defines every meaningful visible role, its value kind, and its
              dependencies. themeRecipes.js owns executable typed recipe contracts. compileTheme.js
-             produces one complete immutable CSS / Canvas / effect contract. Curated bounded
-             numeric roles may own visual composition that must travel with a Theme (ADR 0011).
+             produces one complete immutable CSS / Canvas / effect contract. Chart fill opacity
+             is fixed product composition in src/lib/chartFill.js (ADR 0019).
 
 Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
              Theme values are written by themeRuntime; layout and product-tuning tokens by
@@ -670,23 +670,22 @@ fixed phosphor-style fade, and stroke width remains product-owned.
 
 ```
 --ui-spectrum-stroke-width           1.5    Trace stroke width
---ui-spectrum-fill-top-opacity       0.20   Theme Advanced: upper fill-gradient opacity
---ui-spectrum-fill-bottom-opacity    0.02   Theme Advanced: lower fill-gradient opacity
+SPECTRUM_FILL_TOP                    0.20   Fixed upper fill-gradient opacity
+SPECTRUM_FILL_BOTTOM                 0.02   Fixed lower fill-gradient opacity
 ```
 
-The two fill values are bounded Theme roles shared by Primary, Secondary, and Snapshot Spectrum
-areas. Theme Editor exposes them as percentages under **Advanced → Spectrum**; Lower cannot exceed
-Upper. Stroke width remains product-owned.
+The two fixed fill values from `src/lib/chartFill.js` are shared by Primary, Secondary, and Snapshot
+Spectrum areas in Workspace, Dock, and Theme Preview. Stroke width remains product-owned.
 
 ### Stereo Map
 
 ```
-Stereo Map Canvas `fillOpacity`   0.20   Theme Advanced: curve area fill opacity
+STEREO_MAP_FILL_OPACITY           0.20   Fixed curve area fill opacity
 --ui-stereo-map-stroke-width      1.5    Product-owned curve stroke width
 ```
 
-`stereoMap.fillOpacity` is a bounded Theme role exposed under **Advanced → Stereo Map** and shared
-by all four modes, live and Snapshot palettes, and Dock. Position blends the module-local Primary
+`STEREO_MAP_FILL_OPACITY` from `src/lib/chartFill.js` is shared by all four modes, live and Snapshot
+palettes, Dock, and Theme Preview. Position blends the module-local Primary
 and Secondary data roles over the transition width selected by the panel's **Color Blend** setting;
 Correlation and Mono Loss use the module-local Critical, Warning, and Safe ranges; M/S Ratio uses
 Primary for Mid and Secondary for Side. The panel's independent **Energy Fade Strength** transforms
@@ -696,13 +695,12 @@ key. Stroke width remains product-owned and does not borrow Spectrum's token.
 ### Waveform
 
 ```
-Waveform Canvas `fillOpacity`   0.12   Theme Advanced: classic envelope fill opacity
+WAVEFORM_FILL_OPACITY           0.12   Fixed classic envelope fill opacity
 --ui-waveform-stroke-width     1      Product-owned envelope stroke width
 ```
 
-`waveform.fillOpacity` is a bounded Theme role exposed as **Advanced → Waveform → Classic Fill
-Opacity**. It is shared by Workspace, Dock, Live, and Snapshot, and applies only while **Frequency
-Color** is off. Frequency Color remains fully opaque because its palette is the waveform body rather
+`WAVEFORM_FILL_OPACITY` from `src/lib/chartFill.js` is shared by Workspace, Dock, Live, Snapshot,
+and Theme Preview, and applies only while **Frequency Color** is off. Frequency Color remains fully opaque because its palette is the waveform body rather
 than an overlay; Spectral Centroid is unaffected.
 
 ---

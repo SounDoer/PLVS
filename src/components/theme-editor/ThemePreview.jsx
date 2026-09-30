@@ -1,3 +1,9 @@
+import {
+  SPECTRUM_FILL_TOP,
+  SPECTRUM_FILL_BOTTOM,
+  STEREO_MAP_FILL_OPACITY,
+  WAVEFORM_FILL_OPACITY,
+} from "@/lib/chartFill.js";
 import { useId, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -162,8 +168,8 @@ function ModulesScene({ intensityGradient, gridColors, resolved }) {
           color="var(--ui-spectrum-primary)"
           secondColor="var(--ui-spectrum-secondary)"
           gridColor="var(--ui-spectrum-grid)"
-          fillTop={resolved.roles["spectrum.fillOpacityTop"]}
-          fillBottom={resolved.roles["spectrum.fillOpacityBottom"]}
+          fillTop={SPECTRUM_FILL_TOP}
+          fillBottom={SPECTRUM_FILL_BOTTOM}
         />
       </PreviewCard>
       <PreviewCard title="Spectrogram">
@@ -188,7 +194,7 @@ function ModulesScene({ intensityGradient, gridColors, resolved }) {
               <path
                 d="M0 12L20 9L40 2L60 7L80 4L100 8L120 1L140 7L160 12L140 17L120 23L100 16L80 20L60 17L40 22L20 15Z"
                 fill={resolved.roles[role]}
-                fillOpacity={resolved.roles["waveform.fillOpacity"]}
+                fillOpacity={WAVEFORM_FILL_OPACITY}
                 stroke={resolved.roles[role]}
                 strokeWidth="1"
               />
@@ -201,7 +207,7 @@ function ModulesScene({ intensityGradient, gridColors, resolved }) {
           color={resolved.roles["stereoMap.primary"]}
           secondColor={resolved.roles["stereoMap.secondary"]}
           gridColor={gridColors.stereoMap}
-          fillTop={resolved.roles["stereoMap.fillOpacity"]}
+          fillTop={STEREO_MAP_FILL_OPACITY}
         />
       </PreviewCard>
     </div>

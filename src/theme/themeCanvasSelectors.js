@@ -11,7 +11,6 @@ export function selectWaveformCanvasColors(resolved) {
     frequencyHigh: resolved.canvas["waveform.frequencyHigh"],
     frequencyNeutral: resolved.canvas["waveform.frequencyNeutral"],
     centroid: resolved.canvas["waveform.centroid"],
-    fillOpacity: resolved.canvas["waveform.fillOpacity"],
   };
 }
 
@@ -25,7 +24,6 @@ export function selectStereoMapCanvasColors(resolved) {
     good: resolved.canvas["stereoMap.safeRange"],
     warning: resolved.canvas["stereoMap.warningRange"],
     critical: resolved.canvas["stereoMap.criticalRange"],
-    fillOpacity: resolved.canvas["stereoMap.fillOpacity"],
   };
 }
 

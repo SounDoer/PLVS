@@ -156,7 +156,7 @@ describe("DockWaveform", () => {
     expect(transform).toEqual([1, 0, 0, 1, 0, 0]);
   });
 
-  it("uses Theme-owned classic fill opacity and accepts zero", () => {
+  it("uses the fixed classic fill opacity", () => {
     const { canvas, context } = mockCanvas();
     const fillAlphas = [];
     context.globalAlpha = 1;
@@ -170,10 +170,10 @@ describe("DockWaveform", () => {
       firstBucket: 0,
       lastBucket: 1,
       channelCount: 1,
-      themeColors: { ...DEFAULT_WAVEFORM_CANVAS_COLORS, fillOpacity: 0 },
+      themeColors: DEFAULT_WAVEFORM_CANVAS_COLORS,
     });
 
-    expect(fillAlphas).toEqual([0]);
+    expect(fillAlphas).toEqual([0.12]);
     expect(context.globalAlpha).toBe(1);
   });
 

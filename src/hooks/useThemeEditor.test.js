@@ -83,25 +83,6 @@ describe("useThemeEditor", () => {
     expect(result.current.draft.overrides).not.toHaveProperty("waveform.snapshot");
   });
 
-  it("keeps Spectrum fill opacity ordered when one numeric override returns to Auto", () => {
-    const { result } = setup(vi.fn());
-    act(() => result.current.beginCreate("S"));
-
-    act(() =>
-      result.current.updateOverride("spectrum.fillOpacityTop", { kind: "number", value: 0.8 })
-    );
-    act(() =>
-      result.current.updateOverride("spectrum.fillOpacityBottom", { kind: "number", value: 0.7 })
-    );
-    act(() => result.current.updateOverride("spectrum.fillOpacityTop", null));
-
-    expect(result.current.draft.overrides).not.toHaveProperty("spectrum.fillOpacityTop");
-    expect(result.current.draft.overrides["spectrum.fillOpacityBottom"]).toEqual({
-      kind: "number",
-      value: 0.2,
-    });
-  });
-
   it("undoes and redoes coalesced changes without writing persistence", () => {
     const publish = vi.fn();
     const { result } = setup(publish);

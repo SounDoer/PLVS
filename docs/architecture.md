@@ -246,8 +246,8 @@ Portable themes retain format 1 and now emit semantics 3; readable semantics 1 a
 See [ADR 0017](adr/0017-opaque-interface-borders-and-independent-grids.md) for the authoring boundary
 and the limits of appearance preservation across backgrounds.
 
-Theme colour roles resolve to opaque colours. A small set of bounded numeric roles may separately
-control Theme-owned visual composition without changing those identity colours (ADR 0011). The
+Theme colour roles resolve to opaque colours. Chart fill opacity is fixed product composition,
+shared by panels, Dock, and Theme Preview through `src/lib/chartFill.js` (ADR 0019). The
 separate View setting `surfaceOpacity` publishes
 `--surface-opacity` and is applied only where PLVS composes structural fills: the Workspace, normal
 shell surfaces, panels, fullscreen, file-summary shell, and Dock shell. Borders, controls, text,
@@ -264,8 +264,7 @@ New consumers must not import them.
 
 The persisted authoring document, portable sharing document, and compiled result are separate
 contracts (ADR 0009). A portable `plvs-theme` document contains only stable authoring meaning:
-name, Dark/Light scheme, literal Core and Palette colours, and explicit public Advanced overrides,
-including bounded numeric overrides.
+name, Dark/Light scheme, literal Core and Palette colours, and explicit public Advanced color, reference, and effect overrides.
 It has its own `formatVersion` and `semanticsVersion` and never contains a local Theme ID, palette
 preset provenance, recipes, dependencies, resolved roles, CSS variables, Canvas keys, or native
 bindings.

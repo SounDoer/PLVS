@@ -1,3 +1,4 @@
+import { SPECTRUM_FILL_TOP, SPECTRUM_FILL_BOTTOM } from "@/lib/chartFill.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useFrameData,
@@ -812,48 +813,48 @@ export function SpectrumPanel() {
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-primary)"
-                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
+                        stopOpacity={SPECTRUM_FILL_TOP}
                       />
                       <stop
                         offset="100%"
                         stopColor="var(--ui-spectrum-primary)"
-                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
+                        stopOpacity={SPECTRUM_FILL_BOTTOM}
                       />
                     </linearGradient>
                     <linearGradient id="spectrumFillSnap" x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-primary-snap)"
-                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
+                        stopOpacity={SPECTRUM_FILL_TOP}
                       />
                       <stop
                         offset="100%"
                         stopColor="var(--ui-spectrum-primary-snap)"
-                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
+                        stopOpacity={SPECTRUM_FILL_BOTTOM}
                       />
                     </linearGradient>
                     <linearGradient id="spectrumFillLiveB" x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-secondary)"
-                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
+                        stopOpacity={SPECTRUM_FILL_TOP}
                       />
                       <stop
                         offset="100%"
                         stopColor="var(--ui-spectrum-secondary)"
-                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
+                        stopOpacity={SPECTRUM_FILL_BOTTOM}
                       />
                     </linearGradient>
                     <linearGradient id="spectrumFillSnapB" x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-secondary-snap)"
-                        stopOpacity="var(--ui-spectrum-fill-top-opacity, 0.2)"
+                        stopOpacity={SPECTRUM_FILL_TOP}
                       />
                       <stop
                         offset="100%"
                         stopColor="var(--ui-spectrum-secondary-snap)"
-                        stopOpacity="var(--ui-spectrum-fill-bottom-opacity, 0.02)"
+                        stopOpacity={SPECTRUM_FILL_BOTTOM}
                       />
                     </linearGradient>
                   </defs>

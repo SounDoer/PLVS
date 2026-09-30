@@ -65,9 +65,8 @@ smoothing, and speed. Hover to read frequency and musical note.
 **Grid** adds horizontal level guides and vertical frequency guides at the visible axis ticks. It
 is off by default and follows the same pan and zoom ranges as the axes.
 
-The Theme Editor's **Advanced → Spectrum** section controls the area fill's **Upper** and **Lower**
-opacity. They default to 20% and 2%; Lower cannot exceed Upper. The same pair applies to Primary,
-Secondary, and Snapshot fills.
+Spectrum area fills use a fixed opacity gradient from 20% at the top to 2% at the bottom. The same
+pair applies to Primary, Secondary, and Snapshot fills in Workspace and Dock.
 
 ## Spectrogram
 
@@ -119,8 +118,7 @@ Primary channel colours. It defaults to 50%, blending from position -0.5 through
 colours switch sharply at centre; at 100% they blend across the complete -1 through +1 range. The
 setting is hidden in the other modes, where it has no effect.
 
-The Theme Editor's **Advanced → Stereo Map** section controls **Fill Opacity**, which defaults to
-20%. The same value applies to all four modes, live data, Snapshot data, and Dock. It affects only
+Stereo Map uses a fixed 20% fill opacity across all four modes, live data, Snapshot data, and Dock. It affects only
 the area beneath the curve; the curve keeps the energy-adjusted opacity and Hold stays fully opaque.
 
 ## Waveform
@@ -130,9 +128,8 @@ frequency content and show the spectral centroid.
 
 Waveform has no optional Grid and does not draw a centre reference line.
 
-The Theme Editor's **Advanced → Waveform → Classic Fill Opacity** setting controls the envelope
-fill while **Frequency Color** is off. It defaults to 12% and is shared by Workspace, Dock, Live,
-and Snapshot. The outline remains opaque. Frequency Color continues to use a fully opaque body so
+Waveform uses a fixed 12% envelope fill opacity while **Frequency Color** is off, shared by
+Workspace, Dock, Live, and Snapshot. The outline remains opaque. Frequency Color continues to use a fully opaque body so
 its Low, Mid, High, and Neutral colours do not change with the background; Spectral Centroid is
 unaffected.
 

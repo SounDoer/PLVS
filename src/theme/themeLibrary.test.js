@@ -150,33 +150,6 @@ describe("Theme Control authoring validation", () => {
       })
     ).toThrow(ThemeDocumentError);
   });
-
-  it("validates bounded and ordered numeric Advanced overrides", () => {
-    expect(
-      validateThemeDocument({
-        ...authoring(),
-        overrides: {
-          "spectrum.fillOpacityTop": { kind: "number", value: 0.3 },
-          "spectrum.fillOpacityBottom": { kind: "number", value: 0.05 },
-        },
-      }).overrides
-    ).toEqual({
-      "spectrum.fillOpacityTop": { kind: "number", value: 0.3 },
-      "spectrum.fillOpacityBottom": { kind: "number", value: 0.05 },
-    });
-
-    for (const overrides of [
-      { "spectrum.fillOpacityTop": { kind: "number", value: 1.1 } },
-      {
-        "spectrum.fillOpacityTop": { kind: "number", value: 0.1 },
-        "spectrum.fillOpacityBottom": { kind: "number", value: 0.2 },
-      },
-    ]) {
-      expect(() => validateThemeDocument({ ...authoring(), overrides })).toThrow(
-        ThemeDocumentError
-      );
-    }
-  });
 });
 
 describe("Theme library planning", () => {

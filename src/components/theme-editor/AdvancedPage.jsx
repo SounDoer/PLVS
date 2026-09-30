@@ -1,6 +1,5 @@
-import { RangeInput } from "@/components/ui/range-input.jsx";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronDown, Percent, RotateCcw, Search, TriangleAlert } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { ChevronDown, RotateCcw, Search, TriangleAlert } from "lucide-react";
 import { ColorControl } from "../ColorControl.jsx";
 import { HoverTip } from "../HoverTip.jsx";
 import { compileTheme } from "../../theme/compileTheme.js";
@@ -57,72 +56,10 @@ function selectedMode(override) {
   return "custom";
 }
 
-function percentage(value) {
-  return Number((value * 100).toFixed(6));
-}
-
-function PercentageInput({ value, min, max, step, label, onCommit }) {
-  const [draft, setDraft] = useState(String(value));
-  const skipBlur = useRef(false);
-  useEffect(() => setDraft(String(value)), [value]);
-  const number = Number(draft);
-  const valid = draft.trim() !== "" && Number.isFinite(number) && number >= min && number <= max;
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      aria-label={label}
-      aria-invalid={!valid || undefined}
-      value={draft}
-      min={min}
-      max={max}
-      step={step}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => {
-        if (skipBlur.current) {
-          skipBlur.current = false;
-          return;
-        }
-        if (valid) onCommit(number);
-        else setDraft(String(value));
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-        if (event.key === "Escape") {
-          event.stopPropagation();
-          skipBlur.current = true;
-          setDraft(String(value));
-          event.currentTarget.blur();
-        }
-      }}
-      className="plvs-input h-7 w-14 rounded-md border border-transparent bg-transparent px-1 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-metric-meta)] tabular-nums"
-    />
-  );
-}
-
-function AdvancedRole({
-  role,
-  override,
-  resolved,
-  onOverride,
-  warnings,
-  numericMinimum,
-  numericMaximum,
-}) {
+function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
   const mode = selectedMode(override);
-  const numeric = role.valueKind === "number";
   const descriptionId = useId();
   const warningText = warnings.map((item) => item.message).join(" ");
-  const numericValue = override?.kind === "number" ? override.value : resolved;
-  const minimum = numericMinimum ?? role.advanced.minimum;
-  const maximum = numericMaximum ?? role.advanced.maximum;
-  const percent = percentage(numericValue);
-
-  const updateNumber = (raw) => {
-    const value = Math.min(maximum, Math.max(minimum, raw));
-    onOverride(role.id, { kind: "number", value });
-  };
-
   return (
     <div
       data-theme-target={role.id}
@@ -135,13 +72,7 @@ function AdvancedRole({
         className="flex items-center gap-2"
         tipClassName="w-max max-w-64 whitespace-normal"
       >
-        {numeric ? (
-          <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-xs border border-border text-muted-foreground">
-            <Percent className="size-[1em]" aria-hidden="true" />
-          </span>
-        ) : (
-          <ThemeEditorSwatch color={resolvedColor(resolved)} />
-        )}
+        <ThemeEditorSwatch color={resolvedColor(resolved)} />
         <div className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-metric-meta)] font-medium">
           {role.advanced.label}
         </div>
@@ -158,12 +89,7 @@ function AdvancedRole({
           onValueChange={(value) => {
             if (value === "auto") onOverride(role.id, null);
             else if (value === "custom") {
-              onOverride(
-                role.id,
-                numeric
-                  ? { kind: "number", value: resolved }
-                  : { kind: "color", value: resolvedColor(resolved) }
-              );
+              onOverride(role.id, { kind: "color", value: resolvedColor(resolved) });
             } else onOverride(role.id, { kind: "reference", source: value.slice(10) });
           }}
         >
@@ -188,30 +114,7 @@ function AdvancedRole({
           {role.advanced.description}
         </span>
       </HoverTip>
-      {mode === "custom" && numeric ? (
-        <div className="ml-7 flex items-center gap-2">
-          <RangeInput
-            type="range"
-            aria-label={`${role.advanced.label} value`}
-            min={minimum}
-            max={maximum}
-            step={role.advanced.step}
-            value={numericValue}
-            onInput={(event) => updateNumber(Number(event.currentTarget.value))}
-            className="plvs-range min-w-0 flex-1"
-            style={{ "--range-pct": `${percent}%` }}
-          />
-          <PercentageInput
-            label={`${role.advanced.label} percent`}
-            min={percentage(minimum)}
-            max={percentage(maximum)}
-            step={percentage(role.advanced.step)}
-            value={percent}
-            onCommit={(value) => updateNumber(value / 100)}
-          />
-          <span className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">%</span>
-        </div>
-      ) : mode === "custom" ? (
+      {mode === "custom" ? (
         <div className="ml-7 flex items-center gap-3">
           <ColorControl
             label={`${role.advanced.label} Color`}
@@ -331,14 +234,6 @@ export function AdvancedPage({
           resolved: resolved.roles[role.id],
           onOverride,
           warnings: warningsByRole.get(role.id) ?? [],
-          numericMinimum:
-            role.id === "spectrum.fillOpacityTop"
-              ? resolved.roles["spectrum.fillOpacityBottom"]
-              : undefined,
-          numericMaximum:
-            role.id === "spectrum.fillOpacityBottom"
-              ? resolved.roles["spectrum.fillOpacityTop"]
-              : undefined,
         });
         return (
           <section key={section} className="rounded-md border border-border">

@@ -1,3 +1,4 @@
+import { WAVEFORM_FILL_OPACITY } from "@/lib/chartFill.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
@@ -91,9 +92,7 @@ export function paintDockWaveformCanvas(
   const height = canvas.height;
   const style = getComputedStyle(canvas);
   const traceColor = themeColors.trace;
-  const fillOpacity = Number.isFinite(themeColors.fillOpacity)
-    ? Math.max(0, Math.min(1, themeColors.fillOpacity))
-    : 0.12;
+  const fillOpacity = WAVEFORM_FILL_OPACITY;
   const strokeWidth = cssNumber(style, "--ui-waveform-stroke-width", 1);
   const spectralPalette = {
     low: parseCssRgb(themeColors.frequencyLow),

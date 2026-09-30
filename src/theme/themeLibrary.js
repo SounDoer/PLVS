@@ -32,7 +32,6 @@ const OVERRIDE_FIELDS = Object.freeze({
   color: new Set(["kind", "value"]),
   reference: new Set(["kind", "source"]),
   effect: new Set(["kind", "color", "opacity"]),
-  number: new Set(["kind", "value"]),
 });
 
 function isPlainObject(value) {
@@ -165,7 +164,7 @@ function validateOverrides(raw, issues) {
         issue(
           "invalidOverrideKind",
           `${overridePath}.kind`,
-          "kind must be color, reference, effect, or number."
+          "kind must be color, reference, or effect."
         )
       );
       continue;
@@ -184,14 +183,6 @@ function validateOverrides(raw, issues) {
           issue("invalidOpacity", `${overridePath}.opacity`, "opacity must be from 0 through 1.")
         );
       }
-    }
-    if (
-      override.kind === "number" &&
-      (typeof override.value !== "number" || !Number.isFinite(override.value))
-    ) {
-      issues.push(
-        issue("invalidNumber", `${overridePath}.value`, "value must be a finite number.")
-      );
     }
     if (override.kind === "reference") {
       if (!normalizeThemeId(override.source)) {

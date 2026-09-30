@@ -274,7 +274,7 @@ describe("drawWaveformCanvas", () => {
     expect(strokes).toEqual([]);
   });
 
-  it("uses Theme-owned classic fill opacity and accepts zero", () => {
+  it("uses the fixed classic fill opacity", () => {
     const fillAlphas = [];
     const context = {
       globalAlpha: 1,
@@ -300,10 +300,10 @@ describe("drawWaveformCanvas", () => {
       firstBucket: 0,
       lastBucket: 1,
       selected: false,
-      themeColors: { ...DEFAULT_WAVEFORM_CANVAS_COLORS, fillOpacity: 0 },
+      themeColors: DEFAULT_WAVEFORM_CANVAS_COLORS,
     });
 
-    expect(fillAlphas).toEqual([0]);
+    expect(fillAlphas).toEqual([0.12]);
     expect(context.globalAlpha).toBe(1);
   });
 

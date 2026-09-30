@@ -32,6 +32,23 @@ describe("portable Theme contract", () => {
     raw.overrides["unknown.role"] = { kind: "color", value: "#123456" };
     expect(() => validatePortableTheme(raw)).toThrow();
   });
+  it.each([
+    "spectrum.fillOpacityTop",
+    "spectrum.fillOpacityBottom",
+    "stereoMap.fillOpacity",
+    "waveform.fillOpacity",
+  ])("rejects the unpublished fill override %s", (roleId) => {
+    const raw = themeToPortable(storedTheme());
+    raw.overrides[roleId] = { kind: "number", value: 0.5 };
+    expect(() => validatePortableTheme(raw)).toThrow();
+  });
+
+  it("rejects numeric overrides on color roles", () => {
+    const raw = themeToPortable(storedTheme());
+    raw.overrides["spectrum.primary"] = { kind: "number", value: 0.5 };
+    expect(() => validatePortableTheme(raw)).toThrow();
+  });
+
   it("exports authoring intent without local identity or preset provenance", () => {
     const theme = storedTheme();
     theme.palettes.status.presetId = "preset-from-another-installation";
@@ -52,7 +69,6 @@ describe("portable Theme contract", () => {
     const source = storedTheme({
       overrides: {
         "interface.surface.panel": { kind: "color", value: "rgb(16 32 48)" },
-        "spectrum.fillOpacityTop": { kind: "number", value: 0.32 },
       },
     });
     const portable = themeToPortable(source);
@@ -63,10 +79,6 @@ describe("portable Theme contract", () => {
     expect(imported.overrides["interface.surface.panel"]).toEqual({
       kind: "color",
       value: "#102030",
-    });
-    expect(imported.overrides["spectrum.fillOpacityTop"]).toEqual({
-      kind: "number",
-      value: 0.32,
     });
     expect(themeToPortable(imported)).toEqual(portable);
   });
