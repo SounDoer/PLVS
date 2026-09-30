@@ -70,8 +70,8 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
           }}
           className={cn(
             PANEL_HEADER_ACTION_BUTTON,
-            "mr-0.5 shrink-0 opacity-0 group-hover:opacity-50 group-focus-within:opacity-50",
-            isActive && "opacity-50"
+            "mr-0.5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+            isActive && "opacity-100"
           )}
         >
           <X className="size-[length:var(--ui-icon-panel-action)]" />
@@ -376,7 +376,7 @@ export function LeafView({ node, path, style }) {
                 aria-pressed={isActivePinned}
                 className={cn(
                   PANEL_HEADER_ACTION_BUTTON,
-                  (isActivePinned || slotPinnedByOther) && "opacity-100"
+                  (isActivePinned || slotPinnedByOther) && "text-foreground"
                 )}
                 onClick={handlePinClick}
               >

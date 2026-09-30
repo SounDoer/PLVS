@@ -400,7 +400,7 @@ function FullscreenOverlay() {
           >
             <button
               type="button"
-              className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary opacity-100")}
+              className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary")}
               onClick={() => isPinned && setPanelPinned(fullscreenId, null)}
               aria-label={
                 isPinned ? "Unpin panel size" : "Panel size pin unavailable in fullscreen"

@@ -70,6 +70,8 @@ highlighted during a drag, then disappears when idle. Panel-location and drag-ta
 still appear when needed. Input fields retain their
 existing boundary cues. Hover colours are generated as opaque colours; disabled controls retain
 their reduced opacity. These interaction rules do not add Theme Editor settings.
+Panel title-bar buttons use opaque secondary text by default, with primary text and a subtle
+background on hover, matching the header toolbar. Disabled buttons retain reduced opacity.
 
 Imports and edits from another workbench refresh the Theme Library without replacing this
 workbench's applied Theme. Switch away and select the Theme again to apply its updated version.
