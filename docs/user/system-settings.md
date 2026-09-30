@@ -74,6 +74,8 @@ existing boundary cues. Hover colours are generated as opaque colours; disabled 
 their reduced opacity. These interaction rules do not add Theme Editor settings.
 Panel title-bar buttons use opaque secondary text by default, with primary text and a subtle
 background on hover, matching the header toolbar. Disabled buttons retain reduced opacity.
+When reordering Presets, Loudness Profiles, profile rules, or Dock modules, the dragged row has
+a 1px opaque Accent outline and its grip stays in primary text colour until the drag ends.
 
 Imports and edits from another workbench refresh the Theme Library without replacing this
 workbench's applied Theme. Switch away and select the Theme again to apply its updated version.

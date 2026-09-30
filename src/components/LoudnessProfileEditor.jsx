@@ -191,7 +191,7 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         <div
           aria-hidden="true"
           style={{ gridRow: `${position} / ${position + 1}`, gridColumn: "1 / -1" }}
-          className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-primary/60"
+          className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-primary"
         />
       )}
 

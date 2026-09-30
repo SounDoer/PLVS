@@ -129,7 +129,7 @@ function DockModuleRow({
   return (
     <div
       data-testid={`dock-panel-row-${panel.id}`}
-      className={cn(MANAGEMENT_ROW_CLASS, dragging && "z-10 ring-1 ring-primary/60")}
+      className={cn(MANAGEMENT_ROW_CLASS, dragging && "z-10 ring-1 ring-primary")}
       onMouseEnter={() => onHover?.(panel.id)}
       onMouseLeave={() => onHover?.(null)}
     >
@@ -137,7 +137,10 @@ function DockModuleRow({
         type="button"
         aria-label={`Reorder ${title}`}
         onPointerDown={(event) => onDragStart(panel.id, event)}
-        className="-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+        className={cn(
+          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing",
+          dragging && "text-foreground"
+        )}
       >
         <GripVertical className="size-3.5" />
       </button>

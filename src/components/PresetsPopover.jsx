@@ -178,14 +178,17 @@ export function PresetsPopoverContent({
                   <div
                     className={cn(
                       "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover",
-                      draggingId === preset.id && "z-10 ring-1 ring-primary/60"
+                      draggingId === preset.id && "z-10 ring-1 ring-primary"
                     )}
                   >
                     <button
                       type="button"
                       aria-label={`Reorder ${preset.name}`}
                       onPointerDown={(event) => startDrag(preset.id, event)}
-                      className={DRAG_HANDLE_CLASS}
+                      className={cn(
+                        DRAG_HANDLE_CLASS,
+                        draggingId === preset.id && "text-foreground"
+                      )}
                     >
                       <GripVertical className="size-3.5" />
                     </button>

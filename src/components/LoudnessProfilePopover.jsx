@@ -107,14 +107,14 @@ export function LoudnessProfilePopoverContent({
               className={cn(
                 ROW_CLASS,
                 "group",
-                draggingId === entry.id && "z-10 ring-1 ring-primary/60"
+                draggingId === entry.id && "z-10 ring-1 ring-primary"
               )}
             >
               <button
                 type="button"
                 aria-label={`Reorder ${entry.name}`}
                 onPointerDown={(event) => startDrag(entry.id, event)}
-                className={DRAG_HANDLE_CLASS}
+                className={cn(DRAG_HANDLE_CLASS, draggingId === entry.id && "text-foreground")}
               >
                 <GripVertical className="size-3.5" />
               </button>
