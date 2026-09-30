@@ -5,6 +5,9 @@ is deliberately outside `landing/`: website code reads it only through the versi
 an explicit content-directory argument, so this tree can move to a separate repository later.
 
 `catalogue/manifest.json` is allowed to stay empty while the Catalogue generator and UI are built.
+It is empty now on purpose: the initial official Listings under `catalogue/listings/` are staged for
+a launch after the default Theme redesign. Their previews predate that redesign and must be regenerated
+with the pinned preview renderer before the Listings are added back to the manifest.
 Real content is added only through an explicit maintainer-curated publication workflow. The current
 project does not accept or advertise public submissions.
 

@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The Community Catalogue now launches with three PLVS-authored official Items: the Signal Amber
-  Theme, Stereo Overview Preset, and editable `I −23 ±0.5 · TP ≤ −1` Loudness Profile, each with
-  previews generated from the production PLVS surfaces.
+- The first three PLVS-authored official Community Items (the Signal Amber Theme, Stereo Overview
+  Preset, and editable `I −23 ±0.5 · TP ≤ −1` Loudness Profile) are staged in the repository but
+  withheld from the published manifest, so the website shows no Community section yet. They launch
+  after the default Theme redesign with regenerated previews.
 - Community navigation is omitted when an assembled Catalogue has no visible Release. A Listing
   whose Releases are all withdrawn disappears from browse and search while retaining its historical
   detail page without a download action.

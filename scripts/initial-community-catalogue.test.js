@@ -1,11 +1,36 @@
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { hashPortableTheme, themeToPortable } from "../src/theme/portableTheme.js";
 import { readCommunitySource } from "./community-catalogue-source.mjs";
 
+const STAGED_LISTINGS = [
+  "listings/i-23-tp-1.json",
+  "listings/signal-amber.json",
+  "listings/stereo-overview.json",
+];
+
+/** The launch set stays validated while it is withheld from the published manifest. */
+async function readStagedSource() {
+  const root = mkdtempSync(join(tmpdir(), "plvs-community-staged-"));
+  cpSync("community/catalogue", root, { recursive: true });
+  writeFileSync(
+    join(root, "manifest.json"),
+    JSON.stringify({ schemaVersion: 1, listings: STAGED_LISTINGS })
+  );
+  return readCommunitySource(root);
+}
+
 describe("initial official Community Catalogue", () => {
+  it("is withheld from publication until the launch", () => {
+    const manifest = JSON.parse(readFileSync("community/catalogue/manifest.json", "utf8"));
+    expect(manifest.listings).toEqual([]);
+  });
+
   it("ships exactly one PLVS-authored official Listing per supported family", async () => {
-    const source = await readCommunitySource("community/catalogue");
+    const source = await readStagedSource();
     const listings = source.listings.map(({ document }) => document);
 
     expect(listings.map(({ id }) => id).sort()).toEqual([
@@ -20,7 +45,7 @@ describe("initial official Community Catalogue", () => {
   });
 
   it("keeps the parameter-named Loudness Profile explicit and non-certifying", async () => {
-    const source = await readCommunitySource("community/catalogue");
+    const source = await readStagedSource();
     const profile = source.listings.find(({ document }) => document.type === "loudness").document;
     const searchableCopy = [profile.title, profile.summary, profile.descriptionMarkdown].join(" ");
 
@@ -37,7 +62,7 @@ describe("initial official Community Catalogue", () => {
   });
 
   it("publishes a distinct custom Theme and a dependency-free stereo Workspace", async () => {
-    const source = await readCommunitySource("community/catalogue");
+    const source = await readStagedSource();
     const theme = source.listings.find(({ document }) => document.type === "themes").document;
     const preset = source.listings.find(({ document }) => document.type === "presets").document;
     const builtinHash = await hashPortableTheme(themeToPortable(BUILTIN_THEMES_V2["plvs-dark"]));

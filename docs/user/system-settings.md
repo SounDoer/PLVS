@@ -118,8 +118,8 @@ overview includes ordinary, selected, and disabled controls. These are illustrat
 real panels to judge geometry and data-dependent rendering. The
 **Visual Review** page reports recommended contrast,
 color-separation, surface, and Intensity targets and can jump back to an affected control. These
-findings are advisory: they do not interrupt editing or block saving, built-in Themes, or Community
-publication. Invalid Theme structure and unsupported versions remain errors.
+findings are advisory: they do not interrupt editing or block saving, built-in Themes, or
+sharing. Invalid Theme structure and unsupported versions remain errors.
 Module findings use the final overridden colours and link to the corresponding module control.
 
 ## History and dialogue detection
@@ -150,10 +150,10 @@ If storage fails or PLVS exits during that replacement, the incomplete import is
 recovery journal completes that rollback automatically the next time the target workbench opens,
 before its saved state is shown.
 
-New Loudness Profile exports use a strict portable format intended for sharing between installations
-and through the Community Catalogue. Every exported rule must have a threshold, and a Profile must
-contain a reference or at least one complete rule; PLVS reports an export error instead of silently
-dropping unfinished content. Older `.plvsloudness` files remain importable.
+New Loudness Profile exports use a strict portable format intended for sharing between installations.
+Every exported rule must have a threshold, and a Profile must contain a reference or at least one
+complete rule; PLVS reports an export error instead of silently dropping unfinished content. Older
+`.plvsloudness` files remain importable.
 
 New Preset exports use the same strict sharing boundary. A `.plvspreset` file carries the public
 Workspace layout, module controls and axes, presentation choices, and Dock layout without local
@@ -191,19 +191,13 @@ local IDs and the palette preset originally used to choose those colors are not 
 Theme. PLVS still imports older Theme pack files. If any Theme entry is damaged or incompatible,
 the import reports the problem and adds nothing instead of silently skipping that entry.
 
-Community Theme pages offer **Copy Theme** as the primary action and **Download .plvstheme** as a
-secondary option. Both deliver the same canonical portable Theme document. In PLVS, press
-**Ctrl+V** on Windows or **Command+V** on macOS anywhere outside a text field, or choose **Paste** on
-the Theme row in Settings. PLVS opens the normal Theme import review before adding anything; it
+A portable Theme document copied as text can be pasted straight into PLVS: press **Ctrl+V** on
+Windows or **Command+V** on macOS anywhere outside a text field, or choose **Paste** on the Theme row
+in Settings. PLVS opens the normal Theme import review before adding anything; it
 never activates or overwrites a Theme just because it was pasted. A copied or downloaded Theme is
 recognized by its content: if an identical Theme, including its name, is already in your library,
-the review says so and nothing is added. Downloaded `.plvstheme` files use the same **Import** action
+the review says so and nothing is added. Single `.plvstheme` files use the same **Import** action
 as PLVS-exported Theme pack files.
-
-The website's **Community** section contains a small maintainer-curated collection of Loudness
-Profiles, Presets, and Themes. Downloads use the same one-item formats and open the same import
-review described above. Catalogue metadata does not make a downloaded Item active, replace a
-Library entry, or bypass PLVS's compatibility checks.
 
 ## Crash reports and feedback
 
