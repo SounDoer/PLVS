@@ -143,11 +143,19 @@ describe("SettingsPanel", () => {
       />
     );
 
-    expect(screen.getByText("Everything").closest("[data-settings-row]").className).toContain(
+    expect(screen.getByText("Complete Setup").closest("[data-settings-row]").className).toContain(
       "settings-row-stackable"
     );
-    fireEvent.click(screen.getByRole("button", { name: "Export everything" }));
-    fireEvent.click(screen.getByRole("button", { name: "Import everything" }));
+    const exportConfiguration = screen.getByRole("button", {
+      name: "Export complete setup",
+    });
+    const importConfiguration = screen.getByRole("button", {
+      name: "Import complete setup",
+    });
+    expect(exportConfiguration.className).toContain("bg-secondary");
+    expect(importConfiguration.className).toContain("bg-secondary");
+    fireEvent.click(exportConfiguration);
+    fireEvent.click(importConfiguration);
 
     expect(onExportConfiguration).toHaveBeenCalledTimes(1);
     expect(onImportConfiguration).toHaveBeenCalledTimes(1);
@@ -303,7 +311,10 @@ describe("SettingsPanel", () => {
     const onResetConfiguration = vi.fn();
     render(<SettingsPanel {...BASE_PROPS} onResetConfiguration={onResetConfiguration} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Reset PLVS to default" }));
+    const resetButton = screen.getByRole("button", { name: "Reset PLVS to default" });
+    expect(resetButton.className).toContain("hover:bg-ui-hover");
+    expect(resetButton.className).toContain("hover:text-destructive");
+    fireEvent.click(resetButton);
     expect(onResetConfiguration).not.toHaveBeenCalled();
 
     // The two consequences a user would not otherwise expect.
@@ -798,39 +809,38 @@ describe("SettingsPanel", () => {
     expect(onOpenFeedback).toHaveBeenCalledTimes(1);
   });
 
-  it("offers per-library export and one shared-item import above the Everything row", () => {
-    const onPackExport = vi.fn();
+  it("offers Saved Items transfer above Complete Setup", () => {
+    const onLibraryExport = vi.fn();
     const onSharedPackImport = vi.fn();
-    const onPasteTheme = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
-        onPackExport={onPackExport}
+        onLibraryExport={onLibraryExport}
         onSharedPackImport={onSharedPackImport}
-        onPasteTheme={onPasteTheme}
       />
     );
 
-    for (const label of ["loudness profiles", "presets", "theme"]) {
-      expect(screen.getByRole("button", { name: `Export ${label}` })).toBeTruthy();
-      expect(screen.queryByRole("button", { name: `Import ${label}` })).toBeNull();
-    }
-    expect(screen.getByRole("button", { name: "Import shared item" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Paste theme" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Paste presets" })).toBeNull();
+    const exportLibrary = screen.getByRole("button", { name: "Export saved items" });
+    const importLibrary = screen.getByRole("button", { name: "Import saved items" });
+    expect(exportLibrary.className).toContain("bg-secondary");
+    expect(importLibrary.className).toContain("bg-secondary");
+    expect(screen.queryByRole("button", { name: "Paste theme" })).toBeNull();
+
+    const libraryTip =
+      "Loudness Profiles, Presets and Themes. Export lets you choose saved items; Import adds them without replacing your current setup.";
+    fireEvent.mouseEnter(screen.getByRole("button", { name: `Saved Items help: ${libraryTip}` }));
+    expect(screen.getByText(libraryTip)).toBeTruthy();
 
     const rows = Array.from(document.querySelectorAll("[data-settings-row]"));
     const index = (label) => rows.findIndex((row) => row.textContent.startsWith(label));
-    expect(index("Presets")).toBeGreaterThanOrEqual(0);
-    expect(index("Everything")).toBeGreaterThanOrEqual(0);
-    expect(index("Presets")).toBeLessThan(index("Everything"));
+    expect(index("Saved Items")).toBeGreaterThanOrEqual(0);
+    expect(index("Complete Setup")).toBeGreaterThanOrEqual(0);
+    expect(index("Saved Items")).toBeLessThan(index("Complete Setup"));
 
-    fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
-    expect(onPackExport).toHaveBeenCalledWith("presets");
-    fireEvent.click(screen.getByRole("button", { name: "Import shared item" }));
+    fireEvent.click(exportLibrary);
+    expect(onLibraryExport).toHaveBeenCalledTimes(1);
+    fireEvent.click(importLibrary);
     expect(onSharedPackImport).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "Paste theme" }));
-    expect(onPasteTheme).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -79,6 +79,7 @@ export function ItemPickerDialog({
   onExport = () => {},
   onConfirm = () => {},
   onAction = () => {},
+  onBack = null,
   onClose = () => {},
 }) {
   const [selected, setSelected] = useState(() => new Set());
@@ -257,8 +258,8 @@ export function ItemPickerDialog({
           </div>
 
           <div className="flex justify-end gap-2 border-t border-border pt-2">
-            <Button variant="ghost" onClick={handleDismiss}>
-              {mode === "complete" ? "Done" : "Cancel"}
+            <Button variant="ghost" onClick={onBack ?? handleDismiss}>
+              {mode === "complete" ? "Done" : onBack ? "Back" : "Cancel"}
             </Button>
             {mode === "pick" ? (
               <Button disabled={selected.size === 0} onClick={() => onExport([...selected])}>

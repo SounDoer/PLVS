@@ -8,6 +8,7 @@ import { usePackTransfer } from "../transfer/usePackTransfer.js";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
 import { CrashReportDialog } from "./CrashReportDialog.jsx";
 import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
+import { LibraryExportDialog } from "./LibraryExportDialog.jsx";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { ThemeEditor } from "./ThemeEditor.jsx";
@@ -31,7 +32,7 @@ export function AppSettingsOverlays({
   // Held here, beside the theme editor's position, because both panels are floating overlays this
   // component owns; nothing outside it needs to know where they sit.
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
-  const [pickType, setPickType] = useState(null);
+  const [libraryExportOpen, setLibraryExportOpen] = useState(false);
   const {
     configurationBusy,
     configurationStatus,
@@ -145,9 +146,8 @@ export function AppSettingsOverlays({
         onResetConfiguration={resetConfiguration}
         configurationBusy={configurationBusy}
         configurationStatus={configurationStatus}
-        onPackExport={setPickType}
+        onLibraryExport={() => setLibraryExportOpen(true)}
         onSharedPackImport={pack.beginSharedImport}
-        onPasteTheme={pack.pasteThemeFromClipboard}
         packBusy={pack.busy}
         packStatus={pack.status}
         agentControlStatus={agentControlStatus}
@@ -188,22 +188,17 @@ export function AppSettingsOverlays({
         />
       ) : null}
 
-      {pickType ? (
-        <ItemPickerDialog
-          open
-          mode="pick"
-          type={pickType}
-          items={getAdapter(pickType).list()}
-          dependencies={pickType === "presets" ? getAdapter("loudness").list() : []}
-          onExport={async (ids) => {
-            // Stay open when the user backs out of the save dialog -- they are still choosing.
-            // A failure closes: its message lands on the status line behind this dialog.
-            const outcome = await pack.exportSelection(pickType, ids);
-            if (outcome !== "cancelled") setPickType(null);
-          }}
-          onClose={() => setPickType(null)}
-        />
-      ) : null}
+      <LibraryExportDialog
+        open={libraryExportOpen}
+        itemsByType={{
+          loudness: getAdapter("loudness").list(),
+          presets: getAdapter("presets").list(),
+          themes: getAdapter("themes").list(),
+        }}
+        dependenciesByType={{ presets: getAdapter("loudness").list() }}
+        onExport={pack.exportSelection}
+        onClose={() => setLibraryExportOpen(false)}
+      />
 
       {pack.review ? (
         <ItemPickerDialog

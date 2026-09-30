@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleHelp, ExternalLink, RotateCcw, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import {
   Select,
@@ -70,14 +71,7 @@ const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 const FOOTER_LINK_CLASS =
   "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-50";
 
-const CONFIG_TEXT_BTN_CLASS =
-  "h-auto bg-transparent px-0 py-0 text-[length:var(--ui-fs-display)] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50";
-
-const PACK_ROWS = [
-  { type: "loudness", label: "Loudness Profiles", aria: "loudness profiles" },
-  { type: "presets", label: "Presets", aria: "presets" },
-  { type: "themes", label: "Theme", aria: "theme" },
-];
+const CONFIG_ACTION_BTN_CLASS = "h-7 px-2 text-[length:var(--ui-fs-control)]";
 
 function SettingsBody({ children }) {
   return (
@@ -204,9 +198,8 @@ export function SettingsPanel({
   onResetConfiguration = () => {},
   configurationBusy = false,
   configurationStatus = "",
-  onPackExport = () => {},
+  onLibraryExport = () => {},
   onSharedPackImport = () => {},
-  onPasteTheme = () => {},
   packBusy = false,
   packStatus = "",
   agentControlStatus = undefined,
@@ -634,101 +627,91 @@ export function SettingsPanel({
 
                 {/* Import, export and reset */}
                 <SettingsSection>
-                  {PACK_ROWS.map((row) => (
-                    <SettingsRow
-                      key={row.type}
-                      label={row.label}
-                      className="settings-row-stackable"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => onPackExport(row.type)}
-                          disabled={packBusy}
-                          aria-label={`Export ${row.aria}`}
-                          className={CONFIG_TEXT_BTN_CLASS}
-                        >
-                          Export
-                        </button>
-                        {row.type === "themes" ? (
-                          <button
-                            type="button"
-                            onClick={onPasteTheme}
-                            disabled={packBusy}
-                            aria-label="Paste theme"
-                            className={CONFIG_TEXT_BTN_CLASS}
-                          >
-                            Paste
-                          </button>
-                        ) : null}
-                      </div>
-                    </SettingsRow>
-                  ))}
-                  <SettingsRow label="Shared Item" className="settings-row-stackable">
-                    <button
-                      type="button"
-                      onClick={onSharedPackImport}
-                      disabled={packBusy}
-                      aria-label="Import shared item"
-                      className={CONFIG_TEXT_BTN_CLASS}
-                    >
-                      Import…
-                    </button>
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="Saved Items"
+                        tip="Loudness Profiles, Presets and Themes. Export lets you choose saved items; Import adds them without replacing your current setup."
+                      />
+                    }
+                    className="settings-row-stackable"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={onLibraryExport}
+                        disabled={packBusy}
+                        aria-label="Export saved items"
+                        className={CONFIG_ACTION_BTN_CLASS}
+                      >
+                        Export…
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={onSharedPackImport}
+                        disabled={packBusy}
+                        aria-label="Import saved items"
+                        className={CONFIG_ACTION_BTN_CLASS}
+                      >
+                        Import…
+                      </Button>
+                    </div>
                   </SettingsRow>
                   {packStatus ? (
                     <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       {packStatus}
                     </div>
                   ) : null}
-                  {/* "Everything", not "Configuration": with three specific libraries listed above
-                      it, the old name read as a fourth sibling category rather than the whole of
-                      which those three are parts. The tip carries the other half of the
-                      distinction -- this file replaces a setup, the three above merge into one. */}
                   <SettingsRow
                     labelNode={
                       <SettingsLabelWithTip
-                        label="Everything"
-                        tip="One file holding every setting, preset, theme and profile. Importing it replaces your whole setup and restarts PLVS, rather than merging into what you have."
+                        label="Complete Setup"
+                        tip="One file containing all settings and saved items. Import replaces your current setup and restarts PLVS."
                       />
                     }
                     className="settings-row-stackable"
                   >
                     <div className="flex items-center gap-2.5">
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={onExportConfiguration}
                         disabled={configurationBusy}
-                        aria-label="Export everything"
-                        className={CONFIG_TEXT_BTN_CLASS}
+                        aria-label="Export complete setup"
+                        className={CONFIG_ACTION_BTN_CLASS}
                       >
-                        Export
-                      </button>
-                      <button
-                        type="button"
+                        Export…
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={onImportConfiguration}
                         disabled={configurationBusy}
-                        aria-label="Import everything"
-                        className={CONFIG_TEXT_BTN_CLASS}
+                        aria-label="Import complete setup"
+                        className={CONFIG_ACTION_BTN_CLASS}
                       >
-                        Import
-                      </button>
+                        Import…
+                      </Button>
                     </div>
                   </SettingsRow>
                   {/* No label: the button says what it does, and leaving the label column empty
                       keeps it on the same right-hand column as the Import buttons above. */}
                   <SettingsRow label="" className="settings-row-stackable">
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setResetConfirmOpen(true)}
                       disabled={configurationBusy}
                       aria-label="Reset PLVS to default"
                       className={cn(
-                        CONFIG_TEXT_BTN_CLASS,
-                        "hover:text-destructive focus-visible:text-destructive"
+                        CONFIG_ACTION_BTN_CLASS,
+                        "text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
                       )}
                     >
                       Reset PLVS to Default
-                    </button>
+                    </Button>
                   </SettingsRow>
                   {configurationStatus ? (
                     <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">

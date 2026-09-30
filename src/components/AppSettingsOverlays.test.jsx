@@ -59,9 +59,8 @@ vi.mock("./SettingsPanel.jsx", () => ({
     dialogueVadEngine,
     setDialogueVadEngine,
     onSetAgentControlEnabled,
-    onPackExport,
+    onLibraryExport,
     onSharedPackImport,
-    onPasteTheme,
     packBusy,
     packStatus,
   }) => (
@@ -91,14 +90,11 @@ vi.mock("./SettingsPanel.jsx", () => ({
       >
         Set agent control enabled
       </button>
-      <button type="button" onClick={() => onPackExport("presets")}>
-        Export presets
+      <button type="button" onClick={onLibraryExport}>
+        Export saved items
       </button>
       <button type="button" onClick={onSharedPackImport}>
-        Import shared item
-      </button>
-      <button type="button" onClick={onPasteTheme}>
-        Paste theme
+        Import saved items
       </button>
       <input aria-label="mock text input" />
     </div>
@@ -435,11 +431,26 @@ describe("AppSettingsOverlays", () => {
     expect(onAgentControlEnabledChange).not.toHaveBeenCalledWith(true);
   });
 
-  it("opens the export picker for the requested library", () => {
+  it("opens the unified Library export type picker", () => {
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "P1",
+          ...structuredClone(DEFAULT_WORKSPACE_STATE),
+          dock: { enabled: false },
+          loudnessProfileActive: "off",
+        },
+      ],
+      activeId: null,
+      dirty: false,
+    });
     renderOverlays();
 
-    fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export saved items" }));
 
+    expect(screen.getByRole("dialog", { name: "Export Saved Items" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Presets 1 item/ }));
     expect(screen.getByRole("dialog", { name: "Export Presets" })).toBeTruthy();
   });
 
@@ -463,7 +474,8 @@ describe("AppSettingsOverlays", () => {
     mocks.savePackFile.mockResolvedValue(null);
 
     renderOverlays();
-    fireEvent.click(screen.getByRole("button", { name: "Export presets" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export saved items" }));
+    fireEvent.click(screen.getByRole("button", { name: /Presets 1 item/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "P1" }));
     fireEvent.click(screen.getByRole("button", { name: "Export" }));
 
@@ -476,7 +488,7 @@ describe("AppSettingsOverlays", () => {
   it("surfaces the pack transfer status after an import attempt outside the desktop app", async () => {
     renderOverlays();
 
-    fireEvent.click(screen.getByRole("button", { name: "Import shared item" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import saved items" }));
 
     await waitFor(() =>
       expect(screen.getByTestId("pack-status").textContent).toBe(
@@ -485,7 +497,7 @@ describe("AppSettingsOverlays", () => {
     );
   });
 
-  it("opens Theme import review when a portable Theme is pasted globally", async () => {
+  it("keeps global Theme paste available without a Settings button", async () => {
     const text = serializePortableTheme(
       themeToPortable({
         ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
@@ -495,6 +507,7 @@ describe("AppSettingsOverlays", () => {
     );
     renderOverlays();
 
+    expect(screen.queryByRole("button", { name: "Paste theme" })).toBeNull();
     fireEvent.paste(window, { clipboardData: { getData: () => text } });
 
     expect(await screen.findByRole("dialog", { name: "Paste Theme" })).toBeTruthy();

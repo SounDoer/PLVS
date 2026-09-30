@@ -134,17 +134,17 @@ Rename channel labels and choose the channel layout; see [Multichannel](multicha
 
 ## Import, export, and reset
 
-Export **Loudness Profiles**, **Presets**, and **Themes** from their Library rows. **Import Shared
-Item…** accepts any of their shared file types and chooses the right review from the file's document
-kind. **Everything** uses one configuration file instead: importing it replaces your whole setup
-and restarts PLVS rather than merging. These operations move configuration only, never measurement
-data. With several workbenches open, PLVS first checks every workbench for an open draft, stops
-capture and saves before replacing shared data; the workbench where you chose Import receives the
-instance-owned fields. **Reset PLVS to Default** uses the same coordinated restart and restores a
-fresh installation.
+**Saved Items** exports selected Loudness Profiles, Presets, or Themes and imports any of their
+shared file types, choosing the right review from the file's document kind. **Complete Setup** uses
+one configuration file instead: importing it replaces your whole setup and restarts PLVS
+rather than merging. These operations move configuration only, never measurement data. With several
+workbenches open, PLVS first checks every workbench for an open draft, stops capture and saves before
+replacing shared data; the workbench where you chose Import receives the instance-owned fields.
+**Reset PLVS to Default** uses the same coordinated restart and restores a fresh installation.
 
 For a one-item file, use **Export** on the saved Loudness Profile, Preset, or custom Theme itself.
-The Settings Library rows retain multi-select export for sharing several Items together.
+The Settings **Saved Items** exporter retains multi-select export for sharing several Items of one
+type together.
 
 If storage fails or PLVS exits during that replacement, the incomplete import is rolled back. A
 recovery journal completes that rollback automatically the next time the target workbench opens,
