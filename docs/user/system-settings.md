@@ -67,9 +67,11 @@ uses a fixed theme. Light and Dark ship built in, and the theme editor lets you 
 own themes. A custom theme keeps its Dark or Light appearance beside its name; **Core** holds the
 main identity colors, **Palettes** controls shared data scales, and **Advanced** contains optional
 per-interface and per-module overrides. Advanced roles stay on **Auto** unless you customize them,
-and can be searched or reset to Auto a section at a time. Most are colours; bounded visual values
-such as the Spectrum area's Upper and Lower fill opacity appear as percentage controls in the same
-module section and are saved with the Theme.
+and can be searched or reset to Auto a section at a time. Advanced exposes color customization,
+not fill-opacity controls. Defaults remain 20% / 2% for Spectrum, 20% for Stereo Map, and 12% for
+classic Waveform. Previously saved fill-opacity overrides remain compatible; hiding the controls
+does not silently rewrite existing themes. Palette stop positions, the theme name, and Dark / Light
+appearance remain editable.
 
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas

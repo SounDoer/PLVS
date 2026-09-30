@@ -110,65 +110,25 @@ describe("ThemeEditor", () => {
     expect(screen.queryByText(/--/)).toBeNull();
   });
 
-  it("edits Theme-owned Spectrum fill opacity as constrained percentages", () => {
-    const draft = structuredClone(DRAFT);
-    draft.overrides["spectrum.fillOpacityTop"] = { kind: "number", value: 0.28 };
-    draft.overrides["spectrum.fillOpacityBottom"] = { kind: "number", value: 0.04 };
-    const onOverride = vi.fn();
-    render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
-    fireEvent.click(screen.getByRole("button", { name: "Spectrum" }));
-
-    const upper = screen.getByLabelText("Fill Opacity — Upper percent");
-    const lower = screen.getByLabelText("Fill Opacity — Lower percent");
-    expect(upper.value).toBe("28");
-    expect(lower.value).toBe("4");
-    expect(upper.min).toBe("4");
-    expect(lower.max).toBe("28");
-
-    fireEvent.change(upper, { target: { value: "31" } });
-    fireEvent.blur(upper);
-    expect(onOverride).toHaveBeenCalledWith("spectrum.fillOpacityTop", {
-      kind: "number",
-      value: 0.31,
-    });
-  });
-
-  it("edits Theme-owned Stereo Map fill opacity as a percentage", () => {
-    const draft = structuredClone(DRAFT);
-    draft.overrides["stereoMap.fillOpacity"] = { kind: "number", value: 0.35 };
-    const onOverride = vi.fn();
-    render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
-    fireEvent.click(screen.getByRole("button", { name: "Stereo Map" }));
-
-    const fill = screen.getByLabelText("Fill Opacity percent");
-    expect(fill.value).toBe("35");
-    fireEvent.change(fill, { target: { value: "40" } });
-    fireEvent.blur(fill);
-    expect(onOverride).toHaveBeenCalledWith("stereoMap.fillOpacity", {
-      kind: "number",
-      value: 0.4,
-    });
-  });
-
-  it("edits Theme-owned classic Waveform fill opacity as a percentage", () => {
-    const draft = structuredClone(DRAFT);
-    draft.overrides["waveform.fillOpacity"] = { kind: "number", value: 0.12 };
-    const onOverride = vi.fn();
-    render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
-    fireEvent.click(screen.getByRole("button", { name: "Waveform" }));
-
-    const fill = screen.getByLabelText("Classic Fill Opacity percent");
-    expect(fill.value).toBe("12");
-    fireEvent.change(fill, { target: { value: "18" } });
-    fireEvent.blur(fill);
-    expect(onOverride).toHaveBeenCalledWith("waveform.fillOpacity", {
-      kind: "number",
-      value: 0.18,
-    });
-  });
+  it.each(["Spectrum", "Stereo Map", "Waveform"])(
+    "hides fill-opacity controls in %s, including saved overrides",
+    (section) => {
+      const draft = structuredClone(DRAFT);
+      draft.overrides["spectrum.fillOpacityTop"] = { kind: "number", value: 0.28 };
+      draft.overrides["spectrum.fillOpacityBottom"] = { kind: "number", value: 0.04 };
+      draft.overrides["stereoMap.fillOpacity"] = { kind: "number", value: 0.35 };
+      draft.overrides["waveform.fillOpacity"] = { kind: "number", value: 0.18 };
+      const before = structuredClone(draft);
+      const onOverride = vi.fn();
+      render(<ThemeEditor {...BASE_PROPS} draft={draft} onOverride={onOverride} />);
+      fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+      fireEvent.click(screen.getByRole("button", { name: section }));
+      expect(screen.queryByText(/Fill Opacity/)).toBeNull();
+      expect(screen.queryByRole("slider")).toBeNull();
+      expect(onOverride).not.toHaveBeenCalled();
+      expect(draft).toEqual(before);
+    }
+  );
 
   it("orders Advanced sections by the Module Catalog and shows Interface subgroups", () => {
     render(<ThemeEditor {...BASE_PROPS} />);

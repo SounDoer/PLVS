@@ -47,6 +47,8 @@ const dataOverride = (section, label, description, references) =>
 
 const numberOverride = (section, label, description, minimum, maximum, step) => ({
   ...advanced(section, label, description, ["number"]),
+  // Retain the contract for saved themes; numeric fill tuning is not an editor control.
+  editorVisible: false,
   minimum,
   maximum,
   step,
