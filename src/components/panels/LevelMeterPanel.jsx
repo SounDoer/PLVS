@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useFrameData, usePanelInstanceData } from "../../workspace/AudioDataContext.jsx";
 import { motion, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,8 @@ import { useLoudnessProfile } from "../../hooks/LoudnessProfileContext.jsx";
 import { loudnessProfileEvaluate } from "../../lib/loudnessProfileEvaluate.js";
 import { levelMeterBackground, levelMeterMarkerStatus } from "../../lib/levelMeterColors.js";
 import { loudnessMeterMarkerClass } from "../../lib/loudnessProfileStatusClasses.js";
-import { AxisRail } from "./AxisRail.jsx";
+import { axisLabelCenterPx, tickOpacityNearMarker } from "../../lib/axisMarkerFade.js";
+import { AxisRail, tickPosition } from "./AxisRail.jsx";
 
 const LEVEL_MODE_META = {
   peak: { label: "Peak", unit: "dBFS" },
@@ -105,6 +106,79 @@ function formatLevelValue(value) {
   return fmtMetric(value);
 }
 
+/// Where a readout marker sits on the axis, or null for a reading with nothing printable --
+/// silence, or the out-of-range sentinel -- which has no position worth pinning. Everything else
+/// stays visible: a TP Max hidden because the user zoomed past it takes its reset click with it,
+/// and the reading most likely to leave the range is the hot one.
+function axisMarkerPlacement(value, yRange) {
+  if (!Number.isFinite(value) || formatLevelValue(value) === "-") return null;
+  const clamped = Math.max(yRange.min, Math.min(yRange.max, value));
+  return {
+    frac: rangedFromTopFrac(clamped, yRange.min, yRange.max),
+    position: clamped === value ? "middle" : value > yRange.max ? "start" : "end",
+  };
+}
+
+/// Measures the y-axis tick track for fading ticks under a readout marker. Both label kinds are
+/// `leading-none`, so each is exactly as tall as its font size; reading those off the track keeps
+/// the fade in step with the interface size setting. Pass `trackRef` as the track's ref.
+function useAxisTrackMetrics() {
+  const [track, trackRef] = useState(null);
+  const [metrics, setMetrics] = useState(null);
+
+  useLayoutEffect(() => {
+    if (!track) return undefined;
+    const measure = () => {
+      const style = getComputedStyle(track);
+      const trackPx = track.getBoundingClientRect().height;
+      const tickPx = parseFloat(style.fontSize);
+      const markerPx = parseFloat(style.getPropertyValue("--ui-fs-display"));
+      if (!(trackPx > 0 && tickPx > 0 && markerPx > 0)) return;
+      setMetrics((prev) =>
+        prev?.trackPx === trackPx && prev.tickPx === tickPx && prev.markerPx === markerPx
+          ? prev
+          : { trackPx, tickPx, markerPx }
+      );
+    };
+    measure();
+    if (typeof ResizeObserver !== "function") return undefined;
+    // A font size change also resizes the track: the rail it fills is sized in `ch`.
+    const ro = new ResizeObserver(measure);
+    ro.observe(track);
+    return () => ro.disconnect();
+  }, [track]);
+
+  return { trackRef, metrics };
+}
+
+/// The marker shares the ticks' right-aligned column, so a tick near the reading would print
+/// underneath it. Those ticks fade by how far they clear the marker -- continuously, so a live
+/// reading drifting around a tick never makes it blink.
+function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
+  const markerCenterPx =
+    marker && metrics
+      ? axisLabelCenterPx(marker.position, marker.frac, metrics.trackPx, metrics.markerPx)
+      : null;
+  return ticks.map(({ v, lb }, index) => {
+    const frac = rangedFromTopFrac(v, yRange.min, yRange.max);
+    const tick = { key: v, label: lb, frac };
+    if (markerCenterPx == null) return tick;
+    const tickCenterPx = axisLabelCenterPx(
+      tickPosition(index, frac, ticks.length),
+      frac,
+      metrics.trackPx,
+      metrics.tickPx
+    );
+    const opacity = tickOpacityNearMarker(
+      tickCenterPx,
+      metrics.tickPx,
+      markerCenterPx,
+      metrics.markerPx
+    );
+    return opacity < 1 ? { ...tick, opacity: Math.round(opacity * 100) / 100 } : tick;
+  });
+}
+
 function AxisValueMarker({
   value,
   yRange,
@@ -117,15 +191,10 @@ function AxisValueMarker({
     tip: onReset ? resetLabel : undefined,
     side: "bottom",
   });
-  const label = formatLevelValue(value);
-  // A reading with nothing printable -- silence, or the out-of-range sentinel -- has no position
-  // worth pinning. Everything else stays visible: a TP Max hidden because the user zoomed past it
-  // takes its reset click with it, and the reading most likely to leave the range is the hot one.
-  if (!Number.isFinite(value) || label === "-") return null;
-
-  const clamped = Math.max(yRange.min, Math.min(yRange.max, value));
-  const outOfRange = clamped !== value;
-  const position = !outOfRange ? "middle" : value > yRange.max ? "start" : "end";
+  const placement = axisMarkerPlacement(value, yRange);
+  if (!placement) return null;
+  const { frac, position } = placement;
+  const outOfRange = position !== "middle";
 
   // Stops the click from reaching the y-axis drag/zoom handlers underneath.
   const stopAxisInteraction = onReset ? (e) => e.stopPropagation() : undefined;
@@ -140,7 +209,7 @@ function AxisValueMarker({
         levelMeterValueMarkerClass(position),
         className
       )}
-      style={{ top: `${rangedFromTopFrac(clamped, yRange.min, yRange.max) * 100}%` }}
+      style={{ top: `${frac * 100}%` }}
       onMouseDown={stopAxisInteraction}
       onDoubleClick={stopAxisInteraction}
       onClick={
@@ -154,7 +223,7 @@ function AxisValueMarker({
       onMouseEnter={onReset ? showTip : undefined}
       onMouseLeave={onReset ? hideTip : undefined}
     >
-      {label}
+      {formatLevelValue(value)}
       {outOfRange ? (
         // The arrow says the pinned position is not a real place on the scale, and which way the
         // reading actually left the range. Taken out of flow rather than merely zero-width: the
@@ -236,6 +305,7 @@ export function LevelMeterPanel() {
       [isPeakFamily, normalizedPanelControls, onPanelControlsChange]
     ),
   });
+  const { trackRef: levelMeterTrackRef, metrics: levelMeterTrackMetrics } = useAxisTrackMetrics();
   const levelMeterTicks = buildAdaptiveDbTicks(
     levelMeterYRange.min,
     levelMeterYRange.max,
@@ -280,14 +350,15 @@ export function LevelMeterPanel() {
               axis="y"
               inset
               data-level-meter-y-axis
-              scaleProps={{ "data-level-meter-y-axis-scale": true }}
+              scaleProps={{ "data-level-meter-y-axis-scale": true, ref: levelMeterTrackRef }}
               className={cn(yAxisWidthClass, "min-h-0 h-full shrink-0 overflow-visible text-right")}
               interaction={levelMeterYAxis}
-              ticks={levelMeterTicks.map(({ v, lb }) => ({
-                key: v,
-                label: lb,
-                frac: rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max),
-              }))}
+              ticks={levelMeterAxisTicks(
+                levelMeterTicks,
+                levelMeterYRange,
+                showMarker ? axisMarkerPlacement(readoutValue, levelMeterYRange) : null,
+                levelMeterTrackMetrics
+              )}
             >
               {showMarker ? (
                 <AxisValueMarker
@@ -364,17 +435,18 @@ export function LevelMeterPanel() {
             axis="y"
             inset
             data-level-meter-y-axis
-            scaleProps={{ "data-level-meter-y-axis-scale": true }}
+            scaleProps={{ "data-level-meter-y-axis-scale": true, ref: levelMeterTrackRef }}
             className={cn(
               peakYAxisWidthClass,
               "min-h-0 h-full shrink-0 overflow-visible text-right"
             )}
             interaction={levelMeterYAxis}
-            ticks={levelMeterTicks.map(({ v, lb }) => ({
-              key: v,
-              label: lb,
-              frac: rangedFromTopFrac(v, levelMeterYRange.min, levelMeterYRange.max),
-            }))}
+            ticks={levelMeterAxisTicks(
+              levelMeterTicks,
+              levelMeterYRange,
+              showTpMaxMarker ? axisMarkerPlacement(displayAudio?.tpMax, levelMeterYRange) : null,
+              levelMeterTrackMetrics
+            )}
           >
             {showTpMaxMarker ? (
               <AxisValueMarker

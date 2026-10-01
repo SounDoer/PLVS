@@ -15,7 +15,7 @@ const SCALE_INSET = "top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inse
 // little inside the viewBox, would otherwise put half a label outside the panel. Which edge a
 // pinned tick belongs to comes from its fraction, not its index: frequency ticks run low to high,
 // so their first entry is the bottom one, while dB ticks run the other way.
-function tickPosition(index, frac, count) {
+export function tickPosition(index, frac, count) {
   if (index !== 0 && index !== count - 1) return "middle";
   return frac < 0.5 ? "start" : "end";
 }
@@ -27,8 +27,9 @@ function tickPosition(index, frac, count) {
  *
  * @param {object} props
  * @param {"x"|"y"} props.axis
- * @param {Array<{key: string|number, label: import("react").ReactNode, frac: number, className?: string}>} props.ticks
- *   `frac` runs 0 at the rail's start (top for y, left for x) to 1 at its end.
+ * @param {Array<{key: string|number, label: import("react").ReactNode, frac: number, className?: string, opacity?: number}>} props.ticks
+ *   `frac` runs 0 at the rail's start (top for y, left for x) to 1 at its end. `opacity` fades a
+ *   label that something drawn over the rail would otherwise collide with.
  * @param {object} [props.interaction] Result of useAxisInteraction. Omit for a passive rail.
  * @param {boolean} [props.active] Highlight driven from the plot area, ORed with the rail's own.
  * @param {boolean} [props.inset] Apply the chart's vertical inset. Y rails only.
@@ -72,15 +73,17 @@ export function AxisRail({
         )}
         {...scaleProps}
       >
-        {ticks.map(({ key, label, frac, className: tickClassName }, index) => {
+        {ticks.map(({ key, label, frac, className: tickClassName, opacity }, index) => {
           const position = tickPosition(index, frac, ticks.length);
+          const style = {
+            ...(position === "middle" ? { [isY ? "top" : "left"]: `${frac * 100}%` } : {}),
+            ...(opacity !== undefined ? { opacity } : {}),
+          };
           return (
             <span
               key={key}
               className={axisLabelClass(axis, position, tickClassName)}
-              style={
-                position === "middle" ? { [isY ? "top" : "left"]: `${frac * 100}%` } : undefined
-              }
+              style={Object.keys(style).length > 0 ? style : undefined}
             >
               {label}
             </span>

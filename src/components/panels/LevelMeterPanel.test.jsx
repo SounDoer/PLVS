@@ -628,6 +628,88 @@ describe("LevelMeterPanel", () => {
     expect(marker.style.top).toBe("0%");
   });
 
+  describe("ticks near a readout marker", () => {
+    // jsdom does no layout: give the axis a 630px track (10px per dB over the default Peak range)
+    // and the default interface size's label fonts, 12px ticks and a 14px marker.
+    function stubAxisLayout() {
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+        width: 40,
+        height: 630,
+        top: 0,
+        right: 40,
+        bottom: 630,
+        left: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+      const realGetComputedStyle = window.getComputedStyle.bind(window);
+      vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+        if (!element?.hasAttribute?.("data-level-meter-y-axis-scale")) {
+          return realGetComputedStyle(element, pseudo);
+        }
+        return {
+          fontSize: "12px",
+          getPropertyValue: (name) => (name === "--ui-fs-display" ? "14px" : ""),
+        };
+      });
+    }
+
+    function tickByLabel(container, label) {
+      const scale = container.querySelector("[data-level-meter-y-axis-scale]");
+      return [...scale.children].find(
+        (child) => child.textContent === label && !child.hasAttribute("data-level-tp-max-marker")
+      );
+    }
+
+    it("fades the tick under the TP Max marker by how far it clears the reading", async () => {
+      stubAxisLayout();
+      const { container } = renderPanel({
+        displayAudio: { peakDb: [-9, -9], tpMax: -6.6 },
+        panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+      });
+
+      // Marker centre 96px, -5 tick centre 80px: 3px of clearance past touching, a quarter of a
+      // 12px tick height.
+      await waitFor(() => expect(tickByLabel(container, "-5").style.opacity).toBe("0.25"));
+      expect(tickByLabel(container, "-10").style.opacity).toBe("");
+      expect(tickByLabel(container, "0").style.opacity).toBe("");
+    });
+
+    it("hides a tick the TP Max marker sits on", async () => {
+      stubAxisLayout();
+      const { container } = renderPanel({
+        displayAudio: { peakDb: [-9, -9], tpMax: -4.6 },
+        panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: true },
+      });
+
+      await waitFor(() => expect(tickByLabel(container, "-5").style.opacity).toBe("0"));
+    });
+
+    it("fades the tick under the loudness value marker the same way", async () => {
+      stubAxisLayout();
+      const { container } = renderPanel({
+        displayAudio: { peakDb: [-9, -9], momentary: -20 },
+        panelControls: { levelMeterMode: "momentary", levelMeterValueMarker: true },
+      });
+
+      await waitFor(() => expect(tickByLabel(container, "-20").style.opacity).toBe("0"));
+      expect(tickByLabel(container, "-30").style.opacity).toBe("");
+    });
+
+    it("leaves every tick alone when no marker is shown", async () => {
+      stubAxisLayout();
+      const { container } = renderPanel({
+        displayAudio: { peakDb: [-9, -9], tpMax: -4.6 },
+        panelControls: { levelMeterMode: "peak", levelMeterTpMaxMarker: false },
+      });
+
+      const scale = container.querySelector("[data-level-meter-y-axis-scale]");
+      await waitFor(() => expect(tickByLabel(container, "-5")).toBeTruthy());
+      for (const tick of scale.children) expect(tick.style.opacity).toBe("");
+    });
+  });
+
   it("reveals a gradient fixed to the full bar instead of squashing it into the fill", () => {
     const { container } = renderPanel({ displayAudio: { peakDb: [-9.9, -9.9] } });
 

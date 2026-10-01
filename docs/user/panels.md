@@ -27,7 +27,7 @@ when it carries measurement meaning.
 
 Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Short-term**. It can show
 a True Peak Max marker driven by the active [Loudness Profile](loudness-profiles.md); click the
-readout to reset the maximum.
+readout to reset the maximum. Scale labels close to a marker fade out so the reading stays legible.
 
 **Bar Colors** chooses what the colours mean. **Gradient** (the default) is appearance only: one
 green-to-red ramp over the visible bar, in every mode, that zooms with the scale and ignores the
