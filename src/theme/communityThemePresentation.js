@@ -1,12 +1,12 @@
 import { validatePortableTheme } from "./portableTheme.js";
 
 /**
- * One centrally owned app-release mapping per portable semantic contract. The first public release
- * is intentionally unresolved until release planning chooses the version that actually ships it.
+ * One centrally owned app-release mapping per portable semantic contract. 0.18.0 is the first release
+ * that imports Theme Format 1 · Semantics 3; earlier releases cannot read Theme Pack V2.
  */
 export const COMMUNITY_THEME_COMPATIBILITY = Object.freeze({
   "1:3": Object.freeze({
-    minimumAppVersion: null,
+    minimumAppVersion: "0.18.0",
     maximumAppVersion: null,
   }),
 });

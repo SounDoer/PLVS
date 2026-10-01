@@ -7,70 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-01
+
+### Added
+
+- Level Meter **Bar Colors**: keep the default **Gradient**, or switch to **Level Zones**, which
+  colour bars by level with a hard change at each threshold. Peak and RMS use adjustable
+  **Warning / Critical** thresholds; Momentary and Short-term take their zones from the active
+  Loudness Profile's upper limits. The Dock's level strip has the same setting with its own
+  thresholds, and Agent Control exposes both.
+- Loudness, Spectrum, Spectrogram (3D) and Stereo Map have an optional **Grid**, off by default;
+  Stereo Map remembers the choice per mode.
+- Vectorscope **Polar Sample** has a **Persistence** setting (0–1000 ms, default 400 ms) for how
+  long the sample trail stays visible.
+- Stereo Map adds **Energy Fade Strength**, to make quiet frequency bands easier to see, and, in
+  Position mode, **Color Blend** for the width of the transition between channel colours.
+- Themes can be pasted straight from the clipboard (**Ctrl+V** / **Command+V**, or **Paste** on the
+  Theme row in Settings) and always go through the import review first.
+- Saved Loudness Profiles, Presets and custom Themes each have their own **Export** action.
+  Settings → **Saved Items** imports any shared file type, previews each item as Add, Already in
+  your library, or Import as a copy, and offers **Use** / **Apply** once a single item is imported.
+- Multiple workbenches now work on macOS: launching PLVS again while a workbench is visible opens
+  another one.
+
 ### Changed
 
-- The first three PLVS-authored official Community Items (the Signal Amber Theme, Stereo Overview
-  Preset, and editable `I −23 ±0.5 · TP ≤ −1` Loudness Profile) are staged in the repository but
-  withheld from the published manifest, so the website shows no Community section yet. They launch
-  after the default Theme redesign with regenerated previews.
-- Community navigation is omitted when an assembled Catalogue has no visible Release. A Listing
-  whose Releases are all withdrawn disappears from browse and search while retaining its historical
-  detail page without a download action.
-- Generated Community previews now have a versioned result contract that binds the exact required
-  PNG set to its renderer, canonical content and fixed fixture identities, dimensions, byte lengths
-  and SHA-256 hashes.
-- A dedicated Community browser harness renders validated Profiles, Presets and Themes through the
-  production editor, Stats, Workspace, Dock and Theme components with fixed data, no Tauri boot,
-  persistence or network access, and an explicit font/frame/canvas readiness barrier.
-- `npm run community:preview -- <artifact> <new-output-directory>` uses pinned Chromium to generate
-  the exact contract-owned PNG set and deterministic seal report. It refuses existing or unsafe
-  output paths and never edits Catalogue records or deploys content.
-- `npm run community:curate` now provides a read-only candidate dry run and an explicit `--write`
-  step that generates previews only for new Releases, rechecks immutable published history, and
-  builds a local review site with machine-readable and Markdown change reports without deploying.
-- Community Catalogue source validation now opens every Release through PLVS's stable publication
-  contract, derives immutable metadata from the exact artifact bytes, and seals the exact required
-  generated PNG preview set without accepting publisher-selected screenshots.
-- `npm run community:site` generates static Community browse, family, and Listing detail pages plus
-  isolated copies of their validated downloads and previews. Optional client-side search and
-  machine-derived filters enhance the fully navigable static pages; detail pages include verified
-  facts, compatibility, dependencies, install guidance, previews, and Release history.
-- Release-bound website assembly now generates the Community Catalogue and links it from the landing
-  page and user guide navigation without committing derived pages.
-- A separate manual Community deployment can publish a chosen content ref while rebuilding all
-  non-Community pages strictly from the latest stable PLVS Release.
-- Maintainers can compare candidate Catalogue content with its published predecessor and reject
-  deleted, replaced, inserted, restored, or otherwise rewritten Listing and Release history.
-- Manual Community deployment records the exact published content commit and automatically uses it
-  as the immutable-history baseline for the next deployment.
-- Loudness Profile exports now use strict Pack V2 portable documents. Incomplete rules, empty
-  Profiles, invalid IDs, and empty exports are refused instead of being silently omitted; existing
-  Pack V1 `.plvsloudness` files remain importable.
-- Preset exports now use strict Pack V2 portable documents with artefact-local panel keys and
-  explicit Loudness Profile dependencies. Host geometry and transient state are excluded, invalid
-  or empty exports are refused, and existing Pack V1 `.plvspreset` files remain importable.
-- Shared Item import now auto-detects Loudness Profile, Preset, and Theme files, previews
-  dependencies and add/skip/copy outcomes, and reports collision or legacy-dependency adaptations
-  before writing. Saved Profiles, Presets, and custom Themes also have one-item Export actions, and
-  a completed single-item import offers a separate Use or Apply action without coupling activation
-  to the Library write.
-- Community preview planning now provides versioned, deterministic Loudness Profile and Preset
-  inputs with a pinned stereo measurement/history fixture, fixed render environment and separate
-  Workspace and optional Dock surfaces.
-- Repository and CI workflows can validate one immutable Community artifact with
-  `npm run community:validate -- <file>`, which rejects legacy, multi-item, misnamed,
-  non-canonical, or non-UTF-8 files and reports their exact byte identity.
-- `npm run community:metadata -- <file>` derives deterministic static-Catalogue input from the same
-  validated artifact: content summaries and hashes, dependency identity, compatibility facets, and
-  the applicable preview contract without inventing author-owned Listing fields.
-- Static Catalogue tooling has one versioned `communityContract.js` handoff surface for validation,
-  metadata, canonical Item hashes, and all preview contracts.
-- The initial Catalogue content source now lives outside `landing/` behind a versioned manifest and
-  an external-directory-capable validation command, preserving a clean future repository split.
-- Curated Listing and Release records now have strict IDs, slugs, classification, attribution,
-  restricted Markdown, tags, immutable Release ordering, withdrawal state, and safe artifact and
-  preview paths. Per-Item licence metadata is deliberately excluded, and no public submission
-  channel or permission model is implied by the current officially curated Catalogue.
+- The built-in Dark and Light themes are retuned independently, with clearer separation between
+  surfaces and scheme-appropriate contrast.
+- The Theme editor is reorganised into **Core**, **Palettes** and **Advanced**; Advanced overrides
+  stay on Auto until customised and can be searched or reset a section at a time. **Visual Review**
+  findings are advisory and never block saving. Fill opacity is now fixed by the app rather than
+  stored in Themes.
+- The interface is calmer: panels drop their permanent outlines, resize lines appear only on hover
+  and while dragging, controls share one hover / focus / disabled style, and panel settings use
+  floating dropdown menus with keyboard navigation.
+- Moving a panel previews the exact space it will occupy, and an invalid drop shows
+  **No Drop Target**.
+- Numeric and colour fields commit on Enter or when focus leaves; Escape cancels, and an invalid
+  required number restores the previous value instead of becoming zero.
+- The Views menu's panel **Opacity** is now **Surface Opacity**: it fades Workspace, panel and Dock
+  fills while text, data and controls stay opaque.
+- On Windows 11 the system window outline follows the window chrome and is hidden in chromeless
+  views.
+- Profile, Preset and Theme exports use a stricter portable format. Incomplete or empty items are
+  refused rather than silently dropped, device-local state is left out, a Preset bundles the
+  custom Loudness Profile it uses, and Preset settings left at their defaults are omitted so earlier
+  versions can still import them. Older files remain importable.
+- The Settings footer no longer has a **Licenses** button; the notices remain in every package's
+  `licenses` folder.
+
+### Fixed
+
+- The Level Meter gradient no longer squeezes into the bar as the level changes, and scale labels
+  fade instead of colliding with the readout markers.
+- Lines and grids keep their intended weight on scaled displays, and canvases re-render at the right
+  density after moving to a monitor with a different scale.
+- The 3D Surface Spectrogram's floor and translucent terrain are no longer dimmed, and 3D Lines no
+  longer collapses at the 0° and 180° edge-on angles.
+- Spectrum and Waveform no longer draw or read out a silence floor (around −180 dB) as a value; the
+  hover reading shows "-" instead.
+- Where the Spectrum's primary and secondary curves coincide, the primary colour is shown.
+- The Windows tray icon follows the taskbar's light or dark mode rather than the PLVS theme.
+- Pasting the same Theme again is recognised as already in the library instead of importing a
+  duplicate, and pasting no longer triggers a browser clipboard prompt on Windows.
+- First run and **Reset PLVS to Default** select the starter Loudness Profile again.
+- File dialogs opened from Settings no longer leave its actions unresponsive, and Transport status
+  pills keep a stable width as the window resizes.
+
+### Breaking Changes
+
+These affect Agent Control and `plvs-cli` callers; stored settings, Presets and Themes migrate
+automatically.
+
+- View Control, `preset describe` and the CLI envelope rename `panelOpacity` to `surfaceOpacity`;
+  patches that still send `panelOpacity` are rejected.
+- Theme Control create and update documents require `formatVersion: 2` and `semanticsVersion: 1`
+  instead of `version: 2`, and use the renamed palette keys (`status.safe`; interface `success`,
+  `warning` and `danger`).
+- `theme export` returns Theme Pack V2: no `exportedAt`, a required empty `dependencies` list, and
+  each item is a portable `plvs-theme` document plus its id. Exporting an empty custom Theme library
+  fails with `themeNotExportable` instead of returning `items: []`.
 
 ## [0.17.0] - 2026-09-24
 

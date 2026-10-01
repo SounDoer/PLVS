@@ -86,7 +86,7 @@ Data is **not uploaded by default**; history is **session-scoped**; export (if i
 
 - **Multiple workbenches are supported**: launching PLVS again opens another workbench in its own process, so different Sources can be metered side by side. Each workbench owns its Source, layout, active snapshots, window and Dock state; saved Library items and identity-wide preferences are shared and never silently overwritten across workbenches.
 - **Workbenches stay implicit**: there is no workbench naming or profile manager; the visible name derives from the selected Source.
-- **Qualification is per platform**: the promise is qualified on Windows; macOS concurrent use is not yet verified and must not be claimed until it is.
+- **Qualification is per platform**: the promise is qualified on Windows and macOS; a new platform must be verified before it is claimed.
 
 ### 5.7 System tray and background capture
 

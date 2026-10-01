@@ -21,10 +21,10 @@ describe("community Theme page presentation", () => {
     expect(buildCommunityThemePresentation(portable(themeId))).toMatchObject({
       appearance: { colorScheme, label },
       compatibility: {
-        status: "pending-release",
-        minimumAppVersion: null,
+        status: "resolved",
+        minimumAppVersion: "0.18.0",
         maximumAppVersion: null,
-        label: null,
+        label: "Requires PLVS 0.18.0 or later",
         formatVersion: 1,
         semanticsVersion: 3,
         technicalLabel: "Theme Format 1 · Semantics 3",
@@ -56,8 +56,10 @@ describe("community Theme page presentation", () => {
   });
 
   it("blocks public-page generation until the shipping release is known", () => {
-    expect(() => requireResolvedCommunityThemePresentation(portable("plvs-dark"))).toThrowError(
-      expect.objectContaining({ code: "minimumAppVersionPending" })
-    );
+    expect(() =>
+      requireResolvedCommunityThemePresentation(portable("plvs-dark"), {
+        compatibility: { "1:3": { minimumAppVersion: null, maximumAppVersion: null } },
+      })
+    ).toThrowError(expect.objectContaining({ code: "minimumAppVersionPending" }));
   });
 });
