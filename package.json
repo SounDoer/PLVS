@@ -127,7 +127,7 @@
     "globals": "^17.7.0",
     "jsdom": "^26.1.0",
     "lint-staged": "^15.5.2",
-    "marked": "^18.0.13",
+    "marked": "^18.0.14",
     "playwright": "1.63.0",
     "prettier": "^3.9.5",
     "sharp": "^0.35.1",
