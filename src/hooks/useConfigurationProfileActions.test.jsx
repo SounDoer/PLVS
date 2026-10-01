@@ -31,6 +31,14 @@ vi.mock("../persistence/profile.js", () => ({
   resetProfile: mocks.resetProfile,
 }));
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
+
 describe("useConfigurationProfileActions", () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) mock.mockReset?.();
@@ -64,6 +72,31 @@ describe("useConfigurationProfileActions", () => {
     expect(result.current.configurationBusy).toBe(false);
   });
 
+  it("does not present configuration actions as busy while the save dialog is open", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    mocks.exportProfile.mockResolvedValue({
+      app: "PLVS",
+      kind: "configuration-profile",
+      version: 1,
+    });
+    const saveDialog = deferred();
+    mocks.saveConfigurationProfileFile.mockReturnValue(saveDialog.promise);
+    const { result } = renderHook(() => useConfigurationProfileActions());
+
+    let operation;
+    await act(async () => {
+      operation = result.current.exportConfiguration();
+      await Promise.resolve();
+    });
+
+    expect(result.current.configurationBusy).toBe(false);
+
+    await act(async () => {
+      saveDialog.resolve(null);
+      await operation;
+    });
+  });
+
   it("reports import as desktop-only outside Tauri", async () => {
     const { result } = renderHook(() => useConfigurationProfileActions());
 
@@ -94,6 +127,33 @@ describe("useConfigurationProfileActions", () => {
       expect(mocks.reloadAfterProfileChange).toHaveBeenCalledTimes(1);
       expect(result.current.configurationBusy).toBe(false);
     });
+  });
+
+  it("becomes busy only after the import dialog returns a file", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    const picker = deferred();
+    const reader = deferred();
+    mocks.pickConfigurationProfileFile.mockReturnValue(picker.promise);
+    mocks.readProfileFile.mockReturnValue(reader.promise);
+    const { result } = renderHook(() => useConfigurationProfileActions());
+
+    let operation;
+    act(() => {
+      operation = result.current.importConfiguration();
+    });
+    expect(result.current.configurationBusy).toBe(false);
+
+    await act(async () => {
+      picker.resolve("C:\\profile.plvsconfig");
+      await Promise.resolve();
+    });
+    expect(result.current.configurationBusy).toBe(true);
+
+    await act(async () => {
+      reader.resolve('{"app":"PLVS","kind":"configuration-profile"}');
+      await operation;
+    });
+    expect(result.current.configurationBusy).toBe(false);
   });
 
   it("reports a coordinated reload failure as an import failure", async () => {

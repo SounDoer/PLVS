@@ -47,6 +47,14 @@ function clipboardTheme(name = "Community Theme") {
   );
 }
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   isTauri.mockReturnValue(true);
@@ -76,6 +84,29 @@ describe("usePackTransfer export", () => {
     const written = JSON.parse(writeProfileFile.mock.calls[0][1]);
     expect(written.kind).toBe("loudness-pack");
     expect(written.items.map((item) => item.id)).toEqual(["a"]);
+  });
+
+  it("does not present Saved Items actions as busy while the save dialog is open", async () => {
+    settingsStore.patch({
+      loudnessProfiles: {
+        active: "off",
+        profiles: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      },
+    });
+    const saveDialog = deferred();
+    savePackFile.mockReturnValue(saveDialog.promise);
+    const { result } = renderHook(() => usePackTransfer());
+
+    let operation;
+    act(() => {
+      operation = result.current.exportSelection("loudness", ["a"]);
+    });
+    expect(result.current.busy).toBe(false);
+
+    await act(async () => {
+      saveDialog.resolve(null);
+      await operation;
+    });
   });
 
   // The dismiss mechanism itself is covered in useTransientStatus.test.jsx; this pins that the
@@ -238,6 +269,32 @@ describe("usePackTransfer export outcome", () => {
 });
 
 describe("usePackTransfer import", () => {
+  it("becomes busy only after the shared-item dialog returns a file", async () => {
+    const picker = deferred();
+    const reader = deferred();
+    pickSharedPackFile.mockReturnValue(picker.promise);
+    readProfileFile.mockReturnValue(reader.promise);
+    const { result } = renderHook(() => usePackTransfer());
+
+    let operation;
+    act(() => {
+      operation = result.current.beginSharedImport();
+    });
+    expect(result.current.busy).toBe(false);
+
+    await act(async () => {
+      picker.resolve("C:/shared.plvstheme");
+      await Promise.resolve();
+    });
+    expect(result.current.busy).toBe(true);
+
+    await act(async () => {
+      reader.resolve(clipboardTheme("Shared Theme"));
+      await operation;
+    });
+    expect(result.current.busy).toBe(false);
+  });
+
   it("dispatches a shared Item file by document kind", async () => {
     readProfileFile.mockResolvedValue(
       JSON.stringify({

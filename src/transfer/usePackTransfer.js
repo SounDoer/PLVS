@@ -5,7 +5,7 @@
 /// Unlike `useConfigurationProfileActions.js`, failures keep their message: a shared file lands on
 /// a machine whose user did not make it, and "Import failed" tells them nothing they can act on.
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTransientStatus } from "../hooks/useTransientStatus.js";
 import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
@@ -47,6 +47,9 @@ export function usePackTransfer() {
   const [status, setStatus] = useTransientStatus();
   const [review, setReview] = useState(null);
   const [completion, setCompletion] = useState(null);
+  // A native picker is already modal. This guard prevents re-entry without making every Saved
+  // Items action look unavailable while the user is only choosing a file or destination.
+  const operationActiveRef = useRef(false);
 
   // No `flushPersistence()` here: unlike `profile.js`'s `exportProfile()`, which round-trips
   // through a Rust command that reads the store file from disk, this hook's reads never leave
@@ -58,8 +61,8 @@ export function usePackTransfer() {
    */
   const exportSelection = useCallback(
     async (type, selectedIds) => {
-      if (busy) return "cancelled";
-      setBusy(true);
+      if (operationActiveRef.current) return "cancelled";
+      operationActiveRef.current = true;
       setStatus("");
       try {
         const descriptor = packDescriptor(type);
@@ -69,12 +72,14 @@ export function usePackTransfer() {
         const fileName = defaultFileName(descriptor, items);
 
         if (!isTauri()) {
+          setBusy(true);
           downloadInBrowser(fileName, contents);
           setStatus(`${descriptor.label} exported`);
           return "written";
         }
         const path = await savePackFile(descriptor, fileName);
         if (!path) return "cancelled";
+        setBusy(true);
         await writeProfileFile(path, contents);
         setStatus(`${descriptor.label} exported`);
         return "written";
@@ -82,16 +87,17 @@ export function usePackTransfer() {
         setStatus(error instanceof PackValidationError ? error.message : "Export failed");
         return "failed";
       } finally {
+        operationActiveRef.current = false;
         setBusy(false);
       }
     },
-    [busy, setStatus]
+    [setStatus]
   );
 
   const beginImport = useCallback(
     async (type) => {
-      if (busy) return;
-      setBusy(true);
+      if (operationActiveRef.current) return;
+      operationActiveRef.current = true;
       setStatus("");
       setReview(null);
       setCompletion(null);
@@ -104,6 +110,7 @@ export function usePackTransfer() {
         const path = await pickPackFile(descriptor);
         if (!path) return;
 
+        setBusy(true);
         const text = await readProfileFile(path);
         const pack = parsePackText(text, type);
         const planned = planPackImport(type, pack, {
@@ -119,15 +126,16 @@ export function usePackTransfer() {
         // message on purpose rather than by omission.
         setStatus(error instanceof PackValidationError ? error.message : "Import failed");
       } finally {
+        operationActiveRef.current = false;
         setBusy(false);
       }
     },
-    [busy, setStatus]
+    [setStatus]
   );
 
   const beginSharedImport = useCallback(async () => {
-    if (busy) return;
-    setBusy(true);
+    if (operationActiveRef.current) return;
+    operationActiveRef.current = true;
     setStatus("");
     setReview(null);
     setCompletion(null);
@@ -138,6 +146,7 @@ export function usePackTransfer() {
       }
       const path = await pickSharedPackFile();
       if (!path) return;
+      setBusy(true);
       const text = await readProfileFile(path);
       const { type, pack } = parseSharedPackText(text);
       const planned = planPackImport(type, pack, {
@@ -148,13 +157,15 @@ export function usePackTransfer() {
     } catch (error) {
       setStatus(error instanceof PackValidationError ? error.message : "Import failed");
     } finally {
+      operationActiveRef.current = false;
       setBusy(false);
     }
-  }, [busy, setStatus]);
+  }, [setStatus]);
 
   const beginThemePaste = useCallback(
     async (text) => {
-      if (busy) return;
+      if (operationActiveRef.current) return;
+      operationActiveRef.current = true;
       setBusy(true);
       setStatus("");
       setReview(null);
@@ -178,14 +189,15 @@ export function usePackTransfer() {
             : "PLVS couldn't read the clipboard. Use Import to choose a .plvstheme file instead."
         );
       } finally {
+        operationActiveRef.current = false;
         setBusy(false);
       }
     },
-    [busy, setStatus]
+    [setStatus]
   );
 
   const pasteThemeFromClipboard = useCallback(async () => {
-    if (busy) return;
+    if (operationActiveRef.current) return;
     try {
       const text = await readClipboardText();
       await beginThemePaste(text);
@@ -194,7 +206,7 @@ export function usePackTransfer() {
         "PLVS couldn't read the clipboard. Use Import to choose a .plvstheme file instead."
       );
     }
-  }, [beginThemePaste, busy, setStatus]);
+  }, [beginThemePaste, setStatus]);
 
   const confirmImport = useCallback(() => {
     if (!review) return;
@@ -222,7 +234,9 @@ export function usePackTransfer() {
 
   const runCompletionAction = useCallback(
     async (action) => {
-      if (!completion || completion.itemPlan.length !== 1 || busy) return false;
+      if (!completion || completion.itemPlan.length !== 1 || operationActiveRef.current)
+        return false;
+      operationActiveRef.current = true;
       setBusy(true);
       const entry = completion.itemPlan[0];
       try {
@@ -238,10 +252,11 @@ export function usePackTransfer() {
         setStatus(`${entry.name} was imported.${reason}`);
         return false;
       } finally {
+        operationActiveRef.current = false;
         setBusy(false);
       }
     },
-    [busy, completion, setStatus]
+    [completion, setStatus]
   );
 
   const dismissCompletion = useCallback(() => setCompletion(null), []);
