@@ -37,6 +37,16 @@ const SOURCE_OPTIONS = [
   },
 ];
 
+const TRANSPORT_WIDTH_CLASS = {
+  live: "w-[calc(12em+5rem)]",
+  file: "w-[calc(15em+5rem)]",
+};
+
+const ACTION_WIDTH_CLASS = {
+  live: "w-[calc(4.6em+1.875rem)]",
+  file: "w-[calc(7.5em+1.875rem)]",
+};
+
 export function SourceTransportCluster({
   state,
   sourceMode,
@@ -63,13 +73,15 @@ export function SourceTransportCluster({
 
   return (
     <div
+      style={{ fontSize: "var(--ui-fs-status)" }}
       className={cn(
-        "relative inline-flex h-7 max-w-[340px] items-center overflow-hidden rounded-full p-0.5 transition-all duration-200",
+        "relative inline-flex h-7 max-w-full shrink-0 items-center overflow-hidden rounded-full p-0.5 transition-all duration-200",
+        TRANSPORT_WIDTH_CLASS[sourceMode] ?? TRANSPORT_WIDTH_CLASS.live,
         chrome.shell
       )}
     >
       {sourceLocked ? (
-        <span className="flex h-full items-center rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
+        <span className="flex h-full shrink-0 items-center rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
           {state.sourceLabel}
         </span>
       ) : (
@@ -79,7 +91,7 @@ export function SourceTransportCluster({
               ref={triggerRef}
               type="button"
               aria-label={`Source: ${state.sourceLabel}`}
-              className="flex h-full items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-ui-hover"
+              className="flex h-full shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] transition-colors hover:bg-ui-hover"
             >
               {state.sourceLabel}
               <ChevronDown className="size-[1em]" />
@@ -120,7 +132,7 @@ export function SourceTransportCluster({
           </PopoverContent>
         </Popover>
       )}
-      <span className="min-w-0 truncate pl-1.2 pr-2.5 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
+      <span className="min-w-0 flex-1 truncate pl-1.2 pr-1 text-[length:var(--ui-fs-status)] font-semibold tabular-nums">
         {state.statusLabel}
       </span>
 
@@ -129,7 +141,8 @@ export function SourceTransportCluster({
         disabled={state.primaryActionDisabled}
         onClick={() => onPrimaryAction(state.actionKind)}
         className={cn(
-          "ml-1 flex h-full items-center gap-1.5 rounded-full px-3 text-[length:var(--ui-fs-status)] font-bold tracking-[0.06em] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+          "ml-0.5 flex h-full shrink-0 items-center justify-center gap-1.5 rounded-full px-3 font-bold tracking-[0.06em] transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+          ACTION_WIDTH_CLASS[sourceMode] ?? ACTION_WIDTH_CLASS.live,
           chrome.action
         )}
       >

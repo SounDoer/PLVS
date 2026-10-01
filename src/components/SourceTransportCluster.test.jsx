@@ -68,11 +68,55 @@ describe("SourceTransportCluster", () => {
 
   it("uses compact header control sizing", () => {
     expect(source).toContain("h-7");
+    expect(source).toContain('live: "w-[calc(12em+5rem)]"');
+    expect(source).toContain('file: "w-[calc(15em+5rem)]"');
+    expect(source).toContain('style={{ fontSize: "var(--ui-fs-status)" }}');
     expect(source).toContain("px-2.5");
-    expect(source).toContain("pl-1.2 pr-2.5");
+    expect(source).toContain("pl-1.2 pr-1");
+    expect(source).toContain('live: "w-[calc(4.6em+1.875rem)]"');
+    expect(source).toContain('file: "w-[calc(7.5em+1.875rem)]"');
+    expect(source).toContain("items-center justify-center gap-1.5");
     expect(source).toContain("px-3");
+    expect(source).not.toContain("w-[104px]");
+    expect(source).not.toContain("w-[224px]");
+    expect(source).not.toContain("min-w-[86px]");
+    expect(source).not.toContain("var(--ui-fs-status)*");
+    expect(source).not.toContain("max-w-[340px]");
     expect(source).not.toContain("h-8");
     expect(source).not.toContain("px-3.5");
+  });
+
+  it("keeps the pill width stable while status and action labels change", () => {
+    const { container, rerender } = render(
+      <SourceTransportCluster
+        state={baseState}
+        sourceMode="live"
+        onSourceModeChange={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />
+    );
+    expect(container.firstElementChild.className).toContain("w-[calc(12em+5rem)]");
+    expect(screen.getByRole("button", { name: "START" }).className).toContain(
+      "w-[calc(4.6em+1.875rem)]"
+    );
+
+    rerender(
+      <SourceTransportCluster
+        state={{
+          ...baseState,
+          sourceLabel: "File",
+          statusLabel: "00:02:00",
+          actionLabel: "REANALYZE",
+        }}
+        sourceMode="file"
+        onSourceModeChange={vi.fn()}
+        onPrimaryAction={vi.fn()}
+      />
+    );
+    expect(container.firstElementChild.className).toContain("w-[calc(15em+5rem)]");
+    expect(screen.getByRole("button", { name: "REANALYZE" }).className).toContain(
+      "w-[calc(7.5em+1.875rem)]"
+    );
   });
 
   it("renders source, status, and action as one continuous pill", () => {
