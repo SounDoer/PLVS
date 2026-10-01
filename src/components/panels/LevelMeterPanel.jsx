@@ -43,11 +43,12 @@ const LEVEL_METER_VALUE_MARKER_POSITION = {
 };
 
 // Anchored right like the axis tick labels, so the reading and the ticks end on the same column.
-// The rail stays as narrow as it was, which means a full-width marker overhangs it on the left,
-// into the panel's padding -- the side with nothing to collide with.
 const LEVEL_METER_VALUE_MARKER_BASE =
   "absolute right-0 whitespace-nowrap text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-display)] leading-none tabular-nums";
-const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[5ch]";
+// Sized in the marker's own font, not the rail's: five monospace characters at 0.6em each, the
+// widest reading fmtMetric prints ("-16.9"). A `ch` width measures the narrower tick font, and the
+// overflow it left ate the panel's whole left padding.
+const LEVEL_METER_Y_AXIS_WITH_MARKER = "w-[calc(var(--ui-fs-display)*3)]";
 const LEVEL_METER_BAR_INSET_X = "0.1rem";
 const LEVEL_METER_CHANNEL_GAP = "0.15rem";
 const LEVEL_METER_GRID =

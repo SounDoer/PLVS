@@ -9,6 +9,10 @@ import { LoudnessProfileProvider } from "../../hooks/LoudnessProfileContext.jsx"
 import { profileZones, thresholdZones, zonesToGradient } from "../../lib/levelMeterColors.js";
 import { LOUDNESS_PROFILE_OFF } from "../../lib/loudnessProfileCatalog.js";
 
+// Five monospace characters of the marker's own font -- the widest reading fmtMetric prints, such as
+// "-16.9" -- so the marker never needs the panel's padding.
+const MARKER_RAIL_WIDTH = "w-[calc(var(--ui-fs-display)*3)]";
+
 const TEST_PROFILE = {
   id: "test-profile",
   name: "Test profile",
@@ -160,7 +164,7 @@ describe("LevelMeterPanel", () => {
     expect(marker.className).toContain("text-right");
     expect(marker.className).not.toContain("left-0");
     expect(marker.className).not.toContain("translate-x");
-    expect(marker.closest("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
+    expect(marker.closest("[data-level-meter-y-axis]")?.className).toContain(MARKER_RAIL_WIDTH);
     expect(marker.closest("[data-level-meter-y-axis]")?.className).not.toContain(
       "w-[var(--ui-chart-y-axis-rail-w)]"
     );
@@ -278,7 +282,7 @@ describe("LevelMeterPanel", () => {
       "w-[var(--ui-chart-y-axis-rail-w)]"
     );
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).not.toContain(
-      "w-[5ch]"
+      MARKER_RAIL_WIDTH
     );
   });
 
@@ -311,7 +315,9 @@ describe("LevelMeterPanel", () => {
     const marker = container.querySelector("[data-level-tp-max-marker]");
     expect(marker?.textContent).toBe("-1.0");
     expect(screen.queryByText("dBTP")).toBeNull();
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
+    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
+      MARKER_RAIL_WIDTH
+    );
   });
 
   it("keeps the wider Peak y-axis reserved when TP Max marker is enabled without a value", () => {
@@ -321,7 +327,9 @@ describe("LevelMeterPanel", () => {
     });
 
     expect(container.querySelector("[data-level-tp-max-marker]")).toBeNull();
-    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain("w-[5ch]");
+    expect(container.querySelector("[data-level-meter-y-axis]")?.className).toContain(
+      MARKER_RAIL_WIDTH
+    );
     expect(container.querySelector("[data-level-meter-y-axis]")?.className).not.toContain(
       "w-[var(--ui-chart-y-axis-rail-w)]"
     );
