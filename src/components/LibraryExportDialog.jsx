@@ -80,7 +80,7 @@ export function LibraryExportDialog({
                   <span>{label}</span>
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     {itemCountLabel(count)}
-                    <ChevronRight className="size-4" aria-hidden="true" />
+                    <ChevronRight className="size-[1.15em] shrink-0" aria-hidden="true" />
                   </span>
                 </button>
               );
