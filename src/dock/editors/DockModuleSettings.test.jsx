@@ -237,6 +237,21 @@ describe("DockModuleSettings", () => {
     });
   });
 
+  it("commits the dock Stereo Map speed when the pointer gesture is cancelled", () => {
+    const onChange = renderSettings("stereoMap", { channelCount: 2 });
+    const speed = screen.getByLabelText("Stereo Map speed");
+
+    fireEvent.change(speed, { target: { value: "80" } });
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerCancel(speed);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_DOCK_CONTROLS_BY_MODULE_ID.stereoMap,
+      stereoMapSpeedPercent: 80,
+    });
+  });
+
   it("shows Dock Color Blend only for Stereo Map Position", () => {
     const onChange = renderSettings("stereoMap", { channelCount: 2 });
     const blend = screen.getByLabelText("Stereo Map color blend");

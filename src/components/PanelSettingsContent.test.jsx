@@ -1159,6 +1159,31 @@ describe("PanelSettingsContent", () => {
     );
   });
 
+  it("commits the stereo map speed when the pointer gesture is cancelled", () => {
+    const onPanelControlsChange = vi.fn();
+    render(
+      <PanelSettingsContent
+        activeTab="stereo-map"
+        stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
+        stereoMapPairValueKey="0-1"
+        stereoMapPairDisplayLabel="L/R"
+        onStereoMapPairChange={vi.fn()}
+        panelControls={DEFAULT_PANEL_CONTROLS}
+        onPanelControlsChange={onPanelControlsChange}
+      />
+    );
+
+    const speed = screen.getByLabelText("stereo map speed");
+    fireEvent.change(speed, { target: { value: "70" } });
+    expect(onPanelControlsChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerCancel(speed);
+    expect(onPanelControlsChange).toHaveBeenCalledTimes(1);
+    expect(onPanelControlsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ stereoMapSpeedPercent: 70 })
+    );
+  });
+
   it("updates Stereo Map Energy Fade Strength live because it is display-only", () => {
     const onPanelControlsChange = vi.fn();
     render(

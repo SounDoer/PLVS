@@ -188,11 +188,13 @@ export function SettingsSlider({
     if (!commitOnRelease) onCommit(next);
   };
 
-  // Pointer-up covers dragging; key-up covers arrow keys, where holding one auto-repeats change
+  // Pointer-up covers ordinary dragging; pointer-cancel commits the last native value before an OS
+  // interruption ends the gesture. Key-up covers arrow keys, where holding one auto-repeats change
   // events and releases once.
   const releaseHandlers = commitOnRelease
     ? {
         onPointerUp: (event) => commit(event.currentTarget.value),
+        onPointerCancel: (event) => commit(event.currentTarget.value),
         onKeyUp: (event) => commit(event.currentTarget.value),
       }
     : null;
