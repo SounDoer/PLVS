@@ -161,6 +161,31 @@ describe("ModulesPopoverContent", () => {
     fireEvent.mouseUp(window, { clientX: 108, clientY: 100 });
   });
 
+  it("cancels a create-drag when the window loses focus", () => {
+    const onDrop = vi.fn();
+    render(
+      <WorkspaceProvider>
+        <DragProvider onDrop={onDrop}>
+          <ModulesPopoverContent />
+        </DragProvider>
+      </WorkspaceProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Module" }));
+    const grip = screen.getByRole("button", { name: "Drag Waveform to place" });
+    fireEvent.mouseDown(grip, { clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(window, { clientX: 108, clientY: 100 });
+    expect(screen.getByText("Waveform · No Drop Target")).toBeTruthy();
+
+    fireEvent(window, new Event("blur"));
+    expect(screen.queryByText("Waveform · No Drop Target")).toBeNull();
+
+    fireEvent.mouseMove(window, { clientX: 120, clientY: 100 });
+    fireEvent.mouseUp(window, { clientX: 120, clientY: 100 });
+    expect(screen.queryByText("Waveform · No Drop Target")).toBeNull();
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+
   it("highlights the corresponding panel frame while hovering a module row", () => {
     const { container } = render(
       <WorkspaceProvider>

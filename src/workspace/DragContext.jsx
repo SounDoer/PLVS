@@ -121,10 +121,7 @@ export function DragProvider({ children, onDrop }) {
       }
     }
 
-    function onUp() {
-      if (activeRef.current && hoverDropRef.current && startRef.current) {
-        onDrop(startRef.current.payload, hoverDropRef.current);
-      }
+    function clearDrag() {
       startRef.current = null;
       activeRef.current = false;
       hoverDropRef.current = null;
@@ -132,22 +129,27 @@ export function DragProvider({ children, onDrop }) {
       setHoverDrop(null);
     }
 
+    function onUp() {
+      if (activeRef.current && hoverDropRef.current && startRef.current) {
+        onDrop(startRef.current.payload, hoverDropRef.current);
+      }
+      clearDrag();
+    }
+
     function onKey(e) {
       if (e.key === "Escape" && activeRef.current) {
-        startRef.current = null;
-        activeRef.current = false;
-        hoverDropRef.current = null;
-        setDragState(null);
-        setHoverDrop(null);
+        clearDrag();
       }
     }
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("blur", clearDrag);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("blur", clearDrag);
       window.removeEventListener("keydown", onKey);
     };
   }, [onDrop]);
