@@ -1,7 +1,7 @@
 import { MODAL_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { clampPanelPos } from "../lib/dragClamp.js";
+import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import { submitFeedback } from "../lib/feedback.js";
 import { readFeedbackDiagnostics } from "../ipc/commands.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
@@ -24,32 +24,7 @@ export function FeedbackDialog({ onClose }) {
   const [pos, setPos] = useState(INITIAL_POS);
 
   const ref = useRef(null);
-  const dragRef = useRef(null);
-
-  function onPointerDown(e) {
-    const rect = ref.current.getBoundingClientRect();
-    dragRef.current = {
-      dx: e.clientX - rect.left,
-      dy: e.clientY - rect.top,
-      w: rect.width,
-      h: rect.height,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-  function onPointerMove(e) {
-    const d = dragRef.current;
-    if (!d) return;
-    setPos(
-      clampPanelPos(
-        { x: e.clientX - d.dx, y: e.clientY - d.dy },
-        { w: d.w, h: d.h },
-        { w: window.innerWidth, h: window.innerHeight }
-      )
-    );
-  }
-  function onPointerUp() {
-    dragRef.current = null;
-  }
+  const dragHandlers = useFloatingPanelDrag(ref, setPos);
 
   const emailInvalid = emailTouched && email.trim() !== "" && !EMAIL_RE.test(email);
   const busy = status === "preparing" || status === "sending";
@@ -90,9 +65,7 @@ export function FeedbackDialog({ onClose }) {
       style={{ left: pos.x, top: pos.y }}
     >
       <div
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
+        {...dragHandlers}
         className="flex cursor-move items-center justify-between border-b border-border px-3 py-2"
       >
         <span className="text-[length:var(--ui-fs-panel-title)] font-semibold">Send Feedback</span>

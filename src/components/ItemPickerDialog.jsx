@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { PACK_KINDS } from "../transfer/packShape.js";
-import { clampPanelPos } from "../lib/dragClamp.js";
+import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 
 const CENTERED_CONTENT_CLASS = `fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl p-3 ${MODAL_SURFACE_CLASS}`;
 const POSITIONED_CONTENT_CLASS = `fixed z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl p-3 ${MODAL_SURFACE_CLASS}`;
@@ -87,7 +87,7 @@ export function ItemPickerDialog({
   // `null` so the dialog is centred again next time (see the comment on the component above).
   const [pos, setPos] = useState(null);
   const contentRef = useRef(null);
-  const dragRef = useRef(null);
+  const dragHandlers = useFloatingPanelDrag(contentRef, setPos);
   const label = PACK_KINDS[type].label;
   const clipboardTheme = mode === "review" && review?.origin === "clipboard";
   const title =
@@ -106,31 +106,6 @@ export function ItemPickerDialog({
       setPos(null);
     }
   }, [open]);
-
-  function onHeaderPointerDown(e) {
-    const rect = contentRef.current.getBoundingClientRect();
-    dragRef.current = {
-      dx: e.clientX - rect.left,
-      dy: e.clientY - rect.top,
-      w: rect.width,
-      h: rect.height,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-  function onHeaderPointerMove(e) {
-    const d = dragRef.current;
-    if (!d) return;
-    setPos(
-      clampPanelPos(
-        { x: e.clientX - d.dx, y: e.clientY - d.dy },
-        { w: d.w, h: d.h },
-        { w: window.innerWidth, h: window.innerHeight }
-      )
-    );
-  }
-  function onHeaderPointerUp() {
-    dragRef.current = null;
-  }
 
   const toggle = (id) => {
     setSelected((prev) => {
@@ -170,13 +145,7 @@ export function ItemPickerDialog({
           className={pos ? POSITIONED_CONTENT_CLASS : CENTERED_CONTENT_CLASS}
           style={pos ? { left: pos.x, top: pos.y } : undefined}
         >
-          <div
-            data-testid="item-picker-drag-handle"
-            onPointerDown={onHeaderPointerDown}
-            onPointerMove={onHeaderPointerMove}
-            onPointerUp={onHeaderPointerUp}
-            className="cursor-move"
-          >
+          <div data-testid="item-picker-drag-handle" {...dragHandlers} className="cursor-move">
             <Dialog.Title className="text-[length:var(--ui-fs-control)] font-semibold text-foreground">
               {title}
             </Dialog.Title>

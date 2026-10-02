@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
 import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
-import { clampPanelPos } from "../lib/dragClamp.js";
+import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
@@ -161,32 +161,7 @@ export function ThemeEditor({
   }
 
   const ref = useRef(null);
-  const dragRef = useRef(null);
-
-  function onPointerDown(e) {
-    const rect = ref.current.getBoundingClientRect();
-    dragRef.current = {
-      dx: e.clientX - rect.left,
-      dy: e.clientY - rect.top,
-      w: rect.width,
-      h: rect.height,
-    };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-  function onPointerMove(e) {
-    const d = dragRef.current;
-    if (!d) return;
-    onMove(
-      clampPanelPos(
-        { x: e.clientX - d.dx, y: e.clientY - d.dy },
-        { w: d.w, h: d.h },
-        { w: window.innerWidth, h: window.innerHeight }
-      )
-    );
-  }
-  function onPointerUp() {
-    dragRef.current = null;
-  }
+  const dragHandlers = useFloatingPanelDrag(ref, onMove);
 
   return (
     <>
@@ -198,9 +173,7 @@ export function ThemeEditor({
         style={{ left: pos.x, top: pos.y }}
       >
         <div
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
+          {...dragHandlers}
           className="flex cursor-move items-center gap-1.5 border-b border-border px-3 py-2"
         >
           {renaming ? (
