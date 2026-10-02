@@ -87,7 +87,7 @@ tauri-plugin-clipboard-manager = "2.3.3"
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
-window-vibrancy = "0.6"
+window-vibrancy = "0.8"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
