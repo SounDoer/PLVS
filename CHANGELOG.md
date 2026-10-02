@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-10-03
+
+### Fixed
+
+- Sliders on macOS can be clicked and dragged normally again instead of continuing to follow the
+  pointer after a click.
+- Floating panels, chart axes, and Workspace layout drags now end safely when pointer capture is
+  lost or the window loses focus.
+- Slider changes are committed correctly when a gesture is interrupted or cancelled.
+- On macOS, setting **Surface Opacity** to 0 no longer produces fragmented grey window-shadow
+  outlines around Spectrogram content, text, or meter graphics.
+
 ## [0.18.0] - 2026-10-01
 
 ### Added
