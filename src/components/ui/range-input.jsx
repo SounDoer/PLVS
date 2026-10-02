@@ -76,7 +76,6 @@ export const RangeInput = forwardRef(function RangeInput(
           if (event.button !== 0) return;
           setAdjusting(true);
           showTip();
-          event.currentTarget.setPointerCapture?.(event.pointerId);
           onPointerDown?.(event);
         }}
         onPointerUp={(event) => end(event, onPointerUp)}

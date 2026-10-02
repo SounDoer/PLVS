@@ -4,6 +4,16 @@ import { describe, it, expect, vi } from "vitest";
 import { RangeInput } from "./range-input.jsx";
 
 describe("RangeInput feedback", () => {
+  it("leaves pointer capture to the native range input", () => {
+    render(<RangeInput aria-label="speed" defaultValue={40} />);
+    const slider = screen.getByRole("slider");
+    slider.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(slider, { button: 0, pointerId: 1 });
+
+    expect(slider.setPointerCapture).not.toHaveBeenCalled();
+  });
+
   it("keeps the value visible outside the track while dragging and clears on cancellation", () => {
     render(<RangeInput aria-label="speed" valueLabel="40%" defaultValue={40} />);
     const slider = screen.getByRole("slider");
