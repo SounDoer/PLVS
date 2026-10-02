@@ -558,6 +558,38 @@ describe("usePresets", () => {
     expect(setSurfaceOpacity).toHaveBeenCalledWith(75);
   });
 
+  it("applies the native zero-opacity policy before preset window transitions", async () => {
+    const order = [];
+    const applySurfaceOpacity = vi.fn(async (opacity) => {
+      order.push(`opacity:${opacity}`);
+      return true;
+    });
+    const applyDockPreset = vi.fn(async () => {
+      order.push("dock");
+      return false;
+    });
+    const { result } = renderPresetHook({
+      surfaceOpacity: 70,
+      applySurfaceOpacity,
+      applyDockPreset,
+    });
+    await act(async () => {
+      await result.current.presets.save("Transparent");
+    });
+    const saved = presetsStore.read().list[0];
+    presetsStore.patch({
+      list: [{ ...saved, surfaceOpacity: 0 }],
+      activeId: null,
+      dirty: false,
+    });
+
+    await act(async () => {
+      await result.current.presets.apply(saved.id);
+    });
+
+    expect(order.slice(0, 2)).toEqual(["opacity:0", "dock"]);
+  });
+
   it("does not call setSurfaceOpacity when applying an older preset without it", async () => {
     const setSurfaceOpacity = vi.fn();
     presetsStore.patch({

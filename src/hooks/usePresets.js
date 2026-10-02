@@ -59,6 +59,7 @@ export function usePresets({
     controlsByPanelId: undefined,
   },
   applyDockPreset = async () => {},
+  applySurfaceOpacity = async () => false,
   // Returns the reason the preset's dock cannot be honoured, or null. A reason refuses the whole
   // apply before anything moves; a platform that simply has no dock is not one -- `applyDockPreset`
   // drops the dock and applies the rest.
@@ -245,6 +246,30 @@ export function usePresets({
         setView(presetWorkspaceView(preset));
       }
       const presetFocusView = preset.focusView ? normalizeFocusView(preset.focusView) : null;
+      const presetSurfaceOpacity =
+        typeof preset.surfaceOpacity === "number" ? preset.surfaceOpacity : null;
+      let surfaceOpacityShadowApplied = false;
+      if (
+        presetSurfaceOpacity !== null &&
+        (presetSurfaceOpacity === 0) !== (surfaceOpacity === 0)
+      ) {
+        try {
+          surfaceOpacityShadowApplied = await applySurfaceOpacity(presetSurfaceOpacity);
+        } catch (error) {
+          write({ activeId: null, dirty: false });
+          error.stage = "window";
+          throw error;
+        }
+      }
+      const rollbackSurfaceOpacityShadow = async () => {
+        if (!surfaceOpacityShadowApplied) return;
+        try {
+          await applySurfaceOpacity(surfaceOpacity);
+        } catch (_) {
+          // Preserve the original transition failure. The normal React effect
+          // retries the persisted opacity's native state on the next boundary.
+        }
+      };
       let windowBoundsAppliedByDockExit;
       try {
         windowBoundsAppliedByDockExit = await applyDockPreset(presetDock, {
@@ -253,6 +278,7 @@ export function usePresets({
           pinned: preset.windowPinned,
         });
       } catch (error) {
+        await rollbackSurfaceOpacityShadow();
         write({ activeId: null, dirty: false });
         error.stage = "dock";
         throw error;
@@ -278,6 +304,7 @@ export function usePresets({
           }
           await applyWindowBounds(preset.windowBounds);
         } catch (error) {
+          await rollbackSurfaceOpacityShadow();
           write({ activeId: null, dirty: false });
           error.stage = "window";
           throw error;
@@ -306,6 +333,8 @@ export function usePresets({
       setSurfaceOpacity,
       setGlassEnabled,
       applyDockPreset,
+      applySurfaceOpacity,
+      surfaceOpacity,
       suppressPresetDivergence,
       applyLoudnessProfileSnapshot,
       preflightApplySnapshot,

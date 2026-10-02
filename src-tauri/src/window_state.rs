@@ -67,6 +67,21 @@ pub fn startup_window_is_frameless(settings: &Value, presets: &Value) -> bool {
   focus_view_is_frameless(owner)
 }
 
+pub fn startup_surface_opacity(settings: &Value, presets: &Value) -> u8 {
+  fn valid_surface_opacity(owner: &Value) -> Option<u8> {
+    owner
+      .get("surfaceOpacity")
+      .and_then(Value::as_u64)
+      .filter(|opacity| *opacity <= 100)
+      .map(|opacity| opacity as u8)
+  }
+
+  clean_active_preset(presets)
+    .and_then(valid_surface_opacity)
+    .or_else(|| valid_surface_opacity(settings))
+    .unwrap_or(100)
+}
+
 /// First-run content size in logical px; the physical size comes from the target monitor's scale.
 pub const DEFAULT_WINDOW_LOGICAL_WIDTH: f64 = 1280.0;
 pub const DEFAULT_WINDOW_LOGICAL_HEIGHT: f64 = 800.0;
@@ -749,5 +764,39 @@ mod tests {
     });
 
     assert!(!startup_window_is_frameless(&settings, &presets));
+  }
+
+  #[test]
+  fn clean_active_preset_supplies_startup_surface_opacity() {
+    let settings = json!({ "surfaceOpacity": 80 });
+    let presets = json!({
+      "list": [{ "id": "mix", "surfaceOpacity": 0 }],
+      "activeId": "mix",
+      "dirty": false
+    });
+
+    assert_eq!(startup_surface_opacity(&settings, &presets), 0);
+  }
+
+  #[test]
+  fn dirty_or_invalid_preset_uses_current_surface_opacity() {
+    let settings = json!({ "surfaceOpacity": 64 });
+    let presets = json!({
+      "list": [{ "id": "mix", "surfaceOpacity": 101 }],
+      "activeId": "mix",
+      "dirty": true
+    });
+
+    assert_eq!(startup_surface_opacity(&settings, &presets), 64);
+    let clean_invalid = json!({
+      "list": [{ "id": "mix", "surfaceOpacity": 101 }],
+      "activeId": "mix",
+      "dirty": false
+    });
+    assert_eq!(startup_surface_opacity(&settings, &clean_invalid), 64);
+    assert_eq!(
+      startup_surface_opacity(&json!({ "surfaceOpacity": -1 }), &json!({})),
+      100
+    );
   }
 }

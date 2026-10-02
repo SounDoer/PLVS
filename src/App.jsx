@@ -89,6 +89,10 @@ import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
 import { setWindowDecorations, useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
+import {
+  syncSurfaceOpacityWindowShadow,
+  useSurfaceOpacityWindowShadow,
+} from "./hooks/useSurfaceOpacityWindowShadow.js";
 import { setGlassEffect, useGlassEffect } from "./hooks/useGlassEffect.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { automaticOutputChangeNotice } from "./lib/captureHealth.js";
@@ -416,11 +420,21 @@ function AppContent() {
   // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
   // when docked flips false the effect re-runs and re-asserts the user's values.
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
+  useSurfaceOpacityWindowShadow(surfaceOpacity);
 
   const applyViewState = useCallback(
     async (next, { changed = [] } = {}) => {
       const rollback = [];
       try {
+        if (
+          changed.includes("view.surfaceOpacity") &&
+          (next.surfaceOpacity === 0) !== (surfaceOpacity === 0)
+        ) {
+          const applied = await syncSurfaceOpacityWindowShadow(next.surfaceOpacity);
+          if (applied) {
+            rollback.push(() => syncSurfaceOpacityWindowShadow(surfaceOpacity));
+          }
+        }
         if (!docked && isTauri()) {
           const win = getCurrentWindow();
           if (changed.includes("view.pinned")) {
@@ -476,6 +490,7 @@ function AppContent() {
       glassEnabled,
       pinned,
       resolvedTheme.colorScheme,
+      surfaceOpacity,
       setFocusView,
       setGlassEnabledStored,
       setSurfaceOpacityStored,
@@ -834,6 +849,7 @@ function AppContent() {
     setGlassEnabled: setGlassEnabledStored,
     dock: presetDockState,
     applyDockPreset,
+    applySurfaceOpacity: syncSurfaceOpacityWindowShadow,
     // A platform without dock support is not a refusal: applyDockPreset drops the dock and applies
     // the rest of the preset.
     dockPresetUnavailableReason: (presetDock) =>

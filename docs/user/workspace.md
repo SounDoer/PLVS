@@ -51,6 +51,10 @@ The Views menu pares the window down for monitoring: **Always on Top**, **Compac
 the transparency of Workspace, panel, and Dock fills; text, measurement data, states, focus rings,
 controls, and borders remain opaque for legibility.
 
+On macOS, setting **Surface Opacity** to 0 also removes the native window shadow. This prevents
+AppKit from drawing shadow-shaped outlines around the remaining opaque text and meter graphics;
+raising Surface Opacity above 0 restores the normal window shadow.
+
 On Windows 11, **Hide Chrome** also hides the outer system window outline; turning it off restores
 the system outline. **Auto-hide Controls** also uses a chromeless window, so the outline stays hidden
 while that mode is enabled. Normal windows retain their native shadow in either mode.

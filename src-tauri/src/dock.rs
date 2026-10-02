@@ -421,17 +421,17 @@ fn restore_window_form<R: tauri::Runtime>(
 /// effort), so callers falling back to the normal UI don't inherit a chromeless,
 /// topmost strip window.
 ///
-/// `previously_docked` says which form to roll back to, and callers know it
-/// statically. It cannot be read off the `DockedFlag` here: `enter_dock` raises
-/// that flag before calling in, so by this point it always reads "docked".
+/// `previous_shadow` is explicit because Tauri cannot read that native state.
+/// Callers know whether the previous form was the shadowless Dock or a normal
+/// window whose desired shadow is owned by `NormalWindowShadow`.
 pub fn apply_dock_form<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   edge: DockEdge,
   monitor_name: Option<&str>,
   logical_height: u32,
-  previously_docked: bool,
+  previous_shadow: bool,
 ) -> Result<Option<String>, String> {
-  let previous_form = capture_window_form(window, !previously_docked)?;
+  let previous_form = capture_window_form(window, previous_shadow)?;
   let logical_height = clamp_dock_height(logical_height);
   let (wa, scale, resolved_monitor) = work_area_and_scale(window, monitor_name)?;
   #[cfg(target_os = "windows")]
@@ -477,6 +477,7 @@ pub fn apply_dock_form<R: tauri::Runtime>(
 pub fn enter_dock<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   flag: tauri::State<'_, DockedFlag>,
+  normal_shadow: tauri::State<'_, crate::window_chrome::NormalWindowShadow>,
   edge: DockEdge,
   reserve_space: Option<bool>,
   monitor: Option<String>,
@@ -484,7 +485,8 @@ pub fn enter_dock<R: tauri::Runtime>(
 ) -> Result<DockStateRecord, String> {
   let previous = read_dock_state(window.app_handle());
   let was_docked = flag.0.load(Ordering::Relaxed);
-  let previous_form = capture_window_form(&window, !was_docked)?;
+  let previous_shadow = !was_docked && normal_shadow.load();
+  let previous_form = capture_window_form(&window, previous_shadow)?;
   let requested_reserve_space = reserve_space_with_support(
     reserve_space.unwrap_or_else(|| {
       previous
@@ -509,7 +511,7 @@ pub fn enter_dock<R: tauri::Runtime>(
       save_window_bounds(&window);
     }
     flag.0.store(true, Ordering::Relaxed);
-    let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, was_docked)?;
+    let monitor = apply_dock_form(&window, edge, monitor.as_deref(), height, previous_shadow)?;
     let reserve_space = requested_reserve_space;
     #[cfg(target_os = "windows")]
     let mut reserve_space = reserve_space;
@@ -581,6 +583,7 @@ pub fn enter_dock<R: tauri::Runtime>(
 pub fn exit_dock<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   flag: tauri::State<'_, DockedFlag>,
+  normal_shadow: tauri::State<'_, crate::window_chrome::NormalWindowShadow>,
   decorations: bool,
   always_on_top: bool,
   bounds: Option<WindowBounds>,
@@ -609,10 +612,10 @@ pub fn exit_dock<R: tauri::Runtime>(
     .map_err(|e| format!("decorations: {e}"))?;
   #[cfg(target_os = "windows")]
   crate::window_chrome::set_native_border(&window, decorations);
-  // Normal windows keep the platform shadow even when borderless. Startup
-  // relies on that DWM frame when pairing outer position with inner size; Dock
-  // temporarily disables it for the strip, so restore it before normal bounds.
-  let _ = window.set_shadow(true);
+  // Restore the current normal-window shadow before geometry. On macOS zero
+  // surface opacity deliberately has no native shadow; other normal forms keep
+  // it even when borderless.
+  let _ = window.set_shadow(normal_shadow.load());
   window
     .set_always_on_top(always_on_top)
     .map_err(|e| format!("always on top: {e}"))?;
@@ -796,7 +799,7 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
     state.edge,
     state.monitor.as_deref(),
     state.height,
-    true,
+    false,
   )?;
   #[cfg(target_os = "windows")]
   if state.reserve_space

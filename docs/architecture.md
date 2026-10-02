@@ -254,7 +254,9 @@ shell surfaces, panels, fullscreen, file-summary shell, and Dock shell. Borders,
 focus/state marks, and Canvas/SVG measurement data do not inherit that opacity. Floating overlays
 use opaque Raised surfaces; editors and dialogs use opaque Modal surfaces. Persisted `panelOpacity`
 values are migrated to the renamed field when Settings, Presets, or configuration profiles are
-read.
+read. Rust owns the native shadow policy: on macOS a normal window disables its shadow exactly at
+zero surface opacity because AppKit otherwise derives a fragmented shadow from the remaining opaque
+content; Dock remains shadowless, and Windows retains its normal-window shadow.
 
 The old `builtinThemes.js`, `buildThemeTokens.js` and `legacy/resolveV1Theme.js` are not part of the
 runtime theme pipeline; they are kept only for the frozen V1 migration, fixtures and regression tests.

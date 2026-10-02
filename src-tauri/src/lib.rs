@@ -58,8 +58,8 @@ pub use audio::{
 
 use crate::window_state::{
   clamp_to_visible, clean_active_preset_window_bounds, default_window_bounds, primary_fit_target,
-  startup_window_is_frameless, MonitorRect, WindowBounds, DEFAULT_WINDOW_LOGICAL_HEIGHT,
-  DEFAULT_WINDOW_LOGICAL_WIDTH,
+  startup_surface_opacity, startup_window_is_frameless, MonitorRect, WindowBounds,
+  DEFAULT_WINDOW_LOGICAL_HEIGHT, DEFAULT_WINDOW_LOGICAL_WIDTH,
 };
 use state::AppState;
 
@@ -208,6 +208,7 @@ pub fn run() {
       std::sync::atomic::AtomicBool::new(false),
     )))
     .manage(dock::DockReservationLease::default())
+    .manage(window_chrome::NormalWindowShadow::default())
     .manage(coordinator::RuntimeOperationCoordinator::default())
     .manage(AppLaunchContext {
       isolated_app_data: startup_test_root.clone(),
@@ -271,6 +272,7 @@ pub fn run() {
       glass_effect::set_glass_effect,
       taskbar_theme::taskbar_color_scheme,
       window_chrome::sync_main_window_chrome,
+      window_chrome::sync_surface_opacity_shadow,
       agent_control::broker::agent_control_frontend_ready,
       agent_control::broker::agent_control_frontend_not_ready,
       agent_control::broker::agent_control_respond,
@@ -469,12 +471,19 @@ pub fn run() {
       let boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       let initial_decorations = !boot_docked && !startup_window_is_frameless(&settings, &presets);
+      let normal_shadow = window_chrome::normal_window_shadow_for_surface_opacity(
+        startup_surface_opacity(&settings, &presets),
+      );
+      app
+        .state::<window_chrome::NormalWindowShadow>()
+        .store(normal_shadow);
       let window_title = env!("PLVS_APP_NAME");
 
       let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title(window_title)
         .resizable(true)
         .decorations(initial_decorations)
+        .shadow(!boot_docked && normal_shadow)
         .visible(false);
       #[cfg(any(target_os = "windows", target_os = "macos"))]
       let builder = builder.transparent(true);
@@ -503,12 +512,15 @@ pub fn run() {
           .state::<dock::DockedFlag>()
           .0
           .store(true, std::sync::atomic::Ordering::Relaxed);
-        // Boot: the window was just built in normal form, so a failed dock
-        // restore rolls back to a normal window (shadow on) even when
-        // `initial_decorations` made it borderless.
-        if let Err(e) =
-          dock::apply_dock_form(&window, d.edge, d.monitor.as_deref(), d.height, false)
-        {
+        // Boot: the window was just built in normal form, so a failed Dock
+        // restore rolls back to the shadow selected for the current opacity.
+        if let Err(e) = dock::apply_dock_form(
+          &window,
+          d.edge,
+          d.monitor.as_deref(),
+          d.height,
+          normal_shadow,
+        ) {
           log::warn!("dock restore failed, falling back to normal bounds: {e}");
           app
             .state::<dock::DockedFlag>()
