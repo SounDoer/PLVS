@@ -159,4 +159,40 @@ describe("useAxisInteraction", () => {
       window.dispatchEvent(new MouseEvent("mouseup"));
     });
   });
+
+  it("ends an axis drag when the window loses focus", () => {
+    const onRangeChange = vi.fn();
+    const { result } = renderHook(() =>
+      useAxisInteraction({
+        axis: "y",
+        min: -96,
+        max: -12,
+        absMin: -120,
+        absMax: 6,
+        defaultMin: -96,
+        defaultMax: -12,
+        minSpan: 12,
+        scale: "linear",
+        onRangeChange,
+      })
+    );
+    result.current.axisRef.current = {
+      getBoundingClientRect: () => ({ top: 0, left: 0, width: 60, height: 400 }),
+    };
+
+    act(() => {
+      result.current.axisHandlers.onMouseDown({
+        button: 0,
+        preventDefault: vi.fn(),
+        clientY: 100,
+      });
+    });
+    expect(result.current.isDragging).toBe(true);
+
+    act(() => window.dispatchEvent(new Event("blur")));
+    expect(result.current.isDragging).toBe(false);
+
+    act(() => window.dispatchEvent(new MouseEvent("mousemove", { clientY: 200 })));
+    expect(onRangeChange).not.toHaveBeenCalled();
+  });
 });

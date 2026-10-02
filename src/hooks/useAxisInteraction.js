@@ -151,12 +151,14 @@ export function useAxisInteraction({
         releaseActive();
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", cleanup);
+        window.removeEventListener("blur", cleanup);
         moveCleanupRef.current = null;
       };
       moveCleanupRef.current?.();
       moveCleanupRef.current = cleanup;
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", cleanup);
+      window.addEventListener("blur", cleanup);
     },
     [
       absMax,
