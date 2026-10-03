@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-10-04
+
+### Fixed
+
+- On macOS, starting System playback capture while the selected output is completely idle no longer
+  stops after five seconds; PLVS now wakes the device silently before applying its running-stream
+  health check.
+
 ## [0.18.1] - 2026-10-03
 
 ### Fixed
