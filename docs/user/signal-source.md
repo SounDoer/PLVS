@@ -13,6 +13,8 @@ default for most sessions.
 
 Monitor whatever your system is currently playing, with no virtual audio routing. On Windows this
 uses WASAPI loopback; on macOS it uses the native system-audio tap available on macOS 14.2 and later.
+On macOS, starting while the selected output is completely idle is supported; PLVS wakes the device
+silently and releases that temporary wake-up as soon as capture begins.
 
 ASIO drivers bypass the Windows audio mixer, so loopback cannot hear them. Set your DAW's audio
 system to WASAPI, or route an ASIO setup through a virtual audio cable such as VB-Cable to a

@@ -38,6 +38,10 @@ pub(crate) const MAX_FRAMES_INFLIGHT: u64 = 120;
 /// silence. Longer than the 2 s device watch, so an Automatic default-output change restarts
 /// capture before this fires.
 pub(crate) const CAPTURE_STALL_TIMEOUT: Duration = Duration::from_secs(5);
+/// Starting a macOS system-output tap can show the one-time recording permission prompt. Keep the
+/// startup allowance separate from the running-stream stall threshold so a user can answer the
+/// prompt without weakening detection after the first callback arrives.
+pub(crate) const CAPTURE_START_TIMEOUT: Duration = Duration::from_secs(30);
 const CAPTURE_WATCH_POLL: Duration = Duration::from_millis(250);
 
 /// Last fatal stream error the backend reported, recorded lock-free from the error callback so the
@@ -140,6 +144,33 @@ pub(crate) fn wait_for_stop_or_stall(
   }
 }
 
+/// Waits for the first backend callback while still honoring an explicit stop. Returns `true` once
+/// capture is active and `false` when the session was stopped before it became active.
+pub(crate) fn wait_for_first_activity_or_stop(
+  stop_rx: &std::sync::mpsc::Receiver<()>,
+  activity: &AtomicU64,
+  timeout: Duration,
+) -> Result<bool, String> {
+  let started = Instant::now();
+  loop {
+    if activity.load(Ordering::Relaxed) > 0 {
+      return Ok(true);
+    }
+    let elapsed = started.elapsed();
+    if elapsed >= timeout {
+      return Err(format!(
+        "Capture did not start: no audio received for {} s.",
+        timeout.as_secs()
+      ));
+    }
+    let wait = CAPTURE_WATCH_POLL.min(timeout.saturating_sub(elapsed));
+    match stop_rx.recv_timeout(wait) {
+      Err(RecvTimeoutError::Timeout) => {}
+      Ok(()) | Err(RecvTimeoutError::Disconnected) => return Ok(false),
+    }
+  }
+}
+
 /// Reports a capture thread that ended on its own (startup failure or stall). Without it the UI
 /// keeps showing LIVE over a frozen, silent meter.
 pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<&str>) {
@@ -157,8 +188,9 @@ pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<
 #[cfg(test)]
 mod capture_watch_tests {
   use super::{
-    capture_stall_message, stream_error_code, wait_for_stop_or_stall, StallWatch,
-    STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE,
+    capture_stall_message, stream_error_code, wait_for_first_activity_or_stop,
+    wait_for_stop_or_stall, StallWatch, STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED,
+    STREAM_ERROR_NONE,
   };
   use std::sync::atomic::{AtomicU64, AtomicU8};
   use std::time::{Duration, Instant};
@@ -211,6 +243,34 @@ mod capture_watch_tests {
     assert_eq!(
       wait_for_stop_or_stall(&stop_rx, Some(&activity), &AtomicU8::new(0)),
       Ok(())
+    );
+  }
+
+  #[test]
+  fn an_existing_callback_completes_startup_immediately() {
+    let (_stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    assert_eq!(
+      wait_for_first_activity_or_stop(&stop_rx, &AtomicU64::new(1), Duration::from_secs(30)),
+      Ok(true)
+    );
+  }
+
+  #[test]
+  fn a_stop_can_cancel_callback_startup_wait() {
+    let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    stop_tx.send(()).unwrap();
+    assert_eq!(
+      wait_for_first_activity_or_stop(&stop_rx, &AtomicU64::new(0), Duration::from_secs(30)),
+      Ok(false)
+    );
+  }
+
+  #[test]
+  fn first_callback_startup_wait_has_its_own_timeout() {
+    let (_stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    assert_eq!(
+      wait_for_first_activity_or_stop(&stop_rx, &AtomicU64::new(0), Duration::ZERO),
+      Err("Capture did not start: no audio received for 0 s.".into())
     );
   }
 
@@ -821,11 +881,11 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   }
 }
 
-/// Create a silence output stream on the same device to keep WASAPI loopback active.
-/// On Windows, WASAPI loopback stops sending callbacks when there's no audio playing.
-/// Playing silence keeps the audio engine active so callbacks continue.
-#[cfg(target_os = "windows")]
-fn create_silence_stream(
+/// Create a zero-filled output stream on the same device as capture. Windows keeps it for the
+/// session so idle WASAPI loopback continues calling back; macOS holds it only until the first
+/// system-output tap callback wakes the aggregate clock.
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub(crate) fn create_silence_output_stream(
   device: &cpal::Device,
   config: &StreamConfig,
   stream_error: Arc<AtomicU8>,
@@ -848,7 +908,7 @@ fn create_silence_stream(
     .ok()?;
 
   if stream.play().is_ok() {
-    log::info!("Silence stream started for WASAPI loopback capture");
+    log::info!("Silence output stream started for capture");
     Some(stream)
   } else {
     log::warn!("Failed to start silence stream");
@@ -901,7 +961,7 @@ where
   let device_id = _device_id;
   #[cfg(target_os = "windows")]
   let _silence_stream = if is_loopback_capture(&device_id) {
-    create_silence_stream(&device, &stream_config, stream_error.clone())
+    create_silence_output_stream(&device, &stream_config, stream_error.clone())
   } else {
     None
   };
@@ -1462,7 +1522,7 @@ mod pcm_buffer_pool_tests {
       .split("pub(crate) fn run_meter_pipeline_bridge_thread")
       .nth(1)
       .expect("meter worker source")
-      .split("fn create_silence_stream")
+      .split("fn create_silence_output_stream")
       .next()
       .expect("meter worker boundary");
     let publish = worker_source

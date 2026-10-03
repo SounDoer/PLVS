@@ -9,14 +9,16 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+use cpal::StreamConfig;
 use tauri::AppHandle;
 
 use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
 use super::cpal_backend::{
-  append_input_devices, collect_outputs, device_id_key, device_list_label, emit_capture_failure,
-  pick_output_by_index, pooled_pcm_buffer_capacity, resolve_default_output,
-  run_meter_pipeline_bridge_thread, wait_for_stop_or_stall, CpalBackend, PcmBufferPool,
-  PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
+  append_input_devices, collect_outputs, create_silence_output_stream, device_id_key,
+  device_list_label, emit_capture_failure, pick_output_by_index, pooled_pcm_buffer_capacity,
+  resolve_default_output, run_meter_pipeline_bridge_thread, wait_for_first_activity_or_stop,
+  wait_for_stop_or_stall, CpalBackend, PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue,
+  CAPTURE_START_TIMEOUT, PCM_QUEUE_CAP,
 };
 use super::device::DeviceInfo;
 use super::device_id;
@@ -96,49 +98,61 @@ pub fn list_devices() -> Result<Vec<DeviceInfo>, String> {
   Ok(out)
 }
 
-fn resolve_tap_uid_channels_rate(device_id: &str) -> Result<(String, u32, u16), String> {
+struct ResolvedTapOutput {
+  uid: String,
+  device: cpal::Device,
+  config: cpal::SupportedStreamConfig,
+}
+
+fn resolved_tap_output(
+  device: cpal::Device,
+  config: cpal::SupportedStreamConfig,
+) -> Result<ResolvedTapOutput, String> {
+  let key = device_id_key(&device)?;
+  let uid = uid_for_output_name(&key).ok_or_else(|| {
+    format!("no Core Audio UID for output device \"{key}\" (macOS 14.2+ tap requires a UID)")
+  })?;
+  Ok(ResolvedTapOutput {
+    uid,
+    device,
+    config,
+  })
+}
+
+fn resolve_tap_output(device_id: &str) -> Result<ResolvedTapOutput, String> {
   if device_id.is_empty() || device_id == "default" {
     let uid = uid_for_default_output()?;
-    let (_dev, cfg) = resolve_default_output()?;
-    return Ok((uid, cfg.sample_rate(), cfg.channels()));
+    let (device, config) = resolve_default_output()?;
+    return Ok(ResolvedTapOutput {
+      uid,
+      device,
+      config,
+    });
   }
   if let Some(n) = device_id::parse_legacy_output_index(device_id) {
-    let (dev, cfg) = pick_output_by_index(n)?;
-    let key = device_id_key(&dev)?;
-    let uid = uid_for_output_name(&key).ok_or_else(|| {
-      format!("no Core Audio UID for output device \"{key}\" (macOS 14.2+ tap requires a UID)")
-    })?;
-    return Ok((uid, cfg.sample_rate(), cfg.channels()));
+    let (device, config) = pick_output_by_index(n)?;
+    return resolved_tap_output(device, config);
   }
   if device_id::is_stable_loopback_id(device_id) {
-    for d in list_loopback_rows_macos()? {
-      if d.id == device_id {
-        let uid = d.core_audio_output_uid.clone().ok_or_else(|| {
-          format!(
-            "Core Audio tap is unavailable for \"{}\" (could not map to device UID)",
-            d.label
-          )
-        })?;
-        return Ok((uid, d.default_sample_rate, d.channels));
+    let mut used_ids = HashSet::new();
+    for (_idx, device, config) in collect_outputs()? {
+      let key = device_id_key(&device)?;
+      if device_id::alloc_loopback_id(&key, &mut used_ids) == device_id {
+        return resolved_tap_output(device, config);
       }
     }
     // Legacy v1 ids (included channel count + sample rate); still resolve to the same Core Audio UID.
     let mut used_legacy = HashSet::new();
-    for (_idx, device, cfg) in collect_outputs()? {
+    for (_idx, device, config) in collect_outputs()? {
       let key = device_id_key(&device)?;
       let legacy_id = device_id::legacy_alloc_loopback_id(
         &key,
-        cfg.channels(),
-        cfg.sample_rate(),
+        config.channels(),
+        config.sample_rate(),
         &mut used_legacy,
       );
       if legacy_id == device_id {
-        let uid = uid_for_output_name(&key).ok_or_else(|| {
-          format!(
-            "Core Audio tap is unavailable for \"{key}\" (could not map legacy id to device UID)"
-          )
-        })?;
-        return Ok((uid, cfg.sample_rate(), cfg.channels()));
+        return resolved_tap_output(device, config);
       }
     }
     return Err(format!("unknown loopback device id: {device_id}"));
@@ -177,7 +191,13 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
     dropped_chunks,
   } = args;
 
-  let (uid, sample_rate, channels) = resolve_tap_uid_channels_rate(&device_id)?;
+  let ResolvedTapOutput {
+    uid,
+    device,
+    config,
+  } = resolve_tap_output(&device_id)?;
+  let sample_rate = config.sample_rate();
+  let channels = config.channels();
   let pcm_pool = PcmBufferPool::new(
     PCM_QUEUE_CAP + 1,
     pooled_pcm_buffer_capacity(sample_rate, channels),
@@ -243,11 +263,34 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
     return Err(msg);
   }
 
-  // A process-specific tap may legitimately stop invoking the IOProc while its target is paused,
-  // just like Windows process loopback without a silence stream. Keep stall detection for the
-  // global tap, whose aggregate callback is expected to remain active.
-  let stall_activity = process_object_ids.is_empty().then_some(activity.as_ref());
-  let outcome = wait_for_stop_or_stall(&stop_rx, stall_activity, &AtomicU8::new(0));
+  // A Core Audio tap started while its output device is completely idle does not receive an IOProc
+  // callback until some render client wakes that device. Prime a global tap with a temporary zero
+  // output stream on the same device, then release it as soon as the first tap callback proves that
+  // the aggregate is clocked. The ordinary 5 s stall watch remains active after startup.
+  let global_tap = process_object_ids.is_empty();
+  let outcome = if global_tap {
+    let stream_config = StreamConfig {
+      channels,
+      sample_rate: config.sample_rate(),
+      buffer_size: cpal::BufferSize::Default,
+    };
+    match create_silence_output_stream(&device, &stream_config, Arc::new(AtomicU8::new(0))) {
+      Some(primer) => {
+        let startup =
+          wait_for_first_activity_or_stop(&stop_rx, activity.as_ref(), CAPTURE_START_TIMEOUT);
+        drop(primer);
+        match startup {
+          Ok(true) => wait_for_stop_or_stall(&stop_rx, Some(activity.as_ref()), &AtomicU8::new(0)),
+          Ok(false) => Ok(()),
+          Err(error) => Err(error),
+        }
+      }
+      None => Err("Capture did not start: failed to wake the audio output device.".into()),
+    }
+  } else {
+    // A process-specific tap may legitimately stop invoking the IOProc while its target is paused.
+    wait_for_stop_or_stall(&stop_rx, None, &AtomicU8::new(0))
+  };
 
   let mut userdata_out: *mut c_void = std::ptr::null_mut();
   unsafe {
