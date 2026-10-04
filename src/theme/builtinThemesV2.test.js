@@ -23,14 +23,20 @@ describe("Theme V2 builtins", () => {
   });
 
   it.each([
-    ["plvs-dark", "status-plvs", "frequency-plvs"],
-    ["plvs-light", "status-plvs", "frequency-plvs"],
-  ])("builds %s from its named Status and Frequency presets", (id, statusId, frequencyId) => {
-    expect(BUILTIN_THEMES_V2[id].palettes.status).toEqual(applyPalettePreset("status", statusId));
-    expect(BUILTIN_THEMES_V2[id].palettes.frequency).toEqual(
-      applyPalettePreset("frequency", frequencyId)
-    );
-  });
+    ["plvs-dark", "status-plvs", "frequency-plvs", "interface-plvs"],
+    ["plvs-light", "status-plvs", "frequency-plvs", "interface-plvs"],
+  ])(
+    "builds %s from its named simple palette presets",
+    (id, statusId, frequencyId, interfaceId) => {
+      expect(BUILTIN_THEMES_V2[id].palettes.status).toEqual(applyPalettePreset("status", statusId));
+      expect(BUILTIN_THEMES_V2[id].palettes.frequency).toEqual(
+        applyPalettePreset("frequency", frequencyId)
+      );
+      expect(BUILTIN_THEMES_V2[id].palettes.interface).toEqual(
+        applyPalettePreset("interface", interfaceId)
+      );
+    }
+  );
 
   it("is deeply immutable and falls back to Dark", () => {
     expect(Object.isFrozen(BUILTIN_THEMES_V2["plvs-dark"].core)).toBe(true);

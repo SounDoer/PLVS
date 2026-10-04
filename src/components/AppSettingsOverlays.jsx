@@ -250,6 +250,7 @@ export function AppSettingsOverlays({
           onName={editor.setName}
           onColorScheme={editor.updateColorScheme}
           onCore={editor.updateCore}
+          onResetCore={editor.resetCore}
           onPaletteColor={editor.updatePaletteColor}
           onIntensityStop={editor.updateIntensityStop}
           onIntensityStops={editor.updateIntensityStops}

@@ -10,7 +10,7 @@ import {
 
 describe("palette presets", () => {
   it("publishes stable kind-scoped preset IDs", () => {
-    expect(PALETTE_KINDS).toEqual(["status", "intensity", "frequency"]);
+    expect(PALETTE_KINDS).toEqual(["status", "intensity", "frequency", "interface"]);
     for (const kind of PALETTE_KINDS) {
       const presets = listPalettePresets(kind);
       expect(presets.length).toBeGreaterThan(0);
@@ -21,6 +21,9 @@ describe("palette presets", () => {
     ]);
     expect(listPalettePresets("frequency").map(({ id, label }) => [id, label])).toEqual([
       ["frequency-plvs", "PLVS"],
+    ]);
+    expect(listPalettePresets("interface").map(({ id, label }) => [id, label])).toEqual([
+      ["interface-plvs", "PLVS"],
     ]);
   });
 

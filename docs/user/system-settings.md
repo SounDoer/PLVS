@@ -71,17 +71,18 @@ and can be searched or reset to Auto a section at a time. Advanced exposes color
 not fill-opacity controls. Defaults remain 20% / 2% for Spectrum, 20% for Stereo Map, and 12% for
 classic Waveform. Fill opacity is fixed by the app and is not stored in or exported with Themes.
 Palette stop positions, the theme name, and Dark / Light appearance remain editable.
+Core Colors can be reset together to the built-in defaults for the Theme's current Dark or Light
+appearance; the reset is recorded as one undoable edit.
 Inferno, Viridis, and Magma use eleven evenly sampled anchors from their standard Matplotlib color
 maps; Monochrome needs only its black and white endpoints. Selecting a palette stores an editable
 snapshot in the Theme, so later app updates do not recolor a saved custom Theme. After you edit the
 Intensity stops, that Custom version remains available while you compare other presets; **Reset
 Custom** is the explicit action that discards it. **Add Stop** sits after the stop list.
-Status and Frequency each offer one **PLVS** palette designed to remain vivid and legible on both
-Dark and Light panel surfaces. Changing Dark / Light appearance does not rewrite an already
-selected palette. Their preset dropdowns stay hidden because there is only one choice; after you
-customize one of these palettes, **Reset to PLVS** restores it after an inline confirmation. Reset
-actions stay in place while defaults are active, but appear dimmed and cannot be armed until there
-is something to restore.
+Status, Frequency, and Interface each offer one **PLVS** palette shared by Dark and Light. Changing
+Dark / Light appearance does not rewrite an already selected palette. Their preset dropdowns stay
+hidden because there is only one choice; after you customize one of these palettes, **Reset to
+PLVS** restores it after an inline confirmation. Reset actions stay in place while defaults are
+active, but appear dimmed and cannot be armed until there is something to restore.
 
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas

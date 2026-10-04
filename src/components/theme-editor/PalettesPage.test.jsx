@@ -93,3 +93,27 @@ it("keeps Custom intensity stops across preset comparisons until Reset Custom", 
   fireEvent.click(screen.getByLabelText("intensity palette preset"));
   expect(screen.queryByRole("option", { name: "Custom" })).toBeNull();
 });
+
+it("offers the shared PLVS reset for a customized Interface palette", () => {
+  const draft = structuredClone(BUILTIN_THEMES_V2["plvs-dark"]);
+  draft.palettes.interface = {
+    ...draft.palettes.interface,
+    presetId: null,
+    success: "#000000",
+  };
+  const onApplyPreset = vi.fn();
+
+  render(
+    <PalettesPage
+      draft={draft}
+      onColor={vi.fn()}
+      onStop={vi.fn()}
+      onStops={vi.fn()}
+      onApplyPreset={onApplyPreset}
+    />
+  );
+
+  fireEvent.click(screen.getByLabelText("Reset interface palette to PLVS"));
+  fireEvent.click(screen.getByLabelText("Confirm reset interface palette to PLVS"));
+  expect(onApplyPreset).toHaveBeenCalledWith("interface", "interface-plvs");
+});

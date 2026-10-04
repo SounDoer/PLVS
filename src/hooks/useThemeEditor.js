@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { themeRuntime } from "../theme/themeRuntime.js";
 import { applyPalettePreset } from "../theme/palettePresets.js";
 import { normalizeThemeDocumentShape, normalizeThemeName } from "../theme/themeSchema.js";
@@ -142,6 +143,15 @@ export function useThemeEditor(opts) {
   const updateCore = useCallback(
     (key, value) =>
       edit((draft) => ({ ...draft, core: { ...draft.core, [key]: value } }), `core:${key}`),
+    [edit]
+  );
+
+  const resetCore = useCallback(
+    () =>
+      edit((draft) => {
+        const builtin = BUILTIN_THEMES_V2[`plvs-${draft.colorScheme}`];
+        return { ...draft, core: structuredClone(builtin.core) };
+      }, "core:reset"),
     [edit]
   );
 
@@ -304,6 +314,7 @@ export function useThemeEditor(opts) {
     setName,
     updateColorScheme,
     updateCore,
+    resetCore,
     updatePaletteColor,
     updateIntensityStop,
     updateIntensityStops,

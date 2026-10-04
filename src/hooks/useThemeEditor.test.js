@@ -96,6 +96,21 @@ describe("useThemeEditor", () => {
     expect(result.current.draft.overrides).not.toHaveProperty("waveform.snapshot");
   });
 
+  it("resets the whole Core to the current Appearance defaults as one undoable edit", () => {
+    const publish = vi.fn();
+    const { result } = setup(publish);
+    act(() => result.current.beginCreate("S"));
+    act(() => result.current.updateColorScheme("light"));
+
+    const beforeReset = structuredClone(result.current.draft.core);
+    act(() => result.current.resetCore());
+    expect(result.current.draft.core).toEqual(BUILTIN_THEMES_V2["plvs-light"].core);
+
+    act(() => result.current.undo());
+    expect(result.current.draft.core).toEqual(beforeReset);
+    expect(result.current.draft.colorScheme).toBe("light");
+  });
+
   it("undoes and redoes coalesced changes without writing persistence", () => {
     const publish = vi.fn();
     const { result } = setup(publish);

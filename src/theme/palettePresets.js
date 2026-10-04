@@ -90,6 +90,13 @@ const PRESETS = Object.freeze({
       value: Object.freeze({ low: "#ff2d3d", mid: "#fb923c", high: "#356dff" }),
     }),
   ]),
+  interface: Object.freeze([
+    Object.freeze({
+      id: "interface-plvs",
+      label: "PLVS",
+      value: Object.freeze({ success: "#209a6e", warning: "#da8d08", danger: "#e43b46" }),
+    }),
+  ]),
 });
 
 export const PALETTE_KINDS = Object.freeze(Object.keys(PRESETS));

@@ -83,13 +83,25 @@ describe("ThemeEditor", () => {
     expect(screen.queryByLabelText("Workspace alpha")).toBeNull();
   });
 
-  it("groups Status, Intensity, and Frequency on one palettes page", () => {
+  it("resets Core Colors as one confirmed action", () => {
+    const draft = structuredClone(DRAFT);
+    draft.core.workspace = "#123456";
+    const onResetCore = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} onResetCore={onResetCore} />);
+
+    fireEvent.click(screen.getByLabelText("Reset Core Colors to Dark defaults"));
+    fireEvent.click(screen.getByLabelText("Confirm reset Core Colors"));
+    expect(onResetCore).toHaveBeenCalledOnce();
+  });
+
+  it("groups Status, Intensity, Frequency, and Interface on one palettes page", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
 
     expect(screen.getByText("Status")).toBeTruthy();
     expect(screen.getByText("Intensity")).toBeTruthy();
     expect(screen.getByText("Frequency")).toBeTruthy();
+    expect(screen.getByText("Interface")).toBeTruthy();
     expect(screen.getByLabelText("Intensity palette preview")).toBeTruthy();
   });
 
@@ -115,12 +127,17 @@ describe("ThemeEditor", () => {
 
     expect(screen.queryByLabelText("status palette preset")).toBeNull();
     expect(screen.queryByLabelText("frequency palette preset")).toBeNull();
+    expect(screen.queryByLabelText("interface palette preset")).toBeNull();
     expect(screen.getByLabelText("Reset status palette to PLVS").disabled).toBe(true);
     expect(screen.getByLabelText("Reset frequency palette to PLVS").disabled).toBe(true);
+    expect(screen.getByLabelText("Reset interface palette to PLVS").disabled).toBe(true);
     expect(document.querySelector('[data-palette-preset-action="status"]').className).toContain(
       "w-10"
     );
     expect(document.querySelector('[data-palette-preset-action="frequency"]').className).toContain(
+      "w-10"
+    );
+    expect(document.querySelector('[data-palette-preset-action="interface"]').className).toContain(
       "w-10"
     );
   });
@@ -129,6 +146,7 @@ describe("ThemeEditor", () => {
     const draft = structuredClone(DRAFT);
     draft.palettes.status.safe = "#abcdef";
     draft.palettes.frequency.low = "#fedcba";
+    draft.palettes.interface.success = "#123456";
     const onApplyPreset = vi.fn();
     render(<ThemeEditor {...BASE_PROPS} draft={draft} onApplyPreset={onApplyPreset} />);
     fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
@@ -137,8 +155,11 @@ describe("ThemeEditor", () => {
     fireEvent.click(screen.getByLabelText("Confirm reset status palette to PLVS"));
     fireEvent.click(screen.getByLabelText("Reset frequency palette to PLVS"));
     fireEvent.click(screen.getByLabelText("Confirm reset frequency palette to PLVS"));
+    fireEvent.click(screen.getByLabelText("Reset interface palette to PLVS"));
+    fireEvent.click(screen.getByLabelText("Confirm reset interface palette to PLVS"));
     expect(onApplyPreset).toHaveBeenNthCalledWith(1, "status", "status-plvs");
     expect(onApplyPreset).toHaveBeenNthCalledWith(2, "frequency", "frequency-plvs");
+    expect(onApplyPreset).toHaveBeenNthCalledWith(3, "interface", "interface-plvs");
   });
 
   it("shows curated Advanced roles rather than raw token names", () => {

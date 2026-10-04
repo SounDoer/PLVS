@@ -7,15 +7,7 @@ export function isThemeId(id) {
   return typeof id === "string" && THEME_IDS.includes(id);
 }
 
-function makeBuiltin({
-  id,
-  name,
-  colorScheme,
-  core,
-  statusPresetId,
-  interfacePalette,
-  frequencyPresetId,
-}) {
+function makeBuiltin({ id, name, colorScheme, core, statusPresetId, frequencyPresetId }) {
   return {
     formatVersion: 2,
     semanticsVersion: 3,
@@ -27,10 +19,7 @@ function makeBuiltin({
       status: applyPalettePreset("status", statusPresetId),
       intensity: applyPalettePreset("intensity", "intensity-inferno"),
       frequency: applyPalettePreset("frequency", frequencyPresetId),
-      interface: {
-        presetId: null,
-        ...interfacePalette,
-      },
+      interface: applyPalettePreset("interface", "interface-plvs"),
     },
     overrides: {},
   };
@@ -57,7 +46,6 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       secondaryData: "#008ad9",
     },
     statusPresetId: "status-plvs",
-    interfacePalette: { success: "#209a6e", warning: "#da8d08", danger: "#e43b46" },
     frequencyPresetId: "frequency-plvs",
   }),
   "plvs-light": makeBuiltin({
@@ -73,7 +61,6 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       secondaryData: "#008ad9",
     },
     statusPresetId: "status-plvs",
-    interfacePalette: { success: "#209a6e", warning: "#da8d08", danger: "#e43b46" },
     frequencyPresetId: "frequency-plvs",
   }),
 });

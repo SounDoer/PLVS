@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ColorControl } from "./ColorControl.jsx";
 import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
+import { ResetAction } from "@/components/ResetAction.jsx";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -53,6 +55,7 @@ const CORE_COLORS = [
  *   onName: (s: string) => void,
  *   onColorScheme: (scheme: "dark"|"light") => void,
  *   onCore: (key: string, css: string) => void,
+ *   onResetCore: () => void,
  *   onPaletteColor: (palette: string, key: string, css: string) => void,
  *   onIntensityStop: (index: number, css: string) => void,
  *   onIntensityStops: (stops: object[]) => void,
@@ -78,6 +81,7 @@ export function ThemeEditor({
   onName,
   onColorScheme = () => {},
   onCore,
+  onResetCore = () => {},
   onPaletteColor,
   onIntensityStop,
   onIntensityStops,
@@ -101,6 +105,10 @@ export function ThemeEditor({
   const [page, setPage] = useState("core");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [focusTarget, setFocusTarget] = useState(null);
+  const builtinCore = BUILTIN_THEMES_V2[`plvs-${draft.colorScheme}`].core;
+  const coreIsDefault = Object.keys(builtinCore).every(
+    (key) => draft.core[key] === builtinCore[key]
+  );
   const clearFocusTarget = useCallback(() => setFocusTarget(null), []);
 
   useEffect(() => {
@@ -320,7 +328,19 @@ export function ThemeEditor({
           {page === "core" ? (
             <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
               <div>
-                <Label id="theme-core-title">Core Colors</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label id="theme-core-title">Core Colors</Label>
+                  <ResetAction
+                    data-core-reset-action
+                    label={`Reset Core Colors to ${draft.colorScheme === "dark" ? "Dark" : "Light"} defaults`}
+                    tip={`Reset to ${draft.colorScheme === "dark" ? "Dark" : "Light"} Defaults`}
+                    defaultTip={`Using ${draft.colorScheme === "dark" ? "Dark" : "Light"} Defaults`}
+                    isDefault={coreIsDefault}
+                    onReset={onResetCore}
+                    confirmLabel="Confirm reset Core Colors"
+                    cancelLabel="Cancel reset Core Colors"
+                  />
+                </div>
                 <p className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
                   Six choices shape the whole theme. Related colors are generated automatically.
                 </p>
