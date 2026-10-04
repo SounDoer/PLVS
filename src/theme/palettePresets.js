@@ -54,13 +54,8 @@ const PRESETS = Object.freeze({
   status: Object.freeze([
     Object.freeze({
       id: "status-plvs",
-      label: "PLVS Dark",
+      label: "PLVS",
       value: Object.freeze({ safe: "#34d399", warning: "#fbbf24", critical: "#f97373" }),
-    }),
-    Object.freeze({
-      id: "status-plvs-light",
-      label: "PLVS Light",
-      value: Object.freeze({ safe: "#18976a", warning: "#9f6200", critical: "#d03535" }),
     }),
   ]),
   intensity: Object.freeze([
@@ -91,13 +86,8 @@ const PRESETS = Object.freeze({
   frequency: Object.freeze([
     Object.freeze({
       id: "frequency-plvs",
-      label: "PLVS Dark",
+      label: "PLVS",
       value: Object.freeze({ low: "#ff2d3d", mid: "#fb923c", high: "#356dff" }),
-    }),
-    Object.freeze({
-      id: "frequency-plvs-light",
-      label: "PLVS Light",
-      value: Object.freeze({ low: "#d9481c", mid: "#c06f00", high: "#3730a3" }),
     }),
   ]),
 });

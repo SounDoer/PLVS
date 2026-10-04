@@ -410,7 +410,7 @@ describe("SettingsPanel", () => {
     expect(content.className).not.toMatch(/(?:^|\s)w-72(?:\s|$)/);
   });
 
-  it("previews all six independently authored core colors", () => {
+  it("previews every authored core color", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
 
@@ -422,7 +422,6 @@ describe("SettingsPanel", () => {
       .map((node) => node.style.backgroundColor || node.style.color)
       .filter(Boolean);
 
-    expect(dark.interfaceAccent).not.toBe(dark.primaryData);
     for (const key of [
       "workspace",
       "surface",

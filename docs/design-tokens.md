@@ -281,11 +281,11 @@ Values come from the compiled Theme; see the built-in snapshot referenced under 
 | `--ui-waveform-frequency-neutral` | Broadband / unavailable spectral color  |
 | `--ui-waveform-centroid`          | Spectral centroid overlay trace         |
 
-Built-in values are authored per color scheme rather than transformed at runtime. Dark and Light
-share semantic hue direction—orange Primary Data, blue Secondary Data, red/orange/blue Frequency,
-and green/amber/red Status—but may use different lightness and chroma. Accent is independently
-authored from Primary Data, Interface feedback is independently authored from measurement Status,
-and both schemes retain the same canonical Inferno Intensity stops.
+Built-in neutral shell values are authored per color scheme rather than transformed at runtime.
+Dark and Light share the same orange Accent and Primary Data, blue Secondary Data,
+red/orange/blue Frequency, green/amber/red Status, and canonical Inferno Intensity stops.
+Interface feedback remains independently authored for each scheme and independently from
+measurement Status.
 
 The deterministic Semantic Gallery measures text and content contrast plus key data, snapshot,
 Status, and Frequency distances in normal color, protanopia, deuteranopia, tritanopia, and

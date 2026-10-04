@@ -1,5 +1,5 @@
 import { RangeInput } from "@/components/ui/range-input.jsx";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { ColorControl } from "../ColorControl.jsx";
 import { IconButton } from "../IconButton.jsx";
 import { Label } from "../ui/label.jsx";
@@ -55,6 +55,29 @@ function PalettePresetSelect({ kind, palette, onApplyPreset }) {
   );
 }
 
+function PalettePresetControl({ kind, palette, onApplyPreset }) {
+  const presets = listPalettePresets(kind);
+  if (presets.length === 0) return null;
+  if (presets.length > 1) {
+    return <PalettePresetSelect kind={kind} palette={palette} onApplyPreset={onApplyPreset} />;
+  }
+
+  const [preset] = presets;
+  const matchesPreset = findMatchingPalettePresetId(kind, palette) === preset.id;
+  return (
+    <div data-palette-preset-action={kind} className="size-7 shrink-0">
+      {matchesPreset ? null : (
+        <IconButton
+          aria-label={`reset ${kind} palette to ${preset.label}`}
+          tip={`Reset to ${preset.label}`}
+          icon={<RotateCcw className="size-[length:var(--ui-icon-management-action)]" />}
+          onClick={() => onApplyPreset(kind, preset.id)}
+        />
+      )}
+    </div>
+  );
+}
+
 function PaletteStrip({ colors }) {
   return (
     <div
@@ -66,14 +89,11 @@ function PaletteStrip({ colors }) {
 }
 
 function SimplePalette({ title, description, kind, palette, colors, onColor, onApplyPreset }) {
-  const presets = listPalettePresets(kind).length > 0;
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <Label>{title}</Label>
-        {presets ? (
-          <PalettePresetSelect kind={kind} palette={palette} onApplyPreset={onApplyPreset} />
-        ) : null}
+        <PalettePresetControl kind={kind} palette={palette} onApplyPreset={onApplyPreset} />
       </div>
       <p className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">{description}</p>
       <PaletteStrip colors={colors.map(([key]) => palette[key])} />

@@ -104,7 +104,7 @@ describe("ThemeEditor", () => {
     expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Custom");
   });
 
-  it("identifies the independently tuned Light palette presets by value", () => {
+  it("does not show selectors or reset actions for the shared PLVS palettes", () => {
     const draft = makeCustomThemeV2FromBase(
       BUILTIN_THEMES_V2["plvs-light"],
       "Light Theme",
@@ -113,8 +113,30 @@ describe("ThemeEditor", () => {
     render(<ThemeEditor {...BASE_PROPS} draft={draft} />);
     fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
 
-    expect(screen.getByLabelText("status palette preset").textContent).toContain("PLVS Light");
-    expect(screen.getByLabelText("frequency palette preset").textContent).toContain("PLVS Light");
+    expect(screen.queryByLabelText("status palette preset")).toBeNull();
+    expect(screen.queryByLabelText("frequency palette preset")).toBeNull();
+    expect(screen.queryByLabelText("reset status palette to PLVS")).toBeNull();
+    expect(screen.queryByLabelText("reset frequency palette to PLVS")).toBeNull();
+    expect(document.querySelector('[data-palette-preset-action="status"]').className).toContain(
+      "size-7"
+    );
+    expect(document.querySelector('[data-palette-preset-action="frequency"]').className).toContain(
+      "size-7"
+    );
+  });
+
+  it("offers one-click PLVS resets after simple palettes are customized", () => {
+    const draft = structuredClone(DRAFT);
+    draft.palettes.status.safe = "#abcdef";
+    draft.palettes.frequency.low = "#fedcba";
+    const onApplyPreset = vi.fn();
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} onApplyPreset={onApplyPreset} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
+
+    fireEvent.click(screen.getByLabelText("reset status palette to PLVS"));
+    fireEvent.click(screen.getByLabelText("reset frequency palette to PLVS"));
+    expect(onApplyPreset).toHaveBeenNthCalledWith(1, "status", "status-plvs");
+    expect(onApplyPreset).toHaveBeenNthCalledWith(2, "frequency", "frequency-plvs");
   });
 
   it("shows curated Advanced roles rather than raw token names", () => {
@@ -252,7 +274,7 @@ describe("ThemeEditor", () => {
   });
 
   it.each([
-    ["Palettes", "status palette preset", "PLVS Dark"],
+    ["Palettes", "intensity palette preset", "Inferno"],
     ["Advanced", "Panel Surface mode", "Auto"],
   ])("dresses the %s dropdown as the shared Select, not a bare <select>", (tab, label, shown) => {
     render(<ThemeEditor {...BASE_PROPS} />);

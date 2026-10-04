@@ -24,7 +24,7 @@ describe("Theme V2 builtins", () => {
 
   it.each([
     ["plvs-dark", "status-plvs", "frequency-plvs"],
-    ["plvs-light", "status-plvs-light", "frequency-plvs-light"],
+    ["plvs-light", "status-plvs", "frequency-plvs"],
   ])("builds %s from its named Status and Frequency presets", (id, statusId, frequencyId) => {
     expect(BUILTIN_THEMES_V2[id].palettes.status).toEqual(applyPalettePreset("status", statusId));
     expect(BUILTIN_THEMES_V2[id].palettes.frequency).toEqual(
