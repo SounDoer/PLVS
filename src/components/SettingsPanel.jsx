@@ -241,6 +241,15 @@ export function SettingsPanel({
   const selectedDialogueVadEngine =
     DIALOGUE_VAD_ENGINE_OPTIONS.find((option) => option.id === dialogueVadEngine) ??
     DIALOGUE_VAD_ENGINE_OPTIONS[0];
+  const channelLayouts = layoutsForChannelCount(channelCount);
+  const selectedStandardLayout = channelLayouts.find((layout) => layout.id === selectedLayoutId);
+  const showChannelLayoutSelect =
+    channelLayouts.length > 1 ||
+    (channelLayouts.length === 1 && (selectedLayoutId === null || selectedLayoutId === "custom"));
+  const channelLayoutLabel =
+    selectedLayoutId === "custom"
+      ? "Custom"
+      : (selectedStandardLayout?.name ?? selectedLayoutId ?? "Unknown");
 
   useLayoutEffect(() => {
     if (settingsOpen) {
@@ -558,22 +567,30 @@ export function SettingsPanel({
                   {channelCount > 0 ? (
                     <div className="flex flex-col gap-0.5">
                       <SettingsRow labelNode={<span className={ROW_LABEL_CLASS}>Layout</span>}>
-                        <Select value={selectedLayoutId ?? ""} onValueChange={setChannelLayout}>
-                          <SelectTrigger
-                            className={SELECT_TRIGGER_CLASS}
-                            aria-label="channel layout"
-                          >
-                            <SelectValue placeholder="Unknown" />
-                          </SelectTrigger>
-                          <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
-                            {layoutsForChannelCount(channelCount).map((layout) => (
-                              <SelectItem key={layout.id} value={layout.id}>
-                                {layout.name}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="custom">Custom</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {showChannelLayoutSelect ? (
+                          <Select value={selectedLayoutId ?? ""} onValueChange={setChannelLayout}>
+                            <SelectTrigger
+                              className={SELECT_TRIGGER_CLASS}
+                              aria-label="channel layout"
+                            >
+                              <SelectValue placeholder="Unknown" />
+                            </SelectTrigger>
+                            <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                              {channelLayouts.map((layout) => (
+                                <SelectItem key={layout.id} value={layout.id}>
+                                  {layout.name}
+                                </SelectItem>
+                              ))}
+                              {selectedLayoutId === "custom" ? (
+                                <SelectItem value="custom">Custom</SelectItem>
+                              ) : null}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span aria-label="channel layout" className="px-2 py-0.5">
+                            {channelLayoutLabel}
+                          </span>
+                        )}
                       </SettingsRow>
                       {channelLabelTokens.map((token, i) => (
                         <SettingsRow

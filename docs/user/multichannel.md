@@ -11,8 +11,10 @@ Before capture starts, panels use an assumed stereo layout and show the placehol
 ## Manual layouts
 
 Choose the layout under **Channels** in [System Settings](system-settings.md). Standard layouts from
-mono through 9.1.6 are available, and **Custom** lets you assign a role to each channel — for example
-when a source uses a different channel order.
+mono through 9.1.6 are available. Assign a role to an individual channel when a source uses a
+different channel order; the layout then shows **Custom** until you choose a standard layout again.
+When only one standard layout applies, its name is shown as text. The layout chooser appears when
+there are multiple standards to choose from, or when a Custom or unknown layout can be replaced.
 
 When PLVS cannot identify a layout, it says so, and loudness uses channels 1 and 2 only until you set
 one. Channels above 8 are never guessed from the count alone.

@@ -844,10 +844,10 @@ describe("SettingsPanel", () => {
 });
 
 describe("SettingsPanel — Channel labels", () => {
-  it("offers only matching layouts and reports Custom for edited roles", () => {
+  it("shows a sole matching standard layout as text", () => {
     const setChannelLayout = vi.fn();
     const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"];
-    const { rerender } = render(
+    render(
       <SettingsPanel
         {...BASE_PROPS}
         channelCount={12}
@@ -859,14 +859,30 @@ describe("SettingsPanel — Channel labels", () => {
 
     const layoutSelect = screen.getByLabelText("channel layout");
     expect(layoutSelect.textContent).toContain("7.1.4");
-    fireEvent.click(layoutSelect);
-    expect(screen.getByRole("option", { name: "7.1.4" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Custom" })).toBeTruthy();
-    expect(screen.queryByRole("option", { name: "5.1.4" })).toBeNull();
-    fireEvent.click(screen.getByRole("option", { name: "Custom" }));
-    expect(setChannelLayout).toHaveBeenCalledWith("custom");
+    expect(screen.queryByRole("combobox", { name: "channel layout" })).toBeNull();
+    expect(setChannelLayout).not.toHaveBeenCalled();
+  });
 
-    rerender(
+  it("offers every matching standard when the channel count has multiple layouts", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        channelCount={8}
+        channelLabelTokens={["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]}
+        selectedLayoutId="7.1"
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText("channel layout"));
+    expect(screen.getByRole("option", { name: "7.1" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "5.1.2" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Custom" })).toBeNull();
+  });
+
+  it("reports edited roles as Custom and allows switching back to a standard layout", () => {
+    const setChannelLayout = vi.fn();
+    const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"];
+    render(
       <SettingsPanel
         {...BASE_PROPS}
         channelCount={12}
@@ -875,7 +891,12 @@ describe("SettingsPanel — Channel labels", () => {
         setChannelLayout={setChannelLayout}
       />
     );
+
     expect(screen.getByLabelText("channel layout").textContent).toContain("Custom");
+    fireEvent.click(screen.getByLabelText("channel layout"));
+    expect(screen.getByRole("option", { name: "Custom" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("option", { name: "7.1.4" }));
+    expect(setChannelLayout).toHaveBeenCalledWith("7.1.4");
   });
 
   it("shows Unknown rather than Custom when automatic detection cannot identify the layout", () => {
