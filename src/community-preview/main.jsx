@@ -1,4 +1,5 @@
 import React from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import "../index.css";
 import { applyLayoutToDocument, applyThemeToDocument, UI_PREFERENCES } from "../uiPreferences.js";
@@ -33,16 +34,19 @@ async function render(plan, assetId) {
   if (!asset) throw new Error(`Unknown Community preview asset: ${assetId}.`);
   html.dataset.communityPreviewAsset = asset.id;
   publishCommunityPreviewTheme(plan, asset);
-  root.render(
-    <React.StrictMode>
-      <div
-        key={`${plan.item?.contentHash ?? plan.theme?.contentHash}:${asset.id}`}
-        data-community-preview-asset={asset.id}
-        className="h-screen w-screen overflow-hidden"
-      >
-        <CommunityPreviewApp plan={plan} asset={asset} />
-      </div>
-    </React.StrictMode>
+  // Mounted synchronously, so the render barrier never samples a scene that is not there yet.
+  flushSync(() =>
+    root.render(
+      <React.StrictMode>
+        <div
+          key={`${plan.item?.contentHash ?? plan.theme?.contentHash}:${asset.id}`}
+          data-community-preview-asset={asset.id}
+          className="h-screen w-screen overflow-hidden"
+        >
+          <CommunityPreviewApp plan={plan} asset={asset} />
+        </div>
+      </React.StrictMode>
+    )
   );
   try {
     const settlement = await settleCommunityPreviewRender({
