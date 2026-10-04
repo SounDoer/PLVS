@@ -104,7 +104,7 @@ describe("ThemeEditor", () => {
     expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Custom");
   });
 
-  it("does not show selectors or reset actions for the shared PLVS palettes", () => {
+  it("shows disabled reset actions for shared PLVS palettes", () => {
     const draft = makeCustomThemeV2FromBase(
       BUILTIN_THEMES_V2["plvs-light"],
       "Light Theme",
@@ -115,13 +115,13 @@ describe("ThemeEditor", () => {
 
     expect(screen.queryByLabelText("status palette preset")).toBeNull();
     expect(screen.queryByLabelText("frequency palette preset")).toBeNull();
-    expect(screen.queryByLabelText("reset status palette to PLVS")).toBeNull();
-    expect(screen.queryByLabelText("reset frequency palette to PLVS")).toBeNull();
+    expect(screen.getByLabelText("Reset status palette to PLVS").disabled).toBe(true);
+    expect(screen.getByLabelText("Reset frequency palette to PLVS").disabled).toBe(true);
     expect(document.querySelector('[data-palette-preset-action="status"]').className).toContain(
-      "size-7"
+      "w-10"
     );
     expect(document.querySelector('[data-palette-preset-action="frequency"]').className).toContain(
-      "size-7"
+      "w-10"
     );
   });
 
@@ -133,8 +133,10 @@ describe("ThemeEditor", () => {
     render(<ThemeEditor {...BASE_PROPS} draft={draft} onApplyPreset={onApplyPreset} />);
     fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
 
-    fireEvent.click(screen.getByLabelText("reset status palette to PLVS"));
-    fireEvent.click(screen.getByLabelText("reset frequency palette to PLVS"));
+    fireEvent.click(screen.getByLabelText("Reset status palette to PLVS"));
+    fireEvent.click(screen.getByLabelText("Confirm reset status palette to PLVS"));
+    fireEvent.click(screen.getByLabelText("Reset frequency palette to PLVS"));
+    fireEvent.click(screen.getByLabelText("Confirm reset frequency palette to PLVS"));
     expect(onApplyPreset).toHaveBeenNthCalledWith(1, "status", "status-plvs");
     expect(onApplyPreset).toHaveBeenNthCalledWith(2, "frequency", "frequency-plvs");
   });
@@ -214,7 +216,8 @@ describe("ThemeEditor", () => {
     render(<ThemeEditor {...BASE_PROPS} draft={draft} onResetOverrides={onResetOverrides} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
     expect(screen.getByText("1 Custom")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Reset Section to Auto" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset Waveform section to Auto" }));
+    fireEvent.click(screen.getByLabelText("Confirm reset Waveform section to Auto"));
     expect(onResetOverrides).toHaveBeenCalledWith(
       expect.arrayContaining(["waveform.trace", "waveform.snapshot"])
     );

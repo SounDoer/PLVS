@@ -23,6 +23,7 @@ export function InlineConfirm({
   cancelLabel,
   className,
   onArmedChange,
+  preserveTriggerSize = false,
 }) {
   const [armed, setArmed] = useState(false);
   const focusTargetRef = useRef(null);
@@ -83,8 +84,14 @@ export function InlineConfirm({
     });
   }
 
-  return (
-    <span className={cn("flex items-center gap-0.5", className)}>
+  const confirmation = (
+    <span
+      className={cn(
+        "flex items-center gap-0.5",
+        preserveTriggerSize && "absolute inset-0 justify-end",
+        !preserveTriggerSize && className
+      )}
+    >
       <button
         type="button"
         aria-label={cancelLabel}
@@ -115,4 +122,17 @@ export function InlineConfirm({
       </button>
     </span>
   );
+
+  if (preserveTriggerSize) {
+    return (
+      <div className={cn("relative flex", className)}>
+        <div aria-hidden="true" data-inline-confirm-sizer className="invisible flex">
+          {trigger(() => {})}
+        </div>
+        {confirmation}
+      </div>
+    );
+  }
+
+  return confirmation;
 }

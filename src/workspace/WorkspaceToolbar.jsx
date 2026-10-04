@@ -1,4 +1,4 @@
-import { Check, GripVertical, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, GripVertical, Pencil, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import {
@@ -8,12 +8,30 @@ import {
 } from "@/components/ManagementRow.jsx";
 import { AddButton } from "@/components/AddButton";
 import { PanelSettingsHeader } from "@/components/PanelSettingsHeader.jsx";
+import { ResetAction } from "@/components/ResetAction.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { cn } from "@/lib/utils";
 import { useDrag } from "./DragContext.jsx";
 import { MODULE_REGISTRY, resolvePanelDefinition } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { resolvePanelDisplayName } from "./panelInstances.js";
+import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
+
+const RESET_WORKSPACE_KEYS = [
+  "tree",
+  "panelsById",
+  "panelOrder",
+  "fullscreenId",
+  "panelControlsById",
+  "pinnedPanelsById",
+  "axisViewports",
+];
+
+function workspaceUsesDefaults(state) {
+  return RESET_WORKSPACE_KEYS.every(
+    (key) => JSON.stringify(state[key]) === JSON.stringify(DEFAULT_WORKSPACE_STATE[key])
+  );
+}
 
 function PanelRow({ panelId }) {
   const { state, removePanel, renamePanel, setHoveredPanelId } = useWorkspaceStore();
@@ -156,6 +174,7 @@ function AddModuleView({ onAdd, onBack }) {
 export function ModulesPopoverContent() {
   const { state, addPanel, resetWorkspace, setHoveredPanelId } = useWorkspaceStore();
   const panelIds = state.panelOrder.filter((id) => state.panelsById[id]);
+  const isDefault = workspaceUsesDefaults(state);
   const [adding, setAdding] = useState(false);
 
   useEffect(() => () => setHoveredPanelId(null), [setHoveredPanelId]);
@@ -184,21 +203,13 @@ export function ModulesPopoverContent() {
       </div>
       <div className="mt-1 flex items-center gap-1 border-t border-border pt-1">
         <AddButton label="Add Module" className="min-w-0 flex-1" onClick={() => setAdding(true)} />
-        <InlineConfirm
-          onConfirm={resetWorkspace}
+        <ResetAction
+          label="Reset layout"
+          tip="Reset Layout"
+          isDefault={isDefault}
+          onReset={resetWorkspace}
           confirmLabel="Confirm reset layout"
           cancelLabel="Cancel reset layout"
-          trigger={(arm) => (
-            <button
-              type="button"
-              aria-label="Reset layout"
-              title="Reset layout"
-              onClick={arm}
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ui-hover hover:text-foreground"
-            >
-              <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
-            </button>
-          )}
         />
       </div>
     </>

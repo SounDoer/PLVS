@@ -75,6 +75,10 @@ describe("ModulesPopoverContent", () => {
       </WorkspaceProvider>
     );
 
+    const resetAtDefaults = screen.getByRole("button", { name: "Reset layout" });
+    expect(resetAtDefaults.disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("Delete Level Meter"));
+    fireEvent.click(screen.getByLabelText("Confirm delete Level Meter"));
     fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
     expect(screen.getByLabelText("Confirm reset layout")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Confirm reset layout"));

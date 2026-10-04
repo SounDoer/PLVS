@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  GripVertical,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Settings2,
-  Timer,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, GripVertical, Pencil, Plus, Settings2, Timer, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "../../components/InlineConfirm.jsx";
 import {
   MANAGEMENT_ROW_ACTIONS_CLASS,
@@ -29,7 +19,7 @@ import {
 } from "../dockLayout.js";
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
-import { useHoverTip } from "../../components/HoverTip.jsx";
+import { ResetAction } from "../../components/ResetAction.jsx";
 
 const DOCK_ONLY_PANEL_META = {
   transport: {
@@ -37,32 +27,6 @@ const DOCK_ONLY_PANEL_META = {
     Icon: Timer,
   },
 };
-
-function ResetLayoutButton({ onClick }) {
-  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
-    tip: "Reset Layout",
-    side: "top",
-    align: "end",
-  });
-  return (
-    <>
-      <button
-        ref={anchorRef}
-        type="button"
-        aria-label="Reset layout"
-        onClick={onClick}
-        onMouseEnter={showTip}
-        onMouseLeave={hideTip}
-        onFocus={showTip}
-        onBlur={hideTip}
-        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-ui-hover hover:text-foreground"
-      >
-        <RotateCcw className="size-3.5" />
-      </button>
-      {tipNode}
-    </>
-  );
-}
 
 export const reorderDockModulesAtPointer = reorderIdsAtPointer;
 
@@ -218,6 +182,7 @@ export function DockModulesEditor({
   onRemove,
   onReorder,
   onReset,
+  isDefault = false,
   onHover,
   onOpenSettings,
 }) {
@@ -312,11 +277,13 @@ export function DockModulesEditor({
             className="min-w-0 flex-1"
             onClick={() => setAdding(true)}
           />
-          <InlineConfirm
-            onConfirm={onReset}
+          <ResetAction
+            label="Reset layout"
+            tip="Reset Layout"
+            isDefault={isDefault}
+            onReset={onReset}
             confirmLabel="Confirm reset layout"
             cancelLabel="Cancel reset layout"
-            trigger={(arm) => <ResetLayoutButton onClick={arm} />}
           />
         </div>
       </div>

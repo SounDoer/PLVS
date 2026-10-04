@@ -1,7 +1,10 @@
 import { RangeInput } from "@/components/ui/range-input.jsx";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AddButton } from "../AddButton.jsx";
 import { ColorControl } from "../ColorControl.jsx";
 import { IconButton } from "../IconButton.jsx";
+import { ResetAction } from "../ResetAction.jsx";
 import { Label } from "../ui/label.jsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
 import { findMatchingPalettePresetId, listPalettePresets } from "../../theme/palettePresets.js";
@@ -25,23 +28,28 @@ const FREQUENCY_COLORS = [
   ["high", "High"],
 ];
 
-function PalettePresetSelect({ kind, palette, onApplyPreset }) {
+function PalettePresetSelect({
+  kind,
+  palette,
+  onApplyPreset,
+  customAvailable = false,
+  onSelectCustom,
+}) {
   const value = findMatchingPalettePresetId(kind, palette);
   return (
     <Select
       value={value ?? "custom"}
       onValueChange={(next) => {
-        if (next !== "custom") onApplyPreset(kind, next);
+        if (next === "custom") onSelectCustom?.();
+        else onApplyPreset(kind, next);
       }}
     >
       <SelectTrigger aria-label={`${kind} palette preset`} className={EDITOR_SELECT_TRIGGER_CLASS}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent position="popper" className={EDITOR_SELECT_CONTENT_CLASS}>
-        {/* Only offered while the palette has drifted off every preset: picking
-            "Custom" means nothing, it is just what the trigger has to show. */}
-        {value == null ? (
-          <SelectItem value="custom" disabled>
+        {value == null || customAvailable ? (
+          <SelectItem value="custom" disabled={!customAvailable}>
             Custom
           </SelectItem>
         ) : null}
@@ -65,16 +73,16 @@ function PalettePresetControl({ kind, palette, onApplyPreset }) {
   const [preset] = presets;
   const matchesPreset = findMatchingPalettePresetId(kind, palette) === preset.id;
   return (
-    <div data-palette-preset-action={kind} className="size-7 shrink-0">
-      {matchesPreset ? null : (
-        <IconButton
-          aria-label={`reset ${kind} palette to ${preset.label}`}
-          tip={`Reset to ${preset.label}`}
-          icon={<RotateCcw className="size-[length:var(--ui-icon-management-action)]" />}
-          onClick={() => onApplyPreset(kind, preset.id)}
-        />
-      )}
-    </div>
+    <ResetAction
+      data-palette-preset-action={kind}
+      label={`Reset ${kind} palette to ${preset.label}`}
+      tip={`Reset to ${preset.label}`}
+      defaultTip={`Using ${preset.label}`}
+      isDefault={matchesPreset}
+      onReset={() => onApplyPreset(kind, preset.id)}
+      confirmLabel={`Confirm reset ${kind} palette to ${preset.label}`}
+      cancelLabel={`Cancel reset ${kind} palette to ${preset.label}`}
+    />
   );
 }
 
@@ -132,7 +140,34 @@ function addIntensityStop(stops) {
   ];
 }
 
+function cloneCustomIntensity(palette) {
+  return {
+    presetId: null,
+    stops: palette.stops.map((stop) => ({ ...stop })),
+  };
+}
+
 function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
+  const matchingPresetId = findMatchingPalettePresetId("intensity", palette);
+  const customRef = useRef(matchingPresetId == null ? cloneCustomIntensity(palette) : null);
+  const lastPresetIdRef = useRef(matchingPresetId ?? "intensity-inferno");
+  const [customAvailable, setCustomAvailable] = useState(matchingPresetId == null);
+
+  useEffect(() => {
+    if (matchingPresetId) {
+      lastPresetIdRef.current = matchingPresetId;
+      return;
+    }
+    customRef.current = cloneCustomIntensity(palette);
+    setCustomAvailable(true);
+  }, [matchingPresetId, palette]);
+
+  const resetCustom = () => {
+    customRef.current = null;
+    setCustomAvailable(false);
+    if (!matchingPresetId) onApplyPreset("intensity", lastPresetIdRef.current);
+  };
+
   const gradient = palette.stops
     .map((stop) => `${stop.color} ${Math.round(stop.position * 100)}%`)
     .join(", ");
@@ -142,12 +177,26 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
       <div className="flex items-center justify-between gap-2">
         <Label>Intensity</Label>
         <div className="flex items-center gap-1">
-          <PalettePresetSelect kind="intensity" palette={palette} onApplyPreset={onApplyPreset} />
-          <IconButton
-            aria-label="Add intensity stop"
-            tip="Add Stop"
-            icon={<Plus className="size-[length:var(--ui-icon-management-action)]" />}
-            onClick={() => onStops(addIntensityStop(palette.stops))}
+          <PalettePresetSelect
+            kind="intensity"
+            palette={palette}
+            onApplyPreset={(kind, presetId) => {
+              lastPresetIdRef.current = presetId;
+              onApplyPreset(kind, presetId);
+            }}
+            customAvailable={customAvailable}
+            onSelectCustom={() => {
+              if (customRef.current) onStops(customRef.current.stops);
+            }}
+          />
+          <ResetAction
+            label="Reset Custom intensity palette"
+            tip="Reset Custom"
+            defaultTip="No Custom Palette"
+            isDefault={!customAvailable}
+            onReset={resetCustom}
+            confirmLabel="Confirm reset Custom intensity palette"
+            cancelLabel="Cancel reset Custom intensity palette"
           />
         </div>
       </div>
@@ -220,6 +269,7 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
             </div>
           );
         })}
+        <AddButton label="Add Stop" onClick={() => onStops(addIntensityStop(palette.stops))} />
       </div>
     </section>
   );

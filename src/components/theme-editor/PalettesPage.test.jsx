@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { PalettesPage } from "./PalettesPage.jsx";
 import { BUILTIN_THEMES_V2 } from "../../theme/builtinThemesV2.js";
+import { applyPalettePreset } from "../../theme/palettePresets.js";
 
 it("keeps a moving stop mounted and its progress aligned with the bounded track", () => {
   function Harness() {
@@ -42,4 +43,53 @@ it("keeps a moving stop mounted and its progress aligned with the bounded track"
   expect(parseFloat(slider.style.getPropertyValue("--range-pct"))).toBeCloseTo((0.59 / 0.98) * 100);
   fireEvent.keyUp(slider, { key: "ArrowRight" });
   expect(slider.dataset.adjusting).toBeUndefined();
+});
+
+it("keeps Custom intensity stops across preset comparisons until Reset Custom", () => {
+  function Harness() {
+    const [draft, setDraft] = useState(() => structuredClone(BUILTIN_THEMES_V2["plvs-dark"]));
+    const setIntensity = (intensity) =>
+      setDraft((current) => ({
+        ...current,
+        palettes: { ...current.palettes, intensity },
+      }));
+    return (
+      <PalettesPage
+        draft={draft}
+        onColor={vi.fn()}
+        onStop={vi.fn()}
+        onStops={(stops) => setIntensity({ presetId: null, stops })}
+        onApplyPreset={(kind, presetId) => {
+          if (kind === "intensity") setIntensity(applyPalettePreset(kind, presetId));
+        }}
+      />
+    );
+  }
+
+  render(<Harness />);
+  const addStop = screen.getByRole("button", { name: "Add Stop" });
+  expect(addStop.parentElement.lastElementChild).toBe(addStop);
+  expect(screen.getByLabelText("Reset Custom intensity palette").disabled).toBe(true);
+
+  fireEvent.click(addStop);
+  expect(screen.getByRole("button", { name: "Stop 12" })).toBeTruthy();
+  expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Custom");
+  expect(screen.getByLabelText("Reset Custom intensity palette").disabled).toBe(false);
+
+  fireEvent.click(screen.getByLabelText("intensity palette preset"));
+  fireEvent.click(screen.getByRole("option", { name: "Viridis" }));
+  expect(screen.queryByRole("button", { name: "Stop 12" })).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("intensity palette preset"));
+  fireEvent.click(screen.getByRole("option", { name: "Custom" }));
+  expect(screen.getByRole("button", { name: "Stop 12" })).toBeTruthy();
+
+  fireEvent.click(screen.getByLabelText("Reset Custom intensity palette"));
+  fireEvent.click(screen.getByLabelText("Confirm reset Custom intensity palette"));
+  expect(screen.queryByRole("button", { name: "Stop 12" })).toBeNull();
+  expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Viridis");
+  expect(screen.getByLabelText("Reset Custom intensity palette").disabled).toBe(true);
+
+  fireEvent.click(screen.getByLabelText("intensity palette preset"));
+  expect(screen.queryByRole("option", { name: "Custom" })).toBeNull();
 });

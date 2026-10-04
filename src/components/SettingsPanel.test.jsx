@@ -935,7 +935,14 @@ describe("SettingsPanel — Channel labels", () => {
 describe("SettingsPanel — Clear shortcut reset", () => {
   it("resets the clear shortcut only after confirming", () => {
     const setClearShortcut = vi.fn();
-    render(<SettingsPanel {...BASE_PROPS} clearReady={true} setClearShortcut={setClearShortcut} />);
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        clearReady={true}
+        clearShortcut="CmdOrCtrl+Shift+K"
+        setClearShortcut={setClearShortcut}
+      />
+    );
     fireEvent.click(screen.getByRole("button", { name: "Reset clear shortcut" }));
     expect(setClearShortcut).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Confirm reset clear shortcut"));

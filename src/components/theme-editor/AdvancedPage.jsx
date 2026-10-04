@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { ChevronDown, RotateCcw, Search, TriangleAlert } from "lucide-react";
+import { ChevronDown, Search, TriangleAlert } from "lucide-react";
 import { ColorControl } from "../ColorControl.jsx";
 import { HoverTip } from "../HoverTip.jsx";
 import { compileTheme } from "../../theme/compileTheme.js";
@@ -8,6 +8,7 @@ import { MODULE_CATALOG } from "../../workspace/moduleCatalog.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
 import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
 import { ThemeEditorSwatch } from "./ThemeEditorSwatch.jsx";
+import { ResetAction } from "../ResetAction.jsx";
 
 const REFERENCE_LABELS = {
   "core.text": "Follow Text",
@@ -267,15 +268,15 @@ export function AdvancedPage({
                   </span>
                 ) : null}
               </button>
-              {customized ? (
-                <button
-                  type="button"
-                  onClick={() => onResetOverrides(sectionRoles.map((role) => role.id))}
-                  className="inline-flex items-center gap-1 rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-axis)] text-muted-foreground hover:bg-ui-hover hover:text-foreground"
-                >
-                  <RotateCcw className="size-[1em]" /> Reset Section to Auto
-                </button>
-              ) : null}
+              <ResetAction
+                label={`Reset ${section} section to Auto`}
+                tip="Reset Section to Auto"
+                defaultTip="Using Auto"
+                isDefault={!customized}
+                onReset={() => onResetOverrides(sectionRoles.map((role) => role.id))}
+                confirmLabel={`Confirm reset ${section} section to Auto`}
+                cancelLabel={`Cancel reset ${section} section to Auto`}
+              />
             </div>
             {isExpanded ? (
               <div className="border-t border-border px-2">

@@ -173,6 +173,7 @@ export function DockEditorApp() {
         <DockModulesEditor
           panels={payload.panels}
           vectorscopeSettingsAvailable={payload.vectorscopeSettingsAvailable}
+          isDefault={payload.isDefault}
           onAdd={(moduleId) => action("add-module", { moduleId })}
           onRename={(panelId, name) => action("rename-module", { panelId, name })}
           onRemove={(panelId) => action("remove-module", { panelId })}

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CircleHelp, ExternalLink, RotateCcw, X } from "lucide-react";
+import { CircleHelp, ExternalLink, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { ResetAction } from "@/components/ResetAction.jsx";
 import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { HoverTip } from "@/components/HoverTip.jsx";
 import { ShortcutCapture } from "./ShortcutCapture.jsx";
@@ -216,8 +216,8 @@ export function SettingsPanel({
     typeof navigator !== "undefined" &&
     /Mac/i.test(navigator.platform || navigator.userAgent || "");
   const [sheetBodyVisible, setSheetBodyVisible] = useState(settingsOpen);
-  // Reset wipes every library and relaunches, so it gets a modal that can say so. The lighter
-  // `InlineConfirm` still guards the two per-setting resets below, whose cost is one value.
+  // Reset wipes every library and relaunches, so it gets a modal that can say so. Per-setting
+  // resets use the compact inline confirmation shared with the rest of the app.
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const closingIntentRef = useRef(false);
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
@@ -371,19 +371,12 @@ export function SettingsPanel({
                         isMac={isMac}
                         disabled={!clearReady}
                       />
-                      <InlineConfirm
-                        onConfirm={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
+                      <ResetAction
+                        label="Reset clear shortcut"
+                        isDefault={!clearReady || clearShortcut === DEFAULT_CLEAR_SHORTCUT}
+                        onReset={() => setClearShortcut(DEFAULT_CLEAR_SHORTCUT)}
                         confirmLabel="Confirm reset clear shortcut"
                         cancelLabel="Cancel reset clear shortcut"
-                        trigger={(arm) => (
-                          <IconButton
-                            disabled={!clearReady}
-                            onClick={arm}
-                            aria-label="Reset clear shortcut"
-                          >
-                            <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
-                          </IconButton>
-                        )}
                       />
                     </div>
                   </SettingsRow>
@@ -553,19 +546,12 @@ export function SettingsPanel({
                     }
                   >
                     {channelCount > 0 ? (
-                      <InlineConfirm
-                        onConfirm={resetChannelLabels}
+                      <ResetAction
+                        label="Reset channel labels"
+                        isDefault={!channelLabelHasOverride}
+                        onReset={resetChannelLabels}
                         confirmLabel="Confirm reset channel labels"
                         cancelLabel="Cancel reset channel labels"
-                        trigger={(arm) => (
-                          <IconButton
-                            onClick={arm}
-                            disabled={!channelLabelHasOverride}
-                            aria-label="Reset channel labels"
-                          >
-                            <RotateCcw className="size-[length:var(--ui-icon-management-action)]" />
-                          </IconButton>
-                        )}
                       />
                     ) : null}
                   </SettingsRow>

@@ -39,7 +39,7 @@ import { useHistoryData } from "@/workspace/AudioDataContext.jsx";
 import { useAxisViewport, useAxisViewportLink } from "@/workspace/axisViewportHooks.js";
 import { AXIS_VIEWPORTS, axisKindForRangeRow } from "@/workspace/axisViewports.js";
 import { HIST_SAMPLE_SEC } from "@/hooks/useLoudnessHistory.js";
-import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { ResetAction } from "@/components/ResetAction.jsx";
 import { Switch } from "@/components/ui/switch";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
@@ -778,25 +778,15 @@ export function SortableStatsList({
           />
         ))}
       </Reorder.Group>
-      {showReset ? (
-        <div className="mt-0.5 border-t border-border pt-0.5">
-          <InlineConfirm
-            onConfirm={onReset}
-            confirmLabel="Confirm reset stats"
-            cancelLabel="Cancel reset stats"
-            trigger={(arm) => (
-              <button
-                type="button"
-                aria-label="Reset stats"
-                onClick={arm}
-                className="w-auto rounded-xs px-2 py-0.5 text-left text-[length:var(--ui-fs-axis)] text-muted-foreground outline-none transition-colors hover:bg-ui-hover hover:text-foreground"
-              >
-                Reset
-              </button>
-            )}
-          />
-        </div>
-      ) : null}
+      <div className="mt-0.5 flex justify-end border-t border-border pt-0.5">
+        <ResetAction
+          label="Reset stats"
+          isDefault={!showReset}
+          onReset={onReset}
+          confirmLabel="Confirm reset stats"
+          cancelLabel="Cancel reset stats"
+        />
+      </div>
     </div>
   );
 }

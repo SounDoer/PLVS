@@ -54,6 +54,14 @@ function readDockState() {
   };
 }
 
+function dockStateUsesDefaults(state) {
+  const defaults = firstRunDockState();
+  return (
+    JSON.stringify(state.layout) === JSON.stringify(defaults.layout) &&
+    JSON.stringify(state.controlsByPanelId) === JSON.stringify(defaults.controlsByPanelId)
+  );
+}
+
 /**
  * Assumes a single mounted instance (App.jsx); local state is not synced via
  * workspaceStore.subscribe, so two simultaneous mounts would diverge.
@@ -278,6 +286,7 @@ export function useDockLayout() {
         .filter(Boolean),
     [state.layout.panelOrder, state.layout.panelsById]
   );
+  const isDefault = useMemo(() => dockStateUsesDefaults(state), [state]);
 
   return {
     panelsById: state.layout.panelsById,
@@ -287,6 +296,7 @@ export function useDockLayout() {
     controlsByPanelId: state.controlsByPanelId,
     modules,
     controlsByModuleId,
+    isDefault,
     toggle,
     reorder,
     setModules,

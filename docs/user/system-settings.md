@@ -73,11 +73,15 @@ classic Waveform. Fill opacity is fixed by the app and is not stored in or expor
 Palette stop positions, the theme name, and Dark / Light appearance remain editable.
 Inferno, Viridis, and Magma use eleven evenly sampled anchors from their standard Matplotlib color
 maps; Monochrome needs only its black and white endpoints. Selecting a palette stores an editable
-snapshot in the Theme, so later app updates do not recolor a saved custom Theme.
+snapshot in the Theme, so later app updates do not recolor a saved custom Theme. After you edit the
+Intensity stops, that Custom version remains available while you compare other presets; **Reset
+Custom** is the explicit action that discards it. **Add Stop** sits after the stop list.
 Status and Frequency each offer one **PLVS** palette designed to remain vivid and legible on both
 Dark and Light panel surfaces. Changing Dark / Light appearance does not rewrite an already
 selected palette. Their preset dropdowns stay hidden because there is only one choice; after you
-customize one of these palettes, **Reset to PLVS** restores it in one step.
+customize one of these palettes, **Reset to PLVS** restores it after an inline confirmation. Reset
+actions stay in place while defaults are active, but appear dimmed and cannot be armed until there
+is something to restore.
 
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas

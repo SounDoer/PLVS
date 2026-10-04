@@ -1,7 +1,6 @@
-import { ArrowLeft, RotateCcw } from "lucide-react";
-import { InlineConfirm } from "@/components/InlineConfirm.jsx";
+import { ArrowLeft } from "lucide-react";
 import { ManagementIconAction } from "@/components/ManagementRow.jsx";
-import { HoverTip } from "@/components/HoverTip.jsx";
+import { ResetAction } from "@/components/ResetAction.jsx";
 
 export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false }) {
   const resetLabel = `Reset ${title} settings`;
@@ -23,24 +22,13 @@ export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false 
         {title}
       </h1>
       {onReset ? (
-        <div className="flex w-10 shrink-0 justify-end">
-          <InlineConfirm
-            className="w-10 justify-end"
-            onConfirm={onReset}
-            confirmLabel={`Confirm reset ${title} settings`}
-            cancelLabel={`Cancel reset ${title} settings`}
-            trigger={(arm) => (
-              <HoverTip tip={isDefault ? "Using Defaults" : resetLabel} side="top" align="end">
-                <ManagementIconAction
-                  icon={<RotateCcw className="size-[length:var(--ui-icon-management-action)]" />}
-                  label={resetLabel}
-                  disabled={isDefault}
-                  onClick={arm}
-                />
-              </HoverTip>
-            )}
-          />
-        </div>
+        <ResetAction
+          label={resetLabel}
+          onReset={onReset}
+          isDefault={isDefault}
+          confirmLabel={`Confirm reset ${title} settings`}
+          cancelLabel={`Cancel reset ${title} settings`}
+        />
       ) : null}
     </header>
   );

@@ -2036,6 +2036,7 @@ function AppContent() {
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
       controlsByPanelId: dockLayout.controlsByPanelId,
+      isDefault: dockLayout.isDefault,
       vectorscopeOptions: vectorscopePairOptions,
       spectrumOptions: spectrumChannelOptions,
       channelCount,
@@ -2056,6 +2057,7 @@ function AppContent() {
     [
       dockAccessoryVisibility.editorView,
       dockLayout.controlsByPanelId,
+      dockLayout.isDefault,
       dockLayout.panelOrder,
       dockLayout.panels,
       dockLayout.panelsById,
