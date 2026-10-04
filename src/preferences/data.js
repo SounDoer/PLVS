@@ -119,7 +119,7 @@ export const UI_PREFERENCES = {
       history: {
         defaultWindowSec: 60,
         momentaryStrokeWidth: 1.2,
-        shortTermStrokeWidth: 2,
+        shortTermStrokeWidth: 1.2,
         selectionStrokeWidth: 1.2,
       },
     },

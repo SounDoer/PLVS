@@ -13,6 +13,17 @@ import {
 } from "./migrateV1Theme.js";
 
 const REVIEWED_REPLACEMENTS = new Set([
+  "--ui-activity-snapshot",
+  "--ui-loudness-momentary-snap",
+  "--ui-loudness-shortterm",
+  "--ui-loudness-shortterm-snap",
+  "--ui-loudness-selection",
+  "--ui-spectrum-primary-snap",
+  "--ui-spectrum-secondary-snap",
+  "--ui-stereo-map-primary-snap",
+  "--ui-stereo-map-secondary-snap",
+  "--ui-vectorscope-trace-snap",
+  "--ui-waveform-trace-snap",
   "--ui-loudness-grid",
   "--ui-vectorscope-guides-stroke",
   "--border",

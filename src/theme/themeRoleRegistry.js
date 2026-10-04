@@ -295,16 +295,16 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("activity.live", {
     kind: "color",
     family: "activity",
-    recipe: "feedback",
-    dependencies: ["interface.danger", "interface.surface.panel"],
+    recipe: "identity",
+    dependencies: ["palette.status.critical"],
     bindings: { css: ["--ui-activity-live"] },
     advanced: colorOverride("Activity", "Live", "Live capture and recording activity."),
   }),
   role("activity.snapshot", {
     kind: "color",
     family: "activity",
-    recipe: "feedback",
-    dependencies: ["interface.warning", "interface.surface.panel"],
+    recipe: "identity",
+    dependencies: ["data.snapshot.primary"],
     bindings: { css: ["--ui-activity-snapshot"] },
     advanced: colorOverride("Activity", "Snapshot", "Snapshot capture activity."),
   }),
@@ -321,12 +321,6 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "identity",
     dependencies: ["core.secondaryData"],
   }),
-  role("data.companion", {
-    kind: "color",
-    family: "data",
-    recipe: "companion",
-    dependencies: ["data.primary", "core.surface"],
-  }),
   role("data.snapshot.primary", {
     kind: "color",
     family: "data",
@@ -338,12 +332,6 @@ const RAW_THEME_ROLE_REGISTRY = [
     family: "data",
     recipe: "snapshot",
     dependencies: ["data.secondary", "core.surface"],
-  }),
-  role("data.snapshot.companion", {
-    kind: "color",
-    family: "data",
-    recipe: "snapshot",
-    dependencies: ["data.companion", "core.surface"],
   }),
   role("data.selection", {
     kind: "color",
@@ -405,7 +393,7 @@ function moduleRoles() {
       "loudness.shortTerm",
       "Loudness",
       "Short-term",
-      "data.companion",
+      "data.secondary",
       "identity",
       {
         css: ["--ui-loudness-shortterm"],
@@ -426,7 +414,7 @@ function moduleRoles() {
       "loudness.shortTermSnapshot",
       "Loudness",
       "Short-term Snapshot",
-      "data.snapshot.companion",
+      "data.snapshot.secondary",
       "identity",
       { css: ["--ui-loudness-shortterm-snap"] },
       primaryRefs

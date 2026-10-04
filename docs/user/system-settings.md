@@ -120,8 +120,11 @@ The built-in Light and Dark themes share the same orange Accent and Primary Data
 Data, Status, Frequency, and Intensity colors. Their neutral shell colors are tuned independently;
 in both, panels are the lighter surface on a darker Workspace, and the raised, control, and muted
 surfaces step away from the panel.
-Feedback messages and the Live and Snapshot indicators are toned automatically from the Interface
-Palette so they stay readable on the panel; solid chips and buttons keep the palette colour itself.
+Feedback messages are toned automatically from the Interface Palette; solid chips and buttons keep
+the palette colour itself. Loudness Momentary follows Primary Data and Short-term follows Secondary
+Data; their snapshot traces use the matching Primary and Secondary Snapshot colours. The Live
+indicator follows Status Critical, while the Snapshot indicator follows the same Primary Snapshot
+colour used by panels.
 Measurement colors therefore keep the same meanings and visual identity in both appearances.
 
 **Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft

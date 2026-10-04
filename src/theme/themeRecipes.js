@@ -10,11 +10,7 @@ export const THEME_VALUE_KINDS = Object.freeze({
 
 const SNAP = {
   dark: { dL: 0.12, dC: -0.006, dH: 36 },
-  light: { dL: -0.16, dC: -0.02, dH: 18 },
-};
-const COMPANION = {
-  dark: { dL: -0.138, dC: -0.02, dH: -4.4 },
-  light: { dL: -0.18, dC: -0.02, dH: -6 },
+  light: { dL: -0.12, dC: 0, dH: 0 },
 };
 
 // Dark steps are larger than Light ones: equal mix fractions read weaker on a dark panel.
@@ -107,9 +103,6 @@ export const THEME_RECIPES = Object.freeze({
   semantic: recipe([[SOLID]], SOLID, ([color]) => color),
   feedback: recipe([[SOLID, SOLID]], SOLID, ([color, panel], context) =>
     toneForContrast(color, panel, FEEDBACK_PANEL_CONTRAST, context.colorScheme)
-  ),
-  companion: recipe([[SOLID, SOLID]], SOLID, ([primary], context) =>
-    transformHex(primary, COMPANION[context.colorScheme])
   ),
   snapshot: recipe([[SOLID, SOLID]], SOLID, ([source], context) =>
     transformHex(source, SNAP[context.colorScheme])

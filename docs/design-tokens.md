@@ -657,7 +657,7 @@ Stroke widths, fill opacities, and grid tuning for chart instruments.
 
 ```
 --ui-loudness-momentary-stroke-width   1.2    Momentary trace stroke width
---ui-loudness-shortterm-stroke-width   2      Short-term trace stroke width
+--ui-loudness-shortterm-stroke-width   1.2    Short-term trace stroke width
 --ui-loudness-selection-stroke-width   1.2    Selection line width in every panel, incl. the 3D scrub marker
 ```
 

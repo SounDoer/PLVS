@@ -242,7 +242,7 @@ describe("compileTheme", () => {
     expect(() => compileTheme(theme)).toThrow("Override mode effect is not allowed");
   });
 
-  it("tones feedback and activity colours for the panel without changing solid fills", () => {
+  it("tones feedback while activity follows measurement-state data", () => {
     const theme = authoringTheme();
     theme.palettes.interface = {
       presetId: null,
@@ -256,12 +256,13 @@ describe("compileTheme", () => {
     // Solid chips keep the authored colour; white content sits on them.
     expect(roles["interface.success"]).toBe("#147a54");
     expect(roles["interface.danger"]).toBe("#b83238");
-    for (const id of ["interface.feedback.success", "interface.feedback.danger", "activity.live"]) {
+    for (const id of ["interface.feedback.success", "interface.feedback.danger"]) {
       expect(themeContrastRatio(roles[id], panel)).toBeGreaterThanOrEqual(5.5);
     }
     // A colour that is already legible on the panel is published as authored.
     expect(roles["interface.feedback.warning"]).toBe("#fbbf24");
-    expect(roles["activity.snapshot"]).toBe("#fbbf24");
+    expect(roles["activity.live"]).toBe(roles["palette.status.critical"]);
+    expect(roles["activity.snapshot"]).toBe(roles["data.snapshot.primary"]);
 
     const light = compileTheme({
       ...theme,
@@ -271,6 +272,15 @@ describe("compileTheme", () => {
     expect(
       themeContrastRatio(light["interface.feedback.warning"], light["interface.surface.panel"])
     ).toBeGreaterThanOrEqual(5.5);
+  });
+
+  it("maps Loudness traces onto the primary and secondary data families", () => {
+    const { roles } = compileTheme(authoringTheme());
+
+    expect(roles["loudness.momentary"]).toBe(roles["data.primary"]);
+    expect(roles["loudness.shortTerm"]).toBe(roles["data.secondary"]);
+    expect(roles["loudness.momentarySnapshot"]).toBe(roles["data.snapshot.primary"]);
+    expect(roles["loudness.shortTermSnapshot"]).toBe(roles["data.snapshot.secondary"]);
   });
 
   it("uses larger automatic surface steps for Dark than for Light", () => {
