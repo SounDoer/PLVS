@@ -1,14 +1,25 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { useSpectrogram3dCanvas } from "../hooks/useSpectrogram3dCanvas";
 import { settingsStore, workspaceStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { buildCommunityThemePreviewPlan } from "../theme/communityThemePreview.js";
+import { compileTheme } from "../theme/compileTheme.js";
 import { themeToPortable } from "../theme/portableTheme.js";
+import { selectSpectrogramCanvasTheme } from "../theme/themeCanvasSelectors.js";
+import { validatePublishablePack } from "../transfer/communityPack.js";
 import { buildCommunityPreviewPlan } from "../transfer/communityPreview.js";
 import { buildPack } from "../transfer/packShape.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { CommunityPreviewApp } from "./CommunityPreviewApp.jsx";
+import { publishCommunityPreviewTheme } from "./previewTheme.js";
+
+// The 3D renderer is idle in every preview scene; observing its arguments shows which Canvas
+// colours a production panel was handed.
+vi.mock("../hooks/useSpectrogram3dCanvas", () => ({
+  useSpectrogram3dCanvas: vi.fn(),
+}));
 
 const PROFILE = {
   id: "broadcast",
@@ -132,5 +143,39 @@ describe("Community preview browser harness", () => {
     const spectrogramAsset = plan.assets.find(({ sceneId }) => sceneId === "spectrogram-heatmap");
     render(<CommunityPreviewApp plan={plan} asset={spectrogramAsset} />);
     expect(screen.getByText("Spectrogram")).toBeTruthy();
+  });
+
+  it("renders product scenes with the previewed Theme's panel surface and Canvas colours", async () => {
+    const light = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-light"]),
+      id: "custom-paper-light",
+      name: "Paper Light",
+    };
+    const plan = await buildCommunityThemePreviewPlan({
+      theme: validatePublishablePack(buildPack("themes", [light]), "themes").portableItem,
+    });
+    const expected = compileTheme(light);
+    const dark = compileTheme(BUILTIN_THEMES_V2["plvs-dark"]);
+    const root = document.documentElement;
+    const asset = plan.assets.find(({ sceneId }) => sceneId === "spectrogram-heatmap");
+
+    publishCommunityPreviewTheme(plan, asset);
+    const { container } = render(<CommunityPreviewApp plan={plan} asset={asset} />);
+
+    // Panel surfaces derive from --card on the root, so a scoped copy of the tokens cannot reach them.
+    expect(expected.css["--card"]).not.toBe(dark.css["--card"]);
+    expect(root.style.getPropertyValue("--card")).toBe(expected.css["--card"]);
+    expect(root.style.getPropertyValue("color-scheme")).toBe("light");
+    expect(container.querySelector("[style*='--card']")).toBeNull();
+    const canvasTheme = selectSpectrogramCanvasTheme(expected);
+    expect(canvasTheme).not.toEqual(selectSpectrogramCanvasTheme(dark));
+    expect(vi.mocked(useSpectrogram3dCanvas).mock.calls.at(-1)?.[0].themeColors).toEqual(
+      canvasTheme
+    );
+
+    cleanup();
+    publishCommunityPreviewTheme(plan, plan.assets[0]);
+    expect(root.style.getPropertyValue("--card")).toBe(dark.css["--card"]);
+    expect(root.style.getPropertyValue("color-scheme")).toBe("dark");
   });
 });

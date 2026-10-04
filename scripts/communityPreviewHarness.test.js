@@ -15,6 +15,13 @@ describe("Community preview browser entry", () => {
     expect(entry).not.toContain("audio/engine");
   });
 
+  it("publishes the asset's theme before the scene mounts", () => {
+    const entry = readFileSync("src/community-preview/main.jsx", "utf8");
+    const publish = entry.indexOf("publishCommunityPreviewTheme(plan, asset);");
+    expect(publish).toBeGreaterThan(-1);
+    expect(publish).toBeLessThan(entry.indexOf("root.render("));
+  });
+
   it("disables animation and interaction before the module boot executes", () => {
     const html = readFileSync("community-preview.html", "utf8");
     expect(html.indexOf("animation: none")).toBeLessThan(html.indexOf("main.jsx"));

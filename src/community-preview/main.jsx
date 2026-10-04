@@ -7,6 +7,7 @@ import { buildCommunityPreviewPlan } from "../transfer/communityPreview.js";
 import { validatePublishablePack } from "../transfer/communityPack.js";
 import { buildCommunityThemePreviewPlan } from "../theme/communityThemePreview.js";
 import { installCommunityPreviewIsolation } from "./isolation.js";
+import { publishCommunityPreviewTheme } from "./previewTheme.js";
 import { settleCommunityPreviewRender } from "./renderBarrier.js";
 
 const html = document.documentElement;
@@ -31,6 +32,7 @@ async function render(plan, assetId) {
   const asset = plan?.assets?.find((candidate) => candidate.id === assetId);
   if (!asset) throw new Error(`Unknown Community preview asset: ${assetId}.`);
   html.dataset.communityPreviewAsset = asset.id;
+  publishCommunityPreviewTheme(plan, asset);
   root.render(
     <React.StrictMode>
       <div

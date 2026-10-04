@@ -3,7 +3,6 @@ import { LoudnessProfileEditor } from "../components/LoudnessProfileEditor.jsx";
 import { ThemePreview } from "../components/theme-editor/ThemePreview.jsx";
 import { DockStrip } from "../dock/DockStrip.jsx";
 import { LoudnessProfilePreviewProvider } from "../hooks/LoudnessProfileContext.jsx";
-import { compileTheme } from "../theme/compileTheme.js";
 import { portableToStoredTheme } from "../theme/portableTheme.js";
 import { portableToStoredPreset } from "../transfer/portablePreset.js";
 import {
@@ -132,11 +131,6 @@ function DockExample({ plan }) {
   );
 }
 
-function themeStyle(plan) {
-  const stored = portableToStoredTheme(plan.theme.document, "custom-community-preview");
-  return Object.fromEntries(Object.entries(compileTheme(stored).css));
-}
-
 function ThemeSemanticExample({ plan }) {
   const stored = useMemo(
     () => portableToStoredTheme(plan.theme.document, "custom-community-preview"),
@@ -170,11 +164,7 @@ function ThemeProductExample({ plan, sceneId }) {
     item: { document: null },
     dependencies: [],
   };
-  return (
-    <div style={themeStyle(plan)} className="h-screen w-screen">
-      <WorkspaceExample plan={syntheticPlan} state={state} profile={null} />
-    </div>
-  );
+  return <WorkspaceExample plan={syntheticPlan} state={state} profile={null} />;
 }
 
 export function CommunityPreviewApp({ plan, asset }) {
