@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { themeContrastRatio } from "./colorMetrics.js";
 import { compileTheme, ThemeCompilerError } from "./compileTheme.js";
 import { applyPalettePreset } from "./palettePresets.js";
 import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
@@ -242,7 +241,7 @@ describe("compileTheme", () => {
     expect(() => compileTheme(theme)).toThrow("Override mode effect is not allowed");
   });
 
-  it("tones feedback while activity follows measurement-state data", () => {
+  it("shares Interface seeds with feedback while activity follows measurement-state data", () => {
     const theme = authoringTheme();
     theme.palettes.interface = {
       presetId: null,
@@ -251,16 +250,12 @@ describe("compileTheme", () => {
       danger: "#b83238",
     };
     const { roles } = compileTheme(theme);
-    const panel = roles["interface.surface.panel"];
 
-    // Solid chips keep the authored colour; white content sits on them.
     expect(roles["interface.success"]).toBe("#147a54");
     expect(roles["interface.danger"]).toBe("#b83238");
-    for (const id of ["interface.feedback.success", "interface.feedback.danger"]) {
-      expect(themeContrastRatio(roles[id], panel)).toBeGreaterThanOrEqual(5.5);
+    for (const key of ["success", "warning", "danger"]) {
+      expect(roles[`interface.feedback.${key}`]).toBe(roles[`interface.${key}`]);
     }
-    // A colour that is already legible on the panel is published as authored.
-    expect(roles["interface.feedback.warning"]).toBe("#fbbf24");
     expect(roles["activity.live"]).toBe(roles["palette.status.critical"]);
     expect(roles["activity.snapshot"]).toBe(roles["data.snapshot.primary"]);
 
@@ -269,9 +264,9 @@ describe("compileTheme", () => {
       colorScheme: "light",
       core: { ...theme.core, workspace: "#e9e5e2", surface: "#fdf9f6", text: "#140e0a" },
     }).roles;
-    expect(
-      themeContrastRatio(light["interface.feedback.warning"], light["interface.surface.panel"])
-    ).toBeGreaterThanOrEqual(5.5);
+    for (const key of ["success", "warning", "danger"]) {
+      expect(light[`interface.feedback.${key}`]).toBe(light[`interface.${key}`]);
+    }
   });
 
   it("maps Loudness traces onto the primary and secondary data families", () => {

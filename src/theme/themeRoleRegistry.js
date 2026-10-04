@@ -258,8 +258,8 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("interface.feedback.success", {
     kind: "color",
     family: "interface",
-    recipe: "feedback",
-    dependencies: ["interface.success", "interface.surface.panel"],
+    recipe: "identity",
+    dependencies: ["interface.success"],
     bindings: { css: ["--ui-feedback-success"] },
     advanced: colorOverride(
       "Interface",
@@ -270,8 +270,8 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("interface.feedback.warning", {
     kind: "color",
     family: "interface",
-    recipe: "feedback",
-    dependencies: ["interface.warning", "interface.surface.panel"],
+    recipe: "identity",
+    dependencies: ["interface.warning"],
     bindings: { css: ["--ui-feedback-warning"] },
     advanced: colorOverride(
       "Interface",
@@ -282,8 +282,8 @@ const RAW_THEME_ROLE_REGISTRY = [
   role("interface.feedback.danger", {
     kind: "color",
     family: "interface",
-    recipe: "feedback",
-    dependencies: ["interface.danger", "interface.surface.panel"],
+    recipe: "identity",
+    dependencies: ["interface.danger"],
     bindings: { css: ["--ui-feedback-danger"] },
     advanced: colorOverride(
       "Interface",

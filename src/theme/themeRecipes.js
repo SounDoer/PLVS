@@ -1,4 +1,4 @@
-import { relativeLuminance, themeContrastRatio } from "./colorMetrics.js";
+import { relativeLuminance } from "./colorMetrics.js";
 import { mixOpaqueColors as mixHex } from "./colorMix.js";
 import { hexToOklch, oklchToHex, transform } from "./colorTransform.js";
 
@@ -18,9 +18,6 @@ const SURFACE_STEP = {
   dark: { muted: 0.028, raised: 0.042, control: 0.103 },
   light: { muted: 0.02, raised: 0.03, control: 0.08 },
 };
-// Feedback and activity colours are read as text, so they sit near Secondary Text contrast.
-const FEEDBACK_PANEL_CONTRAST = 5.5;
-
 function hexChannels(hex) {
   const value = Number.parseInt(hex.slice(1), 16);
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
@@ -32,20 +29,6 @@ function channelsHex(channels) {
 
 function transformHex(hex, delta) {
   return oklchToHex(transform(hexToOklch(hex), delta));
-}
-
-/** Keeps hue and chroma, moving lightness away from the background until the contrast is met. */
-function toneForContrast(hex, background, ratio, colorScheme) {
-  if (themeContrastRatio(hex, background) >= ratio) return hex;
-  const color = hexToOklch(hex);
-  let near = color.L;
-  let far = colorScheme === "dark" ? 1 : 0;
-  for (let step = 0; step < 24; step += 1) {
-    const L = (near + far) / 2;
-    if (themeContrastRatio(oklchToHex({ ...color, L }), background) >= ratio) far = L;
-    else near = L;
-  }
-  return oklchToHex({ ...color, L: far });
 }
 
 function desaturate(hex) {
@@ -101,9 +84,6 @@ export const THEME_RECIPES = Object.freeze({
     )
   ),
   semantic: recipe([[SOLID]], SOLID, ([color]) => color),
-  feedback: recipe([[SOLID, SOLID]], SOLID, ([color, panel], context) =>
-    toneForContrast(color, panel, FEEDBACK_PANEL_CONTRAST, context.colorScheme)
-  ),
   snapshot: recipe([[SOLID, SOLID]], SOLID, ([source], context) =>
     transformHex(source, SNAP[context.colorScheme])
   ),

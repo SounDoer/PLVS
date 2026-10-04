@@ -32,7 +32,7 @@ describe("Theme visual analysis", () => {
   });
   it("reports structured, actionable warnings without mutating the document", () => {
     const theme = structuredClone(BUILTIN_THEMES_V2["plvs-light"]);
-    // Auto feedback is toned for the panel, so only an authored colour can fall short.
+    // Explicit Feedback overrides receive the same visual checks as their automatic seed values.
     theme.overrides["interface.feedback.warning"] = { kind: "color", value: "#fbbf24" };
     theme.overrides["interface.surface.control"] = { kind: "color", value: "#e5e1de" };
     theme.overrides["interface.surface.muted"] = { kind: "color", value: "#e5e1de" };
