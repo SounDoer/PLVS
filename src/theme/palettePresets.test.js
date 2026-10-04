@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyPalettePreset,
+  findMatchingPalettePresetId,
   getPalettePreset,
   listPalettePresets,
   PALETTE_KINDS,
@@ -27,8 +28,87 @@ describe("palette presets", () => {
     expect(preset.value[0].color).toBe("#000004");
   });
 
+  it("samples every color preset at the same eleven reproducible source positions", () => {
+    const expectedPositions = [0, 26, 51, 77, 102, 128, 153, 179, 204, 230, 255].map(
+      (position) => position / 255
+    );
+    const expectedColors = {
+      "intensity-inferno": [
+        "#000004",
+        "#180c3c",
+        "#420a68",
+        "#6c186e",
+        "#932667",
+        "#bc3754",
+        "#dd513a",
+        "#f37819",
+        "#fca50a",
+        "#f6d746",
+        "#fcffa4",
+      ],
+      "intensity-viridis": [
+        "#440154",
+        "#482576",
+        "#414487",
+        "#34608d",
+        "#2a788e",
+        "#21918c",
+        "#22a884",
+        "#44bf70",
+        "#7ad151",
+        "#bddf26",
+        "#fde725",
+      ],
+      "intensity-magma": [
+        "#000004",
+        "#150e38",
+        "#3b0f70",
+        "#651a80",
+        "#8c2981",
+        "#b73779",
+        "#de4968",
+        "#f7705c",
+        "#fe9f6d",
+        "#fecf92",
+        "#fcfdbf",
+      ],
+    };
+
+    for (const id of ["intensity-inferno", "intensity-viridis", "intensity-magma"]) {
+      expect(getPalettePreset("intensity", id).value).toHaveLength(11);
+      expect(getPalettePreset("intensity", id).value.map(({ position }) => position)).toEqual(
+        expectedPositions
+      );
+      expect(getPalettePreset("intensity", id).value.map(({ color }) => color)).toEqual(
+        expectedColors[id]
+      );
+    }
+  });
+
   it("returns null for an unknown preset", () => {
     expect(applyPalettePreset("status", "missing")).toBeNull();
     expect(getPalettePreset("missing", "status-plvs")).toBeNull();
+  });
+
+  it("matches presets by their value instead of stale provenance", () => {
+    const inferno = applyPalettePreset("intensity", "intensity-inferno");
+    expect(findMatchingPalettePresetId("intensity", { ...inferno, presetId: null })).toBe(
+      "intensity-inferno"
+    );
+
+    const oldApproximation = {
+      presetId: "intensity-inferno",
+      stops: inferno.stops.filter((_, index) => index % 2 === 0),
+    };
+    expect(findMatchingPalettePresetId("intensity", oldApproximation)).toBeNull();
+
+    expect(
+      findMatchingPalettePresetId("status", {
+        presetId: "status-plvs",
+        safe: "#18976a",
+        warning: "#9f6200",
+        critical: "#d03535",
+      })
+    ).toBeNull();
   });
 });

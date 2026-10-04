@@ -1,16 +1,4 @@
-const INFERNO_STOPS = [
-  [0, "#000004"],
-  [26, "#1e0c2f"],
-  [51, "#420f6e"],
-  [77, "#710c8c"],
-  [102, "#9e0c8f"],
-  [128, "#cb197f"],
-  [153, "#e74152"],
-  [179, "#f5821e"],
-  [204, "#fbc40a"],
-  [230, "#fceb64"],
-  [255, "#fcffa4"],
-].map(([position, color]) => ({ position: position / 255, color }));
+import { applyPalettePreset } from "./palettePresets.js";
 
 export const DEFAULT_THEME_ID = "plvs-dark";
 export const THEME_IDS = Object.freeze(["plvs-dark", "plvs-light"]);
@@ -29,7 +17,7 @@ function makeBuiltin({ id, name, colorScheme, core, status, interfacePalette, fr
     core,
     palettes: {
       status: { presetId: "status-plvs", ...status },
-      intensity: { presetId: "intensity-inferno", stops: INFERNO_STOPS },
+      intensity: applyPalettePreset("intensity", "intensity-inferno"),
       frequency: { presetId: "frequency-plvs", ...frequency },
       interface: {
         presetId: null,

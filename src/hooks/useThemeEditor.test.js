@@ -66,6 +66,19 @@ describe("useThemeEditor", () => {
     expect(listCustomThemeDocuments()).toEqual({});
   });
 
+  it("restores the same canonical Inferno stops after selecting another intensity preset", () => {
+    const publish = vi.fn();
+    const { result } = setup(publish);
+    act(() => result.current.beginCreate("S"));
+    const original = structuredClone(result.current.draft.palettes.intensity.stops);
+
+    act(() => result.current.applyPreset("intensity", "intensity-viridis"));
+    act(() => result.current.applyPreset("intensity", "intensity-inferno"));
+
+    expect(result.current.draft.palettes.intensity.stops).toEqual(original);
+    expect(result.current.draft.palettes.intensity.stops).toHaveLength(11);
+  });
+
   it("changes Appearance and resets an Advanced section as one draft operation", () => {
     const publish = vi.fn();
     const { result } = setup(publish);

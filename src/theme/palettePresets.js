@@ -1,3 +1,55 @@
+function sampledIntensityStops(samples) {
+  return Object.freeze(
+    samples.map(([position, color]) => Object.freeze({ position: position / 255, color }))
+  );
+}
+
+// Perceptually uniform sequential colormaps sampled at the nearest 8-bit index to each decile,
+// including both endpoints. Source: Matplotlib's 256-entry listed colormaps at commit
+// 717459bbba42e8990601910b76ca365c0847a9f6. Keeping the source index in this definition makes the
+// sampling rule reproducible while exposing normalized positions to Theme documents.
+const INFERNO_STOPS = sampledIntensityStops([
+  [0, "#000004"],
+  [26, "#180c3c"],
+  [51, "#420a68"],
+  [77, "#6c186e"],
+  [102, "#932667"],
+  [128, "#bc3754"],
+  [153, "#dd513a"],
+  [179, "#f37819"],
+  [204, "#fca50a"],
+  [230, "#f6d746"],
+  [255, "#fcffa4"],
+]);
+
+const VIRIDIS_STOPS = sampledIntensityStops([
+  [0, "#440154"],
+  [26, "#482576"],
+  [51, "#414487"],
+  [77, "#34608d"],
+  [102, "#2a788e"],
+  [128, "#21918c"],
+  [153, "#22a884"],
+  [179, "#44bf70"],
+  [204, "#7ad151"],
+  [230, "#bddf26"],
+  [255, "#fde725"],
+]);
+
+const MAGMA_STOPS = sampledIntensityStops([
+  [0, "#000004"],
+  [26, "#150e38"],
+  [51, "#3b0f70"],
+  [77, "#651a80"],
+  [102, "#8c2981"],
+  [128, "#b73779"],
+  [153, "#de4968"],
+  [179, "#f7705c"],
+  [204, "#fe9f6d"],
+  [230, "#fecf92"],
+  [255, "#fcfdbf"],
+]);
+
 const PRESETS = Object.freeze({
   status: Object.freeze([
     Object.freeze({
@@ -20,36 +72,17 @@ const PRESETS = Object.freeze({
     Object.freeze({
       id: "intensity-inferno",
       label: "Inferno",
-      value: Object.freeze([
-        Object.freeze({ position: 0, color: "#000004" }),
-        Object.freeze({ position: 0.2, color: "#420f6e" }),
-        Object.freeze({ position: 0.4, color: "#9e0c8f" }),
-        Object.freeze({ position: 0.6, color: "#e74152" }),
-        Object.freeze({ position: 0.8, color: "#fbc40a" }),
-        Object.freeze({ position: 1, color: "#fcffa4" }),
-      ]),
+      value: INFERNO_STOPS,
     }),
     Object.freeze({
       id: "intensity-viridis",
       label: "Viridis",
-      value: Object.freeze([
-        Object.freeze({ position: 0, color: "#440154" }),
-        Object.freeze({ position: 0.25, color: "#3b528b" }),
-        Object.freeze({ position: 0.5, color: "#21918c" }),
-        Object.freeze({ position: 0.75, color: "#5ec962" }),
-        Object.freeze({ position: 1, color: "#fde725" }),
-      ]),
+      value: VIRIDIS_STOPS,
     }),
     Object.freeze({
       id: "intensity-magma",
       label: "Magma",
-      value: Object.freeze([
-        Object.freeze({ position: 0, color: "#000004" }),
-        Object.freeze({ position: 0.25, color: "#51127c" }),
-        Object.freeze({ position: 0.5, color: "#b73779" }),
-        Object.freeze({ position: 0.75, color: "#fc8961" }),
-        Object.freeze({ position: 1, color: "#fcfdbf" }),
-      ]),
+      value: MAGMA_STOPS,
     }),
     Object.freeze({
       id: "intensity-monochrome",
@@ -87,6 +120,25 @@ export function listPalettePresets(kind) {
 
 export function getPalettePreset(kind, id) {
   return listPalettePresets(kind).find((preset) => preset.id === id) ?? null;
+}
+
+export function findMatchingPalettePresetId(kind, palette) {
+  if (!palette || typeof palette !== "object") return null;
+  const match = listPalettePresets(kind).find((preset) => {
+    if (kind === "intensity") {
+      return (
+        Array.isArray(palette.stops) &&
+        palette.stops.length === preset.value.length &&
+        palette.stops.every(
+          (stop, index) =>
+            stop.position === preset.value[index].position &&
+            stop.color === preset.value[index].color
+        )
+      );
+    }
+    return Object.entries(preset.value).every(([key, color]) => palette[key] === color);
+  });
+  return match?.id ?? null;
 }
 
 /** Return an editable snapshot; saved themes never inherit future preset changes. */

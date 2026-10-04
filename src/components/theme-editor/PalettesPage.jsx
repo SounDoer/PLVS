@@ -4,7 +4,7 @@ import { ColorControl } from "../ColorControl.jsx";
 import { IconButton } from "../IconButton.jsx";
 import { Label } from "../ui/label.jsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
-import { listPalettePresets } from "../../theme/palettePresets.js";
+import { findMatchingPalettePresetId, listPalettePresets } from "../../theme/palettePresets.js";
 import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
 
 const STATUS_COLORS = [
@@ -25,7 +25,8 @@ const FREQUENCY_COLORS = [
   ["high", "High"],
 ];
 
-function PalettePresetSelect({ kind, value, onApplyPreset }) {
+function PalettePresetSelect({ kind, palette, onApplyPreset }) {
+  const value = findMatchingPalettePresetId(kind, palette);
   return (
     <Select
       value={value ?? "custom"}
@@ -71,7 +72,7 @@ function SimplePalette({ title, description, kind, palette, colors, onColor, onA
       <div className="flex items-center justify-between gap-2">
         <Label>{title}</Label>
         {presets ? (
-          <PalettePresetSelect kind={kind} value={palette.presetId} onApplyPreset={onApplyPreset} />
+          <PalettePresetSelect kind={kind} palette={palette} onApplyPreset={onApplyPreset} />
         ) : null}
       </div>
       <p className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">{description}</p>
@@ -121,11 +122,7 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
       <div className="flex items-center justify-between gap-2">
         <Label>Intensity</Label>
         <div className="flex items-center gap-1">
-          <PalettePresetSelect
-            kind="intensity"
-            value={palette.presetId}
-            onApplyPreset={onApplyPreset}
-          />
+          <PalettePresetSelect kind="intensity" palette={palette} onApplyPreset={onApplyPreset} />
           <IconButton
             aria-label="Add intensity stop"
             tip="Add Stop"

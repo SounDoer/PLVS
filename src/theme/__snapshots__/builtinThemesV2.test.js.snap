@@ -14,39 +14,39 @@ exports[`Theme V2 builtins > matches the reviewed current design for plvs-dark 1
         "position": 0,
       },
       {
-        "color": "#1e0c2f",
+        "color": "#180c3c",
         "position": 0.10196078431372549,
       },
       {
-        "color": "#420f6e",
+        "color": "#420a68",
         "position": 0.2,
       },
       {
-        "color": "#710c8c",
+        "color": "#6c186e",
         "position": 0.30196078431372547,
       },
       {
-        "color": "#9e0c8f",
+        "color": "#932667",
         "position": 0.4,
       },
       {
-        "color": "#cb197f",
+        "color": "#bc3754",
         "position": 0.5019607843137255,
       },
       {
-        "color": "#e74152",
+        "color": "#dd513a",
         "position": 0.6,
       },
       {
-        "color": "#f5821e",
+        "color": "#f37819",
         "position": 0.7019607843137254,
       },
       {
-        "color": "#fbc40a",
+        "color": "#fca50a",
         "position": 0.8,
       },
       {
-        "color": "#fceb64",
+        "color": "#f6d746",
         "position": 0.9019607843137255,
       },
       {
@@ -168,39 +168,39 @@ exports[`Theme V2 builtins > matches the reviewed current design for plvs-light 
         "position": 0,
       },
       {
-        "color": "#1e0c2f",
+        "color": "#180c3c",
         "position": 0.10196078431372549,
       },
       {
-        "color": "#420f6e",
+        "color": "#420a68",
         "position": 0.2,
       },
       {
-        "color": "#710c8c",
+        "color": "#6c186e",
         "position": 0.30196078431372547,
       },
       {
-        "color": "#9e0c8f",
+        "color": "#932667",
         "position": 0.4,
       },
       {
-        "color": "#cb197f",
+        "color": "#bc3754",
         "position": 0.5019607843137255,
       },
       {
-        "color": "#e74152",
+        "color": "#dd513a",
         "position": 0.6,
       },
       {
-        "color": "#f5821e",
+        "color": "#f37819",
         "position": 0.7019607843137254,
       },
       {
-        "color": "#fbc40a",
+        "color": "#fca50a",
         "position": 0.8,
       },
       {
-        "color": "#fceb64",
+        "color": "#f6d746",
         "position": 0.9019607843137255,
       },
       {

@@ -93,6 +93,17 @@ describe("ThemeEditor", () => {
     expect(screen.getByLabelText("Intensity palette preview")).toBeTruthy();
   });
 
+  it("shows stale preset provenance as Custom when the stops no longer match", () => {
+    const draft = structuredClone(DRAFT);
+    draft.palettes.intensity.stops = draft.palettes.intensity.stops.filter(
+      (_, index) => index % 2 === 0
+    );
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
+
+    expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Custom");
+  });
+
   it("shows curated Advanced roles rather than raw token names", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));

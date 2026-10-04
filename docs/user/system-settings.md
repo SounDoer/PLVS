@@ -71,6 +71,9 @@ and can be searched or reset to Auto a section at a time. Advanced exposes color
 not fill-opacity controls. Defaults remain 20% / 2% for Spectrum, 20% for Stereo Map, and 12% for
 classic Waveform. Fill opacity is fixed by the app and is not stored in or exported with Themes.
 Palette stop positions, the theme name, and Dark / Light appearance remain editable.
+Inferno, Viridis, and Magma use eleven evenly sampled anchors from their standard Matplotlib color
+maps; Monochrome needs only its black and white endpoints. Selecting a palette stores an editable
+snapshot in the Theme, so later app updates do not recolor a saved custom Theme.
 
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas
