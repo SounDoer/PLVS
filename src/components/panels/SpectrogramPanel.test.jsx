@@ -218,10 +218,10 @@ describe("SpectrogramPanel", () => {
       // Monochrome means neutral: ink follows the theme's secondary text, not
       // its primary data color. Axis labels follow the dedicated annotation
       // role, while the floor rules stay on the faint chart grid.
-      ink: "#959595",
+      ink: "#989898",
       surfaceInk: "#f2f2f2",
-      axisLabel: "#b0b0b0",
-      grid: "#282828",
+      axisLabel: "#b2b2b2",
+      grid: "#2e2e2e",
     });
   });
 

@@ -54,7 +54,7 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
     colorScheme: "dark",
     core: {
       workspace: "#070707",
-      surface: "#151515",
+      surface: "#1c1c1c",
       text: "#f2f2f2",
       interfaceAccent: "#b35300",
       primaryData: "#fb923c",
@@ -69,8 +69,8 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
     name: "Light",
     colorScheme: "light",
     core: {
-      workspace: "#fbf8f5",
-      surface: "#f5f1ee",
+      workspace: "#e9e5e2",
+      surface: "#fdf9f6",
       text: "#140e0a",
       interfaceAccent: "#c45f13",
       primaryData: "#d16718",

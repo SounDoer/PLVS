@@ -349,6 +349,10 @@ activity use separate Interface Palette sources.
 | `--ui-feedback-{success,warning,danger}`                         | Application feedback on ordinary or tinted surfaces   |
 | `--ui-activity-{live,snapshot}`                                  | Live capture, recording, and snapshot activity        |
 
+Feedback and activity colours are foregrounds on the panel. Their automatic value keeps the
+Interface Palette hue and is toned to 5.5:1 against the Panel Surface, while the solid
+`--ui-interface-*` fills keep the palette colour (ADR 0020).
+
 The retired `--ui-signal-good`, `--ui-signal-warn`, and `--ui-signal-bad` names exist only in the
 frozen V1 migration path and must not be used by runtime consumers.
 

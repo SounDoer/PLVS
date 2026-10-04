@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { themeContrastRatio } from "./colorMetrics.js";
 import { compileTheme, ThemeCompilerError } from "./compileTheme.js";
 import { applyPalettePreset } from "./palettePresets.js";
 import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
@@ -239,5 +240,45 @@ describe("compileTheme", () => {
       },
     });
     expect(() => compileTheme(theme)).toThrow("Override mode effect is not allowed");
+  });
+
+  it("tones feedback and activity colours for the panel without changing solid fills", () => {
+    const theme = authoringTheme();
+    theme.palettes.interface = {
+      presetId: null,
+      success: "#147a54",
+      warning: "#fbbf24",
+      danger: "#b83238",
+    };
+    const { roles } = compileTheme(theme);
+    const panel = roles["interface.surface.panel"];
+
+    // Solid chips keep the authored colour; white content sits on them.
+    expect(roles["interface.success"]).toBe("#147a54");
+    expect(roles["interface.danger"]).toBe("#b83238");
+    for (const id of ["interface.feedback.success", "interface.feedback.danger", "activity.live"]) {
+      expect(themeContrastRatio(roles[id], panel)).toBeGreaterThanOrEqual(5.5);
+    }
+    // A colour that is already legible on the panel is published as authored.
+    expect(roles["interface.feedback.warning"]).toBe("#fbbf24");
+    expect(roles["activity.snapshot"]).toBe("#fbbf24");
+
+    const light = compileTheme({
+      ...theme,
+      colorScheme: "light",
+      core: { ...theme.core, workspace: "#e9e5e2", surface: "#fdf9f6", text: "#140e0a" },
+    }).roles;
+    expect(
+      themeContrastRatio(light["interface.feedback.warning"], light["interface.surface.panel"])
+    ).toBeGreaterThanOrEqual(5.5);
+  });
+
+  it("uses larger automatic surface steps for Dark than for Light", () => {
+    const dark = compileTheme(
+      authoringTheme({ core: { ...authoringTheme().core, surface: "#1c1c1c" } })
+    ).roles;
+    expect(dark["interface.surface.muted"]).toBe("#222222");
+    expect(dark["interface.surface.raised"]).toBe("#252525");
+    expect(dark["interface.surface.control"]).toBe("#323232");
   });
 });

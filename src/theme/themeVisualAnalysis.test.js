@@ -32,7 +32,8 @@ describe("Theme visual analysis", () => {
   });
   it("reports structured, actionable warnings without mutating the document", () => {
     const theme = structuredClone(BUILTIN_THEMES_V2["plvs-light"]);
-    theme.palettes.interface.warning = "#fbbf24";
+    // Auto feedback is toned for the panel, so only an authored colour can fall short.
+    theme.overrides["interface.feedback.warning"] = { kind: "color", value: "#fbbf24" };
     theme.overrides["interface.surface.control"] = { kind: "color", value: "#e5e1de" };
     theme.overrides["interface.surface.muted"] = { kind: "color", value: "#e5e1de" };
     const before = structuredClone(theme);

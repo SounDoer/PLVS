@@ -105,10 +105,11 @@ While the Theme editor is open, your unsaved draft remains visible; external cha
 existing draft as stale. **Cancel** restores this workbench's applied Theme, rather than applying
 the peer edit or keeping the preview of an unselected Library item.
 
-The built-in Light and Dark themes are tuned independently: each keeps opaque Workspace, panel,
-control, muted, and selected surfaces distinct, and uses scheme-appropriate text and feedback
-contrast. Measurement colors keep the same meanings in both appearances even when their exact
-values differ.
+The built-in Light and Dark themes are tuned independently. In both, panels are the lighter surface
+on a darker Workspace, and the raised, control, and muted surfaces step away from the panel.
+Feedback messages and the Live and Snapshot indicators are toned automatically from the Interface
+Palette so they stay readable on the panel; solid chips and buttons keep the palette colour itself.
+Measurement colors keep the same meanings in both appearances even when their exact values differ.
 
 **Open Theme Preview** shows controlled overview and module scenes from the current unsaved draft
 without changing Workspace data or layout. The module scenes include representative optional Grid
