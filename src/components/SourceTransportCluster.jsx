@@ -75,7 +75,7 @@ export function SourceTransportCluster({
     <div
       style={{ fontSize: "var(--ui-fs-status)" }}
       className={cn(
-        "relative inline-flex h-7 max-w-full shrink-0 items-center overflow-hidden rounded-full p-0.5 transition-all duration-200",
+        "relative inline-flex h-7 max-w-full shrink-0 items-center overflow-hidden rounded-full p-0.5",
         TRANSPORT_WIDTH_CLASS[sourceMode] ?? TRANSPORT_WIDTH_CLASS.live,
         chrome.shell
       )}

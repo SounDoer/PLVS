@@ -18,6 +18,10 @@ const baseState = {
 };
 
 describe("SourceTransportCluster", () => {
+  it("switches transport shell and inherited text colors without animation", () => {
+    expect(source).not.toMatch(/rounded-full p-0\.5 transition-/);
+  });
+
   it("uses typography tokens instead of hard-coded transport text sizes", () => {
     expect(source).toContain("text-[length:var(--ui-fs-status)]");
     expect(source).toContain("text-[length:var(--ui-fs-metric-meta)]");
