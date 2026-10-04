@@ -17,6 +17,18 @@
         max-height: calc(100vh - 3rem) !important;
         max-width: none !important;
         width: calc(100vw - 3rem) !important;
+        /* Pinned to whole pixels and without its shadow, so the cropped edges stay crisp. */
+        box-shadow: none !important;
+        inset: 0 auto auto 0 !important;
+        translate: none !important;
+      }
+      /* Only the dialog is published: nothing may show through around its rounded corners. */
+      html[data-community-preview-asset="semantic-overview"],
+      html[data-community-preview-asset="semantic-overview"] body {
+        background: transparent !important;
+      }
+      html[data-community-preview-asset="semantic-overview"] :has(+ [aria-label="Theme preview"]) {
+        display: none !important;
       }
     </style>
   </head>

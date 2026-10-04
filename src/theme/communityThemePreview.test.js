@@ -47,6 +47,7 @@ describe("community Theme preview contract", () => {
       kind: "semantic",
       renderer: "semantic-gallery",
       format: "png",
+      crop: "dialog",
       source: {
         generator: "plvs-theme-gallery",
         contractVersion: 1,
@@ -55,6 +56,7 @@ describe("community Theme preview contract", () => {
       },
     });
     expect(plan.assets.filter(({ kind }) => kind === "product")).toHaveLength(9);
+    expect(plan.assets.filter(({ crop }) => crop !== undefined)).toHaveLength(1);
   });
 
   it.each(["screenshots", "previews", "media", "thumbnail", "coverImage", "imageUrl"])(

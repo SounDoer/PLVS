@@ -160,17 +160,20 @@ export function validateCommunityPreviewResult(plan, raw) {
       issues.push(issue("invalidPreviewMediaType", `${path}.mediaType`, "Preview must be a PNG."));
     }
     const expectedViewport = expected.viewport;
+    // A cropped asset is cut out of its viewport, so the viewport bounds its size instead of fixing it.
+    const fits = (size, viewportSize) =>
+      expected.crop ? size <= viewportSize : size === viewportSize;
     if (
       !Number.isSafeInteger(asset.width) ||
       asset.width < 1 ||
-      (expectedViewport && asset.width !== expectedViewport.widthCssPx)
+      (expectedViewport && !fits(asset.width, expectedViewport.widthCssPx))
     ) {
       issues.push(issue("invalidPreviewWidth", `${path}.width`, "Preview width is invalid."));
     }
     if (
       !Number.isSafeInteger(asset.height) ||
       asset.height < 1 ||
-      (expectedViewport && asset.height !== expectedViewport.heightCssPx)
+      (expectedViewport && !fits(asset.height, expectedViewport.heightCssPx))
     ) {
       issues.push(issue("invalidPreviewHeight", `${path}.height`, "Preview height is invalid."));
     }

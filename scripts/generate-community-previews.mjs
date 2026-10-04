@@ -169,7 +169,12 @@ export async function createCommunityPreviewBrowserRuntime() {
           if (pageErrors.length > 0) throw pageErrors[0];
           if (settlement?.ready !== true)
             throw new Error(`Preview asset ${asset.id} did not settle.`);
-          await page.screenshot({ path, type: "png", animations: "disabled", caret: "hide" });
+          const options = { path, type: "png", animations: "disabled", caret: "hide" };
+          if (asset.crop === "dialog") {
+            await page.getByRole("dialog").screenshot({ ...options, omitBackground: true });
+          } else {
+            await page.screenshot(options);
+          }
         } finally {
           await page.close();
         }

@@ -71,4 +71,40 @@ describe("Community preview result", () => {
       })
     );
   });
+
+  it("accepts a cropped asset at any size inside its viewport and nothing larger", async () => {
+    const { plan, result } = await fixture();
+    const croppedPlan = {
+      ...plan,
+      assets: plan.assets.map((asset, index) =>
+        index === 0 ? { ...asset, crop: "dialog" } : asset
+      ),
+    };
+    const { widthCssPx, heightCssPx } = plan.assets[0].viewport;
+    const sized = (width, height) => ({
+      ...result,
+      assets: result.assets.map((asset, index) =>
+        index === 0 ? { ...asset, width, height } : asset
+      ),
+    });
+
+    expect(
+      validateCommunityPreviewResult(croppedPlan, sized(widthCssPx - 48, 300)).assets[0]
+    ).toMatchObject({ width: widthCssPx - 48, height: 300 });
+    expect(() => validateCommunityPreviewResult(plan, sized(widthCssPx - 48, 300))).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([expect.objectContaining({ code: "invalidPreviewWidth" })]),
+      })
+    );
+    expect(() =>
+      validateCommunityPreviewResult(croppedPlan, sized(widthCssPx + 1, heightCssPx + 1))
+    ).toThrowError(
+      expect.objectContaining({
+        issues: expect.arrayContaining([
+          expect.objectContaining({ code: "invalidPreviewWidth" }),
+          expect.objectContaining({ code: "invalidPreviewHeight" }),
+        ]),
+      })
+    );
+  });
 });

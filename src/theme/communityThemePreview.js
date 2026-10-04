@@ -27,6 +27,9 @@ export const COMMUNITY_THEME_PREVIEW_ASSETS = Object.freeze([
     renderer: "semantic-gallery",
     format: "png",
     viewport: SEMANTIC_VIEWPORT,
+    // The gallery is a dialog laid out in this viewport; only the dialog is published, so the image
+    // is as tall as its content rather than as tall as the viewport.
+    crop: "dialog",
   }),
   ...[
     "workspace-file",
