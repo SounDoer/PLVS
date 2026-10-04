@@ -41,6 +41,7 @@ pub(crate) const CAPTURE_STALL_TIMEOUT: Duration = Duration::from_secs(5);
 /// Starting a macOS system-output tap can show the one-time recording permission prompt. Keep the
 /// startup allowance separate from the running-stream stall threshold so a user can answer the
 /// prompt without weakening detection after the first callback arrives.
+#[cfg(target_os = "macos")]
 pub(crate) const CAPTURE_START_TIMEOUT: Duration = Duration::from_secs(30);
 const CAPTURE_WATCH_POLL: Duration = Duration::from_millis(250);
 
@@ -146,6 +147,7 @@ pub(crate) fn wait_for_stop_or_stall(
 
 /// Waits for the first backend callback while still honoring an explicit stop. Returns `true` once
 /// capture is active and `false` when the session was stopped before it became active.
+#[cfg(any(target_os = "macos", test))]
 pub(crate) fn wait_for_first_activity_or_stop(
   stop_rx: &std::sync::mpsc::Receiver<()>,
   activity: &AtomicU64,
