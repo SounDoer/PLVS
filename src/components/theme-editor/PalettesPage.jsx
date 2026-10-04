@@ -152,6 +152,7 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
   const customRef = useRef(matchingPresetId == null ? cloneCustomIntensity(palette) : null);
   const lastPresetIdRef = useRef(matchingPresetId ?? "intensity-inferno");
   const [customAvailable, setCustomAvailable] = useState(matchingPresetId == null);
+  const [resetArmed, setResetArmed] = useState(false);
 
   useEffect(() => {
     if (matchingPresetId) {
@@ -177,24 +178,28 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
       <div className="flex items-center justify-between gap-2">
         <Label>Intensity</Label>
         <div className="flex items-center gap-1">
-          <PalettePresetSelect
-            kind="intensity"
-            palette={palette}
-            onApplyPreset={(kind, presetId) => {
-              lastPresetIdRef.current = presetId;
-              onApplyPreset(kind, presetId);
-            }}
-            customAvailable={customAvailable}
-            onSelectCustom={() => {
-              if (customRef.current) onStops(customRef.current.stops);
-            }}
-          />
+          <div className={resetArmed ? "invisible" : undefined}>
+            <PalettePresetSelect
+              kind="intensity"
+              palette={palette}
+              onApplyPreset={(kind, presetId) => {
+                lastPresetIdRef.current = presetId;
+                onApplyPreset(kind, presetId);
+              }}
+              customAvailable={customAvailable}
+              onSelectCustom={() => {
+                if (customRef.current) onStops(customRef.current.stops);
+              }}
+            />
+          </div>
           <ResetAction
             label="Reset Custom intensity palette"
             tip="Reset Custom"
             defaultTip="No Custom Palette"
+            compact
             isDefault={!customAvailable}
             onReset={resetCustom}
+            onArmedChange={setResetArmed}
             confirmLabel="Confirm reset Custom intensity palette"
             cancelLabel="Cancel reset Custom intensity palette"
           />

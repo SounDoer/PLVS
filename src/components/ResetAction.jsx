@@ -20,14 +20,23 @@ export function ResetAction({
   cancelLabel = `Cancel ${label.toLowerCase()}`,
   side = "top",
   align = "end",
+  compact = false,
   className,
   onArmedChange,
   ...props
 }) {
   return (
-    <div data-reset-action className={cn("flex w-10 shrink-0 justify-end", className)} {...props}>
+    <div
+      data-reset-action
+      className={cn(
+        "flex shrink-0 justify-end",
+        compact ? "w-[calc(var(--ui-icon-management-action)+0.25rem)]" : "w-10",
+        className
+      )}
+      {...props}
+    >
       <InlineConfirm
-        className="w-10 justify-end"
+        className="w-10 shrink-0 justify-end"
         onConfirm={onReset}
         confirmLabel={confirmLabel}
         cancelLabel={cancelLabel}

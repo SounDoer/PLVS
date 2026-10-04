@@ -35,3 +35,17 @@ it("keeps the original trigger as the confirmation state's size reference", () =
   expect(slot.querySelector("[data-inline-confirm-sizer]")).toBeTruthy();
   expect(confirmation.closest("[data-reset-action]")).toBe(slot);
 });
+
+it("can use an icon-width idle slot while confirmation expands left", () => {
+  render(<ResetAction label="Reset layout" compact onReset={vi.fn()} />);
+
+  const reset = screen.getByRole("button", { name: "Reset layout" });
+  const slot = reset.closest("[data-reset-action]");
+  expect(slot.className).toContain("w-[calc(var(--ui-icon-management-action)+0.25rem)]");
+
+  fireEvent.click(reset);
+  const confirmation = screen.getByRole("button", { name: "Confirm reset layout" }).parentElement;
+  expect(confirmation.closest("[data-reset-action]")).toBe(slot);
+  expect(confirmation.parentElement.className).toContain("w-10");
+  expect(confirmation.parentElement.className).toContain("shrink-0");
+});
