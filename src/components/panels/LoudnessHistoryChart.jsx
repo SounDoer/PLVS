@@ -295,26 +295,9 @@ export function LoudnessHistoryChart({
             stroke="var(--ui-loudness-grid)"
             name="loudness"
           />
-          {showMomentary && displayHistoryPathM && (
-            <path
-              d={displayHistoryPathM}
-              fill="none"
-              stroke={mStops ? `url(#${mGradId})` : mStrokeNormal}
-              strokeWidth="var(--ui-loudness-momentary-stroke-width)"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-          {showShortTerm && displayHistoryPathST && (
-            <path
-              d={displayHistoryPathST}
-              fill="none"
-              stroke={stStops ? `url(#${stGradId})` : stStrokeNormal}
-              strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
           {/* Reference guide line: the profile's target loudness, drawn only when the `ref` layer
-              is on. It judges nothing -- it is a place to aim the eye. */}
+              is on. It judges nothing -- it is a place to aim the eye. Keep it before both data
+              traces so collisions preserve the M > ST > Reference visual priority. */}
           {showReference && refTopFrac != null ? (
             <line
               data-testid="loudness-reference-line"
@@ -328,6 +311,26 @@ export function LoudnessHistoryChart({
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
+          {showShortTerm && displayHistoryPathST && (
+            <path
+              data-testid="loudness-short-term-path"
+              d={displayHistoryPathST}
+              fill="none"
+              stroke={stStops ? `url(#${stGradId})` : stStrokeNormal}
+              strokeWidth="var(--ui-loudness-shortterm-stroke-width)"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          {showMomentary && displayHistoryPathM && (
+            <path
+              data-testid="loudness-momentary-path"
+              d={displayHistoryPathM}
+              fill="none"
+              stroke={mStops ? `url(#${mGradId})` : mStrokeNormal}
+              strokeWidth="var(--ui-loudness-momentary-stroke-width)"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
           {selectedOffset >= 0 && showSelLine ? (
             <line
               x1={selLineX}

@@ -126,8 +126,11 @@ describe("LoudnessHistoryChart", () => {
   });
 
   it("keeps data trace stroke widths independent from SVG scaling", () => {
-    const { container } = renderChart(["momentary", "shortTerm"]);
-    const paths = container.querySelectorAll("svg path");
+    renderChart(["momentary", "shortTerm"]);
+    const paths = [
+      screen.getByTestId("loudness-momentary-path"),
+      screen.getByTestId("loudness-short-term-path"),
+    ];
 
     expect(paths).toHaveLength(2);
     expect(paths[0]?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
@@ -299,22 +302,39 @@ describe("LoudnessHistoryChart", () => {
   });
 
   it("draws plain M and ST strokes plus a reference line when the reference layer is on", () => {
-    const { container } = renderChart(["momentary", "shortTerm", "ref"]);
-    const paths = container.querySelectorAll("svg path");
+    renderChart(["momentary", "shortTerm", "ref"]);
+    const momentary = screen.getByTestId("loudness-momentary-path");
+    const shortTerm = screen.getByTestId("loudness-short-term-path");
 
-    expect(paths).toHaveLength(2);
-    expect(paths[0]?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
-    expect(paths[1]?.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
-    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeTruthy();
+    expect(momentary.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
+    expect(shortTerm.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
+    expect(screen.getByTestId("loudness-reference-line")).toBeTruthy();
   });
 
   it("draws no reference line when the reference layer is off", () => {
-    const { container } = renderChart(["momentary", "shortTerm"]);
-    const paths = container.querySelectorAll("svg path");
+    renderChart(["momentary", "shortTerm"]);
 
-    expect(paths[0]?.getAttribute("stroke")).toBe("var(--ui-loudness-momentary)");
-    expect(paths[1]?.getAttribute("stroke")).toBe("var(--ui-loudness-shortterm)");
-    expect(container.querySelector("[data-testid='loudness-reference-line']")).toBeNull();
+    expect(screen.getByTestId("loudness-momentary-path").getAttribute("stroke")).toBe(
+      "var(--ui-loudness-momentary)"
+    );
+    expect(screen.getByTestId("loudness-short-term-path").getAttribute("stroke")).toBe(
+      "var(--ui-loudness-shortterm)"
+    );
+    expect(screen.queryByTestId("loudness-reference-line")).toBeNull();
+  });
+
+  it("stacks Reference below Short-term below Momentary", () => {
+    renderChart(["momentary", "shortTerm", "ref"]);
+    const svg = screen.getByTestId("loudness-reference-line").closest("svg");
+    const paintedLayers = Array.from(svg.children)
+      .map((node) => node.getAttribute("data-testid"))
+      .filter(Boolean);
+
+    expect(paintedLayers).toEqual([
+      "loudness-reference-line",
+      "loudness-short-term-path",
+      "loudness-momentary-path",
+    ]);
   });
 
   it("keeps a plain snapshot stroke and still draws the reference line in snapshot mode", () => {

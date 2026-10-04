@@ -175,13 +175,16 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
             {mStops ? <RuleGradient id={mGradId} stops={mStops} height={SPARK_H} /> : null}
             {stStops ? <RuleGradient id={stGradId} stops={stStops} height={SPARK_H} /> : null}
           </defs>
-          {showMomentary && momentaryPath ? (
-            <path
-              data-testid="dock-loudness-momentary"
-              d={momentaryPath}
-              fill="none"
-              stroke={mStops ? `url(#${mGradId})` : "var(--ui-loudness-momentary)"}
-              strokeWidth="var(--ui-loudness-momentary-stroke-width)"
+          {referenceY != null ? (
+            <line
+              data-testid="dock-loudness-reference-line"
+              x1={0}
+              x2={SPARK_W}
+              y1={referenceY}
+              y2={referenceY}
+              stroke="var(--foreground)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
@@ -195,16 +198,13 @@ export function DockLoudness({ controls, heightMode = "standard" }) {
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
-          {referenceY != null ? (
-            <line
-              data-testid="dock-loudness-reference-line"
-              x1={0}
-              x2={SPARK_W}
-              y1={referenceY}
-              y2={referenceY}
-              stroke="var(--foreground)"
-              strokeWidth="1"
-              strokeDasharray="3 3"
+          {showMomentary && momentaryPath ? (
+            <path
+              data-testid="dock-loudness-momentary"
+              d={momentaryPath}
+              fill="none"
+              stroke={mStops ? `url(#${mGradId})` : "var(--ui-loudness-momentary)"}
+              strokeWidth="var(--ui-loudness-momentary-stroke-width)"
               vectorEffect="non-scaling-stroke"
             />
           ) : null}

@@ -45,7 +45,8 @@ settings.
 
 Momentary and Short-term LUFS curves over time, following ITU-R BS.1770 measurement with EBU R128
 gating conventions. The two curves use equal line weights and are distinguished by the Theme's
-Primary and Secondary Data colours. The reference line comes from the active Loudness Profile.
+Primary and Secondary Data colours. Where layers overlap, Momentary is drawn above Short-term,
+which is drawn above the reference line. The reference line comes from the active Loudness Profile.
 **Grid** adds horizontal guides at the visible loudness-axis ticks and is off by default.
 
 ## Stats

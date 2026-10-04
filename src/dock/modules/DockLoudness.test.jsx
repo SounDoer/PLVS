@@ -121,6 +121,15 @@ describe("DockLoudness", () => {
     const reference = screen.getByTestId("dock-loudness-reference-line");
     expect(reference).toBeTruthy();
     expect(reference.getAttribute("opacity")).toBeNull();
+    expect(
+      Array.from(reference.closest("svg").children)
+        .map((node) => node.getAttribute("data-testid"))
+        .filter(Boolean)
+    ).toEqual([
+      "dock-loudness-reference-line",
+      "dock-loudness-short-term",
+      "dock-loudness-momentary",
+    ]);
   });
 
   it("tints the momentary trace with a gradient when its own rule breaches", () => {
