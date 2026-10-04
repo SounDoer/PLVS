@@ -298,7 +298,11 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "identity",
     dependencies: ["palette.status.critical"],
     bindings: { css: ["--ui-activity-live"] },
-    advanced: colorOverride("Activity", "Live", "Live capture and recording activity."),
+    advanced: colorOverride(
+      "Transport",
+      "Live Indicator",
+      "Live capture, recording, and stop activity in transport controls."
+    ),
   }),
   role("activity.snapshot", {
     kind: "color",
@@ -306,7 +310,11 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "identity",
     dependencies: ["data.snapshot.primary"],
     bindings: { css: ["--ui-activity-snapshot"] },
-    advanced: colorOverride("Activity", "Snapshot", "Snapshot capture activity."),
+    advanced: colorOverride(
+      "Transport",
+      "Snapshot Indicator",
+      "Snapshot capture activity in transport controls. Panel snapshot traces use module roles."
+    ),
   }),
 
   role("data.primary", {

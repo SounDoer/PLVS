@@ -51,7 +51,7 @@ function OverviewScene() {
           </span>
         </div>
       </PreviewCard>
-      <PreviewCard title="Feedback & Activity">
+      <PreviewCard title="Feedback & Transport">
         <div className="flex flex-col gap-1 text-[length:var(--ui-fs-metric-meta)]">
           <span className="text-[color:var(--ui-feedback-success)]">Export complete</span>
           <span className="text-[color:var(--ui-feedback-warning)]">History truncated</span>

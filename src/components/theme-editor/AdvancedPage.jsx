@@ -24,7 +24,7 @@ const REFERENCE_LABELS = {
 
 const SECTION_ORDER = [
   "Interface",
-  "Activity",
+  "Transport",
   ...Object.values(MODULE_CATALOG).map((module) => module.title),
 ];
 
@@ -161,7 +161,7 @@ export function AdvancedPage({
 }) {
   const resolved = useMemo(() => compileTheme(draft), [draft]);
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState(() => new Set(["Interface"]));
+  const [expanded, setExpanded] = useState(() => new Set());
   const normalizedQuery = query.trim().toLowerCase();
 
   useEffect(() => {

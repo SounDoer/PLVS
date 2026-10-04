@@ -87,6 +87,8 @@ active, but appear dimmed and cannot be armed until there is something to restor
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas
 has separate controls.
+Advanced opens with every role group collapsed. The **Transport** group controls the Live and
+Snapshot indicators in transport controls; panel snapshot traces remain under their module groups.
 
 **Advanced → Interface → Border Color** sets one opaque colour for ordinary interface separators
 and control outlines, including input fields. It does not change chart Grid or Guides colours;

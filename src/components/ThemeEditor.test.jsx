@@ -165,6 +165,7 @@ describe("ThemeEditor", () => {
   it("shows curated Advanced roles rather than raw token names", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Interface" }));
 
     expect(screen.getByText("Panel Surface")).toBeTruthy();
     expect(screen.getByText("Annotation Text")).toBeTruthy();
@@ -193,13 +194,16 @@ describe("ThemeEditor", () => {
   it("orders Advanced sections by the Module Catalog and shows Interface subgroups", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
+    const allSections = screen.getAllByRole("button", { expanded: false });
+    expect(allSections.length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Interface" }));
 
     for (const group of ["Surfaces", "Text & Icons", "Feedback", "Contrast", "Effects"]) {
       expect(screen.getByText(group)).toBeTruthy();
     }
     const sectionNames = [
       "Interface",
-      "Activity",
+      "Transport",
       "Level Meter",
       "Loudness",
       "Stats",
@@ -219,7 +223,7 @@ describe("ThemeEditor", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
     const interfaceSection = screen.getByRole("button", { name: "Interface" });
-    fireEvent.click(interfaceSection);
+    expect(interfaceSection.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByText("Panel Surface")).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Search Advanced roles"), {
@@ -303,6 +307,7 @@ describe("ThemeEditor", () => {
   ])("dresses the %s dropdown as the shared Select, not a bare <select>", (tab, label, shown) => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: tab }));
+    if (tab === "Advanced") fireEvent.click(screen.getByRole("button", { name: "Interface" }));
 
     const trigger = screen.getByLabelText(label);
     expect(trigger.tagName).not.toBe("SELECT");
