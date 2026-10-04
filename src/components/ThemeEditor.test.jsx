@@ -104,6 +104,19 @@ describe("ThemeEditor", () => {
     expect(screen.getByLabelText("intensity palette preset").textContent).toContain("Custom");
   });
 
+  it("identifies the independently tuned Light palette presets by value", () => {
+    const draft = makeCustomThemeV2FromBase(
+      BUILTIN_THEMES_V2["plvs-light"],
+      "Light Theme",
+      () => "custom-light"
+    );
+    render(<ThemeEditor {...BASE_PROPS} draft={draft} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
+
+    expect(screen.getByLabelText("status palette preset").textContent).toContain("PLVS Light");
+    expect(screen.getByLabelText("frequency palette preset").textContent).toContain("PLVS Light");
+  });
+
   it("shows curated Advanced roles rather than raw token names", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Advanced" }));
@@ -239,7 +252,7 @@ describe("ThemeEditor", () => {
   });
 
   it.each([
-    ["Palettes", "status palette preset", "PLVS Default"],
+    ["Palettes", "status palette preset", "PLVS Dark"],
     ["Advanced", "Panel Surface mode", "Auto"],
   ])("dresses the %s dropdown as the shared Select, not a bare <select>", (tab, label, shown) => {
     render(<ThemeEditor {...BASE_PROPS} />);

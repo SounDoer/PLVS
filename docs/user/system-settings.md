@@ -74,6 +74,8 @@ Palette stop positions, the theme name, and Dark / Light appearance remain edita
 Inferno, Viridis, and Magma use eleven evenly sampled anchors from their standard Matplotlib color
 maps; Monochrome needs only its black and white endpoints. Selecting a palette stores an editable
 snapshot in the Theme, so later app updates do not recolor a saved custom Theme.
+Status and Frequency offer separate **PLVS Dark** and **PLVS Light** palettes tuned for their panel
+surfaces. Changing Dark / Light appearance does not rewrite an already selected palette.
 
 **Advanced → Interface → Primary Text** also supplies ordinary text on panels, raised surfaces,
 neutral controls, and selected surfaces. Text on solid Accent, Success, Warning, and Danger areas

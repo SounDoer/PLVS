@@ -16,6 +16,14 @@ describe("palette presets", () => {
       expect(presets.length).toBeGreaterThan(0);
       expect(new Set(presets.map(({ id }) => id)).size).toBe(presets.length);
     }
+    expect(listPalettePresets("status").map(({ id, label }) => [id, label])).toEqual([
+      ["status-plvs", "PLVS Dark"],
+      ["status-plvs-light", "PLVS Light"],
+    ]);
+    expect(listPalettePresets("frequency").map(({ id, label }) => [id, label])).toEqual([
+      ["frequency-plvs", "PLVS Dark"],
+      ["frequency-plvs-light", "PLVS Light"],
+    ]);
   });
 
   it("returns an editable value snapshot rather than live preset inheritance", () => {
@@ -88,6 +96,10 @@ describe("palette presets", () => {
   it("returns null for an unknown preset", () => {
     expect(applyPalettePreset("status", "missing")).toBeNull();
     expect(getPalettePreset("missing", "status-plvs")).toBeNull();
+    expect(getPalettePreset("status", "status-bold")).toBeNull();
+    expect(getPalettePreset("status", "status-cool")).toBeNull();
+    expect(getPalettePreset("frequency", "frequency-spectrum")).toBeNull();
+    expect(getPalettePreset("frequency", "frequency-cool")).toBeNull();
   });
 
   it("matches presets by their value instead of stale provenance", () => {
@@ -109,6 +121,6 @@ describe("palette presets", () => {
         warning: "#9f6200",
         critical: "#d03535",
       })
-    ).toBeNull();
+    ).toBe("status-plvs-light");
   });
 });

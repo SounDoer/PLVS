@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { BUILTIN_THEMES_V2, getBuiltinThemeV2 } from "./builtinThemesV2.js";
 import { compileTheme } from "./compileTheme.js";
+import { applyPalettePreset } from "./palettePresets.js";
 import { isCurrentThemeDocument } from "./themeSchema.js";
 
 describe("Theme V2 builtins", () => {
@@ -19,6 +20,16 @@ describe("Theme V2 builtins", () => {
 
   it.each(Object.keys(BUILTIN_THEMES_V2))("authors %s without a single override", (id) => {
     expect(BUILTIN_THEMES_V2[id].overrides).toEqual({});
+  });
+
+  it.each([
+    ["plvs-dark", "status-plvs", "frequency-plvs"],
+    ["plvs-light", "status-plvs-light", "frequency-plvs-light"],
+  ])("builds %s from its named Status and Frequency presets", (id, statusId, frequencyId) => {
+    expect(BUILTIN_THEMES_V2[id].palettes.status).toEqual(applyPalettePreset("status", statusId));
+    expect(BUILTIN_THEMES_V2[id].palettes.frequency).toEqual(
+      applyPalettePreset("frequency", frequencyId)
+    );
   });
 
   it("is deeply immutable and falls back to Dark", () => {

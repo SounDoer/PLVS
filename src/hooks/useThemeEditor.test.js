@@ -56,12 +56,12 @@ describe("useThemeEditor", () => {
       warning: "#abcdef",
     });
 
-    act(() => result.current.applyPreset("frequency", "frequency-cool"));
+    act(() => result.current.applyPreset("frequency", "frequency-plvs-light"));
     expect(result.current.draft.palettes.frequency).toMatchObject({
-      presetId: "frequency-cool",
-      low: "#a855f7",
-      mid: "#06b6d4",
-      high: "#60a5fa",
+      presetId: "frequency-plvs-light",
+      low: "#d9481c",
+      mid: "#c06f00",
+      high: "#3730a3",
     });
     expect(listCustomThemeDocuments()).toEqual({});
   });

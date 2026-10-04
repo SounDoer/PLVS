@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_THEMES_V2 } from "../src/theme/builtinThemesV2.js";
 import { compileTheme } from "../src/theme/compileTheme.js";
-import { analyzeThemeVisuals } from "../src/theme/themeVisualAnalysis.js";
+import { listPalettePresets } from "../src/theme/palettePresets.js";
+import { analyzeThemeVisuals, themeColorDistance } from "../src/theme/themeVisualAnalysis.js";
 import { COMMUNITY_THEME_PREVIEW_ASSETS } from "../src/theme/communityThemePreview.js";
 import {
   buildSemanticGallerySvg,
@@ -113,6 +114,32 @@ describe("Theme Gallery", () => {
     expect(() => simulateColorVision("#123456", "unknown")).toThrow(
       "Unknown color-vision simulation"
     );
+  });
+
+  it("keeps every Status and Frequency preset distinct in normal and simulated vision", () => {
+    const modes = ["normal", "protanopia", "deuteranopia", "tritanopia", "grayscale"];
+    const keysByKind = {
+      status: ["safe", "warning", "critical"],
+      frequency: ["low", "mid", "high"],
+    };
+
+    for (const [kind, keys] of Object.entries(keysByKind)) {
+      for (const preset of listPalettePresets(kind)) {
+        for (const mode of modes) {
+          const colors = keys.map((key) =>
+            mode === "normal" ? preset.value[key] : simulateColorVision(preset.value[key], mode)
+          );
+          const target = mode === "normal" ? 0.08 : 0.05;
+          expect(
+            Math.min(
+              themeColorDistance(colors[0], colors[1]),
+              themeColorDistance(colors[1], colors[2])
+            ),
+            `${kind}/${preset.label} should remain distinct in ${mode}`
+          ).toBeGreaterThanOrEqual(target);
+        }
+      }
+    }
   });
 
   it("rejects an incomplete or duplicated simulation matrix", async () => {

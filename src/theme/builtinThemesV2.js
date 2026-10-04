@@ -7,7 +7,15 @@ export function isThemeId(id) {
   return typeof id === "string" && THEME_IDS.includes(id);
 }
 
-function makeBuiltin({ id, name, colorScheme, core, status, interfacePalette, frequency }) {
+function makeBuiltin({
+  id,
+  name,
+  colorScheme,
+  core,
+  statusPresetId,
+  interfacePalette,
+  frequencyPresetId,
+}) {
   return {
     formatVersion: 2,
     semanticsVersion: 3,
@@ -16,9 +24,9 @@ function makeBuiltin({ id, name, colorScheme, core, status, interfacePalette, fr
     colorScheme,
     core,
     palettes: {
-      status: { presetId: "status-plvs", ...status },
+      status: applyPalettePreset("status", statusPresetId),
       intensity: applyPalettePreset("intensity", "intensity-inferno"),
-      frequency: { presetId: "frequency-plvs", ...frequency },
+      frequency: applyPalettePreset("frequency", frequencyPresetId),
       interface: {
         presetId: null,
         ...interfacePalette,
@@ -48,9 +56,9 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       primaryData: "#fb923c",
       secondaryData: "#209bda",
     },
-    status: { safe: "#34d399", warning: "#fbbf24", critical: "#f97373" },
+    statusPresetId: "status-plvs",
     interfacePalette: { success: "#147a54", warning: "#936000", danger: "#b83238" },
-    frequency: { low: "#ff2d3d", mid: "#fb923c", high: "#356dff" },
+    frequencyPresetId: "frequency-plvs",
   }),
   "plvs-light": makeBuiltin({
     id: "plvs-light",
@@ -64,9 +72,9 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       primaryData: "#d16718",
       secondaryData: "#0e7490",
     },
-    status: { safe: "#18976a", warning: "#9f6200", critical: "#d03535" },
+    statusPresetId: "status-plvs-light",
     interfacePalette: { success: "#1a9064", warning: "#b17000", danger: "#e43b46" },
-    frequency: { low: "#d9481c", mid: "#c06f00", high: "#3730a3" },
+    frequencyPresetId: "frequency-plvs-light",
   }),
 });
 
