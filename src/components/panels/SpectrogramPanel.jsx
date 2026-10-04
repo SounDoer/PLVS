@@ -30,7 +30,6 @@ import { hzFromFrac } from "../../math/spectrogramMath.js";
 import {
   spectrogramTimeWindow,
   spectrogramRenderTimeWindow,
-  spectrogramDataBoundaryMarkers,
   resolveSpectrogramSampleMs,
   resolveStableSpectrogramSampleMs,
 } from "../../math/spectrogramTimeline";
@@ -327,17 +326,6 @@ export function SpectrogramPanel() {
     : timeWindow;
   const paintOldestMs = paintTimeWindow?.oldestMs ?? NaN;
   const paintNewestMs = paintTimeWindow?.newestMs ?? NaN;
-  // Marker lines where this request key's data appears/disappears inside the window (memoized so the
-  // O(window) gap scan does not run on every ~60Hz panel re-render).
-  const dataBoundaryMarkers = useMemo(
-    () =>
-      showFrequencyMarkers
-        ? spectrogramDataBoundaryMarkers(spectrogramSnaps, oldestMs, newestMs, sampleMs)
-        : [],
-    // The snapshot ring mutates in place; its version is an intentional cache invalidator.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showFrequencyMarkers, spectrogramSnaps, spectrogramSnaps.version, oldestMs, newestMs, sampleMs]
-  );
   useSpectrogramCanvas({
     canvasRef,
     snapRef,
@@ -382,7 +370,6 @@ export function SpectrogramPanel() {
     canvasSizeRevision,
     enabled: is3d && panelVisible !== false,
   });
-  const boundarySpan = newestMs - oldestMs;
   const {
     hover: spectrogramHover,
     onMove: onSpectrogramHoverMove,
@@ -396,12 +383,6 @@ export function SpectrogramPanel() {
           xFrac: x / 1000,
           label: `${marker.from} -> ${marker.to}`,
         })),
-        ...(boundarySpan > 0
-          ? dataBoundaryMarkers.map(({ ts, label }) => ({
-              xFrac: (ts - oldestMs) / boundarySpan,
-              label,
-            }))
-          : []),
       ];
       return computeSpectrogramHoverPoint(
         xFrac,
@@ -416,7 +397,7 @@ export function SpectrogramPanel() {
       );
     },
     selectedOffset < 0
-      ? `${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${dataBoundaryMarkers.length}:${visibleFrequencyMarkers.length}`
+      ? `${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${visibleFrequencyMarkers.length}`
       : null
   );
   const onSpectrogramChartPointerDown = useCallback(
@@ -629,34 +610,12 @@ export function SpectrogramPanel() {
                 }}
               />
               {!is3d &&
-              ((selectedOffset >= 0 && showSelLine) ||
-                visibleFrequencyMarkers.length > 0 ||
-                (dataBoundaryMarkers.length > 0 && boundarySpan > 0)) ? (
+              ((selectedOffset >= 0 && showSelLine) || visibleFrequencyMarkers.length > 0) ? (
                 <svg
                   viewBox="0 0 1000 1000"
                   preserveAspectRatio="none"
                   className="pointer-events-none absolute inset-0 h-full w-full"
                 >
-                  {boundarySpan > 0
-                    ? dataBoundaryMarkers.map(({ ts, label }) => {
-                        const bx = ((ts - oldestMs) / boundarySpan) * 1000;
-                        return (
-                          <line
-                            key={`data-boundary-${ts}`}
-                            x1={bx}
-                            x2={bx}
-                            y1={0}
-                            y2={1000}
-                            stroke="var(--muted-foreground)"
-                            strokeWidth="1"
-                            strokeDasharray="1 5"
-                            vectorEffect="non-scaling-stroke"
-                          >
-                            <title>{label}</title>
-                          </line>
-                        );
-                      })
-                    : null}
                   {visibleFrequencyMarkers.map(({ marker, x }) => (
                     <line
                       key={`${x}-${marker.from}-${marker.to}`}

@@ -432,7 +432,7 @@ describe("SpectrogramPanel", () => {
     expect(frequencyMarkerIndex.lastQueryStats().binarySearchReads).toBeLessThanOrEqual(2);
   });
 
-  it("draws a data-availability boundary line where this view's history starts mid-window", () => {
+  it("does not add marker lines where this view's history starts mid-window", () => {
     const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
     const key = spectrumRequestKeyFromControls(panelControls);
     // Window [1000, 2000] from history; this key's frames only start at 1500 (leading gap).
@@ -446,46 +446,6 @@ describe("SpectrogramPanel", () => {
         { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
         { key: "s-1", label: "C", sel: { type: "single", ch: 1 } },
       ],
-      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
-      effectiveOffsetSamples: 0,
-      visibleSamples: 3,
-      snapshotSpectrumByKey: { [key]: viewOf(frames) },
-    });
-
-    const boundary = container.querySelector('line[stroke-dasharray="1 5"]');
-    expect(boundary).toBeTruthy();
-    expect(boundary?.getAttribute("opacity")).toBeNull();
-    // x = (1500 - 1000) / (2000 - 1000) * 1000 = 500
-    expect(Number(boundary.getAttribute("x1"))).toBeCloseTo(500);
-  });
-
-  it("hides data-availability boundary lines when no selectable channel chip is shown", () => {
-    const panelControls = { spectrumChannel: { type: "pair", x: 0, y: 1 } };
-    const key = spectrumRequestKeyFromControls(panelControls);
-    const frames = [];
-    for (let ts = 1500; ts <= 2000; ts += 40) frames.push({ timestampMs: ts, dbList: [-10] });
-    const { container } = renderPanel({
-      selectedOffset: 2,
-      panelControls,
-      channelCount: 2,
-      spectrumChannelOptions: [{ key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } }],
-      histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
-      effectiveOffsetSamples: 0,
-      visibleSamples: 3,
-      snapshotSpectrumByKey: { [key]: viewOf(frames) },
-    });
-
-    expect(container.querySelector('line[stroke-dasharray="1 5"]')).toBeNull();
-  });
-
-  it("draws no boundary line for a continuous capture filling the window", () => {
-    const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
-    const key = spectrumRequestKeyFromControls(panelControls);
-    const frames = [];
-    for (let ts = 900; ts <= 2100; ts += 40) frames.push({ timestampMs: ts, dbList: [-10] });
-    const { container } = renderPanel({
-      selectedOffset: 2,
-      panelControls,
       histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1500 }, { timestampMs: 2000 }],
       effectiveOffsetSamples: 0,
       visibleSamples: 3,
@@ -551,7 +511,7 @@ describe("SpectrogramPanel", () => {
     }
   });
 
-  it("hides the SVG overlay lines in 3D even though 2D draws them", () => {
+  it("hides the selection overlay in 3D even though 2D draws it", () => {
     const panelControls = { spectrumChannel: { type: "single", ch: 1 } };
     const key = spectrumRequestKeyFromControls(panelControls);
     const frames = [];
@@ -571,8 +531,7 @@ describe("SpectrogramPanel", () => {
     };
 
     const twoD = renderPanel({ ...commonProps, panelControls });
-    // Data-availability boundary line: this key's frames only start at 1500 within window [1000,2000].
-    expect(twoD.container.querySelector('line[stroke-dasharray="1 5"]')).toBeTruthy();
+    expect(twoD.container.querySelector('line[stroke-dasharray="5 4"]')).toBeTruthy();
     twoD.unmount();
 
     const threeD = renderPanel({

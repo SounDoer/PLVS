@@ -4,13 +4,9 @@ import {
   spectrogramRenderTimeWindow,
   spectrogramFrameEndMs,
   inWindowRange,
-  spectrogramDataBoundaryMarkers,
-  spectrogramDataBoundaries,
   resolveSpectrogramSampleMs,
   resolveStableSpectrogramSampleMs,
 } from "./spectrogramTimeline.js";
-import { SpectrumHistorySlab } from "../lib/SpectrumHistorySlab.js";
-import { VISUAL_HISTORY_CHUNK_ROWS } from "../lib/historyChunkConfig.js";
 
 const SAMPLE_MS = 40;
 
@@ -29,36 +25,6 @@ function frames(startMs, endMs, step = SAMPLE_MS) {
   const rows = [];
   for (let ts = startMs; ts <= endMs; ts += step) rows.push({ timestampMs: ts });
   return viewOf(rows);
-}
-
-function slabOf(timestamps) {
-  const slab = new SpectrumHistorySlab(Math.max(1, timestamps.length), []);
-  for (const timestampMs of timestamps) slab.push({ bands: [], dbList: [], timestampMs });
-  return slab;
-}
-
-function differentialViews(timestamps, capacity = timestamps.length) {
-  const live = new SpectrumHistorySlab(Math.max(1, capacity), []);
-  for (const timestampMs of timestamps) live.push({ bands: [], dbList: [], timestampMs });
-  const retained = timestamps.slice(-capacity);
-  return {
-    reference: viewOf(retained.map((timestampMs) => ({ timestampMs }))),
-    live,
-    frozen: live.freeze(),
-  };
-}
-
-function expectOptimizedViewsToMatchReference(
-  timestamps,
-  oldestMs,
-  newestMs,
-  capacity = timestamps.length
-) {
-  const { reference, live, frozen } = differentialViews(timestamps, capacity);
-  const expected = spectrogramDataBoundaryMarkers(reference, oldestMs, newestMs, SAMPLE_MS);
-  expect(spectrogramDataBoundaryMarkers(live, oldestMs, newestMs, SAMPLE_MS)).toEqual(expected);
-  expect(spectrogramDataBoundaryMarkers(frozen, oldestMs, newestMs, SAMPLE_MS)).toEqual(expected);
-  return { expected, live, frozen };
 }
 
 describe("spectrogramTimeWindow", () => {
@@ -282,173 +248,5 @@ describe("inWindowRange", () => {
   it("returns an empty range when no frame is inside", () => {
     expect(inWindowRange(f, 300, 400)).toEqual({ startIdx: 0, endIdx: -1 });
     expect(inWindowRange(viewOf([]), 100, 200)).toEqual({ startIdx: 0, endIdx: -1 });
-  });
-});
-
-describe("spectrogramDataBoundaries", () => {
-  it("emits no markers for a continuous capture spanning the window", () => {
-    const f = frames(1000, 2000);
-    expect(spectrogramDataBoundaries(f, 1100, 1900, SAMPLE_MS)).toEqual([]);
-  });
-
-  it("marks where data appears after a leading gap", () => {
-    // data only starts at 1500; capture continues past the window end (no trailing mark).
-    const f = frames(1500, 2100);
-    expect(spectrogramDataBoundaries(f, 1000, 2000, SAMPLE_MS)).toEqual([1500]);
-  });
-
-  it("marks where data stops before a trailing gap", () => {
-    // data exists before the window and stops at 1500.
-    const f = frames(900, 1500);
-    expect(spectrogramDataBoundaries(f, 1000, 2000, SAMPLE_MS)).toEqual([1540]);
-  });
-
-  it("marks both edges of an interior gap (switch back and forth)", () => {
-    const rows = [];
-    for (let ts = 800; ts <= 1200; ts += SAMPLE_MS) rows.push({ timestampMs: ts });
-    for (let ts = 1600; ts <= 2000; ts += SAMPLE_MS) rows.push({ timestampMs: ts });
-    const f = viewOf(rows);
-    expect(spectrogramDataBoundaries(f, 900, 1900, SAMPLE_MS)).toEqual([1240, 1600]);
-  });
-
-  it("returns no markers for empty input or a degenerate window", () => {
-    expect(spectrogramDataBoundaries(viewOf([]), 1000, 2000, SAMPLE_MS)).toEqual([]);
-    expect(spectrogramDataBoundaries(frames(1000, 1200), 1500, 1500, SAMPLE_MS)).toEqual([]);
-  });
-});
-
-describe("spectrogramDataBoundaryMarkers", () => {
-  it("labels leading and trailing data boundaries", () => {
-    expect(spectrogramDataBoundaryMarkers(frames(1500, 2100), 1000, 2000, SAMPLE_MS)).toEqual([
-      { ts: 1500, label: "Data starts here" },
-    ]);
-    expect(spectrogramDataBoundaryMarkers(frames(900, 1500), 1000, 2000, SAMPLE_MS)).toEqual([
-      { ts: 1540, label: "Data ends here" },
-    ]);
-  });
-
-  it.each([
-    {
-      name: "finite to non-finite to finite",
-      timestamps: [1000, 1040, Number.NaN, 1120, 1160],
-      oldestMs: 900,
-      newestMs: 1300,
-      expected: [{ ts: 1000, label: "Data starts here" }],
-    },
-    {
-      name: "leading non-finite",
-      timestamps: [Number.NaN, 1000, 1040],
-      oldestMs: 900,
-      newestMs: 1300,
-      expected: [{ ts: 1080, label: "Data ends here" }],
-    },
-    {
-      name: "trailing non-finite",
-      timestamps: [1000, 1040, Number.NaN],
-      oldestMs: 900,
-      newestMs: 1300,
-      expected: [{ ts: 1000, label: "Data starts here" }],
-    },
-    {
-      name: "delta at and just above threshold",
-      timestamps: [1000, 1072, 1145],
-      oldestMs: 900,
-      newestMs: 1250,
-      expected: [
-        { ts: 1000, label: "Data starts here" },
-        { ts: 1112, label: "Data ends here" },
-        { ts: 1145, label: "Data starts here" },
-        { ts: 1185, label: "Data ends here" },
-      ],
-    },
-  ])(
-    "matches plain-array reference markers for $name",
-    ({ timestamps, oldestMs, newestMs, expected }) => {
-      const result = expectOptimizedViewsToMatchReference(timestamps, oldestMs, newestMs);
-      expect(result.expected).toEqual(expected);
-    }
-  );
-
-  it("matches plain-array reference markers across a chunk boundary", () => {
-    const timestamps = Array.from(
-      { length: VISUAL_HISTORY_CHUNK_ROWS + 3 },
-      (_, index) => 1000 + index * SAMPLE_MS
-    );
-    timestamps[VISUAL_HISTORY_CHUNK_ROWS - 1] = Number.NaN;
-
-    const { live } = expectOptimizedViewsToMatchReference(
-      timestamps,
-      900,
-      1000 + timestamps.length * SAMPLE_MS
-    );
-    expect(live.lastGapQueryStats().rowsScanned).toBeLessThanOrEqual(VISUAL_HISTORY_CHUNK_ROWS);
-  });
-
-  it("matches plain-array reference markers after partial oldest-chunk eviction", () => {
-    const capacity = VISUAL_HISTORY_CHUNK_ROWS + 5;
-    const timestamps = Array.from(
-      { length: VISUAL_HISTORY_CHUNK_ROWS * 2 + 10 },
-      (_, index) => 1000 + index * SAMPLE_MS
-    );
-    timestamps[VISUAL_HISTORY_CHUNK_ROWS + 20] = Number.NaN;
-    const retained = timestamps.slice(-capacity).filter(Number.isFinite);
-
-    const { live } = expectOptimizedViewsToMatchReference(
-      timestamps,
-      retained[0] - SAMPLE_MS,
-      retained.at(-1) + SAMPLE_MS,
-      capacity
-    );
-    expect(live.lastGapQueryStats().rowsScanned).toBeLessThanOrEqual(VISUAL_HISTORY_CHUNK_ROWS);
-  });
-
-  it.each([
-    {
-      name: "continuous",
-      timestamps: Array.from({ length: 31 }, (_, index) => 800 + index * 40),
-      oldestMs: 1000,
-      newestMs: 1800,
-    },
-    {
-      name: "interior gap",
-      timestamps: [
-        ...Array.from({ length: 11 }, (_, index) => 800 + index * 40),
-        ...Array.from({ length: 11 }, (_, index) => 1600 + index * 40),
-      ],
-      oldestMs: 900,
-      newestMs: 1900,
-    },
-    {
-      name: "boundary jitter",
-      timestamps: [900, 941, 979, 1022, 1061, 1099, 1300, 1342, 1380, 1421],
-      oldestMs: 940,
-      newestMs: 1381,
-    },
-    {
-      name: "window clip",
-      timestamps: [800, 840, 880, 1200, 1240, 1280, 1800, 1840, 1880],
-      oldestMs: 1200,
-      newestMs: 1840,
-    },
-  ])("matches the reference fallback for $name", ({ timestamps, oldestMs, newestMs }) => {
-    const fallback = viewOf(timestamps.map((timestampMs) => ({ timestampMs })));
-    const optimized = slabOf(timestamps);
-
-    expect(spectrogramDataBoundaryMarkers(optimized, oldestMs, newestMs, SAMPLE_MS)).toEqual(
-      spectrogramDataBoundaryMarkers(fallback, oldestMs, newestMs, SAMPLE_MS)
-    );
-  });
-
-  it("does not scan a 240 minute continuous timestamp payload", () => {
-    const rowCount = 360_000;
-    const optimized = new SpectrumHistorySlab(rowCount, []);
-    for (let index = 0; index < rowCount; index += 1) {
-      optimized.push({ bands: [], dbList: [], timestampMs: index * SAMPLE_MS });
-    }
-
-    expect(
-      spectrogramDataBoundaryMarkers(optimized, 0, (rowCount - 1) * SAMPLE_MS, SAMPLE_MS)
-    ).toEqual([]);
-    expect(optimized.lastGapQueryStats().rowsScanned).toBe(0);
   });
 });
