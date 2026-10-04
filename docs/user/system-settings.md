@@ -117,9 +117,9 @@ existing draft as stale. **Cancel** restores this workbench's applied Theme, rat
 the peer edit or keeping the preview of an unselected Library item.
 
 The built-in Light and Dark themes share the same orange Accent and Primary Data, blue Secondary
-Data, Status, Frequency, and Intensity colors. Their neutral shell colors are tuned independently;
-in both, panels are the lighter surface on a darker Workspace, and the raised, control, and muted
-surfaces step away from the panel.
+Data, Interface and Status semantic colours, Frequency palette, and Intensity scale. Their neutral
+shell colours are tuned independently; in both, panels are the lighter surface on a darker
+Workspace, and the raised, control, and muted surfaces step away from the panel.
 Feedback messages are toned automatically from the Interface Palette; solid chips and buttons keep
 the palette colour itself. Loudness Momentary follows Primary Data and Short-term follows Secondary
 Data; their snapshot traces use the matching Primary and Secondary Snapshot colours. The Live

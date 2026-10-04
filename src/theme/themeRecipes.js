@@ -10,7 +10,7 @@ export const THEME_VALUE_KINDS = Object.freeze({
 
 const SNAP = {
   dark: { dL: 0.12, dC: -0.006, dH: 36 },
-  light: { dL: -0.12, dC: 0, dH: 0 },
+  light: { dL: 0.12, dC: -0.006, dH: 36 },
 };
 
 // Dark steps are larger than Light ones: equal mix fractions read weaker on a dark panel.

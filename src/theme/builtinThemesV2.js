@@ -57,7 +57,7 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       secondaryData: "#008ad9",
     },
     statusPresetId: "status-plvs",
-    interfacePalette: { success: "#147a54", warning: "#936000", danger: "#b83238" },
+    interfacePalette: { success: "#209a6e", warning: "#da8d08", danger: "#e43b46" },
     frequencyPresetId: "frequency-plvs",
   }),
   "plvs-light": makeBuiltin({
@@ -73,7 +73,7 @@ export const BUILTIN_THEMES_V2 = deepFreeze({
       secondaryData: "#008ad9",
     },
     statusPresetId: "status-plvs",
-    interfacePalette: { success: "#1a9064", warning: "#b17000", danger: "#e43b46" },
+    interfacePalette: { success: "#209a6e", warning: "#da8d08", danger: "#e43b46" },
     frequencyPresetId: "frequency-plvs",
   }),
 });

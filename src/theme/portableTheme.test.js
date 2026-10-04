@@ -104,7 +104,7 @@ describe("portable Theme contract", () => {
     expect(serializePortableTheme(firstPortable)).toBe(serializePortableTheme(secondPortable));
     expect(await hashPortableTheme(firstPortable)).toBe(await hashPortableTheme(secondPortable));
     expect(await hashPortableTheme(firstPortable)).toBe(
-      "sha256:bd05ebf851c380e80a430bc057345d883c9f6acfd2514ce6aa7f5f34ba8755c2"
+      "sha256:8c8deac0c2fb85f6e02c14f366f58f5e977341c3ed5bdf8ea95be6c078764679"
     );
   });
 
