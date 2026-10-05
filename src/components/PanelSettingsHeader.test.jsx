@@ -10,6 +10,8 @@ describe("PanelSettingsHeader", () => {
     const heading = screen.getByRole("heading", { name: "Waveform" });
     const header = container.querySelector("[data-panel-settings-header]");
     expect(heading.className).toContain("var(--ui-fs-panel-title)");
+    expect(heading.className).toContain("font-medium");
+    expect(heading.className).not.toContain("font-semibold");
     expect(heading.className).toContain("text-foreground");
     expect(heading.className).not.toContain("var(--ui-fs-caption)");
     expect(heading.className).not.toContain("text-muted-foreground");

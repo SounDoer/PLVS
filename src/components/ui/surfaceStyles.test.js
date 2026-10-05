@@ -50,7 +50,8 @@ describe("scrim", () => {
 describe("surface roles", () => {
   it("gives popover titles the shared title hierarchy", () => {
     expect(POPOVER_TITLE_CLASS).toContain("var(--ui-fs-panel-title)");
-    expect(POPOVER_TITLE_CLASS).toContain("font-semibold");
+    expect(POPOVER_TITLE_CLASS).toContain("font-medium");
+    expect(POPOVER_TITLE_CLASS).not.toContain("font-semibold");
     expect(POPOVER_TITLE_CLASS).toContain("text-foreground");
     expect(POPOVER_TITLE_CLASS).not.toContain("var(--ui-fs-caption)");
     expect(POPOVER_TITLE_CLASS).not.toContain("text-muted-foreground");

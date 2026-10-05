@@ -19,7 +19,7 @@ export const POPOVER_SURFACE_CLASS =
 export const POPOVER_HEADER_CLASS = "flex min-h-7 shrink-0 items-center gap-1 px-2 py-1";
 
 export const POPOVER_TITLE_CLASS =
-  "text-[length:var(--ui-fs-panel-title)] font-semibold text-foreground";
+  "text-[length:var(--ui-fs-panel-title)] font-medium text-foreground";
 
 export const MODAL_SURFACE_BASE_CLASS = "border-border bg-card text-card-foreground shadow-modal";
 export const MODAL_SURFACE_CLASS = `border ${MODAL_SURFACE_BASE_CLASS}`;
