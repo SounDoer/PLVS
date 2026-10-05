@@ -46,7 +46,7 @@ const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--
 const SECTION_CLASS = "flex flex-col gap-[var(--ui-drawer-row-gap)]";
 
 const ROW_CLASS =
-  "grid min-h-[var(--ui-drawer-row-min-h)] grid-cols-[max-content_minmax(0,1fr)] items-center gap-2 rounded-xs px-1.5 py-0.5";
+  "grid min-h-[var(--ui-drawer-row-min-h)] grid-cols-[minmax(0,1fr)_max-content] items-center gap-2 rounded-xs px-1.5 py-0.5";
 
 const ROW_LABEL_CLASS =
   "whitespace-nowrap text-[length:var(--ui-fs-display)] text-muted-foreground";
@@ -54,7 +54,7 @@ const ROW_LABEL_CLASS =
 const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
 
 const SELECT_TRIGGER_CLASS =
-  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0.5 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-ui-hover";
+  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0.5 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-ui-hover";
 
 const SELECT_CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]";
@@ -515,9 +515,7 @@ export function SettingsPanel({
                       />
                     }
                   >
-                    {/* The link sits left of the select so this row's chevron stays on the same
-                        vertical line as every other select in the drawer. */}
-                    <div className="flex min-w-0 items-center gap-1">
+                    <div className="flex items-center gap-1">
                       <IconButton
                         aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
                         onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
@@ -527,7 +525,7 @@ export function SettingsPanel({
                       <Select value={dialogueVadEngine} onValueChange={setDialogueVadEngine}>
                         <SelectTrigger
                           aria-label="Dialogue Detection"
-                          className={SELECT_TRIGGER_CLASS}
+                          className={cn(SELECT_TRIGGER_CLASS, "!pl-0")}
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -587,7 +585,7 @@ export function SettingsPanel({
                             </SelectContent>
                           </Select>
                         ) : (
-                          <span aria-label="channel layout" className="px-2 py-0.5">
+                          <span aria-label="channel layout" className="py-0.5 pl-2">
                             {channelLayoutLabel}
                           </span>
                         )}

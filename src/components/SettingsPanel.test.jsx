@@ -118,6 +118,32 @@ describe("SettingsPanel", () => {
     expect(screen.getByLabelText("Theme")).toBeTruthy();
   });
 
+  it("aligns trailing selectors with switches and reset actions", () => {
+    render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
+
+    for (const label of ["Close Behavior", "Interface Size", "Appearance", "History Length"]) {
+      const trigger = screen.getByLabelText(label);
+      expect(trigger.className).toContain("!pr-0");
+      expect(trigger.className).toContain("!pl-2");
+    }
+    expect(screen.getByLabelText("Theme").className).toContain("pr-0");
+    expect(screen.getByLabelText("Theme").className).toContain("pl-2");
+    expect(
+      screen.getByText("Dialogue Detection").closest("[data-settings-row]").className
+    ).toContain("grid-cols-[minmax(0,1fr)_max-content]");
+    const dialogueRow = screen.getByText("Dialogue Detection").closest("[data-settings-row]");
+    const dialogueValue = dialogueRow.querySelector("[data-settings-row-value]");
+    expect(
+      dialogueValue.contains(screen.getByRole("button", { name: "Open FireRedVAD official link" }))
+    ).toBe(true);
+    expect(
+      dialogueValue.contains(screen.getByRole("button", { name: /Dialogue Detection help:/ }))
+    ).toBe(false);
+    const dialogueTrigger = screen.getByLabelText("Dialogue Detection");
+    expect(dialogueTrigger.className).toContain("!pr-0");
+    expect(dialogueTrigger.className).toContain("!pl-0");
+  });
+
   it("uses shared layout primitives for settings sections and rows", () => {
     render(<SettingsPanel {...BASE_PROPS} appearance="fixed" fixedThemeSelectValue="plvs-dark" />);
 
