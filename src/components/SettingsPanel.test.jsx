@@ -133,15 +133,27 @@ describe("SettingsPanel", () => {
     ).toContain("grid-cols-[minmax(0,1fr)_max-content]");
     const dialogueRow = screen.getByText("Dialogue Detection").closest("[data-settings-row]");
     const dialogueValue = dialogueRow.querySelector("[data-settings-row-value]");
+    const integratedControl = dialogueValue.querySelector("[data-integrated-select-action]");
+    expect(integratedControl).toBeTruthy();
+    expect(integratedControl.className).toContain("hover:bg-ui-hover");
+    expect(integratedControl.className).not.toContain("focus-within:bg-ui-hover");
     expect(
-      dialogueValue.contains(screen.getByRole("button", { name: "Open FireRedVAD official link" }))
+      integratedControl.contains(
+        screen.getByRole("button", { name: "Open FireRedVAD official link" })
+      )
     ).toBe(true);
+    expect(integratedControl.contains(screen.getByLabelText("Dialogue Detection"))).toBe(true);
     expect(
       dialogueValue.contains(screen.getByRole("button", { name: /Dialogue Detection help:/ }))
     ).toBe(false);
     const dialogueTrigger = screen.getByLabelText("Dialogue Detection");
     expect(dialogueTrigger.className).toContain("!pr-0");
-    expect(dialogueTrigger.className).toContain("!pl-0");
+    expect(dialogueTrigger.className).toContain("!pl-2");
+    expect(dialogueTrigger.className).toContain("!gap-1");
+    expect(dialogueTrigger.className).toContain("hover:bg-transparent");
+    expect(dialogueTrigger.contains(screen.getByRole("button", { name: /official link/ }))).toBe(
+      false
+    );
   });
 
   it("uses shared layout primitives for settings sections and rows", () => {

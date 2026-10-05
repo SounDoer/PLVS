@@ -515,29 +515,34 @@ export function SettingsPanel({
                       />
                     }
                   >
-                    <div className="flex items-center gap-1">
-                      <IconButton
-                        aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
-                        onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
+                    <Select value={dialogueVadEngine} onValueChange={setDialogueVadEngine}>
+                      <div
+                        data-integrated-select-action
+                        className="group relative rounded-md transition-colors hover:bg-ui-hover"
                       >
-                        <ExternalLink className="size-[1em]" />
-                      </IconButton>
-                      <Select value={dialogueVadEngine} onValueChange={setDialogueVadEngine}>
                         <SelectTrigger
                           aria-label="Dialogue Detection"
-                          className={cn(SELECT_TRIGGER_CLASS, "!pl-0")}
+                          className={cn(SELECT_TRIGGER_CLASS, "!gap-1 !pl-2 hover:bg-transparent")}
                         >
                           <SelectValue />
+                          <span aria-hidden className="size-[1em] shrink-0" />
                         </SelectTrigger>
-                        <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
-                          {DIALOGUE_VAD_ENGINE_OPTIONS.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <IconButton
+                          aria-label={`Open ${selectedDialogueVadEngine.label} official link`}
+                          className="absolute top-1/2 right-[calc(1.15em+0.25rem)] -translate-y-1/2"
+                          onClick={() => openExternalUrl(selectedDialogueVadEngine.url)}
+                        >
+                          <ExternalLink className="size-[1em]" />
+                        </IconButton>
+                      </div>
+                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                        {DIALOGUE_VAD_ENGINE_OPTIONS.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </SettingsRow>
                 </SettingsSection>
 
