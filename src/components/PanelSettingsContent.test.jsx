@@ -483,6 +483,8 @@ describe("PanelSettingsContent", () => {
     expect(modeControlCell?.className).toContain("items-center");
     expect(modeRow?.className).toContain("min-h-6");
     expect(modeRow?.className).toContain("gap-2");
+    expect(modeRow?.className).toContain("px-2");
+    expect(modeRow?.className).not.toContain("px-1.5");
     expect(modeRow?.className).toContain("grid-cols-[max-content_minmax(0,1fr)]");
     expect(modeRow?.className).not.toContain("grid-cols-[4.75rem");
     expect(modeRow?.className).not.toContain("min-h-7");

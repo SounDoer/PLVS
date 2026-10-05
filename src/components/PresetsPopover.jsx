@@ -3,7 +3,7 @@ import { Check, Download, GripVertical, Pencil, RefreshCw, Trash2, X } from "luc
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
-import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
+import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 
@@ -92,7 +92,9 @@ export function PresetsPopoverContent({
 
   return (
     <>
-      {showTitle ? <p className={`px-2 py-1 ${POPOVER_TITLE_CLASS}`}>Presets</p> : null}
+      {showTitle ? (
+        <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Presets</p>
+      ) : null}
       <div className="flex items-center gap-2 px-2 py-1.5">
         <input
           type="text"

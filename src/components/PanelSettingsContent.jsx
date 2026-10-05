@@ -84,7 +84,7 @@ export function SettingsRow({ label, tooltip, action, controlAction, children })
   });
 
   return (
-    <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-1.5 py-0.5 text-[length:var(--ui-fs-control)]">
+    <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)]">
       <span
         ref={anchorRef}
         onMouseEnter={tooltip ? showTip : undefined}

@@ -8,6 +8,7 @@ import {
   DOCK_SURFACE_CLASS,
   MODAL_SURFACE_CLASS,
   PANEL_SURFACE_CLASS,
+  POPOVER_HEADER_CLASS,
   POPOVER_SURFACE_CLASS,
   POPOVER_TITLE_CLASS,
   SCRIM_CLASS,
@@ -53,6 +54,13 @@ describe("surface roles", () => {
     expect(POPOVER_TITLE_CLASS).toContain("text-foreground");
     expect(POPOVER_TITLE_CLASS).not.toContain("var(--ui-fs-caption)");
     expect(POPOVER_TITLE_CLASS).not.toContain("text-muted-foreground");
+  });
+
+  it("uses one borderless title row across popovers", () => {
+    expect(POPOVER_HEADER_CLASS).toContain("min-h-7");
+    expect(POPOVER_HEADER_CLASS).toContain("px-2");
+    expect(POPOVER_HEADER_CLASS).toContain("py-1");
+    expect(POPOVER_HEADER_CLASS).not.toContain("border");
   });
 
   it("keeps readable raised and modal surfaces opaque", () => {

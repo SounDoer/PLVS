@@ -1,15 +1,13 @@
 import { ArrowLeft } from "lucide-react";
 import { ManagementIconAction } from "@/components/ManagementRow.jsx";
 import { ResetAction } from "@/components/ResetAction.jsx";
+import { POPOVER_HEADER_CLASS } from "@/components/ui/surfaceStyles.js";
 
 export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false }) {
   const resetLabel = `Reset ${title} settings`;
 
   return (
-    <header
-      data-panel-settings-header
-      className="flex min-h-7 shrink-0 items-center gap-1 border-b border-border px-1.5 py-1"
-    >
+    <header data-panel-settings-header className={POPOVER_HEADER_CLASS}>
       {onBack ? (
         <ManagementIconAction
           icon={<ArrowLeft className="size-[length:var(--ui-icon-management-action)]" />}

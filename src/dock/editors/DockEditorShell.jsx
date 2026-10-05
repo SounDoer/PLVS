@@ -1,4 +1,5 @@
 import { PanelSettingsHeader } from "../../components/PanelSettingsHeader.jsx";
+import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "../../components/ui/surfaceStyles.js";
 
 export function DockEditorShell({ title, onBack, onReset, resetIsDefault = false, children }) {
   const hasNavigation = Boolean(onBack || onReset);
@@ -16,10 +17,8 @@ export function DockEditorShell({ title, onBack, onReset, resetIsDefault = false
           isDefault={resetIsDefault}
         />
       ) : (
-        <header className="flex shrink-0 items-center gap-1 px-2 pb-1 pt-2">
-          <h1 className="min-w-0 flex-1 truncate px-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
-            {title}
-          </h1>
+        <header className={POPOVER_HEADER_CLASS}>
+          <h1 className={`min-w-0 flex-1 truncate px-1 ${POPOVER_TITLE_CLASS}`}>{title}</h1>
         </header>
       )}
       <div data-dock-editor-scroll className="min-h-0 flex-1 overflow-y-auto">

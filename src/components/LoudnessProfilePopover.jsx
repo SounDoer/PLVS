@@ -4,7 +4,7 @@ import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { AddButton } from "@/components/AddButton";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
-import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
+import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
@@ -78,7 +78,7 @@ export function LoudnessProfilePopoverContent({
   return (
     <>
       {showTitle ? (
-        <p className={`px-2 pt-2 pb-1 ${POPOVER_TITLE_CLASS}`}>Loudness Profile</p>
+        <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Loudness Profile</p>
       ) : null}
 
       <div className={ROW_CLASS}>
