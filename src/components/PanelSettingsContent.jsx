@@ -49,7 +49,7 @@ import { IconAction } from "@/components/ui/icon-action";
 import { MenuRow } from "@/components/ui/row";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
-  "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
+  "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none";
 
 const SETTINGS_VALUE_IDLE_CLASS =
   "border-transparent bg-transparent hover:bg-ui-hover hover:text-foreground";
@@ -391,7 +391,7 @@ export function SettingsRangeInput({
   const minWidthCh = Math.min(7, Math.max(4.5, draftMin.length + 1.5));
   const maxWidthCh = Math.min(7, Math.max(4.5, draftMax.length + 1.5));
   const inputClass =
-    "plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors";
+    "plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none";
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -488,7 +488,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
             event.currentTarget.blur();
           }
         }}
-        className="plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none transition-colors"
+        className="plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none"
         style={{ width: `${widthCh}ch` }}
       />
       {suffix ? <span className="text-[color:var(--ui-text-annotation)]">{suffix}</span> : null}
@@ -731,7 +731,7 @@ function SortableStatRow({ id, label, checked, onToggle }) {
       <span
         aria-hidden="true"
         onPointerDown={(event) => controls.start(event)}
-        className="flex cursor-grab touch-none items-center text-muted-foreground transition-colors group-hover:text-foreground"
+        className="flex cursor-grab touch-none items-center text-muted-foreground group-hover:text-foreground"
       >
         <GripVertical className="size-3.5" />
       </span>

@@ -13,7 +13,7 @@ const DragHandle = React.forwardRef(function DragHandle(
       ref={ref}
       type="button"
       className={cn(
-        "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing",
+        "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground hover:text-foreground active:cursor-grabbing",
         dragging && "text-foreground",
         className
       )}

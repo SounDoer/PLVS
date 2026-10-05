@@ -110,7 +110,7 @@ export function PresetsPopoverContent({
           // `size={1}` + `flex-1`: fill the responsive Presets surface without typed text growing
           // it, and `min-w-0` still permits shrinking at the viewport cap.
           size={1}
-          className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] transition-colors placeholder:text-muted-foreground"
+          className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] placeholder:text-muted-foreground"
         />
         <AddButton
           label="Add"
@@ -168,7 +168,7 @@ export function PresetsPopoverContent({
                 ) : (
                   <div
                     className={cn(
-                      "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover",
+                      "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover",
                       draggingId === preset.id && "z-10 ring-1 ring-primary"
                     )}
                   >
@@ -204,7 +204,7 @@ export function PresetsPopoverContent({
                         className="min-w-0 flex-1 text-foreground"
                       />
                     </RowAction>
-                    <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
                       <IconAction
                         aria-label={`Update preset ${preset.name}`}
                         onClick={(e) => {

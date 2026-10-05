@@ -33,18 +33,13 @@ export function StatusPill({ state = "ready", showClock = false, clockRef = null
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-full py-[5px] px-3 transition-all duration-200",
+        "inline-flex items-center rounded-full py-[5px] px-3",
         cfg.bg,
         cfg.border,
         cfg.color
       )}
     >
-      <span
-        className={cn(
-          "w-2 h-2 rounded-full bg-current transition-all duration-200",
-          cfg.dotPulse && "status-dot-pulse"
-        )}
-      />
+      <span className={cn("w-2 h-2 rounded-full bg-current", cfg.dotPulse && "status-dot-pulse")} />
       <span className="ml-1.5 text-[length:var(--ui-fs-status)] font-bold tracking-[0.08em] uppercase">
         {cfg.label}
       </span>

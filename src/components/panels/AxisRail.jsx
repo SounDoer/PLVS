@@ -59,7 +59,7 @@ export function AxisRail({
       style={interactive ? { cursor: interaction.cursorStyle } : undefined}
       className={cn(
         CAPTION_TEXT,
-        "relative transition-colors",
+        "relative",
         interactive && RAIL_HOVER,
         className,
         ((interaction?.isActive ?? false) || active) && "text-foreground"

@@ -125,7 +125,7 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
             className={cn(
               LAYER_FLOATING,
               "fixed opacity-100 pointer-events-none",
-              "transition-opacity duration-100 delay-100",
+              "transition-opacity delay-100",
               "text-[length:var(--ui-fs-axis)] text-foreground bg-popover",
               "border border-border rounded-xs px-2 py-1",
               "whitespace-nowrap shadow-raised",

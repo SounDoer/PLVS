@@ -11,7 +11,7 @@ const LinkButton = React.forwardRef(function LinkButton({ className, ...props },
     <button
       ref={ref}
       type="button"
-      className={cn("text-muted-foreground transition-colors hover:text-foreground", className)}
+      className={cn("text-muted-foreground hover:text-foreground", className)}
       {...props}
     />
   );

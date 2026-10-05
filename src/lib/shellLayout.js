@@ -38,7 +38,7 @@ export const PANEL_HEADER_ACTION_BUTTON =
   "p-0.5 hover:bg-ui-hover disabled:pointer-events-none disabled:opacity-50";
 
 export const RESIZE_HANDLE_LINE_CLASS =
-  "bg-transparent transition-colors group-hover:bg-border group-focus-visible:bg-border group-data-[dragging=true]:bg-primary";
+  "bg-transparent group-hover:bg-border group-focus-visible:bg-border group-data-[dragging=true]:bg-primary";
 
 /** Optical compensation for Lucide Pin / PinOff, whose drawing fills more of the viewBox. */
 export const PANEL_HEADER_PIN_ICON = "size-[calc(var(--ui-icon-panel-action)*0.9)]";

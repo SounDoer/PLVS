@@ -15,15 +15,14 @@ import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
 
 const ROW_CLASS =
-  "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover";
+  "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover";
 
 // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after the drag handle (or,
 // on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
 // padding for its own hover/focus rounding, not a second helping of the handle's own gap.
 const ROW_BUTTON_CLASS = "pl-1 pr-1.5 py-1.5";
 
-const ICON_BUTTON_CLASS =
-  "opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100";
+const ICON_BUTTON_CLASS = "opacity-0 focus-visible:opacity-100 group-hover:opacity-100";
 
 function ActiveDot({ active }) {
   return (

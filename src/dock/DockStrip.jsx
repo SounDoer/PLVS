@@ -63,7 +63,7 @@ export function DockStrip({
               data-panel-id={panel.id}
               data-hover-highlighted={hoveredPanelId === panel.id ? "true" : undefined}
               className={cn(
-                "relative transition-[box-shadow] duration-150",
+                "relative",
                 hoveredPanelId === panel.id && "relative z-10 ring-2 ring-inset ring-primary"
               )}
               style={{

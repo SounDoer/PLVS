@@ -331,7 +331,21 @@ button:not(:disabled):is(
   animation: update-progress-slide 1.2s ease-in-out infinite;
 }
 
+/* Motion rule -- see design-tokens.md. State feedback never animates; what is left is spatial
+   change (a drawer sliding in, a menu appearing, a chevron turning) and looping indicators. A
+   system "reduce motion" preference switches all of it off here, in one place, so a component
+   cannot forget. The duration is not zero: Radix waits for `animationend` before it unmounts a
+   closing layer. Canvas drawing and the Level Meter spring are not CSS and handle the preference
+   themselves. */
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
   .status-dot-pulse,
   .update-progress-indeterminate {
     animation: none;

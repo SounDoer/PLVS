@@ -12,7 +12,7 @@ const MenuRow = React.forwardRef(function MenuRow({ className, ...props }, ref) 
       ref={ref}
       type="button"
       className={cn(
-        "flex w-full items-center gap-2 rounded-xs px-1.5 py-1.5 text-left text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover",
+        "flex w-full items-center gap-2 rounded-xs px-1.5 py-1.5 text-left text-[length:var(--ui-fs-control)] hover:bg-ui-hover",
         className
       )}
       {...props}

@@ -40,7 +40,7 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  `fixed ${LAYER_FLOATING} flex flex-col gap-0 ${MODAL_SURFACE_BASE_CLASS} transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500`,
+  `fixed ${LAYER_FLOATING} flex flex-col gap-0 ${MODAL_SURFACE_BASE_CLASS} transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out`,
   {
     variants: {
       side: {
@@ -73,7 +73,7 @@ const SheetContent = React.forwardRef(
         {hideClose ? null : (
           <SheetPrimitive.Close
             type="button"
-            className="ring-offset-background absolute top-4 right-4 rounded-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            className="ring-offset-background absolute top-4 right-4 rounded-xs text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
           >
             <X className="size-[length:var(--ui-icon-shell-action)]" />
             <span className="sr-only">Close</span>

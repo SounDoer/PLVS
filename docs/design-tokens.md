@@ -238,6 +238,29 @@ remains readable; disabled controls apply 50% once and do not react to hover. Se
 fields retain their own boundaries. Workspace resize rails remain hidden at rest, Border on
 hover, and Primary during dragging.
 
+## Motion
+
+Motion is sorted by what it is for, and only two kinds animate.
+
+| Kind              | Examples                                                                                              | Rule                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| State feedback    | Hover, press, selection, validity: colour, fill, border, opacity, shadow                              | Instant. No transition                                               |
+| Spatial change    | The Settings drawer sliding in, a menu or tooltip appearing, a chevron turning, a switch thumb moving | Animates at the framework default (150ms). No per-component duration |
+| Data smoothing    | The Level Meter fill, the correlation marker gliding along its rail                                   | Owned by the instrument; not a UI transition                         |
+| Looping indicator | The Live status pulse, the indeterminate update bar                                                   | Keyframes in `index.css`                                             |
+
+A measurement tool answers a pointer at once; a colour that takes 150ms to arrive says nothing the
+instant change does not. Spatial motion stays because it shows where a surface came from.
+
+A system "reduce motion" preference switches every CSS transition and animation off through one
+rule in `index.css`, so no component has to remember it. Hover-intent delays, such as the
+tooltip's, are timing rather than motion and are kept. The Level Meter spring reads the same
+preference itself.
+
+`src/components/ui/motionContract.test.js` rejects `transition-colors`, `transition-all`,
+`transition-shadow`, an opacity transition outside the tooltip, and any `duration-*` utility
+outside the correlation marker.
+
 ## Borders, Tracks, and State
 
 `--border` is an opaque colour; `--input` aliases the same resolved role. Consume them directly for

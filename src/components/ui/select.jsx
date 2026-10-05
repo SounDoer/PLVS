@@ -23,11 +23,11 @@ const SelectValue = SelectPrimitive.Value;
  */
 const SELECT_TRIGGER_VARIANT_CLASS = {
   inline:
-    "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none transition-colors hover:bg-ui-hover",
+    "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:bg-ui-hover",
   flush:
-    "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0.5 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none transition-colors hover:bg-ui-hover",
+    "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0.5 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none hover:bg-ui-hover",
   field:
-    "h-7 w-auto shrink-0 gap-1 rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-metric-meta)] shadow-none transition-colors hover:bg-ui-hover",
+    "h-7 w-auto shrink-0 gap-1 rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-metric-meta)] shadow-none hover:bg-ui-hover",
 };
 
 const SELECT_CONTENT_VARIANT_CLASS = {
@@ -45,7 +45,7 @@ const SelectTrigger = React.forwardRef(({ variant, className, children, ...props
     data-slot="select-trigger"
     data-control-field="true"
     className={cn(
-      "border-input bg-background ring-offset-background data-[placeholder]:text-muted-foreground flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-[length:var(--ui-fs-body)] whitespace-nowrap transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "border-input bg-background ring-offset-background data-[placeholder]:text-muted-foreground flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-[length:var(--ui-fs-body)] whitespace-nowrap outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       SELECT_TRIGGER_VARIANT_CLASS[variant],
       className
     )}
@@ -63,7 +63,7 @@ const SelectScrollUpButton = React.forwardRef(({ className, ...props }, ref) => 
   <SelectPrimitive.ScrollUpButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center rounded-xs py-1 text-muted-foreground transition-colors hover:bg-ui-hover hover:text-foreground",
+      "flex cursor-default items-center justify-center rounded-xs py-1 text-muted-foreground hover:bg-ui-hover hover:text-foreground",
       className
     )}
     {...props}
@@ -77,7 +77,7 @@ const SelectScrollDownButton = React.forwardRef(({ className, ...props }, ref) =
   <SelectPrimitive.ScrollDownButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center rounded-xs py-1 text-muted-foreground transition-colors hover:bg-ui-hover hover:text-foreground",
+      "flex cursor-default items-center justify-center rounded-xs py-1 text-muted-foreground hover:bg-ui-hover hover:text-foreground",
       className
     )}
     {...props}

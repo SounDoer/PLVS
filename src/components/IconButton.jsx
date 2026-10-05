@@ -41,7 +41,6 @@ export function IconButton({
         className={cn(
           "flex items-center justify-center size-7 rounded-md",
           "text-muted-foreground bg-transparent",
-          "transition-colors duration-[120ms]",
           disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-ui-hover hover:text-foreground",
           className
         )}

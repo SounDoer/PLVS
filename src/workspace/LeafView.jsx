@@ -55,7 +55,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
       className={cn(
         // `min-w-0` lets the title truncate before the header actions are pushed out of a narrow
         // panel, where they would be clipped and unreachable.
-        "group flex min-w-0 items-center rounded-t-xs transition-colors",
+        "group flex min-w-0 items-center rounded-t-xs",
         isActive
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground hover:bg-ui-hover",
@@ -316,7 +316,7 @@ export function LeafView({ node, path, style }) {
       data-visual-panel-id={activeTab}
       data-visual-capture-ready={activeTab ? "true" : undefined}
       className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden rounded-md transition-shadow duration-150",
+        "relative flex min-h-0 flex-col overflow-hidden rounded-md",
         PANEL_SURFACE_CLASS,
         isPanelHoverHighlighted && "ring-2 ring-primary ring-offset-0",
         isDragging && zoneHint && "ring-1 ring-primary ring-offset-0"

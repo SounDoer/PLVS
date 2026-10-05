@@ -78,7 +78,7 @@ export function FileAnalysisHistoryMenu({
           <button
             type="button"
             onClick={() => onClearAllFiles?.()}
-            className="rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground transition-colors hover:bg-ui-hover hover:text-destructive"
+            className="rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground hover:bg-ui-hover hover:text-destructive"
             aria-label="Clear all file history"
           >
             Clear all
@@ -92,7 +92,7 @@ export function FileAnalysisHistoryMenu({
             return (
               <div
                 key={session.id}
-                className="group flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover"
+                className="group flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover"
               >
                 <RowAction
                   onClick={() => onSelectFile?.(session.id)}
@@ -139,7 +139,7 @@ export function FileAnalysisHistoryMenu({
                       <Square className="size-[length:var(--ui-icon-management-action)]" />
                     </IconAction>
                   ) : (
-                    <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <span className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
                       <IconAction
                         onClick={() => onReanalyzeFile?.(session.id)}
                         aria-label={`Reanalyze ${session.fileName}`}

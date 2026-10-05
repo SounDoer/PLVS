@@ -14,10 +14,7 @@ const IconAction = React.forwardRef(function IconAction({ className, ...props },
     <button
       ref={ref}
       type="button"
-      className={cn(
-        "rounded-xs text-muted-foreground transition-colors hover:text-foreground",
-        className
-      )}
+      className={cn("rounded-xs text-muted-foreground hover:text-foreground", className)}
       {...props}
     />
   );
