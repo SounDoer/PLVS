@@ -276,7 +276,6 @@ export function AppHeader({
                   selected={safeAudioDeviceId === "default"}
                   onSelect={() => handleSourceSelect("default")}
                 />
-                <div className="mx-1 border-t border-border" />
                 <div
                   data-source-scroll
                   className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
