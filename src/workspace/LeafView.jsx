@@ -53,7 +53,9 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
       data-tab-pill
       data-tab-pill-index={slotTabIndex}
       className={cn(
-        "group flex items-center rounded-t-xs transition-colors",
+        // `min-w-0` lets the title truncate before the header actions are pushed out of a narrow
+        // panel, where they would be clipped and unreachable.
+        "group flex min-w-0 items-center rounded-t-xs transition-colors",
         isActive
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground hover:bg-ui-hover",
