@@ -414,7 +414,11 @@ export function AppHeader({
               />
             </span>
           </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
+          <PopoverContent
+            align="end"
+            sideOffset={6}
+            className={cn(TOOLBAR_POPOVER_CLASS, "max-w-[92vw]")}
+          >
             <PresetsPopoverContent
               presets={presets}
               onExport={(id) => onExportLibraryItem("presets", id)}

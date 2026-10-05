@@ -17,9 +17,13 @@ const NOOP_PRESETS = {
 describe("PresetsPopoverContent", () => {
   it("moves the empty-state guidance into the create input", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
+    const add = screen.getByRole("button", { name: "Add preset" });
     expect(screen.getByPlaceholderText("Name your first preset")).toBeTruthy();
     expect(screen.queryByText("No presets yet. Save the current view to start.")).toBeNull();
-    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+    expect(add.className).toContain("border-dashed");
+    expect(add.className).toContain("w-auto");
+    expect(add.querySelector("svg")).toBeTruthy();
+    expect(add.textContent).toBe("Add");
   });
 
   it("gives the new preset name input an accessible name", () => {
@@ -27,23 +31,23 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByRole("textbox", { name: "New preset name" })).toBeTruthy();
   });
 
-  it("fills a create row that scales with Interface Size without typed content driving width", () => {
+  it("gives the whole Presets surface a minimum width that follows Interface Size", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
     const input = screen.getByRole("textbox", { name: "New preset name" });
-    const createRow = input.parentElement;
-    // `size={1}` + `flex-1` + `min-w-0`: fills the row and scrolls internally rather than letting a
-    // long value inflate the `w-max` popover or push the Save button off-panel.
+    const surface = input.parentElement.parentElement;
+    // The em share grows with the control font while the rem share holds fixed padding and gaps.
+    // `size={1}` stops a long typed value from widening the surface beyond that responsive floor.
     expect(input.getAttribute("size")).toBe("1");
     expect(input.classList.contains("flex-1")).toBe(true);
     expect(input.classList.contains("min-w-0")).toBe(true);
     expect(input.classList.contains("[field-sizing:content]")).toBe(false);
-    expect(createRow.className).toContain("min-w-[min(calc(13em+3.5rem),calc(92vw-1rem))]");
-    expect(createRow.className).toContain("text-[length:var(--ui-fs-control)]");
+    expect(surface.className).toContain("min-w-[min(calc(15em+4rem),calc(92vw-1rem))]");
+    expect(surface.className).toContain("text-[length:var(--ui-fs-control)]");
   });
 
-  it("disables Save when the name input is empty", () => {
+  it("disables Add when the name input is empty", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
-    expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Add preset" }).disabled).toBe(true);
   });
 
   it("calls save with the trimmed name and clears the input", () => {
@@ -51,7 +55,7 @@ describe("PresetsPopoverContent", () => {
     render(<PresetsPopoverContent presets={{ ...NOOP_PRESETS, save }} />);
     const input = screen.getByRole("textbox", { name: "New preset name" });
     fireEvent.change(input, { target: { value: "  Focus  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add preset" }));
     expect(save).toHaveBeenCalledWith("Focus");
   });
 
@@ -80,6 +84,17 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByPlaceholderText("New preset name")).toBeTruthy();
     expect(screen.getByText("Focus")).toBeTruthy();
     expect(screen.getByText("Mix")).toBeTruthy();
+  });
+
+  it("resizes to the first-preset placeholder after the last preset is deleted", () => {
+    const { rerender } = render(
+      <PresetsPopoverContent presets={{ ...NOOP_PRESETS, list: [{ id: "a", name: "Focus" }] }} />
+    );
+    expect(screen.getByPlaceholderText("New preset name")).toBeTruthy();
+
+    rerender(<PresetsPopoverContent presets={NOOP_PRESETS} />);
+
+    expect(screen.getByPlaceholderText("Name your first preset")).toBeTruthy();
   });
 
   it("exports one saved Preset from its row", () => {
@@ -357,7 +372,7 @@ describe("PresetsPopoverContent", () => {
   });
 });
 
-/// Apply, Save and Update are refused by the controller while a draft-style editor is open. The
+/// Apply, Add and Update are refused by the controller while a draft-style editor is open. The
 /// popover renders them disabled because a button that silently does nothing is worse than one
 /// that looks disabled -- and the caption says how to clear the block.
 describe("PresetsPopoverContent under an active blocking editor", () => {
@@ -373,7 +388,7 @@ describe("PresetsPopoverContent under an active blocking editor", () => {
 
     expect(screen.getByRole("button", { name: "Apply preset Mixing" }).disabled).toBe(true);
     expect(screen.getByRole("button", { name: "Update preset Mixing" }).disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "Save" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Add preset" }).disabled).toBe(true);
     expect(screen.getByText("Finish or cancel the active editor first.")).toBeTruthy();
   });
 

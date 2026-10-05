@@ -26,7 +26,7 @@ describe("DockPresetsRow", () => {
     fireEvent.change(screen.getByLabelText(/new preset name/i), {
       target: { value: "Strip" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Add preset" }));
     expect(PRESETS.save).toHaveBeenCalledWith("Strip");
   });
 });

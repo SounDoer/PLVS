@@ -159,14 +159,13 @@ export function DockEditorApp() {
         "inline-block max-h-screen overflow-hidden",
         POPOVER_SURFACE_CLASS,
         payload.view?.startsWith("module:") && "p-1",
-        // Presets, Loudness Profile and Modules share the normal-mode toolbar popover's adaptive
-        // range (grow to fit, capped at 18rem) so the dock menus match the header ones -- and so a
-        // long name can no longer grow the uncapped `w-max` panel without bound.
-        payload.view === "presets" ||
-          payload.view === "loudness-profile" ||
-          payload.view === "modules"
-          ? "w-max min-w-40 max-w-[18rem]"
-          : "w-max min-w-48 max-w-[400px]"
+        // Presets owns a responsive minimum width that follows Interface Size; the other library
+        // menus grow to fit their rows up to the shared 18rem cap.
+        payload.view === "presets"
+          ? "w-max min-w-40 max-w-[92vw]"
+          : payload.view === "loudness-profile" || payload.view === "modules"
+            ? "w-max min-w-40 max-w-[18rem]"
+            : "w-max min-w-48 max-w-[400px]"
       )}
     >
       {payload.view === "modules" ? (

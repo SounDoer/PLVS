@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Check, Download, GripVertical, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { AddButton } from "@/components/AddButton";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
-import { Button } from "@/components/ui/button";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
@@ -31,7 +31,7 @@ export function PresetsPopoverContent({
   showTitle = true,
   onExport = () => {},
 }) {
-  // Apply, Save and Update capture or replace the whole scene, so they are refused while a
+  // Apply, Add and Update capture or replace the whole scene, so they are refused while a
   // draft-style editor is open. The controller refuses them whatever this renders; showing them
   // disabled is what makes the refusal legible, and the caption below says how to clear it.
   //
@@ -42,6 +42,8 @@ export function PresetsPopoverContent({
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [drafts, setDrafts] = useState({});
+  const newPresetPlaceholder =
+    presets.list.length === 0 ? "Name your first preset" : "New preset name";
 
   const presetIds = useMemo(() => presets.list.map((preset) => preset.id), [presets.list]);
   const { containerRef, orderedIds, draggingId, startDrag } = usePointerReorder(
@@ -91,14 +93,11 @@ export function PresetsPopoverContent({
   };
 
   return (
-    <>
+    <div className="min-w-[min(calc(15em+4rem),calc(92vw-1rem))] text-[length:var(--ui-fs-control)]">
       {showTitle ? (
         <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Presets</p>
       ) : null}
-      {/* The em share holds both labels and follows Interface Size through --ui-fs-control; the
-          rem share is the fixed padding and gap. A rem-only width either clips at Extra Large or
-          leaves excess space at Small. */}
-      <div className="flex min-w-[min(calc(13em+3.5rem),calc(92vw-1rem))] items-center gap-2 px-2 py-1.5 text-[length:var(--ui-fs-control)]">
+      <div className="flex items-center gap-2 px-2 py-1.5">
         <input
           type="text"
           aria-label="New preset name"
@@ -107,23 +106,19 @@ export function PresetsPopoverContent({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
           }}
-          placeholder={presets.list.length === 0 ? "Name your first preset" : "New preset name"}
-          // `size={1}` + `flex-1`: fill the row without the input's own text inflating the `w-max`
-          // popover, and `min-w-0` lets a long value scroll inside the field instead of pushing the
-          // shrink-0 Save button off-panel. The panel adapts to the saved names, not to typing.
+          placeholder={newPresetPlaceholder}
+          // `size={1}` + `flex-1`: fill the responsive Presets surface without typed text growing
+          // it, and `min-w-0` still permits shrinking at the viewport cap.
           size={1}
           className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] transition-colors placeholder:text-muted-foreground"
         />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={cn("h-7 shrink-0 px-2 text-[length:var(--ui-fs-control)]", blockedClass)}
+        <AddButton
+          label="Add"
+          aria-label="Add preset"
+          className={cn("w-auto shrink-0", blockedClass)}
           onClick={handleSave}
           disabled={blocked || !name.trim()}
-        >
-          Save
-        </Button>
+        />
       </div>
       {presets.list.length > 0 ? (
         // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
@@ -291,6 +286,6 @@ export function PresetsPopoverContent({
           Finish or cancel the active editor first.
         </p>
       ) : null}
-    </>
+    </div>
   );
 }

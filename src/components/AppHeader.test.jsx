@@ -339,7 +339,15 @@ describe("AppHeader", () => {
       const content = document.querySelector('[data-slot="popover-content"]');
       expect(content.className).toContain("w-max");
       expect(content.className).toContain("min-w-40");
-      expect(content.className).toContain("max-w-[min(18rem,92vw)]");
+      if (name === "Presets") {
+        expect(content.className).toContain("max-w-[92vw]");
+        const input = within(content).getByRole("textbox", { name: "New preset name" });
+        expect(input.parentElement.parentElement.className).toContain(
+          "min-w-[min(calc(15em+4rem),calc(92vw-1rem))]"
+        );
+      } else {
+        expect(content.className).toContain("max-w-[min(18rem,92vw)]");
+      }
 
       cleanup();
     }

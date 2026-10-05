@@ -465,7 +465,7 @@ describe("App smoke", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "New preset name" }), {
       target: { value: "Mix" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add preset" }));
 
     expect((await screen.findAllByText("Mix")).length).toBeGreaterThan(0);
     await waitFor(() => expect(tauriEventHandlers.has("window-bounds-changed")).toBe(true));
