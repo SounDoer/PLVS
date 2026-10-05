@@ -76,17 +76,11 @@ function OverviewScene() {
       </PreviewCard>
       <PreviewCard title="Controls">
         <div className="flex flex-wrap gap-2">
-          <Button size="sm">Primary</Button>
-          <Button size="sm" variant="secondary">
-            Secondary
-          </Button>
-          <Button size="sm" variant="destructive">
-            Delete
-          </Button>
-          <Button size="sm" disabled>
-            Disabled
-          </Button>
-          <Button size="sm" variant="ghost" className="bg-ui-hover text-foreground">
+          <Button>Primary</Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="destructive">Delete</Button>
+          <Button disabled>Disabled</Button>
+          <Button variant="ghost" className="bg-ui-hover text-foreground">
             Selected
           </Button>
         </div>

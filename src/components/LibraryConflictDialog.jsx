@@ -6,6 +6,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from "./ui/dialog.jsx";
+import { Button } from "./ui/button.jsx";
 import { LAYER_CONFLICT } from "./ui/layers.js";
 import { resolveLibraryConflict, subscribeLibraryConflicts } from "../persistence/index.js";
 
@@ -47,12 +48,12 @@ export function LibraryConflictDialog() {
           <p className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">{error}</p>
         ) : null}
         <DialogFooter className="mt-3">
-          <button type="button" disabled={busy} onClick={() => void resolve("reload")}>
+          <Button variant="ghost" disabled={busy} onClick={() => void resolve("reload")}>
             Reload
-          </button>
-          <button type="button" disabled={busy} onClick={() => void resolve("copy")}>
+          </Button>
+          <Button disabled={busy} onClick={() => void resolve("copy")}>
             Save as Copy
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

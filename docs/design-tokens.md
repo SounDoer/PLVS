@@ -143,6 +143,24 @@ derived from the theme reverses it: the retired `effect.scrim` role tinted the w
 a light theme produced a near-white veil that washed the background out instead of dimming it. If
 this ever needs to follow the theme, the opacity is what varies.
 
+## Buttons
+
+Buttons come from a primitive; a hand-written `<button>` is not a way to get a different look.
+
+| Primitive    | Where                           | Use                                                                                     |
+| ------------ | ------------------------------- | --------------------------------------------------------------------------------------- |
+| `Button`     | `components/ui/button.jsx`      | Text actions. One size, 28px tall at the Control font size, the same height as an input |
+| `IconButton` | `components/IconButton.jsx`     | Shell-level icon actions with a neutral hover fill and a tooltip                        |
+| `IconAction` | `components/ui/icon-action.jsx` | Icon actions inline in a row or header: colour change only, no fill                     |
+| `DragHandle` | `components/ui/drag-handle.jsx` | The grip that starts a reorder or placement drag                                        |
+| `AddButton`  | `components/AddButton.jsx`      | The dashed "add a new item" slot                                                        |
+
+`Button` variants are Primary (`default`), `secondary`, `ghost`, `outline`, `destructive` and `link`.
+A dialog's dismissing action is `ghost` and its confirming action is Primary or `destructive`.
+
+`src/components/ui/rawButtonContract.test.js` holds the list of hand-written buttons that remain
+(list rows, menu triggers and a few one-off controls) and fails when a new one appears.
+
 ## Layers
 
 Everything that floats above the workspace takes its z-index from a named constant in

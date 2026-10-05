@@ -197,13 +197,7 @@ export function LoudnessProfilePopoverContent({
           <p className="text-[length:var(--ui-fs-caption)] text-muted-foreground">
             {`Missing stats: ${missingIds.map((id) => STATS_META[id]?.label ?? id).join(", ")}`}
           </p>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="mt-1 h-7 px-2 text-[length:var(--ui-fs-control)]"
-            onClick={stats.onShowMissing}
-          >
+          <Button type="button" variant="secondary" className="mt-1" onClick={stats.onShowMissing}>
             Show missing
           </Button>
         </div>

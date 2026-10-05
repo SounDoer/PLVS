@@ -60,10 +60,9 @@ export function ShortcutCapture({
         ref={buttonRef}
         type="button"
         variant="outline"
-        size="sm"
         disabled={disabled}
         aria-label="Clear shortcut"
-        className="h-6 font-mono"
+        className="h-6 px-3 font-mono text-[length:var(--ui-fs-body)]"
         onClick={() => {
           setRecording(true);
           setHint("");

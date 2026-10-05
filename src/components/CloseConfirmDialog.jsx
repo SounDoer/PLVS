@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import {
@@ -90,32 +91,17 @@ export function CloseConfirmDialog({
         ) : null}
 
         <DialogFooter>
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={busy}
-            className="rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-ui-hover"
-          >
+          <Button variant="ghost" onClick={handleCancel} disabled={busy}>
             Cancel
-          </button>
+          </Button>
           {error ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              disabled={busy}
-              className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-[color:var(--ui-primary-hover)]"
-            >
+            <Button onClick={onRetry} disabled={busy}>
               {busy ? "Saving…" : "Retry"}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={busy}
-              className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-[color:var(--ui-primary-hover)]"
-            >
+            <Button onClick={handleConfirm} disabled={busy}>
               {busy ? "Saving…" : "Confirm"}
-            </button>
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

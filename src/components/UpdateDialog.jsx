@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,11 +7,6 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const SECONDARY_BUTTON_CLASS =
-  "rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-ui-hover disabled:pointer-events-none disabled:opacity-50";
-const PRIMARY_BUTTON_CLASS =
-  "rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-[color:var(--ui-primary-hover)] disabled:pointer-events-none disabled:opacity-50";
 
 export function UpdateDialog({
   open,
@@ -104,22 +100,12 @@ export function UpdateDialog({
         ) : null}
 
         <DialogFooter>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={handleDismiss}
-            className={SECONDARY_BUTTON_CLASS}
-          >
+          <Button variant="ghost" disabled={busy} onClick={handleDismiss}>
             {restartFailed ? "Close" : "Cancel"}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={handlePrimary}
-            className={PRIMARY_BUTTON_CLASS}
-          >
+          </Button>
+          <Button disabled={busy} onClick={handlePrimary}>
             {primaryLabel}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

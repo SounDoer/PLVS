@@ -69,8 +69,6 @@ const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 const FOOTER_LINK_CLASS =
   "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-50";
 
-const CONFIG_ACTION_BTN_CLASS = "h-7 px-2 text-[length:var(--ui-fs-control)]";
-
 function SettingsBody({ children }) {
   return (
     <div data-settings-body className={BODY_CLASS}>
@@ -637,21 +635,17 @@ export function SettingsPanel({
                     <div className="flex items-center gap-2.5">
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={onLibraryExport}
                         disabled={packBusy}
                         aria-label="Export saved items"
-                        className={CONFIG_ACTION_BTN_CLASS}
                       >
                         Export…
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={onSharedPackImport}
                         disabled={packBusy}
                         aria-label="Import saved items"
-                        className={CONFIG_ACTION_BTN_CLASS}
                       >
                         Import…
                       </Button>
@@ -674,21 +668,17 @@ export function SettingsPanel({
                     <div className="flex items-center gap-2.5">
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={onExportConfiguration}
                         disabled={configurationBusy}
                         aria-label="Export complete setup"
-                        className={CONFIG_ACTION_BTN_CLASS}
                       >
                         Export…
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={onImportConfiguration}
                         disabled={configurationBusy}
                         aria-label="Import complete setup"
-                        className={CONFIG_ACTION_BTN_CLASS}
                       >
                         Import…
                       </Button>
@@ -699,14 +689,10 @@ export function SettingsPanel({
                   <SettingsRow label="" className="settings-row-stackable">
                     <Button
                       variant="ghost"
-                      size="sm"
                       onClick={() => setResetConfirmOpen(true)}
                       disabled={configurationBusy}
                       aria-label="Reset PLVS to default"
-                      className={cn(
-                        CONFIG_ACTION_BTN_CLASS,
-                        "text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
-                      )}
+                      className="text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
                     >
                       Reset PLVS to Default
                     </Button>
