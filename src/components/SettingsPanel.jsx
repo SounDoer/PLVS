@@ -644,7 +644,7 @@ export function SettingsPanel({
                   >
                     <div className="flex items-center gap-2.5">
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={onLibraryExport}
                         disabled={packBusy}
@@ -654,7 +654,7 @@ export function SettingsPanel({
                         Export…
                       </Button>
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={onSharedPackImport}
                         disabled={packBusy}
@@ -681,7 +681,7 @@ export function SettingsPanel({
                   >
                     <div className="flex items-center gap-2.5">
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={onExportConfiguration}
                         disabled={configurationBusy}
@@ -691,7 +691,7 @@ export function SettingsPanel({
                         Export…
                       </Button>
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={onImportConfiguration}
                         disabled={configurationBusy}

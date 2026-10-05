@@ -15,6 +15,9 @@ keyboard focus adds the border without an outer focus ring. Single- and multi-ch
 accent color. Expanded dropdown options use the same neutral highlight for pointer and keyboard
 navigation. Dark / Light selection in the Theme Editor uses a neutral selected background.
 
+Settings-page transfer actions such as Export and Import use the same transparent base and neutral
+hover feedback as toolbar actions. The final confirmation action inside a dialog remains filled.
+
 Switch thumbs gain a subtle border on hover or keyboard focus. Slider thumbs use a neutral
 hover fill and an accent fill while dragging or holding an adjustment key. Sliders without an
 adjacent value show a value tooltip during hover, focus, and dragging; those with a visible value

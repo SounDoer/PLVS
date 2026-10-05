@@ -191,8 +191,10 @@ describe("SettingsPanel", () => {
     const importConfiguration = screen.getByRole("button", {
       name: "Import complete setup",
     });
-    expect(exportConfiguration.className).toContain("bg-secondary");
-    expect(importConfiguration.className).toContain("bg-secondary");
+    expect(exportConfiguration.className).toContain("hover:bg-ui-hover");
+    expect(importConfiguration.className).toContain("hover:bg-ui-hover");
+    expect(exportConfiguration.className).not.toContain("bg-secondary");
+    expect(importConfiguration.className).not.toContain("bg-secondary");
     fireEvent.click(exportConfiguration);
     fireEvent.click(importConfiguration);
 
@@ -860,8 +862,10 @@ describe("SettingsPanel", () => {
 
     const exportLibrary = screen.getByRole("button", { name: "Export saved items" });
     const importLibrary = screen.getByRole("button", { name: "Import saved items" });
-    expect(exportLibrary.className).toContain("bg-secondary");
-    expect(importLibrary.className).toContain("bg-secondary");
+    expect(exportLibrary.className).toContain("hover:bg-ui-hover");
+    expect(importLibrary.className).toContain("hover:bg-ui-hover");
+    expect(exportLibrary.className).not.toContain("bg-secondary");
+    expect(importLibrary.className).not.toContain("bg-secondary");
     expect(screen.queryByRole("button", { name: "Paste theme" })).toBeNull();
 
     const libraryTip =
