@@ -1,5 +1,5 @@
 import { SPECTRUM_FILL_TOP, SPECTRUM_FILL_BOTTOM } from "@/lib/chartFill.js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   useFrameData,
   useHistoryData,
@@ -120,6 +120,13 @@ export function SpectrumPanel() {
   const spectrumMaxMode = normalizedPanelControls.spectrumMaxMode;
   const maxHoldEnabled = spectrumMaxMode === "hold";
   const spectrumPeakLabels = normalizedPanelControls.spectrumPeakLabels;
+  const gradientId = useId().replaceAll(":", "");
+  const fillIds = {
+    live: `spectrum-live-${gradientId}`,
+    snap: `spectrum-snap-${gradientId}`,
+    liveB: `spectrum-live-b-${gradientId}`,
+    snapB: `spectrum-snap-b-${gradientId}`,
+  };
   const frequencyViewport = useAxisViewport("frequency", {
     minKey: "spectrumXMinFreq",
     maxKey: "spectrumXMaxFreq",
@@ -809,7 +816,7 @@ export function SpectrumPanel() {
                   className="block h-full w-full min-h-0 min-w-0"
                 >
                   <defs>
-                    <linearGradient id="spectrumFillLive" x1="0" x2="0" y1="0" y2="1">
+                    <linearGradient id={fillIds.live} x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-primary)"
@@ -821,7 +828,7 @@ export function SpectrumPanel() {
                         stopOpacity={SPECTRUM_FILL_BOTTOM}
                       />
                     </linearGradient>
-                    <linearGradient id="spectrumFillSnap" x1="0" x2="0" y1="0" y2="1">
+                    <linearGradient id={fillIds.snap} x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-primary-snap)"
@@ -833,7 +840,7 @@ export function SpectrumPanel() {
                         stopOpacity={SPECTRUM_FILL_BOTTOM}
                       />
                     </linearGradient>
-                    <linearGradient id="spectrumFillLiveB" x1="0" x2="0" y1="0" y2="1">
+                    <linearGradient id={fillIds.liveB} x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-secondary)"
@@ -845,7 +852,7 @@ export function SpectrumPanel() {
                         stopOpacity={SPECTRUM_FILL_BOTTOM}
                       />
                     </linearGradient>
-                    <linearGradient id="spectrumFillSnapB" x1="0" x2="0" y1="0" y2="1">
+                    <linearGradient id={fillIds.snapB} x1="0" x2="0" y1="0" y2="1">
                       <stop
                         offset="0%"
                         stopColor="var(--ui-spectrum-secondary-snap)"
@@ -877,8 +884,8 @@ export function SpectrumPanel() {
                           d={displaySpectrumAreaPathB}
                           fill={
                             selectedOffset >= 0
-                              ? "url(#spectrumFillSnapB)"
-                              : "url(#spectrumFillLiveB)"
+                              ? `url(#${fillIds.snapB})`
+                              : `url(#${fillIds.liveB})`
                           }
                         />
                       ) : null}
@@ -886,7 +893,7 @@ export function SpectrumPanel() {
                         data-spectrum-max-fill="primary"
                         d={displaySpectrumAreaPath}
                         fill={
-                          selectedOffset >= 0 ? "url(#spectrumFillSnap)" : "url(#spectrumFillLive)"
+                          selectedOffset >= 0 ? `url(#${fillIds.snap})` : `url(#${fillIds.live})`
                         }
                       />
                       {displayPanelSpectrumPathB ? (

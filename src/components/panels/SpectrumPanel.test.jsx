@@ -111,6 +111,36 @@ describe("SpectrumPanel", () => {
     expect(container.querySelector("[data-spectrum-grid]")).toBeNull();
   });
 
+  it("gives concurrent panel instances unique fill gradient IDs", () => {
+    const result = liveResult({ bandCentersHz: BANDS, smoothDb: [-40, -50] });
+    const { container } = render(
+      <FrameDataProvider value={{ displayAudio: { spectrumResultsByKey: { [LIVE_KEY]: result } } }}>
+        <HistoryDataProvider value={{ selectedOffset: -1 }}>
+          <PanelInstanceProvider value={{ panelControls: { spectrumTiltDbPerOctave: 0 } }}>
+            <SpectrumPanel />
+            <SpectrumPanel />
+          </PanelInstanceProvider>
+        </HistoryDataProvider>
+      </FrameDataProvider>
+    );
+
+    const gradientIds = [...container.querySelectorAll("linearGradient")].map(
+      (gradient) => gradient.id
+    );
+    const primaryFills = [...container.querySelectorAll('[data-spectrum-max-fill="primary"]')].map(
+      (fill) => fill.getAttribute("fill")
+    );
+
+    expect(gradientIds).toHaveLength(8);
+    expect(new Set(gradientIds).size).toBe(gradientIds.length);
+    expect(primaryFills).toHaveLength(2);
+    expect(new Set(primaryFills).size).toBe(primaryFills.length);
+    for (const fill of primaryFills) {
+      const id = fill?.match(/^url\(#(.+)\)$/)?.[1];
+      expect(gradientIds).toContain(id);
+    }
+  });
+
   it("reuses display data and paths across unrelated meter-frame renders", () => {
     setPanelCpuProfilerEnabled(true);
     const first = liveResult({
@@ -145,7 +175,7 @@ describe("SpectrumPanel", () => {
       })
     );
 
-    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    const fill = container.querySelector('[data-spectrum-max-fill="primary"]');
     expect(fill?.getAttribute("d")).toBe(area(contour(peakDb)));
     // peak hold is now a filled area, not a dashed stroke
     expect(container.querySelector("path[stroke-dasharray]")).toBeNull();
@@ -161,7 +191,7 @@ describe("SpectrumPanel", () => {
       })
     );
 
-    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    const fill = container.querySelector('[data-spectrum-max-fill="primary"]');
     expect(fill?.getAttribute("d")).toBe(area(contour(smoothDb)));
   });
 
@@ -173,7 +203,7 @@ describe("SpectrumPanel", () => {
       })
     );
 
-    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    const fill = container.querySelector('[data-spectrum-max-fill="primary"]');
     expect(fill?.getAttribute("d")).toBe(area(contour(smoothDb)));
   });
 
@@ -192,7 +222,7 @@ describe("SpectrumPanel", () => {
       )
     );
 
-    const fillB = container.querySelector('path[fill="url(#spectrumFillLiveB)"]');
+    const fillB = container.querySelector('[data-spectrum-max-fill="secondary"]');
     expect(fillB?.getAttribute("d")).toBe(area(contour(peakDbB)));
   });
 
@@ -287,7 +317,7 @@ describe("SpectrumPanel", () => {
       )
     );
 
-    const fill = container.querySelector('path[fill="url(#spectrumFillLive)"]');
+    const fill = container.querySelector('[data-spectrum-max-fill="primary"]');
     expect(fill?.getAttribute("d")).toBe("M 0.00 10.00 L 1000.00 256.00 L 1000 260 L 0 260 Z");
   });
 
