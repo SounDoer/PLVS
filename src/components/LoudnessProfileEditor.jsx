@@ -69,7 +69,7 @@ const REMOVE_COL_CLASS = "w-5";
 // while renaming). `onPointerDown` on each stops the drag handle from grabbing the click.
 
 const NUM_INPUT_CLASS =
-  "plvs-input h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums [appearance:textfield] hover:bg-ui-hover [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  "plvs-input h-[var(--ui-control-h)] w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums [appearance:textfield] hover:bg-ui-hover [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /**
  * One numeric field, committed on blur or Enter.
@@ -421,7 +421,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
                   }
                 }}
                 onBlur={commitName}
-                className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
+                className="plvs-input h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-[length:var(--ui-fs-panel-title)] font-semibold"
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}

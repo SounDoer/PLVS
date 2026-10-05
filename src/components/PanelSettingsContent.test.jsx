@@ -467,7 +467,7 @@ describe("PanelSettingsContent", () => {
     const modeRow = screen.getByText("Mode").parentElement;
     const modeControlCell = modeButton.parentElement;
     expect(modeButton).toBeTruthy();
-    expect(modeButton.className).toContain("h-6");
+    expect(modeButton.className).toContain("h-[var(--ui-control-h)]");
     expect(modeButton.className).toContain("text-popover-foreground");
     expect(modeButton.className).not.toContain("focus:border");
     expect(modeButton.className.split(" ")).not.toContain("text-muted-foreground");
@@ -476,12 +476,12 @@ describe("PanelSettingsContent", () => {
     expect(modeButton.textContent).not.toContain("Edit");
     expect(modeButton.querySelector("svg")?.className.baseVal).toContain("size-[1.15em]");
     expect(screen.getByText("Mode").className).toContain("text-muted-foreground");
-    expect(screen.getByText("Mode").className).toContain("h-6");
+    expect(screen.getByText("Mode").className).toContain("h-[var(--ui-control-h)]");
     expect(screen.getByText("Mode").className).toContain("items-center");
     expect(screen.getByText("Mode").className).not.toContain("text-popover-foreground");
-    expect(modeControlCell?.className).toContain("min-h-6");
+    expect(modeControlCell?.className).toContain("min-h-[var(--ui-control-h)]");
     expect(modeControlCell?.className).toContain("items-center");
-    expect(modeRow?.className).toContain("min-h-6");
+    expect(modeRow?.className).toContain("min-h-[var(--ui-control-h)]");
     expect(modeRow?.className).toContain("gap-2");
     expect(modeRow?.className).toContain("px-2");
     expect(modeRow?.className).not.toContain("px-1.5");

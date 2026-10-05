@@ -69,7 +69,7 @@ function PanelRow({ panelId }) {
           // popover; `min-w-0` scrolls a long value inside the field instead of pushing the
           // shrink-0 confirm/cancel buttons off-panel.
           size={1}
-          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
+          className="h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
           autoFocus
         />
         <ManagementIconAction

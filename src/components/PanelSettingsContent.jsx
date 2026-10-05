@@ -49,7 +49,7 @@ import { IconAction } from "@/components/ui/icon-action";
 import { MenuRow } from "@/components/ui/row";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
-  "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none";
+  "h-[var(--ui-control-h)] max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none";
 
 const SETTINGS_VALUE_IDLE_CLASS =
   "border-transparent bg-transparent hover:bg-ui-hover hover:text-foreground";
@@ -86,18 +86,18 @@ export function SettingsRow({ label, tooltip, action, controlAction, children })
   });
 
   return (
-    <div className="grid min-h-6 grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)]">
+    <div className="grid min-h-[var(--ui-control-h)] grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)]">
       <span
         ref={anchorRef}
         onMouseEnter={tooltip ? showTip : undefined}
         onMouseLeave={tooltip ? hideTip : undefined}
-        className="flex h-6 items-center gap-1 whitespace-nowrap font-medium text-muted-foreground"
+        className="flex h-[var(--ui-control-h)] items-center gap-1 whitespace-nowrap font-medium text-muted-foreground"
       >
         {label}
         {action}
         {tipNode}
       </span>
-      <div className="flex min-h-6 min-w-0 items-center justify-end gap-2">
+      <div className="flex min-h-[var(--ui-control-h)] min-w-0 items-center justify-end gap-2">
         {controlAction}
         {children}
       </div>
@@ -391,7 +391,7 @@ export function SettingsRangeInput({
   const minWidthCh = Math.min(7, Math.max(4.5, draftMin.length + 1.5));
   const maxWidthCh = Math.min(7, Math.max(4.5, draftMax.length + 1.5));
   const inputClass =
-    "plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none";
+    "plvs-input h-[var(--ui-control-h)] rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none";
 
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -488,7 +488,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
             event.currentTarget.blur();
           }
         }}
-        className="plvs-input h-6 rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none"
+        className="plvs-input h-[var(--ui-control-h)] rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none"
         style={{ width: `${widthCh}ch` }}
       />
       {suffix ? <span className="text-[color:var(--ui-text-annotation)]">{suffix}</span> : null}

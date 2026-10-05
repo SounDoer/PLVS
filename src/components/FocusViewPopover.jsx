@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { isMacOS, supportsDockMode } from "@/lib/platform.js";
 
@@ -22,7 +23,13 @@ function FocusSwitch({ id, label, checked, onCheckedChange }) {
       >
         {label}
       </Label>
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        className={COMPACT_SWITCH_CLASS}
+        thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
+      />
     </div>
   );
 }

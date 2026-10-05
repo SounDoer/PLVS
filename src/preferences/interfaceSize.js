@@ -11,6 +11,7 @@ export { DEFAULT_INTERFACE_SIZE, INTERFACE_SIZE_OPTIONS, normalizeInterfaceSize 
 
 const PROFILES = Object.freeze({
   default: {
+    controlHeightPx: 24,
     drawerWidthPx: 336,
     editorWidthPx: 416,
     typography: {
@@ -32,6 +33,7 @@ const PROFILES = Object.freeze({
     },
   },
   large: {
+    controlHeightPx: 28,
     drawerWidthPx: 368,
     editorWidthPx: 448,
     typography: {
@@ -53,6 +55,7 @@ const PROFILES = Object.freeze({
     },
   },
   "extra-large": {
+    controlHeightPx: 32,
     drawerWidthPx: 400,
     editorWidthPx: 480,
     typography: {
@@ -87,6 +90,10 @@ export function resolveInterfacePreferences(prefs = UI_PREFERENCES, rawSize) {
     ...prefs,
     layout: {
       ...prefs.layout,
+      control: {
+        ...prefs.layout.control,
+        heightPx: profile.controlHeightPx,
+      },
       editor: {
         ...prefs.layout.editor,
         preferredWidthPx: profile.editorWidthPx,

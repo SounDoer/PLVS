@@ -75,7 +75,9 @@ describe("SettingsPanel", () => {
     expect(
       screen.getByText("Adjusts text and related interface icons. Dock is unaffected.")
     ).toBeTruthy();
-    expect(screen.getByLabelText("Interface Size").className).toContain("min-h-6");
+    // The trigger takes the control height that follows Interface Size, never a fixed 24px that
+    // the larger sizes would outgrow.
+    expect(screen.getByLabelText("Interface Size").className).toContain("h-[var(--ui-control-h)]");
     expect(screen.getByLabelText("Interface Size").className).not.toContain(" h-6 ");
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Close settings" })).toBeTruthy();

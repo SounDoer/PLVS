@@ -88,7 +88,7 @@ export function FeedbackDialog({ onClose }) {
           onInput={(e) => setEmail(e.target.value)}
           onBlur={() => setEmailTouched(true)}
           placeholder="you@example.com (optional)"
-          className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
+          className="h-[var(--ui-control-h)] rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] outline-none"
         />
         <label className="flex items-start gap-2 text-[length:var(--ui-fs-display)]">
           <input

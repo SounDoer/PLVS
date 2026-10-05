@@ -443,7 +443,7 @@ export function SettingsPanel({
                     <div
                       role="group"
                       aria-label="Theme picker"
-                      className="flex min-h-6 items-center gap-1 px-1.5 py-0.5"
+                      className="flex min-h-[var(--ui-control-h)] items-center gap-1 px-1.5 py-0.5"
                     >
                       <span className={ROW_LABEL_CLASS}>Theme</span>
                       <div className="flex-1" />

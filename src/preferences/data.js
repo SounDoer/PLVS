@@ -21,6 +21,10 @@ export const UI_PREFERENCES = {
       paddingXRem: 0.5,
       paddingYRem: 0.4,
     },
+    /** Height of every form control. Scales with Interface Size so text never outgrows its box. */
+    control: {
+      heightPx: 24,
+    },
     /** Floating editors: theme and loudness profile. Both scale with Interface Size. */
     editor: {
       preferredWidthPx: 416,

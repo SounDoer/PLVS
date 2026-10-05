@@ -110,7 +110,7 @@ export function PresetsPopoverContent({
           // `size={1}` + `flex-1`: fill the responsive Presets surface without typed text growing
           // it, and `min-w-0` still permits shrinking at the viewport cap.
           size={1}
-          className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] placeholder:text-muted-foreground"
+          className="plvs-input h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] placeholder:text-muted-foreground"
         />
         <AddButton
           label="Add"
@@ -147,7 +147,7 @@ export function PresetsPopoverContent({
                       // pushing the shrink-0 confirm/cancel buttons off-panel.
                       size={1}
                       autoFocus
-                      className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
+                      className="plvs-input h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
                     />
                     <IconAction
                       aria-label="Save rename"

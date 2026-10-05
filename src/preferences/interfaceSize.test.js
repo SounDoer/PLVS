@@ -21,6 +21,24 @@ describe("interface size profiles", () => {
     expect(new Set(widths).size).toBe(widths.length);
   });
 
+  it("grows the control height with the text it has to hold", () => {
+    // A fixed 24px control clipped 17px and 18px text at the larger sizes, which is why the
+    // Settings select once carried its own "grow to fit" exception.
+    const heights = ["small", "default", "large", "extra-large"].map(
+      (size) => resolveInterfacePreferences(UI_PREFERENCES, size).layout.control.heightPx
+    );
+
+    expect(heights).toEqual([24, 24, 28, 32]);
+    for (const size of ["small", "default", "large", "extra-large"]) {
+      const resolved = resolveInterfacePreferences(UI_PREFERENCES, size);
+      const tallestText = Math.max(
+        resolved.typography.sizesPx.control,
+        resolved.typography.sizesPx.display
+      );
+      expect(resolved.layout.control.heightPx).toBeGreaterThanOrEqual(Math.ceil(tallestText * 1.5));
+    }
+  });
+
   it("exposes four discrete user-facing options", () => {
     expect(DEFAULT_INTERFACE_SIZE).toBe("default");
     expect(INTERFACE_SIZE_OPTIONS).toEqual([

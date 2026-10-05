@@ -58,7 +58,7 @@ export function CloseConfirmDialog({
         ) : null}
         {!error ? (
           <>
-            <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
+            <div className="mb-1.5 flex min-h-[var(--ui-control-h)] items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
               <span className={ROW_LABEL_CLASS}>Close Behavior</span>
               <Select value={action} onValueChange={setAction}>
                 <SelectTrigger
@@ -75,7 +75,7 @@ export function CloseConfirmDialog({
               </Select>
             </div>
 
-            <div className="mb-3 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
+            <div className="mb-3 flex min-h-[var(--ui-control-h)] items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
               <span className={ROW_LABEL_CLASS}>Don&apos;t ask again</span>
               <Switch
                 aria-label="Don't ask again"

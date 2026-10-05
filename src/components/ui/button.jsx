@@ -19,11 +19,11 @@ const buttonVariants = cva(
         ghost: "hover:bg-ui-hover",
         link: "text-primary underline-offset-4 hover:underline",
       },
-      // One text size on purpose: 28px tall, the same height as an input and the add control, so
-      // a row of mixed controls shares one baseline. `icon` is its square counterpart.
+      // One size on purpose: 24px, the height of every form control, so a row of mixed controls
+      // shares one baseline. `icon` is its square counterpart.
       size: {
-        default: "h-7 px-2",
-        icon: "size-7",
+        default: "h-[var(--ui-control-h)] px-2",
+        icon: "size-[var(--ui-control-h)]",
       },
     },
     defaultVariants: {

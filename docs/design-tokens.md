@@ -83,8 +83,8 @@ The rule: **if a box's job is to hold text, size it in units that scale with tha
 | Chart axis rail              | `max(<px floor>, calc(var(--ui-fs-axis) * <ratio>))`, as `--ui-chart-y-axis-rail-w` already does                     |
 | Floating editor panel        | `--ui-editor-w`, which the Interface Size profiles set alongside `--ui-drawer-w`                                     |
 
-Heights are the looser half of this: a control at `h-6` still holds 17px text, since flex centring
-plus visible overflow degrades quietly rather than clipping. Widths do not — they clip.
+Heights follow the same rule through one token: every form control is `--ui-control-h` tall, which
+the Interface Size profiles set alongside the type scale. See Control Height.
 
 ## Grid Lines
 
@@ -152,13 +152,30 @@ derived from the theme reverses it: the retired `effect.scrim` role tinted the w
 a light theme produced a near-white veil that washed the background out instead of dimming it. If
 this ever needs to follow the theme, the opacity is what varies.
 
+## Control Height
+
+Every form control takes one height, `--ui-control-h`, written `h-[var(--ui-control-h)]`: text
+buttons, the add control, text and number inputs, the shortcut key cap, and all three select
+variants. A row of mixed controls therefore shares one height without any per-row adjustment, and
+the rows and labels that align to a control use the same token. Switches are the compact 16px size
+everywhere.
+
+The token follows Interface Size (24px, 24px, 28px, 32px), staying at least one and a half times
+the largest text a control holds. A fixed 24px box would be outgrown by the 17px and 18px text of
+the larger sizes, which is why no control sets its own height or carries a "grow to fit" exception.
+
+Three things are 28px because they are shell chrome, not form controls: the header's icon buttons
+and Source Transport, and the panel header bar. Multi-line fields and list rows size to their
+content. `src/components/ui/controlHeightContract.test.js` rejects a fixed height above 24px
+anywhere else.
+
 ## Buttons
 
 Buttons come from a primitive; a hand-written `<button>` is not a way to get a different look.
 
 | Primitive    | Where                           | Use                                                                                                                                    |
 | ------------ | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `Button`     | `components/ui/button.jsx`      | Text actions. One size, 28px tall at the Control font size, the same height as an input                                                |
+| `Button`     | `components/ui/button.jsx`      | Text actions. One size, the control height, at the Control font size                                                                   |
 | `IconButton` | `components/IconButton.jsx`     | Shell-level icon actions with a neutral hover fill and a tooltip                                                                       |
 | `IconAction` | `components/ui/icon-action.jsx` | Icon actions inline in a row or header. Colour change only; panel header actions add a hover fill through `PANEL_HEADER_ACTION_BUTTON` |
 | `LinkButton` | `components/ui/link-button.jsx` | Text that reads as a link: no box, Secondary text that turns Primary on hover                                                          |
@@ -181,14 +198,14 @@ control of the same kind is the signal to add a primitive.
 ## Selects
 
 `SelectTrigger` and `SelectContent` in `src/components/ui/select.jsx` take a `variant`, and a call
-site passes the same one to both. The three variants are the three shapes a select takes; a call
+site passes the same one to both. All three take the control height and differ in text size and edge treatment; a call
 site does not restyle one with its own class string.
 
-| Variant  | Trigger                         | Text              | Used by                                                                                                                        |
-| -------- | ------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `inline` | 24px                            | Control           | Values inside a popover, dialog or editor row: panel settings, Focus View, the Loudness Profile editor, the close confirmation |
-| `flush`  | At least 24px, no right padding | Dynamic Display   | Settings rows, where the chevron sits on the row's right edge and a long value may grow the row                                |
-| `field`  | 28px                            | Metric Annotation | The Theme Editor's denser rows                                                                                                 |
+| Variant  | Text              | Used by                                                                                                                        |
+| -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `inline` | Control           | Values inside a popover, dialog or editor row: panel settings, Focus View, the Loudness Profile editor, the close confirmation |
+| `flush`  | Dynamic Display   | Settings rows; no right padding, so the chevron sits on the row's right edge                                                   |
+| `field`  | Metric Annotation | The Theme Editor's denser rows                                                                                                 |
 
 All three are transparent at rest and take the neutral hover fill; the shared field rule in
 `index.css` reveals the border on keyboard focus and while the menu is open. Width, column sizing
@@ -546,6 +563,7 @@ write final integer pixel values rather than applying browser zoom or one unifor
 | Management / Shell Icon    |  14px |    15px |  17px |        19px |
 | Panel Module Identity Icon |  14px |    15px |  17px |        19px |
 | Settings Drawer Width      | 320px |   336px | 368px |       400px |
+| Control Height             |  24px |    24px |  28px |        32px |
 
 The normal application document applies the selected profile before first render. Dock header and
 editor accessory documents always apply the compact Small baseline, while the Dock strip continues to use only its
@@ -829,21 +847,21 @@ than an overlay; Spectral Centroid is unaffected.
 
 Three rungs, all derived from `--radius` (`0.625rem`), plus the pill.
 
-| Utility        | Value  | Owner                                                             |
-| -------------- | ------ | ----------------------------------------------------------------- |
-| `rounded-xs`   | `4px`  | Items nested in a `p-1` container; any control under 28px tall    |
-| `rounded-md`   | `8px`  | Surfaces — panels, popovers, menus — and controls 28px and taller |
-| `rounded-xl`   | `12px` | Floating windows: the draggable editors and the centred dialogs   |
-| `rounded-full` | pill   | Switches, sliders, resize rails, dots                             |
+| Utility        | Value  | Owner                                                           |
+| -------------- | ------ | --------------------------------------------------------------- |
+| `rounded-xs`   | `4px`  | Items nested in a `p-1` container; icon-only actions            |
+| `rounded-md`   | `8px`  | Surfaces — panels, popovers, menus — and form controls          |
+| `rounded-xl`   | `12px` | Floating windows: the draggable editors and the centred dialogs |
+| `rounded-full` | pill   | Switches, sliders, resize rails, dots                           |
 
 Two rules decide the rung, in this order:
 
 1. **Concentric.** A child sitting on its parent's corner takes `parent − padding`. A menu row in a
    `p-1` popover is `8 − 4 = 4`, which is exactly `xs`. Break this and the two arcs stop being
    concentric, which reads as a seam nobody can name.
-2. **Height.** Otherwise pick by the element's own height: a radius wants to be about a fifth of it.
-   `8px` on a 24px icon button is a third of its height and reads as a squircle, so small controls
-   take `xs` even though they are controls.
+2. **Kind.** Otherwise a form control (button, input, select) takes `md` at the control height, the
+   same value as the surface it sits on. An icon-only action has no box of its own until it is
+   hovered or focused, so it takes `xs`, which keeps that small box from reading as a pill.
 
 Surfaces and standard controls deliberately share one value. Elevation is already carried by the
 `background → card → popover → secondary` lightness ladder and by shadow; saying it a third time in
