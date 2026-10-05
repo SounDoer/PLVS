@@ -480,20 +480,12 @@ export function useTray({
         iconAsTemplate: true,
         tooltip: "PLVS",
         menu: built.menu,
-        showMenuOnLeftClick: isMac,
-        ...(isMac
-          ? {}
-          : {
-              action: (event) => {
-                if (
-                  event.type === "Click" &&
-                  event.button === "Left" &&
-                  event.buttonState === "Up"
-                ) {
-                  stableToggleWindow();
-                }
-              },
-            }),
+        showMenuOnLeftClick: false,
+        action: (event) => {
+          if (event.type === "Click" && event.button === "Left" && event.buttonState === "Up") {
+            stableToggleWindow();
+          }
+        },
       });
 
       if (cancelled) {

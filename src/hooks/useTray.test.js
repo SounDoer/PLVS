@@ -267,17 +267,19 @@ describe("useTray", () => {
     expect(TrayIcon.new).toHaveBeenCalledWith(expect.objectContaining({ id: PLVS_TRAY_ID }));
   });
 
-  it("opens the menu on macOS left click instead of toggling the window directly", async () => {
+  it("toggles the window only when a macOS left click is released", async () => {
     isMacOS.mockReturnValue(true);
     const onToggleWindow = vi.fn();
     renderHook(() => useTray({ ...defaultProps, onToggleWindow }));
     await act(async () => {});
+    const trayOptions = TrayIcon.new.mock.calls[0][0];
 
-    expect(TrayIcon.new).toHaveBeenCalledWith(
-      expect.objectContaining({ showMenuOnLeftClick: true })
-    );
-    expect(TrayIcon.new.mock.calls[0][0]).not.toHaveProperty("action");
+    expect(trayOptions.showMenuOnLeftClick).toBe(false);
+    trayOptions.action({ type: "Click", button: "Left", buttonState: "Down" });
     expect(onToggleWindow).not.toHaveBeenCalled();
+
+    trayOptions.action({ type: "Click", button: "Left", buttonState: "Up" });
+    expect(onToggleWindow).toHaveBeenCalledOnce();
   });
 
   it("toggles the window only when a Windows left click is released", async () => {
