@@ -200,7 +200,7 @@ export function ModulesPopoverContent() {
           </p>
         ) : null}
       </div>
-      <div className="mt-1 flex items-center gap-1 border-t border-border pt-1">
+      <div className="mt-1 flex items-center gap-1 pt-1">
         <AddButton label="Add Module" className="min-w-0 flex-1" onClick={() => setAdding(true)} />
         <ResetAction
           label="Reset layout"
