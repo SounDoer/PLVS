@@ -10,8 +10,8 @@ dialogs retain their full outlines and shadows.
 ## Control feedback
 
 Ordinary dropdowns and setting fields are transparent with hidden borders at rest. Hovering,
-opening a dropdown, or editing a field shows a neutral background and border. Keyboard focus
-uses the same feedback without an outer focus ring. Single- and multi-choice checks use the
+shows a contrasting neutral background without revealing the border. Opening, editing, or using
+keyboard focus adds the border without an outer focus ring. Single- and multi-choice checks use the
 accent color. Dark / Light selection in the Theme Editor uses a neutral selected background.
 
 Switch thumbs gain a subtle border on hover or keyboard focus. Slider thumbs use a neutral
@@ -107,7 +107,8 @@ beneath visible. Directional placement and tab insertion share the same unframed
 preview itself identifies the dragged panel; invalid areas show a brief pointer label instead. Input
 fields retain their
 existing boundary cues. Hover colours are generated as opaque colours; disabled controls retain
-their reduced opacity. These interaction rules do not add Theme Editor settings.
+their reduced opacity. Automatic borders use scheme-specific contrast so Dark and Light preserve
+the same visible state hierarchy. These interaction rules do not add Theme Editor settings.
 Panel title-bar buttons use opaque secondary text by default, with primary text and a subtle
 background on hover, matching the header toolbar. Disabled buttons retain reduced opacity.
 When reordering Presets, Loudness Profiles, profile rules, or Dock modules, the dragged row has

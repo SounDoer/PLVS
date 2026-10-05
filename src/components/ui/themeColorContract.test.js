@@ -86,6 +86,29 @@ describe("theme color contract", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("derives neutral hover by moving Muted toward the scheme foreground", () => {
+    const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
+
+    expect(css).toMatch(
+      /--ui-neutral-hover:\s*color-mix\(in srgb, var\(--muted\) 94%, var\(--foreground\)\)/
+    );
+  });
+
+  it("keeps transparent field borders hidden on pointer hover", () => {
+    const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
+    const hoverRule =
+      css.match(
+        /:is\(\.plvs-input, \[data-control-field\]\):not\(:disabled\):not\(\[readonly\]\):hover \{[\s\S]*?\n\}/
+      )?.[0] ?? "";
+    const offenders = Object.entries(appSources())
+      .filter(([, source]) => /border-transparent[^"'\n]*hover:border-border/.test(source))
+      .map(([path]) => path);
+
+    expect(hoverRule).toContain("background-color: var(--ui-neutral-hover)");
+    expect(hoverRule).not.toContain("border-color");
+    expect(offenders).toEqual([]);
+  });
+
   it("does not attenuate ordinary Border, Input, or semantic text roles a second time", () => {
     const offenders = Object.entries(appSources())
       .filter(([, source]) =>

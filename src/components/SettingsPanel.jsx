@@ -54,7 +54,7 @@ const ROW_LABEL_CLASS =
 const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
 
 const SELECT_TRIGGER_CLASS =
-  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0.5 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:border-border hover:bg-ui-hover";
+  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0.5 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:bg-ui-hover";
 
 const SELECT_CONTENT_CLASS =
   "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]";

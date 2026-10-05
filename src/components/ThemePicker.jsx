@@ -123,7 +123,7 @@ export function ThemePicker({
           aria-label="Theme"
           data-control-field="true"
           disabled={disabled}
-          className="flex min-h-6 items-center gap-2 rounded-md border border-transparent bg-transparent py-0.5 pr-0 pl-2 text-[length:var(--ui-fs-display)] hover:border-border hover:bg-ui-hover disabled:opacity-50"
+          className="flex min-h-6 items-center gap-2 rounded-md border border-transparent bg-transparent py-0.5 pr-0 pl-2 text-[length:var(--ui-fs-display)] hover:bg-ui-hover disabled:opacity-50"
         >
           {selected ? <ThemeSwatch theme={selected} /> : null}
           <span>{selected?.name ?? "Theme"}</span>

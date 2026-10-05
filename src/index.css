@@ -64,7 +64,7 @@
 :root,
 .theme-preview {
   /* Opaque interaction colours. Keep these scoped to the draft as well as the app. */
-  --ui-neutral-hover: color-mix(in srgb, var(--popover) 50%, var(--muted));
+  --ui-neutral-hover: color-mix(in srgb, var(--muted) 94%, var(--foreground));
   --ui-primary-hover: color-mix(in srgb, var(--primary) 90%, var(--foreground));
   --ui-destructive-hover: color-mix(in srgb, var(--destructive) 90%, var(--foreground));
   --ui-secondary-hover: color-mix(in srgb, var(--secondary) 88%, var(--foreground));
@@ -164,12 +164,14 @@ html[data-surface="dock-editor"] #root {
   background-color: transparent;
 }
 :is(.plvs-input, [data-control-field]):not(:disabled):not([readonly]):is(
-    :hover,
     :focus-visible,
     [data-state="open"]
   ),
 .plvs-input:not(:disabled):not([readonly]):focus {
   border-color: var(--border);
+  background-color: var(--ui-neutral-hover);
+}
+:is(.plvs-input, [data-control-field]):not(:disabled):not([readonly]):hover {
   background-color: var(--ui-neutral-hover);
 }
 .plvs-input[aria-invalid="true"]:not(:disabled):not([readonly]) {
@@ -190,9 +192,6 @@ button:not(:disabled):is(
     [data-state="open"]
   )[class~="hover:text-foreground"] {
   color: var(--foreground);
-}
-button:not(:disabled):is(:focus-visible, :active)[class~="hover:border-border"] {
-  border-color: var(--border);
 }
 [data-slot="switch"]:not(:disabled):is(:hover, :focus-visible, :active) [data-slot="switch-thumb"] {
   box-shadow: inset 0 0 0 1px var(--border);

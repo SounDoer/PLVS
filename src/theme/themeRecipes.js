@@ -73,7 +73,7 @@ export const THEME_RECIPES = Object.freeze({
     mixHex(
       surface,
       context.colorScheme === "dark" ? "#ffffff" : "#000000",
-      context.colorScheme === "dark" ? 0.09 : 0.1
+      context.colorScheme === "dark" ? 0.12 : 0.1
     )
   ),
   "focus-ring": recipe([[SOLID, SOLID]], SOLID, ([accent]) => accent),

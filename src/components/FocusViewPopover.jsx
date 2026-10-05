@@ -121,7 +121,7 @@ export function FocusViewPopoverContent({
               <SelectTrigger
                 id="focus-view-dock"
                 aria-label="Dock position"
-                className="h-6 w-auto min-w-[4.75rem] rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:border-border hover:bg-ui-hover"
+                className="h-6 w-auto min-w-[4.75rem] rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:bg-ui-hover"
               >
                 <SelectValue />
               </SelectTrigger>

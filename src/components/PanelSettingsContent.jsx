@@ -49,7 +49,7 @@ const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
 
 const SETTINGS_VALUE_IDLE_CLASS =
-  "border-transparent bg-transparent hover:border-border hover:bg-ui-hover hover:text-foreground";
+  "border-transparent bg-transparent hover:bg-ui-hover hover:text-foreground";
 
 const SETTINGS_VALUE_OPEN_CLASS = "border-border bg-ui-hover text-foreground";
 

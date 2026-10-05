@@ -146,7 +146,8 @@ this ever needs to follow the theme, the opacity is what varies.
 ## Highlight States
 
 Hover, keyboard focus, pressed buttons, and open configuration entries use neutral feedback.
-Transparent controls use `--ui-neutral-hover`, an opaque mix of Raised and Muted. Open menus
+Transparent controls use `--ui-neutral-hover`, an opaque mix that moves Muted 6% toward Primary
+Text so the state gains contrast in either colour scheme. Open menus
 retain their trigger highlight until closed; active configuration does not brighten a closed
 entry. Auxiliary actions may change only their text color. Filled action buttons retain their
 own opaque derived Hover colors. No state requires an outer focus ring or scale animation.
@@ -157,8 +158,9 @@ hover/focus fills the thumb with Neutral Hover; active adjustment fills it with 
 Dark / Light segmented selection uses a neutral fill and primary text, not the Accent surface.
 Selected Surface and its foreground role are retired; legacy overrides are removed at theme ingress.
 
-Ordinary fields hide their border at rest while reserving its space. Hover and editing restore
-the Border stroke and neutral fill; invalid drafts use Destructive borders. Read-only content
+Ordinary fields hide their border at rest while reserving its space. Hover adds only the neutral
+fill; keyboard focus, opening, and editing restore the Border stroke as well. Invalid drafts use
+Destructive borders. Read-only content
 remains readable; disabled controls apply 50% once and do not react to hover. Search and multiline
 fields retain their own boundaries. Workspace resize rails remain hidden at rest, Border on
 hover, and Primary during dragging.
@@ -167,7 +169,7 @@ hover, and Primary during dragging.
 
 `--border` is an opaque colour; `--input` aliases the same resolved role. Consume them directly for
 ordinary borders, dividers, control outlines, range tracks, and unchecked switches without local
-alpha modifiers. Auto mixes Panel Surface 9% toward white in Dark or 10% toward black in Light.
+alpha modifiers. Auto mixes Panel Surface 12% toward white in Dark or 10% toward black in Light.
 Advanced Border Color supplies the final opaque colour. Grid is independent of Border.
 
 Workspace panels have no permanent outer border or header underline. Surface colour, rounded

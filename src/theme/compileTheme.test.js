@@ -192,8 +192,8 @@ describe("compileTheme", () => {
   it("shares an opaque Border between ordinary and input controls", () => {
     const resolved = compileTheme(authoringTheme());
 
-    expect(resolved.roles["interface.border.default"]).toBe("#2a2a2a");
-    expect(resolved.css["--border"]).toBe("#2a2a2a");
+    expect(resolved.roles["interface.border.default"]).toBe("#313131");
+    expect(resolved.css["--border"]).toBe("#313131");
     expect(resolved.css["--input"]).toBe(resolved.css["--border"]);
   });
 
