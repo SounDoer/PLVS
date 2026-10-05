@@ -169,6 +169,22 @@ on where it sits are passed as `className`.
 with its reason, and fails when a new one appears. A one-off control stays hand-written; a second
 control of the same kind is the signal to add a primitive.
 
+## Selects
+
+`SelectTrigger` and `SelectContent` in `src/components/ui/select.jsx` take a `variant`, and a call
+site passes the same one to both. The three variants are the three shapes a select takes; a call
+site does not restyle one with its own class string.
+
+| Variant  | Trigger                         | Text              | Used by                                                                                                                        |
+| -------- | ------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `inline` | 24px                            | Control           | Values inside a popover, dialog or editor row: panel settings, Focus View, the Loudness Profile editor, the close confirmation |
+| `flush`  | At least 24px, no right padding | Dynamic Display   | Settings rows, where the chevron sits on the row's right edge and a long value may grow the row                                |
+| `field`  | 28px                            | Metric Annotation | The Theme Editor's denser rows                                                                                                 |
+
+All three are transparent at rest and take the neutral hover fill; the shared field rule in
+`index.css` reveals the border on keyboard focus and while the menu is open. Width, column sizing
+and a surface-specific text colour stay with the caller.
+
 ## Layers
 
 Everything that floats above the workspace takes its z-index from a named constant in

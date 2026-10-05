@@ -6,7 +6,7 @@ import { compileTheme } from "../../theme/compileTheme.js";
 import { THEME_ROLE_REGISTRY } from "../../theme/themeRoleRegistry.js";
 import { MODULE_CATALOG } from "../../workspace/moduleCatalog.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
-import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
+
 import { ThemeEditorSwatch } from "./ThemeEditorSwatch.jsx";
 import { ResetAction } from "../ResetAction.jsx";
 import { RowAction } from "../ui/row.jsx";
@@ -98,11 +98,12 @@ function AdvancedRole({ role, override, resolved, onOverride, warnings }) {
           <SelectTrigger
             aria-label={`${role.advanced.label} mode`}
             aria-describedby={descriptionId}
-            className={`${EDITOR_SELECT_TRIGGER_CLASS} max-w-36`}
+            variant="field"
+            className="max-w-36"
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent position="popper" className={EDITOR_SELECT_CONTENT_CLASS}>
+          <SelectContent position="popper" variant="field">
             <SelectItem value="auto">Auto</SelectItem>
             {role.advanced.references.map((reference) => (
               <SelectItem key={reference} value={`reference:${reference}`}>

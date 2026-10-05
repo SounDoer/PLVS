@@ -34,10 +34,8 @@ const DEFAULT_RULE_METRIC = "integrated";
 // they sit in a grid instance separate from Reference's own row (see GRID_TEMPLATE_CLASS) and a bare
 // `auto` column would size independently in each, breaking the value/unit alignment between them.
 // `gap-1` tightens the base `gap-2` between label and chevron (tailwind-merge keeps this one).
-const TRIGGER_CLASS =
-  "h-6 gap-1 rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:bg-ui-hover";
-const CONTENT_CLASS =
-  "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
+const TRIGGER_CLASS = "gap-1";
+const CONTENT_CLASS = "[&_[data-slot=select-item]]:pr-8";
 
 /// Reference's row and the rule list are two separate grid instances -- the rule list needs its own
 /// bounding box for the drag-reorder row-height math (see `usePointerReorder`), which Reference must
@@ -163,11 +161,12 @@ function MetricSelect({ position, rule, onPatch }) {
           // The clamped text is the SelectValue span inside the trigger, not the trigger itself.
           onMouseEnter={() => showIfClipped(anchorRef.current?.querySelector(":scope > span"))}
           onMouseLeave={hideTip}
+          variant="inline"
           className={`${TRIGGER_CLASS} w-full min-w-0`}
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className={CONTENT_CLASS}>
+        <SelectContent variant="inline" className={CONTENT_CLASS}>
           {RULEABLE_METRIC_IDS.map((id) => (
             <SelectItem key={id} value={id}>
               {STATS_META[id]?.label ?? id}
@@ -221,11 +220,12 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
       <Select value={rule.op} onValueChange={(value) => onPatch({ op: value })}>
         <SelectTrigger
           aria-label={`Rule ${position} operator`}
+          variant="inline"
           className={cn(TRIGGER_CLASS, OP_COL_CLASS)}
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className={CONTENT_CLASS}>
+        <SelectContent variant="inline" className={CONTENT_CLASS}>
           <SelectItem value=">">&gt;</SelectItem>
           <SelectItem value="<">&lt;</SelectItem>
         </SelectContent>
@@ -248,11 +248,12 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
       >
         <SelectTrigger
           aria-label={`Rule ${position} severity`}
+          variant="inline"
           className={cn(TRIGGER_CLASS, SEVERITY_COL_CLASS)}
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className={CONTENT_CLASS}>
+        <SelectContent variant="inline" className={CONTENT_CLASS}>
           <SelectItem value="fail">Fail</SelectItem>
           <SelectItem value="warn">Warn</SelectItem>
         </SelectContent>

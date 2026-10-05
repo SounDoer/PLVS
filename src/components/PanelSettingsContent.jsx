@@ -645,7 +645,8 @@ export function SettingsSelect({ label, ariaLabel, options, value, onChange, ope
     >
       <SelectTrigger
         aria-label={ariaLabel}
-        className={cn(SETTINGS_SELECT_TRIGGER_CLASS, SETTINGS_VALUE_IDLE_CLASS, "w-auto shrink-0")}
+        variant="inline"
+        className="max-w-none text-popover-foreground hover:text-foreground"
       >
         <SelectValue>{label}</SelectValue>
       </SelectTrigger>
@@ -659,7 +660,8 @@ export function SettingsSelect({ label, ariaLabel, options, value, onChange, ope
           event.stopPropagation();
           onOpenChange(false);
         }}
-        className="max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
+        variant="inline"
+        className="max-h-[min(24rem,var(--radix-select-content-available-height))]"
       >
         {groups.map((group, index) => (
           <SelectGroup key={index}>

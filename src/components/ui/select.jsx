@@ -12,13 +12,41 @@ const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
-const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) => (
+/**
+ * The three shapes a select takes in PLVS. Trigger and menu share the name so a call site picks
+ * one and passes it to both.
+ *
+ * - `inline`: 24px, Control size. A value inside a popover, dialog or editor row.
+ * - `flush`: at least 24px, Display size, no right padding. A Settings row, where the chevron sits
+ *   on the row's right edge and a long value may grow the row.
+ * - `field`: 28px, Metric Annotation size. The Theme Editor's denser rows.
+ */
+const SELECT_TRIGGER_VARIANT_CLASS = {
+  inline:
+    "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none transition-colors hover:bg-ui-hover",
+  flush:
+    "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0.5 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none transition-colors hover:bg-ui-hover",
+  field:
+    "h-7 w-auto shrink-0 gap-1 rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-metric-meta)] shadow-none transition-colors hover:bg-ui-hover",
+};
+
+const SELECT_CONTENT_VARIANT_CLASS = {
+  inline:
+    "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]",
+  flush:
+    "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]",
+  field:
+    "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-metric-meta)]",
+};
+
+const SelectTrigger = React.forwardRef(({ variant, className, children, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
     data-slot="select-trigger"
     data-control-field="true"
     className={cn(
       "border-input bg-background ring-offset-background data-[placeholder]:text-muted-foreground flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-[length:var(--ui-fs-body)] whitespace-nowrap transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      SELECT_TRIGGER_VARIANT_CLASS[variant],
       className
     )}
     {...props}
@@ -60,7 +88,7 @@ const SelectScrollDownButton = React.forwardRef(({ className, ...props }, ref) =
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
 const SelectContent = React.forwardRef(
-  ({ className, children, position = "popper", ...props }, ref) => (
+  ({ variant, className, children, position = "popper", ...props }, ref) => (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
         ref={ref}
@@ -71,6 +99,7 @@ const SelectContent = React.forwardRef(
           LAYER_FLOATING,
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          SELECT_CONTENT_VARIANT_CLASS[variant],
           className
         )}
         position={position}

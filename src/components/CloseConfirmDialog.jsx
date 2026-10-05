@@ -11,12 +11,6 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 
-const SELECT_TRIGGER_CLASS =
-  "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:bg-ui-hover";
-
-const SELECT_CONTENT_CLASS =
-  "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]";
-
 const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
 const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
@@ -67,10 +61,14 @@ export function CloseConfirmDialog({
             <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
               <span className={ROW_LABEL_CLASS}>Close Behavior</span>
               <Select value={action} onValueChange={setAction}>
-                <SelectTrigger aria-label="Close behavior" className={SELECT_TRIGGER_CLASS}>
+                <SelectTrigger
+                  aria-label="Close behavior"
+                  variant="inline"
+                  className="text-popover-foreground"
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                <SelectContent position="popper" variant="inline">
                   <SelectItem value="tray">Minimize to Tray</SelectItem>
                   <SelectItem value="quit">Quit</SelectItem>
                 </SelectContent>

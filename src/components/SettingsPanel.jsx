@@ -55,12 +55,6 @@ const ROW_LABEL_CLASS =
 
 const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
 
-const SELECT_TRIGGER_CLASS =
-  "h-auto min-h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0.5 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none outline-none transition-colors hover:bg-ui-hover";
-
-const SELECT_CONTENT_CLASS =
-  "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]";
-
 const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
 const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
@@ -316,10 +310,10 @@ export function SettingsPanel({
                   </SettingsRow>
                   <SettingsRow label="Close Behavior">
                     <Select value={closeAction} onValueChange={setCloseAction}>
-                      <SelectTrigger aria-label="Close Behavior" className={SELECT_TRIGGER_CLASS}>
+                      <SelectTrigger aria-label="Close Behavior" variant="flush">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                      <SelectContent position="popper" variant="flush">
                         <SelectItem value="ask">Ask Each Time</SelectItem>
                         <SelectItem value="tray">Minimize to Tray</SelectItem>
                         <SelectItem value="quit">Quit</SelectItem>
@@ -409,10 +403,10 @@ export function SettingsPanel({
                     }
                   >
                     <Select value={interfaceSize} onValueChange={setInterfaceSize}>
-                      <SelectTrigger aria-label="Interface Size" className={SELECT_TRIGGER_CLASS}>
+                      <SelectTrigger aria-label="Interface Size" variant="flush">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                      <SelectContent position="popper" variant="flush">
                         {INTERFACE_SIZE_OPTIONS.map((option) => (
                           <SelectItem key={option.id} value={option.id}>
                             {option.label}
@@ -434,12 +428,12 @@ export function SettingsPanel({
                     >
                       <SelectTrigger
                         aria-label="Appearance"
-                        className={SELECT_TRIGGER_CLASS}
+                        variant="flush"
                         disabled={themeControlsDisabled}
                       >
                         <SelectValue placeholder="Appearance" />
                       </SelectTrigger>
-                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                      <SelectContent position="popper" variant="flush">
                         <SelectItem value="system">Follow System</SelectItem>
                         <SelectItem value="fixed">Fixed Theme</SelectItem>
                       </SelectContent>
@@ -487,10 +481,10 @@ export function SettingsPanel({
                       value={String(historyRetentionSec)}
                       onValueChange={setHistoryRetentionSec}
                     >
-                      <SelectTrigger aria-label="History Length" className={SELECT_TRIGGER_CLASS}>
+                      <SelectTrigger aria-label="History Length" variant="flush">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                      <SelectContent position="popper" variant="flush">
                         <SelectItem value="1800">30 min</SelectItem>
                         <SelectItem value="3600">60 min</SelectItem>
                         <SelectItem value="7200">120 min</SelectItem>
@@ -513,7 +507,8 @@ export function SettingsPanel({
                       >
                         <SelectTrigger
                           aria-label="Dialogue Detection"
-                          className={cn(SELECT_TRIGGER_CLASS, "!gap-1 !pl-2 hover:bg-transparent")}
+                          variant="flush"
+                          className="!gap-1 !pl-2 hover:bg-transparent"
                         >
                           <SelectValue />
                           <span aria-hidden className="size-[1em] shrink-0" />
@@ -526,7 +521,7 @@ export function SettingsPanel({
                           <ExternalLink className="size-[1em]" />
                         </IconButton>
                       </div>
-                      <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                      <SelectContent position="popper" variant="flush">
                         {DIALOGUE_VAD_ENGINE_OPTIONS.map((option) => (
                           <SelectItem key={option.id} value={option.id}>
                             {option.label}
@@ -563,13 +558,10 @@ export function SettingsPanel({
                       <SettingsRow labelNode={<span className={ROW_LABEL_CLASS}>Layout</span>}>
                         {showChannelLayoutSelect ? (
                           <Select value={selectedLayoutId ?? ""} onValueChange={setChannelLayout}>
-                            <SelectTrigger
-                              className={SELECT_TRIGGER_CLASS}
-                              aria-label="channel layout"
-                            >
+                            <SelectTrigger variant="flush" aria-label="channel layout">
                               <SelectValue placeholder="Unknown" />
                             </SelectTrigger>
-                            <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                            <SelectContent position="popper" variant="flush">
                               {channelLayouts.map((layout) => (
                                 <SelectItem key={layout.id} value={layout.id}>
                                   {layout.name}
@@ -596,13 +588,10 @@ export function SettingsPanel({
                           }
                         >
                           <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
-                            <SelectTrigger
-                              className={SELECT_TRIGGER_CLASS}
-                              aria-label={`Channel ${i + 1} role`}
-                            >
+                            <SelectTrigger variant="flush" aria-label={`Channel ${i + 1} role`}>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                            <SelectContent position="popper" variant="flush">
                               {CHANNEL_ROLE_VOCABULARY.map((role) => (
                                 <SelectItem key={role.id} value={role.id}>
                                   {role.label}

@@ -8,7 +8,6 @@ import { ResetAction } from "../ResetAction.jsx";
 import { Label } from "../ui/label.jsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
 import { findMatchingPalettePresetId, listPalettePresets } from "../../theme/palettePresets.js";
-import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
 
 const STATUS_COLORS = [
   ["safe", "Safe"],
@@ -44,10 +43,10 @@ function PalettePresetSelect({
         else onApplyPreset(kind, next);
       }}
     >
-      <SelectTrigger aria-label={`${kind} palette preset`} className={EDITOR_SELECT_TRIGGER_CLASS}>
+      <SelectTrigger aria-label={`${kind} palette preset`} variant="field">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent position="popper" className={EDITOR_SELECT_CONTENT_CLASS}>
+      <SelectContent position="popper" variant="field">
         {value == null || customAvailable ? (
           <SelectItem value="custom" disabled={!customAvailable}>
             Custom

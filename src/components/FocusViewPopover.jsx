@@ -120,13 +120,15 @@ export function FocusViewPopoverContent({
               <SelectTrigger
                 id="focus-view-dock"
                 aria-label="Dock position"
-                className="h-6 w-auto min-w-[4.75rem] rounded-md border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:bg-ui-hover"
+                variant="inline"
+                className="min-w-[4.75rem]"
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent
                 align="end"
-                className="min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]"
+                variant="inline"
+                className="[&_[data-slot=select-item]]:pr-8"
               >
                 <SelectItem value="off">Off</SelectItem>
                 <SelectItem value="top">Top</SelectItem>

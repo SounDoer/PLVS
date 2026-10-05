@@ -92,7 +92,8 @@ describe("theme color contract", () => {
     expect(select).toContain("hover:bg-ui-hover");
     expect(select).toContain("data-[highlighted]:bg-ui-hover");
     expect(select).toContain("focus:bg-ui-hover");
-    expect(select.match(/hover:bg-ui-hover/g)).toHaveLength(3);
+    // The option row, the two scroll buttons, and the three trigger variants.
+    expect(select.match(/hover:bg-ui-hover/g)).toHaveLength(6);
   });
 
   it("derives neutral hover by moving Muted toward the scheme foreground", () => {
