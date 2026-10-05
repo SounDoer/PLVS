@@ -22,6 +22,7 @@ import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import { resolvePanelDisplayName, resolvePanelModuleId } from "./panelInstances.js";
 import { resolvePanelDefinition } from "./registry.jsx";
 import { getPanelControls } from "./panelControlInstances.js";
+import { LAYER_FLOATING } from "../components/ui/layers.js";
 
 const SPLIT_DIVIDER_SIZE_REM = 0.375;
 const SPLIT_SNAP_THRESHOLD_PX = 10;
@@ -372,7 +373,11 @@ function FullscreenOverlay() {
     <div
       data-visual-panel-id={fullscreenId}
       data-visual-capture-ready="true"
-      className={cn("absolute inset-0 z-50 flex flex-col outline-none", WORKSPACE_SURFACE_CLASS)}
+      className={cn(
+        "absolute inset-0 flex flex-col outline-none",
+        LAYER_FLOATING,
+        WORKSPACE_SURFACE_CLASS
+      )}
       onKeyDown={(e) => e.key === "Escape" && setFullscreen(null)}
       tabIndex={-1}
     >

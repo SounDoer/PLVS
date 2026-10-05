@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { resolvePanelDisplayName } from "./panelInstances.js";
 import { MODULE_REGISTRY } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
+import { LAYER_FLOATING } from "../components/ui/layers.js";
 
 export const DragContext = createContext(null);
 
@@ -163,7 +164,7 @@ export function DragProvider({ children, onDrop }) {
         <div
           data-drag-ghost
           data-drop-valid="false"
-          className="pointer-events-none fixed z-50 whitespace-nowrap text-[length:var(--ui-fs-control)] font-medium text-destructive"
+          className={`pointer-events-none fixed ${LAYER_FLOATING} whitespace-nowrap text-[length:var(--ui-fs-control)] font-medium text-destructive`}
           style={{ left: dragState.x + 14, top: dragState.y - 8 }}
         >
           {dragLabel} · No Drop Target

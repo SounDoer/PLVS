@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "./ui/surfaceStyles.js";
-import { cn } from "../lib/utils.js";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "./ui/dialog.jsx";
+import { LAYER_CONFLICT } from "./ui/layers.js";
 import { resolveLibraryConflict, subscribeLibraryConflicts } from "../persistence/index.js";
 
 const LABELS = {
@@ -31,30 +36,25 @@ export function LibraryConflictDialog() {
 
   const label = LABELS[conflict?.kind] || "Library item";
   return (
-    <Dialog.Root open={conflict !== null}>
-      <Dialog.Portal>
-        <Dialog.Overlay className={cn(SCRIM_CLASS, "z-[90]")} />
-        <Dialog.Content
-          className={`fixed left-1/2 top-1/2 z-[91] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl p-4 ${MODAL_SURFACE_CLASS}`}
-        >
-          <Dialog.Title className="font-semibold">{label} Changed Elsewhere</Dialog.Title>
-          <Dialog.Description className="mt-2 text-[length:var(--ui-fs-control)] text-muted-foreground">
-            Another PLVS workbench saved this item first. Reload its saved version, or keep your
-            version as a new copy.
-          </Dialog.Description>
-          {error ? (
-            <p className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">{error}</p>
-          ) : null}
-          <div className="mt-4 flex justify-end gap-2">
-            <button type="button" disabled={busy} onClick={() => void resolve("reload")}>
-              Reload
-            </button>
-            <button type="button" disabled={busy} onClick={() => void resolve("copy")}>
-              Save as Copy
-            </button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <Dialog open={conflict !== null}>
+      <DialogContent layer={LAYER_CONFLICT}>
+        <DialogTitle>{label} Changed Elsewhere</DialogTitle>
+        <DialogDescription>
+          Another PLVS workbench saved this item first. Reload its saved version, or keep your
+          version as a new copy.
+        </DialogDescription>
+        {error ? (
+          <p className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">{error}</p>
+        ) : null}
+        <DialogFooter className="mt-3">
+          <button type="button" disabled={busy} onClick={() => void resolve("reload")}>
+            Reload
+          </button>
+          <button type="button" disabled={busy} onClick={() => void resolve("copy")}>
+            Save as Copy
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

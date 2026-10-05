@@ -1,3 +1,5 @@
+import { LAYER_FLOATING } from "./layers.js";
+
 /**
  * The dim behind a modal. Deliberately a constant, not a theme color: a scrim's
  * job is to darken whatever is behind it, and a value derived from the theme
@@ -23,3 +25,6 @@ export const POPOVER_TITLE_CLASS =
 
 export const MODAL_SURFACE_BASE_CLASS = "border-border bg-card text-card-foreground shadow-modal";
 export const MODAL_SURFACE_CLASS = `border ${MODAL_SURFACE_BASE_CLASS}`;
+
+/** A draggable, non-modal window: the editors and the feedback form. Callers add width and height. */
+export const FLOATING_WINDOW_CLASS = `fixed ${LAYER_FLOATING} flex flex-col overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`;

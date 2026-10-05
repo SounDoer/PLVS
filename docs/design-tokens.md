@@ -134,7 +134,7 @@ expose the native window compositor without weakening the foreground information
 ## Modal Scrim
 
 `SCRIM_CLASS` in `src/components/ui/surfaceStyles.js` is the only dim in the app: black at 60%,
-carried by every modal and by the file-drop target. Callers add only their own stacking order.
+carried by every modal and by the file-drop target. Callers add only their own layer (see Layers).
 The Settings Sheet adds `backdrop-blur-sm` to that scrim as modal focus feedback; its readable
 drawer remains opaque. Other scrim consumers do not inherit that blur.
 
@@ -142,6 +142,36 @@ The scrim is deliberately not a theme colour. Darkening is a direction, not a hu
 derived from the theme reverses it: the retired `effect.scrim` role tinted the workspace, which on
 a light theme produced a near-white veil that washed the background out instead of dimming it. If
 this ever needs to follow the theme, the opacity is what varies.
+
+## Layers
+
+Everything that floats above the workspace takes its z-index from a named constant in
+`src/components/ui/layers.js`. A surface states what it must sit above instead of choosing a number.
+
+| Constant             | Used by                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| `LAYER_FLOATING`     | Popovers, menus, tooltips, the Settings sheet, floating editors, drag previews, ordinary dialogs |
+| `LAYER_ABOVE_EDITOR` | A confirmation raised from a floating editor                                                     |
+| `LAYER_PRIORITY`     | Theme Preview, the crash report, transfer status                                                 |
+| `LAYER_CONFLICT`     | The cross-workbench Library conflict                                                             |
+| `LAYER_INDICATOR`    | Passive indicators such as the recording mark                                                    |
+
+Within one layer, DOM order decides, so a menu opened inside a dialog covers it without a layer of
+its own. Panels and the shell keep small local values below 50 for their internal stacking; those
+are not layers. `src/components/ui/layersContract.test.js` rejects a z-index of 50 or more written
+anywhere else.
+
+## Dialogs
+
+Modal dialogs render through `DialogContent` in `src/components/ui/dialog.jsx`, which owns the
+scrim, layer, centring, Modal surface, `rounded-xl` and `p-3` padding. Widths come in three sizes:
+`sm` 20rem, `md` 28rem (the default) and `lg` 34rem, each capped to the window; `custom` hands the
+width to the caller for content-sized or sectioned dialogs. `DialogTitle` uses the Control size in
+semibold, `DialogDescription` the Metric Annotation size in Secondary text, and `DialogFooter`
+right-aligns actions with a `gap-2`, adding a rule above them when the body scrolls.
+
+Draggable, non-modal windows (the Theme and Loudness Profile editors, the feedback form) share
+`FLOATING_WINDOW_CLASS` from `surfaceStyles.js` and add only their own width and height.
 
 ## Highlight States
 

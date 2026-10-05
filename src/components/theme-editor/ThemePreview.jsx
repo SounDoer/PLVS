@@ -5,12 +5,13 @@ import {
   WAVEFORM_FILL_OPACITY,
 } from "@/lib/chartFill.js";
 import { useId, useMemo, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { compileTheme } from "../../theme/compileTheme.js";
 import { analyzeThemeVisuals } from "../../theme/themeVisualAnalysis.js";
 import { Button } from "../ui/button.jsx";
-import { SCRIM_CLASS } from "../ui/surfaceStyles.js";
+import { Dialog, DialogContent } from "../ui/dialog.jsx";
+import { LAYER_PRIORITY } from "../ui/layers.js";
 import { ThemeVisualReview } from "./ThemeWarningSummary.jsx";
 
 function PreviewCard({ title, children }) {
@@ -228,62 +229,61 @@ export function ThemePreview({ draft, onClose, onJump }) {
   };
 
   return (
-    <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Overlay className={`${SCRIM_CLASS} z-[70]`} />
-        <Dialog.Content
-          aria-label="Theme preview"
-          className="theme-preview fixed top-1/2 left-1/2 z-[71] flex max-h-[90vh] w-[calc(100%-3rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-modal"
-          style={style}
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        aria-label="Theme preview"
+        size="custom"
+        layer={LAYER_PRIORITY}
+        className="theme-preview max-h-[90vh] w-[calc(100%-3rem)] max-w-3xl bg-background p-0 text-foreground"
+        style={style}
+      >
+        <header className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <DialogPrimitive.Title className="font-semibold">Theme Preview</DialogPrimitive.Title>
+            <DialogPrimitive.Description className="text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              Controlled scenes from the current unsaved Draft
+            </DialogPrimitive.Description>
+          </div>
+          <Button variant="ghost" size="icon" aria-label="Close theme preview" onClick={onClose}>
+            <X />
+          </Button>
+        </header>
+        <div
+          role="tablist"
+          aria-label="Theme preview scenes"
+          className="flex border-b border-border px-3"
         >
-          <header className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <Dialog.Title className="font-semibold">Theme Preview</Dialog.Title>
-              <Dialog.Description className="text-[length:var(--ui-fs-axis)] text-muted-foreground">
-                Controlled scenes from the current unsaved Draft
-              </Dialog.Description>
-            </div>
-            <Button variant="ghost" size="icon" aria-label="Close theme preview" onClick={onClose}>
-              <X />
-            </Button>
-          </header>
-          <div
-            role="tablist"
-            aria-label="Theme preview scenes"
-            className="flex border-b border-border px-3"
-          >
-            {[
-              ["overview", "Overview"],
-              ["modules", "Modules"],
-              ["review", "Visual Review"],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={page === id}
-                onClick={() => setPage(id)}
-                className={`border-b-2 px-3 py-2 text-[length:var(--ui-fs-metric-meta)] ${page === id ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="overflow-y-auto p-4">
-            {page === "overview" ? (
-              <OverviewScene />
-            ) : page === "modules" ? (
-              <ModulesScene
-                intensityGradient={intensityGradient}
-                gridColors={gridColors}
-                resolved={resolved}
-              />
-            ) : (
-              <ThemeVisualReview warnings={visualWarnings} onJump={onJump} />
-            )}
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          {[
+            ["overview", "Overview"],
+            ["modules", "Modules"],
+            ["review", "Visual Review"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={page === id}
+              onClick={() => setPage(id)}
+              className={`border-b-2 px-3 py-2 text-[length:var(--ui-fs-metric-meta)] ${page === id ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="overflow-y-auto p-4">
+          {page === "overview" ? (
+            <OverviewScene />
+          ) : page === "modules" ? (
+            <ModulesScene
+              intensityGradient={intensityGradient}
+              gridColors={gridColors}
+              resolved={resolved}
+            />
+          ) : (
+            <ThemeVisualReview warnings={visualWarnings} onJump={onJump} />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

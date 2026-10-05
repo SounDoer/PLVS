@@ -6,6 +6,7 @@ import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { discardCrashReport } from "../ipc/commands.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { buildCrashReportRequest, submitCrashReport } from "../lib/crashReporting.js";
+import { LAYER_PRIORITY } from "@/components/ui/layers.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -69,7 +70,7 @@ export function CrashReportDialog({
   const sendError = error && !busy;
 
   return (
-    <div className={cn(SCRIM_CLASS, "z-[70] grid place-items-center p-4")}>
+    <div className={cn(SCRIM_CLASS, LAYER_PRIORITY, "grid place-items-center p-4")}>
       <section
         role="dialog"
         aria-modal="true"

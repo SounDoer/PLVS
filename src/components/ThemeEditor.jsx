@@ -1,4 +1,4 @@
-import { MODAL_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
+import { FLOATING_WINDOW_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Eye, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -177,7 +177,7 @@ export function ThemeEditor({
         ref={ref}
         role="dialog"
         aria-label="Theme editor"
-        className={`fixed z-50 flex max-h-[80vh] w-[var(--ui-editor-w)] flex-col overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`}
+        className={`${FLOATING_WINDOW_CLASS} max-h-[80vh] w-[var(--ui-editor-w)]`}
         style={{ left: pos.x, top: pos.y }}
       >
         <div

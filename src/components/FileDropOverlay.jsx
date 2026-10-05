@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
+import { LAYER_FLOATING } from "@/components/ui/layers.js";
 
 // Drag/drop is wired through the Tauri webview drag-drop event, which yields real filesystem
 // paths (unlike HTML5 `dataTransfer`). The overlay subscribes only while File mode is active, so
@@ -45,7 +46,7 @@ export function FileDropOverlay({ active, onDropFile }) {
   if (!visible) return null;
 
   return (
-    <div className={cn(SCRIM_CLASS, "pointer-events-none z-50 grid place-items-center")}>
+    <div className={cn(SCRIM_CLASS, LAYER_FLOATING, "pointer-events-none grid place-items-center")}>
       <div className="rounded-xl border border-border bg-popover px-6 py-5 text-center shadow-raised">
         <p className="text-[length:var(--ui-fs-body)] font-semibold text-foreground">
           Drop file to analyze

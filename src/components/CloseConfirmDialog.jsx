@@ -1,4 +1,3 @@
-import * as Dialog from "@radix-ui/react-dialog";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
@@ -9,8 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 
 const SELECT_TRIGGER_CLASS =
   "h-6 w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors hover:bg-ui-hover";
@@ -50,82 +48,77 @@ export function CloseConfirmDialog({
   }
 
   return (
-    <Dialog.Root
+    <Dialog
       open={open}
       onOpenChange={(v) => {
         if (!v) handleCancel();
       }}
     >
-      <Dialog.Portal>
-        <Dialog.Overlay className={cn(SCRIM_CLASS, "z-50")} />
-        <Dialog.Content
-          className={`fixed left-1/2 top-1/2 z-50 inline-flex -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl p-3 ${MODAL_SURFACE_CLASS}`}
-        >
-          <Dialog.Title className="sr-only">Close PLVS</Dialog.Title>
-          {error ? (
-            <div className="mb-3 max-w-80 px-1.5 text-[length:var(--ui-fs-control)] text-destructive">
-              {error}
+      <DialogContent size="custom" className="inline-flex">
+        <DialogTitle className="sr-only">Close PLVS</DialogTitle>
+        {error ? (
+          <div className="mb-3 max-w-80 px-1.5 text-[length:var(--ui-fs-control)] text-destructive">
+            {error}
+          </div>
+        ) : null}
+        {!error ? (
+          <>
+            <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
+              <span className={ROW_LABEL_CLASS}>Close Behavior</span>
+              <Select value={action} onValueChange={setAction}>
+                <SelectTrigger aria-label="Close behavior" className={SELECT_TRIGGER_CLASS}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
+                  <SelectItem value="tray">Minimize to Tray</SelectItem>
+                  <SelectItem value="quit">Quit</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : null}
-          {!error ? (
-            <>
-              <div className="mb-1.5 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
-                <span className={ROW_LABEL_CLASS}>Close Behavior</span>
-                <Select value={action} onValueChange={setAction}>
-                  <SelectTrigger aria-label="Close behavior" className={SELECT_TRIGGER_CLASS}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className={SELECT_CONTENT_CLASS}>
-                    <SelectItem value="tray">Minimize to Tray</SelectItem>
-                    <SelectItem value="quit">Quit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="mb-3 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
-                <span className={ROW_LABEL_CLASS}>Don&apos;t ask again</span>
-                <Switch
-                  aria-label="Don't ask again"
-                  checked={dontAsk}
-                  onCheckedChange={setDontAsk}
-                  className={SWITCH_CLASS}
-                  thumbClassName={SWITCH_THUMB_CLASS}
-                />
-              </div>
-            </>
-          ) : null}
+            <div className="mb-3 flex min-h-6 items-center justify-between gap-4 rounded-md px-1.5 py-0.5">
+              <span className={ROW_LABEL_CLASS}>Don&apos;t ask again</span>
+              <Switch
+                aria-label="Don't ask again"
+                checked={dontAsk}
+                onCheckedChange={setDontAsk}
+                className={SWITCH_CLASS}
+                thumbClassName={SWITCH_THUMB_CLASS}
+              />
+            </div>
+          </>
+        ) : null}
 
-          <div className="flex justify-end gap-1.5">
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={busy}
+            className="rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-ui-hover"
+          >
+            Cancel
+          </button>
+          {error ? (
             <button
               type="button"
-              onClick={handleCancel}
+              onClick={onRetry}
               disabled={busy}
-              className="rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)] text-muted-foreground transition-colors hover:bg-ui-hover"
+              className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-[color:var(--ui-primary-hover)]"
             >
-              Cancel
+              {busy ? "Saving…" : "Retry"}
             </button>
-            {error ? (
-              <button
-                type="button"
-                onClick={onRetry}
-                disabled={busy}
-                className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-[color:var(--ui-primary-hover)]"
-              >
-                {busy ? "Saving…" : "Retry"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={busy}
-                className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-[color:var(--ui-primary-hover)]"
-              >
-                {busy ? "Saving…" : "Confirm"}
-              </button>
-            )}
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          ) : (
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={busy}
+              className="rounded-md bg-primary px-2 py-0.5 text-[length:var(--ui-fs-control)] text-primary-foreground transition-colors hover:bg-[color:var(--ui-primary-hover)]"
+            >
+              {busy ? "Saving…" : "Confirm"}
+            </button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

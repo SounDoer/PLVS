@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { MODAL_SURFACE_BASE_CLASS, SCRIM_CLASS } from "./surfaceStyles.js";
+import { LAYER_FLOATING } from "./layers.js";
 
 function Sheet(props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -28,7 +29,8 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
     data-slot="sheet-overlay"
     className={cn(
       SCRIM_CLASS,
-      "z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:fade-in",
+      LAYER_FLOATING,
+      "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=open]:fade-in",
       "backdrop-blur-sm",
       className
     )}
@@ -38,7 +40,7 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  `fixed z-50 flex flex-col gap-0 ${MODAL_SURFACE_BASE_CLASS} transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500`,
+  `fixed ${LAYER_FLOATING} flex flex-col gap-0 ${MODAL_SURFACE_BASE_CLASS} transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500`,
   {
     variants: {
       side: {

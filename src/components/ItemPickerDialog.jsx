@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { PACK_KINDS } from "../transfer/packShape.js";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
-
-const CENTERED_CONTENT_CLASS = `fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl p-3 ${MODAL_SURFACE_CLASS}`;
-const POSITIONED_CONTENT_CLASS = `fixed z-50 flex max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl p-3 ${MODAL_SURFACE_CLASS}`;
 
 const EMPTY_MESSAGE = {
   loudness: "No loudness profiles to export.",
@@ -137,113 +139,109 @@ export function ItemPickerDialog({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => (next ? null : handleDismiss())}>
-      <Dialog.Portal>
-        <Dialog.Overlay className={SCRIM_CLASS} onClick={handleDismiss} />
-        <Dialog.Content
-          ref={contentRef}
-          className={pos ? POSITIONED_CONTENT_CLASS : CENTERED_CONTENT_CLASS}
-          style={pos ? { left: pos.x, top: pos.y } : undefined}
-        >
-          <div data-testid="item-picker-drag-handle" {...dragHandlers} className="cursor-move">
-            <Dialog.Title className="text-[length:var(--ui-fs-control)] font-semibold text-foreground">
-              {title}
-            </Dialog.Title>
-            <Dialog.Description className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-              {mode === "pick"
-                ? `Choose which ${label.toLowerCase()} to export.`
-                : mode === "complete"
-                  ? `The ${label.toLowerCase()} are now in your library.`
-                  : `Review what will be added to your library.`}
-            </Dialog.Description>
-          </div>
+    <Dialog open={open} onOpenChange={(next) => (next ? null : handleDismiss())}>
+      <DialogContent
+        ref={contentRef}
+        centered={!pos}
+        overlayProps={{ onClick: handleDismiss }}
+        style={pos ? { left: pos.x, top: pos.y } : undefined}
+      >
+        <div data-testid="item-picker-drag-handle" {...dragHandlers} className="cursor-move">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {mode === "pick"
+              ? `Choose which ${label.toLowerCase()} to export.`
+              : mode === "complete"
+                ? `The ${label.toLowerCase()} are now in your library.`
+                : `Review what will be added to your library.`}
+          </DialogDescription>
+        </div>
 
-          <div className="my-3 min-h-0 flex-1 overflow-y-auto">
-            {mode === "pick" ? (
-              items.length === 0 ? (
-                <p className="text-[length:var(--ui-fs-control)] text-muted-foreground">
-                  {EMPTY_MESSAGE[type]}
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-0.5">
-                  {items.map((item) => (
-                    <li key={item.id}>
-                      <label className="flex items-center gap-2 rounded-md px-1 py-1 text-[length:var(--ui-fs-control)] hover:bg-ui-hover">
-                        <input
-                          type="checkbox"
-                          aria-label={item.name}
-                          checked={selected.has(item.id)}
-                          onChange={() => toggle(item.id)}
-                        />
-                        <span className="truncate">{item.name}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )
+        <div className="my-3 min-h-0 flex-1 overflow-y-auto">
+          {mode === "pick" ? (
+            items.length === 0 ? (
+              <p className="text-[length:var(--ui-fs-control)] text-muted-foreground">
+                {EMPTY_MESSAGE[type]}
+              </p>
             ) : (
               <ul className="flex flex-col gap-0.5">
-                {(review?.itemPlan ?? []).map((entry) => (
-                  <PlanRow key={entry.sourceId} entry={entry} />
-                ))}
-              </ul>
-            )}
-
-            {mode === "pick" && shownDependencies.length > 0 ? (
-              <AlsoIncluded>
-                {shownDependencies.map((dep) => (
-                  <li key={dep.id} className="text-[length:var(--ui-fs-control)]">
-                    {dep.name}
+                {items.map((item) => (
+                  <li key={item.id}>
+                    <label className="flex items-center gap-2 rounded-md px-1 py-1 text-[length:var(--ui-fs-control)] hover:bg-ui-hover">
+                      <input
+                        type="checkbox"
+                        aria-label={item.name}
+                        checked={selected.has(item.id)}
+                        onChange={() => toggle(item.id)}
+                      />
+                      <span className="truncate">{item.name}</span>
+                    </label>
                   </li>
                 ))}
-              </AlsoIncluded>
-            ) : null}
+              </ul>
+            )
+          ) : (
+            <ul className="flex flex-col gap-0.5">
+              {(review?.itemPlan ?? []).map((entry) => (
+                <PlanRow key={entry.sourceId} entry={entry} />
+              ))}
+            </ul>
+          )}
 
-            {mode !== "pick" && profilePlan.length > 0 ? (
-              <AlsoIncluded>
-                {profilePlan.map((entry) => (
-                  <PlanRow key={entry.sourceId} entry={entry} />
+          {mode === "pick" && shownDependencies.length > 0 ? (
+            <AlsoIncluded>
+              {shownDependencies.map((dep) => (
+                <li key={dep.id} className="text-[length:var(--ui-fs-control)]">
+                  {dep.name}
+                </li>
+              ))}
+            </AlsoIncluded>
+          ) : null}
+
+          {mode !== "pick" && profilePlan.length > 0 ? (
+            <AlsoIncluded>
+              {profilePlan.map((entry) => (
+                <PlanRow key={entry.sourceId} entry={entry} />
+              ))}
+            </AlsoIncluded>
+          ) : null}
+
+          {mode === "review" && warnings.length > 0 ? (
+            <section className="mt-3 border-t border-border pt-2" aria-label="Import Warnings">
+              <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
+                Adaptations
+              </h3>
+              <ul className="mt-1.5 flex flex-col gap-1">
+                {warnings.map((warning, index) => (
+                  <li
+                    key={`${warning.code}-${warning.path}-${index}`}
+                    className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground"
+                  >
+                    {warning.message}
+                  </li>
                 ))}
-              </AlsoIncluded>
-            ) : null}
+              </ul>
+            </section>
+          ) : null}
+        </div>
 
-            {mode === "review" && warnings.length > 0 ? (
-              <section className="mt-3 border-t border-border pt-2" aria-label="Import Warnings">
-                <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
-                  Adaptations
-                </h3>
-                <ul className="mt-1.5 flex flex-col gap-1">
-                  {warnings.map((warning, index) => (
-                    <li
-                      key={`${warning.code}-${warning.path}-${index}`}
-                      className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground"
-                    >
-                      {warning.message}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </div>
-
-          <div className="flex justify-end gap-2 border-t border-border pt-2">
-            <Button variant="ghost" onClick={onBack ?? handleDismiss}>
-              {mode === "complete" ? "Done" : onBack ? "Back" : "Cancel"}
+        <DialogFooter divided>
+          <Button variant="ghost" onClick={onBack ?? handleDismiss}>
+            {mode === "complete" ? "Done" : onBack ? "Back" : "Cancel"}
+          </Button>
+          {mode === "pick" ? (
+            <Button disabled={selected.size === 0} onClick={() => onExport([...selected])}>
+              Export
             </Button>
-            {mode === "pick" ? (
-              <Button disabled={selected.size === 0} onClick={() => onExport([...selected])}>
-                Export
-              </Button>
-            ) : mode === "complete" ? (
-              singleCompletion ? (
-                <Button onClick={onAction}>{COMPLETION_ACTION_LABEL[type]}</Button>
-              ) : null
-            ) : (
-              <Button onClick={onConfirm}>{clipboardTheme ? "Add Theme" : "Import"}</Button>
-            )}
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          ) : mode === "complete" ? (
+            singleCompletion ? (
+              <Button onClick={onAction}>{COMPLETION_ACTION_LABEL[type]}</Button>
+            ) : null
+          ) : (
+            <Button onClick={onConfirm}>{clipboardTheme ? "Add Theme" : "Import"}</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
