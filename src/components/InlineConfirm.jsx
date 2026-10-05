@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconAction } from "@/components/ui/icon-action";
 
 /**
  * Two-step inline confirmation for a single destructive control.
@@ -92,8 +93,7 @@ export function InlineConfirm({
         !preserveTriggerSize && className
       )}
     >
-      <button
-        type="button"
+      <IconAction
         aria-label={cancelLabel}
         autoFocus
         onClick={(e) => {
@@ -101,12 +101,11 @@ export function InlineConfirm({
           restoreFocusRef.current = true;
           setArmed(false);
         }}
-        className="rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+        className="p-0.5"
       >
         <X className="size-[length:var(--ui-icon-management-action)]" />
-      </button>
-      <button
-        type="button"
+      </IconAction>
+      <IconAction
         aria-label={confirmLabel}
         onClick={(e) => {
           e.stopPropagation();
@@ -116,10 +115,10 @@ export function InlineConfirm({
           setArmed(false);
           onConfirm();
         }}
-        className="rounded-xs p-0.5 text-foreground transition-colors hover:text-foreground"
+        className="p-0.5 text-foreground"
       >
         <Check className="size-[length:var(--ui-icon-management-action)]" />
-      </button>
+      </IconAction>
     </span>
   );
 

@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { Check, Download, GripVertical, Pencil, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, Download, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { AddButton } from "@/components/AddButton";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
+import { IconAction } from "@/components/ui/icon-action";
+import { DragHandle } from "@/components/ui/drag-handle";
 
 const NOOP_PRESETS = {
   list: [],
@@ -17,9 +19,6 @@ const NOOP_PRESETS = {
   remove: () => {},
   reorder: () => {},
 };
-
-const DRAG_HANDLE_CLASS =
-  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing";
 
 /**
  * Popover body for preset management. Receives the `presets` controller
@@ -149,23 +148,21 @@ export function PresetsPopoverContent({
                       autoFocus
                       className="plvs-input h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)]"
                     />
-                    <button
-                      type="button"
+                    <IconAction
                       aria-label="Save rename"
                       onClick={() => commitRename(preset.id)}
                       disabled={!(drafts[preset.id] ?? "").trim()}
-                      className="shrink-0 rounded-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                      className="shrink-0 disabled:opacity-50"
                     >
                       <Check className="size-[length:var(--ui-icon-management-action)]" />
-                    </button>
-                    <button
-                      type="button"
+                    </IconAction>
+                    <IconAction
                       aria-label="Cancel rename"
                       onClick={cancelRename}
-                      className="shrink-0 rounded-xs text-muted-foreground hover:text-foreground"
+                      className="shrink-0"
                     >
                       <X className="size-[length:var(--ui-icon-management-action)]" />
-                    </button>
+                    </IconAction>
                   </div>
                 ) : (
                   <div
@@ -174,17 +171,11 @@ export function PresetsPopoverContent({
                       draggingId === preset.id && "z-10 ring-1 ring-primary"
                     )}
                   >
-                    <button
-                      type="button"
+                    <DragHandle
                       aria-label={`Reorder ${preset.name}`}
                       onPointerDown={(event) => startDrag(preset.id, event)}
-                      className={cn(
-                        DRAG_HANDLE_CLASS,
-                        draggingId === preset.id && "text-foreground"
-                      )}
-                    >
-                      <GripVertical className="size-3.5" />
-                    </button>
+                      dragging={draggingId === preset.id}
+                    />
                     <button
                       type="button"
                       aria-label={`Apply preset ${preset.name}`}
@@ -217,59 +208,50 @@ export function PresetsPopoverContent({
                       />
                     </button>
                     <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      <button
-                        type="button"
+                      <IconAction
                         aria-label={`Update preset ${preset.name}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           runPresetAction(presets.update(preset.id));
                         }}
                         disabled={blocked}
-                        className={cn(
-                          "rounded-xs text-muted-foreground hover:text-foreground",
-                          blockedClass
-                        )}
+                        className={blockedClass}
                       >
                         <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
-                      </button>
-                      <button
-                        type="button"
+                      </IconAction>
+                      <IconAction
                         aria-label={`Export preset ${preset.name}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           onExport(preset.id);
                         }}
-                        className="rounded-xs text-muted-foreground hover:text-foreground"
                       >
                         <Download className="size-[length:var(--ui-icon-management-action)]" />
-                      </button>
-                      <button
-                        type="button"
+                      </IconAction>
+                      <IconAction
                         aria-label={`Rename preset ${preset.name}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           startRename(preset);
                         }}
-                        className="rounded-xs text-muted-foreground hover:text-foreground"
                       >
                         <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-                      </button>
+                      </IconAction>
                       <InlineConfirm
                         onConfirm={() => presets.remove(preset.id)}
                         confirmLabel={`Confirm delete preset ${preset.name}`}
                         cancelLabel={`Cancel delete preset ${preset.name}`}
                         trigger={(arm) => (
-                          <button
-                            type="button"
+                          <IconAction
                             aria-label={`Delete preset ${preset.name}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               arm();
                             }}
-                            className="rounded-xs text-muted-foreground hover:text-destructive"
+                            className="hover:text-destructive"
                           >
                             <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                          </button>
+                          </IconAction>
                         )}
                       />
                     </span>

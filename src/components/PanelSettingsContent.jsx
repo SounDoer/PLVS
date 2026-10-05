@@ -45,6 +45,7 @@ import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/u
 import { POPOVER_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 import { HoverTip, useHoverTip } from "@/components/HoverTip.jsx";
+import { IconAction } from "@/components/ui/icon-action";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
@@ -109,19 +110,15 @@ export function SettingsRow({ label, tooltip, action, controlAction, children })
 // takes the control out of the accessibility tree.
 export function SettingsResetButton({ ariaLabel, atDefault, onReset }) {
   return (
-    <button
-      type="button"
+    <IconAction
       aria-label={ariaLabel}
       aria-hidden={atDefault || undefined}
       tabIndex={atDefault ? -1 : 0}
       onClick={onReset}
-      className={cn(
-        "rounded-xs text-muted-foreground outline-none transition-colors hover:text-foreground",
-        atDefault && "invisible"
-      )}
+      className={cn("outline-none", atDefault && "invisible")}
     >
       <RotateCcw className="size-[length:var(--ui-icon-panel-action)]" />
-    </button>
+    </IconAction>
   );
 }
 

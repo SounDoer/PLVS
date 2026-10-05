@@ -4,6 +4,7 @@ import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { formatCompactSessionMetadata, formatDeliveryTriple } from "@/lib/fileAnalysisDisplay";
 import { cn } from "@/lib/utils";
 import { formatClock } from "../hooks/useSessionTimer.js";
+import { IconAction } from "@/components/ui/icon-action";
 
 function statusLabel(session) {
   if (session?.state === "ready") return "Ready";
@@ -139,22 +140,20 @@ export function FileAnalysisHistoryMenu({
                     </button>
                   ) : (
                     <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                      <button
-                        type="button"
+                      <IconAction
                         onClick={() => onReanalyzeFile?.(session.id)}
                         aria-label={`Reanalyze ${session.fileName}`}
-                        className="rounded-xs p-1 text-muted-foreground transition-colors hover:text-foreground"
+                        className="p-1"
                       >
                         <RefreshCw className="size-[length:var(--ui-icon-management-action)]" />
-                      </button>
-                      <button
-                        type="button"
+                      </IconAction>
+                      <IconAction
                         onClick={() => onRemoveFile?.(session.id)}
                         aria-label={`Remove ${session.fileName}`}
-                        className="rounded-xs p-1 text-muted-foreground transition-colors hover:text-destructive"
+                        className="p-1 hover:text-destructive"
                       >
                         <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                      </button>
+                      </IconAction>
                     </span>
                   )}
                 </span>

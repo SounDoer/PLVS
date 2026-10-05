@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, GripVertical, Pencil, Plus, Settings2, Timer, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Settings2, Timer, Trash2, X } from "lucide-react";
 import { InlineConfirm } from "../../components/InlineConfirm.jsx";
 import {
   MANAGEMENT_ROW_ACTIONS_CLASS,
@@ -20,6 +20,7 @@ import {
 import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { ResetAction } from "../../components/ResetAction.jsx";
+import { DragHandle } from "@/components/ui/drag-handle";
 
 const DOCK_ONLY_PANEL_META = {
   transport: {
@@ -97,17 +98,12 @@ function DockModuleRow({
       onMouseEnter={() => onHover?.(panel.id)}
       onMouseLeave={() => onHover?.(null)}
     >
-      <button
-        type="button"
+      <DragHandle
         aria-label={`Reorder ${title}`}
         onPointerDown={(event) => onDragStart(panel.id, event)}
-        className={cn(
-          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing",
-          dragging && "text-foreground"
-        )}
-      >
-        <GripVertical className="size-3.5" />
-      </button>
+        dragging={dragging}
+        className="-ml-1"
+      />
       {def?.Icon ? (
         <span className="flex shrink-0 text-muted-foreground">
           <def.Icon className="size-[1.25em]" />

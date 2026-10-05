@@ -1,6 +1,6 @@
 import { MODAL_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useEffect, useRef, useState } from "react";
-import { Check, GripVertical, Pencil, X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddButton } from "@/components/AddButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
@@ -21,6 +21,8 @@ import {
   withReferenceLufs,
 } from "@/lib/loudnessProfileCatalog.js";
 import { STATS_META, roundToStatPrecision, statDecimals } from "@/lib/statsCatalog.js";
+import { IconAction } from "@/components/ui/icon-action";
+import { DragHandle } from "@/components/ui/drag-handle";
 
 /// A new rule opens on Integrated: the metric every delivery reference judges. The user re-picks it
 /// from the row's own metric select.
@@ -67,7 +69,6 @@ const REMOVE_COL_CLASS = "w-5";
 // because stepping a delivery threshold by 1 is never what anyone wants, and it overlaps the text.
 // The muted icon buttons in the editor header (rename pencil, and the confirm/cancel that replace it
 // while renaming). `onPointerDown` on each stops the drag handle from grabbing the click.
-const HEADER_ACTION_CLASS = "shrink-0 rounded-xs text-muted-foreground hover:text-foreground";
 
 const NUM_INPUT_CLASS =
   "plvs-input h-6 w-[7ch] rounded-md border border-transparent bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-control)] tabular-nums transition-colors [appearance:textfield] hover:bg-ui-hover [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -208,18 +209,12 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         />
       )}
 
-      <button
-        type="button"
+      <DragHandle
         aria-label={`Reorder rule ${position}`}
         onPointerDown={onDragStart}
-        className={cn(
-          GRIP_COL_CLASS,
-          "-ml-1 flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing",
-          dragging && "text-foreground"
-        )}
-      >
-        <GripVertical className="size-3.5" />
-      </button>
+        dragging={dragging}
+        className={cn(GRIP_COL_CLASS, "-ml-1")}
+      />
 
       <MetricSelect position={position} rule={rule} onPatch={onPatch} />
 
@@ -263,17 +258,13 @@ function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
         </SelectContent>
       </Select>
 
-      <button
-        type="button"
+      <IconAction
         aria-label={`Remove rule ${position}`}
         onClick={onRemove}
-        className={cn(
-          REMOVE_COL_CLASS,
-          "flex items-center justify-center rounded-xs text-muted-foreground hover:text-foreground"
-        )}
+        className={cn(REMOVE_COL_CLASS, "flex items-center justify-center")}
       >
         <X className="size-[length:var(--ui-icon-management-action)]" />
-      </button>
+      </IconAction>
     </div>
   );
 }
@@ -433,26 +424,24 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}
-              <button
-                type="button"
+              <IconAction
                 aria-label="Save profile name"
                 onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={commitName}
-                className={HEADER_ACTION_CLASS}
+                className="shrink-0"
               >
                 <Check className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
-              <button
-                type="button"
+              </IconAction>
+              <IconAction
                 aria-label="Cancel rename"
                 onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={cancelName}
-                className={HEADER_ACTION_CLASS}
+                className="shrink-0"
               >
                 <X className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
+              </IconAction>
             </>
           ) : (
             <>
@@ -463,16 +452,15 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
                   <span className="text-muted-foreground">Untitled</span>
                 )}
               </span>
-              <button
-                type="button"
+              <IconAction
                 aria-label="Rename profile"
                 title="Rename"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={startRename}
-                className={HEADER_ACTION_CLASS}
+                className="shrink-0"
               >
                 <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
+              </IconAction>
             </>
           )}
         </div>

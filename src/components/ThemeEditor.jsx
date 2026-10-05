@@ -11,10 +11,10 @@ import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { IconAction } from "@/components/ui/icon-action";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
-const HEADER_ACTION_CLASS = "shrink-0 rounded-xs text-muted-foreground hover:text-foreground";
 
 const CORE_COLORS = [
   {
@@ -206,26 +206,24 @@ export function ThemeEditor({
               />
               {/* `preventDefault` on mousedown keeps the input focused so the click commits/cancels
                   explicitly rather than racing the input's blur. */}
-              <button
-                type="button"
+              <IconAction
                 aria-label="Save theme name"
                 onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={commitName}
-                className={HEADER_ACTION_CLASS}
+                className="shrink-0"
               >
                 <Check className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
-              <button
-                type="button"
+              </IconAction>
+              <IconAction
                 aria-label="Cancel rename"
                 onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={cancelName}
-                className={HEADER_ACTION_CLASS}
+                className="shrink-0"
               >
                 <X className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
+              </IconAction>
             </>
           ) : (
             <>
@@ -254,38 +252,35 @@ export function ThemeEditor({
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
+              <IconAction
                 aria-label="Undo theme change"
                 title="Undo"
                 disabled={!canUndo}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={onUndo}
-                className={`${HEADER_ACTION_CLASS} disabled:opacity-50`}
+                className="shrink-0 disabled:opacity-50"
               >
                 <Undo2 className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
-              <button
-                type="button"
+              </IconAction>
+              <IconAction
                 aria-label="Redo theme change"
                 title="Redo"
                 disabled={!canRedo}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={onRedo}
-                className={`${HEADER_ACTION_CLASS} disabled:opacity-50`}
+                className="shrink-0 disabled:opacity-50"
               >
                 <Redo2 className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
-              <button
-                type="button"
+              </IconAction>
+              <IconAction
                 aria-label="Rename theme"
                 title="Rename"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={startRename}
-                className={HEADER_ACTION_CLASS}
+                className="shrink-0"
               >
                 <Pencil className="size-[length:var(--ui-icon-management-action)]" />
-              </button>
+              </IconAction>
             </>
           )}
         </div>

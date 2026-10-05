@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useHoverTip } from "@/components/HoverTip";
+import { IconAction } from "@/components/ui/icon-action";
 
 export const MANAGEMENT_ROW_CLASS =
   "group flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover";
@@ -25,15 +26,11 @@ export function ManagementIconAction({
 
   return (
     <>
-      <button
+      <IconAction
         ref={anchorRef}
-        type="button"
         aria-label={label}
         disabled={disabled}
-        className={cn(
-          "rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
-          className
-        )}
+        className={cn("p-0.5 disabled:pointer-events-none disabled:opacity-50", className)}
         onClick={onClick}
         onMouseEnter={tip ? showTip : undefined}
         onMouseLeave={tip ? hideTip : undefined}
@@ -41,7 +38,7 @@ export function ManagementIconAction({
         onBlur={tip ? hideTip : undefined}
       >
         {icon}
-      </button>
+      </IconAction>
       {tipNode}
     </>
   );

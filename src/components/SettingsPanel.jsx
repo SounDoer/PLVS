@@ -29,6 +29,7 @@ import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
   DEFAULT_DIALOGUE_VAD_ENGINE,
 } from "@/lib/dialogueVadEngines.js";
+import { IconAction } from "@/components/ui/icon-action";
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
 const AGENT_CONTROL_PROMPT_STARTER =
@@ -62,9 +63,6 @@ const SELECT_CONTENT_CLASS =
 const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
 const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
-
-const ICON_BTN_CLASS =
-  "rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground";
 
 const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 
@@ -111,13 +109,9 @@ function SettingsLabelWithTip({ label, tip }) {
         className="inline-flex shrink-0"
         tipClassName="w-max max-w-[18rem] whitespace-normal"
       >
-        <button
-          type="button"
-          aria-label={`${label} help: ${tip}`}
-          className="rounded-xs p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-        >
+        <IconAction aria-label={`${label} help: ${tip}`} className="p-0.5">
           <CircleHelp className="size-[1em]" aria-hidden />
-        </button>
+        </IconAction>
       </HoverTip>
     </div>
   );
@@ -139,9 +133,9 @@ function SettingsSwitch({ className, ...props }) {
 
 function IconButton({ children, className, ...props }) {
   return (
-    <button type="button" className={cn(ICON_BTN_CLASS, className)} {...props}>
+    <IconAction className={cn("p-0.5", className)} {...props}>
       {children}
-    </button>
+    </IconAction>
   );
 }
 
@@ -278,12 +272,10 @@ export function SettingsPanel({
       <SheetContent side="right" hideClose aria-describedby={undefined} className={SHEET_CLASS}>
         <div data-settings-header className={SHEET_HEADER_CLASS}>
           <SheetTitle className="text-[length:var(--ui-fs-panel-title)]">Settings</SheetTitle>
-          <SheetClose
-            type="button"
-            aria-label="Close settings"
-            className={cn(ICON_BTN_CLASS, "p-1")}
-          >
-            <X className="size-[length:var(--ui-icon-shell-action)]" />
+          <SheetClose asChild>
+            <IconAction aria-label="Close settings" className="p-1">
+              <X className="size-[length:var(--ui-icon-shell-action)]" />
+            </IconAction>
           </SheetClose>
         </div>
         <AnimatePresence

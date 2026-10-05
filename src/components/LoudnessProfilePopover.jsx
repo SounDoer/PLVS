@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Download, GripVertical, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Download, SlidersHorizontal, Trash2 } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { AddButton } from "@/components/AddButton";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
@@ -10,12 +10,11 @@ import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
+import { IconAction } from "@/components/ui/icon-action";
+import { DragHandle } from "@/components/ui/drag-handle";
 
 const ROW_CLASS =
   "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover";
-
-const DRAG_HANDLE_CLASS =
-  "flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing";
 
 // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after the drag handle (or,
 // on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
@@ -24,7 +23,7 @@ const ROW_BUTTON_CLASS =
   "flex min-w-0 flex-1 items-center gap-2 rounded-xs pl-1 pr-1.5 py-1.5 text-left";
 
 const ICON_BUTTON_CLASS =
-  "rounded-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100";
+  "opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100";
 
 function ActiveDot({ active }) {
   return (
@@ -110,14 +109,11 @@ export function LoudnessProfilePopoverContent({
                 draggingId === entry.id && "z-10 ring-1 ring-primary"
               )}
             >
-              <button
-                type="button"
+              <DragHandle
                 aria-label={`Reorder ${entry.name}`}
                 onPointerDown={(event) => startDrag(entry.id, event)}
-                className={cn(DRAG_HANDLE_CLASS, draggingId === entry.id && "text-foreground")}
-              >
-                <GripVertical className="size-3.5" />
-              </button>
+                dragging={draggingId === entry.id}
+              />
               <button
                 type="button"
                 aria-label={`Use ${entry.name}`}
@@ -131,8 +127,7 @@ export function LoudnessProfilePopoverContent({
               </button>
               {manageable ? (
                 <>
-                  <button
-                    type="button"
+                  <IconAction
                     // "Edit" and "Rename" sit next to each other and read as synonyms in sequence;
                     // the title that tells them apart is not reliably announced.
                     aria-label={`Edit ${entry.name} rules`}
@@ -142,24 +137,22 @@ export function LoudnessProfilePopoverContent({
                     className={cn(ICON_BUTTON_CLASS, blockedClass)}
                   >
                     <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
-                  </button>
-                  <button
-                    type="button"
+                  </IconAction>
+                  <IconAction
                     aria-label={`Export ${entry.name}`}
                     title="Export"
                     onClick={() => onExport(entry.id)}
                     className={ICON_BUTTON_CLASS}
                   >
                     <Download className="size-[length:var(--ui-icon-management-action)]" />
-                  </button>
+                  </IconAction>
                   <InlineConfirm
                     onConfirm={() => profile.removeProfile(entry.id)}
                     confirmLabel={`Confirm delete ${entry.name}`}
                     cancelLabel={`Cancel delete ${entry.name}`}
                     className="mr-1.5"
                     trigger={(arm) => (
-                      <button
-                        type="button"
+                      <IconAction
                         aria-label={`Delete ${entry.name}`}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -169,7 +162,7 @@ export function LoudnessProfilePopoverContent({
                         className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
                       >
                         <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
-                      </button>
+                      </IconAction>
                     )}
                   />
                 </>

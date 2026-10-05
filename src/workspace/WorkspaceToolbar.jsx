@@ -1,4 +1,4 @@
-import { Check, GripVertical, Pencil, Trash2, X } from "lucide-react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import {
@@ -17,6 +17,7 @@ import { MODULE_REGISTRY, resolvePanelDefinition } from "./registry.jsx";
 import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { resolvePanelDisplayName } from "./panelInstances.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
+import { DragHandle } from "@/components/ui/drag-handle";
 
 const RESET_WORKSPACE_KEYS = [
   "tree",
@@ -138,15 +139,11 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
         <span className="min-w-0 flex-1 truncate">{title}</span>
       </button>
       <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
-        <button
-          type="button"
+        <DragHandle
           aria-label={`Drag ${title} to place`}
           title="Drag to place"
           onMouseDown={(e) => onCreateMouseDown(e, id)}
-          className="flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-xs text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
-        >
-          <GripVertical className="size-3.5" />
-        </button>
+        />
       </span>
     </div>
   );
