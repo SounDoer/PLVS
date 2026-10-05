@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { invoke } from "@tauri-apps/api/core";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu, Submenu, MenuItem, CheckMenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Image } from "@tauri-apps/api/image";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isTauri } from "../ipc/env.js";
@@ -146,6 +145,7 @@ async function buildPresetItems({
 async function buildMenu(cfg) {
   const {
     isMac,
+    windowVisible,
     running,
     updateBusy,
     onToggleCapture,
@@ -173,10 +173,9 @@ async function buildMenu(cfg) {
   const items = [];
 
   if (isMac) {
-    const isVisible = await getCurrentWindow().isVisible();
     items.push(
       await MenuItem.new({
-        text: isVisible ? "Hide Window" : "Show Window",
+        text: windowVisible ? "Hide Window" : "Show Window",
         enabled: !updateBusy,
         action: onToggleWindow,
       }),
@@ -268,6 +267,7 @@ async function buildMenu(cfg) {
 
 export function useTray({
   running,
+  windowVisible = true,
   onStartClick,
   onToggleWindow,
   onQuit,
@@ -409,6 +409,7 @@ export function useTray({
   // creation effect current if state changes while TrayIcon.new is still pending.
   const menuInputs = {
     isMac,
+    windowVisible,
     running,
     updateBusy,
     audioOutputs,
@@ -479,12 +480,20 @@ export function useTray({
         iconAsTemplate: true,
         tooltip: "PLVS",
         menu: built.menu,
-        menuOnLeftClick: false,
-        action: (e) => {
-          if (e.type === "Click" && e.button === "Left") {
-            stableToggleWindow();
-          }
-        },
+        showMenuOnLeftClick: isMac,
+        ...(isMac
+          ? {}
+          : {
+              action: (event) => {
+                if (
+                  event.type === "Click" &&
+                  event.button === "Left" &&
+                  event.buttonState === "Up"
+                ) {
+                  stableToggleWindow();
+                }
+              },
+            }),
       });
 
       if (cancelled) {
@@ -533,6 +542,7 @@ export function useTray({
     })();
   }, [
     menuConfig,
+    windowVisible,
     running,
     updateBusy,
     sourceStructureKey,

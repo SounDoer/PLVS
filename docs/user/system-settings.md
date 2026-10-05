@@ -50,9 +50,11 @@ the saved set is restored instead of leaving those workbenches closed. If the co
 disappears while workbenches are waiting at the save barrier, they resume any capture that the
 barrier stopped.
 
-PLVS also keeps one system Tray. Its **Workbenches** submenu uses Source-derived names and can show,
-start, stop or quit a specific running workbench. **Quit PLVS** flushes and closes the complete
-workbench set; quitting one workbench does not close its peers.
+PLVS also keeps one system Tray. On macOS, either left-clicking or right-clicking its icon opens the
+same menu; use **Show Window** or **Hide Window** there to control the main window. Its
+**Workbenches** submenu uses Source-derived names and can show, start, stop or quit a specific
+running workbench. **Quit PLVS** flushes and closes the complete workbench set; quitting one
+workbench does not close its peers.
 
 ## Global shortcut
 

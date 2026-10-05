@@ -60,6 +60,7 @@ import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 
 const defaultProps = {
   running: false,
+  windowVisible: true,
   onStartClick: vi.fn(),
   onToggleWindow: vi.fn(),
   onQuit: vi.fn(),
@@ -266,7 +267,35 @@ describe("useTray", () => {
     expect(TrayIcon.new).toHaveBeenCalledWith(expect.objectContaining({ id: PLVS_TRAY_ID }));
   });
 
-  it("keeps the tray click action wired to the latest window toggle callback", async () => {
+  it("opens the menu on macOS left click instead of toggling the window directly", async () => {
+    isMacOS.mockReturnValue(true);
+    const onToggleWindow = vi.fn();
+    renderHook(() => useTray({ ...defaultProps, onToggleWindow }));
+    await act(async () => {});
+
+    expect(TrayIcon.new).toHaveBeenCalledWith(
+      expect.objectContaining({ showMenuOnLeftClick: true })
+    );
+    expect(TrayIcon.new.mock.calls[0][0]).not.toHaveProperty("action");
+    expect(onToggleWindow).not.toHaveBeenCalled();
+  });
+
+  it("toggles the window only when a Windows left click is released", async () => {
+    const onToggleWindow = vi.fn();
+    renderHook(() => useTray({ ...defaultProps, onToggleWindow }));
+    await act(async () => {});
+    const trayOptions = TrayIcon.new.mock.calls[0][0];
+
+    expect(trayOptions.showMenuOnLeftClick).toBe(false);
+    trayOptions.action({ type: "Click", button: "Left", buttonState: "Down" });
+    expect(onToggleWindow).not.toHaveBeenCalled();
+
+    trayOptions.action({ type: "Click", button: "Left", buttonState: "Up" });
+    expect(onToggleWindow).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the Show/Hide menu action wired to the latest window callback", async () => {
+    isMacOS.mockReturnValue(true);
     const firstToggleWindow = vi.fn();
     const secondToggleWindow = vi.fn();
     const { rerender } = renderHook(
@@ -274,12 +303,14 @@ describe("useTray", () => {
       { initialProps: { onToggleWindow: firstToggleWindow } }
     );
     await act(async () => {});
-    const trayAction = TrayIcon.new.mock.calls[0][0].action;
+    const windowAction = findText(menuItemOptions(), "Hide Window").action;
+
     rerender({ onToggleWindow: secondToggleWindow });
     await act(async () => {});
-    trayAction({ type: "Click", button: "Left" });
+    windowAction();
+
     expect(firstToggleWindow).not.toHaveBeenCalled();
-    expect(secondToggleWindow).toHaveBeenCalledTimes(1);
+    expect(secondToggleWindow).toHaveBeenCalledOnce();
   });
 
   it("omits Show/Hide and Pin items on Windows", async () => {
@@ -294,10 +325,20 @@ describe("useTray", () => {
 
   it("includes a platform Show/Hide item on macOS", async () => {
     isMacOS.mockReturnValue(true);
-    renderHook(() => useTray(defaultProps));
+    const setMenu = vi.fn();
+    TrayIcon.new.mockResolvedValue({ setMenu, close: vi.fn() });
+    const { rerender } = renderHook(
+      ({ windowVisible }) => useTray({ ...defaultProps, windowVisible }),
+      { initialProps: { windowVisible: true } }
+    );
     await act(async () => {});
-    // isVisible mock resolves true -> "Hide Window"
     expect(findText(menuItemOptions(), "Hide Window")).toBeTruthy();
+
+    MenuItem.new.mockClear();
+    rerender({ windowVisible: false });
+    await act(async () => {});
+    expect(findText(menuItemOptions(), "Show Window")).toBeTruthy();
+    expect(setMenu).toHaveBeenCalled();
   });
 
   it("delegates Quit to the app close workflow", async () => {
@@ -621,8 +662,8 @@ describe("useTray", () => {
       { initialProps: { updateBusy: false } }
     );
     await act(async () => {});
-    const trayAction = TrayIcon.new.mock.calls[0][0].action;
     const staleQuit = findText(menuItemOptions(), "Quit").action;
+    const staleToggleWindow = findText(menuItemOptions(), "Hide Window").action;
     MenuItem.new.mockClear();
     Submenu.new.mockClear();
 
@@ -641,7 +682,7 @@ describe("useTray", () => {
     expect(setMenu).toHaveBeenCalled();
 
     // Double-guard: stale gated callbacks are no-ops while busy.
-    trayAction({ type: "Click", button: "Left" });
+    staleToggleWindow();
     expect(onToggleWindow).not.toHaveBeenCalled();
     staleQuit();
     expect(onQuit).not.toHaveBeenCalled();

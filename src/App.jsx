@@ -561,25 +561,47 @@ function AppContent() {
     beginDeviceRestartForControl,
   });
 
+  const [windowVisible, setWindowVisible] = useState(true);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    let cancelled = false;
+    getCurrentWindow()
+      .isVisible()
+      .then((visible) => {
+        if (!cancelled) setWindowVisible(visible);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const onHideWindow = useCallback(async () => {
     if (!isTauri()) return;
+    const window = getCurrentWindow();
     await hideAppWindow({
       docked,
-      window: getCurrentWindow(),
+      window,
       suspendDock: suspendDockMode,
     });
+    setWindowVisible(await window.isVisible());
   }, [docked, suspendDockMode]);
 
   const onShowWindow = useCallback(async () => {
     if (!isTauri()) return;
     const window = getCurrentWindow();
-    if (await window.isVisible()) return;
+    if (await window.isVisible()) {
+      setWindowVisible(true);
+      return;
+    }
     await toggleAppWindow({
       docked,
       window,
       suspendDock: suspendDockMode,
       resumeDock: resumeDockMode,
     });
+    setWindowVisible(await window.isVisible());
   }, [docked, resumeDockMode, suspendDockMode]);
 
   const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
@@ -610,6 +632,7 @@ function AppContent() {
       suspendDock: suspendDockMode,
       resumeDock: resumeDockMode,
     });
+    setWindowVisible(await window.isVisible());
   }, [docked, requestCloseAction, resumeDockMode, suspendDockMode]);
 
   const audioOutputs = useMemo(
@@ -2170,6 +2193,7 @@ function AppContent() {
 
   useTray({
     running,
+    windowVisible,
     onStartClick,
     onToggleWindow,
     onQuit: () => requestCloseAction("quit"),
