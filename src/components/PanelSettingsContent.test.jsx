@@ -1497,6 +1497,12 @@ describe("PanelSettingsContent", () => {
     expect(momentaryRow.className).not.toContain("py-1 ");
     expect(momentaryRow.className).not.toContain("py-1.5");
     expect(momentaryRow.className).toContain("var(--ui-fs-control)");
+    expect(momentaryRow.className).toContain("hover:bg-ui-hover");
+    expect(momentaryRow.className).toContain("focus-visible:bg-ui-hover");
+    const detailSurface = momentaryRow.closest("[data-settings-detail-surface]");
+    expect(detailSurface?.className).toContain("bg-popover");
+    expect(detailSurface?.className).toContain("shadow-raised");
+    expect(detailSurface?.className).not.toContain("bg-secondary");
     fireEvent.click(screen.getByRole("checkbox", { name: "Momentary" }));
 
     expect(onPanelControlsChange).toHaveBeenCalledWith({

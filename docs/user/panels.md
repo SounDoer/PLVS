@@ -7,6 +7,8 @@ Single-choice settings open floating dropdown menus, like System Settings, witho
 rows below them. Use the arrow keys to navigate, Enter to select, or Escape to dismiss the menu.
 Channel choices retain their group headings, including All Pairs, in one scrollable menu.
 Multi-choice layers, metric ordering, and other detailed editors continue to expand within the panel.
+Their expanded surface matches the floating menus, while only the hovered or keyboard-focused row
+uses the neutral interaction highlight.
 
 | Panel       | What it shows                                           |
 | ----------- | ------------------------------------------------------- |

@@ -42,6 +42,7 @@ import { HIST_SAMPLE_SEC } from "@/hooks/useLoudnessHistory.js";
 import { ResetAction } from "@/components/ResetAction.jsx";
 import { Switch } from "@/components/ui/switch";
 import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
+import { POPOVER_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 import { HoverTip, useHoverTip } from "@/components/HoverTip.jsx";
 
@@ -53,11 +54,13 @@ const SETTINGS_VALUE_IDLE_CLASS =
 
 const SETTINGS_VALUE_OPEN_CLASS = "border-border bg-ui-hover text-foreground";
 
-const SETTINGS_DETAIL_SURFACE_CLASS =
-  "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden rounded-md border border-border bg-secondary p-0.5";
+const SETTINGS_DETAIL_SURFACE_CLASS = cn(
+  POPOVER_SURFACE_CLASS,
+  "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden p-0.5"
+);
 
 const SETTINGS_CHOICE_ROW_CLASS =
-  "flex w-full min-w-0 items-center gap-1.5 rounded-xs px-1.5 py-0.5 text-left text-[length:var(--ui-fs-control)] text-popover-foreground outline-none transition-colors hover:bg-ui-hover hover:text-foreground";
+  "flex w-full min-w-0 items-center gap-1.5 rounded-xs px-1.5 py-0.5 text-left text-[length:var(--ui-fs-control)] text-popover-foreground outline-none transition-colors hover:bg-ui-hover hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary";
 
@@ -865,7 +868,7 @@ export function StatsMetricsSettingsRow({
           onToggle={() => setOpen((current) => !current)}
         />
         {open ? (
-          <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
+          <div data-settings-detail-surface className={SETTINGS_DETAIL_SURFACE_CLASS}>
             <SortableStatsList
               label="Metrics"
               options={STATS_OPTIONS}
@@ -921,7 +924,7 @@ export function LoudnessSettingsRows({
             onToggle={() => setLayersOpen((open) => !open)}
           />
           {layersOpen ? (
-            <div className={SETTINGS_DETAIL_SURFACE_CLASS}>
+            <div data-settings-detail-surface className={SETTINGS_DETAIL_SURFACE_CLASS}>
               <MultiSelectList
                 label="Layers"
                 options={layerOptions}
