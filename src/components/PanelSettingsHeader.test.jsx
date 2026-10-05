@@ -4,6 +4,17 @@ import { describe, expect, it, vi } from "vitest";
 import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
 
 describe("PanelSettingsHeader", () => {
+  it("uses the panel-title hierarchy instead of caption styling", () => {
+    render(<PanelSettingsHeader title="Waveform" />);
+
+    const heading = screen.getByRole("heading", { name: "Waveform" });
+    expect(heading.className).toContain("var(--ui-fs-panel-title)");
+    expect(heading.className).toContain("text-foreground");
+    expect(heading.className).not.toContain("var(--ui-fs-caption)");
+    expect(heading.className).not.toContain("text-muted-foreground");
+    expect(heading.className).not.toContain("tracking-wide");
+  });
+
   it("uses themed tooltips for Back and Reset without native titles", () => {
     render(<PanelSettingsHeader title="Level Meter" onBack={vi.fn()} onReset={vi.fn()} />);
 
