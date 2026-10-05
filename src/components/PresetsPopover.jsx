@@ -95,7 +95,10 @@ export function PresetsPopoverContent({
       {showTitle ? (
         <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Presets</p>
       ) : null}
-      <div className="flex items-center gap-2 px-2 py-1.5">
+      {/* The em share holds both labels and follows Interface Size through --ui-fs-control; the
+          rem share is the fixed padding and gap. A rem-only width either clips at Extra Large or
+          leaves excess space at Small. */}
+      <div className="flex min-w-[min(calc(13em+3.5rem),calc(92vw-1rem))] items-center gap-2 px-2 py-1.5 text-[length:var(--ui-fs-control)]">
         <input
           type="text"
           aria-label="New preset name"
@@ -104,7 +107,7 @@ export function PresetsPopoverContent({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
           }}
-          placeholder="New preset name"
+          placeholder={presets.list.length === 0 ? "Name your first preset" : "New preset name"}
           // `size={1}` + `flex-1`: fill the row without the input's own text inflating the `w-max`
           // popover, and `min-w-0` lets a long value scroll inside the field instead of pushing the
           // shrink-0 Save button off-panel. The panel adapts to the saved names, not to typing.
@@ -122,11 +125,7 @@ export function PresetsPopoverContent({
           Save
         </Button>
       </div>
-      {presets.list.length === 0 ? (
-        <p className="px-2 py-1.5 text-[length:var(--ui-fs-control)] text-muted-foreground">
-          No presets yet. Save the current view to start.
-        </p>
-      ) : (
+      {presets.list.length > 0 ? (
         // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
         // makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
         // so `truncate` on the rows never kicks in.
@@ -285,7 +284,7 @@ export function PresetsPopoverContent({
             );
           })}
         </div>
-      )}
+      ) : null}
 
       {blocked ? (
         <p className="px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">

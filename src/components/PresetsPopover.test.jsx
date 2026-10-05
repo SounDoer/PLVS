@@ -15,10 +15,10 @@ const NOOP_PRESETS = {
 };
 
 describe("PresetsPopoverContent", () => {
-  it("shows empty-state hint and create row when list is empty", () => {
+  it("moves the empty-state guidance into the create input", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
-    expect(screen.getByText("No presets yet. Save the current view to start.")).toBeTruthy();
-    expect(screen.getByPlaceholderText("New preset name")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Name your first preset")).toBeTruthy();
+    expect(screen.queryByText("No presets yet. Save the current view to start.")).toBeNull();
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
   });
 
@@ -27,15 +27,18 @@ describe("PresetsPopoverContent", () => {
     expect(screen.getByRole("textbox", { name: "New preset name" })).toBeTruthy();
   });
 
-  it("fills the row without its content driving the panel width", () => {
+  it("fills a create row that scales with Interface Size without typed content driving width", () => {
     render(<PresetsPopoverContent presets={NOOP_PRESETS} />);
     const input = screen.getByRole("textbox", { name: "New preset name" });
+    const createRow = input.parentElement;
     // `size={1}` + `flex-1` + `min-w-0`: fills the row and scrolls internally rather than letting a
     // long value inflate the `w-max` popover or push the Save button off-panel.
     expect(input.getAttribute("size")).toBe("1");
     expect(input.classList.contains("flex-1")).toBe(true);
     expect(input.classList.contains("min-w-0")).toBe(true);
     expect(input.classList.contains("[field-sizing:content]")).toBe(false);
+    expect(createRow.className).toContain("min-w-[min(calc(13em+3.5rem),calc(92vw-1rem))]");
+    expect(createRow.className).toContain("text-[length:var(--ui-fs-control)]");
   });
 
   it("disables Save when the name input is empty", () => {
@@ -46,7 +49,7 @@ describe("PresetsPopoverContent", () => {
   it("calls save with the trimmed name and clears the input", () => {
     const save = vi.fn(() => true);
     render(<PresetsPopoverContent presets={{ ...NOOP_PRESETS, save }} />);
-    const input = screen.getByPlaceholderText("New preset name");
+    const input = screen.getByRole("textbox", { name: "New preset name" });
     fireEvent.change(input, { target: { value: "  Focus  " } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(save).toHaveBeenCalledWith("Focus");
@@ -55,7 +58,7 @@ describe("PresetsPopoverContent", () => {
   it("submits save on Enter when the name is non-empty", () => {
     const save = vi.fn(() => true);
     render(<PresetsPopoverContent presets={{ ...NOOP_PRESETS, save }} />);
-    const input = screen.getByPlaceholderText("New preset name");
+    const input = screen.getByRole("textbox", { name: "New preset name" });
     fireEvent.change(input, { target: { value: "Mix" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(save).toHaveBeenCalledWith("Mix");
@@ -73,6 +76,8 @@ describe("PresetsPopoverContent", () => {
         }}
       />
     );
+
+    expect(screen.getByPlaceholderText("New preset name")).toBeTruthy();
     expect(screen.getByText("Focus")).toBeTruthy();
     expect(screen.getByText("Mix")).toBeTruthy();
   });

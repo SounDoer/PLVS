@@ -30,7 +30,8 @@ placement direction. Dropping on a panel title adds it as a tab; moving outside 
 ## Modules and presets
 
 The **Modules** menu adds panels, including a second instance of a meter you want to watch two ways
-at once. The **Presets** menu saves and switches between whole layouts.
+at once. The **Presets** menu saves and switches between whole layouts. When none exist yet, name
+your first Preset in the create field and select **Save**.
 
 Toolbar configuration entries such as Loudness Profile, Views, and Presets remain neutral while
 closed, even when their configuration is active. Hover and an open menu use the same neutral

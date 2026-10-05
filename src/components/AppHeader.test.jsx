@@ -319,7 +319,7 @@ describe("AppHeader", () => {
     expect(screen.getByText("Mock modules menu")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Presets" }));
-    expect(screen.getByText("No presets yet. Save the current view to start.")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Name your first preset")).toBeTruthy();
   });
 
   it("gives non-device toolbar popovers the shared adaptive width range", () => {
