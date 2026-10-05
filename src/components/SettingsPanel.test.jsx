@@ -136,6 +136,7 @@ describe("SettingsPanel", () => {
     const integratedControl = dialogueValue.querySelector("[data-integrated-select-action]");
     expect(integratedControl).toBeTruthy();
     expect(integratedControl.className).toContain("hover:bg-ui-hover");
+    expect(integratedControl.className).toContain("has-[[data-state=open]]:bg-ui-hover");
     expect(integratedControl.className).not.toContain("focus-within:bg-ui-hover");
     expect(
       integratedControl.contains(

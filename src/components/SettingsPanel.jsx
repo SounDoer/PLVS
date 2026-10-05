@@ -518,7 +518,7 @@ export function SettingsPanel({
                     <Select value={dialogueVadEngine} onValueChange={setDialogueVadEngine}>
                       <div
                         data-integrated-select-action
-                        className="group relative rounded-md transition-colors hover:bg-ui-hover"
+                        className="group relative rounded-md transition-colors hover:bg-ui-hover has-[[data-state=open]]:bg-ui-hover"
                       >
                         <SelectTrigger
                           aria-label="Dialogue Detection"

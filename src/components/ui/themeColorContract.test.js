@@ -86,6 +86,15 @@ describe("theme color contract", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("uses the Select primitive's highlighted state for option feedback", () => {
+    const select = readFileSync(new URL("./select.jsx", import.meta.url), "utf8");
+
+    expect(select).toContain("hover:bg-ui-hover");
+    expect(select).toContain("data-[highlighted]:bg-ui-hover");
+    expect(select).toContain("focus:bg-ui-hover");
+    expect(select.match(/hover:bg-ui-hover/g)).toHaveLength(3);
+  });
+
   it("derives neutral hover by moving Muted toward the scheme foreground", () => {
     const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
 

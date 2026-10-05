@@ -9,10 +9,11 @@ dialogs retain their full outlines and shadows.
 
 ## Control feedback
 
-Ordinary dropdowns and setting fields are transparent with hidden borders at rest. Hovering,
-shows a contrasting neutral background without revealing the border. Opening, editing, or using
+Ordinary dropdowns and setting fields are transparent with hidden borders at rest. Hovering shows
+a contrasting neutral background without revealing the border. Opening, editing, or using
 keyboard focus adds the border without an outer focus ring. Single- and multi-choice checks use the
-accent color. Dark / Light selection in the Theme Editor uses a neutral selected background.
+accent color. Expanded dropdown options use the same neutral highlight for pointer and keyboard
+navigation. Dark / Light selection in the Theme Editor uses a neutral selected background.
 
 Switch thumbs gain a subtle border on hover or keyboard focus. Slider thumbs use a neutral
 hover fill and an accent fill while dragging or holding an adjustment key. Sliders without an

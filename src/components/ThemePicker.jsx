@@ -73,7 +73,7 @@ function Action({ label, tip, icon, onClick }) {
 
 function ThemeRow({ theme, selected, onSelect, actions }) {
   return (
-    <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 hover:bg-ui-hover">
+    <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 transition-colors hover:bg-ui-hover focus-within:bg-ui-hover">
       <button
         type="button"
         onClick={() => onSelect(theme.id)}

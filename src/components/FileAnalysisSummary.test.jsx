@@ -27,6 +27,8 @@ describe("FileAnalysisSummary", () => {
   it("keeps actionable file summary surfaces opaque", () => {
     expect(source).toContain("bg-secondary");
     expect(source).toContain("hover:bg-[color:var(--ui-secondary-hover)]");
+    expect(source).toContain("focus-visible:bg-[color:var(--ui-secondary-hover)]");
+    expect(source).toContain("data-[state=open]:bg-[color:var(--ui-secondary-hover)]");
     expect(source).not.toContain("--panel-opacity");
   });
 

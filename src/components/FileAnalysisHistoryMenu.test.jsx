@@ -70,6 +70,8 @@ describe("FileAnalysisHistoryMenu", () => {
   it("keeps the trigger surface opaque", () => {
     expect(source).toContain("bg-secondary");
     expect(source).toContain("hover:bg-[color:var(--ui-secondary-hover)]");
+    expect(source).toContain("focus-visible:bg-[color:var(--ui-secondary-hover)]");
+    expect(source).toContain("data-[state=open]:bg-[color:var(--ui-secondary-hover)]");
     expect(source).not.toContain("--surface-opacity");
   });
 

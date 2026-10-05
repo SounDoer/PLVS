@@ -123,7 +123,7 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
             "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 text-[length:var(--ui-fs-control)] font-medium transition-colors",
             copied
               ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]"
-              : "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)]"
+              : "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)] focus-visible:bg-[color:var(--ui-secondary-hover)] data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
           )}
         >
           <Icon className="size-[1.15em]" aria-hidden="true" />

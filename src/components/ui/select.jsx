@@ -33,7 +33,10 @@ SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 const SelectScrollUpButton = React.forwardRef(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollUpButton
     ref={ref}
-    className={cn("flex cursor-default items-center justify-center py-1", className)}
+    className={cn(
+      "flex cursor-default items-center justify-center rounded-xs py-1 text-muted-foreground transition-colors hover:bg-ui-hover hover:text-foreground",
+      className
+    )}
     {...props}
   >
     <ChevronUp className="size-[1.15em]" />
@@ -44,7 +47,10 @@ SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
 const SelectScrollDownButton = React.forwardRef(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollDownButton
     ref={ref}
-    className={cn("flex cursor-default items-center justify-center py-1", className)}
+    className={cn(
+      "flex cursor-default items-center justify-center rounded-xs py-1 text-muted-foreground transition-colors hover:bg-ui-hover hover:text-foreground",
+      className
+    )}
     {...props}
   >
     <ChevronDown className="size-[1.15em]" />
@@ -102,7 +108,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
     ref={ref}
     data-slot="select-item"
     className={cn(
-      "focus:bg-ui-hover relative flex w-full cursor-default select-none items-center rounded-xs py-1.5 pr-8 pl-2 text-[length:var(--ui-fs-body)] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "hover:bg-ui-hover data-[highlighted]:bg-ui-hover focus:bg-ui-hover relative flex w-full cursor-default select-none items-center rounded-xs py-1.5 pr-8 pl-2 text-[length:var(--ui-fs-body)] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}

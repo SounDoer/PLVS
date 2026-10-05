@@ -13,6 +13,15 @@ beforeEach(() => {
 });
 
 describe("ColorControl", () => {
+  it("highlights its trigger on hover, keyboard focus, and while open", () => {
+    render(<ColorControl label="Accent" value="#fb923c" onChange={vi.fn()} />);
+    const trigger = screen.getByRole("button", { name: /accent/i });
+
+    expect(trigger.className).toContain("hover:bg-ui-hover");
+    expect(trigger.className).toContain("focus-visible:bg-ui-hover");
+    expect(trigger.className).toContain("data-[state=open]:bg-ui-hover");
+  });
+
   it("shows the current color and emits hex at full alpha", () => {
     const onChange = vi.fn();
     render(<ColorControl label="Accent" value="#fb923c" onChange={onChange} />);

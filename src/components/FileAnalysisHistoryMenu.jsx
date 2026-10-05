@@ -54,7 +54,7 @@ export function FileAnalysisHistoryMenu({
         <button
           type="button"
           aria-label={countLabel}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-[length:var(--ui-fs-control)] font-medium text-secondary-foreground transition-colors hover:bg-[color:var(--ui-secondary-hover)]"
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-[length:var(--ui-fs-control)] font-medium text-secondary-foreground transition-colors hover:bg-[color:var(--ui-secondary-hover)] focus-visible:bg-[color:var(--ui-secondary-hover)] data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
         >
           <FileStack className="size-[1.15em]" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>

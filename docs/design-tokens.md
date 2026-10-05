@@ -149,7 +149,8 @@ Hover, keyboard focus, pressed buttons, and open configuration entries use neutr
 Transparent controls use `--ui-neutral-hover`, an opaque mix that moves Muted 6% toward Primary
 Text so the state gains contrast in either colour scheme. Open menus
 retain their trigger highlight until closed; active configuration does not brighten a closed
-entry. Auxiliary actions may change only their text color. Filled action buttons retain their
+entry. Select options paint the same neutral fill for native pointer hover, Radix highlight, and
+keyboard focus. Auxiliary actions may change only their text color. Filled action buttons retain their
 own opaque derived Hover colors. No state requires an outer focus ring or scale animation.
 
 Small persistent marks use Primary: single- and multi-choice checks, checked switch tracks,
