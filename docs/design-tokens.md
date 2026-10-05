@@ -198,13 +198,13 @@ control of the same kind is the signal to add a primitive.
 ## Selects
 
 `SelectTrigger` and `SelectContent` in `src/components/ui/select.jsx` take a `variant`, and a call
-site passes the same one to both. All three take the control height and differ in text size and edge treatment; a call
+site passes the same one to both. All three take the control height; `inline` and `flush` differ only in edge treatment, and `field` is one text size smaller; a call
 site does not restyle one with its own class string.
 
 | Variant  | Text              | Used by                                                                                                                        |
 | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `inline` | Control           | Values inside a popover, dialog or editor row: panel settings, Focus View, the Loudness Profile editor, the close confirmation |
-| `flush`  | Dynamic Display   | Settings rows; no right padding, so the chevron sits on the row's right edge                                                   |
+| `flush`  | Control           | Settings rows; no right padding, so the chevron sits on the row's right edge                                                   |
 | `field`  | Metric Annotation | The Theme Editor's denser rows                                                                                                 |
 
 All three are transparent at rest and take the neutral hover fill; the shared field rule in
@@ -512,17 +512,17 @@ Normal application surfaces use semantic typography roles instead of fixed Tailw
 utilities or component-local pixel values. Dock is excluded and owns its responsive typography
 under `src/dock/dockTokens.css`.
 
-| Role                  | Token                  | Size | Typical use                                                 |
-| --------------------- | ---------------------- | ---- | ----------------------------------------------------------- |
-| **Caption**           | `--ui-fs-caption`      | 10px | Menu groups, compact metadata, drag/drop overlay labels     |
-| **Axis Annotation**   | `--ui-fs-axis`         | 11px | Chart ticks, secondary hints, validation and tooltip text   |
-| **Status**            | `--ui-fs-status`       | 11px | Header/footer state and compact status chips                |
-| **Control**           | `--ui-fs-control`      | 12px | Compact buttons, selects, inputs and management rows        |
-| **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | Metric names and units                                      |
-| **Panel Title**       | `--ui-fs-panel-title`  | 12px | Panel, popover, editor and dialog titles                    |
-| **Dynamic Display**   | `--ui-fs-display`      | 13px | Live chart values and settings drawer text                  |
-| **Body**              | `--ui-fs-body`         | 14px | General descriptions, empty states and standard UI controls |
-| **Metric Value**      | `--ui-fs-metric-value` | 16px | Primary metric values; mono with tabular numerals           |
+| Role                  | Token                  | Size | Typical use                                                                                         |
+| --------------------- | ---------------------- | ---- | --------------------------------------------------------------------------------------------------- |
+| **Caption**           | `--ui-fs-caption`      | 10px | Menu groups, compact metadata, drag/drop overlay labels                                             |
+| **Axis Annotation**   | `--ui-fs-axis`         | 11px | Chart ticks, secondary hints, validation and tooltip text                                           |
+| **Status**            | `--ui-fs-status`       | 11px | Header/footer state and compact status chips                                                        |
+| **Control**           | `--ui-fs-control`      | 12px | Buttons, selects, inputs, management rows, and every settings surface including the Settings drawer |
+| **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | Metric names and units                                                                              |
+| **Panel Title**       | `--ui-fs-panel-title`  | 12px | Panel, popover, editor and dialog titles                                                            |
+| **Dynamic Display**   | `--ui-fs-display`      | 13px | Live chart values                                                                                   |
+| **Body**              | `--ui-fs-body`         | 14px | General descriptions, empty states and standard UI controls                                         |
+| **Metric Value**      | `--ui-fs-metric-value` | 16px | Primary metric values; mono with tabular numerals                                                   |
 
 Relative `em` sizes are allowed inside a semantic parent when they express a local hierarchy.
 

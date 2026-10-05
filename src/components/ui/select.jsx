@@ -16,10 +16,10 @@ const SelectValue = SelectPrimitive.Value;
  * The three shapes a select takes in PLVS. Trigger and menu share the name so a call site picks
  * one and passes it to both.
  *
- * Every variant is 24px tall; they differ in text size and edge treatment.
+ * Every variant takes the control height; they differ in edge treatment and, for `field`, text size.
  *
  * - `inline`: Control size. A value inside a popover, dialog or editor row.
- * - `flush`: Display size, no right padding. A Settings row, where the chevron sits on the row's
+ * - `flush`: Control size, no right padding. A Settings row, where the chevron sits on the row's
  *   right edge.
  * - `field`: Metric Annotation size, with a visible border while focused or open. The Theme Editor's denser rows.
  */
@@ -27,7 +27,7 @@ const SELECT_TRIGGER_VARIANT_CLASS = {
   inline:
     "h-[var(--ui-control-h)] w-auto shrink-0 rounded-md border border-transparent bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] shadow-none hover:bg-ui-hover",
   flush:
-    "h-[var(--ui-control-h)] w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0 !pr-0 !pl-2 text-[length:var(--ui-fs-display)] shadow-none hover:bg-ui-hover",
+    "h-[var(--ui-control-h)] w-auto shrink-0 rounded-md border border-transparent bg-transparent py-0 !pr-0 !pl-2 text-[length:var(--ui-fs-control)] shadow-none hover:bg-ui-hover",
   field:
     "h-[var(--ui-control-h)] w-auto shrink-0 gap-1 rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-metric-meta)] shadow-none hover:bg-ui-hover",
 };
@@ -36,7 +36,7 @@ const SELECT_CONTENT_VARIANT_CLASS = {
   inline:
     "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]",
   flush:
-    "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-display)]",
+    "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-control)]",
   field:
     "min-w-[var(--radix-select-trigger-width)] [&_[data-slot=select-item]]:py-1 [&_[data-slot=select-item]]:pr-6 [&_[data-slot=select-item]]:pl-2 [&_[data-slot=select-item]]:text-[length:var(--ui-fs-metric-meta)]",
 };

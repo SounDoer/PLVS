@@ -75,7 +75,7 @@ function Action({ label, tip, icon, onClick }) {
 function ThemeRow({ theme, selected, onSelect, actions }) {
   return (
     <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 hover:bg-ui-hover focus-within:bg-ui-hover">
-      <RowAction onClick={() => onSelect(theme.id)} className="text-[length:var(--ui-fs-display)]">
+      <RowAction onClick={() => onSelect(theme.id)} className="text-[length:var(--ui-fs-control)]">
         <span className="flex size-4 items-center justify-center">
           {selected ? <Check className="size-[length:var(--ui-icon-management-action)]" /> : null}
         </span>
@@ -120,7 +120,7 @@ export function ThemePicker({
           aria-label="Theme"
           data-control-field="true"
           disabled={disabled}
-          className="flex h-[var(--ui-control-h)] items-center gap-2 rounded-md border border-transparent bg-transparent py-0 pr-0 pl-2 text-[length:var(--ui-fs-display)] hover:bg-ui-hover disabled:opacity-50"
+          className="flex h-[var(--ui-control-h)] items-center gap-2 rounded-md border border-transparent bg-transparent py-0 pr-0 pl-2 text-[length:var(--ui-fs-control)] hover:bg-ui-hover disabled:opacity-50"
         >
           {selected ? <ThemeSwatch theme={selected} /> : null}
           <span>{selected?.name ?? "Theme"}</span>

@@ -43,7 +43,7 @@ const SHEET_HEADER_CLASS =
 
 const SHEET_SCROLL_CLASS = "min-h-0 flex-1 overflow-y-auto p-[var(--ui-drawer-pad)]";
 
-const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--ui-fs-display)]";
+const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--ui-fs-control)]";
 
 const SECTION_CLASS = "flex flex-col gap-[var(--ui-drawer-row-gap)]";
 
@@ -51,7 +51,7 @@ const ROW_CLASS =
   "grid min-h-[var(--ui-drawer-row-min-h)] grid-cols-[minmax(0,1fr)_max-content] items-center gap-2 rounded-xs px-1.5 py-0.5";
 
 const ROW_LABEL_CLASS =
-  "whitespace-nowrap text-[length:var(--ui-fs-display)] text-muted-foreground";
+  "whitespace-nowrap text-[length:var(--ui-fs-control)] text-muted-foreground";
 
 const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
 
