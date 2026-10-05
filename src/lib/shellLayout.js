@@ -30,7 +30,7 @@ export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3
 export const SHELL_BOTTOM_REVEAL_HOT_ZONE = "absolute bottom-0 left-0 right-0 z-20 h-3";
 
 export const PANEL_HEADER_BAR =
-  "@container relative flex h-7 shrink-0 items-center gap-0.5 px-1 text-[length:var(--ui-fs-control)] font-medium";
+  "@container relative flex h-[var(--ui-shell-h)] shrink-0 items-center gap-0.5 px-1 text-[length:var(--ui-fs-control)] font-medium";
 
 export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
 

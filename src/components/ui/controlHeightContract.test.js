@@ -9,16 +9,14 @@ import { describe, expect, it } from "vitest";
  * the larger sizes -- see design-tokens.md. Buttons had been 36px, inputs 24px, 28px or 35px, and
  * selects 24px or 28px, depending on which file they were written in.
  *
- * A fixed height above 24px is allowed only for shell chrome and for the Theme Preview's sample
- * swatches, which are pictures of controls rather than controls.
+ * Shell chrome is one step taller, `--ui-shell-h`, derived from the same token. A fixed height
+ * above 24px is allowed only for the Theme Preview's sample swatches, which are pictures of
+ * controls rather than controls.
  */
 const SRC = fileURLToPath(new URL("../..", import.meta.url));
 const TALL = /(?<![\w-])(?:h|size)-(?:7|8|9|10|11|12)(?![\w-.])/g;
 
 const ALLOWED = {
-  "components/IconButton.jsx": ["size-7"], // header icon buttons
-  "components/SourceTransportCluster.jsx": ["h-7"], // header transport
-  "lib/shellLayout.js": ["h-7"], // panel header bar
   "components/theme-editor/ThemePreview.jsx": ["h-9", "h-12"], // sample swatches and meters
 };
 
@@ -48,7 +46,7 @@ describe("control height contract", () => {
     }
   });
 
-  it("sets no fixed height above 24px outside shell chrome", () => {
+  it("sets no fixed height above 24px", () => {
     expect(offenders()).toEqual([]);
   });
 });

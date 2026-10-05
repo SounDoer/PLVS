@@ -39,7 +39,7 @@ export function IconButton({
         onClick={onClick}
         onMouseDown={onMouseDown}
         className={cn(
-          "flex items-center justify-center size-7 rounded-md",
+          "flex items-center justify-center size-[var(--ui-shell-h)] rounded-md",
           "text-muted-foreground bg-transparent",
           disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-ui-hover hover:text-foreground",
           className

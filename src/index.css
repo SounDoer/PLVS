@@ -56,6 +56,13 @@
   --ui-surface-panel: color-mix(in srgb, var(--card) var(--surface-opacity), transparent);
   --ui-surface-dock: color-mix(in srgb, var(--popover) var(--surface-opacity), transparent);
 
+  /* Every size below follows the one control height the Interface Size profile sets, so the
+     shell and the switches grow with the text beside them. See Control Height in design-tokens.md. */
+  --ui-shell-h: calc(var(--ui-control-h) + 4px);
+  --ui-switch-h: round(calc(var(--ui-control-h) * 2 / 3), 2px);
+  --ui-switch-w: calc(var(--ui-switch-h) * 2 - 4px);
+  --ui-switch-thumb: calc(var(--ui-switch-h) - 4px);
+
   --ui-font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-family: var(--ui-font-sans, Inter, system-ui, sans-serif);

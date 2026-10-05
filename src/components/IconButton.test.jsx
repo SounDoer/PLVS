@@ -22,7 +22,7 @@ describe("IconButton", () => {
   });
 
   it("uses a compact default hit area for app header actions", () => {
-    expect(source).toContain("size-7");
+    expect(source).toContain("size-[var(--ui-shell-h)]");
     expect(source).not.toContain("size-8");
   });
 });

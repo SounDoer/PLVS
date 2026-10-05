@@ -18,7 +18,8 @@ export const DOCK_SURFACE_CLASS = "bg-[color:var(--ui-surface-dock)]";
 export const POPOVER_SURFACE_CLASS =
   "rounded-md border border-border bg-popover text-popover-foreground shadow-raised outline-none";
 
-export const POPOVER_HEADER_CLASS = "flex min-h-7 shrink-0 items-center gap-1 px-2 py-1";
+export const POPOVER_HEADER_CLASS =
+  "flex min-h-[var(--ui-shell-h)] shrink-0 items-center gap-1 px-2 py-1";
 
 export const POPOVER_TITLE_CLASS =
   "text-[length:var(--ui-fs-panel-title)] font-medium text-foreground";

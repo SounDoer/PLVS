@@ -58,7 +58,7 @@ describe("surface roles", () => {
   });
 
   it("uses one borderless title row across popovers", () => {
-    expect(POPOVER_HEADER_CLASS).toContain("min-h-7");
+    expect(POPOVER_HEADER_CLASS).toContain("min-h-[var(--ui-shell-h)]");
     expect(POPOVER_HEADER_CLASS).toContain("px-2");
     expect(POPOVER_HEADER_CLASS).toContain("py-1");
     expect(POPOVER_HEADER_CLASS).not.toContain("border");

@@ -689,10 +689,12 @@ describe("PanelSettingsContent", () => {
     expect(playbackMaxSwitch.getAttribute("aria-checked")).toBe("false");
     const switchButton = screen.getByRole("switch", { name: "level meter floating value" });
     expect(switchButton.getAttribute("aria-checked")).toBe("false");
-    expect(switchButton.className).toContain("h-4");
-    expect(switchButton.className).toContain("w-7");
+    expect(switchButton.className).toContain("h-[var(--ui-switch-h)]");
+    expect(switchButton.className).toContain("w-[var(--ui-switch-w)]");
     expect(switchButton.className).toContain("data-[state=checked]:bg-primary");
-    expect(switchButton.querySelector("[data-slot='switch-thumb']")?.className).toContain("size-3");
+    expect(switchButton.querySelector("[data-slot='switch-thumb']")?.className).toContain(
+      "size-[var(--ui-switch-thumb)]"
+    );
 
     fireEvent.click(playbackMaxSwitch);
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -2626,7 +2628,7 @@ describe("PanelSettingsContent", () => {
     const tabPill = container.querySelector("[data-tab-pill]");
     const titleGroup = container.querySelector("[data-panel-title-group]");
 
-    expect(titleBar?.className).toContain("h-7");
+    expect(titleBar?.className).toContain("h-[var(--ui-shell-h)]");
     expect(titleBar?.className).not.toContain("h-9");
     expect(titleGroup?.className).toContain("px-1");
     expect(titleGroup?.className).not.toContain("px-2");
@@ -2717,7 +2719,7 @@ describe("PanelSettingsContent", () => {
 
     expect(titleBar?.querySelector("[data-panel-title-icon]")).toBeTruthy();
     expect(titleGroup?.className).toContain("px-1");
-    expect(titleBar?.className).toContain("h-7");
+    expect(titleBar?.className).toContain("h-[var(--ui-shell-h)]");
     expect(titleBar?.className).toContain("px-1");
     expect(titleBar?.className).toContain("var(--ui-fs-control)");
     expect(titleBar?.className).not.toContain("h-9");

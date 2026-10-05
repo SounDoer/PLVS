@@ -82,7 +82,7 @@ export function CrashReportDialog({
           <h2 className="text-[length:var(--ui-fs-panel-title)] font-semibold">
             PLVS Quit Unexpectedly
           </h2>
-          <p className="mt-1 text-[length:var(--ui-fs-display)] text-muted-foreground">
+          <p className="mt-1 text-[length:var(--ui-fs-control)] text-muted-foreground">
             PLVS saved a crash report on this device. Review it before choosing whether to send it.
           </p>
         </header>
@@ -95,7 +95,7 @@ export function CrashReportDialog({
             maxLength={2000}
             rows={3}
             placeholder="What were you doing when PLVS quit? (optional)"
-            className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
+            className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-control)] outline-none"
           />
           <input
             aria-label="Your email (optional)"
@@ -104,7 +104,7 @@ export function CrashReportDialog({
             onInput={(event) => setEmail(event.target.value)}
             onBlur={() => setEmailTouched(true)}
             placeholder="you@example.com (optional)"
-            className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
+            className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-control)] outline-none"
           />
           {emailTouched && emailInvalid ? (
             <span className="text-[length:var(--ui-fs-axis)] text-destructive">
@@ -113,7 +113,7 @@ export function CrashReportDialog({
           ) : null}
 
           <LinkButton
-            className="self-start text-[length:var(--ui-fs-display)] font-medium underline-offset-4 hover:underline"
+            className="self-start text-[length:var(--ui-fs-control)] font-medium underline-offset-4 hover:underline"
             onClick={() => setShowPreview((value) => !value)}
           >
             {showPreview ? "Hide Report" : "View Report"}
@@ -128,14 +128,14 @@ export function CrashReportDialog({
           ) : null}
 
           <LinkButton
-            className="self-start text-[length:var(--ui-fs-display)] font-medium underline-offset-4 hover:underline"
+            className="self-start text-[length:var(--ui-fs-control)] font-medium underline-offset-4 hover:underline"
             onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
           >
             Privacy Policy
           </LinkButton>
 
           {sendError ? (
-            <span className="text-[length:var(--ui-fs-display)] text-destructive">{error}</span>
+            <span className="text-[length:var(--ui-fs-control)] text-destructive">{error}</span>
           ) : null}
         </div>
 

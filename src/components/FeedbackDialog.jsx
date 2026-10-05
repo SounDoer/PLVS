@@ -79,7 +79,7 @@ export function FeedbackDialog({ onClose }) {
           onInput={(e) => setContent(e.target.value)}
           rows={5}
           placeholder="What's on your mind?"
-          className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-display)] outline-none"
+          className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-control)] outline-none"
         />
         <input
           aria-label="Your email (optional)"
@@ -90,7 +90,7 @@ export function FeedbackDialog({ onClose }) {
           placeholder="you@example.com (optional)"
           className="h-[var(--ui-control-h)] rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] outline-none"
         />
-        <label className="flex items-start gap-2 text-[length:var(--ui-fs-display)]">
+        <label className="flex items-start gap-2 text-[length:var(--ui-fs-control)]">
           <input
             type="checkbox"
             aria-label="attach diagnostics"
