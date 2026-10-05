@@ -4,6 +4,7 @@ import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { AddButton } from "@/components/AddButton";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
+import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
@@ -24,9 +25,6 @@ const ROW_BUTTON_CLASS =
 
 const ICON_BUTTON_CLASS =
   "rounded-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100";
-
-const GROUP_LABEL_CLASS =
-  "px-2 pt-2 pb-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground";
 
 function ActiveDot({ active }) {
   return (
@@ -79,7 +77,9 @@ export function LoudnessProfilePopoverContent({
 
   return (
     <>
-      {showTitle ? <p className={GROUP_LABEL_CLASS}>Loudness Profile</p> : null}
+      {showTitle ? (
+        <p className={`px-2 pt-2 pb-1 ${POPOVER_TITLE_CLASS}`}>Loudness Profile</p>
+      ) : null}
 
       <div className={ROW_CLASS}>
         {/* Same box as the drag handle below, just invisible: Off isn't reorderable, but its

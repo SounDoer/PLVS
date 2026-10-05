@@ -10,6 +10,7 @@ import { AddButton } from "@/components/AddButton";
 import { PanelSettingsHeader } from "@/components/PanelSettingsHeader.jsx";
 import { ResetAction } from "@/components/ResetAction.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
+import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { useDrag } from "./DragContext.jsx";
 import { MODULE_REGISTRY, resolvePanelDefinition } from "./registry.jsx";
@@ -185,9 +186,7 @@ export function ModulesPopoverContent() {
 
   return (
     <>
-      <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
-        Modules
-      </p>
+      <p className={`px-2 py-1 ${POPOVER_TITLE_CLASS}`}>Modules</p>
       {/* `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
           makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
           so `truncate` on the rows never kicks in. */}

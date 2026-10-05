@@ -9,6 +9,7 @@ import {
   MODAL_SURFACE_CLASS,
   PANEL_SURFACE_CLASS,
   POPOVER_SURFACE_CLASS,
+  POPOVER_TITLE_CLASS,
   SCRIM_CLASS,
   WORKSPACE_SURFACE_CLASS,
 } from "./surfaceStyles.js";
@@ -46,6 +47,14 @@ describe("scrim", () => {
 });
 
 describe("surface roles", () => {
+  it("gives popover titles the shared title hierarchy", () => {
+    expect(POPOVER_TITLE_CLASS).toContain("var(--ui-fs-panel-title)");
+    expect(POPOVER_TITLE_CLASS).toContain("font-semibold");
+    expect(POPOVER_TITLE_CLASS).toContain("text-foreground");
+    expect(POPOVER_TITLE_CLASS).not.toContain("var(--ui-fs-caption)");
+    expect(POPOVER_TITLE_CLASS).not.toContain("text-muted-foreground");
+  });
+
   it("keeps readable raised and modal surfaces opaque", () => {
     for (const className of [POPOVER_SURFACE_CLASS]) {
       expect(className).toContain("bg-popover");

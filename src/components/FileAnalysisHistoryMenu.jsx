@@ -1,5 +1,6 @@
 import { FileStack, RefreshCw, Square, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { formatCompactSessionMetadata, formatDeliveryTriple } from "@/lib/fileAnalysisDisplay";
 import { cn } from "@/lib/utils";
 import { formatClock } from "../hooks/useSessionTimer.js";
@@ -70,9 +71,7 @@ export function FileAnalysisHistoryMenu({
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-80 max-w-[92vw] p-1">
         <div className="flex items-center justify-between gap-2 px-2 py-1">
-          <p className="text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
-            File History
-          </p>
+          <p className={POPOVER_TITLE_CLASS}>File History</p>
           <button
             type="button"
             onClick={() => onClearAllFiles?.()}

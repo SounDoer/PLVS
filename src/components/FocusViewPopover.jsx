@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { isMacOS, supportsDockMode } from "@/lib/platform.js";
 
 function FocusSwitch({ id, label, checked, onCheckedChange }) {
@@ -47,9 +48,7 @@ export function FocusViewPopoverContent({
 
   return (
     <div className="grid gap-1">
-      <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
-        Views
-      </p>
+      <p className={`px-2 py-1 ${POPOVER_TITLE_CLASS}`}>Views</p>
       <FocusSwitch
         id="focus-view-always-on-top"
         label="Always on Top"

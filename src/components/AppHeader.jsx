@@ -18,6 +18,7 @@ import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { FocusViewPopoverContent } from "./FocusViewPopover.jsx";
 import { ModulesPopoverContent } from "../workspace/WorkspaceToolbar.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { SHELL_HEADER, SHELL_HEADER_ACTIONS, SHELL_HEADER_OVERLAY } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { cn } from "@/lib/utils";
@@ -274,9 +275,7 @@ export function AppHeader({
                 </span>
               </PopoverTrigger>
               <PopoverContent align="end" sideOffset={6} className={SOURCES_POPOVER_CLASS}>
-                <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] font-semibold tracking-wide text-muted-foreground">
-                  Sources
-                </p>
+                <p className={`px-2 py-1 ${POPOVER_TITLE_CLASS}`}>Sources</p>
                 <SourceRow
                   ariaLabel="Automatic (default system output)"
                   primary="Automatic (default system output)"

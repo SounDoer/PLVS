@@ -398,7 +398,7 @@ under `src/dock/dockTokens.css`.
 | **Status**            | `--ui-fs-status`       | 11px | Header/footer state and compact status chips                |
 | **Control**           | `--ui-fs-control`      | 12px | Compact buttons, selects, inputs and management rows        |
 | **Metric Annotation** | `--ui-fs-metric-meta`  | 12px | Metric names and units                                      |
-| **Panel Title**       | `--ui-fs-panel-title`  | 12px | Panel, editor and dialog titles                             |
+| **Panel Title**       | `--ui-fs-panel-title`  | 12px | Panel, popover, editor and dialog titles                    |
 | **Dynamic Display**   | `--ui-fs-display`      | 13px | Live chart values and settings drawer text                  |
 | **Body**              | `--ui-fs-body`         | 14px | General descriptions, empty states and standard UI controls |
 | **Metric Value**      | `--ui-fs-metric-value` | 16px | Primary metric values; mono with tabular numerals           |
