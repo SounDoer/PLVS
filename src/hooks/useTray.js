@@ -59,7 +59,7 @@ async function buildSourceItems({
 }) {
   const handles = new Map();
   const automatic = await CheckMenuItem.new({
-    text: "Automatic (default system output)",
+    text: "Automatic",
     checked: safeAudioDeviceId === "default",
     action: () => onSelectSource("default"),
   });

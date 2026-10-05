@@ -131,12 +131,15 @@ describe("AppHeader", () => {
 
     expect(screen.getByText("Sources")).toBeTruthy();
     expect(screen.queryByText("Audio Device")).toBeNull();
-    expect(screen.getByRole("button", { name: "Automatic (default system output)" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Speakers (Realtek USB Audio)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Automatic" })).toBeTruthy();
+    expect(screen.queryByText("(default system output)")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Output/ }));
+    const speakers = screen.getByRole("button", { name: "Speakers (Realtek USB Audio)" });
+    expect(speakers).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /^Input/ }));
     expect(screen.getByRole("button", { name: "Microphone (USB Interface)" })).toBeTruthy();
-    expect(screen.getByText("Speakers")).toBeTruthy();
-    expect(screen.getByText("Realtek USB Audio")).toBeTruthy();
+    expect(within(speakers).getByText("Speakers")).toBeTruthy();
+    expect(within(speakers).getByText("Realtek USB Audio")).toBeTruthy();
   });
 
   it("lists running applications and refreshes sources when the picker opens", () => {
@@ -158,12 +161,13 @@ describe("AppHeader", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sources" }));
     expect(onRefreshSources).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: /^Applications/ }));
-    expect(screen.getByText("reference.wav - VLC")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "VLC application audio" }));
+    const application = screen.getByRole("button", { name: "VLC application audio" });
+    expect(within(application).getByText("reference.wav - VLC")).toBeTruthy();
+    fireEvent.click(application);
     expect(setCaptureDeviceId).toHaveBeenCalledWith("app-00112233445566778899aabbccddeeff");
   });
 
-  it("expands device groups independently and keeps Output open by default", () => {
+  it("starts every source group collapsed and expands them independently", () => {
     renderHeader({
       captureApplications: [
         {
@@ -179,20 +183,20 @@ describe("AppHeader", () => {
     const output = screen.getByRole("button", { name: /^Output/ });
     const input = screen.getByRole("button", { name: /^Input/ });
     const applications = screen.getByRole("button", { name: /^Applications/ });
-    expect(output.getAttribute("aria-expanded")).toBe("true");
+    expect(output.getAttribute("aria-expanded")).toBe("false");
     expect(input.getAttribute("aria-expanded")).toBe("false");
     expect(applications.getAttribute("aria-expanded")).toBe("false");
 
     fireEvent.click(input);
     expect(input.getAttribute("aria-expanded")).toBe("true");
-    expect(output.getAttribute("aria-expanded")).toBe("true");
+    expect(output.getAttribute("aria-expanded")).toBe("false");
 
     fireEvent.click(output);
-    expect(output.getAttribute("aria-expanded")).toBe("false");
+    expect(output.getAttribute("aria-expanded")).toBe("true");
     expect(input.getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("opens and summarizes the group containing the selected application", () => {
+  it("summarizes the selected application without opening its group", () => {
     const applicationId = "app-00112233445566778899aabbccddeeff";
     renderHeader({
       safeAudioDeviceId: applicationId,
@@ -207,10 +211,11 @@ describe("AppHeader", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sources" }));
 
-    expect(
-      screen.getByRole("button", { name: /^Applications/ }).getAttribute("aria-expanded")
-    ).toBe("true");
+    const applications = screen.getByRole("button", { name: /^Applications/ });
+    expect(applications.getAttribute("aria-expanded")).toBe("false");
     expect(screen.getByText("VLC Selected")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "VLC application audio" })).toBeNull();
+    fireEvent.click(applications);
     expect(screen.getByRole("button", { name: "VLC application audio" })).toBeTruthy();
   });
 
@@ -222,14 +227,52 @@ describe("AppHeader", () => {
     const scrollArea = content.querySelector("[data-source-scroll]");
     expect(content.className).toContain("max-h-[var(--radix-popover-content-available-height)]");
     expect(content.className).toContain("overflow-hidden");
-    expect(content.className).toContain("w-[min(21rem,92vw)]");
     expect(scrollArea.className).toContain("overflow-y-auto");
     expect(scrollArea.className).toContain("overscroll-contain");
     expect(scrollArea.className).toContain("[scrollbar-gutter:stable]");
     expect(scrollArea.contains(screen.getByText("Sources"))).toBe(false);
-    expect(
-      scrollArea.contains(screen.getByRole("button", { name: "Automatic (default system output)" }))
-    ).toBe(false);
+    expect(scrollArea.contains(screen.getByRole("button", { name: "Automatic" }))).toBe(false);
+  });
+
+  it("sizes the Sources popover to its content and the active Interface Size", () => {
+    renderHeader();
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
+
+    const content = document.querySelector('[data-slot="popover-content"]');
+    expect(content.className).toContain("w-max");
+    expect(content.className).toContain("min-w-[calc(10em+2rem)]");
+    expect(content.className).toContain("max-w-[min(calc(24em+1.5rem),92vw)]");
+    expect(content.className).toContain("text-[length:var(--ui-fs-control)]");
+    expect(content.className).not.toContain("w-[min(21rem,92vw)]");
+  });
+
+  it("keeps collapsed source rows in layout so expanding a group cannot change the width", () => {
+    renderHeader({
+      captureApplications: [
+        {
+          id: "app-00112233445566778899aabbccddeeff",
+          label: "Example Application",
+          windowTitle: "A much longer application window title",
+        },
+      ],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
+
+    const applications = screen.getByRole("button", { name: /^Applications/ });
+    const applicationRows = document.getElementById(applications.getAttribute("aria-controls"));
+    expect(applications.getAttribute("aria-expanded")).toBe("false");
+    expect(applicationRows.hasAttribute("hidden")).toBe(false);
+    expect(applicationRows.getAttribute("aria-hidden")).toBe("true");
+    expect(applicationRows.hasAttribute("inert")).toBe(true);
+    expect(applicationRows.className).toContain("h-0");
+    expect(applicationRows.className).toContain("overflow-hidden");
+    expect(applicationRows.className).toContain("opacity-0");
+    expect(applicationRows.textContent).toContain("A much longer application window title");
+
+    fireEvent.click(applications);
+    expect(applicationRows.hasAttribute("aria-hidden")).toBe(false);
+    expect(applicationRows.hasAttribute("inert")).toBe(false);
+    expect(applicationRows.className).not.toContain("h-0");
   });
 
   it("seats Loudness Profile between Sources and Modules", () => {

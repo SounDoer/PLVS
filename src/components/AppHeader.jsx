@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(18rem,92vw)] p-1";
 const SOURCES_POPOVER_CLASS =
-  "flex max-h-[var(--radix-popover-content-available-height)] w-[min(21rem,92vw)] min-w-40 flex-col overflow-hidden p-1";
+  "flex max-h-[var(--radix-popover-content-available-height)] w-max min-w-[calc(10em+2rem)] max-w-[min(calc(24em+1.5rem),92vw)] flex-col overflow-hidden p-1 text-[length:var(--ui-fs-control)]";
 // Matches DockHeader's pressed-while-open treatment for its editor triggers: the trigger's `span`
 // wrapper picks up Radix's `data-state` via `asChild`, so `group` + `group-data-` needs no state of
 // its own and stays true to Popover's actual open/closed status.
@@ -115,24 +115,16 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
           {count}
         </span>
       </button>
-      <div id={id} hidden={!open} className="pl-3">
+      <div
+        id={id}
+        aria-hidden={open ? undefined : true}
+        inert={!open}
+        className={cn("pl-3", !open && "pointer-events-none h-0 overflow-hidden opacity-0")}
+      >
         {children}
       </div>
     </section>
   );
-}
-
-function initialSourceSections(selectedId, audioOutputs, audioInputs, captureApplications) {
-  return {
-    output: true,
-    input:
-      audioInputs.some((device) => device.id === selectedId) ||
-      selectedId?.startsWith("cap-") ||
-      /^in:\d+$/.test(selectedId),
-    applications:
-      captureApplications.some((application) => application.id === selectedId) ||
-      /^app-[0-9a-f]{32}$/.test(selectedId),
-  };
 }
 
 export function AppHeader({
@@ -180,9 +172,11 @@ export function AppHeader({
   setSettingsOpen,
 }) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
-  const [sourceSectionsOpen, setSourceSectionsOpen] = useState(() =>
-    initialSourceSections(safeAudioDeviceId, audioOutputs, audioInputs, captureApplications)
-  );
+  const [sourceSectionsOpen, setSourceSectionsOpen] = useState({
+    output: false,
+    input: false,
+    applications: false,
+  });
 
   const setSourceSectionOpen = (section, open) => {
     setSourceSectionsOpen((current) => ({ ...current, [section]: open }));
@@ -277,8 +271,8 @@ export function AppHeader({
               <PopoverContent align="end" sideOffset={6} className={SOURCES_POPOVER_CLASS}>
                 <p className={`px-2 py-1 ${POPOVER_TITLE_CLASS}`}>Sources</p>
                 <SourceRow
-                  ariaLabel="Automatic (default system output)"
-                  primary="Automatic (default system output)"
+                  ariaLabel="Automatic"
+                  primary="Automatic"
                   selected={safeAudioDeviceId === "default"}
                   onSelect={() => handleSourceSelect("default")}
                 />

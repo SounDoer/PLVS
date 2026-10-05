@@ -334,7 +334,7 @@ describe("useTray", () => {
     // The selected device's CheckMenuItem is checked; Automatic is not.
     const checks = checkItemOptions();
     expect(findText(checks, "USB Mic")).toMatchObject({ checked: true });
-    expect(findText(checks, "Automatic (default system output)")).toMatchObject({
+    expect(findText(checks, "Automatic")).toMatchObject({
       checked: false,
     });
 
@@ -478,7 +478,7 @@ describe("useTray", () => {
     );
     await act(async () => {});
     expect(findText(submenuOptions(), "Source: Output · Automatic")).toBeTruthy();
-    expect(findText(checkItemOptions(), "Automatic (default system output)")).toMatchObject({
+    expect(findText(checkItemOptions(), "Automatic")).toMatchObject({
       checked: true,
     });
   });
