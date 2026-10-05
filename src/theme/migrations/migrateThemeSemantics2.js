@@ -4,7 +4,7 @@ import { normalizeThemeDocumentShape } from "../themeSchema.js";
 /** Preserve authored legacy Border appearance on Panel Surface, and inherited Grid colours. */
 export function migrateThemeSemantics2(raw) {
   if (raw?.formatVersion !== 2 || raw?.semanticsVersion !== 2) return null;
-  const theme = normalizeThemeDocumentShape({ ...raw, semanticsVersion: 3 });
+  const theme = normalizeThemeDocumentShape({ ...raw, semanticsVersion: 4 });
   if (!theme) return null;
   const border = theme.overrides["interface.border.default"];
   if (border?.kind === "color") {

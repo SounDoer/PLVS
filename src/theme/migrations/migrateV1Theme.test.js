@@ -35,7 +35,7 @@ function legacy(id = "custom-test", builtin = "plvs-dark") {
 }
 
 describe("migrateV1Theme", () => {
-  it.each([1, 2, 3])(
+  it.each([1, 2, 3, 4])(
     "retires selection overrides from semantics %s without mutating the source",
     (semanticsVersion) => {
       const current = migrateV1Theme(legacy());
@@ -129,13 +129,34 @@ describe("migrateV1Theme", () => {
 
     const migrated = migrateThemeDocument(semantics1);
     expect(migrated?.theme).toMatchObject({
-      semanticsVersion: 3,
+      semanticsVersion: 4,
       overrides: { "vectorscope.guides": { kind: "color", value: "#123456" } },
     });
     expect(migrated?.theme.overrides).not.toHaveProperty("vectorscope.grid");
     expect(migrated?.theme.overrides).not.toHaveProperty("waveform.grid");
     expect(migrated?.theme.overrides).not.toHaveProperty("spectrogram.gridSubtle");
     expect(migrated?.notes).toEqual([expect.objectContaining({ code: "clarify-grid-semantics" })]);
+  });
+
+  it("moves Semantics 3 Auto roles to Semantics 4 while preserving explicit overrides", () => {
+    const current = migrateV1Theme(legacy());
+    const semantics3 = {
+      ...current,
+      semanticsVersion: 3,
+      overrides: {
+        ...current.overrides,
+        "activity.live": { kind: "color", value: "#123456" },
+      },
+    };
+
+    const migrated = migrateThemeDocument(semantics3);
+    expect(migrated?.theme).toMatchObject({
+      semanticsVersion: 4,
+      overrides: { "activity.live": { kind: "color", value: "#123456" } },
+    });
+    expect(migrated?.notes).toEqual([
+      expect.objectContaining({ code: "redesign-automatic-theme-roles" }),
+    ]);
   });
 
   it("moves V2 backfills into an explicit, inspectable migration", () => {
@@ -158,7 +179,7 @@ describe("migrateV1Theme", () => {
 
     expect(migrateV2Theme(old)).toMatchObject({
       formatVersion: 2,
-      semanticsVersion: 3,
+      semanticsVersion: 4,
       palettes: {
         status: { safe: current.palettes.status.safe },
         interface: {

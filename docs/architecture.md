@@ -208,7 +208,7 @@ First-paint flow (`src/main.jsx`):
 
 1. Read `appearance` (`system`|`fixed`) and `themeId` through `settingsStore` (under Tauri, Rust pre-injects `window.__PLVS_INITIAL_STATE__`; the browser dev environment uses `localStorage`)
 2. `resolveThemeId` (with `prefers-color-scheme`) → current `themeId`
-3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 2`, `semanticsVersion: 3`)
+3. `themeRegistry` returns the built-in or migrated current authoring document (`formatVersion: 2`, `semanticsVersion: 4`)
 4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
 5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles layout, font size, geometry, and non-Theme product tuning
 
@@ -237,14 +237,18 @@ from `themeVisualAnalysis.js`, rather than checking only the upstream Core colou
 remain advisory. The current built-in output snapshots are independent of frozen V1 migration
 fixtures; changing a default design does not rewrite compatibility history.
 
-Semantics 3 makes ordinary Border opaque, aliases Input Border to it, and derives Grid from Panel
-Surface independently. Semantics 2 documents migrate at the existing persistence/import ingress:
-authored Border colours are flattened using their former scheme alpha against resolved Panel
-Surface; inherited module Grid colours are retained as explicit overrides. Existing module Grid
-overrides and references survive. No opacity or separate input-border authoring control is added.
-Portable themes retain format 1 and now emit semantics 3; readable semantics 1 and 2 are migrated.
-See [ADR 0017](adr/0017-opaque-interface-borders-and-independent-grids.md) for the authoring boundary
-and the limits of appearance preservation across backgrounds.
+Semantics 3 made ordinary Border opaque, aliased Input Border to it, and derived Grid from Panel
+Surface independently. Semantics 2 documents preserve their authored Border and inherited Grid
+appearance while migrating through that boundary; see
+[ADR 0017](adr/0017-opaque-interface-borders-and-independent-grids.md).
+
+Semantics 4 aligns automatic data-state and interface relationships: Loudness Momentary and
+Short-term use Primary and Secondary Data, transport Live uses Status Critical, transport Snapshot
+uses Primary Snapshot, and Interface feedback inherits its Interface Palette seed directly.
+Semantics 1, 2, and 3 documents migrate at the existing persistence/import ingress. Explicit
+Advanced overrides survive; automatic roles adopt the current relationships. Portable themes
+retain format 1 and now emit semantics 4. See
+[ADR 0021](adr/0021-align-automatic-theme-role-semantics.md).
 
 Theme colour roles resolve to opaque colours. Chart fill opacity is fixed product composition,
 shared by panels, Dock, and Theme Preview through `src/lib/chartFill.js` (ADR 0019). The

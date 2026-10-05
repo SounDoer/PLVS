@@ -74,7 +74,7 @@ revision, and writes no persistence.
         "id": "custom-studio",
         "kind": "plvs-theme",
         "formatVersion": 1,
-        "semanticsVersion": 1,
+        "semanticsVersion": 4,
         "name": "Studio",
         "colorScheme": "dark",
         "core": {},

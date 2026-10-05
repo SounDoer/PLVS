@@ -1,7 +1,7 @@
 import { normalizeOpaqueColor } from "./themeColorMath.js";
 
 export const THEME_FORMAT_VERSION = 2;
-export const THEME_SEMANTICS_VERSION = 3;
+export const THEME_SEMANTICS_VERSION = 4;
 export const THEME_NAME_MAX_LENGTH = 64;
 
 export const CORE_COLOR_KEYS = Object.freeze([

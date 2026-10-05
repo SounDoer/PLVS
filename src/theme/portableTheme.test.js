@@ -57,7 +57,7 @@ describe("portable Theme contract", () => {
     expect(portable).toMatchObject({
       kind: PORTABLE_THEME_KIND,
       formatVersion: PORTABLE_THEME_FORMAT_VERSION,
-      semanticsVersion: 3,
+      semanticsVersion: 4,
       name: "Studio",
       colorScheme: "dark",
     });
@@ -104,7 +104,7 @@ describe("portable Theme contract", () => {
     expect(serializePortableTheme(firstPortable)).toBe(serializePortableTheme(secondPortable));
     expect(await hashPortableTheme(firstPortable)).toBe(await hashPortableTheme(secondPortable));
     expect(await hashPortableTheme(firstPortable)).toBe(
-      "sha256:8c8deac0c2fb85f6e02c14f366f58f5e977341c3ed5bdf8ea95be6c078764679"
+      "sha256:9cf55dff9280d040b59f2dc0c6a3fe58c19020c30bf9511528b0d1e50c66cd00"
     );
   });
 
@@ -133,7 +133,7 @@ describe("portable Theme contract", () => {
     );
   });
 
-  it("migrates readable Semantics 1 Grid roles into canonical Semantics 3", () => {
+  it("migrates readable Semantics 1 Grid roles into canonical Semantics 4", () => {
     const portable = themeToPortable(storedTheme());
     portable.semanticsVersion = 1;
     portable.overrides = {
@@ -143,7 +143,7 @@ describe("portable Theme contract", () => {
     };
 
     expect(validatePortableTheme(portable)).toMatchObject({
-      semanticsVersion: 3,
+      semanticsVersion: 4,
       overrides: { "vectorscope.guides": { kind: "color", value: "#123456" } },
     });
     expect(validatePortableTheme(portable).overrides).not.toHaveProperty("waveform.grid");

@@ -15,6 +15,8 @@ import {
   setPanelCpuProfilerEnabled,
   snapshotPanelCpuProfiler,
 } from "../../dev/panelCpuProfiler.js";
+import { BUILTIN_THEMES_V2 } from "../../theme/builtinThemesV2.js";
+import { compileTheme } from "../../theme/compileTheme.js";
 
 const KEY = "stereoMap:pair:0:1:sp25:sm12";
 
@@ -148,7 +150,14 @@ function mockStereoMapColors() {
       })[name] ?? "",
   });
 }
-const STEREO_MAP_PRIMARY_CSS = "rgb(255, 139, 0)";
+function hexToRgb(hex) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return `rgb(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255})`;
+}
+
+const STEREO_MAP_PRIMARY_CSS = hexToRgb(
+  compileTheme(BUILTIN_THEMES_V2["plvs-dark"]).canvas["stereoMap.primary"]
+);
 
 describe("StereoMapPanel", () => {
   function mockCanvas() {

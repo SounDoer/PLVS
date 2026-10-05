@@ -1,6 +1,7 @@
 import { resolveV1Theme } from "../legacy/resolveV1Theme.js";
 import { normalizeThemeDocumentShape } from "../themeSchema.js";
 import { migrateThemeSemantics2 } from "./migrateThemeSemantics2.js";
+import { migrateThemeSemantics3 } from "./migrateThemeSemantics3.js";
 
 const RETIRED_GRID_ROLES = new Set(["data.gridSubtle", "spectrogram.gridSubtle", "waveform.grid"]);
 const RETIRED_SELECTION_ROLES = new Set([
@@ -252,6 +253,19 @@ export function migrateThemeDocument(raw) {
   raw = stripRetiredSelectionOverrides(raw);
   const current = normalizeThemeDocumentShape(raw);
   if (current) return { theme: current, notes: [] };
+  const semantics3 = migrateThemeSemantics3(raw);
+  if (semantics3) {
+    return {
+      theme: semantics3,
+      notes: [
+        {
+          code: "redesign-automatic-theme-roles",
+          message:
+            "Updated automatic data-state, transport, and interface-feedback roles while preserving explicit Advanced overrides.",
+        },
+      ],
+    };
+  }
   const semantics2 = migrateThemeSemantics2(raw);
   if (semantics2) {
     return {

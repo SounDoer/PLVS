@@ -8,6 +8,8 @@ import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { DEFAULT_DOCK_MODULES, DOCK_PANEL_MODULE_IDS } from "../dockLayout.js";
 import { dockStereoMapKey } from "../dockAnalysisRequest.js";
 import { DockStereoMap } from "./DockStereoMap.jsx";
+import { BUILTIN_THEMES_V2 } from "../../theme/builtinThemesV2.js";
+import { compileTheme } from "../../theme/compileTheme.js";
 
 const controls = {
   stereoMapPair: { x: 0, y: 1 },
@@ -107,7 +109,14 @@ function mockStereoMapColors() {
       })[name] ?? "",
   });
 }
-const STEREO_MAP_PRIMARY_CSS = "rgb(255, 139, 0)";
+function hexToRgb(hex) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return `rgb(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255})`;
+}
+
+const STEREO_MAP_PRIMARY_CSS = hexToRgb(
+  compileTheme(BUILTIN_THEMES_V2["plvs-dark"]).canvas["stereoMap.primary"]
+);
 
 function primitiveRow() {
   return {

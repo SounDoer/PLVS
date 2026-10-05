@@ -7,7 +7,7 @@ import { THEME_ROLE_REGISTRY } from "./themeRoleRegistry.js";
 function authoringTheme(overrides = {}) {
   return {
     formatVersion: 2,
-    semanticsVersion: 3,
+    semanticsVersion: 4,
     id: "test-theme",
     name: "Test Theme",
     colorScheme: "dark",

@@ -242,15 +242,19 @@ Instrument traces are compiled from the V2 Primary Data, Secondary Data, Status,
 authoring roles. Components consume only the resolved `--ui-*` tokens below (or the equivalent
 Resolved Theme Canvas bundle); they never derive colors locally.
 
-For Loudness history, `Momentary` and `Short-term` are equally important primary data series. They should be distinguishable without making one read as secondary and without borrowing dashed-line semantics from future marker layers. `Momentary` uses the thinner stroke and `Short-term` uses the thicker stroke. These stroke widths should render as screen-space stroke widths, not be visually compressed by SVG viewBox scaling. Theme authors may tune lightness, saturation, or a slight hue shift; product tuning owns the stroke widths. Neither layer should add opacity merely to distinguish the pair, and both colors should still feel related to Spectrum / Vectorscope accents rather than introducing a Loudness-only palette.
+For Loudness history, `Momentary` and `Short-term` are equally important paired data series.
+`Momentary` uses Primary Data and `Short-term` uses Secondary Data, with equal product-owned stroke
+widths. The widths render in screen space rather than being visually compressed by SVG viewBox
+scaling. Neither layer adds opacity or a dashed-line convention merely to distinguish the pair.
 
 Snapshot colors are state colors for selected historical data. Within a theme, loudness,
 vectorscope, and spectrum snap tokens should belong to one snapshot family. Do not treat snapshot
 colors as new data categories, hover colors, or warning colors.
 
 Waveform lanes use a **stroke + fill** pattern: 1px strokes on both the max (top) and min (bottom)
-envelope edges, plus a global semi-transparent fill opacity. The waveform has no snap variant
-because it always displays the currently visible time window without overlaying a second frozen trace.
+envelope edges, plus a global semi-transparent fill opacity. The waveform publishes a Snapshot
+state colour for its frozen time window, but does not overlay a second trace on top of the live
+window.
 
 The Loudness `Reference` layer is not drawn as a line or band. Instead, the reference LUFS drives an
 **over-reference gradient** on the `M` and `ST` traces. The reference value is not shown as a
@@ -283,9 +287,8 @@ Values come from the compiled Theme; see the built-in snapshot referenced under 
 
 Built-in neutral shell values are authored per color scheme rather than transformed at runtime.
 Dark and Light share the same orange Accent and Primary Data, blue Secondary Data,
-red/orange/blue Frequency, green/amber/red Status, and canonical Inferno Intensity stops.
-Interface feedback remains independently authored for each scheme and independently from
-measurement Status.
+red/orange/blue Frequency, green/amber/red Status, Interface semantic colours, and canonical
+Inferno Intensity stops. Their neutral shell and content colours remain scheme-specific.
 
 The deterministic Semantic Gallery measures text and content contrast plus key data, snapshot,
 Status, and Frequency distances in normal color, protanopia, deuteranopia, tritanopia, and
@@ -330,14 +333,15 @@ they never imply that one Theme supports both schemes. A paired design is publis
 Theme artefacts and therefore has two identities. The primary compatibility copy is generated from
 one central Format/Semantics-to-release mapping: `Requires PLVS <minimum> or later`, or a closed
 `Works with PLVS <minimum>-<maximum>` range if later compatibility evidence requires one. Expanded
-technical details show `Theme Format 1 · Semantics 2`. Public-page generation fails while the first
+technical details show `Theme Format 1 · Semantics 4`. Public-page generation fails while the first
 shipping release remains unassigned, preventing a guessed minimum version from reaching users.
 
 ### Component: Status, feedback, and activity
 
-The Status Palette is measurement-only. Each instrument consumes it through module-local resolved
-roles, so a local override cannot recolor another module. Interface feedback and application
-activity use separate Interface Palette sources.
+The Status Palette is measurement-only except for the transport Live indicator, which deliberately
+reuses Status Critical. Each instrument consumes Status through module-local resolved roles, so a
+local override cannot recolor another module. Interface feedback inherits the Interface Palette
+directly. Transport Snapshot reuses the Primary Snapshot state family.
 
 | Binding family                                                   | Role                                                  |
 | ---------------------------------------------------------------- | ----------------------------------------------------- |
@@ -349,9 +353,10 @@ activity use separate Interface Palette sources.
 | `--ui-feedback-{success,warning,danger}`                         | Application feedback on ordinary or tinted surfaces   |
 | `--ui-activity-{live,snapshot}`                                  | Live capture, recording, and snapshot activity        |
 
-Feedback and activity colours are foregrounds on the panel. Their automatic value keeps the
-Interface Palette hue and is toned to 5.5:1 against the Panel Surface, while the solid
-`--ui-interface-*` fills keep the palette colour (ADR 0020).
+Feedback and activity colours are foregrounds on the panel. Feedback publishes the Interface
+Palette value unchanged; Live publishes Status Critical; Snapshot publishes Primary Snapshot.
+Visual Review reports insufficient contrast without altering those authored relationships
+(ADR 0021).
 
 The retired `--ui-signal-good`, `--ui-signal-warn`, and `--ui-signal-bad` names exist only in the
 frozen V1 migration path and must not be used by runtime consumers.

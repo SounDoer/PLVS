@@ -72,7 +72,7 @@ compiled tokens, CSS variables, generated CSS, or editor state.
 ```json
 {
   "formatVersion": 2,
-  "semanticsVersion": 1,
+  "semanticsVersion": 4,
   "name": "Studio",
   "colorScheme": "dark",
   "core": {
@@ -116,7 +116,7 @@ compiled tokens, CSS variables, generated CSS, or editor state.
 
 The document must omit `id`: create generates it and update takes it from the command line. The
 document is strict and complete, not JSON Patch. `formatVersion` must be 2 and `semanticsVersion`
-must be 1; `name` must trim to non-empty;
+must be 4; `name` must trim to non-empty;
 `colorScheme` is `light` or `dark`; all required core and palette members must be present. Override
 keys must name public compiler roles, colors must be valid CSS colors, intensity stops must be
 ordered from 0 through 1, and a non-null palette `presetId` must match that palette's canonical

@@ -16,7 +16,7 @@ import {
 
 export const PORTABLE_THEME_KIND = "plvs-theme";
 export const PORTABLE_THEME_FORMAT_VERSION = 1;
-export const PORTABLE_THEME_SEMANTICS_VERSION = 3;
+export const PORTABLE_THEME_SEMANTICS_VERSION = 4;
 
 const PORTABLE_FIELDS = new Set([
   "kind",
@@ -127,7 +127,7 @@ function portableFromAuthoring(document) {
 }
 
 function migrateReadablePortableTheme(raw) {
-  if (raw?.semanticsVersion !== 1 && raw?.semanticsVersion !== 2) return raw;
+  if (![1, 2, 3].includes(raw?.semanticsVersion)) return raw;
   const migrated = normalizeThemeDocument({
     id: "custom-portable-migration",
     ...asAuthoringDocument(raw),
@@ -169,7 +169,7 @@ export function validatePortableTheme(raw) {
       )
     );
   }
-  if (![1, 2, PORTABLE_THEME_SEMANTICS_VERSION].includes(raw.semanticsVersion)) {
+  if (![1, 2, 3, PORTABLE_THEME_SEMANTICS_VERSION].includes(raw.semanticsVersion)) {
     issues.push(
       issue(
         "unsupportedSemanticsVersion",

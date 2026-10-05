@@ -35,7 +35,7 @@ describe("opaque Border semantics migration", () => {
       portable.overrides = old.overrides;
       const imported = portableToStoredTheme(portable, "custom-imported");
       expect(imported.overrides).toEqual(migrated.overrides);
-      expect(imported.semanticsVersion).toBe(3);
+      expect(imported.semanticsVersion).toBe(4);
     }
   );
 
