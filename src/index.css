@@ -143,12 +143,11 @@ html[data-surface="dock-editor"] #root {
   );
 }
 
-/* PLVS shows no focus outline anywhere -- see the note in design-tokens.md.
-   Chromium draws its own `outline: auto` on anything focusable that defines no
-   focus style, in a fixed high-contrast color the theme cannot reach, and reveals
-   it after any keydown, a bare modifier included. Suppressing it here is what
-   makes that decision hold for every control at once, including the ones added
-   next; the per-component focus rings that used to fight it are gone.
+/* PLVS suppresses the browser's own focus outline -- see the note in design-tokens.md.
+   Chromium draws `outline: auto` on anything focusable that defines no focus style, in a fixed
+   high-contrast color the theme cannot reach, and reveals it after any keydown, a bare modifier
+   included. Suppressing it here holds for every control at once, including the ones added next;
+   the keyboard-navigation ring below is the only outline PLVS draws.
 
    Menus and lists are unaffected: their keyboard highlight is a background
    change (`focus:bg-ui-hover`), not an outline. */
@@ -156,6 +155,14 @@ html[data-surface="dock-editor"] #root {
   :focus-visible {
     outline: none;
   }
+}
+
+/* The one focus ring. It appears only while the user is navigating with Tab -- the attribute is
+   kept by src/lib/keyboardNavigation.js -- so shortcuts and pointer use never raise it. Unlayered,
+   so it outranks the suppression above. */
+html[data-keyboard-nav="true"] :focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
 }
 
 /* State feedback uses existing opaque theme roles, without introducing focus rings. */

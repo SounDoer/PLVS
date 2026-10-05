@@ -32,6 +32,16 @@ describe("theme color contract", () => {
     expect(base).toMatch(/:focus-visible\s*\{\s*outline:\s*none;\s*\}/);
   });
 
+  it("paints the focus ring only during keyboard navigation", () => {
+    const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
+    const rule =
+      css.match(/html\[data-keyboard-nav="true"\] :focus-visible \{[\s\S]*?\n\}/)?.[0] ?? "";
+
+    expect(rule).toContain("outline: 2px solid var(--ring)");
+    // Nothing else may raise an outline: one selector, gated on the navigation attribute.
+    expect(css.match(/:focus-visible\s*\{[^}]*outline:(?!\s*none)/g)).toHaveLength(1);
+  });
+
   it("leaves no per-component focus ring to fight the global rule", () => {
     const offenders = Object.entries(appSources())
       .filter(([, source]) => /focus(?:-visible)?:(?:ring|outline|border-ring)/.test(source))

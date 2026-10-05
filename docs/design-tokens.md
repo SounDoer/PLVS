@@ -32,17 +32,26 @@ Component    PLVS-specific --ui-* tokens with no shadcn equivalent.
 
 ## Focus
 
-PLVS draws no focus outline. One rule in the `base` layer of `index.css` clears the
-browser's own — Chromium paints `outline: auto` in a fixed high-contrast color on any
-focusable element that defines no focus style, and reveals it after any keydown,
-including a bare modifier. Components must not reintroduce a `focus-visible:ring-*` or
-`focus-visible:outline-*` of their own; a contract test in
-`src/components/ui/themeColorContract.test.js` fails if one appears.
+PLVS draws one focus ring, and only while the user is navigating with Tab.
 
-`interface.focusRing` still compiles the internal `--ring` compatibility token so existing custom
-themes continue to load, but it is hidden from the Advanced editor and no PLVS component paints
-it. Menu and list keyboard highlighting is a background change (`focus:bg-ui-hover`) and is
-unaffected.
+The browser's own outline is cleared by one rule in the `base` layer of `index.css`. Chromium
+paints `outline: auto` in a fixed high-contrast color on any focusable element that defines no
+focus style, and reveals it after any keydown, including a bare modifier. PLVS is driven by
+shortcuts, so that heuristic showed a ring to pointer users who had only pressed Ctrl+K.
+
+`src/lib/keyboardNavigation.js` replaces the heuristic with an explicit state: Tab sets
+`data-keyboard-nav` on the document, and the next pointer press clears it. One unlayered rule in
+`index.css` paints a 2px `--ring` outline on the focused element while that attribute is set.
+Shortcuts, modifiers and pointer use never raise it.
+
+Components must not add a `focus-visible:ring-*` or `focus-visible:outline-*` of their own; a
+contract test in `src/components/ui/themeColorContract.test.js` fails if one appears. A control
+does not need a focus style at all: the global ring covers every focusable element, including ones
+whose hover treatment is too faint to mark focus.
+
+`interface.focusRing` supplies `--ring`. It is still hidden from the Advanced editor, so the
+ring follows the Theme's automatic value. Menu and list keyboard highlighting is a background
+change (`focus:bg-ui-hover`) and is unaffected.
 
 ## Annotation Text
 

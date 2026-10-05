@@ -19,6 +19,7 @@ import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
 import { DOCK_ACCESSORY_SURFACES } from "./dock/accessoryProtocol.js";
 import { migrateDialogueVadEngine } from "./persistence/migrateDialogueVadEngine.js";
 import { AppCrashBoundary } from "./components/AppCrashBoundary.jsx";
+import { installKeyboardNavigationTracking } from "./lib/keyboardNavigation.js";
 
 const surface = applyDocumentSurface(window.location.search);
 
@@ -37,6 +38,7 @@ applyLayoutToDocument(
   resolveInterfacePreferencesForSurface(UI_PREFERENCES, interfaceSize, surface)
 );
 applyThemeToDocument(resolvedThemeId, customThemes);
+installKeyboardNavigationTracking();
 
 const root =
   surface === "dock-header" ? (
