@@ -22,6 +22,7 @@ import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfa
 import { SHELL_HEADER, SHELL_HEADER_ACTIONS, SHELL_HEADER_OVERLAY } from "@/lib/shellLayout";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { cn } from "@/lib/utils";
+import { MenuRow } from "@/components/ui/row";
 
 const TOOLBAR_POPOVER_CLASS = "w-max min-w-40 max-w-[min(18rem,92vw)] p-1";
 const SOURCES_POPOVER_CLASS =
@@ -34,12 +35,7 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
 
 function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={onSelect}
-      className="flex w-full items-center gap-2 rounded-xs px-1.5 py-1.5 text-left text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover"
-    >
+    <MenuRow aria-label={ariaLabel} onClick={onSelect}>
       <span
         aria-hidden="true"
         className={cn(
@@ -53,7 +49,7 @@ function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
           <span className="mt-0.5 block truncate text-muted-foreground">{secondary}</span>
         ) : null}
       </span>
-    </button>
+    </MenuRow>
   );
 }
 
@@ -84,12 +80,11 @@ function selectedApplicationSummary(applications, selectedId) {
 function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, children }) {
   return (
     <section>
-      <button
-        type="button"
+      <MenuRow
         aria-expanded={open}
         aria-controls={id}
         onClick={() => onOpenChange(!open)}
-        className="flex w-full items-center gap-1.5 rounded-xs px-1.5 py-1.5 text-left text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover"
+        className="gap-1.5"
       >
         <ChevronRight
           aria-hidden="true"
@@ -114,7 +109,7 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
         <span className="shrink-0 text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground">
           {count}
         </span>
-      </button>
+      </MenuRow>
       <div
         id={id}
         aria-hidden={open ? undefined : true}

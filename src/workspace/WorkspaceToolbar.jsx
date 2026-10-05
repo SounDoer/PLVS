@@ -18,6 +18,7 @@ import { useWorkspaceStore } from "./WorkspaceContext.jsx";
 import { resolvePanelDisplayName } from "./panelInstances.js";
 import { DEFAULT_WORKSPACE_STATE } from "./constants.js";
 import { DragHandle } from "@/components/ui/drag-handle";
+import { RowAction } from "@/components/ui/row";
 
 const RESET_WORKSPACE_KEYS = [
   "tree",
@@ -128,16 +129,12 @@ function AddModuleRow({ id, title, Icon, onAdd }) {
 
   return (
     <div className={cn(MANAGEMENT_ROW_CLASS, "text-foreground")}>
-      <button
-        type="button"
-        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        onClick={() => onAdd(id)}
-      >
+      <RowAction onClick={() => onAdd(id)}>
         <span className="flex shrink-0 text-muted-foreground">
           <Icon className="size-[1.25em]" />
         </span>
         <span className="min-w-0 flex-1 truncate">{title}</span>
-      </button>
+      </RowAction>
       <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>
         <DragHandle
           aria-label={`Drag ${title} to place`}

@@ -46,6 +46,7 @@ import { POPOVER_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useLoudnessProfile } from "@/hooks/LoudnessProfileContext.jsx";
 import { HoverTip, useHoverTip } from "@/components/HoverTip.jsx";
 import { IconAction } from "@/components/ui/icon-action";
+import { MenuRow } from "@/components/ui/row";
 
 const SETTINGS_SELECT_TRIGGER_CLASS =
   "h-6 max-w-none rounded-md border px-2 py-0 text-[length:var(--ui-fs-control)] text-popover-foreground shadow-none outline-none transition-colors";
@@ -61,7 +62,7 @@ const SETTINGS_DETAIL_SURFACE_CLASS = cn(
 );
 
 const SETTINGS_CHOICE_ROW_CLASS =
-  "flex w-full min-w-0 items-center gap-1.5 rounded-xs px-1.5 py-0.5 text-left text-[length:var(--ui-fs-control)] text-popover-foreground outline-none transition-colors hover:bg-ui-hover hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
+  "min-w-0 gap-1.5 py-0.5 text-popover-foreground outline-none hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary";
 
@@ -242,18 +243,17 @@ export function AxisLinkToggle({ kindId, label, tipLabel }) {
   const tip = `${viewport.linked ? "Unlink" : "Link"} ${tipLabel}`;
   return (
     <HoverTip tip={tip} side="top">
-      <button
-        type="button"
+      <IconAction
         aria-label={label}
         aria-pressed={viewport.linked}
         onClick={() => viewport.setLinked(!viewport.linked)}
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-xs outline-none transition-colors",
-          viewport.linked ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+          "flex shrink-0 items-center justify-center outline-none",
+          viewport.linked && "text-foreground"
         )}
       >
         <Icon className="size-[length:var(--ui-icon-panel-action)]" />
-      </button>
+      </IconAction>
     </HoverTip>
   );
 }
@@ -609,8 +609,7 @@ function SettingsOptionRow({
   ...props
 }) {
   return (
-    <button
-      type="button"
+    <MenuRow
       data-settings-option-row
       role={role}
       className={cn(SETTINGS_CHOICE_ROW_CLASS, className)}
@@ -620,7 +619,7 @@ function SettingsOptionRow({
         {checked ? <Check aria-hidden="true" className="size-[1em]" /> : null}
       </span>
       <span className="min-w-0 flex-1 truncate">{children}</span>
-    </button>
+    </MenuRow>
   );
 }
 

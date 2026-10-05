@@ -23,6 +23,7 @@ import {
   SHELL_PAGE,
   SHELL_TOP_REVEAL_HOT_ZONE,
 } from "@/lib/shellLayout";
+import { LinkButton } from "@/components/ui/link-button";
 
 export function AppShell({
   frameData,
@@ -149,25 +150,23 @@ export function AppShell({
                     {footer.hasUpdate ? (
                       <>
                         <div className={FOOTER_DIVIDER} />
-                        <button
-                          type="button"
+                        <LinkButton
                           onClick={footer.onOpenSettings}
-                          className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:underline"
+                          className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:text-primary hover:underline"
                         >
                           Update available · Check in Settings
-                        </button>
+                        </LinkButton>
                       </>
                     ) : null}
                     {footer.layoutUnknown ? (
                       <>
                         <div className={FOOTER_DIVIDER} />
-                        <button
-                          type="button"
+                        <LinkButton
                           onClick={footer.onOpenSettings}
-                          className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:underline"
+                          className="min-w-0 truncate text-[length:var(--ui-fs-status)] text-primary hover:text-primary hover:underline"
                         >
                           Channel layout unknown · Set in Settings
-                        </button>
+                        </LinkButton>
                       </>
                     ) : null}
                   </footer>

@@ -7,6 +7,8 @@ import { formatMetric, formatSessionMetadataLine } from "@/lib/fileAnalysisDispl
 import { SHELL_SURFACE_BASE } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
 import { LoudnessLayoutMarker } from "@/components/LoudnessLayoutMarker";
+import { MenuRow } from "@/components/ui/row";
+import { Button } from "@/components/ui/button";
 
 // Metrics come from the authoritative completion summary payload (fileSession.summary), not the
 // last displayed UI frame, so throttled/batched frames cannot skew the delivery numbers.
@@ -117,19 +119,19 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           className={cn(
-            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 text-[length:var(--ui-fs-control)] font-medium transition-colors",
+            "border border-border px-2.5",
             copied
-              ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]"
-              : "bg-secondary text-secondary-foreground hover:bg-[color:var(--ui-secondary-hover)] focus-visible:bg-[color:var(--ui-secondary-hover)] data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
+              ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)] hover:bg-[color:var(--ui-interface-success)] focus-visible:bg-[color:var(--ui-interface-success)] active:bg-[color:var(--ui-interface-success)]"
+              : "data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
           )}
         >
           <Icon className="size-[1.15em]" aria-hidden="true" />
           <span>{copied ? "Copied" : "Export"}</span>
           <ChevronDown className="size-[1em] text-muted-foreground" aria-hidden="true" />
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-48 p-1">
         <MenuItem onClick={() => choose(() => onExportReport?.("markdown"))}>
@@ -144,13 +146,9 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
 
 function MenuItem({ onClick, children }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-control)] text-foreground transition-colors hover:bg-ui-hover"
-    >
+    <MenuRow onClick={onClick} className="px-2 text-foreground">
       {children}
-    </button>
+    </MenuRow>
   );
 }
 

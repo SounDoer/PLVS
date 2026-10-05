@@ -30,6 +30,7 @@ import {
   DEFAULT_DIALOGUE_VAD_ENGINE,
 } from "@/lib/dialogueVadEngines.js";
 import { IconAction } from "@/components/ui/icon-action";
+import { LinkButton } from "@/components/ui/link-button";
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
 const AGENT_CONTROL_PROMPT_STARTER =
@@ -67,7 +68,7 @@ const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
 
 const FOOTER_LINK_CLASS =
-  "inline-flex h-auto items-center gap-1 whitespace-nowrap bg-transparent px-0 py-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground transition-colors hover:text-foreground cursor-pointer border-none outline-none disabled:cursor-default disabled:opacity-50";
+  "inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-metric-meta)] cursor-pointer outline-none disabled:cursor-default disabled:opacity-50";
 
 function SettingsBody({ children }) {
   return (
@@ -767,27 +768,25 @@ export function SettingsPanel({
                           {updateStatusText}
                         </span>
                         <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                        <button
-                          type="button"
+                        <LinkButton
                           className={FOOTER_LINK_CLASS}
                           disabled={updateCheckDisabled}
                           onClick={onCheckForUpdate}
                         >
                           Check
-                        </button>
+                        </LinkButton>
                         {hasUpdate ? (
                           <>
                             <span
                               className="h-3 shrink-0 border-l border-border"
                               aria-hidden="true"
                             />
-                            <button
-                              type="button"
+                            <LinkButton
                               className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
                               onClick={onInstallUpdate}
                             >
                               Update
-                            </button>
+                            </LinkButton>
                           </>
                         ) : null}
                       </div>
@@ -795,8 +794,7 @@ export function SettingsPanel({
                         data-settings-footer-links
                         className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1"
                       >
-                        <button
-                          type="button"
+                        <LinkButton
                           className={cn(
                             FOOTER_LINK_CLASS,
                             hasUpdate && "text-primary hover:text-primary"
@@ -805,22 +803,17 @@ export function SettingsPanel({
                         >
                           Releases
                           <ExternalLink className="size-[1em]" />
-                        </button>
-                        <button
-                          type="button"
+                        </LinkButton>
+                        <LinkButton
                           className={FOOTER_LINK_CLASS}
                           onClick={() => openExternalUrl(DOCS_URL)}
                         >
                           Docs
                           <ExternalLink className="size-[1em]" />
-                        </button>
-                        <button
-                          type="button"
-                          className={FOOTER_LINK_CLASS}
-                          onClick={onOpenFeedback}
-                        >
+                        </LinkButton>
+                        <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenFeedback}>
                           Feedback
-                        </button>
+                        </LinkButton>
                       </div>
                     </div>
                   </>

@@ -23,6 +23,7 @@ import { resolvePanelDisplayName, resolvePanelModuleId } from "./panelInstances.
 import { resolvePanelDefinition } from "./registry.jsx";
 import { getPanelControls } from "./panelControlInstances.js";
 import { LAYER_FLOATING } from "../components/ui/layers.js";
+import { IconAction } from "@/components/ui/icon-action";
 
 const SPLIT_DIVIDER_SIZE_REM = 0.375;
 const SPLIT_SNAP_THRESHOLD_PX = 10;
@@ -411,8 +412,7 @@ function FullscreenOverlay() {
           <HoverTip
             tip={isPinned ? "Unpin panel size" : "Exit fullscreen to pin the current panel size"}
           >
-            <button
-              type="button"
+            <IconAction
               className={cn(PANEL_HEADER_ACTION_BUTTON, isPinned && "text-primary")}
               onClick={() => isPinned && setPanelPinned(fullscreenId, null)}
               aria-label={
@@ -422,16 +422,15 @@ function FullscreenOverlay() {
               disabled={!isPinned}
             >
               <Pin className={PANEL_HEADER_PIN_ICON} fill={isPinned ? "currentColor" : "none"} />
-            </button>
+            </IconAction>
           </HoverTip>
-          <button
-            type="button"
+          <IconAction
             className={PANEL_HEADER_ACTION_BUTTON}
             onClick={() => setFullscreen(null)}
             aria-label="Exit fullscreen"
           >
             <Minimize2 className="size-[length:var(--ui-icon-panel-action)]" />
-          </button>
+          </IconAction>
         </div>
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">

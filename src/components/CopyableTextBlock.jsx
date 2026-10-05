@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Copy, X } from "lucide-react";
 import { HoverTip } from "./HoverTip.jsx";
 import { cn } from "@/lib/utils";
+import { IconAction } from "@/components/ui/icon-action";
 
 const FEEDBACK_DURATION_MS = 1500;
 
@@ -55,21 +56,20 @@ export function CopyableTextBlock({ value, ariaLabel = "copy text", className })
         {value}
       </div>
       <HoverTip tip={tip} side="top" align="end" className="absolute top-2 right-2">
-        <button
-          type="button"
+        <IconAction
           aria-label={ariaLabel}
           data-copy-state={copyState}
           onClick={copyText}
           className={cn(
-            "rounded-xs p-1 text-muted-foreground transition-colors",
-            "hover:bg-ui-hover hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground",
+            "p-1",
+            "hover:bg-ui-hover focus-visible:bg-ui-hover focus-visible:text-foreground",
             copyState === "copied" &&
               "bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)]",
             copyState === "failed" && "text-[color:var(--ui-feedback-danger)]"
           )}
         >
           <CopyIcon className="size-[length:var(--ui-icon-management-action)]" aria-hidden />
-        </button>
+        </IconAction>
       </HoverTip>
     </div>
   );

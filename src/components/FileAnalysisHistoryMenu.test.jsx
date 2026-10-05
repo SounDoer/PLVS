@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
+import { buttonVariants } from "@/components/ui/button";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(currentDir, "FileAnalysisHistoryMenu.jsx"), "utf8");
@@ -68,9 +69,11 @@ function renderMenu(props = {}) {
 
 describe("FileAnalysisHistoryMenu", () => {
   it("keeps the trigger surface opaque", () => {
-    expect(source).toContain("bg-secondary");
-    expect(source).toContain("hover:bg-[color:var(--ui-secondary-hover)]");
-    expect(source).toContain("focus-visible:bg-[color:var(--ui-secondary-hover)]");
+    const secondary = buttonVariants({ variant: "secondary" });
+    expect(source).toContain('variant="secondary"');
+    expect(secondary).toContain("bg-secondary");
+    expect(secondary).toContain("hover:bg-[color:var(--ui-secondary-hover)]");
+    expect(secondary).toContain("focus-visible:bg-[color:var(--ui-secondary-hover)]");
     expect(source).toContain("data-[state=open]:bg-[color:var(--ui-secondary-hover)]");
     expect(source).not.toContain("--surface-opacity");
   });

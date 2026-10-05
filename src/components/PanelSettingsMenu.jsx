@@ -7,6 +7,7 @@ import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
 import { normalizePanelControls } from "@/lib/panelControls.js";
 import { spectrumViewApplies } from "@/math/spectrumChannelViewOptions.js";
 import { isDefaultPanelControls } from "@/workspace/panelControlInstances.js";
+import { IconAction } from "@/components/ui/icon-action";
 
 const PANEL_SETTINGS_TITLES = {
   levelMeter: "Level Meter",
@@ -88,9 +89,9 @@ export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" aria-label="Panel settings" className={PANEL_HEADER_ACTION_BUTTON}>
+        <IconAction aria-label="Panel settings" className={PANEL_HEADER_ACTION_BUTTON}>
           <Settings2 className="size-[length:var(--ui-icon-panel-action)]" />
-        </button>
+        </IconAction>
       </PopoverTrigger>
       <PopoverContent
         align="end"

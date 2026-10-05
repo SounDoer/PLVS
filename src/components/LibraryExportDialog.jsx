@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
+import { MenuRow } from "@/components/ui/row";
 
 const LIBRARY_TYPES = [
   { type: "loudness", label: "Loudness Profiles" },
@@ -67,19 +68,18 @@ export function LibraryExportDialog({
           {LIBRARY_TYPES.map(({ type, label }) => {
             const count = itemsByType[type]?.length ?? 0;
             return (
-              <button
+              <MenuRow
                 key={type}
-                type="button"
                 disabled={count === 0}
                 onClick={() => setSelectedType(type)}
-                className="flex min-h-10 w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover disabled:pointer-events-none disabled:opacity-40"
+                className="min-h-10 justify-between gap-3 rounded-md px-2 disabled:pointer-events-none disabled:opacity-40"
               >
                 <span>{label}</span>
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   {itemCountLabel(count)}
                   <ChevronRight className="size-[1.15em] shrink-0" aria-hidden="true" />
                 </span>
-              </button>
+              </MenuRow>
             );
           })}
         </div>

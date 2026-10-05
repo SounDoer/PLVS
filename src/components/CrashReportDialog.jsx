@@ -7,6 +7,7 @@ import { discardCrashReport } from "../ipc/commands.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { buildCrashReportRequest, submitCrashReport } from "../lib/crashReporting.js";
 import { LAYER_PRIORITY } from "@/components/ui/layers.js";
+import { LinkButton } from "@/components/ui/link-button";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -111,13 +112,12 @@ export function CrashReportDialog({
             </span>
           ) : null}
 
-          <button
-            type="button"
-            className="self-start text-[length:var(--ui-fs-display)] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          <LinkButton
+            className="self-start text-[length:var(--ui-fs-display)] font-medium underline-offset-4 hover:underline"
             onClick={() => setShowPreview((value) => !value)}
           >
             {showPreview ? "Hide Report" : "View Report"}
-          </button>
+          </LinkButton>
           {showPreview ? (
             <pre
               aria-label="Crash report payload"
@@ -127,13 +127,12 @@ export function CrashReportDialog({
             </pre>
           ) : null}
 
-          <button
-            type="button"
-            className="self-start text-[length:var(--ui-fs-display)] font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          <LinkButton
+            className="self-start text-[length:var(--ui-fs-display)] font-medium underline-offset-4 hover:underline"
             onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
           >
             Privacy Policy
-          </button>
+          </LinkButton>
 
           {sendError ? (
             <span className="text-[length:var(--ui-fs-display)] text-destructive">{error}</span>

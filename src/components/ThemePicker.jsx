@@ -5,6 +5,7 @@ import { IconButton } from "./IconButton.jsx";
 import { InlineConfirm } from "./InlineConfirm.jsx";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { RowAction } from "@/components/ui/row";
 
 /**
  * A miniature of the app rather than a row of chips: workspace behind a surface
@@ -74,17 +75,13 @@ function Action({ label, tip, icon, onClick }) {
 function ThemeRow({ theme, selected, onSelect, actions }) {
   return (
     <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 transition-colors hover:bg-ui-hover focus-within:bg-ui-hover">
-      <button
-        type="button"
-        onClick={() => onSelect(theme.id)}
-        className="flex min-w-0 flex-1 items-center gap-2 text-left text-[length:var(--ui-fs-display)]"
-      >
+      <RowAction onClick={() => onSelect(theme.id)} className="text-[length:var(--ui-fs-display)]">
         <span className="flex size-4 items-center justify-center">
           {selected ? <Check className="size-[length:var(--ui-icon-management-action)]" /> : null}
         </span>
         <ThemeSwatch theme={theme} />
         <span className="min-w-0 flex-1 truncate">{theme.name}</span>
-      </button>
+      </RowAction>
       <div className="flex shrink-0 items-center">{actions}</div>
     </div>
   );

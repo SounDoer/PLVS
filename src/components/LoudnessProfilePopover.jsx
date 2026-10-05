@@ -12,6 +12,7 @@ import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
 import { IconAction } from "@/components/ui/icon-action";
 import { DragHandle } from "@/components/ui/drag-handle";
+import { RowAction } from "@/components/ui/row";
 
 const ROW_CLASS =
   "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover";
@@ -19,8 +20,7 @@ const ROW_CLASS =
 // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after the drag handle (or,
 // on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
 // padding for its own hover/focus rounding, not a second helping of the handle's own gap.
-const ROW_BUTTON_CLASS =
-  "flex min-w-0 flex-1 items-center gap-2 rounded-xs pl-1 pr-1.5 py-1.5 text-left";
+const ROW_BUTTON_CLASS = "pl-1 pr-1.5 py-1.5";
 
 const ICON_BUTTON_CLASS =
   "opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100";
@@ -84,8 +84,7 @@ export function LoudnessProfilePopoverContent({
         {/* Same box as the drag handle below, just invisible: Off isn't reorderable, but its
             label still needs to line up under the profiles' labels, not their handles. */}
         <span className="size-5 shrink-0" aria-hidden="true" />
-        <button
-          type="button"
+        <RowAction
           aria-label="Use no Loudness Profile"
           aria-pressed={active === LOUDNESS_PROFILE_OFF}
           onClick={profile.selectOff}
@@ -94,7 +93,7 @@ export function LoudnessProfilePopoverContent({
         >
           <ActiveDot active={active === LOUDNESS_PROFILE_OFF} />
           <span className="min-w-0 flex-1 truncate">Off</span>
-        </button>
+        </RowAction>
       </div>
 
       <div ref={containerRef} className="grid grid-cols-1 gap-px">
@@ -114,8 +113,7 @@ export function LoudnessProfilePopoverContent({
                 onPointerDown={(event) => startDrag(entry.id, event)}
                 dragging={draggingId === entry.id}
               />
-              <button
-                type="button"
+              <RowAction
                 aria-label={`Use ${entry.name}`}
                 aria-pressed={active === selection}
                 onClick={() => profile.select(selection)}
@@ -124,7 +122,7 @@ export function LoudnessProfilePopoverContent({
               >
                 <ActiveDot active={active === selection} />
                 <TruncatingLabel text={entry.name} className="min-w-0 flex-1" />
-              </button>
+              </RowAction>
               {manageable ? (
                 <>
                   <IconAction

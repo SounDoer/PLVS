@@ -12,6 +12,7 @@ import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { IconAction } from "@/components/ui/icon-action";
+import { TabButton } from "@/components/ui/tab-button";
 
 // Muted icon buttons in the editor header (rename pencil, and the confirm/cancel while renaming),
 // matching LoudnessProfileEditor. `onPointerDown` on each stops the drag handle grabbing the click.
@@ -302,20 +303,9 @@ export function ThemeEditor({
             ["palettes", "Palettes"],
             ["advanced", "Advanced"],
           ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={page === id}
-              onClick={() => setPage(id)}
-              className={`border-b-2 px-3 py-1.5 text-[length:var(--ui-fs-metric-meta)] ${
-                page === id
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
+            <TabButton key={id} selected={page === id} onClick={() => setPage(id)}>
               {label}
-            </button>
+            </TabButton>
           ))}
         </div>
 

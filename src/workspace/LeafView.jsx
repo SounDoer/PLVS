@@ -31,6 +31,7 @@ import { PanelTitleGroup } from "./PanelTitleGroup.jsx";
 import { resolvePanelDisplayName, resolvePanelModuleId } from "./panelInstances.js";
 import { resolvePanelDefinition } from "./registry.jsx";
 import { getPanelControls } from "./panelControlInstances.js";
+import { IconAction } from "@/components/ui/icon-action";
 
 const noop = () => {};
 
@@ -70,8 +71,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
           `X` ("Hide all in panel") already closes it, so a second close control here would be
           redundant. */}
       {showClose ? (
-        <button
-          type="button"
+        <IconAction
           aria-label={`Close ${title}`}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
@@ -85,7 +85,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
           )}
         >
           <X className="size-[length:var(--ui-icon-panel-action)]" />
-        </button>
+        </IconAction>
       ) : null}
     </div>
   );
@@ -396,8 +396,7 @@ export function LeafView({ node, path, style }) {
                     : "Pin panel size"
               }
             >
-              <button
-                type="button"
+              <IconAction
                 aria-label={isActivePinned ? "Unpin panel size" : "Pin panel size"}
                 aria-pressed={isActivePinned}
                 className={cn(
@@ -411,24 +410,22 @@ export function LeafView({ node, path, style }) {
                 ) : (
                   <Pin className={PANEL_HEADER_PIN_ICON} />
                 )}
-              </button>
+              </IconAction>
             </HoverTip>
-            <button
-              type="button"
+            <IconAction
               aria-label="Fullscreen"
               className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => activeTab && setFullscreen(activeTab)}
             >
               <Maximize2 className="size-[length:var(--ui-icon-panel-action)]" />
-            </button>
-            <button
-              type="button"
+            </IconAction>
+            <IconAction
               aria-label="Hide all in panel"
               className={PANEL_HEADER_ACTION_BUTTON}
               onClick={() => visibleTabs.forEach((id) => removePanel(id))}
             >
               <X className="size-[length:var(--ui-icon-panel-action)]" />
-            </button>
+            </IconAction>
           </div>
         </div>
       )}

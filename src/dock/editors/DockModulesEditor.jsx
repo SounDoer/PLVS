@@ -21,6 +21,7 @@ import { DOCK_MODULE_REGISTRY } from "../registry.jsx";
 import { DockEditorShell } from "./DockEditorShell.jsx";
 import { ResetAction } from "../../components/ResetAction.jsx";
 import { DragHandle } from "@/components/ui/drag-handle";
+import { MenuRow } from "@/components/ui/row";
 
 const DOCK_ONLY_PANEL_META = {
   transport: {
@@ -214,11 +215,10 @@ export function DockModulesEditor({
           {DOCK_PANEL_MODULE_IDS.map((id) => {
             const entry = MODULE_REGISTRY[id] ?? DOCK_ONLY_PANEL_META[id];
             return (
-              <button
+              <MenuRow
                 key={id}
-                type="button"
                 onClick={() => onAdd(id)}
-                className={cn(MANAGEMENT_ROW_CLASS, "text-left text-foreground")}
+                className="group px-2 text-foreground focus-within:bg-ui-hover"
               >
                 <span className="flex shrink-0 text-muted-foreground">
                   {entry?.Icon ? (
@@ -228,7 +228,7 @@ export function DockModulesEditor({
                   )}
                 </span>
                 <span className="truncate">{entry?.title ?? id}</span>
-              </button>
+              </MenuRow>
             );
           })}
         </div>

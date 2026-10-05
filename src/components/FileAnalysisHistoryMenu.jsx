@@ -5,6 +5,8 @@ import { formatCompactSessionMetadata, formatDeliveryTriple } from "@/lib/fileAn
 import { cn } from "@/lib/utils";
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { IconAction } from "@/components/ui/icon-action";
+import { RowAction } from "@/components/ui/row";
+import { Button } from "@/components/ui/button";
 
 function statusLabel(session) {
   if (session?.state === "ready") return "Ready";
@@ -53,10 +55,10 @@ export function FileAnalysisHistoryMenu({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           aria-label={countLabel}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-[length:var(--ui-fs-control)] font-medium text-secondary-foreground transition-colors hover:bg-[color:var(--ui-secondary-hover)] focus-visible:bg-[color:var(--ui-secondary-hover)] data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
+          className="border border-border px-2.5 data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
         >
           <FileStack className="size-[1.15em]" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>
@@ -68,7 +70,7 @@ export function FileAnalysisHistoryMenu({
               {`${analyzingPct}%`}
             </span>
           ) : null}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-80 max-w-[92vw] p-1">
         <div className="flex items-center justify-between gap-2 px-2 py-1">
@@ -92,11 +94,10 @@ export function FileAnalysisHistoryMenu({
                 key={session.id}
                 className="group flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] transition-colors hover:bg-ui-hover focus-within:bg-ui-hover"
               >
-                <button
-                  type="button"
+                <RowAction
                   onClick={() => onSelectFile?.(session.id)}
                   aria-label={`Show file ${session.fileName}`}
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded-xs px-1.5 py-1.5 text-left"
+                  className="px-1.5 py-1.5"
                 >
                   <span
                     aria-label={isActive ? `Active file ${session.fileName}` : undefined}
@@ -127,17 +128,16 @@ export function FileAnalysisHistoryMenu({
                       </span>
                     ) : null}
                   </span>
-                </button>
+                </RowAction>
                 <span className="flex shrink-0 items-center gap-0.5 pr-1">
                   {isAnalyzing ? (
-                    <button
-                      type="button"
+                    <IconAction
                       onClick={() => onStopFile?.(session.id)}
                       aria-label={`Stop analyzing ${session.fileName}`}
-                      className="rounded-xs p-1 text-[color:var(--ui-activity-live)] transition-colors hover:bg-ui-hover"
+                      className="p-1 text-[color:var(--ui-activity-live)] hover:bg-ui-hover hover:text-[color:var(--ui-activity-live)]"
                     >
                       <Square className="size-[length:var(--ui-icon-management-action)]" />
-                    </button>
+                    </IconAction>
                   ) : (
                     <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <IconAction

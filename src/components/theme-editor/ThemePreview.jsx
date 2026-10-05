@@ -13,6 +13,7 @@ import { Button } from "../ui/button.jsx";
 import { Dialog, DialogContent } from "../ui/dialog.jsx";
 import { LAYER_PRIORITY } from "../ui/layers.js";
 import { ThemeVisualReview } from "./ThemeWarningSummary.jsx";
+import { TabButton } from "../ui/tab-button.jsx";
 
 function PreviewCard({ title, children }) {
   return (
@@ -252,16 +253,9 @@ export function ThemePreview({ draft, onClose, onJump }) {
             ["modules", "Modules"],
             ["review", "Visual Review"],
           ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={page === id}
-              onClick={() => setPage(id)}
-              className={`border-b-2 px-3 py-2 text-[length:var(--ui-fs-metric-meta)] ${page === id ? "border-primary text-foreground" : "border-transparent text-muted-foreground"}`}
-            >
+            <TabButton key={id} selected={page === id} onClick={() => setPage(id)} className="py-2">
               {label}
-            </button>
+            </TabButton>
           ))}
         </div>
         <div className="overflow-y-auto p-4">

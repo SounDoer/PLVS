@@ -35,7 +35,7 @@ export const PANEL_HEADER_BAR =
 export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
 
 export const PANEL_HEADER_ACTION_BUTTON =
-  "rounded-xs p-0.5 text-muted-foreground transition-colors hover:bg-ui-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-50";
+  "p-0.5 hover:bg-ui-hover disabled:pointer-events-none disabled:opacity-50";
 
 export const RESIZE_HANDLE_LINE_CLASS =
   "bg-transparent transition-colors group-hover:bg-border group-focus-visible:bg-border group-data-[dragging=true]:bg-primary";

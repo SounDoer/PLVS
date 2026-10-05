@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { EDITOR_SELECT_CONTENT_CLASS, EDITOR_SELECT_TRIGGER_CLASS } from "./selectStyles.js";
 import { ThemeEditorSwatch } from "./ThemeEditorSwatch.jsx";
 import { ResetAction } from "../ResetAction.jsx";
+import { RowAction } from "../ui/row.jsx";
 
 const REFERENCE_LABELS = {
   "core.text": "Follow Text",
@@ -239,8 +240,7 @@ export function AdvancedPage({
         return (
           <section key={section} className="rounded-md border border-border">
             <div className="flex items-center gap-1 px-2 py-1.5">
-              <button
-                type="button"
+              <RowAction
                 aria-label={section}
                 aria-expanded={isExpanded}
                 onClick={() =>
@@ -251,7 +251,7 @@ export function AdvancedPage({
                     return next;
                   })
                 }
-                className="flex min-w-0 flex-1 items-center gap-1 text-left text-[length:var(--ui-fs-metric-meta)] font-semibold"
+                className="gap-1 text-[length:var(--ui-fs-metric-meta)] font-semibold"
               >
                 <ChevronDown
                   className={`size-[length:var(--ui-icon-management-action)] transition-transform ${isExpanded ? "" : "-rotate-90"}`}
@@ -267,7 +267,7 @@ export function AdvancedPage({
                     <TriangleAlert className="size-[1em]" /> {sectionWarnings}
                   </span>
                 ) : null}
-              </button>
+              </RowAction>
               <ResetAction
                 label={`Reset ${section} section to Auto`}
                 tip="Reset Section to Auto"

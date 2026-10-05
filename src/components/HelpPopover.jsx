@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { PANEL_HEADER_ACTION_BUTTON } from "@/lib/shellLayout";
 import { cn } from "@/lib/utils";
 import { CircleHelp } from "lucide-react";
+import { IconAction } from "@/components/ui/icon-action";
 
 function iconForHint(item) {
   const text = String(item).toLowerCase();
@@ -134,8 +135,7 @@ export function HelpPopover({ items }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <IconAction
           className={PANEL_HEADER_ACTION_BUTTON}
           aria-label="Shortcuts and gestures"
           onMouseEnter={() => {
@@ -145,7 +145,7 @@ export function HelpPopover({ items }) {
           onMouseLeave={scheduleClose}
         >
           <CircleHelp className="size-[length:var(--ui-icon-panel-action)]" aria-hidden />
-        </button>
+        </IconAction>
       </PopoverTrigger>
       <PopoverContent
         side="bottom"

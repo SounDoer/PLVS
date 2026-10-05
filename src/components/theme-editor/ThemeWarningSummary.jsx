@@ -1,4 +1,5 @@
 import { CircleCheck, ClipboardCheck } from "lucide-react";
+import { LinkButton } from "@/components/ui/link-button";
 
 export function ThemeVisualReview({ warnings, onJump }) {
   return (
@@ -32,13 +33,12 @@ export function ThemeVisualReview({ warnings, onJump }) {
               <p className="mt-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                 Roles: {warning.roleIds.join(" · ")}
               </p>
-              <button
-                type="button"
+              <LinkButton
                 onClick={() => onJump(warning.target)}
-                className="mt-1 text-[length:var(--ui-fs-axis)] font-medium text-primary hover:underline"
+                className="mt-1 text-[length:var(--ui-fs-axis)] font-medium text-primary hover:text-primary hover:underline"
               >
                 Review {warning.target.id}
-              </button>
+              </LinkButton>
             </article>
           ))}
         </div>

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { usePointerReorder } from "@/hooks/usePointerReorder.js";
 import { IconAction } from "@/components/ui/icon-action";
 import { DragHandle } from "@/components/ui/drag-handle";
+import { RowAction } from "@/components/ui/row";
 
 const NOOP_PRESETS = {
   list: [],
@@ -176,18 +177,14 @@ export function PresetsPopoverContent({
                       onPointerDown={(event) => startDrag(preset.id, event)}
                       dragging={draggingId === preset.id}
                     />
-                    <button
-                      type="button"
+                    <RowAction
                       aria-label={`Apply preset ${preset.name}`}
                       onClick={() => runPresetAction(presets.apply(preset.id))}
                       disabled={blocked}
                       // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after
                       // the drag handle, so the left side doesn't need a second helping of the
                       // handle's own gap.
-                      className={cn(
-                        "flex min-w-0 flex-1 items-center gap-2 rounded-xs pl-1 pr-1.5 py-1.5 text-left",
-                        blockedClass
-                      )}
+                      className={cn("pl-1 pr-1.5 py-1.5", blockedClass)}
                     >
                       <span
                         aria-label={
@@ -206,7 +203,7 @@ export function PresetsPopoverContent({
                         text={`${preset.name}${isDirty ? " *" : ""}`}
                         className="min-w-0 flex-1 text-foreground"
                       />
-                    </button>
+                    </RowAction>
                     <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <IconAction
                         aria-label={`Update preset ${preset.name}`}
