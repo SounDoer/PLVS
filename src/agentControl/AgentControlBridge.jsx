@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { availableMonitors, currentMonitor, primaryMonitor } from "@tauri-apps/api/window";
 import { useDock } from "../dock/DockContext.jsx";
+import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
 import { isTauri } from "../ipc/env.js";
 import { supportsDockMode } from "../lib/platform.js";
 import { readAgentControlRuntime } from "./appSnapshot.js";
@@ -11,7 +12,7 @@ import { useAgentControlBridge } from "./useAgentControlBridge.js";
  * Each domain that gains an owner moves its wiring from `App.jsx` into this file; the areas still
  * listed in the props are the ones `AppContent` owns for now.
  *
- * @param {Omit<Parameters<typeof useAgentControlBridge>[0], "dock" | "executeDock" | "dockContext"> & {
+ * @param {Omit<Parameters<typeof useAgentControlBridge>[0], "dock" | "executeDock" | "dockContext" | "viewContext"> & {
  *   dockContext: Omit<
  *     import("./useAgentControlBridge.js").AgentControlDockContext,
  *     "transitioning" | "monitors" | "fallbackMonitor" | "monitorRects" | "monitorInventoryReady"
@@ -112,8 +113,29 @@ export function AgentControlBridge(props) {
     ]
   );
 
+  const { view, applyViewState } = useWindowChrome();
+  const { pinned, focusView, surfaceOpacity, glassEnabled } = view;
+  const agentControlViewContext = useMemo(
+    () => ({
+      view: { pinned, focusView, surfaceOpacity, glassEnabled },
+      platform: props.runtime.platform,
+      docked,
+      applyView: applyViewState,
+    }),
+    [
+      props.runtime.platform,
+      applyViewState,
+      docked,
+      focusView,
+      glassEnabled,
+      surfaceOpacity,
+      pinned,
+    ]
+  );
+
   useAgentControlBridge({
     ...props,
+    viewContext: agentControlViewContext,
     dock: agentControlDock,
     dockContext: {
       ...props.dockContext,

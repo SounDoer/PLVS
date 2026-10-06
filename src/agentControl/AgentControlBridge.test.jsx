@@ -17,12 +17,23 @@ vi.mock("../dock/DockContext.jsx", () => ({
     executeDockForControl: async () => {},
   }),
 }));
+vi.mock("../hooks/WindowChromeContext.jsx", () => ({
+  useWindowChrome: () => ({
+    view: {
+      pinned: false,
+      focusView: { autoHideControls: false, compactPanels: false, borderless: false },
+      surfaceOpacity: 100,
+      glassEnabled: false,
+    },
+    applyViewState: async () => {},
+  }),
+}));
 
 import { AgentControlBridge } from "./AgentControlBridge.jsx";
 import { standIn } from "../testing/standIn.js";
 
 describe("AgentControlBridge", () => {
-  it("renders nothing and builds the Dock area from the Dock owner", () => {
+  it("renders nothing and builds the Dock and View areas from their owners", () => {
     const props = standIn({
       enabled: false,
       runtime: { available: false },
@@ -41,5 +52,7 @@ describe("AgentControlBridge", () => {
       monitorInventoryReady: false,
     });
     expect(typeof passed.executeDock).toBe("function");
+    expect(passed.viewContext).toMatchObject({ docked: false, view: { surfaceOpacity: 100 } });
+    expect(typeof passed.viewContext.applyView).toBe("function");
   });
 });

@@ -43,10 +43,10 @@ import {
   sceneOperationUnavailableReason,
 } from "./lib/sceneOperations.js";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
-import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
 import { useCrashReporting } from "./hooks/useCrashReporting.js";
 import { useCrashReportSetting } from "./hooks/useCrashReportSetting.js";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
+import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
@@ -68,7 +68,7 @@ import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
-import { isMacOS, supportsDockMode } from "./lib/platform.js";
+import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests, deriveRetainedAnalysisKeys } from "./analysis/analysisRequests.js";
@@ -92,17 +92,11 @@ import { useInstanceIdentity } from "./hooks/useInstanceIdentity.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
-import { setWindowDecorations, useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
-import {
-  syncSurfaceOpacityWindowShadow,
-  useSurfaceOpacityWindowShadow,
-} from "./hooks/useSurfaceOpacityWindowShadow.js";
-import { setGlassEffect, useGlassEffect } from "./hooks/useGlassEffect.js";
+import { syncSurfaceOpacityWindowShadow } from "./hooks/useSurfaceOpacityWindowShadow.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { automaticOutputChangeNotice } from "./lib/captureHealth.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
-import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
 import { useRuntimeCoordination } from "./runtime/coordination.js";
 import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
@@ -222,7 +216,9 @@ export default function App() {
               <SettingsProvider>
                 <SceneGuardProvider>
                   <DockProvider>
-                    <AppContent />
+                    <WindowChromeProvider>
+                      <AppContent />
+                    </WindowChromeProvider>
                   </DockProvider>
                 </SceneGuardProvider>
               </SettingsProvider>
@@ -364,139 +360,26 @@ function AppContent() {
     onDockChange,
     onDockHeightChange,
   } = useDock();
-  // Suspended while docked: a preset apply may flip the stored pin to false
-  // while the strip must stay topmost; when docked flips false the effect
-  // re-asserts the user's value.
-  useAlwaysOnTop(pinned, { suspended: docked });
-  // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
-  // when docked flips false the effect re-runs and re-asserts the user's values.
-  useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
-  useSurfaceOpacityWindowShadow(surfaceOpacity);
-
-  const applyViewState = useCallback(
-    async (next, { changed = [] } = {}) => {
-      const rollback = [];
-      try {
-        if (
-          changed.includes("view.surfaceOpacity") &&
-          (next.surfaceOpacity === 0) !== (surfaceOpacity === 0)
-        ) {
-          const applied = await syncSurfaceOpacityWindowShadow(next.surfaceOpacity);
-          if (applied) {
-            rollback.push(() => syncSurfaceOpacityWindowShadow(surfaceOpacity));
-          }
-        }
-        if (!docked && isTauri()) {
-          const win = getCurrentWindow();
-          if (changed.includes("view.pinned")) {
-            await win.setAlwaysOnTop(next.pinned === true);
-            rollback.push(() => win.setAlwaysOnTop(pinned === true));
-          }
-          if (
-            changed.includes("view.focusView.autoHideControls") ||
-            changed.includes("view.focusView.borderless")
-          ) {
-            const applied = await setWindowDecorations(
-              !(next.focusView.autoHideControls || next.focusView.borderless)
-            );
-            if (applied) {
-              rollback.push(() =>
-                setWindowDecorations(!(focusView.autoHideControls || focusView.borderless))
-              );
-            }
-          }
-        }
-        if (isMacOS() && changed.includes("view.glassEnabled")) {
-          await setGlassEffect(next.glassEnabled, resolvedTheme.colorScheme === "dark");
-          rollback.push(() => setGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark"));
-        }
-      } catch (error) {
-        let rollbackCompleted = true;
-        for (const compensate of rollback.reverse()) {
-          try {
-            await compensate();
-          } catch {
-            rollbackCompleted = false;
-          }
-        }
-        const failure =
-          /** @type {Error & { partial?: boolean, rollback?: string, changed?: any }} */ (
-            error instanceof Error ? error : new Error(String(error))
-          );
-        failure.partial = !rollbackCompleted;
-        failure.rollback = rollbackCompleted ? "completed" : "partial";
-        failure.changed = [];
-        throw failure;
-      }
-
-      if (changed.includes("view.pinned")) setPinnedStored(next.pinned);
-      if (changed.some((path) => path.startsWith("view.focusView."))) {
-        setFocusView(next.focusView);
-      }
-      if (changed.includes("view.surfaceOpacity")) {
-        setSurfaceOpacityStored(next.surfaceOpacity);
-      }
-      if (changed.includes("view.glassEnabled")) setGlassEnabledStored(next.glassEnabled);
+  const {
+    setPinned,
+    setAutoHideControls,
+    setCompactPanels,
+    setBorderless,
+    setSurfaceOpacity,
+    setGlassEnabled,
+    focusViewActive,
+    frameless,
+    reveal: {
+      controlsVisible: focusControlsVisible,
+      showControls: showFocusControls,
+      hideControlsLater: hideFocusControlsLater,
+      hideControlsNow: hideFocusControlsNow,
+      toggleControls: toggleFocusControls,
+      holdControls: holdFocusControls,
+      releaseControlsHold: releaseFocusControlsHold,
+      handleWindowDrag,
     },
-    [
-      docked,
-      focusView,
-      glassEnabled,
-      pinned,
-      resolvedTheme.colorScheme,
-      surfaceOpacity,
-      setFocusView,
-      setGlassEnabledStored,
-      setSurfaceOpacityStored,
-      setPinnedStored,
-    ]
-  );
-  const setPinned = useCallback(
-    (/** @type {boolean} */ value) =>
-      void applyViewState(
-        { pinned: value === true, focusView, surfaceOpacity, glassEnabled },
-        { changed: ["view.pinned"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, surfaceOpacity]
-  );
-  const setFocusField = useCallback(
-    (field, /** @type {boolean} */ value) =>
-      void applyViewState(
-        {
-          pinned,
-          focusView: { ...focusView, [field]: value === true },
-          surfaceOpacity,
-          glassEnabled,
-        },
-        { changed: [`view.focusView.${field}`] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, surfaceOpacity, pinned]
-  );
-  const setAutoHideControls = useCallback(
-    (value) => setFocusField("autoHideControls", value),
-    [setFocusField]
-  );
-  const setCompactPanels = useCallback(
-    (value) => setFocusField("compactPanels", value),
-    [setFocusField]
-  );
-  const setBorderless = useCallback((value) => setFocusField("borderless", value), [setFocusField]);
-  const setSurfaceOpacity = useCallback(
-    (value) =>
-      void applyViewState(
-        { pinned, focusView, surfaceOpacity: value, glassEnabled },
-        { changed: ["view.surfaceOpacity"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, pinned]
-  );
-  const setGlassEnabled = useCallback(
-    (/** @type {boolean} */ value) =>
-      void applyViewState(
-        { pinned, focusView, surfaceOpacity, glassEnabled: value === true },
-        { changed: ["view.glassEnabled"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, surfaceOpacity, pinned]
-  );
+  } = useWindowChrome();
 
   const {
     snapshot: audioDeviceSnapshot,
@@ -601,7 +484,6 @@ function AppContent() {
     () => (audioDevices || []).filter((d) => !d.isSystemOutputMonitor),
     [audioDevices]
   );
-  useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
   const { display, routing } = useMeterRuntimeAssembly();
   const { audio, setAudio } = display;
@@ -1200,23 +1082,6 @@ function AppContent() {
       meterRuntime.liveLifecycle,
     ]
   );
-  const agentControlViewContext = useMemo(
-    () => ({
-      view: { pinned, focusView, surfaceOpacity, glassEnabled },
-      platform: agentControlRuntime.platform,
-      docked,
-      applyView: applyViewState,
-    }),
-    [
-      agentControlRuntime.platform,
-      applyViewState,
-      docked,
-      focusView,
-      glassEnabled,
-      surfaceOpacity,
-      pinned,
-    ]
-  );
   const agentControlVisual = useMemo(
     () => ({
       platformCapabilities: visualPlatformCapabilities,
@@ -1472,17 +1337,11 @@ function AppContent() {
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
     measurementContext: agentControlMeasurementContext,
-    viewContext: agentControlViewContext,
     visual: agentControlVisual,
     uiNavigation,
   };
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
-
-  useEffect(() => {
-    const s = document.documentElement.style;
-    s.setProperty("--surface-opacity", `${surfaceOpacity}%`);
-  }, [surfaceOpacity]);
 
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
 
@@ -1614,27 +1473,6 @@ function AppContent() {
       : "Not connected";
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
   const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
-  const focusViewActive =
-    pinned ||
-    focusView.autoHideControls ||
-    focusView.compactPanels ||
-    focusView.borderless ||
-    surfaceOpacity < 100;
-  const frameless = focusView.autoHideControls || focusView.borderless;
-  const {
-    controlsVisible: focusControlsVisible,
-    showControls: showFocusControls,
-    hideControlsLater: hideFocusControlsLater,
-    hideControlsNow: hideFocusControlsNow,
-    toggleControls: toggleFocusControls,
-    holdControls: holdFocusControls,
-    releaseControlsHold: releaseFocusControlsHold,
-    handleWindowDrag,
-  } = useViewsChromeReveal({
-    autoHideControls: focusView.autoHideControls,
-    frameless,
-  });
-
   // Clamp every panel instance's channel selection to the currently available channels. Lowering
   // the device channel count must repair all panels (not just the first), otherwise a stale
   // out-of-range selection would derive an analysis request key with no matching backend result.
