@@ -4,6 +4,9 @@ export const HISTORY_MAX_WINDOW_SEC = 7200;
 /** Number of segments for the horizontal time-axis tick labels on the loudness history chart. */
 export const HISTORY_TIME_TICK_STEPS = 4;
 
+/**
+ * @param {number} index
+ */
 function rowAt(entries, index) {
   if (!entries) return undefined;
   if (typeof entries.rowAt === "function") return entries.rowAt(index);
@@ -15,6 +18,7 @@ function rowAt(entries, index) {
  * One field of one row. A packed history answers this straight out of its column; materialising a
  * whole row per drawn sample would allocate the row object and its three waveform views, and this
  * runs once per visible sample per panel per frame.
+ * @param {number} index
  */
 function valueAt(entries, index, key) {
   if (!entries) return undefined;
@@ -71,6 +75,10 @@ export function buildMediaTimeAxisLabels(startSec, endSec) {
  * Media-time range (seconds) covered by the visible history window, derived from sample indices.
  * File-mode history is uniformly sampled from media time 0, so sample index i maps to i * sampleSec.
  * @returns {{ startSec: number, endSec: number }} oldest (left) and newest (right) visible media time
+ * @param {number} totalSamples
+ * @param {number} effectiveOffsetSamples
+ * @param {number} visibleSamples
+ * @param {number} sampleSec
  */
 export function mediaTimeAxisRangeSec(
   totalSamples,
@@ -83,6 +91,12 @@ export function mediaTimeAxisRangeSec(
   return { startSec, endSec };
 }
 
+/**
+ * @param {number} totalSamples
+ * @param {number} historyWindowSec
+ * @param {number} historyOffsetSec
+ * @param {number} sampleSec
+ */
 export function getHistoryViewport(
   totalSamples,
   historyWindowSec,
@@ -126,6 +140,11 @@ export function buildLoudnessYAxisTicks(targetLufs, baseTicks) {
   return out;
 }
 
+/**
+ * @param {string} key
+ * @param {number} visibleSamples
+ * @param {number} effectiveOffsetSamples
+ */
 export function buildHistoryPath(
   histSourceList,
   key,
@@ -147,7 +166,8 @@ export function buildHistoryPath(
   const count = end - start + 1;
   if (count < 2) return "";
 
-  const xOf = (idx) => ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
+  const xOf = (/** @type {number} */ idx) =>
+    ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
   const cols = Math.max(1, Math.floor(targetColumns));
 
   // Faithful per-sample path when the visible window fits within the pixel budget. Sub-column
@@ -183,6 +203,11 @@ export function buildHistoryPath(
   return d;
 }
 
+/**
+ * @param {string} key
+ * @param {number} visibleSamples
+ * @param {number} effectiveOffsetSamples
+ */
 export function buildHistoryPathFromIndex(
   histSourceList,
   displayIndex,
@@ -205,7 +230,8 @@ export function buildHistoryPathFromIndex(
   const count = end - start + 1;
   if (count < 2) return "";
 
-  const xOf = (idx) => ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
+  const xOf = (/** @type {number} */ idx) =>
+    ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
   const cols = Math.max(1, Math.floor(targetColumns));
   if (count <= cols) {
     return buildHistoryPath(
@@ -221,7 +247,8 @@ export function buildHistoryPathFromIndex(
 
   displayIndex.beginQueryBatch();
   const retainedStartSequence = displayIndex.retainedStartSequence;
-  const rawRowAt = (sequence) => rowAt(histSourceList, sequence - retainedStartSequence);
+  const rawRowAt = (/** @type {number} */ sequence) =>
+    rowAt(histSourceList, sequence - retainedStartSequence);
   let d = "";
   let first = true;
   for (let bucket = 0; bucket < cols; bucket += 1) {
@@ -249,6 +276,10 @@ export function buildHistoryPathFromIndex(
   return d;
 }
 
+/**
+ * @param {number} visibleSamples
+ * @param {number} effectiveOffsetSamples
+ */
 export function buildLoudnessHistoryPathsFromIndex(
   histSourceList,
   displayIndex,
@@ -295,10 +326,12 @@ export function buildLoudnessHistoryPathsFromIndex(
     };
   }
 
-  const xOf = (idx) => ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
+  const xOf = (/** @type {number} */ idx) =>
+    ((idx - oldestVisible) / Math.max(1, winSamples - 1)) * viewWidth;
   displayIndex.beginQueryBatch();
   const retainedStartSequence = displayIndex.retainedStartSequence;
-  const rawRowAt = (sequence) => rowAt(histSourceList, sequence - retainedStartSequence);
+  const rawRowAt = (/** @type {number} */ sequence) =>
+    rowAt(histSourceList, sequence - retainedStartSequence);
   const paths = { m: "", st: "" };
   let first = true;
   for (let bucket = 0; bucket < cols; bucket += 1) {

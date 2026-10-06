@@ -29,10 +29,16 @@ function rowHasNaN(row) {
   return false;
 }
 
+/**
+ * @param {number} index
+ */
 function sequenceAt(sequences, index) {
   return typeof sequences.at === "function" ? sequences.at(index) : sequences[index];
 }
 
+/**
+ * @param {number} target
+ */
 function lowerBound(sequences, target) {
   let low = 0;
   let high = sequences.length;
@@ -45,6 +51,9 @@ function lowerBound(sequences, target) {
 }
 
 export class WaveformHistoryIndex {
+  /**
+   * @param {number | object} capacityOrIndex a capacity, or the frozen index `freeze()` hands over
+   */
   constructor(capacityOrIndex, frozen = false, rawRows = null, nanSequences = null) {
     this._index =
       typeof capacityOrIndex === "number"
@@ -68,12 +77,19 @@ export class WaveformHistoryIndex {
     if (rowHasNaN(row)) this._nanSequences.push(sequence);
   }
 
+  /**
+   * @param {number} startSequence
+   * @param {number} endSequence
+   */
   queryRange(startSequence, endSequence) {
     const retainedStart = this._index.retainedStartSequence;
-    const result = this._index.queryRange(startSequence, endSequence, (sequence) =>
-      typeof this._rawRows.at === "function"
-        ? this._rawRows.at(sequence - retainedStart)
-        : this._rawRows[sequence - retainedStart]
+    const result = this._index.queryRange(
+      startSequence,
+      endSequence,
+      (/** @type {number} */ sequence) =>
+        typeof this._rawRows.at === "function"
+          ? this._rawRows.at(sequence - retainedStart)
+          : this._rawRows[sequence - retainedStart]
     );
     const stats = this._index.lastQueryStats();
     this._batchQueryStats.queries += 1;
@@ -95,6 +111,10 @@ export class WaveformHistoryIndex {
     return { ...this._batchQueryStats };
   }
 
+  /**
+   * @param {number} startSequence
+   * @param {number} endSequence
+   */
   hasNaNInRange(startSequence, endSequence) {
     const start = Math.max(startSequence, this.retainedStartSequence);
     const end = Math.min(endSequence, this.retainedEndSequence - 1);

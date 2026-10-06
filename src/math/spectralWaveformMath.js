@@ -46,6 +46,8 @@ export function waveformFrequencyScale({ lowMidSplitHz, midHighSplitHz }, palett
  * The arithmetic is the same as it always was, in the same order, including the intermediate
  * rounding of the interpolated hue -- `spectralWaveformMath.test.js` compares it byte for byte
  * against an independent transcription across the input space.
+ * @param {number} tonality
+ * @param {number[]} out
  */
 export function waveformFrequencyRgbInto(scale, frequencyHz, tonality, out) {
   const { low, mid, high, neutral } = scale.palette;
@@ -95,6 +97,8 @@ export function waveformFrequencyRgbInto(scale, frequencyHz, tonality, out) {
 /**
  * One colour, for callers outside a paint loop. Builds the scale each call, so a loop should use
  * `waveformFrequencyScale` plus `waveformFrequencyRgbInto` instead.
+ * @param {number} frequencyHz
+ * @param {number} tonality
  */
 export function waveformFrequencyRgb(frequencyHz, tonality, splits, palette) {
   return waveformFrequencyRgbInto(
@@ -114,6 +118,9 @@ export function centroidYFraction(frequencyHz) {
   return 1 - frequencyFraction;
 }
 
+/**
+ * @param {number} index
+ */
 function rowAt(rows, index) {
   return typeof rows?.rowAt === "function" ? rows.rowAt(index) : rows?.[index];
 }
@@ -124,6 +131,7 @@ function rowAt(rows, index) {
  * The history slabs store their columns packed, so `rowAt` builds an object and a typed-array view
  * per field every time it is called. Every read below wants one number out of that, and the seek
  * makes many such reads, so it goes through the slab's own timestamp column when there is one.
+ * @param {number} index
  */
 function timestampAt(rows, index) {
   if (typeof rows?.timestampAt === "function") return rows.timestampAt(index);
@@ -143,6 +151,8 @@ function timestampAt(rows, index) {
  * that arrived with no usable timestamp is stored as `-Infinity`, and one of those sitting between
  * two real rows would break that assumption; such a row resolves to "no data" for its bucket under
  * the age check below either way.
+ * @param {number} targetMs
+ * @param {number} length
  */
 function seekRowAtOrBefore(rows, targetMs, length) {
   let low = 0;
@@ -155,6 +165,9 @@ function seekRowAtOrBefore(rows, targetMs, length) {
   return low;
 }
 
+/**
+ * @param {number} nominalIntervalMs
+ */
 function timestampAtWaveformCoordinate(rows, coordinate, nominalIntervalMs) {
   const length = rows?.length ?? 0;
   if (length <= 0 || !Number.isFinite(coordinate)) return NaN;
@@ -188,6 +201,10 @@ export const EMPTY_SPECTRAL_WAVEFORM_METRICS = Object.freeze({
   tonality: Object.freeze([]),
 });
 
+/**
+ * @param {number} bucketCount
+ * @param {number} channelCount
+ */
 export function sliceSpectralWaveformMetrics(
   rows,
   startTimestampMs,
@@ -247,7 +264,7 @@ export function sliceSpectralWaveformMetrics(
         const newestVisible = total - 1 - offset;
         const oldestVisible = newestVisible - Math.max(1, waveformGrid.visibleSamples) + 1;
         const firstAbsoluteBucket = Math.floor(oldestVisible / coordsPerBucket);
-        return (bucket) =>
+        return (/** @type {number} */ bucket) =>
           timestampAtWaveformCoordinate(
             waveformRows,
             (firstAbsoluteBucket + bucket + 1) * coordsPerBucket,
@@ -255,12 +272,12 @@ export function sliceSpectralWaveformMetrics(
           );
       })()
     : gridAligned
-      ? (bucket) =>
+      ? (/** @type {number} */ bucket) =>
           waveformGrid.newestVisibleTimestampMs +
           ((bucket + 1 - fracPhase) * coordsPerBucket -
             (Math.max(1, waveformGrid.visibleSamples) - 0.5)) *
             nominalIntervalMs
-      : (bucket) => {
+      : (/** @type {number} */ bucket) => {
           const durationMs = Math.max(0, endTimestampMs - startTimestampMs);
           return startTimestampMs + (durationMs * bucket) / Math.max(1, bucketCount - 1);
         };

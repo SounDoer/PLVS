@@ -112,7 +112,11 @@ export function sampleWaterfallGrid({
   }
 
   /** Read frame `i` into row `count`, or report that it carries no levels. */
-  const writeRow = (i, ts, count) => {
+  const writeRow = (
+    /** @type {number} */ i,
+    /** @type {number} */ ts,
+    /** @type {number} */ count
+  ) => {
     const row = view.rowAt(i);
     if (!row || (!row.dbAt && !row.dbList)) return false;
     const base = count * pointCount;

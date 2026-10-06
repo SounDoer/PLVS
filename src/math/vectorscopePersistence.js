@@ -58,6 +58,9 @@ export function computeWindowEffRadius(rows) {
   return Math.min(BASE_PLOT_RADIUS, (VS_HALF - VS_SAFE_INSET) / extent);
 }
 
+/**
+ * @param {number} ageMs
+ */
 export function persistenceAlpha(ageMs, windowMs = PERSISTENCE_WINDOW_MS) {
   const t = Math.max(0, Math.min(1, ageMs / windowMs));
   return PERSISTENCE_ALPHA_MAX - (PERSISTENCE_ALPHA_MAX - PERSISTENCE_ALPHA_MIN) * t;

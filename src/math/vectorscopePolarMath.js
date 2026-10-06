@@ -17,6 +17,10 @@ function clampSample(value) {
   return Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0));
 }
 
+/**
+ * @param {number} left
+ * @param {number} right
+ */
 export function projectPairToPolar(left, right) {
   const l = clampSample(left);
   const r = clampSample(right);
@@ -55,6 +59,10 @@ export function polarSampleAlpha(ageMs, windowMs = POLAR_SAMPLE_WINDOW_MS) {
   return 1 - Math.max(0, Math.min(1, ageMs / windowMs));
 }
 
+/**
+ * @param {number} angle
+ * @param {number} binCount
+ */
 function binIndexForAngle(angle, binCount) {
   const normalized = (angle + Math.PI / 2) / Math.PI;
   return Math.max(0, Math.min(binCount - 1, Math.round(normalized * (binCount - 1))));
@@ -76,6 +84,11 @@ export function smoothPolarBins(bins) {
   return output;
 }
 
+/**
+ * @param {number} pairValueCount
+ * @param {number[]} peak
+ * @param {number} binCount
+ */
 export function accumulatePairSourceIntoBins(pairValueCount, pairAt, peak, binCount) {
   for (let index = 0; index + 1 < pairValueCount; index += 2) {
     const point = projectPairToPolar(pairAt(index), pairAt(index + 1));
@@ -85,6 +98,9 @@ export function accumulatePairSourceIntoBins(pairValueCount, pairAt, peak, binCo
   }
 }
 
+/**
+ * @param {number} binCount
+ */
 function accumulatePairsIntoBins(pairs, peak, binCount) {
   accumulatePairSourceIntoBins(pairs.length, (index) => pairs[index], peak, binCount);
 }
@@ -133,6 +149,9 @@ export function buildPolarLevelMaxHoldTable(slab, binCount = POLAR_LEVEL_BIN_COU
   return { table, binCount, length, bucketRows, slab };
 }
 
+/**
+ * @param {number} index
+ */
 export function polarLevelMaxHoldAt(built, index) {
   if (!built || index < 0 || index >= built.length) return null;
   if (built.incremental) return built.slab.polarMaxHoldAt(index);
@@ -148,11 +167,17 @@ export function polarLevelMaxHoldAt(built, index) {
   return smoothPolarBins(running);
 }
 
+/**
+ * @param {number} timeMs
+ */
 function timeAlpha(elapsedMs, timeMs) {
   const elapsed = Math.max(0, Number.isFinite(elapsedMs) ? elapsedMs : 0);
   return 1 - Math.exp(-elapsed / timeMs);
 }
 
+/**
+ * @param {number} elapsedMs
+ */
 export function updatePolarLevelEnvelope(previous, target, elapsedMs, { settled = false } = {}) {
   const next = Float64Array.from(target ?? []);
   if (settled || !previous || previous.length !== next.length) return next;

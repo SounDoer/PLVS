@@ -83,8 +83,8 @@ export function buildSpectrumMaxHoldTable(history, bucketRows) {
 /**
  * The hold as it stood at `index`: the previous bucket's prefix, then a replay of the rows since.
  * Exact — the bucket saves work, it does not approximate.
- *
  * @returns {{ dbList: Float32Array, dbListB: Float32Array }|null}
+ * @param {number} index
  */
 export function spectrumMaxHoldAt(built, index) {
   if (!built || index < 0 || index >= built.length) return null;

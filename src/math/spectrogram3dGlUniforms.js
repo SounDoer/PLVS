@@ -36,7 +36,12 @@ export function buildGlUniforms({ proj, width, height, heightGain }) {
   };
 }
 
-/** What the vertex shader computes. Kept in JS so the test above can hold it to `projectPoint`. */
+/**
+ * What the vertex shader computes. Kept in JS so the test above can hold it to `projectPoint`.
+ * @param {number} tFrac
+ * @param {number} fFrac
+ * @param {number} height
+ */
 export function projectWithUniforms(tFrac, fFrac, height, u) {
   const t = tFrac - 0.5;
   const f = fFrac - 0.5;

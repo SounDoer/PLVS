@@ -9,6 +9,7 @@ export const STEREO_MAP_MODES = Object.freeze({
   MS_RATIO_DB: "msRatioDb",
 });
 
+/** @type {Set<string>} */
 const MODES = new Set(Object.values(STEREO_MAP_MODES));
 const MODE_LIST = Object.freeze(Object.values(STEREO_MAP_MODES));
 const ENERGY_FLOOR_LOG10 = -20;
@@ -17,6 +18,9 @@ const GATE_BELOW_PEAK_DB = 60;
 const GATE_FADE_DB = 12;
 const ROUNDOFF_EPSILON = Number.EPSILON * 16;
 
+/**
+ * @param {string} mode
+ */
 function validateMode(mode) {
   if (!MODES.has(mode)) {
     throw new TypeError(`Unknown Stereo Map mode: ${String(mode)}`);
@@ -67,6 +71,10 @@ function normalizePrimitive({ pl, pr, c } = {}) {
   };
 }
 
+/**
+ * @param {number} value
+ * @param {number} magnitude
+ */
 function clampRoundoffToZero(value, magnitude) {
   if (value >= 0) return value;
   return value >= -ROUNDOFF_EPSILON * Math.max(1, magnitude) ? 0 : null;
@@ -78,6 +86,13 @@ function deriveValue(mode, primitive) {
   return deriveValueFromScalars(mode, pl, pr, c, scale, geometricMean);
 }
 
+/**
+ * @param {number} pl
+ * @param {number} pr
+ * @param {number} c
+ * @param {number} scale
+ * @param {number} geometricMean
+ */
 function deriveValueFromScalars(mode, pl, pr, c, scale, geometricMean) {
   if (scale === 0) return null;
 
@@ -114,6 +129,11 @@ function deriveValueFromScalars(mode, pl, pr, c, scale, geometricMean) {
   }
 }
 
+/**
+ * @param {number} opacity
+ * @param {number} lowerBound
+ * @param {number} upperBound
+ */
 function projectPoint(value, opacity, lowerBound, upperBound) {
   if (value === null || Number.isNaN(value)) return { state: "invalid" };
   if (value < lowerBound) {
@@ -129,6 +149,7 @@ function projectPoint(value, opacity, lowerBound, upperBound) {
 /**
  * Derive and clip one primitive point. Primitive non-finites are invalid; formula infinities
  * remain valid and project to an explicit range state.
+ * @param {string} mode
  */
 export function deriveStereoMapPoint(mode, primitive, range, opacity = 1) {
   validateMode(mode);
@@ -281,7 +302,9 @@ export function visitStereoMapDerivedPoints(row, visitor, scratch, instrumentati
   return visitDerivedModes(row, MODE_LIST, visitor, scratch, instrumentation);
 }
 
-/** Visit only the modes that currently have an open panel while sharing one normalization pass. */
+/**
+ * Visit only the modes that currently have an open panel while sharing one normalization pass.
+ */
 export function visitSelectedStereoMapDerivedPoints(row, modes, visitor, scratch, instrumentation) {
   const selected = Array.from(modes ?? []);
   for (const mode of selected) validateMode(mode);
@@ -293,6 +316,7 @@ export function visitSelectedStereoMapDerivedPoints(row, modes, visitor, scratch
  * contains the strict display states consumed by Workspace, history snapshots, and Dock plots.
  * The validated `bandCentersHz` reference is retained so axis and hover consumers use the same
  * IPC grid without rebuilding it.
+ * @param {string} mode
  */
 export function deriveStereoMapRow(mode, row, range) {
   validateMode(mode);
@@ -305,7 +329,7 @@ export function deriveStereoMapRow(mode, row, range) {
   visitDerivedModes(
     row,
     [mode],
-    (_visitedMode, index, value, state, opacity, db) => {
+    (_visitedMode, index, value, /** @type {string} */ state, opacity, db) => {
       energy[index] = db;
       values[index] = value;
       points[index] =

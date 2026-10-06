@@ -92,6 +92,8 @@ export function buildSurfaceMesh(grid, { rowGapTFrac, skirt = false }) {
  * One cycle rather than four independent edges: the skirt's quads are then just consecutive pairs,
  * corners included, with nothing to special-case at the turns. A grid thinner than a cell in either
  * direction has no interior and no boundary worth walling, so it gets no skirt.
+ * @param {number} count
+ * @param {number} pointCount
  */
 function boundaryCycle(count, pointCount) {
   if (count < 2 || pointCount < 2) return null;

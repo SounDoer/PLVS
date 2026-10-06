@@ -5,6 +5,9 @@ import { inWindowRange } from "./spectrogramTimeline.js";
 import { STEREO_MAP_MODES } from "./stereoMapMath.js";
 import { nearestTimestampIndex } from "../lib/snapshotResolve.js";
 
+/**
+ * @param {number} index
+ */
 function rowAt(entries, index) {
   if (!entries) return undefined;
   if (typeof entries.rowAt === "function") return entries.rowAt(index);
@@ -183,6 +186,9 @@ export function computeWaveformHoverPoint(
   };
 }
 
+/**
+ * @param {number} xFrac
+ */
 export function findMarkerNoteAtX(xFrac, markers, hitFrac = 0.015) {
   if (!markers?.length) return null;
   let best = null;
@@ -327,7 +333,9 @@ export function formatStereoMapPositionValue(value, firstLabel, secondLabel) {
   return `${pct}% ${value > 0 ? firstLabel : secondLabel}`;
 }
 
-/** Formats a Correlation value in [-1, 1] to two decimal places. */
+/**
+ * Formats a Correlation value in [-1, 1] to two decimal places.
+ */
 export function formatStereoMapCorrelationValue(value) {
   return Number.isFinite(value) ? value.toFixed(2) : "-";
 }
@@ -347,7 +355,9 @@ export function formatStereoMapDbValue(point, unit = "dB") {
   return "-";
 }
 
-/** Formats the intentionally approximate Stereo Map energy readout (internal analysis-PSD scale). */
+/**
+ * Formats the intentionally approximate Stereo Map energy readout (internal analysis-PSD scale).
+ */
 export function formatStereoMapEnergy(db) {
   if (db === -Infinity) return "Energy: Below Gate";
   return Number.isFinite(db) ? `Energy ≈ ${db.toFixed(1)} dB` : "Energy: -";
@@ -376,8 +386,8 @@ export function formatStereoMapValue(mode, point, { firstLabel, secondLabel } = 
  * finite/belowRange/aboveRange shape `formatStereoMapValue` reads, so Hold and current value share
  * one formatting path. Hold values are already fully valid measurements (only valid points update
  * Hold), so there is no "invalid" state here — only "no Hold recorded yet" (null in, "-" out).
+ * @returns {{ state: "finite"|"belowRange"|"aboveRange"|"invalid", value?: number } | null}
  */
-/** @returns {{ state: "finite"|"belowRange"|"aboveRange"|"invalid", value?: number } | null} */
 export function clipStereoMapHoldValue(rawValue, range) {
   if (rawValue === null || rawValue === undefined || Number.isNaN(rawValue)) return null;
   if (rawValue < range.lowerBound) return { state: "belowRange", value: range.lowerBound };
@@ -385,7 +395,10 @@ export function clipStereoMapHoldValue(rawValue, range) {
   return { state: "finite", value: rawValue };
 }
 
-/** Formats a Stereo Map Hold readout, or "-" when Hold has not recorded a value at this band yet. */
+/**
+ * Formats a Stereo Map Hold readout, or "-" when Hold has not recorded a value at this band yet.
+ * @param {string} mode
+ */
 export function formatStereoMapHoldValue(mode, rawValue, range, labels = {}) {
   const clipped = clipStereoMapHoldValue(rawValue, range);
   if (!clipped) return "-";

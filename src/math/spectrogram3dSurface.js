@@ -176,7 +176,7 @@ export function buildRowLut(tFracs, count, size, maxDistTFrac) {
       weights[i] = Math.min(1, Math.max(0, (t - tFracs[row]) / dt));
     }
   }
-  const toTFrac = (i) => (i < 0 ? NaN : size > 1 ? i / (size - 1) : 0);
+  const toTFrac = (/** @type {number} */ i) => (i < 0 ? NaN : size > 1 ? i / (size - 1) : 0);
   return {
     rows,
     weights,
@@ -361,6 +361,10 @@ export const LEVEL_ALPHA_FULL = 0.15;
  *
  * The byte order assumes a little-endian host, which every platform PLVS targets. On a
  * big-endian host the channels would come out reversed.
+ * @param {number} r
+ * @param {number} g
+ * @param {number} b
+ * @param {number} a
  */
 export function packArgb(r, g, b, a) {
   return ((a << 24) | (b << 16) | (g << 8) | r) >>> 0;

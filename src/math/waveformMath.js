@@ -1,5 +1,8 @@
 const MAX_WAVEFORM_SUB_SAMPLES_PER_BUCKET = 16;
 
+/**
+ * @param {number} index
+ */
 function rowAt(entries, index) {
   if (!entries) return undefined;
   if (typeof entries.rowAt === "function") return entries.rowAt(index);
@@ -55,7 +58,12 @@ export function sliceWaveformSubHistory(
   const hasData = new Array(bucketCount).fill(false);
   const stride = 2 * channelCount;
 
-  const fold = (j, ch, mn, mx) => {
+  const fold = (
+    /** @type {number} */ j,
+    /** @type {number} */ ch,
+    /** @type {number} */ mn,
+    /** @type {number} */ mx
+  ) => {
     if (!hasData[j]) {
       mins[ch][j] = mn;
       maxes[ch][j] = mx;
@@ -116,6 +124,11 @@ export function sliceWaveformSubHistory(
   return { mins, maxes, bucketCount, fracPhase, firstBucket: firstJ, lastBucket: lastJ };
 }
 
+/**
+ * @param {number} bucket
+ * @param {number} kStart
+ * @param {number} coordsPerBucket
+ */
 function firstEntryForWholeTickBucket(bucket, kStart, coordsPerBucket) {
   const target = bucket + kStart;
   let entry = Math.floor(target * coordsPerBucket - 0.5);
@@ -127,6 +140,10 @@ function firstEntryForWholeTickBucket(bucket, kStart, coordsPerBucket) {
 /**
  * Match sliceWaveformSubHistory exactly while querying whole-tick bounds from
  * the lossless history index for windows at or beyond one entry per pixel.
+ * @param {number} visibleSamples
+ * @param {number} effectiveOffsetSamples
+ * @param {number} channelCount
+ * @param {number} pixelWidth
  */
 export function sliceWaveformSubHistoryFromIndex(
   histSourceList,

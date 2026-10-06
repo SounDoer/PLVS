@@ -7,10 +7,19 @@ export const ZOOM_OUT_FACTOR = 1.18;
 export const WHEEL_PAN_SCALE = 0.5;
 export const ACTIVE_PULSE_MS = 160;
 
+/**
+ * @param {number} fallback
+ */
 function clampFinite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * @param {number} min
+ * @param {number} max
+ * @param {number} absMin
+ * @param {number} absMax
+ */
 function clampRange(min, max, absMin, absMax) {
   const span = max - min;
   if (span >= absMax - absMin) return { min: absMin, max: absMax };
@@ -19,6 +28,10 @@ function clampRange(min, max, absMin, absMax) {
   return { min, max };
 }
 
+/**
+ * @param {number} min
+ * @param {number} max
+ */
 function normalizeLinearRange(min, max, absMin, absMax) {
   const rounded = clampRange(Math.round(min), Math.round(max), absMin, absMax);
   return {
@@ -84,11 +97,23 @@ export function computeLogPan({ min, max, absMin, absMax, deltaPx, axisPx }) {
   return { min: 2 ** next.min, max: 2 ** next.max };
 }
 
+/**
+ * @param {number} px
+ * @param {number} axisPx
+ * @param {number} min
+ * @param {number} max
+ */
 export function pixelToLinearValue(px, axisPx, min, max) {
   const frac = 1 - Math.max(0, Math.min(axisPx, px)) / Math.max(1, axisPx);
   return min + frac * (max - min);
 }
 
+/**
+ * @param {number} px
+ * @param {number} axisPx
+ * @param {number} min
+ * @param {number} max
+ */
 export function pixelToLogValue(px, axisPx, min, max) {
   const frac = 1 - Math.max(0, Math.min(axisPx, px)) / Math.max(1, axisPx);
   return 2 ** (Math.log2(min) + frac * (Math.log2(max) - Math.log2(min)));

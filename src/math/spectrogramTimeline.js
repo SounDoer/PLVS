@@ -6,7 +6,6 @@
  * blank space and the heatmap shares one time-linear x mapping with the time axis, selection line,
  * and frequency markers.
  */
-
 function rowAt(entries, index) {
   if (!entries) return undefined;
   if (typeof entries.rowAt === "function") return entries.rowAt(index);
@@ -14,6 +13,9 @@ function rowAt(entries, index) {
   return entries[index];
 }
 
+/**
+ * @param {number} index
+ */
 function timestampAt(entries, index) {
   if (!entries) return undefined;
   if (typeof entries.timestampAt === "function") return entries.timestampAt(index);
@@ -24,6 +26,9 @@ function hasTimestamps(entries) {
   return entries?.length > 0 && Number.isFinite(timestampAt(entries, 0));
 }
 
+/**
+ * @param {number} index
+ */
 function sampleIntervalMsNear(entries, index) {
   const current = timestampAt(entries, index);
   const prev = timestampAt(entries, index - 1);
@@ -35,7 +40,10 @@ function sampleIntervalMsNear(entries, index) {
   return NaN;
 }
 
-/** First index whose timestampAt >= target (lower bound). view is ascending by timestamp. */
+/**
+ * First index whose timestampAt >= target (lower bound). view is ascending by timestamp.
+ * @param {number} target
+ */
 function lowerBound(view, target) {
   let lo = 0;
   let hi = view.length;
@@ -47,7 +55,10 @@ function lowerBound(view, target) {
   return lo;
 }
 
-/** First index whose timestampAt > target (upper bound). view is ascending by timestamp. */
+/**
+ * First index whose timestampAt > target (upper bound). view is ascending by timestamp.
+ * @param {number} target
+ */
 function upperBound(view, target) {
   let lo = 0;
   let hi = view.length;
@@ -103,6 +114,7 @@ export function spectrogramTimeWindow(
  * The caller owns the live-edge policy. This helper only bounds the shift: a missing or older
  * visual row leaves the master window untouched, while a stalled master clock can never be hidden
  * by more than one history interval.
+ * @param {number} maxAdvanceMs
  */
 export function spectrogramRenderTimeWindow(timeWindow, visualFrames, maxAdvanceMs) {
   if (!timeWindow || !(timeWindow.newestMs > timeWindow.oldestMs)) return timeWindow;
@@ -128,6 +140,7 @@ export function spectrogramRenderTimeWindow(timeWindow, visualFrames, maxAdvance
  * resolution"). A caller-supplied constant tuned for the live cadence makes every file-mode frame
  * look like a gap, painting narrow bars separated by blank stripes instead of one continuous
  * heatmap. Falls back to `fallbackMs` when the view has too few rows to infer an interval.
+ * @param {number} fallbackMs
  */
 export function resolveSpectrogramSampleMs(view, fallbackMs) {
   if (!view || view.length < 2) return fallbackMs;
@@ -190,6 +203,10 @@ export function resolveStableSpectrogramSampleMs(view, fallbackMs) {
   return nearest;
 }
 
+/**
+ * @param {number} index
+ * @param {number} sampleMs
+ */
 export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 1.8) {
   const ts = view?.timestampAt?.(index);
   if (!Number.isFinite(ts)) return NaN;
@@ -204,8 +221,8 @@ export function spectrogramFrameEndMs(view, index, sampleMs, gapFactor = 1.8) {
 /**
  * Index range `[startIdx, endIdx]` of frames whose timestamp falls within `[oldestMs, newestMs]`.
  * Returns `{ startIdx: 0, endIdx: -1 }` (empty) when no frame is in range.
- *
- * @param {{ length: number, timestampAt: (i:number)=>number }} view ascending by timestamp
+ * @param {number} oldestMs
+ * @param {number} newestMs
  */
 export function inWindowRange(view, oldestMs, newestMs) {
   if (!view || view.length === 0) return { startIdx: 0, endIdx: -1 };

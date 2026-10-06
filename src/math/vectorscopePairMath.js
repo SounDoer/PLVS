@@ -7,6 +7,9 @@ import { getPeakMeterChannelLabels } from "./peakMeterChannelLabels.js";
  */
 export function buildVectorscopePairOptions(channelCount, labelCtx = {}) {
   const n = Number.isFinite(channelCount) ? Math.max(0, Math.floor(channelCount)) : 0;
+  /**
+   * @type {{ x: number, y: number, label: string, key: string, group?: string }[]}
+   */
   const out = [];
   if (n < 2) return out;
   const labels = getPeakMeterChannelLabels(n, labelCtx);

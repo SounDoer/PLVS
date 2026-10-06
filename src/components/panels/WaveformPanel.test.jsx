@@ -21,7 +21,9 @@ vi.mock("../../math/spectralWaveformMath.js", async (importOriginal) => {
   );
   return {
     ...actual,
-    sliceSpectralWaveformMetrics: (...args) => {
+    sliceSpectralWaveformMetrics: (
+      /** @type {Parameters<typeof actual.sliceSpectralWaveformMetrics>} */ ...args
+    ) => {
       sliceSpectralWaveformMetricsMock(...args);
       return actual.sliceSpectralWaveformMetrics(...args);
     },

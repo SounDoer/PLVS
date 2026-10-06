@@ -12,6 +12,9 @@ function emptyBatchStats() {
 }
 
 export class LoudnessHistoryIndex {
+  /**
+   * @param {number | object} capacityOrIndex a capacity, or the frozen index `freeze()` hands over
+   */
   constructor(capacityOrIndex, frozen = false) {
     this._index =
       typeof capacityOrIndex === "number"
@@ -28,6 +31,11 @@ export class LoudnessHistoryIndex {
     this._index.append(sequence, values, values);
   }
 
+  /**
+   * @param {string} key
+   * @param {number} startSequence
+   * @param {number} endSequence
+   */
   queryRange(key, startSequence, endSequence, rawRowAt) {
     const valueIndex = KEY_INDEX[key];
     if (valueIndex === undefined) throw new TypeError(`unsupported loudness history key: ${key}`);

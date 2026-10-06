@@ -44,7 +44,9 @@ export function copyStereoMapHoldSummary(summary) {
   return copy;
 }
 
-/** Total bytes retained by a Hold summary's typed-array planes. Independent of row count. */
+/**
+ * Total bytes retained by a Hold summary's typed-array planes. Independent of row count.
+ */
 export function stereoMapHoldSummaryByteLength(summary) {
   let total = 0;
   for (const value of Object.values(summary)) {
@@ -64,6 +66,10 @@ const MAXIMUM_TARGETS = {
   [STEREO_MAP_MODES.MS_RATIO_DB]: { valueKey: "msRatioMaximum", validKey: "msRatioValid" },
 };
 
+/**
+ * @param {number} value
+ * @param {boolean} isMaximum
+ */
 function updateExtreme(summary, valueKey, validKey, index, value, isMaximum) {
   const valid = summary[validKey];
   const values = summary[valueKey];
@@ -87,7 +93,7 @@ export function accumulateStereoMapHold(summary, primitiveRow, scratch) {
   const derivationScratch = scratch ?? createStereoMapDerivationScratch(summary.bandCount);
   visitStereoMapDerivedPoints(
     primitiveRow,
-    (mode, index, value, state, opacity) => {
+    (mode, index, value, /** @type {string} */ state, /** @type {number} */ opacity) => {
       if (state !== "valid" || opacity !== 1) return;
       const minimum = MINIMUM_TARGETS[mode];
       if (minimum) updateExtreme(summary, minimum.valueKey, minimum.validKey, index, value, false);
@@ -99,6 +105,10 @@ export function accumulateStereoMapHold(summary, primitiveRow, scratch) {
   return summary;
 }
 
+/**
+ * @param {string} valueKey
+ * @param {string} validKey
+ */
 function mergeMinimum(target, source, valueKey, validKey) {
   for (let index = 0; index < target.bandCount; index += 1) {
     if (!source[validKey][index]) continue;
@@ -110,6 +120,10 @@ function mergeMinimum(target, source, valueKey, validKey) {
   }
 }
 
+/**
+ * @param {string} valueKey
+ * @param {string} validKey
+ */
 function mergeMaximum(target, source, valueKey, validKey) {
   for (let index = 0; index < target.bandCount; index += 1) {
     if (!source[validKey][index]) continue;
@@ -183,6 +197,9 @@ export class StereoMapHoldAccumulator {
     return true;
   }
 
+  /**
+   * @param {string} mode
+   */
   valuesFor(mode) {
     const summary = this.#summary ?? createStereoMapHoldSummary(0);
     const values = stereoMapHoldValues(summary);

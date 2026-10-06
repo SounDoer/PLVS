@@ -45,6 +45,9 @@ export function buildYTiltDb(yToBand, bands, tiltDbPerOctave) {
   return out;
 }
 
+/**
+ * @param {number} canvasH
+ */
 export function buildYToBand(bands, canvasH, minHz = 20, maxHz = 20000) {
   const lookup = new Int16Array(canvasH);
   for (let y = 0; y < canvasH; y++) {

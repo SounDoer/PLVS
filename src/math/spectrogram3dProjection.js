@@ -36,6 +36,9 @@ const FIT_MARGIN = 0.92;
 
 const DEG = Math.PI / 180;
 
+/**
+ * @param {number} fallback
+ */
 function finiteOr(raw, fallback) {
   return Number.isFinite(raw) ? raw : fallback;
 }
@@ -66,6 +69,7 @@ export function clampViewParams({ azimuthDeg, elevationDeg, heightGain } = {}) {
  * Keep the 2D Canvas Lines renderer just outside the two edge-on projections where frequency and
  * height share one screen direction. The stored/user-facing angle stays untouched; only Lines uses
  * this render angle. Surface colours its mesh per vertex and does not need the guard.
+ * @param {number} azimuthDeg
  */
 export function stabilizeLinesAzimuthDeg(azimuthDeg) {
   const normalized = clampViewParams({ azimuthDeg }).azimuthDeg;
@@ -156,7 +160,6 @@ export function buildProjection({ azimuthDeg, elevationDeg, width, height }) {
  *
  * Derived rather than fixed so the labels survive rotation: pinning either edge only works at one
  * azimuth, and rotating away from it drops a label behind the surface.
- *
  * @returns {{ timeAtF: 0 | 1, freqAtT: 0 | 1 }}
  */
 export function labelEdges(proj) {
@@ -180,8 +183,9 @@ export function labelEdges(proj) {
  *
  * Results are clamped to the unit square: a cursor outside the floor rhombus is still a legitimate
  * drag, and callers want the nearest valid position rather than an extrapolation.
- *
  * @returns {{ tFrac: number, fFrac: number }}
+ * @param {number} x
+ * @param {number} y
  */
 export function unprojectFloor(x, y, proj) {
   const dx = x - proj.originX;
@@ -202,6 +206,9 @@ export function unprojectFloor(x, y, proj) {
  * RIDGE_MAX/POINT_MAX ceiling, which at the 25 Hz spectrum cadence is over a million
  * short-lived objects per second, enough to keep the scavenger running through live
  * monitoring. Hot loops pass a scratch point; everything else uses `projectPoint`.
+ * @param {number} tFrac
+ * @param {number} fFrac
+ * @param {number} hNorm
  */
 export function projectPointInto(tFrac, fFrac, hNorm, proj, out) {
   const t = tFrac - 0.5;
@@ -211,6 +218,11 @@ export function projectPointInto(tFrac, fFrac, hNorm, proj, out) {
   return out;
 }
 
+/**
+ * @param {number} tFrac
+ * @param {number} fFrac
+ * @param {number} hNorm
+ */
 export function projectPoint(tFrac, fFrac, hNorm, proj) {
   return projectPointInto(tFrac, fFrac, hNorm, proj, { x: 0, y: 0 });
 }

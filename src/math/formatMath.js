@@ -15,6 +15,9 @@ export function fmtMetric(v) {
   if (r <= METRIC_NEGATIVE_INFINITY_FLOOR) return "-";
   return r.toFixed(1);
 }
+/**
+ * @param {number} sec
+ */
 export function fmtSec(sec) {
   const s = Math.max(0, Math.round(sec));
   if (s < 60) return `${s}s`;
