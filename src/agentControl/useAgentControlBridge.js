@@ -115,6 +115,7 @@ const VISUAL_ERROR_REASONS = new Set([
   "panelNotFound",
   "panelNotVisible",
   "revisionConflict",
+  "uiGenerationConflict",
   "renderNotSettled",
   "captureBusy",
   "captureFailed",
@@ -135,6 +136,7 @@ function visualSemanticFailure(error) {
     panelNotFound: "The requested Panel does not exist.",
     panelNotVisible: "The requested Panel is not currently rendered.",
     revisionConflict: "The Agent Control revision changed before capture.",
+    uiGenerationConflict: "The visible UI changed before capture.",
     renderNotSettled: "The visual target did not settle before the capture deadline.",
     captureBusy: "A screenshot is already in progress.",
     captureFailed: "The rendered PLVS surface could not be captured.",
@@ -1190,6 +1192,8 @@ export function useAgentControlBridge({
             const settled = await visualControl.settle(request.params.target, {
               expectedRevision: request.params.expectedRevision,
               getRevision: () => controlRevisionRef.current,
+              expectedUiGeneration: request.params.expectedUiGeneration,
+              getUiGeneration: () => uiNavigation?.inspectUi?.().uiGeneration ?? 0,
               signal: controller.signal,
             });
             const artifact = await visualControl.captureScreenshot({
@@ -1206,6 +1210,7 @@ export function useAgentControlBridge({
               requestId,
               result: {
                 revision: settled.revision,
+                uiGeneration: settled.uiGeneration,
                 measurement: {
                   generation: Number.isSafeInteger(live.generation) ? live.generation : 0,
                   sequence: Number.isSafeInteger(live.record?.sequence)

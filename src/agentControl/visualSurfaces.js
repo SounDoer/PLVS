@@ -173,6 +173,8 @@ function nextAnimationFrame(windowObject, signal) {
  *   workspace: any,
  *   expectedRevision: number,
  *   getRevision: (...args: any[]) => any,
+ *   expectedUiGeneration?: number,
+ *   getUiGeneration?: () => number,
  *   signal: AbortSignal,
  *   timeoutMs?: number,
  *   documentObject?: Document,
@@ -185,6 +187,8 @@ export async function settleVisualSurface({
   workspace,
   expectedRevision,
   getRevision,
+  expectedUiGeneration,
+  getUiGeneration = () => 0,
   signal,
   timeoutMs = VISUAL_SETTLEMENT_TIMEOUT_MS,
   documentObject = globalThis.document,
@@ -244,6 +248,13 @@ export async function settleVisualSurface({
             details: { expectedRevision, currentRevision: revision },
           });
         }
+        const uiGeneration = getUiGeneration();
+        if (expectedUiGeneration !== undefined && uiGeneration !== expectedUiGeneration) {
+          throw Object.assign(new Error("The visible UI changed before capture."), {
+            reason: "uiGenerationConflict",
+            details: { expectedUiGeneration, currentUiGeneration: uiGeneration },
+          });
+        }
         return {
           target: surface.target,
           windowLabel: surface.windowLabel,
@@ -251,6 +262,7 @@ export async function settleVisualSurface({
           viewport: surface.viewport,
           devicePixelRatio: surface.devicePixelRatio,
           revision,
+          uiGeneration,
         };
       }
       previous = settled ? surface : null;

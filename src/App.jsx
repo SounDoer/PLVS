@@ -158,6 +158,16 @@ async function settleDockAccessory(target, runtime, options) {
       details: { expectedRevision: options.expectedRevision, currentRevision: revision },
     });
   }
+  const uiGeneration = options.getUiGeneration?.() ?? 0;
+  if (options.expectedUiGeneration !== undefined && uiGeneration !== options.expectedUiGeneration) {
+    throw Object.assign(new Error("The visible UI changed before capture."), {
+      reason: "uiGenerationConflict",
+      details: {
+        expectedUiGeneration: options.expectedUiGeneration,
+        currentUiGeneration: uiGeneration,
+      },
+    });
+  }
   const viewport = { width: geometry.width, height: geometry.height };
   return {
     target,
@@ -166,6 +176,7 @@ async function settleDockAccessory(target, runtime, options) {
     viewport,
     devicePixelRatio: window.devicePixelRatio || 1,
     revision,
+    uiGeneration,
   };
 }
 

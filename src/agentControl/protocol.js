@@ -195,7 +195,10 @@ export function normalizeAgentControlRequest(input) {
   }
 
   if (input.method === "visual.screenshot") {
-    const field = unknownField(input.params, new Set(["target", "expectedRevision"]));
+    const field = unknownField(
+      input.params,
+      new Set(["target", "expectedRevision", "expectedUiGeneration"])
+    );
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     const normalizedTarget = normalizeVisualTarget(input.params.target);
     if (!normalizedTarget.ok) {
@@ -210,6 +213,16 @@ export function normalizeAgentControlRequest(input) {
         "expectedRevision must be a non-negative safe integer."
       );
     }
+    if (
+      input.params.expectedUiGeneration !== undefined &&
+      (!Number.isSafeInteger(input.params.expectedUiGeneration) ||
+        input.params.expectedUiGeneration < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedUiGeneration",
+        "expectedUiGeneration must be a non-negative safe integer."
+      );
+    }
     return {
       ok: true,
       request: {
@@ -219,6 +232,9 @@ export function normalizeAgentControlRequest(input) {
           target: normalizedTarget.target,
           ...(input.params.expectedRevision !== undefined
             ? { expectedRevision: input.params.expectedRevision }
+            : {}),
+          ...(input.params.expectedUiGeneration !== undefined
+            ? { expectedUiGeneration: input.params.expectedUiGeneration }
             : {}),
         },
       },

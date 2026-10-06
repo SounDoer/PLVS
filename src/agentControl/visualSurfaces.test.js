@@ -170,6 +170,24 @@ describe("visual paint settlement", () => {
     });
   });
 
+  it("correlates the settled surface with the current UI generation", async () => {
+    addSurface("workspace", rect(0, 0, 640, 480));
+    await expect(
+      settleVisualSurface({
+        target: { kind: "workspace" },
+        workspace: {},
+        expectedRevision: 4,
+        getRevision: () => 4,
+        expectedUiGeneration: 8,
+        getUiGeneration: () => 9,
+        signal: undefined,
+      })
+    ).rejects.toMatchObject({
+      reason: "uiGenerationConflict",
+      details: { expectedUiGeneration: 8, currentUiGeneration: 9 },
+    });
+  });
+
   it("times out when readiness or Canvas dimensions never settle", async () => {
     addSurface("workspace", rect(0, 0, 640, 480), { ready: false });
     await expect(

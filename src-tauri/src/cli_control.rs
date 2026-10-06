@@ -242,6 +242,7 @@ pub enum ControlCommand {
     target: String,
     panel_id: Option<String>,
     expected_revision: Option<u64>,
+    expected_ui_generation: Option<u64>,
     out: String,
   },
   VisualRecordingStart {
@@ -515,6 +516,7 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
   let mut target = None;
   let mut panel_id = None;
   let mut expected_revision = None;
+  let mut expected_ui_generation = None;
   let mut out = None;
   let mut json = false;
   let mut index = 0;
@@ -525,7 +527,7 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
         json = true;
         index += 1;
       }
-      "--target" | "--panel-id" | "--expected-revision" | "--out" => {
+      "--target" | "--panel-id" | "--expected-revision" | "--expected-ui-generation" | "--out" => {
         let Some(value) = rest.get(index + 1) else {
           return Err(format!("The {flag} option requires a value."));
         };
@@ -546,6 +548,12 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
               ));
             }
             expected_revision = Some(revision);
+          }
+          "--expected-ui-generation" if expected_ui_generation.is_none() => {
+            expected_ui_generation = Some(parse_ui_safe_integer(
+              Some(value),
+              "--expected-ui-generation",
+            )?);
           }
           _ => return Err(format!("The {flag} option may be specified only once.")),
         }
@@ -584,6 +592,7 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
     target: target.to_string(),
     panel_id,
     expected_revision,
+    expected_ui_generation,
     out,
   })
 }
@@ -3106,6 +3115,7 @@ fn request_for_command<R: Read>(
       target,
       panel_id,
       expected_revision,
+      expected_ui_generation,
       ..
     } => {
       let mut target_value =
@@ -3117,6 +3127,9 @@ fn request_for_command<R: Read>(
         serde_json::Map::from_iter([("target".to_string(), Value::Object(target_value))]);
       if let Some(revision) = expected_revision {
         params.insert("expectedRevision".to_string(), Value::from(*revision));
+      }
+      if let Some(generation) = expected_ui_generation {
+        params.insert("expectedUiGeneration".to_string(), Value::from(*generation));
       }
       Value::Object(params)
     }
@@ -7094,6 +7107,8 @@ mod tests {
       "spectrum-2",
       "--expected-revision",
       "42",
+      "--expected-ui-generation",
+      "8",
       "--out",
       "panel.png",
       "--json",
@@ -7104,7 +7119,8 @@ mod tests {
       request.params,
       serde_json::json!({
         "target": { "kind": "panel", "panelId": "spectrum-2" },
-        "expectedRevision": 42
+        "expectedRevision": 42,
+        "expectedUiGeneration": 8
       })
     );
     assert!(request.params.get("out").is_none());
@@ -7426,6 +7442,7 @@ mod tests {
       target: "main".to_string(),
       panel_id: None,
       expected_revision: None,
+      expected_ui_generation: None,
       out: out.to_string_lossy().into_owned(),
     }
   }

@@ -117,16 +117,39 @@ describe("normalizeAgentControlRequest", () => {
       [{ kind: "dockEditor" }],
     ])("normalizes semantic target %j", (target) => {
       expect(
-        normalizeAgentControlRequest(request("visual.screenshot", { target, expectedRevision: 18 }))
+        normalizeAgentControlRequest(
+          request("visual.screenshot", {
+            target,
+            expectedRevision: 18,
+            expectedUiGeneration: 5,
+          })
+        )
       ).toEqual({
         ok: true,
         request: {
           id: "req-1",
           method: "visual.screenshot",
-          params: { target, expectedRevision: 18 },
+          params: { target, expectedRevision: 18, expectedUiGeneration: 5 },
         },
       });
     });
+
+    it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1, "5", null])(
+      "rejects invalid optional UI generation %j",
+      (expectedUiGeneration) => {
+        expect(
+          normalizeAgentControlRequest(
+            request("visual.screenshot", {
+              target: { kind: "main" },
+              expectedUiGeneration,
+            })
+          ).error
+        ).toMatchObject({
+          reason: "invalidParams",
+          path: "$.params.expectedUiGeneration",
+        });
+      }
+    );
 
     it("allows the revision to be omitted", () => {
       expect(

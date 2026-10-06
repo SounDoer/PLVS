@@ -11,6 +11,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED_METHODS = [
   "app.capabilities",
   "app.inspect",
+  "ui.inspect",
+  "ui.show.settings",
+  "ui.close",
   "visual.screenshot",
   "visual.recording.start",
   "visual.recording.wait",
@@ -57,6 +60,22 @@ export function verifyArtifactBuffer(label, contents, artifact) {
   return { bytes: contents.length, sha256 };
 }
 
+export function verifyUiSurface(result, { kind, target }) {
+  const surface = result?.surface;
+  if (!surface || surface.kind !== kind || typeof surface.surfaceId !== "string") {
+    throw new Error(`UI navigation returned no ${kind} surface.`);
+  }
+  for (const [key, value] of Object.entries(target)) {
+    if (surface.target?.[key] !== value) {
+      throw new Error(`UI navigation returned the wrong ${kind} target.`);
+    }
+  }
+  if (!Number.isSafeInteger(result.uiGeneration) || result.uiGeneration < 0) {
+    throw new Error("UI navigation returned an invalid UI generation.");
+  }
+  return surface;
+}
+
 function parseArgs(args) {
   let outDir;
   for (let index = 0; index < args.length; index += 1) {
@@ -101,6 +120,7 @@ export async function runAgentControlSmoke({ executable, outDir }) {
   await mkdir(outDir, { recursive: true });
   const run = createRunner(executable);
   let activeRecordingId = null;
+  let activeUiSurface = null;
   try {
     const capabilities = run("capabilities", ["capabilities", "--json"]);
     const methods = capabilities.result.methods;
@@ -115,6 +135,23 @@ export async function runAgentControlSmoke({ executable, outDir }) {
     if (!Number.isSafeInteger(revision) || revision < 0) {
       throw new Error("inspect returned an invalid global revision.");
     }
+    const uiInspected = run("ui inspect", ["ui", "inspect", "--json"]);
+    const shown = run("ui show settings", [
+      "ui",
+      "show",
+      "settings",
+      "--section",
+      "appearance",
+      "--expected-revision",
+      String(revision),
+      "--expected-ui-generation",
+      String(uiInspected.result.uiGeneration),
+      "--json",
+    ]);
+    activeUiSurface = verifyUiSurface(shown.result, {
+      kind: "settings",
+      target: { section: "appearance" },
+    });
 
     const screenshotPath = join(outDir, "main.png");
     const screenshot = run("visual screenshot", [
@@ -123,7 +160,9 @@ export async function runAgentControlSmoke({ executable, outDir }) {
       "--target",
       "main",
       "--expected-revision",
-      String(revision),
+      String(shown.result.revision),
+      "--expected-ui-generation",
+      String(shown.result.uiGeneration),
       "--out",
       screenshotPath,
       "--json",
@@ -133,6 +172,21 @@ export async function runAgentControlSmoke({ executable, outDir }) {
       await readFile(screenshotPath),
       screenshot.result.artifact
     );
+    run("ui close", [
+      "ui",
+      "close",
+      activeUiSurface.surfaceId,
+      "--expected-revision",
+      String(screenshot.result.revision),
+      "--expected-ui-generation",
+      String(screenshot.result.uiGeneration),
+      "--json",
+    ]);
+    const finalUi = run("ui inspect final", ["ui", "inspect", "--json"]);
+    if (finalUi.result.surfaces.some(({ surfaceId }) => surfaceId === activeUiSurface.surfaceId)) {
+      throw new Error("UI close left the Settings surface mounted.");
+    }
+    activeUiSurface = null;
 
     const started = run("visual recording start", [
       "visual",
@@ -200,6 +254,27 @@ export async function runAgentControlSmoke({ executable, outDir }) {
     await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     return { report, reportPath };
   } catch (error) {
+    if (activeUiSurface) {
+      try {
+        const current = run("ui inspect cleanup", ["ui", "inspect", "--json"]);
+        run(
+          "ui close cleanup",
+          [
+            "ui",
+            "close",
+            activeUiSurface.surfaceId,
+            "--expected-revision",
+            String(current.result.revision),
+            "--expected-ui-generation",
+            String(current.result.uiGeneration),
+            "--json",
+          ],
+          { allowFailure: true }
+        );
+      } catch {
+        // Preserve the original smoke failure; cleanup is best-effort only.
+      }
+    }
     if (activeRecordingId) {
       try {
         run(

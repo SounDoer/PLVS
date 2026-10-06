@@ -697,23 +697,36 @@ function visualControl(overrides = {}) {
       availableScreenshotTargets: ["main", "workspace", "panel"],
       availableAudioSources: ["none", "measuredSource"],
     }),
-    settle: vi.fn(async (target, { expectedRevision, getRevision }) => {
-      const revision = getRevision();
-      if (expectedRevision !== undefined && revision !== expectedRevision) {
-        throw {
-          reason: "revisionConflict",
-          details: { expectedRevision, currentRevision: revision },
+    settle: vi.fn(
+      async (
+        target,
+        { expectedRevision, getRevision, expectedUiGeneration, getUiGeneration = () => 0 }
+      ) => {
+        const revision = getRevision();
+        if (expectedRevision !== undefined && revision !== expectedRevision) {
+          throw {
+            reason: "revisionConflict",
+            details: { expectedRevision, currentRevision: revision },
+          };
+        }
+        const uiGeneration = getUiGeneration();
+        if (expectedUiGeneration !== undefined && uiGeneration !== expectedUiGeneration) {
+          throw {
+            reason: "uiGenerationConflict",
+            details: { expectedUiGeneration, currentUiGeneration: uiGeneration },
+          };
+        }
+        return {
+          target,
+          windowLabel: "main",
+          rect: { x: 10, y: 20, width: 300, height: 200 },
+          viewport: { width: 800, height: 600 },
+          devicePixelRatio: 1.25,
+          revision,
+          uiGeneration,
         };
       }
-      return {
-        target,
-        windowLabel: "main",
-        rect: { x: 10, y: 20, width: 300, height: 200 },
-        viewport: { width: 800, height: 600 },
-        devicePixelRatio: 1.25,
-        revision,
-      };
-    }),
+    ),
     captureScreenshot: vi.fn(async () => ({
       artifactId: "art-1",
       kind: "screenshot",
@@ -874,13 +887,22 @@ describe("useAgentControlBridge", () => {
       const screenshot = await send(
         request(
           "visual.screenshot",
-          { target: { kind: "workspace" }, expectedRevision: 0 },
+          {
+            target: { kind: "workspace" },
+            expectedRevision: 0,
+            expectedUiGeneration: 0,
+          },
           "visual-shot"
         )
       );
       expect(visual.settle).toHaveBeenCalledWith(
         { kind: "workspace" },
-        expect.objectContaining({ expectedRevision: 0, signal: expect.any(AbortSignal) })
+        expect.objectContaining({
+          expectedRevision: 0,
+          expectedUiGeneration: 0,
+          getUiGeneration: expect.any(Function),
+          signal: expect.any(AbortSignal),
+        })
       );
       expect(visual.captureScreenshot).toHaveBeenCalledWith({
         windowLabel: "main",
@@ -890,6 +912,7 @@ describe("useAgentControlBridge", () => {
       });
       expect(screenshot.result).toMatchObject({
         revision: 0,
+        uiGeneration: 0,
         measurement: { generation: 7, sequence: 412 },
         artifact: { artifactId: "art-1", kind: "screenshot", mediaType: "image/png" },
         target: { kind: "workspace" },
@@ -924,6 +947,7 @@ describe("useAgentControlBridge", () => {
       ["panelNotFound", "settle"],
       ["panelNotVisible", "settle"],
       ["revisionConflict", "settle"],
+      ["uiGenerationConflict", "settle"],
       ["renderNotSettled", "settle"],
       ["captureFailed", "capture"],
       ["artifactWriteFailed", "capture"],

@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { parseJsonEnvelope, verifyArtifactBuffer } from "./smoke-agent-control.mjs";
+import {
+  parseJsonEnvelope,
+  verifyArtifactBuffer,
+  verifyUiSurface,
+} from "./smoke-agent-control.mjs";
 
 describe("Agent Control smoke helpers", () => {
   it("accepts only successful JSON envelopes", () => {
@@ -15,6 +19,26 @@ describe("Agent Control smoke helpers", () => {
         '{"ok":false,"error":{"code":"appNotRunning","message":"Start PLVS."}}'
       )
     ).toThrow("appNotRunning");
+  });
+
+  it("requires an exact settled semantic UI surface", () => {
+    const surface = {
+      surfaceId: `ui-${"a".repeat(16)}`,
+      kind: "settings",
+      target: { section: "appearance" },
+    };
+    expect(
+      verifyUiSurface(
+        { uiGeneration: 3, surface },
+        { kind: "settings", target: { section: "appearance" } }
+      )
+    ).toBe(surface);
+    expect(() =>
+      verifyUiSurface(
+        { uiGeneration: 3, surface },
+        { kind: "settings", target: { section: "behavior" } }
+      )
+    ).toThrow("wrong settings target");
   });
 
   it("verifies artifact type, size, and SHA-256", () => {
