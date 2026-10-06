@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readCssNumber, readCssToken, resetCssTokenCache } from "./cssTokens.js";
 import { themeRuntime } from "./themeRuntime.js";
 
+import { standIn } from "../testing/standIn.js";
 function element() {
   return document.createElement("div");
 }
@@ -15,7 +16,7 @@ afterEach(() => {
 describe("readCssToken", () => {
   it("resolves a token once and answers the rest from cache", () => {
     const spy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
-      /** @type {any} */ ({
+      standIn({
         getPropertyValue: () => " 1.5px ",
       })
     );
@@ -32,11 +33,10 @@ describe("readCssToken", () => {
     let index = 0;
     vi.spyOn(themeRuntime, "getSnapshot").mockImplementation(() => snapshots[index]);
     const values = ["1px", "2px"];
-    vi.spyOn(window, "getComputedStyle").mockImplementation(
-      () =>
-        /** @type {any} */ ({
-          getPropertyValue: () => values[index],
-        })
+    vi.spyOn(window, "getComputedStyle").mockImplementation(() =>
+      standIn({
+        getPropertyValue: () => values[index],
+      })
     );
     const el = element();
 
@@ -47,7 +47,7 @@ describe("readCssToken", () => {
 
   it("caches each element separately, because a token can be overridden below the root", () => {
     const spy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
-      /** @type {any} */ ({
+      standIn({
         getPropertyValue: () => "3px",
       })
     );
@@ -57,9 +57,7 @@ describe("readCssToken", () => {
   });
 
   it("falls back when the token resolves to nothing", () => {
-    vi.spyOn(window, "getComputedStyle").mockReturnValue(
-      /** @type {any} */ ({ getPropertyValue: () => "" })
-    );
+    vi.spyOn(window, "getComputedStyle").mockReturnValue(standIn({ getPropertyValue: () => "" }));
     expect(readCssToken(element(), "--ui-x", "fallback")).toBe("fallback");
     expect(readCssToken(null, "--ui-x", "fallback")).toBe("fallback");
   });
@@ -68,7 +66,7 @@ describe("readCssToken", () => {
 describe("readCssNumber", () => {
   it("parses a length and keeps the fallback for anything unusable", () => {
     vi.spyOn(window, "getComputedStyle").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof window.getComputedStyle>} */ ({
         getPropertyValue: (name) => (name === "--ui-n" ? "2.5px" : "auto"),
       })
     );

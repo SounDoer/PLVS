@@ -22,6 +22,7 @@ import { buildFileAnalysisReport } from "../lib/fileAnalysisReport.js";
 import { commandEntriesForFamily, runningAppCommandEntries } from "./commandManifest.js";
 import { canonicalManifestParams } from "./commandManifestTestFixtures.js";
 
+import { standIn } from "../testing/standIn.js";
 const CLI_V1_FIXTURES = JSON.parse(
   readFileSync(join(cwd(), "shared", "cli-v1-envelope-fixtures.json"), "utf8")
 );
@@ -656,6 +657,7 @@ async function send(raw) {
 }
 
 function createDeferred() {
+  /** @type {(value?: any) => void} */
   let resolve;
   const promise = new Promise((settle) => {
     resolve = settle;
@@ -733,7 +735,7 @@ function visualControl(overrides = {}) {
 
 beforeEach(() => {
   localStorage.clear();
-  window.matchMedia = /** @type {any} */ (
+  window.matchMedia = standIn(
     vi.fn(() => ({
       matches: true,
       addEventListener: vi.fn(),
@@ -926,7 +928,6 @@ describe("useAgentControlBridge", () => {
     });
 
     it("keeps screenshot work outside the mutation queue and rejects a concurrent capture", async () => {
-      /** @type {any} */
       const firstSettlement = createDeferred();
       const visual = visualControl({ settle: vi.fn(() => firstSettlement.promise) });
       mount({ agentVisual: visual });
@@ -1140,7 +1141,6 @@ describe("useAgentControlBridge", () => {
 
     it("keeps recording wait outside the mutation queue and returns terminal correlation metadata", async () => {
       const recordingId = `rec-${"b".repeat(32)}`;
-      /** @type {any} */
       const inspected = createDeferred();
       const visual = visualControl({
         platformCapabilities: {
@@ -1347,7 +1347,6 @@ describe("useAgentControlBridge", () => {
     });
 
     it("waits for real running restart readiness before success", async () => {
-      /** @type {any} */
       const ready = createDeferred();
       const beginRestart = vi.fn(() => ready.promise);
       mount({
@@ -1504,7 +1503,6 @@ describe("useAgentControlBridge", () => {
     it("rechecks generation after preview and fails a hotplug race before restart or commit", async () => {
       const commit = vi.fn();
       const beginRestart = vi.fn();
-      /** @type {any} */
       const secondPreview = createDeferred();
       const preview = vi.fn().mockResolvedValueOnce({}).mockReturnValueOnce(secondPreview.promise);
       let owner;
@@ -1565,7 +1563,7 @@ describe("useAgentControlBridge", () => {
       const persistence = vi.fn(async (deviceId, { setDeviceState }) => {
         setDeviceState((current) => ({ ...current, requestedId: deviceId }));
         const error = new Error("disk full");
-        /** @type {any} */ (error).stateCommitted = true;
+        /** @type {Error & { stateCommitted?: boolean }} */ (error).stateCommitted = true;
         throw error;
       });
       mount({ commitAgentDevice: persistence });
@@ -3096,7 +3094,6 @@ describe("useAgentControlBridge", () => {
     ["preset.apply", { presetId: "preset-1" }],
   ])("refuses %s when a blocking editor opens during scene capture", async (method, params) => {
     const flush = vi.fn(async () => {});
-    /** @type {any} */
     const snapshot = createDeferred();
     const capturePresetSnapshot = vi.fn(() => snapshot.promise);
     let editorOpen = false;
@@ -3201,7 +3198,6 @@ describe("useAgentControlBridge", () => {
       return response.result.revision;
     };
     try {
-      /** @type {any} */
       const hung = createDeferred();
       const view = mount({ executeAgentDock: vi.fn(() => hung.promise) });
       await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
@@ -3317,7 +3313,6 @@ describe("useAgentControlBridge", () => {
 
   it("publishes one revision after all staggered Preset Apply commits settle", async () => {
     const flush = vi.fn(async () => {});
-    /** @type {any} */
     const presetApplyBarrier = createDeferred();
     const target = {
       id: "preset-1",
@@ -4107,7 +4102,7 @@ describe("useAgentControlBridge", () => {
   });
 
   it("serializes requests and never sends a late response after unmount", async () => {
-    /** @type {any} */
+    /** @type {(value: any) => void} */
     let releaseFlush;
     const flush = vi.fn(() => new Promise((resolve) => (releaseFlush = resolve)));
     const view = mount({ flush });
@@ -4352,20 +4347,17 @@ describe("useAgentControlBridge", () => {
 
   it("relaunches only after the CLI has received a persisted configuration result", async () => {
     const configuration = { app: "PLVS", kind: "configuration-profile", version: 1 };
-    /** @type {any} */
     const delivery = createDeferred();
     const order = [];
     const importConfiguration = vi.fn(async () => order.push("persisted"));
     const relaunchAfterConfigurationChange = vi.fn(async () => order.push("relaunched"));
     adapter.respond.mockImplementationOnce(
-      /** @type {any} */ (
-        async (response) => {
-          adapter.responses.push(response);
-          order.push("response-started");
-          await delivery.promise;
-          order.push("response-delivered");
-        }
-      )
+      standIn(async (response) => {
+        adapter.responses.push(response);
+        order.push("response-started");
+        await delivery.promise;
+        order.push("response-delivered");
+      })
     );
     mount({
       importConfiguration,
@@ -5239,7 +5231,7 @@ describe("useAgentControlBridge", () => {
       // The assertion has to be on rendered state: a store read would pass whether or not the
       // write went through the adapters, and it is `notifyLocal` inside them that makes the
       // theme list re-read at all.
-      window.matchMedia = /** @type {any} */ (
+      window.matchMedia = standIn(
         vi.fn((query) => ({
           matches: false,
           media: query,
@@ -5443,7 +5435,7 @@ describe("useAgentControlBridge", () => {
         const response = await send(
           request(
             method,
-            { .../** @type {any} */ (params), expectedRevision: 0, dryRun: true },
+            { .../** @type {object} */ (params), expectedRevision: 0, dryRun: true },
             `dry-${method}`
           )
         );
@@ -5479,7 +5471,11 @@ describe("useAgentControlBridge", () => {
         ["loudnessProfile.reorder", { profileIds: ["prof-a", "prof-b"] }],
       ]) {
         const response = await send(
-          request(method, { .../** @type {any} */ (params), expectedRevision: 0 }, `noop-${method}`)
+          request(
+            method,
+            { .../** @type {object} */ (params), expectedRevision: 0 },
+            `noop-${method}`
+          )
         );
         expect(response.result).toMatchObject({ dryRun: false, changed: false, revision: 0 });
       }
@@ -5502,7 +5498,7 @@ describe("useAgentControlBridge", () => {
         const response = await send(
           request(
             method,
-            { .../** @type {any} */ (params), expectedRevision: 9 },
+            { .../** @type {object} */ (params), expectedRevision: 9 },
             `stale-${method}`
           )
         );
@@ -5571,7 +5567,7 @@ describe("useAgentControlBridge", () => {
         const response = await send(
           request(
             method,
-            { .../** @type {any} */ (params), expectedRevision: 0 },
+            { .../** @type {object} */ (params), expectedRevision: 0 },
             `blocked-${method}`
           )
         );

@@ -173,11 +173,17 @@ describe("panelControls", () => {
   });
 
   it("drops the dialogue VAD engine, which is now a global setting", () => {
-    expect(/** @type {any} */ (normalizePanelControls({})).dialogueVadEngine).toBeUndefined();
     expect(
-      /** @type {any} */ (normalizePanelControls({ dialogueVadEngine: "silero" })).dialogueVadEngine
+      /** @type {Record<string, unknown>} */ (normalizePanelControls({})).dialogueVadEngine
     ).toBeUndefined();
-    expect(/** @type {any} */ (DEFAULT_PANEL_CONTROLS).dialogueVadEngine).toBeUndefined();
+    expect(
+      /** @type {Record<string, unknown>} */ (
+        normalizePanelControls({ dialogueVadEngine: "silero" })
+      ).dialogueVadEngine
+    ).toBeUndefined();
+    expect(
+      /** @type {Record<string, unknown>} */ (DEFAULT_PANEL_CONTROLS).dialogueVadEngine
+    ).toBeUndefined();
   });
 
   it("does not carry a loudness reference: the active Loudness Profile owns it", () => {
@@ -792,7 +798,8 @@ describe("spectrogramMode", () => {
 
   it("no longer carries the retired spectrogram3d boolean", () => {
     expect(
-      /** @type {any} */ (normalizePanelControls({ spectrogram3d: true })).spectrogram3d
+      /** @type {Record<string, unknown>} */ (normalizePanelControls({ spectrogram3d: true }))
+        .spectrogram3d
     ).toBeUndefined();
   });
 

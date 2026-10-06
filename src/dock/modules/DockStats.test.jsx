@@ -358,7 +358,10 @@ describe("Dock Stats and the main window under one provider", () => {
       let profile;
       const { container } = renderBothSurfaces(
         { tpMax: -5 },
-        /** @type {any} */ ({ heightMode, onProfile: (p) => (profile = p) })
+        /** @type {Parameters<typeof renderBothSurfaces>[1]} */ ({
+          heightMode,
+          onProfile: (p) => (profile = p),
+        })
       );
 
       // -5 dBTP clears the test profile's -1 limit, so both surfaces start neutral.

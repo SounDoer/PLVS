@@ -220,7 +220,7 @@ describe("agent-control app snapshots", () => {
   });
 
   it("reports the live enabled flag alongside platform availability", () => {
-    globalThis.window = /** @type {any} */ (globalThis.window || {});
+    globalThis.window = /** @type {typeof globalThis.window} */ (globalThis.window || {});
     globalThis.window.__PLVS_INITIAL_STATE__ = {
       agentControl: {
         available: true,

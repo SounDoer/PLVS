@@ -138,7 +138,8 @@ describe("profileShape", () => {
     (loudnessProfileActive) => {
       const preset = { ...VALID_PRESET };
       if (loudnessProfileActive !== undefined)
-        /** @type {any} */ (preset).loudnessProfileActive = loudnessProfileActive;
+        /** @type {Record<string, unknown>} */ (preset).loudnessProfileActive =
+          loudnessProfileActive;
 
       const profile = buildProfileSnapshot({
         settings: {

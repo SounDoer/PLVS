@@ -8,6 +8,7 @@ import {
   resolveStableSpectrogramSampleMs,
 } from "./spectrogramTimeline.js";
 
+import { standIn } from "../testing/standIn.js";
 const SAMPLE_MS = 40;
 
 function viewOf(rows) {
@@ -42,7 +43,7 @@ describe("spectrogramTimeWindow", () => {
 
   it("returns null when history has no timestamps", () => {
     expect(spectrogramTimeWindow([], 0, 3)).toBeNull();
-    expect(spectrogramTimeWindow([/** @type {any} */ ({})], 0, 3)).toBeNull();
+    expect(spectrogramTimeWindow([standIn({})], 0, 3)).toBeNull();
   });
 
   it("spans the full requested window when fewer samples exist (right-aligned, no stretch)", () => {

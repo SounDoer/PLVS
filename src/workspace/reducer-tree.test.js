@@ -869,6 +869,8 @@ describe("SET_PANEL_CONTROLS_FOR_PANEL", () => {
     expect(next.panelControlsById.levelMeter).toEqual(
       normalizePanelControls(DEFAULT_PANEL_CONTROLS)
     );
-    expect(/** @type {any} */ (next.panelControlsById.loudness).loudnessReferenceLufs).toBe(-14);
+    expect(
+      /** @type {Record<string, unknown>} */ (next.panelControlsById.loudness).loudnessReferenceLufs
+    ).toBe(-14);
   });
 });

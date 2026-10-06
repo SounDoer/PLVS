@@ -9,6 +9,7 @@ import {
   serializeWorkspaceLayout,
 } from "./workspaceLayout.js";
 
+import { standIn } from "../testing/standIn.js";
 function panel(id, moduleId = id, extra = {}) {
   return { id, moduleId, ...extra };
 }
@@ -88,8 +89,8 @@ describe("serializeWorkspaceLayout", () => {
     });
 
     const layout = serializeWorkspaceLayout(current);
-    expect(/** @type {any} */ (layout).direction).toBe("horizontal");
-    expect(/** @type {any} */ (layout).weights).toEqual([0.2, 0.5, 0.3]);
+    expect(/** @type {Record<string, unknown>} */ (layout).direction).toBe("horizontal");
+    expect(/** @type {Record<string, unknown>} */ (layout).weights).toEqual([0.2, 0.5, 0.3]);
     expect(layout.children[2]).toMatchObject({ direction: "vertical" });
     expect(layout.children[2]).not.toHaveProperty("weights");
   });
@@ -307,7 +308,7 @@ describe("compileWorkspaceLayout", () => {
   it("enforces depth, panel-count, and payload ceilings", () => {
     let deep = { type: "panel", key: "deep-panel", moduleId: "spectrum" };
     for (let index = 0; index < MAX_LAYOUT_DEPTH; index += 1) {
-      deep = /** @type {any} */ ({
+      deep = standIn({
         type: "split",
         direction: "horizontal",
         children: [deep, { type: "panel", key: `depth-side-${index}`, moduleId: "waveform" }],

@@ -48,6 +48,7 @@ function clipboardTheme(name = "Community Theme") {
 }
 
 function deferred() {
+  /** @type {(value?: any) => void} */
   let resolve;
   const promise = new Promise((next) => {
     resolve = next;
@@ -93,7 +94,6 @@ describe("usePackTransfer export", () => {
         profiles: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
       },
     });
-    /** @type {any} */
     const saveDialog = deferred();
     savePackFile.mockReturnValue(saveDialog.promise);
     const { result } = renderHook(() => usePackTransfer());
@@ -271,9 +271,7 @@ describe("usePackTransfer export outcome", () => {
 
 describe("usePackTransfer import", () => {
   it("becomes busy only after the shared-item dialog returns a file", async () => {
-    /** @type {any} */
     const picker = deferred();
-    /** @type {any} */
     const reader = deferred();
     pickSharedPackFile.mockReturnValue(picker.promise);
     readProfileFile.mockReturnValue(reader.promise);

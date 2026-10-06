@@ -44,7 +44,7 @@ describe("DockHeader", () => {
     fireEvent.pointerEnter(screen.getByTestId("dock-header"));
     const modulesButton = screen.getByRole("button", { name: "Edit modules" });
     vi.spyOn(modulesButton, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof modulesButton.getBoundingClientRect>} */ ({
         left: 320,
         width: 24,
       })
@@ -135,7 +135,7 @@ describe("DockHeader", () => {
     expect(button.classList.contains("text-foreground")).toBe(false);
 
     vi.spyOn(button, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({ left: 100, width: 20 })
+      /** @type {ReturnType<typeof button.getBoundingClientRect>} */ ({ left: 100, width: 20 })
     );
     fireEvent.click(button);
     expect(onAction).toHaveBeenCalledWith("open-editor", {

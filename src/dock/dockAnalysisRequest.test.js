@@ -15,8 +15,13 @@ import {
   mergeDockSpectrumRequest,
 } from "./dockAnalysisRequest.js";
 
+import { standIn } from "../testing/standIn.js";
 const EMPTY_DERIVED = deriveAnalysisRequests(
-  /** @type {any} */ ({ tree: null, panelsById: {}, panelOrder: [] })
+  /** @type {Parameters<typeof deriveAnalysisRequests>[0]} */ ({
+    tree: null,
+    panelsById: {},
+    panelOrder: [],
+  })
 );
 
 describe("mergeDockSpectrumRequest", () => {
@@ -328,7 +333,7 @@ describe("subset invariant: every dock-merged computed key is retained", () => {
   it("keeps every dock-merged computed key inside the dock-merged retained set", () => {
     const workspace = workspaceState();
     const requested = mergeDockAnalysisRequests(
-      deriveAnalysisRequests(/** @type {any} */ (workspace), { channelCount: 6 }),
+      deriveAnalysisRequests(standIn(workspace), { channelCount: 6 }),
       dockPanels
     );
     const retained = mergeDockRetainedKeys(deriveRetainedAnalysisKeys(workspace), dockPanels);

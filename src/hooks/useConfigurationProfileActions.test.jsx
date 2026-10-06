@@ -32,6 +32,7 @@ vi.mock("../persistence/profile.js", () => ({
 }));
 
 function deferred() {
+  /** @type {(value?: any) => void} */
   let resolve;
   const promise = new Promise((next) => {
     resolve = next;
@@ -79,7 +80,6 @@ describe("useConfigurationProfileActions", () => {
       kind: "configuration-profile",
       version: 1,
     });
-    /** @type {any} */
     const saveDialog = deferred();
     mocks.saveConfigurationProfileFile.mockReturnValue(saveDialog.promise);
     const { result } = renderHook(() => useConfigurationProfileActions());
@@ -132,9 +132,7 @@ describe("useConfigurationProfileActions", () => {
 
   it("becomes busy only after the import dialog returns a file", async () => {
     mocks.isTauri.mockReturnValue(true);
-    /** @type {any} */
     const picker = deferred();
-    /** @type {any} */
     const reader = deferred();
     mocks.pickConfigurationProfileFile.mockReturnValue(picker.promise);
     mocks.readProfileFile.mockReturnValue(reader.promise);

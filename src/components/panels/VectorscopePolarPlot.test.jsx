@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 
 import { VectorscopePolarPlot } from "./VectorscopePolarPlot.jsx";
 
+import { standIn } from "../../testing/standIn.js";
 function contextStub() {
   let currentPath = [];
   const filledPaths = [];
@@ -82,7 +83,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("draws Polar Sample as points and shows endpoint labels", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const { container } = render(
       <VectorscopePolarPlot
         mode="polarSample"
@@ -101,7 +102,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("redraws Polar Sample with the selected persistence fade", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const props = {
       mode: "polarSample",
       rows: [
@@ -131,7 +132,7 @@ describe("VectorscopePolarPlot", () => {
       get: heightRead,
     });
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const rows = [{ pairs: new Float32Array([1, 1, 0, 1]), ageMs: 0, timestampMs: 100 }];
     const props = {
       mode: "polarSample",
@@ -151,7 +152,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("leaves Polar Sample empty at the silence floor", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     render(
       <VectorscopePolarPlot
         mode="polarSample"
@@ -166,7 +167,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("positions Polar Sample points on the fixed decibel scale independent of window loudness", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     render(
       <VectorscopePolarPlot
         mode="polarSample"
@@ -187,7 +188,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("draws Polar Level as a single continuous filled fan", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     render(
       <VectorscopePolarPlot
         mode="polarLevel"
@@ -211,7 +212,7 @@ describe("VectorscopePolarPlot", () => {
   it("scales the Polar Level fan with the signal's absolute level", () => {
     const topmostFor = (pairs) => {
       const ctx = contextStub();
-      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
       const view = render(
         <VectorscopePolarPlot
           mode="polarLevel"
@@ -239,7 +240,7 @@ describe("VectorscopePolarPlot", () => {
   it("does not shrink the live Polar Level fill when Max hold is enabled", () => {
     const fillTopFor = (maxHoldEnabled) => {
       const ctx = contextStub();
-      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
       const { rerender, unmount } = render(
         <VectorscopePolarPlot
           mode="polarLevel"
@@ -273,7 +274,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("keeps Max hold inside the fixed Polar Level arc after the signal falls", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const { rerender } = render(
       <VectorscopePolarPlot
         mode="polarLevel"
@@ -301,7 +302,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("connects only the Polar Level Max hold values", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     render(
       <VectorscopePolarPlot
         mode="polarLevel"
@@ -331,9 +332,9 @@ describe("VectorscopePolarPlot", () => {
 
   it("uses distinct grid and trace layers for Polar Level", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
-      /** @type {any} */ ({
+      standIn({
         getPropertyValue: () => "1",
       })
     );
@@ -366,9 +367,9 @@ describe("VectorscopePolarPlot", () => {
       strokedWidths.push(ctx.lineWidth);
       stroke();
     });
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
-      /** @type {any} */ ({
+      standIn({
         getPropertyValue: () => "3",
       })
     );
@@ -391,9 +392,9 @@ describe("VectorscopePolarPlot", () => {
 
   it("uses the snapshot trace color for Polar snapshots", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const styleSpy = vi.spyOn(window, "getComputedStyle").mockReturnValue(
-      /** @type {any} */ ({
+      standIn({
         getPropertyValue: () => "1",
       })
     );
@@ -413,7 +414,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("hides endpoint labels in compact plots", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     render(
       <VectorscopePolarPlot
         mode="polarSample"
@@ -431,7 +432,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("draws the reconstructed Max hold outline supplied for a snapshot", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     render(
       <VectorscopePolarPlot
         mode="polarLevel"
@@ -453,7 +454,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("omits the snapshot Max hold outline when none is supplied", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     render(
       <VectorscopePolarPlot
         mode="polarLevel"
@@ -471,7 +472,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("resets the live Max hold when maxHoldResetKey changes", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const heldTop = () =>
       Math.min(
         ...ctx.strokedPaths
@@ -518,7 +519,7 @@ describe("VectorscopePolarPlot", () => {
 
   it("ignores maxHoldResetKey in snapshot mode", () => {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const held = new Float64Array(64).fill(0.7);
     const { rerender } = render(
       <VectorscopePolarPlot

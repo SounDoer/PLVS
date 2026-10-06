@@ -451,7 +451,11 @@ describe("FrameIntake", () => {
     ];
     intake.reset();
     expect(rings.every((ring) => ring.length === 0)).toBe(true);
-    expect(rings.every((ring) => Array.from(/** @type {any} */ (ring)).length === 0)).toBe(true);
+    expect(
+      rings.every(
+        (ring) => Array.from(/** @type {Parameters<typeof Array.from>[0]} */ (ring)).length === 0
+      )
+    ).toBe(true);
     expect(intake.getLoudnessHistory()).toBe(rings[0]);
   });
 

@@ -4,6 +4,7 @@ import { DEFAULT_WORKSPACE_STATE } from "./constants";
 import { countLinkedParticipants, resolveAxisViewport } from "./axisViewports";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls";
 
+import { standIn } from "../testing/standIn.js";
 const RANGE = { spectrum: ["spectrumXMinFreq", "spectrumXMaxFreq"] };
 
 /** A workspace holding one panel per module id, each with its own controls. */
@@ -60,17 +61,20 @@ describe("countLinkedParticipants", () => {
 
 describe("SET_AXIS_VIEWPORT", () => {
   it("repairs what it is given", () => {
-    const next = workspaceReducer(/** @type {any} */ (stateWith({ a: linkedSpectrum })), {
-      type: "SET_AXIS_VIEWPORT",
-      payload: { kindId: "frequency", range: { min: 1, max: 90000 } },
-    });
+    const next = workspaceReducer(
+      /** @type {Parameters<typeof workspaceReducer>[0]} */ (stateWith({ a: linkedSpectrum })),
+      {
+        type: "SET_AXIS_VIEWPORT",
+        payload: { kindId: "frequency", range: { min: 1, max: 90000 } },
+      }
+    );
 
     expect(next.axisViewports.frequency).toEqual({ min: 20, max: 20000 });
   });
 
   it("leaves dormant local ranges alone", () => {
     const state = stateWith({ a: unlinkedSpectrum(200, 5000) });
-    const next = workspaceReducer(/** @type {any} */ (state), {
+    const next = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "SET_AXIS_VIEWPORT",
       payload: { kindId: "frequency", range: { min: 1000, max: 8000 } },
     });
@@ -83,7 +87,7 @@ describe("SET_AXIS_VIEWPORT", () => {
 describe("JOIN_AXIS_VIEWPORT", () => {
   it("seeds the shared viewport from the first panel to join", () => {
     const state = stateWith({ a: unlinkedSpectrum(200, 5000) });
-    const next = workspaceReducer(/** @type {any} */ (state), {
+    const next = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "JOIN_AXIS_VIEWPORT",
       payload: { kindId: "frequency", panelId: "a" },
     });
@@ -97,7 +101,7 @@ describe("JOIN_AXIS_VIEWPORT", () => {
       ...stateWith({ a: linkedSpectrum, b: unlinkedSpectrogram(200, 5000) }),
       axisViewports: { frequency: { min: 1000, max: 8000 } },
     };
-    const next = workspaceReducer(/** @type {any} */ (state), {
+    const next = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "JOIN_AXIS_VIEWPORT",
       payload: { kindId: "frequency", panelId: "b" },
     });
@@ -115,7 +119,7 @@ describe("JOIN_AXIS_VIEWPORT", () => {
       ...stateWith({ a: linkedSpectrum, b: unlinkedSpectrogram(200, 5000) }),
       axisViewports: { frequency: { min: 1000, max: 8000 } },
     };
-    const next = workspaceReducer(/** @type {any} */ (state), {
+    const next = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "JOIN_AXIS_VIEWPORT",
       payload: { kindId: "frequency", panelId: "b" },
     });
@@ -128,7 +132,7 @@ describe("JOIN_AXIS_VIEWPORT", () => {
     const state = stateWith({ a: { moduleId: "levelMeter", controls: {} } });
 
     expect(
-      workspaceReducer(/** @type {any} */ (state), {
+      workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
         type: "JOIN_AXIS_VIEWPORT",
         payload: { kindId: "frequency", panelId: "a" },
       })
@@ -142,7 +146,7 @@ describe("LEAVE_AXIS_VIEWPORT", () => {
       ...stateWith({ a: linkedSpectrum, b: { ...linkedSpectrum } }),
       axisViewports: { frequency: { min: 1000, max: 8000 } },
     };
-    const next = workspaceReducer(/** @type {any} */ (state), {
+    const next = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "LEAVE_AXIS_VIEWPORT",
       payload: { kindId: "frequency", panelId: "a" },
     });
@@ -161,7 +165,7 @@ describe("LEAVE_AXIS_VIEWPORT", () => {
       ...stateWith({ a: linkedSpectrum, b: { ...linkedSpectrum } }),
       axisViewports: { frequency: { min: 1000, max: 8000 } },
     };
-    const next = workspaceReducer(/** @type {any} */ (state), {
+    const next = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "LEAVE_AXIS_VIEWPORT",
       payload: { kindId: "frequency", panelId: "a" },
     });
@@ -175,9 +179,9 @@ describe("LEAVE_AXIS_VIEWPORT", () => {
 
   it("does not revive a dormant shared value when the group re-forms", () => {
     const emptied = workspaceReducer(
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof workspaceReducer>[0]} */ ({
         ...stateWith({ a: linkedSpectrum }),
-        axisViewports: /** @type {any} */ ({ frequency: { min: 1000, max: 8000 } }),
+        axisViewports: standIn({ frequency: { min: 1000, max: 8000 } }),
       }),
       { type: "LEAVE_AXIS_VIEWPORT", payload: { kindId: "frequency", panelId: "a" } }
     );
@@ -212,7 +216,7 @@ describe("resolveAxisViewport", () => {
       linked: false,
     });
 
-    const joined = workspaceReducer(/** @type {any} */ (state), {
+    const joined = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "JOIN_AXIS_VIEWPORT",
       payload: { kindId: "frequency", panelId: "a" },
     });
@@ -238,7 +242,9 @@ describe("resolveAxisViewport", () => {
 describe("time viewport", () => {
   it("normalizes a shared time viewport without applying the dynamic retention maximum", () => {
     const next = workspaceReducer(
-      /** @type {any} */ (stateWith({ a: timelinePanel("loudness", true) })),
+      /** @type {Parameters<typeof workspaceReducer>[0]} */ (
+        stateWith({ a: timelinePanel("loudness", true) })
+      ),
       {
         type: "SET_AXIS_VIEWPORT",
         payload: { kindId: "time", range: { windowSec: 7200, offsetSec: -10 } },
@@ -250,7 +256,7 @@ describe("time viewport", () => {
 
   it("seeds the first time group from the joining panel and preserves its dormant local value", () => {
     const state = stateWith({ a: timelinePanel("waveform", false, 12, 4) });
-    const joined = workspaceReducer(/** @type {any} */ (state), {
+    const joined = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "JOIN_AXIS_VIEWPORT",
       payload: { kindId: "time", panelId: "a" },
     });
@@ -272,7 +278,7 @@ describe("time viewport", () => {
         time: { windowSec: 20, offsetSec: 8 },
       },
     };
-    const left = workspaceReducer(/** @type {any} */ (state), {
+    const left = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (state), {
       type: "LEAVE_AXIS_VIEWPORT",
       payload: { kindId: "time", panelId: "a" },
     });

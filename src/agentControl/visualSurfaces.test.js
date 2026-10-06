@@ -7,6 +7,7 @@ import {
   subscribeVisualSurfaceResize,
 } from "./visualSurfaces.js";
 
+import { standIn } from "../testing/standIn.js";
 function rect(left, top, width, height) {
   return { left, top, width, height, right: left + width, bottom: top + height };
 }
@@ -117,8 +118,8 @@ describe("visual paint settlement", () => {
       configurable: true,
       value: { ready: Promise.resolve() },
     });
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(
-      (callback) => /** @type {any} */ (setTimeout(() => callback(performance.now()), 0))
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) =>
+      standIn(setTimeout(() => callback(performance.now()), 0))
     );
     vi.spyOn(window, "cancelAnimationFrame").mockImplementation(clearTimeout);
   });
@@ -133,7 +134,7 @@ describe("visual paint settlement", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 800;
     canvas.height = 600;
-    canvas.getBoundingClientRect = /** @type {any} */ (vi.fn(() => rect(20, 30, 400, 300)));
+    canvas.getBoundingClientRect = standIn(vi.fn(() => rect(20, 30, 400, 300)));
     surface.append(canvas);
     const getRevision = vi.fn(() => 12);
 

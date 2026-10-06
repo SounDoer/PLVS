@@ -30,7 +30,7 @@ vi.mock("../../hooks/useSpectrogram3dCanvas", () => ({
 // out. MouseEvent already carries clientX/clientY, so subclassing it is enough for the fields this
 // suite reads.
 if (typeof window.PointerEvent === "undefined") {
-  window.PointerEvent = /** @type {any} */ (
+  window.PointerEvent = /** @type {typeof window.PointerEvent} */ (
     class PointerEvent extends MouseEvent {
       constructor(type, params = {}) {
         super(type, params);
@@ -88,9 +88,10 @@ function spectrogramPanelTree(value = {}, props = {}) {
   } = value;
   const base = { ...baseAudioData, ...history };
   const frameData = {
-    channelCount: channelCount ?? /** @type {any} */ (base).channelCount,
+    channelCount: channelCount ?? /** @type {Record<string, unknown>} */ (base).channelCount,
     spectrumChannelOptions:
-      spectrumChannelOptions ?? /** @type {any} */ (base).spectrumChannelOptions,
+      spectrumChannelOptions ??
+      /** @type {Record<string, unknown>} */ (base).spectrumChannelOptions,
     resolvedThemeId: resolvedThemeId ?? base.resolvedThemeId,
   };
   return (
@@ -111,10 +112,11 @@ beforeEach(() => {
   class ResizeObserverStub {
     observe() {}
     disconnect() {}
+    unobserve() {}
   }
 
-  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
-  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  window.ResizeObserver = ResizeObserverStub;
+  globalThis.ResizeObserver = ResizeObserverStub;
 });
 
 describe("SpectrogramPanel", () => {

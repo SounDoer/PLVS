@@ -42,6 +42,7 @@ import {
   useBlockingEditors,
 } from "./BlockingEditorsContext.jsx";
 
+import { standIn } from "../testing/standIn.js";
 const TEST_PROFILE = {
   id: "test-profile",
   name: "Test profile",
@@ -117,7 +118,7 @@ describe("useDockMode", () => {
       dockState: { enabled: false, edge: "top", reserveSpace: true, height: 56 },
     };
     mocks.enterDock.mockResolvedValueOnce(
-      /** @type {any} */ ({
+      standIn({
         enabled: true,
         edge: "top",
         monitor: "monitor-1",
@@ -268,7 +269,7 @@ describe("useDockMode", () => {
 
   it("stores the monitor resolved by the dock IPC call", async () => {
     mocks.enterDock.mockResolvedValueOnce(
-      /** @type {any} */ ({
+      standIn({
         enabled: true,
         edge: "top",
         monitor: "\\\\.\\DISPLAY2",

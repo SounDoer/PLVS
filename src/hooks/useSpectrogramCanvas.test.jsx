@@ -11,6 +11,7 @@ import {
 } from "./useSpectrogramCanvas.js";
 import { SPECTROGRAM_DB_MIN } from "../config/scales.js";
 
+import { standIn } from "../testing/standIn.js";
 const BANDS = [{ fCenter: 1000 }];
 
 function Harness({ snaps, colormapLut, enabled = true, canvasSizeRevision = 0 }) {
@@ -55,12 +56,11 @@ describe("useSpectrogramCanvas", () => {
       return 1;
     });
     vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
-      () =>
-        /** @type {any} */ ({
-          clearRect: vi.fn(),
-          putImageData,
-        })
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() =>
+      standIn({
+        clearRect: vi.fn(),
+        putImageData,
+      })
     );
     vi.stubGlobal(
       "ImageData",

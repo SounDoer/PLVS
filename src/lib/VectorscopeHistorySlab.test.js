@@ -29,7 +29,10 @@ describe("VectorscopeHistorySlab", () => {
   it("packs normalized pairs into Int16 rows with bounded display error", () => {
     const slab = new VectorscopeHistorySlab(2, 4);
     slab.push(
-      /** @type {any} */ ({ pairs: new Float32Array([-1, -0.12345, 0.5, 1]), timestampMs: 1 })
+      /** @type {Parameters<typeof slab.push>[0]} */ ({
+        pairs: new Float32Array([-1, -0.12345, 0.5, 1]),
+        timestampMs: 1,
+      })
     );
 
     const row = slab.rowAt(0);
@@ -53,7 +56,7 @@ describe("VectorscopeHistorySlab", () => {
           : i === VISUAL_HISTORY_CHUNK_ROWS
             ? new Float32Array([0, 1])
             : new Float32Array([0, 0]);
-      slab.push(/** @type {any} */ ({ pairs, timestampMs: i }));
+      slab.push(/** @type {Parameters<typeof slab.push>[0]} */ ({ pairs, timestampMs: i }));
     }
 
     const expected = aggregatePolarLevel(slab.toArray());
@@ -76,11 +79,15 @@ describe("VectorscopeHistorySlab", () => {
     const slab = new VectorscopeHistorySlab(2, PAIR_VALUE_COUNT);
     const version = slab.version;
 
-    slab.push(/** @type {any} */ ({ pairs: [] }));
+    slab.push(/** @type {Parameters<typeof slab.push>[0]} */ ({ pairs: [] }));
     expect(slab.length).toBe(0);
     expect(slab.version).toBe(version);
     expect(() =>
-      slab.push(/** @type {any} */ ({ pairs: new Float32Array(PAIR_VALUE_COUNT - 1) }))
+      slab.push(
+        /** @type {Parameters<typeof slab.push>[0]} */ ({
+          pairs: new Float32Array(PAIR_VALUE_COUNT - 1),
+        })
+      )
     ).toThrow(/different pair count/);
 
     pushRow(slab, 0, {

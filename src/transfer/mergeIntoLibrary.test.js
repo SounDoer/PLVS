@@ -6,6 +6,7 @@ import { themeToPortable } from "../theme/portableTheme.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 import { buildPack, parseClipboardTheme, parsePack } from "./packShape.js";
 
+import { standIn } from "../testing/standIn.js";
 function counter() {
   let n = 0;
   return () => `new-${++n}`;
@@ -64,7 +65,7 @@ describe("planMerge", () => {
 
   it("never changes a local entry", () => {
     const existing = [A];
-    planMerge(existing, /** @type {any} */ ([{ ...A, referenceLufs: -16 }]), { makeId: counter() });
+    planMerge(existing, standIn([{ ...A, referenceLufs: -16 }]), { makeId: counter() });
     expect(existing).toEqual([{ id: "a", name: "Alpha", referenceLufs: -23, rules: [] }]);
   });
 

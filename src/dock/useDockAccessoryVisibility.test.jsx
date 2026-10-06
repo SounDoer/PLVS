@@ -309,7 +309,7 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("coalesces rapid accessory updates to the latest state", async () => {
-    /** @type {any} */
+    /** @type {(value: any) => void} */
     let resolveFirst;
     const command = vi
       .fn()

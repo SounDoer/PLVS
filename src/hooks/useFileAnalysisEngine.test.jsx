@@ -54,6 +54,11 @@ import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
 /**
+ * The harness component below publishes the hook result on `window` so a test can drive it.
+ * @typedef {Window & { __fileApi?: any, __selectedOffsetRef?: { current: number } }} HarnessWindow
+ */
+
+/**
  * @param {{
  *   enabled?: boolean,
  *   path?: string,
@@ -90,7 +95,7 @@ function Harness({
   const defaultSampleRateRef = useRef(48000);
 
   const api = useFileAnalysisEngine(
-    /** @type {any} */ ({
+    /** @type {Parameters<typeof useFileAnalysisEngine>[0]} */ ({
       filePath: path,
       enabled,
       runId,
@@ -116,8 +121,8 @@ function Harness({
     })
   );
 
-  /** @type {any} */ (window).__fileApi = api;
-  /** @type {any} */ (window).__selectedOffsetRef = selectedOffsetRef;
+  /** @type {HarnessWindow} */ (window).__fileApi = api;
+  /** @type {HarnessWindow} */ (window).__selectedOffsetRef = selectedOffsetRef;
   return null;
 }
 
@@ -151,8 +156,8 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
-  delete (/** @type {any} */ (window).__fileApi);
-  delete (/** @type {any} */ (window).__selectedOffsetRef);
+  delete (/** @type {HarnessWindow} */ (window).__fileApi);
+  delete (/** @type {HarnessWindow} */ (window).__selectedOffsetRef);
 });
 
 describe("useFileAnalysisEngine", () => {
@@ -209,11 +214,11 @@ describe("useFileAnalysisEngine", () => {
     renderHarness({ shouldDriveDisplay });
     await waitFor(() => expect(buildTauriFrameApply).toHaveBeenCalledOnce());
 
-    const options = /** @type {any} */ (buildTauriFrameApply).mock.calls[0][0];
+    const options = vi.mocked(buildTauriFrameApply).mock.calls[0][0];
     expect(options.shouldDriveDisplay).toBe(shouldDriveDisplay);
     expect(options.latestAudioRef).toEqual(expect.objectContaining({ current: { peakDb: [] } }));
     expect(options.shouldPublishDisplay()).toBe(true);
-    /** @type {any} */ (window).__selectedOffsetRef.current = 0;
+    /** @type {HarnessWindow} */ (window).__selectedOffsetRef.current = 0;
     expect(options.shouldPublishDisplay()).toBe(false);
   });
 
@@ -323,7 +328,7 @@ describe("useFileAnalysisEngine", () => {
     await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
 
     await act(async () => {
-      await /** @type {any} */ (window).__fileApi.stop();
+      await /** @type {HarnessWindow} */ (window).__fileApi.stop();
     });
 
     expect(stopFileAnalysis).toHaveBeenCalled();

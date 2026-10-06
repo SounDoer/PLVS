@@ -348,9 +348,12 @@ describe("AppHeader", () => {
       expect(content.className).toContain("min-w-40");
       if (name === "Presets") {
         expect(content.className).toContain("max-w-[92vw]");
-        const input = within(/** @type {any} */ (content)).getByRole("textbox", {
-          name: "New preset name",
-        });
+        const input = within(/** @type {Parameters<typeof within>[0]} */ (content)).getByRole(
+          "textbox",
+          {
+            name: "New preset name",
+          }
+        );
         expect(input.parentElement.parentElement.className).toContain(
           "min-w-[min(calc(15em+4rem),calc(92vw-1rem))]"
         );

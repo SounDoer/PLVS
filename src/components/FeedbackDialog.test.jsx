@@ -96,7 +96,7 @@ describe("FeedbackDialog", () => {
       app: { version: "0.15.4", os: "windows", arch: "x86_64" },
       logs: ["last line"],
     };
-    /** @type {any} */
+    /** @type {(value: any) => void} */
     let resolveDiagnostics;
     readFeedbackDiagnostics.mockReturnValue(
       new Promise((resolve) => {

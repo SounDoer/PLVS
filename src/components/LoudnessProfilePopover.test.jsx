@@ -100,7 +100,7 @@ describe("LoudnessProfilePopoverContent listing", () => {
 
   it("exports one saved Loudness Profile from its row", () => {
     const onExport = vi.fn();
-    renderPopover(/** @type {any} */ ({ onExport }));
+    renderPopover(/** @type {Parameters<typeof renderPopover>[0]} */ ({ onExport }));
 
     fireEvent.click(screen.getByRole("button", { name: `Export ${SAVED.name}` }));
     expect(onExport).toHaveBeenCalledWith(SAVED.id);
@@ -108,7 +108,7 @@ describe("LoudnessProfilePopoverContent listing", () => {
 
   it("marks the active profile and selects rows by profile selection id", () => {
     const { profile } = renderPopover(
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
         overrides: { active: profileSelectionId(SAVED.id), document: SAVED },
       })
     );
@@ -191,14 +191,16 @@ describe("LoudnessProfilePopoverContent editing", () => {
 describe("LoudnessProfilePopoverContent missing stats", () => {
   it("says nothing when the profile is Off", () => {
     renderPopover(
-      /** @type {any} */ ({ stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing: vi.fn() } })
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
+        stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing: vi.fn() },
+      })
     );
     expect(screen.queryByText(/Missing stats/)).toBeNull();
   });
 
   it("names the missing rows once a profile needs them", () => {
     renderPopover(
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
         overrides: { active: profileSelectionId(STARTER.id), document: STARTER },
         stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing: vi.fn() },
       })
@@ -209,7 +211,7 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
 
   it("never mentions dialogue gating, only the rows themselves", () => {
     renderPopover(
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
         overrides: { active: profileSelectionId(SAVED.id), document: SAVED },
         stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing: vi.fn() },
       })
@@ -225,7 +227,7 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
   it("hands the fulfill decision to the caller", () => {
     const onShowMissing = vi.fn();
     renderPopover(
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
         overrides: { active: profileSelectionId(STARTER.id), document: STARTER },
         stats: { visibleIds: DEFAULT_VISIBLE, onShowMissing },
       })
@@ -237,7 +239,7 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
 
   it("drops the affordance when everything it needs is already shown", () => {
     renderPopover(
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
         overrides: { active: profileSelectionId(STARTER.id), document: STARTER },
         stats: { visibleIds: [...DEFAULT_VISIBLE, "truePeak"], onShowMissing: vi.fn() },
       })
@@ -248,7 +250,9 @@ describe("LoudnessProfilePopoverContent missing stats", () => {
 
   it("stays silent when there is no Stats panel to fulfill into", () => {
     renderPopover(
-      /** @type {any} */ ({ overrides: { active: profileSelectionId(SAVED.id), document: SAVED } })
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
+        overrides: { active: profileSelectionId(SAVED.id), document: SAVED },
+      })
     );
 
     expect(screen.queryByText(/Missing stats/)).toBeNull();
@@ -268,7 +272,11 @@ describe("a dirty draft blocks the library", () => {
   ];
 
   it("disables the rows that would discard it", () => {
-    renderPopover(/** @type {any} */ ({ overrides: { draftBlocksLibraryActions: true } }));
+    renderPopover(
+      /** @type {Parameters<typeof renderPopover>[0]} */ ({
+        overrides: { draftBlocksLibraryActions: true },
+      })
+    );
 
     for (const button of actions())
       expect(/** @type {HTMLButtonElement} */ (button).disabled).toBe(true);

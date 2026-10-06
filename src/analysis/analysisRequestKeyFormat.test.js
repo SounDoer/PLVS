@@ -20,7 +20,7 @@ describe("analysis request key format (shared fixture)", () => {
       spectrumChannel,
       spectrumView: entry.view,
       spectrumSpeedPercent: entry.speedPercent,
-      spectrumTiltDbPerOctave: /** @type {any} */ (entry).tiltDbPerOctave,
+      spectrumTiltDbPerOctave: /** @type {Record<string, unknown>} */ (entry).tiltDbPerOctave,
       spectrumOctaveSmoothing: entry.octaveSmoothing,
     });
     expect(key).toBe(entry.key);
@@ -43,9 +43,9 @@ describe("analysis request key format (shared fixture)", () => {
       for (const speedPercent of stereoMapFixtures.speedPercentValues) {
         for (const smoothing of stereoMapFixtures.smoothingValues) {
           const key = stereoMapFixtures.keyFormat
-            .replace("<first>", /** @type {any} */ (pair.first))
-            .replace("<second>", /** @type {any} */ (pair.second))
-            .replace("<speedPercent>", /** @type {any} */ (speedPercent))
+            .replace("<first>", String(pair.first))
+            .replace("<second>", String(pair.second))
+            .replace("<speedPercent>", String(speedPercent))
             .replace("<smoothingToken>", smoothing.token);
 
           expect(

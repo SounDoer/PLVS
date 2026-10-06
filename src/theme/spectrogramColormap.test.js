@@ -10,6 +10,7 @@ import {
 } from "./spectrogramColormap.js";
 import { SPECTROGRAM_DB_MIN, SPECTROGRAM_DB_MAX } from "../config/scales.js";
 
+import { standIn } from "../testing/standIn.js";
 describe("spectrogram colormap", () => {
   it("preserves the legacy dark Inferno endpoints", () => {
     const lut = buildSpectrogramLut(INFERNO_COLORMAP_STOPS);
@@ -35,7 +36,7 @@ describe("spectrogram colormap", () => {
 
   it("accepts normalized Theme V2 intensity stops", () => {
     const lut = buildSpectrogramLut(
-      /** @type {any} */ ([
+      standIn([
         { position: 0, color: "#000004" },
         { position: 1, color: "#fcffa4" },
       ])

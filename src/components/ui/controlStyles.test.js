@@ -22,7 +22,9 @@ describe("control visual semantics", () => {
 
   it("keeps feedback badges flat on an opaque neutral surface", () => {
     for (const variant of ["success", "warning", "danger"]) {
-      const classes = badgeVariants(/** @type {any} */ ({ variant }));
+      const classes = badgeVariants(
+        /** @type {Parameters<typeof badgeVariants>[0]} */ ({ variant })
+      );
       expect(classes).toContain("bg-secondary");
       expect(classes).toContain("border-border");
       expect(classes).not.toContain("transparent");

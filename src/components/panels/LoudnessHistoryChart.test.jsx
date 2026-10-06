@@ -8,10 +8,11 @@ beforeEach(() => {
   class ResizeObserverStub {
     observe() {}
     disconnect() {}
+    unobserve() {}
   }
 
-  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
-  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  window.ResizeObserver = ResizeObserverStub;
+  globalThis.ResizeObserver = ResizeObserverStub;
 });
 
 const baseProps = {

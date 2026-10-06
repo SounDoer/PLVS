@@ -12,13 +12,15 @@ import {
 import { WaveformHistoryIndex } from "../../math/waveformHistoryIndex.js";
 import { DEFAULT_WAVEFORM_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 
+import { standIn } from "../../testing/standIn.js";
 beforeAll(() => {
   class ResizeObserverStub {
     observe() {}
     disconnect() {}
+    unobserve() {}
   }
-  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
-  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  window.ResizeObserver = ResizeObserverStub;
+  globalThis.ResizeObserver = ResizeObserverStub;
 });
 
 // Extrema are rounded to f32 the way real ones already are: they reach the frontend as Rust f32
@@ -67,7 +69,7 @@ function mockCanvas(width = 100, height = 40) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+  canvas.getContext = standIn(vi.fn(() => context));
   return { canvas, context };
 }
 
@@ -97,7 +99,7 @@ describe("DockWaveform", () => {
     const { canvas, context } = mockCanvas();
     paintDockWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
         mins: [[-0.75, -0.75]],
         maxes: [[0.25, 0.25]],
         bucketCount: 2,
@@ -122,7 +124,7 @@ describe("DockWaveform", () => {
 
     paintDockWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
         mins: [[-0.75, -0.75]],
         maxes: [[0.25, 0.25]],
         bucketCount: 2,
@@ -150,7 +152,7 @@ describe("DockWaveform", () => {
 
     paintDockWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
         mins: [[-0.75, -0.75]],
         maxes: [[0.25, 0.25]],
         bucketCount: 2,
@@ -173,7 +175,7 @@ describe("DockWaveform", () => {
 
     paintDockWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
         mins: [[-0.75, -0.75]],
         maxes: [[0.25, 0.25]],
         bucketCount: 2,
@@ -197,7 +199,7 @@ describe("DockWaveform", () => {
 
     paintDockWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
         mins: [[-0.75, -0.75]],
         maxes: [[0.25, 0.25]],
         bucketCount: 2,
@@ -221,7 +223,7 @@ describe("DockWaveform", () => {
 
     paintDockWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
         mins: [[-0.5, -0.5]],
         maxes: [[0.5, 0.5]],
         bucketCount: 2,
@@ -246,7 +248,7 @@ describe("DockWaveform", () => {
 
     paintDockWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof paintDockWaveformCanvas>[1]} */ ({
         mins: [[0.25, 0.25]],
         maxes: [[0.5, 0.5]],
         bucketCount: 2,

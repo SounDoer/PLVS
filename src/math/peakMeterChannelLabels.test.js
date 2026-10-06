@@ -88,9 +88,16 @@ describe("getPeakMeterChannelLabels", () => {
   it("shows ITU labels when resolvedLayout is a known format", () => {
     // 8 channels also needs formatId: resolvedLayout alone only ever gates the "unknown" case,
     // and 8ch by count alone is now ambiguous between 7.1 and 5.1.2.
-    expect(
-      getPeakMeterChannelLabels(8, { formatId: "7.1", resolvedLayout: /** @type {any} */ ("7.1") })
-    ).toEqual(["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]);
+    expect(getPeakMeterChannelLabels(8, { formatId: "7.1", resolvedLayout: "7.1" })).toEqual([
+      "L",
+      "R",
+      "C",
+      "LFE",
+      "Lb",
+      "Rb",
+      "Ls",
+      "Rs",
+    ]);
     expect(getPeakMeterChannelLabels(6, { resolvedLayout: "5.1" })).toEqual([
       "L",
       "R",
@@ -102,25 +109,25 @@ describe("getPeakMeterChannelLabels", () => {
     expect(
       getPeakMeterChannelLabels(4, {
         channelLayout: "auto",
-        resolvedLayout: /** @type {any} */ ("quad"),
+        resolvedLayout: "quad",
       })
     ).toEqual(["L", "R", "Ls", "Rs"]);
     expect(
       getPeakMeterChannelLabels(3, {
         channelLayout: "auto",
-        resolvedLayout: /** @type {any} */ ("lcr"),
+        resolvedLayout: "lcr",
       })
     ).toEqual(["L", "R", "C"]);
     expect(
       getPeakMeterChannelLabels(5, {
         channelLayout: "auto",
-        resolvedLayout: /** @type {any} */ ("surround50"),
+        resolvedLayout: "surround50",
       })
     ).toEqual(["L", "R", "C", "Ls", "Rs"]);
     expect(
       getPeakMeterChannelLabels(7, {
         channelLayout: "auto",
-        resolvedLayout: /** @type {any} */ ("7.0"),
+        resolvedLayout: "7.0",
       })
     ).toEqual(["L", "R", "C", "Lb", "Rb", "Ls", "Rs"]);
   });

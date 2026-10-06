@@ -7,6 +7,7 @@ import { normalizePanelControls, DEFAULT_PANEL_CONTROLS } from "../lib/panelCont
 import { spectrumRequestKeyFromControls } from "../analysis/analysisRequests.js";
 import { stereoMapRequestKeyFromControls } from "../analysis/analysisRequests.js";
 
+import { standIn } from "../testing/standIn.js";
 describe("SET_VIEW carries the shared viewport", () => {
   it("restores what a preset captured", () => {
     const next = workspaceReducer(DEFAULT_WORKSPACE_STATE, {
@@ -24,7 +25,7 @@ describe("SET_VIEW carries the shared viewport", () => {
     const next = workspaceReducer(
       {
         ...DEFAULT_WORKSPACE_STATE,
-        axisViewports: /** @type {any} */ ({ frequency: { min: 200, max: 5000 } }),
+        axisViewports: standIn({ frequency: { min: 200, max: 5000 } }),
       },
       { type: "SET_VIEW", payload: { ...DEFAULT_WORKSPACE_STATE, axisViewports: undefined } }
     );

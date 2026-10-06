@@ -56,9 +56,11 @@ describe("community Theme preview contract", () => {
       },
     });
     expect(plan.assets.filter(({ kind }) => kind === "product")).toHaveLength(9);
-    expect(/** @type {any} */ (plan.assets).filter(({ crop }) => crop !== undefined)).toHaveLength(
-      1
-    );
+    expect(
+      /** @type {Array<Record<string, any>>} */ (plan.assets).filter(
+        ({ crop }) => crop !== undefined
+      )
+    ).toHaveLength(1);
   });
 
   it.each(["screenshots", "previews", "media", "thumbnail", "coverImage", "imageUrl"])(

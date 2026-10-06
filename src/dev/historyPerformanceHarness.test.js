@@ -14,6 +14,7 @@ import {
   startHistoryPerformanceHarness,
 } from "./historyPerformanceHarness.js";
 
+import { standIn } from "../testing/standIn.js";
 function createScheduler() {
   let nextId = 1;
   const idle = new Map();
@@ -76,7 +77,7 @@ function createIntakeSpy() {
 describe("history performance harness", () => {
   it("stores visual rows under active keys from the analysis request resolver", async () => {
     const requests = deriveAnalysisRequests(
-      /** @type {any} */ ({
+      standIn({
         tree: {
           type: "leaf",
           tabs: ["spectrum-panel", "vectorscope-panel"],

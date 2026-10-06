@@ -14,9 +14,10 @@ describe("useAxisSize", () => {
     class ResizeObserverStub {
       observe() {}
       disconnect() {}
+      unobserve() {}
     }
-    window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
-    globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+    window.ResizeObserver = ResizeObserverStub;
+    globalThis.ResizeObserver = ResizeObserverStub;
   });
 
   afterEach(() => {
@@ -25,7 +26,7 @@ describe("useAxisSize", () => {
 
   it("measures a y axis rail's height", () => {
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof Element.prototype.getBoundingClientRect>} */ ({
         top: 0,
         left: 0,
         width: 60,
@@ -39,7 +40,7 @@ describe("useAxisSize", () => {
 
   it("measures an x axis rail's width", () => {
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof Element.prototype.getBoundingClientRect>} */ ({
         top: 0,
         left: 0,
         width: 420,

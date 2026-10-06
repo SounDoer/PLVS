@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildFileAnalysisReport } from "./fileAnalysisReport.js";
 import { renderFileAnalysisReportMarkdown } from "./fileAnalysisReportMarkdown.js";
 
+import { standIn } from "../testing/standIn.js";
 const ORIGINAL_TZ = globalThis.process.env.TZ;
 
 const SESSION = {
@@ -156,7 +157,7 @@ describe("renderFileAnalysisReportMarkdown", () => {
 
   it("omits the profile when off and dialogue when disabled", () => {
     const markdown = render(
-      { ...SESSION, analysisSettings: { dialogue: /** @type {any} */ ({ enabled: false }) } },
+      { ...SESSION, analysisSettings: { dialogue: standIn({ enabled: false }) } },
       null
     );
 

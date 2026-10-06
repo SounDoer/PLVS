@@ -9,6 +9,7 @@ import {
   planDeviceSelection,
 } from "./deviceControl.js";
 
+import { standIn } from "../testing/standIn.js";
 const LB = "lb-0123456789abcdef0123456789abcdef";
 const CAP = "cap-fedcba9876543210fedcba9876543210";
 
@@ -41,7 +42,7 @@ function inventory({ devices = rows(), preview = undefined, previous } = {}) {
     preview === undefined
       ? { label: "Default Speakers", sampleRateHz: 48_000, channels: 2 }
       : preview,
-    /** @type {any} */ ("2026-09-07T10:12:40.000Z")
+    standIn("2026-09-07T10:12:40.000Z")
   );
   return advanceDeviceGeneration(previous, normalized);
 }
@@ -90,7 +91,7 @@ describe("Device Control inventory", () => {
       channels: 2,
       defaultSampleRate: 48_000,
     }));
-    const state = inventory(/** @type {any} */ ({ devices }));
+    const state = inventory(/** @type {Parameters<typeof inventory>[0]} */ ({ devices }));
     expect(state.devices).toHaveLength(MAX_PUBLIC_DEVICE_ROWS);
     expect(state.allDevices).toHaveLength(MAX_PUBLIC_DEVICE_ROWS + 1);
     expect(Array.from(state.devices[0].label)).toHaveLength(MAX_PUBLIC_DEVICE_LABEL_SCALARS);
@@ -119,9 +120,14 @@ describe("Device Control inventory", () => {
 
   it("advances generation only when normalized inventory or Automatic preview changes", () => {
     const first = inventory();
-    const observedAgain = inventory(/** @type {any} */ ({ previous: first }));
+    const observedAgain = inventory(
+      /** @type {Parameters<typeof inventory>[0]} */ ({ previous: first })
+    );
     const changed = inventory(
-      /** @type {any} */ ({ previous: observedAgain, devices: rows().slice().reverse() })
+      /** @type {Parameters<typeof inventory>[0]} */ ({
+        previous: observedAgain,
+        devices: rows().slice().reverse(),
+      })
     );
     expect(observedAgain.generation).toBe(1);
     expect(observedAgain.observedAt).toBe("2026-09-07T10:12:40.000Z");

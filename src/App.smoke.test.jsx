@@ -25,6 +25,7 @@ import {
 import { pickMediaFile } from "./ipc/fileDialog.js";
 import { emitTo } from "@tauri-apps/api/event";
 
+import { standIn } from "./testing/standIn.js";
 const tauriEventHandlers = vi.hoisted(() => new Map());
 
 const TEST_PROFILE = {
@@ -222,7 +223,7 @@ beforeEach(() => {
       disconnect() {}
     };
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-    /** @type {any} */ ({
+    standIn({
       save: vi.fn(),
       restore: vi.fn(),
       clearRect: vi.fn(),
@@ -727,7 +728,7 @@ describe("App smoke", () => {
     window.__PLVS_INITIAL_STATE__ = {
       dockState: { enabled: true, edge: "bottom", reserveSpace: false },
     };
-    /** @type {any} */
+    /** @type {(value: any) => void} */
     let releaseFirst;
     vi.mocked(setDockReserveSpace).mockImplementationOnce(
       () => new Promise((resolve) => (releaseFirst = resolve))
@@ -793,9 +794,9 @@ describe("App smoke", () => {
             ([surface, eventName, snapshot]) =>
               surface === "dock-header" &&
               eventName === "dock-accessory://state" &&
-              /** @type {any} */ (snapshot)?.payload?.notice?.text ===
+              /** @type {Record<string, any>} */ (snapshot)?.payload?.notice?.text ===
                 "Could not reserve screen space. Dock remains an overlay." &&
-              /** @type {any} */ (snapshot).payload.notice.details ===
+              /** @type {Record<string, any>} */ (snapshot).payload.notice.details ===
                 "Reserve screen space failed: ABM_NEW rejected registration"
           )
       ).toBe(true)

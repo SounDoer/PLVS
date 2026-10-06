@@ -700,9 +700,9 @@ describe("useSnapshot", () => {
 
     let spectrumFreezes = 0;
     let vectorscopeFreezes = 0;
-    /** @type {any} */
+    /** @type {import("../lib/SpectrumHistorySlab.js").FrozenSpectrumHistory} */
     let frozenSpectrum;
-    /** @type {any} */
+    /** @type {import("../lib/VectorscopeHistorySlab.js").FrozenVectorscopeHistory} */
     let frozenVectorscope;
     const intake = createIntake({
       loudness: [{ timestampMs: 1000 }, { timestampMs: 1100 }],

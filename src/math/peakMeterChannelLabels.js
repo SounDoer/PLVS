@@ -12,7 +12,11 @@
 import { CHANNEL_LAYOUTS, layoutsForChannelCount } from "./channelLayoutTable.js";
 
 /** @typedef {"auto" | "stereo" | "5.1"} ChannelLayoutSetting */
-/** @typedef {"unknown" | "stereo" | "5.1"} ResolvedChannelLayout */
+/**
+ * The layout id detection settled on. Only `"unknown"` is read here -- it turns the generic `Ch N`
+ * labels on -- so any other id is accepted as it comes.
+ * @typedef {string} ResolvedChannelLayout
+ */
 
 /**
  * @typedef {object} PeakMeterChannelLabelsContext

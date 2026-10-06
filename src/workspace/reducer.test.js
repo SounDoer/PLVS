@@ -13,7 +13,9 @@ describe("workspaceReducer RESET_WORKSPACE", () => {
       tree: { type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" },
     };
 
-    const next = workspaceReducer(/** @type {any} */ (mutated), { type: "RESET_WORKSPACE" });
+    const next = workspaceReducer(/** @type {Parameters<typeof workspaceReducer>[0]} */ (mutated), {
+      type: "RESET_WORKSPACE",
+    });
 
     expect(next.tree).toEqual(DEFAULT_WORKSPACE_STATE.tree);
     expect(next.panelsById).toEqual(DEFAULT_WORKSPACE_STATE.panelsById);

@@ -8,7 +8,7 @@ import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 // silently NaNs out. MouseEvent already carries clientX/clientY, so subclassing it is enough
 // (same shim as SpectrogramPanel.test.jsx).
 if (typeof window.PointerEvent === "undefined") {
-  window.PointerEvent = /** @type {any} */ (
+  window.PointerEvent = /** @type {typeof window.PointerEvent} */ (
     class PointerEvent extends MouseEvent {
       constructor(type, params = {}) {
         super(type, params);

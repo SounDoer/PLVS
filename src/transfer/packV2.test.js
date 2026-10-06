@@ -85,7 +85,7 @@ describe("Pack V2 Item identities", () => {
       convert(document, id) {
         if (document.value === 1) {
           const error = new Error("invalid");
-          /** @type {any} */ (error).issues = [
+          /** @type {Error & { issues?: object[] }} */ (error).issues = [
             { code: "badValue", path: "$.value", message: "bad" },
           ];
           throw error;

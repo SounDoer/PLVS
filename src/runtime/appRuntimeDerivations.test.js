@@ -37,7 +37,7 @@ describe("app runtime derivations", () => {
       panelControlsById: {},
     });
     const payload = deriveBackendAnalysisRequests(
-      deriveAnalysisRequests(/** @type {any} */ (state))
+      deriveAnalysisRequests(/** @type {Parameters<typeof deriveAnalysisRequests>[0]} */ (state))
     );
     expect(payload).toEqual({ ...fixtures.wirePayload, stereoMap: [], spectralWaveform: false });
   });
@@ -97,7 +97,7 @@ describe("app runtime derivations", () => {
     const makePayload = (displayControls) =>
       deriveBackendAnalysisRequests(
         deriveAnalysisRequests(
-          /** @type {any} */ (
+          /** @type {Parameters<typeof deriveAnalysisRequests>[0]} */ (
             workspace({
               panelsById: { map: { id: "map", moduleId: "stereo-map" } },
               panelControlsById: {

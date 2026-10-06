@@ -18,6 +18,7 @@ import {
 import { BUILTIN_THEMES_V2 } from "../../theme/builtinThemesV2.js";
 import { compileTheme } from "../../theme/compileTheme.js";
 
+import { standIn } from "../../testing/standIn.js";
 const KEY = "stereoMap:pair:0:1:sp25:sm12";
 
 function primitiveRow() {
@@ -137,7 +138,7 @@ function contextStub() {
 // from the Hold outline (always the primary token) or the curve itself (signal/blend tokens).
 function mockStereoMapColors() {
   return vi.spyOn(window, "getComputedStyle").mockReturnValue(
-    /** @type {any} */ ({
+    /** @type {ReturnType<typeof window.getComputedStyle>} */ ({
       getPropertyValue: (name) =>
         ({
           "--ui-stereo-map-primary": "#111111",
@@ -164,7 +165,7 @@ const STEREO_MAP_PRIMARY_CSS = hexToRgb(
 describe("StereoMapPanel", () => {
   function mockCanvas() {
     const ctx = contextStub();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     return ctx;
   }
 
@@ -458,7 +459,7 @@ describe("StereoMapPanel", () => {
 
     const chart = screen.getByTestId("stereo-map-chart");
     vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof chart.getBoundingClientRect>} */ ({
         left: 0,
         top: 0,
         width: 1000,
@@ -489,7 +490,7 @@ describe("StereoMapPanel", () => {
 
     const chart = screen.getByTestId("stereo-map-chart");
     vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof chart.getBoundingClientRect>} */ ({
         left: 0,
         top: 0,
         width: 1000,
@@ -622,7 +623,7 @@ describe("StereoMapPanel", () => {
 
     const chart = screen.getByTestId("stereo-map-chart");
     vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof chart.getBoundingClientRect>} */ ({
         left: 0,
         top: 0,
         width: 1000,
@@ -699,7 +700,7 @@ describe("StereoMapPanel", () => {
 
     const yAxis = container.querySelector('[style*="ns-resize"]');
     vi.spyOn(yAxis, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof yAxis.getBoundingClientRect>} */ ({
         left: 0,
         top: 0,
         width: 24,
@@ -746,7 +747,7 @@ describe("StereoMapPanel", () => {
 
     const chart = screen.getByTestId("stereo-map-chart");
     vi.spyOn(chart, "getBoundingClientRect").mockReturnValue(
-      /** @type {any} */ ({
+      /** @type {ReturnType<typeof chart.getBoundingClientRect>} */ ({
         left: 0,
         top: 0,
         width: 1000,

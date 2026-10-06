@@ -10,6 +10,7 @@ import {
 import { drawWaveformCanvas, WaveformPanel } from "./WaveformPanel.jsx";
 import { DEFAULT_WAVEFORM_CANVAS_COLORS } from "../../theme/themeCanvasSelectors.js";
 
+import { standIn } from "../../testing/standIn.js";
 const { sliceSpectralWaveformMetricsMock } = vi.hoisted(() => ({
   sliceSpectralWaveformMetricsMock: vi.fn(),
 }));
@@ -81,9 +82,11 @@ function renderPanel(value = {}, props = {}) {
 function waveformPanelTree(value = {}, props = {}) {
   const { panelVisible = true, panelControls, ...shared } = value;
   const frameData = {
-    channelCount: /** @type {any} */ (shared).channelCount ?? baseAudioData.channelCount,
+    channelCount:
+      /** @type {Record<string, unknown>} */ (shared).channelCount ?? baseAudioData.channelCount,
     peakLabelContext:
-      /** @type {any} */ (shared).peakLabelContext ?? baseAudioData.peakLabelContext,
+      /** @type {Record<string, unknown>} */ (shared).peakLabelContext ??
+      baseAudioData.peakLabelContext,
   };
   return (
     <FrameDataProvider value={frameData}>
@@ -104,10 +107,11 @@ beforeEach(() => {
   class ResizeObserverStub {
     observe() {}
     disconnect() {}
+    unobserve() {}
   }
 
-  window.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
-  globalThis.ResizeObserver = /** @type {any} */ (ResizeObserverStub);
+  window.ResizeObserver = ResizeObserverStub;
+  globalThis.ResizeObserver = ResizeObserverStub;
 });
 
 afterEach(() => {
@@ -133,12 +137,12 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
     document.documentElement.style.setProperty("--ui-waveform-trace-snap", "#badbad");
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [-0.5, -0.5],
         maxes: [0.5, 0.5],
         bucketCount: 2,
@@ -146,7 +150,7 @@ describe("drawWaveformCanvas", () => {
         firstBucket: 0,
         lastBucket: 1,
         selected: true,
-        themeColors: /** @type {any} */ ({
+        themeColors: standIn({
           trace: "#111111",
           snapshot: "#123456",
           frequencyLow: "#ff0000",
@@ -179,11 +183,11 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [-0.75, -0.75],
         maxes: [0.25, 0.25],
         bucketCount: 2,
@@ -221,11 +225,11 @@ describe("drawWaveformCanvas", () => {
     canvas.height = 80;
     Object.defineProperty(canvas, "clientWidth", { value: 100 });
     Object.defineProperty(canvas, "clientHeight", { value: 40 });
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [-0.75, -0.75],
         maxes: [0.25, 0.25],
         bucketCount: 2,
@@ -270,11 +274,11 @@ describe("drawWaveformCanvas", () => {
     canvas.height = 81;
     Object.defineProperty(canvas, "clientWidth", { value: 100 });
     Object.defineProperty(canvas, "clientHeight", { value: 40 });
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [],
         maxes: [],
         bucketCount: 0,
@@ -305,11 +309,11 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [-0.75, -0.75],
         maxes: [0.25, 0.25],
         bucketCount: 2,
@@ -341,11 +345,11 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [-0.75, -0.75],
         maxes: [0.25, 0.25],
         bucketCount: 2,
@@ -379,11 +383,11 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [-0.5, -0.5],
         maxes: [0.5, 0.5],
         bucketCount: 2,
@@ -417,11 +421,11 @@ describe("drawWaveformCanvas", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 100;
     canvas.height = 40;
-    canvas.getContext = /** @type {any} */ (vi.fn(() => context));
+    canvas.getContext = standIn(vi.fn(() => context));
 
     drawWaveformCanvas(
       canvas,
-      /** @type {any} */ ({
+      /** @type {Parameters<typeof drawWaveformCanvas>[1]} */ ({
         mins: [0.25, 0.25],
         maxes: [0.5, 0.5],
         bucketCount: 2,
@@ -637,9 +641,7 @@ describe("WaveformPanel", () => {
       fill: vi.fn(),
       stroke: vi.fn(),
     };
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      /** @type {any} */ (context)
-    );
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(context));
     vi.spyOn(HTMLCanvasElement.prototype, "clientWidth", "get").mockReturnValue(100);
     vi.spyOn(HTMLCanvasElement.prototype, "clientHeight", "get").mockReturnValue(40);
 
@@ -680,7 +682,7 @@ describe("WaveformPanel", () => {
       toJSON: () => ({}),
     });
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      /** @type {any} */ ({
+      standIn({
         clearRect: vi.fn(),
         beginPath: vi.fn(),
         moveTo: vi.fn(),

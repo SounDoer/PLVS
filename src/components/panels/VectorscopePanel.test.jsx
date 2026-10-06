@@ -9,6 +9,7 @@ import {
 } from "../../workspace/AudioDataContext.jsx";
 import { VectorscopePanel } from "./VectorscopePanel.jsx";
 
+import { standIn } from "../../testing/standIn.js";
 function renderPanel(audioData) {
   return render(vectorscopePanelTree(audioData));
 }
@@ -52,7 +53,7 @@ function vectorscopePanelTree(audioData) {
 describe("VectorscopePanel", () => {
   function mockCanvas() {
     return vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      /** @type {any} */ ({
+      standIn({
         save: vi.fn(),
         restore: vi.fn(),
         clearRect: vi.fn(),
@@ -597,7 +598,7 @@ describe("VectorscopePanel hold slow mode", () => {
       lineTo: vi.fn(),
       stroke: vi.fn(),
     };
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(/** @type {any} */ (ctx));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(standIn(ctx));
     const rows = [
       { pairs: [0.1, 0.1], timestampMs: 1000 },
       { pairs: [0.2, 0.2], timestampMs: 1040 },
