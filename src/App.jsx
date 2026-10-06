@@ -177,24 +177,38 @@ export function updateHistoryPerformanceHarnessController(controller, requestKey
   controller?.updateRequestKeys(requestKeys);
 }
 
+// The provider order is the dependency order: a provider may read the ones that enclose it and
+// never one it encloses. Each line says what the provider reads, so a new owner has one obvious
+// place to go.
 export default function App() {
   return (
     <WorkspaceProvider>
       <MeterRuntimeProvider>
-        {/* Inside MeterRuntime and outside AppContent: dockLayout is a hook in AppContent and
-            DockStats is rendered by it, so one provider covers both windows' worth of Stats. */}
-        {/* Outside LoudnessProfileProvider: the profile draft registers itself as a blocking
-            editor, and so does the theme editor further down in AppContent. */}
+        {/* Outside LoudnessProfileProvider and SettingsProvider: the profile draft and the theme
+            editor both register themselves as blocking editors. */}
         <BlockingEditorsProvider>
+          {/* Reads BlockingEditors. */}
           <UiNavigationProvider>
+            {/* Outside DockProvider: the strip's Stats and the main window's read one profile. */}
             <LoudnessProfileProvider>
+              {/* Reads BlockingEditors and UiNavigation (the theme editor registers with both). */}
               <SettingsProvider>
+                {/* Reads BlockingEditors and MeterRuntime (source mode). */}
                 <SceneGuardProvider>
+                  {/* Reads Settings (the values exit restores) and SceneGuard. */}
                   <DockProvider>
+                    {/* Reads Settings and Dock: its window effects stand down while docked. */}
                     <WindowChromeProvider>
+                      {/* Reads Workspace, Settings, Dock, LoudnessProfile and SceneGuard: everything
+                          a preset captures or replaces. */}
                       <PresetsProvider>
+                        {/* Reads MeterRuntime. */}
                         <SourceProvider>
+                          {/* Reads MeterRuntime, Workspace, Settings and LoudnessProfile; assigns
+                              the clear ref Settings owns. */}
                           <SourceActionsProvider>
+                            {/* Reads Settings, Dock, WindowChrome, Presets, Source and
+                                SourceActions. */}
                             <AppLifecycleProvider>
                               <AppContent />
                             </AppLifecycleProvider>
