@@ -9,6 +9,10 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | --- | --- | --- | --- | --- | --- |
 | `app.capabilities` | `capabilities` | runningApp / query | none | no | none |
 | `app.inspect` | `inspect` | runningApp / query | none | no | none |
+| `ui.inspect` | `ui inspect` | runningApp / query | none | no | none |
+| `ui.show.settings` | `ui show settings` | runningApp / action | required | no | none |
+| `ui.show.panelSettings` | `ui show panel-settings` | runningApp / action | required | no | none |
+| `ui.close` | `ui close` | runningApp / action | required | no | none |
 | `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
 | `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
@@ -151,6 +155,108 @@ None.
 | --- | --- | --- | --- |
 | `--json` | local only | no | boolean |
 | `--format` | local only | no | string; one of "text" |
+
+## `ui.inspect`
+
+Inspect the current semantic UI surfaces.
+
+- CLI path: `ui inspect`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `ui.inspect`
+
+```text
+plvs-cli ui inspect --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.settings`
+
+Open or focus a Settings section without applying changes.
+
+- CLI path: `ui show settings`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.settings`
+
+```text
+plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--section` | local only | yes | string; one of "behavior", "shortcuts", "appearance", "analysis", "channels", "transfer", "agent-control", "about" |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.panelSettings`
+
+Open or focus settings for one Panel instance.
+
+- CLI path: `ui show panel-settings`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.panelSettings`
+
+```text
+plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.close`
+
+Close one exact non-draft UI surface through its normal Close intent.
+
+- CLI path: `ui close`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.close`
+
+```text
+plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `surface-id` | `surfaceId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
 
 ## `measurement.describe`
 
@@ -2410,7 +2516,7 @@ Capture a PLVS surface screenshot.
 - Schema references: `visual.target`, `agentControl.revision`
 
 ```text
-plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] --out <file> --json
+plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json
 ```
 
 ### Positionals
@@ -2424,6 +2530,7 @@ None.
 | `--target` | `target.kind` | yes | string; one of "main", "workspace", "panel", "dock-header", "dock-editor" |
 | `--panel-id` | `target.panelId` | no | string |
 | `--expected-revision` | `expectedRevision` | no | integer; 0 to inf |
+| `--expected-ui-generation` | `expectedUiGeneration` | no | integer; 0 to 9007199254740991 |
 | `--out` | local only | yes | string |
 | `--json` | local only | yes | boolean |
 

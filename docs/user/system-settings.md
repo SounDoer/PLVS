@@ -241,7 +241,11 @@ diagnostics are sent.
 ## Agent Control
 
 **Agent Control** lets `plvs-cli` inspect and change the running app; see
-[Command Line](command-line.md). It is off until you enable it.
+[Command Line](command-line.md). It is off until you enable it. When enabled, UI Navigation can
+open Settings at a named section or open Panel Settings for an exact Panel, then safely close the
+same surface. These commands only navigate: they cannot save, send, confirm, or silently discard a
+draft. Temporary dialogs and editors use a separate UI generation so automation can detect that the
+visible interface changed without treating it as a saved settings change.
 
 ## Licenses
 

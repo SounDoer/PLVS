@@ -35,9 +35,12 @@ application behind transparent PLVS content.
 
 Screenshots and recordings do not increment the global revision. Optional `--expected-revision`
 is checked after render settlement and before native capture allocation, so a conflict creates no
-artifact. Screenshot results include the captured revision and coherent measurement generation
-and sequence. Recordings retain `startedRevision`, `currentRevision`, and `endedRevision` as
-correlation metadata; they do not lock the app against later mutations.
+artifact. Screenshots also accept optional `--expected-ui-generation`; it protects the transient
+surface observed through [UI Navigation](ui.md) at the same settlement boundary. A stale UI token
+also creates no artifact. Screenshot results include the captured revision, UI generation, and
+coherent measurement generation and sequence. Recordings retain `startedRevision`,
+`currentRevision`, and `endedRevision` as correlation metadata; they do not lock the app against
+later mutations.
 
 ## Screenshot workflow
 
@@ -46,6 +49,11 @@ $state = plvs-cli inspect --json | ConvertFrom-Json
 plvs-cli visual screenshot --target workspace --expected-revision $state.result.revision --out .\workspace.png --json
 plvs-cli visual screenshot --target panel --panel-id spectrum-2 --out .\spectrum.png --json
 ```
+
+For an overlay or editor, use `ui inspect -> ui show -> visual screenshot -> ui close` and pass the
+two tokens returned by `ui show` to the screenshot. This proves the intended surface is still open
+without making every capture depend on UI Navigation. See the complete example in
+[UI Navigation](ui.md).
 
 `--out` is required. The app first creates a private staged PNG, then the CLI copies it to the
 caller-relative path and returns metadata with `artifact.out`. A copy failure leaves the staged
@@ -131,9 +139,10 @@ With the development GUI already running and Agent Control enabled, run:
 npm run smoke:agent-control
 ```
 
-The smoke performs no settings or scene mutations. It verifies `capabilities` and `inspect`, takes a
-real main-window PNG, records three silent seconds to MP4, and independently checks both files'
-length and SHA-256 against the returned artifact metadata. Results are retained under
+The smoke performs no durable settings or scene mutations. It verifies `capabilities`, `inspect`,
+and `ui inspect`; opens Settings at Appearance, takes a generation-correlated real main-window PNG,
+closes the exact surface, then records three silent seconds to MP4. It independently checks both
+files' length and SHA-256 against the returned artifact metadata. Results are retained under
 `artifacts/agent-control-smoke/` by default; use `-- --out-dir <directory>` to choose another
 location. Run it on both Windows and macOS before treating native transport or Visual Capture work
 as accepted.
@@ -143,7 +152,8 @@ Stable Visual Capture errors are:
 - `visualUnavailable`, `targetUnavailable`, `panelNotFound`, and `panelNotVisible` for capability
   or semantic-target failures;
 - `screenCapturePermissionRequired` when a supported macOS recorder needs Screen Recording access;
-- `revisionConflict` and `renderNotSettled` for correlation or paint-settlement failures;
+- `revisionConflict`, `uiGenerationConflict`, and `renderNotSettled` for correlation or
+  paint-settlement failures;
 - `captureBusy` and `captureFailed` for screenshot/recording resource and native capture failures;
 - `recordingNotFound`, `recordingFailed`, and `audioUnavailable` for lifecycle or audio failures;
 - `artifactExpired` and `artifactWriteFailed` for staged-media failures;

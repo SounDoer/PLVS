@@ -43,6 +43,7 @@ const READERS = {
     "multiInstancePersistence",
   ],
   "agentControl/appSnapshot.js": ["agentControl"],
+  "uiNavigation/UiNavigationContext.jsx": ["instanceId", "workspaceId"],
 };
 
 function productionSources(directory = SOURCE_ROOT) {

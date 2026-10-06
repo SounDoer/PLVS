@@ -120,7 +120,7 @@ Use `plvs-cli --help` for the command families. The generated
 [command catalog](../agent-control/generated/commands.md) is the complete static reference for CLI
 paths, options, policies, and top-level wire parameters. The current families are:
 
-- `inspect`, `capabilities`, `measurement`, `view`, `visual`, and `wait`;
+- `inspect`, `capabilities`, `measurement`, `view`, `ui`, `visual`, and `wait`;
 - `module`, `workspace`, `panel`, and `axis`;
 - `preset` and `settings`;
 - `theme` and `loudness-profile`;
@@ -205,12 +205,29 @@ It covers Always on Top (`pinned`), Focus View, surface opacity, and macOS Glass
 [View Control](../agent-control/view.md) for strict patch validation, platform availability, Dock
 suspension, and native rollback behavior.
 
+UI Navigation inspects and opens temporary application surfaces without exposing clicks, DOM
+selectors, or confirmation actions:
+
+```powershell
+plvs-cli ui inspect <--json|--format text>
+plvs-cli ui show settings --section <behavior|shortcuts|appearance|analysis|channels|transfer|agent-control|about> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+`app.inspect` remains the durable-state snapshot; `ui inspect` reports the selected workbench's
+transient window, blocking editors, mounted surfaces, and process-local `uiGeneration`. `show` only
+opens, locates, or focuses and is idempotent for an exact target. `close` invokes the exact surface's
+existing Close/Escape behavior. See [UI Navigation](../agent-control/ui.md) for two-token
+concurrency, Panel behavior in normal/Fullscreen/Dock forms, multi-workbench selection, safety,
+and errors.
+
 Visual Capture saves the actual rendered pixels of the running app. Screenshots and recording are
 available on Windows and macOS:
 
 ```powershell
 plvs-cli visual describe --json
-plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <id>] [--expected-revision <n>] --out <file.png> --json
+plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
 plvs-cli visual recording start --target <main|workspace> [--audio <none|measured-source>] [--cursor <none|visible>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 plvs-cli visual recording inspect <recording-id> --json
 plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json
@@ -368,6 +385,13 @@ User and agent mutations follow the same rule. One atomic operation advances the
 however many fields it changes, and changes that settle together as one observable operation
 produce one increment. Dry runs, no-ops, validation failures, revision conflicts, live
 measurements, capture state, and transient UI state never advance it.
+
+UI Navigation has a separate `uiGeneration` for low-frequency transient facts such as a dialog
+mounting, closing, or changing semantic target. It resets with the process and deliberately ignores
+typing, hover, animation, and measurement frames. UI show/close commands require both concurrency
+tokens: the global revision protects durable target resolution, while `uiGeneration` prevents an
+agent from acting on a surface that changed after inspection. Screenshots may optionally check the
+same UI token. See [UI Navigation](../agent-control/ui.md).
 
 ### State mutations
 

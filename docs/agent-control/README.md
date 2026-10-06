@@ -34,6 +34,7 @@ Three places divide the work, and nothing is said in two of them:
 | Measurement Wait               | [`measurement-wait.md`](measurement-wait.md)   |
 | Revision Wait                  | [`wait.md`](wait.md)                           |
 | Visual Capture                 | [`visual.md`](visual.md)                       |
+| UI Navigation                  | [`ui.md`](ui.md)                               |
 | Library Transfer               | [`libraries.md`](libraries.md)                 |
 | Configuration Transfer         | [`config.md`](config.md)                       |
 
@@ -98,9 +99,11 @@ documents and Loudness Profile rules remain in their dedicated command families.
 Panels use the shape described in [`panels.md`](panels.md). The top-level `runtime` summarizes
 channel topology and shared analysis such as Dialogue Detection and Spectral Waveform.
 
-Inspection deliberately omits measurement frames and history, canvas data, hover/fullscreen/sheet
-state, raw internal controls, React-only values, and field schemas. Preset state is only the compact
-`activeId`/`dirty` relationship; the library itself belongs to [`presets.md`](presets.md).
+Inspection deliberately omits measurement frames and history, canvas data, hover and temporary
+surface state, raw internal controls, React-only values, and field schemas. Transient window form,
+visibility, dialogs, editors, and sheets belong to [`ui inspect`](ui.md). Preset state is only the
+compact `activeId`/`dirty` relationship; the library itself belongs to
+[`presets.md`](presets.md).
 
 ## Transport
 
