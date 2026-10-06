@@ -42,7 +42,7 @@ import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
-import { roleTokensToLabels, seedTokensFromLabels } from "./math/channelRoles.js";
+import { roleTokensToLabels } from "./math/channelRoles.js";
 import { standardLayoutIdForCount } from "./math/channelLayoutTable.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
@@ -70,7 +70,6 @@ import packageInfo from "../package.json";
 import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
 import { AgentControlBridge } from "./agentControl/AgentControlBridge.jsx";
 import { useVisualCaptureSurfaces } from "./agentControl/useVisualCaptureSurfaces.js";
-import { buildPublicSettings } from "./agentControl/settingsControl.js";
 
 const APP_VERSION = packageInfo.version;
 const DevUiVisualFixture = import.meta.env.DEV
@@ -231,13 +230,7 @@ function AppContent() {
     selectedSnapshotTimeMs,
     showClock,
   } = useMeterDisplayState();
-  const {
-    state: workspaceState,
-    replaceWorkspace,
-    waitForWorkspacePersistenceEnqueue,
-    setPanelControlsForPanel,
-    setActiveTab,
-  } = useWorkspaceStore();
+  const { state: workspaceState, setActiveTab } = useWorkspaceStore();
   const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
   const visualRuntimeRef = useRef(null);
   const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
@@ -270,7 +263,7 @@ function AppContent() {
     onSourceModeChange,
   } = useSourceActions();
   const settings = useAppSettings();
-  const { onClearRef, windowPinned: pinned } = settings;
+  const { windowPinned: pinned } = settings;
   const packTransfer = usePackTransfer();
   const {
     crashReportSetting,
@@ -492,10 +485,8 @@ function AppContent() {
     channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
-    setChannelRolesForControl,
-    setDialogueVadEngineForControl,
   } = useAnalysisSession();
-  const { channelLabelOverride, channelRoles, channelLabelTokens } = channelLabelRuntime;
+  const { channelLabelOverride, channelLabelTokens } = channelLabelRuntime;
   const historyPerformanceControllerRef = useRef(null);
   const historyPerformanceRequestKeysRef = useRef(null);
   historyPerformanceRequestKeysRef.current = {
@@ -578,40 +569,6 @@ function AppContent() {
       sourceMode,
     ]
   );
-  const agentControlSettingsContext = useMemo(
-    () => ({
-      autostartReady: settings.autostartReady,
-      clearShortcutReady: settings.clearReady,
-      clearShortcutCapturing: settings.clearCapturing,
-      clearShortcutRegistrationError: settings.registrationError,
-      dialogueDetectionRequested: dialogueGating,
-      dialogueDetectionActive: dialogueGating && running,
-      hasCompletedFileAnalysis: fileSessions.some((session) => session.state === "complete"),
-      sourceMode,
-      channelCount,
-      channelLabelMode: channelLabelOverride ? "custom" : "auto",
-      channelLabelRoles: channelLabelRuntime.channelLabelTokens,
-      channelAutoRoles: seedTokensFromLabels(channelLabelRuntime.channelAutoLabels),
-    }),
-    [
-      channelCount,
-      channelLabelOverride,
-      channelLabelRuntime.channelAutoLabels,
-      channelLabelRuntime.channelLabelTokens,
-      dialogueGating,
-      fileSessions,
-      running,
-      settings.autostartReady,
-      settings.clearCapturing,
-      settings.clearReady,
-      settings.registrationError,
-      sourceMode,
-    ]
-  );
-  const agentControlSettings = useMemo(
-    () => buildPublicSettings(settings, agentControlSettingsContext),
-    [agentControlSettingsContext, settings]
-  );
   const measurementChannelLabels = useCallback(
     (record) => {
       const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
@@ -663,104 +620,12 @@ function AppContent() {
     }),
     [visualCaptureSurfaces, visualPlatformCapabilities]
   );
-  const applyAgentControlSettings = useCallback(
-    async (next, { changed, effects }) => {
-      const compensation = [];
-      try {
-        if (changed.includes("settings.openAtLogin")) {
-          await settings.setAutostartEnabledForControl(next.openAtLogin);
-          compensation.push(() =>
-            settings.setAutostartEnabledForControl(agentControlSettings.openAtLogin)
-          );
-        }
-        if (changed.some((path) => path.startsWith("settings.clearShortcut."))) {
-          await settings.applyClearShortcutForControl(next.clearShortcut);
-          compensation.push(() =>
-            settings.applyClearShortcutForControl(agentControlSettings.clearShortcut)
-          );
-        }
-        if (changed.includes("settings.dialogueVadEngine")) {
-          await setDialogueVadEngineForControl(next.dialogueVadEngine);
-          compensation.push(() =>
-            setDialogueVadEngineForControl(agentControlSettings.dialogueVadEngine)
-          );
-        }
-        if (changed.includes("settings.channelLabels")) {
-          const nextRoles = next.channelLabels.roles ?? null;
-          if (JSON.stringify(nextRoles) !== JSON.stringify(channelRoles)) {
-            await setChannelRolesForControl(nextRoles);
-            compensation.push(() => setChannelRolesForControl(channelRoles));
-          }
-        }
-      } catch (error) {
-        let rollbackFailed = false;
-        for (const compensate of compensation.reverse()) {
-          await compensate().catch(() => {
-            rollbackFailed = true;
-          });
-        }
-        error.partial = rollbackFailed;
-        error.rollback = rollbackFailed ? "failed" : "completed";
-        throw error;
-      }
-
-      if (changed.includes("settings.closeBehavior")) {
-        settings.setCloseAction(next.closeBehavior);
-      }
-      if (changed.includes("settings.interfaceSize")) {
-        settings.setInterfaceSize(next.interfaceSize);
-      }
-      if (changed.includes("settings.historyRetentionSec")) {
-        settings.setHistoryRetentionSec(next.historyRetentionSec);
-      }
-      if (changed.includes("settings.dialogueVadEngine")) {
-        settings.setDialogueVadEngine(next.dialogueVadEngine);
-      }
-      if (changed.includes("settings.channelLabels")) {
-        settings.setChannelLabelOverrides((current) => {
-          const updated = { ...current };
-          if (next.channelLabels.mode === "custom") {
-            updated[next.channelLabels.channelCount] = [...next.channelLabels.roles];
-          } else {
-            delete updated[next.channelLabels.channelCount];
-          }
-          return updated;
-        });
-      }
-      if (effects.length > 0) {
-        try {
-          await onClearRef.current?.();
-        } catch (error) {
-          error.partial = true;
-          error.rollback = "notPossible";
-          error.changed = changed;
-          error.effects = effects;
-          throw error;
-        }
-      }
-    },
-    [
-      agentControlSettings,
-      channelRoles,
-      onClearRef,
-      setDialogueVadEngineForControl,
-      setChannelRolesForControl,
-      settings,
-    ]
-  );
   const agentControlBridgeProps = {
     enabled:
       agentControlRuntime.available === true &&
       (agentControlEnabled || isParticipantInstance()) &&
       visualPlatformCapabilities !== null,
     runtime: agentControlRuntime,
-    workspace: workspaceState,
-    replaceWorkspace,
-    setPanelControlsForPanel,
-    waitForWorkspacePersistenceEnqueue,
-    settings: agentControlSettings,
-    settingsContext: agentControlSettingsContext,
-    applySettings: applyAgentControlSettings,
     dockContext: {
       platform: agentControlRuntime.platform,
       ...agentControlAnalysisContext,

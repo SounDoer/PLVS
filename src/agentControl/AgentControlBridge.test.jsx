@@ -37,6 +37,11 @@ vi.mock("../hooks/LoudnessProfileContext.jsx", () => ({
 vi.mock("../settings/SettingsContext.jsx", () => ({
   useAppSettings: () => ({
     customThemes: {},
+    autostartReady: true,
+    clearReady: true,
+    clearCapturing: false,
+    registrationError: null,
+    onClearRef: { current: null },
     themeControl: { readState: () => ({ appearance: {}, themes: [] }) },
   }),
 }));
@@ -44,6 +49,7 @@ vi.mock("../runtime/MeterRuntimeContext.jsx", () => ({
   useMeterRuntime: () => ({
     sourceMode: "live",
     liveLifecycle: "stopped",
+    running: false,
     liveDeviceTransition: null,
     fileSessions: [],
     activeFileId: null,
@@ -62,7 +68,32 @@ vi.mock("../runtime/SourceContext.jsx", () => ({
 vi.mock("../runtime/SourceActionsContext.jsx", () => ({
   useSourceActions: () => ({
     currentFileAnalysisSettings: () => ({ dialogue: { enabled: false, engine: null } }),
+    dialogueGating: false,
   }),
+}));
+vi.mock("../workspace/WorkspaceContext.jsx", () => ({
+  useWorkspaceStore: () => ({
+    state: { panelsById: {}, panelOrder: [] },
+    replaceWorkspace: () => {},
+    setPanelControlsForPanel: () => {},
+    waitForWorkspacePersistenceEnqueue: async () => {},
+  }),
+}));
+vi.mock("../runtime/AnalysisSessionContext.jsx", () => ({
+  useAnalysisSession: () => ({
+    channelCount: 2,
+    channelLabelRuntime: {
+      channelLabelOverride: null,
+      channelRoles: null,
+      channelLabelTokens: ["L", "R"],
+      channelAutoLabels: ["L", "R"],
+    },
+    setChannelRolesForControl: async () => {},
+    setDialogueVadEngineForControl: async () => {},
+  }),
+}));
+vi.mock("./settingsControl.js", () => ({
+  buildPublicSettings: (_settings, context) => ({ fromContext: context.channelCount }),
 }));
 vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
   useAppLifecycle: () => ({ updateBusy: false }),
@@ -101,6 +132,16 @@ describe("AgentControlBridge", () => {
     expect(typeof passed.executeTransport).toBe("function");
     expect(typeof passed.uiNavigation.inspectUi).toBe("function");
     expect(passed.device).toMatchObject({ runtimeUnavailable: false, snapshot: null });
+    expect(passed.workspace).toEqual({ panelsById: {}, panelOrder: [] });
+    expect(typeof passed.replaceWorkspace).toBe("function");
+    expect(passed.settings).toEqual({ fromContext: 2 });
+    expect(passed.settingsContext).toMatchObject({
+      channelCount: 2,
+      channelLabelMode: "auto",
+      sourceMode: "live",
+      dialogueDetectionActive: false,
+    });
+    expect(typeof passed.applySettings).toBe("function");
     expect(passed.presets).toMatchObject({ activeId: null });
     expect(passed.hasLoudnessReference).toBe(false);
     expect(passed.theme.state).toEqual({ appearance: {}, themes: [] });
