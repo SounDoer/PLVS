@@ -23,7 +23,7 @@ import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
  *   onPanelResizeReset?: (...args: any[]) => any,
  *   onPointerEnter?: (...args: any[]) => any,
  *   onPointerLeave?: (...args: any[]) => any,
- *   recordingState?: any,
+ *   recordingState?: string | null,
  * }} props
  */
 export function DockStrip({

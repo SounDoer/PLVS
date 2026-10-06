@@ -185,6 +185,7 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
     install: vi.fn(),
     restartToApply: vi.fn(),
     resetInstall: vi.fn(),
+    downloadProgress: undefined,
     ...updateOverrides,
   };
   const channelSettings = {
@@ -193,6 +194,8 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
     channelLabelHasOverride: false,
     setChannelLabelToken: vi.fn(),
     resetChannelLabels: vi.fn(),
+    selectedLayoutId: undefined,
+    setChannelLayout: undefined,
   };
   const renderView = () => (
     <AppSettingsOverlays
@@ -569,6 +572,8 @@ describe("Loudness Profile editor wiring", () => {
               channelLabelHasOverride: false,
               setChannelLabelToken: vi.fn(),
               resetChannelLabels: vi.fn(),
+              selectedLayoutId: undefined,
+              setChannelLayout: undefined,
             }}
             updateControls={{
               updateInfo: null,
@@ -576,6 +581,8 @@ describe("Loudness Profile editor wiring", () => {
               installStatus: "idle",
               install: vi.fn(),
               restartToApply: vi.fn(),
+              downloadProgress: undefined,
+              resetInstall: undefined,
             }}
             appVersion="0.0.0"
             loudnessProfile={hook.result.current}

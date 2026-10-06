@@ -50,7 +50,7 @@ function ActiveDot({ active }) {
  *     | "active" | "document" | "profiles" | "draftBlocksLibraryActions"
  *     | "beginCreate" | "beginEdit" | "removeProfile" | "select" | "selectOff"
  *   > & { reorderProfiles?: (ids: string[]) => any },
- *   stats?: any,
+ *   stats?: { visibleIds: string[], onShowMissing: (...args: any[]) => any } | null,
  *   showTitle?: boolean,
  *   manageable?: boolean,
  *   onExport?: (...args: any[]) => any,

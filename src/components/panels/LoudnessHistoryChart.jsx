@@ -56,7 +56,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
  *   showSelLine: boolean,
  *   selectionEdge: string | null,
  *   selLineX: number,
- *   historyHover: any,
+ *   historyHover: ReturnType<typeof import("../../math/hoverMath.js").computeHistoryHoverPoint>,
  *   historyTimeTicks: any[],
  *   historyTickSteps: number,
  *   showLatestEdgeHint?: boolean,

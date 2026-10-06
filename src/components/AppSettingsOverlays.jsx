@@ -18,8 +18,8 @@ import { LAYER_PRIORITY } from "./ui/layers.js";
 /**
  * @param {{
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
- *   channelSettings: any,
- *   updateControls: any,
+ *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
+ *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, resetInstall: (...args: any[]) => any },
  *   appVersion: string,
  *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
  *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,

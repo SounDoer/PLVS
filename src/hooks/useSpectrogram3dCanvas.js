@@ -428,7 +428,7 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
  *   selectedOffset: number,
  *   selectionXFrac: number,
  *   frozenSnaps: any,
- *   colormapLut: any,
+ *   colormapLut: Uint8Array,
  *   minHz?: number,
  *   maxHz?: number,
  *   dbFloor: number,

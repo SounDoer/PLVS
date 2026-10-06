@@ -43,7 +43,7 @@ import { LinkButton } from "@/components/ui/link-button";
  *   docked?: boolean,
  *   dockProps?: Omit<Parameters<typeof DockStrip>[0], "recordingState"> | null,
  *   children?: import("react").ReactNode,
- *   recordingState?: any,
+ *   recordingState?: string | null,
  * }} props
  */
 export function AppShell({

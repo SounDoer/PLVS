@@ -18,6 +18,8 @@ function Harness() {
     channelLabelHasOverride: false,
     setChannelLabelToken: vi.fn(),
     resetChannelLabels: vi.fn(),
+    selectedLayoutId: undefined,
+    setChannelLayout: undefined,
   };
   const updateControls = {
     updateInfo: null,
@@ -26,6 +28,7 @@ function Harness() {
     install: vi.fn(),
     restartToApply: vi.fn(),
     resetInstall: vi.fn(),
+    downloadProgress: undefined,
   };
   return (
     <>
