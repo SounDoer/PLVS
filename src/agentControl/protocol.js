@@ -136,6 +136,93 @@ export function normalizeAgentControlRequest(input) {
     return { ok: true, request: { id: input.id, method: input.method, params: {} } };
   }
 
+  if (input.method === "ui.show.themeEditor") {
+    const field = unknownField(
+      input.params,
+      new Set(["mode", "themeId", "page", "expectedRevision", "expectedUiGeneration"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    const generationError = validateExpectedUiGeneration(input.params);
+    if (generationError) return generationError;
+    if (!["create", "edit", "customize", "duplicate"].includes(input.params.mode)) {
+      return invalidParams("$.params.mode", "mode must be create, edit, customize, or duplicate.");
+    }
+    const needsThemeId = input.params.mode !== "create";
+    if (
+      needsThemeId !==
+      (typeof input.params.themeId === "string" && input.params.themeId.trim() !== "")
+    ) {
+      return invalidParams(
+        "$.params.themeId",
+        needsThemeId
+          ? "themeId is required for this authoring mode."
+          : "themeId is not valid for create mode."
+      );
+    }
+    if (
+      input.params.page !== undefined &&
+      !["core", "palettes", "advanced"].includes(input.params.page)
+    ) {
+      return invalidParams("$.params.page", "page must be core, palettes, or advanced.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          mode: input.params.mode,
+          ...(needsThemeId ? { themeId: input.params.themeId } : {}),
+          ...(input.params.page === undefined ? {} : { page: input.params.page }),
+          expectedRevision: input.params.expectedRevision,
+          expectedUiGeneration: input.params.expectedUiGeneration,
+        },
+      },
+    };
+  }
+
+  if (input.method === "ui.show.loudnessProfileEditor") {
+    const field = unknownField(
+      input.params,
+      new Set(["mode", "profileId", "expectedRevision", "expectedUiGeneration"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    const generationError = validateExpectedUiGeneration(input.params);
+    if (generationError) return generationError;
+    if (!["create", "edit"].includes(input.params.mode)) {
+      return invalidParams("$.params.mode", "mode must be create or edit.");
+    }
+    const needsProfileId = input.params.mode === "edit";
+    if (
+      needsProfileId !==
+      (typeof input.params.profileId === "string" && input.params.profileId.trim() !== "")
+    ) {
+      return invalidParams(
+        "$.params.profileId",
+        needsProfileId
+          ? "profileId is required for edit mode."
+          : "profileId is not valid for create mode."
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          mode: input.params.mode,
+          ...(needsProfileId ? { profileId: input.params.profileId } : {}),
+          expectedRevision: input.params.expectedRevision,
+          expectedUiGeneration: input.params.expectedUiGeneration,
+        },
+      },
+    };
+  }
+
   if (["ui.show.settings", "ui.show.panelSettings", "ui.close"].includes(input.method)) {
     const targetField =
       input.method === "ui.show.settings"

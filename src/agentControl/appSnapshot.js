@@ -82,6 +82,15 @@ export function buildAgentControlCapabilities(runtime, revision) {
                   ? { sections: UI_SETTINGS_SECTIONS }
                   : false,
                 panelSettings: hasMethod("ui.show.panelSettings"),
+                themeEditor: hasMethod("ui.show.themeEditor")
+                  ? {
+                      modes: ["create", "edit", "customize", "duplicate"],
+                      pages: ["core", "palettes", "advanced"],
+                    }
+                  : false,
+                loudnessProfileEditor: hasMethod("ui.show.loudnessProfileEditor")
+                  ? { modes: ["create", "edit"] }
+                  : false,
               },
             },
           }

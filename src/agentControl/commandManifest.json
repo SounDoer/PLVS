@@ -223,6 +223,123 @@
       }
     },
     {
+      "id": "ui.show.themeEditor",
+      "family": "ui",
+      "path": ["ui", "show", "theme-editor"],
+      "usage": "plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open or focus a Theme authoring session without saving it.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.themeEditor",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--mode",
+          "mapsTo": "mode",
+          "required": true,
+          "value": {
+            "type": "string",
+            "enum": ["create", "edit", "customize", "duplicate"]
+          }
+        },
+        {
+          "name": "--theme-id",
+          "mapsTo": "themeId",
+          "required": false,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--page",
+          "mapsTo": "page",
+          "required": false,
+          "value": { "type": "string", "enum": ["core", "palettes", "advanced"] }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["create", "edit", "customize", "duplicate"]
+          },
+          "themeId": { "type": "string" },
+          "page": { "type": "string", "enum": ["core", "palettes", "advanced"] },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.show.loudnessProfileEditor",
+      "family": "ui",
+      "path": ["ui", "show", "loudness-profile-editor"],
+      "usage": "plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open or focus a Loudness Profile authoring session without saving it.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.loudnessProfileEditor",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--mode",
+          "mapsTo": "mode",
+          "required": true,
+          "value": { "type": "string", "enum": ["create", "edit"] }
+        },
+        {
+          "name": "--profile-id",
+          "mapsTo": "profileId",
+          "required": false,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "mode": { "type": "string", "enum": ["create", "edit"] },
+          "profileId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "ui.close",
       "family": "ui",
       "path": ["ui", "close"],

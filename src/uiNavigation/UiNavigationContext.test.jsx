@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, renderHook } from "@testing-library/react";
-import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
+import { BlockingEditorsProvider, useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import {
   UiNavigationProvider,
   useUiNavigation,
@@ -328,6 +328,83 @@ describe("UiNavigationProvider", () => {
         target: { panelId: "dock-stats", presentation: "dock" },
       },
     });
+  });
+
+  it("opens an authoring editor, retargets its page idempotently, and refuses another draft", async () => {
+    const { result } = renderHook(
+      () => {
+        const [authoring, setAuthoring] = useState(null);
+        const [page, setPage] = useState("core");
+        useBlockingEditor("theme", authoring !== null);
+        useUiNavigationTarget("themeEditor", {
+          blockingEditorId: "theme",
+          matches: (target) =>
+            authoring?.mode === target.intent &&
+            (target.themeId ?? null) === (authoring?.sourceId ?? null),
+          show: (target) => {
+            if (!authoring) {
+              setAuthoring({
+                mode: target.intent,
+                sourceId: target.themeId ?? null,
+                draftId: "theme-draft-1",
+              });
+            }
+            if (target.page) setPage(target.page);
+          },
+        });
+        useUiSurface({
+          active: authoring !== null,
+          kind: "themeEditor",
+          origin: "navigable",
+          blocking: true,
+          dirty: false,
+          dismissible: true,
+          supportedActions: ["cancel"],
+          target: authoring
+            ? {
+                intent: authoring.mode,
+                themeId: authoring.sourceId,
+                draftId: authoring.draftId,
+                page,
+              }
+            : {},
+          onCancel: vi.fn(),
+        });
+        return useUiNavigation();
+      },
+      { wrapper }
+    );
+
+    /** @type {Promise<any> | undefined} */
+    let pending;
+    await act(async () => {
+      pending = result.current.showThemeEditor({
+        mode: "customize",
+        themeId: "plvs-light",
+        page: "advanced",
+        expectedRevision: 7,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+    if (!pending) throw new Error("Theme Editor request was not captured.");
+    const opened = await pending;
+    expect(opened).toMatchObject({
+      changed: true,
+      surface: {
+        kind: "themeEditor",
+        target: { intent: "customize", themeId: "plvs-light", page: "advanced" },
+      },
+    });
+
+    await expect(
+      result.current.showThemeEditor({
+        mode: "edit",
+        themeId: "custom-other",
+        expectedRevision: 7,
+        expectedUiGeneration: opened.uiGeneration,
+      })
+    ).rejects.toMatchObject({ reason: "editorActive", details: { editors: ["theme"] } });
   });
 
   it("treats a StrictMode effect replay as one mounted surface lifetime", () => {

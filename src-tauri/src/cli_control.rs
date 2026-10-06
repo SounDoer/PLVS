@@ -41,6 +41,19 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  UiShowThemeEditor {
+    mode: String,
+    theme_id: Option<String>,
+    page: Option<String>,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  UiShowLoudnessProfileEditor {
+    mode: String,
+    profile_id: Option<String>,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
   UiClose {
     surface_id: String,
     expected_revision: u64,
@@ -337,7 +350,7 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
@@ -347,12 +360,20 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
   let (kind, mut index) = match args {
     [show, target, ..] if show == "show" && target == "settings" => ("settings", 2),
     [show, target, ..] if show == "show" && target == "panel-settings" => ("panel-settings", 2),
+    [show, target, ..] if show == "show" && target == "theme-editor" => ("theme-editor", 2),
+    [show, target, ..] if show == "show" && target == "loudness-profile-editor" => {
+      ("loudness-profile-editor", 2)
+    }
     [close, ..] if close == "close" => ("close", 1),
     _ => return Err(USAGE.to_string()),
   };
   let mut section = None;
   let mut panel_id = None;
   let mut surface_id = None;
+  let mut mode = None;
+  let mut theme_id = None;
+  let mut profile_id = None;
+  let mut page = None;
   let mut expected_revision = None;
   let mut expected_ui_generation = None;
   let mut json = false;
@@ -377,6 +398,42 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
           args
             .get(index + 1)
             .ok_or_else(|| "Missing value for --panel-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--mode" if matches!(kind, "theme-editor" | "loudness-profile-editor") && mode.is_none() => {
+        mode = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --mode.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--theme-id" if kind == "theme-editor" && theme_id.is_none() => {
+        theme_id = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --theme-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--profile-id" if kind == "loudness-profile-editor" && profile_id.is_none() => {
+        profile_id = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --profile-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--page" if kind == "theme-editor" && page.is_none() => {
+        page = Some(
+          args
+            .get(index + 1)
+            .ok_or_else(|| "Missing value for --page.".to_string())?
             .clone(),
         );
         index += 2;
@@ -441,6 +498,60 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
         .ok_or_else(|| "The Panel Settings target requires --panel-id.".to_string())?;
       Ok(ControlCommand::UiShowPanelSettings {
         panel_id,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "theme-editor" => {
+      let mode = mode.ok_or_else(|| "The Theme Editor target requires --mode.".to_string())?;
+      if !["create", "edit", "customize", "duplicate"].contains(&mode.as_str()) {
+        return Err("Unknown Theme Editor mode.".to_string());
+      }
+      let needs_theme_id = mode != "create";
+      if needs_theme_id
+        && theme_id
+          .as_ref()
+          .is_none_or(|value| value.trim().is_empty())
+      {
+        return Err("This Theme Editor mode requires --theme-id.".to_string());
+      }
+      if !needs_theme_id && theme_id.is_some() {
+        return Err("The --theme-id option is not valid for create mode.".to_string());
+      }
+      if page
+        .as_ref()
+        .is_some_and(|value| !["core", "palettes", "advanced"].contains(&value.as_str()))
+      {
+        return Err("Unknown Theme Editor page.".to_string());
+      }
+      Ok(ControlCommand::UiShowThemeEditor {
+        mode,
+        theme_id,
+        page,
+        expected_revision,
+        expected_ui_generation,
+      })
+    }
+    "loudness-profile-editor" => {
+      let mode =
+        mode.ok_or_else(|| "The Loudness Profile Editor target requires --mode.".to_string())?;
+      if !["create", "edit"].contains(&mode.as_str()) {
+        return Err("Unknown Loudness Profile Editor mode.".to_string());
+      }
+      let needs_profile_id = mode == "edit";
+      if needs_profile_id
+        && profile_id
+          .as_ref()
+          .is_none_or(|value| value.trim().is_empty())
+      {
+        return Err("Edit mode requires --profile-id.".to_string());
+      }
+      if !needs_profile_id && profile_id.is_some() {
+        return Err("The --profile-id option is not valid for create mode.".to_string());
+      }
+      Ok(ControlCommand::UiShowLoudnessProfileEditor {
+        mode,
+        profile_id,
         expected_revision,
         expected_ui_generation,
       })
@@ -2813,6 +2924,10 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiInspect => "ui.inspect".to_string(),
     ControlCommand::UiShowSettings { .. } => "ui.show.settings".to_string(),
     ControlCommand::UiShowPanelSettings { .. } => "ui.show.panelSettings".to_string(),
+    ControlCommand::UiShowThemeEditor { .. } => "ui.show.themeEditor".to_string(),
+    ControlCommand::UiShowLoudnessProfileEditor { .. } => {
+      "ui.show.loudnessProfileEditor".to_string()
+    }
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
@@ -2931,6 +3046,54 @@ fn request_for_command<R: Read>(
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
+    ControlCommand::UiShowThemeEditor {
+      mode,
+      theme_id,
+      page,
+      expected_revision,
+      expected_ui_generation,
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        ("mode".to_string(), Value::String(mode.clone())),
+        (
+          "expectedRevision".to_string(),
+          Value::from(*expected_revision),
+        ),
+        (
+          "expectedUiGeneration".to_string(),
+          Value::from(*expected_ui_generation),
+        ),
+      ]);
+      if let Some(theme_id) = theme_id {
+        params.insert("themeId".to_string(), Value::String(theme_id.clone()));
+      }
+      if let Some(page) = page {
+        params.insert("page".to_string(), Value::String(page.clone()));
+      }
+      Value::Object(params)
+    }
+    ControlCommand::UiShowLoudnessProfileEditor {
+      mode,
+      profile_id,
+      expected_revision,
+      expected_ui_generation,
+    } => {
+      let mut params = serde_json::Map::from_iter([
+        ("mode".to_string(), Value::String(mode.clone())),
+        (
+          "expectedRevision".to_string(),
+          Value::from(*expected_revision),
+        ),
+        (
+          "expectedUiGeneration".to_string(),
+          Value::from(*expected_ui_generation),
+        ),
+      ]);
+      if let Some(profile_id) = profile_id {
+        params.insert("profileId".to_string(), Value::String(profile_id.clone()));
+      }
+      Value::Object(params)
+    }
     ControlCommand::UiClose {
       surface_id,
       expected_revision,
@@ -4069,6 +4232,68 @@ mod tests {
       })
     );
 
+    let theme_editor = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "theme-editor",
+      "--mode",
+      "customize",
+      "--theme-id",
+      "plvs-light",
+      "--page",
+      "advanced",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&theme_editor), "ui.show.themeEditor");
+    assert_eq!(
+      request_for_command(&theme_editor, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "mode": "customize",
+        "themeId": "plvs-light",
+        "page": "advanced",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+
+    let profile_editor = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "loudness-profile-editor",
+      "--mode",
+      "edit",
+      "--profile-id",
+      "broadcast",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      command_name(&profile_editor),
+      "ui.show.loudnessProfileEditor"
+    );
+    assert_eq!(
+      request_for_command(&profile_editor, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "mode": "edit",
+        "profileId": "broadcast",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+
     let close = parse_control_args(&args(&[
       "ui",
       "close",
@@ -4127,6 +4352,32 @@ mod tests {
         "4",
         "--expected-ui-generation",
         "-1",
+        "--json",
+      ]),
+      args(&[
+        "ui",
+        "show",
+        "theme-editor",
+        "--mode",
+        "edit",
+        "--expected-revision",
+        "4",
+        "--expected-ui-generation",
+        "7",
+        "--json",
+      ]),
+      args(&[
+        "ui",
+        "show",
+        "loudness-profile-editor",
+        "--mode",
+        "create",
+        "--profile-id",
+        "broadcast",
+        "--expected-revision",
+        "4",
+        "--expected-ui-generation",
+        "7",
         "--json",
       ]),
       args(&[
@@ -4193,6 +4444,7 @@ mod tests {
       "recording-id" => format!("rec-{}", "a".repeat(32)),
       "section" => "appearance".to_string(),
       "surface-id" => format!("ui-{}", "a".repeat(16)),
+      "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),
       "id" => "stats".to_string(),
       "main|workspace" | "main|workspace|panel|dock-header|dock-editor" => "main".to_string(),
       "n" => "0".to_string(),

@@ -39,6 +39,7 @@ describe("UI Navigation state", () => {
       "uiActionUnavailable",
       "uiConflict",
       "uiBusy",
+      "editorActive",
       "uiNotSettled",
     ]);
   });
@@ -71,6 +72,18 @@ describe("UI Navigation state", () => {
       details: { expectedUiGeneration: 4, currentUiGeneration: 5 },
     });
     expect(JSON.stringify(error)).not.toContain("do not expose this");
+  });
+
+  it("reports bounded blocking editor identities without draft content", () => {
+    const error = createUiNavigationError("editorActive", {
+      editors: ["theme", "loudnessProfile"],
+      document: { name: "private" },
+    });
+    expect(error).toMatchObject({
+      reason: "editorActive",
+      details: { editors: ["theme", "loudnessProfile"] },
+    });
+    expect(JSON.stringify(error)).not.toContain("private");
   });
 
   it("publishes the first mounted surface at generation one", () => {

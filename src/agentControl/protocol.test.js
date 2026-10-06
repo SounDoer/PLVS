@@ -64,6 +64,8 @@ describe("normalizeAgentControlRequest", () => {
     it.each([
       ["ui.show.settings", { section: "appearance" }],
       ["ui.show.panelSettings", { panelId: "stats-2" }],
+      ["ui.show.themeEditor", { mode: "customize", themeId: "plvs-light", page: "advanced" }],
+      ["ui.show.loudnessProfileEditor", { mode: "edit", profileId: "broadcast" }],
       ["ui.close", { surfaceId: `ui-${"a".repeat(16)}` }],
     ])("requires and preserves both concurrency tokens for %s", (method, target) => {
       const params = { ...target, expectedRevision: 4, expectedUiGeneration: 7 };
@@ -105,6 +107,20 @@ describe("normalizeAgentControlRequest", () => {
           })
         ).error.path
       ).toBe("$.params.dryRun");
+    });
+
+    it.each([
+      ["ui.show.themeEditor", { mode: "create", themeId: "custom-1" }, "themeId"],
+      ["ui.show.themeEditor", { mode: "edit" }, "themeId"],
+      ["ui.show.themeEditor", { mode: "customize", themeId: "plvs-light", page: "review" }, "page"],
+      ["ui.show.loudnessProfileEditor", { mode: "create", profileId: "profile-1" }, "profileId"],
+      ["ui.show.loudnessProfileEditor", { mode: "edit" }, "profileId"],
+    ])("rejects invalid authoring combination for %s", (method, params, field) => {
+      expect(
+        normalizeAgentControlRequest(
+          request(method, { ...params, expectedRevision: 4, expectedUiGeneration: 7 })
+        ).error
+      ).toMatchObject({ reason: "invalidParams", path: `$.params.${field}` });
     });
   });
 

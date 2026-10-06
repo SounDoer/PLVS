@@ -211,12 +211,32 @@ export function UiNavigationProvider({
             currentUiGeneration: before.uiGeneration,
           });
         }
-        if (activeBlockingEditorsRef.current.length > 0) {
-          throw createUiNavigationError("uiConflict", { kind });
-        }
         const controller = targetsRef.current.get(kind)?.current;
         if (!controller) {
           throw createUiNavigationError("surfaceUnavailable", { kind });
+        }
+        if (
+          ["themeEditor", "loudnessProfileEditor"].includes(kind) &&
+          environment.windowForm === "dock"
+        ) {
+          throw createUiNavigationError("surfaceUnavailable", {
+            kind,
+            windowForm: environment.windowForm,
+          });
+        }
+        const blockers = activeBlockingEditorsRef.current;
+        const isMatchingBlockingEditor =
+          blockers.length === 1 &&
+          blockers[0] === controller.blockingEditorId &&
+          controller.matches?.(target) === true;
+        if (blockers.length > 0 && !isMatchingBlockingEditor) {
+          const authoringEditors = blockers.filter((editor) =>
+            ["theme", "loudnessProfile", "feedback"].includes(editor)
+          );
+          if (authoringEditors.length > 0) {
+            throw createUiNavigationError("editorActive", { kind, editors: authoringEditors });
+          }
+          throw createUiNavigationError("uiConflict", { kind });
         }
         if (kind === "panelSettings") {
           if (typeof controller.prepare !== "function") {
@@ -247,7 +267,7 @@ export function UiNavigationProvider({
           surface,
         };
       }),
-    [commitState, enqueueAction, getRevision, waitForSurface, waitForTarget]
+    [commitState, enqueueAction, environment.windowForm, getRevision, waitForSurface, waitForTarget]
   );
   const showSettings = useCallback(
     ({ section, expectedRevision, expectedUiGeneration }) =>
@@ -266,6 +286,35 @@ export function UiNavigationProvider({
         "panelSettings",
         { panelId },
         "ui.show.panel-settings",
+        expectedRevision,
+        expectedUiGeneration
+      ),
+    [showTarget]
+  );
+  const showThemeEditor = useCallback(
+    ({ mode, themeId, page, expectedRevision, expectedUiGeneration }) =>
+      showTarget(
+        "themeEditor",
+        {
+          intent: mode,
+          ...(themeId === undefined ? {} : { themeId }),
+          ...(page === undefined ? {} : { page }),
+        },
+        "ui.show.theme-editor",
+        expectedRevision,
+        expectedUiGeneration
+      ),
+    [showTarget]
+  );
+  const showLoudnessProfileEditor = useCallback(
+    ({ mode, profileId, expectedRevision, expectedUiGeneration }) =>
+      showTarget(
+        "loudnessProfileEditor",
+        {
+          intent: mode,
+          ...(profileId === undefined ? {} : { profileId }),
+        },
+        "ui.show.loudness-profile-editor",
         expectedRevision,
         expectedUiGeneration
       ),
@@ -301,6 +350,8 @@ export function UiNavigationProvider({
       inspectUi,
       showSettings,
       showPanelSettings,
+      showThemeEditor,
+      showLoudnessProfileEditor,
       closeSurface,
       updateEnvironment,
     }),
@@ -308,6 +359,8 @@ export function UiNavigationProvider({
       closeSurface,
       inspectUi,
       showPanelSettings,
+      showThemeEditor,
+      showLoudnessProfileEditor,
       showSettings,
       state.uiGeneration,
       updateEnvironment,

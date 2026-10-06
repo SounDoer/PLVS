@@ -14,6 +14,9 @@ import { SettingsPanel } from "./SettingsPanel.jsx";
 import { ThemeEditor } from "./ThemeEditor.jsx";
 import { UpdateDialog } from "./UpdateDialog.jsx";
 import { LAYER_PRIORITY } from "./ui/layers.js";
+import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
+import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 /**
  * @param {{
@@ -71,6 +74,113 @@ export function AppSettingsOverlays({
     resetInstall,
   } = updateControls;
   const { editor, editorPos, moveEditor } = settings;
+
+  const themeAuthoring = editor.authoring;
+  useUiNavigationTarget("themeEditor", {
+    blockingEditorId: "theme",
+    matches: ({ intent, themeId }) =>
+      editor.isEditing &&
+      themeAuthoring?.mode === intent &&
+      (themeAuthoring?.sourceId ?? null) === (themeId ?? null),
+    show: ({ intent, themeId, page }) => {
+      const matches =
+        editor.isEditing &&
+        themeAuthoring?.mode === intent &&
+        (themeAuthoring?.sourceId ?? null) === (themeId ?? null);
+      if (!matches) {
+        if (intent === "create") settings.createCustomTheme();
+        else if (intent === "edit") {
+          if (!settings.customThemeOptions.some(({ id }) => id === themeId)) {
+            throw createUiNavigationError("uiTargetNotFound", {
+              kind: "themeEditor",
+              themeId,
+            });
+          }
+          settings.editCustomTheme(themeId);
+        } else if (intent === "customize") {
+          if (!BUILTIN_THEMES_V2[themeId]) {
+            throw createUiNavigationError("uiTargetNotFound", {
+              kind: "themeEditor",
+              themeId,
+            });
+          }
+          settings.customizeBuiltinTheme(themeId);
+        } else if (intent === "duplicate") {
+          if (!settings.customThemeOptions.some(({ id }) => id === themeId)) {
+            throw createUiNavigationError("uiTargetNotFound", {
+              kind: "themeEditor",
+              themeId,
+            });
+          }
+          settings.duplicateCustomTheme(themeId);
+        }
+      }
+      if (page) editor.setPage(page);
+    },
+  });
+  useUiSurface({
+    active: editor.isEditing,
+    kind: "themeEditor",
+    origin: "navigable",
+    blocking: true,
+    dirty: editor.dirty,
+    stale: editor.stale,
+    dismissible: true,
+    supportedActions: ["cancel"],
+    target: themeAuthoring
+      ? {
+          intent: themeAuthoring.mode,
+          ...(themeAuthoring.sourceId ? { themeId: themeAuthoring.sourceId } : {}),
+          draftId: themeAuthoring.draftId,
+          page: editor.page,
+        }
+      : {},
+    onCancel: editor.requestDismiss,
+  });
+
+  const profileAuthoring = loudnessProfile?.draft?.authoring;
+  useUiNavigationTarget("loudnessProfileEditor", {
+    blockingEditorId: "loudnessProfile",
+    matches: ({ intent, profileId }) =>
+      loudnessProfile?.draft != null &&
+      profileAuthoring?.mode === intent &&
+      (profileAuthoring?.sourceId ?? null) === (profileId ?? null),
+    show: ({ intent, profileId }) => {
+      const matches =
+        loudnessProfile?.draft != null &&
+        profileAuthoring?.mode === intent &&
+        (profileAuthoring?.sourceId ?? null) === (profileId ?? null);
+      if (matches) return;
+      if (intent === "create") loudnessProfile.beginCreate();
+      else {
+        if (!loudnessProfile.profiles.some(({ id }) => id === profileId)) {
+          throw createUiNavigationError("uiTargetNotFound", {
+            kind: "loudnessProfileEditor",
+            profileId,
+          });
+        }
+        loudnessProfile.beginEdit(profileId);
+      }
+    },
+  });
+  useUiSurface({
+    active: loudnessProfile?.draft != null,
+    kind: "loudnessProfileEditor",
+    origin: "navigable",
+    blocking: true,
+    dirty: loudnessProfile?.draft?.dirty,
+    stale: loudnessProfile?.draft?.stale,
+    dismissible: true,
+    supportedActions: ["cancel"],
+    target: profileAuthoring
+      ? {
+          intent: profileAuthoring.mode,
+          ...(profileAuthoring.sourceId ? { profileId: profileAuthoring.sourceId } : {}),
+          draftId: profileAuthoring.draftId,
+        }
+      : {},
+    onCancel: loudnessProfile?.requestDismiss,
+  });
 
   useEffect(() => {
     const onPaste = (event) => {

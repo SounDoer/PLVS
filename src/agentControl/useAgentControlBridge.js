@@ -1104,7 +1104,15 @@ export function useAgentControlBridge({
             result: { revision: controlRevisionRef.current, ...uiNavigation.inspectUi() },
           };
         }
-        if (["ui.show.settings", "ui.show.panelSettings", "ui.close"].includes(request.method)) {
+        if (
+          [
+            "ui.show.settings",
+            "ui.show.panelSettings",
+            "ui.show.themeEditor",
+            "ui.show.loudnessProfileEditor",
+            "ui.close",
+          ].includes(request.method)
+        ) {
           const currentRevision = controlRevisionRef.current;
           if (request.params.expectedRevision !== currentRevision) {
             throw semanticFailure(
@@ -1129,7 +1137,11 @@ export function useAgentControlBridge({
                 ? await uiNavigation.showSettings(request.params)
                 : request.method === "ui.show.panelSettings"
                   ? await uiNavigation.showPanelSettings(request.params)
-                  : await uiNavigation.closeSurface(request.params);
+                  : request.method === "ui.show.themeEditor"
+                    ? await uiNavigation.showThemeEditor(request.params)
+                    : request.method === "ui.show.loudnessProfileEditor"
+                      ? await uiNavigation.showLoudnessProfileEditor(request.params)
+                      : await uiNavigation.closeSurface(request.params);
             const ui = uiNavigation.inspectUi();
             return {
               requestId,

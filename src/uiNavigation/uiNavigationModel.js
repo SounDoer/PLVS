@@ -37,6 +37,7 @@ export const UI_NAVIGATION_ERROR_CODES = Object.freeze([
   "uiActionUnavailable",
   "uiConflict",
   "uiBusy",
+  "editorActive",
   "uiNotSettled",
 ]);
 
@@ -49,6 +50,7 @@ const UI_ERROR_MESSAGES = Object.freeze({
   uiActionUnavailable: "The requested action is unavailable for this UI surface.",
   uiConflict: "Another UI surface prevents this navigation action.",
   uiBusy: "The requested UI surface is busy.",
+  editorActive: "A different authoring editor is already open.",
   uiNotSettled: "The requested UI surface did not settle in time.",
 });
 
@@ -59,8 +61,11 @@ const UI_ERROR_DETAIL_FIELDS = Object.freeze([
   "kind",
   "action",
   "panelId",
+  "themeId",
+  "profileId",
   "section",
   "windowForm",
+  "editors",
 ]);
 
 export function createUiNavigationError(reason, details = {}) {
@@ -72,6 +77,11 @@ export function createUiNavigationError(reason, details = {}) {
     const value = details[field];
     if (typeof value === "number" && Number.isFinite(value)) publicDetails[field] = value;
     if (typeof value === "string" && value.length <= 128) publicDetails[field] = value;
+    if (field === "editors" && Array.isArray(value)) {
+      publicDetails.editors = value
+        .filter((editor) => typeof editor === "string" && editor.length <= 64)
+        .slice(0, 8);
+    }
   }
   return Object.assign(new Error(UI_ERROR_MESSAGES[reason]), {
     reason,

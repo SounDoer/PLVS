@@ -1748,6 +1748,13 @@ describe("useAgentControlBridge", () => {
       uiGeneration: 3,
       surface: { surfaceId: `ui-${"b".repeat(16)}`, kind: "settings" },
     }));
+    const showThemeEditor = vi.fn(async () => ({
+      changed: true,
+      action: "ui.show.theme-editor",
+      revision: 0,
+      uiGeneration: 3,
+      surface: { surfaceId: `ui-${"c".repeat(16)}`, kind: "themeEditor" },
+    }));
     const inspectUi = vi.fn(() => ({
       uiGeneration: showSettings.mock.calls.length > 0 ? 3 : 2,
       workbench: { instanceId: "instance-1", workspaceId: "workspace-1", displayName: "Studio" },
@@ -1765,6 +1772,8 @@ describe("useAgentControlBridge", () => {
         inspectUi,
         showSettings,
         showPanelSettings: vi.fn(),
+        showThemeEditor,
+        showLoudnessProfileEditor: vi.fn(),
         closeSurface: vi.fn(),
       },
     });
@@ -1791,6 +1800,27 @@ describe("useAgentControlBridge", () => {
       revision: 0,
       uiGeneration: 3,
       ui: { uiGeneration: 3 },
+    });
+
+    await send(
+      request(
+        "ui.show.themeEditor",
+        {
+          mode: "customize",
+          themeId: "plvs-light",
+          page: "advanced",
+          expectedRevision: 0,
+          expectedUiGeneration: 2,
+        },
+        "ui-theme"
+      )
+    );
+    expect(showThemeEditor).toHaveBeenCalledWith({
+      mode: "customize",
+      themeId: "plvs-light",
+      page: "advanced",
+      expectedRevision: 0,
+      expectedUiGeneration: 2,
     });
   });
 
