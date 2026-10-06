@@ -52,6 +52,7 @@ export function preparePanelSettingsNavigation({
       windowForm,
     });
   }
-  setActiveTab(path, panelId);
+  const leaf = path.reduce((node, index) => node.children[index], workspace.tree);
+  if (leaf.activeTab !== panelId) setActiveTab(path, panelId);
   return { handled: false, presentation: "normal" };
 }

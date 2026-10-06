@@ -345,9 +345,23 @@ export function SettingsPanel({
 
   const settlePendingSection = useCallback(() => {
     const pending = pendingSectionRef.current;
-    if (!pending || !focusSection(pending.section)) return;
-    pendingSectionRef.current = null;
-    queueMicrotask(pending.resolve);
+    if (!pending) return;
+    if (focusSection(pending.section)) {
+      pendingSectionRef.current = null;
+      queueMicrotask(pending.resolve);
+      return;
+    }
+    if (Date.now() >= pending.deadline) {
+      pendingSectionRef.current = null;
+      pending.reject(createUiNavigationError("uiNotSettled", { kind: "settings" }));
+      return;
+    }
+    if (pending.retryScheduled) return;
+    pending.retryScheduled = true;
+    setTimeout(() => {
+      if (pendingSectionRef.current === pending) pending.retryScheduled = false;
+      settlePendingSection();
+    }, 16);
   }, [focusSection]);
 
   useLayoutEffect(() => {
@@ -389,8 +403,14 @@ export function SettingsPanel({
       }
       setActiveSection(section);
       setSettingsOpen(true);
-      return new Promise((resolve) => {
-        pendingSectionRef.current = { section, resolve };
+      return new Promise((resolve, reject) => {
+        pendingSectionRef.current = {
+          section,
+          resolve,
+          reject,
+          deadline: Date.now() + 2500,
+          retryScheduled: false,
+        };
         queueMicrotask(settlePendingSection);
       });
     },

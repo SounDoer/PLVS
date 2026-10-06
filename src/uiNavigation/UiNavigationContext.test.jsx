@@ -114,6 +114,32 @@ describe("UiNavigationProvider", () => {
     });
   });
 
+  it("keeps a previously captured inspection function on the current surface state", () => {
+    const { result, rerender } = renderHook(
+      ({ active }) => {
+        useUiSurface({
+          active,
+          kind: "settings",
+          origin: "navigable",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["close"],
+          target: { section: "appearance" },
+        });
+        return useUiNavigation();
+      },
+      { wrapper, initialProps: { active: false } }
+    );
+    const inspectBeforeMount = result.current.inspectUi;
+
+    rerender({ active: true });
+
+    expect(inspectBeforeMount()).toMatchObject({
+      uiGeneration: 1,
+      surfaces: [{ kind: "settings", target: { section: "appearance" } }],
+    });
+  });
+
   it("closes only the exact mounted surface through its visible Close intent", async () => {
     const onClose = vi.fn();
     const { result } = renderHook(

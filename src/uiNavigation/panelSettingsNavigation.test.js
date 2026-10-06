@@ -39,6 +39,22 @@ describe("preparePanelSettingsNavigation", () => {
     expect(setActiveTab).toHaveBeenCalledWith([1], "stats-b");
   });
 
+  it("does not rewrite Workspace state when the exact Panel is already active", () => {
+    const setActiveTab = vi.fn();
+
+    expect(
+      preparePanelSettingsNavigation({
+        panelId: "meter-a",
+        windowForm: "normal",
+        workspace,
+        dockPanels: [],
+        setActiveTab,
+        openDockEditor: vi.fn(),
+      })
+    ).toEqual({ handled: false, presentation: "normal" });
+    expect(setActiveTab).not.toHaveBeenCalled();
+  });
+
   it("targets only the fullscreen Panel and never exits fullscreen implicitly", () => {
     const setActiveTab = vi.fn();
     const fullscreenWorkspace = { ...workspace, fullscreenId: "stats-a" };

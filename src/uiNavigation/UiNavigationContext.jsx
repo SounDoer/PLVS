@@ -406,16 +406,16 @@ export function UiNavigationProvider({
   );
   const inspectUi = useCallback(
     () =>
-      projectUiInspection(state, {
+      projectUiInspection(stateRef.current, {
         workbench: {
           instanceId: typeof boot.instanceId === "string" ? boot.instanceId : null,
           workspaceId: typeof boot.workspaceId === "string" ? boot.workspaceId : null,
           displayName: environment.displayName,
         },
         window: { form: environment.windowForm, visible: environment.windowVisible },
-        activeBlockingEditors,
+        activeBlockingEditors: activeBlockingEditorsRef.current,
       }),
-    [activeBlockingEditors, boot.instanceId, boot.workspaceId, environment, state]
+    [boot.instanceId, boot.workspaceId, environment]
   );
   const updateEnvironment = useCallback((next) => {
     setEnvironment((current) => {
