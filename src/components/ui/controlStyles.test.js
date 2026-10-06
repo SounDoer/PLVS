@@ -30,15 +30,12 @@ describe("control visual semantics", () => {
   });
 
   it("keeps Live and Snapshot status chrome free of translucent washes and glow", () => {
-    const status = readFileSync(new URL("../StatusPill.jsx", import.meta.url), "utf8");
     const transport = readFileSync(
       new URL("../SourceTransportCluster.jsx", import.meta.url),
       "utf8"
     );
 
-    for (const source of [status, transport]) {
-      expect(source).not.toMatch(/ui-activity-(?:live|snapshot)[^\n]*transparent/);
-      expect(source).not.toContain("shadow-[");
-    }
+    expect(transport).not.toMatch(/ui-activity-(?:live|snapshot)[^\n]*transparent/);
+    expect(transport).not.toContain("shadow-[");
   });
 });

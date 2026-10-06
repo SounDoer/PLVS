@@ -279,7 +279,7 @@ Motion is sorted by what it is for, and only two kinds animate.
 | State feedback    | Hover, press, selection, validity: colour, fill, border, opacity, shadow                              | Instant. No transition                                               |
 | Spatial change    | The Settings drawer sliding in, a menu or tooltip appearing, a chevron turning, a switch thumb moving | Animates at the framework default (150ms). No per-component duration |
 | Data smoothing    | The Level Meter fill, the correlation marker gliding along its rail                                   | Owned by the instrument; not a UI transition                         |
-| Looping indicator | The Live status pulse, the indeterminate update bar                                                   | Keyframes in `index.css`                                             |
+| Looping indicator | The indeterminate update bar                                                                          | Keyframes in `index.css`                                             |
 
 A measurement tool answers a pointer at once; a colour that takes 150ms to arrive says nothing the
 instant change does not. Spatial motion stays because it shows where a surface came from.
@@ -915,12 +915,12 @@ Displayed UI text follows four casing rules (standardized 2026-06-13). Casing li
 source strings, **not** in CSS `text-transform` — avoid `uppercase`/`capitalize` utility classes,
 which fight the source strings and don't change DOM `textContent`.
 
-| Casing                                  | Used for                                                                                                                                                                               | Examples                                                            |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **ALL CAPS**                            | Live state / transport chips only — read as indicator lights                                                                                                                           | `StatusPill` (READY/LIVE/SNAP), `TransportButton` (START/STOP/LIVE) |
-| **Title Case** (minor words lowercased) | Everything else informational: panel titles, metric names, meter captions, menu section headers, footer labels, settings rows + options, shortcut descriptions, tooltips, placeholders | `TP Max`, `Correlation`, `Open at Login`, `Save as Preset…`         |
-| **Sentence case**                       | Full sentences / messages: status text, empty states, error & help text, gesture hints                                                                                                 | `Up to date`, `No stats selected`, `Combo unavailable, try another` |
-| **Canonical**                           | Acronyms & units keep their standard form                                                                                                                                              | LUFS, LU, dB, %, LRA, PSR, PLR, TP, L/R/C/LFE                       |
+| Casing                                  | Used for                                                                                                                                                                               | Examples                                                                                  |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **ALL CAPS**                            | Live state / transport chips only — read as indicator lights                                                                                                                           | The Source Transport's `LIVE` / `FILE` source and its `START` / `STOP` / `ANALYZE` action |
+| **Title Case** (minor words lowercased) | Everything else informational: panel titles, metric names, meter captions, menu section headers, footer labels, settings rows + options, shortcut descriptions, tooltips, placeholders | `TP Max`, `Correlation`, `Open at Login`, `Save as Preset…`                               |
+| **Sentence case**                       | Full sentences / messages: status text, empty states, error & help text, gesture hints                                                                                                 | `Up to date`, `No stats selected`, `Combo unavailable, try another`                       |
+| **Canonical**                           | Acronyms & units keep their standard form                                                                                                                                              | LUFS, LU, dB, %, LRA, PSR, PLR, TP, L/R/C/LFE                                             |
 
 Minor words (a, an, the, and, or, at, to, of, on, for, in, by, vs, via…) stay lowercase in Title
 Case unless they are the first or last word. Screen-reader-only `aria-label`s are not "displayed
