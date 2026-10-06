@@ -23,6 +23,7 @@ function SheetPortal(props) {
   return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />;
 }
 
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay> & React.RefAttributes<React.ElementRef<typeof SheetPrimitive.Overlay>>>} */
 const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     ref={ref}
@@ -58,6 +59,7 @@ const sheetVariants = cva(
   }
 );
 
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & { side?: "top" | "bottom" | "left" | "right", hideClose?: boolean } & React.RefAttributes<React.ElementRef<typeof SheetPrimitive.Content>>>} */
 const SheetContent = React.forwardRef(
   ({ side, className, children, forceMount, hideClose, ...props }, ref) => (
     <SheetPortal>

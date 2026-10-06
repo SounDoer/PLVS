@@ -22,6 +22,7 @@ const DIALOG_WIDTH_CLASS = {
  * centring so a dragged dialog can place itself through `style`. `overlayProps` reach the scrim,
  * for dialogs that dismiss on a scrim click.
  */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { size?: "sm" | "md" | "lg" | "custom", layer?: string, centered?: boolean, overlayProps?: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & { [key: `data-${string}`]: string } } & React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Content>>>} */
 const DialogContent = React.forwardRef(function DialogContent(
   {
     size = "md",
@@ -58,6 +59,7 @@ const DialogContent = React.forwardRef(function DialogContent(
   );
 });
 
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title> & React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Title>>>} */
 const DialogTitle = React.forwardRef(function DialogTitle({ className, ...props }, ref) {
   return (
     <DialogPrimitive.Title
@@ -68,6 +70,7 @@ const DialogTitle = React.forwardRef(function DialogTitle({ className, ...props 
   );
 });
 
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description> & React.RefAttributes<React.ElementRef<typeof DialogPrimitive.Description>>>} */
 const DialogDescription = React.forwardRef(function DialogDescription(
   { className, ...props },
   ref
@@ -82,6 +85,7 @@ const DialogDescription = React.forwardRef(function DialogDescription(
 });
 
 /** The action row. `divided` adds the rule that separates it from a scrolling body. */
+/** @param {React.ComponentPropsWithoutRef<"div"> & { divided?: boolean }} props */
 function DialogFooter({ divided = false, className, ...props }) {
   return (
     <div

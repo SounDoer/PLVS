@@ -13,6 +13,7 @@ const ADJUST_KEYS = new Set([
 ]);
 
 // A shared interaction layer; callers retain their live or release-only commit policy.
+/** @type {import("react").ForwardRefExoticComponent<import("react").ComponentPropsWithoutRef<"input"> & { valueLabel?: string } & import("react").RefAttributes<HTMLInputElement>>} */
 export const RangeInput = forwardRef(function RangeInput(
   {
     valueLabel,

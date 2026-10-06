@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
  *
  * Shell-level icon buttons that paint a hover fill use `IconButton` instead.
  */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & React.RefAttributes<HTMLButtonElement>>} */
 const IconAction = React.forwardRef(function IconAction({ className, ...props }, ref) {
   return (
     <button

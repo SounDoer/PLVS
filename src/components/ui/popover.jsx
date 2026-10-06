@@ -38,6 +38,7 @@ function PopoverAnchor(props) {
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & React.RefAttributes<React.ElementRef<typeof PopoverPrimitive.Content>>>} */
 const PopoverContent = React.forwardRef(
   (
     {

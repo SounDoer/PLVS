@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
  * A full-width row that is itself the click target: a menu item, a picker option, a disclosure
  * header. It paints its own neutral hover and is one list row tall.
  */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & React.RefAttributes<HTMLButtonElement>>} */
 const MenuRow = React.forwardRef(function MenuRow({ className, ...props }, ref) {
   return (
     <button
@@ -25,6 +26,7 @@ const MenuRow = React.forwardRef(function MenuRow({ className, ...props }, ref) 
  * container paints the hover and sets the row height, so this fills the remaining width and the
  * full height, and adds no hover or height of its own.
  */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & React.RefAttributes<HTMLButtonElement>>} */
 const RowAction = React.forwardRef(function RowAction({ className, ...props }, ref) {
   return (
     <button

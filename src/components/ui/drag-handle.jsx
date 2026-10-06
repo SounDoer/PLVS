@@ -4,6 +4,7 @@ import { GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** The grip that starts a reorder or placement drag. `dragging` holds its hover colour. */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & { dragging?: boolean } & React.RefAttributes<HTMLButtonElement>>} */
 const DragHandle = React.forwardRef(function DragHandle(
   { dragging = false, className, ...props },
   ref

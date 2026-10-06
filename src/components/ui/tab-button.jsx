@@ -3,6 +3,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /** One tab in an underlined tab strip. The strip itself carries `role="tablist"`. */
+/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<"button"> & { selected?: boolean } & React.RefAttributes<HTMLButtonElement>>} */
 const TabButton = React.forwardRef(function TabButton(
   { selected = false, className, ...props },
   ref
