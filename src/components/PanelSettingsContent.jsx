@@ -58,11 +58,11 @@ const SETTINGS_VALUE_OPEN_CLASS = "border-border bg-ui-hover text-foreground";
 
 const SETTINGS_DETAIL_SURFACE_CLASS = cn(
   POPOVER_SURFACE_CLASS,
-  "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden p-0.5"
+  "mt-1 max-h-60 min-w-0 max-w-full overflow-y-auto overflow-x-hidden p-1"
 );
 
 const SETTINGS_CHOICE_ROW_CLASS =
-  "min-h-[var(--ui-control-h)] min-w-0 gap-1.5 py-0.5 text-popover-foreground outline-none hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
+  "min-h-[var(--ui-control-h)] min-w-0 gap-1 py-0 text-popover-foreground outline-none hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary";
 
@@ -71,7 +71,7 @@ const SETTINGS_SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 const SETTINGS_SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
 export function SettingsGroup({ children }) {
-  return <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5">{children}</div>;
+  return <div className="flex w-full min-w-0 max-w-full flex-col gap-0">{children}</div>;
 }
 
 // The label tip is portaled rather than absolutely positioned above the label: the settings body
@@ -86,18 +86,18 @@ export function SettingsRow({ label, tooltip, action, controlAction, children })
   });
 
   return (
-    <div className="grid min-h-[var(--ui-control-h)] grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-2 py-0.5 text-[length:var(--ui-fs-control)]">
+    <div className="grid min-h-[var(--ui-shell-h)] grid-cols-[max-content_minmax(0,1fr)] items-start gap-2 rounded-md px-2 text-[length:var(--ui-fs-control)]">
       <span
         ref={anchorRef}
         onMouseEnter={tooltip ? showTip : undefined}
         onMouseLeave={tooltip ? hideTip : undefined}
-        className="flex h-[var(--ui-control-h)] items-center gap-1 whitespace-nowrap font-medium text-muted-foreground"
+        className="flex h-[var(--ui-shell-h)] items-center gap-1 whitespace-nowrap font-medium text-muted-foreground"
       >
         {label}
         {action}
         {tipNode}
       </span>
-      <div className="flex min-h-[var(--ui-control-h)] min-w-0 items-center justify-end gap-2">
+      <div className="flex min-h-[var(--ui-shell-h)] min-w-0 items-center justify-end gap-2">
         {controlAction}
         {children}
       </div>
@@ -394,7 +394,7 @@ export function SettingsRangeInput({
     "plvs-input h-[var(--ui-control-h)] rounded-md border border-border bg-transparent px-1 py-0 text-right font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-popover-foreground outline-none";
 
   return (
-    <div className="flex min-w-0 items-center gap-0.5">
+    <div className="flex min-w-0 items-center gap-0">
       <input
         aria-label={minAriaLabel}
         type="text"
@@ -500,7 +500,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
 /// is refused and restored by SettingsNumberInput instead of being silently repaired.
 export function SettingsThresholdInputs({ ariaLabel, warning, critical, min, max, onCommit }) {
   return (
-    <div className="flex min-w-0 items-center gap-0.5">
+    <div className="flex min-w-0 items-center gap-0">
       <SettingsNumberInput
         ariaLabel={`${ariaLabel} warning`}
         value={warning}
@@ -700,7 +700,7 @@ function SpectrumViewChipLabel({ fallbackLabel, legend }) {
   if (!legend?.length) return fallbackLabel;
 
   return (
-    <span className="flex items-center gap-1.5">
+    <span className="flex items-center gap-1">
       {legend.map((entry) => (
         <span key={entry.token} className="flex items-center gap-1">
           <span
@@ -726,7 +726,7 @@ function SortableStatRow({ id, label, checked, onToggle }) {
       value={id}
       dragListener={false}
       dragControls={controls}
-      className="group flex items-center gap-1 rounded-xs px-1 py-0.5 hover:bg-ui-hover"
+      className="group flex min-h-[var(--ui-control-h)] items-center gap-1 rounded-xs px-1 hover:bg-ui-hover"
     >
       <span
         aria-hidden="true"
@@ -760,14 +760,14 @@ export function SortableStatsList({
 }) {
   const labelById = new Map(options.map((option) => [option.id, option.label]));
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-0">
       <Reorder.Group
         axis="y"
         values={orderedIds}
         onReorder={onReorder}
         role="group"
         aria-label={label}
-        className="flex select-none flex-col gap-0.5"
+        className="flex select-none flex-col gap-0"
       >
         {orderedIds.map((id) => (
           <SortableStatRow
@@ -779,7 +779,7 @@ export function SortableStatsList({
           />
         ))}
       </Reorder.Group>
-      <div className="mt-0.5 flex justify-end border-t border-border pt-0.5">
+      <div className="mt-0 flex justify-end border-t border-border pt-0">
         <ResetAction
           label="Reset stats"
           isDefault={!showReset}

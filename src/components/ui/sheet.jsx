@@ -87,7 +87,7 @@ SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 function SheetHeader({ className, ...props }) {
   return (
-    <div data-slot="sheet-header" className={cn("flex flex-col gap-1.5", className)} {...props} />
+    <div data-slot="sheet-header" className={cn("flex flex-col gap-1", className)} {...props} />
   );
 }
 

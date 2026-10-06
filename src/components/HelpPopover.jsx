@@ -89,7 +89,7 @@ function iconForHint(item) {
 
 function Keycap({ children }) {
   return (
-    <span className="inline-flex h-[1.45em] items-center justify-center rounded-xs border border-border bg-background px-1.5 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground">
+    <span className="inline-flex h-[1.45em] items-center justify-center rounded-xs border border-border bg-background px-2 font-[family-name:var(--ui-font-mono)] text-[0.78em] font-semibold leading-none text-muted-foreground">
       {children}
     </span>
   );
@@ -162,7 +162,7 @@ export function HelpPopover({ items }) {
             {group.title ? (
               <div
                 className={cn(
-                  groupIndex > 0 && "mt-1.5",
+                  groupIndex > 0 && "mt-2",
                   "text-[0.78em] font-semibold text-muted-foreground"
                 )}
               >
@@ -172,7 +172,7 @@ export function HelpPopover({ items }) {
             {group.items.map((item) => (
               <div
                 key={item}
-                className="flex items-center gap-1.5 whitespace-nowrap text-muted-foreground"
+                className="flex items-center gap-1 whitespace-nowrap text-muted-foreground"
               >
                 <GestureIcon item={item} />
                 <span>{item}</span>

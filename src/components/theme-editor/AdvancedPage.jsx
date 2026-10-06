@@ -206,7 +206,7 @@ export function AdvancedPage({
       <p className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
         Keep roles on Auto unless one specific part of the app should differ from the theme.
       </p>
-      <label className="flex items-center gap-2 rounded-md border border-input px-2 py-1.5 text-muted-foreground">
+      <label className="flex items-center gap-2 rounded-md border border-input px-2 py-1 text-muted-foreground">
         <Search className="size-[length:var(--ui-icon-management-action)]" aria-hidden="true" />
         <input
           type="search"
@@ -240,7 +240,7 @@ export function AdvancedPage({
         });
         return (
           <section key={section} className="rounded-md border border-border">
-            <div className="flex items-center gap-1 px-2 py-1.5">
+            <div className="flex items-center gap-1 px-2 py-1">
               <RowAction
                 aria-label={section}
                 aria-expanded={isExpanded}
@@ -259,12 +259,12 @@ export function AdvancedPage({
                 />
                 <span className="truncate">{section}</span>
                 {customized ? (
-                  <span className="rounded-full bg-muted px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                     {customized} Custom
                   </span>
                 ) : null}
                 {sectionWarnings ? (
-                  <span className="inline-flex items-center gap-0.5 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-feedback-warning)]">
+                  <span className="inline-flex items-center gap-0 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-feedback-warning)]">
                     <TriangleAlert className="size-[1em]" /> {sectionWarnings}
                   </span>
                 ) : null}

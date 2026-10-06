@@ -30,12 +30,12 @@ export const SHELL_TOP_REVEAL_HOT_ZONE = "absolute left-0 right-0 top-0 z-20 h-3
 export const SHELL_BOTTOM_REVEAL_HOT_ZONE = "absolute bottom-0 left-0 right-0 z-20 h-3";
 
 export const PANEL_HEADER_BAR =
-  "@container relative flex h-[var(--ui-shell-h)] shrink-0 items-center gap-0.5 px-1 text-[length:var(--ui-fs-control)] font-medium";
+  "@container relative flex h-[var(--ui-shell-h)] shrink-0 items-center gap-0 px-1 text-[length:var(--ui-fs-control)] font-medium";
 
-export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0.5 pl-1";
+export const PANEL_HEADER_ACTIONS = "ml-auto flex shrink-0 items-center gap-0 pl-1";
 
 export const PANEL_HEADER_ACTION_BUTTON =
-  "p-0.5 hover:bg-ui-hover disabled:pointer-events-none disabled:opacity-50";
+  "p-1 hover:bg-ui-hover disabled:pointer-events-none disabled:opacity-50";
 
 export const RESIZE_HANDLE_LINE_CLASS =
   "bg-transparent group-hover:bg-border group-focus-visible:bg-border group-data-[dragging=true]:bg-primary";
@@ -44,14 +44,14 @@ export const RESIZE_HANDLE_LINE_CLASS =
 export const PANEL_HEADER_PIN_ICON = "size-[calc(var(--ui-icon-panel-action)*0.9)]";
 
 export const PANEL_HEADER_TITLE_GROUP =
-  "@max-[80px]:hidden flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0.5 text-[length:var(--ui-fs-panel-title)] font-medium";
+  "@max-[80px]:hidden flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0 text-[length:var(--ui-fs-panel-title)] font-medium";
 
 export const FOOTER_LABEL =
   "text-[length:var(--ui-fs-status)] tracking-[0.06em] text-muted-foreground";
 
 export const FOOTER_VALUE = "min-w-0 truncate tabular-nums text-muted-foreground";
 
-export const FOOTER_DIVIDER = "mx-1.5 h-3 w-px shrink-0 bg-border";
+export const FOOTER_DIVIDER = "mx-2 h-3 w-px shrink-0 bg-border";
 
 /** Axis tick / caption text (replaces former `.ui-caption`). */
 export const ANNOTATION_TEXT = "text-[color:var(--ui-text-annotation)]";

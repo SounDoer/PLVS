@@ -75,10 +75,7 @@ const DialogDescription = React.forwardRef(function DialogDescription(
   return (
     <DialogPrimitive.Description
       ref={ref}
-      className={cn(
-        "mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground",
-        className
-      )}
+      className={cn("mt-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground", className)}
       {...props}
     />
   );

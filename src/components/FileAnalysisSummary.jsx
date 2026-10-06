@@ -54,7 +54,7 @@ export function FileAnalysisSummary({
         <p className="truncate text-[length:var(--ui-fs-body)] font-semibold text-foreground">
           {fileName}
         </p>
-        <p className="mt-0.5 truncate text-[length:var(--ui-fs-control)] text-muted-foreground">
+        <p className="mt-0 truncate text-[length:var(--ui-fs-control)] text-muted-foreground">
           {formatSessionMetadataLine(fileSession)}
         </p>
       </div>
@@ -122,7 +122,7 @@ function ExportReportMenu({ onExportReport, onCopyReport }) {
         <Button
           variant="secondary"
           className={cn(
-            "border border-border px-2.5",
+            "border border-border px-2",
             copied
               ? "border-transparent bg-[color:var(--ui-interface-success)] text-[color:var(--ui-content-on-success)] hover:bg-[color:var(--ui-interface-success)] focus-visible:bg-[color:var(--ui-interface-success)] active:bg-[color:var(--ui-interface-success)]"
               : "data-[state=open]:bg-[color:var(--ui-secondary-hover)]"

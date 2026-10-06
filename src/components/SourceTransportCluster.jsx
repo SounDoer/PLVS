@@ -75,13 +75,13 @@ export function SourceTransportCluster({
     <div
       style={{ fontSize: "var(--ui-fs-status)" }}
       className={cn(
-        "relative inline-flex h-[var(--ui-shell-h)] max-w-full shrink-0 items-center overflow-hidden rounded-full p-0.5",
+        "relative inline-flex h-[var(--ui-shell-h)] max-w-full shrink-0 items-center overflow-hidden rounded-full p-1",
         TRANSPORT_WIDTH_CLASS[sourceMode] ?? TRANSPORT_WIDTH_CLASS.live,
         chrome.shell
       )}
     >
       {sourceLocked ? (
-        <span className="flex h-full shrink-0 items-center rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
+        <span className="flex h-full shrink-0 items-center rounded-full px-2 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em]">
           {state.sourceLabel}
         </span>
       ) : (
@@ -91,7 +91,7 @@ export function SourceTransportCluster({
               ref={triggerRef}
               type="button"
               aria-label={`Source: ${state.sourceLabel}`}
-              className="flex h-full shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] hover:bg-ui-hover"
+              className="flex h-full shrink-0 items-center gap-1 rounded-full px-2 text-[length:var(--ui-fs-status)] font-bold uppercase tracking-[0.08em] hover:bg-ui-hover"
             >
               {state.sourceLabel}
               <ChevronDown className="size-[1em]" />
@@ -115,7 +115,7 @@ export function SourceTransportCluster({
                   setOpen(false);
                   if (option.id !== sourceMode) onSourceModeChange(option.id);
                 }}
-                className="flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-left text-[length:var(--ui-fs-metric-meta)] hover:bg-ui-hover"
+                className="flex w-full items-center gap-2 rounded-xs px-2 py-1 text-left text-[length:var(--ui-fs-metric-meta)] hover:bg-ui-hover"
               >
                 <span
                   aria-hidden="true"
@@ -141,7 +141,7 @@ export function SourceTransportCluster({
         disabled={state.primaryActionDisabled}
         onClick={() => onPrimaryAction(state.actionKind)}
         className={cn(
-          "ml-0.5 flex h-full shrink-0 items-center justify-center gap-1.5 rounded-full px-3 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
+          "ml-1 flex h-full shrink-0 items-center justify-center gap-1 rounded-full px-3 font-bold tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50",
           ACTION_WIDTH_CLASS[sourceMode] ?? ACTION_WIDTH_CLASS.live,
           chrome.action
         )}

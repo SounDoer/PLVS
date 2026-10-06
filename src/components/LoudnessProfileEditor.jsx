@@ -47,7 +47,7 @@ const CONTENT_CLASS = "[&_[data-slot=select-item]]:pr-8";
 // track boundaries when the grid itself is the containing block -- without `relative` here it
 // falls back to the nearest positioned ancestor, sizing itself to whatever box that happens to be.
 const GRID_TEMPLATE_CLASS =
-  "relative grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-0.5 text-[length:var(--ui-fs-control)]";
+  "relative grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-1 text-[length:var(--ui-fs-control)]";
 const GRIP_COL_CLASS = "w-5";
 // Both selects hold their label plus the chevron, and both scale: the text and
 // the icon follow --ui-fs-control while the trigger's padding and gap stay in
@@ -401,7 +401,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
       >
         <div
           {...dragHandlers}
-          className="flex cursor-move items-center gap-1.5 border-b border-border px-3 py-2"
+          className="flex cursor-move items-center gap-1 border-b border-border px-3 py-2"
         >
           {renaming ? (
             <>

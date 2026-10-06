@@ -94,7 +94,6 @@ export function applyLayoutToDocument(prefs = UI_PREFERENCES) {
   setCssVar("--ui-drawer-pad", `${drawer.paddingRem}rem`);
   setCssVar("--ui-drawer-gap", `${drawer.sectionGapRem}rem`);
   setCssVar("--ui-drawer-row-gap", `${drawer.rowGapRem}rem`);
-  setCssVar("--ui-drawer-row-min-h", `${drawer.rowMinHeightRem}rem`);
 
   const vs = prefs.modules.vectorscope;
   setCssVar("--ui-vectorscope-stroke-width", String(vs.strokeWidth));

@@ -58,7 +58,7 @@ export function FileAnalysisHistoryMenu({
         <Button
           variant="secondary"
           aria-label={countLabel}
-          className="border border-border px-2.5 data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
+          className="border border-border px-2 data-[state=open]:bg-[color:var(--ui-secondary-hover)]"
         >
           <FileStack className="size-[1.15em]" aria-hidden="true" />
           <span className="tabular-nums">{count}</span>
@@ -78,13 +78,13 @@ export function FileAnalysisHistoryMenu({
           <button
             type="button"
             onClick={() => onClearAllFiles?.()}
-            className="rounded-xs px-1.5 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground hover:bg-ui-hover hover:text-destructive"
+            className="rounded-xs px-2 py-1 text-[length:var(--ui-fs-caption)] font-medium text-muted-foreground hover:bg-ui-hover hover:text-destructive"
             aria-label="Clear all file history"
           >
             Clear all
           </button>
         </div>
-        <div className="grid gap-0.5">
+        <div className="grid gap-0">
           {fileSessions.map((session) => {
             const isActive = session.id === activeFileId;
             const isAnalyzing = session.id === analyzingFileId;
@@ -97,7 +97,7 @@ export function FileAnalysisHistoryMenu({
                 <RowAction
                   onClick={() => onSelectFile?.(session.id)}
                   aria-label={`Show file ${session.fileName}`}
-                  className="px-1.5"
+                  className="px-2"
                 >
                   <span
                     aria-label={isActive ? `Active file ${session.fileName}` : undefined}
@@ -112,13 +112,13 @@ export function FileAnalysisHistoryMenu({
                     <span className="block truncate font-medium text-foreground">
                       {session.fileName}
                     </span>
-                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[length:var(--ui-fs-caption)] text-muted-foreground">
+                    <span className="mt-0 flex min-w-0 items-center gap-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
                       <span>{statusLabel(session)}</span>
                     </span>
                     {detail ? (
                       <span
                         className={cn(
-                          "mt-0.5 block truncate text-[length:var(--ui-fs-caption)] tabular-nums",
+                          "mt-0 block truncate text-[length:var(--ui-fs-caption)] tabular-nums",
                           session.state === "error"
                             ? "text-[color:var(--ui-feedback-danger)]"
                             : "text-muted-foreground"
@@ -129,7 +129,7 @@ export function FileAnalysisHistoryMenu({
                     ) : null}
                   </span>
                 </RowAction>
-                <span className="flex shrink-0 items-center gap-0.5 pr-1">
+                <span className="flex shrink-0 items-center gap-0 pr-1">
                   {isAnalyzing ? (
                     <IconAction
                       onClick={() => onStopFile?.(session.id)}
@@ -139,7 +139,7 @@ export function FileAnalysisHistoryMenu({
                       <Square className="size-[length:var(--ui-icon-management-action)]" />
                     </IconAction>
                   ) : (
-                    <span className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+                    <span className="flex items-center gap-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
                       <IconAction
                         onClick={() => onReanalyzeFile?.(session.id)}
                         aria-label={`Reanalyze ${session.fileName}`}

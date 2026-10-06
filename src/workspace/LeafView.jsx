@@ -82,7 +82,7 @@ function TabPill({ tabId, isActive, path, slotTabIndex, showClose }) {
           }}
           className={cn(
             PANEL_HEADER_ACTION_BUTTON,
-            "mr-0.5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
+            "mr-1 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
             isActive && "opacity-100"
           )}
         >
@@ -124,7 +124,7 @@ function DropHint({ Icon, label, panelTitle, className }) {
       <div className="max-w-full truncate text-[length:var(--ui-fs-control)] font-semibold text-foreground">
         {panelTitle}
       </div>
-      <div className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-caption)] font-medium text-primary">
+      <div className="mt-0 flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-caption)] font-medium text-primary">
         <Icon className="size-[length:var(--ui-icon-panel-action)] shrink-0" />
         <span>{label}</span>
       </div>

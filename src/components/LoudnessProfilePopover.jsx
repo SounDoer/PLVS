@@ -17,10 +17,10 @@ import { RowAction } from "@/components/ui/row";
 const ROW_CLASS =
   "flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover";
 
-// `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after the drag handle (or,
+// `pl-1 pr-2`, not the shorthand `px-2`: this button sits right after the drag handle (or,
 // on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
 // padding for its own hover/focus rounding, not a second helping of the handle's own gap.
-const ROW_BUTTON_CLASS = "pl-1 pr-1.5";
+const ROW_BUTTON_CLASS = "pl-1 pr-2";
 
 const ICON_BUTTON_CLASS = "opacity-0 focus-visible:opacity-100 group-hover:opacity-100";
 
@@ -95,7 +95,7 @@ export function LoudnessProfilePopoverContent({
         </RowAction>
       </div>
 
-      <div ref={containerRef} className="grid grid-cols-1 gap-px">
+      <div ref={containerRef} className="grid grid-cols-1 gap-0">
         {orderedProfiles.map((entry) => {
           const selection = profileSelectionId(entry.id);
           return (
@@ -147,7 +147,7 @@ export function LoudnessProfilePopoverContent({
                     onConfirm={() => profile.removeProfile(entry.id)}
                     confirmLabel={`Confirm delete ${entry.name}`}
                     cancelLabel={`Cancel delete ${entry.name}`}
-                    className="mr-1.5"
+                    className="mr-2"
                     trigger={(arm) => (
                       <IconAction
                         aria-label={`Delete ${entry.name}`}
@@ -156,7 +156,7 @@ export function LoudnessProfilePopoverContent({
                           arm();
                         }}
                         disabled={blocked}
-                        className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-1.5")}
+                        className={cn(ICON_BUTTON_CLASS, blockedClass, "mr-2")}
                       >
                         <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
                       </IconAction>
@@ -170,7 +170,7 @@ export function LoudnessProfilePopoverContent({
       </div>
 
       {manageable ? (
-        <div className="px-1.5 py-1">
+        <div className="px-2 py-1">
           <AddButton
             label="Add Profile"
             aria-label="Add Loudness Profile"
@@ -181,13 +181,13 @@ export function LoudnessProfilePopoverContent({
       ) : null}
 
       {blocked ? (
-        <p className="px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
+        <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
           Finish editing to switch profiles.
         </p>
       ) : null}
 
       {missingIds.length > 0 ? (
-        <div className="border-t border-border px-2 py-1.5">
+        <div className="border-t border-border px-2 py-1">
           {/* Deliberately says nothing about dialogue gating: showing those rows is what enables
               the sidechain, but that is an implementation detail, not a thing to ask the user
               to reason about. */}

@@ -55,7 +55,7 @@ export function ShortcutCapture({
   }, [recording, onKeyDown]);
 
   return (
-    <div className="flex flex-col items-end gap-0.5">
+    <div className="flex flex-col items-end gap-0">
       <Button
         ref={buttonRef}
         type="button"

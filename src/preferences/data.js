@@ -37,7 +37,6 @@ export const UI_PREFERENCES = {
       paddingRem: 0.75,
       sectionGapRem: 0.75,
       rowGapRem: 0.25,
-      rowMinHeightRem: 1.5,
     },
     articlePadding: {
       defaultXRem: 0.25,

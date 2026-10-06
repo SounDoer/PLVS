@@ -183,7 +183,7 @@ export function ThemeEditor({
       >
         <div
           {...dragHandlers}
-          className="flex cursor-move items-center gap-1.5 border-b border-border px-3 py-2"
+          className="flex cursor-move items-center gap-1 border-b border-border px-3 py-2"
         >
           {renaming ? (
             <>
@@ -238,7 +238,7 @@ export function ThemeEditor({
               <div
                 role="group"
                 aria-label="Theme appearance"
-                className="flex rounded-md border border-border bg-muted p-0.5"
+                className="flex rounded-md border border-border bg-muted p-1"
                 onPointerDown={(event) => event.stopPropagation()}
               >
                 {["dark", "light"].map((scheme) => (
@@ -247,7 +247,7 @@ export function ThemeEditor({
                     type="button"
                     aria-pressed={draft.colorScheme === scheme}
                     onClick={() => onColorScheme(scheme)}
-                    className={`rounded-xs px-1.5 py-0.5 text-[length:var(--ui-fs-axis)] capitalize ${draft.colorScheme === scheme ? "bg-ui-hover text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`rounded-xs px-2 py-0 text-[length:var(--ui-fs-axis)] capitalize ${draft.colorScheme === scheme ? "bg-ui-hover text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     {scheme}
                   </button>
@@ -326,7 +326,7 @@ export function ThemeEditor({
                     cancelLabel="Cancel reset Core Colors"
                   />
                 </div>
-                <p className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+                <p className="mt-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
                   Six choices shape the whole theme. Related colors are generated automatically.
                 </p>
               </div>

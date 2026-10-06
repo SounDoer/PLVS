@@ -14,7 +14,7 @@ const TabButton = React.forwardRef(function TabButton(
       role="tab"
       aria-selected={selected}
       className={cn(
-        "border-b-2 px-3 py-1.5 text-[length:var(--ui-fs-metric-meta)]",
+        "border-b-2 px-3 py-1 text-[length:var(--ui-fs-metric-meta)]",
         selected
           ? "border-primary text-foreground"
           : "border-transparent text-muted-foreground hover:text-foreground",

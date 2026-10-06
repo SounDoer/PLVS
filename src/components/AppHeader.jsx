@@ -46,7 +46,7 @@ function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-foreground">{primary}</span>
         {secondary ? (
-          <span className="mt-0.5 block truncate text-muted-foreground">{secondary}</span>
+          <span className="mt-0 block truncate text-muted-foreground">{secondary}</span>
         ) : null}
       </span>
     </MenuRow>
@@ -84,7 +84,7 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
         aria-expanded={open}
         aria-controls={id}
         onClick={() => onOpenChange(!open)}
-        className="gap-1.5"
+        className="gap-1"
       >
         <ChevronRight
           aria-hidden="true"
@@ -94,14 +94,14 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
           )}
         />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+          <span className="flex items-center gap-1 font-medium text-muted-foreground">
             {label}
             {selectedSummary ? (
               <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
             ) : null}
           </span>
           {selectedSummary ? (
-            <span className="mt-0.5 block truncate text-[length:var(--ui-fs-caption)] text-muted-foreground">
+            <span className="mt-0 block truncate text-[length:var(--ui-fs-caption)] text-muted-foreground">
               {selectedSummary}
             </span>
           ) : null}

@@ -97,7 +97,7 @@ export function PresetsPopoverContent({
       {showTitle ? (
         <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Presets</p>
       ) : null}
-      <div className="flex items-center gap-2 px-2 py-1.5">
+      <div className="flex items-center gap-2 px-2 py-1">
         <input
           type="text"
           aria-label="New preset name"
@@ -124,7 +124,7 @@ export function PresetsPopoverContent({
         // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
         // makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
         // so `truncate` on the rows never kicks in.
-        <div ref={containerRef} className="grid grid-cols-1 gap-0.5 p-1">
+        <div ref={containerRef} className="grid grid-cols-1 gap-0 p-1">
           {orderedList.map((preset) => {
             const isActive = preset.id === presets.activeId;
             const isDirty = isActive && presets.dirty === true;
@@ -132,7 +132,7 @@ export function PresetsPopoverContent({
             return (
               <div key={preset.id} className="group">
                 {isEditing ? (
-                  <div className="flex items-center gap-1.5 rounded-xs px-1.5 py-1">
+                  <div className="flex items-center gap-1 rounded-xs px-2 py-1">
                     <input
                       type="text"
                       value={drafts[preset.id] ?? preset.name ?? ""}
@@ -181,10 +181,10 @@ export function PresetsPopoverContent({
                       aria-label={`Apply preset ${preset.name}`}
                       onClick={() => runPresetAction(presets.apply(preset.id))}
                       disabled={blocked}
-                      // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after
+                      // `pl-1 pr-2`, not the shorthand `px-2`: this button sits right after
                       // the drag handle, so the left side doesn't need a second helping of the
                       // handle's own gap.
-                      className={cn("pl-1 pr-1.5", blockedClass)}
+                      className={cn("pl-1 pr-2", blockedClass)}
                     >
                       <span
                         aria-label={
@@ -204,7 +204,7 @@ export function PresetsPopoverContent({
                         className="min-w-0 flex-1 text-foreground"
                       />
                     </RowAction>
-                    <span className="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
+                    <span className="flex shrink-0 items-center gap-0 pr-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
                       <IconAction
                         aria-label={`Update preset ${preset.name}`}
                         onClick={(e) => {
@@ -261,7 +261,7 @@ export function PresetsPopoverContent({
       ) : null}
 
       {blocked ? (
-        <p className="px-2 py-1.5 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
+        <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] leading-snug text-muted-foreground">
           Finish or cancel the active editor first.
         </p>
       ) : null}

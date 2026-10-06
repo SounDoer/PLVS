@@ -79,7 +79,7 @@ export function FeedbackDialog({ onClose }) {
           onInput={(e) => setContent(e.target.value)}
           rows={5}
           placeholder="What's on your mind?"
-          className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-control)] outline-none"
+          className="resize-none rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] outline-none"
         />
         <input
           aria-label="Your email (optional)"
@@ -97,11 +97,11 @@ export function FeedbackDialog({ onClose }) {
             checked={attachDiagnostics}
             onChange={(event) => setAttachDiagnostics(event.target.checked)}
             disabled={busy}
-            className="mt-0.5"
+            className="mt-0"
           />
           <span>
             <span className="font-medium">Attach Diagnostics</span>
-            <span className="mt-0.5 block text-[length:var(--ui-fs-axis)] text-muted-foreground">
+            <span className="mt-0 block text-[length:var(--ui-fs-axis)] text-muted-foreground">
               Includes the PLVS version, system details, and the last 200 log lines. Audio is never
               attached.
             </span>

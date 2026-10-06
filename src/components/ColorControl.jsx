@@ -47,7 +47,7 @@ export function ColorControl({ label, value, onChange, allowAlpha = true, descri
             aria-describedby={description ? descriptionId : undefined}
             // Focus outlines are suppressed by the app-level interaction contract.
             // Keep this trigger free of a local ring so it cannot reintroduce one.
-            className="-ml-1 flex items-center gap-2 rounded-xs px-1 py-0.5 text-left hover:bg-ui-hover focus-visible:bg-ui-hover data-[state=open]:bg-ui-hover"
+            className="-ml-1 flex items-center gap-2 rounded-xs px-1 py-0 text-left hover:bg-ui-hover focus-visible:bg-ui-hover data-[state=open]:bg-ui-hover"
           >
             <ThemeEditorSwatch color={value} />
             <span className="text-[length:var(--ui-fs-metric-meta)]">{label}</span>

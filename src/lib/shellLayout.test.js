@@ -38,7 +38,7 @@ describe("shellLayout token names", () => {
       expect(className).not.toContain("text-xs");
     }
     expect(FOOTER_DIVIDER).toContain("h-3");
-    expect(FOOTER_DIVIDER).toContain("mx-1.5");
+    expect(FOOTER_DIVIDER).toContain("mx-2");
   });
 
   it("SHELL_HEADER takes the surface rung, not a hand-rolled radius", () => {

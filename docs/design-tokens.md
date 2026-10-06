@@ -590,6 +590,15 @@ PLVS runs at, 100%, 125%, 150% and 200%. A value between them, such as the earli
 0.4rem, is exact at one scale and a fraction at the others, where the browser rounds each gap on
 its own and neighbouring gaps end up a pixel apart.
 
+The same grid applies to the padding, margin and gap utilities written in components: `gap-1`,
+`px-2` and `py-1`, never the half steps (`gap-0.5`, `px-1.5`) or a one-pixel gap. Items that sit
+flush, such as the rows of a list or the icon actions of a header, use `gap-0` and carry their own
+padding. `src/components/ui/spacingClassContract.test.js` enforces this everywhere except the Dock
+strip, whose spacing is the responsive set under Dock Tokens.
+
+Form rows, the label-and-control rows of the Settings drawer and the panel settings, are one
+`--ui-shell-h` tall and add no vertical padding of their own.
+
 The space between two panels is the split resize rail, which takes `--ui-shell-gap`, so it always
 equals the space around the panels. `src/preferences/spacingGridContract.test.js` rejects a spacing
 value off the grid.
@@ -671,7 +680,6 @@ value off the grid.
 --ui-drawer-w            20rem     Preferred Small-profile drawer width
 --ui-drawer-gap          0.75rem   Gap between settings sections
 --ui-drawer-row-gap      0.25rem   Gap between rows within a section
---ui-drawer-row-min-h    1.5rem    Minimum row height
 ```
 
 ## Dock Tokens

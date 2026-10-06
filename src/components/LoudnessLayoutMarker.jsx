@@ -28,7 +28,7 @@ export function LoudnessLayoutMarker({ known, dense = false, className }) {
           WARN_CHIP_BG,
           WARN_CHIP_BORDER,
           dense
-            ? "px-0.5 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium"
+            ? "px-1 font-[family-name:var(--ui-font-sans)] text-[length:var(--ui-dock-fs-caption)] font-medium"
             : "px-1 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-caption)]"
         )}
       >

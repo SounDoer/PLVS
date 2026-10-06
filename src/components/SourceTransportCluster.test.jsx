@@ -75,11 +75,11 @@ describe("SourceTransportCluster", () => {
     expect(source).toContain('live: "w-[calc(12em+5rem)]"');
     expect(source).toContain('file: "w-[calc(15em+5rem)]"');
     expect(source).toContain('style={{ fontSize: "var(--ui-fs-status)" }}');
-    expect(source).toContain("px-2.5");
+    expect(source).toContain("px-2");
     expect(source).toContain("pl-1.2 pr-1");
     expect(source).toContain('live: "w-[calc(4.6em+1.875rem)]"');
     expect(source).toContain('file: "w-[calc(7.5em+1.875rem)]"');
-    expect(source).toContain("items-center justify-center gap-1.5");
+    expect(source).toContain("items-center justify-center gap-1");
     expect(source).toContain("px-3");
     expect(source).not.toContain("w-[104px]");
     expect(source).not.toContain("w-[224px]");
@@ -125,7 +125,7 @@ describe("SourceTransportCluster", () => {
 
   it("renders source, status, and action as one continuous pill", () => {
     expect(source).toContain("overflow-hidden rounded-full");
-    expect(source).toContain("p-0.5");
+    expect(source).toContain("p-1");
     expect(source).toContain("rounded-full px-3");
     expect(source).not.toContain("relative inline-flex items-center gap-1.5");
     expect(source).not.toContain("h-[1em] w-px bg-current opacity-30");

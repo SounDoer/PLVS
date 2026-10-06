@@ -55,7 +55,7 @@ function PanelRow({ panelId }) {
 
   if (editing) {
     return (
-      <div className="flex w-full items-center gap-1 rounded-xs px-1.5 py-1">
+      <div className="flex w-full items-center gap-1 rounded-xs px-2 py-1">
         <input
           type="text"
           aria-label={`Rename ${title}`}
@@ -153,7 +153,7 @@ function AddModuleView({ onAdd, onBack }) {
       {/* `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
           makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
           so `truncate` on the rows never kicks in. */}
-      <div className="mt-1 grid w-full min-w-0 grid-cols-1 gap-0.5">
+      <div className="mt-1 grid w-full min-w-0 grid-cols-1 gap-0">
         {Object.values(MODULE_REGISTRY).map(({ id, title, Icon }) => (
           <AddModuleRow key={id} id={id} title={title} Icon={Icon} onAdd={onAdd} />
         ))}
@@ -184,12 +184,12 @@ export function ModulesPopoverContent() {
       {/* `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
           makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
           so `truncate` on the rows never kicks in. */}
-      <div className="grid grid-cols-1 w-full min-w-0 gap-0.5">
+      <div className="grid grid-cols-1 w-full min-w-0 gap-0">
         {panelIds.map((panelId) => (
           <PanelRow key={panelId} panelId={panelId} />
         ))}
         {panelIds.length === 0 ? (
-          <p className="px-2 py-1.5 text-[length:var(--ui-fs-control)] text-muted-foreground">
+          <p className="px-2 py-1 text-[length:var(--ui-fs-control)] text-muted-foreground">
             No panels
           </p>
         ) : null}

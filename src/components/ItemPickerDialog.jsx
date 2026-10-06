@@ -51,10 +51,10 @@ function AlsoIncluded({ children }) {
       <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
         Also Included: Loudness Profiles
       </h3>
-      <p className="mt-0.5 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
+      <p className="mt-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
         Presets reference these, so they travel together.
       </p>
-      <ul className="mt-1.5 flex flex-col gap-0.5">{children}</ul>
+      <ul className="mt-2 flex flex-col gap-0">{children}</ul>
     </section>
   );
 }
@@ -164,7 +164,7 @@ export function ItemPickerDialog({
                 {EMPTY_MESSAGE[type]}
               </p>
             ) : (
-              <ul className="flex flex-col gap-0.5">
+              <ul className="flex flex-col gap-0">
                 {items.map((item) => (
                   <li key={item.id}>
                     <label className="flex min-h-[var(--ui-row-h)] items-center gap-2 rounded-xs px-1 text-[length:var(--ui-fs-control)] hover:bg-ui-hover">
@@ -181,7 +181,7 @@ export function ItemPickerDialog({
               </ul>
             )
           ) : (
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-col gap-0">
               {(review?.itemPlan ?? []).map((entry) => (
                 <PlanRow key={entry.sourceId} entry={entry} />
               ))}
@@ -211,7 +211,7 @@ export function ItemPickerDialog({
               <h3 className="text-[length:var(--ui-fs-metric-meta)] font-semibold text-muted-foreground">
                 Adaptations
               </h3>
-              <ul className="mt-1.5 flex flex-col gap-1">
+              <ul className="mt-2 flex flex-col gap-1">
                 {warnings.map((warning, index) => (
                   <li
                     key={`${warning.code}-${warning.path}-${index}`}

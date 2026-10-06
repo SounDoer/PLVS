@@ -88,7 +88,7 @@ export function InlineConfirm({
   const confirmation = (
     <span
       className={cn(
-        "flex items-center gap-0.5",
+        "flex items-center gap-0",
         preserveTriggerSize && "absolute inset-0 justify-end",
         !preserveTriggerSize && className
       )}
@@ -101,7 +101,7 @@ export function InlineConfirm({
           restoreFocusRef.current = true;
           setArmed(false);
         }}
-        className="p-0.5"
+        className="p-1"
       >
         <X className="size-[length:var(--ui-icon-management-action)]" />
       </IconAction>
@@ -115,7 +115,7 @@ export function InlineConfirm({
           setArmed(false);
           onConfirm();
         }}
-        className="p-0.5 text-foreground"
+        className="p-1 text-foreground"
       >
         <Check className="size-[length:var(--ui-icon-management-action)]" />
       </IconAction>

@@ -974,7 +974,7 @@ export function SpectrumPanel() {
                               : "var(--ui-spectrum-primary)",
                         }}
                       />
-                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xs border border-border bg-secondary px-1 py-px font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-[color:var(--ui-text-annotation)]">
+                      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded-xs border border-border bg-secondary px-1 py-0 font-[family-name:var(--ui-font-mono)] text-[length:var(--ui-fs-axis)] tabular-nums text-[color:var(--ui-text-annotation)]">
                         {peak.freqLabel}
                       </div>
                     </div>

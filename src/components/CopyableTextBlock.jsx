@@ -41,7 +41,7 @@ export function CopyableTextBlock({ value, ariaLabel = "copy text", className })
   return (
     <div
       className={cn(
-        "relative rounded-md border border-border bg-muted px-3 py-2.5 pr-10",
+        "relative rounded-md border border-border bg-muted px-3 py-2 pr-10",
         "focus-within:border-border",
         className
       )}

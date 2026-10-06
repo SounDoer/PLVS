@@ -399,7 +399,7 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
       )}
     >
       {/* Channel lanes + interaction overlay */}
-      <div className="relative isolate flex min-h-0 flex-1 flex-col gap-0.5">
+      <div className="relative isolate flex min-h-0 flex-1 flex-col gap-0">
         {Array.from({ length: effectiveChannels }, (_, ch) => (
           <WaveformLane
             key={ch}

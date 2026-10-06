@@ -48,7 +48,7 @@ const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--
 const SECTION_CLASS = "flex flex-col gap-[var(--ui-drawer-row-gap)]";
 
 const ROW_CLASS =
-  "grid min-h-[var(--ui-drawer-row-min-h)] grid-cols-[minmax(0,1fr)_max-content] items-center gap-2 rounded-xs px-1.5 py-0.5";
+  "grid min-h-[var(--ui-shell-h)] grid-cols-[minmax(0,1fr)_max-content] items-center gap-2 rounded-xs px-2";
 
 const ROW_LABEL_CLASS =
   "whitespace-nowrap text-[length:var(--ui-fs-control)] text-muted-foreground";
@@ -59,7 +59,7 @@ const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
 const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
-const KBD_ROW_CLASS = "flex items-center justify-between gap-2 px-1.5 py-0.5";
+const KBD_ROW_CLASS = "flex min-h-[var(--ui-shell-h)] items-center justify-between gap-2 px-2";
 
 const FOOTER_LINK_CLASS =
   "inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-metric-meta)] cursor-pointer outline-none disabled:cursor-default disabled:opacity-50";
@@ -102,7 +102,7 @@ function SettingsLabelWithTip({ label, tip }) {
         className="inline-flex shrink-0"
         tipClassName="w-max max-w-[18rem] whitespace-normal"
       >
-        <IconAction aria-label={`${label} help: ${tip}`} className="p-0.5">
+        <IconAction aria-label={`${label} help: ${tip}`} className="p-1">
           <CircleHelp className="size-[1em]" aria-hidden />
         </IconAction>
       </HoverTip>
@@ -126,7 +126,7 @@ function SettingsSwitch({ className, ...props }) {
 
 function IconButton({ children, className, ...props }) {
   return (
-    <IconAction className={cn("p-0.5", className)} {...props}>
+    <IconAction className={cn("p-1", className)} {...props}>
       {children}
     </IconAction>
   );
@@ -338,7 +338,7 @@ export function SettingsPanel({
                     />
                   </SettingsRow>
                   {crashReportSettingError ? (
-                    <span className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+                    <span className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
                       Could not update crash-report settings.
                     </span>
                   ) : null}
@@ -357,7 +357,7 @@ export function SettingsPanel({
                     </div>
                   ))}
                   <SettingsRow label="Clear">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       <ShortcutCapture
                         value={clearShortcut}
                         onChange={setClearShortcut}
@@ -375,7 +375,7 @@ export function SettingsPanel({
                     </div>
                   </SettingsRow>
                   {registrationError ? (
-                    <div className="text-right text-[length:var(--ui-fs-axis)] text-destructive px-1.5">
+                    <div className="text-right text-[length:var(--ui-fs-axis)] text-destructive px-2">
                       Combo unavailable, try another
                     </div>
                   ) : null}
@@ -416,7 +416,7 @@ export function SettingsPanel({
                     </Select>
                   </SettingsRow>
                   {themeControlsDisabled ? (
-                    <span className="px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                    <span className="px-2 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       Finish editing the current theme before changing theme settings.
                     </span>
                   ) : null}
@@ -443,7 +443,7 @@ export function SettingsPanel({
                     <div
                       role="group"
                       aria-label="Theme picker"
-                      className="flex min-h-[var(--ui-control-h)] items-center gap-1 px-1.5 py-0.5"
+                      className="flex min-h-[var(--ui-control-h)] items-center gap-1 px-2"
                     >
                       <span className={ROW_LABEL_CLASS}>Theme</span>
                       <div className="flex-1" />
@@ -554,7 +554,7 @@ export function SettingsPanel({
                     ) : null}
                   </SettingsRow>
                   {channelCount > 0 ? (
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-col gap-0">
                       <SettingsRow labelNode={<span className={ROW_LABEL_CLASS}>Layout</span>}>
                         {showChannelLayoutSelect ? (
                           <Select value={selectedLayoutId ?? ""} onValueChange={setChannelLayout}>
@@ -573,7 +573,7 @@ export function SettingsPanel({
                             </SelectContent>
                           </Select>
                         ) : (
-                          <span aria-label="channel layout" className="py-0.5 pl-2">
+                          <span aria-label="channel layout" className="pl-2">
                             {channelLayoutLabel}
                           </span>
                         )}
@@ -603,7 +603,7 @@ export function SettingsPanel({
                       ))}
                     </div>
                   ) : (
-                    <span className="px-1.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                    <span className="px-2 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       Connect an input to label its channels.
                     </span>
                   )}
@@ -622,7 +622,7 @@ export function SettingsPanel({
                     }
                     className="settings-row-stackable"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         onClick={onLibraryExport}
@@ -642,7 +642,7 @@ export function SettingsPanel({
                     </div>
                   </SettingsRow>
                   {packStatus ? (
-                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                    <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       {packStatus}
                     </div>
                   ) : null}
@@ -655,7 +655,7 @@ export function SettingsPanel({
                     }
                     className="settings-row-stackable"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
                         onClick={onExportConfiguration}
@@ -688,7 +688,7 @@ export function SettingsPanel({
                     </Button>
                   </SettingsRow>
                   {configurationStatus ? (
-                    <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                    <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
                       {configurationStatus}
                     </div>
                   ) : null}
@@ -713,14 +713,14 @@ export function SettingsPanel({
                         />
                       </SettingsRow>
                       {agentControlSilent ? (
-                        <div className="px-1.5 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+                        <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
                           {agentControlStartError
                             ? `Enabled, but not listening: ${agentControlStartError}`
                             : "Enabled, but not listening."}
                         </div>
                       ) : null}
                       {agentControlEnabled ? (
-                        <div className="flex flex-col gap-1.5 px-1.5">
+                        <div className="flex flex-col gap-1 px-2">
                           <span className={ROW_LABEL_CLASS}>Prompt Starter</span>
                           <CopyableTextBlock
                             value={AGENT_CONTROL_PROMPT_STARTER}
@@ -738,11 +738,11 @@ export function SettingsPanel({
                     <SettingsDivider />
                     <div
                       data-settings-footer
-                      className="flex flex-col gap-1 px-1.5 text-[length:var(--ui-fs-metric-meta)]"
+                      className="flex flex-col gap-1 px-2 text-[length:var(--ui-fs-metric-meta)]"
                     >
                       <div
                         data-settings-footer-status
-                        className="flex items-center justify-start gap-1.5 whitespace-nowrap"
+                        className="flex items-center justify-start gap-1 whitespace-nowrap"
                       >
                         <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
                           v{appVersion}

@@ -60,7 +60,7 @@ function DockModuleRow({
 
   if (editing) {
     return (
-      <div className="flex w-full items-center gap-1 rounded-xs px-1.5 py-1">
+      <div className="flex w-full items-center gap-1 rounded-xs px-2 py-1">
         <input
           type="text"
           aria-label={`Rename ${title}`}
@@ -211,7 +211,7 @@ export function DockModulesEditor({
   if (adding) {
     return (
       <DockEditorShell title="Add Module" onBack={() => setAdding(false)}>
-        <div className="grid grid-cols-1 gap-px p-1">
+        <div className="grid grid-cols-1 gap-0 p-1">
           {DOCK_PANEL_MODULE_IDS.map((id) => {
             const entry = MODULE_REGISTRY[id] ?? DOCK_ONLY_PANEL_META[id];
             return (
@@ -246,7 +246,7 @@ export function DockModulesEditor({
             // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the panel width; a bare grid
             // sizes its implicit auto column to the longest name and overflows the max-w cap, so the
             // row `truncate` never kicks in and a long module name bursts the panel.
-            className="grid grid-cols-1 gap-px"
+            className="grid grid-cols-1 gap-0"
           >
             {orderedPanels.map((panel) => (
               <DockModuleRow

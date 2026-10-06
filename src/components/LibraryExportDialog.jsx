@@ -75,7 +75,7 @@ export function LibraryExportDialog({
                 className="justify-between gap-3 px-2 disabled:pointer-events-none disabled:opacity-40"
               >
                 <span>{label}</span>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="flex items-center gap-1 text-muted-foreground">
                   {itemCountLabel(count)}
                   <ChevronRight className="size-[1.15em] shrink-0" aria-hidden="true" />
                 </span>

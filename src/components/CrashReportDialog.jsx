@@ -95,7 +95,7 @@ export function CrashReportDialog({
             maxLength={2000}
             rows={3}
             placeholder="What were you doing when PLVS quit? (optional)"
-            className="resize-none rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-control)] outline-none"
+            className="resize-none rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] outline-none"
           />
           <input
             aria-label="Your email (optional)"
@@ -104,7 +104,7 @@ export function CrashReportDialog({
             onInput={(event) => setEmail(event.target.value)}
             onBlur={() => setEmailTouched(true)}
             placeholder="you@example.com (optional)"
-            className="rounded-md border border-input bg-transparent px-2 py-1.5 text-[length:var(--ui-fs-control)] outline-none"
+            className="rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] outline-none"
           />
           {emailTouched && emailInvalid ? (
             <span className="text-[length:var(--ui-fs-axis)] text-destructive">

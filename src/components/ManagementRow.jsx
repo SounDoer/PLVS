@@ -6,7 +6,7 @@ export const MANAGEMENT_ROW_CLASS =
   "group flex min-h-[var(--ui-row-h)] w-full items-center gap-2 rounded-xs px-2 text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover";
 
 export const MANAGEMENT_ROW_ACTIONS_CLASS =
-  "flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
+  "flex shrink-0 items-center gap-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
 
 export function ManagementIconAction({
   label,
@@ -30,7 +30,7 @@ export function ManagementIconAction({
         ref={anchorRef}
         aria-label={label}
         disabled={disabled}
-        className={cn("p-0.5 disabled:pointer-events-none disabled:opacity-50", className)}
+        className={cn("p-1 disabled:pointer-events-none disabled:opacity-50", className)}
         onClick={onClick}
         onMouseEnter={tip ? showTip : undefined}
         onMouseLeave={tip ? hideTip : undefined}

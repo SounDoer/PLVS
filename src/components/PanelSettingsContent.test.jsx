@@ -476,12 +476,12 @@ describe("PanelSettingsContent", () => {
     expect(modeButton.textContent).not.toContain("Edit");
     expect(modeButton.querySelector("svg")?.className.baseVal).toContain("size-[1.15em]");
     expect(screen.getByText("Mode").className).toContain("text-muted-foreground");
-    expect(screen.getByText("Mode").className).toContain("h-[var(--ui-control-h)]");
+    expect(screen.getByText("Mode").className).toContain("h-[var(--ui-shell-h)]");
     expect(screen.getByText("Mode").className).toContain("items-center");
     expect(screen.getByText("Mode").className).not.toContain("text-popover-foreground");
-    expect(modeControlCell?.className).toContain("min-h-[var(--ui-control-h)]");
+    expect(modeControlCell?.className).toContain("min-h-[var(--ui-shell-h)]");
     expect(modeControlCell?.className).toContain("items-center");
-    expect(modeRow?.className).toContain("min-h-[var(--ui-control-h)]");
+    expect(modeRow?.className).toContain("min-h-[var(--ui-shell-h)]");
     expect(modeRow?.className).toContain("gap-2");
     expect(modeRow?.className).toContain("px-2");
     expect(modeRow?.className).not.toContain("px-1.5");
@@ -1497,7 +1497,7 @@ describe("PanelSettingsContent", () => {
     expect(momentaryRow.querySelector("[data-settings-option-check]")?.className).toContain(
       "size-3"
     );
-    expect(momentaryRow.className).toContain("py-0.5");
+    expect(momentaryRow.className).toContain("min-h-[var(--ui-control-h)]");
     expect(momentaryRow.className).not.toContain("py-1 ");
     expect(momentaryRow.className).not.toContain("py-1.5");
     expect(momentaryRow.className).toContain("var(--ui-fs-control)");
@@ -2725,8 +2725,8 @@ describe("PanelSettingsContent", () => {
     expect(titleBar?.className).not.toContain("h-9");
     expect(titleBar?.className).not.toContain("px-3");
     expect(titleBar?.className).not.toContain("text-sm");
-    expect(exitButton.className).toContain("p-0.5");
-    expect(exitButton.className).not.toContain("p-1");
+    expect(exitButton.className).toContain("p-1");
+    expect(exitButton.className).not.toContain("p-2");
   });
 
   it("hides LeafView panel controls in compact panel mode", () => {

@@ -5,7 +5,7 @@ export function ThemeVisualReview({ warnings, onJump }) {
   return (
     <section aria-labelledby="theme-visual-review-title" className="flex flex-col gap-3">
       <div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <ClipboardCheck className="size-[length:var(--ui-icon-management-action)]" />
           <h2 id="theme-visual-review-title" className="font-semibold">
             Visual Review
@@ -22,15 +22,15 @@ export function ThemeVisualReview({ warnings, onJump }) {
               <div className="text-[length:var(--ui-fs-metric-meta)] font-medium">
                 {warning.title}
               </div>
-              <p className="mt-0.5 text-[length:var(--ui-fs-axis)] leading-snug text-muted-foreground">
+              <p className="mt-0 text-[length:var(--ui-fs-axis)] leading-snug text-muted-foreground">
                 {warning.message} Affects {warning.consumers.join(", ")}.
               </p>
               {warning.standard ? (
-                <p className="mt-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                <p className="mt-0 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                   Reference: {warning.standard}
                 </p>
               ) : null}
-              <p className="mt-0.5 text-[length:var(--ui-fs-axis)] text-muted-foreground">
+              <p className="mt-0 text-[length:var(--ui-fs-axis)] text-muted-foreground">
                 Roles: {warning.roleIds.join(" · ")}
               </p>
               <LinkButton
