@@ -29,7 +29,8 @@ failure cost is high. Keep the entry to an actionable summary and put investigat
 | `npm run desktop`                      | Run the real app (Tauri). Audio capture only works here.                          |
 | `npm run desktop:control -- <command>` | Build and run the dev-identity CLI against a running development app.             |
 | `npm run dev`                          | Vite only, in a browser. No Tauri APIs, no audio capture.                         |
-| `npm run check`                        | The merge gate: version + format + lint + test + build + Rust fmt/clippy/test.    |
+| `npm run check`                        | The merge gate: version + format + lint + typecheck + test + build + Rust checks. |
+| `npm run typecheck`                    | `tsc` over `src/` (checkJs, JSDoc types). Zero errors, no baseline.               |
 | `npm test`                             | Vitest, single run.                                                               |
 | `npm run smoke:capture`                | Real capture smoke test. Needs VB-Cable + VLC on the machine.                     |
 | `npm run smoke:agent-control`          | Real Agent Control screenshot/recording smoke. Needs the development GUI running. |

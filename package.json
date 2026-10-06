@@ -58,7 +58,7 @@
     "rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets -- -D warnings",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml --workspace",
     "rust:check": "npm run rust:fmt && npm run rust:clippy && npm run rust:test",
-    "check": "npm run version:check && npm run licenses:check && npm run community:source:check && npm run format:check && npm run lint && npm test && npm run build && npm run rust:check",
+    "check": "npm run version:check && npm run licenses:check && npm run community:source:check && npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run rust:check",
     "release:preflight": "node scripts/run-release-gate.mjs",
     "smoke:file-analysis": "npm run ffmpeg:fetch && node scripts/smoke-file-analysis.mjs",
     "smoke:agent-control": "node scripts/smoke-agent-control.mjs",

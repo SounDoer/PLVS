@@ -15,6 +15,7 @@ npm ci
 npm run ffmpeg:fetch     # once per clone/worktree: downloads the gitignored FFmpeg sidecars
 npm run theme:generate   # optional: regenerates src/generated/theme-fallbacks.css (also runs via prebuild)
 npm run lint
+npm run typecheck        # tsc over src/ (checkJs); types live in JSDoc, there is no baseline
 npm test
 npm run build
 npm run community:validate -- path/to/item.plvspreset
@@ -144,6 +145,11 @@ One command from the root checks **frontend + version numbers + Rust format/lint
 ```bash
 npm run check
 ```
+
+The frontend half includes `npm run typecheck`. The source is plain JavaScript checked by
+TypeScript (`jsconfig.json`, `checkJs` on, strict mode off), so a type is a JSDoc comment. The
+count is kept at zero by fixing what the checker reports: do not add `@ts-nocheck`, a blanket
+`@ts-ignore` / `@ts-expect-error`, or a list of known offenders.
 
 Real-machine verification outside `check`, run manually as needed:
 
