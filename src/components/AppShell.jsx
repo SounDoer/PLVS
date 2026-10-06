@@ -27,9 +27,9 @@ import { LinkButton } from "@/components/ui/link-button";
 
 /**
  * @param {{
- *   frameData: any,
- *   historyData: any,
- *   metricsData: any,
+ *   frameData: Partial<import("../workspace/AudioDataContext.jsx").FrameData>,
+ *   historyData: Partial<import("../workspace/AudioDataContext.jsx").HistoryData>,
+ *   metricsData: Partial<import("../workspace/AudioDataContext.jsx").MetricsData>,
  *   runtimeEnginesProps: any,
  *   fileDropProps: any,
  *   focusView: import("../lib/focusView.js").FocusView,
@@ -38,7 +38,7 @@ import { LinkButton } from "@/components/ui/link-button";
  *   headerProps: any,
  *   showFileAnalysisResult: boolean,
  *   fileSummaryProps: any,
- *   panelChromeData: any,
+ *   panelChromeData: Partial<import("../workspace/AudioDataContext.jsx").PanelChromeData>,
  *   footer: any,
  *   docked?: boolean,
  *   dockProps?: any,

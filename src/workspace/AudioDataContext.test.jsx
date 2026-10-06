@@ -58,9 +58,15 @@ describe("panel instance data seam", () => {
     expect(result.current.frame).toBe(frame);
     expect(result.current.history).toBe(history);
     expect(result.current.metrics).toBe(metrics);
-    expect(result.current.frame.selectedOffset).toBeUndefined();
-    expect(result.current.history.displayAudio).toBeUndefined();
-    expect(result.current.metrics.panelControls).toBeUndefined();
+    expect(
+      /** @type {Record<string, unknown>} */ (result.current.frame).selectedOffset
+    ).toBeUndefined();
+    expect(
+      /** @type {Record<string, unknown>} */ (result.current.history).displayAudio
+    ).toBeUndefined();
+    expect(
+      /** @type {Record<string, unknown>} */ (result.current.metrics).panelControls
+    ).toBeUndefined();
   });
 
   it("exposes panel instance data independently", () => {

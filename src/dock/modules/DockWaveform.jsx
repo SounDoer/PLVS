@@ -229,7 +229,9 @@ export function paintDockWaveformCanvas(
 /** @param {{ controls: import("../dockModuleControls.js").DockModuleProps<"waveform"> }} props */
 export function DockWaveform({ controls }) {
   const themeColors = useResolvedTheme(selectWaveformCanvasColors);
-  const frameData = useFrameData() ?? {};
+  const frameData =
+    useFrameData() ??
+    /** @type {Partial<import("../../workspace/AudioDataContext.jsx").FrameData>} */ ({});
   const {
     histSourceList = [],
     waveformHistoryIndex = null,
