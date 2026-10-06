@@ -90,17 +90,17 @@ export function buildAgentControlCapabilities(runtime, revision) {
 
 /**
  * @param {{
- *   runtime: any,
+ *   runtime: import("./useAgentControlBridge.js").AgentControlRuntime,
  *   revision: number,
  *   workspace: import("../workspace/types.js").WorkspaceState,
  *   presets: import("../hooks/usePresets.js").PresetsSummary,
- *   appearance: any,
+ *   appearance: Record<string, unknown>,
  *   loudnessProfile: Record<string, unknown>,
  *   settings: Record<string, unknown>,
  *   transport: Record<string, unknown>,
- *   device: any,
+ *   device: Record<string, unknown>,
  *   dock: Partial<ReturnType<typeof import("./dockControl.js").buildDockSnapshot>>,
- *   view: any,
+ *   view: Record<string, unknown>,
  *   hasLoudnessReference?: boolean,
  *   analysisContext?: Partial<AgentControlAnalysisContext>,
  * }} options

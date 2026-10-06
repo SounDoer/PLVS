@@ -491,33 +491,129 @@ function transportMutationMatches(method, params, execution, snapshot) {
 }
 
 /**
+ * What the app hands the bridge besides the workspace: one record per area Agent Control can
+ * inspect or drive. Each is listed as App builds it. The bridge takes them partially, because it
+ * defaults every one and a caller that exposes a single area passes only that area's.
+ *
+ * @typedef {{
+ *   available: boolean,
+ *   enabled?: boolean,
+ *   appName?: any,
+ *   appVersion?: any,
+ *   identifier?: any,
+ *   platform?: any,
+ * }} AgentControlRuntime
+ *
+ * @typedef {{
+ *   autostartReady: boolean,
+ *   clearShortcutReady: boolean,
+ *   clearShortcutCapturing: boolean,
+ *   clearShortcutRegistrationError: any,
+ *   dialogueDetectionRequested: boolean,
+ *   dialogueDetectionActive: any,
+ *   hasCompletedFileAnalysis: any,
+ *   sourceMode: any,
+ *   channelCount: any,
+ *   channelLabelMode: string,
+ *   channelLabelRoles: any,
+ *   channelAutoRoles: string[],
+ * }} AgentControlSettingsContext
+ *
+ * @typedef {{
+ *   docked: boolean,
+ *   deviceTransitioning: boolean,
+ * }} AgentControlTransportContext
+ *
+ * @typedef {{
+ *   snapshot: any,
+ *   live: any,
+ *   previewSelection: (...args: any[]) => any,
+ *   commitSelection: (...args: any[]) => any,
+ *   beginRestart: any,
+ *   runtimeUnavailable: boolean,
+ * }} AgentControlDevice
+ *
+ * @typedef {{
+ *   sourceMode: any,
+ *   activeEditors: any,
+ *   transitioning: boolean,
+ *   monitors: any[],
+ *   fallbackMonitor: any,
+ *   monitorRects: any[],
+ *   monitorInventoryReady: boolean,
+ *   channelCount: any,
+ *   channelLabels: string[],
+ *   dialogueDetectionActive: boolean,
+ *   spectralWaveformActive: any,
+ *   timeMaxWindowSec: number,
+ *   timeMaxOffsetSec: number,
+ *   platform: any,
+ * }} AgentControlDockContext
+ *
+ * @typedef {{
+ *   control: any,
+ *   state: { appearance: any; themes: any[]; },
+ * }} AgentControlTheme
+ *
+ * @typedef {{
+ *   getLiveMeasurement: any,
+ *   subscribeLiveMeasurement: any,
+ *   getChannelLabels: (...args: any[]) => any,
+ *   liveState: any,
+ *   vectorscopeRequests: any,
+ *   dialogueActive: boolean,
+ * }} AgentControlMeasurementContext
+ *
+ * @typedef {{
+ *   view: any,
+ *   platform: any,
+ *   docked: boolean,
+ *   applyView: (...args: any[]) => any,
+ * }} AgentControlViewContext
+ *
+ * @typedef {{
+ *   platformCapabilities: any,
+ *   getRuntime: (...args: any[]) => any,
+ *   settle: (...args: any[]) => any,
+ *   captureScreenshot: (...args: any[]) => any,
+ *   startRecording: (...args: any[]) => any,
+ *   inspectRecording: (...args: any[]) => any,
+ *   stopRecording: (...args: any[]) => any,
+ *   updateRecordingGeometry: (...args: any[]) => any,
+ *   updateRecordingAudioState: (...args: any[]) => any,
+ *   subscribe: (...args: any[]) => any,
+ *   setRecordingState: (...args: any[]) => any,
+ * }} AgentControlVisual
+ */
+
+/**
  * @param {{
  *   enabled: boolean,
- *   runtime: any,
+ *   runtime: AgentControlRuntime,
  *   workspace: import("../workspace/types.js").WorkspaceState,
  *   replaceWorkspace: (...args: any[]) => any,
  *   setPanelControlsForPanel: (...args: any[]) => any,
  *   waitForWorkspacePersistenceEnqueue: (...args: any[]) => any,
  *   presets: import("../hooks/usePresets.js").PresetsApi,
  *   settings: ReturnType<typeof import("./settingsControl.js").buildPublicSettings>,
- *   settingsContext?: any,
+ *   settingsContext?: Partial<AgentControlSettingsContext>,
  *   applySettings?: (...args: any[]) => any,
  *   transport: ReturnType<typeof import("./transportControl.js").buildTransportSnapshot>,
- *   transportContext?: any,
+ *   transportContext?: Partial<AgentControlTransportContext>,
  *   executeTransport?: (...args: any[]) => any,
- *   device?: any,
+ *   device?: Partial<AgentControlDevice>,
  *   dock: import("../workspace/types.js").AgentControlDock,
- *   dockContext?: any,
+ *   dockContext?: Partial<AgentControlDockContext>,
  *   executeDock?: (...args: any[]) => any,
- *   loudnessProfiles?: any,
+ *   loudnessProfiles?: import("../hooks/LoudnessProfileContext.jsx").LoudnessProfileDocument[],
  *   loudnessProfile?: import("../hooks/LoudnessProfileContext.jsx").LoudnessProfileApi,
  *   customThemes?: ReturnType<typeof import("../hooks/useSettings.js").useSettings>["customThemes"],
- *   theme?: any,
+ *   theme?: Partial<AgentControlTheme>,
  *   hasLoudnessReference?: boolean,
  *   analysisContext?: Partial<import("./appSnapshot.js").AgentControlAnalysisContext>,
- *   measurementContext?: any,
- *   viewContext?: any,
- *   visual?: any,
+ *   measurementContext?: Partial<AgentControlMeasurementContext>,
+ *   viewContext?: Partial<AgentControlViewContext>,
+ *   visual?: Partial<AgentControlVisual>,
  *   flush?: (...args: any[]) => any,
  *   exportConfiguration?: (...args: any[]) => any,
  *   importConfiguration?: (...args: any[]) => any,
