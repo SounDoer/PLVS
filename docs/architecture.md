@@ -94,6 +94,37 @@ WebView content. Windows recording uses Windows Graphics Capture and Media Found
 recording uses ScreenCaptureKit and AVAssetWriter. Both reuse Rust's measured-source PCM timeline and
 encode H.264/AAC MP4.
 
+### Frontend state ownership
+
+Application state in the main window is owned by React context providers, one per domain, nested in
+`App` (`src/App.jsx`) in dependency order. A provider reads the providers that enclose it and
+never one it encloses. The reasons are in
+[ADR 0022](adr/0022-ordered-providers-own-frontend-state.md).
+
+| Owner (outermost first) | Owns                                                                                     | Read through                                                         |
+| ----------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Workspace               | Split tree, panels, panel controls, shared axis viewports                                | `useWorkspaceStore`                                                  |
+| MeterRuntime            | Source mode, live and file lifecycle, notices and scrub position, the per-frame assembly | `useMeterRuntime`, `useMeterDisplayState`, `useMeterRuntimeAssembly` |
+| BlockingEditors         | Which draft-style editors are open                                                       | `useBlockingEditors`                                                 |
+| UiNavigation            | Transient navigation intent and the mounted-surface registry                             | `useUiNavigation`                                                    |
+| LoudnessProfile         | Profile library, selection and draft                                                     | `useLoudnessProfile`                                                 |
+| Settings                | Every stored preference, including the view values and the pin                           | `useAppSettings`                                                     |
+| SceneGuard              | The composed rule that refuses scene operations                                          | `useSceneGuard`                                                      |
+| Dock                    | Dock mode, strip layout, enter and exit transitions                                      | `useDock`                                                            |
+| WindowChrome            | Applying pin, decorations, shadow and glass to the window; the view setters              | `useWindowChrome`                                                    |
+| Presets                 | Preset library and the Dock hand-off on apply                                            | `usePresetLibrary`                                                   |
+| Source                  | Device inventory, selected source and its labels                                         | `useSource`                                                          |
+| SourceActions           | Start, stop, clear and the file actions                                                  | `useSourceActions`                                                   |
+| AppLifecycle            | Window visibility, tray, updates, close dialog, crash reports, global shortcuts          | `useAppLifecycle`                                                    |
+
+`useMeterRuntimeAssembly` changes on every meter frame; only a component that draws per frame
+should read it. Notices and the scrub position come from `useMeterDisplayState`, which does not.
+
+`AppContent` still owns what has no provider yet: the per-frame panel data, channel labels and
+analysis requests, the Dock accessory windows, and the props handed to the shell. Agent Control is
+mounted as `AgentControlBridge` (`src/agentControl/`), which reads the owners above directly and
+receives the remaining areas from `AppContent` as props.
+
 ---
 
 ## 3. Directory layout
@@ -118,7 +149,7 @@ need it. When adding a top-level directory, add a row in the same commit.
 | `theme/`        | Theme documents, explicit format/semantics migration, typed Role Registry and recipes, compiler, runtime publication |
 | `preferences/`  | Non-colour interface tuning (layout, fonts, radii, interface size) and applying it to the document                   |
 | `config/`       | Static configuration shared with the Rust DSP, such as scale definitions                                             |
-| `settings/`     | Setting defaults and option lists                                                                                    |
+| `settings/`     | Setting defaults and option lists; the settings owner (`SettingsContext.jsx`)                                        |
 | `persistence/`  | Domain-split persistence; choose the domain in `index.js` before adding data                                         |
 | `transfer/`     | Import and export (packs) of themes, loudness profiles and preset libraries                                          |
 | `agentControl/` | Frontend command implementations, schemas and snapshots for Agent Control                                            |
