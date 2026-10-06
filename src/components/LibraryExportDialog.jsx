@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 import { MenuRow } from "@/components/ui/row";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const LIBRARY_TYPES = [
   { type: "loudness", label: "Loudness Profiles" },
@@ -51,6 +52,17 @@ export function LibraryExportDialog({
     setSelectedType(null);
     onClose();
   }
+
+  useUiSurface({
+    active: open && !selectedType,
+    kind: "libraryExport",
+    origin: "nested",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["cancel"],
+    target: { phase: "chooseType" },
+    onCancel: close,
+  });
 
   if (selectedType) {
     return (

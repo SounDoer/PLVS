@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LAYER_ABOVE_EDITOR } from "@/components/ui/layers.js";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 /**
  * Modal confirmation for one destructive action.
@@ -35,13 +36,24 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   onConfirm,
 }) {
+  const cancel = () => onOpenChange(false);
+  useUiSurface({
+    active: open,
+    kind: "confirmation",
+    origin: "nested",
+    blocking: true,
+    dismissible: true,
+    supportedActions: ["cancel"],
+    target: { phase: "decision" },
+    onCancel: cancel,
+  });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent role="alertdialog" size="sm" layer={LAYER_ABOVE_EDITOR}>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
         <DialogFooter className="mt-3">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={cancel}>
             {cancelLabel}
           </Button>
           <Button

@@ -294,6 +294,15 @@ export function UiNavigationProvider({
             windowForm: environment.windowForm,
           });
         }
+        const obstructingSurface = [...before.surfaces]
+          .reverse()
+          .find((surface) => surface.origin !== "navigable");
+        if (obstructingSurface) {
+          throw createUiNavigationError(obstructingSurface.busy ? "uiBusy" : "uiConflict", {
+            kind: obstructingSurface.kind,
+            surfaceId: obstructingSurface.surfaceId,
+          });
+        }
         const blockers = activeBlockingEditorsRef.current;
         const isMatchingBlockingEditor =
           blockers.length === 1 &&

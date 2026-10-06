@@ -9,6 +9,7 @@ import {
 import { Button } from "./ui/button.jsx";
 import { LAYER_CONFLICT } from "./ui/layers.js";
 import { resolveLibraryConflict, subscribeLibraryConflicts } from "../persistence/index.js";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const LABELS = {
   preset: "Preset",
@@ -39,6 +40,16 @@ export function LibraryConflictDialog() {
   }
 
   const label = LABELS[conflict?.kind] || "Library item";
+  useUiSurface({
+    active: conflict !== null,
+    kind: "libraryConflict",
+    origin: "event",
+    blocking: true,
+    busy,
+    dismissible: false,
+    supportedActions: [],
+    target: { phase: error ? "error" : busy ? "busy" : "decision" },
+  });
   return (
     <Dialog open={conflict !== null}>
       <DialogContent layer={LAYER_CONFLICT}>

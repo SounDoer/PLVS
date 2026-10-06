@@ -11,6 +11,7 @@ import {
 import { parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { PACK_KINDS } from "../transfer/packShape.js";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const EMPTY_MESSAGE = {
   loudness: "No loudness profiles to export.",
@@ -153,6 +154,20 @@ export function ItemPickerDialog({
   function handleDismiss() {
     onClose();
   }
+
+  const surfaceKind =
+    mode === "pick" ? "libraryExport" : mode === "review" ? "importReview" : "importComplete";
+  useUiSurface({
+    active: open,
+    kind: surfaceKind,
+    origin: "nested",
+    blocking: false,
+    dismissible: true,
+    supportedActions: mode === "complete" ? ["close"] : ["cancel"],
+    target: { phase: mode },
+    onClose: handleDismiss,
+    onCancel: handleDismiss,
+  });
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : handleDismiss())}>

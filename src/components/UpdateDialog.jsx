@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 export function UpdateDialog({
   open,
@@ -47,6 +48,18 @@ export function UpdateDialog({
   function handleDismiss() {
     if (!busy) onCancel();
   }
+
+  useUiSurface({
+    active: open,
+    kind: "update",
+    origin: "event",
+    blocking: false,
+    busy,
+    dismissible: !busy,
+    supportedActions: busy ? [] : ["cancel"],
+    target: { phase: installStatus },
+    onCancel: handleDismiss,
+  });
 
   return (
     <Dialog open={open}>

@@ -260,13 +260,16 @@ describe("UiNavigationProvider", () => {
       { wrapper }
     );
 
-    await expect(
-      result.current.navigation.cancelSurface({
+    let pending;
+    await act(async () => {
+      pending = result.current.navigation.cancelSurface({
         surfaceId: result.current.surfaceId,
         expectedRevision: 7,
         expectedUiGeneration: 1,
-      })
-    ).resolves.toMatchObject({
+      });
+      await Promise.resolve();
+    });
+    await expect(pending).resolves.toMatchObject({
       changed: true,
       action: "ui.cancel",
       uiGeneration: 2,
@@ -324,6 +327,44 @@ describe("UiNavigationProvider", () => {
       action: "ui.show.settings",
       surface: { kind: "settings", target: { section: "appearance" } },
     });
+  });
+
+  it("observes event decisions without allowing show to synthesize or hide them", async () => {
+    const show = vi.fn();
+    const { result } = renderHook(
+      () => {
+        useUiNavigationTarget("settings", { show });
+        const eventSurfaceId = useUiSurface({
+          kind: "update",
+          origin: "event",
+          blocking: false,
+          dismissible: true,
+          supportedActions: ["cancel"],
+          target: { phase: "idle" },
+          onCancel: vi.fn(),
+        });
+        return { navigation: useUiNavigation(), eventSurfaceId };
+      },
+      { wrapper }
+    );
+
+    await expect(
+      result.current.navigation.showSettings({
+        section: "appearance",
+        expectedRevision: 7,
+        expectedUiGeneration: 1,
+      })
+    ).rejects.toMatchObject({
+      reason: "uiConflict",
+      details: { kind: "update", surfaceId: result.current.eventSurfaceId },
+    });
+    expect(show).not.toHaveBeenCalled();
+    await expect(
+      result.current.navigation.showFeedback({
+        expectedRevision: 7,
+        expectedUiGeneration: 1,
+      })
+    ).rejects.toMatchObject({ reason: "surfaceUnavailable" });
   });
 
   it("lets the window owner handle Dock Panel Settings without a popover target", async () => {

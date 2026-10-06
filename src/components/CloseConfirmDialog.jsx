@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
 
@@ -51,6 +52,18 @@ export function CloseConfirmDialog({
     setDontAsk(false);
     onCancel();
   }
+
+  useUiSurface({
+    active: open,
+    kind: "closeConfirmation",
+    origin: "event",
+    blocking: true,
+    busy,
+    dismissible: !busy,
+    supportedActions: busy ? [] : ["cancel"],
+    target: { phase: error ? "error" : "decision" },
+    onCancel: handleCancel,
+  });
 
   return (
     <Dialog

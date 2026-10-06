@@ -8,6 +8,7 @@ import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { buildCrashReportRequest, submitCrashReport } from "../lib/crashReporting.js";
 import { LAYER_PRIORITY } from "@/components/ui/layers.js";
 import { LinkButton } from "@/components/ui/link-button";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -69,6 +70,16 @@ export function CrashReportDialog({
   }
 
   const sendError = error && !busy;
+  useUiSurface({
+    kind: "crashReport",
+    origin: "event",
+    blocking: true,
+    busy,
+    dismissible: !busy,
+    supportedActions: busy ? [] : ["close"],
+    target: { phase: error ? "error" : busy ? "busy" : "decision" },
+    onClose,
+  });
 
   return (
     <div className={cn(SCRIM_CLASS, LAYER_PRIORITY, "grid place-items-center p-4")}>

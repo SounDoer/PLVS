@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { CrashReportDialog } from "./CrashReportDialog.jsx";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 
 const { openExternalUrl } = vi.hoisted(() => ({ openExternalUrl: vi.fn() }));
 
@@ -28,6 +29,11 @@ function RegistryStatus() {
   return <output aria-label="blocking editors">{activeBlockingEditors.join(",")}</output>;
 }
 
+function UiStatus() {
+  const navigation = useUiNavigation();
+  return <output aria-label="ui state">{JSON.stringify(navigation.inspectUi())}</output>;
+}
+
 function renderDialog(overrides = {}) {
   const props = {
     report,
@@ -39,8 +45,11 @@ function renderDialog(overrides = {}) {
   };
   const view = render(
     <BlockingEditorsProvider>
-      <RegistryStatus />
-      <CrashReportDialog {...props} />
+      <UiNavigationProvider>
+        <RegistryStatus />
+        <UiStatus />
+        <CrashReportDialog {...props} />
+      </UiNavigationProvider>
     </BlockingEditorsProvider>
   );
   return { ...props, ...view };
@@ -66,6 +75,17 @@ describe("CrashReportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "View Report" }));
 
     expect(screen.getByLabelText("blocking editors").textContent).toBe("crash-report");
+    const ui = JSON.parse(screen.getByLabelText("ui state").textContent);
+    expect(ui.surfaces).toEqual([
+      expect.objectContaining({
+        kind: "crashReport",
+        origin: "event",
+        blocking: true,
+        supportedActions: ["close"],
+        target: { phase: "decision" },
+      }),
+    ]);
+    expect(JSON.stringify(ui)).not.toContain(report.id);
     expect(JSON.parse(screen.getByLabelText("Crash report payload").textContent)).toEqual({
       report,
       note: "Happened after opening a file",

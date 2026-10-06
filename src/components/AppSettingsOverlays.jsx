@@ -134,7 +134,6 @@ export function AppSettingsOverlays({
           ...(themeAuthoring.sourceId ? { themeId: themeAuthoring.sourceId } : {}),
           draftId: themeAuthoring.draftId,
           page: editor.page,
-          phase: editor.discardOpen ? "discardConfirmation" : "editing",
         }
       : {},
     onCancel: editor.requestDismiss,
@@ -179,7 +178,6 @@ export function AppSettingsOverlays({
           intent: profileAuthoring.mode,
           ...(profileAuthoring.sourceId ? { profileId: profileAuthoring.sourceId } : {}),
           draftId: profileAuthoring.draftId,
-          phase: loudnessProfile.discardOpen ? "discardConfirmation" : "editing",
         }
       : {},
     onCancel: loudnessProfile?.requestDismiss,
