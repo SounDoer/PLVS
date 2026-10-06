@@ -168,7 +168,7 @@ export function PresetsPopoverContent({
                 ) : (
                   <div
                     className={cn(
-                      "flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover",
+                      "flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover",
                       draggingId === preset.id && "z-10 ring-1 ring-primary"
                     )}
                   >
@@ -184,7 +184,7 @@ export function PresetsPopoverContent({
                       // `pl-1 pr-1.5`, not the shorthand `px-1.5`: this button sits right after
                       // the drag handle, so the left side doesn't need a second helping of the
                       // handle's own gap.
-                      className={cn("pl-1 pr-1.5 py-1.5", blockedClass)}
+                      className={cn("pl-1 pr-1.5", blockedClass)}
                     >
                       <span
                         aria-label={

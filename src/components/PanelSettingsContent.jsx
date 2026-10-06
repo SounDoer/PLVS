@@ -62,7 +62,7 @@ const SETTINGS_DETAIL_SURFACE_CLASS = cn(
 );
 
 const SETTINGS_CHOICE_ROW_CLASS =
-  "min-w-0 gap-1.5 py-0.5 text-popover-foreground outline-none hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
+  "min-h-[var(--ui-control-h)] min-w-0 gap-1.5 py-0.5 text-popover-foreground outline-none hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary";
 

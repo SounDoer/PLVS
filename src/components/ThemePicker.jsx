@@ -74,7 +74,7 @@ function Action({ label, tip, icon, onClick }) {
 
 function ThemeRow({ theme, selected, onSelect, actions }) {
   return (
-    <div className="flex min-h-8 items-center gap-1 rounded-xs px-1 hover:bg-ui-hover focus-within:bg-ui-hover">
+    <div className="flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs px-1 hover:bg-ui-hover focus-within:bg-ui-hover">
       <RowAction onClick={() => onSelect(theme.id)} className="text-[length:var(--ui-fs-control)]">
         <span className="flex size-4 items-center justify-center">
           {selected ? <Check className="size-[length:var(--ui-icon-management-action)]" /> : null}

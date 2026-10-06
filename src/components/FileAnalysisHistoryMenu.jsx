@@ -92,12 +92,12 @@ export function FileAnalysisHistoryMenu({
             return (
               <div
                 key={session.id}
-                className="group flex items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover"
+                className="group flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover"
               >
                 <RowAction
                   onClick={() => onSelectFile?.(session.id)}
                   aria-label={`Show file ${session.fileName}`}
-                  className="px-1.5 py-1.5"
+                  className="px-1.5"
                 >
                   <span
                     aria-label={isActive ? `Active file ${session.fileName}` : undefined}

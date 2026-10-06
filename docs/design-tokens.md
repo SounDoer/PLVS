@@ -154,21 +154,26 @@ this ever needs to follow the theme, the opacity is what varies.
 
 ## Control Height
 
-One token, `--ui-control-h`, sets the height of every form control, and two more sizes are derived
-from it in `index.css`. Interface Size sets the one token; everything else follows.
+Interactive elements come in three heights, 4px apart, and all three follow one token. Interface
+Size sets `--ui-control-h`; `index.css` derives the rest from it.
 
-| Token            | Small / Default | Large | Extra Large | Used by                                                                                                                                           |
-| ---------------- | --------------- | ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--ui-control-h` | 24px            | 28px  | 32px        | Text buttons, the add control, text and number inputs, the shortcut key cap, all select variants, and the rows and labels that align to a control |
-| `--ui-shell-h`   | 28px            | 32px  | 36px        | Header icon buttons, Source Transport, the panel header bar, popover title bars. Always the control height plus 4px                               |
-| `--ui-switch-h`  | 16px            | 18px  | 22px        | Every switch; its width and thumb are derived from it. Two thirds of the control height, rounded to 2px                                           |
+| Token            | Small / Default | Large | Extra Large | Used by                                                                                                                                                                                 |
+| ---------------- | --------------- | ----- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--ui-control-h` | 24px            | 28px  | 32px        | Form controls: text buttons, the add control, text and number inputs, the shortcut key cap, all select variants, a panel's choice rows, and the rows and labels that align to a control |
+| `--ui-shell-h`   | 28px            | 32px  | 36px        | Shell chrome and dropdown options: header icon buttons, Source Transport, the panel header bar, popover title bars, the options of an open select                                       |
+| `--ui-row-h`     | 32px            | 36px  | 40px        | List rows: every row of a menu, picker or managed list, whether the row itself is the click target (`MenuRow`) or holds a `RowAction` beside a handle and trailing actions              |
+| `--ui-switch-h`  | 16px            | 18px  | 22px        | Every switch; its width and thumb are derived from it. Two thirds of the control height, rounded to 2px                                                                                 |
+
+No component sets a height of its own. A row does not get its height from text plus padding,
+which is how six spellings of "a list row" had drifted between 31.5px and 40px.
 
 The control height stays at least one and a half times the largest text a control holds. A fixed
-box would be outgrown by the 17px text of the larger sizes, which is why no control sets its own
-height or carries a "grow to fit" exception.
+box would be outgrown by the 17px text of the larger sizes, which is why nothing carries a "grow
+to fit" exception.
 
-Multi-line fields and list rows size to their content. `src/components/ui/controlHeightContract.test.js`
-rejects a fixed height above 24px written in a class string.
+Multi-line fields size to their content. `src/components/ui/controlHeightContract.test.js` rejects
+a fixed height above 24px written in a class string, and checks that the shared primitives read
+these tokens.
 
 ## Buttons
 
@@ -566,6 +571,7 @@ write final integer pixel values rather than applying browser zoom or one unifor
 | Settings Drawer Width      | 320px |   336px | 368px |       400px |
 | Control Height             |  24px |    24px |  28px |        32px |
 | Shell Height               |  28px |    28px |  32px |        36px |
+| List Row Height            |  32px |    32px |  36px |        40px |
 | Switch Height              |  16px |    16px |  18px |        22px |
 
 The normal application document applies the selected profile before first render. Dock header and

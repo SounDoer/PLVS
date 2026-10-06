@@ -46,6 +46,18 @@ describe("control height contract", () => {
     }
   });
 
+  it("sizes list rows and dropdown options from the same ladder", () => {
+    const read = (file) => readFileSync(new URL(file, import.meta.url), "utf8");
+
+    expect(read("./row.jsx")).toContain("min-h-[var(--ui-row-h)]");
+    expect(read("../ManagementRow.jsx")).toContain("min-h-[var(--ui-row-h)]");
+    expect(read("./select.jsx")).toContain("min-h-[var(--ui-shell-h)]");
+
+    const css = read("../../index.css");
+    expect(css).toContain("--ui-shell-h: calc(var(--ui-control-h) + 4px);");
+    expect(css).toContain("--ui-row-h: calc(var(--ui-control-h) + 8px);");
+  });
+
   it("sets no fixed height above 24px", () => {
     expect(offenders()).toEqual([]);
   });

@@ -141,7 +141,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
     ref={ref}
     data-slot="select-item"
     className={cn(
-      "hover:bg-ui-hover data-[highlighted]:bg-ui-hover focus:bg-ui-hover relative flex w-full cursor-default select-none items-center rounded-xs py-1.5 pr-8 pl-2 text-[length:var(--ui-fs-body)] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "hover:bg-ui-hover data-[highlighted]:bg-ui-hover focus:bg-ui-hover relative flex w-full cursor-default select-none items-center rounded-xs min-h-[var(--ui-shell-h)] py-1 pr-8 pl-2 text-[length:var(--ui-fs-control)] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}

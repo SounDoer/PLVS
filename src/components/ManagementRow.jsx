@@ -3,7 +3,7 @@ import { useHoverTip } from "@/components/HoverTip";
 import { IconAction } from "@/components/ui/icon-action";
 
 export const MANAGEMENT_ROW_CLASS =
-  "group flex w-full items-center gap-2 rounded-xs px-2 py-1.5 text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover";
+  "group flex min-h-[var(--ui-row-h)] w-full items-center gap-2 rounded-xs px-2 text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover";
 
 export const MANAGEMENT_ROW_ACTIONS_CLASS =
   "flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";

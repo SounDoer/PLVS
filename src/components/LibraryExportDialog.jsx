@@ -72,7 +72,7 @@ export function LibraryExportDialog({
                 key={type}
                 disabled={count === 0}
                 onClick={() => setSelectedType(type)}
-                className="min-h-10 justify-between gap-3 rounded-md px-2 disabled:pointer-events-none disabled:opacity-40"
+                className="justify-between gap-3 px-2 disabled:pointer-events-none disabled:opacity-40"
               >
                 <span>{label}</span>
                 <span className="flex items-center gap-1.5 text-muted-foreground">

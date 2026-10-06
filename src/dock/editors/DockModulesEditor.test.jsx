@@ -180,7 +180,7 @@ describe("DockModulesEditor", () => {
     const row = screen.getByTestId("dock-panel-row-spectrum");
     const actions = screen.getByRole("button", { name: "Rename Spectrum" }).closest("span");
 
-    expect(row.className).toContain("py-1.5");
+    expect(row.className).toContain("min-h-[var(--ui-row-h)]");
     expect(row.className).toContain("focus-within:bg-ui-hover");
     expect(actions?.className).toContain("group-hover:opacity-100");
     expect(actions?.className).toContain("group-focus-within:opacity-100");
