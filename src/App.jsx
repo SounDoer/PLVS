@@ -21,7 +21,6 @@ import {
 } from "./hooks/useLoudnessHistory.js";
 import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx";
 import { useSnapshot } from "./hooks/useSnapshot";
-import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
@@ -42,6 +41,7 @@ import { useCrashReportSetting } from "./hooks/useCrashReportSetting.js";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
 import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
+import { SourceProvider, useSource } from "./runtime/SourceContext.jsx";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
@@ -67,7 +67,6 @@ import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests, deriveRetainedAnalysisKeys } from "./analysis/analysisRequests.js";
-import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import { isParticipantInstance } from "./lib/runtimeRole.js";
 import {
@@ -88,7 +87,6 @@ import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
-import { automaticOutputChangeNotice } from "./lib/captureHealth.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
@@ -212,7 +210,9 @@ export default function App() {
                   <DockProvider>
                     <WindowChromeProvider>
                       <PresetsProvider>
-                        <AppContent />
+                        <SourceProvider>
+                          <AppContent />
+                        </SourceProvider>
                       </PresetsProvider>
                     </WindowChromeProvider>
                   </DockProvider>
@@ -375,16 +375,17 @@ function AppContent() {
     captureApplications,
     captureDeviceId,
     safeAudioDeviceId,
-    selectCaptureDevice,
     commitCaptureDevice,
     previewSelection,
     refreshInventory,
-    defaultOutputFormatSig,
     defaultOutputLabel,
-  } = useAudioDevices({
-    liveLifecycle: meterRuntime.liveLifecycle,
-    beginDeviceRestartForControl,
-  });
+    audioOutputs,
+    audioInputs,
+    onSelectCaptureDevice,
+    captureFormatSignature,
+    sourceDisplayName,
+    footerSourceLabel,
+  } = useSource();
 
   const [windowVisible, setWindowVisible] = useState(true);
   useUiNavigationEnvironment({
@@ -464,34 +465,9 @@ function AppContent() {
     setWindowVisible(await window.isVisible());
   }, [docked, requestCloseAction, resumeDockMode, suspendDockMode]);
 
-  const audioOutputs = useMemo(
-    () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
-    [audioDevices]
-  );
-  const audioInputs = useMemo(
-    () => (audioDevices || []).filter((d) => !d.isSystemOutputMonitor),
-    [audioDevices]
-  );
-
   const { display, routing } = useMeterRuntimeAssembly();
   const { audio, setAudio } = display;
   const { elapsedMsRef } = display.clock;
-
-  const onSelectCaptureDevice = useCallback(
-    async (deviceId) => {
-      clearNotice();
-      try {
-        await selectCaptureDevice(deviceId);
-      } catch (error) {
-        raiseNotice(
-          "error",
-          "Could not switch the audio device.",
-          errorDetails("Device selection failed", error)
-        );
-      }
-    },
-    [clearNotice, raiseNotice, selectCaptureDevice]
-  );
 
   useEffect(() => {
     if (!docked || !crashReporting.pendingReport) return;
@@ -1261,68 +1237,7 @@ function AppContent() {
   const spectrumDisplayLabel = channelMetadata?.frequencyLabel ?? spectrumLiveLabel;
   const vectorscopeDisplayLabel = channelMetadata?.vectorscopePairLabel ?? vectorscopeLiveLabel;
 
-  const captureFormatSignature = useMemo(() => {
-    if (!isTauri()) return "";
-    if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
-      const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
-      const processSignature = application?.processIds?.length
-        ? application.processIds.join(",")
-        : (application?.processId ?? "missing");
-      return `${defaultOutputFormatSig || "2:48000"}|pid:${processSignature}`;
-    }
-    if (captureDeviceId === "default") {
-      return defaultOutputFormatSig || "";
-    }
-    const d = audioDevices.find((x) => x.id === captureDeviceId);
-    return d ? `${d.channels}:${d.defaultSampleRate}` : "";
-  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputFormatSig]);
-
-  const selectedSource = useMemo(() => {
-    if (!isTauri()) return null;
-    if (captureDeviceId === "default") {
-      const label =
-        defaultOutputLabel || audioDevices.find((device) => device.isSystemOutputMonitor)?.label;
-      return label ? { type: "Output", label } : null;
-    }
-    const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
-    if (application) {
-      return { type: "Application", label: application.label };
-    }
-    const device = audioDevices.find((candidate) => candidate.id === captureDeviceId);
-    if (!device) return null;
-    return {
-      type: device.isSystemOutputMonitor ? "Output" : "Input",
-      label: device.label,
-    };
-  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel]);
-  const sourceDisplayName = useMemo(() => {
-    if (!selectedSource) return null;
-    if (selectedSource.type === "Application") return selectedSource.label;
-    const display = formatAudioDeviceLabel(selectedSource.label);
-    return display.secondary || display.primary;
-  }, [selectedSource]);
   useInstanceIdentity({ sourceLabel: sourceDisplayName, running });
-  // The restart itself is driven by `captureFormatSignature`; this only tells the user why their
-  // measurement just started over.
-  const previousDefaultOutputLabelRef = useRef(defaultOutputLabel);
-  useEffect(() => {
-    const previousLabel = previousDefaultOutputLabelRef.current;
-    previousDefaultOutputLabelRef.current = defaultOutputLabel;
-    const notice = automaticOutputChangeNotice({
-      previousLabel,
-      nextLabel: defaultOutputLabel,
-      captureDeviceId,
-      sourceMode,
-      running,
-    });
-    if (notice) raiseNotice("info", notice.text, notice.details);
-    // Only a change of the resolved default output announces itself.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultOutputLabel]);
-  const footerSourceLabel =
-    selectedSource && sourceDisplayName
-      ? `${selectedSource.type} · ${sourceDisplayName}`
-      : "Not connected";
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
   const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
   // Clamp every panel instance's channel selection to the currently available channels. Lowering
