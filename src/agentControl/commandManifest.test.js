@@ -16,8 +16,8 @@ function changed(mutator) {
 describe("command manifest", () => {
   it("loads one immutable catalog without React or runtime state", () => {
     expect(commandManifest.manifestVersion).toBe(1);
-    expect(commandEntries).toHaveLength(102);
-    expect(runningAppCommandEntries).toHaveLength(97);
+    expect(commandEntries).toHaveLength(104);
+    expect(runningAppCommandEntries).toHaveLength(99);
     expect(Object.isFrozen(commandManifest)).toBe(true);
     expect(Object.isFrozen(commandEntries[0].wireParams)).toBe(true);
   });
@@ -59,7 +59,13 @@ describe("command manifest", () => {
       operation: "query",
       expectedRevision: "none",
     });
-    for (const id of ["ui.show.settings", "ui.show.panelSettings", "ui.close"]) {
+    for (const id of [
+      "ui.show.settings",
+      "ui.show.panelSettings",
+      "ui.show.feedback",
+      "ui.close",
+      "ui.cancel",
+    ]) {
       expect(commandEntryById.get(id)).toMatchObject({
         operation: "action",
         expectedRevision: "required",

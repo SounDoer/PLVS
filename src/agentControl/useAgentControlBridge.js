@@ -1110,7 +1110,9 @@ export function useAgentControlBridge({
             "ui.show.panelSettings",
             "ui.show.themeEditor",
             "ui.show.loudnessProfileEditor",
+            "ui.show.feedback",
             "ui.close",
+            "ui.cancel",
           ].includes(request.method)
         ) {
           const currentRevision = controlRevisionRef.current;
@@ -1141,7 +1143,11 @@ export function useAgentControlBridge({
                     ? await uiNavigation.showThemeEditor(request.params)
                     : request.method === "ui.show.loudnessProfileEditor"
                       ? await uiNavigation.showLoudnessProfileEditor(request.params)
-                      : await uiNavigation.closeSurface(request.params);
+                      : request.method === "ui.show.feedback"
+                        ? await uiNavigation.showFeedback(request.params)
+                        : request.method === "ui.close"
+                          ? await uiNavigation.closeSurface(request.params)
+                          : await uiNavigation.cancelSurface(request.params);
             const ui = uiNavigation.inspectUi();
             return {
               requestId,

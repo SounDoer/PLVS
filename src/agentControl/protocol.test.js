@@ -66,7 +66,9 @@ describe("normalizeAgentControlRequest", () => {
       ["ui.show.panelSettings", { panelId: "stats-2" }],
       ["ui.show.themeEditor", { mode: "customize", themeId: "plvs-light", page: "advanced" }],
       ["ui.show.loudnessProfileEditor", { mode: "edit", profileId: "broadcast" }],
+      ["ui.show.feedback", {}],
       ["ui.close", { surfaceId: `ui-${"a".repeat(16)}` }],
+      ["ui.cancel", { surfaceId: `ui-${"b".repeat(16)}` }],
     ])("requires and preserves both concurrency tokens for %s", (method, target) => {
       const params = { ...target, expectedRevision: 4, expectedUiGeneration: 7 };
       expect(normalizeAgentControlRequest(request(method, params))).toEqual({

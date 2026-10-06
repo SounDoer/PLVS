@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { FeedbackDialog } from "./FeedbackDialog.jsx";
+import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 
 const { openExternalUrl, readFeedbackDiagnostics } = vi.hoisted(() => ({
   openExternalUrl: vi.fn(),
@@ -24,6 +25,40 @@ afterEach(() => {
 });
 
 describe("FeedbackDialog", () => {
+  it("registers as a blocking editor and reports only whether a draft exists", () => {
+    const observations = [];
+    function Observer() {
+      observations.push(useBlockingEditors().activeBlockingEditors);
+      return null;
+    }
+    const onDirtyChange = vi.fn();
+    render(
+      <BlockingEditorsProvider>
+        <FeedbackDialog onClose={vi.fn()} onDirtyChange={onDirtyChange} />
+        <Observer />
+      </BlockingEditorsProvider>
+    );
+
+    expect(observations.at(-1)).toEqual(["feedback"]);
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+    fireEvent.input(screen.getByLabelText("Feedback content"), {
+      target: { value: "unsent draft" },
+    });
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("cancels without reading diagnostics or submitting", () => {
+    const onClose = vi.fn();
+    render(<FeedbackDialog onClose={onClose} />);
+    fireEvent.input(screen.getByLabelText("Feedback content"), {
+      target: { value: "unsent draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(readFeedbackDiagnostics).not.toHaveBeenCalled();
+    expect(submitFeedback).not.toHaveBeenCalled();
+  });
   it("opens the Privacy Policy from the submission surface", () => {
     render(<FeedbackDialog onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Privacy Policy" }));

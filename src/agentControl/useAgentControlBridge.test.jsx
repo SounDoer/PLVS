@@ -318,7 +318,11 @@ function Harness({
     }),
     showSettings: async () => ({}),
     showPanelSettings: async () => ({}),
+    showThemeEditor: async () => ({}),
+    showLoudnessProfileEditor: async () => ({}),
+    showFeedback: async () => ({}),
     closeSurface: async () => ({}),
+    cancelSurface: async () => ({}),
   },
   applyAgentView,
   agentTransport = transport,
@@ -1755,6 +1759,17 @@ describe("useAgentControlBridge", () => {
       uiGeneration: 3,
       surface: { surfaceId: `ui-${"c".repeat(16)}`, kind: "themeEditor" },
     }));
+    const showFeedback = vi.fn(async () => ({
+      changed: true,
+      action: "ui.show.feedback",
+      uiGeneration: 3,
+      surface: { surfaceId: `ui-${"d".repeat(16)}`, kind: "feedback" },
+    }));
+    const cancelSurface = vi.fn(async () => ({
+      changed: true,
+      action: "ui.cancel",
+      uiGeneration: 3,
+    }));
     const inspectUi = vi.fn(() => ({
       uiGeneration: showSettings.mock.calls.length > 0 ? 3 : 2,
       workbench: { instanceId: "instance-1", workspaceId: "workspace-1", displayName: "Studio" },
@@ -1774,7 +1789,9 @@ describe("useAgentControlBridge", () => {
         showPanelSettings: vi.fn(),
         showThemeEditor,
         showLoudnessProfileEditor: vi.fn(),
+        showFeedback,
         closeSurface: vi.fn(),
+        cancelSurface,
       },
     });
     await waitUntilReady();
@@ -1819,6 +1836,21 @@ describe("useAgentControlBridge", () => {
       mode: "customize",
       themeId: "plvs-light",
       page: "advanced",
+      expectedRevision: 0,
+      expectedUiGeneration: 2,
+    });
+
+    await send(
+      request("ui.show.feedback", { expectedRevision: 0, expectedUiGeneration: 2 }, "ui-feedback")
+    );
+    expect(showFeedback).toHaveBeenCalledWith({ expectedRevision: 0, expectedUiGeneration: 2 });
+
+    const surfaceId = `ui-${"e".repeat(16)}`;
+    await send(
+      request("ui.cancel", { surfaceId, expectedRevision: 0, expectedUiGeneration: 2 }, "ui-cancel")
+    );
+    expect(cancelSurface).toHaveBeenCalledWith({
+      surfaceId,
       expectedRevision: 0,
       expectedUiGeneration: 2,
     });

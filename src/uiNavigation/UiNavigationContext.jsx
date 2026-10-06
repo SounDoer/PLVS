@@ -111,6 +111,21 @@ export function UiNavigationProvider({
     },
     [settlementTimeoutMs]
   );
+  const waitForSurfaceChanged = useCallback(
+    async (surfaceId, previousUiGeneration) => {
+      const deadline = Date.now() + settlementTimeoutMs;
+      while (
+        stateRef.current.uiGeneration === previousUiGeneration &&
+        stateRef.current.surfaces.some((surface) => surface.surfaceId === surfaceId)
+      ) {
+        if (Date.now() >= deadline) {
+          throw createUiNavigationError("uiNotSettled", { surfaceId });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    },
+    [settlementTimeoutMs]
+  );
   const closeSurface = useCallback(
     ({ surfaceId, expectedRevision, expectedUiGeneration }) =>
       enqueueAction(async () => {
@@ -163,6 +178,61 @@ export function UiNavigationProvider({
         };
       }),
     [enqueueAction, getRevision, waitForSurfaceAbsent]
+  );
+  const cancelSurface = useCallback(
+    ({ surfaceId, expectedRevision, expectedUiGeneration }) =>
+      enqueueAction(async () => {
+        const currentRevision = getRevision();
+        if (Number.isSafeInteger(currentRevision) && expectedRevision !== currentRevision) {
+          throw Object.assign(new Error("The Agent Control revision changed."), {
+            reason: "revisionConflict",
+            details: { expectedRevision, currentRevision },
+          });
+        }
+        const currentState = stateRef.current;
+        if (expectedUiGeneration !== currentState.uiGeneration) {
+          throw createUiNavigationError("uiGenerationConflict", {
+            expectedUiGeneration,
+            currentUiGeneration: currentState.uiGeneration,
+          });
+        }
+        const surface = currentState.surfaces.find(
+          (candidate) => candidate.surfaceId === surfaceId
+        );
+        const entry = countsRef.current.get(surfaceId);
+        if (!surface || !entry) {
+          throw createUiNavigationError("uiSurfaceNotFound", { surfaceId });
+        }
+        if (entry.actionPending) {
+          throw createUiNavigationError("uiBusy", { surfaceId, kind: surface.kind });
+        }
+        if (!surface.supportedActions.includes("cancel") || !entry.actionsRef.current.cancel) {
+          throw createUiNavigationError("uiActionUnavailable", {
+            surfaceId,
+            kind: surface.kind,
+            action: "cancel",
+          });
+        }
+        entry.actionPending = true;
+        try {
+          await entry.actionsRef.current.cancel();
+          await waitForSurfaceChanged(surfaceId, currentState.uiGeneration);
+          const currentEntry = countsRef.current.get(surfaceId);
+          if (currentEntry) currentEntry.actionPending = false;
+        } catch (error) {
+          const currentEntry = countsRef.current.get(surfaceId);
+          if (currentEntry) currentEntry.actionPending = false;
+          throw error;
+        }
+        return {
+          changed: true,
+          action: "ui.cancel",
+          revision: getRevision(),
+          uiGeneration: stateRef.current.uiGeneration,
+          surface,
+        };
+      }),
+    [enqueueAction, getRevision, waitForSurfaceChanged]
   );
   const waitForSurface = useCallback(
     async (kind, target) => {
@@ -320,6 +390,11 @@ export function UiNavigationProvider({
       ),
     [showTarget]
   );
+  const showFeedback = useCallback(
+    ({ expectedRevision, expectedUiGeneration }) =>
+      showTarget("feedback", {}, "ui.show.feedback", expectedRevision, expectedUiGeneration),
+    [showTarget]
+  );
   const inspectUi = useCallback(
     () =>
       projectUiInspection(state, {
@@ -352,15 +427,19 @@ export function UiNavigationProvider({
       showPanelSettings,
       showThemeEditor,
       showLoudnessProfileEditor,
+      showFeedback,
       closeSurface,
+      cancelSurface,
       updateEnvironment,
     }),
     [
       closeSurface,
+      cancelSurface,
       inspectUi,
       showPanelSettings,
       showThemeEditor,
       showLoudnessProfileEditor,
+      showFeedback,
       showSettings,
       state.uiGeneration,
       updateEnvironment,

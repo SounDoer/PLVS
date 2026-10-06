@@ -1,5 +1,5 @@
 import { FLOATING_WINDOW_CLASS } from "@/components/ui/surfaceStyles.js";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import { submitFeedback } from "../lib/feedback.js";
@@ -7,15 +7,16 @@ import { readFeedbackDiagnostics } from "../ipc/commands.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { LinkButton } from "@/components/ui/link-button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_POS = { x: 120, y: 120 };
 const CLOSE_DELAY_MS = 2000;
 
 /**
- * @param {{ onClose: () => void }} props
+ * @param {{ onClose: () => void, onDirtyChange?: (dirty: boolean) => void }} props
  */
-export function FeedbackDialog({ onClose }) {
+export function FeedbackDialog({ onClose, onDirtyChange = () => {} }) {
   const [content, setContent] = useState("");
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
@@ -27,6 +28,10 @@ export function FeedbackDialog({ onClose }) {
 
   const ref = useRef(null);
   const dragHandlers = useFloatingPanelDrag(ref, setPos);
+  useBlockingEditor("feedback", true);
+
+  const dirty = content !== "" || email !== "" || attachDiagnostics;
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   const emailInvalid = emailTouched && email.trim() !== "" && !EMAIL_RE.test(email);
   const busy = status === "preparing" || status === "sending";

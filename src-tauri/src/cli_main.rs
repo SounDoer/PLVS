@@ -1310,7 +1310,7 @@ mod tests {
     assert_eq!(json["ok"], true);
     assert_eq!(json["result"]["manifestVersion"], 1);
     let commands = json["result"]["commands"].as_array().unwrap();
-    assert_eq!(commands.len(), 102);
+    assert_eq!(commands.len(), 104);
     assert_eq!(commands[0]["id"], "app.capabilities");
     let doctor = commands
       .iter()

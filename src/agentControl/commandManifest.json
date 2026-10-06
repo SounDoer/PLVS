@@ -340,6 +340,44 @@
       }
     },
     {
+      "id": "ui.show.feedback",
+      "family": "ui",
+      "path": ["ui", "show", "feedback"],
+      "usage": "plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open or focus an unsent Feedback draft without sending it.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.feedback",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "ui.close",
       "family": "ui",
       "path": ["ui", "close"],
@@ -348,6 +386,52 @@
       "execution": "runningApp",
       "operation": "action",
       "wireMethod": "ui.close",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": { "type": "string" }
+        }
+      ],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surfaceId", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "surfaceId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "ui.cancel",
+      "family": "ui",
+      "path": ["ui", "cancel"],
+      "usage": "plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Cancel one exact UI surface through its normal Cancel or Escape intent.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.cancel",
       "json": "required",
       "expectedRevision": "required",
       "dryRun": false,

@@ -237,6 +237,46 @@ describe("UiNavigationProvider", () => {
     expect(result.current.navigation.inspectUi().surfaces).toHaveLength(1);
   });
 
+  it("cancels only the exact surface and settles when its visible state changes", async () => {
+    const onCancel = vi.fn();
+    const { result } = renderHook(
+      () => {
+        const [phase, setPhase] = useState("editing");
+        const surfaceId = useUiSurface({
+          kind: "themeEditor",
+          origin: "navigable",
+          blocking: true,
+          dirty: true,
+          dismissible: true,
+          supportedActions: ["cancel"],
+          target: { intent: "create", phase },
+          onCancel: () => {
+            onCancel();
+            setPhase("discardConfirmation");
+          },
+        });
+        return { navigation: useUiNavigation(), surfaceId };
+      },
+      { wrapper }
+    );
+
+    await expect(
+      result.current.navigation.cancelSurface({
+        surfaceId: result.current.surfaceId,
+        expectedRevision: 7,
+        expectedUiGeneration: 1,
+      })
+    ).resolves.toMatchObject({
+      changed: true,
+      action: "ui.cancel",
+      uiGeneration: 2,
+    });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(result.current.navigation.inspectUi().surfaces[0].target.phase).toBe(
+      "discardConfirmation"
+    );
+  });
+
   it("shows Settings through its owner and returns the registered surface", async () => {
     const show = vi.fn();
     const { result } = renderHook(

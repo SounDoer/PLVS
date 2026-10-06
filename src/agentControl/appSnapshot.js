@@ -77,6 +77,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
             uiNavigation: {
               inspect: true,
               close: hasMethod("ui.close"),
+              cancel: hasMethod("ui.cancel"),
               show: {
                 settings: hasMethod("ui.show.settings")
                   ? { sections: UI_SETTINGS_SECTIONS }
@@ -91,6 +92,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 loudnessProfileEditor: hasMethod("ui.show.loudnessProfileEditor")
                   ? { modes: ["create", "edit"] }
                   : false,
+                feedback: hasMethod("ui.show.feedback"),
               },
             },
           }

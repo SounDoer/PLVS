@@ -54,7 +54,16 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  UiShowFeedback {
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
   UiClose {
+    surface_id: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
+  UiCancel {
     surface_id: String,
     expected_revision: u64,
     expected_ui_generation: u64,
@@ -350,7 +359,7 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
@@ -364,7 +373,9 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
     [show, target, ..] if show == "show" && target == "loudness-profile-editor" => {
       ("loudness-profile-editor", 2)
     }
+    [show, target, ..] if show == "show" && target == "feedback" => ("feedback", 2),
     [close, ..] if close == "close" => ("close", 1),
+    [cancel, ..] if cancel == "cancel" => ("cancel", 1),
     _ => return Err(USAGE.to_string()),
   };
   let mut section = None;
@@ -452,7 +463,11 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
         )?);
         index += 2;
       }
-      value if kind == "close" && !value.starts_with("--") && surface_id.is_none() => {
+      value
+        if matches!(kind, "close" | "cancel")
+          && !value.starts_with("--")
+          && surface_id.is_none() =>
+      {
         surface_id = Some(value.to_string());
         index += 1;
       }
@@ -556,22 +571,36 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
         expected_ui_generation,
       })
     }
-    "close" => {
+    "feedback" => Ok(ControlCommand::UiShowFeedback {
+      expected_revision,
+      expected_ui_generation,
+    }),
+    "close" | "cancel" => {
       let surface_id =
-        surface_id.ok_or_else(|| "The UI close action requires a surface ID.".to_string())?;
+        surface_id.ok_or_else(|| format!("The UI {kind} action requires a surface ID."))?;
       let entropy = surface_id.strip_prefix("ui-").unwrap_or("");
       if !(16..=60).contains(&entropy.len())
         || !entropy.chars().all(|character| {
           character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'
         })
       {
-        return Err("The UI close action requires an exact UI surface ID.".to_string());
+        return Err(format!(
+          "The UI {kind} action requires an exact UI surface ID."
+        ));
       }
-      Ok(ControlCommand::UiClose {
-        surface_id,
-        expected_revision,
-        expected_ui_generation,
-      })
+      if kind == "close" {
+        Ok(ControlCommand::UiClose {
+          surface_id,
+          expected_revision,
+          expected_ui_generation,
+        })
+      } else {
+        Ok(ControlCommand::UiCancel {
+          surface_id,
+          expected_revision,
+          expected_ui_generation,
+        })
+      }
     }
     _ => unreachable!("UI kind was validated above"),
   }
@@ -2928,7 +2957,9 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiShowLoudnessProfileEditor { .. } => {
       "ui.show.loudnessProfileEditor".to_string()
     }
+    ControlCommand::UiShowFeedback { .. } => "ui.show.feedback".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
+    ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
     ControlCommand::MeasurementWaitUntil { .. } => "measurement.waitUntil".to_string(),
@@ -3094,7 +3125,19 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
+    ControlCommand::UiShowFeedback {
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+    }),
     ControlCommand::UiClose {
+      surface_id,
+      expected_revision,
+      expected_ui_generation,
+    }
+    | ControlCommand::UiCancel {
       surface_id,
       expected_revision,
       expected_ui_generation,
@@ -4294,6 +4337,28 @@ mod tests {
       })
     );
 
+    let feedback = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "feedback",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&feedback), "ui.show.feedback");
+    assert_eq!(
+      request_for_command(&feedback, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+
     let close = parse_control_args(&args(&[
       "ui",
       "close",
@@ -4312,6 +4377,29 @@ mod tests {
         .params,
       serde_json::json!({
         "surfaceId": "ui-aaaaaaaaaaaaaaaa",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 7,
+      })
+    );
+
+    let cancel = parse_control_args(&args(&[
+      "ui",
+      "cancel",
+      "ui-bbbbbbbbbbbbbbbb",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "7",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&cancel), "ui.cancel");
+    assert_eq!(
+      request_for_command(&cancel, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "surfaceId": "ui-bbbbbbbbbbbbbbbb",
         "expectedRevision": 4,
         "expectedUiGeneration": 7,
       })

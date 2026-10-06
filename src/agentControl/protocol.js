@@ -223,7 +223,29 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (["ui.show.settings", "ui.show.panelSettings", "ui.close"].includes(input.method)) {
+  if (input.method === "ui.show.feedback") {
+    const field = unknownField(input.params, new Set(["expectedRevision", "expectedUiGeneration"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    const generationError = validateExpectedUiGeneration(input.params);
+    if (generationError) return generationError;
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          expectedRevision: input.params.expectedRevision,
+          expectedUiGeneration: input.params.expectedUiGeneration,
+        },
+      },
+    };
+  }
+
+  if (
+    ["ui.show.settings", "ui.show.panelSettings", "ui.close", "ui.cancel"].includes(input.method)
+  ) {
     const targetField =
       input.method === "ui.show.settings"
         ? "section"

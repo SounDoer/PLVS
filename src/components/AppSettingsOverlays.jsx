@@ -45,6 +45,7 @@ export function AppSettingsOverlays({
   onAgentControlEnabledChange = () => {},
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackDirty, setFeedbackDirty] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState(null);
   // Held here, beside the theme editor's position, because both panels are floating overlays this
@@ -133,6 +134,7 @@ export function AppSettingsOverlays({
           ...(themeAuthoring.sourceId ? { themeId: themeAuthoring.sourceId } : {}),
           draftId: themeAuthoring.draftId,
           page: editor.page,
+          phase: editor.discardOpen ? "discardConfirmation" : "editing",
         }
       : {},
     onCancel: editor.requestDismiss,
@@ -177,6 +179,7 @@ export function AppSettingsOverlays({
           intent: profileAuthoring.mode,
           ...(profileAuthoring.sourceId ? { profileId: profileAuthoring.sourceId } : {}),
           draftId: profileAuthoring.draftId,
+          phase: loudnessProfile.discardOpen ? "discardConfirmation" : "editing",
         }
       : {},
     onCancel: loudnessProfile?.requestDismiss,
@@ -215,6 +218,33 @@ export function AppSettingsOverlays({
     setUpdateDialogOpen(false);
     setSelectedUpdate(null);
   }
+
+  function openFeedback() {
+    settings.setSettingsOpen(false);
+    setFeedbackOpen(true);
+  }
+
+  function cancelFeedback() {
+    setFeedbackOpen(false);
+    setFeedbackDirty(false);
+  }
+
+  useUiNavigationTarget("feedback", {
+    blockingEditorId: "feedback",
+    matches: () => feedbackOpen,
+    show: openFeedback,
+  });
+  useUiSurface({
+    active: feedbackOpen,
+    kind: "feedback",
+    origin: "navigable",
+    blocking: true,
+    dirty: feedbackDirty,
+    dismissible: true,
+    supportedActions: ["cancel"],
+    target: { phase: "editing" },
+    onCancel: cancelFeedback,
+  });
 
   return (
     <>
@@ -285,10 +315,7 @@ export function AppSettingsOverlays({
         crashReportSettingBusy={crashReportSetting.busy}
         crashReportSettingError={crashReportSetting.error}
         onAskToSendCrashReports={crashReportSetting.setEnabled}
-        onOpenFeedback={() => {
-          settings.setSettingsOpen(false);
-          setFeedbackOpen(true);
-        }}
+        onOpenFeedback={openFeedback}
       />
 
       <UpdateDialog
@@ -303,7 +330,9 @@ export function AppSettingsOverlays({
         openExternalUrl={openExternalUrl}
       />
 
-      {feedbackOpen ? <FeedbackDialog onClose={() => setFeedbackOpen(false)} /> : null}
+      {feedbackOpen ? (
+        <FeedbackDialog onClose={cancelFeedback} onDirtyChange={setFeedbackDirty} />
+      ) : null}
 
       {crashReporting.pendingReport ? (
         <CrashReportDialog

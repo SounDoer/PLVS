@@ -452,10 +452,10 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
     expect(result.current.profile.draft).not.toBe(null);
   });
 
-  it("refuses entry while the crash-report consent draft is open", () => {
+  it("refuses entry while the Feedback draft is open", () => {
     const { result } = renderHook(
       () => {
-        useBlockingEditor("crash-report", true);
+        useBlockingEditor("feedback", true);
         const { assertSceneOperationAllowed } = useBlockingEditors();
         return useDockMode({ assertSceneOperationAllowed });
       },
@@ -474,7 +474,7 @@ describe("useDockMode refuses entry while a configuration draft is open", () => 
       }
     });
 
-    expect(thrown?.editors).toEqual(["crash-report"]);
+    expect(thrown?.editors).toEqual(["feedback"]);
     expect(mocks.enterDock).not.toHaveBeenCalled();
     expect(result.current.dockEnabled).toBe(false);
     expect(mocks.patchPresets).not.toHaveBeenCalled();

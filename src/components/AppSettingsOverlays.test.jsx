@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { standIn } from "../testing/standIn.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { AppSettingsOverlays } from "./AppSettingsOverlays.jsx";
 import { LoudnessProfilePopoverContent } from "./LoudnessProfilePopover.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
@@ -9,6 +9,8 @@ import { presetsStore, settingsStore, themesStore } from "../persistence/index.j
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { serializePortableTheme, themeToPortable } from "../theme/portableTheme.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 
 const mocks = vi.hoisted(() => ({
   exportConfiguration: vi.fn(),
@@ -178,6 +180,7 @@ function makeSettings(overrides = {}) {
 }
 
 function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlayOverrides = {}) {
+  const { navigationRef, ...componentOverrides } = overlayOverrides;
   const updateControls = {
     updateInfo: null,
     refreshUpdateCheck: vi.fn(),
@@ -207,11 +210,26 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
       crashReporting={{ pendingReport: null, dismissPending: vi.fn() }}
       loudnessProfile={undefined}
       presets={undefined}
-      {...overlayOverrides}
+      {...componentOverrides}
     />
   );
 
-  const view = render(renderView());
+  function NavigationCapture() {
+    navigationRef.current = useUiNavigation();
+    return null;
+  }
+  const view = render(
+    navigationRef ? (
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 4}>
+          <NavigationCapture />
+          {renderView()}
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    ) : (
+      renderView()
+    )
+  );
 
   return {
     ...view,
@@ -331,6 +349,44 @@ describe("AppSettingsOverlays", () => {
 
     expect(settings.setSettingsOpen).toHaveBeenCalledWith(false);
     expect(screen.getByRole("dialog", { name: "feedback" })).toBeTruthy();
+  });
+
+  it("opens and cancels Feedback through its semantic navigation owner", async () => {
+    const navigationRef = { current: null };
+    const settings = makeSettings({ settingsOpen: false });
+    renderOverlays(settings, {}, { navigationRef });
+    const before = navigationRef.current.inspectUi();
+
+    let pendingShow;
+    await act(async () => {
+      pendingShow = navigationRef.current.showFeedback({
+        expectedRevision: 4,
+        expectedUiGeneration: before.uiGeneration,
+      });
+      await Promise.resolve();
+    });
+    await pendingShow;
+    expect(settings.setSettingsOpen).toHaveBeenCalledWith(false);
+    const shown = navigationRef.current.inspectUi();
+    const feedback = shown.surfaces.find(({ kind }) => kind === "feedback");
+    expect(feedback).toMatchObject({
+      blocking: true,
+      dirty: false,
+      supportedActions: ["cancel"],
+      target: { phase: "editing" },
+    });
+
+    let pendingCancel;
+    await act(async () => {
+      pendingCancel = navigationRef.current.cancelSurface({
+        surfaceId: feedback.surfaceId,
+        expectedRevision: 4,
+        expectedUiGeneration: shown.uiGeneration,
+      });
+      await Promise.resolve();
+    });
+    await pendingCancel;
+    expect(screen.queryByRole("dialog", { name: "feedback" })).toBe(null);
   });
 
   it("opens the changelog dialog before starting an update", () => {
