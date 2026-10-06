@@ -154,6 +154,8 @@ describe("agent-control app snapshots", () => {
         dialogueDetectionActive: true,
         spectralWaveformActive: false,
       },
+      device: undefined,
+      view: undefined,
     });
 
     expect(snapshot).toMatchObject({

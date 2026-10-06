@@ -13,6 +13,8 @@ describe("PanelSettingsMenu", () => {
         activeTab="levelMeter"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onChange}
+        panelTitle={undefined}
+        onPanelControlsReset={undefined}
       />
     );
     fireEvent.click(screen.getByRole("button", { name: "Panel settings" }));
@@ -36,6 +38,7 @@ describe("PanelSettingsMenu", () => {
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
         onPanelControlsReset={vi.fn()}
+        panelTitle={undefined}
       />
     );
 
@@ -52,6 +55,8 @@ describe("PanelSettingsMenu", () => {
         activeTab="levelMeter"
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={onPanelControlsChange}
+        panelTitle={undefined}
+        onPanelControlsReset={undefined}
       />
     );
 
@@ -89,7 +94,13 @@ describe("PanelSettingsMenu", () => {
   });
 
   it("hides the trigger when the panel has no settings", () => {
-    const { container } = render(<PanelSettingsMenu activeTab="waveform" />);
+    const { container } = render(
+      <PanelSettingsMenu
+        activeTab="waveform"
+        panelTitle={undefined}
+        onPanelControlsReset={undefined}
+      />
+    );
 
     expect(container.firstChild).toBeNull();
   });
@@ -122,6 +133,7 @@ describe("PanelSettingsMenu", () => {
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
         onPanelControlsReset={vi.fn()}
+        panelTitle={undefined}
       />
     );
 
@@ -140,6 +152,8 @@ describe("PanelSettingsMenu", () => {
         channelCount={2}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
+        panelTitle={undefined}
+        onPanelControlsReset={undefined}
       />
     );
 
@@ -157,6 +171,8 @@ describe("PanelSettingsMenu", () => {
         vectorscopeOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
+        panelTitle={undefined}
+        onPanelControlsReset={undefined}
       />
     );
 
@@ -173,6 +189,8 @@ describe("PanelSettingsMenu", () => {
         stereoMapPairOptions={[{ key: "0-1", label: "L/R", x: 0, y: 1 }]}
         panelControls={DEFAULT_PANEL_CONTROLS}
         onPanelControlsChange={vi.fn()}
+        panelTitle={undefined}
+        onPanelControlsReset={undefined}
       />
     );
 

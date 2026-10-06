@@ -84,6 +84,11 @@ describe("FileAnalysisHistoryMenu", () => {
         fileSessions={sessions.slice(0, 1)}
         activeFileId="ready"
         analyzingFileId={null}
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
       />
     );
 
@@ -127,6 +132,11 @@ describe("FileAnalysisHistoryMenu", () => {
         fileSessions={sessions}
         activeFileId="complete"
         analyzingFileId="analyzing"
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
       />
     );
 

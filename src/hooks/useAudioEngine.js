@@ -51,13 +51,13 @@ const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
  *   histMaxSamples: any,
  *   visualMaxSamples: any,
  *   audioRef: any,
- *   intake?: any,
+ *   intake: any,
  *   channelRolesRef: any,
  *   dialogueGatingRef: any,
  *   dialogueVadEngineRef: any,
  *   transport: any,
  *   display: any,
- *   defaultSampleRateRef?: any,
+ *   defaultSampleRateRef: any,
  *   measurementOwner?: any,
  * }} options
  */

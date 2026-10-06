@@ -80,9 +80,9 @@ export function buildAgentControlCapabilities(runtime, revision) {
  *   loudnessProfile: any,
  *   settings: any,
  *   transport: any,
- *   device?: any,
+ *   device: any,
  *   dock: any,
- *   view?: any,
+ *   view: any,
  *   hasLoudnessReference?: boolean,
  *   analysisContext?: any,
  * }} options

@@ -35,11 +35,11 @@ function detailLabel(session) {
  *   fileSessions?: any,
  *   activeFileId?: any,
  *   analyzingFileId?: any,
- *   onSelectFile?: any,
- *   onReanalyzeFile?: any,
- *   onRemoveFile?: any,
- *   onClearAllFiles?: any,
- *   onStopFile?: any,
+ *   onSelectFile: any,
+ *   onReanalyzeFile: any,
+ *   onRemoveFile: any,
+ *   onClearAllFiles: any,
+ *   onStopFile: any,
  * }} props
  */
 export function FileAnalysisHistoryMenu({

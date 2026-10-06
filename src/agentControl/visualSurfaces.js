@@ -167,9 +167,9 @@ function nextAnimationFrame(windowObject, signal) {
  * @param {{
  *   target: any,
  *   workspace: any,
- *   expectedRevision?: any,
+ *   expectedRevision: any,
  *   getRevision: any,
- *   signal?: any,
+ *   signal: any,
  *   timeoutMs?: any,
  *   documentObject?: any,
  *   windowObject?: any,

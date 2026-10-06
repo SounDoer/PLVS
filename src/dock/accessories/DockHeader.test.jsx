@@ -125,7 +125,11 @@ describe("DockHeader", () => {
   it("opens the Loudness Profile editor without highlighting active configuration", () => {
     const onAction = vi.fn();
     const { rerender } = render(
-      <DockHeader state={{ ...STATE, loudnessProfileActive: false }} onAction={onAction} />
+      <DockHeader
+        state={{ ...STATE, loudnessProfileActive: false }}
+        onAction={onAction}
+        onPointer={undefined}
+      />
     );
     const button = screen.getByRole("button", { name: "Loudness Profile" });
     expect(button.classList.contains("text-foreground")).toBe(false);
@@ -139,7 +143,13 @@ describe("DockHeader", () => {
       anchorX: 110,
     });
 
-    rerender(<DockHeader state={{ ...STATE, loudnessProfileActive: true }} onAction={onAction} />);
+    rerender(
+      <DockHeader
+        state={{ ...STATE, loudnessProfileActive: true }}
+        onAction={onAction}
+        onPointer={undefined}
+      />
+    );
     expect(
       screen.getByRole("button", { name: "Loudness Profile" }).classList.contains("text-foreground")
     ).toBe(false);

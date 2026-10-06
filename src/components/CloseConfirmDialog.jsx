@@ -23,7 +23,7 @@ const ROW_LABEL_CLASS = "text-[length:var(--ui-fs-control)] font-medium text-mut
  *   error?: any,
  *   busy?: any,
  *   onConfirm: any,
- *   onRetry?: any,
+ *   onRetry: any,
  *   onCancel: any,
  * }} props
  */

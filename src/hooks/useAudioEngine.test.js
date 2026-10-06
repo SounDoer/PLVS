@@ -102,6 +102,8 @@ function useHarness({
     dialogueVadEngineRef,
     transport: { running: true, halt, recordAudioDrop },
     display,
+    intake: props.intake,
+    defaultSampleRateRef: props.defaultSampleRateRef,
     ...props,
   });
 

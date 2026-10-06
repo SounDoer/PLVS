@@ -15,6 +15,10 @@ function renderSettings(moduleId, props = {}) {
         onChange={onChange}
         onReset={vi.fn()}
         onBack={vi.fn()}
+        title={undefined}
+        vectorscopeOptions={undefined}
+        spectrumOptions={undefined}
+        channelCount={undefined}
         {...props}
       />
     </LoudnessProfileProvider>
@@ -310,6 +314,8 @@ describe("DockModuleSettings", () => {
         onChange={vi.fn()}
         onReset={vi.fn()}
         onBack={vi.fn()}
+        title={undefined}
+        vectorscopeOptions={undefined}
       />
     );
     expect(screen.queryByLabelText("Spectrum channel")).toBeNull();

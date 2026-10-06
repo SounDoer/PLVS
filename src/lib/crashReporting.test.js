@@ -47,10 +47,17 @@ describe("crash report request", () => {
       submitCrashReport({
         report,
         fetchImpl: vi.fn().mockResolvedValue({ ok: false, status: 503 }),
+        note: undefined,
+        email: undefined,
       })
     ).rejects.toThrow("503");
     await expect(
-      submitCrashReport({ report, fetchImpl: vi.fn().mockRejectedValue(new Error("offline")) })
+      submitCrashReport({
+        report,
+        fetchImpl: vi.fn().mockRejectedValue(new Error("offline")),
+        note: undefined,
+        email: undefined,
+      })
     ).rejects.toThrow("offline");
   });
 
@@ -62,7 +69,7 @@ describe("crash report request", () => {
       });
     });
 
-    const pending = submitCrashReport({ report, fetchImpl });
+    const pending = submitCrashReport({ report, fetchImpl, note: undefined, email: undefined });
     const rejected = expect(pending).rejects.toMatchObject({ name: "TimeoutError" });
     await vi.advanceTimersByTimeAsync(15_000);
 

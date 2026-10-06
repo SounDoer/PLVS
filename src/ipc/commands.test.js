@@ -170,7 +170,7 @@ describe("audio engine command seam", () => {
 
     const onFrame = vi.fn();
     invoke.mockResolvedValue(undefined);
-    const channel = await startFileAnalysis({ path: "C:\\audio.wav", onFrame });
+    const channel = await startFileAnalysis({ path: "C:\\audio.wav", onFrame, probe: undefined });
 
     channel.onmessage({ message });
 

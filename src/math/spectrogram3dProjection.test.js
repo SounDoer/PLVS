@@ -118,7 +118,7 @@ describe("projectPoint", () => {
   // and the newest frame at the near corner. Pin the whole arrangement rather than the angle, so a
   // future tweak is free to change the number as long as the layout survives.
   it("defaults to frequency front-left, time front-right, newest nearest", () => {
-    const proj = buildProjection({ elevationDeg: 22, ...VIEW });
+    const proj = buildProjection({ azimuthDeg: undefined, elevationDeg: 22, ...VIEW });
     const at = (t, f) => projectPoint(t, f, 0, proj);
 
     // Larger screen y is nearer, so the near corner is where both axes contribute their maximum.
@@ -219,7 +219,7 @@ describe("projectPoint", () => {
   });
 
   it("clamps an unprojected cursor to the floor rather than extrapolating", () => {
-    const proj = buildProjection({ elevationDeg: 70, ...VIEW });
+    const proj = buildProjection({ azimuthDeg: undefined, elevationDeg: 70, ...VIEW });
     const far = unprojectFloor(-10000, -10000, proj);
     expect(far.tFrac).toBeGreaterThanOrEqual(0);
     expect(far.tFrac).toBeLessThanOrEqual(1);

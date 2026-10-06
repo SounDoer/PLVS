@@ -263,7 +263,7 @@ export function probeFileAnalysis(path) {
   return invoke("file_analysis_probe", { path });
 }
 
-/** @param {{ path: string; probe?: object; onFrame: (payload: object) => void }} opts */
+/** @param {{ path: string; probe: object; onFrame: (payload: object) => void }} opts */
 export async function startFileAnalysis({ path, probe, onFrame }) {
   const onAudio = new Channel();
   onAudio.onmessage = (msg) => {

@@ -6,7 +6,7 @@ import { HoverTip } from "@/components/HoverTip";
  *
  * @param {{
  *   icon: import("react").ReactNode,
- *   tip?: string,
+ *   tip: string,
  *   disabled?: boolean,
  *   onClick?: () => void,
  *   onMouseDown?: (event: import("react").MouseEvent) => void,

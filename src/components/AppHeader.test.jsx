@@ -69,6 +69,13 @@ function renderHeader(overrides = {}) {
     setGlassEnabled: vi.fn(),
     presets: NOOP_PRESETS,
     setSettingsOpen: vi.fn(),
+    loudnessProfile: undefined,
+    loudnessProfileStats: undefined,
+    onRefreshSources: undefined,
+    showDock: undefined,
+    dockEdge: undefined,
+    onDockChange: undefined,
+    dockDisabled: undefined,
     ...overrides,
   };
 

@@ -20,6 +20,9 @@ describe.each(["width", "height"])("Dock %s resize feedback", (kind) => {
           rightPanel={{ id: "right", moduleId: "vectorscope" }}
           onResize={commit}
           disabled={disabled}
+          leftBasis={undefined}
+          rightBasis={undefined}
+          onReset={undefined}
         />
       ) : (
         <DockHeightResizeHandle

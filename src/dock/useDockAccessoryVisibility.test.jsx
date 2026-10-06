@@ -26,7 +26,12 @@ describe("useDockAccessoryVisibility", () => {
 
   it("shows on strip enter and hides immediately after both surfaces are left", async () => {
     const { result } = renderHook(() =>
-      useDockAccessoryVisibility({ active: true, edge: "bottom" })
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "bottom",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
     );
     act(() => result.current.onStripPointerEnter());
     await act(async () => Promise.resolve());
@@ -46,7 +51,12 @@ describe("useDockAccessoryVisibility", () => {
   it("repairs a missed pointer leave from live native window geometry", async () => {
     vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
     const { result } = renderHook(() =>
-      useDockAccessoryVisibility({ active: true, edge: "bottom" })
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "bottom",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
     );
 
     act(() => result.current.onStripPointerEnter());
@@ -64,7 +74,12 @@ describe("useDockAccessoryVisibility", () => {
   it("repairs a missed re-enter after native geometry hid the header", async () => {
     vi.mocked(cursorOverDockSurfaces).mockResolvedValue(false);
     const { result } = renderHook(() =>
-      useDockAccessoryVisibility({ active: true, edge: "bottom" })
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "bottom",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
     );
 
     act(() => result.current.onStripPointerEnter());
@@ -89,7 +104,12 @@ describe("useDockAccessoryVisibility", () => {
   it("does not fight reliable DOM enter and leave events when native geometry agrees", async () => {
     vi.mocked(cursorOverDockSurfaces).mockResolvedValue(true);
     const { result } = renderHook(() =>
-      useDockAccessoryVisibility({ active: true, edge: "bottom" })
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "bottom",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
     );
 
     act(() => result.current.onStripPointerEnter());
@@ -120,7 +140,12 @@ describe("useDockAccessoryVisibility", () => {
       })
     );
     const { result } = renderHook(() =>
-      useDockAccessoryVisibility({ active: true, edge: "bottom" })
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "bottom",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
     );
 
     act(() => result.current.onStripPointerEnter());
@@ -132,7 +157,14 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("keeps header and editor visible until the editor closes", () => {
-    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    const { result } = renderHook(() =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "top",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
+    );
     act(() => result.current.openEditor("modules"));
     expect(result.current.editorView).toBe("modules");
     expect(result.current.headerVisible).toBe(true);
@@ -147,7 +179,13 @@ describe("useDockAccessoryVisibility", () => {
   it("does not reconcile hover while an editor or forced error keeps the header open", () => {
     const { result, rerender } = renderHook(
       ({ forceHeaderVisible }) =>
-        useDockAccessoryVisibility({ active: true, edge: "top", forceHeaderVisible }),
+        useDockAccessoryVisibility({
+          active: true,
+          edge: "top",
+          forceHeaderVisible,
+          geometryVersion: undefined,
+          onError: undefined,
+        }),
       { initialProps: { forceHeaderVisible: false } }
     );
 
@@ -163,7 +201,13 @@ describe("useDockAccessoryVisibility", () => {
 
   it("stops reconciliation across preset-style Dock exit and restarts with live geometry", async () => {
     const { result, rerender } = renderHook(
-      ({ active, edge }) => useDockAccessoryVisibility({ active, edge }),
+      ({ active, edge }) =>
+        useDockAccessoryVisibility({
+          active,
+          edge,
+          geometryVersion: undefined,
+          onError: undefined,
+        }),
       { initialProps: { active: true, edge: "bottom" } }
     );
 
@@ -184,7 +228,13 @@ describe("useDockAccessoryVisibility", () => {
   it("keeps the header visible while an error requires attention", async () => {
     const { result, rerender } = renderHook(
       ({ forceHeaderVisible }) =>
-        useDockAccessoryVisibility({ active: true, edge: "bottom", forceHeaderVisible }),
+        useDockAccessoryVisibility({
+          active: true,
+          edge: "bottom",
+          forceHeaderVisible,
+          geometryVersion: undefined,
+          onError: undefined,
+        }),
       { initialProps: { forceHeaderVisible: false } }
     );
 
@@ -198,7 +248,14 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("ignores a delayed blur close from the editor that was just replaced", () => {
-    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    const { result } = renderHook(() =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "top",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
+    );
 
     act(() => result.current.openEditor("modules"));
     act(() => result.current.openEditor("presets", 480));
@@ -279,7 +336,14 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("keeps the editor hidden until its intrinsic dimensions are measured", async () => {
-    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    const { result } = renderHook(() =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "top",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
+    );
     act(() => result.current.openEditor("presets", 480));
     await act(async () => {
       await Promise.resolve();
@@ -307,7 +371,14 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("keeps a measured editor visible while an internal replacement is measured", async () => {
-    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    const { result } = renderHook(() =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "top",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
+    );
     act(() => result.current.openEditor("modules"));
     act(() => result.current.resizeEditor({ view: "modules", width: 188, height: 386 }));
     await act(async () => {
@@ -331,7 +402,14 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("ignores a stale measurement from the editor that was just replaced", async () => {
-    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    const { result } = renderHook(() =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "top",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
+    );
     act(() => result.current.openEditor("modules"));
     act(() => result.current.openEditor("presets"));
     act(() => result.current.resizeEditor({ view: "modules", width: 320, height: 240 }));
@@ -346,7 +424,14 @@ describe("useDockAccessoryVisibility", () => {
   });
 
   it("ignores blur while an internal replacement is being measured", () => {
-    const { result } = renderHook(() => useDockAccessoryVisibility({ active: true, edge: "top" }));
+    const { result } = renderHook(() =>
+      useDockAccessoryVisibility({
+        active: true,
+        edge: "top",
+        geometryVersion: undefined,
+        onError: undefined,
+      })
+    );
     act(() => result.current.openEditor("modules"));
     act(() => result.current.resizeEditor({ view: "modules", width: 188, height: 386 }));
     act(() => result.current.openEditor("module:spectrogram"));
@@ -363,7 +448,12 @@ describe("useDockAccessoryVisibility", () => {
     let renders = 0;
     renderHook(() => {
       renders += 1;
-      return useDockAccessoryVisibility({ active: false, edge: "bottom" });
+      return useDockAccessoryVisibility({
+        active: false,
+        edge: "bottom",
+        geometryVersion: undefined,
+        onError: undefined,
+      });
     });
 
     for (let i = 0; i < 5; i += 1) {

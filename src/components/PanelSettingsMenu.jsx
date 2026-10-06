@@ -94,7 +94,7 @@ function hasPanelSettings({
   );
 }
 
-/** @param {{ panelTitle?: any, onPanelControlsReset?: any, [key: string]: any }} props */
+/** @param {{ panelTitle: any, onPanelControlsReset: any, [key: string]: any }} props */
 export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }) {
   if (!hasPanelSettings(props)) return null;
   const title = panelTitle ?? PANEL_SETTINGS_TITLES[props.activeTab] ?? "Panel";

@@ -151,7 +151,7 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
  * overflows its box. Callers whose clipped text is a descendant (a Select's value span) pass that
  * element instead of the anchor.
  *
- * @param {{ tip?: string, side?: "bottom" | "top" | "left" | "right", align?: "start" | "center" | "end" }} opts
+ * @param {{ tip: string, side?: "bottom" | "top" | "left" | "right", align?: "start" | "center" | "end" }} opts
  */
 export function useTruncationTip({ tip, side = "top", align = "start" }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, side, align });
@@ -167,7 +167,7 @@ export function useTruncationTip({ tip, side = "top", align = "start" }) {
  * affect scrollable ancestors or the children's accessible name.
  *
  * @param {{
- *   tip?: string,
+ *   tip: string,
  *   side?: "bottom" | "top" | "left" | "right",
  *   align?: "start" | "center" | "end",
  *   children: import("react").ReactNode,

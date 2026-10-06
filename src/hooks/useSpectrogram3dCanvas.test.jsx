@@ -41,6 +41,7 @@ function Harness({ sourceVersion = 0, enabled = true, canvasSizeRevision = 0 }) 
     sourceVersion,
     canvasSizeRevision,
     enabled,
+    glCanvasRef: undefined,
   });
 
   return null;

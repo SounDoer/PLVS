@@ -143,6 +143,7 @@ describe("visual paint settlement", () => {
         workspace: {},
         expectedRevision: 12,
         getRevision,
+        signal: undefined,
       })
     ).resolves.toMatchObject({
       revision: 12,
@@ -160,6 +161,7 @@ describe("visual paint settlement", () => {
         workspace: {},
         expectedRevision: 4,
         getRevision: () => 5,
+        signal: undefined,
       })
     ).rejects.toMatchObject({
       reason: "revisionConflict",
@@ -175,6 +177,8 @@ describe("visual paint settlement", () => {
         workspace: {},
         getRevision: () => 0,
         timeoutMs: 15,
+        expectedRevision: undefined,
+        signal: undefined,
       })
     ).rejects.toMatchObject({ reason: "renderNotSettled" });
   });
@@ -187,6 +191,7 @@ describe("visual paint settlement", () => {
       workspace: {},
       getRevision: () => 0,
       signal: controller.signal,
+      expectedRevision: undefined,
     });
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });

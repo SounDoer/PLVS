@@ -47,7 +47,7 @@ function renderWith(histSourceList, frameData = {}) {
       }}
     >
       <HistoryDataProvider value={{ histSourceList }}>
-        <DockWaveform />
+        <DockWaveform controls={undefined} />
       </HistoryDataProvider>
     </FrameDataProvider>
   );

@@ -10,6 +10,9 @@ const BASE_PROPS = {
   onReorder: vi.fn(),
   onReset: vi.fn(),
   onOpenSettings: vi.fn(),
+  panels: undefined,
+  onRename: undefined,
+  onHover: undefined,
 };
 
 describe("DockModulesEditor", () => {

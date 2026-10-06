@@ -17,6 +17,13 @@ const menuProps = {
   ],
   activeFileId: "one",
   analyzingFileId: null,
+  onSelectFile: undefined,
+  onReanalyzeFile: undefined,
+  onRemoveFile: undefined,
+  onClearAllFiles: undefined,
+  onStopFile: undefined,
+  onExportReport: undefined,
+  onCopyReport: undefined,
 };
 
 describe("FileAnalysisSummary", () => {
@@ -71,6 +78,15 @@ describe("FileAnalysisSummary", () => {
             dialogueIntegrated: -Infinity,
           },
         }}
+        fileSessions={undefined}
+        activeFileId={undefined}
+        analyzingFileId={undefined}
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
+        onCopyReport={undefined}
       />
     );
 
@@ -99,6 +115,14 @@ describe("FileAnalysisSummary", () => {
         fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
         onExportReport={onExportReport}
         onCopyReport={onCopyReport}
+        fileSessions={undefined}
+        activeFileId={undefined}
+        analyzingFileId={undefined}
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
       />
     );
 
@@ -118,6 +142,15 @@ describe("FileAnalysisSummary", () => {
       <FileAnalysisSummary
         fileSession={{ state: "complete", fileName: "final.wav", summary: {} }}
         onCopyReport={onCopyReport}
+        fileSessions={undefined}
+        activeFileId={undefined}
+        analyzingFileId={undefined}
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
+        onExportReport={undefined}
       />
     );
 
@@ -133,6 +166,16 @@ describe("FileAnalysisSummary", () => {
     render(
       <FileAnalysisSummary
         fileSession={{ state: "error", fileName: "clip.mov", error: "Unsupported codec" }}
+        fileSessions={undefined}
+        activeFileId={undefined}
+        analyzingFileId={undefined}
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
+        onExportReport={undefined}
+        onCopyReport={undefined}
       />
     );
 
@@ -186,6 +229,12 @@ describe("FileAnalysisSummary", () => {
         activeFileId="analyzing"
         analyzingFileId="analyzing"
         onSelectFile={onSelectFile}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
+        onExportReport={undefined}
+        onCopyReport={undefined}
       />
     );
 
@@ -209,6 +258,16 @@ describe("FileAnalysisSummary", () => {
           historyTruncated: true,
           historyCoveredMs: 300_000,
         }}
+        fileSessions={undefined}
+        activeFileId={undefined}
+        analyzingFileId={undefined}
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
+        onExportReport={undefined}
+        onCopyReport={undefined}
       />
     );
 
@@ -224,6 +283,16 @@ describe("FileAnalysisSummary", () => {
           fileName: "short.wav",
           summary: { durationMs: 5_000, sampleRateHz: 48000, channels: 2 },
         }}
+        fileSessions={undefined}
+        activeFileId={undefined}
+        analyzingFileId={undefined}
+        onSelectFile={undefined}
+        onReanalyzeFile={undefined}
+        onRemoveFile={undefined}
+        onClearAllFiles={undefined}
+        onStopFile={undefined}
+        onExportReport={undefined}
+        onCopyReport={undefined}
       />
     );
 

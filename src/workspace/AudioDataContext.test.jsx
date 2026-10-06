@@ -28,7 +28,12 @@ describe("panel instance data seam", () => {
     };
     const onPanelControlsChange = vi.fn();
     const wrapper = ({ children }) => (
-      <PanelDataProviders frameData={frame} historyData={history} metricsData={metrics}>
+      <PanelDataProviders
+        frameData={frame}
+        historyData={history}
+        metricsData={metrics}
+        panelChromeData={undefined}
+      >
         <PanelInstanceProvider
           value={{
             panelControls: { spectrumView: "midSide" },
@@ -65,7 +70,12 @@ describe("panel instance data seam", () => {
     };
     const onPanelControlsChange = vi.fn();
     const wrapper = ({ children }) => (
-      <PanelDataProviders frameData={frame} historyData={{}} metricsData={{}}>
+      <PanelDataProviders
+        frameData={frame}
+        historyData={{}}
+        metricsData={{}}
+        panelChromeData={undefined}
+      >
         <PanelInstanceProvider
           value={{
             panelControls: { spectrumView: "midSide" },
@@ -90,7 +100,12 @@ describe("panel instance data seam", () => {
     const globalHistory = { selectedOffset: 5, clampedWindowSec: 30 };
     const panelHistory = { ...globalHistory, clampedWindowSec: 10 };
     const wrapper = ({ children }) => (
-      <PanelDataProviders historyData={globalHistory}>
+      <PanelDataProviders
+        historyData={globalHistory}
+        frameData={undefined}
+        metricsData={undefined}
+        panelChromeData={undefined}
+      >
         <PanelInstanceProvider value={{ historyData: panelHistory }}>
           {children}
         </PanelInstanceProvider>

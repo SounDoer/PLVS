@@ -22,7 +22,7 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   stopFileAnalysis: any,
  *   activeFileSession: any,
  *   getFileAnalysisSettings: any,
- *   onClearSucceeded?: any,
+ *   onClearSucceeded: any,
  * }} options
  */
 export function useSourceTransportActions({

@@ -393,7 +393,7 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
 /**
  * @param {{
  *   canvasRef: any,
- *   glCanvasRef?: any,
+ *   glCanvasRef: any,
  *   snapRef: any,
  *   projectionRef: any,
  *   oldestMs: any,

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
  * tip -- but only when it is actually clipped. Use it for names in `w-max` panels that grow to a
  * capped width and then have to cut long names off.
  *
- * @param {{ text: string, className?: string, side?: "top" | "bottom" | "left" | "right", align?: "start" | "center" | "end" }} props
+ * @param {{ text: string, className: string, side?: "top" | "bottom" | "left" | "right", align?: "start" | "center" | "end" }} props
  */
 export function TruncatingLabel({ text, className, side = "top", align = "start" }) {
   const { anchorRef, showIfClipped, hideTip, tipNode } = useTruncationTip({

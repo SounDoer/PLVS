@@ -63,7 +63,16 @@ function historyDataWithViewport(over = {}) {
 }
 
 function renderWithHistory(ui, historyData = historyDataWithViewport()) {
-  return render(<PanelDataProviders historyData={historyData}>{ui}</PanelDataProviders>);
+  return render(
+    <PanelDataProviders
+      historyData={historyData}
+      frameData={undefined}
+      metricsData={undefined}
+      panelChromeData={undefined}
+    >
+      {ui}
+    </PanelDataProviders>
+  );
 }
 
 function timeRangeInputs() {
@@ -83,7 +92,12 @@ function axisViewportInstance(over = {}) {
 
 function renderWithInstance(ui, instance) {
   return render(
-    <PanelDataProviders historyData={historyDataWithViewport()}>
+    <PanelDataProviders
+      historyData={historyDataWithViewport()}
+      frameData={undefined}
+      metricsData={undefined}
+      panelChromeData={undefined}
+    >
       <PanelInstanceProvider value={instance}>{ui}</PanelInstanceProvider>
     </PanelDataProviders>
   );

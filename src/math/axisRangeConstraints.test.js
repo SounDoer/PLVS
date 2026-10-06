@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { applyRangeConstraints, computeLinearPan, computeLinearZoom } from "./axisInteractionMath";
 
 // Mono Loss: a loss cannot be a gain, so the top is 0 dB and only the floor moves.
-const MONO_LOSS = { absMin: -60, absMax: 0, minSpan: 6, pinnedMax: true };
+const MONO_LOSS = { absMin: -60, absMax: 0, minSpan: 6, pinnedMax: true, mustInclude: undefined };
 // M/S Ratio: read against 0 dB, which therefore has to stay on screen.
-const MS_RATIO = { absMin: -96, absMax: 48, minSpan: 6, mustInclude: 0 };
+const MS_RATIO = { absMin: -96, absMax: 48, minSpan: 6, mustInclude: 0, pinnedMax: undefined };
 
 describe("applyRangeConstraints, pinned max", () => {
   it("keeps the top at the bound and lets the floor carry the change", () => {

@@ -29,7 +29,7 @@ describe("DockTransport", () => {
   });
 
   it("renders nothing without timer state", () => {
-    const { container } = render(<DockTransport />);
+    const { container } = render(<DockTransport controls={undefined} />);
     expect(container.firstChild).toBeNull();
   });
 });

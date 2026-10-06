@@ -53,7 +53,7 @@ export function buildVectorscopePairOptions(channelCount, labelCtx = {}) {
  * Short "X/Y" caption for the selected vectorscope pair, using the same per-channel names as Peak strips
  * when `channelLabels` is supplied (from {@link getPeakMeterChannelLabels}).
  *
- * @param {{ x?: number; y?: number; channelLabels?: string[] }} opts
+ * @param {{ x: number; y: number; channelLabels: string[] }} opts
  */
 export function formatVectorscopePairLabel({ x, y, channelLabels }) {
   const xi = Number.isFinite(x) ? Math.max(0, Math.floor(Number(x))) : 0;

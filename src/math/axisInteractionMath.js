@@ -153,8 +153,8 @@ export function panRange({ min, max, absMin, absMax, deltaPx, axisPx, scale }) {
  *   absMin: any,
  *   absMax: any,
  *   minSpan?: number,
- *   pinnedMax?: any,
- *   mustInclude?: any,
+ *   pinnedMax: any,
+ *   mustInclude: any,
  * }} options
  */
 export function applyRangeConstraints({

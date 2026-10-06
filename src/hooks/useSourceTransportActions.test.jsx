@@ -32,6 +32,7 @@ function renderActions(overrides = {}) {
     stopFileAnalysis: vi.fn().mockResolvedValue(undefined),
     activeFileSession: null,
     getFileAnalysisSettings: vi.fn(() => ({ dialogue: { enabled: false, engine: null } })),
+    onClearSucceeded: undefined,
     ...overrides,
   };
   return {

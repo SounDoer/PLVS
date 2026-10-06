@@ -37,7 +37,7 @@ describe("formatVectorscopePairLabel", () => {
 
   test("falls back to Ch numbering without labels array", () => {
     expect(formatVectorscopePairLabel({ x: 0, y: 1, channelLabels: [] })).toBe("Ch 1/Ch 2");
-    expect(formatVectorscopePairLabel({ x: 2, y: 5 })).toBe("Ch 3/Ch 6");
+    expect(formatVectorscopePairLabel({ x: 2, y: 5, channelLabels: undefined })).toBe("Ch 3/Ch 6");
   });
 });
 

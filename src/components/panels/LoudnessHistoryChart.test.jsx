@@ -45,6 +45,13 @@ const baseProps = {
   referenceLufs: -23,
   onHistoryHoverMove: vi.fn(),
   onHistoryHoverLeave: vi.fn(),
+  plotAreaRef: undefined,
+  onLoudnessYRangeChange: undefined,
+  historyTimeAxisHandlers: undefined,
+  selectionEdge: undefined,
+  momentaryRules: undefined,
+  shortTermRules: undefined,
+  loudnessLayoutKnown: undefined,
 };
 
 function renderChart(loudnessHistoryVisibleLayerIds, overrides = {}) {
@@ -189,7 +196,18 @@ describe("LoudnessHistoryChart", () => {
     });
     const { historyYAxisTicks: _historyYAxisTicks, ...props } = baseProps;
 
-    render(<LoudnessHistoryChart {...props} loudnessHistoryVisibleLayerIds={["momentary"]} />);
+    render(
+      <LoudnessHistoryChart
+        plotAreaRef={undefined}
+        onLoudnessYRangeChange={undefined}
+        historyTimeAxisHandlers={undefined}
+        selectionEdge={undefined}
+        shortTermRules={undefined}
+        loudnessLayoutKnown={undefined}
+        {...props}
+        loudnessHistoryVisibleLayerIds={["momentary"]}
+      />
+    );
 
     expect(screen.getByText("0")).toBeTruthy();
     expect(screen.getByText("-64")).toBeTruthy();

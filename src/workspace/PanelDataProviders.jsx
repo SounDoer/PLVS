@@ -7,10 +7,10 @@ import {
 
 /**
  * @param {{
- *   frameData?: any,
+ *   frameData: any,
  *   historyData: any,
- *   metricsData?: any,
- *   panelChromeData?: any,
+ *   metricsData: any,
+ *   panelChromeData: any,
  *   children: any,
  * }} props
  */

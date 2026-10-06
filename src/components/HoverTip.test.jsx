@@ -63,7 +63,7 @@ describe("HoverTip", () => {
 
   it("renders children only when no tip is given", () => {
     render(
-      <HoverTip>
+      <HoverTip tip={undefined}>
         <span>Just me</span>
       </HoverTip>
     );

@@ -36,6 +36,9 @@ const BASE_PROPS = {
   setChannelLayout: vi.fn(),
   setChannelLabelToken: vi.fn(),
   resetChannelLabels: vi.fn(),
+  appVersion: undefined,
+  latestVersion: undefined,
+  releaseUrl: undefined,
 };
 
 function hexToRgb(hex) {
