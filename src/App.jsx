@@ -27,6 +27,8 @@ import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessPro
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
 import { SceneGuardProvider, useSceneGuard } from "./hooks/SceneGuardContext.jsx";
+import { errorDetails } from "./lib/errorDetails.js";
+import { reportSceneOperationError } from "./lib/sceneOperationNotice.js";
 import {
   UiNavigationProvider,
   useUiNavigation,
@@ -42,13 +44,11 @@ import {
 } from "./lib/sceneOperations.js";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
-import { useDockMode } from "./hooks/useDockMode.js";
 import { useCrashReporting } from "./hooks/useCrashReporting.js";
 import { useCrashReportSetting } from "./hooks/useCrashReportSetting.js";
-import { useDockLayout } from "./dock/useDockLayout.js";
+import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
-import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
 import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
@@ -86,12 +86,7 @@ import {
   updateVisualRecordingGeometry,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
-import {
-  availableMonitors,
-  currentMonitor,
-  getCurrentWindow,
-  primaryMonitor,
-} from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTray } from "./hooks/useTray.js";
 import { useInstanceIdentity } from "./hooks/useInstanceIdentity.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
@@ -213,13 +208,6 @@ export function updateHistoryPerformanceHarnessController(controller, requestKey
   controller?.updateRequestKeys(requestKeys);
 }
 
-/**
- * @param {string} prefix
- */
-function errorDetails(prefix, error) {
-  return `${prefix}: ${error?.message || String(error)}`;
-}
-
 export default function App() {
   return (
     <WorkspaceProvider>
@@ -233,7 +221,9 @@ export default function App() {
             <LoudnessProfileProvider>
               <SettingsProvider>
                 <SceneGuardProvider>
-                  <AppContent />
+                  <DockProvider>
+                    <AppContent />
+                  </DockProvider>
                 </SceneGuardProvider>
               </SettingsProvider>
             </LoudnessProfileProvider>
@@ -353,89 +343,27 @@ function AppContent() {
   // read with no ordering constraints of its own.
   const loudnessProfile = useLoudnessProfile();
   const { activeBlockingEditors, assertSceneOperationAllowed } = useSceneGuard();
-  // Dock hooks run first: `docked` suspends the always-on-top and focus-view
-  // window overrides below (Rust owns strip chrome + topmost while docked),
-  // and preset capture/apply reads dock state. useDockMode depends only on the
-  // profile controller above, so hoisting it above useAlwaysOnTop is safe.
-  //
-  // The dock is a monitoring posture: AppShell renders the settings overlays
-  // (and so the profile editor) only when undocked, and the strip has no profile
-  // popover, so a draft carried in would keep outranking the persisted selection
-  // for DockStats with no way to see, name, save or cancel it. Entry is therefore
-  // refused while one is open -- the discard it used to do instead is exactly what
-  // the scene guard exists to prevent.
   const {
+    docked,
     dockEnabled,
     dockEdge,
     dockMonitor,
     dockHeight,
     dockPreviewHeight,
     dockSuspended,
-    dockTransitioning,
     reserveSpace,
     enterDockMode,
-    exitDockMode,
     setReserveSpace,
     toggleReserveSpace,
     resizeDockHeight,
     suspendDockMode,
     resumeDockMode,
-  } = useDockMode({ assertSceneOperationAllowed });
-  const dockLayout = useDockLayout();
-  const docked = isTauri() && dockEnabled;
-  const [agentControlMonitors, setAgentControlMonitors] = useState([]);
-  const [agentControlFallbackMonitor, setAgentControlFallbackMonitor] = useState(null);
-  const [agentControlMonitorRects, setAgentControlMonitorRects] = useState([]);
-  const [agentControlMonitorInventoryReady, setAgentControlMonitorInventoryReady] = useState(false);
-  useEffect(() => {
-    // Dock Control is the only consumer, and it exists only in a development-identity build, so a
-    // release has no reason to query the monitor list at boot.
-    if (!isTauri() || readAgentControlRuntime().available !== true) return;
-    let cancelled = false;
-    void Promise.resolve()
-      .then(async () => {
-        const [monitors, current, primary] = await Promise.all([
-          availableMonitors(),
-          currentMonitor(),
-          primaryMonitor(),
-        ]);
-        if (cancelled) return;
-        setAgentControlMonitors(
-          monitors.flatMap((monitor) =>
-            typeof monitor.name === "string" ? [{ id: monitor.name, name: monitor.name }] : []
-          )
-        );
-        setAgentControlFallbackMonitor(
-          typeof current?.name === "string"
-            ? current.name
-            : typeof primary?.name === "string"
-              ? primary.name
-              : null
-        );
-        setAgentControlMonitorRects(
-          monitors.flatMap((monitor) =>
-            Number.isFinite(monitor.position?.x) &&
-            Number.isFinite(monitor.position?.y) &&
-            Number.isFinite(monitor.size?.width) &&
-            Number.isFinite(monitor.size?.height)
-              ? [
-                  {
-                    x: monitor.position.x,
-                    y: monitor.position.y,
-                    width: monitor.size.width,
-                    height: monitor.size.height,
-                  },
-                ]
-              : []
-          )
-        );
-        setAgentControlMonitorInventoryReady(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    layout: dockLayout,
+    historyViewport: dockHistoryViewport,
+    exitDockRestoringAttributes,
+    onDockChange,
+    onDockHeightChange,
+  } = useDock();
   // Suspended while docked: a preset apply may flip the stored pin to false
   // while the strip must stay topmost; when docked flips false the effect
   // re-asserts the user's value.
@@ -695,92 +623,15 @@ function AppContent() {
     [clearNotice, raiseNotice, selectCaptureDevice]
   );
 
-  // Dock transitions. Exit restores the user's TRUE normal-form attributes
-  // (override-not-overwrite): decorations follow focusView, always-on-top follows
-  // the pin toggle — dock never persists over stored settings. Every transition
-  // UI entry points map IPC rejections to actionable notices so a failed click
-  // handler cannot leave an unhandled rejection or stale error copy behind.
-  // NOTE: there is no in-flight guard against rapid dock transitions (v1 accepts
-  // this; a fast toggle spam could interleave enter/exit IPC calls).
-  const exitDockRestoringAttributes = useCallback(
-    async (
-      /** @type {{ reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any }} */ {
-        reportError = true,
-        bounds,
-        decorations,
-        alwaysOnTop,
-      } = {}
-    ) => {
-      clearNotice();
-      try {
-        await exitDockMode({
-          decorations: decorations ?? !(focusView.autoHideControls || focusView.borderless),
-          alwaysOnTop: alwaysOnTop ?? pinned === true,
-          bounds,
-        });
-        return { ok: true, error: null };
-      } catch (error) {
-        if (reportError) {
-          raiseNotice(
-            "error",
-            "Could not restore the main window. Try again.",
-            errorDetails("Restore window failed", error)
-          );
-        }
-        return { ok: false, error };
-      }
-    },
-    [
-      clearNotice,
-      exitDockMode,
-      focusView.autoHideControls,
-      focusView.borderless,
-      pinned,
-      raiseNotice,
-    ]
-  );
-
   useEffect(() => {
     if (!docked || !crashReporting.pendingReport) return;
     void exitDockRestoringAttributes();
   }, [crashReporting.pendingReport, docked, exitDockRestoringAttributes]);
 
-  // A refused scene operation is not a failure to report as one -- the guard did its job. Say
-  // what the user has to do instead, and keep the technical detail for everything else.
-  const reportSceneOperationError = useCallback(
-    (error, fallbackMessage, detailPrefix) => {
-      if (isSceneOperationRefused(error)) {
-        raiseNotice("error", error.message);
-        return;
-      }
-      raiseNotice("error", fallbackMessage, errorDetails(detailPrefix, error));
-    },
+  const reportSceneError = useCallback(
+    (error, fallbackMessage, detailPrefix) =>
+      reportSceneOperationError(raiseNotice, error, fallbackMessage, detailPrefix),
     [raiseNotice]
-  );
-
-  const onDockChange = useCallback(
-    async (edgeOrNull) => {
-      clearNotice();
-      try {
-        if (edgeOrNull) {
-          await enterDockMode(edgeOrNull);
-          setSelectedOffset(-1);
-        } else await exitDockRestoringAttributes();
-      } catch (error) {
-        reportSceneOperationError(
-          error,
-          "Could not move Dock. The previous position was kept.",
-          "Dock failed"
-        );
-      }
-    },
-    [
-      clearNotice,
-      enterDockMode,
-      exitDockRestoringAttributes,
-      reportSceneOperationError,
-      setSelectedOffset,
-    ]
   );
 
   // Preset apply hand-off: dock geometry is Rust-owned, so a preset's dock
@@ -940,7 +791,6 @@ function AppContent() {
   );
 
   const historyRetentionSec = settings.historyRetentionSec;
-  const dockHistoryViewport = useDockHistoryViewport({ maxWindowSec: historyRetentionSec });
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
   const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
 
@@ -1414,33 +1264,6 @@ function AppContent() {
       updateBusy,
     ]
   );
-  const agentControlDock = useMemo(
-    () => ({
-      supported: supportsDockMode(),
-      enabled: docked,
-      edge: dockEdge,
-      monitor: dockMonitor,
-      reserveSpace,
-      height: dockHeight,
-      suspended: dockSuspended,
-      panelsById: dockLayout.panelsById,
-      panelOrder: dockLayout.panelOrder,
-      panelSizesById: dockLayout.panelSizesById,
-      controlsByPanelId: dockLayout.controlsByPanelId,
-    }),
-    [
-      dockEdge,
-      dockHeight,
-      dockLayout.controlsByPanelId,
-      dockLayout.panelOrder,
-      dockLayout.panelSizesById,
-      dockLayout.panelsById,
-      dockMonitor,
-      dockSuspended,
-      docked,
-      reserveSpace,
-    ]
-  );
   const currentFileAnalysisSettings = useCallback(
     () => ({
       dialogue: {
@@ -1613,27 +1436,6 @@ function AppContent() {
       switchSource,
     ]
   );
-  const executeAgentControlDock = useCallback(
-    async (/** @type {string} */ method, projected) => {
-      if (method === "dock.enter") {
-        const effective = await enterDockMode(
-          projected.edge,
-          projected.reserveSpace,
-          projected.monitor,
-          projected.height
-        );
-        setSelectedOffset(-1);
-        return effective;
-      }
-      if (method === "dock.exit") {
-        const result = await exitDockRestoringAttributes({ reportError: false });
-        if (!result.ok) throw result.error;
-        return;
-      }
-      dockLayout.setPanels(projected);
-    },
-    [dockLayout, enterDockMode, exitDockRestoringAttributes, setSelectedOffset]
-  );
   const agentControlBridgeProps = {
     enabled:
       agentControlRuntime.available === true &&
@@ -1655,19 +1457,12 @@ function AppContent() {
     },
     executeTransport: executeAgentControlTransport,
     device: agentControlDevice,
-    dock: agentControlDock,
     dockContext: {
       platform: agentControlRuntime.platform,
       ...agentControlAnalysisContext,
       sourceMode,
       activeEditors: activeBlockingEditors,
-      transitioning: dockTransitioning,
-      monitors: agentControlMonitors,
-      fallbackMonitor: agentControlFallbackMonitor,
-      monitorRects: agentControlMonitorRects,
-      monitorInventoryReady: agentControlMonitorInventoryReady,
     },
-    executeDock: executeAgentControlDock,
     loudnessProfile,
     customThemes: settings.customThemes,
     theme: {
@@ -2073,21 +1868,6 @@ function AppContent() {
     },
   };
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
-  const onDockHeightChange = useCallback(
-    async (height, options) => {
-      clearNotice();
-      try {
-        await resizeDockHeight(height, options);
-      } catch (error) {
-        raiseNotice(
-          "error",
-          "Dock height could not be changed. The previous height was kept.",
-          errorDetails("Dock resize failed", error)
-        );
-      }
-    },
-    [clearNotice, raiseNotice, resizeDockHeight]
-  );
   const dockHeaderState = useMemo(
     () => ({
       sourceTransportState,
@@ -2209,15 +1989,15 @@ function AppContent() {
         // a separate webview and its buttons can be a render behind this window's guard.
         void presets
           .apply(payload.presetId)
-          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
       } else if (type === "save-preset") {
         void presets
           .save(payload.name)
-          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
       } else if (type === "update-preset") {
         void presets
           .update(payload.presetId)
-          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
       } else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
       // Dock's Loudness Profile list is a separate webview with its own settings cache, so it never
       // writes the store itself: the choice lands here, in the provider that owns the state.
@@ -2239,7 +2019,7 @@ function AppContent() {
       onSourceTransportAction,
       presets,
       raiseNotice,
-      reportSceneOperationError,
+      reportSceneError,
       reserveSpace,
       toggleReserveSpace,
     ]
