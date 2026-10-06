@@ -1045,7 +1045,6 @@ mod windows_backend {
     output_width: u32,
     output_height: u32,
     fps: u32,
-    max_duration_seconds: u32,
     geometry: RecordingGeometry,
     pending: PendingArtifact,
     store: ArtifactStore,
@@ -1130,43 +1129,35 @@ mod windows_backend {
     })?;
     std::thread::Builder::new()
       .name("visual-recording-supervisor".into())
-      .spawn(move || {
-        let deadline = Instant::now() + Duration::from_secs(u64::from(max_duration_seconds));
-        loop {
-          if control.is_finished() {
-            if let Err(error) = control.wait() {
-              if let Ok(mut reason) = stop_reason.lock() {
-                reason.get_or_insert(StopReason::CaptureFailure);
-              }
-              registry.record_event(
-                &recording_id,
-                "captureFailure",
-                format!("Windows Graphics Capture failed: {error}"),
-              );
+      .spawn(move || loop {
+        if control.is_finished() {
+          if let Err(error) = control.wait() {
+            if let Ok(mut reason) = stop_reason.lock() {
+              reason.get_or_insert(StopReason::CaptureFailure);
             }
-            break;
+            registry.record_event(
+              &recording_id,
+              "captureFailure",
+              format!("Windows Graphics Capture failed: {error}"),
+            );
           }
-          let requested = stop_reason.lock().ok().and_then(|reason| *reason);
-          if requested.is_some() || Instant::now() >= deadline {
-            if requested.is_none() {
-              if let Ok(mut reason) = stop_reason.lock() {
-                reason.get_or_insert(StopReason::DurationLimit);
-              }
-            }
-            if let Err(error) = control.stop() {
-              if let Ok(mut reason) = stop_reason.lock() {
-                reason.get_or_insert(StopReason::CaptureFailure);
-              }
-              registry.record_event(
-                &recording_id,
-                "captureFailure",
-                format!("Windows Graphics Capture stop failed: {error}"),
-              );
-            }
-            break;
-          }
-          std::thread::sleep(Duration::from_millis(20));
+          break;
         }
+        let requested = stop_reason.lock().ok().and_then(|reason| *reason);
+        if requested.is_some() {
+          if let Err(error) = control.stop() {
+            if let Ok(mut reason) = stop_reason.lock() {
+              reason.get_or_insert(StopReason::CaptureFailure);
+            }
+            registry.record_event(
+              &recording_id,
+              "captureFailure",
+              format!("Windows Graphics Capture stop failed: {error}"),
+            );
+          }
+          break;
+        }
+        std::thread::sleep(Duration::from_millis(20));
       })
       .map_err(|error| format!("Recording supervisor could not start: {error}"))?;
     Ok(session)

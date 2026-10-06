@@ -231,6 +231,10 @@ mod tests {
     assert!(source.contains("candidate.owningApplication.processID =="));
     assert!(source.contains("initWithDesktopIndependentWindow:source"));
     assert!(source.contains("configuration.capturesAudio = NO"));
+    assert!(source.contains("SCStreamFrameInfoStatus"));
+    assert!(source.contains("SCFrameStatusComplete"));
+    assert!(source.contains("dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER"));
+    assert!(source.contains("CMClockGetHostTimeClock"));
     assert!(source.contains("kAudioFormatMPEG4AAC"));
     assert!(source.contains("dataWithBytes:samples"));
     assert!(!source.contains("configuration.sourceRect"));

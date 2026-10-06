@@ -301,7 +301,6 @@ pub async fn visual_recording_start(
         width,
         height,
         fps,
-        max_duration_seconds,
         recording::windows::RecordingGeometry { rect, viewport },
         pending,
         store,
@@ -333,7 +332,7 @@ pub async fn visual_recording_start(
         ));
       }
     };
-    if let Err(reason) = controller.insert_session(session.clone()) {
+    if let Err(reason) = controller.insert_session(session.clone(), max_duration_seconds) {
       session.request_stop(StopReason::CaptureFailure);
       controller.registry().fail(
         &created.recording_id,
@@ -447,7 +446,7 @@ pub async fn visual_recording_start(
         ));
       }
     };
-    if let Err(reason) = controller.insert_session(session) {
+    if let Err(reason) = controller.insert_session(session, request.max_duration_seconds) {
       controller.registry().fail(
         &recording_id,
         "The recording session could not be retained.",

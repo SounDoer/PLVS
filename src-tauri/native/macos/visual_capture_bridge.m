@@ -35,7 +35,6 @@ enum {
   PLVS_VISUAL_RECORDING_STARTED = 0,
   PLVS_VISUAL_RECORDING_FRAME = 1,
   PLVS_VISUAL_RECORDING_DROPPED = 2,
-  PLVS_VISUAL_RECORDING_DURATION_LIMIT = 3,
   PLVS_VISUAL_RECORDING_SIZE_LIMIT = 4,
   PLVS_VISUAL_RECORDING_COMPLETED = 5,
   PLVS_VISUAL_RECORDING_FAILED = 6,
@@ -89,7 +88,10 @@ enum {
 @property(nonatomic) CMAudioFormatDescriptionRef audioFormat;
 @property(nonatomic) AVAssetWriterInputPixelBufferAdaptor *adaptor;
 @property(nonatomic) CIContext *ciContext;
-@property(nonatomic) CMTime firstTime;
+@property(nonatomic) dispatch_source_t frameTimer;
+@property(nonatomic) CVPixelBufferRef latestFrame;
+@property(nonatomic) CMTime captureStartTime;
+@property(nonatomic) CMTime lastVideoTime;
 @property(nonatomic) BOOL writerStarted;
 @property(nonatomic) BOOL streamStarted;
 @property(nonatomic) BOOL stopping;
@@ -102,6 +104,8 @@ enum {
 @implementation PLVSMacRecordingSession
 
 - (void)dealloc {
+  if (_frameTimer) dispatch_source_cancel(_frameTimer);
+  if (_latestFrame) CVPixelBufferRelease(_latestFrame);
   if (_audioFormat) CFRelease(_audioFormat);
 }
 
@@ -133,13 +137,113 @@ enum {
     _hasAudio = hasAudio;
     _callbackContext = context;
     _callback = callback;
-    _firstTime = kCMTimeInvalid;
+    _captureStartTime = kCMTimeInvalid;
+    _lastVideoTime = kCMTimeInvalid;
     _queue = dispatch_queue_create("com.plvs.visual-recording", DISPATCH_QUEUE_SERIAL);
     _ciContext = [CIContext contextWithOptions:@{kCIContextUseSoftwareRenderer : @NO}];
     [self setGeometryX:x y:y rectWidth:rectWidth rectHeight:rectHeight
          viewportWidth:viewportWidth viewportHeight:viewportHeight];
   }
   return self;
+}
+
+- (void)startFrameTimer {
+  if (_frameTimer) return;
+  uint64_t interval = NSEC_PER_SEC / MAX(1, _fps);
+  _frameTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, _queue);
+  dispatch_source_set_timer(_frameTimer, dispatch_time(DISPATCH_TIME_NOW, 0), interval,
+                            interval / 10);
+  __weak PLVSMacRecordingSession *weakSelf = self;
+  dispatch_source_set_event_handler(_frameTimer, ^{
+    [weakSelf encodeLatestFrame];
+  });
+  dispatch_resume(_frameTimer);
+}
+
+- (void)stopFrameTimer {
+  if (!_frameTimer) return;
+  dispatch_source_cancel(_frameTimer);
+  _frameTimer = nil;
+}
+
+- (void)replaceLatestFrame:(CVPixelBufferRef)frame {
+  if (frame) CVPixelBufferRetain(frame);
+  CVPixelBufferRef previous = _latestFrame;
+  _latestFrame = frame;
+  if (previous) CVPixelBufferRelease(previous);
+}
+
+- (void)encodeLatestFrame {
+  if (_terminal || _stopping) return;
+  CVPixelBufferRef source = _latestFrame;
+  if (!source) {
+    [self emit:PLVS_VISUAL_RECORDING_DROPPED value:1 message:@""];
+    return;
+  }
+  CMTime now = CMClockGetTime(CMClockGetHostTimeClock());
+  if (!CMTIME_IS_VALID(_captureStartTime)) _captureStartTime = now;
+  CMTime elapsed = CMTimeSubtract(now, _captureStartTime);
+  int64_t frameIndex = MAX(0, (int64_t)floor(CMTimeGetSeconds(elapsed) * _fps));
+  if (frameIndex >= (int64_t)_fps * _maxDuration) return;
+  CMTime relative = CMTimeMake(frameIndex, _fps);
+  if (CMTIME_IS_VALID(_lastVideoTime) && CMTimeCompare(relative, _lastVideoTime) <= 0) return;
+  if (!_writerStarted) {
+    if (![_writer startWriting]) {
+      [self fail:_writer.error.localizedDescription ?: @"The MP4 writer failed to start."];
+      return;
+    }
+    [_writer startSessionAtSourceTime:kCMTimeZero];
+    _writerStarted = YES;
+  }
+  if (!_videoInput.readyForMoreMediaData) {
+    [self emit:PLVS_VISUAL_RECORDING_DROPPED value:1 message:@""];
+    return;
+  }
+  CVPixelBufferRef destination = NULL;
+  CVReturn result = CVPixelBufferPoolCreatePixelBuffer(NULL, _adaptor.pixelBufferPool, &destination);
+  if (result != kCVReturnSuccess || !destination) {
+    [self emit:PLVS_VISUAL_RECORDING_DROPPED value:1 message:@""];
+    return;
+  }
+  CGRect crop = [self pixelCropForBuffer:source];
+  if (crop.size.width < 1 || crop.size.height < 1) {
+    CVPixelBufferRelease(destination);
+    [self fail:@"The recording target left the captured window."];
+    return;
+  }
+  CIImage *cropped = [[CIImage imageWithCVPixelBuffer:source] imageByCroppingToRect:crop];
+  CGFloat scale = MIN((CGFloat)_outputWidth / crop.size.width, (CGFloat)_outputHeight / crop.size.height);
+  CIImage *fitted = [cropped imageByApplyingTransform:
+      CGAffineTransformMakeTranslation(-crop.origin.x, -crop.origin.y)];
+  fitted = [fitted imageByApplyingTransform:CGAffineTransformMakeScale(scale, scale)];
+  CGFloat fittedWidth = crop.size.width * scale;
+  CGFloat fittedHeight = crop.size.height * scale;
+  fitted = [fitted imageByApplyingTransform:CGAffineTransformMakeTranslation(
+      ((CGFloat)_outputWidth - fittedWidth) / 2.0, ((CGFloat)_outputHeight - fittedHeight) / 2.0)];
+  CGRect canvas = CGRectMake(0, 0, _outputWidth, _outputHeight);
+  CIImage *black = [[CIImage imageWithColor:[CIColor colorWithRed:0 green:0 blue:0 alpha:1]]
+      imageByCroppingToRect:canvas];
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+  [_ciContext render:[fitted imageByCompositingOverImage:black]
+      toCVPixelBuffer:destination bounds:canvas colorSpace:colorSpace];
+  CGColorSpaceRelease(colorSpace);
+  BOOL appended = [_adaptor appendPixelBuffer:destination withPresentationTime:relative];
+  CVPixelBufferRelease(destination);
+  if (!appended) {
+    [self fail:_writer.error.localizedDescription ?: @"The H.264 encoder rejected a frame."];
+    return;
+  }
+  _lastVideoTime = relative;
+  NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:_path error:nil];
+  CMTime videoEnd = CMTimeAdd(relative, CMTimeMake(1, _fps));
+  CMTime audioClock = CMTimeConvertScale(videoEnd, 48000, kCMTimeRoundingMethod_RoundTowardZero);
+  [self emit:PLVS_VISUAL_RECORDING_TIMELINE value:(uint64_t)MAX(0, audioClock.value) message:@""];
+  [self emit:PLVS_VISUAL_RECORDING_FRAME value:attributes.fileSize message:@""];
+  if (attributes.fileSize >= UINT64_C(2) * 1024 * 1024 * 1024 && !_limitSignaled) {
+    _limitSignaled = YES;
+    [self emit:PLVS_VISUAL_RECORDING_SIZE_LIMIT value:0 message:@""];
+    if (!_hasAudio) [self requestStop];
+  }
 }
 
 - (void)emit:(int32_t)event value:(uint64_t)value message:(NSString *)message {
@@ -325,6 +429,8 @@ enum {
           dispatch_async(self.queue, ^{
             if (startError) { [self fail:startError.localizedDescription]; return; }
             self.streamStarted = YES;
+            self.captureStartTime = CMClockGetTime(CMClockGetHostTimeClock());
+            [self startFrameTimer];
             [self emit:PLVS_VISUAL_RECORDING_STARTED value:0 message:@""];
             if (self.stopping) [self stopStreamAndFinish];
           });
@@ -349,71 +455,13 @@ enum {
 - (void)stream:(SCStream *)stream didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
          ofType:(SCStreamOutputType)type {
   if (type != SCStreamOutputTypeScreen || _terminal || _stopping || !CMSampleBufferIsValid(sampleBuffer)) return;
+  NSArray *attachments = (__bridge NSArray *)CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, NO);
+  NSDictionary *metadata = attachments.firstObject;
+  SCFrameStatus status = (SCFrameStatus)[metadata[SCStreamFrameInfoStatus] integerValue];
+  if (status != SCFrameStatusComplete && status != SCFrameStatusStarted) return;
   CVPixelBufferRef source = CMSampleBufferGetImageBuffer(sampleBuffer);
   if (!source) { [self emit:PLVS_VISUAL_RECORDING_DROPPED value:1 message:@""]; return; }
-  CMTime sourceTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
-  if (!CMTIME_IS_VALID(_firstTime)) _firstTime = sourceTime;
-  CMTime relative = CMTimeSubtract(sourceTime, _firstTime);
-  if (CMTimeGetSeconds(relative) >= _maxDuration) {
-    if (!_limitSignaled) {
-      _limitSignaled = YES;
-      [self emit:PLVS_VISUAL_RECORDING_DURATION_LIMIT value:0 message:@""];
-      if (!_hasAudio) [self requestStop];
-    }
-    return;
-  }
-  if (!_writerStarted) {
-    if (![_writer startWriting]) { [self fail:_writer.error.localizedDescription ?: @"The MP4 writer failed to start."]; return; }
-    [_writer startSessionAtSourceTime:kCMTimeZero];
-    _writerStarted = YES;
-  }
-  if (!_videoInput.readyForMoreMediaData) {
-    [self emit:PLVS_VISUAL_RECORDING_DROPPED value:1 message:@""];
-    return;
-  }
-  CVPixelBufferRef destination = NULL;
-  CVReturn result = CVPixelBufferPoolCreatePixelBuffer(NULL, _adaptor.pixelBufferPool, &destination);
-  if (result != kCVReturnSuccess || !destination) {
-    [self emit:PLVS_VISUAL_RECORDING_DROPPED value:1 message:@""];
-    return;
-  }
-  CGRect crop = [self pixelCropForBuffer:source];
-  if (crop.size.width < 1 || crop.size.height < 1) {
-    CVPixelBufferRelease(destination);
-    [self fail:@"The recording target left the captured window."];
-    return;
-  }
-  CIImage *cropped = [[CIImage imageWithCVPixelBuffer:source] imageByCroppingToRect:crop];
-  CGFloat scale = MIN((CGFloat)_outputWidth / crop.size.width, (CGFloat)_outputHeight / crop.size.height);
-  CIImage *fitted = [cropped imageByApplyingTransform:
-      CGAffineTransformMakeTranslation(-crop.origin.x, -crop.origin.y)];
-  fitted = [fitted imageByApplyingTransform:CGAffineTransformMakeScale(scale, scale)];
-  CGFloat fittedWidth = crop.size.width * scale;
-  CGFloat fittedHeight = crop.size.height * scale;
-  fitted = [fitted imageByApplyingTransform:CGAffineTransformMakeTranslation(
-      ((CGFloat)_outputWidth - fittedWidth) / 2.0, ((CGFloat)_outputHeight - fittedHeight) / 2.0)];
-  CGRect canvas = CGRectMake(0, 0, _outputWidth, _outputHeight);
-  CIImage *black = [[CIImage imageWithColor:[CIColor colorWithRed:0 green:0 blue:0 alpha:1]]
-      imageByCroppingToRect:canvas];
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-  [_ciContext render:[fitted imageByCompositingOverImage:black]
-      toCVPixelBuffer:destination bounds:canvas colorSpace:colorSpace];
-  CGColorSpaceRelease(colorSpace);
-  BOOL appended = [_adaptor appendPixelBuffer:destination withPresentationTime:relative];
-  CVPixelBufferRelease(destination);
-  if (!appended) { [self fail:_writer.error.localizedDescription ?: @"The H.264 encoder rejected a frame."]; return; }
-  NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:_path error:nil];
-  CMTime videoEnd = CMTimeAdd(relative, CMTimeMake(1, self.fps));
-  CMTime audioClock = CMTimeConvertScale(videoEnd, 48000, kCMTimeRoundingMethod_RoundTowardZero);
-  [self emit:PLVS_VISUAL_RECORDING_TIMELINE value:(uint64_t)MAX(0, audioClock.value) message:@""];
-  [self emit:PLVS_VISUAL_RECORDING_FRAME value:attributes.fileSize message:@""];
-  if (attributes.fileSize >= UINT64_C(2) * 1024 * 1024 * 1024) {
-    if (!_limitSignaled) {
-      _limitSignaled = YES;
-      [self emit:PLVS_VISUAL_RECORDING_SIZE_LIMIT value:0 message:@""];
-      if (!_hasAudio) [self requestStop];
-    }
-  }
+  [self replaceLatestFrame:source];
 }
 
 - (int32_t)appendAudioData:(NSData *)data startFrame:(uint64_t)startFrame {
@@ -460,6 +508,7 @@ enum {
   dispatch_async(_queue, ^{
     if (self.terminal || self.stopping) return;
     self.stopping = YES;
+    [self stopFrameTimer];
     if (self.streamStarted) [self stopStreamAndFinish];
   });
 }

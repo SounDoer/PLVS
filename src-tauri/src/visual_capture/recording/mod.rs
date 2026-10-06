@@ -7,6 +7,7 @@ pub mod windows;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
@@ -162,15 +163,38 @@ impl RecordingController {
     Ok(())
   }
 
-  pub fn insert_session<S>(&self, session: S) -> Result<(), &'static str>
+  pub fn insert_session<S>(&self, session: S, max_duration_seconds: u32) -> Result<(), &'static str>
   where
     S: RecordingSessionControl + 'static,
   {
+    let recording_id = session.recording_id().to_owned();
+    let session: Arc<dyn RecordingSessionControl> = Arc::new(session);
     self
       .sessions
       .lock()
       .map_err(|_| "stateUnavailable")?
-      .insert(session.recording_id().to_owned(), Arc::new(session));
+      .insert(recording_id.clone(), Arc::clone(&session));
+
+    let registry = self.registry.clone();
+    let supervisor_session = Arc::clone(&session);
+    let supervisor_recording_id = recording_id.clone();
+    let spawned = std::thread::Builder::new()
+      .name("visual-recording-deadline".into())
+      .spawn(move || {
+        supervise_deadline(
+          &supervisor_recording_id,
+          max_duration_seconds,
+          &registry,
+          supervisor_session.as_ref(),
+        );
+      });
+    if spawned.is_err() {
+      if let Ok(mut sessions) = self.sessions.lock() {
+        sessions.remove(&recording_id);
+      }
+      session.request_stop(StopReason::CaptureFailure);
+      return Err("stateUnavailable");
+    }
     Ok(())
   }
 
@@ -198,6 +222,40 @@ impl RecordingController {
     {
       std::thread::sleep(std::time::Duration::from_millis(20));
     }
+  }
+}
+
+fn supervise_deadline(
+  recording_id: &str,
+  max_duration_seconds: u32,
+  registry: &RecordingRegistry,
+  session: &dyn RecordingSessionControl,
+) {
+  let deadline = Instant::now() + Duration::from_secs(u64::from(max_duration_seconds));
+  loop {
+    if session.is_finished() {
+      return;
+    }
+    let Some(snapshot) = registry.inspect(recording_id) else {
+      return;
+    };
+    if !matches!(
+      snapshot.state,
+      state::RecordingState::Starting | state::RecordingState::Recording
+    ) {
+      return;
+    }
+    let now = Instant::now();
+    if now >= deadline {
+      registry.request_stop(recording_id, StopReason::DurationLimit);
+      session.request_stop(StopReason::DurationLimit);
+      return;
+    }
+    std::thread::sleep(
+      deadline
+        .saturating_duration_since(now)
+        .min(Duration::from_millis(20)),
+    );
   }
 }
 
@@ -316,13 +374,16 @@ mod tests {
     let geometry_updates = Arc::new(AtomicUsize::new(0));
     let audio_updates = Arc::new(AtomicUsize::new(0));
     controller
-      .insert_session(FakeSession {
-        id: created.recording_id.clone(),
-        stopped: Arc::clone(&stopped),
-        finished: Arc::clone(&finished),
-        geometry_updates: Arc::clone(&geometry_updates),
-        audio_updates: Arc::clone(&audio_updates),
-      })
+      .insert_session(
+        FakeSession {
+          id: created.recording_id.clone(),
+          stopped: Arc::clone(&stopped),
+          finished: Arc::clone(&finished),
+          geometry_updates: Arc::clone(&geometry_updates),
+          audio_updates: Arc::clone(&audio_updates),
+        },
+        60,
+      )
       .unwrap();
 
     controller
@@ -355,5 +416,71 @@ mod tests {
     assert!(stopped.load(Ordering::Acquire));
     assert!(finished.load(Ordering::Acquire));
     controller.shutdown_and_wait(std::time::Duration::from_millis(1));
+  }
+
+  #[test]
+  fn shared_deadline_stops_a_recording_without_waiting_for_platform_frames() {
+    let registry = RecordingRegistry::default();
+    let created = registry
+      .create(
+        640,
+        480,
+        30,
+        1,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
+      .unwrap();
+    registry.mark_recording(&created.recording_id);
+    let stopped = Arc::new(AtomicBool::new(false));
+    let finished = Arc::new(AtomicBool::new(false));
+    let session = FakeSession {
+      id: created.recording_id.clone(),
+      stopped: Arc::clone(&stopped),
+      finished,
+      geometry_updates: Arc::new(AtomicUsize::new(0)),
+      audio_updates: Arc::new(AtomicUsize::new(0)),
+    };
+
+    supervise_deadline(&created.recording_id, 0, &registry, &session);
+
+    assert!(stopped.load(Ordering::Acquire));
+    assert_eq!(
+      registry.inspect(&created.recording_id).unwrap().stop_reason,
+      Some(StopReason::DurationLimit)
+    );
+  }
+
+  #[test]
+  fn shared_deadline_preserves_an_earlier_explicit_stop() {
+    let registry = RecordingRegistry::default();
+    let created = registry
+      .create(
+        640,
+        480,
+        30,
+        1,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
+      .unwrap();
+    registry.mark_recording(&created.recording_id);
+    registry.request_stop(&created.recording_id, StopReason::Explicit);
+    let stopped = Arc::new(AtomicBool::new(false));
+    let session = FakeSession {
+      id: created.recording_id.clone(),
+      stopped: Arc::clone(&stopped),
+      finished: Arc::new(AtomicBool::new(false)),
+      geometry_updates: Arc::new(AtomicUsize::new(0)),
+      audio_updates: Arc::new(AtomicUsize::new(0)),
+    };
+
+    supervise_deadline(&created.recording_id, 0, &registry, &session);
+
+    assert!(!stopped.load(Ordering::Acquire));
+    assert_eq!(
+      registry.inspect(&created.recording_id).unwrap().stop_reason,
+      Some(StopReason::Explicit)
+    );
   }
 }

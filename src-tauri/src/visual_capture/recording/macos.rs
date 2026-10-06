@@ -18,7 +18,6 @@ const START_TIMEOUT: Duration = Duration::from_secs(15);
 const EVENT_STARTED: i32 = 0;
 const EVENT_FRAME: i32 = 1;
 const EVENT_DROPPED: i32 = 2;
-const EVENT_DURATION_LIMIT: i32 = 3;
 const EVENT_SIZE_LIMIT: i32 = 4;
 const EVENT_COMPLETED: i32 = 5;
 const EVENT_FAILED: i32 = 6;
@@ -186,12 +185,6 @@ unsafe extern "C" fn recording_event(
       .registry
       .add_dropped_frames(&context.recording_id, value.max(1)),
     EVENT_TIMELINE => context.audio_target_frames.store(value, Ordering::Release),
-    EVENT_DURATION_LIMIT => {
-      context
-        .registry
-        .request_stop(&context.recording_id, StopReason::DurationLimit);
-      context.stop_requested.store(true, Ordering::Release);
-    }
     EVENT_SIZE_LIMIT => {
       context
         .registry
