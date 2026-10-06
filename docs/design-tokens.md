@@ -49,9 +49,10 @@ contract test in `src/components/ui/themeColorContract.test.js` fails if one app
 does not need a focus style at all: the global ring covers every focusable element, including ones
 whose hover treatment is too faint to mark focus.
 
-`interface.focusRing` supplies `--ring`. It is still hidden from the Advanced editor, so the
-ring follows the Theme's automatic value. Menu and list keyboard highlighting is a background
-change (`focus:bg-ui-hover`) and is unaffected.
+`interface.focusRing` supplies `--ring`. Its automatic value follows the Theme's Interface Accent;
+Theme authors can override it under **Advanced → Interface → Effects → Focus Ring** when the
+automatic ring needs more contrast. Menu and list keyboard highlighting is a background change
+(`focus:bg-ui-hover`) and is unaffected.
 
 ## Annotation Text
 

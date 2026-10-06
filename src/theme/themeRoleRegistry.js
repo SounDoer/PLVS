@@ -219,12 +219,11 @@ const RAW_THEME_ROLE_REGISTRY = [
     recipe: "focus-ring",
     dependencies: ["core.interfaceAccent", "core.surface"],
     bindings: { css: ["--ring"] },
-    // Kept as an import-only compatibility target for themes created before
-    // PLVS removed focus rings. The editor must not offer a no-op control.
-    advanced: {
-      ...colorOverride("Interface", "Focus Color", "Legacy focus-ring compatibility token."),
-      editorVisible: false,
-    },
+    advanced: colorOverride(
+      "Interface",
+      "Focus Ring",
+      "Keyboard focus outline shown during Tab navigation."
+    ),
   }),
   role("interface.shadow", {
     kind: "effect",

@@ -102,6 +102,8 @@ and control outlines, including input fields. It does not change chart Grid or G
 these follow the plot surface by default and retain their per-module Advanced controls. Older
 themes preserve an authored border's appearance against Panel Surface and any inherited Grid
 colours when imported or loaded. Input outlines now share the ordinary Border colour.
+**Advanced → Interface → Effects → Focus Ring** controls the outline shown while navigating with
+Tab. Its Auto value follows Interface Accent; pointer use does not show this outline.
 
 Workspace panels use their surface colour, rounded corners, and spacing without permanent outer
 outlines or lines below their titles. Header, Footer, and the File analysis summary also omit outer

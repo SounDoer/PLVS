@@ -55,7 +55,7 @@ describe("Theme Role Registry", () => {
     expect(getThemeRole("waveform.grid")).toBeNull();
   });
 
-  it("publishes Annotation Text to products while keeping the unused focus token internal", () => {
+  it("publishes Annotation Text and the keyboard focus ring to theme authors", () => {
     expect(getThemeRole("interface.text.annotation")).toMatchObject({
       bindings: { css: ["--ui-text-annotation"] },
       advanced: { label: "Annotation Text" },
@@ -64,8 +64,9 @@ describe("Theme Role Registry", () => {
       "interface.text.annotation",
     ]);
     expect(getThemeRole("interface.focusRing").advanced).toMatchObject({
-      label: "Focus Color",
-      editorVisible: false,
+      section: "Interface",
+      label: "Focus Ring",
+      description: "Keyboard focus outline shown during Tab navigation.",
     });
   });
 
