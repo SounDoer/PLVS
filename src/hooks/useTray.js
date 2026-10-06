@@ -274,7 +274,7 @@ async function buildMenu(cfg) {
 
 /**
  * @param {{
- *   running: any,
+ *   running: boolean,
  *   windowVisible?: boolean,
  *   onStartClick: (...args: any[]) => any,
  *   onToggleWindow: (...args: any[]) => any,

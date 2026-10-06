@@ -5,7 +5,7 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
 /**
  * @param {{
  *   sourceMode: string,
- *   running: any,
+ *   running: boolean,
  *   selectedOffset: number,
  *   setSelectedOffset: (...args: any[]) => any,
  *   setHistoryOffsetSec: (...args: any[]) => any,

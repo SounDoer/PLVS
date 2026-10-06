@@ -314,7 +314,7 @@ export function planPresetUpdate(presets, presetId, snapshot) {
  * @param {any} presets
  * @param {string} presetId
  * @param {any} currentSnapshot
- * @param {{ targetPreset?: any }} [options]
+ * @param {{ targetPreset?: import("../workspace/types.js").Preset }} [options]
  */
 export function planPresetApply(presets, presetId, currentSnapshot, { targetPreset } = {}) {
   const savedPreset = presets.list.find(({ id }) => id === presetId);

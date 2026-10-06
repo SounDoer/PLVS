@@ -194,7 +194,7 @@ export function updatePolarLevelEnvelope(previous, target, elapsedMs, { settled 
 /**
  * @param {any} previous
  * @param {any} envelope
- * @param {{ enabled?: any, reset?: boolean }} [options]
+ * @param {{ enabled?: boolean, reset?: boolean }} [options]
  */
 export function updatePolarMaxHold(previous, envelope, { enabled, reset = false } = {}) {
   if (!enabled) return null;

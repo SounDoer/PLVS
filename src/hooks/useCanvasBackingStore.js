@@ -31,7 +31,7 @@ function backingAxis(cssPx, devicePx, dpr, cap) {
  * is resampled by design, so it always uses the cap.
  * @param {any} box
  * @param {number} dpr
- * @param {{ maxDprX?: any, maxDprY?: any }} [options]
+ * @param {{ maxDprX?: number, maxDprY?: number }} [options]
  */
 export function canvasBackingSize(box, dpr, { maxDprX, maxDprY } = {}) {
   return {

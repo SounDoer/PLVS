@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  *   defaultTip?: string,
  *   confirmLabel?: string,
  *   cancelLabel?: string,
- *   side?: any,
+ *   side?: "top" | "bottom" | "left" | "right",
  *   align?: "start" | "center" | "end",
  *   compact?: boolean,
  *   className?: string,

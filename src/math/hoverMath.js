@@ -368,7 +368,7 @@ export function formatStereoMapEnergy(db) {
  * formatter. `point` is invalid/gated → "-".
  * @param {string} mode
  * @param {any} point
- * @param {{ firstLabel?: any, secondLabel?: any }} [options]
+ * @param {{ firstLabel?: string, secondLabel?: string }} [options]
  */
 export function formatStereoMapValue(mode, point, { firstLabel, secondLabel } = {}) {
   if (!point || point.state === "invalid") return "-";

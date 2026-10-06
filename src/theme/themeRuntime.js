@@ -40,7 +40,7 @@ export function isThemePublication(value) {
   );
 }
 
-/** @param {{ apply?: any }} [options] */
+/** @param {{ apply?: (...args: any[]) => any }} [options] */
 export function createThemeRuntime({ apply = applyResolvedThemeToDocument } = {}) {
   let revision = 0;
   let current = null;

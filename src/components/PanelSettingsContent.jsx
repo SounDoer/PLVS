@@ -81,7 +81,7 @@ export function SettingsGroup({ children }) {
  * @param {{
  *   label: string,
  *   tooltip?: string,
- *   action?: any,
+ *   action?: import("react").ReactNode,
  *   controlAction?: import("react").ReactNode,
  *   children: import("react").ReactNode,
  * }} props
@@ -662,7 +662,7 @@ function SettingsOptionRow({
  * @param {{
  *   label: import("react").ReactNode,
  *   ariaLabel?: string,
- *   options: any,
+ *   options: any[],
  *   value: string,
  *   onChange?: (...args: any[]) => any,
  *   open?: boolean,
@@ -1202,7 +1202,7 @@ const SLOT_WIDGETS = new Set(["custom", "customRow"]);
  * One `openKey` for the whole group rather than a piece of state per select: only one popover can
  * be open at a time anyway, and a per-row flag would have to be declared next to the widget, which
  * is exactly the second list this is removing.
- * @param {{ tab: string, controls: import("../workspace/types.js").PanelControls, onChange: (...args: any[]) => any, slots?: any }} props
+ * @param {{ tab: string, controls: import("../workspace/types.js").PanelControls, onChange: (...args: any[]) => any, slots?: Record<string, import("react").ReactNode> }} props
  */
 function PanelControlRows({ tab, controls, onChange, slots = {} }) {
   const [openKey, setOpenKey] = useState(null);

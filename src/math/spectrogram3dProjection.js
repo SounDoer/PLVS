@@ -48,7 +48,7 @@ function finiteOr(raw, fallback) {
  * 90 it degenerates into a skewed top-down view that is strictly worse than the 2D mode. The upper
  * bound is deliberately well above the default so the useful range is reachable in both directions.
  * Azimuth wraps rather than clamping, because spinning past 360 is a legitimate drag.
- * @param {{ azimuthDeg?: number, elevationDeg?: number, heightGain?: any }} [options]
+ * @param {{ azimuthDeg?: number, elevationDeg?: number, heightGain?: number }} [options]
  */
 export function clampViewParams({ azimuthDeg, elevationDeg, heightGain } = {}) {
   const rawAzimuth = finiteOr(azimuthDeg, DEFAULT_AZIMUTH_DEG);

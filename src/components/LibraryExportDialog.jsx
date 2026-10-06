@@ -28,8 +28,8 @@ function itemCountLabel(count) {
  * Chooses one Library kind, then delegates its item selection to the existing picker.
  * @param {{
  *   open: boolean,
- *   itemsByType?: any,
- *   dependenciesByType?: any,
+ *   itemsByType?: Record<string, any[]>,
+ *   dependenciesByType?: Record<string, any[]>,
  *   onExport?: (...args: any[]) => any,
  *   onClose?: (...args: any[]) => any,
  * }} props

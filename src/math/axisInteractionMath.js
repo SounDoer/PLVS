@@ -131,7 +131,7 @@ export const FREQUENCY_VIEWPORT = { absMin: 20, absMax: 20000, minSpan: 1, scale
 // pixelTo*Value measures its fraction from the far end.
 /**
  * @param {{
- *   rect: any,
+ *   rect: DOMRect,
  *   clientX?: number,
  *   clientY?: number,
  *   axis: string,

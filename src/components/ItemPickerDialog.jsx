@@ -76,7 +76,7 @@ function AlsoIncluded({ children }) {
  * @param {{
  *   open: boolean,
  *   mode: string,
- *   type: any,
+ *   type: string,
  *   items?: any[],
  *   dependencies?: any[],
  *   review?: any,

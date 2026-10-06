@@ -104,7 +104,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
 
   const clearAudioDrop = () => setAudioDrop(null);
 
-  /** @param {{ resolvedDeviceId?: any }} [options] */
+  /** @param {{ resolvedDeviceId?: string }} [options] */
   const markStarted = ({ resolvedDeviceId: nextDeviceId = null } = {}) => {
     setResolvedDeviceId(nextDeviceId);
     setStartedAt(Date.now());

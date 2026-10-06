@@ -51,7 +51,7 @@ const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
  *   histMaxSamples: number,
  *   visualMaxSamples: number,
  *   audioRef: { current: any },
- *   intake: any,
+ *   intake: import("../lib/FrameIntake.js").FrameIntake,
  *   channelRolesRef: { current: any },
  *   dialogueGatingRef: { current: any },
  *   dialogueVadEngineRef: { current: any },

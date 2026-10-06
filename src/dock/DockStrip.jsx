@@ -10,7 +10,7 @@ import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
 /** The resizable meter strip. Accessory chrome lives in sibling windows. */
 /**
  * @param {{
- *   panels?: any,
+ *   panels?: any[],
  *   controls: import("./dockModuleControls.js").DockStripControls,
  *   hoveredPanelId?: string,
  *   edge?: string,

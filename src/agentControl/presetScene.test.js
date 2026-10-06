@@ -1,3 +1,4 @@
+import { standIn } from "../testing/standIn.js";
 import { describe, expect, it } from "vitest";
 import {
   planPresetApply,
@@ -106,7 +107,9 @@ describe("Preset scene capture planning", () => {
 
   it("plans scene changes against an effective runtime-adapted target without rewriting the library", () => {
     const adapted = { ...current.list[0], windowPinned: true };
-    const planned = planPresetApply(current, "preset-1", snapshot, { targetPreset: adapted });
+    const planned = planPresetApply(current, "preset-1", snapshot, {
+      targetPreset: standIn(adapted),
+    });
 
     expect(planned.changed).toEqual(["window"]);
     expect(planned.applyScene).toBe(true);

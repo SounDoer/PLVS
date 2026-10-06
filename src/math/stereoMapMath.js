@@ -27,7 +27,7 @@ function validateMode(mode) {
   }
 }
 
-/** @param {{ lowerBound?: any, upperBound?: any }} [options] */
+/** @param {{ lowerBound?: number, upperBound?: number }} [options] */
 function validateRange({ lowerBound, upperBound } = {}) {
   if (!Number.isFinite(lowerBound) || !Number.isFinite(upperBound)) {
     throw new TypeError("Stereo Map range bounds must be finite numbers");
