@@ -19,7 +19,7 @@ import {
   HIST_SAMPLE_SEC,
   VISUAL_HIST_SAMPLE_SEC,
 } from "./hooks/useLoudnessHistory.js";
-import { useSettings } from "./hooks/useSettings";
+import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
@@ -231,7 +231,9 @@ export default function App() {
         <BlockingEditorsProvider>
           <UiNavigationProvider>
             <LoudnessProfileProvider>
-              <AppContent />
+              <SettingsProvider>
+                <AppContent />
+              </SettingsProvider>
             </LoudnessProfileProvider>
           </UiNavigationProvider>
         </BlockingEditorsProvider>
@@ -318,10 +320,10 @@ function AppContent() {
     removeFile,
     clearFiles,
   } = meterRuntime;
-  const onClearRef = useRef(null);
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
   const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
-  const settings = useSettings({ onClearRef });
+  const settings = useAppSettings();
+  const { onClearRef, windowPinned: pinned, setWindowPinned: setPinnedStored } = settings;
   const packTransfer = usePackTransfer();
   // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
   // those overlays with the strip at boot; keeping discovery here lets App restore the main window
@@ -455,7 +457,7 @@ function AppContent() {
   // Suspended while docked: a preset apply may flip the stored pin to false
   // while the strip must stay topmost; when docked flips false the effect
   // re-asserts the user's value.
-  const { pinned, setPinned: setPinnedStored } = useAlwaysOnTop({ suspended: docked });
+  useAlwaysOnTop(pinned, { suspended: docked });
   // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
   // when docked flips false the effect re-runs and re-asserts the user's values.
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
@@ -1545,6 +1547,7 @@ function AppContent() {
     [
       agentControlSettings,
       channelRoles,
+      onClearRef,
       setDialogueVadEngineForControl,
       setChannelRolesForControl,
       settings,
