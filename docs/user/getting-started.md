@@ -7,11 +7,11 @@ Install PLVS and get through the first launch.
 Download the package for your platform from
 [GitHub Releases](https://github.com/SounDoer/PLVS/releases).
 
-| Platform              | Package                            | Notes                                        |
-| --------------------- | ---------------------------------- | -------------------------------------------- |
-| Windows 10/11 (x64)   | `PLVS_<version>_x64-setup.exe`     | Installer                                    |
-| Windows 10/11 (x64)   | `PLVS-v<version>-x64-portable.zip` | Portable, no installation                    |
-| macOS (Apple Silicon) | `PLVS-v<version>-aarch64.dmg`      | Requires macOS 14.2 or later                 |
+| Platform              | Package                            | Notes                        |
+| --------------------- | ---------------------------------- | ---------------------------- |
+| Windows 10/11 (x64)   | `PLVS_<version>_x64-setup.exe`     | Installer                    |
+| Windows 10/11 (x64)   | `PLVS-v<version>-x64-portable.zip` | Portable, no installation    |
+| macOS (Apple Silicon) | `PLVS-v<version>-aarch64.dmg`      | Requires macOS 14.2 or later |
 
 ## Windows
 
@@ -23,14 +23,10 @@ PLVS isn't code-signed yet, so Windows SmartScreen may warn on first run — cho
 
 ## macOS
 
-Open the DMG and drag PLVS into Applications. The build isn't notarized, so Gatekeeper blocks the
-first launch. Remove the quarantine attribute once:
-
-```bash
-xattr -cr /Applications/PLVS.app
-```
-
-Alternatively, move PLVS.app to the Trash and immediately move it back.
+Open the DMG and drag PLVS into Applications. Official macOS builds are signed with the PLVS
+Developer ID and notarized by Apple, so Gatekeeper can verify them normally. If Gatekeeper reports
+that an official download is damaged or cannot be verified, delete it and download the DMG again
+from the PLVS GitHub Releases page instead of bypassing the warning.
 
 ## First launch
 

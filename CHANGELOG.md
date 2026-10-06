@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- macOS release and private upgrade-candidate packages are now Developer ID signed, Apple-notarized,
+  stapled, and verified with Gatekeeper before publication.
+
 ## [0.18.2] - 2026-10-04
 
 ### Fixed

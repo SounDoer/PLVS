@@ -38,9 +38,9 @@ No. PLVS is a standalone desktop app only.
 
 ## Why does my OS warn me when I first open PLVS?
 
-PLVS builds aren't code-signed (Windows) or notarized (macOS) yet, so SmartScreen and Gatekeeper show
-their standard first-run warnings. See [Getting Started](getting-started.md) for how to get past
-them.
+Windows builds aren't code-signed yet, so SmartScreen may show its standard first-run warning.
+Official macOS builds are Developer ID signed and Apple-notarized; Gatekeeper should accept an
+unaltered download. See [Getting Started](getting-started.md) for installation details.
 
 ## Does PLVS send my audio anywhere?
 

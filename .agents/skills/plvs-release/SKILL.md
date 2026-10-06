@@ -574,10 +574,10 @@ cannot cover:
 
 ### Build Matrix
 
-| Platform | Runner           | Artifacts                          |
-| -------- | ---------------- | ---------------------------------- |
-| Windows  | `windows-latest` | NSIS installer, portable ZIP       |
-| macOS    | `macos-latest`   | DMG, `.app.tar.gz` updater payload |
+| Platform | Runner           | Artifacts                                                                  |
+| -------- | ---------------- | -------------------------------------------------------------------------- |
+| Windows  | `windows-latest` | NSIS installer, portable ZIP                                               |
+| macOS    | `macos-latest`   | Developer ID signed and Apple-notarized DMG, `.app.tar.gz` updater payload |
 
 ### Draft Assembly and Publication
 
@@ -764,7 +764,10 @@ File-mode decoding uses bundled FFmpeg `ffmpeg`/`ffprobe` sidecars. They are **n
 
 ## Important Notes
 
-- **No code signing**: Users may see SmartScreen (Windows) or Gatekeeper (macOS) warnings
+- **Platform signing**: Windows packages are not code-signed yet, so users may see SmartScreen.
+  macOS packages are signed with Developer ID, notarized with Apple, stapled, and checked with
+  Gatekeeper before staging. The Tauri updater signature remains separate and authenticates updater
+  payload bytes.
 - **Auto-update is active**: `src-tauri/src/lib.rs` registers
   `tauri_plugin_updater` unconditionally, and `tauri.conf.json`'s `plugins.updater`
   points it at `releases/latest/download/latest.json`, so a shipped tag reaches

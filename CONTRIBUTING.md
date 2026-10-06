@@ -159,6 +159,19 @@ npm run desktop:preview-nsis
 npm run desktop:verify-windows-preview-installer
 ```
 
+Official macOS Release and private upgrade-candidate workflows import Developer ID credentials into
+an ephemeral runner keychain, let Tauri sign and notarize the app, then separately notarize and
+staple the final DMG before smoke testing it. They require these repository Actions secrets:
+
+- `APPLE_CERTIFICATE` — base64-encoded Developer ID Application `.p12`;
+- `APPLE_CERTIFICATE_PASSWORD` — the `.p12` export password;
+- `APPLE_API_PRIVATE_KEY_BASE64` — base64-encoded App Store Connect API `.p8`;
+- `APPLE_API_ISSUER` and `APPLE_API_KEY` — the API issuer and key identifiers.
+
+The Tauri updater signing secrets remain separate. Never commit Apple certificate or API private-key
+files. A local signed build can use the installed Keychain identity plus Tauri's documented
+`APPLE_SIGNING_IDENTITY`, `APPLE_API_ISSUER`, `APPLE_API_KEY`, and `APPLE_API_KEY_PATH` variables.
+
 Windows release build (matching CI `release.yml`: NSIS installer + Portable ZIP):
 
 ```bash

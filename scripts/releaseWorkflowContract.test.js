@@ -28,6 +28,8 @@ const windowsInstallerSmoke = readFileSync(
   "utf8"
 );
 const macosDmgSmoke = readFileSync(join(cwd(), "scripts", "verify-macos-dmg.sh"), "utf8");
+const macosSigningSetup = readFileSync(join(cwd(), "scripts", "prepare-macos-signing.sh"), "utf8");
+const macosDmgNotarization = readFileSync(join(cwd(), "scripts", "notarize-macos-dmg.sh"), "utf8");
 const bumpVersionScript = readFileSync(join(cwd(), "scripts", "bump-version.mjs"), "utf8");
 
 describe("CLI packaging", () => {
@@ -97,6 +99,50 @@ describe("Bundled license materials", () => {
     expect(windowsInstallerSmoke).toContain("$installRoot");
     expect(macosDmgSmoke).toContain('"$app/Contents/Resources"');
     expect(macosDmgSmoke).toContain("verify-license-assets.mjs");
+  });
+});
+
+describe("macOS Developer ID distribution", () => {
+  it("imports revocable signing credentials into an ephemeral CI keychain", () => {
+    for (const secret of [
+      "APPLE_CERTIFICATE",
+      "APPLE_CERTIFICATE_PASSWORD",
+      "APPLE_API_PRIVATE_KEY_BASE64",
+      "APPLE_API_ISSUER",
+      "APPLE_API_KEY",
+    ]) {
+      expect(releaseWorkflow).toContain(`secrets.${secret}`);
+      expect(upgradeCandidateWorkflow).toContain(`secrets.${secret}`);
+    }
+    expect(macosSigningSetup).toContain("security create-keychain");
+    expect(macosSigningSetup).toContain("security set-key-partition-list");
+    expect(macosSigningSetup).toContain("APPLE_SIGNING_IDENTITY");
+    expect(macosSigningSetup).toContain(
+      "f16cd3c54c7f83cea4bf1a3e6a0819c8aaa8e4a1528fd144715f350643d2df3a"
+    );
+  });
+
+  it("notarizes the final DMG before package smoke testing", () => {
+    for (const workflow of [releaseWorkflow, upgradeCandidateWorkflow]) {
+      expect(workflow).toContain("bash scripts/prepare-macos-signing.sh");
+      expect(workflow).toContain("bash scripts/notarize-macos-dmg.sh");
+      expect(workflow.indexOf("npm run desktop:release-dmg")).toBeLessThan(
+        workflow.indexOf("bash scripts/notarize-macos-dmg.sh")
+      );
+      expect(workflow.indexOf("bash scripts/notarize-macos-dmg.sh")).toBeLessThan(
+        workflow.indexOf("npm run desktop:verify-macos-dmg")
+      );
+    }
+    expect(macosDmgNotarization).toContain("xcrun notarytool submit");
+    expect(macosDmgNotarization).toContain("xcrun stapler staple");
+    expect(macosDmgNotarization).toContain("context:primary-signature");
+  });
+
+  it("verifies the notarized DMG, mounted app, and updater app", () => {
+    expect(macosDmgSmoke).toContain('xcrun stapler validate "$dmg"');
+    expect(macosDmgSmoke).toContain('xcrun stapler validate "$app"');
+    expect(macosDmgSmoke).toContain('xcrun stapler validate "$updater_app"');
+    expect(macosDmgSmoke).toContain('spctl --assess --type execute --verbose=4 "$updater_app"');
   });
 });
 
@@ -178,9 +224,7 @@ describe("Immutable Windows Preview Build", () => {
   });
 
   it("installs the Linux system dependencies required by the repository gate", () => {
-    expect(previewBuildWorkflow).toContain(
-      "Install Linux dependencies (Tauri / WebKit / audio)"
-    );
+    expect(previewBuildWorkflow).toContain("Install Linux dependencies (Tauri / WebKit / audio)");
     for (const dependency of [
       "libasound2-dev",
       "libwebkit2gtk-4.1-dev",

@@ -192,6 +192,8 @@ jobs:
     needs: validate
     runs-on: macos-latest
     env:
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
       TAG: v${{ inputs.version }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -216,11 +218,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare Apple signing credentials
+        env:
+          APPLE_API_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_API_PRIVATE_KEY_BASE64 }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: bash scripts/prepare-macos-signing.sh
+
       - name: Smoke test file analysis with FFmpeg sidecars
         run: npm run smoke:file-analysis
 
       - name: Build Tauri bundle (DMG)
         run: npm run desktop:release-dmg
+
+      - name: Notarize and staple final macOS DMG
+        run: bash scripts/notarize-macos-dmg.sh
 
       - name: Smoke test macOS DMG
         run: npm run desktop:verify-macos-dmg

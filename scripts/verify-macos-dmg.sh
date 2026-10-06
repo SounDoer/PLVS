@@ -12,13 +12,19 @@ fi
 
 mount_point="$(mktemp -d "${TMPDIR:-/tmp}/plvs-dmg-smoke.XXXXXX")"
 doctor_output="$(mktemp "${TMPDIR:-/tmp}/plvs-cli-doctor.XXXXXX.json")"
+updater_dir="$(mktemp -d "${TMPDIR:-/tmp}/plvs-updater-smoke.XXXXXX")"
 
 cleanup() {
   hdiutil detach "$mount_point" -quiet >/dev/null 2>&1 || true
   rm -rf "$mount_point"
+  rm -rf "$updater_dir"
   rm -f "$doctor_output"
 }
 trap cleanup EXIT
+
+codesign --verify --strict --verbose=2 "$dmg"
+xcrun stapler validate "$dmg"
+spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
 
 hdiutil attach "$dmg" -mountpoint "$mount_point" -nobrowse -quiet
 
@@ -27,6 +33,10 @@ if [[ -z "${app:-}" ]]; then
   echo "No .app bundle found in DMG $dmg" >&2
   exit 1
 fi
+
+codesign --verify --deep --strict --verbose=2 "$app"
+xcrun stapler validate "$app"
+spctl --assess --type execute --verbose=4 "$app"
 
 main_binary="$app/Contents/MacOS/plvs"
 if [[ ! -x "$main_binary" ]]; then
@@ -92,5 +102,21 @@ if (
   process.exit(1);
 }
 NODE
+
+updater_tarball="$(find "$repo_root/src-tauri/target/release/bundle/macos" \
+  -maxdepth 1 -name '*.app.tar.gz' -print -quit)"
+if [[ -z "${updater_tarball:-}" || ! -s "$updater_tarball.sig" ]]; then
+  echo "Missing macOS updater payload or Tauri signature" >&2
+  exit 1
+fi
+tar -xzf "$updater_tarball" -C "$updater_dir"
+updater_app="$(find "$updater_dir" -maxdepth 1 -name '*.app' -print -quit)"
+if [[ -z "${updater_app:-}" ]]; then
+  echo "No .app bundle found in updater payload $updater_tarball" >&2
+  exit 1
+fi
+codesign --verify --deep --strict --verbose=2 "$updater_app"
+xcrun stapler validate "$updater_app"
+spctl --assess --type execute --verbose=4 "$updater_app"
 
 echo "macOS DMG smoke check passed: $dmg"
