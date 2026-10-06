@@ -1,5 +1,8 @@
 import { normalizePanelControls } from "../lib/panelControls.js";
 
+/**
+ * @param {string} moduleId
+ */
 export function readPublicPanelControls(moduleId, panelControls, context = {}) {
   const controls = normalizePanelControls(panelControls);
 

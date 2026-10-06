@@ -260,6 +260,9 @@ export const PANEL_HELP_BY_MODULE_ID = {
   "stereo-map": resolveStereoMapHelp,
 };
 
+/**
+ * @param {string} moduleId
+ */
 export function resolvePanelHelpItems(moduleId, controls) {
   const help = PANEL_HELP_BY_MODULE_ID[moduleId];
   return typeof help === "function" ? help(controls) : (help ?? null);

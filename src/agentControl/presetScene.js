@@ -1,6 +1,11 @@
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 import { deriveClampedPanelControls } from "../workspace/clampPanelControls.js";
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
@@ -24,6 +29,9 @@ function groupChanged(target, current, keys) {
   return keys.some((key) => JSON.stringify(target[key]) !== JSON.stringify(current[key]));
 }
 
+/**
+ * @param {string} selection
+ */
 function savedProfileId(selection) {
   return typeof selection === "string" && selection.startsWith("profile:")
     ? selection.slice("profile:".length)
@@ -215,6 +223,9 @@ export function planPresetApplyResources(preset, context = {}) {
   return { preset: effectivePreset, issues, warnings };
 }
 
+/**
+ * @param {string} name
+ */
 export function planPresetSave(presets, name, snapshot, allocatedId = null) {
   if (typeof name !== "string" || name.trim() === "") {
     return {
@@ -255,6 +266,9 @@ export function planPresetSave(presets, name, snapshot, allocatedId = null) {
   };
 }
 
+/**
+ * @param {string} presetId
+ */
 export function planPresetUpdate(presets, presetId, snapshot) {
   const existing = presets.list.find(({ id }) => id === presetId);
   if (!existing) {

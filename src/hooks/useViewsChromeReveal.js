@@ -46,7 +46,7 @@ export function useViewsChromeReveal({ autoHideControls, frameless }) {
     }
   }, [controlsVisible, hideControlsNow, showControls]);
 
-  const holdControls = useCallback((open) => {
+  const holdControls = useCallback((/** @type {boolean} */ open) => {
     popoverHeldRef.current = open;
     if (open) {
       window.clearTimeout(hideTimerRef.current);

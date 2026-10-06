@@ -1,6 +1,9 @@
 export const MAX_PUBLIC_DEVICE_ROWS = 256;
 export const MAX_PUBLIC_DEVICE_LABEL_SCALARS = 512;
 
+/**
+ * @param {string} value
+ */
 function boundedLabel(value) {
   const label = typeof value === "string" && value.trim() ? value.trim() : "Unknown device";
   return Array.from(label).slice(0, MAX_PUBLIC_DEVICE_LABEL_SCALARS).join("");
@@ -141,6 +144,11 @@ export function buildDeviceInspection(snapshot, live = {}) {
   };
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message, details) {
   return { code, path, message, ...(details ? { details } : {}) };
 }

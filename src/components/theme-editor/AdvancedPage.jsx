@@ -31,6 +31,9 @@ const SECTION_ORDER = [
 
 const INTERFACE_GROUPS = ["Surfaces", "Text & Icons", "Feedback", "Contrast", "Effects"];
 
+/**
+ * @param {string} roleId
+ */
 function interfaceGroup(roleId) {
   if (roleId.startsWith("interface.surface.")) return "Surfaces";
   if (roleId.startsWith("interface.text.")) return "Text & Icons";

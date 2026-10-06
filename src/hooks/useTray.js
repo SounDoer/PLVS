@@ -18,6 +18,9 @@ import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 import { issueInstanceCommand, quitAllInstances } from "../runtime/coordination.js";
 
 // The dark icon is a white glyph for a dark surface; the light icon is a black glyph.
+/**
+ * @param {string} scheme
+ */
 async function loadTrayIcon(scheme) {
   const iconName = scheme === "light" ? "icons/tray-light.png" : "icons/tray-dark.png";
   return Image.fromPath(await resolveResource(iconName));
@@ -25,6 +28,9 @@ async function loadTrayIcon(scheme) {
 
 // formatAudioDeviceLabel returns { primary, secondary, full }; a menu item's
 // text must be a single string. Reconstruct the picker's compact form.
+/**
+ * @param {string} label
+ */
 function menuDeviceText(label) {
   const { primary, secondary } = formatAudioDeviceLabel(label);
   return secondary ? `${primary} (${secondary})` : primary;

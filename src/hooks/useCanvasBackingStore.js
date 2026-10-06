@@ -4,10 +4,17 @@ import { watchDevicePixelRatio } from "../lib/devicePixelRatioWatch.js";
 
 const EMPTY_BACKING_SIZE = Object.freeze({ dpr: 1, width: 0, height: 0 });
 
+/**
+ * @param {number} dpr
+ */
 function cappedScale(dpr, cap) {
   return Number.isFinite(cap) && cap > 0 ? Math.min(dpr, cap) : dpr;
 }
 
+/**
+ * @param {number} cssPx
+ * @param {number} dpr
+ */
 function backingAxis(cssPx, devicePx, dpr, cap) {
   const scale = cappedScale(dpr, cap);
   if (scale === dpr && Number.isFinite(devicePx)) return devicePx;

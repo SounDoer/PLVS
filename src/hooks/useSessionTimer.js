@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 
+/**
+ * @param {number} ms
+ */
 export function formatClock(ms) {
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
@@ -33,7 +36,7 @@ export function useSessionTimer() {
   }, []);
 
   useEffect(() => {
-    loopRef.current = (now) => {
+    loopRef.current = (/** @type {number} */ now) => {
       rafIdRef.current = requestAnimationFrame(loopRef.current);
       if (now - lastTickMsRef.current < 100) return; // ~10 Hz throttle
       lastTickMsRef.current = now;

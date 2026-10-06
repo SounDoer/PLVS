@@ -40,7 +40,7 @@ export function useFileSessionLedger() {
       ? fileRunRequest
       : null;
 
-  const updateSession = useCallback((sessionId, updater) => {
+  const updateSession = useCallback((/** @type {string} */ sessionId, updater) => {
     setFileHistory((history) => updateFileEntry(history, sessionId, updater));
   }, []);
 
@@ -79,7 +79,7 @@ export function useFileSessionLedger() {
   }, []);
 
   /** Re-analyze an existing entry with fresh settings. */
-  const rerun = useCallback((entryId, path, analysisSettings) => {
+  const rerun = useCallback((/** @type {string} */ entryId, path, analysisSettings) => {
     const runId = fileEntrySeqRef.current + 1;
     fileEntrySeqRef.current = runId;
     setFileHistory((history) => startFileAnalysisEntry(history, entryId, { analysisSettings }));
@@ -87,7 +87,7 @@ export function useFileSessionLedger() {
   }, []);
 
   /** Record that `sessionId`'s run stopped: entry back to ready, no analyzing id, no run request. */
-  const markStopped = useCallback((sessionId) => {
+  const markStopped = useCallback((/** @type {string} */ sessionId) => {
     setFileRunRequest(null);
     setFileHistory((history) => {
       if (history.analyzingFileId !== sessionId) return history;
@@ -100,11 +100,11 @@ export function useFileSessionLedger() {
     });
   }, []);
 
-  const select = useCallback((id) => {
+  const select = useCallback((/** @type {string} */ id) => {
     setFileHistory((history) => selectFileEntry(history, id));
   }, []);
 
-  const remove = useCallback((id) => {
+  const remove = useCallback((/** @type {string} */ id) => {
     setFileHistory((history) => removeFileEntry(history, id));
   }, []);
 

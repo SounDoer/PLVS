@@ -11,6 +11,9 @@ import {
 export function useInterfaceSizeSetting() {
   const [interfaceSize, setInterfaceSizeState] = useState(readPersistedInterfaceSize);
 
+  /**
+   * @param {string} value
+   */
   function setInterfaceSize(value) {
     const next = normalizeInterfaceSize(value);
     settingsStore.patch({ interfaceSize: next });

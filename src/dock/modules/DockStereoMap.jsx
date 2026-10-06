@@ -5,6 +5,9 @@ import { StereoMapPlot } from "../../components/panels/StereoMapPlot.jsx";
 import { dockStereoMapKey } from "../dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "../dockModuleControls.js";
 
+/**
+ * @param {string} mode
+ */
 function rangeForMode(mode, controls) {
   if (mode === STEREO_MAP_MODES.MONO_LOSS_DB) {
     return { lowerBound: controls.stereoMapMonoLossYMinDb, upperBound: 0 };

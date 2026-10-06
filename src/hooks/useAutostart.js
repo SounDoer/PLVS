@@ -29,6 +29,9 @@ async function savePreference(enabled) {
   };
 }
 
+/**
+ * @param {boolean} enabled
+ */
 async function applyNativePreference(enabled) {
   const current = await invoke("plugin:autostart|is_enabled");
   if (current !== enabled) {

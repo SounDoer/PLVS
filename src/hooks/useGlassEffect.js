@@ -2,6 +2,10 @@ import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../ipc/env.js";
 
+/**
+ * @param {boolean} enabled
+ * @param {boolean} dark
+ */
 export async function setGlassEffect(enabled, dark) {
   if (!isTauri()) return false;
   await invoke("set_glass_effect", {

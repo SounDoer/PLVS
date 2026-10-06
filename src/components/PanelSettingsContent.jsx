@@ -150,6 +150,10 @@ export function SettingsSwitch(props) {
   );
 }
 
+/**
+ * @param {number} min
+ * @param {number} max
+ */
 function rangePercent(value, min, max) {
   const span = max - min;
   if (!Number.isFinite(value) || !Number.isFinite(span) || span <= 0) return 0;
@@ -192,7 +196,7 @@ export function SettingsSlider({
     onCommit(next);
   };
 
-  const handleChange = (nextValue) => {
+  const handleChange = (/** @type {string} */ nextValue) => {
     const next = Number(nextValue);
     setDraftValue(next);
     if (!commitOnRelease) onCommit(next);
@@ -457,7 +461,7 @@ export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suff
   }, [value]);
 
   const restore = () => setDraft(formatDraftValue(value));
-  const commit = (nextDraft) => {
+  const commit = (/** @type {string} */ nextDraft) => {
     const parsed = Number(nextDraft);
     const nextValue = Math.round(parsed / step) * step;
     if (
@@ -569,7 +573,7 @@ export function WaveformSettingsRows({
               min={20}
               max={20000}
               suffix="Hz"
-              onCommit={(nextValue) =>
+              onCommit={(/** @type {number} */ nextValue) =>
                 nextValue < midHighSplitHz ? onLowMidSplitChange(nextValue) : false
               }
             />
@@ -581,7 +585,7 @@ export function WaveformSettingsRows({
               min={20}
               max={20000}
               suffix="Hz"
-              onCommit={(nextValue) =>
+              onCommit={(/** @type {number} */ nextValue) =>
                 nextValue > lowMidSplitHz ? onMidHighSplitChange(nextValue) : false
               }
             />
@@ -1115,7 +1119,7 @@ export function SpectrumDisplaySettingsRows({
               max={100}
               step={1}
               value={speedPercent}
-              formatValue={(value) => `${value.toFixed(0)}%`}
+              formatValue={(/** @type {number} */ value) => `${value.toFixed(0)}%`}
               onCommit={onSpeedChange}
               commitOnRelease
             />
@@ -1127,7 +1131,7 @@ export function SpectrumDisplaySettingsRows({
               max={6}
               step={0.25}
               value={tiltDbPerOctave}
-              formatValue={(value) => `${value.toFixed(2)} dB/oct`}
+              formatValue={(/** @type {number} */ value) => `${value.toFixed(2)} dB/oct`}
               onCommit={onTiltChange}
             />
           </SettingsRow>
@@ -1849,7 +1853,7 @@ export function PanelSettingsContent({
               max={1000}
               step={50}
               value={normalizedPanelControls.vectorscopePolarSamplePersistenceMs}
-              formatValue={(value) => `${value.toFixed(0)} ms`}
+              formatValue={(/** @type {number} */ value) => `${value.toFixed(0)} ms`}
               onCommit={(vectorscopePolarSamplePersistenceMs) => {
                 onPanelControlsChange(
                   normalizePanelControls({

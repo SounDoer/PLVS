@@ -18,6 +18,7 @@ const TIMELINE_MODULE_IDS = new Set(["loudness", "spectrogram", "waveform"]);
  * Adds the viewport-derived data, interaction handlers and HUD lifecycle owned by one timeline
  * panel mount. The raw viewport still comes from the global history model until the time axis kind
  * is introduced; keeping this boundary local means that change only has to replace the input.
+ * @param {string} moduleId
  */
 export function usePanelHistoryData(moduleId, axisViewportData = null) {
   const historyData = useHistoryData();
@@ -31,7 +32,7 @@ export function usePanelHistoryData(moduleId, axisViewportData = null) {
   const [isHudTimerActive, setIsHudTimerActive] = useState(false);
   const hudUntilTsRef = useRef(0);
 
-  const setHistoryHudUntilTs = useCallback((ts) => {
+  const setHistoryHudUntilTs = useCallback((/** @type {number} */ ts) => {
     hudUntilTsRef.current = ts;
     setIsHudTimerActive(ts > Date.now());
   }, []);

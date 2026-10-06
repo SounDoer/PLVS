@@ -5,10 +5,19 @@ import { readPublicPanelControls } from "./panelControls.js";
 
 const smoothingOptions = ["off", "1/12", "1/6", "1/3"];
 
+/**
+ * @param {string} type
+ * @param {string} title
+ * @param {string} description
+ */
 function field(type, title, description, additions = {}) {
   return { type, title, description, ...additions };
 }
 
+/**
+ * @param {boolean} [effective]
+ * @param {string} [inactiveReason]
+ */
 function active(schema, effective, inactiveReason) {
   return {
     ...schema,
@@ -17,6 +26,13 @@ function active(schema, effective, inactiveReason) {
   };
 }
 
+/**
+ * @param {string} title
+ * @param {string} unit
+ * @param {number} minimum
+ * @param {number} maximum
+ * @param {number} minimumSpan
+ */
 function range(title, unit, defaultValue, minimum, maximum, minimumSpan, additions = {}) {
   return field("object", title, `Stored ${title.toLowerCase()} minimum and maximum.`, {
     unit,
@@ -35,8 +51,11 @@ function range(title, unit, defaultValue, minimum, maximum, minimumSpan, additio
   });
 }
 
+/**
+ * @param {string} title
+ */
 function thresholds(title, defaultValue) {
-  const bound = (name, description) =>
+  const bound = (/** @type {string} */ name, /** @type {string} */ description) =>
     field("integer", name, description, { minimum: -60, maximum: 3 });
   return field("object", title, "Levels where the Level Zones bar turns warning and critical.", {
     unit: "dBFS",
@@ -102,6 +121,9 @@ function root(properties, additions = {}) {
  * @typedef {{ position: boolean, correlation: boolean, monoLossDb: boolean, msRatioDb: boolean }} StereoMapGridDefaults
  */
 
+/**
+ * @param {string} moduleId
+ */
 export function buildPublicPanelControlSchema(moduleId, panelControls, context = {}) {
   const controls = normalizePanelControls(panelControls);
   const defaults = readPublicPanelControls(moduleId, DEFAULT_PANEL_CONTROLS, context);
@@ -110,7 +132,7 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
     const loudnessMode =
       controls.levelMeterMode === "momentary" || controls.levelMeterMode === "shortTerm";
     const levelZones = controls.levelMeterBarColors === "levelZones";
-    const thresholdsReason = (mode, modeReason) =>
+    const thresholdsReason = (/** @type {string} */ mode, /** @type {string} */ modeReason) =>
       controls.levelMeterMode !== mode ? modeReason : "gradientBarColors";
     return root({
       mode: field("string", "Mode", "Measurement displayed by the meter.", {
@@ -261,7 +283,12 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
   }
 
   if (moduleId === "stats") {
-    const array = (title, description, defaultValue, constraints = []) =>
+    const array = (
+      /** @type {string} */ title,
+      /** @type {string} */ description,
+      /** @type {string[]} */ defaultValue,
+      constraints = []
+    ) =>
       field("array", title, description, {
         default: defaultValue,
         patchMode: "replace",
@@ -349,8 +376,12 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
   if (moduleId === "spectrogram") {
     const channelTopology = topology(context);
     const threeD = controls.spectrogramMode !== "heatmap";
-    const threeDField = (type, title, description, additions) =>
-      active(field(type, title, description, additions), threeD, "heatmapMode");
+    const threeDField = (
+      /** @type {string} */ type,
+      /** @type {string} */ title,
+      /** @type {string} */ description,
+      additions
+    ) => active(field(type, title, description, additions), threeD, "heatmapMode");
     return root(
       {
         channel: channelSchema(defaults.channel, context),

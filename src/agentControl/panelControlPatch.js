@@ -4,7 +4,8 @@ import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 import { AXIS_VIEWPORTS, axisKindsForModule } from "../workspace/axisViewports.js";
 import { readPublicPanelControls } from "./panelControls.js";
 
-const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+const hasOwn = (value, /** @type {string} */ key) =>
+  Object.prototype.hasOwnProperty.call(value, key);
 const arraysEqual = (left, right) =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
@@ -23,15 +24,29 @@ const LEVEL_METER_MODES = new Set(["peak", "rms", "momentary", "shortTerm"]);
 const LEVEL_METER_BAR_COLORS = new Set(["gradient", "levelZones"]);
 const STATS_IDS = new Set(STATS_CANONICAL_ORDER);
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
 
+/**
+ * @param {string} path
+ */
 function validateBoolean(value, path, issues) {
   if (typeof value !== "boolean")
     issues.push(issue("invalidType", path, `${path} must be a boolean.`));
 }
 
+/**
+ * @param {string} path
+ * @param {number} min
+ * @param {number} max
+ * @param {number} minSpan
+ */
 function validateRange(value, path, min, max, minSpan, issues) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     issues.push(issue("invalidType", path, `${path} must be a range object.`));
@@ -57,6 +72,9 @@ function validateRange(value, path, min, max, minSpan, issues) {
   }
 }
 
+/**
+ * @param {string} path
+ */
 function validateThresholds(value, path, issues) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     issues.push(issue("invalidType", path, `${path} must be a thresholds object.`));
@@ -83,6 +101,9 @@ const LEVEL_METER_THRESHOLD_FIELDS = [
   ["rmsThresholdsDbfs", "levelMeterRmsWarningDb", "levelMeterRmsCriticalDb"],
 ];
 
+/**
+ * @param {string} moduleId
+ */
 export function planPublicPanelControlPatch(moduleId, currentPanelControls, patch, context = {}) {
   const current = normalizePanelControls(currentPanelControls);
   const panelControls = { ...current };
@@ -171,7 +192,7 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
     const finalMode = panelControls.levelMeterMode;
     const loudnessMode = finalMode === "momentary" || finalMode === "shortTerm";
     const warnings = [];
-    const warn = (publicKey, inactiveReason) => {
+    const warn = (/** @type {string} */ publicKey, /** @type {string} */ inactiveReason) => {
       if (hasOwn(patch, publicKey)) {
         warnings.push({
           code: "currentlyInactive",
@@ -1064,6 +1085,9 @@ export function planPublicPanelControlPatch(moduleId, currentPanelControls, patc
   return { panelControls, changed, warnings: [], issues: [] };
 }
 
+/**
+ * @param {string} moduleId
+ */
 export function planPublicPanelReset(moduleId, currentPanelControls, context = {}) {
   const current = normalizePanelControls(currentPanelControls);
   const defaultPatch = readPublicPanelControls(moduleId, DEFAULT_PANEL_CONTROLS, context);

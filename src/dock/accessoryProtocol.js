@@ -36,10 +36,16 @@ const ACTION_TYPES = new Set([
   "reorder-loudness-profiles",
 ]);
 
+/**
+ * @param {string} value
+ */
 export function isDockAccessorySurface(value) {
   return DOCK_ACCESSORY_SURFACES.includes(value);
 }
 
+/**
+ * @param {string} surface
+ */
 export function createAccessorySnapshot(surface, revision, payload) {
   if (!isDockAccessorySurface(surface)) return null;
   return {
@@ -49,6 +55,10 @@ export function createAccessorySnapshot(surface, revision, payload) {
   };
 }
 
+/**
+ * @param {number} currentRevision
+ * @param {string} surface
+ */
 export function acceptAccessorySnapshot(currentRevision, snapshot, surface) {
   if (
     snapshot?.surface !== surface ||

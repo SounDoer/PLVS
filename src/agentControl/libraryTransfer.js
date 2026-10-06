@@ -23,6 +23,9 @@ export const LIBRARY_FAMILIES = {
   },
 };
 
+/**
+ * @param {string} family
+ */
 export function libraryFamily(family) {
   const descriptor = LIBRARY_FAMILIES[family];
   if (!descriptor) throw new Error(`Unknown library family: ${family}`);
@@ -30,6 +33,9 @@ export function libraryFamily(family) {
 }
 
 /// `{ id, name }` summaries, the same shape `preset.list` already returns.
+/**
+ * @param {string} family
+ */
 export function buildLibraryList(family) {
   return getAdapter(libraryFamily(family).packType)
     .list()
@@ -57,6 +63,7 @@ export function planLibraryExport(family, ids) {
  * @returns {{ changed: boolean, writes: string[], warnings: object[], plan: { items: object[],
  *   loudnessProfiles: object[] }, commit: () => void }} `commit` performs the append; a dry run
  *   simply never calls it. `writes` names the families `commit` will actually write.
+ * @param {string} family
  */
 export function planLibraryImport(family, raw) {
   const { packType } = libraryFamily(family);
@@ -98,6 +105,9 @@ export function planLibraryImport(family, raw) {
 }
 
 /// Exposed so the contract guard can compare against `PACK_KINDS` without importing the bridge.
+/**
+ * @param {string} family
+ */
 export function libraryPackKind(family) {
   return packDescriptor(libraryFamily(family).packType).kind;
 }

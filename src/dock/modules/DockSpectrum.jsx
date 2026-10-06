@@ -14,6 +14,9 @@ const VIEWBOX_HEIGHT = 260;
 
 // The engine sends untilted rows; the slope tilt is display shaping and is applied here, the
 // same way the workspace panel does it. See `spectrumTiltOffsets`.
+/**
+ * @param {string} valuesKey
+ */
 function spectrumPath(result, valuesKey, tilt, range) {
   return buildSpectrumSvgFromBandsAndDb(
     result?.bandCentersHz ?? [],
@@ -22,6 +25,9 @@ function spectrumPath(result, valuesKey, tilt, range) {
   );
 }
 
+/**
+ * @param {string} path
+ */
 function areaPath(path) {
   return path ? `${path} L ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT} L 0 ${VIEWBOX_HEIGHT} Z` : "";
 }

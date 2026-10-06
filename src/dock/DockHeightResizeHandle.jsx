@@ -16,7 +16,7 @@ export function DockHeightResizeHandle({ edge, height, disabled = false, onHeigh
   const frameRef = useRef(null);
   const currentHeight = clampDockHeight(height);
 
-  const commit = (nextHeight, persist) => {
+  const commit = (/** @type {number} */ nextHeight, /** @type {boolean} */ persist) => {
     if (disabled || !onHeightChange) return;
     void Promise.resolve(onHeightChange(clampDockHeight(nextHeight), { persist })).catch(() => {});
   };

@@ -39,10 +39,18 @@ function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
 
+/**
+ * @param {string} path
+ */
 function changedValue(changed, path, before, after) {
   if (JSON.stringify(before) !== JSON.stringify(after)) changed.push(path);
 }

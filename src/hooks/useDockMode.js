@@ -105,7 +105,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   }, [commitDock]);
 
   const enterDockMode = useCallback(
-    (edge, reserveSpaceOverride, monitorOverride, heightOverride) => {
+    (/** @type {string} */ edge, reserveSpaceOverride, monitorOverride, heightOverride) => {
       // Before the platform checks so the refusal does not depend on where it runs, and before
       // enqueueTransition so a blocked entry never joins the transition chain.
       assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter);
@@ -171,7 +171,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   );
 
   const applyReserveSpace = useCallback(
-    async (enabled, edgeOverride) => {
+    async (/** @type {boolean} */ enabled, edgeOverride) => {
       const current = dockRef.current;
       const edge =
         edgeOverride === "top" || edgeOverride === "bottom" ? edgeOverride : current.edge;

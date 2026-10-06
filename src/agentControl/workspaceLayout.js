@@ -14,6 +14,9 @@ export const MAX_LAYOUT_PANELS = 64;
 const MIN_PUBLIC_WEIGHT = 0.000001;
 
 export class WorkspaceLayoutError extends Error {
+  /**
+   * @param {string} message
+   */
   constructor(reason, path, message) {
     super(message);
     this.name = "WorkspaceLayoutError";
@@ -22,6 +25,11 @@ export class WorkspaceLayoutError extends Error {
   }
 }
 
+/**
+ * @param {string} reason
+ * @param {string} path
+ * @param {string} message
+ */
 function fail(reason, path, message) {
   throw new WorkspaceLayoutError(reason, path, message);
 }
@@ -46,6 +54,9 @@ function assertKnownFields(node, allowed, path) {
   }
 }
 
+/**
+ * @param {number} childCount
+ */
 function effectivePublicWeights(sizes, childCount) {
   if (!Array.isArray(sizes) || sizes.length !== childCount) return undefined;
   if (sizes.every((size) => size === null)) return undefined;
@@ -107,6 +118,10 @@ function measurePayload(layout) {
   }
 }
 
+/**
+ * @param {number} childCount
+ * @param {string} path
+ */
 function normalizeWeights(weights, childCount, path) {
   if (weights === undefined) return Array.from({ length: childCount }, () => null);
   if (!Array.isArray(weights) || weights.length !== childCount) {
@@ -142,6 +157,10 @@ export function compileWorkspaceLayout(layout, workspace) {
     }
   }
 
+  /**
+   * @param {string} path
+   * @param {number} depth
+   */
   function compilePanel(node, path, depth) {
     if (depth > MAX_LAYOUT_DEPTH) {
       fail("layout_too_deep", path, `Layout exceeds the depth limit of ${MAX_LAYOUT_DEPTH}.`);
@@ -207,6 +226,10 @@ export function compileWorkspaceLayout(layout, workspace) {
     return { panelId: created.id, reference: node.key };
   }
 
+  /**
+   * @param {string} path
+   * @param {number} depth
+   */
   function compileNode(node, path, depth) {
     if (depth > MAX_LAYOUT_DEPTH) {
       fail("layout_too_deep", path, `Layout exceeds the depth limit of ${MAX_LAYOUT_DEPTH}.`);

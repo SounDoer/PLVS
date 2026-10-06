@@ -44,6 +44,9 @@ export function useThemeSettings() {
     setAppliedThemeSnapshot(getTheme(resolvedThemeId, customThemesRef.current));
   }, [resolvedThemeId]);
 
+  /**
+   * @param {string} nextAppearance
+   */
   function setAppearance(nextAppearance) {
     const next = nextAppearance === "fixed" ? "fixed" : "system";
     appearanceRef.current = next;
@@ -54,6 +57,9 @@ export function useThemeSettings() {
     }
   }
 
+  /**
+   * @param {string} nextThemeId
+   */
   function setThemeId(nextThemeId) {
     const next = nextThemeId == null || nextThemeId === "" ? null : String(nextThemeId);
     themeIdRef.current = next;
@@ -93,7 +99,10 @@ export function useThemeSettings() {
     []
   );
 
-  /** ADR 0002 §6: switching system → fixed seeds `themeId` from the resolved builtin at that moment. */
+  /**
+   * ADR 0002 §6: switching system → fixed seeds `themeId` from the resolved builtin at that moment.
+   * @param {string} mode
+   */
   function setAppearanceMode(mode) {
     if (mode === "system") {
       setAppearance("system");

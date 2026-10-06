@@ -23,6 +23,9 @@ export function LibraryConflictDialog() {
 
   useEffect(() => subscribeLibraryConflicts(setConflict), []);
 
+  /**
+   * @param {string} action
+   */
   async function resolve(action) {
     setBusy(true);
     setError(null);

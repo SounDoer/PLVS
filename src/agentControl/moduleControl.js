@@ -11,6 +11,9 @@ export function buildModuleList() {
   }));
 }
 
+/**
+ * @param {string} moduleId
+ */
 export function buildModuleDescription(moduleId, context = {}) {
   const module = MODULE_CATALOG[moduleId];
   if (!module) return null;

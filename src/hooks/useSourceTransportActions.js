@@ -128,7 +128,7 @@ export function useSourceTransportActions({
   }, [running, selectedOffset, setSelectedOffset, startLive, stopLive]);
 
   const onSourceTransportAction = useCallback(
-    async (actionKind) => {
+    async (/** @type {string} */ actionKind) => {
       if (actionKind === "returnToLive") {
         setSelectedOffset(-1);
         return;

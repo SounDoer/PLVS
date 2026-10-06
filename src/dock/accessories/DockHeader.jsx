@@ -19,7 +19,7 @@ export function DockHeader({ state, onAction, onPointer }) {
   const isWindows = /Win/i.test(navigator.platform || navigator.userAgent || "");
   if (!state) return null;
   const toolTipProps = /** @type {const} */ ({ tipSide: "left", tipAlign: "center" });
-  const toggleEditor = (view, event) => {
+  const toggleEditor = (/** @type {string} */ view, event) => {
     const actionType = state.editorView === view ? "close-editor" : "open-editor";
     if (actionType === "close-editor") onAction(actionType);
     else {

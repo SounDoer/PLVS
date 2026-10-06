@@ -65,6 +65,9 @@ const PEAK_LABEL_EXIT_PROMINENCE_DB = 5;
 // the curve about as far as Speed 100 does — the setting where these were already steady.
 const PEAK_LABEL_DETECT_SMOOTHING_ALPHA = 0.06;
 
+/**
+ * @param {string} path
+ */
 function buildSpectrumAreaPath(path) {
   if (!path) return "";
   return `${path} L 1000 260 L 0 260 Z`;
@@ -85,6 +88,9 @@ function bandsMatch(a, b) {
   );
 }
 
+/**
+ * @param {number} alpha
+ */
 function smoothDbList(previous, next, alpha) {
   if (!previous || previous.length !== next?.length) return next;
   return next.map((value, idx) => previous[idx] + (value - previous[idx]) * alpha);

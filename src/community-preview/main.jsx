@@ -62,6 +62,10 @@ async function render(plan, assetId) {
   }
 }
 
+/**
+ * @param {string} type
+ * @param {string} assetId
+ */
 async function renderPack(rawPack, type, assetId) {
   const plan =
     type === "themes"

@@ -20,6 +20,9 @@ const PANEL_SETTINGS_TITLES = {
   "stereo-map": "Stereo Map",
 };
 
+/**
+ * @param {string} valueKey
+ */
 function getSelectedOption(options, valueKey) {
   const matchedOption = options.find((opt) => opt.key === valueKey);
   return {

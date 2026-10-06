@@ -19,11 +19,19 @@ const SIGNAL_FLOOR_LINEAR = 10 ** (-90 / 20);
 const POLAR_FIXED_EXTENT = Math.SQRT2;
 const POLAR_FLOOR_DB = -48;
 
+/**
+ * @param {number} width
+ * @param {number} height
+ * @param {number} padding
+ */
 function plotGeometry(width, height, padding) {
   const radius = Math.max(1, Math.min(width / 2 - padding, height - padding * 2));
   return { centerX: width / 2, baselineY: height - padding, radius };
 }
 
+/**
+ * @param {number} lineWidth
+ */
 function drawGrid(ctx, geometry, color, lineWidth) {
   const { centerX, baselineY, radius } = geometry;
   ctx.save();
@@ -38,6 +46,9 @@ function drawGrid(ctx, geometry, color, lineWidth) {
   ctx.restore();
 }
 
+/**
+ * @param {number} value
+ */
 function fixedDbRadius(value, geometry) {
   const levelDb = value > 0 ? 20 * Math.log10(value / POLAR_FIXED_EXTENT) : POLAR_FLOOR_DB;
   const normalized = Math.max(0, Math.min(1, (levelDb - POLAR_FLOOR_DB) / -POLAR_FLOOR_DB));
@@ -52,6 +63,11 @@ function projectedSamplePoint(point, geometry) {
   };
 }
 
+/**
+ * @param {number} dpr
+ * @param {boolean} snapshot
+ * @param {number} persistenceMs
+ */
 function drawPolarSample(ctx, rows, geometry, color, dpr, snapshot, persistenceMs) {
   ctx.fillStyle = color;
   const pointRadius = POINT_RADIUS_CSS_PX * dpr;
@@ -77,6 +93,10 @@ function polarLevelRadius(value, geometry) {
   return fixedDbRadius(value, geometry);
 }
 
+/**
+ * @param {number} index
+ * @param {number} count
+ */
 function envelopePoint(index, value, count, geometry) {
   const angle = -Math.PI / 2 + (index / Math.max(1, count - 1)) * Math.PI;
   const radius = polarLevelRadius(value, geometry);
@@ -113,6 +133,9 @@ function traceEnvelope(ctx, envelope, geometry) {
   return true;
 }
 
+/**
+ * @param {number} lineWidth
+ */
 function drawPolarLevel(ctx, envelope, held, geometry, wedgeColor, lineWidth) {
   ctx.fillStyle = wedgeColor;
   ctx.lineWidth = lineWidth;

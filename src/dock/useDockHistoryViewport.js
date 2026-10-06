@@ -6,6 +6,9 @@ import { UI_PREFERENCES } from "../uiPreferences.js";
 export const DOCK_HISTORY_DEFAULT_WINDOW_SEC =
   UI_PREFERENCES.modules.loudness.history.defaultWindowSec;
 
+/**
+ * @param {number} maxWindowSec
+ */
 export function clampDockHistoryWindow(value, maxWindowSec) {
   const safeMax = Math.max(HISTORY_MIN_WINDOW_SEC, Number(maxWindowSec) || 0);
   const safeValue = Number.isFinite(value) ? value : DOCK_HISTORY_DEFAULT_WINDOW_SEC;
@@ -61,7 +64,7 @@ export function useDockHistoryViewport({ maxWindowSec }) {
   );
 
   const onWheel = useCallback(
-    (panelId, deltaY) => {
+    (panelId, /** @type {number} */ deltaY) => {
       const factor = deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
       const pending = pendingWheelRef.current;
       pendingWheelRef.current = {
@@ -81,7 +84,7 @@ export function useDockHistoryViewport({ maxWindowSec }) {
   );
 
   const onPointerDown = useCallback(
-    (panelId, button, timestamp) => {
+    (panelId, /** @type {number} */ button, timestamp) => {
       if (button !== 2) return false;
       const now = Number.isFinite(timestamp)
         ? timestamp

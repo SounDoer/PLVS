@@ -21,7 +21,7 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
   }, [closeBlocked]);
 
   const requestCloseAction = useCallback(
-    async (action, dontAskAgain = false) => {
+    async (/** @type {string} */ action, dontAskAgain = false) => {
       if (closeBlockedRef.current || closingRef.current) return false;
 
       const pending = { action, dontAskAgain };
@@ -90,6 +90,9 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
     };
   }, [requestCloseAction]);
 
+  /**
+   * @param {boolean} dontAskAgain
+   */
   async function handleConfirm(action, dontAskAgain) {
     await requestCloseAction(action, dontAskAgain);
   }

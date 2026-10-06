@@ -98,6 +98,12 @@ import {
   WorkspaceLayoutError,
 } from "./workspaceLayout.js";
 
+/**
+ * @param {string} reason
+ * @param {string} path
+ * @param {string} message
+ * @param {number} code
+ */
 function semanticFailure(reason, path, message, code, details) {
   return { reason, path, message, code, ...(details ? { details } : {}) };
 }
@@ -232,6 +238,9 @@ function compactThemeState(state) {
   };
 }
 
+/**
+ * @param {string} method
+ */
 function themePlanResult(method, planned) {
   if (method === "theme.select" || method === "theme.followSystem") {
     return {
@@ -403,6 +412,9 @@ async function persistUnobservedCommit(error, flush) {
   };
 }
 
+/**
+ * @param {string} subject
+ */
 function awaitSettlement(committed, clear, subject) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -438,6 +450,9 @@ function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
   return live.generation !== afterGeneration || sequence !== (afterSequence ?? null);
 }
 
+/**
+ * @param {string} method
+ */
 function transportMutationMatches(method, params, execution, snapshot) {
   const sessionId = execution?.sessionId ?? params.sessionId;
   if (method === "transport.source.live") {

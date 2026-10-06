@@ -121,10 +121,16 @@ const ENTER_FADE_TFRAC = 0;
  */
 const TIME_FADE_MAX_FRAC = 0.1;
 
+/**
+ * @param {number} cssWidth
+ */
 export function ridgeCountFor(cssWidth) {
   return Math.round(Math.min(RIDGE_MAX, Math.max(RIDGE_MIN, cssWidth / RIDGE_TARGET_CSS_PX)));
 }
 
+/**
+ * @param {number} cssWidth
+ */
 export function pointCountFor(cssWidth) {
   return Math.round(Math.min(POINT_MAX, Math.max(POINT_MIN, cssWidth / POINT_TARGET_CSS_PX)));
 }
@@ -139,12 +145,17 @@ export function pointCountFor(cssWidth) {
  * The maximum is the column through the floor's centre, because that is the longest chord, so this
  * is one `columnFloorSpan` call rather than a scan. Lines does not need it: it strokes each ridge
  * as a path rather than point-sampling per column, so its ridge count is bounded only by cost.
+ * @param {number} height
  */
 function surfaceRowCap(proj, height) {
   const span = columnFloorSpan(Math.round(proj.originX), proj, height);
   return span ? span.steps : 1;
 }
 
+/**
+ * @param {string} name
+ * @param {string} fallback
+ */
 function cssVar(el, name, fallback) {
   // Cached per theme: these resolve inside a paint that runs every frame. See `readCssToken`.
   return readCssToken(el, name, fallback);
@@ -192,6 +203,8 @@ function makeArgbResolver() {
  * The surface is composited with `drawImage` rather than `putImageData` because putImageData
  * OVERWRITES, alpha included -- writing the surface straight to the main canvas would erase the
  * floor grid drawn beneath it. Rebuilt only on resize.
+ * @param {number} width
+ * @param {number} height
  */
 function ensureOffscreen(ref, width, height) {
   const current = ref.current;
@@ -242,6 +255,7 @@ function ensureOffscreen(ref, width, height) {
  * The monochrome branch goes through `color-mix` rather than composing an `rgba()` string: `ink`
  * comes from a CSS variable and may be any colour syntax. Reading it back through `ctx.fillStyle`
  * normalises hex but returns `oklch()` untouched, and this project's dark theme uses oklch.
+ * @param {number} dbFloor
  */
 function buildStopColors(colormapLut, ink, dbFloor, colorize) {
   const stops = new Array(GRADIENT_STOPS + 1);
@@ -257,6 +271,9 @@ function buildStopColors(colormapLut, ink, dbFloor, colorize) {
   return stops;
 }
 
+/**
+ * @param {number} heightPx
+ */
 function buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx) {
   const denom = proj.fx * proj.fx + proj.fy * proj.fy;
   const k = (-heightPx * proj.fx) / denom;
@@ -272,7 +289,10 @@ function buildRidgeGradient(ctx, stopColors, startBase, proj, heightPx) {
   return gradient;
 }
 
-/** A packed ARGB word as the 0..1 RGBA vector a GL uniform takes. */
+/**
+ * A packed ARGB word as the 0..1 RGBA vector a GL uniform takes.
+ * @param {number} argb
+ */
 function argbToRgba(argb) {
   return [
     (argb & 0xff) / 255,
@@ -288,6 +308,8 @@ function argbToRgba(argb) {
  * One line, on the 2D canvas, in place of the surface. The panel deliberately does NOT fall back to
  * another mode: a meter that quietly starts showing something other than what was asked for is
  * worse than one that says it is broken, and switching back is the user's action to take.
+ * @param {number} width
+ * @param {number} height
  */
 function drawSurfaceError(ctx, width, height, ink) {
   const dpr = Math.max(1, width / Math.max(1, ctx.canvas.clientWidth));
@@ -303,12 +325,15 @@ function drawSurfaceError(ctx, width, height, ink) {
 
 const FLOOR_DIVISIONS = 4;
 
+/**
+ * @param {number} dpr
+ */
 function drawFloor(ctx, proj, grid, dpr) {
   ctx.save();
   ctx.strokeStyle = grid;
   ctx.lineWidth = dpr;
 
-  const corner = (t, f) => projectPoint(t, f, 0, proj);
+  const corner = (/** @type {number} */ t, /** @type {number} */ f) => projectPoint(t, f, 0, proj);
   ctx.beginPath();
   const c0 = corner(0, 0);
   ctx.moveTo(c0.x, c0.y);
@@ -356,6 +381,7 @@ function drawFloor(ctx, proj, grid, dpr) {
  * ctx.font does not resolve CSS custom properties -- an unresolvable value is silently ignored,
  * leaving the previous font -- so the font family is resolved via getComputedStyle (the cssVar
  * helper above) before being interpolated into the font string.
+ * @param {number} dpr
  */
 function drawAxisLabels(ctx, proj, ink, dpr) {
   const fontFamily = cssVar(ctx.canvas, "--ui-font-mono", "monospace");

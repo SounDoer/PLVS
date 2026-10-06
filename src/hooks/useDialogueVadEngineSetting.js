@@ -12,6 +12,9 @@ export function useDialogueVadEngineSetting() {
     normalizeDialogueVadEngine(settingsStore.read().dialogueVadEngine)
   );
 
+  /**
+   * @param {string} value
+   */
   function setDialogueVadEngine(value) {
     const next = normalizeDialogueVadEngine(value);
     settingsStore.patch({ dialogueVadEngine: next });

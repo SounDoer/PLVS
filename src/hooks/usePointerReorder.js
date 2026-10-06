@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/**
+ * @param {string} activeId
+ */
 export function reorderIdsAtPointer(ids, activeId, clientY, rect) {
   if (!rect || rect.height <= 0 || !ids.length || !Number.isFinite(clientY)) {
     return ids;

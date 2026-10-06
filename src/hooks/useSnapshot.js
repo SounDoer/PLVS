@@ -128,7 +128,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   // spectrumMaxHold). One bucket per 40 s of rows: the table stays small enough to keep while a
   // query replays at most a bucket. Built only when a panel with Max Hold on asks, so scrubbing
   // without the feature never pays for it.
-  const spectrumMaxHoldFor = useCallback((entries, index) => {
+  const spectrumMaxHoldFor = useCallback((entries, /** @type {number} */ index) => {
     if (!entries || index < 0) return null;
     const cache = spectrumMaxHoldTableCacheRef.current;
     let table = cache.get(entries);
@@ -185,7 +185,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
   // Polar Level Max hold in snapshot mode is reconstructed from the frozen history up to the
   // selected row (see vectorscopePolarMath). Only built when a Polar Level panel with Max hold on
   // asks for it (withMaxHold), so Lissajous/Sample scrubbing never pays for it.
-  const maxHoldEnvelopeFor = useCallback((entries, index) => {
+  const maxHoldEnvelopeFor = useCallback((entries, /** @type {number} */ index) => {
     if (!entries || index < 0) return null;
     const cache = maxHoldTableCacheRef.current;
     let table = cache.get(entries);
@@ -271,7 +271,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     [keyedResultCache.stereoMapHold, resolved.targetTimestampMs, snapSource]
   );
   const resolveStereoMapSnapshotForKey = useCallback(
-    (key, mode, range, { withHold = false } = {}) => {
+    (key, /** @type {string} */ mode, range, { withHold = false } = {}) => {
       const entries = snapSource?.stereoMapByKey?.[key];
       const targetCache = snapSource
         ? resultCacheForKey(keyedResultCache.stereoMap, key, entries)

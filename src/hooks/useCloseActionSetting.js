@@ -7,6 +7,9 @@ export function useCloseActionSetting() {
     normalizeCloseAction(settingsStore.read().closeAction)
   );
 
+  /**
+   * @param {string} value
+   */
   function setCloseAction(value) {
     const next = normalizeCloseAction(value);
     if (next === DEFAULT_CLOSE_ACTION) {

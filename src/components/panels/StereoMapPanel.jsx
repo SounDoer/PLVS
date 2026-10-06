@@ -71,6 +71,9 @@ const Y_VIEWPORT_BY_MODE = {
   },
 };
 
+/**
+ * @param {string} mode
+ */
 function rangeForMode(mode, controls) {
   if (mode === STEREO_MAP_MODES.MONO_LOSS_DB) {
     return { lowerBound: controls.stereoMapMonoLossYMinDb, upperBound: 0 };
@@ -85,6 +88,12 @@ function rangeForMode(mode, controls) {
   return { lowerBound: -1, upperBound: 1 };
 }
 
+/**
+ * @param {string} mode
+ * @param {string} firstLabel
+ * @param {string} secondLabel
+ * @param {number} yAxisPx
+ */
 function yTicksForMode(mode, range, firstLabel, secondLabel, yAxisPx) {
   if (mode === STEREO_MAP_MODES.POSITION) {
     return [
@@ -102,6 +111,11 @@ function yTicksForMode(mode, range, firstLabel, secondLabel, yAxisPx) {
   return buildAdaptiveDbTicks(range.lowerBound, range.upperBound, yAxisPx);
 }
 
+/**
+ * @param {number} index
+ * @param {string} firstLabel
+ * @param {string} secondLabel
+ */
 function formatPositionHoldLabel(holdValues, index, range, firstLabel, secondLabel) {
   if (!holdValues) return null;
   const parts = [

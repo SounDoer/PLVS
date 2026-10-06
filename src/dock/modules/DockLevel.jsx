@@ -34,6 +34,10 @@ const MODE_META = {
   },
 };
 
+/**
+ * @param {number} min
+ * @param {number} max
+ */
 function widthPct(value, min, max) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;

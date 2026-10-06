@@ -220,7 +220,7 @@ export function AppHeader({
     applications: false,
   });
 
-  const setSourceSectionOpen = (section, open) => {
+  const setSourceSectionOpen = (/** @type {string} */ section, open) => {
     setSourceSectionsOpen((current) => ({ ...current, [section]: open }));
   };
 
@@ -228,7 +228,7 @@ export function AppHeader({
   const selectedInputSummary = selectedDeviceSummary(audioInputs, safeAudioDeviceId);
   const selectedApplication = selectedApplicationSummary(captureApplications, safeAudioDeviceId);
 
-  const handleSourceSelect = (id) => {
+  const handleSourceSelect = (/** @type {string} */ id) => {
     setCaptureDeviceId(id);
     setSourcesOpen(false);
   };

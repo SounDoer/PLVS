@@ -18,6 +18,9 @@ import {
  */
 let packedLutCache = { source: null, packed: null };
 
+/**
+ * @param {number[]} colormapLut
+ */
 function packedColormap(colormapLut) {
   if (packedLutCache.source === colormapLut) return packedLutCache.packed;
   const packed = new Uint32Array(256);
@@ -35,6 +38,13 @@ function packedColormap(colormapLut) {
   return packed;
 }
 
+/**
+ * @param {number} width
+ * @param {number} height
+ * @param {number} xStart
+ * @param {number} xEnd
+ * @param {number} dbFloor
+ */
 function paintSpan(words, width, height, xStart, xEnd, snap, yToBand, packed, dbFloor, yTiltDb) {
   for (let y = 0; y < height; y++) {
     const band = yToBand[y];
@@ -60,6 +70,7 @@ function paintSpan(words, width, height, xStart, xEnd, snap, yToBand, packed, db
  * the caller tracks which instant the leftmost column stands for and shifts again once another
  * whole pixel has accrued, so the image lags the true window by less than one column and never
  * accumulates beyond it.
+ * @param {number} shiftPx
  */
 export function scrollSpectrogramImageData(imageData, shiftPx) {
   const { data, width: W, height: H } = imageData;
@@ -81,6 +92,10 @@ export function scrollSpectrogramImageData(imageData, shiftPx) {
  * what keeps that difference bounded instead of accumulating.
  *
  * @returns {{ shiftPx: number, paintedOldestMs: number, xFrom: number }}
+ * @param {number} paintedOldestMs
+ * @param {number} oldestMs
+ * @param {number} span
+ * @param {number} width
  */
 export function spectrogramScrollPlan(paintedOldestMs, oldestMs, span, width) {
   const shiftPx = Math.floor(((oldestMs - paintedOldestMs) / span) * width);
@@ -96,6 +111,10 @@ export function spectrogramScrollPlan(paintedOldestMs, oldestMs, span, width) {
   };
 }
 
+/**
+ * @param {number} target
+ * @param {number} endIdx
+ */
 function upperBoundTimestamp(view, target, startIdx, endIdx) {
   let lo = startIdx;
   let hi = endIdx + 1;
@@ -107,6 +126,14 @@ function upperBoundTimestamp(view, target, startIdx, endIdx) {
   return lo;
 }
 
+/**
+ * @param {number} startIdx
+ * @param {number} endIdx
+ * @param {number} oldestMs
+ * @param {number} span
+ * @param {number} sampleMs
+ * @param {number} dbFloor
+ */
 export function paintSpectrogramImageData(
   imageData,
   snaps,

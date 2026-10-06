@@ -143,6 +143,9 @@ const DOCK_ONLY_DEFAULTS = Object.freeze({
   loudness: Object.freeze({ showReadouts: true }),
 });
 
+/**
+ * @param {string} moduleId
+ */
 function pickDefaults(moduleId) {
   const controls = {};
   for (const key of DOCK_MODULE_CONTROL_KEYS[moduleId]) {
@@ -197,8 +200,8 @@ const DOCK_TIGHTENED = Object.freeze({
   spectrumChannel: dockChannel,
   vectorscopePair: dockPair,
   stereoMapPair: dockPair,
-  spectrumSpeedPercent: (value) => Math.round(value),
-  stereoMapSpeedPercent: (value) => Math.round(value),
+  spectrumSpeedPercent: (/** @type {number} */ value) => Math.round(value),
+  stereoMapSpeedPercent: (/** @type {number} */ value) => Math.round(value),
 });
 
 export function normalizeDockStatsVisibleIds(raw) {
@@ -219,6 +222,9 @@ function normalizeDockLevelReadout(raw, mode, fallback) {
   return readout;
 }
 
+/**
+ * @param {string} moduleId
+ */
 function withPanelKeys(moduleId, raw) {
   const source = { ...raw };
   for (const [key, legacyKeys] of Object.entries(LEGACY_DOCK_KEYS[moduleId] ?? {})) {
@@ -279,6 +285,9 @@ export function normalizeDockModuleControls(moduleId, raw) {
   return controls;
 }
 
+/**
+ * @param {string} moduleId
+ */
 export function isDefaultDockModuleControls(moduleId, controls) {
   return (
     JSON.stringify(normalizeDockModuleControls(moduleId, controls)) ===
@@ -318,6 +327,9 @@ export function firstRunDockControlsByModuleId() {
   );
 }
 
+/**
+ * @param {string} moduleId
+ */
 export function updateDockModuleControls(controlsByModuleId, moduleId, nextControls) {
   if (!DOCK_CONTROL_MODULE_IDS.includes(moduleId)) return controlsByModuleId;
   return {

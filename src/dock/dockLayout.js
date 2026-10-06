@@ -90,6 +90,9 @@ export function panelModuleIdForDockModuleId(moduleId) {
   return PANEL_MODULE_ID_BY_DOCK_MODULE_ID[moduleId] ?? moduleId;
 }
 
+/**
+ * @param {string} moduleId
+ */
 export function isKnownDockPanelModuleId(moduleId) {
   return DOCK_PANEL_MODULE_IDS.includes(moduleId) || moduleId === "transport";
 }
@@ -172,6 +175,9 @@ export function normalizeDockLayout(raw) {
   return withLegacyModules({ panelsById, panelOrder, panelSizesById: {} });
 }
 
+/**
+ * @param {string} id
+ */
 export function toggleDockModule(layout, id) {
   const moduleId = panelModuleIdForDockModuleId(id);
   if (!isKnownDockPanelModuleId(moduleId)) return layout;
@@ -183,10 +189,14 @@ export function toggleDockModule(layout, id) {
   return addDockPanel(layout, moduleId);
 }
 
+/**
+ * @param {number} fromIndex
+ * @param {number} toIndex
+ */
 export function reorderDockModule(layout, fromIndex, toIndex) {
   layout = ensureDockLayout(layout);
   const panelOrder = [...layout.panelOrder];
-  const clamp = (i) => Math.max(0, Math.min(panelOrder.length - 1, i));
+  const clamp = (/** @type {number} */ i) => Math.max(0, Math.min(panelOrder.length - 1, i));
   const from = clamp(fromIndex);
   const to = clamp(toIndex);
   if (from === to) return layout;
@@ -233,6 +243,9 @@ export function renameDockPanel(layout, panelId, customTitle) {
   });
 }
 
+/**
+ * @param {string[]} panelOrder
+ */
 export function setDockPanelOrder(layout, panelOrder) {
   layout = ensureDockLayout(layout);
   if (!Array.isArray(panelOrder)) return layout;

@@ -6,11 +6,20 @@ import { LAYER_FLOATING } from "@/components/ui/layers.js";
 const VIEWPORT_MARGIN = 8;
 const TIP_GAP = 6;
 
+/**
+ * @param {number} value
+ * @param {number} min
+ * @param {number} max
+ */
 function clamp(value, min, max) {
   if (max < min) return min;
   return Math.min(Math.max(value, min), max);
 }
 
+/**
+ * @param {string} side
+ * @param {string} align
+ */
 function getTipPosition(anchor, tip, side, align) {
   const rect = anchor.getBoundingClientRect();
   const tipWidth = tip?.offsetWidth ?? 0;

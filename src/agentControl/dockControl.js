@@ -12,7 +12,8 @@ import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { readPublicPanelControls } from "./panelControls.js";
 import { planPublicPanelControlPatch } from "./panelControlPatch.js";
 
-const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+const hasOwn = (value, /** @type {string} */ key) =>
+  Object.prototype.hasOwnProperty.call(value, key);
 const PUBLIC_DOCK_CONTROLS = Object.freeze({
   levelMeter: new Set([
     "mode",
@@ -51,6 +52,11 @@ const PUBLIC_DOCK_CONTROLS = Object.freeze({
   ]),
 });
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
@@ -62,6 +68,9 @@ function dockWithControls(dock, panelId, controls) {
   };
 }
 
+/**
+ * @param {string} panelId
+ */
 export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   const panel = dock.panelsById?.[panelId];
   if (!panel)
@@ -174,6 +183,9 @@ export function planDockPanelPatch(dock, panelId, patch, context = {}) {
   };
 }
 
+/**
+ * @param {string} panelId
+ */
 export function planDockPanelReset(dock, panelId, context = {}) {
   const panel = dock.panelsById?.[panelId];
   if (!panel)
@@ -557,6 +569,9 @@ export function dockStateSignature(dock) {
   return JSON.stringify(scene);
 }
 
+/**
+ * @param {string} method
+ */
 export function planDockFormMutation(dock, method, params = {}, context = {}) {
   if (dock.supported !== true) {
     return {
@@ -688,6 +703,9 @@ export function reconcileDockExecution(planned, effectiveDock) {
   return { ...planned, dock: effectiveDock, warnings };
 }
 
+/**
+ * @param {string} panelId
+ */
 export function buildDockPanelDescription(dock, panelId, context = {}) {
   const snapshot = buildDockSnapshot(dock, context);
   const panel = snapshot.panels.find(({ id }) => id === panelId);

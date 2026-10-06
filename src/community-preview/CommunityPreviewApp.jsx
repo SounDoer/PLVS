@@ -140,6 +140,9 @@ function ThemeSemanticExample({ plan }) {
   return <ThemePreview draft={stored} onClose={noop} />;
 }
 
+/**
+ * @param {string} moduleId
+ */
 function singlePanelState(moduleId) {
   const panel = DEFAULT_WORKSPACE_STATE.panelsById[moduleId];
   return {

@@ -16,16 +16,20 @@ function defaultScheduler() {
           window.setTimeout(() => callback({ didTimeout: true, timeRemaining: () => 0 }));
   const cancelIdle =
     typeof window.cancelIdleCallback === "function"
-      ? (id) => window.cancelIdleCallback(id)
-      : (id) => window.clearTimeout(id);
+      ? (/** @type {number} */ id) => window.cancelIdleCallback(id)
+      : (/** @type {number} */ id) => window.clearTimeout(id);
   return {
     requestIdleCallback: requestIdle,
     cancelIdleCallback: cancelIdle,
-    setInterval: (callback, delay) => window.setInterval(callback, delay),
-    clearInterval: (id) => window.clearInterval(id),
+    setInterval: (callback, /** @type {number} */ delay) => window.setInterval(callback, delay),
+    clearInterval: (/** @type {number} */ id) => window.clearInterval(id),
   };
 }
 
+/**
+ * @param {number} index
+ * @param {number} timestampMs
+ */
 function scalarRow(index, timestampMs) {
   const phase = index / 19;
   const left = 0.45 + Math.sin(phase) * 0.1;
@@ -93,6 +97,9 @@ function meterAudioFromScalarRow(row) {
   };
 }
 
+/**
+ * @param {boolean} fullVisual
+ */
 function visualPayload(fullVisual) {
   // Full mode intentionally represents the production payload: at 360k rows, 958 Spectrum
   // bands plus 200 Vectorscope floats retain roughly 1.3 GiB+ before object/chunk overhead.
@@ -128,6 +135,10 @@ function visualPayload(fullVisual) {
 // harness is the tool used to validate the eviction fix itself, so a hobbled run should be loud.
 const warnedEmptyKeyFamilies = new Set();
 
+/**
+ * @param {string} fallbackKey
+ * @param {string} familyLabel
+ */
 function keyedEntries(keys, fallbackKey, value, familyLabel) {
   if (!keys?.length) {
     if (!warnedEmptyKeyFamilies.has(familyLabel)) {
@@ -145,6 +156,9 @@ function keyedEntries(keys, fallbackKey, value, familyLabel) {
   return Object.fromEntries(keys.map((key) => [key, value]));
 }
 
+/**
+ * @param {number} timestampMs
+ */
 function visualRow(timestampMs, payload, spectrumKeys, vectorscopeKeys, stereoMapKeys) {
   return {
     timestampMs,

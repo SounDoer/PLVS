@@ -9,6 +9,9 @@ import { readPublicPanelControls } from "./panelControls.js";
 import { buildDockSnapshot } from "./dockControl.js";
 import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 
+/**
+ * @param {string} selection
+ */
 function savedProfileId(selection) {
   return typeof selection === "string" && selection.startsWith("profile:")
     ? selection.slice("profile:".length)

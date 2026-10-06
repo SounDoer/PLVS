@@ -18,24 +18,41 @@ const VIEW_H = 260;
 
 const FALLBACK_COLOR = { r: 128, g: 128, b: 128 };
 
+/**
+ * @param {number} hz
+ * @param {number} xMinHz
+ * @param {number} xMaxHz
+ */
 function xFor(hz, xMinHz, xMaxHz) {
   return rangedFreqToXFrac(hz, xMinHz, xMaxHz) * VIEW_W;
 }
 
+/**
+ * @param {number} value
+ */
 function yFor(value, range) {
   return rangedHistY(value, VIEW_H, range.lowerBound, range.upperBound);
 }
 
+/**
+ * @param {number} t
+ */
 function clamp01(t) {
   return Math.max(0, Math.min(1, t));
 }
 
+/**
+ * @param {number} value
+ */
 function normalizedChannelPosition(value, range) {
   const span = range.upperBound - range.lowerBound;
   if (!(span > 0)) return 0;
   return clamp01((value - range.lowerBound) / span) * 2 - 1;
 }
 
+/**
+ * @param {number} strengthPercent
+ */
 function energyFadeOpacity(opacity, strengthPercent) {
   const base = clamp01(opacity);
   if (base === 0 || base === 1) return base;
@@ -44,6 +61,9 @@ function energyFadeOpacity(opacity, strengthPercent) {
 
 // Position: 0 at the second channel, 1 at the first channel. Blend controls how much of the
 // normalized -1..+1 position range is used as the transition around center; zero is a hard split.
+/**
+ * @param {number} blendPercent
+ */
 function channelBlendT(value, range, blendPercent) {
   const normalizedPosition = normalizedChannelPosition(value, range);
   const blendWidth = clamp01(blendPercent / 100);
@@ -52,11 +72,17 @@ function channelBlendT(value, range, blendPercent) {
 }
 
 // Correlation: -1 (anti-phase) is Bad, +1 (in phase) is Good.
+/**
+ * @param {number} value
+ */
 function correlationColorT(value) {
   return clamp01((value + 1) / 2);
 }
 
 // Mono Loss: the range's lower bound is Bad, 0 dB is Good.
+/**
+ * @param {number} value
+ */
 function monoLossColorT(value, range) {
   const span = 0 - range.lowerBound;
   if (!(span > 0)) return 1;
@@ -99,7 +125,10 @@ function rgbToCss({ r, g, b }) {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-/** `"rgb(r, g, b)"` -> `"rgba(r, g, b, alpha)"`. Falls back to the input unchanged if unparseable. */
+/**
+ * `"rgb(r, g, b)"` -> `"rgba(r, g, b, alpha)"`. Falls back to the input unchanged if unparseable.
+ * @param {string} rgbCss
+ */
 function withAlpha(rgbCss, alpha) {
   const match = /^rgb\((\d+), (\d+), (\d+)\)$/.exec(rgbCss);
   if (!match) return rgbCss;
@@ -108,6 +137,9 @@ function withAlpha(rgbCss, alpha) {
 
 // Canvas equivalent of `color-mix(in srgb, colorA pct%, colorB)`: a plain per-channel lerp in
 // sRGB, colorA weighted by pct/100.
+/**
+ * @param {number} pctOfA
+ */
 function mixColors(pctOfA, colorA, colorB) {
   const t = clamp01(pctOfA / 100);
   return rgbToCss({
@@ -117,12 +149,18 @@ function mixColors(pctOfA, colorA, colorB) {
   });
 }
 
+/**
+ * @param {number} t
+ */
 function channelBlendColor(t, primary, secondary) {
   return mixColors(clamp01(t) * 100, primary, secondary);
 }
 
 // Continuous Bad -> Warn -> Good, derived from the existing signal tokens. t=0 is fully Bad,
 // t=0.5 is fully Warn, t=1 is fully Good.
+/**
+ * @param {number} t
+ */
 function threeStopSignalColor(t, warn, bad, good) {
   const clamped = clamp01(t);
   if (clamped <= 0.5) {
@@ -131,6 +169,9 @@ function threeStopSignalColor(t, warn, bad, good) {
   return mixColors(((clamped - 0.5) / 0.5) * 100, good, warn);
 }
 
+/**
+ * @param {number} value
+ */
 function segmentColor(mode, value, range, colors, colorBlendPercent = 100) {
   switch (mode) {
     case STEREO_MAP_MODES.POSITION:
@@ -162,6 +203,7 @@ function segmentColor(mode, value, range, colors, colorBlendPercent = 100) {
  * Splits a per-band point/value list into runs broken at invalid points — each run is one
  * continuous stretch to be drawn; a break between runs is a real curve break (no interpolation
  * across an invalid band).
+ * @param {number} energyFadePercent
  */
 function buildRuns(bandCentersHz, points, xMinHz, xMaxHz, range, energyFadePercent) {
   const runs = [];
@@ -222,6 +264,12 @@ function buildHoldRuns(bandCentersHz, values, xMinHz, xMaxHz, range) {
  * a lot band-to-band keeps producing a genuinely different color string every time). A gradient
  * bakes the whole run's color variation into one style object that costs the same to paint
  * regardless of how much the underlying values actually swing.
+ * @param {string} mode
+ * @param {number} baselineY
+ * @param {number} fillOpacity
+ * @param {number} colorBlendPercent
+ * @param {number} scaleX
+ * @param {number} scaleY
  */
 function drawGradientRun(
   ctx,
@@ -331,6 +379,10 @@ function drawGradientRun(
  * opacity into one path instead of one draw call per segment. Real audio content rarely flips sign
  * every single band, so this collapses most of a run into a handful of draws; a gradient is not used
  * here because the sign switch is a hard edge, not a continuous blend.
+ * @param {number} baselineY
+ * @param {number} fillOpacity
+ * @param {number} scaleX
+ * @param {number} scaleY
  */
 function drawBinaryRun(ctx, run, mode, range, colors, baselineY, fillOpacity, scaleX, scaleY) {
   const segmentCount = run.length - 1;
@@ -374,6 +426,9 @@ function drawBinaryRun(ctx, run, mode, range, colors, baselineY, fillOpacity, sc
   ctx.globalAlpha = 1;
 }
 
+/**
+ * @param {string} mode
+ */
 function buildHoldGroups(mode, bandCentersHz, holdValues, xMinHz, xMaxHz, range) {
   const holdGroups = [];
   if (!holdValues) return holdGroups;
@@ -399,6 +454,9 @@ function buildHoldGroups(mode, bandCentersHz, holdValues, xMinHz, xMaxHz, range)
   return holdGroups;
 }
 
+/**
+ * @param {string} paletteKey
+ */
 function resolveColors(themeColors, paletteKey) {
   const primary =
     parseColor(paletteKey === "snap" ? themeColors.primarySnapshot : themeColors.primary) ||
@@ -451,6 +509,9 @@ function hashPoints(points) {
   return h;
 }
 
+/**
+ * @param {string} mode
+ */
 function hashHoldValues(mode, holdValues) {
   if (!holdValues) return "null";
   if (mode === STEREO_MAP_MODES.POSITION) {
@@ -465,6 +526,12 @@ function tickSignature(ticks) {
     .join(",");
 }
 
+/**
+ * @param {number} width
+ * @param {number} height
+ * @param {number} dpr
+ * @param {string} color
+ */
 function drawGrid(ctx, xTicks, yTicks, width, height, dpr, color) {
   ctx.strokeStyle = color;
   ctx.lineWidth = dpr;

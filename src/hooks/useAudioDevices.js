@@ -96,7 +96,7 @@ export function useAudioDevices({
   );
 
   const commitCaptureDevice = useCallback(
-    async (nextId, options = {}) => {
+    async (/** @type {string} */ nextId, options = {}) => {
       const current = snapshotRef.current;
       if (current.requestedId === nextId) {
         if (options.migrationState && current.migrationState !== null) {
@@ -135,7 +135,7 @@ export function useAudioDevices({
     [publish, updateSnapshot]
   );
 
-  const previewSelection = useCallback(async (deviceId) => {
+  const previewSelection = useCallback(async (/** @type {string} */ deviceId) => {
     if (/^app-[0-9a-f]{32}$/.test(deviceId)) {
       const application = snapshotRef.current.captureApplications.find(
         (candidate) => candidate.id === deviceId
@@ -152,7 +152,7 @@ export function useAudioDevices({
   }, []);
 
   const selectCaptureDevice = useCallback(
-    async (nextId, options = {}) => {
+    async (/** @type {string} */ nextId, options = {}) => {
       if (snapshotRef.current.requestedId === nextId) {
         return commitCaptureDevice(nextId, options);
       }

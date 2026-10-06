@@ -7,6 +7,9 @@ const ACCESSORY_READY_RETRY_MS = 50;
 const ACCESSORY_READY_ATTEMPTS = 4;
 const CURSOR_RECONCILE_MS = 33;
 
+/**
+ * @param {string} view
+ */
 function initialEditorSize(view) {
   if (view === "presets") return { width: 240, height: 560 };
   if (view === "loudness-profile") return { width: 240, height: 320 };
@@ -22,7 +25,7 @@ export async function setDockAccessoriesWhenReady(
   options,
   {
     command = setDockAccessories,
-    wait = (delay) => new Promise((resolve) => setTimeout(resolve, delay)),
+    wait = (/** @type {number} */ delay) => new Promise((resolve) => setTimeout(resolve, delay)),
   } = {}
 ) {
   for (let attempt = 1; attempt <= ACCESSORY_READY_ATTEMPTS; attempt += 1) {

@@ -13,6 +13,12 @@ export const MEASUREMENT_AVAILABILITY_REASONS = Object.freeze([
   "belowSignalFloor",
 ]);
 
+/**
+ * @param {string} path
+ * @param {string} label
+ * @param {string} unit
+ * @param {string} basis
+ */
 function descriptor(path, label, unit, basis) {
   return Object.freeze({ path, label, unit, basis });
 }
@@ -41,6 +47,9 @@ export const MEASUREMENT_METRICS = Object.freeze([
   descriptor("profile.overall", "Loudness Profile Overall", "status", "evaluation"),
 ]);
 
+/**
+ * @param {number} revision
+ */
 export function buildMeasurementDescription(revision) {
   return {
     revision,
@@ -52,12 +61,20 @@ export function buildMeasurementDescription(revision) {
   };
 }
 
+/**
+ * @param {string} path
+ * @param {string} reason
+ */
 function finiteOrNull(value, path, reason, unavailable) {
   if (Number.isFinite(value)) return value;
   unavailable[path] = reason;
   return null;
 }
 
+/**
+ * @param {string} path
+ * @param {string} reason
+ */
 function nullWithReason(path, reason, unavailable) {
   unavailable[path] = reason;
   return null;
@@ -89,6 +106,9 @@ function profileResult(profile, values) {
   };
 }
 
+/**
+ * @param {string} value
+ */
 function sourceState(value) {
   return ["starting", "running", "stopping", "stopped", "error"].includes(value)
     ? value
@@ -143,7 +163,8 @@ export function buildMeasurementInspection({
     ),
   }));
 
-  const scalar = (value, path) => finiteOrNull(value, path, missingReason, unavailable);
+  const scalar = (/** @type {number} */ value, /** @type {string} */ path) =>
+    finiteOrNull(value, path, missingReason, unavailable);
   const levels = {
     channels,
     truePeak: {

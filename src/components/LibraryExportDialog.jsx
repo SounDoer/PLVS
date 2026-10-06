@@ -17,6 +17,9 @@ const LIBRARY_TYPES = [
   { type: "themes", label: "Themes" },
 ];
 
+/**
+ * @param {number} count
+ */
 function itemCountLabel(count) {
   return `${count} ${count === 1 ? "item" : "items"}`;
 }

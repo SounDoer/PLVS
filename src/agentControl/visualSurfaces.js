@@ -13,6 +13,10 @@ const WINDOW_LABELS = Object.freeze({
   dockEditor: "dock-editor",
 });
 
+/**
+ * @param {string} reason
+ * @param {string} message
+ */
 function failure(reason, message) {
   return { ok: false, error: { reason, message } };
 }

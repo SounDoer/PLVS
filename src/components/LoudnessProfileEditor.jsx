@@ -85,7 +85,7 @@ const NUM_INPUT_CLASS =
  * dot in `14.` would be filled in from under the cursor.
  */
 function RuleNumber({ ariaLabel, metricId, value, onCommit }) {
-  const settled = (v) => (v == null ? "" : v.toFixed(statDecimals(metricId)));
+  const settled = (/** @type {number} */ v) => (v == null ? "" : v.toFixed(statDecimals(metricId)));
   const [text, setText] = useState(() => settled(value));
   const inputRef = useRef(null);
   const skipBlur = useRef(false);
@@ -335,6 +335,9 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
   /// percentage the row would nonetheless present as a setting the user chose. Blank is a real
   /// state here (the rule judges nothing), so the row is honest about needing a new value rather
   /// than quietly keeping the old one at the wrong precision.
+  /**
+   * @param {number} index
+   */
   function patchRule(index, patch) {
     onEdit((d) => ({
       ...d,
@@ -355,6 +358,9 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
     }));
   }
 
+  /**
+   * @param {number} index
+   */
   function removeRule(index) {
     onEdit((d) => ({ ...d, rules: (d.rules ?? []).filter((_, i) => i !== index) }));
   }
@@ -488,7 +494,7 @@ export function LoudnessProfileEditor({ draft, onEdit, onSave, onCancel, pos, on
               ariaLabel="Loudness Profile reference"
               metricId="integrated"
               value={ruleDocument.referenceLufs ?? null}
-              onCommit={(next) => onEdit((d) => withReferenceLufs(d, next))}
+              onCommit={(/** @type {number} */ next) => onEdit((d) => withReferenceLufs(d, next))}
             />
             <span className={cn(UNIT_COL_CLASS, "text-[color:var(--ui-text-annotation)]")}>
               LUFS

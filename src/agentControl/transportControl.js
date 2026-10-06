@@ -9,6 +9,9 @@ function compactError(error) {
   return { message: error.message || String(error) };
 }
 
+/**
+ * @param {string} state
+ */
 function publicFileState(state) {
   if (state === "ready" || state === "empty") return "stopped";
   return ["probing", "analyzing", "complete", "stopped", "error"].includes(state) ? state : "error";
@@ -77,6 +80,9 @@ export function transportLifecycleSignature(snapshot) {
   });
 }
 
+/**
+ * @param {string} method
+ */
 export function projectTransportMutation(snapshot, method, params = {}) {
   const projected = cloneJson(snapshot);
   if (method === "transport.source.live") {
@@ -106,6 +112,11 @@ export function projectTransportMutation(snapshot, method, params = {}) {
   return projected;
 }
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
@@ -124,6 +135,9 @@ function result(overrides = {}) {
   };
 }
 
+/**
+ * @param {string} method
+ */
 export function planTransportMutation(snapshot, method, params = {}, context = {}) {
   if (context.deviceTransitioning === true) {
     return result({ refusal: { code: "transitionInProgress", state: "restarting" } });

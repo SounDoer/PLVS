@@ -6,6 +6,9 @@ function keyed(value) {
   return new Proxy(Object.create(null), { get: () => value });
 }
 
+/**
+ * @param {number} fraction
+ */
 function interpolateValue(left, right, fraction) {
   if (Array.isArray(left) && Array.isArray(right)) {
     return left.map((value, index) => value + (right[index] - value) * fraction);

@@ -20,22 +20,25 @@ export function useChartHover(computeFn, refreshKey) {
     []
   );
 
-  const onMove = useCallback((clientX, clientY, rect) => {
-    const w = Math.max(1, rect.width);
-    const h = Math.max(1, rect.height);
-    const xFrac = Math.max(0, Math.min(1, (clientX - rect.left) / w));
-    const yFrac = Math.max(0, Math.min(1, (clientY - rect.top) / h));
-    pendingMoveRef.current = { xFrac, yFrac };
-    if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = 0;
-      const pendingMove = pendingMoveRef.current;
-      pendingMoveRef.current = null;
-      if (!pendingMove) return;
-      lastMoveRef.current = pendingMove;
-      setHover(computeRef.current(pendingMove.xFrac, pendingMove.yFrac));
-    });
-  }, []);
+  const onMove = useCallback(
+    (/** @type {number} */ clientX, /** @type {number} */ clientY, rect) => {
+      const w = Math.max(1, rect.width);
+      const h = Math.max(1, rect.height);
+      const xFrac = Math.max(0, Math.min(1, (clientX - rect.left) / w));
+      const yFrac = Math.max(0, Math.min(1, (clientY - rect.top) / h));
+      pendingMoveRef.current = { xFrac, yFrac };
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0;
+        const pendingMove = pendingMoveRef.current;
+        pendingMoveRef.current = null;
+        if (!pendingMove) return;
+        lastMoveRef.current = pendingMove;
+        setHover(computeRef.current(pendingMove.xFrac, pendingMove.yFrac));
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (refreshKey == null) return;

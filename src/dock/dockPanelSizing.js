@@ -60,6 +60,9 @@ const LEGACY_MODULE_ID = Object.freeze({
   correlation: "vectorscope",
 });
 
+/**
+ * @param {string} moduleId
+ */
 export function getDockPanelSizing(moduleId) {
   const normalized = LEGACY_MODULE_ID[moduleId] ?? moduleId;
   return (
@@ -72,6 +75,10 @@ export function getDockPanelSizing(moduleId) {
   );
 }
 
+/**
+ * @param {number} minWidth
+ * @param {number} maxPreferredWidth
+ */
 export function clampDockPanelWidth(value, minWidth, maxPreferredWidth) {
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
@@ -126,6 +133,10 @@ export function resizeDockPanelPair({
   };
 }
 
+/**
+ * @param {string} leftPanelId
+ * @param {string} rightPanelId
+ */
 export function resetDockPanelPair(panelSizesById, leftPanelId, rightPanelId) {
   const next = { ...panelSizesById };
   delete next[leftPanelId];

@@ -54,6 +54,9 @@ const LEVEL_METER_CHANNEL_GAP = "0.15rem";
 const LEVEL_METER_GRID =
   "grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-[var(--ui-chart-axis-gap)]";
 
+/**
+ * @param {string} position
+ */
 function levelMeterValueMarkerClass(position) {
   return `${LEVEL_METER_VALUE_MARKER_BASE} ${LEVEL_METER_VALUE_MARKER_POSITION[position]}`;
 }
@@ -103,6 +106,9 @@ function AnimatedPeakFill({ dbValue, yRange, background }) {
   );
 }
 
+/**
+ * @param {number} value
+ */
 function formatLevelValue(value) {
   return fmtMetric(value);
 }

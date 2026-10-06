@@ -99,7 +99,7 @@ export function useThemeEditor(opts) {
   );
 
   const beginCreate = useCallback(
-    (name, baseTheme = activeTheme) => {
+    (/** @type {string} */ name, baseTheme = activeTheme) => {
       wasNewRef.current = true;
       restoreThemeRef.current = activeTheme;
       const d = makeCustomThemeV2FromBase(baseTheme, name, makeId);
@@ -158,7 +158,7 @@ export function useThemeEditor(opts) {
   );
 
   const updateColorScheme = useCallback(
-    (colorScheme) => {
+    (/** @type {string} */ colorScheme) => {
       if (colorScheme !== "dark" && colorScheme !== "light") return;
       edit((draft) => ({ ...draft, colorScheme }), "colorScheme");
     },
@@ -217,7 +217,7 @@ export function useThemeEditor(opts) {
   );
 
   const applyPreset = useCallback(
-    (kind, presetId) => {
+    (/** @type {string} */ kind, /** @type {string} */ presetId) => {
       const palette = applyPalettePreset(kind, presetId);
       if (!palette) return;
       edit(

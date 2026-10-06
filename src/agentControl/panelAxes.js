@@ -1,5 +1,8 @@
 import { axisKindsForModule, resolveAxisViewport } from "../workspace/axisViewports.js";
 
+/**
+ * @param {string} kindId
+ */
 function publicRange(kindId, viewport) {
   if (kindId === "frequency") {
     return { minHz: viewport.min, maxHz: viewport.max };
@@ -7,6 +10,9 @@ function publicRange(kindId, viewport) {
   return { windowSec: viewport.windowSec, offsetSec: viewport.offsetSec };
 }
 
+/**
+ * @param {string} panelId
+ */
 export function readPublicPanelAxes(workspace, panelId, { writable = true } = {}) {
   const moduleId = workspace?.panelsById?.[panelId]?.moduleId;
   return Object.fromEntries(

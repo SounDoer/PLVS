@@ -11,6 +11,9 @@ import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 // File history rings are bounded (see HIST_MAX_SAMPLES in App.jsx). When a file is long enough to
 // fill them, scrub only reaches the most recent window. Compare the retained loudness window
 // against the authoritative file duration so the summary can warn instead of silently truncating.
+/**
+ * @param {number} histMaxSamples
+ */
 export function detectHistoryTruncation(intake, histMaxSamples, durationMs) {
   const loudness = intake?.getLoudnessHistory?.() ?? [];
   if (loudness.length < histMaxSamples || !Number.isFinite(durationMs) || durationMs <= 0) {

@@ -60,13 +60,16 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     [readState, themeSettings]
   );
 
-  const assertAllowed = useCallback((operation) => {
+  const assertAllowed = useCallback((/** @type {string} */ operation) => {
     if (editorRef.current?.isEditingNow()) {
       throw new SceneOperationBlockedError(operation, ["theme"]);
     }
   }, []);
 
-  const planSelect = useCallback((id) => planThemeSelect(readState(), id), [readState]);
+  const planSelect = useCallback(
+    (/** @type {string} */ id) => planThemeSelect(readState(), id),
+    [readState]
+  );
   const planFollowSystem = useCallback(
     () => planThemeFollowSystem(readState(), themeSettings.resolvedSystemThemeIdForControl()),
     [readState, themeSettings]
@@ -76,15 +79,23 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     [readState]
   );
   const planUpdate = useCallback(
-    (id, document) => planThemeUpdate(readState(), id, document),
+    (/** @type {string} */ id, document) => planThemeUpdate(readState(), id, document),
     [readState]
   );
-  const planRename = useCallback((id, name) => planThemeRename(readState(), id, name), [readState]);
+  const planRename = useCallback(
+    (/** @type {string} */ id, /** @type {string} */ name) =>
+      planThemeRename(readState(), id, name),
+    [readState]
+  );
   const planDuplicate = useCallback(
-    (id, name, options) => planThemeDuplicate(readState(), id, name, options),
+    (/** @type {string} */ id, /** @type {string} */ name, options) =>
+      planThemeDuplicate(readState(), id, name, options),
     [readState]
   );
-  const planDelete = useCallback((id) => planThemeDelete(readState(), id), [readState]);
+  const planDelete = useCallback(
+    (/** @type {string} */ id) => planThemeDelete(readState(), id),
+    [readState]
+  );
   const planReorder = useCallback((ids) => planThemeReorder(readState(), ids), [readState]);
 
   const runBlocked = useCallback(
@@ -185,6 +196,9 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     theme,
   }));
 
+  /**
+   * @param {string} mode
+   */
   function setAppearanceMode(mode) {
     if (mode === "system") control.followSystem();
     else control.select(themeSettings.resolvedThemeId);

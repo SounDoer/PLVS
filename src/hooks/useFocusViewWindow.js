@@ -3,6 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
 
+/**
+ * @param {boolean} enabled
+ */
 export async function setWindowDecorations(enabled) {
   if (!isTauri()) return false;
   const win = getCurrentWindow();

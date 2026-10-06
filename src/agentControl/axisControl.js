@@ -9,22 +9,36 @@ import {
   writeLocalRange,
 } from "../workspace/axisViewports.js";
 
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
 
+/**
+ * @param {string} kindId
+ */
 function publicRange(kindId, range) {
   return kindId === "frequency"
     ? { minHz: range.min, maxHz: range.max }
     : { windowSec: range.windowSec, offsetSec: range.offsetSec };
 }
 
+/**
+ * @param {string} kindId
+ */
 function internalRange(kindId, range) {
   return kindId === "frequency"
     ? { min: range.minHz, max: range.maxHz }
     : { windowSec: range.windowSec, offsetSec: range.offsetSec };
 }
 
+/**
+ * @param {string} kindId
+ */
 function leafNames(kindId) {
   return kindId === "frequency" ? ["minHz", "maxHz"] : ["windowSec", "offsetSec"];
 }
@@ -35,6 +49,9 @@ function rangeEqual(kindId, left, right) {
   );
 }
 
+/**
+ * @param {string} kindId
+ */
 function validateRange(kindId, value, context = {}) {
   const issues = [];
   const keys = kindId === "frequency" ? ["minHz", "maxHz"] : ["windowSec", "offsetSec"];
@@ -198,6 +215,9 @@ export function buildAxisInspection(workspace) {
   };
 }
 
+/**
+ * @param {string} kindId
+ */
 export function planSharedAxisUpdate(workspace, kindId, range, context = {}) {
   if (!AXIS_VIEWPORTS[kindId]) {
     return invalidPlan(workspace, [
@@ -220,6 +240,9 @@ export function planSharedAxisUpdate(workspace, kindId, range, context = {}) {
   };
 }
 
+/**
+ * @param {string} kindId
+ */
 export function planSharedAxisReset(workspace, kindId) {
   if (!AXIS_VIEWPORTS[kindId]) {
     return invalidPlan(workspace, [
@@ -248,6 +271,10 @@ function validatePanelTarget(workspace, panelId, kindId) {
   return [];
 }
 
+/**
+ * @param {string} panelId
+ * @param {string} kindId
+ */
 export function planPanelAxisUpdate(workspace, panelId, kindId, patch, context = {}) {
   const targetIssues = validatePanelTarget(workspace, panelId, kindId);
   if (targetIssues.length > 0) return invalidPlan(workspace, targetIssues);
@@ -335,6 +362,10 @@ export function planPanelAxisUpdate(workspace, panelId, kindId, patch, context =
   };
 }
 
+/**
+ * @param {string} panelId
+ * @param {string} kindId
+ */
 export function planPanelAxisReset(workspace, panelId, kindId) {
   const targetIssues = validatePanelTarget(workspace, panelId, kindId);
   if (targetIssues.length > 0) return invalidPlan(workspace, targetIssues);

@@ -13,6 +13,9 @@ function channelIsAvailable(selection, channelCount) {
   return selection?.x < assumedCount && selection?.y < assumedCount;
 }
 
+/**
+ * @param {string} panelId
+ */
 export function readPublicPanelAnalysis(workspace, panelId, context = {}) {
   const moduleId = workspace?.panelsById?.[panelId]?.moduleId;
   const controls = getPanelControls(workspace, panelId);

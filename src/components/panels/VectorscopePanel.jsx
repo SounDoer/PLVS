@@ -49,6 +49,10 @@ function correlationMarkerLeft(value) {
   return `${((corr + 1) / 2) * 100}%`;
 }
 
+/**
+ * @param {number} x
+ * @param {number} y
+ */
 function hasPairSignal(peakDb, x, y) {
   if (!Array.isArray(peakDb)) return false;
   const lx = Number.isFinite(peakDb[x]) ? peakDb[x] : -Infinity;
@@ -64,6 +68,10 @@ function correlationMarkerClass(value) {
   return "bg-[color:var(--ui-vectorscope-correlation-safe)]";
 }
 
+/**
+ * @param {number} previous
+ * @param {number} next
+ */
 function smoothCorrelation(previous, next) {
   if (previous === null || next === null) return next;
   return previous + (next - previous) * LIVE_CORRELATION_DISPLAY_ALPHA;

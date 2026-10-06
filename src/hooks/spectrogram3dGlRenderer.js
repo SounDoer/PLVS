@@ -144,6 +144,9 @@ const QUAD_CORNERS = [
   [0, 1],
 ];
 
+/**
+ * @param {number} cap
+ */
 function pushSegments(out, segments, cap) {
   for (const [a0, a1, b0, b1] of segments) {
     for (const [along, side] of QUAD_CORNERS) out.push(a0, a1, b0, b1, along, side, cap);
@@ -189,6 +192,10 @@ function compile(gl, type, source) {
   return shader;
 }
 
+/**
+ * @param {string} vertexSource
+ * @param {string} fragmentSource
+ */
 function link(gl, vertexSource, fragmentSource) {
   const program = gl.createProgram();
   const vs = compile(gl, gl.VERTEX_SHADER, vertexSource);
@@ -206,6 +213,9 @@ function link(gl, vertexSource, fragmentSource) {
   return program;
 }
 
+/**
+ * @param {string[]} names
+ */
 function uniformMap(gl, program, names) {
   const out = {};
   for (const name of names) out[name] = gl.getUniformLocation(program, name);
@@ -355,7 +365,11 @@ export function createSurfaceRenderer(canvas) {
   canvas.addEventListener("webglcontextrestored", onRestored, false);
   start();
 
-  /** Device pixels, from the same measurement that sizes the overlay canvas. */
+  /**
+   * Device pixels, from the same measurement that sizes the overlay canvas.
+   * @param {number} width
+   * @param {number} height
+   */
   function resize(width, height) {
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
@@ -397,6 +411,10 @@ export function createSurfaceRenderer(canvas) {
     }
   }
 
+  /**
+   * @param {number} lineWidth
+   * @param {number[]} gridColour
+   */
   function drawFloorLines(uniforms, lineWidth, gridColour) {
     const u = gpu.floorUniforms;
     gl.useProgram(gpu.floorProgram);

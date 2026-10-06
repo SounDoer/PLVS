@@ -2,12 +2,18 @@ import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../ipc/env.js";
 
+/**
+ * @param {number} surfaceOpacity
+ */
 export async function syncSurfaceOpacityWindowShadow(surfaceOpacity) {
   if (!isTauri()) return false;
   await invoke("sync_surface_opacity_shadow", { surfaceOpacity });
   return true;
 }
 
+/**
+ * @param {number} surfaceOpacity
+ */
 export function useSurfaceOpacityWindowShadow(surfaceOpacity) {
   const isFullyTransparent = surfaceOpacity === 0;
   useEffect(() => {

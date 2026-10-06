@@ -6,6 +6,9 @@ export const DOCK_MAX_HEIGHT = 160;
 export const DOCK_COMPACT_MAX_HEIGHT = 63;
 export const DOCK_EXPANDED_MIN_HEIGHT = 120;
 
+/**
+ * @param {number} value
+ */
 export function dockHeightMode(value) {
   const height = clampDockHeight(value);
   if (height <= DOCK_COMPACT_MAX_HEIGHT) return "compact";
@@ -24,6 +27,11 @@ export function dockHeightFromPointer({ edge, startHeight, startY, currentY }) {
   return clampDockHeight(startHeight + delta);
 }
 
+/**
+ * @param {string} edge
+ * @param {string} key
+ * @param {number} step
+ */
 export function dockHeightKeyboardDelta(edge, key, step) {
   if (key === "ArrowUp") return edge === "bottom" ? step : -step;
   if (key === "ArrowDown") return edge === "top" ? step : -step;

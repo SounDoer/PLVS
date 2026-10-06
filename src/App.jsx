@@ -190,6 +190,9 @@ export function updateHistoryPerformanceHarnessController(controller, requestKey
   controller?.updateRequestKeys(requestKeys);
 }
 
+/**
+ * @param {string} prefix
+ */
 function errorDetails(prefix, error) {
   return `${prefix}: ${error?.message || String(error)}`;
 }
@@ -323,7 +326,7 @@ function AppContent() {
   // not only on the disabled Dock control, so every entry point -- and Agent Control later -- gets
   // the same answer.
   const assertSceneOperationAllowed = useCallback(
-    (operation) => {
+    (/** @type {string} */ operation) => {
       assertNoBlockingEditor(operation);
       const reason = sceneOperationUnavailableReason(operation, { sourceMode });
       if (reason) throw new SceneOperationUnavailableError(operation, reason);
@@ -501,7 +504,7 @@ function AppContent() {
     ]
   );
   const setPinned = useCallback(
-    (value) =>
+    (/** @type {boolean} */ value) =>
       void applyViewState(
         { pinned: value === true, focusView, surfaceOpacity, glassEnabled },
         { changed: ["view.pinned"] }
@@ -509,7 +512,7 @@ function AppContent() {
     [applyViewState, focusView, glassEnabled, surfaceOpacity]
   );
   const setFocusField = useCallback(
-    (field, value) =>
+    (field, /** @type {boolean} */ value) =>
       void applyViewState(
         {
           pinned,
@@ -539,7 +542,7 @@ function AppContent() {
     [applyViewState, focusView, glassEnabled, pinned]
   );
   const setGlassEnabled = useCallback(
-    (value) =>
+    (/** @type {boolean} */ value) =>
       void applyViewState(
         { pinned, focusView, surfaceOpacity, glassEnabled: value === true },
         { changed: ["view.glassEnabled"] }
@@ -1518,7 +1521,7 @@ function AppContent() {
     ]
   );
   const executeAgentControlTransport = useCallback(
-    async (method, params) => {
+    async (/** @type {string} */ method, params) => {
       if (method === "transport.source.live") {
         if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
         switchSource("live");
@@ -1596,7 +1599,7 @@ function AppContent() {
     ]
   );
   const executeAgentControlDock = useCallback(
-    async (method, projected) => {
+    async (/** @type {string} */ method, projected) => {
       if (method === "dock.enter") {
         const effective = await enterDockMode(
           projected.edge,
@@ -1686,7 +1689,7 @@ function AppContent() {
   );
 
   const setChannelLayout = useCallback(
-    (layoutId) => {
+    (/** @type {string} */ layoutId) => {
       if (layoutId === "custom") return;
       const roles = rolesForLayout(layoutId);
       if (roles.length !== channelCount) return;
@@ -2399,7 +2402,8 @@ function AppContent() {
     presets,
     loudnessProfile,
     loudnessProfileStats,
-    onExportLibraryItem: (type, id) => packTransfer.exportSelection(type, [id]),
+    onExportLibraryItem: (/** @type {"presets" | "loudness" | "themes"} */ type, id) =>
+      packTransfer.exportSelection(type, [id]),
     setSettingsOpen,
   };
   const fileSummaryProps = {

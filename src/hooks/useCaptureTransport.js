@@ -1,5 +1,8 @@
 import { useRef, useState } from "react";
 
+/**
+ * @param {string} lifecycle
+ */
 function transitionError(lifecycle) {
   const error = /** @type {Error & { code?: string }} */ (
     new Error(`LIVE transport is ${lifecycle}.`)
@@ -92,7 +95,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     });
   };
 
-  const recordAudioDrop = (chunks) => {
+  const recordAudioDrop = (/** @type {number} */ chunks) => {
     if (!(chunks > 0)) return;
     setAudioDrop((current) =>
       current ? { ...current, chunks: current.chunks + chunks } : { chunks, since: Date.now() }

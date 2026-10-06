@@ -71,7 +71,7 @@ export function useHistoryInteraction({
   );
 
   const updateSelectionFromClientX = useCallback(
-    (clientX, rect) => {
+    (/** @type {number} */ clientX, rect) => {
       setSelectedOffset(
         computeSelectionOffset(
           clientX,

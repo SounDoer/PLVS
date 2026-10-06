@@ -34,7 +34,7 @@ export function DockPanelResizeHandle({
     };
   };
 
-  const emit = (delta, persist, base) => {
+  const emit = (/** @type {number} */ delta, /** @type {boolean} */ persist, base) => {
     if (disabled || !onResize) return;
     const widths = base ?? preferredWidths();
     onResize({

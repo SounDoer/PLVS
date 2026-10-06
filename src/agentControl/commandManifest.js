@@ -42,6 +42,10 @@ const REVISION_POLICIES = new Set(["none", "optional", "required"]);
 const OUTPUT_POLICIES = new Set(["none", "optional", "required"]);
 const SCHEMA_TYPES = new Set(["boolean", "integer", "number", "string", "array", "object"]);
 
+/**
+ * @param {string} path
+ * @param {string} message
+ */
 function fail(path, message) {
   throw new TypeError(`Invalid command manifest at ${path}: ${message}`);
 }
@@ -50,12 +54,18 @@ function plainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * @param {string} path
+ */
 function rejectUnknownFields(value, allowed, path) {
   for (const field of Object.keys(value)) {
     if (!allowed.has(field)) fail(`${path}.${field}`, "unknown field");
   }
 }
 
+/**
+ * @param {string} path
+ */
 function validateSchema(schema, path) {
   if (!plainObject(schema)) fail(path, "must be an object");
   rejectUnknownFields(schema, SCHEMA_FIELDS, path);
@@ -83,6 +93,9 @@ function validateSchema(schema, path) {
   }
 }
 
+/**
+ * @param {string} path
+ */
 function validateArgument(argument, path) {
   if (!plainObject(argument)) fail(path, "must be an object");
   rejectUnknownFields(argument, ARGUMENT_FIELDS, path);
@@ -192,9 +205,15 @@ export const runningAppCommandEntries = Object.freeze(
 export const runningAppWireMethods = Object.freeze(
   runningAppCommandEntries.map(({ wireMethod }) => wireMethod)
 );
+/**
+ * @param {string} family
+ */
 export function commandEntriesForFamily(family) {
   return runningAppCommandEntries.filter((entry) => entry.family === family);
 }
+/**
+ * @param {string} featureGate
+ */
 export function commandEntriesForFeatureGate(featureGate) {
   return runningAppCommandEntries.filter((entry) => entry.featureGate === featureGate);
 }

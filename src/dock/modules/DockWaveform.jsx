@@ -26,6 +26,10 @@ import { useResolvedTheme } from "../../theme/useResolvedTheme.js";
 
 const MAX_DEVICE_PIXEL_RATIO = 1;
 const MAX_AGGREGATION_STRIDE = 10;
+/**
+ * @param {string} name
+ * @param {number} fallback
+ */
 function cssNumber(style, name, fallback) {
   const value = Number.parseFloat(style.getPropertyValue(name));
   return Number.isFinite(value) ? value : fallback;
@@ -38,12 +42,19 @@ function clampAmplitude(value) {
 /**
  * Long windows move by much less than one pixel per history tick. Avoid rebuilding every bucket
  * for sub-pixel changes while keeping short windows at the full 10 Hz history cadence.
+ * @param {number} visibleRowCount
+ * @param {number} pixelWidth
  */
 export function dockWaveformAggregationStride(visibleRowCount, pixelWidth) {
   const rowsPerPixel = Math.max(1, visibleRowCount) / Math.max(1, pixelWidth);
   return Math.max(1, Math.min(MAX_AGGREGATION_STRIDE, Math.floor(rowsPerPixel / 2)));
 }
 
+/**
+ * @param {number} visibleSamples
+ * @param {number} channelCount
+ * @param {number} pixelWidth
+ */
 export function sliceDockWaveformHistory(
   histSourceList,
   waveformHistoryIndex,
@@ -129,7 +140,7 @@ export function paintDockWaveformCanvas(
       continue;
     }
 
-    const xFor = (bucket) => bucket - fracPhase;
+    const xFor = (/** @type {number} */ bucket) => bucket - fracPhase;
     if (frequencyColor) {
       for (let bucket = firstBucket; bucket <= lastBucket; bucket += 1) {
         const next = Math.min(lastBucket, bucket + 1);

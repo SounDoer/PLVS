@@ -26,17 +26,27 @@ function hasPairSignal(peakDb, x, y) {
   return Math.max(first, second) > CORRELATION_SIGNAL_FLOOR_DB;
 }
 
+/**
+ * @param {number} value
+ */
 function markerColor(value) {
   if (value < 0) return "var(--ui-vectorscope-correlation-critical)";
   if (value < 0.35) return "var(--ui-vectorscope-correlation-warning)";
   return "var(--ui-vectorscope-correlation-safe)";
 }
 
+/**
+ * @param {number} value
+ */
 function formatCorrelation(value) {
   if (value === null) return "-";
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }
 
+/**
+ * @param {boolean} expanded
+ * @param {boolean} isPolar
+ */
 function computePlotBox(width, height, expanded, isPolar) {
   if (!Number.isFinite(width) || !Number.isFinite(height)) return { w: 48, h: 48 };
   // Standard layout puts the correlation rail beside the plot (reserve its width); expanded stacks

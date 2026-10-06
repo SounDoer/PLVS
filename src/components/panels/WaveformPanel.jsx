@@ -42,6 +42,10 @@ import { readCssNumber } from "../../theme/cssTokens.js";
 const WAVEFORM_AXIS_WIDTH_VAR = "--ui-chart-y-axis-rail-w";
 const WAVEFORM_CHART_LEFT = `calc(var(${WAVEFORM_AXIS_WIDTH_VAR}) + var(--ui-chart-axis-gap))`;
 const WAVEFORM_MAX_DEVICE_PIXEL_RATIO = 1;
+/**
+ * @param {number} visibleSamples
+ * @param {number} effectiveOffsetSamples
+ */
 function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiveOffsetSamples) {
   const total = histSourceList.length;
   if (total === 0) {
@@ -56,7 +60,7 @@ function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiv
   if (endIndex < startIndex) {
     return { startIndex: -1, endIndex: -1, startRow: null, endRow: null };
   }
-  const rowAt = (index) =>
+  const rowAt = (/** @type {number} */ index) =>
     typeof histSourceList.rowAt === "function"
       ? histSourceList.rowAt(index)
       : histSourceList[index];
@@ -130,7 +134,7 @@ export function drawWaveformCanvas(
 
   if (firstBucket < 0 || !bucketCount || !mins?.length || !maxes?.length) return;
 
-  const xFor = (j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
+  const xFor = (/** @type {number} */ j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
   if (frequencyColor) {
     // One colour per pixel column, so the split-derived anchors are resolved once here and the
     // result is written into a single reused array. See `docs/history/notes/perf/waveform.md` §2.1.

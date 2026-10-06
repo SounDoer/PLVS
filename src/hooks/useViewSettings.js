@@ -28,14 +28,23 @@ export function useViewSettings() {
     setFocusViewState(next);
   }
 
+  /**
+   * @param {boolean} value
+   */
   function setAutoHideControls(value) {
     setFocusView({ ...focusView, autoHideControls: value === true });
   }
 
+  /**
+   * @param {boolean} value
+   */
   function setCompactPanels(value) {
     setFocusView({ ...focusView, compactPanels: value === true });
   }
 
+  /**
+   * @param {boolean} value
+   */
   function setBorderless(value) {
     setFocusView({ ...focusView, borderless: value === true });
   }

@@ -291,7 +291,7 @@ function SettingsBody({
               max={1000}
               step={50}
               value={controls.vectorscopePolarSamplePersistenceMs}
-              formatValue={(value) => `${value.toFixed(0)} ms`}
+              formatValue={(/** @type {number} */ value) => `${value.toFixed(0)} ms`}
               onCommit={(vectorscopePolarSamplePersistenceMs) =>
                 onChange({ ...controls, vectorscopePolarSamplePersistenceMs })
               }
@@ -399,7 +399,7 @@ function SettingsBody({
             max={100}
             step={1}
             value={controls.stereoMapSpeedPercent}
-            formatValue={(value) => `${value.toFixed(0)}%`}
+            formatValue={(/** @type {number} */ value) => `${value.toFixed(0)}%`}
             onCommit={(stereoMapSpeedPercent) => onChange({ ...controls, stereoMapSpeedPercent })}
             commitOnRelease
           />
@@ -430,7 +430,7 @@ function SettingsBody({
             max={100}
             step={1}
             value={controls.stereoMapEnergyFadePercent}
-            formatValue={(value) => `${value.toFixed(0)}%`}
+            formatValue={(/** @type {number} */ value) => `${value.toFixed(0)}%`}
             onCommit={(stereoMapEnergyFadePercent) =>
               onChange({ ...controls, stereoMapEnergyFadePercent })
             }
@@ -447,7 +447,7 @@ function SettingsBody({
               max={100}
               step={1}
               value={controls.stereoMapColorBlendPercent}
-              formatValue={(value) => `${value.toFixed(0)}%`}
+              formatValue={(/** @type {number} */ value) => `${value.toFixed(0)}%`}
               onCommit={(stereoMapColorBlendPercent) =>
                 onChange({ ...controls, stereoMapColorBlendPercent })
               }
@@ -520,7 +520,7 @@ function SettingsBody({
             max={6}
             step={0.25}
             value={controls.spectrumTiltDbPerOctave}
-            formatValue={(value) => `${value.toFixed(2)} dB/oct`}
+            formatValue={(/** @type {number} */ value) => `${value.toFixed(2)} dB/oct`}
             onCommit={(spectrumTiltDbPerOctave) =>
               onChange({ ...controls, spectrumTiltDbPerOctave })
             }
@@ -533,7 +533,7 @@ function SettingsBody({
             max={-12}
             step={1}
             value={controls.spectrogramDbFloor}
-            formatValue={(value) => `${value.toFixed(0)} dB`}
+            formatValue={(/** @type {number} */ value) => `${value.toFixed(0)} dB`}
             onCommit={(spectrogramDbFloor) => onChange({ ...controls, spectrogramDbFloor })}
           />
         </SettingsRow>

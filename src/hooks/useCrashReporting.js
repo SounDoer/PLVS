@@ -16,6 +16,9 @@ function describeReason(reason) {
   }
 }
 
+/**
+ * @param {string} kind
+ */
 function forwardOrdinaryError(kind, reason) {
   const message = `[${kind}] ${describeReason(reason)}`;
   if (!isTauri()) {

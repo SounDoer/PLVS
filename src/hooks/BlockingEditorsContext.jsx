@@ -60,7 +60,7 @@ export function BlockingEditorsProvider({ children }) {
   /// Reads the ref, never the state: a scene operation can be dispatched from an async
   /// continuation or from a callback the tray captured a render ago, and both must see the
   /// registry as it is now.
-  const assertSceneOperationAllowed = useCallback((operation) => {
+  const assertSceneOperationAllowed = useCallback((/** @type {string} */ operation) => {
     const editors = [...countsRef.current.keys()];
     if (editors.length === 0) return;
     throw new SceneOperationBlockedError(operation, editors);

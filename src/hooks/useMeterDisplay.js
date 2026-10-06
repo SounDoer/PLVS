@@ -128,7 +128,7 @@ export function useMeterDisplay() {
     setNotice(null);
   };
 
-  const raiseNotice = (kind, text, details) => {
+  const raiseNotice = (/** @type {string} */ kind, text, details) => {
     clearGuardTimer();
     setNotice({
       kind,

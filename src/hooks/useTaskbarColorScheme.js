@@ -3,7 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "../ipc/env.js";
 
-const asScheme = (value) => (value === "light" || value === "dark" ? value : null);
+const asScheme = (/** @type {string} */ value) =>
+  value === "light" || value === "dark" ? value : null;
 
 /**
  * The light/dark mode of the Windows taskbar, which the tray icon sits on. It follows

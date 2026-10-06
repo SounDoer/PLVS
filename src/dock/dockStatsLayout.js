@@ -6,6 +6,9 @@ export const DOCK_STATS_EXPANDED_COMFORTABLE_CELL_WIDTH_PX = 84;
 export const DOCK_STATS_INNER_GAP_PX = 2;
 export const DOCK_STATS_GROUP_GAP_PX = 12;
 
+/**
+ * @param {number} widthPx
+ */
 export function computeDockStatsColumnCount(
   widthPx,
   groupGapPx = DOCK_STATS_GROUP_GAP_PX,
@@ -20,11 +23,18 @@ export function computeDockStatsColumnCount(
   return Math.max(1, Math.floor((width + groupGap) / (minCellWidth + groupGap)));
 }
 
+/**
+ * @param {number} columnCount
+ */
 export function visibleDockStats(metrics, columnCount) {
   const columns = Math.max(1, Math.floor(Number(columnCount) || 1));
   return metrics.slice(0, columns * DOCK_STATS_MAX_ROWS);
 }
 
+/**
+ * @param {number} metricIndex
+ * @param {number} columnCount
+ */
 export function dockStatsGridPosition(metricIndex, columnCount) {
   const columns = Math.max(1, Math.floor(Number(columnCount) || 1));
   const index = Math.max(0, Math.floor(Number(metricIndex) || 0));
@@ -35,6 +45,9 @@ export function dockStatsGridPosition(metricIndex, columnCount) {
   };
 }
 
+/**
+ * @param {number} columnCount
+ */
 export function dockStatsGridTemplate(
   columnCount,
   comfortableCellWidthPx = DOCK_STATS_COMFORTABLE_CELL_WIDTH_PX

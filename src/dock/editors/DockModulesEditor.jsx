@@ -152,6 +152,9 @@ function buildDisplayState(panels) {
   return { panelsById, panelOrder };
 }
 
+/**
+ * @param {string} panelId
+ */
 function resolveDockPanelDisplayName(state, panelId) {
   const panel = state.panelsById[panelId];
   if (panel?.moduleId !== "transport") return resolvePanelDisplayName(state, panelId);

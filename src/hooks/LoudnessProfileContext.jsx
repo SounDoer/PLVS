@@ -167,7 +167,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   /// see the edit. See the `draftRef` comment above.
   const draftBlocks = useCallback(() => draftRef.current != null, []);
 
-  const assertProfileActionAllowed = useCallback((operation) => {
+  const assertProfileActionAllowed = useCallback((/** @type {string} */ operation) => {
     if (draftRef.current) {
       throw new SceneOperationBlockedError(operation, ["loudnessProfile"]);
     }
@@ -249,7 +249,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     return planned;
   }, []);
 
-  const planSelect = useCallback((profileId) => {
+  const planSelect = useCallback((/** @type {string} */ profileId) => {
     return planLoudnessProfileSelect(stateRef.current, readPresets(), profileId);
   }, []);
 
@@ -257,15 +257,15 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     return planLoudnessProfileCreate(stateRef.current, readPresets(), document, options);
   }, []);
 
-  const planUpdate = useCallback((profileId, document) => {
+  const planUpdate = useCallback((/** @type {string} */ profileId, document) => {
     return planLoudnessProfileUpdate(stateRef.current, profileId, document);
   }, []);
 
-  const planRename = useCallback((profileId, name) => {
+  const planRename = useCallback((/** @type {string} */ profileId, /** @type {string} */ name) => {
     return planLoudnessProfileRename(stateRef.current, profileId, name);
   }, []);
 
-  const planDelete = useCallback((profileId) => {
+  const planDelete = useCallback((/** @type {string} */ profileId) => {
     return planLoudnessProfileDelete(stateRef.current, readPresets(), profileId);
   }, []);
 
@@ -358,7 +358,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   /// Blocked under a dirty draft: the draft outranks the selection, so the click would look like it
   /// did nothing while quietly persisting a selection and dirtying the preset.
   const select = useCallback(
-    (selection) => {
+    (/** @type {string} */ selection) => {
       if (draftBlocks()) return;
       const { kind, id } = parseSelection(selection);
       commitPlan(planSelect(kind === "profile" ? id : LOUDNESS_PROFILE_OFF));

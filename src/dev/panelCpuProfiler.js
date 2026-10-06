@@ -7,6 +7,9 @@ function now() {
     : Date.now();
 }
 
+/**
+ * @param {boolean} nextEnabled
+ */
 export function setPanelCpuProfilerEnabled(nextEnabled) {
   enabled = nextEnabled === true;
 }
@@ -23,6 +26,10 @@ export function beginPanelCpuSample() {
   return enabled ? now() : null;
 }
 
+/**
+ * @param {string} family
+ * @param {string} event
+ */
 export function recordPanelCpuEvent(family, event, elapsedMs = 0) {
   if (!enabled) return;
   const key = `${family}:${event}`;
@@ -34,6 +41,10 @@ export function recordPanelCpuEvent(family, event, elapsedMs = 0) {
   samples.set(key, current);
 }
 
+/**
+ * @param {string} family
+ * @param {string} event
+ */
 export function finishPanelCpuSample(family, event, startedAt) {
   if (!enabled || !Number.isFinite(startedAt)) return;
   recordPanelCpuEvent(family, event, now() - startedAt);

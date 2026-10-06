@@ -15,6 +15,11 @@ const SCALE_INSET = "top-[var(--ui-chart-inset-top)] bottom-[var(--ui-chart-inse
 // little inside the viewBox, would otherwise put half a label outside the panel. Which edge a
 // pinned tick belongs to comes from its fraction, not its index: frequency ticks run low to high,
 // so their first entry is the bottom one, while dB ticks run the other way.
+/**
+ * @param {number} index
+ * @param {number} frac
+ * @param {number} count
+ */
 export function tickPosition(index, frac, count) {
   if (index !== 0 && index !== count - 1) return "middle";
   return frac < 0.5 ? "start" : "end";

@@ -35,6 +35,10 @@ function plainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * @param {string} path
+ * @param {string} message
+ */
 function failure(path, message) {
   return { ok: false, path, message };
 }
@@ -88,6 +92,9 @@ export function normalizeMeasurementPredicate(value, path = "$.params.predicate"
   };
 }
 
+/**
+ * @param {string} metric
+ */
 export function readMeasurementMetric(measurement, metric) {
   return metric.split(".").reduce((value, key) => value?.[key], measurement);
 }

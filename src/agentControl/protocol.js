@@ -16,14 +16,23 @@ export const DEVICE_CONTROL_METHODS = Object.freeze(
   commandEntriesForFamily("device").map(({ wireMethod }) => wireMethod)
 );
 
+/**
+ * @param {string} method
+ */
 export function isDeviceQuery(method) {
   return method === "device.list" || method === "device.inspect";
 }
 
+/**
+ * @param {string} method
+ */
 export function isDeviceMutation(method) {
   return method === "device.select";
 }
 
+/**
+ * @param {string} method
+ */
 export function isTransportAction(method) {
   return TRANSPORT_ACTIONS.has(method);
 }
@@ -37,6 +46,12 @@ function isPlainJsonObject(value) {
   );
 }
 
+/**
+ * @param {string} reason
+ * @param {string} path
+ * @param {string} message
+ * @param {number} code
+ */
 function error(reason, path, message, code) {
   return { ok: false, error: { reason, path, message, code } };
 }
@@ -45,6 +60,10 @@ function unknownField(value, allowed) {
   return Object.keys(value).find((key) => !allowed.has(key));
 }
 
+/**
+ * @param {string} path
+ * @param {string} message
+ */
 function invalidParams(path, message) {
   return error("invalidParams", path, message, -32602);
 }

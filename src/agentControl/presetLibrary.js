@@ -1,3 +1,8 @@
+/**
+ * @param {string} code
+ * @param {string} path
+ * @param {string} message
+ */
 function issue(code, path, message) {
   return { code, path, message };
 }
@@ -10,6 +15,10 @@ function summary(preset) {
   return { id: preset.id, name: preset.name };
 }
 
+/**
+ * @param {string} presetId
+ * @param {string} name
+ */
 export function planPresetRename(presets, presetId, name) {
   const preset = presets.list.find(({ id }) => id === presetId);
   if (!preset) {
@@ -39,6 +48,9 @@ export function planPresetRename(presets, presetId, name) {
   };
 }
 
+/**
+ * @param {string} presetId
+ */
 export function planPresetDelete(presets, presetId) {
   const preset = presets.list.find(({ id }) => id === presetId);
   if (!preset) {

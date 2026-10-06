@@ -7,6 +7,9 @@ import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { runningAppCommandEntries } from "./commandManifest.js";
 import { buildModuleList } from "./moduleControl.js";
 
+/**
+ * @param {string} featureGate
+ */
 function featureGateAvailable(featureGate, visual) {
   if (featureGate === undefined) return true;
   if (featureGate === "visual") return visual !== undefined;
@@ -42,6 +45,9 @@ export function buildAgentControlPanelSnapshot({
   };
 }
 
+/**
+ * @param {number} revision
+ */
 export function buildAgentControlCapabilities(runtime, revision) {
   const visual = runtime?.visual;
   return {
