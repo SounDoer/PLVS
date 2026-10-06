@@ -25,7 +25,8 @@ import { useAudioDevices } from "./hooks/useAudioDevices.js";
 import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
-import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
+import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
+import { SceneGuardProvider, useSceneGuard } from "./hooks/SceneGuardContext.jsx";
 import {
   UiNavigationProvider,
   useUiNavigation,
@@ -36,7 +37,6 @@ import {
 import { preparePanelSettingsNavigation } from "./uiNavigation/panelSettingsNavigation.js";
 import {
   SCENE_OPERATIONS,
-  SceneOperationUnavailableError,
   isSceneOperationRefused,
   sceneOperationUnavailableReason,
 } from "./lib/sceneOperations.js";
@@ -232,7 +232,9 @@ export default function App() {
           <UiNavigationProvider>
             <LoudnessProfileProvider>
               <SettingsProvider>
-                <AppContent />
+                <SceneGuardProvider>
+                  <AppContent />
+                </SceneGuardProvider>
               </SettingsProvider>
             </LoudnessProfileProvider>
           </UiNavigationProvider>
@@ -350,27 +352,7 @@ function AppContent() {
   // "there is nothing to show". Reading it this early is safe: it is a context
   // read with no ordering constraints of its own.
   const loudnessProfile = useLoudnessProfile();
-  // The scene guard. Every operation that captures, replaces or tears down the current editing
-  // scene -- preset apply / save / update, dock entry -- asks it first. See
-  // `hooks/BlockingEditorsContext.jsx` for the editor half.
-  //
-  // Composed here because the two rules have different owners: the registry knows which editors
-  // are open, and only App knows the source mode. Everything downstream asks one function, so an
-  // entry point cannot pick up one rule and miss the other.
-  const { activeBlockingEditors, assertSceneOperationAllowed: assertNoBlockingEditor } =
-    useBlockingEditors();
-  // FILE mode forbids the dock outright: it is a state conflict, not a missing capability, so it
-  // refuses rather than degrading the way a platform without dock support does. Enforced here and
-  // not only on the disabled Dock control, so every entry point -- and Agent Control later -- gets
-  // the same answer.
-  const assertSceneOperationAllowed = useCallback(
-    (/** @type {string} */ operation) => {
-      assertNoBlockingEditor(operation);
-      const reason = sceneOperationUnavailableReason(operation, { sourceMode });
-      if (reason) throw new SceneOperationUnavailableError(operation, reason);
-    },
-    [assertNoBlockingEditor, sourceMode]
-  );
+  const { activeBlockingEditors, assertSceneOperationAllowed } = useSceneGuard();
   // Dock hooks run first: `docked` suspends the always-on-top and focus-view
   // window overrides below (Rust owns strip chrome + topmost while docked),
   // and preset capture/apply reads dock state. useDockMode depends only on the
