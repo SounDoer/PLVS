@@ -18,11 +18,15 @@ This is intentionally separate from `app.inspect`. The application snapshot owns
 state and the global `revision`; `ui inspect` owns temporary presentation state. Callers normally
 retain both tokens before navigation.
 
-Phase 1 exposes these `show` targets:
+The public `show` targets are:
 
 - `settings` opens Settings and selects one of `behavior`, `shortcuts`, `appearance`, `analysis`,
   `channels`, `transfer`, `agent-control`, or `about`;
-- `panel-settings` opens the settings surface for the exact `panelId` in the selected workbench.
+- `panel-settings` opens the settings surface for the exact `panelId` in the selected workbench;
+- `theme-editor` starts or focuses `create`, `edit`, `customize`, or `duplicate` authoring and may
+  select the `core`, `palettes`, or `advanced` page;
+- `loudness-profile-editor` starts or focuses `create` or `edit` authoring;
+- `feedback` opens or focuses a blank, unsent Feedback draft.
 
 Settings is unavailable in Dock form. Panel Settings follows the current form instead of changing
 it: in a normal window it may activate the containing Workspace tab through the existing Workspace
@@ -49,7 +53,7 @@ low-frequency navigation fact changes. It does not advance for typing, hover, po
 animation frames, raw scroll position, tooltips, measurement frames, or update progress ticks.
 Transient UI changes do not advance the global revision.
 
-`ui show` and `ui close` require both expected tokens. A mismatch fails before the requested
+`ui show`, `ui close`, and `ui cancel` require both expected tokens. A mismatch fails before the requested
 transition. If revealing Panel Settings activates another Workspace tab, that durable Workspace
 change follows the existing business path and advances the global revision normally; the resulting
 UI transition also advances `uiGeneration`.
@@ -74,7 +78,13 @@ An existing blocking editor is never discarded to satisfy navigation. A matching
 no-op; otherwise the request fails without closing or replacing the editor. Event-driven or nested
 decision surfaces likewise remain authoritative and can block navigation.
 
-## Exact close
+For authoring, identity includes the mode and source Theme/Profile ID; Theme identity also includes
+the requested page. Create/customize/duplicate may create a transient draft and preview, but no
+library item exists and no persistence occurs until the user visibly chooses Save. A different
+authoring identity fails with `editorActive` and leaves the current draft untouched. Editors and
+Feedback block scene replacement immediately when open, before they become dirty.
+
+## Exact close and cancel
 
 `ui close <surface-id>` requires the opaque ID returned by `ui inspect` or `ui show`. It operates
 only on that mounted surface and invokes the same Close or Escape intent as the component. It does
@@ -82,9 +92,17 @@ not fall back to the topmost surface after a race, bypass draft handling, or cal
 state setter. If the surface disappeared, the result is `uiSurfaceNotFound`; cleanup tools may
 inspect and treat absence of the surface they opened as already clean.
 
-Phase 1 exposes close only for Settings and Panel Settings. Authoring editors and Feedback will use
-their real Cancel paths when those targets become public; dirty drafts will continue through the
-visible discard-confirmation flow, and no generic Confirm command will be added.
+`ui cancel <surface-id>` invokes the exact surface's current Cancel or Escape intent. Clean editors
+close normally. Dirty editors open their real discard confirmation and keep the draft until the
+user chooses what to do; Agent Control cannot confirm discard. Feedback Cancel closes the unsent
+draft without reading diagnostics or sending a request.
+
+Real update, crash-report, close-confirmation, library-conflict, transfer, and nested discard/reset
+decisions appear in `ui inspect` only after their actual owner mounts them. They have
+`origin: event` or `origin: nested`, redact payloads and authored values, and advertise only a safe
+Close/Cancel action when the visible UI permits it. Busy phases advertise no dismissal. There is no
+public command to synthesize these surfaces and no generic Save, Send, Confirm, Install, Import,
+Export, Apply, or Retry operation.
 
 ## Errors
 

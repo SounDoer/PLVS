@@ -3,6 +3,10 @@
 Loudness Profile Control owns full-document inspection, authoring, selection, deletion, and
 ordering. Pack sharing remains the separate [Library Transfer](libraries.md) contract.
 
+These mutations author persisted documents directly. UI Navigation's
+`ui show loudness-profile-editor` instead opens a real create/edit draft without saving it. Exact
+Cancel follows the editor's normal dirty discard confirmation. See [UI Navigation](ui.md).
+
 ## Commands
 
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).

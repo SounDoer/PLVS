@@ -4,6 +4,11 @@ Theme Control is the only Agent Control owner of Appearance and Theme authoring.
 mode, fixed selection, built-in and custom Theme discovery, and custom Theme lifecycle operations.
 Pack sharing remains the separate [Library Transfer](libraries.md) contract.
 
+Theme Control mutations author persisted documents directly. To navigate the real transient editor
+instead, use UI Navigation's `ui show theme-editor` modes. Create, customize, and duplicate produce
+only an unsaved draft until the user chooses Save; exact Cancel preserves the editor's normal dirty
+discard confirmation. See [UI Navigation](ui.md).
+
 ## Commands
 
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).

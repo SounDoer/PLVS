@@ -242,10 +242,12 @@ diagnostics are sent.
 
 **Agent Control** lets `plvs-cli` inspect and change the running app; see
 [Command Line](command-line.md). It is off until you enable it. When enabled, UI Navigation can
-open Settings at a named section or open Panel Settings for an exact Panel, then safely close the
-same surface. These commands only navigate: they cannot save, send, confirm, or silently discard a
-draft. Temporary dialogs and editors use a separate UI generation so automation can detect that the
-visible interface changed without treating it as a saved settings change.
+open Settings or exact Panel Settings, begin Theme/Profile authoring, and open an unsent Feedback
+draft. Exact Close and Cancel operations use the same visible UI paths. They cannot save, send,
+confirm, or silently discard a draft; dirty cancellation leaves the real discard decision to the
+user. Real event dialogs are observable but cannot be fabricated. Temporary dialogs and editors use
+a separate UI generation so automation can detect visible changes without treating them as saved
+settings changes.
 
 ## Licenses
 

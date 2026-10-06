@@ -212,13 +212,18 @@ selectors, or confirmation actions:
 plvs-cli ui inspect <--json|--format text>
 plvs-cli ui show settings --section <behavior|shortcuts|appearance|analysis|channels|transfer|agent-control|about> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 ```
 
 `app.inspect` remains the durable-state snapshot; `ui inspect` reports the selected workbench's
 transient window, blocking editors, mounted surfaces, and process-local `uiGeneration`. `show` only
-opens, locates, or focuses and is idempotent for an exact target. `close` invokes the exact surface's
-existing Close/Escape behavior. See [UI Navigation](../agent-control/ui.md) for two-token
+opens, locates, or focuses and is idempotent for an exact target. `close` and `cancel` invoke only
+the exact surface's existing behavior. Dirty editor cancellation opens the visible discard decision;
+the CLI cannot confirm it. Event-driven decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent-control/ui.md) for two-token
 concurrency, Panel behavior in normal/Fullscreen/Dock forms, multi-workbench selection, safety,
 and errors.
 

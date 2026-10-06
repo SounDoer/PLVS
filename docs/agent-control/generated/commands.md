@@ -12,7 +12,11 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.inspect` | `ui inspect` | runningApp / query | none | no | none |
 | `ui.show.settings` | `ui show settings` | runningApp / action | required | no | none |
 | `ui.show.panelSettings` | `ui show panel-settings` | runningApp / action | required | no | none |
+| `ui.show.themeEditor` | `ui show theme-editor` | runningApp / action | required | no | none |
+| `ui.show.loudnessProfileEditor` | `ui show loudness-profile-editor` | runningApp / action | required | no | none |
+| `ui.show.feedback` | `ui show feedback` | runningApp / action | required | no | none |
 | `ui.close` | `ui close` | runningApp / action | required | no | none |
+| `ui.cancel` | `ui cancel` | runningApp / action | required | no | none |
 | `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
 | `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
@@ -231,6 +235,86 @@ None.
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 
+## `ui.show.themeEditor`
+
+Open or focus a Theme authoring session without saving it.
+
+- CLI path: `ui show theme-editor`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.themeEditor`
+
+```text
+plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--mode` | `mode` | yes | string; one of "create", "edit", "customize", "duplicate" |
+| `--theme-id` | `themeId` | no | string |
+| `--page` | `page` | no | string; one of "core", "palettes", "advanced" |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.loudnessProfileEditor`
+
+Open or focus a Loudness Profile authoring session without saving it.
+
+- CLI path: `ui show loudness-profile-editor`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.loudnessProfileEditor`
+
+```text
+plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--mode` | `mode` | yes | string; one of "create", "edit" |
+| `--profile-id` | `profileId` | no | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.show.feedback`
+
+Open or focus an unsent Feedback draft without sending it.
+
+- CLI path: `ui show feedback`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.feedback`
+
+```text
+plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
 ## `ui.close`
 
 Close one exact non-draft UI surface through its normal Close intent.
@@ -242,6 +326,33 @@ Close one exact non-draft UI surface through its normal Close intent.
 
 ```text
 plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `surface-id` | `surfaceId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.cancel`
+
+Cancel one exact UI surface through its normal Cancel or Escape intent.
+
+- CLI path: `ui cancel`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.cancel`
+
+```text
+plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 ```
 
 ### Positionals
