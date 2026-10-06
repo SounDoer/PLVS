@@ -69,7 +69,7 @@ function emptyInventory() {
 /**
  * Shared owner for device inventory, Automatic preview, persisted selection, and legacy migration.
  * GUI, tray, engine runtime, and Agent Control all consume this one coherent controller.
- * @param {{ liveLifecycle?: string, beginDeviceRestartForControl?: any }} [options]
+ * @param {{ liveLifecycle?: string, beginDeviceRestartForControl?: (...args: any[]) => any }} [options]
  */
 export function useAudioDevices({
   liveLifecycle = "stopped",

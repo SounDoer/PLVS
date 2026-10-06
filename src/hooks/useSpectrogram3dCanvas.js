@@ -425,7 +425,7 @@ function drawAxisLabels(ctx, proj, ink, dpr) {
  *   oldestMs: number,
  *   newestMs: number,
  *   sampleMs: number,
- *   selectedOffset: any,
+ *   selectedOffset: number,
  *   selectionXFrac: number,
  *   frozenSnaps: any,
  *   colormapLut: any,

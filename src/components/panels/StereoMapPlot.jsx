@@ -585,8 +585,8 @@ function drawGrid(ctx, xTicks, yTicks, width, height, dpr, color) {
  *   energyFadePercent?: number,
  *   colorBlendPercent?: number,
  *   gridVisible?: boolean,
- *   xTicks?: any,
- *   yTicks?: any,
+ *   xTicks?: any[],
+ *   yTicks?: any[],
  * }} props
  */
 export function StereoMapPlot({

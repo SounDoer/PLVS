@@ -32,9 +32,9 @@ function detailLabel(session) {
 
 /**
  * @param {{
- *   fileSessions?: any,
- *   activeFileId?: any,
- *   analyzingFileId?: any,
+ *   fileSessions?: any[],
+ *   activeFileId?: string,
+ *   analyzingFileId?: string,
  *   onSelectFile: (...args: any[]) => any,
  *   onReanalyzeFile: (...args: any[]) => any,
  *   onRemoveFile: (...args: any[]) => any,

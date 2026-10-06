@@ -176,7 +176,7 @@ function resolveDockPanelDisplayName(state, panelId) {
 /**
  * @param {{
  *   panels: any,
- *   modules?: any,
+ *   modules?: any[],
  *   vectorscopeSettingsAvailable?: boolean,
  *   onAdd: (...args: any[]) => any,
  *   onRename: (...args: any[]) => any,

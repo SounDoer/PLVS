@@ -556,11 +556,11 @@ function SettingsBody({
 
 /**
  * @param {{
- *   moduleId: any,
- *   title: any,
+ *   moduleId: string,
+ *   title: string,
  *   controls: any,
- *   vectorscopeOptions: any,
- *   spectrumOptions: any,
+ *   vectorscopeOptions: any[],
+ *   spectrumOptions: any[],
  *   channelCount: number,
  *   onChange: (...args: any[]) => any,
  *   onReset: (...args: any[]) => any,

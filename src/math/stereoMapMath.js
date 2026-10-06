@@ -47,7 +47,7 @@ function validateOpacity(opacity) {
   }
 }
 
-/** @param {{ pl?: any, pr?: any, c?: any }} [options] */
+/** @param {{ pl?: number, pr?: number, c?: number }} [options] */
 function normalizePrimitive({ pl, pr, c } = {}) {
   if (![pl, pr, c].every(Number.isFinite)) return null;
 

@@ -188,7 +188,7 @@ function levelMeterAxisTicks(ticks, yRange, marker, metrics) {
 
 /**
  * @param {{
- *   value: any,
+ *   value: number,
  *   yRange: any,
  *   dataAttribute?: string,
  *   className: string,

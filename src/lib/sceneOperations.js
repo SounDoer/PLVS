@@ -76,7 +76,7 @@ export class SceneOperationUnavailableError extends SceneOperationRefusedError {
 /// mode, and lives in `hooks/BlockingEditorsContext.jsx`.
 /**
  * @param {string} operation
- * @param {{ sourceMode?: any }} [options]
+ * @param {{ sourceMode?: string }} [options]
  */
 export function sceneOperationUnavailableReason(operation, { sourceMode } = {}) {
   // FILE mode forbids the dock outright. It is a state conflict rather than a missing capability,

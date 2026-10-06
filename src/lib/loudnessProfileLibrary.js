@@ -182,7 +182,7 @@ export function planLoudnessProfileSelect(loudnessProfiles, presets, selection) 
  * @param {any} loudnessProfiles
  * @param {any} presets
  * @param {any} rawDocument
- * @param {{ makeId?: any }} [options]
+ * @param {{ makeId?: (...args: any[]) => any }} [options]
  */
 export function planLoudnessProfileCreate(loudnessProfiles, presets, rawDocument, { makeId } = {}) {
   return validatedPlan(loudnessProfiles, presets, rawDocument, (document) => {

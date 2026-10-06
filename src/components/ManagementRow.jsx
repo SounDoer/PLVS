@@ -16,8 +16,8 @@ export const MANAGEMENT_ROW_ACTIONS_CLASS =
  *   className?: string,
  *   disabled?: boolean,
  *   tip?: string,
- *   tipSide?: any,
- *   tipAlign?: any,
+ *   tipSide?: "top" | "bottom" | "left" | "right",
+ *   tipAlign?: "start" | "center" | "end",
  * }} props
  */
 export function ManagementIconAction({

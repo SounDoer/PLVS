@@ -81,7 +81,7 @@ function normalizeActive(raw, profiles) {
 
 /**
  * @param {any} raw
- * @param {{ makeId?: any }} [options]
+ * @param {{ makeId?: (...args: any[]) => any }} [options]
  */
 export function normalizeLoudnessProfiles(raw, { makeId } = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw) || !Array.isArray(raw.profiles)) {

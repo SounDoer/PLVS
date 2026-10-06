@@ -5,15 +5,15 @@ const UNIT_VISIBILITY_CLASSES = {
 
 /**
  * @param {{
- *   label: any,
+ *   label: string,
  *   value: any,
- *   unit: any,
- *   align?: any,
+ *   unit: string,
+ *   align?: string,
  *   indicator?: import("react").ReactNode,
  *   unitVisibility?: string,
  *   labelClassName?: string,
  *   valueClassName?: string,
- *   statId?: any,
+ *   statId?: string,
  * }} props
  */
 export function DockExpandedMetric({

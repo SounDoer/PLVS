@@ -132,12 +132,12 @@ export const FREQUENCY_VIEWPORT = { absMin: 20, absMax: 20000, minSpan: 1, scale
 /**
  * @param {{
  *   rect: any,
- *   clientX?: any,
- *   clientY?: any,
- *   axis: any,
- *   scale: any,
- *   min: any,
- *   max: any,
+ *   clientX?: number,
+ *   clientY?: number,
+ *   axis: string,
+ *   scale: string,
+ *   min: number,
+ *   max: number,
  * }} options
  */
 export function anchorFromPointer({ rect, clientX, clientY, axis, scale, min, max }) {
@@ -173,13 +173,13 @@ export function panRange({ min, max, absMin, absMax, deltaPx, axisPx, scale }) {
 //                span is preserved -- clamping the offending bound instead would let a pan zoom.
 /**
  * @param {{
- *   min: any,
- *   max: any,
- *   absMin: any,
- *   absMax: any,
+ *   min: number,
+ *   max: number,
+ *   absMin: number,
+ *   absMax: number,
  *   minSpan?: number,
  *   pinnedMax: any,
- *   mustInclude: any,
+ *   mustInclude: number,
  * }} options
  */
 export function applyRangeConstraints({

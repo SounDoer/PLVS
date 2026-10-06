@@ -13,7 +13,7 @@ function leaf(ids) {
   return { type: "leaf", tabs: ids, activeTab: ids[0] };
 }
 
-/** @param {{ panelsById: any, panelOrder?: any, panelControlsById?: any }} options */
+/** @param {{ panelsById: any, panelOrder?: string[], panelControlsById?: any }} options */
 function workspace({ panelsById, panelOrder = Object.keys(panelsById), panelControlsById = {} }) {
   return {
     tree: leaf(panelOrder),

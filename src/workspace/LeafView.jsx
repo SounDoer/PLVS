@@ -112,7 +112,7 @@ const DROP_ZONE_PRESENTATION = {
   right: { label: "Place Right", Icon: ArrowRight },
 };
 
-/** @param {{ Icon: any, label: any, panelTitle: any, className?: string }} props */
+/** @param {{ Icon: any, label: string, panelTitle: string, className?: string }} props */
 function DropHint({ Icon, label, panelTitle, className }) {
   return (
     <div

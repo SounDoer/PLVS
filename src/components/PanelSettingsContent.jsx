@@ -443,9 +443,9 @@ export function SettingsRangeInput({
  * @param {{
  *   ariaLabel: string,
  *   value: any,
- *   min: any,
- *   max: any,
- *   step?: any,
+ *   min: number,
+ *   max: number,
+ *   step?: number,
  *   suffix?: string,
  *   onCommit: (...args: any[]) => any,
  * }} props
@@ -660,12 +660,12 @@ function SettingsOptionRow({
 
 /**
  * @param {{
- *   label: any,
+ *   label: import("react").ReactNode,
  *   ariaLabel?: string,
  *   options: any,
  *   value: any,
  *   onChange?: (...args: any[]) => any,
- *   open?: any,
+ *   open?: boolean,
  *   onOpenChange?: (...args: any[]) => any,
  * }} props
  */
@@ -894,8 +894,8 @@ function toggleId(ids, id) {
 
 /**
  * @param {{
- *   visibleIds: any,
- *   orderedIds: any,
+ *   visibleIds: any[],
+ *   orderedIds: any[],
  *   onToggle: (...args: any[]) => any,
  *   onReorder: (...args: any[]) => any,
  *   onReset?: (...args: any[]) => any,
@@ -945,7 +945,7 @@ export function StatsMetricsSettingsRow({
 /**
  * @param {{
  *   showGrid?: boolean,
- *   visibleLayerIds: any,
+ *   visibleLayerIds: any[],
  *   grid?: boolean,
  *   yMinDb: number,
  *   yMaxDb: number,
@@ -1029,13 +1029,13 @@ export function LoudnessSettingsRows({
  *   showPeakLabels?: boolean,
  *   showDisplay?: boolean,
  *   showGrid?: boolean,
- *   maxMode: any,
+ *   maxMode: string,
  *   peakLabels?: boolean,
  *   speedPercent: number,
- *   octaveSmoothing: any,
- *   tiltDbPerOctave: any,
- *   xMinFreq: any,
- *   xMaxFreq: any,
+ *   octaveSmoothing: string,
+ *   tiltDbPerOctave: number,
+ *   xMinFreq: number,
+ *   xMaxFreq: number,
  *   yMinDb: number,
  *   yMaxDb: number,
  *   grid?: boolean,
@@ -1352,26 +1352,26 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
 
 /**
  * @param {{
- *   activeTab?: any,
+ *   activeTab?: string,
  *   channelCount?: number,
- *   vectorscopeOptions?: any,
- *   vectorscopeValueKey?: any,
- *   vectorscopeDisplayLabel?: any,
+ *   vectorscopeOptions?: any[],
+ *   vectorscopeValueKey?: string,
+ *   vectorscopeDisplayLabel?: string,
  *   onVectorscopeChange?: (...args: any[]) => any,
- *   spectrumOptions?: any,
- *   spectrumValueKey?: any,
- *   spectrumDisplayLabel?: any,
+ *   spectrumOptions?: any[],
+ *   spectrumValueKey?: string,
+ *   spectrumDisplayLabel?: string,
  *   onSpectrumChange?: (...args: any[]) => any,
- *   spectrumView?: any,
+ *   spectrumView?: string,
  *   spectrumViewLegend?: any,
  *   onSpectrumViewChange?: (...args: any[]) => any,
  *   spectrumMaxMode?: any,
  *   onSpectrumMaxModeChange?: (...args: any[]) => any,
- *   stereoMapPairOptions?: any,
- *   stereoMapPairValueKey?: any,
- *   stereoMapPairDisplayLabel?: any,
+ *   stereoMapPairOptions?: any[],
+ *   stereoMapPairValueKey?: string,
+ *   stereoMapPairDisplayLabel?: string,
  *   onStereoMapPairChange?: (...args: any[]) => any,
- *   panelControls?: any,
+ *   panelControls?: Partial<import("@/workspace/types.js").PanelControls>,
  *   onPanelControlsChange?: (...args: any[]) => any,
  * }} props
  */

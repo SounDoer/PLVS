@@ -3,7 +3,7 @@ import { ManagementIconAction } from "@/components/ManagementRow.jsx";
 import { ResetAction } from "@/components/ResetAction.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 
-/** @param {{ title: any, onBack?: (...args: any[]) => any, onReset?: (...args: any[]) => any, isDefault?: boolean }} props */
+/** @param {{ title: string, onBack?: (...args: any[]) => any, onReset?: (...args: any[]) => any, isDefault?: boolean }} props */
 export function PanelSettingsHeader({ title, onBack, onReset, isDefault = false }) {
   const resetLabel = `Reset ${title} settings`;
 

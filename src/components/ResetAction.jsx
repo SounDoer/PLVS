@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  *   confirmLabel?: string,
  *   cancelLabel?: string,
  *   side?: any,
- *   align?: any,
+ *   align?: "start" | "center" | "end",
  *   compact?: boolean,
  *   className?: string,
  *   onArmedChange?: (...args: any[]) => any,

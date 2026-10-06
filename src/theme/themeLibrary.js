@@ -426,7 +426,7 @@ function generatedTheme(state, document, makeId) {
 /**
  * @param {any} state
  * @param {any} rawDocument
- * @param {{ makeId?: any }} [options]
+ * @param {{ makeId?: (...args: any[]) => any }} [options]
  */
 export function planThemeCreate(state, rawDocument, { makeId } = {}) {
   return validatedPlan(state, rawDocument, (document) => {
@@ -509,7 +509,7 @@ export function planThemeRename(state, themeId, name) {
  * @param {any} state
  * @param {string} themeId
  * @param {string} name
- * @param {{ makeId?: any }} [options]
+ * @param {{ makeId?: (...args: any[]) => any }} [options]
  */
 export function planThemeDuplicate(state, themeId, name, { makeId } = {}) {
   const source = anyTheme(state, themeId);

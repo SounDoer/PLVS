@@ -43,7 +43,7 @@ function widthPct(value, min, max) {
   return Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
 }
 
-/** @param {{ value: any, min: any, max: any, background: string, style?: any }} props */
+/** @param {{ value: any, min: number, max: number, background: string, style?: any }} props */
 function MeterFill({ value, min, max, background, style }) {
   const width = widthPct(value, min, max);
   return (
@@ -79,7 +79,7 @@ function ChannelReadout({ value, style }) {
   );
 }
 
-/** @param {{ value: any, onReset: (...args: any[]) => any, style?: any, expanded: boolean, label: any, unit: any }} props */
+/** @param {{ value: any, onReset: (...args: any[]) => any, style?: any, expanded: boolean, label: string, unit: string }} props */
 function GlobalReadout({ value, onReset, style, expanded, label, unit }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
     tip: onReset ? "Reset TP Max" : undefined,

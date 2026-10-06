@@ -171,8 +171,8 @@ function nextAnimationFrame(windowObject, signal) {
  * @param {{
  *   target: any,
  *   workspace: any,
- *   expectedRevision: any,
- *   getRevision: any,
+ *   expectedRevision: number,
+ *   getRevision: (...args: any[]) => any,
  *   signal: any,
  *   timeoutMs?: number,
  *   documentObject?: any,

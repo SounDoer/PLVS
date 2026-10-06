@@ -15,9 +15,9 @@ import { Button } from "@/components/ui/button";
 /**
  * @param {{
  *   fileSession: any,
- *   fileSessions: any,
- *   activeFileId: any,
- *   analyzingFileId: any,
+ *   fileSessions: any[],
+ *   activeFileId: string,
+ *   analyzingFileId: string,
  *   onSelectFile: (...args: any[]) => any,
  *   onReanalyzeFile: (...args: any[]) => any,
  *   onRemoveFile: (...args: any[]) => any,

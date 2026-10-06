@@ -1348,7 +1348,10 @@ describe("PanelSettingsContent", () => {
     render(
       <PanelSettingsContent
         activeTab="stereo-map"
-        panelControls={{ ...DEFAULT_PANEL_CONTROLS, stereoMapMode }}
+        panelControls={{
+          ...DEFAULT_PANEL_CONTROLS,
+          stereoMapMode: /** @type {typeof DEFAULT_PANEL_CONTROLS.stereoMapMode} */ (stereoMapMode),
+        }}
         onPanelControlsChange={onPanelControlsChange}
       />
     );

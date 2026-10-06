@@ -6,8 +6,8 @@ import { getDockPanelSizing } from "./dockPanelSizing.js";
  * @param {{
  *   leftPanel: any,
  *   rightPanel: any,
- *   leftBasis: any,
- *   rightBasis: any,
+ *   leftBasis: number,
+ *   rightBasis: number,
  *   disabled?: boolean,
  *   onResize: (...args: any[]) => any,
  *   onReset: (...args: any[]) => any,

@@ -495,9 +495,9 @@ function transportMutationMatches(method, params, execution, snapshot) {
  *   enabled: boolean,
  *   runtime: any,
  *   workspace: import("../workspace/types.js").WorkspaceState,
- *   replaceWorkspace: any,
+ *   replaceWorkspace: (...args: any[]) => any,
  *   setPanelControlsForPanel: (...args: any[]) => any,
- *   waitForWorkspacePersistenceEnqueue: any,
+ *   waitForWorkspacePersistenceEnqueue: (...args: any[]) => any,
  *   presets: any,
  *   settings: any,
  *   settingsContext?: any,
@@ -518,11 +518,11 @@ function transportMutationMatches(method, params, execution, snapshot) {
  *   measurementContext?: any,
  *   viewContext?: any,
  *   visual?: any,
- *   flush?: any,
- *   exportConfiguration?: any,
- *   importConfiguration?: any,
- *   normalizeConfiguration?: any,
- *   relaunchAfterConfigurationChange?: any,
+ *   flush?: (...args: any[]) => any,
+ *   exportConfiguration?: (...args: any[]) => any,
+ *   importConfiguration?: (...args: any[]) => any,
+ *   normalizeConfiguration?: (...args: any[]) => any,
+ *   relaunchAfterConfigurationChange?: (...args: any[]) => any,
  * }} options
  */
 export function useAgentControlBridge({

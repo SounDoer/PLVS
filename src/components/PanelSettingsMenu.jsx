@@ -38,13 +38,13 @@ function spectrumKeyFromSelection(sel) {
 
 /**
  * @param {{
- *   activeTab?: any,
+ *   activeTab?: string,
  *   channelCount?: number,
- *   spectrumOptions?: any,
+ *   spectrumOptions?: any[],
  *   spectrumValueKey?: string,
  *   onSpectrumViewChange?: (...args: any[]) => any,
  *   onSpectrumMaxHoldToggle?: (...args: any[]) => any,
- *   panelControls?: any,
+ *   panelControls?: Partial<import("@/workspace/types.js").PanelControls>,
  *   onPanelControlsChange?: (...args: any[]) => any,
  * }} options
  */
@@ -97,7 +97,7 @@ function hasPanelSettings({
   );
 }
 
-/** @param {{ panelTitle: any, onPanelControlsReset: (...args: any[]) => any, [key: string]: any }} props */
+/** @param {{ panelTitle: string, onPanelControlsReset: (...args: any[]) => any, [key: string]: any }} props */
 export function PanelSettingsMenu({ panelTitle, onPanelControlsReset, ...props }) {
   if (!hasPanelSettings(props)) return null;
   const title = panelTitle ?? PANEL_SETTINGS_TITLES[props.activeTab] ?? "Panel";

@@ -12,9 +12,9 @@ import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
  * @param {{
  *   panels?: any,
  *   controls: any,
- *   hoveredPanelId?: any,
- *   edge?: any,
- *   height?: any,
+ *   hoveredPanelId?: string,
+ *   edge?: string,
+ *   height?: number,
  *   heightResizeDisabled?: boolean,
  *   onHeightChange?: (...args: any[]) => any,
  *   panelSizesById?: any,

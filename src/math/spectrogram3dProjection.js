@@ -86,7 +86,7 @@ export function stabilizeLinesAzimuthDeg(azimuthDeg) {
  *
  * Returns the six affine coefficients plus two derived values the renderer needs:
  * `heightScale` (dB -> vertical pixels) and `ridgeOrderAscending` (painter's-algorithm draw order).
- * @param {{ azimuthDeg: number, elevationDeg: number, width: any, height: any }} options
+ * @param {{ azimuthDeg: number, elevationDeg: number, width: number, height: number }} options
  */
 export function buildProjection({ azimuthDeg, elevationDeg, width, height }) {
   const view = clampViewParams({ azimuthDeg, elevationDeg });

@@ -10,7 +10,7 @@ export function buildCrashReportRequest({ report, note, email }) {
   return request;
 }
 
-/** @param {{ report: any, note: any, email: any, fetchImpl?: any, timeoutMs?: number }} options */
+/** @param {{ report: any, note: any, email: any, fetchImpl?: (...args: any[]) => any, timeoutMs?: number }} options */
 export async function submitCrashReport({
   report,
   note,

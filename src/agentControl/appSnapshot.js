@@ -21,7 +21,7 @@ function featureGateAvailable(featureGate, visual) {
 /**
  * @param {{
  *   workspace: any,
- *   panelId: any,
+ *   panelId: string,
  *   hasLoudnessReference?: boolean,
  *   analysisContext?: any,
  * }} options

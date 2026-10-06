@@ -80,7 +80,7 @@ function renderPanel(visibleIds) {
   });
 }
 
-/** @param {{ shared: any, panelControls: any, displayAudio?: any }} options */
+/** @param {{ shared: any, panelControls: Partial<import("@/workspace/types.js").PanelControls>, displayAudio?: any }} options */
 function renderStatsPanel({ shared, panelControls, displayAudio }) {
   return render(
     <LoudnessProfileProvider>
@@ -109,7 +109,7 @@ function labelClassFor(label) {
   return screen.getByText(label).parentElement.className;
 }
 
-/** @param {{ selection?: any, displayAudio: any, visibleIds: any }} options */
+/** @param {{ selection?: any, displayAudio: any, visibleIds: any[] }} options */
 function renderWithProfile({ selection, displayAudio, visibleIds }) {
   if (selection) {
     settingsStore.patch({

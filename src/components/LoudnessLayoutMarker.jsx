@@ -11,7 +11,7 @@ const WARN_CHIP_BORDER = "border border-transparent";
  * channel layout. `known` is `loudnessLayoutKnown`; only an explicit `false` shows the marker.
  * `dense` swaps to Dock caption typography for Dock surfaces.
  */
-/** @param {{ known: any, dense?: boolean, className?: string }} props */
+/** @param {{ known: boolean, dense?: boolean, className?: string }} props */
 export function LoudnessLayoutMarker({ known, dense = false, className }) {
   if (known !== false) return null;
   return (

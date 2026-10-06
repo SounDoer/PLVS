@@ -1,4 +1,4 @@
-/** @param {{ color: any, label?: any }} props */
+/** @param {{ color: string, label?: string }} props */
 export function ThemeEditorSwatch({ color, label }) {
   return (
     <span

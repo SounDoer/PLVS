@@ -6,7 +6,7 @@ import { parseSelection } from "./loudnessProfileCatalog.js";
 /// otherwise the active saved profile. A draft is `preview` and carries the id of the profile being
 /// edited (null for one never saved). Measurement inspection and file reports both describe the
 /// profile through this, so they cannot disagree about which profile judged a number.
-/** @param {{ active?: any, document?: any, draft?: any }} [options] */
+/** @param {{ active?: string, document?: any, draft?: any }} [options] */
 export function describeActiveLoudnessProfile({ active, document, draft } = {}) {
   if (!document) return null;
   const preview = draft != null;

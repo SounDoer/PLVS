@@ -12,18 +12,18 @@ import { useAxisSize } from "./useAxisSize";
 
 /**
  * @param {{
- *   axis: any,
- *   min: any,
- *   max: any,
- *   absMin: any,
- *   absMax: any,
- *   defaultMin: any,
- *   defaultMax: any,
- *   minSpan: any,
+ *   axis: string,
+ *   min: number,
+ *   max: number,
+ *   absMin: number,
+ *   absMax: number,
+ *   defaultMin: number,
+ *   defaultMax: number,
+ *   minSpan: number,
  *   scale: any,
  *   onRangeChange: (...args: any[]) => any,
  *   pinnedMax?: boolean,
- *   mustInclude?: any,
+ *   mustInclude?: number,
  * }} options
  */
 export function useAxisInteraction({

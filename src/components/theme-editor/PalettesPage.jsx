@@ -29,7 +29,7 @@ const FREQUENCY_COLORS = [
 
 /**
  * @param {{
- *   kind: any,
+ *   kind: string,
  *   palette: any,
  *   onApplyPreset: (...args: any[]) => any,
  *   customAvailable?: boolean,
