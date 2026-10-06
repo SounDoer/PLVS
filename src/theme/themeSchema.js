@@ -127,30 +127,33 @@ function normalizeOverrides(raw) {
  * Normalize the current Theme authoring shape. Registry compatibility is a separate boundary;
  * this function validates only declared versions and color/palette structure.
  *
- * @param {any} raw untrusted input; every field is validated below before it is used
+ * @param {unknown} raw
  * @returns {object|null}
  */
 export function normalizeThemeDocumentShape(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  // An object, and nothing more is known: each field goes through its own validator below.
+  const doc = /** @type {Record<string, unknown>} */ (raw);
+  const palettes = /** @type {Record<string, unknown> | null | undefined} */ (doc.palettes);
   if (
-    raw.formatVersion !== THEME_FORMAT_VERSION ||
-    raw.semanticsVersion !== THEME_SEMANTICS_VERSION
+    doc.formatVersion !== THEME_FORMAT_VERSION ||
+    doc.semanticsVersion !== THEME_SEMANTICS_VERSION
   ) {
     return null;
   }
-  const id = normalizeThemeId(raw.id);
-  const name = normalizeThemeName(raw.name);
+  const id = normalizeThemeId(doc.id);
+  const name = normalizeThemeName(doc.name);
   const colorScheme =
-    raw.colorScheme === "light" || raw.colorScheme === "dark" ? raw.colorScheme : null;
-  const core = normalizeColorRecord(raw.core, CORE_COLOR_KEYS);
-  const status = normalizeSimplePalette(raw.palettes?.status, STATUS_COLOR_KEYS);
-  const intensity = normalizeIntensity(raw.palettes?.intensity);
-  const frequency = normalizeSimplePalette(raw.palettes?.frequency, FREQUENCY_COLOR_KEYS);
-  const overrides = normalizeOverrides(raw.overrides);
+    doc.colorScheme === "light" || doc.colorScheme === "dark" ? doc.colorScheme : null;
+  const core = normalizeColorRecord(doc.core, CORE_COLOR_KEYS);
+  const status = normalizeSimplePalette(palettes?.status, STATUS_COLOR_KEYS);
+  const intensity = normalizeIntensity(palettes?.intensity);
+  const frequency = normalizeSimplePalette(palettes?.frequency, FREQUENCY_COLOR_KEYS);
+  const overrides = normalizeOverrides(doc.overrides);
   if (!id || !name || !colorScheme || !core || !status || !intensity || !frequency || !overrides) {
     return null;
   }
-  const interfacePalette = normalizeSimplePalette(raw.palettes?.interface, INTERFACE_COLOR_KEYS);
+  const interfacePalette = normalizeSimplePalette(palettes?.interface, INTERFACE_COLOR_KEYS);
   if (!interfacePalette) return null;
   return {
     formatVersion: THEME_FORMAT_VERSION,

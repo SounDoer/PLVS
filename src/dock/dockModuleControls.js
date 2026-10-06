@@ -1,3 +1,4 @@
+/** @import { PanelControls } from "../workspace/types.js" */
 import {
   DEFAULT_PANEL_CONTROLS,
   normalizePanelControlValue,
@@ -26,63 +27,65 @@ const DOCK_MODULE_ID_BY_PANEL_MODULE_ID = Object.freeze({
  * and repairs them with the panel's rows, so a control has one name and one rule across both
  * surfaces; only the subset differs, because the strip shows less than the panel does.
  */
-const DOCK_MODULE_CONTROL_KEYS = Object.freeze({
-  level: [
-    "levelMeterMode",
-    "levelMeterBarColors",
-    "levelMeterPeakWarningDb",
-    "levelMeterPeakCriticalDb",
-    "levelMeterRmsWarningDb",
-    "levelMeterRmsCriticalDb",
-  ],
-  loudness: ["loudnessHistoryVisibleLayerIds", "loudnessYMinDb", "loudnessYMaxDb"],
-  spectrum: [
-    "spectrumChannel",
-    "spectrumView",
-    "spectrumSpeedPercent",
-    "spectrumOctaveSmoothing",
-    "spectrumTiltDbPerOctave",
-    "spectrumMaxMode",
-    "spectrumXMinFreq",
-    "spectrumXMaxFreq",
-    "spectrumYMinDb",
-    "spectrumYMaxDb",
-  ],
-  correlation: [
-    "vectorscopePair",
-    "vectorscopeMode",
-    "vectorscopePolarSamplePersistenceMs",
-    "vectorscopePolarLevelMaxHold",
-  ],
-  stats: ["statsVisibleIds", "statsOrder"],
-  spectrogram: [
-    "spectrumChannel",
-    "spectrumTiltDbPerOctave",
-    "spectrogramDbFloor",
-    "spectrogramYMinFreq",
-    "spectrogramYMaxFreq",
-  ],
-  stereoMap: [
-    "stereoMapPair",
-    "stereoMapMode",
-    "stereoMapHold",
-    "stereoMapSpeedPercent",
-    "stereoMapOctaveSmoothing",
-    "stereoMapEnergyFadePercent",
-    "stereoMapColorBlendPercent",
-    "stereoMapXMinFreq",
-    "stereoMapXMaxFreq",
-    "stereoMapMonoLossYMinDb",
-    "stereoMapMsRatioYMinDb",
-    "stereoMapMsRatioYMaxDb",
-  ],
-  waveform: [
-    "waveformFrequencyColor",
-    "waveformLowMidSplitHz",
-    "waveformMidHighSplitHz",
-    "waveformCentroid",
-  ],
-});
+const DOCK_MODULE_CONTROL_KEYS = Object.freeze(
+  /** @type {const} */ ({
+    level: [
+      "levelMeterMode",
+      "levelMeterBarColors",
+      "levelMeterPeakWarningDb",
+      "levelMeterPeakCriticalDb",
+      "levelMeterRmsWarningDb",
+      "levelMeterRmsCriticalDb",
+    ],
+    loudness: ["loudnessHistoryVisibleLayerIds", "loudnessYMinDb", "loudnessYMaxDb"],
+    spectrum: [
+      "spectrumChannel",
+      "spectrumView",
+      "spectrumSpeedPercent",
+      "spectrumOctaveSmoothing",
+      "spectrumTiltDbPerOctave",
+      "spectrumMaxMode",
+      "spectrumXMinFreq",
+      "spectrumXMaxFreq",
+      "spectrumYMinDb",
+      "spectrumYMaxDb",
+    ],
+    correlation: [
+      "vectorscopePair",
+      "vectorscopeMode",
+      "vectorscopePolarSamplePersistenceMs",
+      "vectorscopePolarLevelMaxHold",
+    ],
+    stats: ["statsVisibleIds", "statsOrder"],
+    spectrogram: [
+      "spectrumChannel",
+      "spectrumTiltDbPerOctave",
+      "spectrogramDbFloor",
+      "spectrogramYMinFreq",
+      "spectrogramYMaxFreq",
+    ],
+    stereoMap: [
+      "stereoMapPair",
+      "stereoMapMode",
+      "stereoMapHold",
+      "stereoMapSpeedPercent",
+      "stereoMapOctaveSmoothing",
+      "stereoMapEnergyFadePercent",
+      "stereoMapColorBlendPercent",
+      "stereoMapXMinFreq",
+      "stereoMapXMaxFreq",
+      "stereoMapMonoLossYMinDb",
+      "stereoMapMsRatioYMinDb",
+      "stereoMapMsRatioYMaxDb",
+    ],
+    waveform: [
+      "waveformFrequencyColor",
+      "waveformLowMidSplitHz",
+      "waveformMidHighSplitHz",
+      "waveformCentroid",
+    ],
+  })
+);
 
 /// The short, module-scoped keys the Dock stored these controls under before it was put on the
 /// panel's names. Read as fallbacks, exactly like the renames inside a panel control's own row:
@@ -224,12 +227,43 @@ function withPanelKeys(moduleId, raw) {
   return source;
 }
 
-/** @returns {Record<string, any> | null} the module's own control record; its keys depend on `moduleId` */
+/**
+ * @typedef {keyof typeof DOCK_MODULE_CONTROL_KEYS} DockModuleId
+ */
+/**
+ * What one Dock module stores: its subset of the panel controls, plus the controls only the strip
+ * has.
+ * @template {DockModuleId} M
+ * @typedef {Pick<PanelControls, (typeof DOCK_MODULE_CONTROL_KEYS)[M][number]> &
+ *   (M extends "level" ? { readout: string, showLabels: boolean } : {}) &
+ *   (M extends "loudness" ? { showReadouts: boolean } : {})} DockModuleControls
+ */
+
+/**
+ * @template {DockModuleId} M
+ * @overload
+ * @param {M} moduleId
+ * @param {unknown} raw
+ * @returns {DockModuleControls<M>}
+ */
+/**
+ * @overload
+ * @param {string} moduleId
+ * @param {unknown} raw
+ * @returns {Record<string, unknown> | null}
+ */
+/**
+ * Repairs one module's stored controls. A module id that is not a Dock module has none.
+ * @param {string} moduleId
+ * @param {any} raw
+ * @returns {Record<string, unknown> | null}
+ */
 export function normalizeDockModuleControls(moduleId, raw) {
   const defaults = DEFAULT_DOCK_CONTROLS_BY_MODULE_ID[moduleId];
   if (!defaults) return null;
 
   const repaired = normalizePanelControls(withPanelKeys(moduleId, raw));
+  /** @type {Record<string, unknown>} */
   const controls = {};
   for (const key of DOCK_MODULE_CONTROL_KEYS[moduleId]) {
     const tighten = DOCK_TIGHTENED[key];

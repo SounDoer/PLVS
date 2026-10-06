@@ -9,8 +9,11 @@ import { ACTIVE_PULSE_MS } from "../math/axisInteractionMath";
 // axis, and an {x, y} pair for the spectrum, where a single gesture lights one axis or the other.
 // Pass an object from module scope, not a literal -- a fresh identity each render would rebuild
 // every callback below.
-/** @param {any} [idle] a bare boolean or an `{ x, y }` pair, as described above */
-export function useAxisActivePulse(idle = false) {
+/**
+ * @template {boolean | { x: boolean, y: boolean }} [T=boolean]
+ * @param {T} [idle]
+ */
+export function useAxisActivePulse(idle = /** @type {T} */ (false)) {
   const timerRef = useRef(null);
   const [active, setActive] = useState(idle);
 
@@ -22,7 +25,7 @@ export function useAxisActivePulse(idle = false) {
   useEffect(() => () => clearTimer(), [clearTimer]);
 
   const pulse = useCallback(
-    (/** @type {any} */ value = true) => {
+    (value = /** @type {T} */ (true)) => {
       setActive(value);
       clearTimer();
       timerRef.current = window.setTimeout(() => {
@@ -34,7 +37,7 @@ export function useAxisActivePulse(idle = false) {
   );
 
   const hold = useCallback(
-    (/** @type {any} */ value = true) => {
+    (value = /** @type {T} */ (true)) => {
       clearTimer();
       setActive(value);
     },

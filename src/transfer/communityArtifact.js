@@ -44,7 +44,7 @@ function validateFileName(fileName, type) {
  * Repository/CI boundary for one immutable Catalogue artifact. Unlike desktop import, publication
  * accepts only strict Pack V2, one primary Item, canonical UTF-8 JSON formatting, and the matching
  * public extension. The returned hash identifies the exact bytes that were validated.
- * @param {any} text
+ * @param {string} text
  * @param {{ fileName?: any }} [options]
  */
 export async function validateCommunityArtifactText(text, { fileName } = {}) {

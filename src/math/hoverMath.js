@@ -356,7 +356,7 @@ export function formatStereoMapEnergy(db) {
 /**
  * Formats the current-value hover readout for a Stereo Map point, dispatching to the mode-specific
  * formatter. `point` is invalid/gated → "-".
- * @param {any} mode
+ * @param {string} mode
  * @param {any} point
  * @param {{ firstLabel?: any, secondLabel?: any }} [options]
  */

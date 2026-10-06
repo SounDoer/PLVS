@@ -451,8 +451,8 @@ export function planThemeRename(state, themeId, name) {
 
 /**
  * @param {any} state
- * @param {any} themeId
- * @param {any} name
+ * @param {string} themeId
+ * @param {string} name
  * @param {{ makeId?: any }} [options]
  */
 export function planThemeDuplicate(state, themeId, name, { makeId } = {}) {

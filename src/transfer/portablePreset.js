@@ -712,7 +712,7 @@ export function validatePortablePreset(raw) {
 /**
  * Converts a portable document into the stored Preset shape using caller-owned identities.
  * @param {any} raw
- * @param {any} id
+ * @param {string} id
  * @param {{ resolveDependencyId?: any }} [options]
  */
 export function portableToStoredPreset(raw, id, { resolveDependencyId } = {}) {

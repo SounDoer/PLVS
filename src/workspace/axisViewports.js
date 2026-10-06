@@ -1,3 +1,4 @@
+/** @import { AxisViewports } from "./types.js" */
 import { FREQUENCY_VIEWPORT } from "../math/axisInteractionMath.js";
 import { HISTORY_MIN_WINDOW_SEC } from "../math/historyMath.js";
 import { UI_PREFERENCES } from "../uiPreferences.js";
@@ -61,12 +62,41 @@ export function axisKindsForModule(moduleId) {
   return Object.keys(AXIS_VIEWPORTS).filter((kindId) => AXIS_VIEWPORTS[kindId].members[moduleId]);
 }
 
-/** @returns {any} a repaired shared viewport in its kind's own shape (see `AxisViewports`) */
+/**
+ * One kind's shared viewport, whichever kind it is.
+ * @typedef {AxisViewports[keyof AxisViewports]} AxisViewport
+ */
+
+/**
+ * @overload
+ * @param {"frequency"} kindId
+ * @param {unknown} raw
+ * @returns {AxisViewports["frequency"]}
+ */
+/**
+ * @overload
+ * @param {"time"} kindId
+ * @param {unknown} raw
+ * @returns {AxisViewports["time"]}
+ */
+/**
+ * @overload
+ * @param {string} kindId
+ * @param {unknown} raw
+ * @returns {AxisViewport | null}
+ */
+/**
+ * A repaired shared viewport, whatever it was handed. The kind picks the shape; a kind that is not
+ * in the table has no viewport.
+ * @param {string} kindId
+ * @param {any} raw
+ * @returns {AxisViewport | null}
+ */
 export function normalizeAxisViewport(kindId, raw) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   if (!descriptor) return null;
   if (descriptor.normalize) return descriptor.normalize(raw);
-  return normalizeRange(descriptor, raw ?? {});
+  return /** @type {AxisViewports["frequency"]} */ (normalizeRange(descriptor, raw ?? {}));
 }
 
 /** @returns {{ minKey: string, maxKey: string } | null} the panel control keys holding a member's local range */
@@ -74,16 +104,18 @@ export function localRangeKeys(kindId, moduleId) {
   return AXIS_VIEWPORTS[kindId]?.members[moduleId] ?? null;
 }
 
-/** @returns {any} a member's dormant local range in its kind's own shape, or null */
+/** @returns {AxisViewport | null} a member's dormant local range, in its kind's own shape */
 export function readLocalRange(kindId, moduleId, panelControls) {
   const descriptor = AXIS_VIEWPORTS[kindId];
   const keys = localRangeKeys(kindId, moduleId);
   if (!descriptor || !keys) return null;
-  return Object.fromEntries(
-    Object.entries(descriptor.localFields).map(([viewportKey, memberKey]) => [
-      viewportKey,
-      panelControls?.[keys[memberKey]],
-    ])
+  return /** @type {AxisViewport} */ (
+    Object.fromEntries(
+      Object.entries(descriptor.localFields).map(([viewportKey, memberKey]) => [
+        viewportKey,
+        panelControls?.[keys[memberKey]],
+      ])
+    )
   );
 }
 
@@ -105,10 +137,10 @@ export function writeLocalRange(kindId, moduleId, viewport) {
  * and a kind that has since been removed is dropped rather than carried forever -- the table above
  * is the only list of what exists.
  *
- * @returns {import("./types.js").AxisViewports}
+ * @returns {AxisViewports}
  */
 export function normalizeAxisViewportsState(raw) {
-  return /** @type {any} */ (
+  return /** @type {AxisViewports} */ (
     Object.fromEntries(
       Object.keys(AXIS_VIEWPORTS).map((kindId) => [
         kindId,
@@ -138,7 +170,7 @@ export function countLinkedParticipants(state, kindId, excludePanelId) {
  * The range a panel should actually render, and whether it came from the group. This is the only
  * question a panel asks: it never learns where the value is stored.
  *
- * @returns {{ min: number, max: number, linked: boolean } | null} null for a panel outside the kind
+ * @returns {(AxisViewport & { linked: boolean }) | null} null for a panel outside the kind
  */
 export function resolveAxisViewport(state, panelId, kindId) {
   const descriptor = AXIS_VIEWPORTS[kindId];

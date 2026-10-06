@@ -97,12 +97,14 @@ function root(properties, additions = {}) {
   return { type: "object", patchMode: "merge", properties, ...additions };
 }
 
+/**
+ * `grid` is one switch for most modules and one per mode for Stereo Map; that branch reads it as this.
+ * @typedef {{ position: boolean, correlation: boolean, monoLossDb: boolean, msRatioDb: boolean }} StereoMapGridDefaults
+ */
+
 export function buildPublicPanelControlSchema(moduleId, panelControls, context = {}) {
   const controls = normalizePanelControls(panelControls);
-  // The public record's keys depend on `moduleId`; each branch below reads only its own.
-  const defaults = /** @type {Record<string, any>} */ (
-    readPublicPanelControls(moduleId, DEFAULT_PANEL_CONTROLS, context)
-  );
+  const defaults = readPublicPanelControls(moduleId, DEFAULT_PANEL_CONTROLS, context);
 
   if (moduleId === "levelMeter") {
     const loudnessMode =
@@ -432,28 +434,28 @@ export function buildPublicPanelControlSchema(moduleId, panelControls, context =
           properties: {
             position: active(
               field("boolean", "Position Grid", "Show Grid in Position mode.", {
-                default: defaults.grid.position,
+                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).position,
               }),
               controls.stereoMapMode === "position",
               "nonPositionMode"
             ),
             correlation: active(
               field("boolean", "Correlation Grid", "Show Grid in Correlation mode.", {
-                default: defaults.grid.correlation,
+                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).correlation,
               }),
               controls.stereoMapMode === "correlation",
               "nonCorrelationMode"
             ),
             monoLossDb: active(
               field("boolean", "Mono Loss Grid", "Show Grid in Mono Loss mode.", {
-                default: defaults.grid.monoLossDb,
+                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).monoLossDb,
               }),
               controls.stereoMapMode === "monoLossDb",
               "nonMonoLossMode"
             ),
             msRatioDb: active(
               field("boolean", "M/S Ratio Grid", "Show Grid in M/S Ratio mode.", {
-                default: defaults.grid.msRatioDb,
+                default: /** @type {StereoMapGridDefaults} */ (defaults.grid).msRatioDb,
               }),
               controls.stereoMapMode === "msRatioDb",
               "nonMsRatioMode"

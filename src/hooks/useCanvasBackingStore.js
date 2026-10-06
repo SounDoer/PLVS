@@ -23,7 +23,7 @@ function backingAxis(cssPx, devicePx, dpr, cap) {
  * rounded `css x dpr` fallback can be one pixel off, which blurs 1 px lines slightly. A capped axis
  * is resampled by design, so it always uses the cap.
  * @param {any} box
- * @param {any} dpr
+ * @param {number} dpr
  * @param {{ maxDprX?: any, maxDprY?: any }} [options]
  */
 export function canvasBackingSize(box, dpr, { maxDprX, maxDprY } = {}) {

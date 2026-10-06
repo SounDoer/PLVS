@@ -261,7 +261,10 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
-  holdAt(index, epoch = /** @type {any} */ (this)._epoch) {
+  holdAt(
+    index,
+    epoch = /** @type {StereoMapModeHistoryState} */ (/** @type {unknown} */ (this))._epoch
+  ) {
     const target = this._sequenceAt(index);
     if (target == null || epoch !== this._epoch) return null;
     const summaries = {};
@@ -307,7 +310,10 @@ class StereoMapModeHistoryView {
   }
 
   /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
-  holdAtOrBeforeTimestamp(timestampMs, epoch = /** @type {any} */ (this)._epoch) {
+  holdAtOrBeforeTimestamp(
+    timestampMs,
+    epoch = /** @type {StereoMapModeHistoryState} */ (/** @type {unknown} */ (this))._epoch
+  ) {
     let low = 0;
     let high = this.length - 1;
     let found = -1;

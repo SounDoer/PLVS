@@ -921,7 +921,8 @@ function normalizeRow(row, raw) {
 
 /** @returns {import("../workspace/types.js").PanelControls} */
 function buildDefaults() {
-  const defaults = /** @type {any} */ ({});
+  // Filled in row by row below; complete once the loop has run.
+  const defaults = /** @type {import("../workspace/types.js").PanelControls} */ ({});
   for (const row of CONTROLS) {
     if (row.key) {
       defaults[row.key] = Array.isArray(row.default)
@@ -941,7 +942,7 @@ export const DEFAULT_PANEL_CONTROLS = buildDefaults();
 
 /** @returns {import("../workspace/types.js").PanelControls} */
 export function normalizePanelControls(raw) {
-  const normalized = /** @type {any} */ ({});
+  const normalized = /** @type {import("../workspace/types.js").PanelControls} */ ({});
   for (const row of CONTROLS) {
     Object.assign(normalized, normalizeRow(row, raw));
   }

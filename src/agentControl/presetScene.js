@@ -298,7 +298,7 @@ export function planPresetUpdate(presets, presetId, snapshot) {
 
 /**
  * @param {any} presets
- * @param {any} presetId
+ * @param {string} presetId
  * @param {any} currentSnapshot
  * @param {{ targetPreset?: any }} [options]
  */

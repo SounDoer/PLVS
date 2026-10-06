@@ -196,7 +196,11 @@ export function planPackImport(
   type,
   pack,
   // The default only keeps the destructuring from throwing; `existingItems` is still required.
-  { existingItems, existingProfiles = [], makeId = defaultMakeId } = /** @type {any} */ ({})
+  {
+    existingItems,
+    existingProfiles = [],
+    makeId = defaultMakeId,
+  } = /** @type {Parameters<typeof planPackImport>[2]} */ ({})
 ) {
   if (type === "themes" && pack.identity === "content") {
     const { additions, plan } = planContentMerge(existingItems, pack.items, makeId);

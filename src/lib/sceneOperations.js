@@ -65,7 +65,7 @@ export class SceneOperationUnavailableError extends SceneOperationRefusedError {
 /// Editors are not one of them: which editors are open is registry state, not a fact about the
 /// mode, and lives in `hooks/BlockingEditorsContext.jsx`.
 /**
- * @param {any} operation
+ * @param {string} operation
  * @param {{ sourceMode?: any }} [options]
  */
 export function sceneOperationUnavailableReason(operation, { sourceMode } = {}) {
