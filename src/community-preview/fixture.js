@@ -146,7 +146,7 @@ export function buildCommunityPreviewFixtureValues(fixture) {
       selectedOffset: -1,
       setSelectedOffset: noop,
       holdHistoryHud: noop,
-      showHistoryHud: false,
+      showHistoryHud: noop,
       onHistoryWheel: noop,
       onHistoryPointerDown: noop,
       onHistoryPointerMove: noop,
