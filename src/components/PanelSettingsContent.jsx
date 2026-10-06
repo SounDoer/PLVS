@@ -1363,7 +1363,7 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
  *   spectrumDisplayLabel?: string,
  *   onSpectrumChange?: (...args: any[]) => any,
  *   spectrumView?: string,
- *   spectrumViewLegend?: any,
+ *   spectrumViewLegend?: ReturnType<typeof import("../math/spectrumChannelViewOptions.js").spectrumViewLegend>,
  *   onSpectrumViewChange?: (...args: any[]) => any,
  *   spectrumMaxMode?: string,
  *   onSpectrumMaxModeChange?: (...args: any[]) => any,

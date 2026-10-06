@@ -39,7 +39,7 @@ import { LinkButton } from "@/components/ui/link-button";
  *   showFileAnalysisResult: boolean,
  *   fileSummaryProps: Parameters<typeof FileAnalysisSummary>[0],
  *   panelChromeData: Partial<import("../workspace/AudioDataContext.jsx").PanelChromeData>,
- *   footer: any,
+ *   footer: { sourceLabel: string, audioDrop: any, loudnessProfileName: string | null, activePresetName: string | null, hasUpdate: boolean, layoutUnknown?: boolean, onOpenSettings?: (...args: any[]) => any },
  *   docked?: boolean,
  *   dockProps?: Omit<Parameters<typeof DockStrip>[0], "recordingState"> | null,
  *   children?: import("react").ReactNode,
