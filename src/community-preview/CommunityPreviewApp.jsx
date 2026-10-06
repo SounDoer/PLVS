@@ -84,6 +84,7 @@ function compilePreset(plan) {
   });
 }
 
+/** @param {{ plan: any, state?: any, profile?: any }} props */
 function WorkspaceExample({ plan, state: stateOverride, profile: profileOverride }) {
   const preset = useMemo(() => (stateOverride ? null : compilePreset(plan)), [plan, stateOverride]);
   const state = stateOverride ?? preset;

@@ -77,6 +77,33 @@ const CORE_COLORS = [
  *   onMove: (p: {x:number,y:number}) => void,
  * }} props
  */
+/**
+ * @param {{
+ *   draft: any,
+ *   onName: any,
+ *   onColorScheme?: any,
+ *   onCore: any,
+ *   onResetCore?: any,
+ *   onPaletteColor: any,
+ *   onIntensityStop: any,
+ *   onIntensityStops: any,
+ *   onApplyPreset: any,
+ *   onOverride: any,
+ *   onResetOverrides?: any,
+ *   onUndo: any,
+ *   onRedo: any,
+ *   canUndo?: any,
+ *   canRedo?: any,
+ *   canSave?: any,
+ *   onSave: any,
+ *   onCancel: any,
+ *   onDelete: any,
+ *   dirty: any,
+ *   stale?: any,
+ *   pos: any,
+ *   onMove: any,
+ * }} props
+ */
 export function ThemeEditor({
   draft,
   onName,

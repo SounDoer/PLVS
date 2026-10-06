@@ -112,6 +112,7 @@ const DROP_ZONE_PRESENTATION = {
   right: { label: "Place Right", Icon: ArrowRight },
 };
 
+/** @param {{ Icon: any, label: any, panelTitle: any, className?: any }} props */
 function DropHint({ Icon, label, panelTitle, className }) {
   return (
     <div
@@ -186,6 +187,7 @@ function getMeasuredSize(el, dimension) {
 // LeafView
 // ---------------------------------------------------------------------------
 
+/** @param {{ node: any, path: any, style?: any }} props */
 export function LeafView({ node, path, style }) {
   const {
     state,

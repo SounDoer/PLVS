@@ -29,6 +29,45 @@ const METRIC_NUMERIC = "font-[family-name:var(--ui-font-mono)] tabular-nums";
 const LOUDNESS_HUD_BOX_POPOVER =
   "rounded-xs border border-border bg-secondary px-2 py-1 text-[length:var(--ui-fs-axis)] text-[color:var(--ui-text-annotation)]";
 
+/**
+ * @param {{
+ *   plotAreaRef?: any,
+ *   historyYAxisTicks?: any,
+ *   targetLufs?: any,
+ *   loudnessYMinDb?: any,
+ *   loudnessYMaxDb?: any,
+ *   onLoudnessYRangeChange?: any,
+ *   hasHistoryData?: any,
+ *   historyChartInteractive?: any,
+ *   setSelectedOffset?: any,
+ *   holdHistoryHud?: any,
+ *   showHistoryHud?: any,
+ *   onHistoryWheel?: any,
+ *   onHistoryPointerDown?: any,
+ *   onHistoryPointerMove?: any,
+ *   onHistoryPointerUp?: any,
+ *   historyTimeAxisHandlers?: any,
+ *   isTimeAxisActive?: any,
+ *   loudnessHistoryVisibleLayerIds?: any,
+ *   gridVisible?: any,
+ *   displayHistoryPathM?: any,
+ *   displayHistoryPathST?: any,
+ *   selectedOffset?: any,
+ *   showSelLine?: any,
+ *   selectionEdge?: any,
+ *   selLineX?: any,
+ *   historyHover?: any,
+ *   historyTimeTicks?: any,
+ *   historyTickSteps?: any,
+ *   showLatestEdgeHint?: any,
+ *   referenceLufs?: any,
+ *   momentaryRules?: any,
+ *   shortTermRules?: any,
+ *   onHistoryHoverMove?: any,
+ *   onHistoryHoverLeave?: any,
+ *   loudnessLayoutKnown?: any,
+ * }} props
+ */
 export function LoudnessHistoryChart({
   plotAreaRef,
   historyYAxisTicks: historyYAxisTicksProp,

@@ -15,6 +15,20 @@ import { ThemeEditor } from "./ThemeEditor.jsx";
 import { UpdateDialog } from "./UpdateDialog.jsx";
 import { LAYER_PRIORITY } from "./ui/layers.js";
 
+/**
+ * @param {{
+ *   settings: any,
+ *   channelSettings: any,
+ *   updateControls: any,
+ *   appVersion: any,
+ *   loudnessProfile?: any,
+ *   presets?: any,
+ *   crashReportSetting: any,
+ *   crashReporting: any,
+ *   packTransfer?: any,
+ *   onAgentControlEnabledChange?: any,
+ * }} props
+ */
 export function AppSettingsOverlays({
   settings,
   channelSettings,

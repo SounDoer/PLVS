@@ -8,6 +8,24 @@ import { RecordingIndicator } from "../components/RecordingIndicator.jsx";
 import { DOCK_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
 
 /** The resizable meter strip. Accessory chrome lives in sibling windows. */
+/**
+ * @param {{
+ *   panels?: any,
+ *   controls: any,
+ *   hoveredPanelId?: any,
+ *   edge?: any,
+ *   height?: any,
+ *   heightResizeDisabled?: any,
+ *   onHeightChange?: any,
+ *   panelSizesById?: any,
+ *   panelResizeDisabled?: any,
+ *   onPanelResize?: any,
+ *   onPanelResizeReset?: any,
+ *   onPointerEnter?: any,
+ *   onPointerLeave?: any,
+ *   recordingState?: any,
+ * }} props
+ */
 export function DockStrip({
   panels = [],
   controls,

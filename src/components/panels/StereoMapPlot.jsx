@@ -502,6 +502,26 @@ function drawGrid(ctx, xTicks, yTicks, width, height, dpr, color) {
  * entries. Colors arrive as a resolved theme bundle and never require a style read; computed style
  * is retained only for non-color drawing geometry.
  */
+/**
+ * @param {{
+ *   mode: any,
+ *   bandCentersHz?: any,
+ *   points?: any,
+ *   holdValues?: any,
+ *   holdVisible?: any,
+ *   range: any,
+ *   xMinHz?: any,
+ *   xMaxHz?: any,
+ *   paletteKey?: any,
+ *   themeColors?: any,
+ *   sourceVersion?: any,
+ *   energyFadePercent?: any,
+ *   colorBlendPercent?: any,
+ *   gridVisible?: any,
+ *   xTicks?: any,
+ *   yTicks?: any,
+ * }} props
+ */
 export function StereoMapPlot({
   mode,
   bandCentersHz = [],

@@ -12,6 +12,21 @@ import { Button } from "@/components/ui/button";
 
 // Metrics come from the authoritative completion summary payload (fileSession.summary), not the
 // last displayed UI frame, so throttled/batched frames cannot skew the delivery numbers.
+/**
+ * @param {{
+ *   fileSession?: any,
+ *   fileSessions?: any,
+ *   activeFileId?: any,
+ *   analyzingFileId?: any,
+ *   onSelectFile?: any,
+ *   onReanalyzeFile?: any,
+ *   onRemoveFile?: any,
+ *   onClearAllFiles?: any,
+ *   onStopFile?: any,
+ *   onExportReport?: any,
+ *   onCopyReport?: any,
+ * }} props
+ */
 export function FileAnalysisSummary({
   fileSession,
   fileSessions,

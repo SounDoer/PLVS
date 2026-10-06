@@ -5,6 +5,15 @@ import {
   PanelChromeProvider,
 } from "./AudioDataContext.jsx";
 
+/**
+ * @param {{
+ *   frameData?: any,
+ *   historyData: any,
+ *   metricsData?: any,
+ *   panelChromeData?: any,
+ *   children: any,
+ * }} props
+ */
 export function PanelDataProviders({
   frameData,
   historyData,

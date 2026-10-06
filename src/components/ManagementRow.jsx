@@ -8,6 +8,18 @@ export const MANAGEMENT_ROW_CLASS =
 export const MANAGEMENT_ROW_ACTIONS_CLASS =
   "flex shrink-0 items-center gap-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
 
+/**
+ * @param {{
+ *   label: any,
+ *   icon: any,
+ *   onClick: any,
+ *   className?: any,
+ *   disabled?: any,
+ *   tip?: any,
+ *   tipSide?: any,
+ *   tipAlign?: any,
+ * }} props
+ */
 export function ManagementIconAction({
   label,
   icon,

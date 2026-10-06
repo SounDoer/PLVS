@@ -426,6 +426,17 @@ export function SettingsRangeInput({
   );
 }
 
+/**
+ * @param {{
+ *   ariaLabel: any,
+ *   value: any,
+ *   min: any,
+ *   max: any,
+ *   step?: any,
+ *   suffix?: any,
+ *   onCommit: any,
+ * }} props
+ */
 export function SettingsNumberInput({ ariaLabel, value, min, max, step = 1, suffix, onCommit }) {
   const formatDraftValue = (nextValue) =>
     Number.isFinite(nextValue) ? String(Math.round(nextValue)) : String(nextValue ?? "");
@@ -579,6 +590,7 @@ export function WaveformSettingsRows({
   );
 }
 
+/** @param {{ ariaLabel: any, summary: any, open: any, onToggle: any, className?: any }} props */
 function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) {
   const DisclosureIcon = open ? ChevronUp : ChevronDown;
 
@@ -600,6 +612,16 @@ function InlineDetailTrigger({ ariaLabel, summary, open, onToggle, className }) 
   );
 }
 
+/**
+ * @param {{
+ *   children: any,
+ *   checked?: any,
+ *   className?: any,
+ *   checkClassName?: any,
+ *   role: any,
+ *   [key: string]: any,
+ * }} props
+ */
 function SettingsOptionRow({
   children,
   checked = false,
@@ -623,6 +645,17 @@ function SettingsOptionRow({
   );
 }
 
+/**
+ * @param {{
+ *   label: any,
+ *   ariaLabel?: any,
+ *   options: any,
+ *   value: any,
+ *   onChange?: any,
+ *   open?: any,
+ *   onOpenChange?: any,
+ * }} props
+ */
 export function SettingsSelect({ label, ariaLabel, options, value, onChange, open, onOpenChange }) {
   const groups = [];
   for (const option of options) {
@@ -846,6 +879,16 @@ function toggleId(ids, id) {
   return [...ids, id];
 }
 
+/**
+ * @param {{
+ *   visibleIds: any,
+ *   orderedIds: any,
+ *   onToggle: any,
+ *   onReorder: any,
+ *   onReset?: any,
+ *   showReset?: any,
+ * }} props
+ */
 export function StatsMetricsSettingsRow({
   visibleIds,
   orderedIds,
@@ -886,6 +929,18 @@ export function StatsMetricsSettingsRow({
 
 /// No Ref input: the reference value is owned by the active Loudness Profile, so a second
 /// editor here would be a competing writer. The `ref` layer toggle stays.
+/**
+ * @param {{
+ *   showGrid?: any,
+ *   visibleLayerIds: any,
+ *   grid?: any,
+ *   yMinDb: any,
+ *   yMaxDb: any,
+ *   onVisibleLayerIdsChange: any,
+ *   onGridChange?: any,
+ *   onYRangeChange: any,
+ * }} props
+ */
 export function LoudnessSettingsRows({
   showGrid = true,
   visibleLayerIds,
@@ -955,6 +1010,32 @@ export function LoudnessSettingsRows({
   );
 }
 
+/**
+ * @param {{
+ *   showPeak?: any,
+ *   showPeakLabels?: any,
+ *   showDisplay?: any,
+ *   showGrid?: any,
+ *   maxMode: any,
+ *   peakLabels?: any,
+ *   speedPercent: any,
+ *   octaveSmoothing: any,
+ *   tiltDbPerOctave: any,
+ *   xMinFreq: any,
+ *   xMaxFreq: any,
+ *   yMinDb: any,
+ *   yMaxDb: any,
+ *   grid?: any,
+ *   onMaxModeChange: any,
+ *   onPeakLabelsChange?: any,
+ *   onSpeedChange: any,
+ *   onOctaveSmoothingChange: any,
+ *   onTiltChange: any,
+ *   onXRangeChange: any,
+ *   onYRangeChange: any,
+ *   onGridChange?: any,
+ * }} props
+ */
 export function SpectrumDisplaySettingsRows({
   showPeak = true,
   showPeakLabels = showPeak,
@@ -1255,6 +1336,31 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
   );
 }
 
+/**
+ * @param {{
+ *   activeTab?: any,
+ *   channelCount?: any,
+ *   vectorscopeOptions?: any,
+ *   vectorscopeValueKey?: any,
+ *   vectorscopeDisplayLabel?: any,
+ *   onVectorscopeChange?: any,
+ *   spectrumOptions?: any,
+ *   spectrumValueKey?: any,
+ *   spectrumDisplayLabel?: any,
+ *   onSpectrumChange?: any,
+ *   spectrumView?: any,
+ *   spectrumViewLegend?: any,
+ *   onSpectrumViewChange?: any,
+ *   spectrumMaxMode?: any,
+ *   onSpectrumMaxModeChange?: any,
+ *   stereoMapPairOptions?: any,
+ *   stereoMapPairValueKey?: any,
+ *   stereoMapPairDisplayLabel?: any,
+ *   onStereoMapPairChange?: any,
+ *   panelControls?: any,
+ *   onPanelControlsChange?: any,
+ * }} props
+ */
 export function PanelSettingsContent({
   activeTab,
   channelCount = 0,

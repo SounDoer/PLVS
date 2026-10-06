@@ -27,6 +27,15 @@ const FREQUENCY_COLORS = [
   ["high", "High"],
 ];
 
+/**
+ * @param {{
+ *   kind: any,
+ *   palette: any,
+ *   onApplyPreset: any,
+ *   customAvailable?: any,
+ *   onSelectCustom?: any,
+ * }} props
+ */
 function PalettePresetSelect({
   kind,
   palette,

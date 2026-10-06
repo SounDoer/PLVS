@@ -170,6 +170,21 @@ function resolveDockPanelDisplayName(state, panelId) {
     : DOCK_ONLY_PANEL_META.transport.title;
 }
 
+/**
+ * @param {{
+ *   panels?: any,
+ *   modules?: any,
+ *   vectorscopeSettingsAvailable?: any,
+ *   onAdd: any,
+ *   onRename?: any,
+ *   onRemove: any,
+ *   onReorder: any,
+ *   onReset: any,
+ *   isDefault?: any,
+ *   onHover?: any,
+ *   onOpenSettings: any,
+ * }} props
+ */
 export function DockModulesEditor({
   panels,
   modules,

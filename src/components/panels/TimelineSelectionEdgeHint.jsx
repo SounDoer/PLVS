@@ -5,6 +5,7 @@ const SELECTION_EDGE_FADE_PERCENT = 22;
 const SELECTION_EDGE_LINE_CLASS = "border-current/60";
 
 /** Points toward the globally selected sample when it is outside this panel's time window. */
+/** @param {{ direction: any, className?: any, color?: any }} props */
 export function TimelineSelectionEdgeHint({
   direction,
   className,

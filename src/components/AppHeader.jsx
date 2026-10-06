@@ -33,6 +33,7 @@ const SOURCES_POPOVER_CLASS =
 const TOOLBAR_TRIGGER_OPEN_CLASS =
   "group-data-[state=open]:bg-ui-hover group-data-[state=open]:text-foreground";
 
+/** @param {{ primary: any, secondary?: any, selected: any, onSelect: any, ariaLabel: any }} props */
 function SourceRow({ primary, secondary, selected, onSelect, ariaLabel }) {
   return (
     <MenuRow aria-label={ariaLabel} onClick={onSelect}>
@@ -122,6 +123,52 @@ function SourceSection({ id, label, count, open, onOpenChange, selectedSummary, 
   );
 }
 
+/**
+ * @param {{
+ *   loudnessProfile?: any,
+ *   loudnessProfileStats?: any,
+ *   autoHideControls?: any,
+ *   onPointerEnter?: any,
+ *   onPointerLeave?: any,
+ *   onPointerDown?: any,
+ *   onPointerUp?: any,
+ *   onPointerCancel?: any,
+ *   sourceTransportState?: any,
+ *   notice?: any,
+ *   sourceMode?: any,
+ *   onSourceModeChange?: any,
+ *   onSourceTransportAction?: any,
+ *   onClear?: any,
+ *   clearDisabled?: any,
+ *   isTauriApp?: any,
+ *   onOpenFile?: any,
+ *   audioDevices?: any,
+ *   audioOutputs?: any,
+ *   audioInputs?: any,
+ *   captureApplications?: any,
+ *   onRefreshSources?: any,
+ *   safeAudioDeviceId?: any,
+ *   setCaptureDeviceId?: any,
+ *   holdFocusControls?: any,
+ *   focusView?: any,
+ *   pinned?: any,
+ *   setPinned?: any,
+ *   setAutoHideControls?: any,
+ *   setCompactPanels?: any,
+ *   setBorderless?: any,
+ *   surfaceOpacity?: any,
+ *   setSurfaceOpacity?: any,
+ *   glassEnabled?: any,
+ *   setGlassEnabled?: any,
+ *   showDock?: any,
+ *   dockEdge?: any,
+ *   onDockChange?: any,
+ *   dockDisabled?: any,
+ *   presets?: any,
+ *   onExportLibraryItem?: any,
+ *   setSettingsOpen?: any,
+ * }} props
+ */
 export function AppHeader({
   loudnessProfile,
   loudnessProfileStats,

@@ -25,6 +25,27 @@ import {
 } from "@/lib/shellLayout";
 import { LinkButton } from "@/components/ui/link-button";
 
+/**
+ * @param {{
+ *   frameData: any,
+ *   historyData: any,
+ *   metricsData: any,
+ *   runtimeEnginesProps: any,
+ *   fileDropProps: any,
+ *   focusView: any,
+ *   focusControlsVisible: any,
+ *   shellHandlers: any,
+ *   headerProps: any,
+ *   showFileAnalysisResult: any,
+ *   fileSummaryProps: any,
+ *   panelChromeData: any,
+ *   footer: any,
+ *   docked?: any,
+ *   dockProps?: any,
+ *   children?: any,
+ *   recordingState?: any,
+ * }} props
+ */
 export function AppShell({
   frameData,
   historyData,

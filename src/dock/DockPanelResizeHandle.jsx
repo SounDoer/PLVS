@@ -2,6 +2,17 @@ import { RESIZE_HANDLE_LINE_CLASS } from "../lib/shellLayout.js";
 import { useRef } from "react";
 import { getDockPanelSizing } from "./dockPanelSizing.js";
 
+/**
+ * @param {{
+ *   leftPanel: any,
+ *   rightPanel: any,
+ *   leftBasis?: any,
+ *   rightBasis?: any,
+ *   disabled?: any,
+ *   onResize: any,
+ *   onReset?: any,
+ * }} props
+ */
 export function DockPanelResizeHandle({
   leftPanel,
   rightPanel,

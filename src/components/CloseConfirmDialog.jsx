@@ -17,6 +17,16 @@ const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
 const ROW_LABEL_CLASS = "text-[length:var(--ui-fs-control)] font-medium text-muted-foreground";
 
+/**
+ * @param {{
+ *   open: any,
+ *   error?: any,
+ *   busy?: any,
+ *   onConfirm: any,
+ *   onRetry?: any,
+ *   onCancel: any,
+ * }} props
+ */
 export function CloseConfirmDialog({
   open,
   error = null,

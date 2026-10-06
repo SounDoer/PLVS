@@ -215,6 +215,7 @@ export function paintDockWaveformCanvas(
 }
 
 /** Compact, latest-locked waveform with one labeled lane per available channel. */
+/** @param {{ controls?: any }} props */
 export function DockWaveform({ controls }) {
   const themeColors = useResolvedTheme(selectWaveformCanvasColors);
   const frameData = useFrameData() ?? {};

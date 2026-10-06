@@ -30,6 +30,18 @@ function detailLabel(session) {
   return formatCompactSessionMetadata(session);
 }
 
+/**
+ * @param {{
+ *   fileSessions?: any,
+ *   activeFileId?: any,
+ *   analyzingFileId?: any,
+ *   onSelectFile?: any,
+ *   onReanalyzeFile?: any,
+ *   onRemoveFile?: any,
+ *   onClearAllFiles?: any,
+ *   onStopFile?: any,
+ * }} props
+ */
 export function FileAnalysisHistoryMenu({
   fileSessions = [],
   activeFileId = null,

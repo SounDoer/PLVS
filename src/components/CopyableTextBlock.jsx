@@ -6,6 +6,7 @@ import { IconAction } from "@/components/ui/icon-action";
 
 const FEEDBACK_DURATION_MS = 1500;
 
+/** @param {{ value: any, ariaLabel?: any, className?: any }} props */
 export function CopyableTextBlock({ value, ariaLabel = "copy text", className }) {
   const [copyState, setCopyState] = useState("idle");
   const resetTimerRef = useRef(null);

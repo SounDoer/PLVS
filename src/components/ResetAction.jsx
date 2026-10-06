@@ -10,6 +10,23 @@ import { cn } from "@/lib/utils";
  * The action keeps a constant footprint, remains visible while disabled, and
  * replaces itself with inline cancel/confirm controls when armed.
  */
+/**
+ * @param {{
+ *   label: any,
+ *   onReset: any,
+ *   isDefault?: any,
+ *   tip?: any,
+ *   defaultTip?: any,
+ *   confirmLabel?: any,
+ *   cancelLabel?: any,
+ *   side?: any,
+ *   align?: any,
+ *   compact?: any,
+ *   className?: any,
+ *   onArmedChange?: any,
+ *   [key: string]: any,
+ * }} props
+ */
 export function ResetAction({
   label,
   onReset,

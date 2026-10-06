@@ -72,6 +72,7 @@ function SettingsBody({ children }) {
   );
 }
 
+/** @param {{ children: any, className?: any }} props */
 function SettingsSection({ children, className }) {
   return (
     <div data-settings-section className={cn(SECTION_CLASS, className)}>
@@ -114,6 +115,7 @@ function SettingsDivider() {
   return <div className="border-t border-border" />;
 }
 
+/** @param {{ className?: any, [key: string]: any }} props */
 function SettingsSwitch({ className, ...props }) {
   return (
     <Switch
@@ -132,6 +134,74 @@ function IconButton({ children, className, ...props }) {
   );
 }
 
+/**
+ * @param {{
+ *   settingsOpen: any,
+ *   setSettingsOpen: any,
+ *   appearance: any,
+ *   setAppearanceMode: any,
+ *   interfaceSize?: any,
+ *   setInterfaceSize?: any,
+ *   fixedThemeSelectValue: any,
+ *   setFixedThemeIdFromPicker: any,
+ *   appVersion?: any,
+ *   latestVersion?: any,
+ *   releaseUrl?: any,
+ *   hasUpdate?: any,
+ *   updateStatus?: any,
+ *   onCheckForUpdate?: any,
+ *   onInstallUpdate?: any,
+ *   openExternalUrl?: any,
+ *   autostartEnabled?: any,
+ *   setAutostartEnabled?: any,
+ *   autostartReady?: any,
+ *   closeAction?: any,
+ *   setCloseAction?: any,
+ *   historyRetentionSec?: any,
+ *   setHistoryRetentionSec?: any,
+ *   dialogueVadEngine?: any,
+ *   setDialogueVadEngine?: any,
+ *   clearShortcut?: any,
+ *   setClearShortcut?: any,
+ *   clearGlobal?: any,
+ *   setClearGlobal?: any,
+ *   setClearCapturing?: any,
+ *   clearReady?: any,
+ *   registrationError?: any,
+ *   channelCount?: any,
+ *   channelLabelTokens?: any,
+ *   channelLabelHasOverride?: any,
+ *   selectedLayoutId?: any,
+ *   setChannelLayout?: any,
+ *   setChannelLabelToken?: any,
+ *   resetChannelLabels?: any,
+ *   customThemeOptions?: any,
+ *   createCustomTheme?: any,
+ *   editCustomTheme?: any,
+ *   customizeBuiltinTheme?: any,
+ *   duplicateCustomTheme?: any,
+ *   deleteCustomTheme?: any,
+ *   onExportTheme?: any,
+ *   themeControlsDisabled?: any,
+ *   onExportConfiguration?: any,
+ *   onImportConfiguration?: any,
+ *   onResetConfiguration?: any,
+ *   configurationBusy?: any,
+ *   configurationStatus?: any,
+ *   onLibraryExport?: any,
+ *   onSharedPackImport?: any,
+ *   packBusy?: any,
+ *   packStatus?: any,
+ *   agentControlStatus?: any,
+ *   agentControlBusy?: any,
+ *   onSetAgentControlEnabled?: any,
+ *   askToSendCrashReports?: any,
+ *   crashReportSettingBusy?: any,
+ *   crashReportSettingError?: any,
+ *   onAskToSendCrashReports?: any,
+ *   onOpenFeedback?: any,
+ * }} props
+ */
 export function SettingsPanel({
   settingsOpen,
   setSettingsOpen,

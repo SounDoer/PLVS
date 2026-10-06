@@ -554,6 +554,19 @@ function SettingsBody({
   return null;
 }
 
+/**
+ * @param {{
+ *   moduleId: any,
+ *   title?: any,
+ *   controls: any,
+ *   vectorscopeOptions?: any,
+ *   spectrumOptions?: any,
+ *   channelCount?: any,
+ *   onChange: any,
+ *   onReset: any,
+ *   onBack: any,
+ * }} props
+ */
 export function DockModuleSettings({
   moduleId,
   title,

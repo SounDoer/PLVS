@@ -3,6 +3,18 @@ const UNIT_VISIBILITY_CLASSES = {
   tight: "@max-[68px]:hidden",
 };
 
+/**
+ * @param {{
+ *   label: any,
+ *   value: any,
+ *   unit: any,
+ *   align?: any,
+ *   indicator?: any,
+ *   unitVisibility?: any,
+ *   labelClassName?: any,
+ *   valueClassName?: any,
+ * }} props
+ */
 export function DockExpandedMetric({
   label,
   value,

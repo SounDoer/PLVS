@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { POPOVER_SURFACE_CLASS } from "./surfaceStyles.js";
 import { LAYER_FLOATING } from "./layers.js";
 
+/** @param {{ open?: any, defaultOpen?: any, onOpenChange?: any, [key: string]: any }} props */
 function Popover({ open: controlledOpen, defaultOpen = false, onOpenChange, ...props }) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
   const open = controlledOpen ?? uncontrolledOpen;
