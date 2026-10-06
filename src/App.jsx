@@ -116,7 +116,7 @@ import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import { LibraryConflictDialog } from "./components/LibraryConflictDialog.jsx";
 import packageInfo from "../package.json";
 import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
-import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
+import { AgentControlBridge } from "./agentControl/AgentControlBridge.jsx";
 import { useVisualCaptureSurfaces } from "./agentControl/useVisualCaptureSurfaces.js";
 import { buildPublicSettings } from "./agentControl/settingsControl.js";
 import { buildTransportSnapshot } from "./agentControl/transportControl.js";
@@ -1649,7 +1649,7 @@ function AppContent() {
     },
     [dockLayout, enterDockMode, exitDockRestoringAttributes, setSelectedOffset]
   );
-  useAgentControlBridge({
+  const agentControlBridgeProps = {
     enabled:
       agentControlRuntime.available === true &&
       (agentControlEnabled || isParticipantInstance()) &&
@@ -1695,7 +1695,7 @@ function AppContent() {
     viewContext: agentControlViewContext,
     visual: agentControlVisual,
     uiNavigation,
-  });
+  };
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
 
@@ -2522,67 +2522,70 @@ function AppContent() {
     : null;
 
   return (
-    <AppShell
-      docked={docked}
-      dockProps={dockProps}
-      frameData={frameData}
-      historyData={historyData}
-      metricsData={metricsData}
-      runtimeEnginesProps={runtimeEnginesProps}
-      fileDropProps={fileDropProps}
-      focusView={focusView}
-      focusControlsVisible={focusControlsVisible}
-      shellHandlers={shellHandlers}
-      headerProps={headerProps}
-      showFileAnalysisResult={showFileAnalysisResult}
-      fileSummaryProps={fileSummaryProps}
-      panelChromeData={panelChromeData}
-      footer={footer}
-      recordingState={visualRecordingState}
-    >
-      <AppSettingsOverlays
-        settings={settings}
-        crashReportSetting={crashReportSetting}
-        crashReporting={crashReporting}
-        packTransfer={packTransfer}
-        presets={presets}
-        loudnessProfile={loudnessProfile}
-        channelSettings={{
-          channelCount,
-          channelLabelTokens,
-          channelLabelHasOverride: !!channelLabelOverride,
-          selectedLayoutId: channelLabelRuntime.selectedLayoutId,
-          setChannelLayout,
-          setChannelLabelToken,
-          resetChannelLabels,
-        }}
-        updateControls={{
-          updateInfo,
-          refreshUpdateCheck,
-          installStatus,
-          downloadProgress,
-          install,
-          restartToApply,
-          resetInstall,
-        }}
-        appVersion={APP_VERSION}
-        onAgentControlEnabledChange={setAgentControlEnabled}
-      />
+    <>
+      <AgentControlBridge {...agentControlBridgeProps} />
+      <AppShell
+        docked={docked}
+        dockProps={dockProps}
+        frameData={frameData}
+        historyData={historyData}
+        metricsData={metricsData}
+        runtimeEnginesProps={runtimeEnginesProps}
+        fileDropProps={fileDropProps}
+        focusView={focusView}
+        focusControlsVisible={focusControlsVisible}
+        shellHandlers={shellHandlers}
+        headerProps={headerProps}
+        showFileAnalysisResult={showFileAnalysisResult}
+        fileSummaryProps={fileSummaryProps}
+        panelChromeData={panelChromeData}
+        footer={footer}
+        recordingState={visualRecordingState}
+      >
+        <AppSettingsOverlays
+          settings={settings}
+          crashReportSetting={crashReportSetting}
+          crashReporting={crashReporting}
+          packTransfer={packTransfer}
+          presets={presets}
+          loudnessProfile={loudnessProfile}
+          channelSettings={{
+            channelCount,
+            channelLabelTokens,
+            channelLabelHasOverride: !!channelLabelOverride,
+            selectedLayoutId: channelLabelRuntime.selectedLayoutId,
+            setChannelLayout,
+            setChannelLabelToken,
+            resetChannelLabels,
+          }}
+          updateControls={{
+            updateInfo,
+            refreshUpdateCheck,
+            installStatus,
+            downloadProgress,
+            install,
+            restartToApply,
+            resetInstall,
+          }}
+          appVersion={APP_VERSION}
+          onAgentControlEnabledChange={setAgentControlEnabled}
+        />
 
-      <CloseConfirmDialog
-        open={closeDialogOpen}
-        error={closeError}
-        busy={closing}
-        onConfirm={handleCloseConfirm}
-        onRetry={handleCloseRetry}
-        onCancel={handleCloseCancel}
-      />
-      {DevUiVisualFixture && window.__PLVS_INITIAL_STATE__?.uiVisualFixture ? (
-        <Suspense fallback={null}>
-          <DevUiVisualFixture name={window.__PLVS_INITIAL_STATE__.uiVisualFixture} />
-        </Suspense>
-      ) : null}
-      <LibraryConflictDialog />
-    </AppShell>
+        <CloseConfirmDialog
+          open={closeDialogOpen}
+          error={closeError}
+          busy={closing}
+          onConfirm={handleCloseConfirm}
+          onRetry={handleCloseRetry}
+          onCancel={handleCloseCancel}
+        />
+        {DevUiVisualFixture && window.__PLVS_INITIAL_STATE__?.uiVisualFixture ? (
+          <Suspense fallback={null}>
+            <DevUiVisualFixture name={window.__PLVS_INITIAL_STATE__.uiVisualFixture} />
+          </Suspense>
+        ) : null}
+        <LibraryConflictDialog />
+      </AppShell>
+    </>
   );
 }
