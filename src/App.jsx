@@ -2,55 +2,47 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
+  useMeterDisplayState,
   useMeterRuntime,
   useMeterRuntimeAssembly,
 } from "./runtime/MeterRuntimeContext.jsx";
 import {
   deriveBackendAnalysisRequests,
   deriveChannelLabelRuntime,
-  deriveDialogueRuntime,
 } from "./runtime/appRuntimeDerivations.js";
 import { UI_PREFERENCES } from "./uiPreferences";
 import { normalizePanelControls } from "./lib/panelControls.js";
-import { normalizeAxisViewport } from "./workspace/axisViewports.js";
 import {
   useLoudnessHistory,
   HIST_SAMPLE_SEC,
   VISUAL_HIST_SAMPLE_SEC,
 } from "./hooks/useLoudnessHistory.js";
-import { useSettings } from "./hooks/useSettings";
+import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx";
 import { useSnapshot } from "./hooks/useSnapshot";
-import { useAudioDevices } from "./hooks/useAudioDevices.js";
-import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
-import { BlockingEditorsProvider, useBlockingEditors } from "./hooks/BlockingEditorsContext.jsx";
+import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
+import { SceneGuardProvider, useSceneGuard } from "./hooks/SceneGuardContext.jsx";
+import { errorDetails } from "./lib/errorDetails.js";
+import { reportSceneOperationError } from "./lib/sceneOperationNotice.js";
 import {
   UiNavigationProvider,
-  useUiNavigation,
-  useUiNavigationEnvironment,
   useUiNavigationTarget,
   useUiSurface,
 } from "./uiNavigation/UiNavigationContext.jsx";
 import { preparePanelSettingsNavigation } from "./uiNavigation/panelSettingsNavigation.js";
-import {
-  SCENE_OPERATIONS,
-  SceneOperationUnavailableError,
-  isSceneOperationRefused,
-  sceneOperationUnavailableReason,
-} from "./lib/sceneOperations.js";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
-import { useAlwaysOnTop } from "./hooks/useAlwaysOnTop.js";
-import { useDockMode } from "./hooks/useDockMode.js";
-import { useCrashReporting } from "./hooks/useCrashReporting.js";
-import { useCrashReportSetting } from "./hooks/useCrashReportSetting.js";
-import { useDockLayout } from "./dock/useDockLayout.js";
+import { DockProvider, useDock } from "./dock/DockContext.jsx";
+import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
+import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
+import { SourceProvider, useSource } from "./runtime/SourceContext.jsx";
+import { SourceActionsProvider, useSourceActions } from "./runtime/SourceActionsContext.jsx";
+import { AppLifecycleProvider, useAppLifecycle } from "./hooks/AppLifecycleContext.jsx";
+import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
-import { useDockHistoryViewport } from "./dock/useDockHistoryViewport.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
-import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
 import {
   buildVectorscopePairOptions,
   clampVectorscopePairToAvailable,
@@ -67,11 +59,10 @@ import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
 import { deriveSourceTransportState } from "./lib/sourceTransportState.js";
-import { isMacOS, supportsDockMode } from "./lib/platform.js";
+import { supportsDockMode } from "./lib/platform.js";
 import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { deriveClampedPanelControls } from "./workspace/clampPanelControls.js";
 import { deriveAnalysisRequests, deriveRetainedAnalysisKeys } from "./analysis/analysisRequests.js";
-import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "./ipc/env.js";
 import { isParticipantInstance } from "./lib/runtimeRole.js";
 import {
@@ -85,43 +76,17 @@ import {
   updateVisualRecordingGeometry,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
-import {
-  availableMonitors,
-  currentMonitor,
-  getCurrentWindow,
-  primaryMonitor,
-} from "@tauri-apps/api/window";
-import { useTray } from "./hooks/useTray.js";
-import { useInstanceIdentity } from "./hooks/useInstanceIdentity.js";
-import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
-import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
-import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
-import { setWindowDecorations, useFocusViewWindow } from "./hooks/useFocusViewWindow.js";
-import {
-  syncSurfaceOpacityWindowShadow,
-  useSurfaceOpacityWindowShadow,
-} from "./hooks/useSurfaceOpacityWindowShadow.js";
-import { setGlassEffect, useGlassEffect } from "./hooks/useGlassEffect.js";
-import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
-import { automaticOutputChangeNotice } from "./lib/captureHealth.js";
-import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
-import { useViewsChromeReveal } from "./hooks/useViewsChromeReveal.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
-import { useRuntimeCoordination } from "./runtime/coordination.js";
-import { useSourceTransportActions } from "./hooks/useSourceTransportActions.js";
-import { useDialogueEngineRestart } from "./hooks/useDialogueEngineRestart.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import { LibraryConflictDialog } from "./components/LibraryConflictDialog.jsx";
 import packageInfo from "../package.json";
 import { readAgentControlRuntime } from "./agentControl/appSnapshot.js";
-import { useAgentControlBridge } from "./agentControl/useAgentControlBridge.js";
+import { AgentControlBridge } from "./agentControl/AgentControlBridge.jsx";
 import { useVisualCaptureSurfaces } from "./agentControl/useVisualCaptureSurfaces.js";
 import { buildPublicSettings } from "./agentControl/settingsControl.js";
-import { buildTransportSnapshot } from "./agentControl/transportControl.js";
 
 const APP_VERSION = packageInfo.version;
-const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 const DevUiVisualFixture = import.meta.env.DEV
   ? lazy(() => import("./dev/UiVisualFixture.jsx"))
   : null;
@@ -212,25 +177,48 @@ export function updateHistoryPerformanceHarnessController(controller, requestKey
   controller?.updateRequestKeys(requestKeys);
 }
 
-/**
- * @param {string} prefix
- */
-function errorDetails(prefix, error) {
-  return `${prefix}: ${error?.message || String(error)}`;
-}
-
+// The provider order is the dependency order: a provider may read the ones that enclose it and
+// never one it encloses. Each line says what the provider reads, so a new owner has one obvious
+// place to go.
 export default function App() {
   return (
     <WorkspaceProvider>
       <MeterRuntimeProvider>
-        {/* Inside MeterRuntime and outside AppContent: dockLayout is a hook in AppContent and
-            DockStats is rendered by it, so one provider covers both windows' worth of Stats. */}
-        {/* Outside LoudnessProfileProvider: the profile draft registers itself as a blocking
-            editor, and so does the theme editor further down in AppContent. */}
+        {/* Outside LoudnessProfileProvider and SettingsProvider: the profile draft and the theme
+            editor both register themselves as blocking editors. */}
         <BlockingEditorsProvider>
+          {/* Reads BlockingEditors. */}
           <UiNavigationProvider>
+            {/* Outside DockProvider: the strip's Stats and the main window's read one profile. */}
             <LoudnessProfileProvider>
-              <AppContent />
+              {/* Reads BlockingEditors and UiNavigation (the theme editor registers with both). */}
+              <SettingsProvider>
+                {/* Reads BlockingEditors and MeterRuntime (source mode). */}
+                <SceneGuardProvider>
+                  {/* Reads Settings (the values exit restores) and SceneGuard. */}
+                  <DockProvider>
+                    {/* Reads Settings and Dock: its window effects stand down while docked. */}
+                    <WindowChromeProvider>
+                      {/* Reads Workspace, Settings, Dock, LoudnessProfile and SceneGuard: everything
+                          a preset captures or replaces. */}
+                      <PresetsProvider>
+                        {/* Reads MeterRuntime. */}
+                        <SourceProvider>
+                          {/* Reads MeterRuntime, Workspace, Settings and LoudnessProfile; assigns
+                              the clear ref Settings owns. */}
+                          <SourceActionsProvider>
+                            {/* Reads Settings, Dock, WindowChrome, Presets, Source and
+                                SourceActions. */}
+                            <AppLifecycleProvider>
+                              <AppContent />
+                            </AppLifecycleProvider>
+                          </SourceActionsProvider>
+                        </SourceProvider>
+                      </PresetsProvider>
+                    </WindowChromeProvider>
+                  </DockProvider>
+                </SceneGuardProvider>
+              </SettingsProvider>
             </LoudnessProfileProvider>
           </UiNavigationProvider>
         </BlockingEditorsProvider>
@@ -241,47 +229,25 @@ export default function App() {
 
 function AppContent() {
   const meterRuntime = useMeterRuntime();
-  const uiNavigation = useUiNavigation();
+  const {
+    notice,
+    raiseNotice,
+    clearNotice,
+    selectedOffset,
+    setSelectedOffset,
+    selectedSnapshotTimeMs,
+    showClock,
+  } = useMeterDisplayState();
   const {
     state: workspaceState,
     replaceWorkspace,
     waitForWorkspacePersistenceEnqueue,
     setPanelControlsForPanel,
-    setAxisViewport,
     setActiveTab,
   } = useWorkspaceStore();
   const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
   const visualRuntimeRef = useRef(null);
-  const sharedTimeViewport = useMemo(
-    () => normalizeAxisViewport("time", workspaceState.axisViewports?.time),
-    [workspaceState.axisViewports?.time]
-  );
-  const sharedTimeViewportRef = useRef(sharedTimeViewport);
-  useEffect(() => {
-    sharedTimeViewportRef.current = sharedTimeViewport;
-  }, [sharedTimeViewport]);
-  const setHistoryWindowSec = useCallback(
-    (nextWindowSec) => {
-      const current = sharedTimeViewportRef.current;
-      const windowSec =
-        typeof nextWindowSec === "function" ? nextWindowSec(current.windowSec) : nextWindowSec;
-      const next = { ...current, windowSec };
-      sharedTimeViewportRef.current = next;
-      setAxisViewport("time", next);
-    },
-    [setAxisViewport]
-  );
-  const setHistoryOffsetSec = useCallback(
-    (nextOffsetSec) => {
-      const current = sharedTimeViewportRef.current;
-      const offsetSec =
-        typeof nextOffsetSec === "function" ? nextOffsetSec(current.offsetSec) : nextOffsetSec;
-      const next = { ...current, offsetSec };
-      sharedTimeViewportRef.current = next;
-      setAxisViewport("time", next);
-    },
-    [setAxisViewport]
-  );
+  const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
   const {
     sourceMode,
@@ -291,46 +257,49 @@ function AppContent() {
     analyzingFileSession,
     activeFileId,
     analyzingFileId,
-    startLive,
-    stopLive,
-    startLiveForControl,
-    stopLiveForControl,
-    beginDeviceRestartForControl,
-    stopFileAnalysis,
-    switchSource,
-    clearActiveSource,
-    clearLiveForControl,
-    beginFileAnalysis: beginRuntimeFileAnalysis,
-    beginFileAnalysisForControl,
-    reanalyzeFile,
-    reanalyzeFileForControl,
-    selectFile,
-    removeFile,
-    clearFiles,
   } = meterRuntime;
-  const onClearRef = useRef(null);
-  const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
-  const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
-  const settings = useSettings({ onClearRef });
+  const {
+    fileSession,
+    dialogueGating,
+    exportFileAnalysisReport,
+    copyFileAnalysisReportMarkdown,
+    vectorscopeResetEpoch,
+    stereoMapResetEpoch,
+    clearAll,
+    openFile,
+    onSelectFile,
+    onStopFile,
+    onReanalyzeFile,
+    onRemoveFile,
+    onClearAllFiles,
+    handleDropFile,
+    onSourceTransportAction,
+    onSourceModeChange,
+  } = useSourceActions();
+  const settings = useAppSettings();
+  const { onClearRef, windowPinned: pinned } = settings;
   const packTransfer = usePackTransfer();
-  // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
-  // those overlays with the strip at boot; keeping discovery here lets App restore the main window
-  // before presenting the report instead of silently waiting for the user to exit Dock manually.
-  const crashReportSetting = useCrashReportSetting();
-  const crashReporting = useCrashReporting({ promptEnabled: crashReportSetting.enabled });
+  const {
+    crashReportSetting,
+    crashReporting,
+    updateControls,
+    closeConfirm: {
+      dialogOpen: closeDialogOpen,
+      closeError,
+      closing,
+      handleConfirm: handleCloseConfirm,
+      handleRetry: handleCloseRetry,
+      handleCancel: handleCloseCancel,
+    },
+  } = useAppLifecycle();
   const {
     setSettingsOpen,
     resolvedThemeId,
-    resolvedTheme,
-    clearShortcut,
     focusView,
-    setFocusView,
     channelLabelOverrides,
     setChannelLabelOverrides,
     surfaceOpacity,
-    setSurfaceOpacity: setSurfaceOpacityStored,
     glassEnabled,
-    setGlassEnabled: setGlassEnabledStored,
   } = settings;
   // Hoisted above useDockMode and usePresets: dock entry cancels an open profile
   // draft, and preset capture and apply both need its snapshot helpers. One
@@ -338,596 +307,65 @@ function AppContent() {
   // "there is nothing to show". Reading it this early is safe: it is a context
   // read with no ordering constraints of its own.
   const loudnessProfile = useLoudnessProfile();
-  // The scene guard. Every operation that captures, replaces or tears down the current editing
-  // scene -- preset apply / save / update, dock entry -- asks it first. See
-  // `hooks/BlockingEditorsContext.jsx` for the editor half.
-  //
-  // Composed here because the two rules have different owners: the registry knows which editors
-  // are open, and only App knows the source mode. Everything downstream asks one function, so an
-  // entry point cannot pick up one rule and miss the other.
-  const { activeBlockingEditors, assertSceneOperationAllowed: assertNoBlockingEditor } =
-    useBlockingEditors();
-  // FILE mode forbids the dock outright: it is a state conflict, not a missing capability, so it
-  // refuses rather than degrading the way a platform without dock support does. Enforced here and
-  // not only on the disabled Dock control, so every entry point -- and Agent Control later -- gets
-  // the same answer.
-  const assertSceneOperationAllowed = useCallback(
-    (/** @type {string} */ operation) => {
-      assertNoBlockingEditor(operation);
-      const reason = sceneOperationUnavailableReason(operation, { sourceMode });
-      if (reason) throw new SceneOperationUnavailableError(operation, reason);
-    },
-    [assertNoBlockingEditor, sourceMode]
-  );
-  // Dock hooks run first: `docked` suspends the always-on-top and focus-view
-  // window overrides below (Rust owns strip chrome + topmost while docked),
-  // and preset capture/apply reads dock state. useDockMode depends only on the
-  // profile controller above, so hoisting it above useAlwaysOnTop is safe.
-  //
-  // The dock is a monitoring posture: AppShell renders the settings overlays
-  // (and so the profile editor) only when undocked, and the strip has no profile
-  // popover, so a draft carried in would keep outranking the persisted selection
-  // for DockStats with no way to see, name, save or cancel it. Entry is therefore
-  // refused while one is open -- the discard it used to do instead is exactly what
-  // the scene guard exists to prevent.
+  const { activeBlockingEditors } = useSceneGuard();
   const {
-    dockEnabled,
+    docked,
     dockEdge,
-    dockMonitor,
     dockHeight,
     dockPreviewHeight,
     dockSuspended,
-    dockTransitioning,
     reserveSpace,
-    enterDockMode,
-    exitDockMode,
-    setReserveSpace,
     toggleReserveSpace,
-    resizeDockHeight,
-    suspendDockMode,
-    resumeDockMode,
-  } = useDockMode({ assertSceneOperationAllowed });
-  const dockLayout = useDockLayout();
-  const docked = isTauri() && dockEnabled;
-  const [agentControlMonitors, setAgentControlMonitors] = useState([]);
-  const [agentControlFallbackMonitor, setAgentControlFallbackMonitor] = useState(null);
-  const [agentControlMonitorRects, setAgentControlMonitorRects] = useState([]);
-  const [agentControlMonitorInventoryReady, setAgentControlMonitorInventoryReady] = useState(false);
-  useEffect(() => {
-    // Dock Control is the only consumer, and it exists only in a development-identity build, so a
-    // release has no reason to query the monitor list at boot.
-    if (!isTauri() || readAgentControlRuntime().available !== true) return;
-    let cancelled = false;
-    void Promise.resolve()
-      .then(async () => {
-        const [monitors, current, primary] = await Promise.all([
-          availableMonitors(),
-          currentMonitor(),
-          primaryMonitor(),
-        ]);
-        if (cancelled) return;
-        setAgentControlMonitors(
-          monitors.flatMap((monitor) =>
-            typeof monitor.name === "string" ? [{ id: monitor.name, name: monitor.name }] : []
-          )
-        );
-        setAgentControlFallbackMonitor(
-          typeof current?.name === "string"
-            ? current.name
-            : typeof primary?.name === "string"
-              ? primary.name
-              : null
-        );
-        setAgentControlMonitorRects(
-          monitors.flatMap((monitor) =>
-            Number.isFinite(monitor.position?.x) &&
-            Number.isFinite(monitor.position?.y) &&
-            Number.isFinite(monitor.size?.width) &&
-            Number.isFinite(monitor.size?.height)
-              ? [
-                  {
-                    x: monitor.position.x,
-                    y: monitor.position.y,
-                    width: monitor.size.width,
-                    height: monitor.size.height,
-                  },
-                ]
-              : []
-          )
-        );
-        setAgentControlMonitorInventoryReady(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  // Suspended while docked: a preset apply may flip the stored pin to false
-  // while the strip must stay topmost; when docked flips false the effect
-  // re-asserts the user's value.
-  const { pinned, setPinned: setPinnedStored } = useAlwaysOnTop({ suspended: docked });
-  // Suspended while docked: Rust owns strip chrome (no decorations/shadow);
-  // when docked flips false the effect re-runs and re-asserts the user's values.
-  useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
-  useSurfaceOpacityWindowShadow(surfaceOpacity);
-
-  const applyViewState = useCallback(
-    async (next, { changed = [] } = {}) => {
-      const rollback = [];
-      try {
-        if (
-          changed.includes("view.surfaceOpacity") &&
-          (next.surfaceOpacity === 0) !== (surfaceOpacity === 0)
-        ) {
-          const applied = await syncSurfaceOpacityWindowShadow(next.surfaceOpacity);
-          if (applied) {
-            rollback.push(() => syncSurfaceOpacityWindowShadow(surfaceOpacity));
-          }
-        }
-        if (!docked && isTauri()) {
-          const win = getCurrentWindow();
-          if (changed.includes("view.pinned")) {
-            await win.setAlwaysOnTop(next.pinned === true);
-            rollback.push(() => win.setAlwaysOnTop(pinned === true));
-          }
-          if (
-            changed.includes("view.focusView.autoHideControls") ||
-            changed.includes("view.focusView.borderless")
-          ) {
-            const applied = await setWindowDecorations(
-              !(next.focusView.autoHideControls || next.focusView.borderless)
-            );
-            if (applied) {
-              rollback.push(() =>
-                setWindowDecorations(!(focusView.autoHideControls || focusView.borderless))
-              );
-            }
-          }
-        }
-        if (isMacOS() && changed.includes("view.glassEnabled")) {
-          await setGlassEffect(next.glassEnabled, resolvedTheme.colorScheme === "dark");
-          rollback.push(() => setGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark"));
-        }
-      } catch (error) {
-        let rollbackCompleted = true;
-        for (const compensate of rollback.reverse()) {
-          try {
-            await compensate();
-          } catch {
-            rollbackCompleted = false;
-          }
-        }
-        const failure =
-          /** @type {Error & { partial?: boolean, rollback?: string, changed?: any }} */ (
-            error instanceof Error ? error : new Error(String(error))
-          );
-        failure.partial = !rollbackCompleted;
-        failure.rollback = rollbackCompleted ? "completed" : "partial";
-        failure.changed = [];
-        throw failure;
-      }
-
-      if (changed.includes("view.pinned")) setPinnedStored(next.pinned);
-      if (changed.some((path) => path.startsWith("view.focusView."))) {
-        setFocusView(next.focusView);
-      }
-      if (changed.includes("view.surfaceOpacity")) {
-        setSurfaceOpacityStored(next.surfaceOpacity);
-      }
-      if (changed.includes("view.glassEnabled")) setGlassEnabledStored(next.glassEnabled);
+    layout: dockLayout,
+    historyViewport: dockHistoryViewport,
+    exitDockRestoringAttributes,
+    onDockChange,
+    onDockHeightChange,
+  } = useDock();
+  const {
+    setPinned,
+    setAutoHideControls,
+    setCompactPanels,
+    setBorderless,
+    setSurfaceOpacity,
+    setGlassEnabled,
+    focusViewActive,
+    frameless,
+    reveal: {
+      controlsVisible: focusControlsVisible,
+      showControls: showFocusControls,
+      hideControlsLater: hideFocusControlsLater,
+      hideControlsNow: hideFocusControlsNow,
+      holdControls: holdFocusControls,
+      releaseControlsHold: releaseFocusControlsHold,
+      handleWindowDrag,
     },
-    [
-      docked,
-      focusView,
-      glassEnabled,
-      pinned,
-      resolvedTheme.colorScheme,
-      surfaceOpacity,
-      setFocusView,
-      setGlassEnabledStored,
-      setSurfaceOpacityStored,
-      setPinnedStored,
-    ]
-  );
-  const setPinned = useCallback(
-    (/** @type {boolean} */ value) =>
-      void applyViewState(
-        { pinned: value === true, focusView, surfaceOpacity, glassEnabled },
-        { changed: ["view.pinned"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, surfaceOpacity]
-  );
-  const setFocusField = useCallback(
-    (field, /** @type {boolean} */ value) =>
-      void applyViewState(
-        {
-          pinned,
-          focusView: { ...focusView, [field]: value === true },
-          surfaceOpacity,
-          glassEnabled,
-        },
-        { changed: [`view.focusView.${field}`] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, surfaceOpacity, pinned]
-  );
-  const setAutoHideControls = useCallback(
-    (value) => setFocusField("autoHideControls", value),
-    [setFocusField]
-  );
-  const setCompactPanels = useCallback(
-    (value) => setFocusField("compactPanels", value),
-    [setFocusField]
-  );
-  const setBorderless = useCallback((value) => setFocusField("borderless", value), [setFocusField]);
-  const setSurfaceOpacity = useCallback(
-    (value) =>
-      void applyViewState(
-        { pinned, focusView, surfaceOpacity: value, glassEnabled },
-        { changed: ["view.surfaceOpacity"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, pinned]
-  );
-  const setGlassEnabled = useCallback(
-    (/** @type {boolean} */ value) =>
-      void applyViewState(
-        { pinned, focusView, surfaceOpacity, glassEnabled: value === true },
-        { changed: ["view.glassEnabled"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, surfaceOpacity, pinned]
-  );
+  } = useWindowChrome();
 
   const {
-    snapshot: audioDeviceSnapshot,
     audioDevices,
     captureApplications,
     captureDeviceId,
     safeAudioDeviceId,
-    selectCaptureDevice,
-    commitCaptureDevice,
-    previewSelection,
     refreshInventory,
-    defaultOutputFormatSig,
-    defaultOutputLabel,
-  } = useAudioDevices({
-    liveLifecycle: meterRuntime.liveLifecycle,
-    beginDeviceRestartForControl,
-  });
-
-  const [windowVisible, setWindowVisible] = useState(true);
-  useUiNavigationEnvironment({
-    windowForm: docked ? "dock" : "normal",
-    windowVisible,
-  });
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    getCurrentWindow()
-      .isVisible()
-      .then((visible) => {
-        if (!cancelled) setWindowVisible(visible);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const onHideWindow = useCallback(async () => {
-    if (!isTauri()) return;
-    const window = getCurrentWindow();
-    await hideAppWindow({
-      docked,
-      window,
-      suspendDock: suspendDockMode,
-    });
-    setWindowVisible(await window.isVisible());
-  }, [docked, suspendDockMode]);
-
-  const onShowWindow = useCallback(async () => {
-    if (!isTauri()) return;
-    const window = getCurrentWindow();
-    if (await window.isVisible()) {
-      setWindowVisible(true);
-      return;
-    }
-    await toggleAppWindow({
-      docked,
-      window,
-      suspendDock: suspendDockMode,
-      resumeDock: resumeDockMode,
-    });
-    setWindowVisible(await window.isVisible());
-  }, [docked, resumeDockMode, suspendDockMode]);
-
-  const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
-  const { installStatus, downloadProgress, install, restartToApply, resetInstall } =
-    useApplyUpdate();
-  const updateBusy = installStatus === "installing" || installStatus === "restarting";
-
-  const {
-    dialogOpen: closeDialogOpen,
-    closeError,
-    closing,
-    handleConfirm: handleCloseConfirm,
-    handleRetry: handleCloseRetry,
-    handleCancel: handleCloseCancel,
-    requestCloseAction,
-  } = useCloseConfirm({ onHideWindow, onShowWindow, closeBlocked: updateBusy });
-
-  const onToggleWindow = useCallback(async () => {
-    if (!isTauri()) return;
-    const window = getCurrentWindow();
-    if (await window.isVisible()) {
-      await requestCloseAction("tray");
-      return;
-    }
-    await toggleAppWindow({
-      docked,
-      window,
-      suspendDock: suspendDockMode,
-      resumeDock: resumeDockMode,
-    });
-    setWindowVisible(await window.isVisible());
-  }, [docked, requestCloseAction, resumeDockMode, suspendDockMode]);
-
-  const audioOutputs = useMemo(
-    () => (audioDevices || []).filter((d) => d.isSystemOutputMonitor),
-    [audioDevices]
-  );
-  const audioInputs = useMemo(
-    () => (audioDevices || []).filter((d) => !d.isSystemOutputMonitor),
-    [audioDevices]
-  );
-  useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
+    audioOutputs,
+    audioInputs,
+    onSelectCaptureDevice,
+    captureFormatSignature,
+    footerSourceLabel,
+  } = useSource();
 
   const { display, routing } = useMeterRuntimeAssembly();
-  const {
-    audio,
-    setAudio,
-    selectedOffset,
-    setSelectedOffset,
-    selectedSnapshotTimeMs,
-    notice,
-    raiseNotice,
-    clearNotice,
-    showClock,
-  } = display;
+  const { audio, setAudio } = display;
   const { elapsedMsRef } = display.clock;
 
-  const onSelectCaptureDevice = useCallback(
-    async (deviceId) => {
-      clearNotice();
-      try {
-        await selectCaptureDevice(deviceId);
-      } catch (error) {
-        raiseNotice(
-          "error",
-          "Could not switch the audio device.",
-          errorDetails("Device selection failed", error)
-        );
-      }
-    },
-    [clearNotice, raiseNotice, selectCaptureDevice]
-  );
-
-  // Dock transitions. Exit restores the user's TRUE normal-form attributes
-  // (override-not-overwrite): decorations follow focusView, always-on-top follows
-  // the pin toggle — dock never persists over stored settings. Every transition
-  // UI entry points map IPC rejections to actionable notices so a failed click
-  // handler cannot leave an unhandled rejection or stale error copy behind.
-  // NOTE: there is no in-flight guard against rapid dock transitions (v1 accepts
-  // this; a fast toggle spam could interleave enter/exit IPC calls).
-  const exitDockRestoringAttributes = useCallback(
-    async (
-      /** @type {{ reportError?: boolean, bounds?: any, decorations?: any, alwaysOnTop?: any }} */ {
-        reportError = true,
-        bounds,
-        decorations,
-        alwaysOnTop,
-      } = {}
-    ) => {
-      clearNotice();
-      try {
-        await exitDockMode({
-          decorations: decorations ?? !(focusView.autoHideControls || focusView.borderless),
-          alwaysOnTop: alwaysOnTop ?? pinned === true,
-          bounds,
-        });
-        return { ok: true, error: null };
-      } catch (error) {
-        if (reportError) {
-          raiseNotice(
-            "error",
-            "Could not restore the main window. Try again.",
-            errorDetails("Restore window failed", error)
-          );
-        }
-        return { ok: false, error };
-      }
-    },
-    [
-      clearNotice,
-      exitDockMode,
-      focusView.autoHideControls,
-      focusView.borderless,
-      pinned,
-      raiseNotice,
-    ]
-  );
-
-  useEffect(() => {
-    if (!docked || !crashReporting.pendingReport) return;
-    void exitDockRestoringAttributes();
-  }, [crashReporting.pendingReport, docked, exitDockRestoringAttributes]);
-
-  // A refused scene operation is not a failure to report as one -- the guard did its job. Say
-  // what the user has to do instead, and keep the technical detail for everything else.
-  const reportSceneOperationError = useCallback(
-    (error, fallbackMessage, detailPrefix) => {
-      if (isSceneOperationRefused(error)) {
-        raiseNotice("error", error.message);
-        return;
-      }
-      raiseNotice("error", fallbackMessage, errorDetails(detailPrefix, error));
-    },
+  const reportSceneError = useCallback(
+    (error, fallbackMessage, detailPrefix) =>
+      reportSceneOperationError(raiseNotice, error, fallbackMessage, detailPrefix),
     [raiseNotice]
   );
 
-  const onDockChange = useCallback(
-    async (edgeOrNull) => {
-      clearNotice();
-      try {
-        if (edgeOrNull) {
-          await enterDockMode(edgeOrNull);
-          setSelectedOffset(-1);
-        } else await exitDockRestoringAttributes();
-      } catch (error) {
-        reportSceneOperationError(
-          error,
-          "Could not move Dock. The previous position was kept.",
-          "Dock failed"
-        );
-      }
-    },
-    [
-      clearNotice,
-      enterDockMode,
-      exitDockRestoringAttributes,
-      reportSceneOperationError,
-      setSelectedOffset,
-    ]
-  );
-
-  // Preset apply hand-off: dock geometry is Rust-owned, so a preset's dock
-  // state is applied via enter/exit dock rather than window bounds. Left
-  // uncaught here on purpose — usePresets.apply wraps this call and clears
-  // activeId on failure (mirroring its existing applyWindowBounds handling).
-  const applyDockPreset = useCallback(
-    async (presetDock, normalWindow = {}) => {
-      clearNotice();
-      // Dock is temporarily unavailable on macOS. Keep the preset and Dock
-      // implementation intact, but apply the preset's non-Dock state only.
-      if (presetDock.enabled && !supportsDockMode()) return false;
-      if (presetDock.enabled) {
-        dockLayout.setPanels(presetDock);
-        const requiresDockTransition =
-          !dockEnabled || dockEdge !== presetDock.edge || dockMonitor !== presetDock.monitor;
-        if (requiresDockTransition) {
-          await enterDockMode(
-            presetDock.edge,
-            presetDock.reserveSpace,
-            presetDock.monitor,
-            presetDock.height
-          );
-        } else {
-          if (presetDock.reserveSpace !== reserveSpace) {
-            await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
-          }
-          if (Number.isFinite(presetDock.height) && presetDock.height !== dockHeight) {
-            await resizeDockHeight(presetDock.height, { persist: true });
-          }
-        }
-        setSelectedOffset(-1);
-      } else if (dockEnabled) {
-        const result = await exitDockRestoringAttributes({
-          reportError: false,
-          bounds: normalWindow.bounds,
-          decorations: normalWindow.focusView
-            ? !(normalWindow.focusView.autoHideControls || normalWindow.focusView.borderless)
-            : undefined,
-          alwaysOnTop: typeof normalWindow.pinned === "boolean" ? normalWindow.pinned : undefined,
-        });
-        if (!result.ok) throw result.error;
-        return true;
-      }
-      return false;
-    },
-    [
-      clearNotice,
-      dockLayout,
-      enterDockMode,
-      dockEnabled,
-      dockEdge,
-      dockMonitor,
-      dockHeight,
-      exitDockRestoringAttributes,
-      reserveSpace,
-      resizeDockHeight,
-      setReserveSpace,
-      setSelectedOffset,
-    ]
-  );
-
-  const onPresetApplyError = useCallback(
-    (error) => {
-      // A refusal already carries a sentence written for the user, and naming the reason is the
-      // difference between "it failed" and knowing what to change. Everything else is a genuine
-      // failure: generic line, technical detail on hover.
-      if (isSceneOperationRefused(error)) {
-        raiseNotice("error", error.message);
-        return;
-      }
-      raiseNotice(
-        "error",
-        "Preset could not be applied.",
-        errorDetails("Preset apply failed", error)
-      );
-    },
-    [raiseNotice]
-  );
-
-  // Stable identity: an inline literal would churn captureSnapshot (and the
-  // memoized presets API) on every render.
-  const presetDockState = useMemo(
-    () => ({
-      enabled: dockEnabled,
-      edge: dockEdge,
-      monitor: dockMonitor,
-      reserveSpace,
-      height: dockHeight,
-      panelsById: dockLayout.panelsById,
-      panelOrder: dockLayout.panelOrder,
-      panelSizesById: dockLayout.panelSizesById,
-      controlsByPanelId: dockLayout.controlsByPanelId,
-    }),
-    [
-      dockEnabled,
-      dockEdge,
-      dockMonitor,
-      dockHeight,
-      dockLayout.controlsByPanelId,
-      dockLayout.panelOrder,
-      dockLayout.panelSizesById,
-      dockLayout.panelsById,
-      reserveSpace,
-    ]
-  );
-
-  const presets = usePresets({
-    windowPinned: pinned,
-    setWindowPinned: setPinnedStored,
-    focusView,
-    setFocusView,
-    surfaceOpacity,
-    setSurfaceOpacity: setSurfaceOpacityStored,
-    glassEnabled,
-    setGlassEnabled: setGlassEnabledStored,
-    dock: presetDockState,
-    applyDockPreset,
-    applySurfaceOpacity: syncSurfaceOpacityWindowShadow,
-    // A platform without dock support is not a refusal: applyDockPreset drops the dock and applies
-    // the rest of the preset.
-    dockPresetUnavailableReason: (presetDock) =>
-      presetDock.enabled && supportsDockMode()
-        ? sceneOperationUnavailableReason(SCENE_OPERATIONS.dockEnter, { sourceMode })
-        : null,
-    onApplyError: onPresetApplyError,
-    snapshotLoudnessProfile: loudnessProfile.snapshotForPreset,
-    applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,
-    assertSceneOperationAllowed,
-    blockingEditors: activeBlockingEditors,
-  });
+  const presets = usePresetLibrary();
   const agentControlRuntime = useMemo(readAgentControlRuntime, []);
   const [visualPlatformCapabilities, setVisualPlatformCapabilities] = useState(null);
   const [visualRecordingState, setVisualRecordingState] = useState(null);
@@ -956,11 +394,9 @@ function AppContent() {
   );
 
   const historyRetentionSec = settings.historyRetentionSec;
-  const dockHistoryViewport = useDockHistoryViewport({ maxWindowSec: historyRetentionSec });
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
   const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
 
-  const fileSession = activeFileSession ?? EMPTY_FILE_SESSION;
   const normalizedPanelControls = useMemo(() => {
     const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
     return normalizePanelControls(
@@ -1237,7 +673,6 @@ function AppContent() {
   );
   const { channelLabelOverride } = channelLabelRuntime;
   const { channelRoles } = channelLabelRuntime;
-  const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
   const dialogueVadEngine = settings.dialogueVadEngine;
   const {
     channelRolesRef,
@@ -1325,15 +760,6 @@ function AppContent() {
     () => buildPublicSettings(settings, agentControlSettingsContext),
     [agentControlSettingsContext, settings]
   );
-  const agentControlTransport = useMemo(
-    () =>
-      buildTransportSnapshot(meterRuntime, {
-        requestedDeviceId: captureDeviceId,
-        atLiveEdge: selectedOffset < 0,
-        docked,
-      }),
-    [captureDeviceId, docked, meterRuntime, selectedOffset]
-  );
   const measurementChannelLabels = useCallback(
     (record) => {
       const count = Array.isArray(record?.audio?.peakDb) ? record.audio.peakDb.length : 0;
@@ -1366,23 +792,6 @@ function AppContent() {
       meterRuntime.liveLifecycle,
     ]
   );
-  const agentControlViewContext = useMemo(
-    () => ({
-      view: { pinned, focusView, surfaceOpacity, glassEnabled },
-      platform: agentControlRuntime.platform,
-      docked,
-      applyView: applyViewState,
-    }),
-    [
-      agentControlRuntime.platform,
-      applyViewState,
-      docked,
-      focusView,
-      glassEnabled,
-      surfaceOpacity,
-      pinned,
-    ]
-  );
   const agentControlVisual = useMemo(
     () => ({
       platformCapabilities: visualPlatformCapabilities,
@@ -1401,70 +810,6 @@ function AppContent() {
       setRecordingState: setVisualRecordingState,
     }),
     [visualCaptureSurfaces, visualPlatformCapabilities]
-  );
-  const agentControlDevice = useMemo(
-    () => ({
-      snapshot: audioDeviceSnapshot,
-      live: {
-        state: meterRuntime.liveLifecycle,
-        transition: meterRuntime.liveDeviceTransition,
-        usingRequestedSelection:
-          meterRuntime.liveLifecycle === "running" &&
-          meterRuntime.liveDeviceTransition === null &&
-          (captureDeviceId === "default" || meterRuntime.liveResolvedDeviceId === captureDeviceId),
-      },
-      previewSelection,
-      commitSelection: commitCaptureDevice,
-      beginRestart: beginDeviceRestartForControl,
-      runtimeUnavailable: updateBusy,
-    }),
-    [
-      audioDeviceSnapshot,
-      beginDeviceRestartForControl,
-      captureDeviceId,
-      commitCaptureDevice,
-      meterRuntime.liveDeviceTransition,
-      meterRuntime.liveLifecycle,
-      meterRuntime.liveResolvedDeviceId,
-      previewSelection,
-      updateBusy,
-    ]
-  );
-  const agentControlDock = useMemo(
-    () => ({
-      supported: supportsDockMode(),
-      enabled: docked,
-      edge: dockEdge,
-      monitor: dockMonitor,
-      reserveSpace,
-      height: dockHeight,
-      suspended: dockSuspended,
-      panelsById: dockLayout.panelsById,
-      panelOrder: dockLayout.panelOrder,
-      panelSizesById: dockLayout.panelSizesById,
-      controlsByPanelId: dockLayout.controlsByPanelId,
-    }),
-    [
-      dockEdge,
-      dockHeight,
-      dockLayout.controlsByPanelId,
-      dockLayout.panelOrder,
-      dockLayout.panelSizesById,
-      dockLayout.panelsById,
-      dockMonitor,
-      dockSuspended,
-      docked,
-      reserveSpace,
-    ]
-  );
-  const currentFileAnalysisSettings = useCallback(
-    () => ({
-      dialogue: {
-        enabled: dialogueGating,
-        engine: dialogueGating ? settings.dialogueVadEngine : null,
-      },
-    }),
-    [dialogueGating, settings.dialogueVadEngine]
   );
   const applyAgentControlSettings = useCallback(
     async (next, { changed, effects }) => {
@@ -1545,111 +890,13 @@ function AppContent() {
     [
       agentControlSettings,
       channelRoles,
+      onClearRef,
       setDialogueVadEngineForControl,
       setChannelRolesForControl,
       settings,
     ]
   );
-  const executeAgentControlTransport = useCallback(
-    async (/** @type {string} */ method, params) => {
-      if (method === "transport.source.live") {
-        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
-        switchSource("live");
-        return {};
-      }
-      if (method === "transport.source.file") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        return {};
-      }
-      if (method === "transport.live.start") {
-        if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
-        switchSource("live");
-        await startLiveForControl();
-        return {};
-      }
-      if (method === "transport.live.stop") {
-        await stopLiveForControl();
-        return {};
-      }
-      if (method === "transport.live.clear") {
-        await clearLiveForControl();
-        return {};
-      }
-      if (method === "transport.file.analyze") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        const run = beginFileAnalysisForControl(params.path, currentFileAnalysisSettings());
-        if (!run) throw new Error("FILE analysis was not accepted.");
-        await run.accepted;
-        const { sessionId } = run;
-        return { sessionId };
-      }
-      if (method === "transport.file.reanalyze") {
-        switchSource("file");
-        const run = reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
-        if (!run) throw new Error("FILE reanalysis was not accepted.");
-        await run.accepted;
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.stop") {
-        await stopFileAnalysis(params.sessionId);
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.select") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        selectFile(params.sessionId);
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.remove") {
-        await removeFile(params.sessionId);
-        return { sessionId: params.sessionId };
-      }
-      if (method === "transport.file.clear") {
-        await clearFiles();
-        return {};
-      }
-      throw new Error(`Unsupported Transport method: ${method}`);
-    },
-    [
-      analyzingFileId,
-      beginFileAnalysisForControl,
-      clearFiles,
-      clearLiveForControl,
-      currentFileAnalysisSettings,
-      meterRuntime.liveLifecycle,
-      reanalyzeFileForControl,
-      removeFile,
-      selectFile,
-      startLiveForControl,
-      stopFileAnalysis,
-      stopLiveForControl,
-      switchSource,
-    ]
-  );
-  const executeAgentControlDock = useCallback(
-    async (/** @type {string} */ method, projected) => {
-      if (method === "dock.enter") {
-        const effective = await enterDockMode(
-          projected.edge,
-          projected.reserveSpace,
-          projected.monitor,
-          projected.height
-        );
-        setSelectedOffset(-1);
-        return effective;
-      }
-      if (method === "dock.exit") {
-        const result = await exitDockRestoringAttributes({ reportError: false });
-        if (!result.ok) throw result.error;
-        return;
-      }
-      dockLayout.setPanels(projected);
-    },
-    [dockLayout, enterDockMode, exitDockRestoringAttributes, setSelectedOffset]
-  );
-  useAgentControlBridge({
+  const agentControlBridgeProps = {
     enabled:
       agentControlRuntime.available === true &&
       (agentControlEnabled || isParticipantInstance()) &&
@@ -1659,50 +906,21 @@ function AppContent() {
     replaceWorkspace,
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
-    presets,
     settings: agentControlSettings,
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
-    transport: agentControlTransport,
-    transportContext: {
-      docked,
-      deviceTransitioning: meterRuntime.liveDeviceTransition !== null,
-    },
-    executeTransport: executeAgentControlTransport,
-    device: agentControlDevice,
-    dock: agentControlDock,
     dockContext: {
       platform: agentControlRuntime.platform,
       ...agentControlAnalysisContext,
       sourceMode,
       activeEditors: activeBlockingEditors,
-      transitioning: dockTransitioning,
-      monitors: agentControlMonitors,
-      fallbackMonitor: agentControlFallbackMonitor,
-      monitorRects: agentControlMonitorRects,
-      monitorInventoryReady: agentControlMonitorInventoryReady,
     },
-    executeDock: executeAgentControlDock,
-    loudnessProfile,
-    customThemes: settings.customThemes,
-    theme: {
-      control: settings.themeControl,
-      state: settings.themeControl.readState(),
-    },
-    hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
     measurementContext: agentControlMeasurementContext,
-    viewContext: agentControlViewContext,
     visual: agentControlVisual,
-    uiNavigation,
-  });
+  };
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const channelLabelTokens = channelLabelRuntime.channelLabelTokens;
-
-  useEffect(() => {
-    const s = document.documentElement.style;
-    s.setProperty("--surface-opacity", `${surfaceOpacity}%`);
-  }, [surfaceOpacity]);
 
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
 
@@ -1770,91 +988,8 @@ function AppContent() {
   const spectrumDisplayLabel = channelMetadata?.frequencyLabel ?? spectrumLiveLabel;
   const vectorscopeDisplayLabel = channelMetadata?.vectorscopePairLabel ?? vectorscopeLiveLabel;
 
-  const captureFormatSignature = useMemo(() => {
-    if (!isTauri()) return "";
-    if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
-      const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
-      const processSignature = application?.processIds?.length
-        ? application.processIds.join(",")
-        : (application?.processId ?? "missing");
-      return `${defaultOutputFormatSig || "2:48000"}|pid:${processSignature}`;
-    }
-    if (captureDeviceId === "default") {
-      return defaultOutputFormatSig || "";
-    }
-    const d = audioDevices.find((x) => x.id === captureDeviceId);
-    return d ? `${d.channels}:${d.defaultSampleRate}` : "";
-  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputFormatSig]);
-
-  const selectedSource = useMemo(() => {
-    if (!isTauri()) return null;
-    if (captureDeviceId === "default") {
-      const label =
-        defaultOutputLabel || audioDevices.find((device) => device.isSystemOutputMonitor)?.label;
-      return label ? { type: "Output", label } : null;
-    }
-    const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
-    if (application) {
-      return { type: "Application", label: application.label };
-    }
-    const device = audioDevices.find((candidate) => candidate.id === captureDeviceId);
-    if (!device) return null;
-    return {
-      type: device.isSystemOutputMonitor ? "Output" : "Input",
-      label: device.label,
-    };
-  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel]);
-  const sourceDisplayName = useMemo(() => {
-    if (!selectedSource) return null;
-    if (selectedSource.type === "Application") return selectedSource.label;
-    const display = formatAudioDeviceLabel(selectedSource.label);
-    return display.secondary || display.primary;
-  }, [selectedSource]);
-  useInstanceIdentity({ sourceLabel: sourceDisplayName, running });
-  // The restart itself is driven by `captureFormatSignature`; this only tells the user why their
-  // measurement just started over.
-  const previousDefaultOutputLabelRef = useRef(defaultOutputLabel);
-  useEffect(() => {
-    const previousLabel = previousDefaultOutputLabelRef.current;
-    previousDefaultOutputLabelRef.current = defaultOutputLabel;
-    const notice = automaticOutputChangeNotice({
-      previousLabel,
-      nextLabel: defaultOutputLabel,
-      captureDeviceId,
-      sourceMode,
-      running,
-    });
-    if (notice) raiseNotice("info", notice.text, notice.details);
-    // Only a change of the resolved default output announces itself.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultOutputLabel]);
-  const footerSourceLabel =
-    selectedSource && sourceDisplayName
-      ? `${selectedSource.type} · ${sourceDisplayName}`
-      : "Not connected";
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
   const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
-  const focusViewActive =
-    pinned ||
-    focusView.autoHideControls ||
-    focusView.compactPanels ||
-    focusView.borderless ||
-    surfaceOpacity < 100;
-  const frameless = focusView.autoHideControls || focusView.borderless;
-  const {
-    controlsVisible: focusControlsVisible,
-    showControls: showFocusControls,
-    hideControlsLater: hideFocusControlsLater,
-    hideControlsNow: hideFocusControlsNow,
-    toggleControls: toggleFocusControls,
-    holdControls: holdFocusControls,
-    releaseControlsHold: releaseFocusControlsHold,
-    handleWindowDrag,
-  } = useViewsChromeReveal({
-    autoHideControls: focusView.autoHideControls,
-    frameless,
-  });
-
   // Clamp every panel instance's channel selection to the currently available channels. Lowering
   // the device channel count must repair all panels (not just the first), otherwise a stale
   // out-of-range selection would derive an analysis request key with no matching backend result.
@@ -1939,66 +1074,6 @@ function AppContent() {
     }
     setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
   };
-
-  const { exportFileAnalysisReport, copyFileAnalysisReportMarkdown } = useFileAnalysisReportExport({
-    fileSession,
-    appVersion: APP_VERSION,
-    raiseNotice,
-    loudnessProfile,
-  });
-  const {
-    clearAll,
-    openFile,
-    onSelectFile,
-    onStopFile,
-    onReanalyzeFile,
-    onRemoveFile,
-    onClearAllFiles,
-    handleDropFile,
-    onStartClick,
-    onSourceTransportAction,
-    onSourceModeChange,
-  } = useSourceTransportActions({
-    sourceMode,
-    running,
-    selectedOffset,
-    setSelectedOffset,
-    setHistoryOffsetSec,
-    setHistoryWindowSec,
-    startLive,
-    stopLive,
-    switchSource,
-    clearActiveSource,
-    beginRuntimeFileAnalysis,
-    reanalyzeFile,
-    selectFile,
-    removeFile,
-    clearFiles,
-    stopFileAnalysis,
-    activeFileSession,
-    getFileAnalysisSettings: currentFileAnalysisSettings,
-    onClearSucceeded: () => {
-      setVectorscopeResetEpoch((epoch) => epoch + 1);
-      setStereoMapResetEpoch((epoch) => epoch + 1);
-    },
-  });
-  const stopRuntimeForCoordination = useCallback(async () => {
-    if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-    if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
-  }, [analyzingFileId, meterRuntime.liveLifecycle, stopFileAnalysis, stopLiveForControl]);
-  const startRuntimeAfterCoordination = useCallback(async () => {
-    switchSource("live");
-    await startLiveForControl();
-  }, [startLiveForControl, switchSource]);
-  useRuntimeCoordination({
-    blockingEditors: activeBlockingEditors,
-    running: meterRuntime.liveLifecycle === "running",
-    stop: stopRuntimeForCoordination,
-    start: startRuntimeAfterCoordination,
-    show: onShowWindow,
-  });
-  onClearRef.current = clearAll;
-  useDialogueEngineRestart(dialogueVadEngine, dialogueGating, onClearRef);
 
   const onDockAccessoryError = useCallback(
     async (accessoryError) => {
@@ -2088,21 +1163,6 @@ function AppContent() {
     },
   };
   const [hoveredDockPanelId, setHoveredDockPanelId] = useState(null);
-  const onDockHeightChange = useCallback(
-    async (height, options) => {
-      clearNotice();
-      try {
-        await resizeDockHeight(height, options);
-      } catch (error) {
-        raiseNotice(
-          "error",
-          "Dock height could not be changed. The previous height was kept.",
-          errorDetails("Dock resize failed", error)
-        );
-      }
-    },
-    [clearNotice, raiseNotice, resizeDockHeight]
-  );
   const dockHeaderState = useMemo(
     () => ({
       sourceTransportState,
@@ -2224,15 +1284,15 @@ function AppContent() {
         // a separate webview and its buttons can be a render behind this window's guard.
         void presets
           .apply(payload.presetId)
-          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
       } else if (type === "save-preset") {
         void presets
           .save(payload.name)
-          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
       } else if (type === "update-preset") {
         void presets
           .update(payload.presetId)
-          .catch((error) => reportSceneOperationError(error, "Preset failed.", "Preset failed"));
+          .catch((error) => reportSceneError(error, "Preset failed.", "Preset failed"));
       } else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
       // Dock's Loudness Profile list is a separate webview with its own settings cache, so it never
       // writes the store itself: the choice lands here, in the provider that owns the state.
@@ -2254,7 +1314,7 @@ function AppContent() {
       onSourceTransportAction,
       presets,
       raiseNotice,
-      reportSceneOperationError,
+      reportSceneError,
       reserveSpace,
       toggleReserveSpace,
     ]
@@ -2265,38 +1325,6 @@ function AppContent() {
     editorState: dockEditorState,
     onAction: onDockAccessoryAction,
     onPointer: dockAccessoryVisibility.onAccessoryPointer,
-  });
-
-  useTray({
-    running,
-    windowVisible,
-    onStartClick,
-    onToggleWindow,
-    onQuit: () => requestCloseAction("quit"),
-    colorScheme: resolvedTheme.colorScheme,
-    updateBusy,
-    audioOutputs,
-    audioInputs,
-    captureApplications,
-    safeAudioDeviceId,
-    defaultOutputLabel,
-    sourceBusy:
-      ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
-      meterRuntime.liveDeviceTransition !== null,
-    onSelectSource: onSelectCaptureDevice,
-    presets,
-  });
-
-  useAppKeyboardShortcuts({
-    clearAll,
-    running,
-    showClock,
-    // Settings dialog is normal-form only; ignore the shortcut while docked so
-    // exiting dock doesn't pop a dialog opened invisibly from the strip.
-    setSettingsOpen: docked ? () => {} : setSettingsOpen,
-    clearShortcut,
-    autoHideControls: focusView.autoHideControls,
-    toggleFocusControls,
   });
 
   useEffect(() => {
@@ -2492,7 +1520,7 @@ function AppContent() {
       ? loudnessProfile.document.name || "Untitled"
       : null,
     activePresetName,
-    hasUpdate: updateInfo?.hasUpdate,
+    hasUpdate: updateControls.updateInfo?.hasUpdate,
     layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
     onOpenSettings: () => setSettingsOpen(true),
   };
@@ -2522,67 +1550,62 @@ function AppContent() {
     : null;
 
   return (
-    <AppShell
-      docked={docked}
-      dockProps={dockProps}
-      frameData={frameData}
-      historyData={historyData}
-      metricsData={metricsData}
-      runtimeEnginesProps={runtimeEnginesProps}
-      fileDropProps={fileDropProps}
-      focusView={focusView}
-      focusControlsVisible={focusControlsVisible}
-      shellHandlers={shellHandlers}
-      headerProps={headerProps}
-      showFileAnalysisResult={showFileAnalysisResult}
-      fileSummaryProps={fileSummaryProps}
-      panelChromeData={panelChromeData}
-      footer={footer}
-      recordingState={visualRecordingState}
-    >
-      <AppSettingsOverlays
-        settings={settings}
-        crashReportSetting={crashReportSetting}
-        crashReporting={crashReporting}
-        packTransfer={packTransfer}
-        presets={presets}
-        loudnessProfile={loudnessProfile}
-        channelSettings={{
-          channelCount,
-          channelLabelTokens,
-          channelLabelHasOverride: !!channelLabelOverride,
-          selectedLayoutId: channelLabelRuntime.selectedLayoutId,
-          setChannelLayout,
-          setChannelLabelToken,
-          resetChannelLabels,
-        }}
-        updateControls={{
-          updateInfo,
-          refreshUpdateCheck,
-          installStatus,
-          downloadProgress,
-          install,
-          restartToApply,
-          resetInstall,
-        }}
-        appVersion={APP_VERSION}
-        onAgentControlEnabledChange={setAgentControlEnabled}
-      />
+    <>
+      <AgentControlBridge {...agentControlBridgeProps} />
+      <AppShell
+        docked={docked}
+        dockProps={dockProps}
+        frameData={frameData}
+        historyData={historyData}
+        metricsData={metricsData}
+        runtimeEnginesProps={runtimeEnginesProps}
+        fileDropProps={fileDropProps}
+        focusView={focusView}
+        focusControlsVisible={focusControlsVisible}
+        shellHandlers={shellHandlers}
+        headerProps={headerProps}
+        showFileAnalysisResult={showFileAnalysisResult}
+        fileSummaryProps={fileSummaryProps}
+        panelChromeData={panelChromeData}
+        footer={footer}
+        recordingState={visualRecordingState}
+      >
+        <AppSettingsOverlays
+          settings={settings}
+          crashReportSetting={crashReportSetting}
+          crashReporting={crashReporting}
+          packTransfer={packTransfer}
+          presets={presets}
+          loudnessProfile={loudnessProfile}
+          channelSettings={{
+            channelCount,
+            channelLabelTokens,
+            channelLabelHasOverride: !!channelLabelOverride,
+            selectedLayoutId: channelLabelRuntime.selectedLayoutId,
+            setChannelLayout,
+            setChannelLabelToken,
+            resetChannelLabels,
+          }}
+          updateControls={updateControls}
+          appVersion={APP_VERSION}
+          onAgentControlEnabledChange={setAgentControlEnabled}
+        />
 
-      <CloseConfirmDialog
-        open={closeDialogOpen}
-        error={closeError}
-        busy={closing}
-        onConfirm={handleCloseConfirm}
-        onRetry={handleCloseRetry}
-        onCancel={handleCloseCancel}
-      />
-      {DevUiVisualFixture && window.__PLVS_INITIAL_STATE__?.uiVisualFixture ? (
-        <Suspense fallback={null}>
-          <DevUiVisualFixture name={window.__PLVS_INITIAL_STATE__.uiVisualFixture} />
-        </Suspense>
-      ) : null}
-      <LibraryConflictDialog />
-    </AppShell>
+        <CloseConfirmDialog
+          open={closeDialogOpen}
+          error={closeError}
+          busy={closing}
+          onConfirm={handleCloseConfirm}
+          onRetry={handleCloseRetry}
+          onCancel={handleCloseCancel}
+        />
+        {DevUiVisualFixture && window.__PLVS_INITIAL_STATE__?.uiVisualFixture ? (
+          <Suspense fallback={null}>
+            <DevUiVisualFixture name={window.__PLVS_INITIAL_STATE__.uiVisualFixture} />
+          </Suspense>
+        ) : null}
+        <LibraryConflictDialog />
+      </AppShell>
+    </>
   );
 }

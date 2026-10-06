@@ -10,6 +10,22 @@ import { createLiveMeasurementOwner } from "./liveMeasurementOwner.js";
 
 const MeterRuntimeContext = createContext(null);
 const MeterRuntimeAssemblyContext = createContext(null);
+/**
+ * The display state that changes at human speed. Split from the assembly, whose value changes on
+ * every meter frame, so a consumer that only raises a notice or reads the scrub position does not
+ * re-render per frame.
+ *
+ * @typedef {{
+ *   notice: ReturnType<typeof useMeterDisplay>["notice"],
+ *   raiseNotice: ReturnType<typeof useMeterDisplay>["raiseNotice"],
+ *   clearNotice: ReturnType<typeof useMeterDisplay>["clearNotice"],
+ *   selectedOffset: number,
+ *   setSelectedOffset: ReturnType<typeof useMeterDisplay>["setSelectedOffset"],
+ *   selectedSnapshotTimeMs: number | null,
+ *   showClock: boolean,
+ * }} MeterDisplayState
+ */
+const MeterDisplayStateContext = createContext(/** @type {MeterDisplayState | null} */ (null));
 
 /**
  * Owns the active-source state shared by Live and File. Engine hooks remain in
@@ -314,10 +330,33 @@ export function MeterRuntimeProvider({ children }) {
     fileAnalysisAcceptanceRef,
   };
 
+  const displayState = useMemo(
+    () => ({
+      notice: display.notice,
+      raiseNotice: display.raiseNotice,
+      clearNotice: display.clearNotice,
+      selectedOffset: display.selectedOffset,
+      setSelectedOffset: display.setSelectedOffset,
+      selectedSnapshotTimeMs: display.selectedSnapshotTimeMs,
+      showClock: display.showClock,
+    }),
+    [
+      display.notice,
+      display.raiseNotice,
+      display.clearNotice,
+      display.selectedOffset,
+      display.setSelectedOffset,
+      display.selectedSnapshotTimeMs,
+      display.showClock,
+    ]
+  );
+
   return (
     <MeterRuntimeContext.Provider value={runtime}>
       <MeterRuntimeAssemblyContext.Provider value={assembly}>
-        {children}
+        <MeterDisplayStateContext.Provider value={displayState}>
+          {children}
+        </MeterDisplayStateContext.Provider>
       </MeterRuntimeAssemblyContext.Provider>
     </MeterRuntimeContext.Provider>
   );
@@ -327,6 +366,12 @@ export function useMeterRuntime() {
   const runtime = useContext(MeterRuntimeContext);
   if (!runtime) throw new Error("useMeterRuntime must be used inside MeterRuntimeProvider");
   return runtime;
+}
+
+export function useMeterDisplayState() {
+  const state = useContext(MeterDisplayStateContext);
+  if (!state) throw new Error("useMeterDisplayState must be used inside MeterRuntimeProvider");
+  return state;
 }
 
 export function useMeterRuntimeAssembly() {

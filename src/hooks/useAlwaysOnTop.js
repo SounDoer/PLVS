@@ -1,14 +1,15 @@
-import { useCallback, useState, useEffect } from "react";
+import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauri } from "../ipc/env.js";
-import { presetsStore, settingsStore } from "../persistence/index.js";
 
-/** @param {{ suspended?: boolean }} [options] */
-export function useAlwaysOnTop({ suspended = false } = {}) {
-  const [pinned, setPinned] = useState(() => {
-    return settingsStore.read().windowPinned === true;
-  });
-
+/**
+ * Applies the stored always-on-top preference to the window. The value itself is a setting; see
+ * `useWindowPinnedSetting`.
+ *
+ * @param {boolean} pinned
+ * @param {{ suspended?: boolean }} [options]
+ */
+export function useAlwaysOnTop(pinned, { suspended = false } = {}) {
   useEffect(() => {
     // While docked (suspended), Rust owns always-on-top: the strip is forced
     // topmost by apply_dock_form, and this effect must not undo that when the
@@ -20,17 +21,4 @@ export function useAlwaysOnTop({ suspended = false } = {}) {
     if (!isTauri()) return;
     getCurrentWindow().setAlwaysOnTop(pinned);
   }, [pinned, suspended]);
-
-  const setWindowPinned = useCallback((/** @type {boolean} */ nextPinned) => {
-    const next = nextPinned === true;
-    settingsStore.patch({ windowPinned: next });
-    presetsStore.patch({ dirty: true });
-    setPinned(next);
-  }, []);
-
-  function togglePin() {
-    setWindowPinned(!pinned);
-  }
-
-  return { pinned, setPinned: setWindowPinned, togglePin };
 }

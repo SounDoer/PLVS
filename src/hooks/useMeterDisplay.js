@@ -116,34 +116,37 @@ export function useMeterDisplay() {
     []
   );
 
-  const clearGuardTimer = () => {
+  const clearGuardTimer = useCallback(() => {
     if (guardTimerRef.current) {
       clearTimeout(guardTimerRef.current);
       guardTimerRef.current = null;
     }
-  };
+  }, []);
 
-  const clearNotice = () => {
+  const clearNotice = useCallback(() => {
     clearGuardTimer();
     setNotice(null);
-  };
+  }, [clearGuardTimer]);
 
-  const raiseNotice = (/** @type {string} */ kind, text, details) => {
-    clearGuardTimer();
-    setNotice({
-      kind,
-      text,
-      ...(typeof details === "string" && details ? { details } : null),
-    });
-    // Refusals and informational notices describe a moment rather than a state to act on, so they
-    // clear themselves; errors stay until the next action.
-    if (kind === "guard" || kind === "info") {
-      guardTimerRef.current = setTimeout(() => {
-        guardTimerRef.current = null;
-        setNotice(null);
-      }, 5000);
-    }
-  };
+  const raiseNotice = useCallback(
+    (/** @type {string} */ kind, text, details) => {
+      clearGuardTimer();
+      setNotice({
+        kind,
+        text,
+        ...(typeof details === "string" && details ? { details } : null),
+      });
+      // Refusals and informational notices describe a moment rather than a state to act on, so
+      // they clear themselves; errors stay until the next action.
+      if (kind === "guard" || kind === "info") {
+        guardTimerRef.current = setTimeout(() => {
+          guardTimerRef.current = null;
+          setNotice(null);
+        }, 5000);
+      }
+    },
+    [clearGuardTimer]
+  );
 
   const clearAudio = useCallback(() => setAudio({ ...CLEARED_METER_AUDIO }), [setAudio]);
 
