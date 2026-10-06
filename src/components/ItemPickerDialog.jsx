@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -168,8 +169,7 @@ export function ItemPickerDialog({
                 {items.map((item) => (
                   <li key={item.id}>
                     <label className="flex min-h-[var(--ui-row-h)] items-center gap-2 rounded-xs px-1 text-[length:var(--ui-fs-control)] hover:bg-ui-hover">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         aria-label={item.name}
                         checked={selected.has(item.id)}
                         onChange={() => toggle(item.id)}

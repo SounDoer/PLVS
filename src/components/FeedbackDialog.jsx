@@ -6,6 +6,7 @@ import { submitFeedback } from "../lib/feedback.js";
 import { readFeedbackDiagnostics } from "../ipc/commands.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { LinkButton } from "@/components/ui/link-button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INITIAL_POS = { x: 120, y: 120 };
@@ -91,13 +92,11 @@ export function FeedbackDialog({ onClose }) {
           className="h-[var(--ui-control-h)] rounded-md border border-input bg-transparent px-2 py-0 text-[length:var(--ui-fs-control)] outline-none"
         />
         <label className="flex items-start gap-2 text-[length:var(--ui-fs-control)]">
-          <input
-            type="checkbox"
+          <Checkbox
             aria-label="attach diagnostics"
             checked={attachDiagnostics}
             onChange={(event) => setAttachDiagnostics(event.target.checked)}
             disabled={busy}
-            className="mt-0"
           />
           <span>
             <span className="font-medium">Attach Diagnostics</span>
