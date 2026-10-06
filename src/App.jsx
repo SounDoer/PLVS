@@ -27,25 +27,22 @@ import { errorDetails } from "./lib/errorDetails.js";
 import { reportSceneOperationError } from "./lib/sceneOperationNotice.js";
 import {
   UiNavigationProvider,
-  useUiNavigationEnvironment,
   useUiNavigationTarget,
   useUiSurface,
 } from "./uiNavigation/UiNavigationContext.jsx";
 import { preparePanelSettingsNavigation } from "./uiNavigation/panelSettingsNavigation.js";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
-import { useCrashReporting } from "./hooks/useCrashReporting.js";
-import { useCrashReportSetting } from "./hooks/useCrashReportSetting.js";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
 import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
 import { SourceProvider, useSource } from "./runtime/SourceContext.jsx";
 import { SourceActionsProvider, useSourceActions } from "./runtime/SourceActionsContext.jsx";
+import { AppLifecycleProvider, useAppLifecycle } from "./hooks/AppLifecycleContext.jsx";
 import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
 import { normalizeDockModuleControls } from "./dock/dockModuleControls.js";
-import { hideAppWindow, toggleAppWindow } from "./lib/windowVisibility.js";
 import {
   buildVectorscopePairOptions,
   clampVectorscopePairToAvailable,
@@ -79,16 +76,8 @@ import {
   updateVisualRecordingGeometry,
 } from "./ipc/commands.js";
 import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useTray } from "./hooks/useTray.js";
-import { useInstanceIdentity } from "./hooks/useInstanceIdentity.js";
-import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
-import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
-import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
-import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { useRuntimeBackendSync } from "./runtime/useRuntimeBackendSync.js";
-import { useRuntimeCoordination } from "./runtime/coordination.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import { LibraryConflictDialog } from "./components/LibraryConflictDialog.jsx";
 import packageInfo from "../package.json";
@@ -206,7 +195,9 @@ export default function App() {
                       <PresetsProvider>
                         <SourceProvider>
                           <SourceActionsProvider>
-                            <AppContent />
+                            <AppLifecycleProvider>
+                              <AppContent />
+                            </AppLifecycleProvider>
                           </SourceActionsProvider>
                         </SourceProvider>
                       </PresetsProvider>
@@ -252,11 +243,6 @@ function AppContent() {
     analyzingFileSession,
     activeFileId,
     analyzingFileId,
-    startLiveForControl,
-    stopLiveForControl,
-    beginDeviceRestartForControl,
-    stopFileAnalysis,
-    switchSource,
   } = meterRuntime;
   const {
     fileSession,
@@ -273,23 +259,28 @@ function AppContent() {
     onRemoveFile,
     onClearAllFiles,
     handleDropFile,
-    onStartClick,
     onSourceTransportAction,
     onSourceModeChange,
   } = useSourceActions();
   const settings = useAppSettings();
   const { onClearRef, windowPinned: pinned } = settings;
   const packTransfer = usePackTransfer();
-  // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
-  // those overlays with the strip at boot; keeping discovery here lets App restore the main window
-  // before presenting the report instead of silently waiting for the user to exit Dock manually.
-  const crashReportSetting = useCrashReportSetting();
-  const crashReporting = useCrashReporting({ promptEnabled: crashReportSetting.enabled });
+  const {
+    crashReportSetting,
+    crashReporting,
+    updateControls,
+    closeConfirm: {
+      dialogOpen: closeDialogOpen,
+      closeError,
+      closing,
+      handleConfirm: handleCloseConfirm,
+      handleRetry: handleCloseRetry,
+      handleCancel: handleCloseCancel,
+    },
+  } = useAppLifecycle();
   const {
     setSettingsOpen,
     resolvedThemeId,
-    resolvedTheme,
-    clearShortcut,
     focusView,
     channelLabelOverrides,
     setChannelLabelOverrides,
@@ -311,8 +302,6 @@ function AppContent() {
     dockSuspended,
     reserveSpace,
     toggleReserveSpace,
-    suspendDockMode,
-    resumeDockMode,
     layout: dockLayout,
     historyViewport: dockHistoryViewport,
     exitDockRestoringAttributes,
@@ -333,7 +322,6 @@ function AppContent() {
       showControls: showFocusControls,
       hideControlsLater: hideFocusControlsLater,
       hideControlsNow: hideFocusControlsNow,
-      toggleControls: toggleFocusControls,
       holdControls: holdFocusControls,
       releaseControlsHold: releaseFocusControlsHold,
       handleWindowDrag,
@@ -341,109 +329,21 @@ function AppContent() {
   } = useWindowChrome();
 
   const {
-    snapshot: audioDeviceSnapshot,
     audioDevices,
     captureApplications,
     captureDeviceId,
     safeAudioDeviceId,
-    commitCaptureDevice,
-    previewSelection,
     refreshInventory,
-    defaultOutputLabel,
     audioOutputs,
     audioInputs,
     onSelectCaptureDevice,
     captureFormatSignature,
-    sourceDisplayName,
     footerSourceLabel,
   } = useSource();
-
-  const [windowVisible, setWindowVisible] = useState(true);
-  useUiNavigationEnvironment({
-    windowForm: docked ? "dock" : "normal",
-    windowVisible,
-  });
-
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    getCurrentWindow()
-      .isVisible()
-      .then((visible) => {
-        if (!cancelled) setWindowVisible(visible);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const onHideWindow = useCallback(async () => {
-    if (!isTauri()) return;
-    const window = getCurrentWindow();
-    await hideAppWindow({
-      docked,
-      window,
-      suspendDock: suspendDockMode,
-    });
-    setWindowVisible(await window.isVisible());
-  }, [docked, suspendDockMode]);
-
-  const onShowWindow = useCallback(async () => {
-    if (!isTauri()) return;
-    const window = getCurrentWindow();
-    if (await window.isVisible()) {
-      setWindowVisible(true);
-      return;
-    }
-    await toggleAppWindow({
-      docked,
-      window,
-      suspendDock: suspendDockMode,
-      resumeDock: resumeDockMode,
-    });
-    setWindowVisible(await window.isVisible());
-  }, [docked, resumeDockMode, suspendDockMode]);
-
-  const { updateInfo, refreshUpdateCheck } = useUpdateCheck();
-  const { installStatus, downloadProgress, install, restartToApply, resetInstall } =
-    useApplyUpdate();
-  const updateBusy = installStatus === "installing" || installStatus === "restarting";
-
-  const {
-    dialogOpen: closeDialogOpen,
-    closeError,
-    closing,
-    handleConfirm: handleCloseConfirm,
-    handleRetry: handleCloseRetry,
-    handleCancel: handleCloseCancel,
-    requestCloseAction,
-  } = useCloseConfirm({ onHideWindow, onShowWindow, closeBlocked: updateBusy });
-
-  const onToggleWindow = useCallback(async () => {
-    if (!isTauri()) return;
-    const window = getCurrentWindow();
-    if (await window.isVisible()) {
-      await requestCloseAction("tray");
-      return;
-    }
-    await toggleAppWindow({
-      docked,
-      window,
-      suspendDock: suspendDockMode,
-      resumeDock: resumeDockMode,
-    });
-    setWindowVisible(await window.isVisible());
-  }, [docked, requestCloseAction, resumeDockMode, suspendDockMode]);
 
   const { display, routing } = useMeterRuntimeAssembly();
   const { audio, setAudio } = display;
   const { elapsedMsRef } = display.clock;
-
-  useEffect(() => {
-    if (!docked || !crashReporting.pendingReport) return;
-    void exitDockRestoringAttributes();
-  }, [crashReporting.pendingReport, docked, exitDockRestoringAttributes]);
 
   const reportSceneError = useCallback(
     (error, fallbackMessage, detailPrefix) =>
@@ -897,34 +797,6 @@ function AppContent() {
     }),
     [visualCaptureSurfaces, visualPlatformCapabilities]
   );
-  const agentControlDevice = useMemo(
-    () => ({
-      snapshot: audioDeviceSnapshot,
-      live: {
-        state: meterRuntime.liveLifecycle,
-        transition: meterRuntime.liveDeviceTransition,
-        usingRequestedSelection:
-          meterRuntime.liveLifecycle === "running" &&
-          meterRuntime.liveDeviceTransition === null &&
-          (captureDeviceId === "default" || meterRuntime.liveResolvedDeviceId === captureDeviceId),
-      },
-      previewSelection,
-      commitSelection: commitCaptureDevice,
-      beginRestart: beginDeviceRestartForControl,
-      runtimeUnavailable: updateBusy,
-    }),
-    [
-      audioDeviceSnapshot,
-      beginDeviceRestartForControl,
-      captureDeviceId,
-      commitCaptureDevice,
-      meterRuntime.liveDeviceTransition,
-      meterRuntime.liveLifecycle,
-      meterRuntime.liveResolvedDeviceId,
-      previewSelection,
-      updateBusy,
-    ]
-  );
   const applyAgentControlSettings = useCallback(
     async (next, { changed, effects }) => {
       const compensation = [];
@@ -1023,7 +895,6 @@ function AppContent() {
     settings: agentControlSettings,
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
-    device: agentControlDevice,
     dockContext: {
       platform: agentControlRuntime.platform,
       ...agentControlAnalysisContext,
@@ -1103,7 +974,6 @@ function AppContent() {
   const spectrumDisplayLabel = channelMetadata?.frequencyLabel ?? spectrumLiveLabel;
   const vectorscopeDisplayLabel = channelMetadata?.vectorscopePairLabel ?? vectorscopeLiveLabel;
 
-  useInstanceIdentity({ sourceLabel: sourceDisplayName, running });
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
   const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
   // Clamp every panel instance's channel selection to the currently available channels. Lowering
@@ -1190,22 +1060,6 @@ function AppContent() {
     }
     setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
   };
-
-  const stopRuntimeForCoordination = useCallback(async () => {
-    if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-    if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
-  }, [analyzingFileId, meterRuntime.liveLifecycle, stopFileAnalysis, stopLiveForControl]);
-  const startRuntimeAfterCoordination = useCallback(async () => {
-    switchSource("live");
-    await startLiveForControl();
-  }, [startLiveForControl, switchSource]);
-  useRuntimeCoordination({
-    blockingEditors: activeBlockingEditors,
-    running: meterRuntime.liveLifecycle === "running",
-    stop: stopRuntimeForCoordination,
-    start: startRuntimeAfterCoordination,
-    show: onShowWindow,
-  });
 
   const onDockAccessoryError = useCallback(
     async (accessoryError) => {
@@ -1459,38 +1313,6 @@ function AppContent() {
     onPointer: dockAccessoryVisibility.onAccessoryPointer,
   });
 
-  useTray({
-    running,
-    windowVisible,
-    onStartClick,
-    onToggleWindow,
-    onQuit: () => requestCloseAction("quit"),
-    colorScheme: resolvedTheme.colorScheme,
-    updateBusy,
-    audioOutputs,
-    audioInputs,
-    captureApplications,
-    safeAudioDeviceId,
-    defaultOutputLabel,
-    sourceBusy:
-      ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
-      meterRuntime.liveDeviceTransition !== null,
-    onSelectSource: onSelectCaptureDevice,
-    presets,
-  });
-
-  useAppKeyboardShortcuts({
-    clearAll,
-    running,
-    showClock,
-    // Settings dialog is normal-form only; ignore the shortcut while docked so
-    // exiting dock doesn't pop a dialog opened invisibly from the strip.
-    setSettingsOpen: docked ? () => {} : setSettingsOpen,
-    clearShortcut,
-    autoHideControls: focusView.autoHideControls,
-    toggleFocusControls,
-  });
-
   useEffect(() => {
     intakeRef.current.setCurrentChannelMetadata({
       frequencyLabel: spectrumLiveLabel,
@@ -1684,7 +1506,7 @@ function AppContent() {
       ? loudnessProfile.document.name || "Untitled"
       : null,
     activePresetName,
-    hasUpdate: updateInfo?.hasUpdate,
+    hasUpdate: updateControls.updateInfo?.hasUpdate,
     layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
     onOpenSettings: () => setSettingsOpen(true),
   };
@@ -1750,15 +1572,7 @@ function AppContent() {
             setChannelLabelToken,
             resetChannelLabels,
           }}
-          updateControls={{
-            updateInfo,
-            refreshUpdateCheck,
-            installStatus,
-            downloadProgress,
-            install,
-            restartToApply,
-            resetInstall,
-          }}
+          updateControls={updateControls}
           appVersion={APP_VERSION}
           onAgentControlEnabledChange={setAgentControlEnabled}
         />

@@ -52,12 +52,20 @@ vi.mock("../runtime/MeterRuntimeContext.jsx", () => ({
   useMeterDisplayState: () => ({ selectedOffset: -1 }),
 }));
 vi.mock("../runtime/SourceContext.jsx", () => ({
-  useSource: () => ({ captureDeviceId: "default" }),
+  useSource: () => ({
+    captureDeviceId: "default",
+    snapshot: null,
+    previewSelection: async () => {},
+    commitCaptureDevice: async () => {},
+  }),
 }));
 vi.mock("../runtime/SourceActionsContext.jsx", () => ({
   useSourceActions: () => ({
     currentFileAnalysisSettings: () => ({ dialogue: { enabled: false, engine: null } }),
   }),
+}));
+vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
+  useAppLifecycle: () => ({ updateBusy: false }),
 }));
 vi.mock("../uiNavigation/UiNavigationContext.jsx", () => ({
   useUiNavigation: () => ({ inspectUi: () => ({}) }),
@@ -92,6 +100,7 @@ describe("AgentControlBridge", () => {
     expect(passed.transportContext).toEqual({ docked: false, deviceTransitioning: false });
     expect(typeof passed.executeTransport).toBe("function");
     expect(typeof passed.uiNavigation.inspectUi).toBe("function");
+    expect(passed.device).toMatchObject({ runtimeUnavailable: false, snapshot: null });
     expect(passed.presets).toMatchObject({ activeId: null });
     expect(passed.hasLoudnessReference).toBe(false);
     expect(passed.theme.state).toEqual({ appearance: {}, themes: [] });

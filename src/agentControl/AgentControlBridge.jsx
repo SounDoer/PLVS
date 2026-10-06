@@ -5,6 +5,7 @@ import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
 import { usePresetLibrary } from "../hooks/PresetsContext.jsx";
 import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
+import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 import { useMeterDisplayState, useMeterRuntime } from "../runtime/MeterRuntimeContext.jsx";
 import { useSource } from "../runtime/SourceContext.jsx";
 import { useSourceActions } from "../runtime/SourceActionsContext.jsx";
@@ -32,7 +33,8 @@ import { useAgentControlBridge } from "./useAgentControlBridge.js";
  *   | "transport"
  *   | "transportContext"
  *   | "executeTransport"
- *   | "uiNavigation"> & {
+ *   | "uiNavigation"
+ *   | "device"> & {
  *   dockContext: Omit<
  *     import("./useAgentControlBridge.js").AgentControlDockContext,
  *     "transitioning" | "monitors" | "fallbackMonitor" | "monitorRects" | "monitorInventoryReady"
@@ -170,7 +172,42 @@ export function AgentControlBridge(props) {
     clearFiles,
   } = meterRuntime;
   const { selectedOffset } = useMeterDisplayState();
-  const { captureDeviceId } = useSource();
+  const {
+    snapshot: audioDeviceSnapshot,
+    captureDeviceId,
+    previewSelection,
+    commitCaptureDevice,
+  } = useSource();
+  const { beginDeviceRestartForControl } = meterRuntime;
+  const { updateBusy } = useAppLifecycle();
+  const agentControlDevice = useMemo(
+    () => ({
+      snapshot: audioDeviceSnapshot,
+      live: {
+        state: meterRuntime.liveLifecycle,
+        transition: meterRuntime.liveDeviceTransition,
+        usingRequestedSelection:
+          meterRuntime.liveLifecycle === "running" &&
+          meterRuntime.liveDeviceTransition === null &&
+          (captureDeviceId === "default" || meterRuntime.liveResolvedDeviceId === captureDeviceId),
+      },
+      previewSelection,
+      commitSelection: commitCaptureDevice,
+      beginRestart: beginDeviceRestartForControl,
+      runtimeUnavailable: updateBusy,
+    }),
+    [
+      audioDeviceSnapshot,
+      beginDeviceRestartForControl,
+      captureDeviceId,
+      commitCaptureDevice,
+      meterRuntime.liveDeviceTransition,
+      meterRuntime.liveLifecycle,
+      meterRuntime.liveResolvedDeviceId,
+      previewSelection,
+      updateBusy,
+    ]
+  );
   const { currentFileAnalysisSettings } = useSourceActions();
   const agentControlTransport = useMemo(
     () =>
@@ -268,6 +305,7 @@ export function AgentControlBridge(props) {
     transportContext: { docked, deviceTransitioning: meterRuntime.liveDeviceTransition !== null },
     executeTransport: executeAgentControlTransport,
     uiNavigation,
+    device: agentControlDevice,
     presets,
     loudnessProfile,
     hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
