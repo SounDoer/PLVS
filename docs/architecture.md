@@ -101,29 +101,34 @@ Application state in the main window is owned by React context providers, one pe
 never one it encloses. The reasons are in
 [ADR 0022](adr/0022-ordered-providers-own-frontend-state.md).
 
-| Owner (outermost first) | Owns                                                                                     | Read through                                                         |
-| ----------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Workspace               | Split tree, panels, panel controls, shared axis viewports                                | `useWorkspaceStore`                                                  |
-| MeterRuntime            | Source mode, live and file lifecycle, notices and scrub position, the per-frame assembly | `useMeterRuntime`, `useMeterDisplayState`, `useMeterRuntimeAssembly` |
-| BlockingEditors         | Which draft-style editors are open                                                       | `useBlockingEditors`                                                 |
-| UiNavigation            | Transient navigation intent and the mounted-surface registry                             | `useUiNavigation`                                                    |
-| LoudnessProfile         | Profile library, selection and draft                                                     | `useLoudnessProfile`                                                 |
-| Settings                | Every stored preference, including the view values and the pin                           | `useAppSettings`                                                     |
-| SceneGuard              | The composed rule that refuses scene operations                                          | `useSceneGuard`                                                      |
-| Dock                    | Dock mode, strip layout, enter and exit transitions                                      | `useDock`                                                            |
-| WindowChrome            | Applying pin, decorations, shadow and glass to the window; the view setters              | `useWindowChrome`                                                    |
-| Presets                 | Preset library and the Dock hand-off on apply                                            | `usePresetLibrary`                                                   |
-| Source                  | Device inventory, selected source and its labels                                         | `useSource`                                                          |
-| SourceActions           | Start, stop, clear and the file actions                                                  | `useSourceActions`                                                   |
-| AppLifecycle            | Window visibility, tray, updates, close dialog, crash reports, global shortcuts          | `useAppLifecycle`                                                    |
+| Owner (outermost first) | Owns                                                                                        | Read through                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Workspace               | Split tree, panels, panel controls, shared axis viewports                                   | `useWorkspaceStore`                                                  |
+| MeterRuntime            | Source mode, live and file lifecycle, notices and scrub position, the per-frame assembly    | `useMeterRuntime`, `useMeterDisplayState`, `useMeterRuntimeAssembly` |
+| BlockingEditors         | Which draft-style editors are open                                                          | `useBlockingEditors`                                                 |
+| UiNavigation            | Transient navigation intent and the mounted-surface registry                                | `useUiNavigation`                                                    |
+| LoudnessProfile         | Profile library, selection and draft                                                        | `useLoudnessProfile`                                                 |
+| Settings                | Every stored preference, including the view values and the pin                              | `useAppSettings`                                                     |
+| SceneGuard              | The composed rule that refuses scene operations                                             | `useSceneGuard`                                                      |
+| Dock                    | Dock mode, strip layout, enter and exit transitions                                         | `useDock`                                                            |
+| WindowChrome            | Applying pin, decorations, shadow and glass to the window; the view setters                 | `useWindowChrome`                                                    |
+| Presets                 | Preset library and the Dock hand-off on apply                                               | `usePresetLibrary`                                                   |
+| Source                  | Device inventory, selected source and its labels                                            | `useSource`                                                          |
+| SourceActions           | Start, stop, clear and the file actions                                                     | `useSourceActions`                                                   |
+| AppLifecycle            | Window visibility, tray, updates, close dialog, crash reports, global shortcuts             | `useAppLifecycle`                                                    |
+| DisplaySnapshot         | What the panels show now, live or at the scrub position; changes per meter frame            | `useDisplaySnapshot`                                                 |
+| AnalysisSession         | Channel count and labels, analysis requests, their sync to the engine, panel-control clamps | `useAnalysisSession`                                                 |
 
-`useMeterRuntimeAssembly` changes on every meter frame; only a component that draws per frame
-should read it. Notices and the scrub position come from `useMeterDisplayState`, which does not.
+`useMeterRuntimeAssembly` and `useDisplaySnapshot` change on every meter frame; only a component
+that works per frame should read them. Notices and the scrub position come from
+`useMeterDisplayState`, which does not. The analysis session re-renders per frame itself, because
+the channel count comes from the displayed frame, and publishes a value that changes only when the
+channel count, the labels or the requests do.
 
-`AppContent` still owns what has no provider yet: the per-frame panel data, channel labels and
-analysis requests, the Dock accessory windows, and the props handed to the shell. Agent Control is
-mounted as `AgentControlBridge` (`src/agentControl/`), which reads the owners above directly and
-receives the remaining areas from `AppContent` as props.
+`AppContent` still owns what has no provider yet: the per-frame data it hands to the panels, the
+Dock accessory windows, and the props handed to the shell. Agent Control is mounted as
+`AgentControlBridge` (`src/agentControl/`), which reads the owners above directly and receives
+only visual capture from `AppContent`.
 
 ---
 

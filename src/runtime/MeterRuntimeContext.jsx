@@ -314,8 +314,9 @@ export function MeterRuntimeProvider({ children }) {
     ]
   );
   // Deliberately NOT memoized: its members (display/ledger/transport/routing)
-  // change identity per render anyway, and its only consumer is the
-  // null-rendering MeterRuntimeEngines.
+  // change identity per render anyway, and its consumers are the ones that
+  // work per frame: MeterRuntimeEngines, the display snapshot, the analysis
+  // session and AppContent.
   const assembly = {
     display,
     sourceMode,
