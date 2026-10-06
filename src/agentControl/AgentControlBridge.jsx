@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { availableMonitors, currentMonitor, primaryMonitor } from "@tauri-apps/api/window";
 import { useDock } from "../dock/DockContext.jsx";
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
+import { usePresetLibrary } from "../hooks/PresetsContext.jsx";
+import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
+import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { isTauri } from "../ipc/env.js";
 import { supportsDockMode } from "../lib/platform.js";
 import { readAgentControlRuntime } from "./appSnapshot.js";
@@ -12,7 +15,15 @@ import { useAgentControlBridge } from "./useAgentControlBridge.js";
  * Each domain that gains an owner moves its wiring from `App.jsx` into this file; the areas still
  * listed in the props are the ones `AppContent` owns for now.
  *
- * @param {Omit<Parameters<typeof useAgentControlBridge>[0], "dock" | "executeDock" | "dockContext" | "viewContext"> & {
+ * @param {Omit<Parameters<typeof useAgentControlBridge>[0], | "dock"
+ *   | "executeDock"
+ *   | "dockContext"
+ *   | "viewContext"
+ *   | "presets"
+ *   | "loudnessProfile"
+ *   | "hasLoudnessReference"
+ *   | "customThemes"
+ *   | "theme"> & {
  *   dockContext: Omit<
  *     import("./useAgentControlBridge.js").AgentControlDockContext,
  *     "transitioning" | "monitors" | "fallbackMonitor" | "monitorRects" | "monitorInventoryReady"
@@ -133,8 +144,17 @@ export function AgentControlBridge(props) {
     ]
   );
 
+  const presets = usePresetLibrary();
+  const loudnessProfile = useLoudnessProfile();
+  const settings = useAppSettings();
+
   useAgentControlBridge({
     ...props,
+    presets,
+    loudnessProfile,
+    hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
+    customThemes: settings.customThemes,
+    theme: { control: settings.themeControl, state: settings.themeControl.readState() },
     viewContext: agentControlViewContext,
     dock: agentControlDock,
     dockContext: {

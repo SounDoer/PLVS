@@ -22,7 +22,6 @@ import {
 import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx";
 import { useSnapshot } from "./hooks/useSnapshot";
 import { useAudioDevices } from "./hooks/useAudioDevices.js";
-import { usePresets } from "./hooks/usePresets.js";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
@@ -37,16 +36,12 @@ import {
   useUiSurface,
 } from "./uiNavigation/UiNavigationContext.jsx";
 import { preparePanelSettingsNavigation } from "./uiNavigation/panelSettingsNavigation.js";
-import {
-  SCENE_OPERATIONS,
-  isSceneOperationRefused,
-  sceneOperationUnavailableReason,
-} from "./lib/sceneOperations.js";
 import { listMissingPreferredMetrics, planShowMissing } from "./lib/loudnessProfileMissing.js";
 import { useCrashReporting } from "./hooks/useCrashReporting.js";
 import { useCrashReportSetting } from "./hooks/useCrashReportSetting.js";
 import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
+import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "./dock/dockAnalysisRequest.js";
@@ -92,7 +87,6 @@ import { useInstanceIdentity } from "./hooks/useInstanceIdentity.js";
 import { useCloseConfirm } from "./hooks/useCloseConfirm.js";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useApplyUpdate } from "./hooks/useApplyUpdate.js";
-import { syncSurfaceOpacityWindowShadow } from "./hooks/useSurfaceOpacityWindowShadow.js";
 import { useFileAnalysisReportExport } from "./hooks/useFileAnalysisReportExport.js";
 import { automaticOutputChangeNotice } from "./lib/captureHealth.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
@@ -217,7 +211,9 @@ export default function App() {
                 <SceneGuardProvider>
                   <DockProvider>
                     <WindowChromeProvider>
-                      <AppContent />
+                      <PresetsProvider>
+                        <AppContent />
+                      </PresetsProvider>
                     </WindowChromeProvider>
                   </DockProvider>
                 </SceneGuardProvider>
@@ -311,7 +307,7 @@ function AppContent() {
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
   const [stereoMapResetEpoch, setStereoMapResetEpoch] = useState(0);
   const settings = useAppSettings();
-  const { onClearRef, windowPinned: pinned, setWindowPinned: setPinnedStored } = settings;
+  const { onClearRef, windowPinned: pinned } = settings;
   const packTransfer = usePackTransfer();
   // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
   // those overlays with the strip at boot; keeping discovery here lets App restore the main window
@@ -324,13 +320,10 @@ function AppContent() {
     resolvedTheme,
     clearShortcut,
     focusView,
-    setFocusView,
     channelLabelOverrides,
     setChannelLabelOverrides,
     surfaceOpacity,
-    setSurfaceOpacity: setSurfaceOpacityStored,
     glassEnabled,
-    setGlassEnabled: setGlassEnabledStored,
   } = settings;
   // Hoisted above useDockMode and usePresets: dock entry cancels an open profile
   // draft, and preset capture and apply both need its snapshot helpers. One
@@ -338,20 +331,15 @@ function AppContent() {
   // "there is nothing to show". Reading it this early is safe: it is a context
   // read with no ordering constraints of its own.
   const loudnessProfile = useLoudnessProfile();
-  const { activeBlockingEditors, assertSceneOperationAllowed } = useSceneGuard();
+  const { activeBlockingEditors } = useSceneGuard();
   const {
     docked,
-    dockEnabled,
     dockEdge,
-    dockMonitor,
     dockHeight,
     dockPreviewHeight,
     dockSuspended,
     reserveSpace,
-    enterDockMode,
-    setReserveSpace,
     toggleReserveSpace,
-    resizeDockHeight,
     suspendDockMode,
     resumeDockMode,
     layout: dockLayout,
@@ -516,135 +504,7 @@ function AppContent() {
     [raiseNotice]
   );
 
-  // Preset apply hand-off: dock geometry is Rust-owned, so a preset's dock
-  // state is applied via enter/exit dock rather than window bounds. Left
-  // uncaught here on purpose — usePresets.apply wraps this call and clears
-  // activeId on failure (mirroring its existing applyWindowBounds handling).
-  const applyDockPreset = useCallback(
-    async (presetDock, normalWindow = {}) => {
-      clearNotice();
-      // Dock is temporarily unavailable on macOS. Keep the preset and Dock
-      // implementation intact, but apply the preset's non-Dock state only.
-      if (presetDock.enabled && !supportsDockMode()) return false;
-      if (presetDock.enabled) {
-        dockLayout.setPanels(presetDock);
-        const requiresDockTransition =
-          !dockEnabled || dockEdge !== presetDock.edge || dockMonitor !== presetDock.monitor;
-        if (requiresDockTransition) {
-          await enterDockMode(
-            presetDock.edge,
-            presetDock.reserveSpace,
-            presetDock.monitor,
-            presetDock.height
-          );
-        } else {
-          if (presetDock.reserveSpace !== reserveSpace) {
-            await setReserveSpace(presetDock.reserveSpace, presetDock.edge);
-          }
-          if (Number.isFinite(presetDock.height) && presetDock.height !== dockHeight) {
-            await resizeDockHeight(presetDock.height, { persist: true });
-          }
-        }
-        setSelectedOffset(-1);
-      } else if (dockEnabled) {
-        const result = await exitDockRestoringAttributes({
-          reportError: false,
-          bounds: normalWindow.bounds,
-          decorations: normalWindow.focusView
-            ? !(normalWindow.focusView.autoHideControls || normalWindow.focusView.borderless)
-            : undefined,
-          alwaysOnTop: typeof normalWindow.pinned === "boolean" ? normalWindow.pinned : undefined,
-        });
-        if (!result.ok) throw result.error;
-        return true;
-      }
-      return false;
-    },
-    [
-      clearNotice,
-      dockLayout,
-      enterDockMode,
-      dockEnabled,
-      dockEdge,
-      dockMonitor,
-      dockHeight,
-      exitDockRestoringAttributes,
-      reserveSpace,
-      resizeDockHeight,
-      setReserveSpace,
-      setSelectedOffset,
-    ]
-  );
-
-  const onPresetApplyError = useCallback(
-    (error) => {
-      // A refusal already carries a sentence written for the user, and naming the reason is the
-      // difference between "it failed" and knowing what to change. Everything else is a genuine
-      // failure: generic line, technical detail on hover.
-      if (isSceneOperationRefused(error)) {
-        raiseNotice("error", error.message);
-        return;
-      }
-      raiseNotice(
-        "error",
-        "Preset could not be applied.",
-        errorDetails("Preset apply failed", error)
-      );
-    },
-    [raiseNotice]
-  );
-
-  // Stable identity: an inline literal would churn captureSnapshot (and the
-  // memoized presets API) on every render.
-  const presetDockState = useMemo(
-    () => ({
-      enabled: dockEnabled,
-      edge: dockEdge,
-      monitor: dockMonitor,
-      reserveSpace,
-      height: dockHeight,
-      panelsById: dockLayout.panelsById,
-      panelOrder: dockLayout.panelOrder,
-      panelSizesById: dockLayout.panelSizesById,
-      controlsByPanelId: dockLayout.controlsByPanelId,
-    }),
-    [
-      dockEnabled,
-      dockEdge,
-      dockMonitor,
-      dockHeight,
-      dockLayout.controlsByPanelId,
-      dockLayout.panelOrder,
-      dockLayout.panelSizesById,
-      dockLayout.panelsById,
-      reserveSpace,
-    ]
-  );
-
-  const presets = usePresets({
-    windowPinned: pinned,
-    setWindowPinned: setPinnedStored,
-    focusView,
-    setFocusView,
-    surfaceOpacity,
-    setSurfaceOpacity: setSurfaceOpacityStored,
-    glassEnabled,
-    setGlassEnabled: setGlassEnabledStored,
-    dock: presetDockState,
-    applyDockPreset,
-    applySurfaceOpacity: syncSurfaceOpacityWindowShadow,
-    // A platform without dock support is not a refusal: applyDockPreset drops the dock and applies
-    // the rest of the preset.
-    dockPresetUnavailableReason: (presetDock) =>
-      presetDock.enabled && supportsDockMode()
-        ? sceneOperationUnavailableReason(SCENE_OPERATIONS.dockEnter, { sourceMode })
-        : null,
-    onApplyError: onPresetApplyError,
-    snapshotLoudnessProfile: loudnessProfile.snapshotForPreset,
-    applyLoudnessProfileSnapshot: loudnessProfile.applyPresetSnapshot,
-    assertSceneOperationAllowed,
-    blockingEditors: activeBlockingEditors,
-  });
+  const presets = usePresetLibrary();
   const agentControlRuntime = useMemo(readAgentControlRuntime, []);
   const [visualPlatformCapabilities, setVisualPlatformCapabilities] = useState(null);
   const [visualRecordingState, setVisualRecordingState] = useState(null);
@@ -1311,7 +1171,6 @@ function AppContent() {
     replaceWorkspace,
     setPanelControlsForPanel,
     waitForWorkspacePersistenceEnqueue,
-    presets,
     settings: agentControlSettings,
     settingsContext: agentControlSettingsContext,
     applySettings: applyAgentControlSettings,
@@ -1328,13 +1187,6 @@ function AppContent() {
       sourceMode,
       activeEditors: activeBlockingEditors,
     },
-    loudnessProfile,
-    customThemes: settings.customThemes,
-    theme: {
-      control: settings.themeControl,
-      state: settings.themeControl.readState(),
-    },
-    hasLoudnessReference: Number.isFinite(loudnessProfile.referenceLufs),
     analysisContext: agentControlAnalysisContext,
     measurementContext: agentControlMeasurementContext,
     visual: agentControlVisual,

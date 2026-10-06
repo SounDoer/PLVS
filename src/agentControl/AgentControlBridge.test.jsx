@@ -28,12 +28,24 @@ vi.mock("../hooks/WindowChromeContext.jsx", () => ({
     applyViewState: async () => {},
   }),
 }));
+vi.mock("../hooks/PresetsContext.jsx", () => ({
+  usePresetLibrary: () => ({ list: [], activeId: null, dirty: false }),
+}));
+vi.mock("../hooks/LoudnessProfileContext.jsx", () => ({
+  useLoudnessProfile: () => ({ profiles: [], active: "off", referenceLufs: null }),
+}));
+vi.mock("../settings/SettingsContext.jsx", () => ({
+  useAppSettings: () => ({
+    customThemes: {},
+    themeControl: { readState: () => ({ appearance: {}, themes: [] }) },
+  }),
+}));
 
 import { AgentControlBridge } from "./AgentControlBridge.jsx";
 import { standIn } from "../testing/standIn.js";
 
 describe("AgentControlBridge", () => {
-  it("renders nothing and builds the Dock and View areas from their owners", () => {
+  it("renders nothing and builds each owned area from its owner", () => {
     const props = standIn({
       enabled: false,
       runtime: { available: false },
@@ -54,5 +66,8 @@ describe("AgentControlBridge", () => {
     expect(typeof passed.executeDock).toBe("function");
     expect(passed.viewContext).toMatchObject({ docked: false, view: { surfaceOpacity: 100 } });
     expect(typeof passed.viewContext.applyView).toBe("function");
+    expect(passed.presets).toMatchObject({ activeId: null });
+    expect(passed.hasLoudnessReference).toBe(false);
+    expect(passed.theme.state).toEqual({ appearance: {}, themes: [] });
   });
 });
