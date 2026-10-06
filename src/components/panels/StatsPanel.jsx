@@ -37,7 +37,7 @@ const LAYOUT_DEPENDENT_STAT_IDS = new Set([
 ]);
 
 function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, watched }) {
-  const { valueColumnCh, unitColumnRem } = UI_PREFERENCES.modules.stats.metrics;
+  const { valueColumnCh, unitColumnEm } = UI_PREFERENCES.modules.stats.metrics;
   const labelClass = cn(
     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left text-[length:var(--ui-fs-metric-meta)] font-medium tracking-wide leading-normal",
     loudnessLabelClass(watched)
@@ -70,7 +70,7 @@ function MetricRow({ id, label, shortLabel, value, unit, active, hint, status, w
       <span data-stat-value={id} className={valueClass} style={{ width: `${valueColumnCh}ch` }}>
         {value}
       </span>
-      <span className={unitClass} style={{ width: `${unitColumnRem}rem` }}>
+      <span className={unitClass} style={{ width: `${unitColumnEm}em` }}>
         {unit}
       </span>
     </>

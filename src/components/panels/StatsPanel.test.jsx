@@ -193,6 +193,7 @@ describe("StatsPanel", () => {
     expect(value.className).toContain("shrink-0");
     expect(value.getAttribute("style")).toContain("width: 5.5ch");
     expect(unit.className).toContain("@max-[180px]:hidden");
+    expect(unit.getAttribute("style")).toContain("width: 3.2em");
   });
 
   it("shows an active speaking-now dot when dialogueCoverage is visible and dialogueActiveNow is true", () => {

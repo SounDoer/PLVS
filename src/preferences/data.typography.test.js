@@ -81,7 +81,7 @@ describe("metric row tuning", () => {
   it("keeps only the row dimensions still used by StatsPanel", () => {
     expect(UI_PREFERENCES.modules.stats.metrics).toMatchObject({
       valueColumnCh: 5.5,
-      unitColumnRem: 2.1,
+      unitColumnEm: 3.2,
       rowMinHeightRem: 1.25,
       rowPaddingXRem: 0.25,
       rowGapRem: 0.5,
