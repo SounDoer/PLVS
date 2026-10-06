@@ -1,7 +1,12 @@
 /** @vitest-environment jsdom */
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MeterRuntimeProvider, useMeterRuntime } from "./MeterRuntimeContext.jsx";
+import {
+  MeterRuntimeProvider,
+  useMeterDisplayState,
+  useMeterRuntime,
+  useMeterRuntimeAssembly,
+} from "./MeterRuntimeContext.jsx";
 
 function wrapper({ children }) {
   return <MeterRuntimeProvider>{children}</MeterRuntimeProvider>;
@@ -110,5 +115,42 @@ describe("MeterRuntimeProvider", () => {
 
     expect(result.current.fileSessions).toHaveLength(0);
     expect(result.current.activeFileSession).toBeNull();
+  });
+
+  it("keeps low-rate display consumers still while meter frames arrive", () => {
+    let probeRenders = 0;
+    /** @type {ReturnType<typeof useMeterRuntimeAssembly>} */
+    let assembly;
+    /** @type {ReturnType<typeof useMeterDisplayState>} */
+    let displayState;
+    function Probe() {
+      displayState = useMeterDisplayState();
+      probeRenders += 1;
+      return null;
+    }
+    function Driver() {
+      assembly = useMeterRuntimeAssembly();
+      return null;
+    }
+    render(
+      <MeterRuntimeProvider>
+        <Probe />
+        <Driver />
+      </MeterRuntimeProvider>
+    );
+
+    const rendersBeforeFrame = probeRenders;
+    act(() => assembly.display.setAudio((current) => ({ ...current, tpMax: -3 })));
+    expect(probeRenders).toBe(rendersBeforeFrame);
+
+    act(() => displayState.raiseNotice("error", "Boom"));
+    expect(probeRenders).toBe(rendersBeforeFrame + 1);
+    expect(displayState.notice).toMatchObject({ kind: "error", text: "Boom" });
+  });
+
+  it("refuses the low-rate display hook outside the provider", () => {
+    expect(() => renderHook(() => useMeterDisplayState())).toThrow(
+      "useMeterDisplayState must be used inside MeterRuntimeProvider"
+    );
   });
 });

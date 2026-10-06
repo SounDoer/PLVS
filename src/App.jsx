@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
+  useMeterDisplayState,
   useMeterRuntime,
   useMeterRuntimeAssembly,
 } from "./runtime/MeterRuntimeContext.jsx";
@@ -241,6 +242,15 @@ export default function App() {
 
 function AppContent() {
   const meterRuntime = useMeterRuntime();
+  const {
+    notice,
+    raiseNotice,
+    clearNotice,
+    selectedOffset,
+    setSelectedOffset,
+    selectedSnapshotTimeMs,
+    showClock,
+  } = useMeterDisplayState();
   const uiNavigation = useUiNavigation();
   const {
     state: workspaceState,
@@ -682,17 +692,7 @@ function AppContent() {
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");
 
   const { display, routing } = useMeterRuntimeAssembly();
-  const {
-    audio,
-    setAudio,
-    selectedOffset,
-    setSelectedOffset,
-    selectedSnapshotTimeMs,
-    notice,
-    raiseNotice,
-    clearNotice,
-    showClock,
-  } = display;
+  const { audio, setAudio } = display;
   const { elapsedMsRef } = display.clock;
 
   const onSelectCaptureDevice = useCallback(
