@@ -516,10 +516,12 @@ Two font families:
 
 Normal application surfaces use semantic typography roles instead of fixed Tailwind font-size
 utilities or component-local pixel values. Dock is excluded and owns its responsive typography
-under `src/dock/dockTokens.css`.
+under `src/dock/dockTokens.css`. The sizes in this table are the **Small** profile baseline; the
+Default profile is generally 1px larger (Metric Value is 2px larger). The complete profile matrix
+appears below.
 
-| Role                  | Token                  | Size | Typical use                                                                                         |
-| --------------------- | ---------------------- | ---- | --------------------------------------------------------------------------------------------------- |
+| Role                  | Token                  | Small baseline | Typical use                                                                                         |
+| --------------------- | ---------------------- | -------------: | --------------------------------------------------------------------------------------------------- |
 | **Caption**           | `--ui-fs-caption`      | 10px | Menu groups, compact metadata, drag/drop overlay labels                                             |
 | **Axis Annotation**   | `--ui-fs-axis`         | 11px | Chart ticks, secondary hints, validation and tooltip text                                           |
 | **Status**            | `--ui-fs-status`       | 11px | Header/footer state and compact status chips                                                        |
