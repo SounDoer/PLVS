@@ -24,7 +24,7 @@ export function useThemeEditor(opts) {
   const [dirty, setDirty] = useState(false);
   const [stale, setStale] = useState(false);
   const [authoring, setAuthoring] = useState(null);
-  const [page, setPageState] = useState("core");
+  const [page, setPageState] = useState(/** @type {"core"|"palettes"|"advanced"} */ ("core"));
   const [discardOpen, setDiscardOpen] = useState(false);
   const draftRef = useRef(/** @type {object|null} */ (null));
   const dirtyRef = useRef(false);
