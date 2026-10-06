@@ -91,6 +91,7 @@ fn runtime_log_file_name() -> String {
 }
 
 const TEST_APP_DATA_ROOT_ARG: &str = "--plvs-test-app-data-root";
+const UI_VISUAL_FIXTURE_ARG: &str = "--plvs-ui-visual-fixture";
 
 fn test_app_data_root(args: &[String]) -> Result<Option<PathBuf>, String> {
   let value = args
@@ -108,6 +109,26 @@ fn test_app_data_root(args: &[String]) -> Result<Option<PathBuf>, String> {
   return Err("The isolated test app-data root is unavailable in packaged builds.".to_string());
   #[cfg(debug_assertions)]
   Ok(Some(path))
+}
+
+fn ui_visual_fixture(args: &[String]) -> Result<Option<String>, String> {
+  let requested = args
+    .windows(2)
+    .find(|pair| pair[0] == UI_VISUAL_FIXTURE_ARG)
+    .map(|pair| pair[1].as_str());
+  if args.iter().any(|arg| arg == UI_VISUAL_FIXTURE_ARG) && requested.is_none() {
+    return Err("The UI visual fixture argument requires a fixture name.".to_string());
+  }
+  let Some(name) = requested else {
+    return Ok(None);
+  };
+  #[cfg(not(debug_assertions))]
+  return Err("UI visual fixtures are unavailable in packaged builds.".to_string());
+  #[cfg(debug_assertions)]
+  match name {
+    "review-sequence" => Ok(Some(name.to_string())),
+    _ => Err(format!("Unknown UI visual fixture: {name}")),
+  }
 }
 
 /// The pre-paint snapshot the webview reads synchronously, as an initialization script.
@@ -144,6 +165,9 @@ struct InitialStateValues<'a> {
   instance_id: &'a str,
   #[serde(rename = "workspaceId")]
   workspace_id: &'a str,
+  #[serde(rename = "uiVisualFixture")]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  ui_visual_fixture: &'a Option<String>,
 }
 
 fn initial_state_script(initial: InitialStateValues<'_>) -> String {
@@ -295,6 +319,7 @@ pub fn run() {
     .setup(|app| {
       let launch_args: Vec<String> = std::env::args().skip(1).collect();
       let isolated_app_data = test_app_data_root(&launch_args)?;
+      let startup_ui_visual_fixture = ui_visual_fixture(&launch_args)?;
       let app_data_dir = match isolated_app_data.as_ref() {
         Some(path) => path.clone(),
         None => app
@@ -462,6 +487,7 @@ pub fn run() {
         workspace_id: app
           .state::<runtime_identity::RuntimeIdentity>()
           .workspace_id(),
+        ui_visual_fixture: &startup_ui_visual_fixture,
       });
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
@@ -794,6 +820,23 @@ mod tests {
   }
 
   #[test]
+  fn ui_visual_fixtures_are_closed_and_explicit() {
+    assert_eq!(ui_visual_fixture(&[]).unwrap(), None);
+    assert!(ui_visual_fixture(&[UI_VISUAL_FIXTURE_ARG.to_string()]).is_err());
+    assert!(
+      ui_visual_fixture(&[UI_VISUAL_FIXTURE_ARG.to_string(), "unknown".to_string(),]).is_err()
+    );
+    assert_eq!(
+      ui_visual_fixture(&[
+        UI_VISUAL_FIXTURE_ARG.to_string(),
+        "review-sequence".to_string(),
+      ])
+      .unwrap(),
+      Some("review-sequence".to_string())
+    );
+  }
+
+  #[test]
   fn injects_every_key_the_frontend_reads() {
     let snapshot = parse_snapshot(&initial_state_script(InitialStateValues {
       settings: &json!({}),
@@ -808,6 +851,7 @@ mod tests {
       is_coordinator: true,
       instance_id: "instance-a",
       workspace_id: "default",
+      ui_visual_fixture: &None,
     }));
     let mut keys: Vec<&String> = snapshot
       .as_object()
@@ -863,6 +907,7 @@ mod tests {
       is_coordinator: true,
       instance_id: "instance-a",
       workspace_id: "default",
+      ui_visual_fixture: &None,
     }));
     assert_eq!(snapshot["plvs:settings"], settings);
     assert_eq!(snapshot["plvs:workspace"], workspace);
@@ -886,6 +931,7 @@ mod tests {
       is_coordinator: true,
       instance_id: "instance-a",
       workspace_id: "default",
+      ui_visual_fixture: &None,
     }));
     // `normalizeDockState` in hooks/useDockMode.js reads exactly these names, and a mismatch
     // reads as a default rather than an error -- `reserveSpace` even defaults to the opposite.

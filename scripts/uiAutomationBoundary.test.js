@@ -35,11 +35,25 @@ describe("real PLVS visual automation boundary", () => {
     );
     expect(validateWalkthroughManifest(manifest)).toEqual([]);
     expect(manifest.scenarios.map(({ ui }) => ui.kind)).toEqual([
+      "workspace",
       "settings",
       "panelSettings",
       "themeEditor",
       "loudnessProfileEditor",
       "feedback",
     ]);
+  });
+
+  it("keeps development-only exceptional surfaces on a closed safe-dismiss sequence", async () => {
+    const manifest = JSON.parse(
+      await readFile(join(scripts, "ui-walkthrough", "development-fixtures.example.json"), "utf8")
+    );
+    expect(validateWalkthroughManifest(manifest)).toEqual([]);
+    expect(manifest.fixture.uiSequence).toBe("review-sequence");
+    expect(
+      manifest.scenarios.filter(({ ui }) => ui.kind === "fixture").map(({ ui }) => ui.action)
+    ).toEqual(["cancel", "cancel", "cancel", "close", "cancel"]);
+    expect(manifest.scenarios.map(({ id }) => id)).toContain("file-analysis");
+    expect(manifest.scenarios.map(({ ui }) => ui.kind)).toContain("themeEditor");
   });
 });

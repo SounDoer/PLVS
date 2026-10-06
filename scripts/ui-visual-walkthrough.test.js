@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runUiVisualWalkthrough } from "./ui-visual-walkthrough.mjs";
 
 describe("UI visual walkthrough runner", () => {
@@ -75,5 +78,91 @@ describe("UI visual walkthrough runner", () => {
         path: expect.stringMatching(/feedback\.png$/),
       }),
     ]);
+  });
+
+  it("analyzes deterministic audio and restores the original transport", async () => {
+    const outDir = await mkdtemp(join(tmpdir(), "plvs-ui-walkthrough-"));
+    let revision = 4;
+    let analyzed = false;
+    const calls = [];
+    const invoke = vi.fn(async (args) => {
+      calls.push(args);
+      const command = args.join(" ");
+      if (command.startsWith("capabilities")) {
+        return {
+          methods: [
+            "app.capabilities",
+            "app.inspect",
+            "app.wait",
+            "ui.inspect",
+            "transport.inspect",
+            "transport.source.live",
+            "transport.source.file",
+            "transport.live.start",
+            "transport.file.analyze",
+            "transport.file.select",
+            "transport.file.remove",
+            "visual.screenshot",
+          ],
+        };
+      }
+      if (command.startsWith("inspect")) return { revision };
+      if (command.startsWith("ui inspect")) {
+        return { revision, uiGeneration: 0, activeBlockingEditors: [], surfaces: [] };
+      }
+      if (command.startsWith("transport inspect")) {
+        return {
+          revision,
+          source: "live",
+          live: { state: "stopped" },
+          files: {
+            sessions: analyzed
+              ? [{ id: "fixture-session", path: join(outDir, "fixture.wav"), state: "complete" }]
+              : [],
+          },
+        };
+      }
+      if (command.startsWith("transport file analyze")) {
+        analyzed = true;
+        revision += 1;
+        return { revision };
+      }
+      if (command.startsWith("transport file remove")) {
+        analyzed = false;
+        revision += 1;
+        return { revision };
+      }
+      if (command.startsWith("transport source live")) return { revision };
+      if (command.startsWith("visual screenshot")) {
+        return { revision, uiGeneration: 0, artifact: { bytes: 8, sha256: "hash" } };
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    const result = await runUiVisualWalkthrough({
+      manifest: {
+        version: 1,
+        workbench: { instanceId: "instance-a" },
+        fixture: {
+          audio: { id: "fixture", durationSeconds: 2, sampleRate: 8_000, channels: 2 },
+        },
+        scenarios: [
+          {
+            id: "file-analysis",
+            durable: [],
+            ui: { kind: "workspace" },
+            screenshot: { target: "main", output: "file-analysis.png" },
+            touches: [],
+          },
+        ],
+      },
+      outDir,
+      invoke,
+    });
+
+    expect(result.fixture).toMatchObject({ id: "fixture", sessionId: "fixture-session" });
+    expect(result.restoration.verified).toBe(true);
+    expect(analyzed).toBe(false);
+    expect(calls.some((args) => args.slice(0, 3).join(" ") === "transport file remove")).toBe(true);
   });
 });

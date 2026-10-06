@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
@@ -122,6 +122,9 @@ import { buildTransportSnapshot } from "./agentControl/transportControl.js";
 
 const APP_VERSION = packageInfo.version;
 const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
+const DevUiVisualFixture = import.meta.env.DEV
+  ? lazy(() => import("./dev/UiVisualFixture.jsx"))
+  : null;
 
 function nextPaint(signal) {
   return new Promise((resolve, reject) => {
@@ -2574,6 +2577,11 @@ function AppContent() {
         onRetry={handleCloseRetry}
         onCancel={handleCloseCancel}
       />
+      {DevUiVisualFixture && window.__PLVS_INITIAL_STATE__?.uiVisualFixture ? (
+        <Suspense fallback={null}>
+          <DevUiVisualFixture name={window.__PLVS_INITIAL_STATE__.uiVisualFixture} />
+        </Suspense>
+      ) : null}
       <LibraryConflictDialog />
     </AppShell>
   );

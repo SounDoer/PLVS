@@ -100,6 +100,56 @@ Use `npm run cli:build` to build only the CLI package without starting the GUI.
 
 `desktop:control` quietly builds the standalone CLI package incrementally, always with the same `dev-identity`, then forwards the arguments directly to the flat `plvs-cli` commands; the development GUI must already be running. It does not depend on Agent Control / PATH in Settings, and it never discovers or changes an installed release. The public release CLI uses the same flat commands but talks to the installed app through the release identity. Windows uses a current-user named pipe and macOS a private Unix socket; Visual Capture screenshots and recording work on both platforms. `smoke:agent-control` assumes the development GUI is running, verifies capabilities, inspect, a screenshot and a 3-second silent recording, and writes the files and a verification report to `artifacts/agent-control-smoke/`.
 
+### UI visual walkthroughs
+
+Visual review uses the running development app's Agent Control navigation and screenshot commands;
+it does not use browser selectors, Playwright, or CDP. Stop every PLVS Development process before
+capturing a code state, then cold-start that exact checkout once. Do not edit or switch the checkout
+until the run finishes: Vite hot reload can produce a false crash report and invalidates the image
+set.
+
+For ordinary product surfaces, start PLVS Development, obtain the workbench ID with
+`npm run desktop:control -- instances --json`, copy
+`scripts/ui-walkthrough/product-surfaces.example.json`, and replace its placeholder ID. Then run:
+
+```powershell
+npm run ui:walkthrough -- --manifest <manifest.json> --out-dir artifacts/ui-review/before
+```
+
+The manifest generates and analyzes a deterministic stereo WAV so the File workspace and metering
+Panels contain data. The runner opens only semantic product surfaces, takes real window screenshots,
+uses Close or Cancel on the exact surface it opened, removes the temporary analysis session, restores
+the original source lifecycle and every declared setting, and writes `report.json`. Use a fresh
+absolute `--plvs-test-app-data-root` for each compared code state when identical default window
+bounds and settings are required.
+
+Some screenshot states cannot be manufactured by the public CLI. For the checked development-only
+sequence (Theme Preview, close confirmation, update dialog, crash report, and a populated Presets
+popover), cold-start the debug app with:
+
+```powershell
+npm run desktop -- -- -- --plvs-ui-visual-fixture review-sequence
+```
+
+Copy `scripts/ui-walkthrough/development-fixtures.example.json`, insert that run's instance ID, and
+run `ui:walkthrough` as above. This combined manifest captures both the exceptional sequence and
+all ordinary product surfaces from that one cold-started process. The exceptional scenes are the
+production components inside the real Tauri window, fed deterministic non-persistent data. The
+sequence advances only through the surfaces' registered Cancel, Close, or Escape-equivalent
+callbacks; the runner never invokes Save, Send, Confirm, Update, Restart, Apply, or Delete. The
+startup argument is accepted only by debug builds.
+
+Repeat the same cold-start workflow for the second code state, writing to `after`, then compare the
+two complete image sets exactly:
+
+```powershell
+npm run ui:compare -- --before artifacts/ui-review/before --after artifacts/ui-review/after --out-dir artifacts/ui-review/diff
+```
+
+The comparison fails on a missing image, changed dimensions, or any changed pixel. It writes
+magenta difference images plus a machine-readable `report.json`; review those artifacts before
+accepting an intentional visual change.
+
 Installable test packages use a third identity rather than either of those two. `npm run desktop:preview-nsis` combines `tauri.preview.conf.json` with `preview-identity`, producing **PLVS Preview** (`com.soundoer.plvs.preview`) with its own settings, installer registration and Agent Control discovery. The Preview feature also compiles out updater registration. `scripts/generate-agent-discovery.mjs` owns both the stable and Preview manifests and NSIS hooks; do not edit those generated files by hand.
 
 Windows Preview build (matching CI `preview-build.yml`):
@@ -182,13 +232,13 @@ The report's `focusedMatrix` entries start as `notCaptured`, with no evidence. T
 not proof that those conditions were tested. Record screenshot paths and observations separately
 for the conditions relevant to the design:
 
-| Surface | Conditions |
-| --- | --- |
-| Theme Preview | Overview controls, hover, disabled/selected controls, Modules fills, Visual Review links |
-| Actual menus and editors | Popover, Settings, Theme Editor, modal surface and text hierarchy |
-| Workspace | Narrow/wide panels, Live/Snapshot distinction, mono/stereo/high channel counts |
-| Dock | Live source, 56/82/160 CSS px; capture `main` after each acknowledged Dock transition |
-| Native composition | Supported OS/display scales, Glass and Surface Opacity, hide-chrome/fullscreen |
+| Surface                  | Conditions                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| Theme Preview            | Overview controls, hover, disabled/selected controls, Modules fills, Visual Review links |
+| Actual menus and editors | Popover, Settings, Theme Editor, modal surface and text hierarchy                        |
+| Workspace                | Narrow/wide panels, Live/Snapshot distinction, mono/stereo/high channel counts           |
+| Dock                     | Live source, 56/82/160 CSS px; capture `main` after each acknowledged Dock transition    |
+| Native composition       | Supported OS/display scales, Glass and Surface Opacity, hide-chrome/fullscreen           |
 
 Use Agent Control for desktop captures and compare pixel values for changed renderers. The Theme
 Preview is illustrative and cannot replace real panel screenshots. Dock cannot enter from File

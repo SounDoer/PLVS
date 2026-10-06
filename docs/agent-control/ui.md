@@ -159,12 +159,21 @@ patches, and an exact declaration of every durable field touched. The runner ref
 surface, blocking editor, event decision, missing capability, undeclared field, arbitrary command,
 shell string, selector, generic confirmation, or output path escape. It writes temporary mutation
 documents in a private directory, dismisses only the surface it opened, restores in reverse order,
-and records success or bounded failure evidence in `report.json`.
+and records success or bounded failure evidence in `report.json`. The checked product manifest also
+analyzes a deterministic stereo WAV through Transport Control, captures the populated File-analysis
+workspace, removes the temporary session, and verifies that the original source lifecycle was
+restored.
 
 Settings, normal or Dock Panel Settings, clean Theme/Profile drafts, blank Feedback, and ordinary
-Workspace/Dock captures belong on this path. Development-only fixtures remain appropriate for real
-update phases, crash and fatal variants, close timing, stale library conflicts, dirty discard and
-validation states, color pickers, native file/permission dialogs, clipboard/drag/shortcut input,
-menus/tooltips/hover/focus, hotplug/capture failures, and renderer/performance probes. The isolated
-community-preview renderer may continue to use Playwright because it renders a browser preview
-application, not the running PLVS workbench.
+Workspace/Dock captures belong on this path. A closed debug-only startup fixture provides the
+checked Theme Preview, close confirmation, update dialog, crash report, and populated Presets
+screenshots without adding public `ui show` commands or synthetic product events. It renders the
+production components in the real Tauri window, carries no persistent mutations, and advances only
+through their registered safe-dismiss callbacks. See `CONTRIBUTING.md` for the cold-start and exact
+pixel-comparison workflow.
+
+Other development-only fixtures remain appropriate for fatal variants, close timing, stale library
+conflicts, dirty discard and validation states, color pickers, native file/permission dialogs,
+clipboard/drag/shortcut input, tooltips/hover/focus, hotplug/capture failures, and
+renderer/performance probes. The isolated community-preview renderer may continue to use Playwright
+because it renders a browser preview application, not the running PLVS workbench.
