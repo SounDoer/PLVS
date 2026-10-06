@@ -18,7 +18,6 @@ import {
   VISUAL_HIST_SAMPLE_SEC,
 } from "./hooks/useLoudnessHistory.js";
 import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx";
-import { useSnapshot } from "./hooks/useSnapshot";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { LOUDNESS_PROFILE_OFF } from "./lib/loudnessProfileCatalog.js";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
@@ -38,6 +37,7 @@ import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
 import { SourceProvider, useSource } from "./runtime/SourceContext.jsx";
 import { SourceActionsProvider, useSourceActions } from "./runtime/SourceActionsContext.jsx";
 import { AppLifecycleProvider, useAppLifecycle } from "./hooks/AppLifecycleContext.jsx";
+import { DisplaySnapshotProvider, useDisplaySnapshot } from "./runtime/DisplaySnapshotContext.jsx";
 import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
 import { useDockAccessoryBridge } from "./dock/useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./dock/useDockAccessoryVisibility.js";
@@ -210,7 +210,10 @@ export default function App() {
                             {/* Reads Settings, Dock, WindowChrome, Presets, Source and
                                 SourceActions. */}
                             <AppLifecycleProvider>
-                              <AppContent />
+                              {/* Reads MeterRuntime. Its value changes per meter frame. */}
+                              <DisplaySnapshotProvider>
+                                <AppContent />
+                              </DisplaySnapshotProvider>
                             </AppLifecycleProvider>
                           </SourceActionsProvider>
                         </SourceProvider>
@@ -356,7 +359,7 @@ function AppContent() {
   } = useSource();
 
   const { display, routing } = useMeterRuntimeAssembly();
-  const { audio, setAudio } = display;
+  const { setAudio } = display;
   const { elapsedMsRef } = display.clock;
 
   const reportSceneError = useCallback(
@@ -499,12 +502,8 @@ function AppContent() {
     resolveSpectrumSnapshotForKey,
     resolveVectorscopeSnapshotForKey,
     resolveStereoMapSnapshotForKey,
-  } = useSnapshot({
-    selectedOffset,
-    sampleSec: HIST_SAMPLE_SEC,
-    intake: intakeRef.current,
-    audio,
-  });
+    channelCount,
+  } = useDisplaySnapshot();
 
   const { historyChartInteractive, totalSamples, statsMetrics } = useLoudnessHistory({
     histSourceList,
@@ -577,9 +576,6 @@ function AppContent() {
     analyzingFileSession,
   });
   const showFileAnalysisResult = sourceMode === "file" && fileSessions.length > 0;
-  const displayChannelCount = Array.isArray(displayAudio.peakDb) ? displayAudio.peakDb.length : 0;
-  const liveChannelCount = Array.isArray(audio.peakDb) ? audio.peakDb.length : 0;
-  const channelCount = displayChannelCount > 0 ? displayChannelCount : liveChannelCount;
   const dockPanelInstances = useMemo(
     () =>
       dockLayout.panels.map((panel) => ({
