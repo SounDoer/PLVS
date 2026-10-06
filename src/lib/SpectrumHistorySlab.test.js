@@ -358,7 +358,7 @@ describe("SpectrumHistorySlab", () => {
     slab.push({ bands, dbList: [4, 5, 6], timestampMs: 2 });
 
     const live = slab.toArray();
-    const frozen = slab.toArray({ copyRows: true });
+    const frozen = slab.toArray();
 
     expect(live[0].dbList.buffer).not.toBe(slab.rowAt(0).dbList.buffer);
     expect(frozen[0].dbList.buffer).not.toBe(live[0].dbList.buffer);

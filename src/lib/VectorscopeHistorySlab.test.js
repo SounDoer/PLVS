@@ -202,12 +202,12 @@ describe("VectorscopeHistorySlab", () => {
     });
   });
 
-  it("returns correlation and honors copyRows", () => {
+  it("returns correlation and rows that do not alias the slab", () => {
     const slab = new VectorscopeHistorySlab(2, PAIR_VALUE_COUNT);
     pushRow(slab, 4);
 
     const live = slab.rowAt(0);
-    const copied = slab.toArray({ copyRows: true })[0];
+    const copied = slab.toArray()[0];
 
     expect(live).toMatchObject({
       correlation: 0.4,

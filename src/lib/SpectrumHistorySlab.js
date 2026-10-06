@@ -337,12 +337,7 @@ export class SpectrumHistorySlab extends ChunkedHistorySlab {
     });
   }
 
-  /**
-   * @param {number} index
-   * @param {{ copyRows?: boolean }} [_options] retained for call-site compatibility: `dbList` is
-   *   decoded into an array of its own either way
-   */
-  at(index, _options) {
+  at(index) {
     const found = this.chunkAt(index);
     if (!found) return undefined;
     return rowFrom(found.chunk, found.row, this._bandCount, this._bands);
@@ -363,10 +358,10 @@ export class SpectrumHistorySlab extends ChunkedHistorySlab {
     );
   }
 
-  toArray(options) {
+  toArray() {
     const out = new Array(this.length);
     for (let i = 0; i < this.length; i += 1) {
-      out[i] = this.at(i, options);
+      out[i] = this.at(i);
     }
     return out;
   }
