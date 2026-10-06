@@ -9,16 +9,16 @@ describe("UI_PREFERENCES loudness history", () => {
 
 describe("UI_PREFERENCES header density", () => {
   it("keeps the app header lightly compact", () => {
-    expect(UI_PREFERENCES.layout.header.paddingXRem).toBe(0.4);
-    expect(UI_PREFERENCES.layout.header.paddingYRem).toBe(0.4);
-    expect(UI_PREFERENCES.layout.header.actionGapRem).toBe(0.2);
+    expect(UI_PREFERENCES.layout.header.paddingXRem).toBe(0.5);
+    expect(UI_PREFERENCES.layout.header.paddingYRem).toBe(0.25);
+    expect(UI_PREFERENCES.layout.header.actionGapRem).toBe(0.25);
   });
 });
 
 describe("UI_PREFERENCES shell density", () => {
   it("keeps the shell region gap compact", () => {
-    expect(UI_PREFERENCES.layout.shell.paddingRem.base).toBe(0.3);
-    expect(UI_PREFERENCES.layout.shell.gapRem.base).toBe(0.35);
+    expect(UI_PREFERENCES.layout.shell.paddingRem.base).toBe(0.25);
+    expect(UI_PREFERENCES.layout.shell.gapRem.base).toBe(0.25);
   });
 });
 

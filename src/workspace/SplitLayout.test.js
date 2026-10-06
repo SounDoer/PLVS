@@ -43,7 +43,7 @@ describe("resolveSplitDragDelta", () => {
 describe("getSplitSizingContext", () => {
   it("normalizes fixed children when all visible split children are fixed", () => {
     expect(getSplitSizingContext([0.14, 0.68, 0.18], 2)).toEqual({
-      dividerTotalRem: 0.75,
+      dividerTotalRem: 0.5,
       fixedTotal: 1,
       normalizeFixed: true,
       pinnedTotalPx: 0,
@@ -52,7 +52,7 @@ describe("getSplitSizingContext", () => {
 
   it("keeps unnormalized fixed fractions for normal mixed fixed and fluid children", () => {
     expect(getSplitSizingContext([0.14, null, 0.18], 2)).toEqual({
-      dividerTotalRem: 0.75,
+      dividerTotalRem: 0.5,
       fixedTotal: 0.32,
       normalizeFixed: false,
       pinnedTotalPx: 0,
@@ -61,7 +61,7 @@ describe("getSplitSizingContext", () => {
 
   it("normalizes mixed fixed children when they already fill the container", () => {
     expect(getSplitSizingContext([0.35, 0.35, 0.35, null], 3)).toEqual({
-      dividerTotalRem: 1.125,
+      dividerTotalRem: 0.75,
       fixedTotal: 1.0499999999999998,
       normalizeFixed: true,
       pinnedTotalPx: 0,
@@ -70,7 +70,7 @@ describe("getSplitSizingContext", () => {
 
   it("tracks pinned pixel space separately from ratio sizes", () => {
     expect(getSplitSizingContext([0.14, null, 0.18], 2, [220, null, 0])).toEqual({
-      dividerTotalRem: 0.75,
+      dividerTotalRem: 0.5,
       fixedTotal: 0.18,
       normalizeFixed: false,
       pinnedTotalPx: 220,
@@ -83,7 +83,7 @@ describe("getSplitChildStyle", () => {
     const sizing = getSplitSizingContext([0.14, 0.68, 0.18], 2);
 
     expect(getSplitChildStyle(0.18, sizing)).toEqual({
-      flex: "0 0 calc((100% - 0.75rem) * 0.18)",
+      flex: "0 0 calc((100% - 0.5rem) * 0.18)",
       minWidth: 0,
       minHeight: 0,
     });
@@ -93,7 +93,7 @@ describe("getSplitChildStyle", () => {
     const sizing = getSplitSizingContext([0.14, 0.66, 0.18], 2);
 
     expect(getSplitChildStyle(0.18, sizing)).toEqual({
-      flex: "0 0 calc((100% - 0.75rem) * 0.183673)",
+      flex: "0 0 calc((100% - 0.5rem) * 0.183673)",
       minWidth: 0,
       minHeight: 0,
     });
@@ -133,7 +133,7 @@ describe("getSplitChildStyle", () => {
     const sizing = getSplitSizingContext([0.14, null, 0.18], 2, [220, null, 0]);
 
     expect(getSplitChildStyle(0.18, sizing)).toEqual({
-      flex: "0 0 calc((100% - 0.75rem - 220px) * 0.18)",
+      flex: "0 0 calc((100% - 0.5rem - 220px) * 0.18)",
       minWidth: 0,
       minHeight: 0,
     });
@@ -143,7 +143,7 @@ describe("getSplitChildStyle", () => {
     const sizing = getSplitSizingContext([0.5, null, 0.5], 2, [674, null, 0]);
 
     expect(getSplitChildStyle(0.5, sizing)).toEqual({
-      flex: "0 0 calc((100% - 0.75rem - 674px) * 0.5)",
+      flex: "0 0 calc((100% - 0.5rem - 674px) * 0.5)",
       minWidth: 0,
       minHeight: 0,
     });

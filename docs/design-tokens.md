@@ -584,42 +584,52 @@ responsive `--ui-dock-*` typography.
 
 Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 
+Spacing sits on a 4px grid: every padding, gap and inset below is 0, 4, 8 or 12px (0, 0.25, 0.5 or
+0.75rem). Those are the only steps that are a whole number of device pixels at every display scale
+PLVS runs at, 100%, 125%, 150% and 200%. A value between them, such as the earlier 0.3, 0.35 and
+0.4rem, is exact at one scale and a fraction at the others, where the browser rounds each gap on
+its own and neighbouring gaps end up a pixel apart.
+
+The space between two panels is the split resize rail, which takes `--ui-shell-gap`, so it always
+equals the space around the panels. `src/preferences/spacingGridContract.test.js` rejects a spacing
+value off the grid.
+
 ### Shell
 
 ```
---ui-shell-pad       0.3rem    Outer padding
---ui-shell-gap       0.35rem   Vertical gap between regions
+--ui-shell-pad       0.25rem   Outer padding
+--ui-shell-gap       0.25rem   Gap between shell regions and between panels
 ```
 
 ### Header
 
 ```
---ui-header-pad-x       0.4rem    Horizontal padding
---ui-header-pad-y       0.4rem    Vertical padding
---ui-header-action-gap  0.2rem    Gap between action buttons
+--ui-header-pad-x       0.5rem    Horizontal padding
+--ui-header-pad-y       0.25rem   Vertical padding
+--ui-header-action-gap  0.25rem   Gap between action buttons
 ```
 
 ### Footer
 
 ```
 --ui-footer-pad-x    0.5rem    Horizontal padding
---ui-footer-pad-y    0.4rem    Vertical padding
+--ui-footer-pad-y    0.25rem   Vertical padding
 ```
 
 ### Panel
 
 ```
 --ui-panel-pad-x              0.25rem   Horizontal padding inside each Card panel
---ui-panel-pad-y              0.35rem   Vertical padding inside each Card panel
+--ui-panel-pad-y              0.25rem   Vertical padding inside each Card panel
 --ui-splitter-bar-thickness   1px       Visual width of draggable splitter bar
 ```
 
 #### Panel → Chart (sub-namespace)
 
 ```
---ui-chart-inset-top     0.2rem   Top inset within chart display area
+--ui-chart-inset-top     0.25rem  Top inset within chart display area
 --ui-chart-inset-bottom  0rem     Bottom inset within chart display area
---ui-chart-axis-gap      0.4rem   Gap between axis label column and chart area
+--ui-chart-axis-gap      0.25rem  Gap between axis label column and chart area
 --ui-chart-hud-inset     0.25rem  Inset for floating HUD / tooltip boxes
 --ui-chart-x-axis-row-h      max(0.8rem, axis * 1.15)  Height of the x-axis label row
 --ui-chart-y-axis-rail-w     max(20px, axis * 1.65)    Width of the y-axis label rail
@@ -628,11 +638,11 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 #### Panel → Module Spacing
 
 ```
---ui-peak-channel-gap       0.4rem   Gap between peak meter channels
---ui-meter-chart-inset-x    0.6rem   Horizontal inset inside meter chart area
+--ui-peak-channel-gap       0.25rem  Gap between peak meter channels
+--ui-meter-chart-inset-x    0.5rem   Horizontal inset inside meter chart area
 --ui-meter-label-top-inset  0.5rem   Top inset for meter channel labels
 --ui-vector-outer-inset     0rem     Outer inset around vectorscope plot
---ui-vector-corner-inset    0.4rem   Corner label inset in vectorscope
+--ui-vector-corner-inset    0.5rem   Corner label inset in vectorscope
 ```
 
 #### Panel → Minimum Heights
@@ -649,15 +659,15 @@ Property vocabulary: `pad-x` / `pad-y` / `pad`, `gap`, `inset`, `min-h`, `w`.
 ```
 --ui-metric-row-pad-x    0.25rem   Horizontal padding inside each metric row
 --ui-metric-row-gap      0.5rem    Gap between sibling metric rows
---ui-metric-row-min-h    1.2rem    Minimum row height
---ui-metric-list-gap     0.1rem    Gap managed by the scroll container
---ui-metric-inline-gap   0.4rem    Gap between inline label + value pairs
+--ui-metric-row-min-h    1.25rem   Minimum row height
+--ui-metric-list-gap     0rem      Gap managed by the scroll container
+--ui-metric-inline-gap   0.5rem    Gap between inline label + value pairs
 ```
 
 ### Drawer (Settings Sheet)
 
 ```
---ui-drawer-pad          0.875rem  Inner padding of the settings drawer
+--ui-drawer-pad          0.75rem   Inner padding of the settings drawer
 --ui-drawer-w            20rem     Preferred Small-profile drawer width
 --ui-drawer-gap          0.75rem   Gap between settings sections
 --ui-drawer-row-gap      0.25rem   Gap between rows within a section

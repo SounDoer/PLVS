@@ -28,7 +28,7 @@ describe("spacing data", () => {
   it("uses compact default panel padding", () => {
     expect(UI_PREFERENCES.layout.articlePadding).toMatchObject({
       defaultXRem: 0.25,
-      defaultYRem: 0.35,
+      defaultYRem: 0.25,
     });
     expect(UI_PREFERENCES.layout.articlePadding).not.toHaveProperty("metricsRem");
   });
@@ -36,17 +36,17 @@ describe("spacing data", () => {
   it("uses compact footer padding", () => {
     expect(UI_PREFERENCES.layout.footer).toMatchObject({
       paddingXRem: 0.5,
-      paddingYRem: 0.4,
+      paddingYRem: 0.25,
     });
   });
 
   it("uses tighter metric list spacing", () => {
-    expect(UI_PREFERENCES.layout.spacingRem.metricsListGap).toBe(0.1);
+    expect(UI_PREFERENCES.layout.spacingRem.metricsListGap).toBe(0);
   });
 
   it("uses compact vertical chart insets", () => {
     expect(UI_PREFERENCES.layout.spacingRem).toMatchObject({
-      chartInsetTop: 0.2,
+      chartInsetTop: 0.25,
       chartInsetBottom: 0,
     });
   });
@@ -82,7 +82,7 @@ describe("metric row tuning", () => {
     expect(UI_PREFERENCES.modules.stats.metrics).toMatchObject({
       valueColumnCh: 5.5,
       unitColumnRem: 2.1,
-      rowMinHeightRem: 1.2,
+      rowMinHeightRem: 1.25,
       rowPaddingXRem: 0.25,
       rowGapRem: 0.5,
     });

@@ -4,22 +4,25 @@
  */
 
 export const UI_PREFERENCES = {
+  // Spacing is on a 4px grid: every value below is 0, 0.25, 0.5 or 0.75rem. Those are the only
+  // steps that land on whole device pixels at every display scale; anything between them is
+  // rounded differently from one gap to the next. See Spacing Tokens in design-tokens.md.
   layout: {
     shell: {
-      paddingRem: { base: 0.3 },
-      gapRem: { base: 0.35 },
+      paddingRem: { base: 0.25 },
+      gapRem: { base: 0.25 },
     },
     splitters: {
       barThicknessPx: 1,
     },
     header: {
-      paddingXRem: 0.4,
-      paddingYRem: 0.4,
-      actionGapRem: 0.2,
+      paddingXRem: 0.5,
+      paddingYRem: 0.25,
+      actionGapRem: 0.25,
     },
     footer: {
       paddingXRem: 0.5,
-      paddingYRem: 0.4,
+      paddingYRem: 0.25,
     },
     /** Height of every form control. Scales with Interface Size so text never outgrows its box. */
     control: {
@@ -31,26 +34,26 @@ export const UI_PREFERENCES = {
     },
     drawer: {
       preferredWidthPx: 320,
-      paddingRem: 0.875,
+      paddingRem: 0.75,
       sectionGapRem: 0.75,
       rowGapRem: 0.25,
       rowMinHeightRem: 1.5,
     },
     articlePadding: {
       defaultXRem: 0.25,
-      defaultYRem: 0.35,
+      defaultYRem: 0.25,
     },
     spacingRem: {
-      inlineValueGap: 0.4,
-      metricsListGap: 0.1,
-      chartAxisGap: 0.4,
-      peakChannelGap: 0.4,
-      meterChartInsetX: 0.6,
+      inlineValueGap: 0.5,
+      metricsListGap: 0,
+      chartAxisGap: 0.25,
+      peakChannelGap: 0.25,
+      meterChartInsetX: 0.5,
       meterLabelTopInset: 0.5,
       vectorOuterInset: 0,
-      vectorCornerInset: 0.4,
+      vectorCornerInset: 0.5,
       hudInset: 0.25,
-      chartInsetTop: 0.2,
+      chartInsetTop: 0.25,
       chartInsetBottom: 0,
     },
     leftSplit: {
@@ -131,7 +134,7 @@ export const UI_PREFERENCES = {
       metrics: {
         valueColumnCh: 5.5,
         unitColumnRem: 2.1,
-        rowMinHeightRem: 1.2,
+        rowMinHeightRem: 1.25,
         rowPaddingXRem: 0.25,
         rowGapRem: 0.5,
       },

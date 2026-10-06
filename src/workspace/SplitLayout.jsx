@@ -24,8 +24,11 @@ import { resolvePanelDefinition } from "./registry.jsx";
 import { getPanelControls } from "./panelControlInstances.js";
 import { LAYER_FLOATING } from "../components/ui/layers.js";
 import { IconAction } from "@/components/ui/icon-action";
+import { UI_PREFERENCES } from "../preferences/data.js";
 
-const SPLIT_DIVIDER_SIZE_REM = 0.375;
+// The resize rail is as wide as the shell gap (it renders at `--ui-shell-gap`), so the sizing math
+// below reads the same value the stylesheet publishes.
+const SPLIT_DIVIDER_SIZE_REM = UI_PREFERENCES.layout.shell.gapRem.base;
 const SPLIT_SNAP_THRESHOLD_PX = 10;
 const SPLIT_SNAP_RELEASE_THRESHOLD_PX = 18;
 const noop = () => {};
@@ -248,9 +251,13 @@ function SplitDivider({
   return (
     <div
       ref={ref}
+      // The rail is exactly the shell gap, so the space between two panels equals the space
+      // around them. The pseudo-element widens the grab zone to 8px without widening the gap.
       className={cn(
-        "group flex shrink-0 items-center justify-center",
-        isH ? "w-1.5 cursor-ew-resize" : "h-1.5 cursor-ns-resize"
+        "group relative z-10 flex shrink-0 items-center justify-center before:absolute before:content-['']",
+        isH
+          ? "w-[var(--ui-shell-gap)] cursor-ew-resize before:inset-y-0 before:-inset-x-0.5"
+          : "h-[var(--ui-shell-gap)] cursor-ns-resize before:inset-x-0 before:-inset-y-0.5"
       )}
       onMouseDown={handleMouseDown}
     >
