@@ -22,7 +22,7 @@ export function useAxisActivePulse(idle = false) {
   useEffect(() => () => clearTimer(), [clearTimer]);
 
   const pulse = useCallback(
-    (value = true) => {
+    (/** @type {any} */ value = true) => {
       setActive(value);
       clearTimer();
       timerRef.current = window.setTimeout(() => {
@@ -34,7 +34,7 @@ export function useAxisActivePulse(idle = false) {
   );
 
   const hold = useCallback(
-    (value = true) => {
+    (/** @type {any} */ value = true) => {
       clearTimer();
       setActive(value);
     },

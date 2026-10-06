@@ -23,7 +23,6 @@ export function LoudnessPanel() {
   const {
     hasHistoryData,
     historyChartInteractive,
-    running,
     setSelectedOffset,
     holdHistoryHud,
     showHistoryHud,
@@ -200,7 +199,6 @@ export function LoudnessPanel() {
           onLoudnessYRangeChange={onLoudnessYRangeChange}
           hasHistoryData={hasHistoryData}
           historyChartInteractive={historyChartInteractive}
-          running={running}
           setSelectedOffset={setSelectedOffset}
           holdHistoryHud={holdHistoryHud}
           showHistoryHud={showHistoryHud}

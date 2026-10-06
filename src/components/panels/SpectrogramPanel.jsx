@@ -597,9 +597,9 @@ export function SpectrogramPanel() {
                 onContextMenu={(e) => e.preventDefault()}
                 onPointerDown={onSpectrogramChartPointerDown}
                 onPointerMove={onSpectrogramChartPointerMove}
-                onPointerLeave={(e) => {
-                  notePointerLeave(e);
-                  onSpectrogramHoverLeave?.(e);
+                onPointerLeave={() => {
+                  notePointerLeave();
+                  onSpectrogramHoverLeave?.();
                 }}
                 onPointerUp={onSpectrogramChartPointerUp}
                 onPointerCancel={onSpectrogramChartPointerUp}

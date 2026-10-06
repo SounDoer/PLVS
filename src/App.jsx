@@ -1215,7 +1215,6 @@ function AppContent() {
   } = useRuntimeBackendSync({
     analysisRequests,
     channelRoles,
-    running,
     dialogueGating,
     dialogueVadEngine,
   });

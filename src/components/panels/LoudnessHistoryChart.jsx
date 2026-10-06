@@ -311,9 +311,9 @@ export function LoudnessHistoryChart({
         onPointerMove={onChartPointerMove}
         onPointerUp={onChartPointerUp}
         onPointerCancel={onChartPointerUp}
-        onPointerLeave={(e) => {
-          notePointerLeave(e);
-          onHistoryHoverLeave?.(e);
+        onPointerLeave={() => {
+          notePointerLeave();
+          onHistoryHoverLeave?.();
         }}
       >
         {/* SVG paths + selection line */}

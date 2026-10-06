@@ -221,7 +221,7 @@ export function drawWaveformCanvas(
   }
 }
 
-export function WaveformPanel({ compact = false }) {
+export function WaveformPanel() {
   const themeColors = useResolvedTheme(selectWaveformCanvasColors);
   const frameData = useFrameData();
   const historyData = useHistoryData();
@@ -242,7 +242,6 @@ export function WaveformPanel({ compact = false }) {
 
   return (
     <WaveformPanelContent
-      compact={compact}
       audioData={panelData}
       controls={waveformControls}
       themeColors={themeColors}
@@ -250,7 +249,7 @@ export function WaveformPanel({ compact = false }) {
   );
 }
 
-function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
+function WaveformPanelContent({ audioData, controls, themeColors }) {
   const {
     histSourceList,
     waveformHistoryIndex,
@@ -410,7 +409,6 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
             fracPhase={fracPhase}
             firstBucket={firstBucket}
             lastBucket={lastBucket}
-            compact={compact}
             selected={selectedOffset >= 0}
             frequencyColor={controls.waveformFrequencyColor}
             lowMidSplitHz={controls.waveformLowMidSplitHz}
@@ -515,9 +513,9 @@ function WaveformPanelContent({ compact, audioData, controls, themeColors }) {
             onHistoryPointerMove(e);
             onWaveformHoverMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
           }}
-          onPointerLeave={(e) => {
-            notePointerLeave(e);
-            onWaveformHoverLeave(e);
+          onPointerLeave={() => {
+            notePointerLeave();
+            onWaveformHoverLeave();
           }}
           onPointerUp={(e) => {
             setChartDragging(false);

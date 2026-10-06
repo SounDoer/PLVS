@@ -977,7 +977,7 @@ export function LoudnessSettingsRows({
 
   return (
     <>
-      <SettingsRow label="Layers" expanded={layersOpen}>
+      <SettingsRow label="Layers">
         <div className="flex min-w-0 flex-1 flex-col">
           <InlineDetailTrigger
             ariaLabel={layersOpen ? "Hide layers" : "Edit layers"}
@@ -1419,7 +1419,7 @@ export function PanelSettingsContent({
       : normalizedPanelControls.loudnessYMaxDb;
 
     return (
-      <SettingsGroup title="Level Meter">
+      <SettingsGroup>
         <PanelControlRows
           tab="levelMeter"
           controls={normalizedPanelControls}
@@ -1495,7 +1495,7 @@ export function PanelSettingsContent({
     const normalizedPanelControls = normalizePanelControls(panelControls);
 
     return (
-      <SettingsGroup title="Stats">
+      <SettingsGroup>
         <StatsMetricsSettingsRow
           visibleIds={normalizedPanelControls.statsVisibleIds}
           orderedIds={normalizedPanelControls.statsOrder}
@@ -1535,7 +1535,7 @@ export function PanelSettingsContent({
     const normalizedPanelControls = normalizePanelControls(panelControls);
 
     return (
-      <SettingsGroup title="Loudness">
+      <SettingsGroup>
         <LoudnessSettingsRows
           visibleLayerIds={normalizedPanelControls.loudnessHistoryVisibleLayerIds}
           grid={normalizedPanelControls.loudnessGrid}
@@ -1608,7 +1608,7 @@ export function PanelSettingsContent({
       return null;
 
     return (
-      <SettingsGroup title={activeTab === "spectrum" ? "Spectrum" : "Spectrogram"}>
+      <SettingsGroup>
         {showChannel ? (
           <SettingsRow label="Channel">
             <SettingsSelect
@@ -1793,7 +1793,7 @@ export function PanelSettingsContent({
       ) ?? VECTORSCOPE_MODE_OPTIONS[0];
 
     return (
-      <SettingsGroup title="Vectorscope">
+      <SettingsGroup>
         {hasPanelControls && typeof onPanelControlsChange === "function" ? (
           <SettingsRow label="Mode">
             <SettingsSelect
@@ -1898,7 +1898,7 @@ export function PanelSettingsContent({
       : stereoMapPairDisplayLabel || selectedOption?.label;
 
     return (
-      <SettingsGroup title="Stereo Map">
+      <SettingsGroup>
         <PanelControlRows
           tab="stereo-map"
           controls={normalizedPanelControls}

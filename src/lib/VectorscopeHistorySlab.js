@@ -147,10 +147,15 @@ export class VectorscopeHistorySlab extends ChunkedHistorySlab {
     });
   }
 
-  at(index, { copyRows = false } = {}) {
+  /**
+   * @param {number} index
+   * @param {{ copyRows?: boolean }} [_options] retained for call-site compatibility: `pairs` is
+   *   decoded into an array of its own either way
+   */
+  at(index, _options) {
     const found = this.chunkAt(index);
     if (!found) return undefined;
-    return rowFrom(found.chunk, found.row, this._pairValueCount, copyRows);
+    return rowFrom(found.chunk, found.row, this._pairValueCount);
   }
 
   rowAt(index, options) {
@@ -201,7 +206,7 @@ export class FrozenVectorscopeHistory extends FrozenChunkedHistory {
   rowAt(index) {
     const found = this.chunkAt(index);
     if (!found) return undefined;
-    return rowFrom(found.chunk, found.row, this._pairValueCount, false);
+    return rowFrom(found.chunk, found.row, this._pairValueCount);
   }
 
   polarMaxHoldAt(index) {

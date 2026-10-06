@@ -154,9 +154,9 @@ export function WorkspaceProvider({ children }) {
         markPresetDirty();
         bound.leaveAxisViewport(...args);
       },
-      resetWorkspace: (...args) => {
+      resetWorkspace: () => {
         markPresetDirty();
-        bound.resetWorkspace(...args);
+        bound.resetWorkspace();
       },
     };
   }, []);

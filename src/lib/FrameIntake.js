@@ -235,7 +235,7 @@ export class FrameIntake {
       ? [frame.loudnessHistTick]
       : (frame.loudnessHistBatch ?? []);
     for (const tick of loudnessTicks) {
-      this.pushHistRow(tick, histMaxSamples, defaultSampleRate);
+      this.pushHistRow(tick, histMaxSamples);
     }
     if (visualMaxSamples > 0) {
       const visualTicks = frame.visualHistTick

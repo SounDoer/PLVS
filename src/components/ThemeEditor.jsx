@@ -376,7 +376,6 @@ export function ThemeEditor({
               onStop={onIntensityStop}
               onStops={onIntensityStops}
               onApplyPreset={onApplyPreset}
-              focusTarget={focusTarget?.page === "palettes" ? focusTarget.id : null}
             />
           ) : (
             <AdvancedPage
