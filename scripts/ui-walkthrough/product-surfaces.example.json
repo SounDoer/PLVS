@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "workbench": { "instanceId": "REPLACE-WITH-INSTANCE-ID" },
+  "scenarios": [
+    {
+      "id": "settings-appearance",
+      "durable": [],
+      "ui": { "kind": "settings", "section": "appearance" },
+      "screenshot": { "target": "main", "output": "settings-appearance.png" },
+      "touches": []
+    },
+    {
+      "id": "spectrum-settings",
+      "durable": [],
+      "ui": { "kind": "panelSettings", "panelId": "spectrum" },
+      "screenshot": { "target": "main", "output": "spectrum-settings.png" },
+      "touches": []
+    },
+    {
+      "id": "theme-customize",
+      "durable": [],
+      "ui": {
+        "kind": "themeEditor",
+        "mode": "customize",
+        "themeId": "plvs-dark",
+        "page": "core"
+      },
+      "screenshot": { "target": "main", "output": "theme-customize.png" },
+      "touches": []
+    },
+    {
+      "id": "profile-create",
+      "durable": [],
+      "ui": { "kind": "loudnessProfileEditor", "mode": "create" },
+      "screenshot": { "target": "main", "output": "profile-create.png" },
+      "touches": []
+    },
+    {
+      "id": "feedback-blank",
+      "durable": [],
+      "ui": { "kind": "feedback" },
+      "screenshot": { "target": "main", "output": "feedback-blank.png" },
+      "touches": []
+    }
+  ]
+}
