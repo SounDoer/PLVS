@@ -173,10 +173,10 @@ function nextAnimationFrame(windowObject, signal) {
  *   workspace: any,
  *   expectedRevision: number,
  *   getRevision: (...args: any[]) => any,
- *   signal: any,
+ *   signal: AbortSignal,
  *   timeoutMs?: number,
- *   documentObject?: any,
- *   windowObject?: any,
+ *   documentObject?: Document,
+ *   windowObject?: Window & typeof globalThis,
  *   windowLabel?: string,
  * }} options
  */

@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen } from "@testing-library/react";
+import { standIn } from "../testing/standIn.js";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../runtime/MeterRuntimeEngines.jsx", () => ({ MeterRuntimeEngines: () => null }));
@@ -29,7 +30,9 @@ const baseFooter = {
   hasUpdate: false,
 };
 
-const baseProps = {
+// Every child these bundles are forwarded to is mocked above, so empty ones stand in for them.
+/** @type {import("react").ComponentProps<typeof AppShell>} */
+const baseProps = standIn({
   frameData: {},
   historyData: {},
   metricsData: {},
@@ -42,7 +45,7 @@ const baseProps = {
   showFileAnalysisResult: false,
   fileSummaryProps: {},
   panelChromeData: {},
-};
+});
 
 describe("AppShell footer", () => {
   it("prompts for a layout only when one is unknown and channels are present", () => {

@@ -54,7 +54,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
  *   displayHistoryPathST: string,
  *   selectedOffset: number,
  *   showSelLine: boolean,
- *   selectionEdge: any,
+ *   selectionEdge: string | null,
  *   selLineX: number,
  *   historyHover: any,
  *   historyTimeTicks: any[],
@@ -65,7 +65,7 @@ const LOUDNESS_HUD_BOX_POPOVER =
  *   shortTermRules: any,
  *   onHistoryHoverMove: (...args: any[]) => any,
  *   onHistoryHoverLeave: (...args: any[]) => any,
- *   loudnessLayoutKnown: any,
+ *   loudnessLayoutKnown: boolean,
  * }} props
  */
 export function LoudnessHistoryChart({

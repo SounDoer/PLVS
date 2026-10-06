@@ -7,10 +7,10 @@ import {
 
 /**
  * @param {{
- *   frameData: any,
- *   historyData: any,
- *   metricsData: any,
- *   panelChromeData: any,
+ *   frameData: Partial<import("./AudioDataContext.jsx").FrameData>,
+ *   historyData: Partial<import("./AudioDataContext.jsx").PanelHistoryData>,
+ *   metricsData: Partial<import("./AudioDataContext.jsx").MetricsData>,
+ *   panelChromeData: Partial<import("./AudioDataContext.jsx").PanelChromeData>,
  *   children: import("react").ReactNode,
  * }} props
  */

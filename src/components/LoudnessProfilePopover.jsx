@@ -45,7 +45,11 @@ function ActiveDot({ active }) {
  * `manageable` false leaves only switching and reordering. Dock uses it: Add and Edit open the
  * blocking editor, which only the normal window renders, and Delete is library management too.
  * @param {{
- *   profile: any,
+ *   profile: Pick<
+ *     import("../hooks/LoudnessProfileContext.jsx").LoudnessProfileApi,
+ *     | "active" | "document" | "profiles" | "draftBlocksLibraryActions"
+ *     | "beginCreate" | "beginEdit" | "removeProfile" | "select" | "selectOff"
+ *   > & { reorderProfiles?: (ids: string[]) => any },
  *   stats?: any,
  *   showTitle?: boolean,
  *   manageable?: boolean,

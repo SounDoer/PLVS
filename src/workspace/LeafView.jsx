@@ -190,7 +190,7 @@ function getMeasuredSize(el, dimension) {
 // LeafView
 // ---------------------------------------------------------------------------
 
-/** @param {{ node: any, path: any, style?: any }} props */
+/** @param {{ node: import("./types.js").LeafNode, path: number[], style?: import("react").CSSProperties }} props */
 export function LeafView({ node, path, style }) {
   const {
     state,

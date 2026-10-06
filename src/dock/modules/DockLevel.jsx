@@ -43,7 +43,7 @@ function widthPct(value, min, max) {
   return Math.max(0, Math.min(1, (value - min) / (max - min))) * 100;
 }
 
-/** @param {{ value: number, min: number, max: number, background: string, style?: any }} props */
+/** @param {{ value: number, min: number, max: number, background: string, style?: import("react").CSSProperties }} props */
 function MeterFill({ value, min, max, background, style }) {
   const width = widthPct(value, min, max);
   return (
