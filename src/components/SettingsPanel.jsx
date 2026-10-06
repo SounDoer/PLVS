@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleHelp, ExternalLink, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -31,6 +31,8 @@ import {
 } from "@/lib/dialogueVadEngines.js";
 import { IconAction } from "@/components/ui/icon-action";
 import { LinkButton } from "@/components/ui/link-button";
+import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigationContext.jsx";
+import { UI_SETTINGS_SECTIONS, createUiNavigationError } from "@/uiNavigation/uiNavigationModel.js";
 const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
 const DOCS_URL = "https://plvs.soundoer.com/docs/";
 const AGENT_CONTROL_PROMPT_STARTER =
@@ -72,10 +74,16 @@ function SettingsBody({ children }) {
   );
 }
 
-/** @param {{ children: import("react").ReactNode, className?: string }} props */
-function SettingsSection({ children, className }) {
+/** @param {{ children: import("react").ReactNode, className?: string, sectionId: string, sectionRef?: import("react").Ref<HTMLDivElement> }} props */
+function SettingsSection({ children, className, sectionId, sectionRef }) {
   return (
-    <div data-settings-section className={cn(SECTION_CLASS, className)}>
+    <div
+      ref={sectionRef}
+      tabIndex={-1}
+      data-settings-section
+      data-settings-section-id={sectionId}
+      className={cn(SECTION_CLASS, className)}
+    >
       {children}
     </div>
   );
@@ -286,6 +294,9 @@ export function SettingsPanel({
   // resets use the compact inline confirmation shared with the rest of the app.
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const closingIntentRef = useRef(false);
+  const sectionNodesRef = useRef(new Map());
+  const pendingSectionRef = useRef(null);
+  const [activeSection, setActiveSection] = useState("behavior");
   const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
   const updateCheckDisabled = updateStatus === "checking";
   let updateStatusText = "Checking...";
@@ -317,6 +328,28 @@ export function SettingsPanel({
       ? "Custom"
       : (selectedStandardLayout?.name ?? selectedLayoutId ?? "Unknown");
 
+  const bindSection = useCallback(
+    (section) => (node) => {
+      if (node) sectionNodesRef.current.set(section, node);
+      else sectionNodesRef.current.delete(section);
+    },
+    []
+  );
+  const focusSection = useCallback((section) => {
+    const node = sectionNodesRef.current.get(section);
+    if (!node) return false;
+    node.scrollIntoView({ block: "start" });
+    node.focus({ preventScroll: true });
+    return true;
+  }, []);
+
+  const settlePendingSection = useCallback(() => {
+    const pending = pendingSectionRef.current;
+    if (!pending || !focusSection(pending.section)) return;
+    pendingSectionRef.current = null;
+    queueMicrotask(pending.resolve);
+  }, [focusSection]);
+
   useLayoutEffect(() => {
     if (settingsOpen) {
       closingIntentRef.current = false;
@@ -328,6 +361,10 @@ export function SettingsPanel({
     }
   }, [settingsOpen]);
 
+  useLayoutEffect(() => {
+    if (settingsOpen && sheetBodyVisible) settlePendingSection();
+  }, [activeSection, settingsOpen, settlePendingSection, sheetBodyVisible]);
+
   const handleOpenChange = (open) => {
     if (open) {
       closingIntentRef.current = false;
@@ -338,6 +375,38 @@ export function SettingsPanel({
     closingIntentRef.current = true;
     setSheetBodyVisible(false);
   };
+
+  const showSection = useCallback(
+    ({ section }) => {
+      if (!UI_SETTINGS_SECTIONS.includes(section)) {
+        throw createUiNavigationError("uiTargetNotFound", { kind: "settings", section });
+      }
+      if (
+        (section === "agent-control" && !showAgentControl) ||
+        (section === "about" && !appVersion)
+      ) {
+        throw createUiNavigationError("surfaceUnavailable", { kind: "settings", section });
+      }
+      setActiveSection(section);
+      setSettingsOpen(true);
+      return new Promise((resolve) => {
+        pendingSectionRef.current = { section, resolve };
+        queueMicrotask(settlePendingSection);
+      });
+    },
+    [appVersion, setSettingsOpen, settlePendingSection, showAgentControl]
+  );
+  useUiNavigationTarget("settings", { show: showSection });
+  useUiSurface({
+    active: settingsOpen,
+    kind: "settings",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { section: activeSection },
+    onClose: () => handleOpenChange(false),
+  });
 
   return (
     <Sheet open={settingsOpen} onOpenChange={handleOpenChange}>
@@ -378,7 +447,7 @@ export function SettingsPanel({
             >
               <SettingsBody>
                 {/* Behavior */}
-                <SettingsSection>
+                <SettingsSection sectionId="behavior" sectionRef={bindSection("behavior")}>
                   <SettingsRow label="Open at Login">
                     <SettingsSwitch
                       aria-label="Open at Login"
@@ -426,7 +495,7 @@ export function SettingsPanel({
                 <SettingsDivider />
 
                 {/* Keyboard shortcuts */}
-                <SettingsSection>
+                <SettingsSection sectionId="shortcuts" sectionRef={bindSection("shortcuts")}>
                   {KEYBOARD_SHORTCUTS.map((s) => (
                     <div key={s.id} className={KBD_ROW_CLASS}>
                       <span className="text-muted-foreground">{s.label}</span>
@@ -472,7 +541,7 @@ export function SettingsPanel({
                 <SettingsDivider />
 
                 {/* Appearance */}
-                <SettingsSection>
+                <SettingsSection sectionId="appearance" sectionRef={bindSection("appearance")}>
                   <SettingsRow
                     labelNode={
                       <SettingsLabelWithTip
@@ -547,7 +616,7 @@ export function SettingsPanel({
                 <SettingsDivider />
 
                 {/* History retention */}
-                <SettingsSection>
+                <SettingsSection sectionId="analysis" sectionRef={bindSection("analysis")}>
                   <SettingsRow
                     labelNode={
                       <SettingsLabelWithTip
@@ -614,7 +683,7 @@ export function SettingsPanel({
                 <SettingsDivider />
 
                 {/* Channel labels */}
-                <SettingsSection>
+                <SettingsSection sectionId="channels" sectionRef={bindSection("channels")}>
                   <SettingsRow
                     labelNode={
                       <span className={ROW_LABEL_CLASS}>
@@ -691,7 +760,7 @@ export function SettingsPanel({
                 <SettingsDivider />
 
                 {/* Import, export and reset */}
-                <SettingsSection>
+                <SettingsSection sectionId="transfer" sectionRef={bindSection("transfer")}>
                   <SettingsRow
                     labelNode={
                       <SettingsLabelWithTip
@@ -778,7 +847,10 @@ export function SettingsPanel({
                     <SettingsDivider />
 
                     {/* Agent control */}
-                    <SettingsSection>
+                    <SettingsSection
+                      sectionId="agent-control"
+                      sectionRef={bindSection("agent-control")}
+                    >
                       <SettingsRow
                         labelNode={
                           <SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />
@@ -816,7 +888,10 @@ export function SettingsPanel({
                   <>
                     <SettingsDivider />
                     <div
+                      ref={bindSection("about")}
+                      tabIndex={-1}
                       data-settings-footer
+                      data-settings-section-id="about"
                       className="flex flex-col gap-1 px-2 text-[length:var(--ui-fs-metric-meta)]"
                     >
                       <div

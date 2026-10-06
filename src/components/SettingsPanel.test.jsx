@@ -1,8 +1,11 @@
 /** @vitest-environment jsdom */
+import { useState } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 
 const CUSTOM_THEME = {
   ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
@@ -18,6 +21,7 @@ beforeEach(() => {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   }));
+  HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 
 const BASE_PROPS = {
@@ -47,6 +51,116 @@ function hexToRgb(hex) {
 }
 
 describe("SettingsPanel", () => {
+  it("marks every public destination with a stable semantic section ID", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.18.2"
+        agentControlStatus={{
+          supported: true,
+          enabled: true,
+          listening: true,
+          cliInstalled: true,
+          message: "Agent Control is ready.",
+        }}
+      />
+    );
+
+    expect(
+      Array.from(document.querySelectorAll("[data-settings-section-id]")).map((section) =>
+        section.getAttribute("data-settings-section-id")
+      )
+    ).toEqual([
+      "behavior",
+      "shortcuts",
+      "appearance",
+      "analysis",
+      "channels",
+      "transfer",
+      "agent-control",
+      "about",
+    ]);
+  });
+
+  it("opens, scrolls, and focuses a requested semantic section", async () => {
+    /** @type {any} */
+    let navigation;
+    function Harness() {
+      const [settingsOpen, setSettingsOpen] = useState(false);
+      navigation = useUiNavigation();
+      return (
+        <SettingsPanel
+          {...BASE_PROPS}
+          settingsOpen={settingsOpen}
+          setSettingsOpen={setSettingsOpen}
+        />
+      );
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 7}>
+          <Harness />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+    let pending;
+
+    await act(async () => {
+      pending = navigation.showSettings({
+        section: "appearance",
+        expectedRevision: 7,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+    const response = await pending;
+    const section = document.querySelector('[data-settings-section-id="appearance"]');
+
+    expect(section.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    expect(document.activeElement).toBe(section);
+    expect(response).toMatchObject({
+      changed: true,
+      uiGeneration: 1,
+      surface: { kind: "settings", target: { section: "appearance" } },
+    });
+  });
+
+  it("refuses an unavailable Agent Control section before opening Settings", async () => {
+    /** @type {any} */
+    let navigation;
+    function Harness() {
+      const [settingsOpen, setSettingsOpen] = useState(false);
+      navigation = useUiNavigation();
+      return (
+        <SettingsPanel
+          {...BASE_PROPS}
+          settingsOpen={settingsOpen}
+          setSettingsOpen={setSettingsOpen}
+          agentControlStatus={undefined}
+        />
+      );
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 7}>
+          <Harness />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+
+    await expect(
+      navigation.showSettings({
+        section: "agent-control",
+        expectedRevision: 7,
+        expectedUiGeneration: 0,
+      })
+    ).rejects.toMatchObject({
+      reason: "surfaceUnavailable",
+      details: { kind: "settings", section: "agent-control" },
+    });
+    expect(navigation.inspectUi()).toMatchObject({ uiGeneration: 0, surfaces: [] });
+  });
+
   it("shows the opt-in crash-report prompt setting", () => {
     const onAskToSendCrashReports = vi.fn().mockResolvedValue(undefined);
     render(

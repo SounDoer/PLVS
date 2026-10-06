@@ -59,6 +59,7 @@ const UI_ERROR_DETAIL_FIELDS = Object.freeze([
   "kind",
   "action",
   "panelId",
+  "section",
   "windowForm",
 ]);
 
